@@ -56,7 +56,7 @@
 // down that long before the finger lifts; --slow=N runs the page's CPU N
 // times slower. Pictures go to --out,
 // <size>_<n>_<what>.png.
-import { clickStill, launch } from "./browser.mjs";
+import { askApp, clickStill, launch, START_MS } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -118,9 +118,13 @@ try {
     // --slow=N: the page's CPU N times slower, as a slow phone's or a busy box's.
     if (SLOW > 1) await cdp.send("Emulation.setCPUThrottlingRate", { rate: SLOW });
     let shot = 0;
+    // A picture waits for a frame, drawn in software: over 30 s for a page
+    // just up at load 40 (rel-m236). It is not judged, so it has as long as
+    // a page has to come up.
     const picture = async (what) => {
       shot += 1;
-      await page.screenshot({ path: `${out}/${size}_${String(shot).padStart(2, "0")}_${what}.png` });
+      await page.screenshot({ path: `${out}/${size}_${String(shot).padStart(2, "0")}_${what}.png`,
+        timeout: START_MS });
     };
     const state = async () => (await page.evaluate(() => window.brickworksState || {})) || {};
     const controls = async () => (await page.evaluate(() => window.brickworksControls || {})) || {};
@@ -181,15 +185,7 @@ try {
       await touch("touchEnd", []);
       await page.waitForTimeout(700);
     };
-    const ask = async () => {
-      await page.evaluate(() => { window.brickworksPhone = null; window.brickworksAskPhone = true; });
-      for (let n = 0; n < 40; n++) {
-        await page.waitForTimeout(250);
-        const told = await page.evaluate(() => window.brickworksPhone);
-        if (told) return told;
-      }
-      return null;
-    };
+    const ask = () => askApp(page, "Phone");
     // The on-screen keyboard: the visual viewport [points] shorter, as a
     // phone's is while it is up; 0 puts it down.
     let keys = 0;
@@ -765,12 +761,7 @@ try {
             s.figure_held && !(after?.dialogs || []).some((d) => /MinifigDialog/.test(d)));
           await press("phone_fit", 5);
           await page.waitForTimeout(1500);
-          await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-          let laid = null;
-          for (let n = 0; n < 24 && !laid; n++) {
-            await page.waitForTimeout(250);
-            laid = await page.evaluate(() => window.brickworksLayout);
-          }
+          const laid = await askApp(page, "Layout");
           let middle = laid && laid.centre ? laid.centre : { x: width / 2, y: height / 2 };
           // On the baseplate a person sees: not under the strip over the
           // model's top (Main._model_rect frames the model under it), where

@@ -20,7 +20,9 @@
 // - signedInStorage: what the browser keeps when it is signed in as EMAIL.
 //
 // And serveSite, all three put together in a browser context: the site as
-// deploy.sh serves it, for design_flow.mjs and theme_flow.mjs.
+// deploy.sh serves it, for design_flow.mjs and theme_flow.mjs. The LDraw
+// library's list (/api/share?op=library) there is the real handler's, from
+// this checkout's catalogue, as a set's page is.
 //
 //   import { ORIGIN, apiAnswer, serverPage, signedInStorage } from "./design_stand_in.mjs";
 //   const said = apiAnswer({ url: new URL(request.url()), method, body, state });
@@ -2030,8 +2032,13 @@ function account(method, params, body, who, state) {
 }
 
 /// The sign-in service (DB/auth/v1/...): a session for EMAIL for any code
-/// or refresh token (the owner's page renews its own on every load).
-function supabase(url, method) {
+/// or refresh token (the owner's page renews its own on every load), but
+/// the code WRONG_CODE, refused as Supabase refuses a wrong or spent one.
+export const WRONG_CODE = "000000";
+function supabase(url, method, body) {
+  if (method === "POST" && url.pathname === "/auth/v1/verify" && String(body?.token) === WRONG_CODE) {
+    return answer(403, { code: 403, error_code: "otp_expired", msg: "Token has expired or is invalid" });
+  }
   if (method === "POST" && ["/auth/v1/token", "/auth/v1/verify"].includes(url.pathname)) return answer(200, session());
   return null;
 }
@@ -2097,7 +2104,9 @@ const PICTURE = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.ur
 /// 404 page for anything else.
 function staticFile(web, pathname) {
   const named = { "/": "index.html", "/oauth/authorize": "authorize.html" }[pathname.replace(/\/$/, "") || "/"];
-  const candidates = named ? [named] : [pathname.slice(1), `${pathname.slice(1).replace(/\/$/, "")}.html`];
+  // A folder's page is its index.html: /de, a language's landing page.
+  const bare = pathname.slice(1).replace(/\/$/, "");
+  const candidates = named ? [named] : [pathname.slice(1), `${bare}.html`, `${bare}/index.html`];
   for (const name of candidates) {
     if (!name || name.includes("..")) continue;
     const file = path.join(web, name);
@@ -2157,6 +2166,12 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     if (face !== undefined) {
       return face ? route.fulfill({ status: 200, contentType: "image/jpeg", body: face })
         : route.fulfill({ status: 404, contentType: "text/plain", body: "" });
+    }
+    // The LDraw library's list (api/share.js library), made by the real
+    // handler from this checkout's catalogue, as a set's page is.
+    if (url.origin === ORIGIN && url.pathname === "/api/share" && url.searchParams.get("op") === "library") {
+      const made = await serverAsk(api, { name: "share", query: Object.fromEntries(url.searchParams) });
+      return route.fulfill({ status: made.status, contentType: "application/json", body: made.html });
     }
     if (db || url.pathname.startsWith("/api/")) {
       let body;

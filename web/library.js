@@ -30,7 +30,7 @@
 // (#sub), a year in the decade (#year), only those with a 3D model
 // (#model) and minifigures (#figs). Each is taken from the page where it
 // has one by that id, and made at the end of the menu where not.
-import { FIRST_SCREEN, counted, modelCard, skeletonHtml } from "/card.js";
+import { FIRST_SCREEN, counted, modelCard, number, say, skeletonHtml, themeSaid } from "/card.js";
 // Filters closing on a click elsewhere, as a "more" menu does.
 import "/kit.js";
 // "/" to search, and the bar of filters kept under the header, as the gallery's.
@@ -70,8 +70,8 @@ import { pageAsked, pager } from "/pager.js";
   let inner = new Map();
   // What the address asked of them, until they are made.
   const wanted = {};
-  const MORE = [["sub", "Inside the theme", "Any"], ["year", "Year", "Any year in the decade"],
-    ["model", "3D model", "With or without"], ["figs", "Minifigures", "With or without"]];
+  const MORE = [["sub", say("Inside the theme"), say("Any")], ["year", say("Year"), say("Any year in the decade")],
+    ["model", say("3D model"), say("With or without")], ["figs", say("Minifigures"), say("With or without")]];
   const pick = (name) => (extra[name] ? (filled ? extra[name].value : extra[name].dataset.wanted || "") : wanted[name] || "");
 
   /// What a select says: until the first answer fills it in, what the
@@ -99,7 +99,8 @@ import { pageAsked, pager } from "/pager.js";
 
   function addressOf(page) {
     const query = question({ address: true, page }).toString();
-    return query ? `/library?${query}` : "/library";
+    // This page's own address: /de/library in German.
+    return query ? `${location.pathname}?${query}` : location.pathname;
   }
 
   function fill(select, options) {
@@ -109,7 +110,7 @@ import { pageAsked, pager } from "/pager.js";
       if ([...select.options].some((o) => o.value === value)) continue;
       const item = document.createElement("option");
       item.value = String(value);
-      item.textContent = String(label);
+      item.textContent = say(String(label));
       select.append(item);
     }
     if ([...select.options].some((o) => o.value === keep)) select.value = keep;
@@ -148,7 +149,7 @@ import { pageAsked, pager } from "/pager.js";
       const keep = extra.sub.dataset.wanted || extra.sub.value;
       extra.sub.dataset.wanted = "";
       extra.sub.replaceChildren(extra.sub.options[0]);
-      for (const one of inner.get(theme) || []) extra.sub.append(new Option(`${one.name} (${one.n})`, one.name));
+      for (const one of inner.get(theme) || []) extra.sub.append(new Option(`${themeSaid(one.name)} (${number(one.n)})`, one.name));
       extra.sub.value = [...extra.sub.options].some((o) => o.value === keep) ? keep : "";
       extra.sub.disabled = extra.sub.options.length < 2;
     }
@@ -175,7 +176,7 @@ import { pageAsked, pager } from "/pager.js";
       pill.type = "button";
       pill.className = "pill";
       pill.dataset.pick = name;
-      pill.textContent = name;
+      pill.textContent = themeSaid(name);
       pill.title = counted(Number(one.n) || 0, "set");
       pill.setAttribute("aria-pressed", "false");
       row.append(pill);
@@ -205,7 +206,7 @@ import { pageAsked, pager } from "/pager.js";
     const n = $("filters-said");
     n.textContent = on ? String(on) : "";
     n.hidden = !on;
-    $("filters").querySelector("summary").setAttribute("aria-label", on ? `Filters, ${on} on` : "Filters");
+    $("filters").querySelector("summary").setAttribute("aria-label", on ? say("Filters, {n} on", { n: on }) : say("Filters"));
   }
 
   const searching = () => Boolean(q.value.trim() || theme || chosen(size) || chosen(decade) || MORE.some(([name]) => pick(name)));
@@ -243,8 +244,8 @@ import { pageAsked, pager } from "/pager.js";
         years = data.years.map(Number);
         inner = new Map((data.themes || []).map((one) => [String(one.name), Array.isArray(one.sub) ? one.sub : []]));
         for (const one of MORE) moreFilter(one);
-        fill(extra.model, [["3d", "Only with a 3D model"]]);
-        fill(extra.figs, [["with", "With minifigures"], ["none", "Without"]]);
+        fill(extra.model, [["3d", say("Only with a 3D model")]]);
+        fill(extra.figs, [["with", say("With minifigures")], ["none", say("Without")]]);
       }
       fillThemes(data.themes);
       fill(sort, Object.entries(data.sorts || {}));
@@ -258,15 +259,15 @@ import { pageAsked, pager } from "/pager.js";
     if (fresh) {
       const total = Number(data.total) || 0;
       const many = !total ? "" : searching()
-        ? `${counted(total, "set")} of ${every.toLocaleString("en-US")}` : counted(total, "set");
+        ? say("{sets} of {every}", { sets: counted(total, "set"), every: number(every) }) : counted(total, "set");
       // What a misspelling was taken to mean, or that these are the nearest.
       const meant = typeof data.meant === "string" ? data.meant.slice(0, 100) : "";
       if (total && data.near === true) {
-        $("found-said").replaceChildren(`No set has every word you typed. The nearest: ${many}`);
+        $("found-said").replaceChildren(say("No set has every word you typed. The nearest: {sets}", { sets: many }));
       } else if (total && meant) {
         const words = document.createElement("strong");
         words.textContent = meant;
-        $("found-said").replaceChildren("Showing sets for ", words, ` · ${many}`);
+        $("found-said").replaceChildren(say("Showing sets for "), words, ` · ${many}`);
       } else {
         $("found-said").textContent = many;
       }

@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import json
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
+import zlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -318,3 +320,136 @@ def test_a_package_without_a_licences_words_is_refused(tmp_path):
     assert refused == "Brickworks-9.9.9-linux-x86_64.tar.xz lacks BrickNet's MIT text"
     bare = release.inspect_windows(_package(tmp_path / "b", "windows", None))
     assert bare["licences"]["lacking"] == ["THIRD-PARTY-NOTICES.txt"]
+
+
+# -- the smoke test's path-traced Best ---------------------------------------
+
+TRACED = "Best is path traced on this graphics card."
+
+
+def _png(rows: list[bytes]) -> bytes:
+    """An 8-bit RGB PNG of these rows, each three bytes a pixel."""
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return (struct.pack(">I", len(data)) + kind + data
+                + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF))
+    header = struct.pack(">IIBBBBB", len(rows[0]) // 3, len(rows), 8, 2, 0, 0, 0)
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header)
+            + chunk(b"IDAT", zlib.compress(b"".join(b"\x00" + row for row in rows)))
+            + chunk(b"IEND", b""))
+
+
+def _smoke_given(tmp_path, monkeypatch, capsys, picture, said) -> tuple[int, str]:
+    """smoke --window on a package that does everything else right, the app
+    stood in for here, and its Best render answering picture and said."""
+    reference = release.BEST_REFERENCE.read_bytes()
+
+    def run_app(command, env, seconds=420):
+        (Path(env["HOME"]) / ".local/share/godot/app_userdata/Brickworks").mkdir(
+            parents=True, exist_ok=True)
+        given = dict(arg.split("=", 1) for arg in command if arg.startswith("--") and "=" in arg)
+        if "--out" in given:
+            Path(given["--out"]).write_text("1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n" * 60)
+            return 0, "wrote %s (60 parts)" % given["--out"]
+        if "--shot" in given:
+            Path(given["--shot"]).write_bytes(reference)
+            return 0, ""
+        return 0, "Brickworks 9.9.9, released 2026-11-01"
+
+    monkeypatch.setattr(release, "ROOT", tmp_path)
+    monkeypatch.setattr(release, "unpack", lambda package, into: into / "brickworks.x86_64")
+    monkeypatch.setattr(release, "run_app", run_app)
+    monkeypatch.setattr(release, "takes_bricks", lambda base, env, root: [
+        ("a session places bricks in it over MCP", True, "")])
+    monkeypatch.setattr(release, "ask_for_best", lambda base, env, log: (
+        picture, said, "7 s, the app up in 9 s"))
+    package = tmp_path / "Brickworks-9.9.9-linux-x86_64.tar.xz"
+    package.write_bytes(b"")
+    code = release.smoke(package, True, "9.9.9")
+    return code, capsys.readouterr().out
+
+
+def test_the_smoke_holds_a_package_to_the_editors_best(tmp_path, monkeypatch, capsys):
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys,
+                              release.BEST_REFERENCE.read_bytes(), "Opened Car.\n" + TRACED)
+    assert code == 0, said
+    assert "ok    path-traced Best of the car over MCP: 7 s, the app up in 9 s" in said
+    assert "ok    ...and the editor's own picture of it: SSIM 1.000" in said
+    assert "and traces it at Best" in said
+    assert (tmp_path / "shots" / "release-linux-best.png").read_bytes() \
+        == release.BEST_REFERENCE.read_bytes()
+
+
+def test_a_best_with_no_picture_fails_the_smoke(tmp_path, monkeypatch, capsys):
+    # 0.12.0: every shape refused at blas_create, and the render cancelled.
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys, None,
+                              "Job 1 (render_model) is done, after 3 s:\nCancelled.\n"
+                              "path tracer: a shape of 672 triangles was refused")
+    assert code == 1
+    assert "FAIL  path-traced Best of the car over MCP: no picture" in said
+    assert "a shape of 672 triangles was refused" in said
+    assert "is not fit to ship" in said
+
+
+def test_a_blank_best_fails_the_smoke(tmp_path, monkeypatch, capsys):
+    blank = _png([b"\xf0\xf0\xf0" * 800] * 450)
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys, blank, TRACED)
+    assert code == 1
+    assert "FAIL  ...not blank: its grey levels spread 0" in said
+
+
+def test_a_best_unlike_the_editors_fails_the_smoke(tmp_path, monkeypatch, capsys):
+    # The same picture the other way round: as busy, and not the car's.
+    channels, rows = release.png_rows(release.BEST_REFERENCE.read_bytes())
+    mirrored = [b"".join(bytes(row[at:at + 3]) for at in range(len(row) - channels, -1, -channels))
+                for row in rows]
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys, _png(mirrored), TRACED)
+    assert code == 1
+    assert "ok    ...not blank" in said
+    assert "FAIL  ...and the editor's own picture of it: SSIM" in said
+    assert "tools/release.py best-reference" in said
+
+
+def test_a_best_that_was_not_path_traced_fails_the_smoke(tmp_path, monkeypatch, capsys):
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys, release.BEST_REFERENCE.read_bytes(),
+                              "Best is frames averaged here. This graphics card traces no rays.")
+    assert code == 1
+    assert "FAIL  path-traced Best of the car over MCP: it was not path traced" in said
+
+
+def test_a_best_with_shapes_refused_fails_the_smoke(tmp_path, monkeypatch, capsys):
+    # A part or two missing from the picture is too little for SSIM to see.
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys, release.BEST_REFERENCE.read_bytes(),
+                              TRACED + "\npath tracer: a shape of 76 triangles was refused")
+    assert code == 1
+    assert "FAIL  path-traced Best of the car over MCP: the path tracer refused shapes" in said
+    assert "ok    ...and the editor's own picture of it" in said
+
+
+def test_the_smokes_session_keeps_its_tool_list_out_of_the_checkout(tmp_path, monkeypatch):
+    # The relay keeps the last tools/list it heard in tools/mcp_tools.json.
+    # A package from another commit serves another list, and smoking 0.13.0
+    # on 2026-11-01 rewrote the checkout's copy, which mcp_sync then failed.
+    checkout = tmp_path / "checkout"
+    (checkout / "tools").mkdir(parents=True)
+    ours = '[{"name": "place"}]\n'
+    (checkout / "tools" / "mcp_tools.json").write_text(ours)
+    # The check as the relay behaves: it writes the app's list where it is told.
+    (checkout / "tools" / "mcp_check.py").write_text(
+        "import os, pathlib\n"
+        "here = pathlib.Path(__file__).resolve().parent.parent\n"
+        "cache = os.environ.get('BRICKWORKS_MCP_CACHE') or here / 'tools' / 'mcp_tools.json'\n"
+        "pathlib.Path(cache).write_text('[{\"name\": \"from_another_commit\"}]\\n')\n"
+        "print('a design lands in 2 s')\n")
+    app = tmp_path / "app.py"
+    app.write_text(
+        "import socket, sys, time\n"
+        "port = int(next(a for a in sys.argv if a.startswith('--mcp=')).split('=')[1])\n"
+        "server = socket.create_server(('127.0.0.1', port))\n"
+        "time.sleep(120)\n")
+    smoke = tmp_path / "smoke"
+    smoke.mkdir()
+    monkeypatch.setattr(release, "ROOT", checkout)
+    said = release.takes_bricks([sys.executable, str(app)], {"PATH": "/usr/bin:/bin"}, smoke)
+    assert [ok for _, ok, _ in said] == [True, True], said
+    assert (checkout / "tools" / "mcp_tools.json").read_text() == ours
+    assert "from_another_commit" in (smoke / "mcp_tools.json").read_text()

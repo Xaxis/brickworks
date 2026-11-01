@@ -20,7 +20,7 @@
 // seconds (default 3) during the render, or a script error reaches the
 // console. Pictures of each step in OUT, and the WebP. --size=WxH for
 // another window than 1400x900 (a laptop's 1280x720).
-import { clickStill, launch } from "./browser.mjs";
+import { clickStill, launch, typeInMenu } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -135,7 +135,7 @@ async function menu(title, typed) {
   for (let attempt = 0; attempt < 3; attempt++) {
     await press(`menu_${title}`);
     await page.waitForTimeout(800);
-    await page.keyboard.type(typed, { delay: 120 });
+    await typeInMenu(page, typed);
     await page.waitForTimeout(400);
     await page.keyboard.press("Enter");
     await page.waitForTimeout(2500);

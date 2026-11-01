@@ -25,7 +25,7 @@
 //
 // Pictures: 1_file_menu.png, 2_new_tab.png, 3_reloaded_empty.png,
 // 4_reloaded_part.png, 5_by_hand.png, 6_file_menu_390.png.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -140,9 +140,7 @@ async function putABrick(page) {
   const first = await controlAt(page, "first part", 30);
   await page.mouse.click(first.x, first.y);
   if (!(await until(async () => String((await state(page)).held || "") === "3001", 15))) return false;
-  await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-  let layout = null;
-  await until(async () => (layout = await page.evaluate(() => window.brickworksLayout || null)) !== null, 15);
+  const layout = await askApp(page, "Layout", { seconds: 15 });
   const view = layout && layout.view;
   if (!view) return false;
   for (let n = 0; n < 6; n++) {

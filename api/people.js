@@ -518,6 +518,14 @@ async function saveProfile(request, response) {
       body: { account, handle, name, bio, updated_at: now },
       prefer: "resolution=merge-duplicates,return=representation" });
     const saved = rows[0] || {};
+    // Named so at once in a Build together session they are in, as the
+    // others see them there (api/together.js shownName). A poll looks at
+    // its person's name again only once it has waited 5 s, and a session
+    // with a change every 2 s from anyone never named them (2026-10-31).
+    if (await shownPublicly(account).catch(() => false)) {
+      await db(`together_people?account=eq.${account}&left_at=is.null&removed_at=is.null`, {
+        method: "PATCH", body: { name: String(saved.name || name).slice(0, 40) } }).catch(() => {});
+    }
     return response.status(200).json({ handle: saved.handle, name: saved.name, bio: saved.bio,
       url: `${originOf(request)}/u/${saved.handle}` });
   } catch (trouble) {

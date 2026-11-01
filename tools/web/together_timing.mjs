@@ -23,7 +23,7 @@
 //
 // and the worst frame, capture and read of the model's own state on each
 // side meanwhile. Medians, a line a kind.
-import { clickStill, launch } from "./browser.mjs";
+import { askApp, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -139,7 +139,7 @@ try {
   const file = await until(async () => (await controls(owner.page)).menu_file, "the File menu", 120);
   await owner.page.mouse.click(file.x, file.y);
   await owner.page.waitForTimeout(2000);
-  await owner.page.keyboard.type("Buildtog", { delay: 110 });
+  await typeInMenu(owner.page, "Buildtog");
   await owner.page.keyboard.press("Enter");
   await press(owner.page, "together_start");
   const link = (await until(async () => ((await together(owner.page)).link || null), "the link", 60));
@@ -235,8 +235,8 @@ try {
   }
   const extra = {
     undo: async () => {
-      await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-      const layout = await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "layout", 30);
+      const layout = await askApp(owner.page, "Layout", { seconds: 30 });
+      if (!layout) throw new Error("layout: not told");
       const aim = (layout.targets || [])[0];
       if (aim) await owner.page.mouse.move(aim.x, aim.y, { steps: 3 });
       await owner.page.keyboard.press("Control+z");

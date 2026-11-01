@@ -28,7 +28,8 @@
 //     brings each (web/pager.js), and with no script each is a page of its
 //     own, Show earlier and the numbered links real links;
 //   whom they follow only when they chose to show it, and never a list of
-//     who follows them;
+//     who follows them: one who follows them is named only where More like
+//     them names designers for their work (api/_alike.js);
 //   what they earned (docs/SOCIAL.md U13 and section 7), a row of pills
 //     under the numbers: each challenge won (a link to the model that won
 //     it), then their level on each track of supabase/achievements.sql
@@ -266,8 +267,19 @@ async function local() {
         check(`${label}: Models shown, 4 cards; whom Robin follows, shown by choice (${said.follows.join(", ")}); Follow ${said.follow?.shown ? "shown" : "hidden"}`,
           said.panel === "models" && said.cards.length === 4 && said.follows.join(",") === "/u/priya-plays,/u/mika-mocs"
           && Boolean(said.follow?.shown));
-        // Jo follows Robin; Robin does not follow Jo: nobody's followers are listed.
-        check(`${label}: no list of who follows Robin`, !(await page.content()).includes("jo-bricks"));
+        // Jo follows Robin; Robin does not follow Jo: nobody's followers are
+        // listed. Jo's watchtower is a castle, as Robin's are, so More like
+        // Robin names Jo for the work (api/_alike.js), which follows only
+        // order: read once it is drawn, Jo is there and nowhere else.
+        await until(page, () => document.documentElement.dataset.alike);
+        const jo = await page.evaluate(() => {
+          const rest = document.documentElement.cloneNode(true);
+          rest.querySelector("#alike")?.remove();
+          return { elsewhere: rest.outerHTML.includes("jo-bricks"), alike: document.documentElement.dataset.alike,
+            said: document.querySelector('#alike li.person-row[data-handle="jo-bricks"] small')?.textContent || "" };
+        });
+        check(`${label}: no list of who follows Robin; Jo only in More like Robin, for the work ("${jo.said}", ${jo.alike})`,
+          !jo.elsewhere && jo.alike === "shown" && jo.said.startsWith("Castles and fantasy"));
         if (width >= 600 && who === "out") {
           // Share opens the site's share sheet (docs/SOCIAL.md section 7):
           // the page's link, Copy link said in the sheet, and Post it to,

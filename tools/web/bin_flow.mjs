@@ -27,7 +27,7 @@
 // Brickognize answers from the internet, so this needs it up; its failures
 // are proved with it stood in for (src/dev/photo_search_stub_probe.gd).
 // Pictures of each step go to --out, at both sizes.
-import { clickStill, launch } from "./browser.mjs";
+import { askApp, clickStill, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -108,9 +108,7 @@ for (const phone of [false, true]) {
       await page.keyboard.press("Enter");
       await page.waitForTimeout(1500);
     }
-    await page.evaluate(() => { window.brickworksAskLayout = true; });
-    await page.waitForTimeout(1500);
-    const view = ((await page.evaluate(() => window.brickworksLayout)) || {}).view;
+    const view = ((await askApp(page, "Layout")) || {}).view;
     if (view) centre = { x: view[0] + view[2] / 2, y: view[1] + view[3] / 2 };
   }
   if (phone) await press("phone_parts");

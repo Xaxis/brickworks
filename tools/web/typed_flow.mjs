@@ -10,7 +10,7 @@
 // says what it will do; Enter puts the part down, one part more; one Ctrl-Z
 // takes it away again. Then "-1py" (a minus first, which is a zoom with
 // nothing in hand) and Esc, which closes the field with nothing put down.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -52,13 +52,7 @@ async function controlAt(name, seconds = 400) {
 // Every word the window shows (main.gd words_shown): the canvas has none a
 // page can read.
 async function words() {
-  await page.evaluate(() => { window.brickworksWords = null; window.brickworksAskWords = true; });
-  for (let n = 0; n < 40; n++) {
-    const said = await page.evaluate(() => window.brickworksWords);
-    if (said) return said;
-    await wait(250);
-  }
-  return [];
+  return (await askApp(page, "Words")) || [];
 }
 async function until(test, seconds = 20) {
   for (let n = 0; n < seconds * 4; n++) {

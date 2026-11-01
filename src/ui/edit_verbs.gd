@@ -252,7 +252,7 @@ func press(name: String) -> void:
 			if job != null:
 				job.end()
 		"replace":
-			replace()
+			await replace()
 		"mirror":
 			mirror()
 		"measure":
@@ -273,11 +273,12 @@ func press(name: String) -> void:
 			unlock_all()
 
 
-## Swap the selection for the part in hand.
+## Swap the selection for the part in hand. A coroutine: a big selection is
+## asked where it fits on a worker (Builder.replace_selection_paced).
 func replace() -> int:
 	var part: String = builder.held_part
 	var info: PartLibrary.PartInfo = library.parts.get(part)
-	var done: Vector2i = builder.replace_selection(part)
+	var done: Vector2i = await builder.replace_selection_paced(part)
 	if done.x == 0 and done.y == 0:
 		say.call("select what to replace, and hold the part to put in its place")
 		return 0

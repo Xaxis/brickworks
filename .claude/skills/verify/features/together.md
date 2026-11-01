@@ -65,10 +65,12 @@ app, joined by a link (docs/TOGETHER.md).
   under-13 reader's copy of a chat op has the words taken out. Numbers come
   from `together_append` under the session row's lock. Names: the profile's
   when `shown_publicly`, else "Builder N"; never an email. A profile made or
-  renamed mid-session names its person from then on: a poll that waits
-  `NAME_MS` (5 s) looks at its person's name again, once; and one joining
-  again is named by the profile as it is then (walk256 BT1: names were fixed
-  at the first join). The owner's view
+  renamed mid-session names its person from then on: saving it renames them
+  in the sessions they are in (`api/people.js` saveProfile; a busy session,
+  every poll shorter than 5 s, never named them before, together_probe 3d);
+  a poll that waits `NAME_MS` (5 s) looks at its person's name again, once;
+  and one joining again is named by the profile as it is then (walk256 BT1:
+  names were fixed at the first join). The owner's view
   goes in the session's snapshot (`CadCamera.aim`), and whoever joins opens
   on it (`aim_at`), not framed on the parts alone. The panel keeps who is in
   it to 3 rows and the chat to 4 lines, each scrolled, so it does not grow
@@ -81,7 +83,9 @@ app, joined by a link (docs/TOGETHER.md).
   (`colour_of`). **Follow** on a name in the panel (`together_follow_N`,
   `Together.follow`): the view goes where theirs goes until this person
   moves it, presses Stop (`together_stop_following`, in a frame of their
-  colour over the model's column) or they leave.
+  colour over the model's column) or they leave. While neither view moves
+  nothing is drawn: `src/dev/idle_probe.gd` ("following another's view,
+  standing still") fails past one frame a second.
 - Comments pinned to parts (`src/assembly/pinned_comments.gd`
   `PinnedComments`, kept on `ModelStore.pins`; `src/ui/pins_view.gd`
   `PinsView`, the marks over the model's column; `src/ui/pins_dialog.gd`
@@ -163,8 +167,8 @@ signed in as someone else.
   `edit_model` from the owner's Claude reaching the other browser. Then
   B8: the pointer over 40 moves to the frame the second page drew its dot
   in, twice: after the 50 edits p95 under 1 s; on the rich car p95 under
-  1 s or 95% within 500 ms and four of that page's own frames, as the
-  change measure; stages send, reach, frame, Follow and its frame, the owner's selected part outlined
+  1 s or 95% on the app's own time (the move less its trip, within four
+  of that page's own frames), as the change measure; stages send, reach, frame, Follow and its frame, the owner's selected part outlined
   in their colour off the second page's pixels, the wheel stopping it; a
   comment pinned from File, Comments… and resolved by one click on its
   card, in the owner's and the desktop's files and not the under-13's; the

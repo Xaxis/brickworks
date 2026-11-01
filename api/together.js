@@ -133,10 +133,11 @@ const POLL_MS = 100;
 const PEOPLE_MS = 250;
 const LIVELY_MS = 2_000;
 const SESSION_MS = 1_000;
-// How long a poll waits before it looks at its person's name again: a
-// profile made or renamed mid-session names them from then on, where it was
-// fixed at their first join (walk256 BT1). Once a poll, and only one that
-// waits this long: it costs two trips to the database.
+// How long a poll waits before it looks at its person's name again, where
+// it was fixed at their first join (walk256 BT1). A profile saved names
+// them in their sessions at once (api/people.js saveProfile); this catches
+// the rest, such as being taken out of the gallery. Once a poll, and only
+// one that waits this long: it costs two trips to the database.
 const NAME_MS = 5_000;
 // Heard from within this long: here.
 const HERE_MS = 45_000;

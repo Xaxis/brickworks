@@ -36,7 +36,7 @@
 // "Settings, Assistant, or open brickworks.diy/app?assistant=on". Pictures
 // in --out; it fails if a step does not happen or a script error reaches
 // the console.
-import { clickStill, launch } from "./browser.mjs";
+import { askApp, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -157,9 +157,7 @@ async function shot(name) {
 }
 // Every word the window shows, read by the app (Main.words_shown).
 async function words() {
-  await page.evaluate(() => { window.brickworksWords = null; window.brickworksAskWords = true; });
-  await until(async () => Boolean(await page.evaluate(() => window.brickworksWords)), 20);
-  return (await page.evaluate(() => window.brickworksWords)) || null;
+  return askApp(page, "Words", { seconds: 20 });
 }
 // The words that name AI, but the first visit's one button offering it.
 async function aiWords() {
@@ -177,9 +175,7 @@ async function noAi(when) {
 }
 // A part on the page a click will find (Main._parts_to_click).
 async function aPart() {
-  await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-  await until(async () => Boolean(await page.evaluate(() => window.brickworksLayout)), 20);
-  const layout = await page.evaluate(() => window.brickworksLayout);
+  const layout = await askApp(page, "Layout", { seconds: 20 });
   return layout && layout.targets && layout.targets[0] ? layout.targets[0] : null;
 }
 // Make > Mosaic from a picture…, and the picture into the chooser it opens.
@@ -187,7 +183,7 @@ async function brickArt() {
   for (let n = 0; n < 3; n++) {
     page.choosers.length = 0;
     await click("menu_make");
-    await page.keyboard.type("Mosaic", { delay: 120 });
+    await typeInMenu(page, "Mosaic");
     await wait(800);
     await key("Enter", 500);
     await until(async () => page.choosers.length > 0, 30);

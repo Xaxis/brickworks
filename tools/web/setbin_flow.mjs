@@ -16,7 +16,7 @@
 // The first tile taken puts its part in hand in the tile's colour; a click on
 // the model puts it down, and the tile's count (brickworksState.bin_left)
 // drops by one. Then Ctrl-Z gives it back. Pictures of each step go to --out.
-import { clickStill, launch } from "./browser.mjs";
+import { askApp, clickStill, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -87,9 +87,7 @@ for (let n = 0; n < 10 && (await state()).bricks > 0; n++) {
   await page.keyboard.press("Enter");
   await page.waitForTimeout(1500);
 }
-await page.evaluate(() => { window.brickworksAskLayout = true; });
-await page.waitForTimeout(1500);
-const view = ((await page.evaluate(() => window.brickworksLayout)) || {}).view;
+const view = ((await askApp(page, "Layout")) || {}).view;
 const centre = view ? { x: view[0] + view[2] / 2, y: view[1] + view[3] / 2 } : { x: width * 0.65, y: height / 2 };
 
 // The set's number typed, and offered.

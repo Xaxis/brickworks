@@ -58,7 +58,17 @@ that offers each system its own build. The cycle and its cadence are
   car on Xvfb (under `gpu`) and keeps `shots/release-<os>.png`, and fails
   a package that boots on Godot's logo because the splash project.godot
   names is not in it (Godot says "invalid boot splash"; see
-  `the boot splash`).
+  `the boot splash`). Then it starts the package in a window with `--mcp`
+  and asks it over the socket, as a session does (`ask_for_best`):
+  `open_model` Car, `render_model` at Best (product look, 720p, followed
+  through `job`), `render_queue` list. `judge_best` fails no picture, Best
+  not path traced, a shape the path tracer refused, a blank picture, and
+  SSIM under 0.98 against `tools/release/best_car.png` (160 x 90 grey); the
+  picture is kept as `shots/release-<os>-best.png`. A release template once
+  refused every shape the editor traced (0.12.0). The sign-in screen is up
+  in the clean home; the socket answers behind it, no account needed.
+  `tools/release.py best-reference` makes `best_car.png` again from this
+  checkout's editor (an imported checkout, under `gpu`).
 - `the boot splash` (project.godot `application/boot_splash/*.pc`,
   `assets/splash.png`): the desktop app boots on the mark on the app's dark
   face (`Look.FACE`), not the engine's logo (walk256 DS1, 2026-10-25). The
@@ -191,6 +201,7 @@ python3 tools/release.py inspect            # read dist/<version>/ back
 tools/probe.sh about_credits_probe -- --shots=DIR   # Help, About, and the licences in full
 godot --headless --path . --script res://tools/release_notices.gd -- OUT   # the packages' THIRD-PARTY-NOTICES.txt
 python3 tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window
+python3 tools/release.py best-reference     # the editor's Best of the car, smoke's reference
 python3 tools/release.py manifest --local --out=/tmp/releases.json
 node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots
 python3 tools/release.py publish --draft --tag=v0.0.0-upload-test --target=main --no-manifest
@@ -259,10 +270,28 @@ python3 tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.AppImage
 ```
 
 Proves it when: every line is `ok` and it ends `... starts, loads the part
-library, opens a model and takes bricks`; `shots/release-linux.png` shows the
-example car on its baseplate. To see the boot itself, record the unpacked
+library, opens a model and takes bricks` (`, and traces it at Best` with
+`--window`); `shots/release-linux.png` shows the example car on its
+baseplate and `shots/release-linux-best.png` the car path traced, with the
+lines `ok    path-traced Best of the car over MCP: N s, the app up in N s`
+and `ok    ...and the editor's own picture of it: SSIM 0.9xx`. On
+2026-11-01: the 0.13.0 download and an export of stage225 (95b874c) passed,
+Best in 5 s, the app up in 7 s, SSIM 0.999; an export of ae0ba0e (the commit
+before Best's de-indexed BLAS) failed `path-traced Best of the car over MCP:
+no picture`, the job `Cancelled.` and 27 shapes refused.
+To see the boot itself, record the unpacked
 package's first seconds on an Xvfb of its own (`ffmpeg -f x11grab`): the mark
 on the dark face, then the app.
+
+```sh
+python3 tools/minitest.py tests/test_release.py
+```
+
+Proves it when: every test passes. Without a GPU, smoke runs on a stand-in
+package whose Best answers no picture, a blank one, the reference mirrored,
+one not path traced and one with a shape refused: each exits 1 with its own
+`FAIL` line; the reference itself passes with `SSIM 1.000`. With the Best
+step taken out of smoke, those six fail.
 
 ```sh
 tools/release/release_links.sh

@@ -3416,6 +3416,136 @@ session may not reach. Results: `bench/results/realset-2026-10-31-d8plan/`,
 `realset-2026-10-31-d5base-vs-d8plan/` and
 `realset-2026-10-31-d6lever-vs-d8plan/`.
 
+### Colour: the surface pass gives a one-colour face its accents, on the 44 of proof (2026-11-01, `066dce2c`, not ready)
+
+The lines through a flat face moved no colour verdict (above). The judge
+credits an accent as a part, not a tone: of the 57 colour verdicts the lines'
+arm lost, it credited the set's transparent parts and lights in 37, its
+printed parts in 31, and its pins, hoses and grilles in 22. So this arm lays
+those parts, stacked on the lines (`5d22eaba`), as the lead asked.
+
+**First, the pictures.** On a loaded box the lines' arm sent 96 pictures to
+its sessions as letters, against 46 in the baseline. Every verdict rides on
+those pictures, so the cause came first. A headless app draws each picture
+in a drawer on the GPU's lease, and the lease served first come, first
+served over 2 slots. A drawer needs the GPU for under a second, but it
+queued behind windowed release probes that held a slot for minutes, and the
+app waits 120 s (`LeasedShots.MOST_WAIT_S`). In the lease log for that arm,
+114 of 942 drawers waited past 120 s, and while the late ones waited, probes
+held 86% of slot time. Replaying the log with drawers served first, the
+drawers over 120 s fell from 45 to 1.
+
+The fix is on the box: `gpu --brief` (claude-core `e1a487c`) gives a job the
+next free slot, ahead of whatever waits, capped at 120 s and logged when a
+holder overruns. The bench's drawers ask for it (`e8b75123`, `DRAWER` in
+`tools/bench/run.py` and `leased_shots_check.py`). The showcase keeps its
+whole-session app in the ordinary queue (`ON_GPU`). Under the same load, side
+by side (3 headless apps an arm asking pictures as sessions do, 30 minutes,
+both slots kept busy by 45-150 s windowed jobs), 27 of 39 pictures came as
+letters the old way, and 4 of 60 by `--brief`. On this arm's real run: 9 over
+44 designs, against 46 (d5base) and 96 (the lines' arm).
+
+**The lever** (`066dce2c`). Before its lines, the surface pass gives each
+flat face (`ColourFaces`, three at most) the details a set gives it. Each
+takes the place of a plain part of its shape, recoloured or swapped for its
+transparent or printed twin, so nothing is added and the hold stands.
+
+- A vehicle (two wheels or more, not a cart, not a scene on a baseplate)
+  gets lamps at its ends: clear at the end its windscreen is toward, red at
+  the other. It gets orange markers down its sides, a grille at each end, and
+  a printed panel and a vent on a side or the top. Its ends are lit even
+  where they are not one colour (`ColourFaces.seen`).
+- A building (its name or description says so, or it has a window or a door)
+  gets glass in its walls, in pairs along the middle.
+- Any face gets a Technic pin showing there in its colour.
+- A figure gets none of these: read on d5base's designs before the arm,
+  Jack Skellington's head was given a window and Gandalf's horse markers,
+  and both rules came from that.
+
+Each face's accents are one finding (A1, A2), told with why and how to
+settle. "accept", "recolor" ({"47": 36} where the front was guessed wrong),
+or "reject" with a reason, which puts the plain parts back, and the face is
+not offered again. `src/dev/colour_faces_probe.gd` proves it on a fire truck,
+a house and a figure. surface, cabins and creative probes and ci_gate pass.
+
+**How it ran.** One locked snapshot, `snapd7accent` at `e8b75123`, imported
+first. The baseline is d5base again (`a3090df7`, 2026-10-30), on the same 44
+and the same path: `--via relay --no-claude-code`, one design a subject, 3 at
+a time. Sessions ran 2026-11-01 03:36Z to 07:41Z, when the account's login
+expired. Nine sessions lost their design to it, 42060-1 mid-design and eight
+at their start (21013-1, 21023-1, 21028-1, 21031-1, 21033-1, 21035-1,
+21041-1, 21052-1). They were designed again on the same snapshot and command,
+10:58Z to 12:21Z; the first tries are kept as `<subject>.dropped-20261101`.
+No tool result carried a held-out set's number. Sessions took a median 16
+minutes against 19. None hit the timeout.
+
+| dimension | stage225 (95%) | accents and lines (95%) | lever minus stage225, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 26% (15-41) | 24% (14-38) | -2 (-8, +5) | 1 / 4 |
+| surface | 33% (21-48) | 32% (20-47) | -1 (-12, +10) | 8 / 9 |
+| colour | 33% (21-48) | 33% (21-48) | +0 (-9, +9) | 7 / 6 |
+| technique | 10% (4-23) | 11% (5-24) | +1 (-5, +8) | 3 / 3 |
+| creativity | 44% (31-59) | 47% (33-61) | +2 (-7, +11) | 8 / 7 |
+| overall | 24% (14-38) | 22% (12-36) | -2 (-8, +3) | 2 / 4 |
+
+Head to head, both orders, the lever's design preferred to stage225's:
+likeness 48%, surface 47%, colour 62% (48-75%), technique 51%, creativity
+51%, overall 52% (38-66%).
+
+**What the sessions heard and did:**
+
+| | stage225 | the lines | accents and lines |
+|---|---|---|---|
+| the surface pass run | 40 of 44 | 42 of 44 | 43 of 44 |
+| ...told of a one-colour face | - | 21 | 25 |
+| ...accents laid | - | - | 31, in 13 sessions |
+| ...accents kept | - | - | 14 in 7 sessions: 12 as laid, 2 recoloured (42081-1 swapped front and back) |
+| ...accents refused, with a reason | - | - | 17 in 8 sessions |
+| ...faces given none, said | - | - | in 13 sessions |
+| ...lines laid / kept | - | 28 / 21 | 24 / 15 |
+| final designs with a face | 21 of 44 | 15 of 44 | 10 of 44 |
+| colour verdicts won | 29 of 88 | 31 of 88 | 29 of 88 |
+| ...in the 7 subjects that kept an accent | 0 of 14 | 2 of 14 | 1 of 14 |
+| colour verdicts lost that call ours flat, one colour or short of accents | 51 of 59 | 50 of 57 | 51 of 59 |
+| ...that credit the set's transparent parts or lights / printed parts / pins, hoses, grilles | 33 / 26 / 19 | 35 / 30 / 21 | 38 / 23 / 14 |
+
+(The last row is read with one set of patterns over all three arms, so it
+differs a little from the counts above.)
+
+The refusals were a designer's, and they found where the rules guess. On
+21023-1, the Flatiron: "a few odd light-blue panes scattered through the
+grid read as mistakes". On 7992-1: "These lamps landed in the container's
+walls, and a shipping container has no lamps". On 5763-1: "Those round bricks
+are the exhaust stacks". On 42111-1: "its headlamps are hidden behind the
+grille, so these read as stray stickers". Vehicles kept theirs. Buildings
+refused their glass, except the Louvre's.
+
+**Not ready.** The accents reached the designs and the judge saw them, but
+not as enough. Final designs with a flat face fell from 21 to 10, and colour
+stayed at 29 of 88. Where accents were kept, the judge names them and still
+calls the model flat. On 42093-1, the Corvette, which kept a clear lamp, a
+red tail light and two grilles: "A is mostly flat yellow and black, with only
+small red tail lights and a ZR1 tile". The set's colour is in "a black roof
+and wing, a grey engine bay, yellow pistons, coloured pins". On 42081-1:
+"B adds grey, orange hoses, blue and red pins, clear lights". A part in
+place of a plain one is a sticker on the same composition. The set's colour
+comes from whole assemblies in their own colours (an engine, a bay, a seat,
+a roof), and those are design choices the session makes, not a pass's.
+Head to head, colour leans to the lever (62%, 48-75%), but neither colour
+nor overall clears 0 paired against the sets, the bar. Likeness, which rose
+with the lines alone, did not repeat (-2): that rise was noise, as feared.
+The lever is kept on its branch.
+
+**Next.** Colour is set when the parts are chosen, not after. The judge's
+verdicts name assemblies in a second colour: an engine bay, a roof, a seat,
+a cab's interior. A lever on colour belongs at planning time, where design8
+is asking for angles: ask the session to name each assembly's own colour
+before it builds, as a set's designer does. Then a check that a model of
+more than one assembly is not one colour within each. The pictures fix
+stands on its own and should go to main. Results:
+`bench/results/realset-2026-11-01-d7accent/` and
+`realset-2026-11-01-d5base-vs-d7accent/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

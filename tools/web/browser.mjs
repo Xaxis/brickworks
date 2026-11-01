@@ -142,6 +142,84 @@ export async function framesDrawn(page, frames = 3) {
   }), frames);
 }
 
+/// [words] typed into the menu just opened, to find its row: without spaces
+/// (a space presses the row the menu is on) and all in one task, as the keys
+/// a person types during a frame reach the page together. Typed a key at a
+/// time, each waits for a frame, and a menu begins its search again when
+/// more than 2 s pass between two keys (Godot's
+/// gui/timers/incremental_search_max_interval_msec): at 2.5 s a frame,
+/// together_flow's "Comm" was "m", and My collection opened in place of
+/// Comments (2026-10-31). Letters past the row's own words keep the row.
+export async function typeInMenu(page, words) {
+  await framesDrawn(page, 2);
+  await page.evaluate((letters) => {
+    const canvas = document.getElementById("canvas") || document.querySelector("canvas");
+    for (const key of letters) {
+      const code = /[a-z]/i.test(key) ? `Key${key.toUpperCase()}` : /[0-9]/.test(key) ? `Digit${key}` : "";
+      for (const type of ["keydown", "keyup"]) canvas.dispatchEvent(new KeyboardEvent(type, { key, code, bubbles: true }));
+    }
+  }, String(words).replace(/ /g, ""));
+}
+
+/// What the app says when it is asked: window.brickworksAsk<what> set, and
+/// its answer, window.brickworks<what> (Main._tell_page: "Phone", a finger's
+/// targets and the text shown; "Layout", the model's place and its parts;
+/// "Words", every word in the window), or null when it has not answered.
+///
+/// The app answers the first time it tells the page after the ask, which it
+/// does on a frame, at most twice a second. So the wait is counted in its
+/// tellings, not the clock's seconds: it has [seconds] and [tellings] both.
+/// A telling is seen as a new window.brickworksControls, which each one
+/// writes. A page just up at 2048 x 2732, drawn in software, drew one frame
+/// in 4.4 s at load 24 and over 30 s at load 40, so a fixed 10 s ran out
+/// before the app had told the page once: phone and tablet held rel-m236 on
+/// "the app said what is on the screen", then passed alone. Null once the
+/// app has told the page [tellings] times since the ask without answering
+/// (it heard and said nothing), or nothing at all for [quiet] ms (it has
+/// stopped drawing); either is said.
+export async function askApp(page, what, { seconds = 10, tellings = 20, quiet = START_MS } = {}) {
+  const keys = { answer: `brickworks${what}`, ask: `brickworksAsk${what}`, seen: `brickworksSeen${what}` };
+  // A look that never comes back is a page that has stopped too.
+  const look = async (body) => {
+    let timer;
+    const late = new Promise((done) => { timer = setTimeout(done, quiet); });
+    try {
+      return await Promise.race([page.evaluate(body, keys), late]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const asked = Date.now();
+  await look((k) => {
+    window[k.answer] = null;
+    window[k.ask] = true;
+    window[k.seen] = window.brickworksControls;
+  });
+  let told = 0;
+  let last = asked;
+  for (;;) {
+    const now = await look((k) => {
+      const fresh = window.brickworksControls !== window[k.seen];
+      window[k.seen] = window.brickworksControls;
+      return { answer: window[k.answer] || null, fresh };
+    });
+    if (now && now.answer) return now.answer;
+    if (now && now.fresh) { told += 1; last = Date.now(); }
+    const spent = Date.now() - asked;
+    if (told >= tellings && spent >= seconds * 1000) {
+      console.log(`  --    the app told the page ${told} times in ${Math.round(spent / 1000)} s `
+        + `and did not answer ${what}`);
+      return null;
+    }
+    if (Date.now() - last >= quiet) {
+      console.log(`  --    the app told the page nothing for ${Math.round((Date.now() - last) / 1000)} s `
+        + `after ${what} was asked (${told} tellings)`);
+      return null;
+    }
+    await page.waitForTimeout(250);
+  }
+}
+
 /// From a model's page into the app, as a person goes there: since the
 /// picture turns the model in 3D in its own place (viewer369, 2026-10-30,
 /// web/start3d.js), pressed, then the 3D view's Open in the app, the

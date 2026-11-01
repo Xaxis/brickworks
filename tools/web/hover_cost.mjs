@@ -22,7 +22,7 @@
 //
 // --floor=none: the model's floor taken away first (set_floor), to tell the
 // floor's share of a frame from the parts'.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { loadavg } from "node:os";
 import { resolve } from "node:path";
@@ -168,12 +168,7 @@ console.log(`  ${opened.bricks} parts, ${opened.scenery} of floor, ${opened.tria
   + ` batches, tool ${opened.mode}, look ${JSON.stringify((opened.look || {}).cuts || [])}`);
 
 // The parts' middles on the page, as together_flow aims at them.
-await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-let laid = [];
-for (let n = 0; n < 120 && !laid.length; n++) {
-  laid = (await page.evaluate(() => window.brickworksLayout || null))?.targets || [];
-  if (!laid.length) await wait(500);
-}
+const laid = ((await askApp(page, "Layout", { seconds: 60 })) || {}).targets || [];
 if (laid.length < 2) throw new Error(`only ${laid.length} parts to aim at`);
 
 const rows = [];

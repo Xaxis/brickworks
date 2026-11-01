@@ -23,6 +23,9 @@ var _counts_base: String = ""
 var _stability_at: int = 0
 ## The world's revision the stability line was worked out for.
 var _stability_revision: int = -1
+## The world's generation (BrickWorld.generation) the stability line is of:
+## another model's is not shown.
+var _stability_generation: int = -1
 ## Whether a worker is weighing the model now.
 var _weighing: bool = false
 ## The status bar's last weighing with every margin, and the revision it is
@@ -86,13 +89,16 @@ var _named_for_work: String = ""
 var _driven: bool = false
 ## Renderer numbers on the status line, for --stats only.
 var _stats_shown: bool = _has_argument("--stats")
-## Claude connected to this tab (a Later class), made with the assistant's
-## panel (_make_chat).
+## Claude connected to this tab (a Later class), with what answers it, made
+## with the assistant's panel (_make_chat).
 var _connector: Node:
 	get:
-		if _connector_made == null and _built:
+		if _chat_made == null and _built:
 			_make_chat()
 		return _connector_made
+## The ClaudeConnector if it has been made, else null: as the window is
+## built when the assistant is shown (_make_connector), what answers it
+## with the panel.
 var _connector_made: Node = null
 ## File, Build together…: this model built with somebody else, live
 ## (src/net/together.gd, src/ui/together_dialog.gd).
@@ -5443,10 +5449,15 @@ func _build_ui() -> void:
 	_built = true
 	# Shown, the assistant's panel comes as the window's first frame is drawn:
 	# its code is the biggest the app has, and before that frame it held
-	# the window back for everybody (Later).
+	# the window back for everybody (Later). Claude's connector is made now,
+	# without it, so it asks whether to listen, and the page runs its frames
+	# out of view meanwhile (ClaudeConnector.resume), before that frame:
+	# made at it, a new tab out of view as its window was built was heard
+	# only some of the times (hidden_start_flow).
 	# Headless no frame is ever drawn: the relay bench's tab never made its
 	# connector, and never switched it on (shown_assistant_probe).
 	if ShellPrefs.assistant_shown() and _viewing.is_empty():
+		_make_connector()
 		if DisplayServer.get_name() == "headless":
 			_make_chat.call_deferred()
 		else:
@@ -5493,7 +5504,11 @@ func _make_assistant() -> void:
 	_assistant_made.finished.connect(func(ok: bool, _summary: String) -> void:
 		if _plate_after_design and ok:
 			floor_part_of_model(true)
-		_plate_after_design = false)
+		_plate_after_design = false
+		# Framed again as it ends: the loop's own passes lay parts of their
+		# own after the design.
+		if ok and not _out_of_view and _frame_for_design():
+			_ground_for_the_model.call_deferred(true))
 	_assistant_made.art_laid.connect(_art_laid)
 	# Claude's change to a selection made in one copy of a sub-assembly is
 	# followed by the others, as a change by hand is.
@@ -5530,8 +5545,11 @@ func _make_assistant() -> void:
 		#
 		# And framed, when nobody can see it: whoever comes back to the tab
 		# finds the model in view rather than wherever the camera was left.
+		# In view too, unless the person turned the view since asking: the
+		# camera stayed on the example car of a first visit, and a tower
+		# built in its place went up out of the top of the window.
 		_watch_view()
-		_ground_for_the_model.call_deferred(_out_of_view)
+		_ground_for_the_model.call_deferred(_out_of_view or _frame_for_design())
 		_on_model_changed()
 		# Not when nobody is watching. Every edit emits this, and the
 		# assembly planned build steps for the whole model and then showed
@@ -5596,29 +5614,21 @@ func _make_chat() -> void:
 	answering.assistant = _assistant
 	answering.app = self
 	add_child(answering)
-	var connector: Node = Later.make(&"ClaudeConnector")
-	_connector_made = connector
+	if _connector_made == null:
+		_make_connector()
+	var connector: Node = _connector_made
 	connector.set("rpc", answering)
-	connector.account = _account
-	connector.model_name = func() -> String: return _store.title
-	connector.has_work = func() -> bool: return _world.brick_count() > _store.scenery.size() \
-		and not (_sample_untouched and _builder.history_depth() == 0)
-	# Off with the assistant, before a sign-in can switch it on.
-	connector.held = not ShellPrefs.assistant_shown()
-	add_child(connector)
 	chat.use_connector(connector)
-	# The toolbar's quiet line about this tab and Claude, as the chats in it
-	# change.
-	connector.listening.connect(func(_on: bool, _address: String) -> void: _show_badge())
-	connector.chats_changed.connect(func(_now: Array) -> void: _show_badge())
-	_show_badge()
 	chat.steps_wanted.connect(_toggle_steps)
 	chat.parts_list_wanted.connect(_toggle_parts)
 	chat.offers_hidden_colours = _offers_hidden_colours
 	chat.hidden_colours_wanted.connect(func() -> void: open_hidden_colours("sections"))
+	chat.asked.connect(_note_design_asked)
 	chat.designing.connect(func(brief: String) -> void:
 		_fresh_brief = brief
-		_make_room(ModelStore.name_for(brief)))
+		_make_room(ModelStore.name_for(brief))
+		# The example car taken off: a design from nothing after all.
+		_design_from_nothing = _model_bounds().size.length_squared() <= 0.0)
 	# Designing on the person's own Claude subscription, when this
 	# machine has the Claude Code to do it with. The panel offers the
 	# choice only then.
@@ -5649,11 +5659,6 @@ func _make_chat() -> void:
 	chat.reference_wanted.connect(func() -> void:
 		_picking_reference = true
 		_picker.ask())
-	if _account_panel != null:
-		_account_panel.use_connector(connector)
-	# Put back as it was for whoever is signed in, as at every change of
-	# account since.
-	_tell_connector_who()
 	# What the slow frames were busy with, on the web (_watch_own_frames).
 	if OS.has_feature("web"):
 		answering.asked.connect(func(tool: String) -> void:
@@ -5664,6 +5669,32 @@ func _make_chat() -> void:
 	if not _brief_draft.is_empty():
 		chat.draft(_brief_draft)
 		_brief_draft = ""
+
+
+## Claude connected to this tab: made as the window is built when the
+## assistant is shown, else with its panel (_make_chat), which gives it what
+## answers it (rpc). Its own code is small; what answers it is the
+## assistant's, and is not loaded here.
+func _make_connector() -> void:
+	var connector: Node = Later.make(&"ClaudeConnector")
+	_connector_made = connector
+	connector.account = _account
+	connector.model_name = func() -> String: return _store.title
+	connector.has_work = func() -> bool: return _world.brick_count() > _store.scenery.size() \
+		and not (_sample_untouched and _builder.history_depth() == 0)
+	# Off with the assistant, before a sign-in can switch it on.
+	connector.held = not ShellPrefs.assistant_shown()
+	add_child(connector)
+	# The toolbar's quiet line about this tab and Claude, as the chats in it
+	# change.
+	connector.listening.connect(func(_on: bool, _address: String) -> void: _show_badge())
+	connector.chats_changed.connect(func(_now: Array) -> void: _show_badge())
+	_show_badge()
+	if _account_panel != null:
+		_account_panel.use_connector(connector)
+	# Put back as it was for whoever is signed in, as at every change of
+	# account since: a tab that was on switches on again here.
+	_tell_connector_who()
 
 
 ## The panels and dialogs below are made the first time something asks for
@@ -6613,8 +6644,10 @@ func set_assistant(on: bool) -> void:
 	if _mosaic_made != null:
 		_mosaic_made.show_claude(on)
 	_account_panel.show_claude(on)
+	# Off, the connector made as the window was built is held without
+	# making the panel for it.
 	if on or _connector_made != null:
-		_connector.hold(not on)
+		(_connector if on else _connector_made).hold(not on)
 	if on and _account.signed_in():
 		_connector.resume()
 	_chat_dock.visible = on
@@ -7137,7 +7170,9 @@ func _on_model_edited() -> void:
 	# floor's plate goes back under it, or comes away.
 	if _floor != null and _floor.is_stale():
 		_lay_baseplate()
-	elif _floor != null:
+	elif _floor != null and _floor.follows():
+		# Every part's box, read only for a model on no floor: on Orthanc,
+		# on its plates, it was 25 to 60 ms of every edit, twice for most.
 		_floor.follow(_model_bounds())
 	# A band or a spring on a part just moved follows it, in the same step.
 	if _flex != null:
@@ -7556,6 +7591,7 @@ func _ground_for_the_model(and_frame: bool = false) -> void:
 		return
 	if and_frame:
 		_camera.frame(box)
+		_aim_for_design = _camera_aim()
 	var model: AABB = _model_bounds()
 	_floor.follow(model)
 	if _floor.covers(model):
@@ -7747,6 +7783,9 @@ func _weigh() -> void:
 	# only the work), and weighing a big model copied it whole first.
 	if not _viewing.is_empty():
 		return
+	if _world != null and _world.generation() != _stability_generation:
+		_stability_generation = _world.generation()
+		_stability_text = ""
 	if _stability == null or _world == null or _counts == null or _weighing \
 			or _world.revision == _stability_revision or _world.is_being_laid():
 		return
@@ -7766,8 +7805,13 @@ func _weigh() -> void:
 	var margins: bool = stress != null and stress.on
 	_weighing = true
 	var revision: int = _world.revision
+	var generation: int = _world.generation()
 	var report: Stability.Report = await weigh_joints(margins or not OS.has_feature("nothreads"))
 	_weighing = false
+	# Of the model before one opened meanwhile, whose own is weighed next:
+	# said, it stood beside the other's count.
+	if _world.generation() != generation:
+		return
 	if report != null and report.balance != null:
 		_weighed = report
 		_weighed_revision = revision
@@ -7810,6 +7854,17 @@ func weighed_now(meanwhile: Callable = Callable()) -> Stability.Report:
 ## asked of what stands on it, and it is not in the weight.
 func weigh_joints(margins: bool = true) -> Stability.Report:
 	var scenery: Dictionary = _store.scenery if _store != null else {}
+	# The floor's weight read from the model weighed, as it is weighed. Read
+	# once it was, from the world and the scenery (kept in one Dictionary,
+	# cleared at an open) as they are then, 42082-1's floor, opened meanwhile,
+	# was taken from 8202-1's weight: -685 g (corefix, 2026-10-31).
+	var floor_grams: float = 0.0
+	for id: int in scenery:
+		var plate: BrickWorld.Brick = _world.get_brick(id)
+		var info: PartLibrary.PartInfo = \
+			_library.parts.get(plate.part_id) if plate != null else null
+		if info != null:
+			floor_grams += Stability.grams(info)
 	var report: Stability.Report
 	if OS.has_feature("nothreads"):
 		_stability.floor_ids = scenery
@@ -7836,12 +7891,7 @@ func weigh_joints(margins: bool = true) -> Stability.Report:
 		report = weighed[0]
 	if report == null:
 		return null
-	for id: int in scenery:
-		var plate: BrickWorld.Brick = _world.get_brick(id)
-		var info: PartLibrary.PartInfo = \
-			_library.parts.get(plate.part_id) if plate != null else null
-		if info != null:
-			report.total_grams -= Stability.grams(info)
+	report.total_grams -= floor_grams
 	return report
 
 
@@ -8405,6 +8455,41 @@ func after_session_call(before: Dictionary) -> void:
 		_refresh_preview()
 	if _world.revision != int(before["revision"]) and _camera_aim() == before["aim"]:
 		_camera.frame(_built_bounds())
+
+
+## Where the view was going when something was asked in the panel, or when
+## the app last framed what it built, and what the model was then: nothing,
+## or whole in view. A design from nothing is framed as Open frames a model,
+## and a change that takes a model seen whole out of view is framed again,
+## each as Frame all frames it (_ground_for_the_model). A person who turned
+## the view meanwhile keeps theirs, as after a session's call, and one looking
+## closely at part of the model keeps that.
+var _aim_for_design: Array = []
+var _design_from_nothing: bool = false
+var _design_was_whole: bool = false
+
+
+func _note_design_asked() -> void:
+	_aim_for_design = _camera_aim()
+	_design_from_nothing = _model_bounds().size.length_squared() <= 0.0
+	_design_was_whole = _design_from_nothing or _whole_in_view(_model_bounds())
+
+
+func _frame_for_design() -> bool:
+	if _aim_for_design.is_empty() or _camera_aim() != _aim_for_design:
+		return false
+	return _design_from_nothing or (_design_was_whole and not _whole_in_view(_model_bounds()))
+
+
+## Whether every corner of [param box] is drawn inside the part of the window
+## the model is seen in, as the view is now.
+func _whole_in_view(box: AABB) -> bool:
+	var seen: Rect2 = _camera.seen_rect()
+	for n: int in 8:
+		var corner: Vector3 = box.get_endpoint(n)
+		if _camera.is_position_behind(corner) or not seen.has_point(_camera.unproject_position(corner)):
+			return false
+	return true
 
 
 ## Where the view is going: its turn, tilt, distance and focus.

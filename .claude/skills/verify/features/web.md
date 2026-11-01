@@ -105,10 +105,18 @@ plan with Claude as the client.
   (headless) fails when one is loaded once the window has settled or a
   signed-in person's collection has come, or is made twice or out of its
   place, and prints what each first load took. With the assistant shown,
-  its panel and connector come as the first frame is drawn, and headless
-  (no frame is ever drawn) deferred: `shown_assistant_probe` fails when
-  they are not made unasked, as the relay bench's tab never switched its
-  connector on (d8surf-smoke, 2026-11-01). On the web the page is
+  Claude's connector is made as the window is built (`_make_connector`,
+  its code 55 KB: it names no other Later class, which test_later checks),
+  so it asks whether to listen, and the page runs its frames out of view
+  meanwhile, from before the window is first drawn: made with the panel
+  at that draw, a new tab put out of view as its window was built was
+  heard 5 times in 8, and made with the window 8 in 8
+  (`hidden_start_flow`, 2026-11-01). Its panel and what answers it
+  (`CommandSocket`, the assistant) come as the first frame is drawn, and headless (no frame is
+  ever drawn) deferred, the connector waiting for them before it says
+  hello to the relay: `shown_assistant_probe` fails when they are not made
+  unasked, as the relay bench's tab never switched its connector on
+  (d8surf-smoke, 2026-11-01). On the web the page is
   told each first load (`window.brickworksLoaded`: name -> [when, ms]),
   and load_check prints "loaded on first use", each before interactive,
   under the first pick, or after: anything before the pick is a compile
@@ -280,7 +288,15 @@ plan with Claude as the client.
   view (`ClaudeConnector._watch_the_page`): the engine asks the page for each
   frame, and out of view the page gives it one from a worker's clock — one at
   a time, 33 ms after the last has run (a clock that ticked regardless ran
-  frames back to back and starved the replies carrying the answers). The same
+  frames back to back and starved the replies carrying the answers). It does
+  so too while the connector, as the tab starts, finds out whether Claude is
+  connected and it should listen (`ClaudeConnector.resume`): a tab opened and
+  left for claude.ai at once asked with no frames and was heard only once the
+  person came back. `tools/web/hidden_start_flow.mjs` puts a tab out of view
+  as it starts (`--hide=ui|model` at the app's boot mark, `--reload` for a tab
+  that was on) and passes when a call is answered out of view; `--hide=start`
+  fails by design, since out of view from the first byte no frame runs the
+  engine's own start (a known gap, 2026-11-01). The same
   worker sends `op=state` every ten seconds, which also counts as seen, so the
   relay judges a tab by its page: alive is ready, in view or not; a page that
   stopped altogether is "paused" if it was out of view and "not open" if not,
@@ -1288,6 +1304,45 @@ plan with Claude as the client.
   it sits in somebody else's page and runs no script.
 - `theme browser flow` (`tools/web/theme_flow.mjs`, preview checks
   `[theme]` and `[theme_account]`): below.
+- `the site in German, French and Spanish` (2026-11-01): the landing page
+  and the download page at /de, /de/download, /fr, /fr/download, /es and
+  /es/download, and then the plans, the FAQ (its JSON-LD's questions and
+  answers too, as search results show them), the comparison, the gallery's
+  chrome and the LDraw library (/de/plans, /de/faq, /de/compare,
+  /de/gallery, /de/library...; `tools/site_lang.py` PAGES), each the English
+  page with its words from
+  `web/_lang/<code>.json`, written into `web/de/`, `web/fr/` and `web/es/` by
+  `tools/site_lang.py` (`--check` in `tests/test_site_lang.py`, which also
+  fails on an English run with no words, and on a `say("...")` or
+  `counted(n, "...")` in a script a copy loads, or a label the API hands the
+  gallery and the library, with none; `--missing=de` lists both). The
+  gallery and the library keep their own address when they rewrite it
+  (`location.pathname`). Served
+  by `tools/deploy.sh`'s overrides for a folder with an `index.html`, with
+  308s from `.html` and a trailing slash. The language: the one chosen in the
+  footer's Language (`select[data-lang-choice]`, `web/_shell.html`, showing
+  the kept choice on every page) or the
+  app's Settings (`src/ui/language.gd` keeps it in `localStorage`
+  "brickworks.lang" too), else the browser's first the site has, else English
+  (`web/theme.js` `brickworksLang`): an English page with a copy gives way to
+  it before it is drawn (its `link rel=alternate hreflang`), and every link to
+  `/app` carries `?lang=<code>`. The scripts' words (`web/download.js`,
+  `web/card.js` `say`/`number`, the header's account in `web/follow.js`) come
+  from the copy's `#site-words`. The app's loading page (`src/boot/shell.html`)
+  says its words in `?lang` or the kept language. The sign-in's dialogs
+  (`web/account.js`: the way in, the code's step, the server's answers from
+  `api/otp.js` and orangecheck's, orangecheck's own words, the age question
+  with its months by `Intl`) say every word through `say()`: from the copy's
+  `#site-words`, or on a page with no copy (/profile, where the header's
+  Sign in and the app's orangecheck go) from `/<code>/words.json`, which
+  `tools/site_lang.py` writes beside the copies; a literal with an English
+  word left in account.js fails `--check` (`SAID_ALL`). The library's and the
+  gallery's themes are the app's (`locale/<code>.po`, context "theme", by
+  `web/card.js` `themeSaid`, LEGO® and LEGOLAND® marked as the app draws
+  them), and `tests/test_site_lang.py` fails on a theme of the catalogue
+  with no entry.
+- `site language flow` (`tools/web/site_lang_flow.mjs`, preview check
+  `[site_lang]`): below.
 - `comments on a shared model` (`supabase/comments.sql`, `api/_comments.js`,
   `api/people.js`, 2026-10-18; **not applied to the live project**: the
   owner applies it at release, after `trust.sql` and before the deploy;
@@ -3685,6 +3740,54 @@ never reach the database's own triggers, which refuse the profile, the
 public list and the listing (three 502s, 2026-10-18); without it, 42 checks
 all ok the same evening.
 
+The site in German, French and Spanish, with no network (the checkout's
+pages served by the stand-in), against a deployment, and the app's loading
+page from a web export:
+
+```sh
+python3 tools/site_lang.py --check                                       # every copy written, every run with its words
+heavy node tools/web/site_lang_flow.mjs --out=shots/site_lang            # this checkout
+BW_BYPASS=$VERCEL_BYPASS node tools/web/site_lang_flow.mjs --url=<preview> --app=<preview>/app
+set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8837 --static=build/web &
+node tools/web/site_lang_flow.mjs --app=http://127.0.0.1:8837/index.html --out=shots/site_lang   # and the loading page
+```
+
+A browser asking for en, de, fr and es first (Accept-Language and
+`navigator.languages`) opens /, /download, /plans, /faq, /compare, /gallery
+and /library at 1280 and 390 and must land on the language's copy (/de,
+/de/download, /de/plans ...; English stays), `<html lang>` its language, the
+title, the heading and the header's Sign in in its words, the download
+offer's "Download for Linux" and "New in", the gallery's and the library's
+count ("1.234 Sets") in them; no English word left in any text, alt,
+title or label but names, people's cards and the library's themes the app
+too keeps under the catalogue's names; nothing cut short sideways that the
+English shows whole at that width (a card's mark on a phone: "Tipp der
+Woche" was cut to "Tipp der Woc"); every link to /app with `lang=<code>`
+(none in English) and the footer's Language showing it. Then choosing
+English on /de opens / and keeps it on a reload though the browser asks for
+German; choosing Deutsch on /download opens /de/download, / and /gallery
+then open /de and /de/gallery, and the changelog (no copy) shows Deutsch
+chosen and opens the app in it; a French browser on the changelog goes into
+`/app?lang=fr`. Then signing in, in each language at 1280 and 390, from
+/profile (no copy) and from a gallery card's Like: the dialog's title, label,
+button and every other word in the language and nothing cut short, the
+server's "too many codes" (the first /api/otp, answered by the flow, so no
+mail goes anywhere), the code's step, a wrong code's error (`000000`: the
+stand-in refuses it as Supabase does, and on a deployment Supabase itself,
+eight verifies a run, from /profile only), and locally the age question a new account
+is asked, its months in the language. Locally the library's list is the real handler's from this
+checkout's catalogue (`design_stand_in.mjs`), so its sorts, sizes and
+themes are drawn. With `--app`, `/app?lang=de` and the rest say the
+loader's tagline, "von" and the notice in the language, and `/app` with
+Spanish kept says Spanish. 2026-11-01: 137 passed locally with `--app`; on
+brickworks.diy before the copies (`--app=https://brickworks.diy/app`), 108
+of 131 failed. With the five pages after home (same day): 505 passed
+locally (no `--app`); on brickworks.diy with rel-m239 live, 210 of 505 failed, every one
+on the five pages or /gallery's choice. With signing in and every theme
+(languages3, same day): 601 passed locally; on brickworks.diy
+(`--pages=library,signin`) 75 of 139 failed, every German, French and
+Spanish dialog in English and the library's themes with them.
+
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):
 
@@ -5145,7 +5248,8 @@ tile with the initial, every shown number not 0, links https and ugc
 nofollow, the tabs one current with no count of none, at 390 the avatar,
 name, numbers and Follow above 844 px; Robin's numbers builds first (77),
 his links said as their domain, the watchtower banner loaded, his pins in
-his order, whom he follows and no follower named, Share copying the link
+his order, whom he follows and no follower named (Jo, who follows him,
+only in More like Robin once it is drawn, for the castles), Share copying the link
 and saying so, More opening Report it; the Builds and Collections tabs;
 the house's 7 models and its empty tabs' words; Ines's 60 models reached
 by Show more twice, page 3 as served 12 cards; on the relay, op=showcase's

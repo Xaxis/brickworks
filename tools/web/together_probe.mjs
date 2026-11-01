@@ -26,6 +26,9 @@
 //      none and reads the log with them taken out; one starting a session
 //      keeps its own out of it. A big model's are kept in its session's
 //      row, checked, and not sent to an account under 13.
+//   3d. A profile made mid-session names its person to the others within
+//      3 s, while both wait on polls and the owner builds, a change every
+//      500 ms.
 //   4. A third account with no link, or a made-up one, is refused; so is a
 //      send or a poll from an account that never joined. The owner takes
 //      the second out: its next poll, its send and joining again by the
@@ -209,6 +212,52 @@ try {
       `${bigStarts.status} ${JSON.stringify(bigStarts.value.held)}; ${Object.keys(pins)}; ${JSON.stringify(kidGrown?.value.snapshot)}`);
     if (bigStarts.status === 200) await ask(tokens[0], "end", { s: bigStarts.value.s });
   }
+
+  console.log("3d. a profile made mid-session");
+  // Both waiting on polls as their pages do, and the owner building, a
+  // change every 500 ms: every poll ends sooner than the 5 s a poll waits
+  // before it looks at its person's name again, and a profile made then
+  // named nobody, on either side (2026-10-31).
+  const guestName = `Probe Builder ${stamp.slice(-4)}`;
+  let busy = true;
+  let madeAt = 0;
+  let named = null;
+  const pollOn = async (token, watching) => {
+    let [from, seen] = [after, "x"];
+    while (busy) {
+      const got = await ask(token, "poll", { s, after: from, seen });
+      if (got.status !== 200) break;
+      seen = got.value.seen || seen;
+      const ops = got.value.ops || [];
+      if (ops.length) from = ops[ops.length - 1].seq;
+      if (watching && madeAt && named === null && (got.value.people || []).some((one) => one.name === guestName)) {
+        named = Date.now() - madeAt;
+      }
+    }
+    return from;
+  };
+  const polling = [pollOn(tokens[0], true), pollOn(tokens[1], false)];
+  let cid = 600;
+  const building = (async () => {
+    while (busy) {
+      await ask(tokens[0], "send", { s, client: "ownerab", ops: [{ cid: cid++, changes: { "0.2": brick(cid) } }] });
+      await new Promise((done) => setTimeout(done, 500));
+    }
+  })();
+  await new Promise((done) => setTimeout(done, 6000));
+  const made = await fetch(`${base}/api/people?op=profile`, { method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${tokens[1]}`,
+      ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}) },
+    body: JSON.stringify({ handle: `probe-${stamp}`, name: guestName }) });
+  madeAt = Date.now();
+  for (const end = madeAt + 10000; named === null && Date.now() < end;) await new Promise((done) => setTimeout(done, 100));
+  busy = false;
+  await building;
+  // One more change, so neither poll waits out its 20 s.
+  await ask(tokens[0], "send", { s, client: "ownerab", ops: [{ cid: cid++, changes: { "0.2": brick(0) } }] });
+  after = Math.max(after, ...(await Promise.all(polling)));
+  check(`a profile made mid-session names its person to the others, with a change every 500 ms: after ${named ?? "more than 10,000"} ms`,
+    made.ok && named !== null && named < 3000, `profile ${made.status}`);
 
   console.log("4. who may not");
   const guessed = await ask(tokens[2], "join", { s: "x".repeat(32) });

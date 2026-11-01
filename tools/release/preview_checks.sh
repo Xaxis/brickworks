@@ -22,6 +22,9 @@ declare -A CMD=(
   # The booklet's pictures, a moved See inside cut and the build animation
   # drawn in a browser, counted brick by brick (webdraw, 2026-11-01).
   [drawn]="tools/web/drawn_flow.mjs --url=$P/app $B --runs=1 --out=$S/${TAG}_drawn_web"
+  # A new tab left for claude.ai the moment its window is built is still
+  # heard: red on every live build up to rel-m238 (lazystart, 2026-11-01).
+  [hidden_start]="tools/web/hidden_start_flow.mjs --url=$P/app --hide=ui"
   [floor]="tools/web/floor_flow.mjs --url=$P/app $B --out=$S/${TAG}_floor_web"
   [outline]="tools/web/outline_check.mjs --url=$P/app $B"
   [knowledge]="tools/web/knowledge_check.mjs --url=$P/app $B"
@@ -209,6 +212,15 @@ declare -A CMD=(
   # (a throwaway account, deleted after), once supabase/theme.sql is applied.
   [theme]="tools/web/theme_flow.mjs --url=$P --out=$S/${TAG}_theme"
   [theme_account]="tools/web/theme_flow.mjs --url=$P --account --only=home --widths=1280 --out=$S/${TAG}_theme_account"
+  # The landing, download, plans, FAQ, comparison, gallery and library pages
+  # in German, French and Spanish (tools/site_lang.py, web/theme.js): a
+  # browser asking for each language opens each at 1280 and 390 and lands on
+  # its copy (/de, /de/download...), its words the language's but for names
+  # (the gallery's and library's lists drawn and counted), every link into
+  # the app ?lang=<code>, the footer's Language showing it; choosing English
+  # there keeps English though the browser asks for German, and the changelog
+  # sends a French browser into a French app, whose loading page speaks it.
+  [site_lang]="tools/web/site_lang_flow.mjs --url=$P --app=$P/app --out=$S/${TAG}_site_lang"
   # A model's page (docs/SOCIAL.md U4), the gallery's first model: the
   # picture, name, designer and action bar on a phone's first screen, the
   # column beside the picture on a laptop as the page scrolls; Like, Save,

@@ -41,7 +41,7 @@
 //
 // Signs in as a throwaway account of its own, deleted at the end, so the
 // tabs other flows have open on the shared test account are not among its.
-import { launch, withAssistant } from "./browser.mjs";
+import { askApp, launch, withAssistant } from "./browser.mjs";
 import { mintSession, STORAGE_KEY } from "./session.mjs";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -176,12 +176,7 @@ async function deleteAPart(page) {
   const before = (await state(page)).bricks;
   await page.keyboard.press("KeyF");
   await page.waitForTimeout(1500);
-  await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-  let layout = null;
-  for (let n = 0; n < 60 && !layout; n++) {
-    layout = await page.evaluate(() => window.brickworksLayout || null);
-    if (!layout) await page.waitForTimeout(250);
-  }
+  const layout = await askApp(page, "Layout", { seconds: 15 });
   for (const target of (layout && layout.targets) || []) {
     await page.mouse.move(target.x, target.y, { steps: 3 });
     await page.waitForTimeout(300);

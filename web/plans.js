@@ -20,6 +20,10 @@
 // entries, every plan. Nothing typed is shown back as markup.
 import { email, madeUp } from "/account.js";
 
+// In the page's language (web/theme.js): the form's own words, and the
+// API's fixed replies (api/plans.js KEPT, GONE and its refusals).
+const say = (words) => (window.brickworksLang ? window.brickworksLang.say(words) : words);
+
 const $ = (id) => document.getElementById(id);
 const dialog = $("interest");
 const form = $("interest-form");
@@ -116,7 +120,7 @@ for (const button of dialog.querySelectorAll("[data-close]")) {
 async function ask(body) {
   send.disabled = true;
   forget.disabled = true;
-  said.textContent = "Sending…";
+  said.textContent = say("Sending…");
   let reply;
   try {
     const answer = await fetch("/api/plans", {
@@ -124,16 +128,16 @@ async function ask(body) {
     });
     reply = { ok: answer.ok, body: await answer.json().catch(() => ({})) };
   } catch {
-    reply = { ok: false, body: { error: "That did not go: no connection. Try again in a minute." } };
+    reply = { ok: false, body: { error: say("That did not go: no connection. Try again in a minute.") } };
   } finally {
     send.disabled = false;
     forget.disabled = false;
   }
   if (!reply.ok) {
-    said.textContent = reply.body.error || "That did not go just now. Try again in a minute.";
+    said.textContent = reply.body.error ? say(reply.body.error) : say("That did not go just now. Try again in a minute.");
     return;
   }
-  $("interest-thanks").textContent = reply.body.said;
+  $("interest-thanks").textContent = say(reply.body.said);
   form.hidden = true;
   $("interest-done").hidden = false;
   $("interest-done").querySelector("button").focus();

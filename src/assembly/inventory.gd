@@ -197,9 +197,18 @@ static func pieces_among(bricks: Array, library: PartLibrary, skip: Dictionary =
 	for path: String in whole:
 		for brick: BrickWorld.Brick in whole[path]["bricks"]:
 			in_whole[brick.id] = true
+	# Asked once a part, the answer the same for every brick of it: asked of
+	# each of Orthanc's 10,101 bricks, it was most of the count that follows
+	# every change (replacefast).
+	var piece_of: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks:
-		if not skip.has(brick.id) and not in_whole.has(brick.id) \
-				and is_piece(brick.part_id, library):
+		if skip.has(brick.id) or in_whole.has(brick.id):
+			continue
+		var piece: Variant = piece_of.get(brick.part_id)
+		if piece == null:
+			piece = is_piece(brick.part_id, library)
+			piece_of[brick.part_id] = piece
+		if piece:
 			count += 1
 	return count
 

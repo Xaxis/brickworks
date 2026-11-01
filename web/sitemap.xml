@@ -5,17 +5,38 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://brickworks.diy/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
   <url><loc>https://brickworks.diy/gallery</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://brickworks.diy/de/gallery</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://brickworks.diy/fr/gallery</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://brickworks.diy/es/gallery</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>https://brickworks.diy/collections</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
   <url><loc>https://brickworks.diy/builds</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
   <url><loc>https://brickworks.diy/library</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://brickworks.diy/de/library</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://brickworks.diy/fr/library</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://brickworks.diy/es/library</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://brickworks.diy/challenge</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
   <url><loc>https://brickworks.diy/download</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://brickworks.diy/de</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://brickworks.diy/de/download</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brickworks.diy/fr</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://brickworks.diy/fr/download</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brickworks.diy/es</loc><changefreq>weekly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://brickworks.diy/es/download</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://brickworks.diy/takedown</loc><changefreq>monthly</changefreq><priority>0.2</priority></url>
   <url><loc>https://brickworks.diy/changelog</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://brickworks.diy/compare</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brickworks.diy/de/compare</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brickworks.diy/fr/compare</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://brickworks.diy/es/compare</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>https://brickworks.diy/plans</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://brickworks.diy/de/plans</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://brickworks.diy/fr/plans</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://brickworks.diy/es/plans</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://brickworks.diy/beta</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://brickworks.diy/faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://brickworks.diy/de/faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://brickworks.diy/fr/faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://brickworks.diy/es/faq</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://brickworks.diy/privacy</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>https://brickworks.diy/terms</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
   <url><loc>https://brickworks.diy/guidelines</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>

@@ -45,7 +45,7 @@
 // On a build from before 2026-10-23 nothing is sent: 1 fails, and 2 finds
 // nothing in Open; 7's Save saves "Untitled" without asking. On one from
 // before 2026-10-24 Open has no Rename or delete: 4, 5 and 6 fail.
-import { clickStill, framesDrawn, launch } from "./browser.mjs";
+import { askApp, clickStill, framesDrawn, launch } from "./browser.mjs";
 import { canSignIn, deleteAccount, mintSession, signInContext } from "./session.mjs";
 import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -174,12 +174,7 @@ async function deleteAPart(page) {
   const was = (await state(page)).bricks;
   await page.keyboard.press("KeyF");
   await page.waitForTimeout(1500);
-  await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-  let layout = null;
-  for (let n = 0; n < 60 && !layout; n++) {
-    layout = await page.evaluate(() => window.brickworksLayout || null);
-    if (!layout) await page.waitForTimeout(250);
-  }
+  const layout = await askApp(page, "Layout", { seconds: 15 });
   for (const target of (layout && layout.targets) || []) {
     await page.mouse.move(target.x, target.y, { steps: 3 });
     await page.waitForTimeout(300);

@@ -537,6 +537,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   every target 44 points or more, no text under 12, nothing off the screen
   (a control wholly under the screen counts: the audit passed over those,
   and so missed the bin's foot on a phone on its side).
+  That audit, and every other ask of the app's in tools/web (Phone, Layout,
+  Words: `askApp` in `tools/web/browser.mjs`), is waited for by the app's
+  tellings, not the clock: it fails once the app has told the page 20 times
+  (and 10 s) without answering, or told it nothing for 5 minutes. A fixed
+  10 s held rel-m236 on "ready: the app said what is on the screen" at
+  load 40, where one frame of a page just up at 2048 x 2732 took longer than
+  that; a picture is not judged, so it waits as long as a page has to come up.
   `tools/web/fit_check.mjs` opens its phone sizes (390 x 844, 844 x 390) as
   phones, and 844 x 390 again with a mouse (appux2 saw the desktop's key
   strip over most of a 128-px model there), the model keeping half the
@@ -1240,12 +1247,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   translated too, and the model tree's own row ("Model"); not yet the web
   pages. Names a person or a set gave are drawn as they are, kept out of the
   translation (`auto_translate_mode` off): the model tree's sub-models, the
-  Library's set names, and its themes that are product lines' or licences'
-  names (City, Friends, Technic); its themes that are words
-  (`ModelLibrary.THEME_WORDS`: Other, Seasonal, Modular Buildings, City's
-  Police, a film's title) by their entries in the context "theme",
-  `ModelLibrary.theme_said`, the list in the language's order
-  (`LibraryDialog._say_themes`); and a model's or a sub-model's name in a
+  Library's set names; and every theme by its entry in the context "theme"
+  (`ModelLibrary.theme_said`; the po has one for every theme of the
+  catalogue, which `tests/test_site_lang.py` holds it to): the words
+  translated (Collectible Minifigures, Seasonal, City's Police, a film's
+  title), the product lines' and licences' names as they are (City, Friends,
+  Technic), the list in the language's order (`LibraryDialog._say_themes`);
+  the site's library draws the same entries; and a model's or a sub-model's name in a
   line of the interface (`Language.keep_name`: "opened Car — 61 bricks" is
   "Car geöffnet — 61 Steine", not "Auto"). A count in the thousands, which
   the interface groups the English way wherever it is made ("1,575 of 1,575
@@ -1304,6 +1312,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`collides_boxes(packed, brick_id)`), so a refused part is never taken out and
   put back. `bigmodels_probe -- only=replace`: a 2 x 4 for every part of
   Orthanc, the parts left standing where they were in the lattice, one undo.
+  From 600 parts selected, where each fits is asked on a worker of a copy of
+  the lattice changed as the swaps would change it
+  (`Builder.replace_selection_paced`), and the swaps made as planned; a model
+  changed meanwhile is asked again as it is. `replace_cost_probe`: all of
+  Orthanc replaced from the menu (`Shell.run`), its longest frame under 100 ms
+  of its own (it was 0.6 to 1.1 s), every try the same save byte for byte and
+  the same words, each undo the file before it; `--into=DIR` writes the save
+  to diff against another checkout's.
 - `undo history`: History (on the toolbar, and Edit, History) lists the steps in words, newest first ("swapped 2
   parts for Brick 2 x 3", "painted 2 parts"); choosing one goes back to before
   it (`Builder.undo_steps`).
@@ -2749,6 +2765,12 @@ node tools/web/sections_flow.mjs --url=<preview>/app --bypass=… --out=shots/se
 # --into=DIR writes each model's sections and plan, to diff against
 # another checkout's
 godot --headless --path . --script src/dev/sections_cost_probe.gd
+# Replace all of the Wizard's Tower with a 2 x 4 from the menu, its longest
+# frame under 100 ms of its own, each try saving what the first did, each
+# undo the file before it; --into=DIR writes the save and the status words,
+# to diff against another checkout's
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/replace_cost_probe.gd
 # undo belongs to the model it was recorded against
 godot --headless --path . --script src/dev/history_probe.gd
 # an undo puts back what was taken and nothing more: count, scenery, the

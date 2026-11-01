@@ -13,6 +13,42 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-01
+
+A release for big models and touch screens. Replacing a part across a
+10,000-part model no longer stops the window: replacing all of one with a
+2 x 4 held a single frame for half a second or more in 0.13.0, and now its
+longest frame is under a tenth of a second. Suggest sections on a model that
+size is a little quicker too. A design Claude finishes in the assistant's
+panel is framed whole, as Frame all frames it, where a tall one used to run
+out of the top of the view. And on a touch screen, a drag begun on a text
+field, a tile's "+N" or any other control in a list scrolls the list.
+
+### Changed
+
+- Replace on a big model keeps the window moving. On a 10,105-part model,
+  replacing every part with a 2 x 4 held one frame for 0.48 to 0.70 s in
+  0.13.0 on a Linux machine; in 0.14.0 its longest frame is 49 to 79 ms,
+  timed the same hour. Where each new part fits is worked out off the
+  window's thread, and work every edit did for nothing on a big model is
+  gone. The model it makes is the same, part for part.
+- Suggest sections on the same model is a little quicker: the best of three
+  tries took 2.0 to 2.6 s, where 0.13.0 took 2.5 to 2.9 s. It suggests the
+  same sections.
+
+### Fixed
+
+- A design asked for in the assistant's panel ends whole in the view,
+  framed as Frame all frames it, where a tall tower went up out of the top
+  of the window and a long wall ran off both sides. A view you turned while
+  Claude worked is kept, and so is one looking closely at part of the model.
+- On a touch screen, a drag begun on a text field in a list scrolls the
+  list: Properties, Settings, the parts search, the assistant's drawer and a
+  dialog's form could be scrolled only from the gaps between fields. A tap
+  still puts the cursor in the field, and a press held still selects its
+  words. A drag begun on a tile's "+N", the parts bin's buttons, a category,
+  a Library card, a colour swatch or a key's chip scrolls its list too.
+
 ## [0.13.0] - 2026-10-31
 
 A release about getting to your model sooner. Brickworks now opens a second

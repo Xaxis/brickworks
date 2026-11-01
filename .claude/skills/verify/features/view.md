@@ -2233,8 +2233,12 @@ tools/probe.sh timeline_drawn_probe
 # and streamed; the toolbar's cut clicked up the stack --moves times, the
 # bricks below the plane and the one it cuts drawn each time; the booklet's
 # step N picture holding N bricks. 2026-11-01, SwiftShader: green at 1280x720
-# and 1400x900, about 2 min a size with --runs=1.
-node tools/web/drawn_flow.mjs --dir=build/web --out=shots/drawn [--size=1400x900] [--only=build,streamed,cut,booklet]
+# and 1400x900, about 2 min a size with --runs=1. Each design, and a row of
+# twelve (wide), is also held whole in the view as it ends: its red and yellow
+# touch no edge of the view, nor the notices strip over its top (framewhole:
+# red on 02f9fc66, the stack out of the top and the row off both sides; all of
+# it 5 to 8 min a size with --runs=1).
+node tools/web/drawn_flow.mjs --dir=build/web --out=shots/drawn [--size=1400x900] [--only=build,streamed,wide,cut,booklet]
 # In a browser, on a local web export (tools/export.sh web, then
 # python3 tools/web/serve.py build/web PORT, .env sourced): the gatehouse
 # through Open > From a file, Timeline in Author's steps "Step 1 of 6", Next

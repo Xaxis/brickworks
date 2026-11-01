@@ -45,7 +45,7 @@
 // talk to itself and a short list of others.
 //
 // Each card is web/card.js's, the one every page of the site draws.
-import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard, skeletonHtml } from "/card.js";
+import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard, number, say, skeletonHtml, themeSaid } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
 // "/" to search, and the bar of filters kept under the header.
@@ -114,19 +114,31 @@ import { pageAsked, pager } from "/pager.js";
   }
 
   /// "once", "twice", "5 times".
-  const times = (n) => (n === 1 ? "once" : n === 2 ? "twice" : `${Number(n).toLocaleString("en-US")} times`);
+  const times = (n) => (n === 1 ? say("once") : n === 2 ? say("twice") : say("{n} times", { n: number(n) }));
 
   /// Why the pick is the pick, in a line: what its week was, or that the
   /// site's owner chose it.
   function whyPicked(pick) {
     const week = pick.week || {};
     const said = [];
-    if (week.builds) said.push(`built ${times(week.builds)} this week`);
-    if (week.remixes) said.push(`remixed ${times(week.remixes)} this week`);
-    if (!said.length && week.tested) said.push("new this week, and Tested");
+    if (week.builds) said.push(say("built {times} this week", { times: times(week.builds) }));
+    if (week.remixes) said.push(say("remixed {times} this week", { times: times(week.remixes) }));
+    if (!said.length && week.tested) said.push(say("new this week, and Tested"));
     const line = said.join(", ");
-    if (pick.chosen) return line ? `Chosen by Brickworks · ${line}` : "Chosen by Brickworks";
+    if (pick.chosen) return line ? `${say("Chosen by Brickworks")} · ${line}` : say("Chosen by Brickworks");
     return line ? line[0].toUpperCase() + line.slice(1) : "";
+  }
+
+  /// Why today's featured model is featured, as api/_featured.js
+  /// featuredSaid says it (FEATURED_DAYS, 30), but from its numbers here, so
+  /// it is in the page's language; with none, the API's own few words.
+  function featuredSaid(one) {
+    const why = one.why || {};
+    const done = [why.likes > 0 && counted(why.likes, "like", "likes"),
+      why.builds > 0 && counted(why.builds, "build finished", "builds finished"),
+      why.comments > 0 && counted(why.comments, "comment", "comments"),
+      why.remixes > 0 && counted(why.remixes, "remix", "remixes")].filter(Boolean);
+    return done.length ? say("{done} in the past 30 days", { done: done.join(", ") }) : say(String(one.said || ""));
   }
 
   /// What a select says: until the first answer fills it in, what the
@@ -174,7 +186,8 @@ import { pageAsked, pager } from "/pager.js";
   /// The address of what is asked now, or with [over] changed.
   function addressOf(over = {}) {
     const query = question({ address: true, over }).toString();
-    return query ? `/gallery?${query}` : "/gallery";
+    // This page's own address: /de/gallery in German.
+    return query ? `${location.pathname}?${query}` : location.pathname;
   }
 
   function fill(select, options) {
@@ -184,7 +197,7 @@ import { pageAsked, pager } from "/pager.js";
       if ([...select.options].some((o) => o.value === option.id)) continue;
       const item = document.createElement("option");
       item.value = String(option.id);
-      item.textContent = String(option.label);
+      item.textContent = say(String(option.label));
       select.append(item);
     }
     if ([...select.options].some((o) => o.value === keep)) select.value = keep;
@@ -218,7 +231,7 @@ import { pageAsked, pager } from "/pager.js";
       pill.type = "button";
       pill.className = "pill";
       pill.dataset.kind = String(one.id);
-      pill.textContent = String(one.label);
+      pill.textContent = say(String(one.label));
       pill.setAttribute("aria-pressed", "false");
       row.append(pill);
     }
@@ -240,7 +253,7 @@ import { pageAsked, pager } from "/pager.js";
     const n = $("filters-said");
     n.textContent = on ? String(on) : "";
     n.hidden = !on;
-    $("filters").querySelector("summary").setAttribute("aria-label", on ? `Filters, ${on} on` : "Filters");
+    $("filters").querySelector("summary").setAttribute("aria-label", on ? say("Filters, {n} on", { n: on }) : say("Filters"));
     const chips = $("chips");
     const kept = chips.contains(document.activeElement) ? [...chips.children].indexOf(document.activeElement) : -1;
     chips.replaceChildren();
@@ -253,23 +266,24 @@ import { pageAsked, pager } from "/pager.js";
       one.addEventListener("click", drop);
       chips.append(one);
     };
-    if (tag) chip(tag, `Stop filtering by the tag ${tag}`, () => { tag = ""; ask(); }, "pill tag");
+    if (tag) chip(tag, say("Stop filtering by the tag {tag}", { tag }), () => { tag = ""; ask(); }, "pill tag");
     if (!["top", "newest"].includes(order())) {
       const words = saidBy(sort) || order();
-      chip(words, `Stop ordering by ${words}`, () => { sort.value = "top"; ask(); });
+      chip(words, say("Stop ordering by {words}", { words }), () => { sort.value = "top"; ask(); });
     }
-    for (const [select, what] of [[size, "size"], [made, "how it was made"]]) {
+    for (const [select, what] of [[size, say("size")], [made, say("how it was made")]]) {
       const words = saidBy(select);
-      if (words) chip(words, `Stop filtering by ${what}: ${words}`, () => { select.value = ""; ask(); });
+      if (words) chip(words, say("Stop filtering by {what}: {words}", { what, words }), () => { select.value = ""; ask(); });
     }
-    for (const [box, words] of [[instructions, "Has instructions"], [technic, "Technic or mechanism"], [tested, "Tested only"]]) {
-      if (box.checked) chip(words, `Stop filtering by ${words}`, () => { box.checked = false; ask(); });
+    for (const [box, words] of [[instructions, say("Has instructions")], [technic, say("Technic or mechanism")],
+      [tested, say("Tested only")]]) {
+      if (box.checked) chip(words, say("Stop filtering by {words}", { words }), () => { box.checked = false; ask(); });
     }
     if (chips.children.length > 1) {
       const all = document.createElement("button");
       all.type = "button";
       all.className = "link";
-      all.textContent = "Clear all";
+      all.textContent = say("Clear all");
       all.addEventListener("click", () => {
         for (const select of [size, made]) select.value = "";
         if (!["top", "newest"].includes(sort.value)) sort.value = "top";
@@ -307,7 +321,7 @@ import { pageAsked, pager } from "/pager.js";
       const mark = document.createElement("span");
       mark.className = "pill new";
       // Short: one row of marks over a phone's card, 12% of its picture at most.
-      mark.textContent = "Week’s pick";
+      mark.textContent = say("Week’s pick");
       marks.prepend(mark);
       const why = document.createElement("p");
       why.className = "why";
@@ -321,8 +335,8 @@ import { pageAsked, pager } from "/pager.js";
     // the pick is, and why: the featured model's in the API's words
     // (featuredSaid: only what is true of it), the set's its theme and
     // decade. A set is nobody's to like: its card has no like.
-    const spot = shown && front ? [["featured", front.featured, ID, "Featured today"],
-      ["library", front.library, SET_ID, "LDraw library"]]
+    const spot = shown && front ? [["featured", front.featured, ID, say("Featured today")],
+      ["library", front.library, SET_ID, say("LDraw library")]]
       .filter(([, one, valid]) => one && one.model && valid.test(String(one.model.id))) : [];
     $("spotlight").hidden = spot.length === 0;
     $("spotlight-models").replaceChildren(...spot.map(([slot, one, , label]) => {
@@ -336,7 +350,7 @@ import { pageAsked, pager } from "/pager.js";
       mark.className = "pill new";
       mark.textContent = label;
       marks.prepend(mark);
-      const said = slot === "featured" ? String(one.said || "") : [one.why?.theme, one.why?.decade].filter(Boolean).join(", ");
+      const said = slot === "featured" ? featuredSaid(one) : [one.why?.theme && themeSaid(one.why.theme), one.why?.decade].filter(Boolean).join(", ");
       if (said) {
         const why = document.createElement("p");
         why.className = "why";
@@ -361,18 +375,20 @@ import { pageAsked, pager } from "/pager.js";
     $("ready-all").hidden = !pool;
     const said = $("ready-said");
     if (!pool) {
-      said.textContent = "Tell Brickworks what you own (in the app, Build › My collection…) and this "
-        + "shows what in the gallery you can build with it.";
+      said.textContent = say("Tell Brickworks what you own (in the app, Build › My collection…) and this "
+        + "shows what in the gallery you can build with it.");
     } else if (!ready.length) {
-      said.textContent = `Nothing in the gallery is all in your collection of ${counted(pool.pieces, "part")} yet. `
-        + "Parts I own, in Filters, shows what is closest.";
+      said.textContent = say("Nothing in the gallery is all in your collection of {parts} yet. "
+        + "Parts I own, in Filters, shows what is closest.", { parts: counted(pool.pieces, "part") });
     } else {
-      said.textContent = `Every part of these is in your collection of ${counted(pool.pieces, "part")}: the most `
-        + "built and remixed first.";
+      said.textContent = say("Every part of these is in your collection of {parts}: the most built and remixed first.",
+        { parts: counted(pool.pieces, "part") });
     }
     if (pool && pool.unknown) {
-      said.textContent += ` ${counted(pool.unknown, "set")} of yours ${pool.unknown === 1 ? "has" : "have"} no `
-        + "parts list here, so what is in them is not counted.";
+      const sets = counted(pool.unknown, "set");
+      said.textContent += " " + (pool.unknown === 1
+        ? say("{sets} of yours has no parts list here, so what is in it is not counted.", { sets })
+        : say("{sets} of yours have no parts list here, so what is in them is not counted.", { sets }));
     }
     // Nothing listed at all: the empty gallery says so, with no shelf.
     shelves.hidden = ($("small").hidden && $("ready").hidden && $("spotlight").hidden) || grid.children.length === 0;
@@ -385,8 +401,8 @@ import { pageAsked, pager } from "/pager.js";
     const w = weights;
     line.hidden = !(w && order() === "top" && grid.children.length);
     if (w) {
-      line.textContent = `Top builds: a build finished counts ${w.builds}, a remix ${w.remixes} and the `
-        + `Tested mark ${w.tested}. Views count for nothing.`;
+      line.textContent = say("Top builds: a build finished counts {builds}, a remix {remixes} and the "
+        + "Tested mark {tested}. Views count for nothing.", { builds: w.builds, remixes: w.remixes, tested: w.tested });
     }
   }
 
@@ -398,15 +414,17 @@ import { pageAsked, pager } from "/pager.js";
     line.hidden = !challenge;
     line.replaceChildren();
     if (!challenge) return;
-    const day = (iso) => new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" })
+    const day = (iso) => new Intl.DateTimeFormat(document.documentElement.lang === "en" ? "en-GB" : document.documentElement.lang,
+      { day: "numeric", month: "long", timeZone: "UTC" })
       .format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
     const link = document.createElement("a");
     link.href = tests ? "/challenge?tests=1" : "/challenge";
     link.textContent = String(challenge.title);
     if (challenge.state === "open") {
-      line.append("This month’s challenge: ", link, `, open until ${day(challenge.ends_on)}. Enter a model of yours, or vote.`);
+      line.append(say("This month’s challenge: "), link,
+        say(", open until {day}. Enter a model of yours, or vote.", { day: day(challenge.ends_on) }));
     } else {
-      line.append("The next challenge: ", link, `, opens on ${day(challenge.starts_on)}.`);
+      line.append(say("The next challenge: "), link, say(", opens on {day}.", { day: day(challenge.starts_on) }));
     }
   }
 
@@ -441,16 +459,16 @@ import { pageAsked, pager } from "/pager.js";
     if (none && quiet) {
       const go = $("quiet-go");
       if (following) {
-        $("quiet-said").textContent = "Nobody you follow has listed a model yet. Follow a designer from "
-          + "their page or from beside one of their models, and what they list comes here.";
-        go.textContent = "See Top";
+        $("quiet-said").textContent = say("Nobody you follow has listed a model yet. Follow a designer from "
+          + "their page or from beside one of their models, and what they list comes here.");
+        go.textContent = say("See Top");
         go.href = addressOf({ following: false, sort: "top", window: "", page: 1 });
         go.dataset.go = "top";
       } else {
-        const span = windowed.options[windowed.selectedIndex]?.textContent.toLowerCase() || "lately";
-        $("quiet-said").textContent = `Nothing was built or remixed here ${span} yet. A model joins Top `
-          + "when somebody builds it to its last step, remixes it, or it is Tested.";
-        go.textContent = "See all time";
+        const span = windowed.value === "week" ? say("this week") : windowed.value === "month" ? say("this month") : say("lately");
+        $("quiet-said").textContent = say("Nothing was built or remixed here {span} yet. A model joins Top "
+          + "when somebody builds it to its last step, remixes it, or it is Tested.", { span });
+        go.textContent = say("See all time");
         go.href = addressOf({ window: "", page: 1 });
         go.dataset.go = "all";
       }
@@ -517,7 +535,8 @@ import { pageAsked, pager } from "/pager.js";
     sayNone();
     if (fresh) {
       $("found").textContent = grid.children.length
-        ? `${counted(grid.children.length, "model")}${data.more ? ", more below" : ""}` : "";
+        ? (data.more ? say("{models}, more below", { models: counted(grid.children.length, "model") })
+          : counted(grid.children.length, "model")) : "";
     }
     drawTabs();
     sayFilters();
@@ -541,7 +560,7 @@ import { pageAsked, pager } from "/pager.js";
       instructions.checked = technic.checked = tested.checked = false;
       kind = tag = "";
       following = false;
-      history.replaceState(null, "", tests ? "/gallery?tests=1" : "/gallery");
+      history.replaceState(null, "", tests ? `${location.pathname}?tests=1` : location.pathname);
       paged.restart(1);
       return;
     }
@@ -593,11 +612,12 @@ import { pageAsked, pager } from "/pager.js";
     if (!ID.test(id)) return;
     if (!own) {
       const account = await import("/account.js");
-      if (!account.signedIn() && !(await account.askToSignIn("Sign in to like it: we email you a code, no password."))) return;
+      if (!account.signedIn() && !(await account.askToSignIn(say("Sign in to like it: we email you a code, no password.")))) return;
       own = account;
     }
     const was = button.getAttribute("aria-pressed") === "true";
-    const count = Number(button.querySelector(".n")?.textContent.replace(/,/g, "")) || 0;
+    // Its digits alone: 1,234 here is 1.234 in German and 1 234 in French.
+    const count = Number(button.querySelector(".n")?.textContent.replace(/\D/g, "")) || 0;
     // At once, then as the server counts it.
     drawLike(id, !was, Math.max(0, count + (was ? -1 : 1)));
     button.disabled = true;
@@ -609,7 +629,7 @@ import { pageAsked, pager } from "/pager.js";
       return;
     }
     drawLike(id, was, count);
-    toast(answer.body && answer.body.error ? String(answer.body.error) : "That did not work just now. Try again.");
+    toast(answer.body && answer.body.error ? say(String(answer.body.error)) : say("That did not work just now. Try again."));
   }
 
   feed.addEventListener("click", (event) => {

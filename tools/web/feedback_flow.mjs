@@ -45,7 +45,7 @@
 //      and their reports and files with them.
 //
 // Pictures in --out. It passes when it ends "feedback: all ok".
-import { clickStill, launch } from "./browser.mjs";
+import { clickStill, launch, typeInMenu } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -350,7 +350,7 @@ try {
         await press("app_menu");
         await menuOpen();
       }
-      await page.keyboard.type("Send", { delay: 120 });
+      await typeInMenu(page, "Send");
       await page.waitForTimeout(600);
       await page.keyboard.press("Enter");
       const up = await until(page, () => Boolean((window.brickworksControls || {}).feedback_words), null, 30000);

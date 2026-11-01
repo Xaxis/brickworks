@@ -438,6 +438,24 @@ for page in .vercel/output/static/*.html; do
   overrides="$overrides${overrides:+,}\"$name.html\": { \"path\": \"$name\", \"contentType\": \"text/html; charset=utf-8\" }"
 done
 echo "deploy: pages at /${pages//|/, /}"
+# The landing page and the download page in German, French and Spanish
+# (tools/site_lang.py): /de is de/index.html, /de/download de/download.html,
+# each .html address and a trailing slash redirected below. A folder of
+# the site with an index.html of its own is a language's.
+langs=""
+for home in .vercel/output/static/*/index.html; do
+  [ -e "$home" ] || continue
+  lang=$(basename "$(dirname "$home")")
+  langs="$langs${langs:+|}$lang"
+  for page in ".vercel/output/static/$lang"/*.html; do
+    name=$(basename "$page" .html)
+    where="$lang/$name"
+    [ "$name" = index ] && where="$lang"
+    overrides="$overrides,\"$lang/$name.html\": { \"path\": \"$where\", \"contentType\": \"text/html; charset=utf-8\" }"
+  done
+done
+[ -n "$langs" ] || { echo "deploy FAILED: tools/site.py wrote no language's pages (de/, fr/, es/)"; exit 1; }
+echo "deploy: the landing and download pages in /${langs//|/, /}"
 # The documentation (tools/docs_site.py, run by tools/site.py): /docs is
 # docs.html, a page like the others above, and each of its pages is
 # /docs/<name>, from docs/<name>.html, its .html address redirected below.
@@ -530,6 +548,9 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
 $docs_moved
     { "src": "/docs/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/docs/\$1" } },
+    { "src": "/($langs)/index([.]html)?/?", "status": 308, "headers": { "Location": "/\$1" } },
+    { "src": "/($langs)/([A-Za-z0-9_-]+)([.]html|/)", "status": 308, "headers": { "Location": "/\$1/\$2" } },
+    { "src": "/($langs)/", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/(app|$pages)/", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
     { "src": "/api/otp/canary", "dest": "/api/otp?op=canary" },

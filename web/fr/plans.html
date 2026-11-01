@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<!-- web/plans.html in Français, written by tools/site_lang.py from it and web/_lang/fr.json: change those and run it, never this. -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tarifs · Brickworks</title>
+<meta name="description" content="Brickworks est gratuit dans votre navigateur, avec l’IA de votre propre fournisseur, sans limite, et 25 modèles conservés avec votre compte. Pro, bientôt disponible à $8 par mois ou $80 par an, ajoute l’application de bureau et conserve tous vos modèles avec votre compte. Rien à payer pour l’instant.">
+<link rel="canonical" href="https://brickworks.diy/fr/plans">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/plans">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/plans">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/plans">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/plans">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/plans">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Tarifs · Brickworks">
+<meta property="og:description" content="Gratuit dans votre navigateur, l’IA sans limite. Pro arrive bientôt : l’application de bureau et tous vos modèles conservés avec votre compte, $8 par mois. Rien n’est payant pour l’instant.">
+<meta property="og:url" content="https://brickworks.diy/fr/plans">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+/* Only layout here; the plan's card, its ticks, the table and the
+   callouts are site.css's (the landing kit). */
+.plans-head { padding: var(--page-top) 0 var(--s-7); text-align: center; }
+.plans-head h1 { max-width: 18ch; margin-inline: auto; }
+.plans-head .lede { margin: 0 auto var(--s-6); max-width: 64ch; }
+/* Free and Pro side by side from 900 px, their rows shared (a subgrid)
+   so names, prices, buttons and lists line up whatever each says; one
+   under another below. */
+.plans .narrow { width: min(100% - 32px, 980px); }
+.tiers { display: grid; gap: var(--s-4); }
+@media (width >= 900px) {
+	.tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(6, auto); row-gap: 0; }
+	.tiers .tier { display: grid; grid-row: span 6; grid-template-rows: subgrid; align-content: start; }
+}
+.tier .ticks { margin-top: var(--s-1); }
+.after-tiers { margin-top: var(--s-5); }
+.after-tiers .callout { margin: 0; }
+.plans .section-head { margin-bottom: var(--s-5); }
+.plans .what { max-width: 75ch; color: var(--ink-soft); }
+/* Accounts that exist, and education: side by side from 900 px. */
+.asides { display: grid; gap: var(--s-4); }
+@media (width >= 900px) { .asides { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.asides h2 { margin-bottom: var(--s-2); }
+.asides p { margin: 0; color: var(--ink-soft); }
+.keeps { margin-top: var(--s-7); }
+.keep { margin: 0; padding-left: 20px; color: var(--ink-soft); max-width: 75ch; }
+.keep li { margin: 0 0 10px; }
+.keep b { color: var(--ink); font-weight: 620; }
+dialog .done .actions { margin-top: var(--s-4); }
+</style>
+<script src="/follow.js" type="module"></script>
+<script src="/plans.js" type="module"></script>
+<script type="application/json" id="site-words">{", a graphics driver with Vulkan or OpenGL 3.3": ", un pilote graphique avec Vulkan ou OpenGL 3.3", ", and {size} of disk": " et {size} d’espace disque", ", open until {day}. Enter a model of yours, or vote.": ", ouvert jusqu’au {day}. Proposez l’un de vos modèles, ou votez.", ", opens on {day}.": ", ouvre le {day}.", "3D model": "Modèle 3D", "A Bitcoin wallet, email, Google or GitHub. Brickworks gets an id for you, not your address.": "Un portefeuille Bitcoin, un e-mail, Google ou GitHub. Brickworks reçoit un identifiant pour vous, pas votre adresse.", "A lot of people are signing in just now. Try again in a minute.": "Beaucoup de personnes se connectent en ce moment. Réessayez dans une minute.", "Account": "Compte", "Accounts are not configured here.": "Les comptes ne sont pas configurés ici.", "Also create my orangecheck account": "Créer aussi mon compte orangecheck", "An orangecheck account is made only when you tick the box for it.": "Un compte orangecheck n’est créé que si vous cochez la case prévue.", "Animals and nature": "Animaux et nature", "Any": "Tous", "Any year in the decade": "Toutes les années de la décennie", "Apple silicon and Intel": "Apple silicon et Intel", "Architecture": "Architecture", "Art and mosaics": "Art et mosaïques", "Assistant": "Assistant", "Best match": "Pertinence", "Beta hub": "Espace bêta", "Brickworks asks everyone this once. The date itself is not kept.": "Brickworks pose cette question une fois à chacun. La date elle-même n’est pas conservée.", "Brickworks cannot sign anyone in just now.": "Brickworks ne peut connecter personne pour le moment.", "Brickworks could not finish the sign-in just now. Try again in a minute.": "Brickworks n’a pas pu terminer la connexion pour le moment. Réessayez dans une minute.", "Brickworks could not link orangecheck just now. Try again in a minute.": "Brickworks n’a pas pu lier orangecheck pour le moment. Réessayez dans une minute.", "Brickworks could not read your account just now. Try again in a minute.": "Brickworks n’a pas pu lire votre compte pour le moment. Réessayez dans une minute.", "Brickworks could not start a sign-in just now. Try again in a minute.": "Brickworks n’a pas pu lancer la connexion pour le moment. Réessayez dans une minute.", "Brickworks could not unlink orangecheck just now. Try again in a minute.": "Brickworks n’a pas pu dissocier orangecheck pour le moment. Réessayez dans une minute.", "Brickworks takes orangecheck accounts backed by bitcoin, and this one is not yet.": "Brickworks accepte les comptes orangecheck adossés à du bitcoin, et celui-ci ne l’est pas encore.", "Built in 3D first": "Avec modèle 3D d’abord", "By name": "Par nom", "Carry on": "Continuer", "Castles and fantasy": "Châteaux et fantastique", "Choose Pro.": "Choisissez Pro.", "Choose monthly or yearly.": "Choisissez mensuel ou annuel.", "Choose the month you were born in.": "Choisissez votre mois de naissance.", "Chosen by Brickworks": "Choisi par Brickworks", "Clear all": "Tout effacer", "Confirm it is you first, with a code we email you.": "Confirmez d’abord que c’est bien vous, avec un code que nous vous envoyons par e-mail.", "Copied": "Copié", "Copy": "Copier", "Could not send a code just now ({status}).": "Impossible d’envoyer un code pour le moment ({status}).", "Could not sign in just now ({status}). Try again.": "Impossible de se connecter pour le moment ({status}). Réessayez.", "Designed with the assistant, {how}": "Conçu avec l’assistant, {how}", "Done: that address is not on the list for any plan.": "C’est fait : cette adresse ne figure sur la liste d’aucune offre.", "Download for {system}": "Télécharger pour {system}", "Email": "E-mail", "Email is not configured here.": "L’e-mail n’est pas configuré ici.", "Email me a code": "M’envoyer un code par e-mail", "Every part of these is in your collection of {parts}: the most built and remixed first.": "Toutes les pièces de ces modèles sont dans votre collection de {parts} : les plus construits et remixés d’abord.", "Featured today": "À la une", "Fewest parts": "Le moins de pièces", "Figures and characters": "Figurines et personnages", "Filters": "Filtres", "Filters, {n} on": "Filtres, actifs : {n}", "First launch: drag it into Applications.": "Premier lancement : glissez-la dans Applications.", "First launch: extract the zip first.": "Premier lancement : décompressez d’abord le zip.", "First launch: extract the zip, then allow it once.": "Premier lancement : décompressez le zip, puis autorisez-la une fois.", "First launch: let the AppImage run as a program.": "Premier lancement : autorisez l’AppImage à s’exécuter comme un programme.", "First launch: macOS asks you to allow it once.": "Premier lancement : macOS vous demande une fois de l’autoriser.", "Hand-built": "À la main", "Has instructions": "Avec instructions", "In PowerShell, this checks the file is the one published. It should print True.": "Dans PowerShell, ceci vérifie que le fichier est bien celui publié. Il doit afficher True.", "In Terminal, this checks the file is the one published. It should print OK.": "Dans Terminal, ceci vérifie que le fichier est bien celui publié. Il doit afficher OK.", "In a terminal, this checks each file is the one published. It should print OK.": "Dans un terminal, ceci vérifie que chaque fichier est bien celui publié. Il doit afficher OK.", "Inside the theme": "Sous-thème", "It stays with orangecheck until you claim it at ochk.app. Then you can use it on other sites, or delete it.": "Il reste chez orangecheck jusqu’à ce que vous le récupériez sur ochk.app. Vous pourrez alors l’utiliser sur d’autres sites, ou le supprimer.", "LDraw has a 3D model of it, to build in Brickworks": "LDraw en a un modèle 3D, à construire dans Brickworks", "LDraw library": "Set LDraw", "Large, 1,000 parts or more": "Grand, 1 000 pièces ou plus", "Made from a 3D model with Brickify, {how}": "Fait à partir d’un modèle 3D avec Brickify, {how}", "Making an orangecheck account is not set up here.": "La création d’un compte orangecheck n’est pas configurée ici.", "Mechanisms": "Mécanismes", "Medium, 200 to 999 parts": "Moyen, de 200 à 999 pièces", "Menu": "Menu", "Menu and your account": "Menu et votre compte", "Menu and your account, {n} new": "Menu et votre compte, {n} nouveaux", "Minifigures": "Minifigurines", "Modelled by {name}": "Modélisé par {name}", "Month": "Mois", "Most built": "Les plus construits", "Most liked": "Les plus aimés", "Most parts": "Le plus de pièces", "Most remixed": "Les plus remixés", "Most viewed": "Les plus vus", "Moves:": "Bouge :", "Needs 64-bit Linux on an x86 PC": "Nécessite Linux 64 bits sur un PC x86", "Needs 64-bit Linux on an x86 PC with glibc {glibc} or newer": "Nécessite Linux 64 bits sur un PC x86 avec glibc {glibc} ou plus récent", "Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3": "Nécessite Windows 10 ou 11 64 bits, un pilote graphique avec Vulkan, Direct3D 12 ou OpenGL 3.3", "Needs macOS on Apple silicon or Intel": "Nécessite macOS sur Apple silicon ou Intel", "Needs macOS {arm} or later on Apple silicon, {intel} or later on Intel": "Nécessite macOS {arm} ou ultérieur sur Apple silicon, {intel} ou ultérieur sur Intel", "New in {version}": "Nouveautés de la {version}", "Newest": "Plus récents", "Newest sets": "Sets les plus récents", "Next": "Suivant", "No picture": "Pas d’image", "No set has every word you typed. The nearest: {sets}": "Aucun set ne contient tous les mots tapés. Les plus proches : {sets}", "Nobody you follow has listed a model yet. Follow a designer from their page or from beside one of their models, and what they list comes here.": "Aucune des personnes que vous suivez n’a encore publié de modèle. Suivez un créateur depuis sa page ou depuis l’un de ses modèles, et ce qu’il publie arrivera ici.", "Not now": "Pas maintenant", "Nothing in the gallery is all in your collection of {parts} yet. Parts I own, in Filters, shows what is closest.": "Aucun modèle de la galerie n’est encore entièrement dans votre collection de {parts}. Pièces que je possède, dans Filtres, montre ce qui s’en rapproche le plus.", "Nothing more": "Rien de plus", "Nothing was built or remixed here {span} yet. A model joins Top when somebody builds it to its last step, remixes it, or it is Tested.": "Rien n’a encore été construit ni remixé ici {span}. Un modèle entre dans le Top quand quelqu’un le construit jusqu’à sa dernière étape, le remixe, ou qu’il est Testé.", "Notifications": "Notifications", "Oldest sets": "Sets les plus anciens", "One question first": "D’abord une question", "Only with a 3D model": "Seulement avec un modèle 3D", "Open it and drag what moves, as it was built": "Ouvrez-le et faites bouger ce qui bouge, tel qu’il a été construit", "Open it and play it:": "Ouvrez-le pour la jouer :", "Open it and play them:": "Ouvrez-le pour les jouer :", "Other systems: ": "Autres systèmes : ", "Page {n}": "Page {n}", "Pages of {noun}": "Pages de {noun}", "Parts I own": "Pièces que je possède", "Previous": "Précédent", "Released {date}": "Publiée le {date}", "Retry": "Réessayer", "Robots and machines": "Robots et machines", "Saved": "Enregistrés", "See Pro": "Voir Pro", "See Top": "Voir le Top", "See all time": "Voir le Top de tous les temps", "Selected": "Sélectionné", "Send feedback": "Envoyer un avis", "Sending…": "Envoi…", "Settings": "Réglages", "Show earlier": "Afficher les précédents", "Show more": "Afficher plus", "Showing sets for ": "Résultats pour ", "Showing {noun} {range}": "Affichage : {noun} {range}", "Showing {range} of {total} {noun}": "Affichage de {range} sur {total} {noun}", "Sign in": "Se connecter", "Sign in again to apply to the beta.": "Reconnectez-vous pour postuler à la bêta.", "Sign in again with any address to start a new one.": "Reconnectez-vous avec n’importe quelle adresse pour en commencer un nouveau.", "Sign in to Brickworks": "Se connecter à Brickworks", "Sign in to add a photo of your build: we email you a code, no password.": "Connectez-vous pour ajouter une photo de votre construction : nous vous envoyons un code par e-mail, sans mot de passe.", "Sign in to add your comment: we email you a code, no password. What you wrote is kept.": "Connectez-vous pour ajouter votre commentaire : nous vous envoyons un code par e-mail, sans mot de passe. Ce que vous avez écrit est conservé.", "Sign in to add your reply: we email you a code, no password. What you wrote is kept.": "Connectez-vous pour ajouter votre réponse : nous vous envoyons un code par e-mail, sans mot de passe. Ce que vous avez écrit est conservé.", "Sign in to apply to the Brickworks beta.": "Connectez-vous pour postuler à la bêta de Brickworks.", "Sign in to download the desktop app.": "Connectez-vous pour télécharger l’app de bureau.", "Sign in to follow collections: we email you a code, no password.": "Connectez-vous pour suivre des collections : nous vous envoyons un code par e-mail, sans mot de passe.", "Sign in to follow people: we email you a code, no password.": "Connectez-vous pour suivre des personnes : nous vous envoyons un code par e-mail, sans mot de passe.", "Sign in to like it: we email you a code, no password.": "Connectez-vous pour l’aimer : nous vous envoyons un code par e-mail, sans mot de passe.", "Sign in to make a collection: we email you a code.": "Connectez-vous pour créer une collection : nous vous envoyons un code par e-mail.", "Sign in to save it: we email you a code, no password.": "Connectez-vous pour l’enregistrer : nous vous envoyons un code par e-mail, sans mot de passe.", "Sign in to vote: we email you a code, no password.": "Connectez-vous pour voter : nous vous envoyons un code par e-mail, sans mot de passe.", "Sign in with orangecheck": "Se connecter avec orangecheck", "Sign in with the account your beta application was approved for.": "Connectez-vous avec le compte pour lequel votre candidature à la bêta a été acceptée.", "Sign in with your email address: we send you a code, no password.": "Connectez-vous avec votre adresse e-mail : nous vous envoyons un code, sans mot de passe.", "Sign in with your email or with orangecheck, and you go back to the app signed in.": "Connectez-vous avec votre e-mail ou avec orangecheck, et vous revenez à l’app connecté.", "Sign out": "Se déconnecter", "Sign-in didn't finish. Try again.": "La connexion n’a pas abouti. Réessayez.", "Signed in": "Connecté", "Signing in with orangecheck from the app is not offered here. Sign in with your email instead.": "La connexion avec orangecheck depuis l’app n’est pas proposée ici. Connectez-vous plutôt avec votre e-mail.", "Signing in with orangecheck from the app is not offered just now. Sign in with your email instead.": "La connexion avec orangecheck depuis l’app n’est pas proposée pour le moment. Connectez-vous plutôt avec votre e-mail.", "Signing in with orangecheck is not set up here.": "La connexion avec orangecheck n’est pas configurée ici.", "Signing in with orangecheck is unavailable here. Sign in with your email instead.": "La connexion avec orangecheck n’est pas disponible ici. Connectez-vous plutôt avec votre e-mail.", "Signing in with orangecheck, in its own window.": "Connexion avec orangecheck, dans sa propre fenêtre.", "Signing in…": "Connexion…", "Small, under 200 parts": "Petit, moins de 200 pièces", "Something else": "Autre chose", "Space": "Espace", "Stands at every step · every step reachable · every part made in its colour · nothing loose": "Tient à chaque étape · chaque étape accessible · chaque pièce produite dans sa couleur · rien de lâche", "Stop filtering by the tag {tag}": "Ne plus filtrer par le tag {tag}", "Stop filtering by {what}: {words}": "Ne plus filtrer par {what} : {words}", "Stop filtering by {words}": "Ne plus filtrer par {words}", "Stop ordering by {words}": "Ne plus trier par {words}", "Technic or mechanism": "Technic ou mécanisme", "Tell Brickworks what you own (in the app, Build › My collection…) and this shows what in the gallery you can build with it.": "Indiquez à Brickworks ce que vous possédez (dans l’application, Construire › Ma collection…) et vous verrez ici quels modèles de la galerie vous pouvez construire avec.", "Tested": "Testé", "Tested only": "Testés uniquement", "Thank you": "Merci", "Thanks. We will write to you once, when it opens, and not before.": "Merci. Nous vous écrirons une fois, à son ouverture, et pas avant.", "That address takes no email. Sign in with orangecheck instead.": "Cette adresse ne reçoit pas d’e-mail. Connectez-vous plutôt avec orangecheck.", "That code is wrong or has expired. Check it, or ask for a new one.": "Ce code est incorrect ou a expiré. Vérifiez-le ou demandez-en un nouveau.", "That did not go just now. Try again in a minute.": "L’envoi n’a pas abouti. Réessayez dans une minute.", "That did not go: no connection. Try again in a minute.": "L’envoi a échoué : pas de connexion. Réessayez dans une minute.", "That did not work just now. Try again.": "Cela n’a pas fonctionné. Réessayez.", "That is not an email address.": "Ce n’est pas une adresse e-mail.", "That month has not come yet.": "Ce mois n’est pas encore arrivé.", "That orangecheck account already signs in to another Brickworks account.": "Ce compte orangecheck se connecte déjà à un autre compte Brickworks.", "That orangecheck sign-in was ended. Sign in again.": "Cette connexion orangecheck a été fermée. Reconnectez-vous.", "That page did not load just now.": "Cette page ne s’est pas chargée.", "That page did not load just now. Retry is where Show more was.": "Cette page ne s’est pas chargée. Réessayer se trouve là où était Afficher plus.", "That sign-in could never be ended from orangecheck, so Brickworks does not take it. Try again.": "Cette connexion ne pourrait jamais être fermée depuis orangecheck, Brickworks ne l’accepte donc pas. Réessayez.", "That sign-in ran out, was used already, or was not for Brickworks. Sign in with orangecheck again.": "Cette connexion a expiré, a déjà servi ou n’était pas pour Brickworks. Reconnectez-vous avec orangecheck.", "That sign-in was not for Brickworks, or it has run out. Try again.": "Cette connexion n’était pas pour Brickworks, ou elle a expiré. Réessayez.", "That sign-in was not one Brickworks can read. Try again.": "Brickworks ne peut pas lire cette connexion. Réessayez.", "That sign-in was used already. Sign in with orangecheck again.": "Cette connexion a déjà servi. Reconnectez-vous avec orangecheck.", "The code sent to {address}": "Le code envoyé à {address}", "The download did not start just now. Try again in a minute.": "Le téléchargement n’a pas démarré. Réessayez dans une minute.", "The next challenge: ": "Le prochain défi : ", "The note is a line of words.": "La note tient en une ligne de texte.", "The orangecheck sign-in could not be loaded. Check your connection and try again.": "La connexion avec orangecheck n’a pas pu être chargée. Vérifiez votre connexion et réessayez.", "The sign-in did not come through from orangecheck. Try again.": "La connexion n’est pas parvenue d’orangecheck. Réessayez.", "The sign-in window closed before you finished.": "La fenêtre de connexion s’est fermée avant la fin.", "The {kind}:": "Le fichier {kind} :", "This account has orangecheck linked already. Unlink it first.": "orangecheck est déjà lié à ce compte. Dissociez-le d’abord.", "This account signs in only with orangecheck, so it keeps it.": "Ce compte ne se connecte qu’avec orangecheck : il le garde donc.", "This account signs in with orangecheck already.": "Ce compte se connecte déjà avec orangecheck.", "This month": "Ce mois-ci", "This month’s challenge: ": "Le défi du mois : ", "This orangecheck account was merged from two that each have a Brickworks account, so Brickworks cannot tell which one is yours. If one has your email, sign in with it and link orangecheck in Settings.": "Ce compte orangecheck a été fusionné à partir de deux comptes ayant chacun un compte Brickworks : Brickworks ne peut donc pas savoir lequel est le vôtre. Si l’un a votre e-mail, connectez-vous avec lui et liez orangecheck dans les Réglages.", "This week": "Cette semaine", "Tick the box as you sign in with a code we email you.": "Cochez la case en vous connectant avec un code que nous vous envoyons par e-mail.", "Too many codes asked for. Wait a few minutes and try again.": "Trop de codes demandés. Attendez quelques minutes et réessayez.", "Too many sign-ins tried from here. Wait a few minutes and try again.": "Trop de connexions tentées depuis cet endroit. Attendez quelques minutes et réessayez.", "Too many tries just now. Wait a few minutes and try again.": "Trop de tentatives pour le moment. Attendez quelques minutes et réessayez.", "Top builds": "Meilleures créations", "Top builds: a build finished counts {builds}, a remix {remixes} and the Tested mark {tested}. Views count for nothing.": "Meilleures créations : une construction achevée compte {builds}, un remix {remixes} et la marque « Testé » {tested}. Les vues ne comptent pas.", "Town and buildings": "Ville et bâtiments", "Type the year you were born, as four digits.": "Saisissez votre année de naissance, en quatre chiffres.", "Vehicles": "Véhicules", "Version {version}": "Version {version}", "We could not send the email just now. Try again in a minute.": "Nous n’avons pas pu envoyer l’e-mail pour le moment. Réessayez dans une minute.", "We could not start a sign-in just now. Try again in a minute.": "Nous n’avons pas pu lancer la connexion pour le moment. Réessayez dans une minute.", "Week’s pick": "Sélection", "When were you born?": "Quelle est votre date de naissance ?", "Windows 10 and 11": "Windows 10 et 11", "With minifigures": "Avec minifigurines", "With or without": "Avec ou sans", "With the assistant": "Avec l’assistant", "Without": "Sans", "Won “{title}”, by hand": "A gagné « {title} », à la main", "Won “{title}”, with the assistant": "A gagné « {title} », avec l’assistant", "Year": "Année", "You can build here, keep your models and share them by link with anyone you choose. The gallery, a public profile and a name shown on a link are for people 13 and over, so they are not open on this account.": "Vous pouvez construire ici, garder vos modèles et les partager par lien avec qui vous voulez. La galerie, un profil public et un nom affiché sur un lien sont réservés aux personnes de 13 ans et plus : ils ne sont donc pas ouverts à ce compte.", "You have every part": "Vous avez toutes les pièces", "You have none of its parts": "Vous n’avez aucune de ses pièces", "You have {have} of its {pieces} parts": "Vous avez {have} de ses {pieces} pièces", "Your Brickworks account changed just now. Sign in with orangecheck again.": "Votre compte Brickworks vient de changer. Reconnectez-vous avec orangecheck.", "Your account": "Votre compte", "Your account, {n} new": "Votre compte, {n} nouveaux", "Your browser blocked the sign-in window. Allow pop-ups for this site, then try again.": "Votre navigateur a bloqué la fenêtre de connexion. Autorisez les fenêtres pop-up pour ce site, puis réessayez.", "Your feed": "Votre fil", "Your profile": "Votre profil", "actuator": "vérin", "and {n} more": "et {n} de plus", "as its designer tagged it": "comme son créateur l’a indiqué", "as the app said when it was published": "comme l’app l’a indiqué à la publication", "boom": "flèche", "build finished": "construction achevée", "builds finished": "constructions achevées", "built": "construit", "built {times} this week": "construit {times} cette semaine", "comment": "commentaire", "comments": "commentaires", "doors": "portes", "gears": "engrenages", "how it was made": "mode de création", "just now": "à l’instant", "lately": "ces derniers temps", "like": "j’aime", "likes": "j’aime", "model": "modèle", "models": "modèles", "new this week, and Tested": "nouveau cette semaine, et Testé", "once": "une fois", "orangecheck could not be asked just now. Sign in with orangecheck again in a minute, or with your email.": "orangecheck n’a pas pu être joint pour le moment. Reconnectez-vous avec orangecheck dans une minute, ou avec votre e-mail.", "orangecheck could not be asked just now. Try again in a minute, or sign in with your email.": "orangecheck n’a pas pu être joint pour le moment. Réessayez dans une minute, ou connectez-vous avec votre e-mail.", "orangecheck could not confirm the sign-in just now. Try again in a minute, or sign in with your email.": "orangecheck n’a pas pu confirmer la connexion pour le moment. Réessayez dans une minute, ou connectez-vous avec votre e-mail.", "orangecheck is not linked to this account.": "orangecheck n’est pas lié à ce compte.", "orangecheck was unlinked from that Brickworks account just now. Sign in with orangecheck again.": "orangecheck vient d’être dissocié de ce compte Brickworks. Reconnectez-vous avec orangecheck.", "part": "pièce", "parts": "pièces", "pneumatics": "pneumatique", "rack": "crémaillère", "remix": "remix", "remixed {times} this week": "remixé {times} cette semaine", "remixes": "remix", "set": "set", "sets": "sets", "size": "taille", "steering": "direction", "theme\u0004Activity Books": "Livres d'activités", "theme\u0004Activity Books with LEGO® Parts": "Livres d'activités avec pièces LEGO®", "theme\u0004Advent": "Avent", "theme\u0004Airlines": "Compagnies aériennes", "theme\u0004Airport": "Aéroport", "theme\u0004Arctic": "Arctique", "theme\u0004Audio and Visual Media": "Médias audio et vidéo", "theme\u0004Bag and Luggage Tags": "Étiquettes de sac et de bagage", "theme\u0004Bags, Totes, & Luggage": "Sacs, cabas et bagages", "theme\u0004Basic Set": "Sets de base", "theme\u0004Basketball": "Basket-ball", "theme\u0004Boat": "Bateaux", "theme\u0004Books": "Livres", "theme\u0004Building": "Bâtiments", "theme\u0004Building Set with People": "Boîte de construction avec personnages", "theme\u0004Bulk Bricks": "Briques en vrac", "theme\u0004Cargo": "Fret", "theme\u0004Chinese (Lunar) New Year": "Nouvel An lunaire", "theme\u0004Chinese Traditional Festivals": "Fêtes traditionnelles chinoises", "theme\u0004Christmas": "Noël", "theme\u0004City Center": "Centre-ville", "theme\u0004Clocks and Watches": "Horloges et montres", "theme\u0004Clothing & Footwear": "Vêtements et chaussures", "theme\u0004Coast Guard": "Garde-côtes", "theme\u0004Collectible Minifigures": "Minifigurines à collectionner", "theme\u0004Construction": "Chantier", "theme\u0004DFB Minifigures": "Minifigurines DFB", "theme\u0004Database Sets": "Sets de la base de données", "theme\u0004Desert": "Désert", "theme\u0004Designer Sets": "Sets de designer", "theme\u0004Dinosaurs": "Dinosaures", "theme\u0004Divers": "Plongeurs", "theme\u0004Dolls": "Poupées", "theme\u0004Easter": "Pâques", "theme\u0004Educational and Dacta": "Éducation et Dacta", "theme\u0004Farm": "Ferme", "theme\u0004Fire": "Pompiers", "theme\u0004Games": "Jeux", "theme\u0004Gas Station": "Station-service", "theme\u0004Gear": "Produits dérivés", "theme\u0004Gears": "Engrenages", "theme\u0004HO 1:87 Vehicles": "Véhicules HO 1:87", "theme\u0004Harbor": "Port", "theme\u0004Heroes": "Héros", "theme\u0004Hobby Sets": "Sets Hobby", "theme\u0004Hospital": "Hôpital", "theme\u0004Houseware": "Articles ménagers", "theme\u0004Ideas Books": "Livres d'idées", "theme\u0004Jumbo Bricks": "Briques géantes", "theme\u0004Key Chain": "Porte-clés", "theme\u0004LEGOLAND® Parks": "Parcs LEGOLAND®", "theme\u0004LEGO® Brand Store": "Magasins LEGO®", "theme\u0004LEGO® Exclusive": "Sets LEGO® exclusifs", "theme\u0004Learning": "Apprentissage", "theme\u0004Learning at Home": "Apprendre à la maison", "theme\u0004Magnets": "Aimants", "theme\u0004Mars Exploration": "Exploration de Mars", "theme\u0004Modular Buildings": "Bâtiments modulaires", "theme\u0004Monthly Mini Model Build": "Mini-modèle du mois", "theme\u0004Mosaic": "Mosaïque", "theme\u0004Non-fiction Books": "Documentaires", "theme\u0004Off-Road": "Tout-terrain", "theme\u0004Other": "Autres", "theme\u0004Pick A Model": "Modèle au choix", "theme\u0004Playsets": "Sets de jeu", "theme\u0004Plush Toys": "Peluches", "theme\u0004Posters and Art Prints": "Affiches et reproductions d'art", "theme\u0004Promotional": "Sets promotionnels", "theme\u0004RC Train": "Train RC", "theme\u0004Race": "Course", "theme\u0004Rattles": "Hochets", "theme\u0004Role Play Toys and Costumes": "Jouets d'imitation et déguisements", "theme\u0004Seasonal": "Sets saisonniers", "theme\u0004Series 1 Minifigures": "Minifigurines série 1", "theme\u0004Series 10 Minifigures": "Minifigurines série 10", "theme\u0004Series 11 Minifigures": "Minifigurines série 11", "theme\u0004Series 12 Minifigures": "Minifigurines série 12", "theme\u0004Series 13 Minifigures": "Minifigurines série 13", "theme\u0004Series 14 Minifigures": "Minifigurines série 14", "theme\u0004Series 15 Minifigures": "Minifigurines série 15", "theme\u0004Series 16 Minifigures": "Minifigurines série 16", "theme\u0004Series 17 Minifigures": "Minifigurines série 17", "theme\u0004Series 18 Minifigures": "Minifigurines série 18", "theme\u0004Series 19 Minifigures": "Minifigurines série 19", "theme\u0004Series 2 Minifigures": "Minifigurines série 2", "theme\u0004Series 20 Minifigures": "Minifigurines série 20", "theme\u0004Series 21 Minifigures": "Minifigurines série 21", "theme\u0004Series 22 Minifigures": "Minifigurines série 22", "theme\u0004Series 23 Minifigures": "Minifigurines série 23", "theme\u0004Series 24 Minifigures": "Minifigurines série 24", "theme\u0004Series 25 Minifigures": "Minifigurines série 25", "theme\u0004Series 26 Minifigures": "Minifigurines série 26", "theme\u0004Series 27 Minifigures": "Minifigurines série 27", "theme\u0004Series 28 Minifigures": "Minifigurines série 28", "theme\u0004Series 29 Minifigures": "Minifigurines série 29", "theme\u0004Series 3 Minifigures": "Minifigurines série 3", "theme\u0004Series 4 Minifigures": "Minifigurines série 4", "theme\u0004Series 5 Minifigures": "Minifigurines série 5", "theme\u0004Series 6 Minifigures": "Minifigurines série 6", "theme\u0004Series 7 Minifigures": "Minifigurines série 7", "theme\u0004Series 8 Minifigures": "Minifigurines série 8", "theme\u0004Series 9 Minifigures": "Minifigurines série 9", "theme\u0004Service Packs": "Packs de pièces de rechange", "theme\u0004Soccer": "Football", "theme\u0004Soft Bricks": "Briques souples", "theme\u0004Stationery and Office Supplies": "Papeterie et fournitures de bureau", "theme\u0004Storage": "Rangement", "theme\u0004Story Books": "Livres d'histoires", "theme\u0004Supplemental": "Sets complémentaires", "theme\u0004Tabletop Games and Puzzles": "Jeux de société et puzzles", "theme\u0004The Hobbit": "Le Hobbit", "theme\u0004The Hobbit and Lord of the Rings": "Le Hobbit et Le Seigneur des Anneaux", "theme\u0004The LEGO® Movie": "La Grande Aventure LEGO®", "theme\u0004The LEGO® Movie II": "La Grande Aventure LEGO® 2", "theme\u0004The Lord of the Rings": "Le Seigneur des Anneaux", "theme\u0004Traffic": "Circulation", "theme\u0004Train": "Trains", "theme\u0004VIP Add-On Packs": "Packs VIP supplémentaires", "theme\u0004Valentine": "Saint-Valentin", "theme\u0004Value Packs": "Packs économiques", "theme\u0004Vehicle": "Véhicules", "theme\u0004Video Games and Accessories": "Jeux vidéo et accessoires", "theme\u0004Villains": "Méchants", "this month": "ce mois-ci", "this week": "cette semaine", "turntable": "plateau tournant", "twice": "deux fois", "{done} in the past 30 days": "{done} ces 30 derniers jours", "{models}, more below": "{models}, d’autres plus bas", "{n} earlier {noun}": "{n} {noun} de plus, au-dessus", "{n} more {noun}": "{n} {noun} de plus", "{n} new": "{n} nouveaux", "{n} times": "{n} fois", "{sets} of yours has no parts list here, so what is in it is not counted.": "{sets} de votre collection n’a pas de liste de pièces ici : son contenu n’est donc pas compté.", "{sets} of yours have no parts list here, so what is in them is not counted.": "{sets} de votre collection n’ont pas de liste de pièces ici : leur contenu n’est donc pas compté.", "{sets} of {every}": "{sets} sur {every}"}</script>
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/fr"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Principal">
+			<a href="/fr/gallery">Galerie</a>
+			<a href="/fr/library">Bibliothèque</a>
+			<a href="/docs">Docs</a>
+			<a href="/fr/plans" aria-current="page">Tarifs</a>
+			<a class="cta" href="/app?lang=fr">Ouvrir l’application</a>
+			<a class="cta ghost" href="/profile" data-account>Se connecter</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<div class="menu-list">
+				<nav aria-label="Menu">
+					<a href="/fr/gallery">Galerie</a>
+					<a href="/fr/library">Bibliothèque</a>
+					<a href="/docs">Docs</a>
+					<a href="/fr/plans" aria-current="page">Tarifs</a>
+					<a href="/fr/download">Télécharger</a>
+					<a href="/profile" data-account>Se connecter</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Thème</span>
+					<div class="segmented" role="group" aria-label="Thème">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Système</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Clair</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Sombre</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main" class="plans">
+	<section class="plans-head halo" aria-labelledby="plans-h">
+		<div class="wrap">
+			<p class="eyebrow"><span data-when="soon">Tarifs · Pro arrive bientôt</span><span data-when="sale" hidden>Tarifs</span></p>
+			<h1 id="plans-h"><span data-when="soon">Gratuit dans votre navigateur. Pro arrive bientôt.</span><span data-when="sale" hidden>Gratuit dans votre navigateur. Pro sur votre ordinateur.</span></h1>
+			<p class="lede" data-when="soon">Brickworks est gratuit dans n’importe quel navigateur, avec l’IA de votre propre Claude, ChatGPT ou clé, sans limite, et 25 modèles conservés avec votre compte. Pro ajoute l’application de bureau et conserve chaque modèle que vous créez. Rien ici n’est payant pour l’instant : dites-nous que vous utiliseriez Pro, et nous vous écrirons une fois, à son ouverture.</p>
+			<p class="lede" data-when="sale" hidden>Brickworks est gratuit dans n’importe quel navigateur, avec l’IA de votre propre Claude, ChatGPT ou clé, sans limite, et 25 modèles conservés avec votre compte. Pro ajoute l’application de bureau et conserve chaque modèle que vous créez.</p>
+			<div class="segmented" role="group" aria-label="Facturation">
+				<button type="button" data-billing="month" aria-pressed="false">Mensuel</button>
+				<button type="button" data-billing="year" aria-pressed="true">Annuel <span class="badge accent">Deux mois offerts</span></button>
+			</div>
+		</div>
+	</section>
+
+	<div class="wrap narrow">
+		<div class="tiers">
+			<article class="tier" id="free" aria-labelledby="free-h">
+				<div class="name"><h2 id="free-h">Gratuit</h2></div>
+				<p>L’application web, sur n’importe quel ordinateur, tablette ou téléphone.</p>
+				<p class="price"><b>$0</b></p>
+				<a class="cta ghost" href="/app?lang=fr">Ouvrir l’application</a>
+				<p>Ce qui est inclus :</p>
+				<ul class="ticks">
+					<li>L’application web, dans n’importe quel navigateur, sans rien installer</li>
+					<li><b>L’IA sans limite</b>, avec votre propre Claude, ChatGPT ou clé API</li>
+					<li><b>25 modèles conservés avec votre compte</b> ; enregistrement sur votre appareil et export sans limite</li>
+					<li>Construction à la main sans limite</li>
+					<li>Toute la bibliothèque de pièces LDraw, et ses modèles officiels de vrais sets</li>
+					<li>La physique : s’il tient debout, et des articulations qui bougent</li>
+					<li>Des livrets à imprimer ou à enregistrer en PDF, des rendus et des exports</li>
+					<li>Trouver une pièce à partir d’une photo</li>
+					<li>Des listes de pièces pour Rebrickable et BrickLink</li>
+					<li>Publier dans la galerie, et les défis</li>
+					<li>Construire ensemble, en direct, via un lien</li>
+					<li>Chaque version d’un modèle que vous partagez</li>
+				</ul>
+			</article>
+
+			<article class="tier featured" id="pro" aria-labelledby="pro-h">
+				<div class="name"><h2 id="pro-h">Pro</h2><span class="pill new" data-when="soon">Bientôt</span></div>
+				<p>L’application de bureau, et tous vos modèles conservés avec votre compte.</p>
+				<p class="price"><span data-billed="year"><b data-amount="year">$80</b> par an</span><span data-billed="month" hidden><b data-amount="month">$8</b> par mois</span><small data-billed="year">$6,67 par mois, facturé à l’année : deux mois offerts</small><small data-billed="month" hidden>Facturé chaque mois. À l’année, deux mois sont offerts.</small></p>
+				<button class="cta" type="button" data-interest="pro" data-when="soon">Prévenez-moi quand ce sera prêt</button>
+				<a class="cta" id="pro-upgrade" href="/settings?upgrade=year#plan" data-when="sale" hidden>Passer à Pro</a>
+				<p><span data-when="soon">Tout ce qu’inclut l’offre Gratuit. Bientôt avec Pro :</span><span data-when="sale" hidden>Tout ce qu’inclut l’offre Gratuit, et :</span></p>
+				<ul class="ticks">
+					<li><b>L’application de bureau</b> pour Windows, macOS et Linux</li>
+					<li>Elle fonctionne hors ligne, avec toutes les pièces sur le disque, et gère l’IA comme l’application web, avec Claude Code en plus</li>
+					<li><b>Chaque version publiée pendant que vous payez vous reste acquise</b>, et n’est jamais verrouillée</li>
+					<li><b>Tous vos modèles conservés avec votre compte</b>, sans limite</li>
+					<li>À l’année, deux mois offerts</li>
+				</ul>
+			</article>
+		</div>
+		<div class="after-tiers">
+			<!-- Shown only while the beta is open (web/plans.js asks
+			     /api/plans?op=beta_spots); under the plans, out of the first
+			     screen, so its coming moves nothing in view. -->
+			<div class="callout accent" id="beta" hidden>
+				<p class="callout-title">La bêta : 30 jours de Pro, offerts</p>
+				<p class="what">Nous cherchons 100 testeurs pour utiliser Brickworks pour de vrai et nous dire honnêtement comment ça se passe. Chacun reçoit 30 jours de Pro : tous ses modèles conservés avec son compte, et l’application de bureau. Pas de carte bancaire, rien à résilier.</p>
+				<p><a href="/beta">Postuler à la bêta</a></p>
+			</div>
+		</div>
+	</div>
+
+	<section class="section" id="compare" aria-labelledby="compare-h">
+		<div class="wrap narrow">
+			<div class="section-head">
+				<div>
+					<h2 class="title" id="compare-h">Chaque ligne, côte à côte</h2>
+					<p>Pro ne retire rien à l’offre Gratuit. Il ajoute l’application de bureau et conserve tous vos modèles avec votre compte.</p>
+				</div>
+			</div>
+			<div class="table matrix" role="region" aria-labelledby="compare-h" tabindex="0">
+				<table>
+					<thead><tr><th scope="col"><span class="visually-hidden">Ce qui est inclus</span></th><th scope="col">Gratuit</th><th scope="col">Pro</th></tr></thead>
+					<tbody>
+						<tr class="group"><th scope="rowgroup" colspan="3">Où</th></tr>
+						<tr><th scope="row">L’application web, dans n’importe quel navigateur</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">L’application de bureau pour Windows, macOS et Linux</th><td><span class="hasnt"><span class="visually-hidden">Non</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">Fonctionne hors ligne, avec toutes les pièces sur le disque</th><td><span class="hasnt"><span class="visually-hidden">Non</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">Chaque version de bureau publiée pendant que vous payez, acquise pour de bon</th><td><span class="hasnt"><span class="visually-hidden">Non</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr class="group"><th scope="rowgroup" colspan="3">Conception</th></tr>
+						<tr><th scope="row">L’IA, avec votre propre Claude, ChatGPT ou clé API</th><td>Sans limite</td><td>Sans limite</td></tr>
+						<tr><th scope="row">Construction à la main</th><td>Sans limite</td><td>Sans limite</td></tr>
+						<tr><th scope="row">Un regard neuf sur chaque nouvelle conception IA</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">Toute la bibliothèque de pièces LDraw, et ses modèles de vrais sets</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">La physique : s’il tient debout, et des articulations qui bougent</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">Trouver une pièce à partir d’une photo</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr class="group"><th scope="rowgroup" colspan="3">Créer et partager</th></tr>
+						<tr><th scope="row">Des livrets à imprimer ou à enregistrer en PDF, des rendus et des exports</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">Des listes de pièces pour Rebrickable et BrickLink</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">Construire ensemble, en direct, via un lien</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">Publier dans la galerie, et les défis</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">Modèles conservés avec votre compte</th><td>25</td><td>Illimité</td></tr>
+						<tr><th scope="row">Enregistrement sur votre appareil, et export</th><td>Sans limite</td><td>Sans limite</td></tr>
+						<tr><th scope="row">Chaque version d’un modèle que vous partagez</th><td><span class="has"><span class="visually-hidden">Oui</span></span></td><td><span class="has"><span class="visually-hidden">Oui</span></span></td></tr>
+						<tr><th scope="row">Prix</th><td>$0</td><td>$8 par mois, ou $80 par an</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</section>
+
+	<section class="section" id="promises" aria-labelledby="keep-h">
+		<div class="wrap narrow">
+			<div class="asides">
+				<section class="card" id="had" aria-labelledby="had-h">
+					<h2 id="had-h">Vous avez un compte ? Vous gardez tout</h2>
+					<p>Chaque compte créé avant le 29 octobre 2026, date à laquelle cette page a changé, reçoit Pro, gratuitement et sans date de fin : l’application de bureau, toutes ses versions, et tous vos modèles conservés avec votre compte. Vous n’avez rien à faire : Pro sera sur votre compte dès son ouverture.</p>
+				</section>
+				<section class="card" id="edu" aria-labelledby="edu-h">
+					<h2 id="edu-h">Gratuit pour l’enseignement</h2>
+					<p>Élèves, étudiants et enseignants peuvent avoir Pro gratuitement, un an à la fois et de nouveau sur demande, avec une adresse e-mail scolaire ou un court formulaire dès l’ouverture de Pro ; pour un établissement, la même chose pour chaque enseignant. Vous enseignez ? Dites-le dans la ligne du formulaire.</p>
+				</section>
+			</div>
+			<section class="keeps" aria-labelledby="keep-h">
+				<h2 id="keep-h">Ce qui reste gratuit</h2>
+				<p class="what">Pro ajoute l’application de bureau et conserve tous vos modèles avec votre compte. Il ne retire rien à l’offre Gratuit, qui garde tout ceci :</p>
+				<ul class="keep">
+					<li><b>L’application web.</b> Dans n’importe quel navigateur, sur un ordinateur, une tablette ou un téléphone.</li>
+					<li><b>L’IA et la construction à la main, sans limite.</b> Apportez votre propre IA : Claude ou ChatGPT via le connecteur, Claude Code, ou votre propre clé API.</li>
+					<li><b>Tout ce que l’application fait d’autre aujourd’hui.</b> L’enregistrement sur votre appareil, 25 modèles conservés avec votre compte, Construire ensemble, les livrets et les PDF, les rendus, les exports, la recherche par photo, les listes de pièces, la publication, la galerie et les défis.</li>
+					<li><b>Vos modèles.</b> Rien n’est jamais supprimé ni verrouillé : avec n’importe quelle offre, ou sans offre, l’application ouvre, modifie et exporte tout ce que vous avez créé. Si plus de 25 sont conservés avec votre compte, vous les gardez tous ; un nouveau n’y va qu’une fois que vous repassez sous les 25.</li>
+					<li><b>Ce que vous avez téléchargé.</b> Chaque version de bureau que vous téléchargez continue de fonctionner. Jusqu’à l’ouverture de Pro, l’application de bureau est gratuite à télécharger.</li>
+				</ul>
+			</section>
+		</div>
+	</section>
+
+	<section class="section" id="questions" aria-labelledby="ask-h">
+		<div class="wrap narrow">
+			<div class="section-head"><div><h2 class="title" id="ask-h">Questions</h2></div></div>
+			<details class="qa" id="changed">
+				<summary>Cette page disait que l’application de bureau était gratuite. Qu’est-ce qui a changé ?</summary>
+				<div><p>Jusqu’au 29 octobre 2026, elle disait que l’offre Gratuit comprenait tout, application de bureau incluse. L’offre a changé : Gratuit, c’est l’application web, avec l’IA sans limite et 25 modèles conservés avec votre compte ; l’application de bureau et la conservation de tous vos modèles avec votre compte viennent avec Pro. Tous ceux qui avaient un compte avant cette date gardent les deux, gratuitement, sans date de fin. Rien de ce que chacun a aujourd’hui ne lui est retiré.</p></div>
+			</details>
+			<details class="qa" id="ai">
+				<summary>L’IA est-elle limitée avec l’offre Gratuit ?</summary>
+				<div><p>Non. L’IA n’a de limite avec aucune offre, car vous apportez la vôtre : Claude ou ChatGPT via le connecteur, Claude Code, ou votre propre clé API chez n’importe quel fournisseur. Brickworks ne la mesure jamais et ne paie jamais ses jetons.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Pourquoi Pro, alors ?</summary>
+				<div><p>Pour payer ce que Brickworks coûte à faire tourner et à développer : les serveurs sur lesquels tournent l’application et le connecteur, le stockage où sont conservés vos modèles, et une application de bureau construite et testée pour trois systèmes. L’IA elle-même tourne sur votre propre abonnement ou votre propre clé : Brickworks ne vend donc jamais d’utilisation de modèle et n’en prélève aucune part.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Puis-je payer maintenant ?</summary>
+				<div><p data-when="soon">Non. Pro n’est pas encore en vente, et rien ici ne demande de carte bancaire. À son ouverture, son prix, son renouvellement et la façon de le résilier seront indiqués ici et dans les <a href="/terms#paid-plans">conditions</a> avant que vous ne payiez.</p>
+					<p data-when="sale" hidden>Oui : choisissez Mensuel ou Annuel, puis Passer à Pro. Avant que vous ne payiez, l’étape suivante indique le prix, le renouvellement jusqu’à résiliation et la façon de résilier, comme le font les <a href="/terms#paid-plans">conditions</a>.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Et si j’arrête de payer Pro ?</summary>
+				<div><p>Rien ne s’arrête. Chaque version de bureau publiée pendant que vous payiez reste à vous et continue de fonctionner, en ligne ou hors ligne, et votre compte repasse à l’offre Gratuit : l’application web, et 25 modèles conservés avec votre compte. Chaque modèle déjà conservé y reste ; un nouveau n’y va qu’une fois que vous êtes sous les 25. Rien de ce que vous avez créé n’est supprimé ni verrouillé.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Que conserve le formulaire ?</summary>
+				<div><p>Votre e-mail, mensuel ou annuel, et votre ligne, uniquement pour vous écrire une fois à l’ouverture de Pro. Pour retirer votre adresse, ouvrez le formulaire, tapez-la et choisissez <b>retirez-la</b>. Plus de détails sur la page <a href="/privacy#plans">Confidentialité</a>.</p></div>
+			</details>
+		</div>
+	</section>
+
+	<section class="section" aria-labelledby="start-h">
+		<div class="wrap narrow">
+			<div class="closing">
+				<h2 class="title" id="start-h">Commencez à construire, gratuitement</h2>
+				<p class="lede">Ouvrez Brickworks dans n’importe quel navigateur : rien à installer, et pas de carte bancaire.</p>
+				<div class="actions center">
+					<a class="cta big" href="/app?lang=fr">Ouvrir l’application <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta ghost big" href="/fr/download">Télécharger la version de bureau</a>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<dialog id="interest" aria-labelledby="interest-h">
+		<h2 id="interest-h">Prévenez-moi quand Pro sera prêt</h2>
+		<p>Un seul e-mail à l’ouverture de Pro. Rien n’est facturé, et rien d’autre n’est envoyé.</p>
+		<form id="interest-form" novalidate>
+			<label>E-mail<input id="interest-email" name="email" type="email" maxlength="320" autocomplete="email" required></label>
+			<label>Mensuel ou annuel<select id="interest-billing" name="billing">
+				<option value="yearly">Annuel, $80</option>
+				<option value="monthly">Mensuel, $8</option>
+			</select></label>
+			<label><span>Quelque chose à ajouter <small>facultatif, une ligne</small></span><input id="interest-note" name="note" maxlength="200"></label>
+			<div class="actions">
+				<button class="cta" type="submit" id="interest-send">Prévenez-moi</button>
+				<button class="cta ghost" type="button" data-close>Annuler</button>
+			</div>
+			<p class="said" id="interest-said" role="status"></p>
+			<p class="note">Vous avez changé d’avis ? Tapez l’adresse et <button class="link" type="button" id="interest-forget">retirez-la</button>.</p>
+		</form>
+		<div class="done" id="interest-done" hidden>
+			<p id="interest-thanks"></p>
+			<div class="actions"><button class="cta" type="button" data-close>Fermer</button></div>
+		</div>
+	</dialog>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/fr"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Une CAO pour les modèles LEGO®, avec un concepteur IA.</p>
+				<div class="theme-choice"><span aria-hidden="true">Thème</span>
+					<div class="segmented" role="group" aria-label="Thème">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Système</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Clair</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Sombre</button>
+					</div>
+				</div>
+				<label class="theme-choice"><span>Langue</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
+			</div>
+			<nav class="foot-links" aria-label="Plus">
+				<div>
+					<p class="foot-h" id="foot-product">Produit</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app?lang=fr">Ouvrir l’application</a></li>
+						<li><a href="/fr/download">Télécharger</a></li>
+						<li><a href="/fr/plans">Tarifs</a></li>
+						<li><a href="/changelog">Nouveautés</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Communauté</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/fr/gallery">Galerie</a></li>
+						<li><a href="/fr/library">Bibliothèque LDraw</a></li>
+						<li><a href="/challenge">Défi</a></li>
+						<li><a href="/collections">Collections</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Aide</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Docs</a></li>
+						<li><a href="/fr/faq">FAQ</a></li>
+						<li><a href="/fr/compare">Comparer</a></li>
+						<li><a href="/guidelines">Règles</a></li>
+						<li><a href="/feedback" data-feedback>Envoyer un avis</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Mentions légales</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Confidentialité</a></li>
+						<li><a href="/terms">Conditions</a></li>
+						<li><a href="/takedown">Retrait</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® est une marque du groupe de sociétés LEGO, qui ne parraine, n’autorise ni n’approuve ce site. LEGO® Art, Technic, la Minifigurine et les configurations de la brique et du tenon sont également des marques du Groupe LEGO. Pièces de la bibliothèque LDraw™ (CC BY). <a href="/terms#notices">Mentions</a></p>
+		</div>
+	</div>
+</footer>
+</body>
+</html>

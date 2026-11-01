@@ -39,10 +39,34 @@ export const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 })[c]);
 
+/// [words] in the page's language (web/theme.js brickworksLang: a page's
+/// copy in German, French or Spanish carries its words, tools/site_lang.py),
+/// each {name} in them filled from [values]. As written on a server's page.
+export function say(words, values = {}) {
+  const said = globalThis.brickworksLang ? globalThis.brickworksLang.say(words) : words;
+  return said.replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
+}
+
+/// A theme of the catalogue as the app's Library draws it, LEGO® and
+/// LEGOLAND® marked (tools/library_build.py with_marks), in the page's
+/// language: its words by its entry (locale/<code>.po, context "theme"), a
+/// product line's or a licence's name as it is. The entry is the theme's
+/// own, not a word's: Space the theme stays Space where Space the kind of
+/// model is Weltraum.
+export function themeSaid(name) {
+  const marked = String(name).replace(/\bLEGO\b(?!®| Group)/g, "LEGO®").replace(/\bLegoland\b|\bLEGOLAND\b(?!®)/g, "LEGOLAND®");
+  const key = `theme\u0004${marked}`;
+  const said = globalThis.brickworksLang ? globalThis.brickworksLang.say(key) : key;
+  return said === key ? marked : said;
+}
+
+/// [n] as the page's language writes a number: 1,234, 1.234 or 1 234.
+export const number = (n) => Number(n).toLocaleString(globalThis.brickworksLang?.locale || "en-US");
+
 /// "1 part", "1,234 parts".
 export function counted(n, one, many) {
   const value = Number(n) || 0;
-  return `${value.toLocaleString("en-US")} ${value === 1 ? one : many || `${one}s`}`;
+  return `${number(value)} ${say(value === 1 ? one : many || `${one}s`)}`;
 }
 
 /// Which of the eight avatar tiles a handle has (1-8): the same every time
@@ -101,7 +125,7 @@ export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pre
   return `<button type="button" class="icon-btn${small ? " small" : ""}${labelled ? " labelled" : ""}" aria-label="${escapeHtml(said)}"`
     + `${pressed === null ? "" : ` aria-pressed="${pressed ? "true" : "false"}"`}${attrs ? ` ${attrs}` : ""}>`
     + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(word)}</span>` : ""}`
-    + `${n ? `<span class="n" aria-hidden="true">${escapeHtml(n.toLocaleString("en-US"))}</span>` : ""}</button>`;
+    + `${n ? `<span class="n" aria-hidden="true">${escapeHtml(number(n))}</span>` : ""}</button>`;
 }
 
 /// What a person earned, as the row of pills under their numbers on their
@@ -217,7 +241,7 @@ function tallyHtml(icon, n, one, many) {
   if (!value) return "";
   const words = counted(value, one, many);
   return `<span class="tally" title="${escapeHtml(words)}">${iconHtml(icon)}`
-    + `<span class="n">${escapeHtml(value.toLocaleString("en-US"))}</span>`
+    + `<span class="n">${escapeHtml(number(value))}</span>`
     + `<span class="visually-hidden">${escapeHtml(words.slice(words.indexOf(" ")))}</span></span>`;
 }
 
@@ -226,9 +250,9 @@ export function ownedLine(owned) {
   if (!owned || owned.pieces === null || owned.pieces === undefined || !Number(owned.pieces)) return "";
   const have = Number(owned.have) || 0;
   const pieces = Number(owned.pieces);
-  if (have >= pieces) return "✓ You have every part";
-  if (have === 0) return "You have none of its parts";
-  return `You have ${have.toLocaleString("en-US")} of its ${pieces.toLocaleString("en-US")} parts · ${Math.floor((100 * have) / pieces)}%`;
+  if (have >= pieces) return `✓ ${say("You have every part")}`;
+  if (have === 0) return say("You have none of its parts");
+  return `${say("You have {have} of its {pieces} parts", { have: number(have), pieces: number(pieces) })} · ${Math.floor((100 * have) / pieces)}%`;
 }
 
 /// A model's motions as a card says them: "open the dome, extend the
@@ -237,7 +261,7 @@ export function ownedLine(owned) {
 /// movesWords says them so on its page).
 export function motionWords(names, most = 3) {
   const shown = names.slice(0, most).map((name) => (/^[A-Z][a-z]*\b/.test(name) ? name[0].toLowerCase() + name.slice(1) : name));
-  return shown.join(", ") + (names.length > most ? ` and ${names.length - most} more` : "");
+  return shown.join(", ") + (names.length > most ? ` ${say("and {n} more", { n: names.length - most })}` : "");
 }
 
 /// The small picture when there is one, a few KB, and the big one when
@@ -343,15 +367,15 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
   // Marked Tested: its newest version passed the four tests the app ran
   // as it was published (api/_tested.js), said on hover.
   if (model.tested === true) {
-    marks.push(`<span class="pill good tested" title="${escapeHtml(TESTED_SAYS)}">✓ Tested</span>`);
+    marks.push(`<span class="pill good tested" title="${escapeHtml(say(TESTED_SAYS))}">✓ ${escapeHtml(say("Tested"))}</span>`);
     data.push('data-tested="yes"');
   }
   const made = madeOf(model);
   if (made.way === "assistant") {
     const brickified = made.by === "brickify";
-    const how = made.said === "app" ? "as the app said when it was published" : "as its designer tagged it";
-    marks.push(`<span class="pill made" title="${brickified ? `Made from a 3D model with Brickify, ${how}`
-      : `Designed with the assistant, ${how}`}">${brickified ? "Brickify" : "Assistant"}</span>`);
+    const how = say(made.said === "app" ? "as the app said when it was published" : "as its designer tagged it");
+    marks.push(`<span class="pill made" title="${escapeHtml(brickified ? say("Made from a 3D model with Brickify, {how}", { how })
+      : say("Designed with the assistant, {how}", { how }))}">${brickified ? "Brickify" : escapeHtml(say("Assistant"))}</span>`);
     data.push('data-made="assistant"');
   }
   // A set of the LDraw library: its number, its theme and its year, each
@@ -359,7 +383,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
   const set = isSet(model) ? model.library : null;
   // A set of the catalogue LDraw has a 3D model of (sets364).
   if (set && set.model3d === true) {
-    marks.push('<span class="pill good model3d" title="LDraw has a 3D model of it, to build in Brickworks">3D</span>');
+    marks.push(`<span class="pill good model3d" title="${escapeHtml(say("LDraw has a 3D model of it, to build in Brickworks"))}">3D</span>`);
     data.push('data-model3d="yes"');
   }
   // Who made it: whoever modelled it, when that is not who shares it (the
@@ -371,7 +395,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
   const modeller = model.modelled_by && typeof model.modelled_by === "object" && typeof model.modelled_by.name === "string"
     ? model.modelled_by.name : "";
   const who = modeller
-    ? `<span class="who" data-modelled-by>${escapeHtml(`Modelled by ${modeller}`)}</span>`
+    ? `<span class="who" data-modelled-by>${escapeHtml(say("Modelled by {name}", { name: modeller }))}</span>`
     : by
     ? `<a class="who" href="/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle,
       picture: by.picture }, { size: "small" })}`
@@ -379,7 +403,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];
   if (set) {
-    const said = [set.set, set.theme, Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
+    const said = [set.set, set.theme && themeSaid(set.theme), Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
     if (said) lines.push(`<small class="set">${escapeHtml(said)}</small>`);
   }
   if (earned) {
@@ -402,7 +426,8 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
   // What it won in the monthly challenges (supabase/challenges.sql).
   const won = Array.isArray(model.won) ? model.won : [];
   for (const win of won) {
-    lines.push(`<small class="won">${escapeHtml(`Won “${String(win.title)}”${win.way === "assistant" ? ", with the assistant" : ", by hand"}`)}</small>`);
+    lines.push(`<small class="won">${escapeHtml(say(win.way === "assistant" ? "Won “{title}”, with the assistant" : "Won “{title}”, by hand",
+      { title: String(win.title) }))}</small>`);
   }
   if (won.length) data.push('data-won="yes"');
   // Something to play with: its own motions by name, read from its file
@@ -412,9 +437,9 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
   const moves = Array.isArray(model.moves) ? model.moves.filter((word) => typeof word === "string") : [];
   const motions = Array.isArray(model.motions) ? model.motions.filter((one) => typeof one === "string" && one) : [];
   if (motions.length || moves.length) {
-    const title = motions.length ? `Open it and play ${motions.length === 1 ? "it" : "them"}: ${motions.join(" · ")}`
-      : "Open it and drag what moves, as it was built";
-    lines.push(`<small class="moves" title="${escapeHtml(title)}">${escapeHtml(`Moves: ${motions.length ? motionWords(motions, 3) : moves.join(", ")}`)}</small>`);
+    const title = motions.length ? `${say(motions.length === 1 ? "Open it and play it:" : "Open it and play them:")} ${motions.join(" · ")}`
+      : say("Open it and drag what moves, as it was built");
+    lines.push(`<small class="moves" title="${escapeHtml(title)}">${escapeHtml(`${say("Moves:")} ${motions.length ? motionWords(motions, 3) : moves.map((word) => say(word)).join(", ")}`)}</small>`);
     data.push(`data-moves="${escapeHtml(moves.join(","))}"`);
     if (motions.length) data.push(`data-motions="${escapeHtml(motions.join("|"))}"`);
   }
@@ -433,7 +458,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
     + `<div class="frame${picture ? "" : " none"}">${picture
       ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" ${eager
         ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
-      : "No picture"}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}</div>`
+      : escapeHtml(say("No picture"))}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}</div>`
     + `<div class="words"><a class="open" href="${escapeHtml(set ? setPageOf(model, id) : `/m/${id}`)}"><b title="${name}">${name}</b></a>`
     + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span>`
     + `${tallies ? `<small class="acts">${tallies}</small>` : ""}</span>`

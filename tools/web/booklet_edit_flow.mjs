@@ -32,7 +32,7 @@
 // PANEL) say so.
 // Fails if any of that does not happen or a script error reaches a console.
 // Every result read off window.brickworksState; pictures in --out.
-import { clickStill, launch } from "./browser.mjs";
+import { clickStill, launch, typeInMenu } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -161,11 +161,11 @@ async function exportLdraw() {
     const download = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
     await page.mouse.click(file.x, file.y);
     await page.waitForTimeout(2500 + 2500 * n);
-    await page.keyboard.type("Export", { delay: 120 });
+    await typeInMenu(page, "Export");
     await page.waitForTimeout(800);
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(1500);
-    await page.keyboard.type("LDraw", { delay: 120 });
+    await typeInMenu(page, "LDraw");
     await page.waitForTimeout(800);
     await page.keyboard.press("Enter");
     const got = await download;

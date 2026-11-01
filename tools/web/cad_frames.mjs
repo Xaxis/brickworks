@@ -31,7 +31,7 @@
 // checks what a step shows, passed (docs/CADTASK.md, section 6).
 //   node tools/web/cad_frames.mjs --url=URL/app --bypass=X --gate --arrive=300 \
 //     --only=orbit,select_all,step --out=DIR vendor/omr/files/75969-1.mpd
-import { launch, openColumnFor } from "./browser.mjs";
+import { launch, openColumnFor, typeInMenu } from "./browser.mjs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 
@@ -268,7 +268,7 @@ for (const model of models) {
     const menu = await where("menu_build");
     await page.mouse.click(menu.x, menu.y);
     await page.waitForTimeout(800);
-    await page.keyboard.type("Motions", { delay: 120 });
+    await typeInMenu(page, "Motions");
     await page.waitForTimeout(400);
     await page.keyboard.press("Enter");
     let shown = false;

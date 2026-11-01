@@ -78,9 +78,17 @@ const PAGES = [
   { path: "/gallery", canonical: `${SITE}/gallery` },
   { path: "/changelog", canonical: `${SITE}/changelog` },
   { path: "/compare", canonical: `${SITE}/compare` },
+  { path: "/plans", canonical: `${SITE}/plans` },
+  { path: "/library", canonical: `${SITE}/library` },
   { path: "/faq", canonical: `${SITE}/faq` },
   { path: "/privacy", canonical: `${SITE}/privacy` },
   { path: "/takedown", canonical: `${SITE}/takedown` },
+  // The pages in each language (tools/site_lang.py PAGES).
+  ...["de", "fr", "es"].flatMap((code) => [
+    { path: `/${code}`, canonical: `${SITE}/${code}` },
+    ...["download", "plans", "faq", "compare", "gallery", "library"]
+      .map((where) => ({ path: `/${code}/${where}`, canonical: `${SITE}/${code}/${where}` })),
+  ]),
   { path: "/admin", private: true },
   { path: "/profile", private: true },
   { path: "/settings", private: true },
@@ -346,10 +354,20 @@ async function resolves(href, from) {
   if (!checked.has(key)) checked.set(key, (await get(key)).status);
   if (checked.get(key) !== 200) fail(`${from} links to ${key}, which answers ${checked.get(key)}`);
   if (url.hash && url.hash.length > 1) {
+    const id = url.hash.slice(1);
     const target = url.pathname === "/" ? pageHtml["/"] : (pageHtml[url.pathname] || (await get(url.pathname)).body);
-    if (!new RegExp(`id="${url.hash.slice(1)}"`).test(target || "")) fail(`${from} links to ${url.pathname}${url.hash}, and there is no such id`);
+    const made = MADE_BY[`${url.pathname}#${id}`];
+    const there = new RegExp(`id="${id}"`).test(target || "")
+      || (made && new RegExp(`\\.id = "${id}";`).test((await get(made)).body || ""));
+    if (!there) fail(`${from} links to ${url.pathname}${url.hash}, and there is no such id`);
   }
 }
+// Ids a page's own script makes once it runs, with the script, as deployed:
+// /settings is drawn for whoever is signed in, so its plan's row is not in
+// its HTML. Read in that script, an id renamed there still fails here.
+// /plans' Upgrade links to it, unchecked until its copies in each language
+// joined PAGES (rel-m240).
+const MADE_BY = { "/settings#plan": "/plan.js" };
 for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
   const html = pageHtml[page] || (await get(page)).body;
   const hrefs = [...html.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);

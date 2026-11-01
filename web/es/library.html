@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<!-- web/library.html in Español, written by tools/site_lang.py from it and web/_lang/es.json: change those and run it, never this. --><html lang="es">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Biblioteca · Todos los sets LEGO® y sus piezas, en Brickworks</title>
+<meta name="description" content="Todos los sets LEGO® que existen, cada uno con su lista de piezas completa dibujada por Brickworks: mira cuánto tienes de cada uno, abre sus piezas en Brickworks y construye los que el Official Model Repository de LDraw tiene en 3D.">
+<link rel="canonical" href="https://brickworks.diy/es/library">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/library">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/library">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/library">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/library">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/library">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Todos los sets LEGO®, en Brickworks">
+<meta property="og:description" content="Todos los sets LEGO® que existen, con su lista de piezas: los que LDraw ha modelado en 3D, para girarlos y construirlos en Brickworks.">
+<meta property="og:url" content="https://brickworks.diy/es/library">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="La marca de Brickworks, un cubo con una esquina recortada, y las palabras: un CAD completo para modelos LEGO®, junto a un renderizado de un castillo de piedra gris hecho de ladrillos.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Todos los sets LEGO®, en Brickworks">
+<meta name="twitter:description" content="Todos los sets LEGO® que existen, con su lista de piezas: los que LDraw ha modelado en 3D, para girarlos y construirlos en Brickworks.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+.listing { padding: 0 0 72px; }
+/* The head across the window, lit from above on its baseplate of studs. */
+.browse-band { padding: var(--s-6) 0 0; }
+/* The bar of filters stays under the header; what the keyboard reaches
+   is scrolled clear of both. */
+html { scroll-padding-top: calc(var(--head-h) + 72px); }
+
+/* The head, as the gallery's: the title and a line under it, the search
+   beside them (under 600 px the search beside the title, the line left
+   out, so the first card's picture is on the first screen). */
+.finder { margin: 0 0 var(--s-4); }
+.library-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
+.library-title { min-width: 0; }
+.library-head h1 { margin: 0; }
+.library-head .lede { margin: var(--s-2) 0 0; max-width: 64ch; color: var(--ink-soft); font-size: var(--t-lede); }
+.search { position: relative; flex: 1 1 320px; max-width: 440px; }
+.search input { width: 100%; padding-left: 40px; padding-right: 40px; }
+.search .icon { position: absolute; left: 12px; top: 12px; color: var(--ink-faint); pointer-events: none; }
+/* "/" puts the cursor in the search: said on the field until it is used. */
+.search .hint {
+	position: absolute; right: 10px; top: 11px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
+	border: 1px solid var(--line); border-radius: var(--r-1); background: var(--panel); color: var(--ink-faint);
+	font: inherit; font-size: var(--t-micro); line-height: 1; pointer-events: none;
+}
+.search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
+@media (width < 600px) {
+	.browse-band { padding-top: var(--s-4); }
+	.library-head .lede, .search .hint { display: none; }
+	.search { flex: 1 1 100%; max-width: none; }
+	.search input { padding-right: 12px; }
+}
+.library-bar { min-width: 0; border-bottom: 1px solid var(--line); }
+.library-bar .tabs { margin: 0; border-bottom: 0; }
+
+/* The bar of filters, as the gallery's: kept under the header as the list
+   scrolls, on the page's ground carried out to the window's edges (a
+   shadow, which nothing scrolls to), with the header's edge under it once
+   stuck (browse.js data-stuck). Its themes are a scroller (site.css)
+   that starts at Filters, not out in the gutter: inset. */
+.toolbar {
+	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
+	margin: 0 0 var(--s-3); padding: var(--s-2) 0;
+}
+.toolbar::before {
+	content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+	background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
+}
+.toolbar[data-stuck]::before { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line); clip-path: inset(0 -100vmax -1px); }
+.toolbar .pills.scroller { flex: 1; min-width: 0; }
+.filters { flex: none; }
+.filters summary .n {
+	display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
+	background: var(--accent); color: var(--on-accent); font-size: var(--t-micro); font-weight: 700;
+}
+.filters summary .n[hidden] { display: none; }
+.filters .sheet { width: min(340px, calc(100vw - 32px)); gap: var(--s-3); padding: var(--s-4); }
+.filters .sheet .actions { justify-content: space-between; }
+/* While a new question is asked, the cards it will replace step back. */
+[data-library="asking"] #models { opacity: 0.55; transition: opacity var(--motion) var(--ease); }
+
+.found-said { margin: 0 0 var(--s-3); }
+.listing .state { margin-top: var(--s-2); }
+/* The way to add yours, at the foot of the list: the kit's last offer (.closing). */
+.yours { padding: 0 0 var(--section); border-top: 0; }
+.yours h2 { margin: 0 0 var(--s-3); }
+.yours .actions { margin-top: var(--s-5); }
+</style>
+<script src="/follow.js" type="module"></script>
+<script type="application/json" id="site-words">{", a graphics driver with Vulkan or OpenGL 3.3": ", un controlador gráfico con Vulkan u OpenGL 3.3", ", and {size} of disk": " y {size} de disco", ", open until {day}. Enter a model of yours, or vote.": ", abierto hasta el {day}. Presenta un modelo tuyo o vota.", ", opens on {day}.": ", empieza el {day}.", "3D model": "Modelo 3D", "A Bitcoin wallet, email, Google or GitHub. Brickworks gets an id for you, not your address.": "Una cartera de Bitcoin, correo, Google o GitHub. Brickworks recibe un identificador tuyo, no tu dirección.", "A lot of people are signing in just now. Try again in a minute.": "Mucha gente está iniciando sesión ahora mismo. Vuelve a intentarlo en un minuto.", "Account": "Cuenta", "Accounts are not configured here.": "Aquí no hay cuentas configuradas.", "Also create my orangecheck account": "Crear también mi cuenta de orangecheck", "An orangecheck account is made only when you tick the box for it.": "Solo se crea una cuenta de orangecheck si marcas la casilla para ello.", "Animals and nature": "Animales y naturaleza", "Any": "Cualquiera", "Any year in the decade": "Cualquier año de la década", "Apple silicon and Intel": "Apple silicon e Intel", "Architecture": "Arquitectura", "Art and mosaics": "Arte y mosaicos", "Assistant": "Asistente", "Best match": "Mejor coincidencia", "Beta hub": "Zona beta", "Brickworks asks everyone this once. The date itself is not kept.": "Brickworks pregunta esto una vez a todo el mundo. La fecha en sí no se guarda.", "Brickworks cannot sign anyone in just now.": "Brickworks no puede iniciar la sesión de nadie ahora mismo.", "Brickworks could not finish the sign-in just now. Try again in a minute.": "Brickworks no ha podido terminar el inicio de sesión ahora mismo. Vuelve a intentarlo en un minuto.", "Brickworks could not link orangecheck just now. Try again in a minute.": "Brickworks no ha podido vincular orangecheck ahora mismo. Vuelve a intentarlo en un minuto.", "Brickworks could not read your account just now. Try again in a minute.": "Brickworks no ha podido leer tu cuenta ahora mismo. Vuelve a intentarlo en un minuto.", "Brickworks could not start a sign-in just now. Try again in a minute.": "Brickworks no ha podido iniciar la sesión ahora mismo. Vuelve a intentarlo en un minuto.", "Brickworks could not unlink orangecheck just now. Try again in a minute.": "Brickworks no ha podido desvincular orangecheck ahora mismo. Vuelve a intentarlo en un minuto.", "Brickworks takes orangecheck accounts backed by bitcoin, and this one is not yet.": "Brickworks acepta cuentas de orangecheck respaldadas por bitcoin, y esta aún no lo está.", "Built in 3D first": "Primero los construidos en 3D", "By name": "Por nombre", "Carry on": "Continuar", "Castles and fantasy": "Castillos y fantasía", "Choose Pro.": "Elige Pro.", "Choose monthly or yearly.": "Elige mensual o anual.", "Choose the month you were born in.": "Elige el mes en que naciste.", "Chosen by Brickworks": "Elegido por Brickworks", "Clear all": "Borrar todo", "Confirm it is you first, with a code we email you.": "Primero confirma que eres tú, con un código que te enviamos por correo.", "Copied": "Copiado", "Copy": "Copiar", "Could not send a code just now ({status}).": "No se ha podido enviar un código ahora mismo ({status}).", "Could not sign in just now ({status}). Try again.": "No se ha podido iniciar sesión ahora mismo ({status}). Vuelve a intentarlo.", "Designed with the assistant, {how}": "Diseñado con el asistente, {how}", "Done: that address is not on the list for any plan.": "Hecho: esa dirección no está en la lista de ningún plan.", "Download for {system}": "Descargar para {system}", "Email": "Correo", "Email is not configured here.": "El correo no está configurado aquí.", "Email me a code": "Envíame un código por correo", "Every part of these is in your collection of {parts}: the most built and remixed first.": "Todas las piezas de estos están en tu colección de {parts}: primero los más construidos y remezclados.", "Featured today": "Destacado hoy", "Fewest parts": "Menos piezas", "Figures and characters": "Figuras y personajes", "Filters": "Filtros", "Filters, {n} on": "Filtros activos: {n}", "First launch: drag it into Applications.": "Primer inicio: arrástrala a Aplicaciones.", "First launch: extract the zip first.": "Primer inicio: primero extrae el zip.", "First launch: extract the zip, then allow it once.": "Primer inicio: extrae el zip y después permítela una vez.", "First launch: let the AppImage run as a program.": "Primer inicio: deja que el AppImage se ejecute como programa.", "First launch: macOS asks you to allow it once.": "Primer inicio: macOS te pide permitirla una vez.", "Hand-built": "Hecho a mano", "Has instructions": "Con instrucciones", "In PowerShell, this checks the file is the one published. It should print True.": "En PowerShell, esto comprueba que el archivo es el publicado. Debería mostrar True.", "In Terminal, this checks the file is the one published. It should print OK.": "En Terminal, esto comprueba que el archivo es el publicado. Debería mostrar OK.", "In a terminal, this checks each file is the one published. It should print OK.": "En un terminal, esto comprueba que cada archivo es el publicado. Debería mostrar OK.", "Inside the theme": "Dentro del tema", "It stays with orangecheck until you claim it at ochk.app. Then you can use it on other sites, or delete it.": "Se queda en orangecheck hasta que la reclames en ochk.app. Entonces podrás usarla en otros sitios o eliminarla.", "LDraw has a 3D model of it, to build in Brickworks": "LDraw tiene un modelo 3D, para construir en Brickworks", "LDraw library": "Set LDraw", "Large, 1,000 parts or more": "Grande, 1000 piezas o más", "Made from a 3D model with Brickify, {how}": "Hecho a partir de un modelo 3D con Brickify, {how}", "Making an orangecheck account is not set up here.": "La creación de una cuenta de orangecheck no está configurada aquí.", "Mechanisms": "Mecanismos", "Medium, 200 to 999 parts": "Mediano, de 200 a 999 piezas", "Menu": "Menú", "Menu and your account": "Menú y tu cuenta", "Menu and your account, {n} new": "Menú y tu cuenta, {n} nuevos", "Minifigures": "Minifiguras", "Modelled by {name}": "Modelado por {name}", "Month": "Mes", "Most built": "Más construidos", "Most liked": "Más gustados", "Most parts": "Más piezas", "Most remixed": "Más remezclados", "Most viewed": "Más vistos", "Moves:": "Se mueve:", "Needs 64-bit Linux on an x86 PC": "Necesita Linux de 64 bits en un PC x86", "Needs 64-bit Linux on an x86 PC with glibc {glibc} or newer": "Necesita Linux de 64 bits en un PC x86 con glibc {glibc} o posterior", "Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3": "Necesita Windows 10 u 11 de 64 bits, un controlador gráfico con Vulkan, Direct3D 12 u OpenGL 3.3", "Needs macOS on Apple silicon or Intel": "Necesita macOS en Apple silicon o Intel", "Needs macOS {arm} or later on Apple silicon, {intel} or later on Intel": "Necesita macOS {arm} o posterior en Apple silicon, {intel} o posterior en Intel", "New in {version}": "Novedades de la {version}", "Newest": "Más nuevos", "Newest sets": "Sets más nuevos", "Next": "Siguiente", "No picture": "Sin imagen", "No set has every word you typed. The nearest: {sets}": "Ningún set tiene todas las palabras que escribiste. Los más parecidos: {sets}", "Nobody you follow has listed a model yet. Follow a designer from their page or from beside one of their models, and what they list comes here.": "Nadie a quien sigues ha mostrado todavía un modelo en la galería. Sigue a un diseñador desde su página o junto a uno de sus modelos, y lo que muestre aparecerá aquí.", "Not now": "Ahora no", "Nothing in the gallery is all in your collection of {parts} yet. Parts I own, in Filters, shows what is closest.": "Aún no hay nada en la galería que esté entero en tu colección de {parts}. «Piezas que tengo», en Filtros, muestra lo más cercano.", "Nothing more": "No hay más", "Nothing was built or remixed here {span} yet. A model joins Top when somebody builds it to its last step, remixes it, or it is Tested.": "Aquí todavía no se ha construido ni remezclado nada {span}. Un modelo entra en Mejores cuando alguien lo construye hasta el último paso, lo remezcla o recibe la marca «Probado».", "Notifications": "Notificaciones", "Oldest sets": "Sets más antiguos", "One question first": "Primero, una pregunta", "Only with a 3D model": "Solo con modelo 3D", "Open it and drag what moves, as it was built": "Ábrelo y arrastra lo que se mueve, tal como se construyó", "Open it and play it:": "Ábrelo y reprodúcelo:", "Open it and play them:": "Ábrelo y reprodúcelos:", "Other systems: ": "Otros sistemas: ", "Page {n}": "Página {n}", "Pages of {noun}": "Páginas de {noun}", "Parts I own": "Piezas que tengo", "Previous": "Anterior", "Released {date}": "Publicada el {date}", "Retry": "Reintentar", "Robots and machines": "Robots y máquinas", "Saved": "Guardados", "See Pro": "Ver Pro", "See Top": "Ver Mejores", "See all time": "Ver todos los tiempos", "Selected": "Seleccionado", "Send feedback": "Enviar comentarios", "Sending…": "Enviando…", "Settings": "Ajustes", "Show earlier": "Mostrar anteriores", "Show more": "Mostrar más", "Showing sets for ": "Mostrando sets para ", "Showing {noun} {range}": "Mostrando {noun} {range}", "Showing {range} of {total} {noun}": "Mostrando {range} de {total} {noun}", "Sign in": "Iniciar sesión", "Sign in again to apply to the beta.": "Vuelve a iniciar sesión para solicitar la beta.", "Sign in again with any address to start a new one.": "Vuelve a iniciar sesión con cualquier dirección para empezar una nueva.", "Sign in to Brickworks": "Iniciar sesión en Brickworks", "Sign in to add a photo of your build: we email you a code, no password.": "Inicia sesión para añadir una foto de tu construcción: te enviamos un código por correo, sin contraseña.", "Sign in to add your comment: we email you a code, no password. What you wrote is kept.": "Inicia sesión para añadir tu comentario: te enviamos un código por correo, sin contraseña. Lo que has escrito se conserva.", "Sign in to add your reply: we email you a code, no password. What you wrote is kept.": "Inicia sesión para añadir tu respuesta: te enviamos un código por correo, sin contraseña. Lo que has escrito se conserva.", "Sign in to apply to the Brickworks beta.": "Inicia sesión para solicitar la beta de Brickworks.", "Sign in to download the desktop app.": "Inicia sesión para descargar la aplicación de escritorio.", "Sign in to follow collections: we email you a code, no password.": "Inicia sesión para seguir colecciones: te enviamos un código por correo, sin contraseña.", "Sign in to follow people: we email you a code, no password.": "Inicia sesión para seguir a personas: te enviamos un código por correo, sin contraseña.", "Sign in to like it: we email you a code, no password.": "Inicia sesión para darle me gusta: te enviamos un código por correo, sin contraseña.", "Sign in to make a collection: we email you a code.": "Inicia sesión para crear una colección: te enviamos un código por correo.", "Sign in to save it: we email you a code, no password.": "Inicia sesión para guardarlo: te enviamos un código por correo, sin contraseña.", "Sign in to vote: we email you a code, no password.": "Inicia sesión para votar: te enviamos un código por correo, sin contraseña.", "Sign in with orangecheck": "Iniciar sesión con orangecheck", "Sign in with the account your beta application was approved for.": "Inicia sesión con la cuenta para la que se aprobó tu solicitud de la beta.", "Sign in with your email address: we send you a code, no password.": "Inicia sesión con tu dirección de correo: te enviamos un código, sin contraseña.", "Sign in with your email or with orangecheck, and you go back to the app signed in.": "Inicia sesión con tu correo o con orangecheck y volverás a la aplicación con la sesión iniciada.", "Sign out": "Cerrar sesión", "Sign-in didn't finish. Try again.": "El inicio de sesión no terminó. Vuelve a intentarlo.", "Signed in": "Sesión iniciada", "Signing in with orangecheck from the app is not offered here. Sign in with your email instead.": "El inicio de sesión con orangecheck desde la aplicación no está disponible aquí. Inicia sesión con tu correo.", "Signing in with orangecheck from the app is not offered just now. Sign in with your email instead.": "El inicio de sesión con orangecheck desde la aplicación no está disponible ahora mismo. Inicia sesión con tu correo.", "Signing in with orangecheck is not set up here.": "El inicio de sesión con orangecheck no está configurado aquí.", "Signing in with orangecheck is unavailable here. Sign in with your email instead.": "El inicio de sesión con orangecheck no está disponible aquí. Inicia sesión con tu correo.", "Signing in with orangecheck, in its own window.": "Iniciando sesión con orangecheck, en su propia ventana.", "Signing in…": "Iniciando sesión…", "Small, under 200 parts": "Pequeño, menos de 200 piezas", "Something else": "Otra cosa", "Space": "Espacio", "Stands at every step · every step reachable · every part made in its colour · nothing loose": "Se sostiene en cada paso · cada paso es alcanzable · cada pieza existe en su color · nada suelto", "Stop filtering by the tag {tag}": "Dejar de filtrar por la etiqueta {tag}", "Stop filtering by {what}: {words}": "Dejar de filtrar por {what}: {words}", "Stop filtering by {words}": "Dejar de filtrar por {words}", "Stop ordering by {words}": "Dejar de ordenar por {words}", "Technic or mechanism": "Technic o mecanismo", "Tell Brickworks what you own (in the app, Build › My collection…) and this shows what in the gallery you can build with it.": "Dile a Brickworks lo que tienes (en la aplicación, Construir › Mi colección…) y aquí verás lo que puedes construir de la galería con ello.", "Tested": "Probado", "Tested only": "Solo probados", "Thank you": "Gracias", "Thanks. We will write to you once, when it opens, and not before.": "Gracias. Te escribiremos una vez, cuando esté disponible, y no antes.", "That address takes no email. Sign in with orangecheck instead.": "Esa dirección no recibe correo. Inicia sesión con orangecheck.", "That code is wrong or has expired. Check it, or ask for a new one.": "Ese código es incorrecto o ha caducado. Revísalo o pide uno nuevo.", "That did not go just now. Try again in a minute.": "No se ha podido enviar ahora. Vuelve a intentarlo en un minuto.", "That did not go: no connection. Try again in a minute.": "No se ha podido enviar: no hay conexión. Vuelve a intentarlo en un minuto.", "That did not work just now. Try again.": "No ha funcionado ahora mismo. Vuelve a intentarlo.", "That is not an email address.": "Eso no es una dirección de correo electrónico.", "That month has not come yet.": "Ese mes aún no ha llegado.", "That orangecheck account already signs in to another Brickworks account.": "Esa cuenta de orangecheck ya inicia sesión en otra cuenta de Brickworks.", "That orangecheck sign-in was ended. Sign in again.": "Ese inicio de sesión de orangecheck se cerró. Vuelve a iniciar sesión.", "That page did not load just now.": "No se pudo cargar esa página ahora mismo.", "That page did not load just now. Retry is where Show more was.": "No se pudo cargar esa página ahora mismo. «Reintentar» está donde estaba «Mostrar más».", "That sign-in could never be ended from orangecheck, so Brickworks does not take it. Try again.": "Ese inicio de sesión nunca podría cerrarse desde orangecheck, así que Brickworks no lo acepta. Vuelve a intentarlo.", "That sign-in ran out, was used already, or was not for Brickworks. Sign in with orangecheck again.": "Ese inicio de sesión ha caducado, ya se usó o no era para Brickworks. Vuelve a iniciar sesión con orangecheck.", "That sign-in was not for Brickworks, or it has run out. Try again.": "Ese inicio de sesión no era para Brickworks o ha caducado. Vuelve a intentarlo.", "That sign-in was not one Brickworks can read. Try again.": "Brickworks no puede leer ese inicio de sesión. Vuelve a intentarlo.", "That sign-in was used already. Sign in with orangecheck again.": "Ese inicio de sesión ya se usó. Vuelve a iniciar sesión con orangecheck.", "The code sent to {address}": "El código enviado a {address}", "The download did not start just now. Try again in a minute.": "La descarga no empezó. Vuelve a intentarlo en un minuto.", "The next challenge: ": "Próximo desafío: ", "The note is a line of words.": "La nota debe ser una línea de texto.", "The orangecheck sign-in could not be loaded. Check your connection and try again.": "No se ha podido cargar el inicio de sesión con orangecheck. Comprueba tu conexión y vuelve a intentarlo.", "The sign-in did not come through from orangecheck. Try again.": "El inicio de sesión no llegó desde orangecheck. Vuelve a intentarlo.", "The sign-in window closed before you finished.": "La ventana de inicio de sesión se cerró antes de que terminaras.", "The {kind}:": "El archivo {kind}:", "This account has orangecheck linked already. Unlink it first.": "Esta cuenta ya tiene orangecheck vinculado. Desvincúlalo primero.", "This account signs in only with orangecheck, so it keeps it.": "Esta cuenta solo inicia sesión con orangecheck, así que lo conserva.", "This account signs in with orangecheck already.": "Esta cuenta ya inicia sesión con orangecheck.", "This month": "Este mes", "This month’s challenge: ": "Desafío de este mes: ", "This orangecheck account was merged from two that each have a Brickworks account, so Brickworks cannot tell which one is yours. If one has your email, sign in with it and link orangecheck in Settings.": "Esta cuenta de orangecheck se fusionó a partir de dos que tienen cada una una cuenta de Brickworks, así que Brickworks no puede saber cuál es la tuya. Si una tiene tu correo, inicia sesión con ella y vincula orangecheck en Ajustes.", "This week": "Esta semana", "Tick the box as you sign in with a code we email you.": "Marca la casilla al iniciar sesión con un código que te enviamos por correo.", "Too many codes asked for. Wait a few minutes and try again.": "Se han pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo.", "Too many sign-ins tried from here. Wait a few minutes and try again.": "Se han intentado demasiados inicios de sesión desde aquí. Espera unos minutos y vuelve a intentarlo.", "Too many tries just now. Wait a few minutes and try again.": "Demasiados intentos ahora mismo. Espera unos minutos y vuelve a intentarlo.", "Top builds": "Mejores construcciones", "Top builds: a build finished counts {builds}, a remix {remixes} and the Tested mark {tested}. Views count for nothing.": "Mejores construcciones: una construcción terminada vale {builds}, un remix {remixes} y la marca «Probado» {tested}. Las visitas no cuentan.", "Town and buildings": "Ciudad y edificios", "Type the year you were born, as four digits.": "Escribe el año en que naciste, con cuatro cifras.", "Vehicles": "Vehículos", "Version {version}": "Versión {version}", "We could not send the email just now. Try again in a minute.": "No hemos podido enviar el correo ahora mismo. Vuelve a intentarlo en un minuto.", "We could not start a sign-in just now. Try again in a minute.": "No hemos podido iniciar la sesión ahora mismo. Vuelve a intentarlo en un minuto.", "Week’s pick": "Selección", "When were you born?": "¿Cuándo naciste?", "Windows 10 and 11": "Windows 10 y 11", "With minifigures": "Con minifiguras", "With or without": "Con o sin", "With the assistant": "Con el asistente", "Without": "Sin minifiguras", "Won “{title}”, by hand": "Ganó «{title}», a mano", "Won “{title}”, with the assistant": "Ganó «{title}», con el asistente", "Year": "Año", "You can build here, keep your models and share them by link with anyone you choose. The gallery, a public profile and a name shown on a link are for people 13 and over, so they are not open on this account.": "Puedes construir aquí, guardar tus modelos y compartirlos por enlace con quien elijas. La galería, un perfil público y un nombre visible en un enlace son para personas de 13 años o más, así que no están disponibles en esta cuenta.", "You have every part": "Tienes todas las piezas", "You have none of its parts": "No tienes ninguna de sus piezas", "You have {have} of its {pieces} parts": "Tienes {have} de sus {pieces} piezas", "Your Brickworks account changed just now. Sign in with orangecheck again.": "Tu cuenta de Brickworks acaba de cambiar. Vuelve a iniciar sesión con orangecheck.", "Your account": "Tu cuenta", "Your account, {n} new": "Tu cuenta, {n} nuevos", "Your browser blocked the sign-in window. Allow pop-ups for this site, then try again.": "Tu navegador ha bloqueado la ventana de inicio de sesión. Permite las ventanas emergentes para este sitio y vuelve a intentarlo.", "Your feed": "Tu feed", "Your profile": "Tu perfil", "actuator": "actuador", "and {n} more": "y {n} más", "as its designer tagged it": "según lo etiquetó su diseñador", "as the app said when it was published": "según indicó la aplicación al publicarlo", "boom": "pluma", "build finished": "construcción terminada", "builds finished": "construcciones terminadas", "built": "construido", "built {times} this week": "construido {times} esta semana", "comment": "comentario", "comments": "comentarios", "doors": "puertas", "gears": "engranajes", "how it was made": "cómo se hizo", "just now": "ahora mismo", "lately": "últimamente", "like": "me gusta", "likes": "me gusta", "model": "modelo", "models": "modelos", "new this week, and Tested": "nuevo esta semana y «Probado»", "once": "una vez", "orangecheck could not be asked just now. Sign in with orangecheck again in a minute, or with your email.": "No se ha podido consultar a orangecheck ahora mismo. Vuelve a iniciar sesión con orangecheck en un minuto o con tu correo.", "orangecheck could not be asked just now. Try again in a minute, or sign in with your email.": "No se ha podido consultar a orangecheck ahora mismo. Vuelve a intentarlo en un minuto o inicia sesión con tu correo.", "orangecheck could not confirm the sign-in just now. Try again in a minute, or sign in with your email.": "orangecheck no ha podido confirmar el inicio de sesión ahora mismo. Vuelve a intentarlo en un minuto o inicia sesión con tu correo.", "orangecheck is not linked to this account.": "orangecheck no está vinculado a esta cuenta.", "orangecheck was unlinked from that Brickworks account just now. Sign in with orangecheck again.": "orangecheck se acaba de desvincular de esa cuenta de Brickworks. Vuelve a iniciar sesión con orangecheck.", "part": "pieza", "parts": "piezas", "pneumatics": "neumática", "rack": "cremallera", "remix": "remix", "remixed {times} this week": "remezclado {times} esta semana", "remixes": "remixes", "set": "set", "sets": "sets", "size": "tamaño", "steering": "dirección", "theme\u0004Activity Books": "Libros de actividades", "theme\u0004Activity Books with LEGO® Parts": "Libros de actividades con piezas LEGO®", "theme\u0004Advent": "Adviento", "theme\u0004Airlines": "Aerolíneas", "theme\u0004Airport": "Aeropuerto", "theme\u0004Arctic": "Ártico", "theme\u0004Audio and Visual Media": "Medios audiovisuales", "theme\u0004Bag and Luggage Tags": "Etiquetas para bolsas y equipaje", "theme\u0004Bags, Totes, & Luggage": "Bolsas, bolsos y equipaje", "theme\u0004Basic Set": "Sets básicos", "theme\u0004Basketball": "Baloncesto", "theme\u0004Boat": "Barcos", "theme\u0004Books": "Libros", "theme\u0004Building": "Edificios", "theme\u0004Building Set with People": "Set de construcción con personas", "theme\u0004Bulk Bricks": "Ladrillos a granel", "theme\u0004Cargo": "Carga", "theme\u0004Chinese (Lunar) New Year": "Año Nuevo Lunar", "theme\u0004Chinese Traditional Festivals": "Fiestas tradicionales chinas", "theme\u0004Christmas": "Navidad", "theme\u0004City Center": "Centro de la ciudad", "theme\u0004Clocks and Watches": "Relojes", "theme\u0004Clothing & Footwear": "Ropa y calzado", "theme\u0004Coast Guard": "Guardacostas", "theme\u0004Collectible Minifigures": "Minifiguras coleccionables", "theme\u0004Construction": "Construcción", "theme\u0004DFB Minifigures": "Minifiguras DFB", "theme\u0004Database Sets": "Sets de la base de datos", "theme\u0004Desert": "Desierto", "theme\u0004Designer Sets": "Sets de diseñador", "theme\u0004Dinosaurs": "Dinosaurios", "theme\u0004Divers": "Buceadores", "theme\u0004Dolls": "Muñecas", "theme\u0004Easter": "Pascua", "theme\u0004Educational and Dacta": "Educación y Dacta", "theme\u0004Farm": "Granja", "theme\u0004Ferries": "Transbordadores", "theme\u0004Fire": "Bomberos", "theme\u0004Games": "Juegos", "theme\u0004Gas Station": "Gasolinera", "theme\u0004Gear": "Productos derivados", "theme\u0004Gears": "Engranajes", "theme\u0004HO 1:87 Vehicles": "Vehículos HO 1:87", "theme\u0004Harbor": "Puerto", "theme\u0004Heroes": "Héroes", "theme\u0004Hobby Sets": "Sets Hobby", "theme\u0004Houseware": "Artículos para el hogar", "theme\u0004Ideas Books": "Libros de ideas", "theme\u0004Jumbo Bricks": "Ladrillos gigantes", "theme\u0004Jungle": "Jungla", "theme\u0004Key Chain": "Llaveros", "theme\u0004LEGOLAND® Parks": "Parques LEGOLAND®", "theme\u0004LEGO® Brand Store": "Tiendas LEGO®", "theme\u0004LEGO® Exclusive": "Sets LEGO® exclusivos", "theme\u0004Learning": "Aprendizaje", "theme\u0004Learning at Home": "Aprender en casa", "theme\u0004Magnets": "Imanes", "theme\u0004Mars Exploration": "Exploración de Marte", "theme\u0004Modular Buildings": "Edificios modulares", "theme\u0004Monthly Mini Model Build": "Minimodelo del mes", "theme\u0004Mosaic": "Mosaico", "theme\u0004Non-fiction Books": "Libros de divulgación", "theme\u0004Off-Road": "Todoterreno", "theme\u0004Other": "Otros", "theme\u0004Pick A Model": "Modelo a elegir", "theme\u0004Playsets": "Sets de juego", "theme\u0004Plush Toys": "Peluches", "theme\u0004Police": "Policía", "theme\u0004Posters and Art Prints": "Pósteres y láminas", "theme\u0004Promotional": "Sets promocionales", "theme\u0004RC Train": "Tren RC", "theme\u0004Race": "Carreras", "theme\u0004Rattles": "Sonajeros", "theme\u0004Role Play Toys and Costumes": "Juguetes de rol y disfraces", "theme\u0004Sculptures": "Esculturas", "theme\u0004Seasonal": "De temporada", "theme\u0004Series 1 Minifigures": "Minifiguras serie 1", "theme\u0004Series 10 Minifigures": "Minifiguras serie 10", "theme\u0004Series 11 Minifigures": "Minifiguras serie 11", "theme\u0004Series 12 Minifigures": "Minifiguras serie 12", "theme\u0004Series 13 Minifigures": "Minifiguras serie 13", "theme\u0004Series 14 Minifigures": "Minifiguras serie 14", "theme\u0004Series 15 Minifigures": "Minifiguras serie 15", "theme\u0004Series 16 Minifigures": "Minifiguras serie 16", "theme\u0004Series 17 Minifigures": "Minifiguras serie 17", "theme\u0004Series 18 Minifigures": "Minifiguras serie 18", "theme\u0004Series 19 Minifigures": "Minifiguras serie 19", "theme\u0004Series 2 Minifigures": "Minifiguras serie 2", "theme\u0004Series 20 Minifigures": "Minifiguras serie 20", "theme\u0004Series 21 Minifigures": "Minifiguras serie 21", "theme\u0004Series 22 Minifigures": "Minifiguras serie 22", "theme\u0004Series 23 Minifigures": "Minifiguras serie 23", "theme\u0004Series 24 Minifigures": "Minifiguras serie 24", "theme\u0004Series 25 Minifigures": "Minifiguras serie 25", "theme\u0004Series 26 Minifigures": "Minifiguras serie 26", "theme\u0004Series 27 Minifigures": "Minifiguras serie 27", "theme\u0004Series 28 Minifigures": "Minifiguras serie 28", "theme\u0004Series 29 Minifigures": "Minifiguras serie 29", "theme\u0004Series 3 Minifigures": "Minifiguras serie 3", "theme\u0004Series 4 Minifigures": "Minifiguras serie 4", "theme\u0004Series 5 Minifigures": "Minifiguras serie 5", "theme\u0004Series 6 Minifigures": "Minifiguras serie 6", "theme\u0004Series 7 Minifigures": "Minifiguras serie 7", "theme\u0004Series 8 Minifigures": "Minifiguras serie 8", "theme\u0004Series 9 Minifigures": "Minifiguras serie 9", "theme\u0004Service Packs": "Packs de repuestos", "theme\u0004Soccer": "Fútbol", "theme\u0004Soft Bricks": "Ladrillos blandos", "theme\u0004Sports": "Deportes", "theme\u0004Stationery and Office Supplies": "Papelería y material de oficina", "theme\u0004Storage": "Almacenaje", "theme\u0004Story Books": "Libros de cuentos", "theme\u0004Supplemental": "Sets complementarios", "theme\u0004Tabletop Games and Puzzles": "Juegos de mesa y puzles", "theme\u0004Thanksgiving": "Acción de Gracias", "theme\u0004The Hobbit": "El Hobbit", "theme\u0004The Hobbit and Lord of the Rings": "El Hobbit y El Señor de los Anillos", "theme\u0004The LEGO® Movie": "La LEGO® película", "theme\u0004The LEGO® Movie II": "La LEGO® película 2", "theme\u0004The Lord of the Rings": "El Señor de los Anillos", "theme\u0004Traffic": "Tráfico", "theme\u0004Train": "Trenes", "theme\u0004Trains": "Trenes", "theme\u0004VIP Add-On Packs": "Packs adicionales VIP", "theme\u0004Valentine": "San Valentín", "theme\u0004Value Packs": "Packs de ahorro", "theme\u0004Vehicle": "Vehículos", "theme\u0004Video Games and Accessories": "Videojuegos y accesorios", "theme\u0004Villains": "Villanos", "this month": "este mes", "this week": "esta semana", "turntable": "plataforma giratoria", "twice": "dos veces", "{done} in the past 30 days": "{done} en los últimos 30 días", "{models}, more below": "{models}, y hay más abajo", "{n} earlier {noun}": "{n} {noun} anteriores", "{n} more {noun}": "{n} {noun} más", "{n} new": "{n} nuevos", "{n} times": "{n} veces", "{sets} of yours has no parts list here, so what is in it is not counted.": "{sets} tuyo no tiene aquí lista de piezas, así que no se cuenta lo que contiene.", "{sets} of yours have no parts list here, so what is in them is not counted.": "{sets} tuyos no tienen aquí lista de piezas, así que no se cuenta lo que contienen.", "{sets} of {every}": "{sets} de {every}"}</script>
+</head>
+<body>
+<a class="skip" href="#main">Ir al contenido</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/es"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Principal">
+			<a href="/es/gallery">Galería</a>
+			<a href="/es/library" aria-current="page">Biblioteca</a>
+			<a href="/docs">Documentación</a>
+			<a href="/es/plans">Precios</a>
+			<a class="cta" href="/app?lang=es">Abrir la aplicación</a>
+			<a class="cta ghost" href="/profile" data-account>Iniciar sesión</a>
+		</nav>
+		<details class="menu">
+			<summary>Menú</summary>
+			<div class="menu-list">
+				<nav aria-label="Menú">
+					<a href="/es/gallery">Galería</a>
+					<a href="/es/library" aria-current="page">Biblioteca</a>
+					<a href="/docs">Documentación</a>
+					<a href="/es/plans">Precios</a>
+					<a href="/es/download">Descargar</a>
+					<a href="/profile" data-account>Iniciar sesión</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Tema</span>
+					<div class="segmented" role="group" aria-label="Tema">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Sistema</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Claro</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Oscuro</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<!-- The page's head, lit as the landing page's opening is (site.css .halo):
+	     the title, the search and the tabs; the list and its bar of filters under it. -->
+	<div class="browse-band halo">
+		<div class="wrap wide">
+			<!-- Answered by library.js, never sent: the page asks /api/share itself.
+			     The search is the form; Filters and the themes are its controls too
+			     (form="finder"), laid out under it as the gallery's are, so the bar
+			     of filters can stay on screen over the whole list. -->
+			<form class="finder" id="finder" role="search" action="/library" method="get">
+				<div class="library-head">
+					<div class="library-title">
+						<h1 id="library-h">Biblioteca</h1>
+						<p class="lede">Todos los sets LEGO® que existen, cada uno con su lista de piezas completa. Los marcados con 3D tienen un modelo del Official Model Repository de LDraw, con el nombre de quien lo modeló, para girarlo y construirlo en Brickworks.</p>
+					</div>
+					<label class="search">
+						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
+						<span class="visually-hidden">Buscar en todos los sets</span>
+						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
+							placeholder="Buscar sets por nombre, número o tema" aria-keyshortcuts="/">
+						<kbd class="hint" aria-hidden="true">/</kbd>
+					</label>
+				</div>
+			</form>
+			<div class="library-bar">
+				<!-- The gallery's own tabs, this one marked: the community's models are a tab away. -->
+				<nav class="tabs" aria-label="La galería">
+					<a href="/es/gallery">Mejores</a>
+					<a href="/es/gallery?sort=newest">Nuevos</a>
+					<a href="/builds">Construcciones</a>
+					<a href="/collections">Colecciones</a>
+					<a href="/es/library" aria-current="page">Biblioteca LDraw</a>
+				</nav>
+			</div>
+		</div>
+	</div>
+	<section class="wrap wide listing" aria-labelledby="library-h">
+		<!-- The bar of filters, on screen over the whole list (sticky under the
+		     header): Filters, then the themes in a row that scrolls inside itself. -->
+		<div class="toolbar" id="toolbar">
+			<details class="filters more-menu" id="filters">
+				<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg> Filtros <span class="n" id="filters-said" hidden></span></summary>
+				<div class="menu-list sheet">
+					<label>Ordenar por
+						<select id="sort" name="sort" form="finder"><option value="built">Primero los construidos en 3D</option></select></label>
+					<label>Tamaño
+						<select id="size" name="size" form="finder"><option value="">Cualquier tamaño</option></select></label>
+					<label>Años
+						<select id="decade" name="decade" form="finder"><option value="">Cualquier año</option></select></label>
+					<div class="actions">
+						<button type="button" class="link" id="filters-clear">Borrar los filtros</button>
+					</div>
+				</div>
+			</details>
+			<div class="pills scroller inset" id="themes" role="group" aria-label="Tema">
+				<button type="button" class="pill" data-pick="" aria-pressed="true">Todos</button>
+			</div>
+		</div>
+		<p class="note found-said" id="found-said" aria-live="polite"></p>
+		<!-- The list's pager (web/pager.js, site.css .pager): Show earlier over a
+		     page opened by its address, and under the list the count, Show more
+		     and the numbered links. -->
+		<p class="pager-earlier" data-pager-earlier="models" hidden><a class="cta ghost" href="/es/library" data-pager-go="earlier">Mostrar anteriores</a></p>
+		<!-- Four rows of skeletons at four a row (site.css .skeleton) where the
+		     first page's cards go, taken out when it comes, so nothing under
+		     them moves. web/card.js skeletonHtml draws the same. -->
+		<div class="models" id="models">
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+		</div>
+		<p class="visually-hidden" id="loading" role="status">Cargando la biblioteca…</p>
+		<p class="state" id="nothing" hidden>
+			Ningún set de la biblioteca coincide con eso. <button type="button" class="link" id="clear">Borrar la búsqueda y los filtros</button>
+		</p>
+		<p class="state" id="broken" hidden>
+			La biblioteca no se pudo cargar ahora mismo. <button type="button" class="link" id="retry">Reintentar</button>
+		</p>
+		<noscript>
+			<p class="state">La biblioteca se dibuja con un poco de JavaScript, que está desactivado en este navegador.</p>
+		</noscript>
+		<nav class="pager" data-pager="models" aria-label="Páginas de sets" data-size="24" data-noun="set|sets" hidden>
+			<p class="pager-count" hidden></p>
+			<a class="cta ghost pager-more" href="/es/library?page=2" data-pager-go="more" hidden>Mostrar más</a>
+			<p class="visually-hidden" role="status" data-pager-said></p>
+		</nav>
+		<!-- Their pictures' credit, under them: those not built in 3D are Rebrickable's. -->
+		<p class="note picture-credit" id="pictures-credit">Imágenes de los sets: <a href="https://rebrickable.com/">Rebrickable</a></p>
+	</section>
+
+	<section class="wrap wide yours" aria-labelledby="yours-h">
+		<div class="closing">
+			<h2 id="yours-h">De dónde vienen</h2>
+			<p class="lede">
+				Los datos, la lista de piezas y la imagen de cada set son de <a href="https://rebrickable.com/">Rebrickable</a>, con las imágenes guardadas aquí para que tu navegador nunca se las pida, y sus piezas las dibuja Brickworks. Los marcados con 3D se muestran construidos: modelos que alguien construyó en LDraw, pieza a pieza, para el <a href="https://library.ldraw.org/omr">Official Model Repository de LDraw</a>, y compartidos con una licencia Creative Commons que permite a cualquiera usarlos siempre que se mencione a su autor: cada tarjeta y cada página nombran a quien lo modeló y enlazan a su página allí. En la aplicación, los de 3D están en <b>Archivo › Biblioteca…</b>; un set abierto desde allí conserva su crédito cuando lo compartes.
+			</p>
+			<div class="actions center"><a class="cta" href="/app?lang=es">Abrir la aplicación</a></div>
+		</div>
+	</section>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/es"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Un CAD para modelos LEGO®, con un diseñador de IA.</p>
+				<div class="theme-choice"><span aria-hidden="true">Tema</span>
+					<div class="segmented" role="group" aria-label="Tema">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Sistema</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Claro</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Oscuro</button>
+					</div>
+				</div>
+				<label class="theme-choice"><span>Idioma</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
+			</div>
+			<nav class="foot-links" aria-label="Más">
+				<div>
+					<p class="foot-h" id="foot-product">Producto</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app?lang=es">Abrir la aplicación</a></li>
+						<li><a href="/es/download">Descargar</a></li>
+						<li><a href="/es/plans">Precios</a></li>
+						<li><a href="/changelog">Novedades</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Comunidad</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/es/gallery">Galería</a></li>
+						<li><a href="/es/library">Biblioteca LDraw</a></li>
+						<li><a href="/challenge">Desafío</a></li>
+						<li><a href="/collections">Colecciones</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Ayuda</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Documentación</a></li>
+						<li><a href="/es/faq">Preguntas frecuentes</a></li>
+						<li><a href="/es/compare">Comparar</a></li>
+						<li><a href="/guidelines">Normas</a></li>
+						<li><a href="/feedback" data-feedback>Enviar comentarios</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Legal</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Privacidad</a></li>
+						<li><a href="/terms">Términos</a></li>
+						<li><a href="/takedown">Retirada</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® es una marca del grupo de empresas LEGO, que no patrocina, autoriza ni respalda este sitio. LEGO® Art, Technic, la Minifigura y las configuraciones del ladrillo y el espárrago son también marcas del Grupo LEGO. Piezas de la biblioteca LDraw™ (CC BY). <a href="/terms#notices">Avisos</a></p>
+		</div>
+	</div>
+</footer>
+
+<script src="/library.js" type="module"></script>
+</body>
+</html>

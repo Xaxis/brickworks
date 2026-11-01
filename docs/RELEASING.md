@@ -56,7 +56,9 @@ git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
 #    signatures, contents.
 tools/release.py build
 
-# 3. Run it, as a person would, in a clean home.
+# 3. Run it, as a person would, in a clean home. --window also asks the
+#    app over its own socket, as a Claude Code session does, for the car
+#    path traced at Best, and holds the picture to the editor's.
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.tar.xz --window
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.AppImage
 
@@ -74,12 +76,17 @@ gh run watch -R Xaxis/brickworks-releases "$(gh run list -R Xaxis/brickworks-rel
 # 6. Publish the draft that was checked, then put it on the download page,
 #    with four short lines on what is new in it: web/download.html's
 #    <ul data-highlights="0.2.0">, in place of the last release's. Without
-#    them the page shows the first sentences of the summary. Publishing
+#    them the page shows the first sentences of the summary. The lines go
+#    into German, French and Spanish too, in web/_lang/<code>.json's
+#    "pages" (tools/site_lang.py --missing=de lists what is new), and
+#    tools/site_lang.py writes the page's copies at /de/download...: the
+#    suite fails while one has no words for them. Publishing
 #    also pushes the tag v0.2.0 to origin, on the commit that was built:
 #    the tag in the releases repository is on its README.
 tools/release.py publish                       # writes web/releases.json
+python3 tools/site_lang.py                     # web/de/, web/fr/, web/es/ from it
 git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
-  commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html && git push
+  commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html web/_lang web/de web/fr web/es && git push
 tools/deploy.sh --prod
 
 # 7. Check it live: the page, and every address in its manifest.
@@ -96,8 +103,9 @@ stale and shadows the keyring login. `tools/release.py` drops it itself.
   `Brickworks.app 0.2.0`, `arm64 + x86_64`, a signature on both, and
   `version 0.2.0` on both Windows executables.
 - `smoke` ends `... starts, loads the part library, opens a model and takes
-  bricks` for both Linux packages, and the `--window` picture
-  (`shots/release-linux.png`) shows the example car.
+  bricks` for both Linux packages, `..., and traces it at Best` for the
+  `--window` run, and its pictures show the example car: drawn
+  (`shots/release-linux.png`) and path traced (`shots/release-linux-best.png`).
 - The release workflow is green on all five jobs.
 - `publish` prints `ok` for every file: GitHub's SHA-256 matches.
 - `tools/release/release_links.sh` ends `all N addresses ... answer`: every
@@ -348,6 +356,25 @@ wired in, by environment, rather than planned.
 
 - **Export templates must match the engine**: Godot 4.7.2, in
   `~/.local/share/godot/export_templates/4.7.2.stable/`.
+- **A release build is not the editor.** Every probe runs the editor, a
+  debug build, and an export template leaves out what is under
+  `DEBUG_ENABLED`. 0.12.0's Best refused every shape at `blas_create`
+  ("index outside the specified vertex range": Godot 4.7.2 works out an
+  index buffer's largest index only in a debug build) while the editor
+  traced it in 3 s. So `smoke --window` starts the package in a window and
+  asks it over MCP, as a session does, for the car at Best (product look,
+  720p), then holds the answer to `tools/release/best_car.png`, the editor's
+  render of the same: a picture, path traced (the app says so), no shape
+  refused, not blank, and SSIM at least 0.98 on 160 x 90 grey. The 0.13.0
+  download scores 0.999 against it; the window's look in place of the
+  product's 0.978, the car with its red parts gone 0.906. The sign-in screen
+  covers the window of a clean home and the socket answers behind it, as it
+  does headless, so no account is needed and nothing in the package lets
+  anyone past the screen. The step adds 20 to 25 s once the GPU is free
+  (the app up in about 7 s, Best in about 5). When Best's look or the
+  car changes on purpose, `tools/release.py best-reference` renders the
+  picture again from the editor (an imported checkout, about a minute);
+  look at it before committing it.
 - **A zip extracted by Python loses its executable bits.** `smoke` uses
   `unzip` or `ditto`, which keep them; a person's Finder does too.
 - **Windows runs nothing from inside a zip** that needs a file beside it:

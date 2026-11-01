@@ -40,7 +40,7 @@
 // controls it names (window.brickworksControls) are counted instead, and
 // the flow fails with how many are under 44 points. Pictures of each go to
 // --out, <size>_<n>_<what>.png, to look at.
-import { clickStill, launch } from "./browser.mjs";
+import { askApp, clickStill, launch, START_MS } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -82,11 +82,13 @@ try {
     let shot = 0;
     // A picture waits for a frame, and 1024 x 1366 at 2x is 2048 x 2732 drawn
     // in software here, 3 to 6 s a frame early on: past Playwright's 30 s
-    // under load, on live and the release alike (rel-m228, same-hour A/B).
+    // under load, on live and the release alike (rel-m228, same-hour A/B),
+    // and 28 s for a picture at load 24. It is not judged, so it has as long
+    // as a page has to come up.
     const picture = async (what) => {
       shot += 1;
       await page.screenshot({ path: `${out}/${size}_${String(shot).padStart(2, "0")}_${what}.png`,
-        timeout: 120000 });
+        timeout: START_MS });
     };
     const state = async () => (await page.evaluate(() => window.brickworksState || {})) || {};
     const controls = async () => (await page.evaluate(() => window.brickworksControls || {})) || {};
@@ -117,12 +119,7 @@ try {
     // What a finger has and what is said, asked of the app, and judged.
     const audit = async (what) => {
       await page.waitForTimeout(700);
-      await page.evaluate(() => { window.brickworksPhone = null; window.brickworksAskPhone = true; });
-      let told = null;
-      for (let n = 0; n < 40 && !told; n++) {
-        await page.waitForTimeout(250);
-        told = await page.evaluate(() => window.brickworksPhone);
-      }
+      const told = await askApp(page, "Phone");
       await picture(what);
       if (!check(`${what}: the app said what is on the screen`, Boolean(told))) return null;
       const small = told.targets.filter((t) => t.box[2] < 44 || t.box[3] < 44);
@@ -139,15 +136,7 @@ try {
         off.length === 0);
       return told;
     };
-    const ask = async () => {
-      await page.evaluate(() => { window.brickworksPhone = null; window.brickworksAskPhone = true; });
-      for (let n = 0; n < 40; n++) {
-        await page.waitForTimeout(250);
-        const told = await page.evaluate(() => window.brickworksPhone);
-        if (told) return told;
-      }
-      return {};
-    };
+    const ask = async () => (await askApp(page, "Phone")) || {};
     const sheetNow = async () => (await ask()).phone || {};
     const open = async () => (await sheetNow()).sheets || [];
     // A row of More: the menu it is in opened first, as a finger opens it,
@@ -204,15 +193,7 @@ try {
       }
       return false;
     };
-    const layout = async () => {
-      await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-      for (let n = 0; n < 24; n++) {
-        await page.waitForTimeout(250);
-        const laid = await page.evaluate(() => window.brickworksLayout);
-        if (laid) return laid;
-      }
-      return null;
-    };
+    const layout = () => askApp(page, "Layout");
     const edges = (box) => ({ left: box.x - box.w / 2, right: box.x + box.w / 2,
       top: box.y - box.h / 2, bottom: box.y + box.h / 2 });
 

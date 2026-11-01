@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.13.0",
+ "latest": "0.14.0",
  "releases": [
+  {
+   "version": "0.14.0",
+   "tag": "v0.14.0",
+   "date": "2026-11-01",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.14.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.14.0",
+   "summary": "A release for big models and touch screens. Replacing a part across a 10,000-part model no longer stops the window: replacing all of one with a 2 x 4 held a single frame for half a second or more in 0.13.0, and now its longest frame is under a tenth of a second. Suggest sections on a model that size is a little quicker too. A design Claude finishes in the assistant's panel is framed whole, as Frame all frames it, where a tall one used to run out of the top of the view. And on a touch screen, a drag begun on a text field, a tile's \"+N\" or any other control in a list scrolls the list.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.14.0-linux-x86_64.AppImage",
+     "size": 575863288,
+     "sha256": "2dc5cedcfd9bfbf646f64d5afa3b7c92472f5ce2567cefd6c1bf1ffb5412830d",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.14.0/Brickworks-0.14.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.14.0-linux-x86_64.tar.xz",
+     "size": 426635576,
+     "sha256": "f071c4ae896bb2f067310a9c4f7745b36e387c24b66b90b74eb53dee99a071a6",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.14.0/Brickworks-0.14.0-linux-x86_64.tar.xz",
+     "unpacked": 1490507780,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.14.0-macos-universal.zip",
+     "size": 755687379,
+     "sha256": "1cb8ee5efa945aff0244fcd234021bdf76d65555d8bc572820ab689fe303fc1f",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.14.0/Brickworks-0.14.0-macos-universal.zip",
+     "unpacked": 1587262248,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.14.0-windows-x86_64.zip",
+     "size": 734050543,
+     "sha256": "e299ef2a9283a4818121671f5142c52d619027c53a52987b15c769fe159da8cb",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.14.0/Brickworks-0.14.0-windows-x86_64.zip",
+     "unpacked": 1526210660,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.13.0",
    "tag": "v0.13.0",

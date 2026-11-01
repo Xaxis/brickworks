@@ -40,7 +40,7 @@
 // every target a finger has on the screen and every line of text, in points:
 // no target under 44 on either side, no text under 12, nothing off the
 // screen. Pictures of each go to --out, <size>_<n>_<what>.png, to look at.
-import { clickStill, launch } from "./browser.mjs";
+import { askApp, clickStill, launch, START_MS } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -80,9 +80,13 @@ try {
     });
     const cdp = await context.newCDPSession(page);
     let shot = 0;
+    // A picture waits for a frame, drawn in software: one of a page just up
+    // took over 30 s at load 40 and held rel-m236. It is not judged, so it
+    // has as long as a page has to come up.
     const picture = async (what) => {
       shot += 1;
-      await page.screenshot({ path: `${out}/${width}_${String(shot).padStart(2, "0")}_${what}.png` });
+      await page.screenshot({ path: `${out}/${width}_${String(shot).padStart(2, "0")}_${what}.png`,
+        timeout: START_MS });
     };
     const state = async () => (await page.evaluate(() => window.brickworksState || {})) || {};
     const controls = async () => (await page.evaluate(() => window.brickworksControls || {})) || {};
@@ -136,12 +140,7 @@ try {
     // What a finger has and what is said, asked of the app, and judged.
     const audit = async (what) => {
       await page.waitForTimeout(700);
-      await page.evaluate(() => { window.brickworksPhone = null; window.brickworksAskPhone = true; });
-      let told = null;
-      for (let n = 0; n < 40 && !told; n++) {
-        await page.waitForTimeout(250);
-        told = await page.evaluate(() => window.brickworksPhone);
-      }
+      const told = await askApp(page, "Phone");
       await picture(what);
       if (!check(`${what}: the app said what is on the screen`, Boolean(told))) return null;
       const small = told.targets.filter((t) => t.box[2] < 44 || t.box[3] < 44);
@@ -159,15 +158,7 @@ try {
       return told;
     };
     const sheet = async () => ((await page.evaluate(() => window.brickworksPhone)) || {}).phone || {};
-    const sheetNow = async () => {
-      await page.evaluate(() => { window.brickworksPhone = null; window.brickworksAskPhone = true; });
-      for (let n = 0; n < 40; n++) {
-        await page.waitForTimeout(250);
-        const told = await page.evaluate(() => window.brickworksPhone);
-        if (told) return told.phone || {};
-      }
-      return {};
-    };
+    const sheetNow = async () => ((await askApp(page, "Phone")) || {}).phone || {};
     // A row of More: the menu it is in opened first, as a finger opens it,
     // each other folded again.
     const moreRow = async (row) => {
@@ -194,15 +185,7 @@ try {
       }
       return at || null;
     };
-    const layout = async () => {
-      await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-      for (let n = 0; n < 24; n++) {
-        await page.waitForTimeout(250);
-        const laid = await page.evaluate(() => window.brickworksLayout);
-        if (laid) return laid;
-      }
-      return null;
-    };
+    const layout = () => askApp(page, "Layout");
     const take = async (query) => {
       await press("phone_parts");
       const box = await where("part search");
@@ -354,12 +337,7 @@ try {
     // 5. Six bricks, on the baseplate's middle, framed by Fit.
     await press("phone_fit");
     await page.waitForTimeout(1500);
-    await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-    let laid = null;
-    for (let n = 0; n < 24 && !laid; n++) {
-      await page.waitForTimeout(250);
-      laid = await page.evaluate(() => window.brickworksLayout);
-    }
+    const laid = await layout();
     const middle = laid && laid.centre ? { x: laid.centre.x, y: laid.centre.y } : { x: width / 2, y: height / 2 };
     say(`the baseplate's middle at ${Math.round(middle.x)}, ${Math.round(middle.y)}`);
     const spots = [[-50, -20], [0, -20], [50, -20], [-50, 25], [0, 25], [50, 25]];
@@ -384,9 +362,7 @@ try {
     await press("phone_select");
     s = await until((now) => now.mode === "select" && !now.carrying, 5);
     check(`Select: nothing in hand (${s.mode})`, s.mode === "select");
-    await page.evaluate(() => { window.brickworksAskLayout = true; });
-    await page.waitForTimeout(1200);
-    const targets = ((await page.evaluate(() => window.brickworksLayout)) || {}).targets || [];
+    const targets = ((await layout()) || {}).targets || [];
     const brick = targets.find((t) => t.part === "3001") || targets[0];
     if (check(`a part on the screen to tap (${targets.length} found)`, Boolean(brick))) {
       await tap({ x: brick.x, y: brick.y });

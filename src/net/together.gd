@@ -169,6 +169,8 @@ var banner_parent: Control = null
 var _banner: PanelContainer
 var _banner_words: Label
 var _banner_frame: Panel
+## The colour the frame and its name were last styled in.
+var _banner_colour: Color = Color(0, 0, 0, 0)
 const MARKER_COLOURS: Array[Color] = [Color("#e8590c"), Color("#1c7ed6"), Color("#2f9e44"),
 	Color("#ae3ec9"), Color("#f08c00"), Color("#0c8599")]
 
@@ -1940,25 +1942,35 @@ func _show_banner() -> void:
 		row.add_child(stop)
 		_banner.add_child(row)
 		banner_parent.add_child(_banner)
-	var frame := StyleBoxFlat.new()
-	frame.draw_center = false
-	frame.border_color = colour
-	frame.set_border_width_all(3)
-	_banner_frame.add_theme_stylebox_override("panel", frame)
-	var pill := StyleBoxFlat.new()
-	pill.bg_color = colour.darkened(0.35)
-	pill.set_corner_radius_all(14)
-	pill.content_margin_left = 14
-	pill.content_margin_right = 6
-	pill.content_margin_top = 4
-	pill.content_margin_bottom = 4
-	_banner.add_theme_stylebox_override("panel", pill)
+	# Styled again only when the colour changes, and moved only when the
+	# middle has: this runs every frame while following, and a style set
+	# anew draws the whole window again (IdleDraw). It did, every frame: on
+	# the rich car in software the following browser never stood still, and
+	# the owner's selection reached it 6.7 to 10.8 s after the click
+	# (together_flow 5f, 2026-11-01; src/dev/idle_probe.gd).
+	if colour != _banner_colour:
+		_banner_colour = colour
+		var frame := StyleBoxFlat.new()
+		frame.draw_center = false
+		frame.border_color = colour
+		frame.set_border_width_all(3)
+		_banner_frame.add_theme_stylebox_override("panel", frame)
+		var pill := StyleBoxFlat.new()
+		pill.bg_color = colour.darkened(0.35)
+		pill.set_corner_radius_all(14)
+		pill.content_margin_left = 14
+		pill.content_margin_right = 6
+		pill.content_margin_top = 4
+		pill.content_margin_bottom = 4
+		_banner.add_theme_stylebox_override("panel", pill)
 	var words: String = "Following %s" % str(_person(following).get("name", ""))
 	if _banner_words.text != words:
 		_banner_words.text = words
 	_banner.visible = true
 	_banner_frame.visible = true
-	_banner.position.x = (banner_parent.size.x - _banner.size.x) / 2.0
+	var middle: float = (banner_parent.size.x - _banner.size.x) / 2.0
+	if _banner.position.x != middle:
+		_banner.position.x = middle
 
 
 ## The Stop on the line said while following, for a check to press.

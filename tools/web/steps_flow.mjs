@@ -18,7 +18,7 @@
 // the yellow brick with the blue. Every result is read off
 // window.brickworksState; pictures in --out. It fails if a step does not
 // happen or a script error reaches the console.
-import { clickStill, launch } from "./browser.mjs";
+import { askApp, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -59,7 +59,6 @@ page.on("console", (m) => {
 
 const controls = async () => (await page.evaluate(() => window.brickworksControls || {})) || {};
 const state = async () => (await page.evaluate(() => window.brickworksState || {})) || {};
-const layout = async () => (await page.evaluate(() => window.brickworksLayout || {})) || {};
 async function shot(name) {
   try {
     await page.screenshot({ path: `${out}/${name}`, timeout: 180000 });
@@ -120,11 +119,11 @@ async function exportLdraw() {
     const download = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
     await page.mouse.click(file.x, file.y);
     await page.waitForTimeout(2500 + 2500 * n);
-    await page.keyboard.type("Export", { delay: 120 });
+    await typeInMenu(page, "Export");
     await page.waitForTimeout(800);
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(1500);
-    await page.keyboard.type("LDraw", { delay: 120 });
+    await typeInMenu(page, "LDraw");
     await page.waitForTimeout(800);
     await page.keyboard.press("Enter");
     const got = await download;
@@ -166,14 +165,12 @@ ok(Boolean(third) && /Brick 2 x 2/.test(third.timeline.pieces),
 await shot("1_step_3.png");
 
 // The yellow brick, clicked where it is drawn.
-// The app publishes where parts are drawn when asked (centre_check.mjs).
+// The app publishes where parts are drawn when asked (askApp), and the
+// brick may not be drawn yet the first time.
 let target = null;
-for (let n = 0; n < 40 && !target; n++) {
-  if (n % 8 === 0) {
-    await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-  }
-  target = ((await layout()).targets || []).find((t) => t.part === "3003");
-  if (!target) await page.waitForTimeout(500);
+for (let n = 0; n < 5 && !target; n++) {
+  target = (((await askApp(page, "Layout")) || {}).targets || []).find((t) => t.part === "3003");
+  if (!target) await page.waitForTimeout(2000);
 }
 ok(Boolean(target), `the page says where the yellow brick is drawn (${target ? `${target.x}, ${target.y}` : "nowhere"})`);
 if (target) {

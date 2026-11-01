@@ -1,10 +1,10 @@
 // What the window says is shown is drawn, in a real browser: the build
 // animation, a See inside cut moved up, and the booklet's step pictures,
-// each counted off the picture.
+// each counted off the picture, and a design framed whole once it ends.
 //
 //   node tools/web/drawn_flow.mjs --dir=build/web --out=shots/drawn                a local export, served here
 //   BW_BYPASS=… node tools/web/drawn_flow.mjs --url=<preview>/app --out=shots/drawn
-//   --size=1400x900 for another window (default 1280x720); --only=build,streamed,cut,booklet
+//   --size=1400x900 for another window (default 1280x720); --only=build,streamed,wide,cut,booklet
 //
 // In a browser a count of instances raised in place, the new slots written
 // into the buffer already drawn from, was now and then never drawn: the
@@ -24,6 +24,13 @@
 //            of its own.
 //   streamed the same, streamed: the bricks go down as they are written,
 //            and all nine are drawn once the design is in. --runs times.
+//            Each build and streamed run also asks that the design, done,
+//            is whole in the model's part of the window: its red and yellow
+//            touch no edge of it, nor the notices drawn over its top (Build
+//            your first model). The camera stayed on a first visit's car and
+//            the stack went up out of the top (framewhole).
+//   wide     twelve bricks in a row, red and yellow in turn, asked for each
+//            way once: whole in the view as it ends, its sides too.
 //   cut      the nine opened through Open… > From a file, the toolbar's
 //            cut, then the slider clicked from low to high --moves times
 //            (5): each time the bricks below the plane are drawn, and the
@@ -34,7 +41,7 @@
 // Pictures in --out. Fails, exiting 1, on a count that is wrong, a step
 // that does not happen, or a script error in the console. No model is
 // called and nothing is signed in to.
-import { clickStill, controlsWith, launch, openColumnFor } from "./browser.mjs";
+import { askApp, clickStill, controlsWith, launch, openColumnFor } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -49,7 +56,7 @@ mkdirSync(out, { recursive: true });
 const [width, height] = String(args.size || "1280x720").split("x").map(Number);
 const tag = `${width}x${height}`;
 const bypass = String(args.bypass || process.env.BW_BYPASS || "");
-const only = new Set(String(args.only || "build,streamed,cut,booklet").split(","));
+const only = new Set(String(args.only || "build,streamed,wide,cut,booklet").split(","));
 const runs = Number(args.runs || 3);
 const moves = Number(args.moves || 5);
 
@@ -62,6 +69,9 @@ writeFileSync(nine, ["0 Nine bricks", "0 Name: drawn_nine.ldr", "0 Author: drawn
 // The same as a design the assistant submits: y in plates, up.
 const DESIGN = { name: "Nine bricks", description: "Nine 2 x 4 bricks, red and yellow in turn.",
   bricks: COLOURS.map((color, n) => ({ part: "3001", color, x: 0, y: 3 * n, z: 0, rot: 0 })) };
+// Twelve along the ground, end to end: wider than a first visit's car.
+const WIDE = { name: "Twelve bricks", description: "Twelve 2 x 4 bricks in a row, red and yellow in turn.",
+  bricks: Array.from({ length: 12 }, (_, n) => ({ part: "3001", color: n % 2 ? 14 : 4, x: 4 * n - 22, y: 0, z: 0, rot: 0 })) };
 
 // The bricks a picture draws: down the column that holds the most red and
 // yellow, the runs of each, a run of one colour however often other pixels
@@ -84,6 +94,15 @@ const COUNT = `(data, w, h) => {
   }
   let best = 0;
   for (let x = 1; x < w; x++) if (per[x] > per[best]) best = x;
+  // Where any red or yellow is, the specks under 3 px a side not counted.
+  let left = w, right = -1, top = h, bottom = -1;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const k = kind((y * w + x) * 4);
+    if (!k || kind((y * w + x - 1) * 4) !== k || kind((y * w + x + 1) * 4) !== k
+      || kind(((y - 1) * w + x) * 4) !== k || kind(((y + 1) * w + x) * 4) !== k) continue;
+    left = Math.min(left, x - 1); right = Math.max(right, x + 1);
+    top = Math.min(top, y - 1); bottom = Math.max(bottom, y + 1);
+  }
   // Down a column: its runs of one colour, the specks under 3 px dropped,
   // then those of one colour next to each other made one.
   const down = (x) => {
@@ -108,7 +127,7 @@ const COUNT = `(data, w, h) => {
   for (const x of [best - 4, best - 2, best, best + 2, best + 4]) {
     if (x >= 0 && x < w && per[best] > 0) bricks = Math.max(bricks, down(x));
   }
-  return { bricks, red, yellow, column: best };
+  return { bricks, red, yellow, column: best, left, right, top, bottom };
 }`;
 
 // A port nobody is using, for a local export.
@@ -185,12 +204,15 @@ function press(page, name, ms = 1500) {
   return clickStill(page, name, { find: (n) => where(page, n), after: ms });
 }
 
-// The bricks drawn in the model's part of the window, from a picture of it.
+// The bricks drawn in the model's part of the window, from a picture of it,
+// and the part of that left clear: all of it but the strip of notices over
+// its top, while one shows.
 async function drawn(page, name) {
   const png = await page.screenshot({ path: `${out}/${name}_${tag}.png`, timeout: 180000 });
-  await page.evaluate(() => { window.brickworksAskLayout = true; });
-  await page.waitForTimeout(1500);
-  const view = ((await page.evaluate(() => window.brickworksLayout)) || {}).view || [0, 0, width, height];
+  const layout = (await askApp(page, "Layout")) || {};
+  const view = layout.view || [0, 0, width, height];
+  const notices = (layout.panels || {}).notices;
+  const below = notices && notices[1] <= view[1] + 1 ? notices[1] + notices[3] - view[1] : 0;
   const reader = await browser.newPage();
   const counted = await reader.evaluate(async ([src, v, count]) => {
     const image = await new Promise((done) => { const i = new Image(); i.onload = () => done(i); i.src = src; });
@@ -202,8 +224,18 @@ async function drawn(page, name) {
     return eval(count)(g.getImageData(v[0], v[1], v[2], v[3]).data, v[2], v[3]);
   }, [`data:image/png;base64,${png.toString("base64")}`, view, COUNT]);
   await reader.close();
+  counted.clear = { top: Math.max(0, Math.round(below)), w: view[2], h: view[3] };
   console.log(`        ${name}: ${counted.bricks} bricks (${counted.red} px red, ${counted.yellow} yellow), ${out}/${name}_${tag}.png`);
   return counted;
+}
+
+// Whether the red and yellow drawn, the model, are inside the part of the
+// view left clear, touching none of its edges.
+function whole(seen) {
+  const inside = seen.right >= 0 && seen.top > seen.clear.top + 2 && seen.left > 2
+    && seen.right < seen.clear.w - 3 && seen.bottom < seen.clear.h - 3;
+  return { inside, said: `drawn from ${seen.left},${seen.top} to ${seen.right},${seen.bottom}`
+    + ` in a view of ${seen.clear.w} x ${seen.clear.h} clear below ${seen.clear.top}` };
 }
 
 // Open… > From a file, answered with a file, as in_view_flow opens one.
@@ -230,7 +262,7 @@ async function open(page, file) {
 // submit_design, and anything after it a word that ends the turn. [drop]:
 // the design's stream dropped, so the app asks again without one and gets
 // the design whole.
-function recordedBrain(page, drop) {
+function recordedBrain(page, drop, made = DESIGN) {
   const asked = [];
   let designed = false;
   const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*",
@@ -262,6 +294,9 @@ function recordedBrain(page, drop) {
         body: JSON.stringify({ data: [{ type: "model", id: "claude-opus-5-5" }], has_more: false }) });
     }
     const body = JSON.parse(request.postData() || "{}");
+    // The brief as it reached the model: typed whole, or cut short where the
+    // field lost the keys and the rest went to the view's shortcuts.
+    if (!asked.length) asked.brief = JSON.stringify(body.messages || []);
     asked.push((body.messages || []).length);
     asked.at = Date.now();
     if (!designed && drop && body.stream) return route.abort("connectionreset");
@@ -272,16 +307,16 @@ function recordedBrain(page, drop) {
     if (design) asked.design = asked.length;
     if (!body.stream) {
       const content = design
-        ? [{ type: "tool_use", id: "msg_design_0", name: "submit_design", input: DESIGN }]
-        : [{ type: "text", text: "Nine bricks, red and yellow in turn." }];
+        ? [{ type: "tool_use", id: "msg_design_0", name: "submit_design", input: made }]
+        : [{ type: "text", text: made.description }];
       return route.fulfill({ status: 200, headers: { ...cors, "content-type": "application/json" },
         body: JSON.stringify({ id: `msg_${asked.length}`, type: "message", role: "assistant", model: body.model,
           content, stop_reason: design ? "tool_use" : "end_turn", stop_sequence: null,
           usage: { input_tokens: 2000, output_tokens: 400 } }) });
     }
     const text = design
-      ? reply("msg_design", body.model, { input: DESIGN }, "tool_use")
-      : reply(`msg_${asked.length}`, body.model, { text: "Nine bricks, red and yellow in turn." }, "end_turn");
+      ? reply("msg_design", body.model, { input: made }, "tool_use")
+      : reply(`msg_${asked.length}`, body.model, { text: made.description }, "end_turn");
     return route.fulfill({ status: 200, headers: { ...cors, "content-type": "text/event-stream" }, body: text });
   });
   return asked;
@@ -291,12 +326,13 @@ function recordedBrain(page, drop) {
 // answer asked for again, laid at once, which is when the app's own design
 // goes up as the build animation; streamed, the bricks go down as they are
 // written instead, a sketch the finished design keeps (Assistant._apply), and
-// nothing is left to animate.
-async function build(run, again) {
-  const name = `build_${again ? "again" : "streamed"}_${run}`;
+// nothing is left to animate. [made]: WIDE for the row, only framed.
+async function build(run, again, made = DESIGN) {
+  const wide = made === WIDE;
+  const name = `build_${wide ? "wide_" : ""}${again ? "again" : "streamed"}_${run}`;
   const { context, page } = await app(name);
   try {
-    const asked = recordedBrain(page, again);
+    const asked = recordedBrain(page, again, made);
     await where(page, "open", 400);
     await page.waitForTimeout(Number(args.load || 8000));
     await press(page, "key_field");
@@ -309,7 +345,9 @@ async function build(run, again) {
       await press(page, "sketch_first", 1000);
     }
     await press(page, "brief", 800);
-    await page.keyboard.type("nine 2 x 4 bricks stacked, red and yellow in turn", { delay: 10 });
+    const brief = wide ? "twelve 2 x 4 bricks in a row, red and yellow in turn"
+      : "nine 2 x 4 bricks stacked, red and yellow in turn";
+    await page.keyboard.type(brief, { delay: 10 });
     // Every state the app writes, kept in the page: the animation is 2 s by
     // the wall clock, which in software is two or three frames, between
     // which a poll from here can miss it.
@@ -322,14 +360,17 @@ async function build(run, again) {
         last = s;
       }, 10);
     });
-    await press(page, "build", 0);
+    // Sent by Enter, in order with the keys typed. A click on Build it just
+    // after the typing sent the brief cut short twice in 16 runs, the keys
+    // still to come going to the view's shortcuts.
+    await page.keyboard.press("Enter");
     // Not by the count alone: a first visit's example car counts too, until
     // the design takes it off the baseplate, and the app's surface pass then
     // lays its own proposal on the top, in the top's colour, and asks again.
     // Done is the design answered, its result asked about and nothing asked
     // for 5 s.
     const built = await until(page, (s) => asked.design && asked.length > asked.design
-      && Date.now() - asked.at > 5000 && s.bricks >= 9 && s.playing === false, 300);
+      && Date.now() - asked.at > 5000 && s.bricks >= made.bricks.length && s.playing === false, 300);
     const states = await page.evaluate(() => window.drawnSeen);
     const playing = states.filter((s) => s.playing);
     console.log(`        ${name}: ${states.length} states written, playing in ${playing.length}`
@@ -339,8 +380,18 @@ async function build(run, again) {
     const how = again
       ? `asked again after the stream dropped, the design went up ${playing.length ? "as the build animation played" : "WITHOUT the build animation"}`
       : "streamed, the design went down as it was written";
-    ok((!again || playing.length > 0) && Boolean(built) && seen.bricks === 9,
-      `${how}, and then ${seen.bricks} of 9 bricks are drawn (run ${run}, ${asked.length} request(s) answered)`);
+    if (!wide) {
+      ok((!again || playing.length > 0) && Boolean(built) && seen.bricks === 9,
+        `${how}, and then ${seen.bricks} of 9 bricks are drawn (run ${run}, ${asked.length} request(s) answered)`);
+    }
+    // Keys that missed the brief went to the view (W slides it, a comma
+    // opens Settings), and a view the person moved is kept.
+    if (!ok(String(asked.brief || "").includes(brief), `the brief reached the model as it was typed (run ${run})`)) {
+      console.log(`        ${name}: the model was sent ${String(asked.brief || "nothing").slice(0, 300)}`);
+    }
+    const framed = whole(seen);
+    ok(Boolean(built) && framed.inside, `${wide ? "the row of twelve" : "the stack of nine"}, ${again ? "asked again" : "streamed"},`
+      + ` is ${framed.inside ? "whole in the view" : "NOT whole in the view"} as it ends: ${framed.said} (run ${run})`);
   } finally {
     await context.close();
   }
@@ -442,6 +493,7 @@ try {
   if (only.has("cut") || only.has("booklet")) await cutAndBooklet();
   if (only.has("build")) for (let run = 1; run <= runs; run++) await build(run, true);
   if (only.has("streamed")) for (let run = 1; run <= runs; run++) await build(run, false);
+  if (only.has("wide")) for (const again of [true, false]) await build(1, again, WIDE);
 } catch (e) {
   ok(false, `the flow stopped: ${String(e && e.message || e).split("\n")[0]}`);
 }
@@ -451,5 +503,5 @@ const failed = said.filter((l) => l.includes("FAIL")).length;
 writeFileSync(`${out}/result_${tag}.txt`, said.join("\n") + "\n");
 console.log(failed
   ? `drawn flow at ${tag}: ${failed} problem(s); pictures in ${out}`
-  : `drawn flow at ${tag}: the build animation, the cut moved and the booklet draw what they say; pictures in ${out}`);
+  : `drawn flow at ${tag}: the build animation, the cut moved and the booklet draw what they say, and designs end whole in view; pictures in ${out}`);
 await finish(failed ? 1 : 0);
