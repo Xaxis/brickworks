@@ -1126,6 +1126,12 @@ func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> 
 		# (the palette: tools/web/cad_task_flow.mjs).
 		var at: Dictionary = {"x": roundi(centre.x), "y": roundi(centre.y),
 			"w": roundi(shown.size.x / per_css), "h": roundi(shown.size.y / per_css)}
+		# Cut off by a list it is in, scrolled past it: on a phone held
+		# sideways at 130% Settings' Interface size stood under the list's
+		# foot, behind Done, inside the window, and a tap meant for it
+		# pressed Done (app_a11y, uifix). Said, so a check scrolls to it.
+		if _cut_off(control):
+			at["clipped"] = true
 		seen[name] = at
 		if _told_places.get(name, {}) == at:
 			where[name] = at
@@ -1135,6 +1141,20 @@ func _page_places(named: Dictionary, to_window: Transform2D, per_css: float) -> 
 
 ## Where each control was at the last telling (_page_places).
 var _told_places: Dictionary = {}
+
+
+## Whether something [param control] is in that clips what it holds (a
+## list that scrolls, a drawer) shows less than all of it. By more than two
+## units: a list scrolls by whole units, and one 455.7 tall scrolled to its
+## end left its last row 1.1 under its foot (the assistant's at 150%).
+static func _cut_off(control: Control) -> bool:
+	var rect: Rect2 = control.get_global_rect()
+	var up: Control = control.get_parent() as Control
+	while up != null:
+		if up.clip_contents and not up.get_global_rect().grow(2.0).encloses(rect):
+			return true
+		up = up.get_parent() as Control
+	return false
 
 
 ## The model's parts by number, each once, the first 300: worked out again
@@ -8516,6 +8536,11 @@ func _dress_for_phone() -> void:
 	_shell.status.only_the_work()
 	_hint.visible = false
 	_hint_area.custom_minimum_size.y = _phone.foot_height()
+	# The busy line over the room the foot's row of tools keeps, not under
+	# the row: there its Cancel was where the row took the finger
+	# (dialogs_1024, uifix).
+	_shell.status.reparent(_hint_area.get_parent(), false)
+	_hint_area.get_parent().move_child(_shell.status, _hint_area.get_index())
 	_gizmo.visible = false
 	_place_tool_column()
 	get_viewport().size_changed.connect(_place_tool_column)
@@ -8526,18 +8551,18 @@ func _dress_for_phone() -> void:
 	_camera.touch_over = _over_panel_at
 	# The model tree and the properties, in the drawer down the left, sized
 	# for a finger as a dialog is; on a tablet the drawer takes the parts
-	# panel's place while it is open (PhoneShell.dock_toggled).
+	# panel's place while it is open (PhoneShell.dock_toggled), and so does
+	# the tools' column.
 	_touch.size_panel(_stack)
 	# And the assistant in its drawer down the right.
 	_touch.size_panel(_chat)
-	_chat_dock.toggled.connect(func(open: bool) -> void:
-		if open:
-			_touch.fit_panel.call_deferred(_chat))
+	_chat_dock.toggled.connect(func(_open: bool) -> void: _fit_drawers())
 	_bin_dock.toggled.connect(_phone.dock_toggled)
-	_bin_dock.toggled.connect(func(open: bool) -> void:
+	_tool_column.visibility_changed.connect(_phone.dock_toggled)
+	_bin_dock.toggled.connect(func(_open: bool) -> void:
 		_show_notices()
-		if open:
-			_touch.fit_panel.call_deferred(_stack))
+		_fit_drawers())
+	get_viewport().size_changed.connect(_fit_drawers)
 	# And the panels that place themselves, placed as Main's are, and those
 	# over the model's own room (Motions, Colour the hidden parts, Stress),
 	# Simulate's column and the line saying what the app is busy with.
@@ -8553,6 +8578,18 @@ func _dress_for_phone() -> void:
 	_phone_hold.wait_time = HOLD_MS / 1000.0
 	_phone_hold.timeout.connect(_on_phone_hold)
 	add_child(_phone_hold)
+
+
+## A phone's open drawers' panels fitted to the drawer, as each opens and as
+## the window's room changes under it: Settings, Interface size makes the
+## window's units fewer, and the assistant's, opened at 85%, ran its key
+## field and Connect 140 points off a phone at 150% (app_a11y, uifix). By
+## the drawer's width: a panel's own is never less than what it holds.
+func _fit_drawers() -> void:
+	var gutters: float = 2.0 * Phone.px(get_viewport(), TouchSizing.GUTTER)
+	for dock: SideDock in [_bin_dock, _chat_dock]:
+		if dock.is_open():
+			_touch.fit_panel.call_deferred(dock.content, dock.open_width() - gutters)
 
 
 ## The panels in the tools' column, a sheet under the model on a screen

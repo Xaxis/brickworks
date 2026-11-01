@@ -161,7 +161,10 @@ the model, and the design assistant doing the same with `add_minifig`.
   Surprise me, Keep, Place in model, and the kept figures. Escape closes it.
   On a phone or a tablet held upright the slots and a slot's choices take
   turns, the figure over them on a phone ([building](building.md),
-  `minifig builder by finger`; `tools/web/dialogs_flow.mjs`).
+  `minifig builder by finger`; `tools/web/dialogs_flow.mjs`, whose tap to
+  stand it is on the baseplate below the notices strip where the model's
+  middle is under it: on a tablet with the parts out the browser's warning
+  stands over the middle of the model, and a tap there is the warning's).
 - `placing` (`Builder.hold_figure` / `settle_figure` / `put_figure`): Place hands
   the figure to the builder, which holds it like a part — a ghost of every part,
   red where it would stand in something; R turns it; a click stands it on a pair

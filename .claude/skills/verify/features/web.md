@@ -1961,7 +1961,10 @@ plan with Claude as the client.
   the photo (`/api/people?op=photo_file&id=`, cut to 4:3), `a.open` to
   `/m/<model>#photo-<id>`, `a.who` "Built by <name>" to `/u/<handle>` (a
   span "Built by a builder" with no profile shown), `time.when`, and
-  `q.said`. Paged by `web/pager.js` (`nav[data-pager=builds]`, noun
+  `q.said`. Its name line keeps clear of the designer's link under it
+  (`.model .open + .by`): the link's target reaches 4 px above its line,
+  and a one-line name over a line that wraps was left 22 px tall (axe's
+  target-size at 390, uifix; `a11y_flow --only=builds --widths=390`). Paged by `web/pager.js` (`nav[data-pager=builds]`, noun
   build|builds); `html[data-builds]` is `ready`, `none` (then
   `#builds-empty` says what a build is, I built it, and links `/gallery`)
   or `broken` (Retry). `?tests=1` asks for test models' builds.
@@ -3315,7 +3318,11 @@ plan with Claude as the client.
   not laid out yet, and the warning that the browser may clear the models is
   offered in that frame every second, so its Download my models was published
   440 px from where it is drawn and keep_flow pressed nothing, one run in two
-  (2026-10-14; `page_places_probe`). So a control is in the map about a second
+  (2026-10-14; `page_places_probe`). One cut off by a list it is in,
+  scrolled past it, is marked `clipped` (`Main._cut_off`): at 130% on a
+  phone held sideways Settings' Interface size was published inside the
+  window, behind Done, and app_a11y's tap pressed Done (uifix); a check
+  scrolls to it first. So a control is in the map about a second
   after it appears, and gone from it at once, and a flow that reads it once
   right after showing a control can miss it: each waits for the controls it
   needs, as a person waits for a panel (`controlsWith(page, names, ms,
