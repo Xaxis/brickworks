@@ -40,6 +40,13 @@ const CHOICES: Array = [["en", "English"], ["de", "Deutsch"], ["fr", "Français"
 ## keys sheet does a menu row's ("zoom in"): German capitalises its nouns,
 ## and its lists start with a capital.
 const CAPITALISED: Array[String] = ["de"]
+## What each language groups a count's thousands with, where the interface's
+## English writes 1,575: German and Spanish 1.575, French 1 575. French's is
+## a no-break space, not the narrow one its printers use: the interface's
+## font has no narrow one, and a browser, with no system font to take it
+## from, draws it half a space wide, 1.4 px in the parts bin's 11 px type,
+## so "10 850" read "10850" there (languages2, 2026-10-31).
+const THOUSANDS: Dictionary = {"de": ".", "fr": "\u00a0", "es": "."}
 
 ## The one in use: "en" until another is applied.
 static var _code: String = "en"
@@ -108,6 +115,7 @@ static func apply(code: String) -> void:
 			_words = Words.new(source)
 			_words.locale = code
 			_words.capitals = code in CAPITALISED
+			_words.thousands = str(THOUSANDS.get(code, ","))
 			TranslationServer.add_translation(_words)
 			_code = code
 			_keep_until_exit()
@@ -181,6 +189,8 @@ class Words extends Translation:
 	var _source: Translation
 	## Whether a row's words lowered keep the translation's capital.
 	var capitals: bool = false
+	## What it groups a count's thousands with (Language.THOUSANDS).
+	var thousands: String = ","
 	## A pattern's first word -> its patterns, as [RegEx, translation, how
 	## many of its letters are its own, whether it has words of its own,
 	## which of its places are in quotes]; those that start with what they
@@ -194,6 +204,8 @@ class Words extends Translation:
 	var _key_after: RegEx = RegEx.create_from_string(r"^(.*?\S)( {3,}\S.*)$")
 	var _joins: RegEx = RegEx.create_from_string(r" · | — |\. |; | › ")
 	var _letter: RegEx = RegEx.create_from_string(r"\p{L}")
+	## A count the interface groups in English: "1,575", "-12,000".
+	var _grouped: RegEx = RegEx.create_from_string(r"^-?\d{1,3}(?:,\d{3})+$")
 
 	func _init(source: Translation) -> void:
 		_source = source
@@ -267,6 +279,10 @@ class Words extends Translation:
 		var whole: String = String(_source.get_message(text))
 		if not whole.is_empty():
 			return whole
+		# A count in the thousands, alone or in a place ("%s of %s sets"):
+		# grouped as this language groups it, wherever it was made.
+		if _grouped.search(text) != null:
+			return text.replace(",", thousands)
 		# Its lines, one by one: a tooltip's words and key, then what it does.
 		if "\n" in text:
 			var lines: PackedStringArray = text.split("\n")
