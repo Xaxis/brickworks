@@ -17,7 +17,8 @@
 class_name ClaudeTabView
 extends VBoxContainer
 
-var connector: ClaudeConnector
+## Claude connected to this tab (ClaudeConnector, a Later class).
+var connector: Node
 
 var _name: Label
 var _chats: VBoxContainer
@@ -34,7 +35,7 @@ const WORKING := Color(0.35, 0.8, 0.45)
 const TWO := Color(0.95, 0.72, 0.25)
 
 
-func setup(with: ClaudeConnector) -> void:
+func setup(with: Node) -> void:
 	connector = with
 	add_theme_constant_override("separation", 6)
 
@@ -212,7 +213,7 @@ static func chat_words(one: Variant) -> String:
 
 ## The toolbar's line for this tab: [text, colour, tooltip], or ["", …]
 ## while the connector is off.
-static func badge(connector: ClaudeConnector) -> Array:
+static func badge(connector: Node) -> Array:
 	if connector == null or not connector.is_on():
 		return ["", Color.TRANSPARENT, ""]
 	var now: Array = connector.working()

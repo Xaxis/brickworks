@@ -83,18 +83,23 @@ static func ensure(host: Node) -> bool:
 
 
 ## Lookups by subject word and by id, made once from a fresh index, with
-## the pieces of any set held out (DesignMemory.held_out) left out.
+## the pieces of any set under test left out: of its number or its name
+## (DesignMemory.holds), as 21004-1's are when 21035-1, the same museum, is.
 static func _take(read_in: Dictionary) -> void:
 	_document = read_in
 	_subject_of.clear()
 	_by_id.clear()
-	var held: PackedStringArray = DesignMemory.held_out()
-	if not held.is_empty() and _document.has("entries"):
+	if not (DesignMemory.held_out().is_empty() and DesignMemory.held_names().is_empty()) \
+			and _document.has("entries"):
 		var kept: Array = []
 		var hidden: Dictionary = {}
+		# Asked once a set, not once a piece.
+		var held: Dictionary = {}
 		for raw: Variant in _document["entries"]:
 			var from: String = str((raw as Dictionary).get("set", ""))
-			if held.has(from):
+			if not held.has(from):
+				held[from] = DesignMemory.holds(from, str((raw as Dictionary).get("set_name", "")))
+			if held[from]:
 				hidden[from] = int(hidden.get(from, 0)) + 1
 			else:
 				kept.append(raw)

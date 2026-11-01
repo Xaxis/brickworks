@@ -18,10 +18,10 @@ extends RefCounted
 
 
 ## brick id -> the transform that seats it, for every brick that needs it.
-static func misplaced(world: BrickWorld, builder: Builder, assistant: Assistant,
-		scenery: Dictionary) -> Dictionary:
+static func misplaced(world: BrickWorld, builder: Builder, scenery: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	var covers: Dictionary = {}
+	var footprint := Footprint.new(builder)
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
 			continue
@@ -29,7 +29,7 @@ static func misplaced(world: BrickWorld, builder: Builder, assistant: Assistant,
 		if mesh == null:
 			continue
 		var shift: Vector3 = shift_for(mesh, brick.part_id, brick.transform,
-			builder, assistant, covers)
+			footprint, covers)
 		if shift != Vector3.ZERO:
 			out[brick.id] = brick.transform.translated(shift)
 	return out
@@ -37,9 +37,10 @@ static func misplaced(world: BrickWorld, builder: Builder, assistant: Assistant,
 
 ## How far a part placed at ``at`` is from where the footprint's corner
 ## would have put it, when undoing exactly that seats it; zero otherwise.
-## In the app's own space: LDraw's z runs the other way.
+## In the app's own space: LDraw's z runs the other way. The footprint is
+## the assistant's rule, the core's copy (Footprint).
 static func shift_for(mesh: Lbm.PartMesh, part_id: String, at: Transform3D,
-		builder: Builder, assistant: Assistant, covers: Dictionary = {}) -> Vector3:
+		footprint: Footprint, covers: Dictionary = {}) -> Vector3:
 	if not BrickLattice.is_square_to_grid(at.basis):
 		return Vector3.ZERO
 	var basis: Basis = BrickLattice.snap_basis(at.basis)
@@ -50,13 +51,13 @@ static func shift_for(mesh: Lbm.PartMesh, part_id: String, at: Transform3D,
 	if covers.has(key):
 		cover = covers[key]
 	else:
-		var span: Array = builder._cell_span(mesh, Transform3D(basis, Vector3.ZERO))
+		var span: Array = footprint.builder._cell_span(mesh, Transform3D(basis, Vector3.ZERO))
 		cover = Vector3i(0x7FFFFFFF, 0, 0x7FFFFFFF) if span.is_empty() \
 			else Vector3i((span[0] as Vector3i).x, 0, (span[0] as Vector3i).z)
 		covers[key] = cover
-	var footprint: Vector3i = assistant._corner_cell(mesh, part_id, basis)
-	var shift := Vector3((cover.x - footprint.x) * BrickLattice.CELL, 0.0,
-		(cover.z - footprint.z) * BrickLattice.CELL)
+	var corner: Vector3i = footprint._corner_cell(mesh, part_id, basis)
+	var shift := Vector3((cover.x - corner.x) * BrickLattice.CELL, 0.0,
+		(cover.z - corner.z) * BrickLattice.CELL)
 	if shift == Vector3.ZERO:
 		return Vector3.ZERO
 	if off_the_studs(mesh, at) <= 0.5:

@@ -545,8 +545,8 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	# A flexible part's skin was drawn by LDCad and came in the file.
 	if custom and CustomParts.is_skin_text(library.custom_source(brick.part_id)):
 		_ids.text = "Flexible part from the file, as LDCad drew it · %s" % brick.part_id
-	var studio: PrintStudio = shell.app.get("_studio") if shell.app != null else null
-	var versions: int = studio.versions_of(brick.part_id).size() if studio != null else 0
+	var versions: int = library.prints_of(PartPrints.plain_of(library, brick.part_id)).size() \
+		if shell.app != null else 0
 	_versions_button.visible = versions > 0 and not Stickers.sticks(library, brick.part_id)
 	_versions_button.text = "Printed versions… (%d)" % versions
 	_show_colours([brick.color_code])
@@ -841,8 +841,8 @@ func _tipped() -> void:
 	if to.is_equal_approx(_tilted):
 		return
 	var facing: float = _yaw_of_turn()
-	var turn: Basis = Assistant.Section.turned(facing, to.x, to.y) \
-		* Assistant.Section.turned(facing, _tilted.x, _tilted.y).inverse()
+	var turn: Basis = Nests.turned(facing, to.x, to.y) \
+		* Nests.turned(facing, _tilted.x, _tilted.y).inverse()
 	if shell.builder.turn_selection_basis(turn, "tipped %+d°, rolled %+d°"
 			% [roundi(to.x - _tilted.x), roundi(to.y - _tilted.y)]) > 0:
 		shell.verbs.edited.call()
@@ -863,14 +863,14 @@ func _yaw_of_turn() -> float:
 	if brick == null:
 		return 0.0
 	var basis: Basis = brick.transform.basis.orthonormalized()
-	return Assistant.Section.angles_of(basis * BrickLattice.snap_basis(basis).inverse()).x
+	return Nests.angles_of(basis * BrickLattice.snap_basis(basis).inverse()).x
 
 
 ## How far a part is tipped off the square, as [tilt, roll] in degrees: its
 ## turn less the nearest square one, read as a section's pitch and roll.
 static func _tilt_of(basis: Basis) -> Vector2:
 	var b: Basis = basis.orthonormalized()
-	var off: Vector3 = Assistant.Section.angles_of(b * BrickLattice.snap_basis(b).inverse())
+	var off: Vector3 = Nests.angles_of(b * BrickLattice.snap_basis(b).inverse())
 	return Vector2(off.y, off.z)
 
 

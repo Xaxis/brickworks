@@ -156,7 +156,11 @@ static func reduce_motion() -> bool:
 
 
 static func used_claude_here() -> bool:
-	for kept: String in [OwnKey.WHERE, ClaudeConnector.where, Brain.where]:
+	# The connector keeps its file in this tab's folder unless a probe points
+	# it at one (ClaudeConnector.where), which only a loaded connector can be.
+	var connector: String = Later.script(&"ClaudeConnector").where \
+		if Later.loaded(&"ClaudeConnector") else ""
+	for kept: String in [OwnKey.WHERE, connector, Brain.where]:
 		if FileAccess.file_exists(kept):
 			return true
 	return false

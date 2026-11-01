@@ -292,6 +292,8 @@ async function load(context, profile, label) {
   const navStart = await page.evaluate(() => performance.timeOrigin).catch(() => 0);
   const cpu = cpu1 ? cpu1.main - cpu0.main : NaN;
   const picked = pickId && Number.isFinite(marks?.interactive) ? await pickFirst(page, pickId).catch((e) => ({ ms: NaN, why: String(e).slice(0, 120) })) : null;
+  // What the app loaded on first use (Later), by then: when and how long.
+  const loaded = await page.evaluate(() => window.brickworksLoaded || null).catch(() => null);
   const cpuAll = cpu1 ? cpu1.all - cpu0.all : NaN;
   const busy = (marks?.longtasks || []).filter(([t]) => t <= (marks?.interactive ?? Infinity)).reduce((n, [, d]) => n + d, 0);
   // Request times to the page's clock: the document's request is its zero
@@ -324,7 +326,7 @@ async function load(context, profile, label) {
     // A part of the pick fetched alone from the store, after the click.
     picked.fetched = files.filter((f) => f.path.endsWith(".lbm") && f.start >= picked.at).length;
   }
-  const run = { label, profile, marks, net, cpu, cpuAll, busy, bytes, files, errors: errors.slice(0, 5), navStart, picked };
+  const run = { label, profile, marks, net, cpu, cpuAll, busy, bytes, files, errors: errors.slice(0, 5), navStart, picked, loaded };
   await page.close().catch(() => {});
   return run;
 }
@@ -340,6 +342,13 @@ function sayRun(run) {
   if (run.picked) {
     console.log(`    first pick of ${pickId}: in hand with its ghost ${Number.isFinite(run.picked.ms) ? `${Math.round(run.picked.ms)} ms` : `never (${run.picked.why})`}`
       + ` after the click, ${run.picked.fetched ?? 0} part file${run.picked.fetched === 1 ? "" : "s"} fetched for it alone`);
+  }
+  // A feature the start loaded (Later, src/later.gd), or one loaded under
+  // the first pick: each is a compile on the main thread.
+  const firstUse = Object.entries(run.loaded || {}).sort((x, y) => x[1][0] - y[1][0]);
+  if (run.loaded) {
+    const when = (t) => (t <= m.interactive ? "before interactive" : run.picked?.at && t <= run.picked.at + (run.picked.ms || 0) ? "before the pick was in hand" : "after");
+    console.log(`    loaded on first use: ${firstUse.length ? firstUse.map(([name, [t, ms]]) => `${name} at ${sec(t)} s (${ms} ms, ${when(t)})`).join(", ") : "none"}`);
   }
   // Where the wait after the download went: the engine's start, then the
   // app's own (Main._boot_mark).

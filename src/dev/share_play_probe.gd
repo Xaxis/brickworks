@@ -380,6 +380,10 @@ func _published_moves(text: String) -> void:
 	var store: ModelStore = _main.get("_store")
 	var shell: Shell = _main.get("_shell")
 	var bar: ModelBar = _main.get("_bar")
+	# Signed in once start-up has said who is here, as a person only can be.
+	# Its answer, none from the port this probe gives the deployment, came
+	# 20 s in and signed the probe out partway through (Account.boot).
+	await account.deployment.wait()
 	account.email = "probe.builder@example.com"
 	account._access = "probe.signed.in"
 	account._expires_at = Time.get_unix_time_from_system() + 3600.0

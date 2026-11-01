@@ -169,8 +169,9 @@ func _on_account() -> void:
 
 
 func _on_store_changed() -> void:
-	# The assistant prefers what is owned, for a brief that asks it to.
-	var assistant: Variant = app.get("_assistant")
+	# The assistant prefers what is owned, for a brief that asks it to: told
+	# here once it is made, and told as it is made (Main._make_assistant).
+	var assistant: Variant = app.get("_assistant_made")
 	if assistant != null:
 		assistant.set("owned", store.on_hand)
 	_read.clear()

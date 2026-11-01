@@ -136,12 +136,10 @@ var connections_known: bool = false
 ## in.
 var had_claude: bool = false
 
-## Claude's own list of the person's connectors (Customize › Connectors),
-## where a Brickworks already there is connected again.
-const CONNECTORS := "https://claude.ai/customize/connectors"
-## Why that list is offered, in one line, beside Connect Claude.
-const ALREADY := ("A Brickworks already in your connectors connects again "
-	+ "with its own Connect, keeping its tool permissions.")
+## Claude's own list of the person's connectors, and why it is offered
+## (ConnectorForm's, which the core's panels say without loading this).
+const CONNECTORS := ConnectorForm.CONNECTORS
+const ALREADY := ConnectorForm.ALREADY
 
 var _token: String = ""
 var _on: bool = false

@@ -201,9 +201,12 @@ not tune for it.
 - **The brief** is the set's name, its theme, the footprint it fits in and a
   quarter either side of its piece count: "Andrea’s Stage, in the style of
   LEGO® Friends sets: fitting in about 18 x 18 studs, 70 to 110 pieces." The
-  designer never sees the set. Its own pieces are held out of the real-set
-  index for the run, and the log says so: "real sets: holding out 3932-1 (7
-  pieces)".
+  designer never sees the set. The set, and any set of its name under
+  another number, is held out of every path that hands a session a real
+  set's facts for the run (`--held-out`, `--held-out-name`; until
+  2026-11-01 plan_scale, the techniques, the catalogue, the official models,
+  the gallery's copies and Commons' pictures did not hold it), and the log
+  says so: "real sets: holding out 3932-1 (7 pieces)".
 - **The judge** sees the design and the set drawn by the same renderer, three
   views each, under hashed names, in both orders. It is not told either is a
   set. It picks one per dimension, with a reason. A subject counts the share
@@ -3302,6 +3305,116 @@ on Technic. Each is a part that does something in its own colour, offered as a
 finding the session keeps or refuses, as these lines were. The reader and the
 settling carry over. Results: `bench/results/realset-2026-10-31-d7lever/` and
 `realset-2026-10-31-d5base-vs-d7lever/`.
+
+### Technique: each assembly says its angle as it is planned, and the app lays it on its joint, on the 44 of proof (2026-10-31, `1625f1cf`, no gain)
+
+Design6's look asked what leans after the model stood, and it said none 32
+times in 38. A set designer decides that when the model is planned. So this
+round asks it then (`b5573a02`, `1625f1cf`):
+
+- Each assembly in `submit_design` says an `angle`, which is required. It is
+  the degrees its far end lifts, and 0 where it stands square. It can also
+  name its joint (`hinge`, `clip` or `click`) and the edge that holds it
+  (`held_at`). A part a set builds at its own angle is an assembly of its own,
+  built lying level on what holds it. As the design goes down, the app lays
+  each such assembly on its joint with design6's hinged turn. The answer says
+  first what was laid, or why not (`Assistant._lay_planned_angles`).
+- `how_real_sets_build_this` ends with "Plan the angles now".
+- The first arm, at `b5573a02`, asked nothing more. In its first 7 sessions, 0
+  of 59 assemblies said an angle. 7992-1 set its container stacker's "boom and
+  spreader" at 0, then raised the boom by hand after the model stood. That arm
+  was stopped, and its 4 records are kept in `realset-2026-10-31-d8lever/`.
+- So `1625f1cf` asks once. A session told to plan the angles whose design has
+  two or more assemblies, all square, gets "Not applied, this once" and what
+  sets build at an angle. Sent again with every assembly at 0, it is built as
+  it is (`Assistant._square_refusal`).
+
+**How it ran.** One locked snapshot, `snapd8plan` at `1625f1cf`, imported
+first. The baseline is design5's stage225 arm (`a3090df7`, 2026-10-30), and
+design6's arm is the second reference: the same 44, the same path, one design
+a subject, 3 at a time. Sessions ran 2026-10-31 19:29Z to 2026-11-01 02:16Z,
+beside design7's arm. Claude's login expired for a minute at 22:12Z. Four
+sessions ended on "OAuth session expired" and one judge call failed. A fifth
+session, 3939-1, never connected to the app's MCP server and saw no tool.
+Those five were moved to `realset-2026-10-31-d8plan-voided/` and run again,
+and 3189-1 was judged again. No session or judge in the arm now carries a
+login error. Sessions took a median 21 minutes (19 in both references), and
+none hit the 45-minute timeout. Each session that searched the library for
+its own set got 0. One tool result did name a held-out set: `plan_scale`
+listed "7242 Street Sweeper 15" among the official models of a street sweeper
+to the 7242-1 session. d5base's 7992-1 got its own set's length the same way.
+`_official_models` reads `SetKnowledge.sizes()` without the hold-out. It gives
+away only a length, but it is a gap.
+
+| dimension | stage225 (95%) | planned angles (95%) | lever minus stage225, paired (95%) | subjects better / worse | lever minus design6, paired (95%) |
+|---|---|---|---|---|---|
+| likeness | 26% (15-41) | 33% (21-48) | +7 (-1, +16) | 7 / 3 | +3 (-7, +14) |
+| surface | 33% (21-48) | 27% (16-42) | -6 (-16, +3) | 5 / 8 | -7 (-15, 0) |
+| colour | 33% (21-48) | 34% (22-49) | +1 (-10, +14) | 8 / 6 | +5 (-5, +14) |
+| technique | 10% (4-23) | 16% (8-29) | +6 (-1, +14) | 6 / 2 | +3 (-2, +9) |
+| creativity | 44% (31-59) | 44% (31-59) | 0 (-11, +11) | 6 / 7 | -3 (-14, +7) |
+| overall | 24% (14-38) | 25% (15-39) | +1 (-6, +8) | 3 / 3 | +2 (-6, +10) |
+
+Head to head, both orders, the lever's design preferred to stage225's:
+likeness 61% (47-74%), surface 48%, colour 52%, technique 44% (31-59%),
+creativity 50%, overall 56% (41-69%). To design6's: likeness 59%, surface
+51%, colour 50%, technique 53% (39-67%), creativity 49%, overall 62% (48-75%).
+
+**What the sessions heard and did** (their logs and transcripts):
+
+| | stage225 | design6 | planned angles |
+|---|---|---|---|
+| told to plan the angles | - | - | 44 of 44 |
+| assemblies said at an angle | - | - | 33 of 939, in 13 sessions |
+| ...unasked | - | - | 4 sessions: a bee's wings, a wheel loader's lift arms, a tipper bed, a siege ladder |
+| asked once, every assembly square | - | - | 40; 9 then said an angle, 31 sent it again all at 0 |
+| the app laid it on a hinge | - | - | 7 parts in 7 sessions: a chest lid, a sketch board, a lounger backrest, a rear wing, a tipper bed, a bonnet, a siege ladder |
+| ...refused, every way | - | - | 5 parts: the bee's two wings, the lift arms, a laptop screen, a windscreen |
+| ...kept in the final model | - | - | 6 of 7; 42033-1's rear wing went in a later resubmit |
+| `submit_design` calls | 110 | 111 | 176 |
+| the surface pass settled (`settle_surface`) | 39 of 44 | 40 of 44 | 33 of 44 |
+| hinge halves in the final model | 6 of 44 | 6 of 44 | 11 of 44 |
+| final: parts turned off the grid, above 0 / 5% or more | 8 / 2 | 6 / 2 | 17 / 6 |
+| final: tiles, median | 16% | 18% | 14% |
+| final: plain bricks and plates, median | 40% | 42% | 43% |
+| technique verdicts lost that call ours stacked | 80% | 71% | 74% |
+| ...subjects where the judge credits the set with angled sections | 61% | 70% | 52% |
+| surface verdicts lost that name our open studs | 51% | 69% | 59% |
+
+Paired by subject, the share of parts turned off the grid rose 1.2 points
+(+0.2, +2.4) against stage225 and 2.3 (+0.2, +5.2) against design6. Tiles
+fell 2.0 points (-4.2, +0.1) and 3.1 (-5.5, -0.8).
+
+Two of the five refused were held from the side: the bee's wings stand beside
+its body, and the hinged turn stands a joint only on a top under the part's
+edge. The lift arms, the laptop screen and the windscreen held up, or ran
+into, parts outside their box. Twice a design with an angle failed its check for another reason (a
+floating brick, a leaf in the way), and the session sent it again with the
+angle dropped. Turntables and Technic pins have no machinery to lay them on.
+
+**No gain.** The lever changed what is built: twice the models carry a hinge
+or a turned part. The judge did not credit it. Technique moved +6, inside its
+noise, and the 7 subjects where an angle was laid won 1 technique verdict of
+14 (none in either reference). The gain came from subjects with no angle,
+where the references differ as much. The laid parts are one small part a
+model, and the judge reads them so: "mostly stacked bricks with a simple
+tilted ladder"; "only stacks bricks and plates" beside a chest lid at 70
+degrees. Surface fell 6 and 7, at the edge of its noise against design6, and
+tiles fell beyond it. Asking once costs a resubmit of the whole design, 66
+more in all, and 6 fewer sessions finished the surface pass. The lever is
+kept on its branch.
+
+**Next.** Asked when they plan, sessions still build square: 31 of 40 asks
+were answered with all 0. What leans in a set is not what the judge misses
+most. Where we lose technique it calls ours stacked in 74% of verdicts. It
+credits the set with Technic construction in 55% of subjects and curved parts
+in 52%. Where we lose surface it names our open studs in 59% and stepped or
+boxy sides in about half. The body is what reads as stacked, not a missing
+lid. The next lever should change how a body is built: its sides of shaped
+parts and its tops finished on the first build, not offered as a pass the
+session may not reach. Results: `bench/results/realset-2026-10-31-d8plan/`,
+`realset-2026-10-31-d5base-vs-d8plan/` and
+`realset-2026-10-31-d6lever-vs-d8plan/`.
 
 ## Against an outside ruler: BrickBench (2026-10-14)
 

@@ -30,6 +30,7 @@ DIRECTORY = (ROOT / "api/_directory.js").read_text()
 STORE = (ROOT / "src/parts/model_store.gd").read_text()
 LIBRARY = (ROOT / "src/net/model_library.gd").read_text()
 TOOL = (ROOT / "src/net/gallery_tool.gd").read_text()
+SHARED = (ROOT / "src/net/shared_models.gd").read_text()
 LATER = (ROOT / "supabase/later.tsv").read_text()
 
 def function(text: str, name: str) -> str:
@@ -67,7 +68,9 @@ def test_the_licences_are_the_same_ids_in_the_sql_the_site_and_the_gallery_tool(
     in_sql = sorted(re.findall(r"'([a-z0-9.-]+)'", check[1]))
     block = re.search(r"export const LICENCES = \{(.*?)\n\};", DIRECTORY, flags=re.S)[1]
     in_site = sorted(re.findall(r'^  "([a-z0-9.-]+)": \{', block, flags=re.M))
-    in_tool = sorted(re.findall(r'^\t"([a-z0-9.-]+)": \[', re.search(r"const LICENCES: Dictionary = \{(.*?)\n\}", TOOL,
+    # The gallery's tool says SharedModels' table, which a copy's credit reads too.
+    assert "const LICENCES: Dictionary = SharedModels.LICENCES" in TOOL
+    in_tool = sorted(re.findall(r'^\t"([a-z0-9.-]+)": \[', re.search(r"const LICENCES: Dictionary = \{(.*?)\n\}", SHARED,
                                                                   flags=re.S)[1], flags=re.M))
     assert in_sql == in_site == in_tool == ["all-rights-reserved", "cc-by-2.0", "cc-by-4.0", "cc-by-sa-4.0"]
     assert '"https://creativecommons.org/licenses/by/2.0/"' in DIRECTORY

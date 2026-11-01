@@ -946,6 +946,54 @@ static func colour_name(library: PartLibrary, code: int) -> String:
 	return colour.name if colour != null else "colour %d" % code
 
 
+## How different two colours look, CIEDE2000 (Sharma, Wu and Dalal's
+## formulation), from CIE L*a*b* ([method lab]): the measure the bench scores
+## colour by, and how near a colour the library offers is.
+static func de2000(one: Vector3, two: Vector3) -> float:
+	const POW25_7 := 6103515625.0
+	var c1: float = sqrt(one.y * one.y + one.z * one.z)
+	var c2: float = sqrt(two.y * two.y + two.z * two.z)
+	var cm: float = pow((c1 + c2) / 2.0, 7.0)
+	var g: float = 0.5 * (1.0 - sqrt(cm / (cm + POW25_7)))
+	var a1: float = (1.0 + g) * one.y
+	var a2: float = (1.0 + g) * two.y
+	var c1p: float = sqrt(a1 * a1 + one.z * one.z)
+	var c2p: float = sqrt(a2 * a2 + two.z * two.z)
+	var h1: float = fposmod(rad_to_deg(atan2(one.z, a1)), 360.0)
+	var h2: float = fposmod(rad_to_deg(atan2(two.z, a2)), 360.0)
+	var both: bool = c1p * c2p != 0.0
+	var dh: float = 0.0
+	if both:
+		dh = h2 - h1
+		if dh > 180.0:
+			dh -= 360.0
+		elif dh < -180.0:
+			dh += 360.0
+	var dl: float = two.x - one.x
+	var dc: float = c2p - c1p
+	var dhh: float = 2.0 * sqrt(c1p * c2p) * sin(deg_to_rad(dh) / 2.0)
+	var lm: float = (one.x + two.x) / 2.0
+	var cpm: float = (c1p + c2p) / 2.0
+	var hm: float = h1 + h2
+	if both:
+		if absf(h1 - h2) <= 180.0:
+			hm = (h1 + h2) / 2.0
+		elif h1 + h2 < 360.0:
+			hm = (h1 + h2 + 360.0) / 2.0
+		else:
+			hm = (h1 + h2 - 360.0) / 2.0
+	var t: float = 1.0 - 0.17 * cos(deg_to_rad(hm - 30.0)) + 0.24 * cos(deg_to_rad(2.0 * hm)) \
+		+ 0.32 * cos(deg_to_rad(3.0 * hm + 6.0)) - 0.20 * cos(deg_to_rad(4.0 * hm - 63.0))
+	var theta: float = 30.0 * exp(-pow((hm - 275.0) / 25.0, 2.0))
+	var cp7: float = pow(cpm, 7.0)
+	var rc: float = 2.0 * sqrt(cp7 / (cp7 + POW25_7))
+	var l50: float = (lm - 50.0) * (lm - 50.0)
+	var x: float = dl / (1.0 + 0.015 * l50 / sqrt(20.0 + l50))
+	var y: float = dc / (1.0 + 0.045 * cpm)
+	var z: float = dhh / (1.0 + 0.015 * cpm * t)
+	return sqrt(maxf(0.0, x * x + y * y + z * z - sin(deg_to_rad(2.0 * theta)) * rc * y * z))
+
+
 ## CIE L*a*b* of an sRGB colour (D65).
 static func lab(colour: Color) -> Vector3:
 	var linear: Array[float] = []

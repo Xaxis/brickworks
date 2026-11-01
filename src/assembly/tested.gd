@@ -1408,7 +1408,7 @@ static func _exactly(bricks: Array, otherwise: Dictionary, near: Dictionary, hel
 			if asked.cancelled:
 				return {}
 		Exact.shape_for(library, part_id)
-	var deadline: int = Time.get_ticks_msec() + Assistant.FETCH_WAIT_MS
+	var deadline: int = Time.get_ticks_msec() + FETCH_WAIT_MS
 	var wanted: Array = ids.keys().filter(func(part_id: String) -> bool:
 		return not Exact.known(library, part_id) and library.is_exact_on_its_way(part_id))
 	while not wanted.is_empty() and Time.get_ticks_msec() < deadline:
@@ -1446,6 +1446,10 @@ static func _exactly(bricks: Array, otherwise: Dictionary, near: Dictionary, hel
 ## How far a part's exact shapes may be off the floor and stand on it, LDU
 ## (ExactCheck.ON_GROUND).
 const ON_GROUND := ExactCheck.ON_GROUND
+## The longest a part's exact shape is waited for, ms, as the assistant
+## waits for a part's geometry (Assistant.FETCH_WAIT_MS): a request that
+## never answers.
+const FETCH_WAIT_MS := 120000
 
 
 ## What [method _exactly] finds, on a worker: {"into": [[a, b, depth], ...]

@@ -57,7 +57,7 @@ static func attach_tested(text: String, library: PartLibrary, store: ModelStore,
 		return {"text": bare, "tested": {}}
 	var tested: Dictionary = made.get("tested", {})
 	if tested.has("tests"):
-		tested["model"] = Tested.fingerprint(out)
+		tested["model"] = Later.script(&"Tested").fingerprint(out)
 	return {"text": out, "tested": tested}
 
 
@@ -165,7 +165,7 @@ static func pages_for(text: String, library: PartLibrary, store: ModelStore,
 			var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
 			if mesh != null:
 				lattice.occupy_boxes(brick.id, store.builder.boxes_for(mesh, brick.transform))
-		tested = await Tested.check(world, lattice, library, steps, {}, asked)
+		tested = await Later.script(&"Tested").check(world, lattice, library, steps, {}, asked)
 	_let_go(world)
 	if steps.is_empty() or asked.cancelled:
 		return {}

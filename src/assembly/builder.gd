@@ -2774,8 +2774,8 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		if pinned.has(other) or in_mesh.has(other):
 			continue
 		var theirs: String = library.resolve(str(entries[n][3]))
-		if Assistant._seated_in(mine, at, theirs, there) \
-				or Assistant._seated_in(theirs, there, mine, at):
+		if Nests._seated_in(mine, at, theirs, there) \
+				or Nests._seated_in(theirs, there, mine, at):
 			continue
 		# A hinge's two halves, which BrickNet's labels pair (a door and its
 		# frame), meet inside each other's covers at the pins: where both have
