@@ -3758,6 +3758,132 @@ kind. The app can count the colours seen in its own pictures, over 1%, as
 this read did, and say when a design is short of what such sets show. The
 read used only the bench's pictures and model files, by the method above.
 
+### Technique: each assembly plans its faces on their side, two smokes and no bench (2026-11-01, `20f512db`, `11b7c09b`, not benched)
+
+Parts on their side are the largest measured gap: 5.5% of ours against 22.7%
+of the sets' over the 44 (final329t), 4% against 37% in the silhouette smoke.
+design8's surface pass at save (d8surf) already skins flanks, and on 41
+paired subjects it cost 12.2 points of surface [-23.2, -2.4] and moved no
+technique. So this round plans the faces instead (`20f512db`,
+`src/ai/sideways.gd`):
+
+- Each assembly in `submit_design` says `sideways`, which is required: each
+  face built on its side and what holds it (brackets, bricks with studs on
+  the side, headlight bricks, clips and bars, hinges), or an empty list.
+- The app counts each assembly's parts on their side as style.py does. The
+  submit answer and the whole review name an assembly planned with a face
+  that still stands studs up, with the holders' part numbers.
+  `how_real_sets_build_this` ends with "Plan which faces are built on their
+  side".
+
+**Smoke 1, planning (d10side, `20f512db`).** Same five subjects, one design
+each, on the owner's path. No login lapse, no held-out set named.
+
+| | d10side |
+|---|---|
+| assemblies that planned a face | 43 of 49, 48 faces |
+| parts on their side in `submit_design` itself | 0 of 915 |
+| assemblies named not built | 33 |
+| edits after that turned parts / parts turned | 20 / 66 |
+| median share on their side, final | 7.1% (d10smoke 3.9%, d5base 10.7%, sets 37%) |
+| verdicts won: overall, surface, technique | 4/10, 4/10, 3/10 |
+| minutes, the five together | 90 |
+
+Sessions name the face and stack it studs up anyway. The bar was too low
+to say so. It called a face built at two to seven parts on their side
+whatever the assembly's size, which passed a lamp where a set turns a flank.
+
+**Smoke 2, the app lays it and the bar scales (d10lay, `11b7c09b`).** Two
+changes at once:
+
+- When the design is built, `SurfacePass.lay_planned` skins the plain flanks
+  standing in an assembly that planned a face. These are the surface pass's
+  own flank skins, settled as accepted.
+- A face counts as built at 15% of its assembly's parts (2 at least), under
+  the 19% median of sets since 2010. The count reads the box a stud wider each
+  way.
+
+| | d10lay |
+|---|---|
+| sessions where the app laid a skin | 2 of 5, 3 skins; 40270-1 rejected its one ("rounded tiles a plate proud read as a snout") |
+| parts the skins left on their side, final | about 4, in 21016-1 |
+| edits after hearing the share bar / parts turned | 17 / 91 (57 in one session, 7746-1) |
+| planned assemblies built at the 15% bar, final | 5 of 12 (d10side, read at the same bar: 0 of 16) |
+| median share on their side, final | 16.3% |
+| verdicts won: overall, surface, technique | 4/10, 4/10, 3/10 |
+| minutes | 78 |
+
+Per subject, against d8surf's arm: 30.5 v 21.3, 6.0 v 6.1, 16.9 v 3.3, 16.3
+v 4.0, 7.3 v 0.3. The median paired difference is +9.2 points. The laying
+did almost none of it. It fires only at `submit_design`, and sessions submit an
+outline and build the bulk with `edit_model`: 295 parts submitted over 14
+calls, 52 for 42093-1 over 6. The bar did it. Told the share an assembly of
+that size takes, sessions turned the parts themselves.
+
+**Not benched as smoked.** The skin is taken out. It barely fires, a session
+can reject it, and a skin at save is what cost d8surf its surface. The bar
+goes to the bench alone: planned faces, the per-assembly share in the tool
+results, 15% of the assembly, no laying (branch `bar10`).
+
+### Technique: a planned face built into the body the shape pattern lays, a smoke and no bench (2026-11-01, `ea29ebda`, not benched)
+
+The three subjects that always lose are vehicles. Which pattern lays their
+bodies was counted at d5base's last built `submit_design` for each subject:
+
+| kind | parts built at submit | laid by `shape` | next |
+|---|---|---|---|
+| vehicles (8 sessions) | 2707 | 1473 | fill + mirror + repeat, 211 |
+| architecture and buildings | 5442 | 178 alone (1 session), 390 with fill and round (1) | fill + repeat, 1285 |
+
+On the losers, `shape` laid 671 of 42093-1's 683 parts and 236 of 7746-1's
+256. 5763-1 laid no pattern. `shape` already lays a curved side on its side
+(shells on side studs). It lays a flat side upright, with a side-stud brick and
+a tile every other course. So the lever (`Shapes.planned`, `Plan.flat_sides`)
+shells a flat side too, but only when most of the shape stands in an
+assembly that planned a face on its side.
+
+**On built shapes it works.** `side_faces_probe` builds a fixture body:
+
+- Each flank goes from 3 parts on its side to 17, 9 of them in one plane
+  flush with the body's side.
+- It is held by 20 side-stud bricks (14 unplanned), and it is one piece that
+  stands.
+- With no face planned, or one planned for another assembly's box, it lays
+  exactly as before.
+
+d5base's own submits, rebuilt offline:
+
+| subject | unplanned | planned |
+|---|---|---|
+| 42093-1 | 10.2% | 23.8% |
+| 42111-1 | 16.9% | 24.7% |
+| 7746-1 | 45.5% | 44.6% |
+| 7242-1 | 34.7% | 32.8% |
+
+All of them are buildable, and the piece counts are unchanged. A band
+narrower than a row on its side (2.5 plates) is lost: 42093-1's 2-plate
+black sill goes yellow.
+
+**The smoke (d10body), on the owner's path, changed nothing.** Each
+session's built `shape` submit was rebuilt both ways, as planned and with
+the plan stripped:
+
+- 42093-1: 92 parts on their side either way. The session rounded its
+  flanks, so they were shelled already.
+- 5763-1: 0 either way. A buggy 6 plates tall on wheels gives its shells back
+  and lays upright.
+- 7746-1: its shape submit planned no face.
+
+The finals' median share was 9.5%. Verdicts won: overall 2/10, surface 4/10,
+technique 2/10. 40270-1 laid another set's BrickHeadz whole and recoloured
+it in 6 minutes: 41.4% on their side, and it lost.
+
+Of 7 shape bodies, the lever adds parts on their side in 2, the two d5base
+cars with flat flanks (about +75 parts each). Flat-flanked shape bodies are
+too rare on this path to matter. Kept on branch `body10`.
+
+Results: `bench/results/realset-2026-11-01-d10side/`, `-d10lay/`, `-d10body/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
