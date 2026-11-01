@@ -71,6 +71,8 @@ How to work here, said once as this chat begins (read_guide "work" has it whole,
 Nothing overlaps, nothing floats, and the model is one connected thing.
 ```
 
+Through the connector, a chat that opens on the model already in its tab, with a look at its parts or a change to them, is told the guide's section on changing something already built instead, and the method above only when it begins a design.
+
 ## Each call {#calls}
 
 - **One undo step a change.** Whatever a call changes, Undo takes back in one step; your own Undo takes back any step, and the assistant's `undo` stops at a step another chat made.
