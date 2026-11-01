@@ -32,6 +32,10 @@
 # a windowed probe in a window of that size instead of its header's (Xvfb
 # has no window manager, so a probe cannot resize its own window).
 set -u
+# Read whole before it runs: bash reads a script as it goes, and the
+# release's own edit to this file, made while a probe ran, cut that run off
+# after its probe passed (exit 1, "ution: command not found", 2026-11-01).
+{
 name=${1:?usage: probe.sh NAME [ARGS…]}; shift
 name=${name%.gd}; name=${name##*/}
 cd "$(dirname "$0")/.." || exit 1
@@ -140,3 +144,4 @@ if [ -n "$made" ]; then
   if [ "$code" = 0 ]; then rm -rf "$data"; else echo "probe.sh: its data kept in $data"; fi
 fi
 exit "$code"
+}

@@ -1535,7 +1535,10 @@ func _ready() -> void:
 	# how a person reporting a bug, and the release smoke test, ask a
 	# downloaded build which one it is.
 	if _has_argument("--about"):
-		print(BuildInfo.describe())
+		# In the language chosen in Settings (or by --lang=), as Settings and
+		# About say it.
+		Language.start()
+		print(tr(BuildInfo.describe()))
 		# quit() ends the run after this frame, not now, and _process
 		# would steer a camera through a UI that was never built.
 		set_process(false)

@@ -563,6 +563,7 @@
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_run_probes.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -694,6 +695,7 @@
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_run_probes.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -1420,7 +1422,9 @@
       "entry": "src/dev/motions_render_probe.gd",
       "reach": "tools/probe.sh motions_render_probe [OUT_DIR]; PROBE_SIZE=1280x720 tools/probe.sh motions_render_probe OUT_DIR pictures   (windowed, on the GPU: File, Render's Animation pressed as a person does on 1484-1's doors and 4096-1's boom, as I see it and framed on what moves: every frame, frames that differ where parts move, the boom filling the frame, files named after the model and the motion and numbered, All in order, Cancel; the same frames pixel for pixel as the Motions panel's Render animation and render_motion; pictures of the dialog)",
       "area": "view",
-      "tests": []
+      "tests": [
+        "tests/test_run_probes.py"
+      ]
     },
     {
       "id": "cli:move the downloads to the releases repository",
@@ -1779,6 +1783,7 @@
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_run_probes.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -2097,6 +2102,7 @@
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
+        "tests/test_run_probes.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -2474,7 +2480,9 @@
       "entry": "tools/web/hover_cost.mjs",
       "reach": "node tools/web/hover_cost.mjs --url=http://127.0.0.1:<port>/ --out=DIR [--moves=40] [--label=B] [--floor=none] MODEL   (serve.py build/web --parts assets/generated/parts, .env sourced)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_run_probes.py"
+      ]
     },
     {
       "id": "cli:worker first run",

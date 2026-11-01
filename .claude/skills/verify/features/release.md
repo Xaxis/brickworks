@@ -17,7 +17,8 @@ that offers each system its own build. The cycle and its cadence are
   export). `src/build_info.gd` reads it, and for a release the stamp
   `res://release.json` that only a release build carries (commit and date).
   `-- --about` prints `BuildInfo.describe()` and quits before the catalogue
-  loads; Help shows the same line; the window title is `Brickworks <version>`.
+  loads, in the language chosen in Settings or by `--lang=` (English in a
+  fresh home, which the smoke test reads); Help shows the same line; the window title is `Brickworks <version>`.
   `tools/check.sh` and CI's `check` both run `tools/release.py version`.
 - `build the desktop packages`: `tools/release.py build [linux mac windows]`
   stages `git archive HEAD` with only the meshes the catalogue names, exports

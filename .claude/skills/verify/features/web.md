@@ -2790,7 +2790,10 @@ plan with Claude as the client.
   place was never drawn, so a brick turned or nudged stayed where it had been
   while its outline moved on (live site and every build to 2026-10-11) — desktop
   OpenGL drew the same writes. `BrickWorld._fresh_slots` lets a batch's slots go
-  and takes them again on every rebuild, so each one writes a new buffer. Run
+  and takes them again on every rebuild, so each one writes a new buffer. A
+  count raised is a write in place too (the engine writes the slots it adds):
+  `BrickWorld.draw_first` hands them over fresh, and `in_view_flow` is its
+  browser check (the timeline at step 4, opened five times, Next at once). Run
   it against a local export the way `freeze check` does (`relay_server.mjs
   --static`) or a preview (`--bypass`); pictures in `--out`.
 - `the real-set index beside the build`: the index `find_techniques` searches

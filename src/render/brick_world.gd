@@ -137,11 +137,15 @@ class Batch extends RefCounted:
 
 var library: PartLibrary
 
-var _bricks: Dictionary = {}         ## int id -> Brick
+var _bricks: Dictionary = {}         ## int id -> Brick, in the order placed
 var _batches: Dictionary = {}        ## String key -> Batch
 var _brick_batches: Dictionary = {}  ## int id -> PackedStringArray of keys
 var _dirty: Dictionary = {}          ## String key -> true
 var _next_id: int = 1
+## A brick was put back under a number older than the newest, so it stands
+## last in _bricks rather than where it was: put back in order before the
+## bricks are next read ([method _in_order]).
+var _out_of_order: bool = false
 var _rebuild_queued: bool = false
 var _materials: Dictionary = {}      ## int MaterialClass -> ShaderMaterial
 ## Drawn as a product shot (StudioRender's Product look): every batch made
@@ -375,6 +379,8 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 	var brick := Brick.new(number, real, color_code, at * by)
 	if number == _next_id:
 		_next_id += 1
+	else:
+		_out_of_order = true
 	_bricks[brick.id] = brick
 
 	var keys := PackedStringArray()
@@ -502,6 +508,7 @@ func clear() -> void:
 	_spans.clear()
 	_drawn.clear()
 	_next_id = 1
+	_out_of_order = false
 	unit_steps.clear()
 	step_looks.clear()
 	motions = null
@@ -548,7 +555,7 @@ func show_first(upto: int) -> void:
 		var batch: Batch = _batches[key]
 		# Numbers are handed out in order and appended in order, so each
 		# batch's list is sorted, and its slots are in the same order.
-		batch.multimesh.visible_instance_count = batch.brick_ids.bsearch(upto)
+		_draw_first(batch, batch.brick_ids.bsearch(upto))
 
 
 ## Draw every brick with [param material] and in the colour
@@ -637,6 +644,7 @@ func get_brick(brick_id: int) -> Brick:
 
 
 func bricks() -> Array:
+	_in_order()
 	if _ghosts.is_empty():
 		return _bricks.values()
 	var standing: Array = []
@@ -646,10 +654,30 @@ func bricks() -> Array:
 	return standing
 
 
+## The bricks in the order they were placed, which is the order of their
+## numbers: a part an undo or a redo put back goes back where it stood among
+## them, not last. What is worked out from the order went on as if it had
+## been placed last: the house's build steps, planned from it, were saved
+## as 18 steps, and as 20 after a part was taken off and put back. Put in
+## order when next read, not at each part put back, so undoing the taking
+## off of 300 parts sorts them once.
+func _in_order() -> void:
+	if not _out_of_order:
+		return
+	_out_of_order = false
+	var ids: Array = _bricks.keys()
+	ids.sort()
+	var placed: Dictionary = {}
+	for brick_id: int in ids:
+		placed[brick_id] = _bricks[brick_id]
+	_bricks = placed
+
+
 ## The model's bricks, copied into a world of their own that draws nothing
 ## and is in no tree, to be read on another thread while this one goes on
 ## changing. The caller frees it.
 func copy_for_reading() -> BrickWorld:
+	_in_order()
 	var copy := BrickWorld.new()
 	copy.library = library
 	copy.keeps_history = false
@@ -671,6 +699,7 @@ func copy_for_reading() -> BrickWorld:
 ## all; with [param at_home] false, each where it stands, for a worker to
 ## read (Sections). Draws nothing and is in no tree; the caller frees it.
 func copy_at_home(at_home: bool = true) -> BrickWorld:
+	_in_order()
 	var copy := BrickWorld.new()
 	copy.library = library
 	copy.keeps_history = false
@@ -1064,6 +1093,41 @@ func _fresh_slots(batch: Batch, count: int) -> void:
 	batch.multimesh.instance_count = count
 
 
+## [param multimesh] drawing its first [param count] slots. Raised, the
+## slots go over again into a buffer of their own: [param data] where the
+## caller keeps them, else read off the MultiMesh. A count raised in place
+## has the engine write the slots it adds into the buffer already drawn
+## from, the write _fresh_slots says a browser does not draw: the timeline
+## at step 4 of a model built a brick a step drew none of its bricks, in
+## some runs, while it counted four on show (timeline4). Lowered, nothing is
+## written, so it is lowered in place. Off the web it is raised in place, as
+## before: Vulkan and desktop OpenGL drew those writes, 20 runs each.
+static func draw_first(multimesh: MultiMesh, count: int,
+		data: PackedFloat32Array = PackedFloat32Array()) -> void:
+	var drawn: int = multimesh.visible_instance_count
+	if drawn < 0:
+		drawn = multimesh.instance_count
+	if count <= drawn or not OS.has_feature("web"):
+		multimesh.visible_instance_count = count
+		return
+	if data.is_empty():
+		data = multimesh.buffer
+	var slots: int = multimesh.instance_count
+	multimesh.instance_count = 0
+	multimesh.instance_count = slots
+	# The count before the slots: raised with none written, it writes
+	# nothing, and the slots go over whole.
+	multimesh.visible_instance_count = count
+	multimesh.buffer = data
+
+
+## As draw_first, from the buffer the batch was written with in order, when
+## it keeps one.
+func _draw_first(batch: Batch, count: int) -> void:
+	var kept: bool = batch.buffer.size() == batch.brick_ids.size() * STRIDE
+	draw_first(batch.multimesh, count, batch.buffer if kept else PackedFloat32Array())
+
+
 ## One brick into one slot of a batch.
 func _write_instance(batch: Batch, slot: int, brick: Brick,
 		surface_color: int, into: MultiMesh = null) -> void:
@@ -1210,7 +1274,8 @@ func begin_reveal(order: PackedInt64Array) -> void:
 ## time it is worked out. The first time for an order every batch is written
 ## in that order, as [method begin_reveal] writes it; after that a step,
 ## forwards or back, is a count raised or lowered in each batch holding
-## bricks of the order, and nothing is written again. It was show_only,
+## bricks of the order, and nothing is packed again (a count raised hands
+## the batch's slots over again, as [method draw_first] says). It was show_only,
 ## every brick asked whether it was on show and every batch that held one
 ## that changed written again whole: a step of a 5,025-part set was most of
 ## a tenth of a second here, more in a browser.
@@ -1245,7 +1310,7 @@ func reveal_upto(order: PackedInt64Array, count: int, key: int) -> bool:
 			if brick != null:
 				brick.hidden = n >= upto
 		batch.revealed = upto
-		batch.multimesh.visible_instance_count = batch.shown + upto
+		_draw_first(batch, batch.shown + upto)
 	return true
 
 
@@ -1346,7 +1411,7 @@ func _write_revealing() -> void:
 
 
 ## Show every brick up to [param rank] in the order begun with: a count
-## raised per batch, nothing rewritten.
+## raised per batch (draw_first), nothing packed again.
 func reveal_through(rank: int) -> void:
 	for batch: Batch in _revealing:
 		var upto: int = batch.ranks.bsearch(rank + 1)
@@ -1357,7 +1422,7 @@ func reveal_through(rank: int) -> void:
 			if brick != null:
 				brick.hidden = false
 		batch.revealed = upto
-		batch.multimesh.visible_instance_count = batch.shown + upto
+		_draw_first(batch, batch.shown + upto)
 	if rank >= _reveal_order.size() - 1:
 		_stop_reveal()
 
@@ -1390,7 +1455,7 @@ func _stop_reveal() -> void:
 	if _reveal_order.is_empty():
 		return
 	for batch: Batch in _revealing:
-		batch.multimesh.visible_instance_count = batch.brick_ids.size()
+		_draw_first(batch, batch.brick_ids.size())
 		batch.ranks = PackedInt64Array()
 		batch.shown = 0
 		batch.revealed = 0
@@ -1438,10 +1503,12 @@ func _write_in_order(batch: Batch, key: String) -> void:
 		_pack(buffer, slot, at, brick, surface_color)
 		var box: AABB = at * mesh_box
 		bounds = box if slot == 0 else bounds.merge(box)
+	# The count first: raised after, it writes the slots in place
+	# (draw_first).
+	batch.multimesh.visible_instance_count = batch.shown
 	batch.multimesh.buffer = buffer
 	batch.buffer = buffer
 	batch.surface_color = surface_color
-	batch.multimesh.visible_instance_count = batch.shown
 	# Bounds for all of them, shown or to come, so the batch is not culled
 	# as it grows.
 	_set_bounds(batch, bounds)
@@ -1601,7 +1668,7 @@ func set_cut(on: bool, plane: Plane = Plane(), ghosts: bool = false) -> void:
 			var batch: Batch = _batches[key]
 			if _dirty.has(key) or batch.reaches.is_empty():
 				continue
-			batch.multimesh.visible_instance_count = batch.reaches.bsearch(plane.d, false)
+			draw_first(batch.multimesh, batch.reaches.bsearch(plane.d, false))
 			var slots: PackedInt32Array = _cut_slots(batch)
 			if slots != batch.cut_slots:
 				batch.cut_slots = slots
@@ -1879,8 +1946,8 @@ func set_faded_in_order(changes: Dictionary) -> bool:
 		# (_fresh_slots), and the pages came up with what was built before
 		# drawn dark where it should be faded, now and then.
 		_fresh_slots(batch, batch.brick_ids.size())
-		batch.multimesh.buffer = batch.buffer
 		batch.multimesh.visible_instance_count = batch.shown + batch.revealed
+		batch.multimesh.buffer = batch.buffer
 	return true
 
 
