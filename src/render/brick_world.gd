@@ -137,11 +137,15 @@ class Batch extends RefCounted:
 
 var library: PartLibrary
 
-var _bricks: Dictionary = {}         ## int id -> Brick
+var _bricks: Dictionary = {}         ## int id -> Brick, in the order placed
 var _batches: Dictionary = {}        ## String key -> Batch
 var _brick_batches: Dictionary = {}  ## int id -> PackedStringArray of keys
 var _dirty: Dictionary = {}          ## String key -> true
 var _next_id: int = 1
+## A brick was put back under a number older than the newest, so it stands
+## last in _bricks rather than where it was: put back in order before the
+## bricks are next read ([method _in_order]).
+var _out_of_order: bool = false
 var _rebuild_queued: bool = false
 var _materials: Dictionary = {}      ## int MaterialClass -> ShaderMaterial
 ## Drawn as a product shot (StudioRender's Product look): every batch made
@@ -375,6 +379,8 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 	var brick := Brick.new(number, real, color_code, at * by)
 	if number == _next_id:
 		_next_id += 1
+	else:
+		_out_of_order = true
 	_bricks[brick.id] = brick
 
 	var keys := PackedStringArray()
@@ -502,6 +508,7 @@ func clear() -> void:
 	_spans.clear()
 	_drawn.clear()
 	_next_id = 1
+	_out_of_order = false
 	unit_steps.clear()
 	step_looks.clear()
 	motions = null
@@ -637,6 +644,7 @@ func get_brick(brick_id: int) -> Brick:
 
 
 func bricks() -> Array:
+	_in_order()
 	if _ghosts.is_empty():
 		return _bricks.values()
 	var standing: Array = []
@@ -646,10 +654,30 @@ func bricks() -> Array:
 	return standing
 
 
+## The bricks in the order they were placed, which is the order of their
+## numbers: a part an undo or a redo put back goes back where it stood among
+## them, not last. What is worked out from the order went on as if it had
+## been placed last: the house's build steps, planned from it, were saved
+## as 18 steps, and as 20 after a part was taken off and put back. Put in
+## order when next read, not at each part put back, so undoing the taking
+## off of 300 parts sorts them once.
+func _in_order() -> void:
+	if not _out_of_order:
+		return
+	_out_of_order = false
+	var ids: Array = _bricks.keys()
+	ids.sort()
+	var placed: Dictionary = {}
+	for brick_id: int in ids:
+		placed[brick_id] = _bricks[brick_id]
+	_bricks = placed
+
+
 ## The model's bricks, copied into a world of their own that draws nothing
 ## and is in no tree, to be read on another thread while this one goes on
 ## changing. The caller frees it.
 func copy_for_reading() -> BrickWorld:
+	_in_order()
 	var copy := BrickWorld.new()
 	copy.library = library
 	copy.keeps_history = false
@@ -671,6 +699,7 @@ func copy_for_reading() -> BrickWorld:
 ## all; with [param at_home] false, each where it stands, for a worker to
 ## read (Sections). Draws nothing and is in no tree; the caller frees it.
 func copy_at_home(at_home: bool = true) -> BrickWorld:
+	_in_order()
 	var copy := BrickWorld.new()
 	copy.library = library
 	copy.keeps_history = false
