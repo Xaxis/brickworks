@@ -1087,7 +1087,7 @@ func _define() -> void:
 		"Type a colour's name or number; Enter takes the first")
 	_add("paint", "Paint the selection", KEY_C, func() -> void: await verbs.press("paint"),
 		selected, "Paint the selection the colour in hand")
-	_add("replace", "Replace with the part in hand", 0, func() -> void: verbs.replace(),
+	_add("replace", "Replace with the part in hand", 0, func() -> void: await verbs.replace(),
 		selected, "Swap the selection for the part you hold, each in its own colour")
 	# src/prints/printed_versions.gd: the prints the LEGO Group made of it.
 	_add("printed_versions", "Printed versions…", 0, func() -> void:
