@@ -5444,10 +5444,15 @@ func _build_ui() -> void:
 	# Shown, the assistant's panel comes as the window's first frame is drawn:
 	# its code is the biggest the app has, and before that frame it held
 	# the window back for everybody (Later).
+	# Headless no frame is ever drawn: the relay bench's tab never made its
+	# connector, and never switched it on (shown_assistant_probe).
 	if ShellPrefs.assistant_shown() and _viewing.is_empty():
-		RenderingServer.frame_post_draw.connect(func() -> void:
-			if _chat_made == null:
-				_make_chat(), CONNECT_ONE_SHOT)
+		if DisplayServer.get_name() == "headless":
+			_make_chat.call_deferred()
+		else:
+			RenderingServer.frame_post_draw.connect(func() -> void:
+				if _chat_made == null:
+					_make_chat(), CONNECT_ONE_SHOT)
 
 
 ## The assistant (src/ai/assistant.gd), made and wired the first time
