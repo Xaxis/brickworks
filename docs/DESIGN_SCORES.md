@@ -3184,6 +3184,125 @@ Curved parts (68% of subjects) and Technic construction (55%) are the next most
 credited. Results: `bench/results/realset-2026-10-31-d6lever/` and
 `realset-2026-10-31-d5base-vs-d6lever/`.
 
+### Colour: the surface pass lines a face one colour covers, on the 44 of proof (2026-10-31, `5d22eaba`, not ready)
+
+After technique, likeness and colour lose most on stage225 (`a3090df7`): 26%
+and 33% of verdicts against the sets. Likeness's critiques name what each
+subject is: a dome, a boom's reach, a car's nose. Colour's say one thing again
+and again. Of the 59 colour verdicts we lost, 51 call ours flat, one colour or
+short of accents: "mostly one flat expanse of yellow with only a few red tail
+lights", "large flat expanses of bright-green studded plate". So this round is
+colour.
+
+Read from the pictures' own angles (four sides and the top), 21 of the 44
+designs had a side or the top that one connected colour covered more than 55%
+of. They won 6 of their 42 colour verdicts; the other 23 won 23 of 46. Sets
+have such faces too (12 of the 44, a black car, a silver tower), so a face is a
+place to look, not a fault. Nothing in the app read it. The one-colour advice
+speaks when 75% of the parts are one colour, which no finished design reached,
+and no pass looked at colour.
+
+So the surface pass lines a face (`5d22eaba`):
+
+- `ColourFaces` (`src/ai/colour_faces.gd`) reads a model's outside as its
+  pictures show it. Each part's box is drawn nearest first, half a stud by a
+  plate to a cell, from each side and from above. A face is the largest
+  connected region of one colour that covers 55% of a view and at least 96
+  cells, from 40 parts up.
+- After its own findings, the surface pass takes the faces biggest first, three
+  at most. For each it tries every level row through the middle of the face,
+  either way across the top. A row's line is the plain bricks, plates, tiles
+  and slopes crossing it in the face's colour, none showing more than a third
+  of the face. It takes the row that breaks the face below 55% with the fewest
+  cells, or else the one that leaves the smallest piece. That line is
+  recoloured to the face's darker tone (dark tan on tan, black on yellow, dark
+  grey on light grey), as a set breaks a face with a string course or a sill.
+  Nothing is added.
+- The answer says why, lists each line as a finding (C1, C2), and names the
+  faces no row could line. The session settles them as any surface finding:
+  accept, accept in another colour (`recolor`), or keep or reject with a
+  reason. A reject puts the colour back, and that face is not lined again.
+- `src/dev/colour_faces_probe.gd` proves it headless, in the suite after
+  `surface`.
+
+**How it ran.** One locked snapshot, `snapd7lever` at `5d22eaba`, imported
+first. The baseline is design5's stage225 arm (`a3090df7`, 2026-10-30), on the
+same 44 and the same path: `--via relay --no-claude-code`, the connector's own
+instructions, one design a subject, 3 at a time. Sessions ran 2026-10-31 18:02Z
+to 2026-11-01 00:08Z, beside design8's arm. The account's login expired from
+21:58Z to 22:13Z. Four sessions lost their design to it (42063-1, 42075-1,
+21032-1, 7936-1) and were designed again on the same snapshot, 00:26Z to
+01:26Z; the first tries are kept as `<subject>.dropped-20261031`. Design8's
+arm beside it lost four the same way (21020-1, 40141-1, 42093-1, 7242-1) and
+redoes them on its own snapshot: eight sessions in all, designed again because
+the login expired. Here 21020-1's design was whole and only its judging failed;
+it was judged again. No tool result carried a held-out set's number. Sessions took a median 23 minutes
+against 19. None hit the 45-minute timeout; one did in the baseline. On a
+loaded box, 96 pictures came to the sessions as letters for want of a drawer
+in time, against 46 in the baseline. That counts against the lever.
+
+| dimension | stage225 (95%) | the pass lines a face (95%) | lever minus stage225, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 26% (15-41) | 36% (24-51) | +10 (+1, +20) | 7 / 2 |
+| surface | 33% (21-48) | 36% (24-51) | +3 (-8, +14) | 7 / 4 |
+| colour | 33% (21-48) | 35% (23-50) | +2 (-9, +12) | 11 / 6 |
+| technique | 10% (4-23) | 14% (6-27) | +3 (-5, +12) | 4 / 3 |
+| creativity | 44% (31-59) | 48% (34-62) | +3 (-8, +17) | 7 / 7 |
+| overall | 24% (14-38) | 30% (18-44) | +6 (-1, +14) | 6 / 2 |
+
+Head to head, both orders, the lever's design preferred to stage225's:
+likeness 52%, surface 56%, colour 60% (46-73%), technique 43%, creativity 56%,
+overall 51% (37-65%).
+
+**What the sessions heard and did** (their transcripts, and the final designs
+read as `ColourFaces` reads them):
+
+| | stage225 | the pass lines a face |
+|---|---|---|
+| the surface pass run | 40 of 44 | 42 of 44 |
+| ...told of a one-colour face | - | 21 |
+| ...lines laid | - | 28, in 16 sessions |
+| ...faces no row could line, said | - | in 8 sessions |
+| lines kept | - | 21: 20 as laid, 1 in another colour (3936-1's white top, medium azure for grey) |
+| lines refused, with a reason | - | 6 in 5 sessions |
+| edited the model after the colour answer | - | 19 of 21 |
+| final designs with a face | 21 of 44 | 15 of 44 |
+| final faces | 32 | 22 |
+| colour verdicts won | 29 of 88 | 31 of 88 |
+| ...in the 13 subjects that kept a line | 5 of 26 | 8 of 26 |
+| colour verdicts lost that call ours flat, one colour or short of accents | 51 of 59 (86%) | 50 of 57 (88%) |
+| ...that credit the set's transparent parts or lights / printed parts / pins, hoses, engines, grilles | 36 / 26 / 19 | 37 / 31 / 22 |
+
+The refusals read as a designer's. On 41630-1: "Jack's skull is plain white
+and Sally's hair is one red; a grey or black line across either reads as a
+mistake." On 21016-1, Sungnyemun, kept as it was: "its roof really is one
+field of dark grey giwa tiles". Two towers already had their string courses,
+and 40183-1's white cornice is the town hall's trim.
+
+**Not ready.** The lines were laid and kept, and the judge did not see them.
+Sixteen sessions were given 28 lines and kept 21. Final designs with a flat
+face went from 21 to 15. But colour moved +2, inside its noise, and the judge
+says the same of ours in the same words. On 42111-1, Dom's Charger, before:
+"almost entirely flat black with only red taillights and a grey blower". After
+it kept three black lines: "almost entirely flat black, with only red tail
+lights and some grey trim". No dimension fell. Likeness rose +10 (+1, +20), past its noise, and
+overall +6 (-1, +14). Two thirds of likeness's gain is in the 13 subjects that
+kept a line. But a darker course does not change what a model is, colour itself
+did not move, and with six dimensions one interval clears 0 by chance in about
+one round in four. Likeness wants a second arm before it is believed. The lever
+is kept on its branch.
+
+**Next.** What the judge counts as an accent is a part, not a tone. Of the 57
+colour verdicts we lost, it credits the set's transparent parts and lights in
+37, printed parts in 31, and pins, hoses, engines and grilles in their own
+colours in 22. A darker line of the face's own bricks is none of these. The
+next lever lays accents as parts where this reader finds a face: lights at a
+vehicle's ends, a grille or vent tile, a printed tile, coloured pins and hoses
+on Technic. Each is a part that does something in its own colour, offered as a
+finding the session keeps or refuses, as these lines were. The reader and the
+settling carry over. Results: `bench/results/realset-2026-10-31-d7lever/` and
+`realset-2026-10-31-d5base-vs-d7lever/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

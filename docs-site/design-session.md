@@ -20,7 +20,7 @@ Whichever assistant designs, Claude through the connector, ChatGPT, Claude Code,
 3. **Review.** `review_model` sets the silhouette and proportions beside real sets; the masses are fixed before any detail.
 4. **Each feature.** The app lays a real set's piece where the feature goes, and `settle_feature` accepts it, asks for the next, rejects it, or says the assistant built it itself.
 5. **Each assembly**, looked at with `review_model` and detailed with `edit_model`.
-6. **The surface pass.** `review_model` with `surface`: the app tiles open studs, steps slopes and rounds hard edges, and `settle_surface` settles each finding.
+6. **The surface pass.** `review_model` with `surface`: the app tiles open studs, steps slopes, rounds hard edges and lays a line of a darker tone through any side or top that one colour covers more than half of, and `settle_surface` settles each finding.
 7. **The creative pass**, a few touches of character, then `save_model`. A new design's first save brings [fresh eyes](/docs/fresh-eyes).
 
 Through it all, three rules hold: nothing overlaps, nothing floats, and the model is one connected thing. Asked about a selection, the assistant changes only that ([Ask about the selection](/docs/ai#ask)).
