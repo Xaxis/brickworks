@@ -4431,6 +4431,20 @@
       "entry": "src/dev/languages_probe.gd",
       "reach": "tools/probe.sh languages_probe --shots=shots/languages --missing=missing.po   (every menu row, tooltip, panel title and panel word translated in each, German fits at 1280 x 720, the choice kept across a restart)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "the hover drawn at the device's pace",
+      "entry": "src/render/pointer_pace.gd",
+      "reach": "tools/probe.sh hover_cost_probe   (on the GPU: Orthanc, Select in hand; -- --model=res://... for another)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "what the pointer moving costs in a browser",
+      "entry": "tools/web/hover_cost.mjs",
+      "reach": "node tools/web/hover_cost.mjs --url=http://127.0.0.1:<port>/ --out=DIR [--moves=40] [--label=B] [--floor=none] MODEL   (serve.py build/web --parts assets/generated/parts, .env sourced)",
+      "area": "web"
     }
   ]
 }

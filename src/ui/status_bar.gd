@@ -123,6 +123,10 @@ func _cell(row: Container, says: String) -> Label:
 	return label
 
 
+## When the hint shown first differed from the one wanted, in microseconds.
+var _hint_asked_us: int = -1
+
+
 func _process(_delta: float) -> void:
 	if shell == null:
 		return
@@ -146,10 +150,19 @@ func _process(_delta: float) -> void:
 	var showable: bool = not busy and SaveTo.names(said)
 	if show_folder.visible != showable:
 		show_folder.visible = showable
+	# The hint says what a click does on what the pointer is over, so a step
+	# onto a part or off one changes it: drawn at the pace the device draws,
+	# as the outline round that part is (PointerPace). Anything said, at once.
 	if _hint.text != line:
-		_hint.text = line
-		_hint.tooltip_text = said
-		_hint.modulate.a = 1.0 if not said.is_empty() else 0.62
+		if _hint_asked_us < 0:
+			_hint_asked_us = Time.get_ticks_usec()
+		if not said.is_empty() or PointerPace.now((Time.get_ticks_usec() - _hint_asked_us) / 1000.0):
+			_hint.text = line
+			_hint.tooltip_text = said
+			_hint.modulate.a = 1.0 if not said.is_empty() else 0.62
+			_hint_asked_us = -1
+	else:
+		_hint_asked_us = -1
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at < 150:
 		return
