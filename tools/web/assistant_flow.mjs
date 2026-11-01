@@ -32,7 +32,7 @@
 // must be on the chosen model, opening on that sketch. Nothing leaves the
 // browser. Point it at a local export (serve.py) to see a change before it
 // is deployed.
-import { launch, openColumnFor } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -134,20 +134,10 @@ await page.screenshot({ timeout: 180000, path: `${out}/1_first_screen.png` });
 // Where a control is, as the app tells the page (main._tell_page). Clicking
 // at fixed positions broke the first time a paragraph above the key field
 // grew, and the key went into the app as keyboard shortcuts.
-async function click(name) {
-  for (let tries = 0; tries < 600; tries++) {  // five minutes: at a load of 46 the panel came up later than two
-    const where = await page.evaluate((n) => (window.brickworksControls || {})[n], name);
-    if (where) {
-      await page.mouse.click(where.x, where.y);
-      return;
-    }
-    // In a laptop's window the assistant's column starts folded.
-    if (tries % 10 === 6) await openColumnFor(page, name);
-    await page.waitForTimeout(500);
-  }
-  // What the page was showing instead, for whoever reads the failure.
-  await page.screenshot({ timeout: 180000, path: `${out}/never_showed_${name}.png` }).catch(() => {});
-  throw new Error(`the app never showed "${name}"; see ${out}/never_showed_${name}.png`);
+// Five minutes: at a load of 46 the panel came up later than two. In a
+// laptop's window the assistant's column starts folded, so it is opened.
+function click(name) {
+  return clickStill(page, name, { open: true, shots: out });
 }
 
 await click("key_field");

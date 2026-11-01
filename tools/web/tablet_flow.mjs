@@ -40,7 +40,7 @@
 // controls it names (window.brickworksControls) are counted instead, and
 // the flow fails with how many are under 44 points. Pictures of each go to
 // --out, <size>_<n>_<what>.png, to look at.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -108,10 +108,9 @@ try {
     };
     const tap = async (at) => { await page.touchscreen.tap(at.x, at.y); await page.waitForTimeout(450); };
     const press = async (name) => {
-      const at = await where(name);
-      if (!at) { check(`"${name}" is on the screen`, false); return false; }
-      await tap(at);
-      return true;
+      if (await clickStill(page, name, { find: where, optional: true, act: tap })) return true;
+      check(`"${name}" is on the screen`, false);
+      return false;
     };
     const touch = (type, points) => cdp.send("Input.dispatchTouchEvent", { type,
       touchPoints: points.map((p, i) => ({ x: p.x, y: p.y, id: i + 1, radiusX: 4, radiusY: 4, force: 1 })) });

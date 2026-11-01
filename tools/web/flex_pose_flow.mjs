@@ -20,7 +20,7 @@
 // seconds (default 3) during the render, or a script error reaches the
 // console. Pictures of each step in OUT, and the WebP. --size=WxH for
 // another window than 1400x900 (a laptop's 1280x720).
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -118,9 +118,8 @@ async function click(x, y) {
   await page.mouse.click(x, y);
   await page.waitForTimeout(1500);
 }
-async function press(name) {
-  const at = await where(name);
-  await click(at.x, at.y);
+function press(name) {
+  return clickStill(page, name, { find: where, act: (at) => click(at.x, at.y) });
 }
 async function until(read, test, seconds) {
   for (let n = 0; n < seconds * 2; n++) {

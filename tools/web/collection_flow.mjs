@@ -21,7 +21,7 @@
 import { chromium } from "playwright";
 import { mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { SOFTWARE } from "./browser.mjs";
+import { clickStill, SOFTWARE } from "./browser.mjs";
 import { deleteAccount, signInContext } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -86,11 +86,7 @@ try {
     }
     return (await controls())[name];
   };
-  const click = async (name) => {
-    const at = await where(name);
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(1500);
-  };
+  const click = (name) => clickStill(page, name, { find: where, after: 1500 });
   const typeInto = async (name, text) => {
     const at = await where(name);
     await page.mouse.click(at.x, at.y);

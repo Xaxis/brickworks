@@ -21,7 +21,7 @@
 // counted against the build's, and Booklet pressed, its tab read for its
 // pages of steps (its own steps, a course a step) and two of them
 // photographed. --after=no leaves those out.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -105,10 +105,8 @@ async function where(name, seconds = 120) {
   }
   return (await controls())[name];
 }
-async function click(name) {
-  const at = await where(name);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(1500);
+function click(name) {
+  return clickStill(page, name, { find: where, after: 1500 });
 }
 
 await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });

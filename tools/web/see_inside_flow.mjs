@@ -18,7 +18,7 @@
 // what window.brickworksControls says is where, and every result is read
 // off window.brickworksState. Pictures of each in --out. It fails if a step
 // does not happen or a script error reaches the console.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -85,12 +85,12 @@ async function where(name, seconds = 240) {
   await shot(`never_${name}.png`);
   throw new Error(`the app never showed "${name}"`);
 }
-async function press(name) {
-  const at = await where(name);
-  await page.mouse.move(at.x, at.y, { steps: 3 });
-  await page.waitForTimeout(300);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(1500);
+function press(name) {
+  return clickStill(page, name, { find: where, after: 1500, act: async (at) => {
+    await page.mouse.move(at.x, at.y, { steps: 3 });
+    await page.waitForTimeout(300);
+    await page.mouse.click(at.x, at.y);
+  } });
 }
 // Open… > From a file, answered with a file. The app reads a click a frame
 // or more after the page does, so a press that brought no picker is tried

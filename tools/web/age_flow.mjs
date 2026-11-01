@@ -32,7 +32,7 @@
 //      why, and "Publishing means you agree to the guidelines", which opens
 //      /guidelines. A fourth, 13 or over, is let straight in, and its Share
 //      has the box to tick.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -274,25 +274,7 @@ try {
       await app.waitForTimeout(500);
     }
   };
-  const press = async (name, page = app) => {
-    const end = Date.now() + 60000;
-    for (;;) {
-      let at = (await page.evaluate(() => window.brickworksControls || {}))[name];
-      for (let n = 0; at && n < 6; n += 1) {
-        await page.waitForTimeout(550);
-        const again = (await page.evaluate(() => window.brickworksControls || {}))[name];
-        if (again && again.x === at.x && again.y === at.y) break;
-        at = again;
-      }
-      if (at) {
-        await page.mouse.click(at.x, at.y);
-        await page.waitForTimeout(400);
-        return at;
-      }
-      if (Date.now() > end) throw new Error(`no ${name} on the page`);
-      await page.waitForTimeout(500);
-    }
-  };
+  const press = (name, page = app) => clickStill(page, name, { seconds: 60, after: 400 });
   await app.goto(`${site}/app`, { waitUntil: "load", timeout: 120000 });
   await until(() => (window.brickworksAccount || {}).age_ask === true && window.brickworksAccount.gated, "the age question in the sign-in screen");
   // The page is told where a control is once two of the app's reports agree.

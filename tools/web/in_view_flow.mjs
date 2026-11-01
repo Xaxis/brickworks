@@ -39,7 +39,7 @@
 // Pictures of the window in that state in --out, named by the size, and
 // in_view's text. No model is called; costs nothing. Fails, exiting 1, on any
 // check that does not hold or a script error in the console.
-import { controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
+import { clickStill, controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -153,10 +153,8 @@ async function where(name, seconds = 240) {
   await shot(`never_${name.replace(/\W/g, "_")}_${tag}.png`);
   throw new Error(`the app never showed "${name}"`);
 }
-async function press(name) {
-  const at = await where(name);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(1500);
+function press(name) {
+  return clickStill(page, name, { find: where, after: 1500 });
 }
 const caption = async () => ((await state()).timeline || {}).caption || "";
 // A picture of the window at a stage on the way, with where the view is

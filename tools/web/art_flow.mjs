@@ -19,7 +19,7 @@
 // brief takes what is typed into it, and that it goes to the assistant: its
 // column opens, and with no key of its own the page says so rather than
 // doing nothing.
-import { launch, turnAssistantOn } from "./browser.mjs";
+import { clickStill, launch, turnAssistantOn } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -135,10 +135,8 @@ async function where(name, seconds = 120) {
   }
   return (await controls())[name];
 }
-async function click(name) {
-  const at = await where(name);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(1500);
+function click(name) {
+  return clickStill(page, name, { find: where, after: 1500 });
 }
 
 // Make > Mosaic from a picture…, then the picture into the chooser it opens.

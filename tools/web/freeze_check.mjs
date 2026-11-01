@@ -37,7 +37,7 @@
 // is a long task of half a second or more, so long tasks and input delay are
 // printed, against the idle page's, and judged by eye. Costs nothing: no
 // model is called.
-import { controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
+import { clickStill, controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -141,7 +141,7 @@ async function control(name, minutes = 5) {
   await page.screenshot({ path: `${out}/never_showed_${name}.png` }).catch(() => {});
   throw new Error(`the app never showed "${name}"; see ${out}/never_showed_${name}.png`);
 }
-const click = async (name) => { const at = await control(name); await page.mouse.click(at.x, at.y); };
+const click = (name) => clickStill(page, name, { find: control });
 
 // The private address, which this script can call as Claude would: folded
 // away under "Private address" since one-click connect (2026-10-11), whose

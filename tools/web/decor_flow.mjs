@@ -21,7 +21,7 @@
 // Studio's form, a model does not come back with its decorated parts
 // (window.brickworksState.custom and .parts), or a script error reaches the
 // console.
-import { controlsWith, launch, openColumnFor } from "./browser.mjs";
+import { clickStill, controlsWith, launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -92,10 +92,8 @@ function tools(page) {
     }
     return (await controls())[name];
   }
-  async function click(name, seconds = 120) {
-    const at = await where(name, seconds);
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(1500);
+  function click(name, seconds = 120) {
+    return clickStill(page, name, { find: (n) => where(n, seconds), after: 1500 });
   }
   // A press that opens a file picker, answered with a file; pressed again
   // when no picker came, since the app reads a click a frame or more late.

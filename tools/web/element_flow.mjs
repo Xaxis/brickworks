@@ -23,7 +23,7 @@
 // Driven by position, as assistant_flow.mjs is: the app publishes where its
 // controls are (window.brickworksControls) and what is going on
 // (window.brickworksState: bricks, the part in hand, the parts made here).
-import { launch, openColumnFor } from "./browser.mjs";
+import { clickStill, launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -80,14 +80,16 @@ async function until(test, seconds, what) {
   return false;
 }
 
-async function click(name) {
-  // A box in the dialog may be scrolled out of view; bring it into it.
+function click(name) {
+  return clickStill(page, name, { find: shownAt });
+}
+// Where [name] is, a box in the dialog scrolled out of view brought into it.
+async function shownAt(name) {
   if (!(await showing(name))) await reveal(name);
   if (!(await until(() => showing(name), 300, name))) {
     throw new Error(`the app never showed "${name}"`);
   }
-  const where = await page.evaluate((n) => window.brickworksControls[n], name);
-  await page.mouse.click(where.x, where.y);
+  return page.evaluate((n) => window.brickworksControls[n], name);
 }
 
 await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });

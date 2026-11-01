@@ -16,7 +16,7 @@
 // channel of any pixel more than --tolerance apart (default 24 of 255) and
 // all of them within 1 of 255 on average. Leaves OUT/light.png, the
 // dialog's screenshots and OUT/light.json.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -56,12 +56,9 @@ async function where(name, seconds = 60) {
   }
   return null;
 }
-async function press(name) {
-  const at = await where(name);
-  if (!at) throw new Error(`no ${name} on the page`);
-  await page.mouse.click(at.x, at.y);
-  // The app tells the page where its controls are twice a second.
-  await page.waitForTimeout(1100);
+// The app tells the page where its controls are twice a second.
+function press(name) {
+  return clickStill(page, name, { find: where, after: 1100 });
 }
 const state = () => page.evaluate(() => window.brickworksRender || {});
 const hdri = () => page.evaluate(() => (window.brickworksPacks || {}).hdri || null);
