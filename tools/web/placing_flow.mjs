@@ -24,7 +24,7 @@
 // taken, before aiming, as a hand comes: without it the parts section
 // measures the first aim after a take, which the browser leaves behind.
 // Pictures of each put-down go to --out for a person to look at.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { keysFor, project, turnFor } from "./cad_task_flow.mjs";
@@ -149,9 +149,7 @@ async function start() {
   await page.mouse.click(fresh_.x, fresh_.y);
   await page.waitForTimeout(1500);
   for (let n = 0; n < 10 && (await state()).bricks > 0; n++) await key("Enter", 1500);
-  await page.evaluate(() => { window.brickworksAskLayout = true; });
-  await page.waitForTimeout(1500);
-  const layout = await page.evaluate(() => window.brickworksLayout);
+  const layout = await askApp(page, "Layout");
   return layout.view;
 }
 

@@ -17,7 +17,7 @@
 // find, and for every other flow (rel-m222, 2026-10-30). So the account's
 // keys are put back to the app's own before the run and after it, and a
 // browser of its own, signed in to the same account, must find the key.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { canSignIn, mintSession } from "./session.mjs";
 import { mkdirSync } from "node:fs";
 
@@ -88,13 +88,7 @@ async function controlAt(name, seconds = 400) {
 // Every word the window shows (main.gd words_shown): the canvas has none a
 // page can read.
 async function words() {
-  await page.evaluate(() => { window.brickworksWords = null; window.brickworksAskWords = true; });
-  for (let n = 0; n < 40; n++) {
-    const said = await page.evaluate(() => window.brickworksWords);
-    if (said) return said;
-    await wait(250);
-  }
-  return [];
+  return (await askApp(page, "Words")) || [];
 }
 async function until(test, seconds = 20) {
   for (let n = 0; n < seconds * 4; n++) {

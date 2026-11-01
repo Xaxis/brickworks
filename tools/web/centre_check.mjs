@@ -22,7 +22,7 @@
 //
 // A build from before the shift fails the first: the model's middle is about
 // 18% of the view's width to the side.
-import { launch, turnAssistantOn } from "./browser.mjs";
+import { askApp, launch, turnAssistantOn } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -81,13 +81,7 @@ for (const ratio of [1, 2]) {
     return fresh();
   }
   async function layout() {
-    await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-    for (let n = 0; n < 40; n++) {
-      const said = await page.evaluate(() => window.brickworksLayout || null);
-      if (said) return said;
-      await page.waitForTimeout(250);
-    }
-    return null;
+    return askApp(page, "Layout");
   }
 
   await controlAt("model_name");

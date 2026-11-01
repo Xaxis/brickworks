@@ -34,7 +34,7 @@
 // Pictures in --out. Fails, exiting 1, on a count that is wrong, a step
 // that does not happen, or a script error in the console. No model is
 // called and nothing is signed in to.
-import { controlsWith, launch, openColumnFor } from "./browser.mjs";
+import { askApp, controlsWith, launch, openColumnFor } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -190,9 +190,7 @@ async function press(page, name, ms = 1500) {
 // The bricks drawn in the model's part of the window, from a picture of it.
 async function drawn(page, name) {
   const png = await page.screenshot({ path: `${out}/${name}_${tag}.png`, timeout: 180000 });
-  await page.evaluate(() => { window.brickworksAskLayout = true; });
-  await page.waitForTimeout(1500);
-  const view = ((await page.evaluate(() => window.brickworksLayout)) || {}).view || [0, 0, width, height];
+  const view = ((await askApp(page, "Layout")) || {}).view || [0, 0, width, height];
   const reader = await browser.newPage();
   const counted = await reader.evaluate(async ([src, v, count]) => {
     const image = await new Promise((done) => { const i = new Image(); i.onload = () => done(i); i.src = src; });

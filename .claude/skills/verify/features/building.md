@@ -537,6 +537,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   every target 44 points or more, no text under 12, nothing off the screen
   (a control wholly under the screen counts: the audit passed over those,
   and so missed the bin's foot on a phone on its side).
+  That audit, and every other ask of the app's in tools/web (Phone, Layout,
+  Words: `askApp` in `tools/web/browser.mjs`), is waited for by the app's
+  tellings, not the clock: it fails once the app has told the page 20 times
+  (and 10 s) without answering, or told it nothing for 5 minutes. A fixed
+  10 s held rel-m236 on "ready: the app said what is on the screen" at
+  load 40, where one frame of a page just up at 2048 x 2732 took longer than
+  that; a picture is not judged, so it waits as long as a page has to come up.
   `tools/web/fit_check.mjs` opens its phone sizes (390 x 844, 844 x 390) as
   phones, and 844 x 390 again with a mouse (appux2 saw the desktop's key
   strip over most of a 128-px model there), the model keeping half the

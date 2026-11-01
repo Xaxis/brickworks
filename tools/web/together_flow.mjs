@@ -68,7 +68,7 @@
 //
 // Red on a build without it: there is no Build together… in the File menu.
 // Pictures in --out. Exit 1 on any failure.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -501,9 +501,7 @@ try {
   // card). What this check saw reading the page is said too.
   const timePointer = async (label, strict) => {
     const ownerOf = async (page) => ((await together(page)).people || []).find((one) => one.owner) || {};
-    await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-    const laid = (await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "the owner's layout", 30)
-      .catch(() => ({}))).targets || [];
+    const laid = ((await askApp(owner.page, "Layout", { seconds: 30 })) || {}).targets || [];
     // Only the places the owner's page points at: what it sends with the
     // mouse there, once it has settled, is somewhere on the model. A part's
     // middle over a gap in it, or under something on the page, is nowhere
@@ -984,8 +982,8 @@ try {
   await sameEverywhere("both sides' changes made while the second was offline");
 
   console.log("\n5c. where each person is working, shown in the others' view");
-  await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-  const layout = await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "the owner's layout", 30);
+  const layout = await askApp(owner.page, "Layout", { seconds: 30 });
+  if (!layout) throw new Error("the owner's layout: not told");
   let seen = null;
   for (const aim of (layout.targets || []).slice(0, 6)) {
     await owner.page.mouse.move(aim.x, aim.y, { steps: 4 });
@@ -1097,9 +1095,7 @@ try {
   // outline in the owner's colour read off the second page's pixels, with
   // the part not selected first.
   const partsInSight = async () => {
-    await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-    return (await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "the owner's layout", 30)
-      .catch(() => ({}))).targets || [];
+    return ((await askApp(owner.page, "Layout", { seconds: 30 })) || {}).targets || [];
   };
   const followed = async () => until(async () => sameView((await state(guest.page)).view, (await state(owner.page)).view),
     "the second view on the owner's", 15).catch(() => false);
