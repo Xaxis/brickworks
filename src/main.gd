@@ -5596,6 +5596,8 @@ func _make_chat() -> void:
 	connector.set("rpc", answering)
 	connector.account = _account
 	connector.model_name = func() -> String: return _store.title
+	connector.has_work = func() -> bool: return _world.brick_count() > _store.scenery.size() \
+		and not (_sample_untouched and _builder.history_depth() == 0)
 	# Off with the assistant, before a sign-in can switch it on.
 	connector.held = not ShellPrefs.assistant_shown()
 	add_child(connector)
