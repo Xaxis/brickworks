@@ -392,9 +392,10 @@ a click. Here:
   timed over 40 moves from the mouse moving to the frame the second page
   drew its dot in, twice: on the car after the 50 edits, p95 under 1 s
   strictly; on the rich car, as the change measure is there, p95 under
-  1 s or 95 of 100 on the app's own time: the move less its trip through
-  the network and the server, within four of that page's frames (each
-  move's own, this box's software drawing, half a second and more). Both
+  1 s or 95 of 100 on the app's own time: the move less its trip (the
+  network, the server, the frame that reads it), within four of that
+  page's frames (each move's own, this box's software drawing, half a
+  second and more). Both
   say the stages and what the check reading the page saw. Red on m165 (no Build together in the File menu).
 
 ## Not done yet
@@ -473,12 +474,14 @@ a click. Here:
     every 100 changes on the app's own time, as the probes' bars are
     (`src/dev/probe_time.gd`). Each change is split on the app's own
     clocks: its trip, from the request leaving the sender to the receiver
-    having the answer (the network and the server, the plain measure's to
-    judge), and the pages' own share, from the ask to the request leaving
-    and from the answer to the end of the frame that draws it. The share
-    is within one of the sender's frames (the edit picked up and sent) and
-    three of the receiver's (the one in progress when the answer comes,
-    the one it is drawn in, one more), each that page's longest in that
+    reading the answer (the network, the server, and the wait for the
+    receiver's frame that reads it, as a page reads a fetch's answer once
+    a frame: the plain measure's to judge), and the pages' own share, from
+    the ask to the request leaving and from the answer read to the end of
+    the frame that draws it. The share is within one of the sender's
+    frames (the edit picked up and sent) and three of the receiver's (the
+    one that reads the answer, the one it is drawn in, one more), each
+    that page's longest in that
     change. A real graphics card draws the rich car in a few
     milliseconds, and the bar comes down with it.
 

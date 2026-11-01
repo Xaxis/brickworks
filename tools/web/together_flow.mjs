@@ -410,10 +410,11 @@ async function measure(label, rounds, relative = false) {
     const taken = (await together(to.page)).timing?.taken || {};
     const [heldFrom, heldTo] = [await heldSince(from.page, t0), await heldSince(to.page, t0)];
     // The change's time in two, on the app's own clocks: its trip, from the
-    // request leaving the sender to the receiver having the answer (the
-    // network and the server), and the pages' own share, from the ask to
-    // the request leaving and from the answer to the end of the frame that
-    // draws it. Its stamps are this change's: the receiver's last take is
+    // request leaving the sender to the receiver reading the answer (the
+    // network, the server, and the wait for the receiver's frame that reads
+    // it: a page reads a fetch's answer once a frame), and the pages' own
+    // share, from the ask to the request leaving and from the answer read
+    // to the end of the frame that draws it. Its stamps are this change's: the receiver's last take is
     // its number, and the sender's last send began after the ask and before
     // the receiver had it.
     const drawn = taken.seq > before && sent.sent >= asked && sent.sent <= taken.polled
@@ -442,13 +443,14 @@ async function measure(label, rounds, relative = false) {
   const all = [...times["owner to guest"], ...times["guest to owner"]].sort((x, y) => x - y);
   const pct = (list, p) => list[Math.min(list.length - 1, Math.floor(p * list.length))];
   // The plain measure: p95 under a second. The rich one on the app's own
-  // time, as the probes' bars are (src/dev/probe_time.gd): the trip through
-  // the network and the server is the plain measure's to judge, and a
+  // time, as the probes' bars are (src/dev/probe_time.gd): the trip (the
+  // network, the server, the frame that reads the answer) is the plain
+  // measure's to judge, and a
   // page's frames drawing the rich car in software are this box's (a real
   // graphics card draws it in a fraction of one). What is left is the
   // pages' own share, within one of the sender's frames (the edit picked
-  // up and sent) and three of the receiver's (the one in progress when the
-  // answer comes, the one it is drawn in, one more), each that page's
+  // up and sent) and three of the receiver's (the one that reads the
+  // answer, the one it is drawn in, one more), each that page's
   // longest in that change, for 95 of every 100. A fixed 500 ms for the
   // trip passed 6 to 20 of 20 on one base (2026-10-31): the trip alone was
   // 290 to 590 ms at the median, and its p95 to 930.
@@ -515,8 +517,9 @@ try {
   // ("placed": sent, the poll bringing it, put in the view). Strict: p95
   // under 1 s. On the rich car, as the change measure is: p95 under 1 s,
   // or 95 of every 100 on the app's own time, the move less its trip (the
-  // owner's send to the second page having it: the network and the server,
-  // the strict measure's to judge) within four frames (the sender's
+  // owner's send to the second page reading it: the network, the server
+  // and the frame that reads it, the strict measure's to judge) within
+  // four frames (the sender's
   // pickup; the frame it lands in, the one it is drawn in, the one after),
   // each that move's own frame on the second page, which is this box's
   // software drawing, half a second and more (a few ms on a graphics
