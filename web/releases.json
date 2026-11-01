@@ -8,7 +8,7 @@
    "date": "2026-11-01",
    "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.14.0",
    "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.14.0",
-   "summary": "A release for big models and touch screens. Replacing a part across a 10,000-part model no longer stops the window: replacing all of one with a 2 x 4 held a single frame for half a second or more in 0.13.0, and now its longest frame is under a tenth of a second. Suggest sections on a model that size is a little quicker too. A design Claude finishes in the assistant's panel is framed whole, as Frame all frames it, where a tall one used to run out of the top of the view. And on a touch screen, a drag begun on a text field, a tile's \"+N\" or any other control in a list scrolls the list.",
+   "summary": "A release for big models and touch screens. Replacing a part across a 10,000-part model no longer stops the window: replacing all of one with a 2 x 4 held a single frame for around half a second in 0.13.0, and now its longest frame is under a tenth of a second. Suggest sections on a model that size is a little quicker too. A design Claude finishes in the assistant's panel is framed whole, as Frame all frames it, where a tall one used to run out of the top of the view. And on a touch screen, a drag begun on a text field, a tile's \"+N\" or any other control in a list scrolls the list.",
    "files": [
     {
      "os": "linux",
