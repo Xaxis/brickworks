@@ -45,6 +45,8 @@
 .hero { padding: clamp(56px, 8vw, 104px) 0 0; text-align: center; }
 .hero .wrap > .badge { margin-bottom: var(--s-5); }
 .hero h1 { max-width: 16ch; margin-inline: auto; margin-bottom: var(--s-4); }
+/* "in your browser" a line of its own: left inline, it broke after "in". */
+.hero h1 em { display: block; }
 .hero .lede { margin: 0 auto var(--s-6); max-width: 58ch; }
 .hero .note { margin-top: var(--s-4); }
 .hero-shot { margin-top: clamp(40px, 6vw, 72px); border-radius: var(--r-4); }
