@@ -85,12 +85,6 @@ html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data
 .gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; border-bottom: 1px solid var(--line); }
 .gallery-bar .tabs { flex: 1; margin: 0; border-bottom: 0; }
 .gallery-bar .top-window { flex: none; }
-/* On a phone the six tabs have the row's whole width, and Top's time goes
-   under them: beside them it left room for two and a half. */
-@media (width < 600px) {
-	.gallery-bar { flex-wrap: wrap; row-gap: var(--s-2); border-bottom: 0; }
-	.gallery-bar .tabs { flex: 1 0 100%; border-bottom: 1px solid var(--line); }
-}
 
 /* The bar of filters: the tab's Filters, then its row of pills (the
    models' kinds, the sets' themes, the collections' orders) or the
