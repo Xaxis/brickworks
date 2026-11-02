@@ -5,6 +5,7 @@ two once disagreed, and rel-m227's production was built afresh (2026-10-31).
 """
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -60,3 +61,17 @@ def test_a_build_stands_for_a_later_commit_only_when_nothing_the_deploy_reads_ch
     _git(repo, "checkout", "-q", "-b", "other", built)
     apart = _commit(repo, "tools/web/other_flow.mjs", "//\n")
     assert not _stands(repo, checks, apart)
+
+
+def test_every_route_that_speaks_a_language_is_given_its_words():
+    # rel-m245's /de/u/<handle> answered 404 on its preview: people.js asks
+    # siteWords("de"), and the deploy copied _words_de.json into share's
+    # function alone. The stand-in reads web/ itself, so locally it passed.
+    lines = (ROOT / "tools" / "deploy.sh").read_text().splitlines()
+    copied = next(n for n, line in enumerate(lines) if '"$fn/_words_$lang.json"' in line)
+    guard = next(lines[n] for n in range(copied, -1, -1) if lines[n].lstrip().startswith("if ["))
+    given = set(re.findall(r'"\$route" = (\w+)', guard))
+    speaking = {path.stem for path in (ROOT / "api").glob("*.js")
+                if not path.name.startswith("_") and "siteWords" in path.read_text()}
+    assert speaking, "no route reads siteWords: the test reads the wrong thing"
+    assert speaking <= given, f"deploy.sh gives the words to {sorted(given)}, not {sorted(speaking - given)}"

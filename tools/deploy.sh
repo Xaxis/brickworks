@@ -328,16 +328,23 @@ for handler in api/*.js; do
   if [ "$route" = share ] || [ "$route" = people ]; then
     cp web/gallery.html "$fn/_site.html"
   fi
-  # A set's page in German, French and Spanish (/de/library/set/<n>): the
-  # gallery's copy for its header and footer, and the words the site says
-  # in each language (tools/site_lang.py), as api/_directory.js reads them.
+  # A page in German, French or Spanish (/de/library/set/<n>, /de/m/<id>,
+  # /de/u/<handle>): the gallery's copy for its header and footer, and the
+  # words the site says in each language (tools/site_lang.py), as
+  # api/_directory.js reads them. Every route that asks siteWords: people's
+  # profiles went without until rel-m245's preview answered 404.
+  if [ "$route" = share ] || [ "$route" = people ]; then
+    for words in web/*/words.json; do
+      lang=$(basename "$(dirname "$words")")
+      cp "$words" "$fn/_words_$lang.json"
+      cp "web/$lang/gallery.html" "$fn/_site_$lang.html"
+    done
+  fi
   # And a parts list's part, colour and category names in each, as the
   # build's app says them (tools/export.sh, src/dev/write_part_names.gd).
   if [ "$route" = share ]; then
     for words in web/*/words.json; do
       lang=$(basename "$(dirname "$words")")
-      cp "$words" "$fn/_words_$lang.json"
-      cp "web/$lang/gallery.html" "$fn/_site_$lang.html"
       if ! cp "$dir/part_names/part_names_$lang.json" "$fn/_part_names_$lang.json"; then
         echo "deploy FAILED: no $dir/part_names/part_names_$lang.json (tools/export.sh web)"; exit 1
       fi
