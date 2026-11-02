@@ -100,7 +100,7 @@ func _where() -> Dictionary:
 func _moved_from(rest: Dictionary) -> int:
 	var moved: int = 0
 	for brick: BrickWorld.Brick in _world.bricks():
-		if not Bodies._same(brick.transform, rest[brick.id]):
+		if not Grab._same(brick.transform, rest[brick.id]):
 			moved += 1
 	return moved
 

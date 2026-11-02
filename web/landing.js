@@ -9,7 +9,7 @@
 // skeletons at a card's size (site.css .skeleton), so the page under it
 // stays where it is, and an answer that does not come takes that strip
 // away (and the section with it, when both go). Asked as they near the
-// screen (a screen and a half before the line under the before and after
+// screen (a screen and a half before #also, the line under the features
 // above them), so they are in by the time they are read, and a visitor who
 // never scrolls fetches none of it.
 import { modelCard, pictureOf } from "/card.js";

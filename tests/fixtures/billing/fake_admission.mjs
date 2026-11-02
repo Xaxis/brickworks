@@ -1,7 +1,7 @@
 // Admission's product API (https://admission.sh/v1/openapi.json) in memory,
 // behind a fetch, so the real client (api/_admission.js) talks to it as it
 // would to admission.sh: onon's stand-in (src/test/fake-admission.ts at
-// Xaxis/onon.me), with Brickworks' plans as docs/PLANS.md section 10 sets
+// Xaxis/onon.me), with Brickworks' plans as docs/PLANS.md section 6 sets
 // them up. Track follows Admission's rules: over the limit nothing is
 // counted, giving back always fits, and a repeated idempotency key returns
 // its first answer. An owner is on the best plan with every feature
@@ -45,13 +45,13 @@ function returnable(raw) {
 }
 
 const FEATURES = [
-  { key: "desktop", name: "Desktop app", kind: "flag", reset: null, unit: null },
   { key: "saved_models", name: "Saved models", kind: "cap", reset: null, unit: "models" },
+  { key: "commercial_use", name: "Commercial use", kind: "flag", reset: null, unit: null },
 ];
 
 const PLANS = {
   free: { name: "Free", rank: 0, includes: { saved_models: 25 } },
-  pro: { name: "Pro", rank: 10, includes: { desktop: null, saved_models: null } },
+  pro: { name: "Pro", rank: 10, includes: { saved_models: null, commercial_use: null } },
 };
 
 /// The first of next month, UTC: when a monthly allowance starts again.

@@ -788,9 +788,8 @@ func _met() -> void:
 	align.world = shell.world
 	align.builder = shell.builder
 	align.library = shell.library
-	# The drag's reading of the joints if it has one (GrabDrag), not made for it.
-	var drag: Object = shell.app.get("_grab_drag_made") if shell.app != null else null
-	var bodies: Bodies = drag.read_bodies() if drag != null else null
+	var drag: Variant = shell.app.get("_grab_drag") if shell.app != null else null
+	var bodies: Bodies = (drag as GrabDrag).read_bodies() if drag is GrabDrag else null
 	if bodies == null or bodies.revision != shell.world.revision:
 		bodies = Bodies.read(shell.world, shell.library, shell.builder.lattice,
 			shell.store.scenery if shell.store != null else {}, shell.builder.locked)

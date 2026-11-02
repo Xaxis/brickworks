@@ -17,7 +17,7 @@ Each public collection has a page at `/c/<id>`, with the site's header and foote
 
 ## The directory {#directory}
 
-[brickworks.diy/collections](/collections) lists every public collection as a card with its cover, name, owner, model count and Follow, newest first or most followed. It is linked from the gallery's tabs and the footer.
+[brickworks.diy/collections](/collections), the gallery's **Collections** tab, lists every public collection as a card with its cover, name, owner, model count and Follow, newest first or most followed. The gallery's search finds one by its name, its description or its owner. It is linked from the footer too.
 
 <!-- covers
 ui:collections directory

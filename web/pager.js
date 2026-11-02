@@ -194,8 +194,9 @@ function focusOn(item) {
 /// gallery's pick, one of its first page). [drawn]({page,
 /// answer, items, fresh}) after each page is put in; [failed]({fresh,
 /// trouble}) when one did not come. Each is optional but load. Returns
-/// {start(n), restart(n), more(), earlier(), stop(), state}; stop() for a
-/// list that is drawn again in a new element (a challenge's, after a vote).
+/// {start(n), restart(n), more(), earlier(), remember(), stop(), state};
+/// stop() for a list that is drawn again in a new element (a challenge's,
+/// after a vote) or by another pager (the gallery's tabs).
 export function pager({ list, load = null, href = null, param = "page", size = 0, noun = null, skeleton = null,
   key = (item) => item.dataset?.id || "", counted = null, drawn = () => {}, failed = () => {} }) {
   const id = list.id;
@@ -512,6 +513,10 @@ export function pager({ list, load = null, href = null, param = "page", size = 0
     restart: (n = 1) => start(n, { restore: false }),
     more: () => press("more"),
     earlier: () => press("earlier"),
+    /// The card first in view and where it is, kept with the address, so
+    /// coming back to it puts it there: a page that switches its lists in
+    /// place (web/gallery.js) says so each time it stops scrolling.
+    remember: () => remember(),
     stop: () => {
       generation += 1;
       ending.abort();

@@ -15,9 +15,8 @@
 ##   nor once a signed-in person's collection has come;
 ##   each member asked for as a probe or a check asks (main.get), made once,
 ##   over the window under the sign-in screens, or in the tools' column
-##   above Stress's legend; the drag on a joint; the assistant with its
-##   panel and Claude's connector; and the bin's Techniques tab counted
-##   them all along;
+##   above Stress's legend; the assistant with its panel and Claude's
+##   connector; and the bin's Techniques tab counted them all along;
 ##   the menus' commands open the parts list, a figure, Settings and its keys,
 ##   Motions and Simulate, and Escape puts each away;
 ##   and what each first load took, printed.
@@ -105,14 +104,12 @@ func _made_where_they_were() -> void:
 		"_elements", "_render", "_share_panel", "_page_editor"]
 	var column: Array[String] = ["_pose", "_hidden_colours", "_simulate"]
 	var gates: Array[Node] = []
-	for gate: String in ["_pass_gate", "_gate"]:
-		var found: Node = _main.get(gate)
-		if is_instance_valid(found) and found.get_parent() == hud:
-			gates.append(found)
-	# What another makes first: the drag on a joint (what plays motions turns
-	# them through it), what plays motions (Render's, Motions'), and the
+	var found: Node = _main.get("_gate")
+	if is_instance_valid(found) and found.get_parent() == hud:
+		gates.append(found)
+	# What another makes first: what plays motions (Render's, Motions'), and the
 	# assistant (its panel's).
-	var others: Array[String] = ["_grab_drag", "_motions", "_assistant"]
+	var others: Array[String] = ["_motions", "_assistant"]
 	for member: String in others + over + column + ["_studio", "_saved_models", "_chat"]:
 		_check("%s not made before it is asked for" % member, _main.get(member + "_made") == null)
 		var got: Object = _main.get(member)

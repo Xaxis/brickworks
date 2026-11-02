@@ -21,7 +21,7 @@ ui:assistant on or off
 
 ## Your Claude plan {#claude-plan}
 
-*Claude Pro or Max: no key, nothing to install.*
+*Any Claude plan: no key, nothing to install. Claude's free plan has room for one custom connector, so there Brickworks takes it.*
 
 1. Open the app with the assistant on and press **Connect Claude** at the foot of the assistant panel.
 2. claude.ai opens with Brickworks filled in as a custom connector. Press **Add**, then **Connect**.
