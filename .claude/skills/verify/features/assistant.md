@@ -2762,6 +2762,9 @@ own), and `claude -p` with the relay its only server; the session's stream is
 kept as session.jsonl, which `reach` reads, and the model is saved from the
 tab's own port. A session that changed nothing leaves the tab's example, which
 is no model; an API error (529) is not recorded, so the command tries again.
+A session whose every tool call answered "No such tool available" is designed
+again at once, one time, its stream kept as session.no-tool-<time>.jsonl
+(`no_tool_reached`; d9base's 21023-1 asked for the tools without their prefix).
 `reach` says for each session whether it worked by the method:
 how_real_sets_build_this before its first build, review_model, settle_feature,
 a part count given, and whether an answer told it the method.

@@ -14,6 +14,7 @@ import json
 import random
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -377,3 +378,48 @@ def test_a_session_that_ended_on_the_relays_lost_connection_is_no_design(tmp_pat
     assert not realset.relay_lost(came_back)
     # The real stream of critic315's excavator, 2026-10-28, ended so.
     assert lost.endswith(realset.RELAY_LOST)
+
+
+def test_a_session_that_reached_none_of_the_apps_tools_is_designed_again_once(tmp_path, monkeypatch):
+    def answer(text: str) -> str:
+        return _turn("user", [{"type": "tool_result", "tool_use_id": "t", "is_error": True,
+                               "content": f"<tool_use_error>Error: {text}</tool_use_error>"}])
+    missed = "No such tool available: how_real_sets_build_this"
+    none, recovered = tmp_path / "none.jsonl", tmp_path / "recovered.jsonl"
+    none.write_text("\n".join([answer(missed), answer(missed)]) + "\n")
+    recovered.write_text("\n".join([answer(missed), _turn("user", [
+        {"type": "tool_result", "tool_use_id": "u", "content": [{"type": "text",
+                                                                 "text": "Tab k7qd."}]}])]) + "\n")
+    assert realset.no_tool_reached(none)
+    assert not realset.no_tool_reached(recovered)
+    assert not realset.no_tool_reached(tmp_path / "never-written.jsonl")
+
+    c = realset.Candidate("21023-1", "21023-1.mpd", "Flatiron Building", "Architecture", 2015, 471)
+    monkeypatch.setattr(realset, "arm_dir", lambda date, arm: tmp_path / arm)
+    monkeypatch.setattr(realset, "set_side", lambda *a, **k: {"plan": [10, 20], "views": []})
+    monkeypatch.setattr(realset, "subject_of", lambda c, plan: suite.Subject(
+        id=c.number, title=c.name, brief="Build the Flatiron Building.", scale="minifig",
+        against="buildings"))
+    args = SimpleNamespace(date="2026-11-02", arm="again", rejudge=False, software=False,
+                           audit_later=True, dry_run=False, via="relay", timeout=60,
+                           checkout=ROOT, instructions="all", no_claude_code=True)
+    sessions: list[str] = []
+
+    def design(subject, *rest):
+        sessions.append(subject.id)
+        if len(sessions) < answers_after:
+            raise realset.NoToolReached(f"design {subject.id}: no tools")
+        return {"model": False}
+
+    answers_after = 2
+    monkeypatch.setattr(realset, "design_via_relay", design)
+    record = realset.one(c, args, None)
+    assert sessions == ["21023-1", "21023-1"]
+    assert record["note"].startswith("no model")      # the second session's, recorded
+
+    sessions.clear()
+    answers_after = 3
+    args.arm = "twice"
+    assert realset.one(c, args, None) == {}
+    assert sessions == ["21023-1", "21023-1"]         # once more, not on and on
+    assert not (tmp_path / "twice" / "21023-1" / "record.json").exists()
