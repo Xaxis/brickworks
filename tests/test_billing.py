@@ -6,8 +6,9 @@ Admission and Supabase (tests/fixtures/billing/), through the real client
 recorded, so "nothing was asked" is a fact the tests read, not a hope:
 
 - an account's entitlement: Free keeping 25 models with the account, Pro
-  any number and the desktop, a comp, the owner (MASTER_EMAIL); AI is
-  never limited, so no plan says anything of it;
+  any number and commercial use, a comp, the owner (MASTER_EMAIL); AI is
+  never limited, so no plan says anything of it, and the desktop app is
+  free, so no plan says anything of that either (2026-11-02);
 - Admission unreachable: a cold instance answers from the snapshot kept in
   the database; with no snapshot, an answer that refuses nothing, so
   nobody who pays is ever locked out;
@@ -52,7 +53,7 @@ def run(body: str, **world) -> dict | None:
 
 ASK = """
 const e = await billing.entitlementOf(WHO);
-return { e, most: billing.mostModels(e), desktop: billing.mayDesktop(e), calls: w.calls };
+return { e, most: billing.mostModels(e), calls: w.calls };
 """
 
 
@@ -68,8 +69,7 @@ def test_free_keeps_25_models_with_the_account() -> None:
     assert e["billing"] == "test" and e["standing"] == "known" and e["freshness"] == "live"
     assert e["plan"] == {"key": "free", "name": "Free", "source": "default", "until": None}
     assert e["savedModels"] == {"limit": 25} and got["most"] == 25
-    assert e["desktop"] is False and e["owner"] is False and e["subscription"] is None
-    assert got["desktop"] is False
+    assert e["commercialUse"] is False and e["owner"] is False and e["subscription"] is None
     # Nothing of AI: no plan limits it.
     assert not [key for key in e if "build" in key.lower()], list(e)
     # The account and the plans, from Admission; the snapshot read and kept.
@@ -77,14 +77,14 @@ def test_free_keeps_25_models_with_the_account() -> None:
     assert "POST https://db.test/rest/v1/rpc/admission_snapshot_put" in got["calls"]
 
 
-def test_pro_has_no_limit_and_the_desktop() -> None:
+def test_pro_has_no_limit_and_commercial_use() -> None:
     got = ask("w.admission.subscribe('u-pro');", "u-pro")
     if got is None:
         return
     e = got["e"]
     assert e["plan"] == {"key": "pro", "name": "Pro", "source": "subscription", "until": None}
     assert e["savedModels"] == {"limit": None} and got["most"] is None
-    assert e["desktop"] is True and got["desktop"] is True
+    assert e["commercialUse"] is True
     assert e["subscription"]["status"] == "active" and e["subscription"]["endsAt"] is None
 
 
@@ -94,7 +94,7 @@ def test_a_comp_gives_pro_until_it_ends() -> None:
         return
     e = got["e"]
     assert e["plan"] == {"key": "pro", "name": "Pro", "source": "override", "until": "2027-10-29T00:00:00.000Z"}
-    assert e["savedModels"]["limit"] is None and e["desktop"] is True and e["subscription"] is None
+    assert e["savedModels"]["limit"] is None and e["commercialUse"] is True and e["subscription"] is None
     assert got["most"] is None
 
 
@@ -106,15 +106,14 @@ billing.forgetClient();
 w.age(10 * 60_000);
 w.admission.down = true;
 const after = [await billing.entitlementOf('u-pro'), await billing.entitlementOf('u-free')];
-return { before, after, most: after.map(billing.mostModels), desk: after.map(billing.mayDesktop),
-         kept: [...w.snapshots.keys()] };
+return { before, after, most: after.map(billing.mostModels), kept: [...w.snapshots.keys()] };
 """, billing="test")
     if got is None:
         return
     pro, free = got["after"]
     # Pro stays Pro, from the database, with nothing held in the new client.
     assert pro["standing"] == "known" and pro["freshness"] == "stale"
-    assert pro["plan"]["key"] == "pro" and pro["desktop"] is True and got["desk"] == [True, False]
+    assert pro["plan"]["key"] == "pro" and pro["commercialUse"] is True and free["commercialUse"] is False
     # And Free stays Free at its limit: an outage is never more than you had.
     assert free["plan"]["key"] == "free" and free["savedModels"] == {"limit": 25} and got["most"] == [None, 25]
     assert {"admission:v2:brickworks:test:c:u-pro", "admission:v2:brickworks:test:c:u-free"} <= set(got["kept"])
@@ -142,15 +141,15 @@ w.admission.down = true;
 w.storeDown = true;
 const bare = await billing.entitlementOf('u-pro');
 const all = [never, guessed, bare];
-return { all, most: all.map(billing.mostModels), desk: all.map(billing.mayDesktop) };
+return { all, most: all.map(billing.mostModels) };
 """, billing="test")
     if got is None:
         return
     for e in got["all"]:
         assert e["standing"] == "unknown" and e["billing"] == "test"
-        # Nothing to refuse on, and nothing lasting to grant on.
-        assert e["plan"] is None and e["savedModels"] is None and e["desktop"] is None
-    assert got["most"] == [None, None, None] and got["desk"] == [True, True, True]
+        # Nothing to refuse on.
+        assert e["plan"] is None and e["savedModels"] is None and e["commercialUse"] is None
+    assert got["most"] == [None, None, None]
 
 
 def test_off_asks_nothing_at_all() -> None:
@@ -160,13 +159,13 @@ const offer = await billing.currentOffer();
 await billing.reportOwner({ sub: 'u1', email: 'owner@example.com' });
 const token = await w.signIn({ sub: 'u1', email: 'ada@example.com' });
 const routes = [await askPlans(), await askPlans({ query: { op: 'plan' }, headers: { authorization: `Bearer ${token}` } })];
-return { e, offer, routes, may: [billing.mostModels(e), billing.mayDesktop(e)], calls: w.calls,
+return { e, offer, routes, may: [billing.mostModels(e)], calls: w.calls,
          client: billing.admission() };
 """)
     if got is None:
         return
     assert got["calls"] == [], got["calls"]
-    assert got["e"]["standing"] == "off" and got["e"]["billing"] == "off" and got["may"] == [None, True]
+    assert got["e"]["standing"] == "off" and got["e"]["billing"] == "off" and got["may"] == [None]
     assert got["offer"] is None and got["client"] is None
     # A GET to /api/plans, with or without a session, as before plans.
     assert got["routes"] == [{"status": 405, "json": REFUSED_GET}] * 2
@@ -215,15 +214,40 @@ return { mine, owner, nobody, offer, odd, owners: [...w.admission.owners] };
     # The owner (MASTER_EMAIL) is reported to Admission, and has everything.
     assert got["owners"] == ["u-own"]
     assert owner["json"]["owner"] is True and owner["json"]["savedModels"] == {"limit": None, "kept": 0}
-    assert owner["json"]["desktop"] is True
+    assert owner["json"]["commercialUse"] is True
     assert got["nobody"] == {"status": 401, "json": {"error": "sign in to Brickworks first"}}
     assert got["odd"]["status"] == 404
     offer = got["offer"]["json"]
     assert got["offer"]["status"] == 200 and offer["billing"] == "test" and offer["forSale"] is True
-    assert offer["free"]["savedModels"] == 25 and offer["free"]["desktop"] is False
-    assert offer["pro"]["savedModels"] == "unlimited" and offer["pro"]["desktop"] is True
+    assert offer["free"]["savedModels"] == 25 and offer["free"]["commercialUse"] is False
+    assert offer["pro"]["savedModels"] == "unlimited" and offer["pro"]["commercialUse"] is True
+    # The desktop app is free: no plan says anything of it.
+    assert not re.search(r"desktop", json.dumps(offer), re.I), offer
     assert not re.search(r"build", json.dumps(offer), re.I), offer
     assert offer["pro"]["prices"] == {"month": 800, "year": 8000}
+
+
+def test_no_plan_gates_the_desktop() -> None:
+    # The desktop app is free (2026-11-02): with billing on, nobody, signed
+    # out or on Free, is refused a download or asked for a pass. Before, a
+    # Free account was refused with "The desktop app comes with Pro" (403)
+    # and a signed-out one asked to sign in (401).
+    got = run("""
+const file = 'Brickworks-0.14.0-linux-x86_64.AppImage';
+const free = { authorization: `Bearer ${await w.signIn({ sub: 'u-free', email: 'ada@example.com' })}` };
+const asks = [];
+for (const headers of [{}, free]) {
+  for (const query of [{ op: 'download', file }, { op: 'download' }, { op: 'entitlement' }]) {
+    asks.push(await askPlans({ query, headers }));
+  }
+}
+return { asks };
+""", billing="test")
+    if got is None:
+        return
+    for ask in got["asks"]:
+        assert ask["status"] not in (401, 403), ask
+        assert not re.search(r"desktop|Pro\b|sign in", json.dumps(ask["json"]), re.I), ask
 
 
 def test_the_offer_when_admission_never_answered_is_the_published_one_not_for_sale() -> None:

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, cli:browse browser flow, cli:browse pages, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages -->
 
 ## Sub-features
 
@@ -3397,13 +3397,17 @@ plan with Claude as the client.
   when GET /api/plans says Pro is for sale, `web/plans.js` shows the
   `data-when="sale"` parts, Pro's Upgrade to Pro going to
   `/settings?upgrade=month|year#plan` with the choice made, and Admission's
-  prices; off, the page as written, Coming soon). Free ($0: the
-  web app, AI on your own Claude, ChatGPT or key with no limit, 25 models
-  kept with the account, saving to the device and exporting without a
-  limit) and Pro ($8 a month or $80 a year: the desktop app, every version
-  released while you pay kept, every model kept with the account), Pro
-  marked Coming soon; AI never counted on either; every account made before Pro opens gets Pro with no end;
-  education free; what stays free; five questions, one saying what changed.
+  prices; off, the page as written, Coming soon). Free ($0, for
+  personal and educational use: the web app and the desktop app, AI on your
+  own Claude with no limit, 25 models kept with the account, saving to the
+  device and exporting without a limit) and Pro ($8 a month or $80 a year:
+  every model kept with the account, and commercial use, whose terms come
+  with Pro; since 2026-11-02, docs/PLANS.md), Pro marked Coming soon; AI
+  never counted on either; every account made before 29 October 2026 gets
+  Pro with no end; education free; what stays free; six questions, one
+  saying what changed and one whether you can sell what you make. No
+  sentence says ChatGPT, or another AI's key, works in a browser (the CSP
+  lets only api.anthropic.com through).
   Nothing takes money (BRICKWORKS_BILLING off). Pro's Tell me when it's
   ready opens the interest form (a `dialog`): email, monthly or yearly, a
   line; Pro is kept as 'plus' (`api/plans.js` `PLANS`: the table allows
@@ -3419,7 +3423,7 @@ plan with Claude as the client.
   dark (2026-10-29, docs/PLANS.md unit U1, billing336). BRICKWORKS_BILLING
   is the one switch: off (unset) asks nothing and limits nothing; test or
   live with its own kind of ADMISSION_KEY reads an account's plan, its saved-models
-  cap (25 on Free, none on Pro; AI is never counted) and the desktop flag, keyed by the Supabase
+  cap (25 on Free, none on Pro; AI is never counted) and the commercial_use flag, keyed by the Supabase
   user id of the session. Snapshots go in a server-only table, so a cold
   instance answers a paying person while Admission is down; with none, the
   answer is `unknown` and refuses nothing.
@@ -3454,29 +3458,6 @@ plan with Claude as the client.
   before it say Pro ends now with nothing charged again, and the page after
   says it has ended. Off, Admission is never asked and the answer is as it
   was.
-- `GET /api/plans?op=download`, `GET /api/plans?op=entitlement` (`api/plans.js`)
-  and `the desktop's files and token` (`api/_desktop.js`,
-  `supabase/desktop_paid_through.sql`): the paid desktop, built dark
-  (2026-10-29, docs/PLANS.md units U5 and U6, desk347). Answered in every
-  mode. Downloads: no file, `{gated}`; a package's name (the release
-  manifest's), off, a 302 to the public address it always had, nobody asked;
-  on, a session whose plan has the desktop (or cannot be known just now) gets
-  GitHub's signed asset URL (the API's 302, `RELEASES_TOKEN` sent when set; a
-  200 is a 503, never a stream), Free a 403 "The desktop app comes with Pro.
-  The web app is free, in any browser." with `pro: /plans`, no session a 401,
-  anything else a 404. `Accept: application/json` gets `{url}` instead of the
-  302 (the page's fetch). `web/download.js` asks `{gated}` once and gates its
-  file links only when told. The token: off, `{billing: "off"}`; on, a JWT
-  signed RS256 with `DESKTOP_TOKEN_KEY` `{sub, plan, desktop, paid_through,
-  iat}`, never on standing `unknown` nor without a key (503 `{billing,
-  standing}`); paid_through is today at least while the plan has the desktop,
-  a period's or comp's end when later, null for no end, the largest kept per
-  account (only moves on), and never before `DESKTOP_FREE_THROUGH`.
-  `tests/test_desktop.py` runs both over the stand-in world (GitHub included)
-  and proves the token verifies with its key and no other, refused when
-  changed. Proven live against the public repo: `signedUrl` gave a
-  release-assets.githubusercontent.com URL whose first bytes (a Range
-  request) are the AppImage's ELF header.
 - `beta page` (`web/beta.html`, `web/beta.js`), `applying to the beta`
   (`api/plans.js` ?op=beta, ?op=beta_daily), `the beta's spots and months`
   (`api/_beta.js`, `supabase/beta.sql`), `the beta's owner queue`
@@ -5876,9 +5857,11 @@ PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/ac
 
 AI is never limited, on any plan (the owner, 2026-10-29): what Free holds
 back is how many models an account keeps with it (Admission's
-saved_models, a cap: Free 25, Pro any number) and the desktop app.
-test_billing passes when all do: Free keeping 25 models and nothing of AI
-in its entitlement or the offer, Pro with no limit and the desktop, a comp until its date,
+saved_models, a cap: Free 25, Pro any number); Pro adds commercial_use, a
+licence the terms grant, which the app never checks. No plan gates the
+desktop app (2026-11-02). test_billing passes when all do: Free keeping 25
+models and nothing of AI in its entitlement or the offer, Pro with no limit
+and commercial use, no download or start asked of any plan, a comp until its date,
 the owner (MASTER_EMAIL) reported and given everything, a cold instance
 answering from the database's snapshot while Admission is down (Pro stays
 Pro, Free stays at its 25), no snapshot answered `unknown` (refuses

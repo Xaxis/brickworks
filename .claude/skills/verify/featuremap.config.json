@@ -3761,55 +3761,6 @@
       "area": "web"
     },
     {
-      "kind": "api",
-      "label": "GET /api/plans?op=download",
-      "entry": "api/plans.js",
-      "reach": "curl -sI '<deployment>/api/plans?op=download&file=Brickworks-0.10.0-linux-x86_64.AppImage'   (off: 302 to the public address, nobody asked; on: a session whose plan has the desktop gets GitHub's signed URL, Free a 403 with the way to Pro; python3 tools/minitest.py tests/test_desktop.py)",
-      "area": "web"
-    },
-    {
-      "kind": "api",
-      "label": "GET /api/plans?op=entitlement",
-      "entry": "api/plans.js",
-      "reach": "curl -s '<deployment>/api/plans?op=entitlement' -H 'authorization: Bearer <session>'   (off: {billing: off}; on: an RS256 token {sub, plan, desktop, paid_through, iat}, never on a plan not known; python3 tools/minitest.py tests/test_desktop.py)",
-      "area": "web"
-    },
-    {
-      "kind": "lib",
-      "label": "the desktop's files and token",
-      "entry": "api/_desktop.js",
-      "reach": "python3 tools/minitest.py tests/test_desktop.py   (GitHub's signed asset URL, a 200 refused; the token signed with DESKTOP_TOKEN_KEY; paid_through kept in supabase/desktop_paid_through.sql, only moving on)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "desktop token key",
-      "entry": "tools/desktop_key.mjs",
-      "reach": "node tools/desktop_key.mjs new FILE | public | sign FILE JSON   (docs/RELEASING.md, The desktop token's key; never prints the private half)",
-      "area": "release"
-    },
-    {
-      "kind": "lib",
-      "label": "the desktop pass",
-      "entry": "src/account/desktop_pass.gd",
-      "reach": "tools/probe.sh desktop_pass   (a release build holding a key checks its kept token at start: released while paid opens, later asks, 44 days of grace, never from source, never mid-session)",
-      "area": "account"
-    },
-    {
-      "kind": "ui",
-      "label": "the Pro screen on the desktop",
-      "entry": "src/ui/pass_gate.gd",
-      "reach": "tools/probe.sh desktop_pass   (This version of the desktop app comes with Pro: See Pro, Open the web app, Sign in with another account, Check again, where the models are)",
-      "area": "account"
-    },
-    {
-      "kind": "cli",
-      "label": "desktop pass probe",
-      "entry": "src/dev/desktop_pass_probe.gd",
-      "reach": "tools/probe.sh desktop_pass   (needs node: tokens signed by api/_desktop.js)",
-      "area": "account"
-    },
-    {
       "kind": "cli",
       "label": "relay timing",
       "entry": "tools/web/relay_timing.mjs",
@@ -4349,20 +4300,6 @@
       "area": "web"
     },
     {
-      "kind": "cli",
-      "label": "browse browser flow",
-      "entry": "tools/web/browse_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/browse_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh browse: the gallery's tabs switched in place, no new document, the address and the same header, search and grid, each tab's first cards the API's; Back to the tab and its scroll; the search kept; each tab reloaded; /library, /library?theme=Town, /builds, /collections and /de/library with canonical and hreflang; the tab row at 390 and 1280, en and de)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "browse pages",
-      "entry": "tools/browse_pages.py",
-      "reach": "python3 tools/browse_pages.py [--check]   (writes web/library.html, web/builds.html and web/collections.html from web/gallery.html, each with its tab's head and its tab marked; then tools/site_lang.py; tests/test_browse_pages.py)",
-      "area": "web"
-    },
-    {
       "kind": "lib",
       "label": "more like a designer",
       "entry": "api/_alike.js",
@@ -4472,6 +4409,20 @@
       "label": "what the pointer moving costs in a browser",
       "entry": "tools/web/hover_cost.mjs",
       "reach": "node tools/web/hover_cost.mjs --url=http://127.0.0.1:<port>/ --out=DIR [--moves=40] [--label=B] [--floor=none] MODEL   (serve.py build/web --parts assets/generated/parts, .env sourced)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "browse browser flow",
+      "entry": "tools/web/browse_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/browse_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh browse: the gallery's tabs switched in place, no new document, the address and the same header, search and grid, each tab's first cards the API's; Back to the tab and its scroll; the search kept; each tab reloaded; /library, /library?theme=Town, /builds, /collections and /de/library with canonical and hreflang; the tab row at 390 and 1280, en and de)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "browse pages",
+      "entry": "tools/browse_pages.py",
+      "reach": "python3 tools/browse_pages.py [--check]   (writes web/library.html, web/builds.html and web/collections.html from web/gallery.html, each with its tab's head and its tab marked; then tools/site_lang.py; tests/test_browse_pages.py)",
       "area": "web"
     }
   ]
