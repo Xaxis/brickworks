@@ -3665,6 +3665,99 @@ session that ends with no model because no tool answered, as 21023-1 did,
 rather than record it. Results: `bench/results/realset-2026-11-01-d9base/`,
 `realset-2026-11-01-d9lever/` and `realset-2026-11-01-d9base-vs-d9lever/`.
 
+### Colour: what separates a colour verdict won from one lost, read from the pictures (2026-11-02, a read)
+
+Three levers changed where colour sits, and none moved the colour verdict. So
+before a fourth, this read looks at the 264 colour verdicts of d5base,
+d7accent and d9lever: 44 subjects, both orders, three arms. It asks what the
+pictures show when a verdict is won. Nothing was designed, judged or asked of
+a model.
+
+**How it was read.** The pictures are the ones the judge saw: the corner,
+front and close views of each design (`views_*.png`) and of its set
+(`realset-sets/<set>/set_*.png`). A pixel belongs to the model when it is off
+the flat background, after an opening that drops the axis lines and their
+numbers. Each model pixel takes the nearest of the model's own solid colours,
+read from its file and drawn as the app draws them (black loses its tint).
+A face may be lit 0.7 to 1.1 times its colour. A pixel near none of them is
+left out: an edge, a print or glass, a median 1.3% of a model. Every picture
+is read at half size, and each feature is the mean of the three views.
+
+- **Largest one-colour region:** the largest 4-connected run of one colour,
+  as a share of the model's pixels.
+- **Colours seen:** colours over 1% of the model's pixels.
+- **Tones of one hue:** pairs of seen colours that are a lighter and a darker
+  of one hue (light and dark bluish grey, tan and dark tan, red and dark red;
+  black and white are not tones of grey). Counted as pairs, and as the share
+  of pixels in such colours.
+- **Transparent parts:** the share of the file's parts in a transparent
+  colour. Their share of the picture is not read, because a clear part shows
+  what is behind it.
+- **Printed parts:** the share of the file's parts whose own description says
+  Pattern, Print or Sticker.
+
+Each feature is read on our design and on the set, and as ours minus the
+set's (the gap). A threshold on the gap is fitted on d5base and d7accent
+(176 verdicts, 58 won), by the best rate of wins caught minus the rate of
+losses caught. It is then tested on d9lever (88 verdicts, 29 won: a base
+rate of 33%, and "always lost" is right 59 times). AUC is the chance that a
+won verdict's gap is above a lost one's, so 0.5 means no separation. Its
+interval comes from resampling the 44 subjects. "Within a subject" takes each
+pair of arms whose designs of one subject won different numbers of colour
+verdicts. The set is the same on both sides there, so the subject is held
+still. It counts how often the design with more of the feature won more.
+
+| feature | ours, won / lost | gap to the set, won / lost | gap AUC, fitted arms | gap AUC, d9lever (95%) | d9lever by the fitted threshold: called won, of them won | right of 88 | within a subject: more won more / fewer |
+|---|---|---|---|---|---|---|---|
+| largest one-colour region | 0.22 / 0.28 | -0.05 / +0.07 | 0.29 | 0.35 (0.22-0.51) | 62, 24 (39%) | 45 | 15 / 27 |
+| colours seen | 7.7 / 7.4 | +0.6 / -0.9 | 0.68 | 0.65 (0.48-0.80) | 38, 19 (50%) | 59 | 28 / 10 |
+| tones of one hue, pairs | 3.4 / 3.2 | +1.2 / -0.5 | 0.64 | 0.60 (0.44-0.76) | 38, 16 (42%) | 53 | 29 / 6 |
+| ...share in such colours | 0.59 / 0.52 | +0.05 / -0.03 | 0.58 | 0.56 (0.38-0.72) | 18, 6 (33%) | 53 | 25 / 15 |
+| transparent parts | 4.1% / 3.9% | -3.0 / -3.3 points | 0.56 | 0.50 (0.32-0.65) | 46, 17 (37%) | 47 | 26 / 12 |
+| printed parts | 1.0% / 1.4% | -0.4 / -0.3 points | 0.52 | 0.54 (0.37-0.70) | 66, 23 (35%) | 39 | 17 / 16 |
+
+The largest region separates downward, so its AUC under 0.5 is the
+separation: 0.71 on the fitted arms and 0.65 held out, read the other way
+round.
+
+**Colours seen is the one that separates.** The rule fitted on d5base and
+d7accent is "at least as many colours seen as the set". On those arms,
+verdicts where the design met it were won 48% of the time, against 17% where
+it did not. Held out on d9lever, 50% (19 of 38) against 20% (10 of 50).
+Within a subject, the design with more colours seen won more in 28 pairs and
+fewer in 10. It still holds where the design with more colours has fewer
+parts: 13 against 5. Our own count alone does not separate (AUC 0.50 held
+out). What matters is the count against what the set shows, and subjects
+differ in that.
+
+It is moderate, not decisive. The held-out AUC's interval touches 0.5 on 44
+subjects. Its accuracy (59 of 88) is no better than calling every verdict
+lost: it finds where wins are likely, rather than sorting every verdict.
+Tones of one hue go with it: their pairs correlate 0.74 with colours seen
+over the designs, and they separate within a subject (29 against 6) but less
+well held out. Read alone, they add little to colours seen. The largest
+region points the same way, more weakly (correlation -0.38 with colours
+seen). Transparent and printed parts do not separate across subjects. The
+judge names them often, but a design with more of them did not win colour
+more, except a weak lean within a subject for transparent parts (26 against
+12).
+
+**What it explains.** The sets show 8.0 colours over 1% in a picture on
+average. d5base shows 7.6, d7accent 7.6, and d9lever the fewest, 7.3. The
+designs at or above their set's count: 24, 21 and 19 of 44. Planning each
+assembly in its own colours gave more assemblies their own colour, but fewer
+colours to the picture: bigger single-colour masses, with the small colours
+gone. Accents, laid one part at a time, did not raise it either (7.6
+against 7.6). Neither lever raised the count the judge goes by.
+
+**Next.** A colour lever should aim at the colours a picture shows, against
+what a set of the subject's kind and size shows. The set itself is held out,
+so the number has to come from sets that are not: real sets of the same
+kind and part count, which `how_real_sets_build_this` already measures by
+kind. The app can count the colours seen in its own pictures, over 1%, as
+this read did, and say when a design is short of what such sets show. The
+read used only the bench's pictures and model files, by the method above.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
