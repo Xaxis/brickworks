@@ -86,14 +86,9 @@ plan with Claude as the client.
   does not need are reached by name through `Later` (`src/later.gd`,
   `Later.PATHS`: the assistant and the rest of `src/ai` it names, the
   assistant's panel and Claude's connector, the dialogs and tool panels,
-  render, motions, the booklet's makers, the drag on a joint) and loaded
-  the first time something asks; main.gd's members for them are made by
-  their getters (`_make_*`, `_X_made` for a look that makes nothing). The
-  drag (`GrabDrag`, with `Grab` and what it names, 7% of the start's code)
-  is made the first time the window is left alone 3 s (`_make_when_idle`,
-  Render's dialog the next time), or by the first drag, motion or
-  session's move before then; `Bodies._reach_along` and `Bodies._same` are
-  the core's, so `Bodies` and `HingeAlign` do not name `Grab`. The start
+  render, motions, the booklet's makers) and loaded the first time
+  something asks; main.gd's members for them are made by their getters
+  (`_make_*`, `_X_made` for a look that makes nothing), and the start
   compiles 215 of 313 scripts (2026-10-31, three rounds against live at
   load 18-25: compiled at +3.0 s cold and +3.6 warm where live's scripts
   took +6.8 and +5.6; interactive 12.2 s cold and 7.4 warm against 17.5
