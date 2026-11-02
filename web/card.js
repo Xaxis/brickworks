@@ -594,6 +594,56 @@ export function buildCard(photo, options) {
   return document.importNode(made.content.firstElementChild, true);
 }
 
+/// A collection's cover: up to four of its models' pictures kept wide, or
+/// what it waits for (site.css .mosaic). [eager]: in the first screen,
+/// asked at once and first (a lazy one came last). The server's pages draw
+/// it too (api/_lists.js, a collection's page).
+export function mosaicHtml(pictures, { eager = false } = {}) {
+  return `<div class="mosaic n${pictures.length}">${pictures.length ? pictures.map((src) =>
+    `<img src="${escapeHtml(src)}" alt="" width="1200" height="630" ${eager ? 'loading="eager" fetchpriority="high"'
+      : 'loading="lazy"'} decoding="async">`).join("")
+    : `<span>${escapeHtml(say("No pictures yet"))}</span>`}</div>`;
+}
+
+// A model's picture as a collection's cover has it (api/_lists.js coversOf,
+// pictureOf): only such an address is drawn.
+const COVER = /^\/m\/[A-Za-z0-9]{10}\.(?:webp|png)(?:\?v=[a-z0-9]+)?$/;
+
+/// A public collection as a card (site.css .collection-card), the gallery's
+/// Collections tab: the model card's shape, so the tab reads as the gallery
+/// does. Its cover in the frame, up to four of its models' pictures; its
+/// name, a link to its page; whose, their avatar a link to their profile;
+/// how many models, and followers once there is one; and Follow, which
+/// web/follow.js shows once it knows who is asking (not inside the link: a
+/// button in a link is neither). The caller passes an id that is one: the
+/// links are made from it alone.
+export function collectionCardHtml(list, { eager = false } = {}) {
+  const id = escapeHtml(String(list.id));
+  const at = langAt();
+  const name = escapeHtml(String(list.name || ""));
+  const covers = (Array.isArray(list.covers) ? list.covers : []).filter((src) => COVER.test(String(src))).slice(0, 4);
+  const by = list.by && typeof list.by === "object" && HANDLE.test(String(list.by.handle || "")) ? list.by : null;
+  const who = by
+    ? `<a class="who" href="${at}/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle,
+      picture: by.picture }, { size: "small" })}<span>${escapeHtml(by.name || by.handle)}</span></a>`
+    : "";
+  const followers = Number(list.followers) || 0;
+  return `<article class="model collection-card" data-id="${id}">`
+    + `<div class="frame">${mosaicHtml(covers, { eager })}</div>`
+    + `<div class="words"><a class="open" href="${at}/c/${id}"><b title="${name}">${name}</b></a>`
+    + `<span class="by">${who}<span class="parts">${escapeHtml(counted(list.count, "model"))}</span>`
+    + `<span class="parts" data-list-followers="${id}"${followers ? "" : " hidden"}>${escapeHtml(counted(followers, "follower"))}</span></span>`
+    + `<p class="follow-line"><button type="button" class="cta ghost small follow" data-follow-list="${id}" hidden>${escapeHtml(say("Follow"))}</button>`
+    + `<span class="said" role="status"></span></p></div></article>`;
+}
+
+/// collectionCardHtml's card as an element, in a browser.
+export function collectionCard(list, options) {
+  const made = document.createElement("template");
+  made.innerHTML = collectionCardHtml(list, options);
+  return document.importNode(made.content.firstElementChild, true);
+}
+
 /// How many of a list's cards are its first screen's, drawn [eager]: two
 /// rows of six on a wide window, two of five and more at 1280, six rows of
 /// two on a phone (site277's grid: 2 to 6 a row). The gallery counts the

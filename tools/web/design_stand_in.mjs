@@ -1105,7 +1105,6 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/scene[.]json$/, "share", "scene"],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
-  [/^\/collections\/?$/, "people", "collections_page"],
   // A challenge's link (/challenge?id=N), its head the challenge's own.
   [/^\/challenge\/?$/, "people", "challenge_page"],
   [/^\/(de|fr|es)\/challenge\/?$/, "people", "challenge_page_lang"],
@@ -1128,9 +1127,8 @@ const PAGES = [
   // above), each in a language too.
   [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed_lang"],
   [/^\/(de|fr|es)\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page_lang"],
-  // A public collection and the collections, in a language too.
+  // A public collection, in a language too.
   [/^\/(de|fr|es)\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page_lang"],
-  [/^\/(de|fr|es)\/collections\/?$/, "people", "collections_page_lang"],
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set"],
   [/^\/(de|fr|es)\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set_lang"],
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.](?:(cutout|cover)[.])?webp$/, "share", "set_cover"],
@@ -1158,7 +1156,6 @@ function routeOf(pathname) {
     if (op === "embed_lang") return { name, query: { op: "embed", id: found[2], lang: found[1] } };
     if (op === "page_lang") return { name, query: { op: "page", handle: found[2], lang: found[1] } };
     if (op === "list_page_lang") return { name, query: { op: "list_page", id: found[2], lang: found[1] } };
-    if (op === "collections_page_lang") return { name, query: { op: "collections_page", lang: found[1] } };
     if (op === "challenge_page") return { name, query: { op } };
     if (op === "challenge_page_lang") return { name, query: { op: "challenge_page", lang: found[1] } };
     if (op === "set_lang") return { name, query: { op: "set", id: found[2], lang: found[1] } };
@@ -1548,7 +1545,8 @@ function people(method, params, body, who, state) {
   const id = params.get("id") || "";
   // What anybody may ask; everything else needs the session.
   const open = method === "GET" ? ["profile", "collection", "comments", "photos", "photo_file", "follows", "following",
-    "feed_count", "page", "list_page", "challenge", "latest", "likes", "avatar", "list_follows", "builds", "alike"]
+    "feed_count", "page", "list_page", "challenge", "latest", "likes", "avatar", "list_follows", "builds", "alike",
+    "collections"]
     : ["report", "digest"];
   if (!who && !open.includes(op)) {
     return answer(401, { error: op === "feed" ? "Sign in to see your feed: we email you a code, no password."
@@ -1658,6 +1656,24 @@ function people(method, params, body, who, state) {
       const all = photosWhere((one) => shownModel(one.model)?.listed && (tests || !modelOf(one.model).test));
       return answer(200, { page, more: all.length > page * PER_PAGE, photos: all.slice((page - 1) * PER_PAGE, page * PER_PAGE)
         .map((one) => ({ ...photoSaid(one), model_name: modelOf(one.model).name })) });
+    }
+    if (op === "collections") {
+      // api/people.js collections: the gallery's Collections tab, a page of
+      // the public collections (collection_directory), each with up to four
+      // of its models' pictures, the newest put in first. Searched by the
+      // words of its name, its description and whose it is
+      // (collection_search.sql).
+      const words = String(params.get("q") || "").toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+      const all = collectionDirectory({ sort: params.get("sort") || "recent", size: 1000 });
+      const rows = all.rows.filter((row) => words.every((word) =>
+        [row.name, row.description, row.by?.handle, row.by?.name].some((said) => String(said || "").toLowerCase().includes(word))));
+      const shown = rows.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+      return answer(200, { ready: true, searched: true, sort: all.sort, page, total: rows.length,
+        pages: Math.max(1, Math.ceil(rows.length / PER_PAGE)),
+        collections: shown.map((row) => ({ id: row.id, name: row.name, count: row.count, followers: row.followers, by: row.by,
+          covers: [...listOf(row.id).models].reverse().map(shownModel).filter((m) => m && m.listed && !m.test)
+            .map((m) => (m.has_thumb ? `/m/${m.id}.webp?v=${(Date.parse(m.updated_at || "") || 0).toString(36)}`
+              : m.has_image ? `/m/${m.id}.png` : "")).filter(Boolean).slice(0, 4) })) });
     }
     if (op === "alike") {
       // api/_alike.js designersAlike, by themes and tags alone (no parts
@@ -2284,7 +2300,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
     if (/^\/(m|u|c|library|(?:de|fr|es)\/(?:library|m|u|c)|sitemaps)\//.test(url.pathname)
-      || /^\/((?:de|fr|es)\/)?collections\/?$|^\/oembed\/?$|^\/sitemap[.]xml$/.test(url.pathname)
+      || /^\/oembed\/?$|^\/sitemap[.]xml$/.test(url.pathname)
       || (/^\/((?:de|fr|es)\/)?challenge\/?$/.test(url.pathname) && /^[1-9][0-9]{0,15}$/.test(url.searchParams.get("id") || ""))) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
