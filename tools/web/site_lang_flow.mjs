@@ -939,7 +939,15 @@ async function screens(tab, name, most = 4) {
 async function englishIn(tab, theirs, root = "") {
   const names = await tab.evaluate((theirs) => [...document.querySelectorAll(theirs)].map((el) => el.textContent.trim())
     .filter(Boolean).sort((a, b) => b.length - a.length), theirs);
+  // A page's description that is the start of what they wrote (a bio
+  // longer than 160, api/people.js) is theirs too.
+  const flat = names.map((name) => name.replace(/\s+/g, " "));
+  const started = (text) => {
+    const start = text.replace(/\s+/g, " ").replace(/…$/, "").trim();
+    return start.length >= 20 && flat.some((name) => name.startsWith(start));
+  };
   return (await tab.evaluate(readable, { more: theirs, root }))
+    .filter((text) => !started(text))
     .map((text) => names.reduce((rest, name) => rest.split(name).join(" "), text).replace(NAMES, " "))
     .filter((text) => ENGLISH.test(text));
 }
