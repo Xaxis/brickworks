@@ -40,4 +40,4 @@ Brickworks is a CAD app for LEGO® bricks. It runs at [brickworks.diy/app](/app)
 
 ## What it costs
 
-Brickworks in your browser is free: the whole web app, AI without a limit, building together, instructions, renders, exports and share links, and up to 25 models kept with your account. AI is never limited on any plan, because you bring your own: its maker bills your plan or key, never Brickworks. Pro, coming soon at $8 a month or $80 a year, adds the desktop app and any number of models kept with your account. See [Plans and billing](/docs/plans).
+Brickworks is free for personal and educational use: the web app and the desktop app, AI without a limit, building together, instructions, renders, exports and share links, and up to 25 models kept with your account. AI is never limited on any plan, because you bring your own: its maker bills your plan or key, never Brickworks. Pro, coming soon at $8 a month or $80 a year, keeps any number of models with your account and adds a licence for commercial use. See [Plans and billing](/docs/plans).

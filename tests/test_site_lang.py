@@ -158,7 +158,7 @@ def test_the_faq_search_shows_is_in_the_language_too() -> None:
     for code in site_lang.LANGUAGES:
         copy = json.loads(re.search(ld, (ROOT / "web" / code / "faq.html").read_text(encoding="utf-8"), re.S).group(1))
         pairs = list(zip(english["mainEntity"], copy["mainEntity"]))
-        assert len(pairs) == 17 and all(one["name"] != other["name"] and one["acceptedAnswer"]["text"]
+        assert len(pairs) == 18 and all(one["name"] != other["name"] and one["acceptedAnswer"]["text"]
                                         != other["acceptedAnswer"]["text"] for one, other in pairs), code
 
 

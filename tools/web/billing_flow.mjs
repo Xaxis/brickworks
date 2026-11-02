@@ -259,9 +259,10 @@ try {
     await until(page, () => document.getElementById("upgrade")?.open);
     let step = await stepSaid(page);
     check(`opened: "${step?.title}", ${step?.pressed.join("")} first`, step?.title === "Upgrade to Pro" && step.pressed.join() === "Yearly");
-    check("what Pro adds: any number of models kept with the account, Free's 25, and the desktop app",
+    check("what Pro adds: any number of models kept with the account, Free's 25, and commercial use, never the desktop",
       /any number of models kept with your account \(Free keeps 25\)/.test(step?.words || "")
-      && /the desktop app for Windows, macOS and Linux/.test(step?.words || "") && !/build|undefined/i.test(step?.words || ""));
+      && /a licence for commercial use/.test(step?.words || "")
+      && !/desktop|build|undefined/i.test(step?.words || ""));
     check(`the terms: "${step?.terms.slice(0, 120)}…"`, /^\$80\.00 USD a year, plus any tax/.test(step?.terms || "")
       && /renews automatically at \$80\.00 USD a year until you cancel/.test(step.terms) && /Cancel any time/.test(step.terms)
       && /Sold through Link/.test(step.terms));

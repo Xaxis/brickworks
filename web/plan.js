@@ -103,12 +103,12 @@ function upgrade(offer, start, opener) {
   dialog.setAttribute("aria-labelledby", title.id);
   const kept = offer.free.savedModels;
   const adds = sayInto(make("p"), say("Pro has everything Free has, and two things more: {models} (Free keeps {kept}), and "
-    + "{app} for Windows, macOS and Linux, which works offline with every part on your "
-    + "computer. Every version released while you pay is yours to keep. {compare}.", {
+    + "{licence}: selling instructions, kits, renders or builds made to order, under the terms that come with "
+    + "Pro. {compare}.", {
     kept: kept === "unlimited" ? say("any number") : Number.isFinite(Number(kept)) ? number(kept) : String(kept),
   }), {
     models: make("b", "", say("any number of models kept with your account")),
-    app: make("b", "", say("the desktop app")),
+    licence: make("b", "", say("a licence for commercial use")),
     compare: link(`${langAt()}/plans`, say("Compare the plans")),
   });
   // Monthly or yearly: the site's segmented control, the chosen one pressed.
@@ -262,10 +262,10 @@ function standing(mine, offer, status) {
   const month = Number.isInteger(pro.prices.month) ? short(pro.prices.month, currency) : "";
   const year = Number.isInteger(pro.prices.year) ? short(pro.prices.year, currency) : "";
   const more = month && year
-    ? say("Pro: any number of models kept with your account, and the desktop app, at {month} a month or {year} a year.",
+    ? say("Pro: any number of models kept with your account, and commercial use, at {month} a month or {year} a year.",
       { month, year })
-    : month ? say("Pro: any number of models kept with your account, and the desktop app, at {month} a month.", { month })
-      : say("Pro: any number of models kept with your account, and the desktop app, at {year} a year.", { year });
+    : month ? say("Pro: any number of models kept with your account, and commercial use, at {month} a month.", { month })
+      : say("Pro: any number of models kept with your account, and commercial use, at {year} a year.", { year });
   const up = make("button", "cta", say("Upgrade to Pro"));
   up.type = "button";
   up.id = "upgrade-go";
