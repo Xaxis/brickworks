@@ -150,6 +150,17 @@ var had_claude: bool = false
 const CONNECTORS := ConnectorForm.CONNECTORS
 const ALREADY := ConnectorForm.ALREADY
 
+## The AI app the person connects with (Assistants: "claude", "chatgpt",
+## "codex", ...), chosen in Connect your AI and kept on this device: what
+## Connect and New chat for this tab do, and what the panels call it until
+## it calls. Claude until another is chosen.
+var assistant: String = Assistants.CLAUDE
+signal assistant_chosen(id: String)
+## Who made the newest call, by the name the relay gives it on the call
+## (_meta brickworks/who, CommandSocket.who_of): "ChatGPT", "Claude Code".
+## A call that names no one is Claude's, as every call was before.
+var caller: String = "Claude"
+
 var _token: String = ""
 var _on: bool = false
 ## Switched off in this tab by the person, so a connection to the account
@@ -200,6 +211,8 @@ func _ready() -> void:
 	_reply.timeout = 30.0
 	add_child(_reply)
 	_instance = _new_token().substr(0, 16)
+	var kept: String = str(ShellPrefs.value("connect_with"))
+	assistant = kept if Assistants.known(kept) else Assistants.CLAUDE
 	_load()
 
 
@@ -258,15 +271,36 @@ func shared_address() -> String:
 
 
 ## claude.ai's "Add custom connector", with the name and the address filled
-## in: claude.com/docs/connectors/building/directory-vs-custom.
+## in: claude.com/docs/connectors/building/directory-vs-custom. Claude's row
+## of the assistants' table says it.
 func claude_ai_link() -> String:
-	return ("https://claude.ai/customize/connectors?modal=add-custom-connector"
-		+ "&connectorName=%s&connectorUrl=%s") % [NAME.uri_encode(), shared_address().uri_encode()]
+	return str(Assistants.adding(Assistants.CLAUDE, shared_address())["open"])
 
 
 ## The same for Claude Code, which has no link: the command to paste.
 func claude_code_command() -> String:
-	return "claude mcp add --transport http brickworks " + shared_address()
+	return str(Assistants.adding("claude_code", shared_address())["copy"])
+
+
+## The AI app to connect with, chosen: kept, and the panels told.
+func choose(id: String) -> void:
+	if not Assistants.known(id) or id == assistant:
+		return
+	assistant = id
+	ShellPrefs.put("connect_with", id)
+	assistant_chosen.emit(id)
+
+
+## The chosen assistant, as a sentence says it: "Claude", "ChatGPT",
+## "your AI app".
+func assistant_name() -> String:
+	return Assistants.called(assistant)
+
+
+## What the chosen assistant's Connect does, for the panels to say:
+## {way, open, copy} (Assistants.adding).
+func adding() -> Dictionary:
+	return Assistants.adding(assistant, shared_address())
 
 
 ## True while Claude (any of its apps) is signed in to this account.
@@ -320,6 +354,42 @@ func connect_claude(listed: bool = false) -> void:
 	last_opened = CONNECTORS if listed else claude_ai_link()
 	if open_links:
 		Outside.open_link(last_opened)
+
+
+## Connect the chosen assistant, in the fewest steps it allows: Claude's
+## form filled in ([method connect_claude]); Cursor's or VS Code's install
+## link; a command copied (Claude Code, Codex, Gemini CLI); the address
+## copied and the app's own page opened (ChatGPT, Gemini, Le Chat,
+## Perplexity, Grok); or the address alone. This tab listens either way,
+## and asks whether it has connected as after Connect Claude.
+func connect_assistant() -> void:
+	if assistant == Assistants.CLAUDE:
+		connect_claude(false)
+		return
+	if held:
+		return
+	_waiting_until = Time.get_ticks_msec() + 600_000
+	_next_ask = Time.get_ticks_msec() + 5000
+	start()
+	var way: Dictionary = adding()
+	DisplayServer.clipboard_set(str(way["copy"]))
+	last_opened = str(way["open"])
+	_follow(last_opened)
+
+
+## [param link] opened for the person: a web page in a tab of its own, an
+## app's own link (cursor://, vscode:, claude://) followed in place in a
+## browser, where a new tab for it would be left behind empty. Nothing
+## happens where the app is not installed, and the page stays as it was.
+func _follow(link: String) -> void:
+	if link.is_empty() or not open_links:
+		return
+	if OS.has_feature("web") and not link.begins_with("http"):
+		JavaScriptBridge.eval("(function (u) { var a = document.createElement('a'); "
+			+ "a.href = u; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); })(%s)"
+			% JSON.stringify(link), true)
+		return
+	Outside.open_link(link)
 
 
 ## Connected: one click to the Brickworks connector in Claude, for its
@@ -383,17 +453,23 @@ func new_chat_command() -> String:
 func start_chat(where: String = "claude.ai") -> void:
 	DisplayServer.clipboard_set(new_chat_command() if where == "code" else first_message())
 	last_opened = new_chat_link(where)
-	if not open_links:
-		return
-	if OS.has_feature("web") and where != "claude.ai":
-		# An app's own link, followed in place: a new browser tab for it
-		# would be left behind empty. Nothing happens where the app is not
-		# installed, and the page stays as it was.
-		JavaScriptBridge.eval("(function (u) { var a = document.createElement('a'); "
-			+ "a.href = u; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); })(%s)"
-			% JSON.stringify(last_opened), true)
-		return
-	Outside.open_link(last_opened)
+	_follow(last_opened)
+
+
+## A new chat for this tab in the chosen assistant, as far as it allows
+## (Assistants.new_chat): Claude's filled in as [method start_chat]; another
+## app's page opened with the first message copied, to paste; a command
+## copied; or the message alone copied. What it did: {way, open, copy}.
+func start_chat_with() -> Dictionary:
+	if assistant == Assistants.CLAUDE:
+		start_chat("claude.ai")
+		return {"way": "link", "open": last_opened, "copy": first_message()}
+	var chat: Dictionary = Assistants.new_chat(assistant, first_message())
+	DisplayServer.clipboard_set(str(chat["copy"]))
+	if not str(chat["open"]).is_empty():
+		last_opened = str(chat["open"])
+		_follow(last_opened)
+	return chat
 
 
 ## The chats working in this tab now: the ones heard from within
@@ -456,6 +532,9 @@ func _set_chats(given: Array, whole: bool = false) -> void:
 			continue
 		var it: Dictionary = (one as Dictionary).duplicate()
 		var was: Dictionary = heard.get(str(it.get("chat", "")), {})
+		# Who it is, as its calls named it, where the relay's list does not.
+		if str(it.get("who", "")).is_empty() and not str(was.get("who", "")).is_empty():
+			it["who"] = was["who"]
 		if str(was.get("did", "")) == str(it.get("did", "")) and not str(was.get("words", "")).is_empty():
 			it["words"] = was["words"]
 		elif not str(it.get("did", "")).is_empty():
@@ -483,6 +562,8 @@ func _chat_called(request: Dictionary, tool: String, arguments: Dictionary) -> v
 	found["last"] = at
 	found["did"] = tool
 	found["words"] = ConnectorForm.said(tool, arguments)
+	found["who"] = Later.script(&"CommandSocket").who_of(request.get("params", {})
+		if request.get("params") is Dictionary else {})
 	chats_changed.emit(chats)
 
 
@@ -611,6 +692,16 @@ func _ask_aside(url: String) -> Array:
 ## getting-started, read 2026-10-14): Customize › Connectors, Your
 ## connectors, Connect, Reconnect, Tool permissions.
 func connect_words() -> String:
+	if assistant != Assistants.CLAUDE:
+		var name: String = assistant_name()
+		return {"link": "%s opens with Brickworks filled in, if it is installed: press Install, "
+				% name + "and Allow when Brickworks asks.",
+			"command": "The command that adds Brickworks to %s is copied: run it in a terminal, "
+				% name + "and Allow when Brickworks asks.",
+			"open": "%s has opened in a new tab and the address is copied: add Brickworks there "
+				% name + "as Connect your AI says, and Allow when Brickworks asks.",
+		}.get(str(adding()["way"]), "The address is copied: add Brickworks in your AI app, "
+			+ "and Allow when Brickworks asks.")
 	if last_opened == CONNECTORS:
 		return ("Claude's connectors have opened (Customize › Connectors): select "
 			+ "Brickworks under Your connectors, press Connect (or Reconnect, if it "
@@ -1148,6 +1239,9 @@ func _answer(token: String, work: Dictionary) -> void:
 		tool = str(params.get("name", ""))
 		var given: Variant = params.get("arguments", {})
 		arguments = given if given is Dictionary else {}
+		# Who is calling, as the relay names the connection (U1,
+		# docs/ANY_ASSISTANT.md): the panels say it before they hear the call.
+		caller = Later.script(&"CommandSocket").who_of(params)
 	if not _used:
 		_used = true
 		_save()

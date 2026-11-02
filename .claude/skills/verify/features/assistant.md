@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe -->
 
 ## Sub-features
 
@@ -633,7 +633,7 @@ fixing what it got wrong.
   first (`ChatPanel._show_for_key`). It says what the assistant does and what a
   design costs before asking for anything, at the top of the panel rather than
   under an empty one. Then the two ways in, each under its own heading — "With
-  your Anthropic API key", and below a rule "Or with your Claude plan" — kept
+  your Anthropic API key", and below a rule "Or connect your AI" — kept
   short enough that Connect Claude is on screen at 860px tall. A refusal is said
   right under Use this key, and cleared when the form is shown again. In a
   browser, `tools/web/assistant_flow.mjs` shows it (`2_key_taken.png` with a
@@ -649,8 +649,29 @@ fixing what it got wrong.
   holds, and it presses Change key only where no key is stored. Where Claude
   Code is installed the composer stays without a key, because "My Claude" sits
   in it: `chat_probe` builds that panel too and checks Build waits for the tick.
-- `design on your Claude plan`: `ConnectorForm` in the panel, under "Or with
-  your Claude plan" (2026-10-11). Not connected, it says what it is for and
+- `design on your Claude plan`: `ConnectorForm` in the panel, under "Or
+  connect your AI" ("Or with your Claude plan" from 2026-10-11 to 11-02).
+  **Connect your AI** (2026-11-02, connectany, U3 of docs/ANY_ASSISTANT.md):
+  a chooser ("Your AI", `connect_choice`) of every row of
+  `assets/assistants.json`, read by `Assistants` (src/net/assistants.gd) —
+  Claude first and chosen until another is (kept as ShellPrefs
+  `connect_with`), then ChatGPT, Gemini, Le Chat, Perplexity, Grok | Claude
+  Code, Codex, Gemini CLI | Cursor, VS Code | Another app. Connect does each
+  one's own way in the fewest steps it allows (`connect_assistant`): Claude
+  as below; Cursor's and VS Code's install links filled in; Claude Code's,
+  Codex's and Gemini CLI's command copied; the address copied and ChatGPT's,
+  Gemini's, Le Chat's, Perplexity's or Grok's own page opened; the address
+  alone for another app — with that row's steps, who may (`plan`) and what
+  it cannot do yet (`limits`) beside it. New chat for this tab does the
+  same per assistant (`Assistants.new_chat`). A call the relay names
+  (`_meta["brickworks/who"]`, `CommandSocket.who_of`) is that assistant's
+  in the panel's line ("ChatGPT is building — 1 call"), the tab's chats,
+  the toolbar ("ChatGPT working · tab k7qd"), the run card and the history
+  ("ChatGPT's submit design"); a call that names no one stays Claude's.
+  Another AI chosen in Settings, AI no longer hides it (it did until
+  11-02). `connect_any_probe` (windowed) checks each way from what it hands
+  `Outside` and the clipboard, the caller named everywhere, and Settings.
+  For Claude: not connected, it says what it is for and
   offers **Connect Claude** (`ClaudeConnector.connect_claude`): this tab
   starts listening, the shared address (`/api/mcp`) goes on the clipboard, and
   claude.ai's documented install link opens — `https://claude.ai/customize/
@@ -700,8 +721,8 @@ fixing what it got wrong.
   "Connector off" if it is switched off. One step per call: the tools' own
   progress notes are dropped while Claude's call runs, or each call showed
   twice. While the connector is on and there is no key, the key's form folds
-  to "Use your own API key instead" and the section is titled "Designing with
-  your Claude plan"; until Claude's first call there is no empty conversation
+  to "Use your own API key instead" and the section is titled "Connect your
+  AI"; until Claude's first call there is no empty conversation
   above it, so the steps sit under the title (they were at the panel's foot
   under a blank two-thirds of it). The panel's secondary actions — that one,
   Claude Code, Claude app, Private address, "Make a new address", "Disconnect
@@ -714,6 +735,30 @@ fixing what it got wrong.
   named, the account panel's Claude section, the private address — and
   `connector_probe` the protocol (see `web.md`); `tools/web/oauth_flow.mjs`
   the whole of it in a browser on a deployment ([account](account.md)).
+- `connect your AI`: the chooser and its table, described under `design on
+  your Claude plan` above. By hand: `godot --path .`, sign in, open the
+  assistant's column, choose an assistant under Your AI and press Connect:
+  its own link or page opens (through `Outside`), the address or its command
+  is on the clipboard, and its numbered steps, who may and what it cannot
+  do yet are under the button. A row is added to `assets/assistants.json`
+  alone (its `way`, `add`, `steps`, `plan`, `limits`, `new_chat`); the app,
+  the probe and the languages probe read it from there, and its new words
+  need de/fr/es entries (`locale/*.po`).
+- `connect any probe`: `tools/probe.sh connect_any_probe -- --shots=DIR`
+  (windowed, the real app; `PROBE_SIZE=1024x768` for the smaller window).
+  Signed in to a port it holds and never answers, once start-up has settled
+  (`Deployment.wait`: settling signs out whoever was signed in by hand
+  before it, about 25 s in, and stops the connector). It reads what each
+  assistant's Connect handed `Outside` and the clipboard against the makers'
+  own documented links and commands written in the probe (not read from the
+  table, which is what is under test), each one's steps and plan on screen
+  and the tab listening; New chat for this tab for Claude, ChatGPT and
+  Codex; a `tools/call` named ChatGPT's (`_meta["brickworks/who"]`) in the
+  panel's line, the tab's chats, the toolbar, the card and the history, and
+  one naming no one Claude's, the toolbar then `2 chats · tab X`; and
+  Another AI in Settings leaving Connect your AI on screen. On the code
+  before (7708f201) it fails: no chooser, Connect knows Claude alone, the
+  caller is always Claude, and Settings' Another AI hides Connect.
 - `a finished design's next steps`: the Done card offers Build steps and Parts
   list (`ChatPanel.steps_wanted`, `parts_list_wanted`).
 - `model and effort settings`: which Claude model and which effort level, and

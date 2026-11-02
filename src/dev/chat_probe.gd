@@ -363,9 +363,10 @@ func _run() -> void:
 			and not offer._disconnect.visible and offer._connect.visible,
 		"disconnected: not connected, and Connect Claude, in both places")
 	# As Disconnect Claude leaves it: no connections, and this tab no longer
-	# listening — not "Claude is building", which it said with a count.
+	# listening — not "Claude is building", which it said with a count. It
+	# names the apps it was connected to (connectany: ChatGPT's own, too).
 	connector.stop()
-	_check(offer._status.text.begins_with("Disconnected. Claude can no longer reach")
+	_check(offer._status.text.begins_with("Disconnected. Claude and Claude Code can no longer reach")
 			and offer._calls == 0,
 		"...and the panel says Disconnected, not that Claude is building: %s" % offer._status.text)
 	var stamp: String = Time.get_datetime_string_from_system(true).substr(0, 19) + "+00:00"
@@ -476,7 +477,7 @@ func _run() -> void:
 	_check(panel._connector_form.visible and not panel._scroll.visible,
 		"with no key, the connector on and nothing yet, its steps are under the title, not under an empty field")
 	_check(not panel._key_form.visible and panel._key_instead.visible
-			and panel._connector_form._title.text.begins_with("Designing with your Claude plan"),
+			and panel._connector_form._title.text == "Connect your AI",
 		"...and the key's form folds to one line while the plan is in use")
 	panel._key_instead.pressed.emit()
 	panel._show_for_key(false)
