@@ -3546,6 +3546,125 @@ stands on its own and should go to main. Results:
 `bench/results/realset-2026-11-01-d7accent/` and
 `realset-2026-11-01-d5base-vs-d7accent/`.
 
+### Colour: each assembly says its own colours as it is planned, on the 44 of proof (2026-11-01, `4bea5532`, no gain)
+
+Lines and then accents on a one-colour face moved no colour verdict (above).
+Where accents were kept, the judge named them and still called the model
+flat, and credited the set with "a black roof and wing, a grey engine bay,
+yellow pistons". Those are assemblies in their own colours, chosen with the
+parts. So this round asks for them as the model is planned (`b8bd48ed`,
+`4bea5532`):
+
+- Each assembly in `submit_design` says its `color`, which is required, and
+  may say a `second_color`. `how_real_sets_build_this` ends with "COLOUR EACH
+  ASSEMBLY AS YOU PLAN IT": the body its main colour, what covers it a
+  second, what works greys and black with a bright part, where a figure sits
+  or stands its own, trim another; a part in a colour of its own is an
+  assembly of its own. The connector's method says it once.
+- Once the model stands, `AssemblyColours` (`src/ai/assembly_colours.gd`)
+  reads each assembly's parts, each counted by its surface. Two findings, in
+  the answer to `submit_design`, the whole review and that assembly's close
+  review: the model is one colour throughout (one colour is 60% or more of
+  three quarters of its assemblies), and an assembly built under a quarter in
+  its planned colours. Nothing is recoloured by the app.
+- The smoke (5 subjects, `b8bd48ed`) also said when a planned second colour
+  was missing. Sessions named a second colour for 72 of 82 assemblies, often
+  glass or trim a first design leaves for later, and a cabin with 2% of its
+  glass was told it had none. That finding was dropped (`4bea5532`).
+- `src/dev/assembly_colours_probe.gd` proves it headless.
+
+**Read before the round.** On the last two arms' final designs (d5base,
+d7accent), "one colour throughout" speaks on 5 and 2 of 44. Those won 2 of
+10 and 2 of 4 colour verdicts, the rest 27 of 78 and 27 of 84. No threshold
+tried separated won from lost in both arms, so the check is a mirror for the
+session, not a predictor. The lever is the plan.
+
+**How it ran.** Two arms at once, as design8's were: the base on a locked
+snapshot of stage225 (`snapd9base`, `a6562d38`), the lever on its own
+(`snapd9lever`, `4bea5532`), both imported first. Same 44, same path
+(`--via relay --no-claude-code`), one design a subject, 2 at a time each,
+ports 9750-9759 and 9760-9769, 2026-11-01 20:57Z to 11-02 03:34Z. No
+session hit a limit or a lapsed login. One base session, 21023-1, found none of the app's
+tools at its start ("No such tool available", four tries) and ended in 23 s
+with no model. It was designed again on the same snapshot and command, 03:35Z
+to 03:52Z; the first try is kept as `21023-1.dropped-20261102`. Nine more
+sessions (4 base, 5 lever) missed a tool once to three times at their start
+and went on. No pictures were given up in either arm. No tool result carried
+a held-out set's number; ten sessions searched the index for their own set by
+number or name and found nothing. Sessions took a median 15 minutes (base)
+and 14 (lever). None hit the timeout.
+
+| dimension | stage225 (95%) | each assembly's colours (95%) | lever minus stage225, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 30% (18-44) | 32% (20-47) | +2 (-11, +15) | 7 / 6 |
+| surface | 41% (28-56) | 32% (20-47) | -9 (-20, +2) | 6 / 12 |
+| colour | 28% (17-43) | 33% (21-48) | +5 (-8, +17) | 9 / 9 |
+| technique | 16% (8-29) | 14% (6-27) | -2 (-11, +6) | 5 / 5 |
+| creativity | 47% (33-61) | 44% (31-59) | -2 (-12, +7) | 6 / 8 |
+| overall | 27% (16-42) | 24% (14-38) | -3 (-17, +9) | 7 / 9 |
+
+Head to head, both orders, the lever's design preferred to stage225's:
+likeness 44%, surface 42% (29-57%), colour 58% (43-71%), technique 51%,
+creativity 50%, overall 48% (34-62%).
+
+**What the sessions heard and did:**
+
+| | stage225 | each assembly's colours |
+|---|---|---|
+| told to colour each assembly as it is planned | - | 43 of 44 sessions |
+| assemblies submitted / with a colour / with a second | 647 / - / - | 674 / 674 / 502 |
+| ...told the model is one colour throughout | - | 6 sessions |
+| ...told an assembly is not in its planned colours | - | 9 assemblies, 6 sessions |
+| ...recolouring edits after a finding | - | 18, in 7 sessions |
+| final assemblies of 4 parts or more, a design's median | 5 | 6 |
+| ...in their planned colours (a quarter or more) | - | 276 of 284 |
+| ...a planned second colour built (5% or more) | - | 184 of 223 |
+| ...90% or more one colour | 13 of 217 | 30 of 284 |
+| main colours over a design's assemblies, mean | 2.93 | 3.45 |
+| ...designs with one / four or more | 4 / 11 | 0 / 16 |
+| final designs one colour throughout | 3 of 44 | 2 of 44 |
+| colours in a design, median (the sets: 13) | 11 | 10 |
+| colour verdicts won | 25 of 88 | 29 of 88 |
+| colour verdicts lost that call ours flat, one colour or short of accents | 58 of 63 | 55 of 59 |
+| ...that credit the set's tones of one hue (light and dark grey, darker bands) | 30 | 29 |
+| ...that credit the set's transparent parts, glass or lights / printed parts | 37 / 28 | 44 / 28 |
+
+(The last two rows use design7's pattern for "flat" and wider patterns for
+what the set is credited with, so they differ from the counts above.)
+
+**No gain.** The sessions did what was asked. Every assembly named its
+colour, nearly all were built in it, and designs with four or more main
+colours rose from 11 to 16. The judge did not count it. Colour moved +5
+(-8, +17), 9 subjects better and 9 worse, and the lever's 29 of 88 is what
+d5base and d7accent won too; this base won 25. The colour moved between
+assemblies, not within them: more assemblies are 90% one colour (30 of 284
+against 13 of 217), and the design's colour count did not rise (10 against
+11; the sets have 13). The judge reads a model of several flat masses as
+flat. On 21052-1, Dubai: "A has a broader palette, but it sits in flat
+white, grey and tan masses." On 42093-1, the Corvette, planned as a yellow
+body over a black chassis: "A is mostly flat yellow and black", where the
+set has "orange body panels, a black roof and aero parts, a grey and yellow
+engine bay". Surface fell 9 (-20, +2), 6 subjects better and 12 worse, at the
+edge of noise; shaped parts fell from 24% to 21% of a design, a share of the
+session's attention gone to colour. No dimension fell beyond noise, and
+colour did not clear 0. The lever is kept on its branch.
+
+**Next.** Three levers have now moved where colour sits (lines through a
+face, accents in place of parts, assemblies in their own colours), and none
+moved the verdict. What the set is credited with is colour at the scale of
+parts inside a mass: tones of one hue laid through it (21016-1: "mixes
+light and dark grey in the stonework"; 21024-1: "dark tan cornice bands ...
+for real tonal depth on the tan stone"), transparent parts and lights in 44
+of the 59 lost, printed parts in 28. Before a fourth lever, find what
+predicts a colour win: on the 264 colour verdicts of d5base, d7accent and
+d9lever, read each design's pictures for the share of its largest one-colour
+region, the colours seen, and the transparent and printed parts seen, and
+see which separates won from lost. A lever on what separates them, not on
+what the critiques name, is the next round. The bench should also redo a
+session that ends with no model because no tool answered, as 21023-1 did,
+rather than record it. Results: `bench/results/realset-2026-11-01-d9base/`,
+`realset-2026-11-01-d9lever/` and `realset-2026-11-01-d9base-vs-d9lever/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
