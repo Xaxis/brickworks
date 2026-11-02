@@ -261,7 +261,7 @@ import { challengeLine, withWins } from "./_challenges.js";
 import { bases, basesOf, basesPut, setBased } from "./_bases.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, basedHtml, cardHtml, counted, marksOf, number, quietMarks, say } from "./_card.js";
+import { MADE_WITH, basedHtml, cardHtml, counted, langAt, marksOf, number, quietMarks, say, themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -758,12 +758,15 @@ function links(origin, id) {
     return { url, image: `${url}.cover.webp`, viewer: `${origin}/app?new=1&library=${id}`, embed: "" };
   }
   const url = `${origin}/m/${id}`;
+  // Its card in the language of the page that gives the code (/de/m/X/embed),
+  // named in it for a screen reader.
+  const at = langAt();
   return {
     url,
     image: `${url}.png`,
     viewer: `${origin}/app?view=${id}`,
-    embed: `<iframe src="${url}/embed" width="560" height="420" style="border:0;max-width:100%" `
-      + `title="A Brickworks model" loading="lazy" allowfullscreen></iframe>`,
+    embed: `<iframe src="${origin}${at}/m/${id}/embed" width="560" height="420" style="border:0;max-width:100%" `
+      + `title="${asText(say("A Brickworks model"))}" loading="lazy" allowfullscreen></iframe>`,
   };
 }
 
@@ -860,7 +863,7 @@ function creditOf(model, nobody = asText(say("this page’s link"))) {
   if (!model.author) return nobody;
   if (!model.by) return escapeHtml(model.author);
   const handle = escapeHtml(model.by.handle);
-  return `${escapeHtml(model.by.name)} (<a href="/u/${handle}">@${handle}</a>)`;
+  return `${escapeHtml(model.by.name)} (<a href="${langAt()}/u/${handle}">@${handle}</a>)`;
 }
 
 /// The licence, said for a person: what they may do, whom to credit, and
@@ -895,6 +898,7 @@ function licenceWords(model) {
 /// count where the model's is not the same count (ModelLibrary.agrees).
 function setFacts(set, parts) {
   const decade = set.year ? `${Math.floor(set.year / 10) * 10}s` : "";
+  const at = langAt();
   const box = Number(set.box) || 0;
   return [
     `<li class="pill">${escapeHtml(counted(parts, "part"))}</li>`,
@@ -902,11 +906,11 @@ function setFacts(set, parts) {
     set.steps ? `<li class="pill" data-steps="${Number(set.steps)}">${escapeHtml(say("{steps}, laid out by its modeller",
       { steps: counted(set.steps, "step") }))}</li>` : "",
     // Its set's own page (sets364): every part, and what of it you own.
-    set.set ? (catalogSet(set.set) ? `<li><a class="pill" data-set="${escapeHtml(set.set)}" href="/library/set/${escapeHtml(catalogSet(set.set).set)}">${escapeHtml(say("Set {set}", { set: set.set }))}</a></li>`
+    set.set ? (catalogSet(set.set) ? `<li><a class="pill" data-set="${escapeHtml(set.set)}" href="${at}/library/set/${escapeHtml(catalogSet(set.set).set)}">${escapeHtml(say("Set {set}", { set: set.set }))}</a></li>`
       : `<li class="pill" data-set="${escapeHtml(set.set)}">${escapeHtml(say("Set {set}", { set: set.set }))}</li>`) : "",
     set.alternate_of ? `<li class="pill">${escapeHtml(say("Another build of {set}", { set: set.alternate_of }))}</li>` : "",
-    set.theme ? `<li><a class="pill" href="/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(set.theme)}</a></li>` : "",
-    decade ? `<li><a class="pill" href="/library?decade=${decade}">${Number(set.year)}</a></li>` : "",
+    set.theme ? `<li><a class="pill" href="${at}/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(themeSaid(set.theme))}</a></li>` : "",
+    decade ? `<li><a class="pill" href="${at}/library?decade=${decade}">${Number(set.year)}</a></li>` : "",
   ].join("");
 }
 
@@ -1014,7 +1018,7 @@ function testedMark(mark, steps = null) {
 function designerRow(model) {
   if (model.by) {
     const handle = escapeHtml(model.by.handle);
-    return `<div class="shared-by"><a class="who" href="/u/${handle}">${avatarHtml(model.by)}`
+    return `<div class="shared-by"><a class="who" href="${langAt()}/u/${handle}">${avatarHtml(model.by)}`
       + `<span class="names"><b>${escapeHtml(model.by.name)}</b><small>@${handle}</small></span></a>`
       + `<button type="button" class="cta ghost small follow" data-follow="${handle}" hidden>${asText(say("Follow"))}</button>`
       + `<span class="said" role="status"></span></div>`;
@@ -1263,10 +1267,10 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // A shared model's page in each language, each naming the others; English
   // for any other. Its own address is its canonical, an older version's
   // the newest's in its language.
-  const page = `/m/${id}${old ? `/v/${version.n}` : ""}`;
-  const alternates = set ? "" : [["en", ""], ...SITE_LANGS.map((code) => [code, `/${code}`]), ["x-default", ""]]
+  const page = set ? `/library/${id}` : `/m/${id}${old ? `/v/${version.n}` : ""}`;
+  const alternates = [["en", ""], ...SITE_LANGS.map((code) => [code, `/${code}`]), ["x-default", ""]]
     .map(([code, where]) => `<link rel="alternate" hreflang="${code}" href="${escapeHtml(`${origin}${where}${page}`)}">`).join("\n");
-  const own = at ? `${origin}${at}/m/${id}` : links(origin, id).url;
+  const own = at ? `${origin}${at}${set ? `/library/${id}` : `/m/${id}`}` : links(origin, id).url;
   // The copy's words, for what the page's own scripts say (web/card.js say).
   const scriptWords = words ? `<script type="application/json" id="site-words">${JSON.stringify(words).replace(/</g, "\\u003c")}</script>\n` : "";
   return `<!doctype html>
@@ -1289,7 +1293,7 @@ ${header}
 <main id="main">
 <article class="wrap wide model-page">
   <nav class="crumbs" aria-label="${asText(say("Where it is"))}">${set ? `<a href="${at}/library">${asText(say("LDraw library"))}</a>${set.theme
-    ? ` <span aria-hidden="true">›</span> <a href="${at}/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(set.theme)}</a>` : ""}`
+    ? ` <span aria-hidden="true">›</span> <a href="${at}/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(themeSaid(set.theme))}</a>` : ""}`
     : `<a href="${at}/gallery">${asText(say("Gallery"))}</a>${model.kind
     ? ` <span aria-hidden="true">›</span> <a href="${at}/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}`}</nav>
   ${old ? `<p class="old-version" role="note"><b>${asText(say("An older version."))}</b> ${sayHtml("This is version {n} of {newest}, "
@@ -1342,8 +1346,8 @@ ${header}
   ${versionsSection(id, versions, version, at)}
     </div>
   </div>
-  ${model.by ? nextRow("more-by", sayHtml("More by {name}", { name: `<a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>` }),
-    next.by, `/u/${model.by.handle}`) : ""}
+  ${model.by ? nextRow("more-by", sayHtml("More by {name}", { name: `<a href="${langAt()}/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>` }),
+    next.by, `${langAt()}/u/${model.by.handle}`) : ""}
   ${nextRow("similar", set ? escapeHtml(set.theme ? say("More {theme} from the LDraw library", { theme: set.theme })
     : say("More sets from the LDraw library")) : asText(say("Similar models")), next.like,
   set?.theme ? `${at}/library?theme=${encodeURIComponent(set.theme)}` : "")}
@@ -1439,7 +1443,7 @@ function listsSection(lists) {
 /// its builder wrote, who (their profile, if they made one) and when, and
 /// a way to report it. Every word is theirs, escaped.
 function buildFigure(model, photo) {
-  const by = photo.by ? sayHtml("by {name}", { name: `<a href="/u/${escapeHtml(photo.by.handle)}">${escapeHtml(photo.by.name)}</a>` })
+  const by = photo.by ? sayHtml("by {name}", { name: `<a href="${langAt()}/u/${escapeHtml(photo.by.handle)}">${escapeHtml(photo.by.name)}</a>` })
     : asText(say("by a builder"));
   return `<figure class="build" id="photo-${photo.id}" data-photo="${photo.id}">`
     + `<img src="/api/people?op=photo_file&amp;id=${photo.id}" alt="${escapeHtml(say("A real build of {name}", { name: model.name }))}" `
@@ -1666,13 +1670,24 @@ async function oembed(request, response, origin) {
 /// browser lets the frame read it; where it keeps a frame's storage apart
 /// from the site's own (most do, inside somebody else's page), their
 /// device's light or dark. data-embed: it never asks their account.
-function embedCard(origin, id, row) {
+///
+/// In German, French or Spanish at /de/m/X/embed (and /fr, /es), the code a
+/// copy of its page gives (links): its words, its 3D view's too ([words],
+/// as on the page), and its links to the page's copy and into the app in
+/// the language. It names no other copy, so it stays in the one its code
+/// asked for, whatever the browser around it reads.
+function embedCard(origin, id, row, lang = "en", words = null) {
   const link = links(origin, id);
+  const at = lang === "en" ? "" : `/${lang}`;
+  const page = at ? `${origin}${at}/m/${id}` : link.url;
+  const viewer = at ? `${link.viewer}&lang=${lang}` : link.viewer;
+  const away = `<span class="visually-hidden"> ${asText(say("(opens in a new tab)"))}</span>`;
+  const scriptWords = words ? `<script type="application/json" id="site-words">${JSON.stringify(words).replace(/</g, "\\u003c")}</script>\n` : "";
   return `<!doctype html>
-<html lang="en" data-embed>
+<html lang="${lang}" data-embed>
 <head>
-${pageHead(origin, row, id, `${row.name} — a Brickworks model`)}
-${siteChrome().head}
+${pageHead(origin, row, id, say("{name} — a Brickworks model", { name: row.name }), { url: page })}
+${scriptWords}${siteChrome().head}
 <base target="_blank">
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/view3d.css">
@@ -1699,12 +1714,12 @@ ${siteChrome().head}
 <body>
 <main class="embed">
 <div class="media">
-<a class="picture" href="${escapeHtml(link.viewer)}" rel="noopener" aria-label="View ${escapeHtml(row.name)} in 3D"
-  data-scene="/m/${id}/scene.json"><img src="${row.has_image ? `/m/${id}.png` : "/share.png"}" alt=""><span class="go" aria-hidden="true">View in 3D</span></a>
+<a class="picture" href="${escapeHtml(viewer)}" rel="noopener" aria-label="${escapeHtml(say("View {name} in 3D", { name: row.name }))}"
+  data-scene="/m/${id}/scene.json"><img src="${row.has_image ? `/m/${id}.png` : "/share.png"}" alt=""><span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
 </div>
 <div class="embed-bar">
-  <a class="words" href="${escapeHtml(link.url)}" rel="noopener"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small><span class="visually-hidden"> (opens in a new tab)</span></a>
-  <a class="cta small" href="${escapeHtml(`${link.viewer}&build`)}" rel="noopener" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it<span class="visually-hidden"> (opens in a new tab)</span></a>
+  <a class="words" href="${escapeHtml(page)}" rel="noopener"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small>${away}</a>
+  <a class="cta small" href="${escapeHtml(`${viewer}&build`)}" rel="noopener" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}${away}</a>
 </div>
 </main>
 </body>
@@ -2010,7 +2025,7 @@ async function read(request, response) {
   if (op === "sitemap_index") return sitemapIndex(response, origin);
   if (op === "sitemap_models") return sitemapOfModels(response, origin, String(request.query?.lang || ""));
   if (op === "sitemap_sets") return sitemapOfSets(response, origin, String(request.query?.n || ""), String(request.query?.lang || "en"));
-  if (op === "set") return setPage(response, origin, id, testsAsked(request.query || {}));
+  if (op === "set") return setPage(response, origin, id, testsAsked(request.query || {}), String(request.query?.lang || "en"));
   if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"), testsAsked(request.query || {}));
   if (op === "set_file") return setFile(response, id, testsAsked(request.query || {}));
   if (op === "set_parts") {
@@ -2069,11 +2084,17 @@ async function read(request, response) {
   const row = await publishedRow(id);
 
   if (op === "embed") {
+    // In the language of the page its code was taken from (/de/m/X/embed).
+    const lang = String(request.query?.lang || "en");
+    const words = lang === "en" ? null : siteWords(lang);
+    if (lang !== "en" && !words) return html(response, 404, gonePage(origin, id, false), { embed: true });
+    const speak = (draw) => inLanguage(lang, words, draw);
     if (!row) {
       const gone = await missing(id);
-      return html(response, gone.status, gonePage(origin, id, gone.unpublished), { embed: true });
+      return html(response, gone.status, speak(() => gonePage(origin, id, gone.unpublished, lang)), { embed: true });
     }
-    return html(response, 200, embedCard(origin, id, { ...row, by: await profileOf(id, row.author) }), { embed: true });
+    const by = await profileOf(id, row.author);
+    return html(response, 200, speak(() => embedCard(origin, id, { ...row, by }, lang, words)), { embed: true });
   }
 
   if (op === "image" || op === "cutout" || op === "thumb") {
@@ -2214,16 +2235,19 @@ function setsBeside(every, entry) {
 }
 
 /// /library/X: a set's page, made as a model's is (sharePage), its parts and
-/// steps and every modeller read from its own file.
-async function setPage(response, origin, id, tests = false) {
+/// steps and every modeller read from its own file; in German, French or
+/// Spanish at /de/library/X (and /fr, /es), as a model's page is.
+async function setPage(response, origin, id, tests = false, lang = "en") {
+  const words = lang === "en" ? null : siteWords(lang);
+  if (lang !== "en" && !words) return html(response, 404, gonePage(origin, id, false));
+  const speak = (draw) => inLanguage(lang, words, draw);
   const entry = await librarySet(id, libraryOf(tests));
-  if (!entry) return html(response, 404, gonePage(origin, id, false));
+  if (!entry) return html(response, 404, speak(() => gonePage(origin, id, false, lang)));
   const text = await storeFile(entry).catch(() => null);
   const parts = text ? partsOf(entry.file, Buffer.from(text)) : null;
-  const model = setModel(entry, { authors: authorsIn(text), steps: fileSteps(text) });
   const next = { by: [], like: setsBeside(await librarySets(libraryOf(tests)), entry), gallery: [] };
-  return html(response, 200, sharePage(origin, id, model, [], null, null, [], next, null, undefined, parts),
-    { cache: tests ? TESTS_CACHE : SET_CACHE });
+  return html(response, 200, speak(() => sharePage(origin, id, setModel(entry, { authors: authorsIn(text), steps: fileSteps(text) }),
+    [], null, null, [], next, null, undefined, parts, lang, words)), { cache: tests ? TESTS_CACHE : SET_CACHE });
 }
 
 /// A set's pictures, each drawn by the app's own renderer

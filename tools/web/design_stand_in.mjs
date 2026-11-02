@@ -55,7 +55,7 @@ import { noticeGroups } from "../../api/_notifications.js";
 // (docs/SOCIAL.md U9): pure too.
 import { LATEST, designersFrom } from "../../api/_follows.js";
 // More like a designer: the order the API puts them in.
-import { alikeSaid, closestDesigners } from "../../api/_alike.js";
+import { alikeOf, closestDesigners } from "../../api/_alike.js";
 // What a handle may not be, as the API says it (a new account's First steps).
 import { handleTrouble } from "../../api/_names.js";
 // What a featured model's card says (gallery362).
@@ -1026,8 +1026,23 @@ const PIXEL_WEBP = "UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=
 export const BRICKS = "0 FILE model.ldr\n0 Author: Brickworks\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n"
   + "1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n1 1 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat\n0 STEP\n";
 
+// The LDraw library's shelf as the store keeps it (api/_omr_credit.js
+// storeIndex): one set, King's Castle, modelled for LDraw's Official Model
+// Repository, its file the three bricks, its pictures a pixel.
+const LDRAW_SHELF = { models: [{ id: "omr-6080-1", set: "6080-1", name: "King's Castle", theme: "Castle", year: 1984, parts: 3,
+  box: 0, file: "library/omr/6080-1.mpd", cover: "library/covers/omr-6080-1.webp", author: "Stefan Frenz",
+  licence: "CCAL 2.0", page: "https://library.ldraw.org/omr/sets/9" }] };
+
 function storage(where, init) {
   const method = String(init.method || "GET").toUpperCase();
+  const shelved = /^\/storage\/v1\/object\/public\/parts\/(library\/[A-Za-z0-9/._-]+)$/.exec(where.pathname);
+  if (shelved && method === "GET") {
+    const [, path] = shelved;
+    if (path === "library/index.json") return new Response(JSON.stringify(LDRAW_SHELF), { status: 200, headers: { "content-type": "application/json" } });
+    if (path === LDRAW_SHELF.models[0].file) return new Response(BRICKS, { status: 200, headers: { "content-type": "text/plain" } });
+    if (path.endsWith(".webp")) return new Response(Buffer.from(PIXEL_WEBP, "base64"), { status: 200, headers: { "content-type": "image/webp" } });
+    return new Response("", { status: 404 });
+  }
   const face = /^\/storage\/v1\/object\/avatars\/([A-Za-z0-9]{10})\.jpg$/.exec(where.pathname);
   if (face) {
     const one = AVATARS.find((row) => row.id === face[1] && !row.removed_at);
@@ -1094,6 +1109,17 @@ const PAGES = [
   // and the sitemap of those copies.
   [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})(?:\/v\/([1-9][0-9]{0,5}))?\/?$/, "share", "page_lang"],
   [/^\/sitemaps\/models-(de|fr|es)[.]xml$/, "share", "sitemap_models"],
+  // A model's card for another site's page, a person's page and a set of the
+  // LDraw library's (its pictures, file, parts and scene from the shelf
+  // above), each in a language too.
+  [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed_lang"],
+  [/^\/(de|fr|es)\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page_lang"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set"],
+  [/^\/(de|fr|es)\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set_lang"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.](?:(cutout|cover)[.])?webp$/, "share", "set_cover"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]mpd$/, "share", "set_file"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/parts[.](json|xml|csv)$/, "share", "set_parts"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/scene[.]json$/, "share", "set_scene"],
 ];
 
 /// Which handler makes [pathname], and what it is asked. A path under /m/,
@@ -1108,8 +1134,15 @@ function routeOf(pathname) {
     if (op === "sitemap" || op === "sitemap_index") return { name, query: { op } };
     if (op === "sitemap_sets") return { name, query: { op, n: found[2], ...(found[1] ? { lang: found[1] } : {}) } };
     if (op === "catalog_set_lang") return { name, query: { op: "catalog_set", set: found[2], lang: found[1] } };
-    if (op === "page_lang") return { name, query: { op: "page", id: found[2], lang: found[1], ...(found[3] ? { v: found[3] } : {}) } };
+    if (op === "page_lang" && name === "share") {
+      return { name, query: { op: "page", id: found[2], lang: found[1], ...(found[3] ? { v: found[3] } : {}) } };
+    }
     if (op === "sitemap_models") return { name, query: { op, lang: found[1] } };
+    if (op === "embed_lang") return { name, query: { op: "embed", id: found[2], lang: found[1] } };
+    if (op === "page_lang") return { name, query: { op: "page", handle: found[2], lang: found[1] } };
+    if (op === "set_lang") return { name, query: { op: "set", id: found[2], lang: found[1] } };
+    if (op === "set_cover") return { name, query: { op, id: found[1], ...(found[2] ? { as: found[2] } : {}) } };
+    if (op === "set_parts") return { name, query: { op, id: found[1], as: found[2] } };
     if (name === "share") {
       return { name, query: { op, ...(found[1] ? { id: found[1] } : {}), ...(found[2] ? { v: found[2] } : {}),
         ...(found[3] ? { as: found[3] } : {}) } };
@@ -1637,7 +1670,7 @@ function people(method, params, body, who, state) {
         .filter((one) => one.id !== who && !FOLLOWS.some((f) => f.follower === who && f.followed === one.id)).slice(0, 6)
         .map((one) => {
           const them = personOf(one.id);
-          return { handle: them.handle, name: them.name, said: alikeSaid(one), kinds: one.kinds, tags: one.tags,
+          return { handle: them.handle, name: them.name, alike: alikeOf(one), kinds: one.kinds, tags: one.tags,
             follow: follows(them.handle, who, state).json };
         });
       return answer(200, { handle: person.handle, name: person.name, designers });
@@ -1669,7 +1702,8 @@ function people(method, params, body, who, state) {
       if (id !== "SamModel01" || who !== ME) return answer(200, { mine: false });
       return answer(200, { mine: true, ready: true, challenge: { id: CHALLENGE.id, title: CHALLENGE.title,
         starts_on: CHALLENGE.starts_on, ends_on: CHALLENGE.ends_on, days_said: "1 Oct 2026 to 31 Oct 2026",
-        rules_said: CHALLENGE_RULES }, entry: null, entries: 0, in_gallery: true, keeps: true, broken: [] });
+        rules_said: CHALLENGE_RULES, rules: { most_parts: 1500, set_number: null, set_name: null, tested: true } },
+        entry: null, entries: 0, in_gallery: true, keeps: true, broken: [] });
     }
     return answer(400, { error: `unknown op ${op}` });
   }
@@ -2210,7 +2244,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c|library\/set|(?:de|fr|es)\/(?:library\/set|m)|sitemaps)\//.test(url.pathname) || /^\/(collections|oembed)\/?$|^\/sitemap[.]xml$/.test(url.pathname)) {
+    if (/^\/(m|u|c|library|(?:de|fr|es)\/(?:library|m|u)|sitemaps)\//.test(url.pathname) || /^\/(collections|oembed)\/?$|^\/sitemap[.]xml$/.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:

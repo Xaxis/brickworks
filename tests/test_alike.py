@@ -95,18 +95,37 @@ def test_ties_hold_their_order() -> None:
 
 def test_what_they_share_is_said_in_words() -> None:
     said = node("""
-import { alikeSaid } from "./api/_alike.js";
+import { alikeOf } from "./api/_alike.js";
+import { alikeSaid } from "./web/card.js";
+const both = (one) => alikeSaid(alikeOf(one));
 console.log(JSON.stringify([
-  alikeSaid({ kinds: ["castle", "space"], tags: ["knights", "dragon", "moat", "keep"], parts: 0 }),
-  alikeSaid({ kinds: [], tags: ["knights"], parts: 0.5 }),
-  alikeSaid({ kinds: [], tags: [], parts: 0.5 }),
-  alikeSaid({ kinds: ["castle", "space"], tags: ["castle", "space", "knights"], parts: 0 }),
+  both({ kinds: ["castle", "space"], tags: ["knights", "dragon", "moat", "keep"], parts: 0 }),
+  both({ kinds: [], tags: ["knights"], parts: 0.5 }),
+  both({ kinds: [], tags: [], parts: 0.5 }),
+  both({ kinds: ["castle", "space"], tags: ["castle", "space", "knights"], parts: 0 }),
 ]));
 """)
     assert said == ["Castles and fantasy, Space · knights, dragon, moat",
                     "Knights · many of the same parts", "Many of the same parts",
                     # Not a tag the theme's name says already.
                     "Castles and fantasy, Space · knights"]
+
+
+def test_the_api_sends_what_they_share_and_the_page_says_it() -> None:
+    # The page says it in its language: the API sends no English line.
+    said = node("""
+import { alikeOf } from "./api/_alike.js";
+import { alikeSaid } from "./web/card.js";
+const words = { "Castles and fantasy": "Burgen und Fantasy", "Space": "Weltraum",
+  "many of the same parts": "viele gleiche Teile" };
+globalThis.brickworksLang = { code: "de", locale: "de", say: (english) => words[english] ?? english };
+const alike = alikeOf({ kinds: ["castle", "space"], tags: ["knights"], parts: 0.5 });
+console.log(JSON.stringify([alike, alikeSaid(alike)]));
+""")
+    assert said == [{"themes": ["Castles and fantasy", "Space"], "tags": ["knights"], "parts": True},
+                    "Burgen und Fantasy, Weltraum · knights · viele gleiche Teile"]
+    assert "said: alikeSaid" not in ALIKE and "alike: alikeOf(one)" in ALIKE
+    assert "personRow(one, alikeSaid(one.alike)" in FOLLOW
 
 
 def test_the_file_only_adds() -> None:

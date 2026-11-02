@@ -153,7 +153,8 @@ def test_the_own_numbers_are_never_kept_and_only_the_caller_s() -> None:
 
 
 def test_the_profile_page_never_carries_them() -> None:
-    page = js_function(PEOPLE, "profilePage")
+    # Drawn in the visitor's language since 2026-11-01 (profileHtml).
+    page = js_function(PEOPLE, "profilePage") + js_function(PEOPLE, "profileHtml")
     assert "designer_mine" not in PEOPLE and "designs(" not in page
     assert 'id="designs-mine"' in page and re.search(r'id="designs-mine"[^>]*hidden', page)
     assert "mine: true" in page  # the page loads web/designs.js

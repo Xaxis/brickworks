@@ -69,16 +69,15 @@ export function closestDesigners(mine, theirs, { most = ALIKE_MOST } = {}) {
     .slice(0, most);
 }
 
-/// What a designer shares with the person, in a line under their name: the
-/// themes by name, then up to three tags (not one a theme's name says
-/// already: "castle" after Castles and fantasy), then the parts when a
-/// third or more are the same. Pure.
-export function alikeSaid({ kinds = [], tags = [], parts = 0 }) {
+/// What a designer shares with the person, for the line under their name
+/// (web/card.js alikeSaid says it, in the page's language): the themes by
+/// name, up to three tags (not one a theme's name says already: "castle"
+/// after Castles and fantasy), and whether a third or more of the parts
+/// are the same. Pure.
+export function alikeOf({ kinds = [], tags = [], parts = 0 }) {
   const themes = kinds.map(kindLabel).filter(Boolean);
   const named = (tag) => kinds.includes(tag) || themes.some((theme) => theme.toLowerCase().includes(tag.toLowerCase()));
-  const said = [themes.join(", "), tags.filter((tag) => !named(tag)).slice(0, 3).join(", "),
-    parts >= PARTS_CLOSE ? "many of the same parts" : ""].filter(Boolean).join(" · ");
-  return said ? said[0].toUpperCase() + said.slice(1) : "";
+  return { themes, tags: tags.filter((tag) => !named(tag)).slice(0, 3), parts: parts >= PARTS_CLOSE };
 }
 
 /// The gallery's rule for a designer's own models, as a PostgREST filter:
@@ -132,7 +131,7 @@ export async function designersAlike(person, asker, tests) {
       const state = states[i];
       if (!state || !state.ready || state.mine || state.you_follow || out.length >= ALIKE_MOST) return;
       const who = named.get(one.id);
-      out.push({ handle: who.handle, name: who.name, said: alikeSaid(one), kinds: one.kinds, tags: one.tags,
+      out.push({ handle: who.handle, name: who.name, alike: alikeOf(one), kinds: one.kinds, tags: one.tags,
         follow: { you_follow: false, mine: false, followers: state.followers, may: state.may, why_not: state.why_not,
           signed_in: Boolean(asker) } });
     });

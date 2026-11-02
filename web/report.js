@@ -9,6 +9,7 @@
 //
 // Everything here is put on the page as text.
 import { call, say, signedIn, token } from "/account.js";
+import { told } from "/card.js";
 
 // Said as the dialog opens, in the language it speaks then (web/account.js).
 const REASONS = () => [
@@ -106,7 +107,7 @@ function open(target, about) {
     }
     send.disabled = false;
     if (answer.status !== 200) {
-      status.textContent = answer.body.error || say("That did not go just now. Try again in a minute.");
+      status.textContent = told(answer.body.error, say("That did not go just now. Try again in a minute."));
       return;
     }
     form.replaceChildren();

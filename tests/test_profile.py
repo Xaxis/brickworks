@@ -97,7 +97,9 @@ console.log(JSON.stringify({
 
 
 def test_the_page_marks_links_and_has_no_special_case() -> None:
-    page = js_function(PEOPLE, "profilePage")
+    # The page as asked for (profilePage), and as drawn in its language
+    # (profileHtml).
+    page = js_function(PEOPLE, "profilePage") + js_function(PEOPLE, "profileHtml")
     assert 'rel="ugc nofollow noopener"' in page
     # Every person's page is drawn the same: the house's (U10) included.
     assert '"brickworks"' not in page and "'brickworks'" not in page and "house" not in page.lower()

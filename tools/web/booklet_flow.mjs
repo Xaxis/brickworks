@@ -30,7 +30,7 @@
 // model with no steps of its own gets the planner's. --pages=1,4,9 or
 // --pages=all photographs those pages, as a reader turns them; the first
 // three and the last by default.
-import { controlsWith, launch } from "./browser.mjs";
+import { controlsWith, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -89,29 +89,6 @@ const check = (what, ok) => {
   console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}`);
   if (!ok) failed += 1;
 };
-// Open… > From a file, answered with a file: tried again when a press
-// brought no picker, as steps_flow.mjs does.
-async function open(file) {
-  const at = await page.evaluate(() => (window.brickworksControls || {}).open);
-  if (!at) throw new Error("the app never showed Open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
 
 try {
   await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
@@ -124,7 +101,7 @@ try {
   // The example car's parts arrive over the network after the button does.
   await page.waitForTimeout(Number(args.load || 20000));
   if (model) {
-    await open(model);
+    await openFromFile(page, model, { shots: out });
     // Its parts arrive over the network too: settled when the app says
     // none is still on its way. The count holding between two looks was
     // the test, and it holds between two arrivals: 7636 was photographed,

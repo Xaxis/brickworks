@@ -13,7 +13,7 @@
 // every part the file carries that the page could build is counted (.custom).
 // A picture of each, to look at beside the set's own. Fails if a file has no
 // skin drawn, or says one is not shown, or a script error reaches the console.
-import { launch } from "./browser.mjs";
+import { launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 
@@ -102,17 +102,7 @@ await page.waitForTimeout(Number(args.load || 15000));
 const rows = [];
 for (const model of models) {
   console.log(`flexskin web: ${basename(model)}`);
-  const at = await where("open");
-  let chooser = null;
-  for (let n = 0; n < 3 && !chooser; n++) {
-    choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(3000 + 3000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && choosers.length === 0; wait++) await page.waitForTimeout(500);
-    chooser = choosers.shift() || null;
-    if (!chooser) await page.keyboard.press("Escape");
-  }
+  const chooser = await openFromFile(page, null, { choosers, shots: out, optional: true });
   if (!ok(Boolean(chooser), "Open… > From a file brought the file picker")) continue;
   const began = Date.now();
   await chooser.setFiles(model);

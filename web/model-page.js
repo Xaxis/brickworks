@@ -23,7 +23,7 @@
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { avatarHtml } from "/kit.js";
-import { HOWS, basedHtml, counted, mentionPieces, number, say } from "/card.js";
+import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, rulesSaid, say, told } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 
@@ -487,7 +487,7 @@ function startComments(section) {
       hold?.remove();
       const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
       if (tab && section.hidden) tab.hidden = true;
-      return tell(answer.body.error || say("The comments did not load just now."));
+      return tell(told(answer.body.error, say("The comments did not load just now.")));
     }
     state = answer.body;
     // Not open on this deployment yet (comments.sql): nothing to show.
@@ -548,7 +548,7 @@ function startComments(section) {
     const head = document.createElement("p");
     head.className = "comment-head";
     const who = one.handle ? document.createElement("a") : document.createElement("b");
-    if (one.handle) who.href = `/u/${encodeURIComponent(one.handle)}`;
+    if (one.handle) who.href = `${langAt()}/u/${encodeURIComponent(one.handle)}`;
     who.textContent = one.by || "A builder";
     head.append(who);
     if (one.by_owner) {
@@ -591,7 +591,7 @@ function startComments(section) {
       }
       const link = document.createElement("a");
       link.className = "mention";
-      link.href = `/u/${encodeURIComponent(piece.handle)}`;
+      link.href = `${langAt()}/u/${encodeURIComponent(piece.handle)}`;
       link.title = piece.name;
       link.textContent = piece.at;
       words.append(link);
@@ -680,7 +680,7 @@ function startComments(section) {
     if (you.signed_in && !you.may_write) {
       const words = document.createElement("p");
       words.className = "note";
-      words.textContent = you.why_not || "";
+      words.textContent = told(you.why_not);
       why.append(words);
     }
     if (!you.signed_in && !state.open) {
@@ -715,7 +715,7 @@ function startComments(section) {
     if (!(await askToSignIn(words))) return false;
     await load();
     if (state.you?.may_write) return true;
-    tell(state.you?.why_not || say("That did not go just now. Try again in a minute."));
+    tell(told(state.you?.why_not, say("That did not go just now. Try again in a minute.")));
     return false;
   }
 
@@ -785,7 +785,7 @@ function startComments(section) {
     tell(say("Adding it…"));
     const answer = await call("/api/people?op=reply", { method: "POST", body: { id: to, body: text } });
     post.disabled = false;
-    if (answer.status !== 201) return tell(answer.body.error || say("That did not go just now. Try again in a minute."));
+    if (answer.status !== 201) return tell(told(answer.body.error, say("That did not go just now. Try again in a minute.")));
     replying = null;
     tell(say("Replied."));
     await load();
@@ -800,14 +800,14 @@ function startComments(section) {
 
   async function change(one, what) {
     const answer = await call("/api/people?op=comment_change", { method: "POST", body: { id: one.id, what } });
-    if (answer.status !== 200) return tell(answer.body.error || say("That did not work just now."));
+    if (answer.status !== 200) return tell(told(answer.body.error, say("That did not work just now.")));
     tell(what === "remove" ? say("Removed.") : what === "hide" ? say("Hidden from everybody but you and its author.") : say("Shown again."));
     await load();
   }
 
   async function setOpen(open) {
     const answer = await call(`/api/people?op=comments_open&id=${model}`, { method: "POST", body: { open } });
-    if (answer.status !== 200) return tell(answer.body.error || say("That did not work just now."));
+    if (answer.status !== 200) return tell(told(answer.body.error, say("That did not work just now.")));
     tell(open ? say("Comments are on.") : say("Comments are off: what was said stays, and nobody can add more."));
     await load();
   }
@@ -828,7 +828,7 @@ function startComments(section) {
     const answer = await call("/api/people?op=comment", { method: "POST",
       body: { model, version, step: at, body: text } });
     send.disabled = false;
-    if (answer.status !== 201) return tell(answer.body.error || say("That did not go just now. Try again in a minute."));
+    if (answer.status !== 201) return tell(told(answer.body.error, say("That did not go just now. Try again in a minute.")));
     box.value = "";
     left.textContent = "";
     tell(at ? say("Added, on step {n}.", { n: at }) : say("Added."));
@@ -862,7 +862,7 @@ function buildPhotos(box) {
   const file = form.querySelector('input[type="file"]');
   const words = form.querySelector('input[name="words"]');
   const said = form.querySelector(".said");
-  const told = box.querySelector(".build-said");
+  const buildSaid = box.querySelector(".build-said");
   const strip = () => document.querySelector("#builds .build-strip");
   const pictures = document.getElementById("pictures");
   const addPicture = pictures && pictures.querySelector("[data-add-picture]");
@@ -944,11 +944,11 @@ function buildPhotos(box) {
     const answer = await call("/api/people?op=photo_hide", { method: "POST", body: { photo, on } });
     button.disabled = false;
     if (answer.status !== 200) {
-      told.textContent = answer.body.error || say("That did not work just now.");
+      buildSaid.textContent = told(answer.body.error, say("That did not work just now."));
       return;
     }
     if (on) document.getElementById(`photo-${photo}`)?.remove();
-    told.textContent = on ? say("Hidden: nobody else sees it now.") : say("Shown again: reload to see it in the strip.");
+    buildSaid.textContent = on ? say("Hidden: nobody else sees it now.") : say("Shown again: reload to see it in the strip.");
     document.documentElement.dataset.buildHidden = on ? photo : "";
     await load();
   }
@@ -984,7 +984,7 @@ function buildPhotos(box) {
       tell(say("Sending the photo…"));
       const start = await call("/api/people?op=photo_start", { method: "POST",
         body: { model, type: photo.type, size: photo.size } });
-      if (start.status !== 200) return tell(start.body.error || say("That did not work just now."));
+      if (start.status !== 200) return tell(told(start.body.error, say("That did not work just now.")));
       const headers = { "content-type": photo.type, "x-upsert": "false" };
       if (start.body.key) headers.apikey = start.body.key;
       const sent = await fetch(start.body.upload, { method: "PUT", headers, body: photo });
@@ -992,13 +992,13 @@ function buildPhotos(box) {
       tell(say("Making it safe to show: taking out where and when it was taken…"));
       const kept = await call("/api/people?op=photo", { method: "POST",
         body: { model, ticket: start.body.ticket, words: words.value } });
-      if (kept.status !== 201) return tell(kept.body.error || say("That did not work just now."));
+      if (kept.status !== 201) return tell(told(kept.body.error, say("That did not work just now.")));
       shown(kept.body);
       form.reset();
       form.hidden = true;
       open.hidden = false;
       tell("");
-      told.textContent = say("Added. Thank you for building it.");
+      buildSaid.textContent = say("Added. Thank you for building it.");
       document.documentElement.dataset.buildPhoto = kept.body.id;
       await load();
     } finally {
@@ -1074,11 +1074,151 @@ async function noteForOwner(note) {
     if (!one || one.ok) continue;
     const line = document.createElement("span");
     line.dataset.failed = name;
-    line.textContent = `${say(one.said)}: ${one.why}. `;
+    line.append(`${say(one.said)}: `);
+    whySaid(one.why).forEach(([words, said], at) => {
+      if (at) line.append("; ");
+      // A piece it has no words for, as the app wrote it, is English.
+      const piece = said ? document.createTextNode(words) : Object.assign(document.createElement("span"), { lang: "en" });
+      if (!said) piece.textContent = words;
+      line.append(piece);
+    });
+    line.append(". ");
     note.append(line);
   }
   note.hidden = false;
   document.documentElement.dataset.testedNote = "shown";
+}
+
+/// Why a model failed a test, as the app wrote it (src/assembly/tested.gd:
+/// its pieces "; " apart), in the page's language a piece at a time:
+/// [[words, said]], [said] false for a piece left as the app wrote it (one
+/// cut short at the site's 300 characters, or words this has no entry
+/// for). The parts and colours stay as the app named them.
+function whySaid(why) {
+  return String(why || "").split("; ").map((piece) => {
+    const said = pieceSaid(piece);
+    return said ? [said, true] : [piece, false];
+  });
+}
+
+const whole = (text) => Number(String(text).replace(/,/g, "")) || 0;
+
+/// One piece of a why (whySaid), said, or "" where it is not one the app
+/// says.
+function pieceSaid(piece) {
+  let m;
+  if (/^Nothing in it stands on anything to weigh$/.test(piece)) return say("Nothing in it stands on anything to weigh");
+  if ((m = /^Not finished: built to step ([\d,]+) of ([\d,]+) in the time a share takes(, standing at each|, each part on what was built, in sight)?$/.exec(piece))) {
+    const at = { n: number(whole(m[1])), of: number(whole(m[2])) };
+    if (m[3] === ", standing at each") return say("Not finished: built to step {n} of {of} in the time a share takes, standing at each", at);
+    if (m[3]) return say("Not finished: built to step {n} of {of} in the time a share takes, each part on what was built, in sight", at);
+    return say("Not finished: built to step {n} of {of} in the time a share takes", at);
+  }
+  if ((m = /^and ([\d,]+) more (parts?|steps?|kinds?|pairs?|pieces?)$/.exec(piece))) {
+    const one = whole(m[1]) === 1;
+    const things = { part: () => (one ? say("part") : say("parts")), step: () => (one ? say("step") : say("steps")),
+      kind: () => (one ? say("kind") : say("kinds")), pair: () => (one ? say("pair") : say("pairs")),
+      piece: () => (one ? say("piece") : say("pieces")) }[m[2].replace(/s$/, "")];
+    return say("and {n} more {things}", { n: number(whole(m[1])), things: things() });
+  }
+  if ((m = /^At step ([\d,]+) (.+)$/.exec(piece))) {
+    const what = tipSaid(m[2]);
+    return what && say("At step {n}: {what}", { n: number(whole(m[1])), what });
+  }
+  if ((m = /^it does not come to rest within ([\d,]+) falls$/.exec(piece))) {
+    return say("it does not come to rest within {falls}", { falls: counted(whole(m[1]), "fall") });
+  }
+  if ((m = /^Step ([\d,]+): (.+) is put down in the air$/.exec(piece))) {
+    return say("Step {n}: {part} is put down in the air", { n: number(whole(m[1])), part: m[2] });
+  }
+  if ((m = /^Step ([\d,]+): (.+) is hidden behind what is already built$/.exec(piece))) {
+    return say("Step {n}: {part} is hidden behind what is already built", { n: number(whole(m[1])), part: m[2] });
+  }
+  if ((m = /^(.+?)( \((\d+)\))? (in a colour typed in, not one parts are made in|made here, not a real element|never made in (.+))$/.exec(piece))) {
+    const part = m[3] ? `${m[1]} (${number(whole(m[3]))})` : m[1];
+    if (m[5]) return say("{part} never made in {colour}", { part, colour: m[5] });
+    return m[4].startsWith("made") ? say("{part} made here, not a real element", { part })
+      : say("{part} in a colour typed in, not one parts are made in", { part });
+  }
+  if ((m = /^([\d,]+) pairs? of parts pass(?:es)? into each other: (.+)$/.exec(piece))) {
+    const what = pieceSaid(m[2]);
+    const n = whole(m[1]);
+    return what && say(n === 1 ? "{n} pair of parts passes into each other: {what}" : "{n} pairs of parts pass into each other: {what}",
+      { n: number(n), what });
+  }
+  if ((m = /^(and )?([\d,]+) pieces? (?:is|are) held by nothing, and comes? away when the model is lifted: (.+)$/.exec(piece))) {
+    const what = pieceSaid(m[3]);
+    const n = whole(m[2]);
+    const said = what && say(n === 1 ? "{n} piece is held by nothing, and comes away when the model is lifted: {what}"
+      : "{n} pieces are held by nothing, and come away when the model is lifted: {what}", { n: number(n), what });
+    return said && m[1] ? say("and {what}", { what: said }) : said;
+  }
+  if ((m = /^(.+) into (.+) by ([\d.]+) LDU$/.exec(piece))) {
+    return say("{part} into {other} by {ldu} LDU", { part: m[1], other: m[2], ldu: number(Number(m[3])) });
+  }
+  if ((m = /^(.+?)(?: and ([\d,]+) parts? with it)? (stands against (.+)|leans on the rest to stand|stands on (.+) where it has no stud|rests on (.+)|rests where it is|falls off (.+)|falls)$/.exec(piece))) {
+    const who = m[2] ? say("{part} and {parts} with it", { part: m[1], parts: counted(whole(m[2]), "part") }) : m[1];
+    const how = m[3];
+    if (m[4]) return say("{who} stands against {part}", { who, part: m[4] });
+    if (m[5]) return say("{who} stands on {part} where it has no stud", { who, part: m[5] });
+    if (m[6]) return say("{who} rests on {part}", { who, part: m[6] });
+    if (m[7]) return say("{who} falls off {part}", { who, part: m[7] });
+    if (how === "leans on the rest to stand") return say("{who} leans on the rest to stand", { who });
+    if (how === "rests where it is") return say("{who} rests where it is", { who });
+    return say("{who} falls", { who });
+  }
+  return "";
+}
+
+/// How a build tipped at a step, as src/assembly/topple.gd words and
+/// tested.gd's weighing say it, said; "" where it is not.
+function tipSaid(tip) {
+  let m;
+  if ((m = /^(?:it (tipped over .+), and )?(.+?) (hangs from|is held by) (.+) on ([\d,]+) studs? past where it lets go$/.exec(tip))) {
+    const at = { part: m[2], other: m[4], studs: counted(whole(m[5]), "stud") };
+    const held = m[3] === "hangs from" ? say("{part} hangs from {other} on {studs} past where it lets go", at)
+      : say("{part} is held by {other} on {studs} past where it lets go", at);
+    if (!m[1]) return held;
+    const fell = fellSaid(m[1]);
+    return fell && say("{fell}, and {what}", { fell, what: held });
+  }
+  if ((m = /^it (tipped over .+)$/.exec(tip))) return fellSaid(m[1]);
+  return "";
+}
+
+/// "tipped over to the left and lies on its side (it fell 2 times, 40° to
+/// the left, 90° to the front)" (Topple.words), said: "" where it is not.
+function fellSaid(fell) {
+  const m = /^tipped over to the ([a-z-]+) and (.+?)(?: \(it fell ([\d,]+) times, (.+)\))?$/.exec(fell);
+  const way = m && waySaid(m[1]);
+  const lies = m && liesSaid(m[2]);
+  if (!way || !lies) return "";
+  const said = say("it tipped over {way} and {lies}", { way, lies });
+  if (!m[3]) return said;
+  const falls = m[4].split(", ").map((one) => {
+    const fall = /^(\d+)° to the ([a-z-]+)$/.exec(one);
+    const to = fall && waySaid(fall[2]);
+    return to ? say("{degrees}° {way}", { degrees: number(whole(fall[1])), way: to }) : "";
+  });
+  if (falls.some((one) => !one)) return "";
+  return `${said} ${say("(it fell {n} times: {falls})", { n: number(whole(m[3])), falls: falls.join(", ") })}`;
+}
+
+/// Which way a build tipped (Balance.edge_name), said; "" for none of them.
+function waySaid(way) {
+  return ({ right: () => say("to the right"), "front-right": () => say("to the front right"), front: () => say("to the front"),
+    "front-left": () => say("to the front left"), left: () => say("to the left"), "back-left": () => say("to the back left"),
+    back: () => say("to the back"), "back-right": () => say("to the back right"),
+    nearest: () => say("to the nearest edge") })[way]?.() || "";
+}
+
+/// How a build lies once it has fallen (Topple.words), said.
+function liesSaid(lies) {
+  const m = /^rests leaning (\d+)°, its far end on the floor$/.exec(lies);
+  if (m) return say("rests leaning {degrees}°, its far end on the floor", { degrees: number(whole(m[1])) });
+  return ({ "comes to rest still upright": () => say("comes to rest still upright"), "lies upside down": () => say("lies upside down"),
+    "lies on its front": () => say("lies on its front"), "lies on its back": () => say("lies on its back"),
+    "lies on its side": () => say("lies on its side") })[lies]?.() || "";
 }
 
 /// An icon button's count, and its name and count as its label ("Like, 12
@@ -1201,7 +1341,7 @@ function start() {
       state.liked = was;
       setCount(like, count, say("Like"), "like");
       draw();
-      return tell(answer.body.error || say("That did not work just now. Try again."));
+      return tell(told(answer.body.error, say("That did not work just now. Try again.")));
     }
     state.liked = answer.body.liked;
     setCount(like, answer.body.likes, say("Like"), "like");
@@ -1229,7 +1369,7 @@ function start() {
     box.disabled = false;
     if (answer.status !== 200) {
       box.checked = !box.checked;
-      return tell(answer.body.error || say("That did not work just now."));
+      return tell(told(answer.body.error, say("That did not work just now.")));
     }
     state.favourite = answer.body.favourite;
     tell(state.favourite ? say("Saved to your favourites, on your account page.") : say("Out of your favourites."));
@@ -1243,7 +1383,7 @@ function start() {
     box.disabled = false;
     if (answer.status !== 200) {
       box.checked = !box.checked;
-      return tell(answer.body.error || say("That did not work just now."));
+      return tell(told(answer.body.error, say("That did not work just now.")));
     }
     list.has = box.checked;
     tell(box.checked ? say("Saved to {name}.", { name: list.name }) : say("Out of {name}.", { name: list.name }));
@@ -1256,7 +1396,7 @@ function start() {
     const name = field.value.trim();
     if (!name || !(await ready("Sign in to make a collection: we email you a code."))) return;
     const made = await call("/api/people?op=collection", { method: "POST", body: { name, public: false } });
-    if (made.status !== 200) return tell(made.body.error || say("That did not work just now."));
+    if (made.status !== 200) return tell(told(made.body.error, say("That did not work just now.")));
     const list = { id: made.body.id, name: made.body.name, public: made.body.public, has: false };
     const box = { checked: true, disabled: false };
     await put(list, box);
@@ -1360,7 +1500,7 @@ async function challengeEntry() {
       const gone = await call("/api/people?op=withdraw", { method: "POST", body: { model: id } });
       if (gone.status !== 200) {
         out.disabled = false;
-        line.append(` ${gone.body.error || say("That did not work just now.")}`);
+        line.append(` ${told(gone.body.error, say("That did not work just now."))}`);
         return;
       }
       await challengeEntry();
@@ -1395,10 +1535,12 @@ function enterDialog(said) {
   title.id = "enter-title";
   dialog.setAttribute("aria-labelledby", title.id);
   const lede = document.createElement("p");
-  lede.textContent = (said.challenge.rules_said || []).length
-    ? "Brickworks checks its rules on this model as you shared it:" : say("It has no rules but its brief.");
+  // Its rules said here, in the page's language, from the rules themselves
+  // (a server before them said them in English: each its entry, told).
+  const ruled = said.challenge.rules ? rulesSaid(said.challenge.rules) : (said.challenge.rules_said || []).map((one) => told(one));
+  lede.textContent = ruled.length ? say("Brickworks checks its rules on this model as you shared it:") : say("It has no rules but its brief.");
   const rules = document.createElement("ul");
-  for (const text of said.challenge.rules_said || []) {
+  for (const text of ruled) {
     const item = document.createElement("li");
     item.textContent = text;
     rules.append(item);
@@ -1452,7 +1594,8 @@ function enterDialog(said) {
     send.disabled = false;
     if (answer.status !== 201) {
       status.replaceChildren();
-      const broken = answer.body.broken || [];
+      const broken = answer.body.check ? brokenSaid(answer.body.check)
+        : (answer.body.broken || []).map((one) => ({ ...one, said: told(one.said) }));
       if (broken.length) {
         status.append(say("It does not keep the rules yet:"));
         const list = document.createElement("ul");
@@ -1464,7 +1607,7 @@ function enterDialog(said) {
         }
         status.append(list);
       } else {
-        status.textContent = answer.body.error || say("That did not go just now. Try again in a minute.");
+        status.textContent = told(answer.body.error, say("That did not go just now. Try again in a minute."));
       }
       document.documentElement.dataset.challengeRefused = answer.body.refused || "error";
       return;
@@ -1658,7 +1801,7 @@ function basesDialog(current) {
     const answer = await call("/api/share?op=bases", { method: "POST", body: { model: id, bases } });
     send.disabled = false;
     if (answer.status !== 200) {
-      status.textContent = answer.body.error || say("That did not go just now. Try again in a minute.");
+      status.textContent = told(answer.body.error, say("That did not go just now. Try again in a minute."));
       document.documentElement.dataset.basesRefused = String(answer.status);
       return;
     }

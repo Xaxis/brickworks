@@ -7,7 +7,8 @@
 //                        export's index.html (node tools/web/relay_server.mjs PORT
 //                        --static=build/web; --app=http://127.0.0.1:PORT/index.html)
 //   [--widths=1280,390]  [--langs=en,de,fr,es]
-//   [--pages=home,download,plans,faq,compare,gallery,library,set,model,sitemaps,signin,firststeps]
+//   [--pages=home,download,plans,faq,compare,gallery,library,set,model,sitemaps,signin,firststeps,
+//            profile,ldraw,embed,viewer,server]
 //
 // The landing page and the download page, and the app's loading page
 // between them and the app, in German, French and Spanish (2026-11-01);
@@ -85,9 +86,28 @@
 // first sign-in opens it, and on the stand-in after the age question: each
 // step's words in the language, none English, nothing cut short.
 //
+// And where a model's copy leads (2026-11-01, languages5), each in the
+// language at each width, no English left but what people wrote:
+//   profile  its designer's page, /u/<handle> opened as /de/u/<handle>: its
+//            title, alternates, canonical, Edit profile and its tabs, every
+//            model it links to in the language;
+//   ldraw    a set of the LDraw library, /library/<id> as /de/library/<id>;
+//   embed    the copy's embed code, its frame named in the language and
+//            opening /de/m/<id>/embed, and that page in the language;
+//   viewer   the 3D view over the copy's picture: its tools, its label and
+//            its status, and where the model cannot come, why, and Try again;
+//   server   what the server tells a visitor, said in the language: why
+//            they may not comment or follow (why_not), a challenge's rules
+//            and what a model breaks of them, and the app's reasons a model
+//            is not Tested. The owner's sign-in is planted in the browser
+//            and every answer it would bring is made there, so nothing of it
+//            reaches a deployment; any other call goes out signed out.
+//
 // With no --url nothing leaves this machine: the pages are served by
 // design_stand_in.mjs from this checkout's web/. Pictures with --out:
-// <code>-<page>-<width>.png, the whole page.
+// <code>-<page>-<width>.png, the whole page; the pages languages5 reads,
+// a screen at a time as a reader scrolls them (<code>-<page>-<width>-1.png),
+// since a whole phone page repeats itself past about 16,000 px.
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
@@ -186,11 +206,15 @@ async function newContext(browser, code, width, state = {}) {
 /// library theme's pill under the catalogue's own name (Star Wars, The LEGO®
 /// Movie, marked), as the app keeps it: one the app names in the language
 /// (locale/<code>.po, "theme") is read like any other word.
-function readable(more = "") {
+function readable(asked = "") {
+  // What else to skip, and the part of the page to read ({more, root}).
+  const { more = "", root = "" } = typeof asked === "string" ? { more: asked } : asked;
   const SKIP = "script, style, code, kbd, template, svg, [translate='no'], article.model .words, article.model .frame, "
     + `.lot-list .name, .lot-list .meta, .lot-list .group > span:not(.n)${more ? `, ${more}` : ""}`;
   const said = [];
-  const walk = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_TEXT);
+  const top = root ? document.querySelector(root) : document.documentElement;
+  if (!top) return said;
+  const walk = document.createTreeWalker(top, NodeFilter.SHOW_TEXT);
   for (let node = walk.nextNode(); node; node = walk.nextNode()) {
     const parent = node.parentElement;
     if (!parent || parent.closest(SKIP)) continue;
@@ -201,12 +225,13 @@ function readable(more = "") {
     const text = parent.closest("noscript") ? node.textContent.replace(/<[^>]+>/g, " ") : node.textContent;
     if (text.trim()) said.push(text.trim());
   }
-  for (const el of document.querySelectorAll("[alt], [title], [aria-label], [placeholder]")) {
+  for (const el of [top, ...top.querySelectorAll("[alt], [title], [aria-label], [placeholder]")]) {
     if (el.closest(SKIP)) continue;
     for (const name of ["alt", "title", "aria-label", "placeholder"]) {
       if (el.hasAttribute(name) && el.getAttribute(name).trim()) said.push(el.getAttribute(name));
     }
   }
+  if (root) return said;
   for (const meta of document.querySelectorAll("meta[name='description'], meta[property^='og:'], meta[name^='twitter:']")) {
     if (/description|title|alt/.test(meta.getAttribute("name") || meta.getAttribute("property"))) said.push(meta.content);
   }
@@ -885,6 +910,407 @@ async function loader(browser) {
   }
 }
 
+// Where a model's copy leads (languages5). What a person wrote on their
+// profile, and the names it says: as they wrote them. A set of the LDraw
+// library: its name as LEGO® publishes it, and who modelled it. The embed:
+// the model's name.
+const THEIRS_PROFILE = ".who h1, .bio, .links, .start-with a, .follows .pills a, .won, [data-award='won'], .people-list .name";
+const THEIRS_SET = "h1, .modelled-by b, .shared-by .names, .tags";
+const THEIRS_EMBED = ".embed-bar b";
+
+/// The page as a reader scrolls it, a screen at a time, as
+/// <name>-1.png...: a whole-page shot of a phone repeats itself past about
+/// 16,000 px.
+async function screens(tab, name, most = 4) {
+  if (!out) return;
+  await tab.addStyleTag({ content: ".defer { content-visibility: visible !important; }" });
+  const tall = await tab.evaluate(() => document.documentElement.scrollHeight);
+  const high = tab.viewportSize().height;
+  for (let at = 0, n = 1; at < tall && n <= most; at += high, n += 1) {
+    await tab.evaluate((y) => window.scrollTo(0, y), at);
+    await tab.waitForTimeout(200);
+    await tab.screenshot({ path: path.join(out, `${name}-${n}.png`) });
+  }
+  await tab.evaluate(() => window.scrollTo(0, 0));
+}
+
+/// The English left on [tab]'s page, or in [root] of it, but what [theirs]
+/// picks and the names it says wherever they are said.
+async function englishIn(tab, theirs, root = "") {
+  const names = await tab.evaluate((theirs) => [...document.querySelectorAll(theirs)].map((el) => el.textContent.trim())
+    .filter(Boolean).sort((a, b) => b.length - a.length), theirs);
+  return (await tab.evaluate(readable, { more: theirs, root }))
+    .map((text) => names.reduce((rest, name) => rest.split(name).join(" "), text).replace(NAMES, " "))
+    .filter((text) => ENGLISH.test(text));
+}
+
+/// A server-made page of a model's copy in [code], opened at its English
+/// address [at] by a browser asking for the language: on its copy, with the
+/// five alternates and its own canonical; and its words, title and links.
+async function copyOpened(tab, code, at, where) {
+  const own = code === "en" ? at : `/${code}${at}`;
+  await tab.goto(`${base}${at}`, { waitUntil: "load" });
+  await tab.waitForLoadState("load");
+  const said = await tab.evaluate(() => ({
+    path: location.pathname,
+    lang: document.documentElement.lang,
+    title: document.title,
+    name: document.querySelector("main h1")?.textContent.trim() || "",
+    alternates: Object.fromEntries([...document.querySelectorAll('link[rel="alternate"][hreflang]')]
+      .map((link) => [link.hreflang, new URL(link.href).pathname])),
+    canonical: new URL(document.querySelector('link[rel="canonical"]')?.href || location.href).pathname,
+  }));
+  check(said.path === own && said.lang === code, `${where}: opens ${own} in ${code} (at ${said.path}, lang ${said.lang})`);
+  const want = { en: at, de: `/de${at}`, fr: `/fr${at}`, es: `/es${at}`, "x-default": at };
+  check(JSON.stringify(said.alternates) === JSON.stringify(want) && said.canonical === own,
+    `${where}: ${Object.keys(said.alternates).length} alternates, canonical ${said.canonical}`);
+  return said;
+}
+
+/// Where on [tab]'s page [text] is said: its element and the two round it.
+async function whereSaid(tab, text) {
+  return tab.evaluate((text) => {
+    const named = (el) => `${el.localName}${el.id ? `#${el.id}` : ""}${[...el.classList].map((one) => `.${one}`).join("")}`;
+    const walk = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_TEXT);
+    let el = null;
+    for (let node = walk.nextNode(); node && !el; node = walk.nextNode()) {
+      if (node.textContent.includes(text) && !node.parentElement.closest("script, style, template")) el = node.parentElement;
+    }
+    el ||= [...document.querySelectorAll("*")].find((one) => [...one.attributes].some((at) => at.value.includes(text)));
+    const chain = [];
+    for (; el && chain.length < 3; el = el.parentElement) chain.unshift(named(el));
+    return chain.join(" > ") || "?";
+  }, text.slice(0, 40));
+}
+
+/// No English but [theirs], nothing cut short that English shows whole,
+/// the footer's Language, and the pictures: the end of each page's check.
+async function copyRead(tab, code, width, where, kind, theirs) {
+  if (code !== "en") {
+    const left = await englishIn(tab, theirs);
+    check(!left.length, `${where}: no English left${left.length
+      ? `: ${left.length}, first "${left[0].slice(0, 120)}" in ${await whereSaid(tab, left[0].trim())}` : ""}`);
+  }
+  const cuts = await tab.evaluate(cut);
+  if (code === "en") cutInEnglish.set(`${kind} ${width}`, new Set(cuts));
+  else {
+    const english = cutInEnglish.get(`${kind} ${width}`) || new Set();
+    const short = cuts.filter((text) => !english.has(text));
+    check(!short.length, `${where}: nothing cut short${short.length ? `: ${short.length}, "${short.slice(0, 3).join('", "')}"` : ""}`);
+  }
+  const shown = await tab.locator(".site-foot select[data-lang-choice]").inputValue().catch(() => "");
+  check(shown === code, `${where}: the footer's Language shows ${shown}`);
+  await screens(tab, `${code}-${kind}-${width}`);
+}
+
+/// A designer's profile in [code], from /u/[handle]: its words, and every
+/// model it links to opening the model's copy.
+async function profileSaid(browser, code, width, handle) {
+  const context = await newContext(browser, code, width);
+  const tab = await context.newPage();
+  const where = `${code} profile ${width}`;
+  const lang = code === "en" ? "" : `/${code}`;
+  try {
+    const said = await copyOpened(tab, code, `/u/${handle}`, where);
+    const titles = ["{name} (@{handle}) — a designer in Brickworks", "{name} (@{handle}) — models built in Brickworks"]
+      .map((english) => script(code, english, { name: said.name, handle }));
+    check(titles.includes(said.title), `${where}: its title says "${said.title}"`);
+    const chrome = await tab.evaluate(() => ({
+      edit: document.querySelector(".profile-head [data-edit-own]")?.textContent.trim() || "",
+      tabs: [...document.querySelectorAll("nav.tabs a")].map((a) => a.firstChild.textContent.trim()),
+      models: [...document.querySelectorAll("main a[href]")].map((a) => new URL(a.href, location.href))
+        .filter((url) => url.origin === location.origin && /^(?:\/[a-z]{2})?\/m\/[A-Za-z0-9]{10}$/.test(url.pathname))
+        .map((url) => url.pathname),
+    }));
+    const tabs = ["Models", "Builds", "Collections", "Likes"].map((word) => script(code, word));
+    check(chrome.edit === script(code, "Edit profile") && chrome.tabs.length && chrome.tabs.every((word) => tabs.includes(word)),
+      `${where}: "${chrome.edit}", its tabs ${chrome.tabs.join(" / ")}`);
+    const wrong = chrome.models.filter((at) => !at.startsWith(`${lang}/m/`));
+    check(chrome.models.length && !wrong.length, `${where}: ${chrome.models.length} links to its models open them in ${code}`
+      + `${wrong.length ? `, ${wrong.length} not: ${wrong[0]}` : ""}`);
+    await copyRead(tab, code, width, where, "profile", THEIRS_PROFILE);
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+/// A set of the LDraw library in [code], from /library/[id]: its crumbs,
+/// its tabs and its links to the set's own page, in the language.
+async function ldrawSaid(browser, code, width, id) {
+  const context = await newContext(browser, code, width);
+  const tab = await context.newPage();
+  const where = `${code} LDraw set ${width}`;
+  const lang = code === "en" ? "" : `/${code}`;
+  try {
+    await copyOpened(tab, code, `/library/${id}`, where);
+    const chrome = await tab.evaluate(() => ({
+      crumbs: [...document.querySelectorAll(".crumbs a")].map((a) => [a.textContent.trim(), new URL(a.href).pathname]),
+      tabs: [...document.querySelectorAll("#page-tabs a")].map((a) => a.firstChild.textContent.trim()),
+      sets: [...document.querySelectorAll("main a[href*='/library/set/']")].map((a) => new URL(a.href).pathname),
+    }));
+    check(chrome.crumbs[0]?.[1] === `${lang}/library` && chrome.sets.length && chrome.sets.every((at) => at.startsWith(`${lang}/library/set/`)),
+      `${where}: its crumbs ${chrome.crumbs.map(([text, to]) => `"${text}" ${to}`).join(", ")}; ${chrome.sets.length} links to the set's page`);
+    const tabs = ["About", "Parts"].map((word) => script(code, word));
+    check(tabs.every((word) => chrome.tabs.includes(word)), `${where}: its tabs ${chrome.tabs.join(" / ")}`);
+    await copyRead(tab, code, width, where, "ldraw", THEIRS_SET);
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+/// The embed code on the model's copy in [code]: its frame named in the
+/// language and opening the copy's embed, and that page in the language.
+async function embedSaid(browser, code, width, at) {
+  const context = await newContext(browser, code, width);
+  const tab = await context.newPage();
+  const where = `${code} embed ${width}`;
+  const lang = code === "en" ? "" : `/${code}`;
+  try {
+    await tab.goto(`${base}${lang}${at}`, { waitUntil: "load" });
+    // Its designer, More by and the rest: each profile's copy.
+    const people = await tab.evaluate(() => [...document.querySelectorAll("a[href]")].map((a) => new URL(a.href))
+      .filter((url) => url.origin === location.origin && /^(?:\/[a-z]{2})?\/u\//.test(url.pathname)).map((url) => url.pathname));
+    const away = people.filter((to) => !to.startsWith(`${lang}/u/`));
+    check(people.length && !away.length, `${where}: the copy's ${people.length} links to a profile open it in ${code}`
+      + `${away.length ? `, ${away.length} not: ${away[0]}` : ""}`);
+    const snippet = await tab.evaluate(() => document.getElementById("share-embed")?.value || "");
+    const src = /src="([^"]+)"/.exec(snippet)?.[1] || "";
+    const title = /title="([^"]+)"/.exec(snippet)?.[1] || "";
+    check(src && new URL(src).pathname === `${lang}${at}/embed` && title === script(code, "A Brickworks model"),
+      `${where}: the embed code opens ${src ? new URL(src).pathname : "nothing"}, its frame named "${title}"`);
+    // The frame's page, from here: the code names this deployment.
+    const frame = src ? `${base}${new URL(src).pathname}` : `${base}${lang}${at}/embed`;
+    const reply = await tab.goto(frame, { waitUntil: "load" });
+    const said = await tab.evaluate(() => ({
+      lang: document.documentElement.lang,
+      opens: [...document.querySelectorAll(".embed-bar a.words[href]")].map((a) => new URL(a.href).pathname),
+      app: [...document.querySelectorAll(".embed a.picture[href], .embed-bar a.cta[href]")].map((a) => new URL(a.href)),
+      view: document.querySelector(".embed a.picture .go")?.textContent.trim() || "",
+    }));
+    check(reply?.status() === 200 && said.lang === code && said.opens.length && said.opens.every((to) => to === `${lang}${at}`)
+      && said.view === script(code, "View in 3D") && said.app.length === 2
+      && said.app.every((to) => (code === "en" ? !to.searchParams.has("lang") : to.searchParams.get("lang") === code)),
+      `${where}: ${new URL(frame).pathname} answers ${reply?.status()} in ${said.lang}, "${said.view}", opening ${said.opens[0] || "nothing"}`
+      + ` and the app at ${said.app.map((to) => to.search).join(", ")}`);
+    if (code !== "en") {
+      const left = await englishIn(tab, THEIRS_EMBED);
+      check(!left.length, `${where}: no English left in the frame${left.length ? `: ${left.length}, first "${left[0].slice(0, 120)}"` : ""}`);
+    }
+    await screens(tab, `${code}-embed-${width}`, 1);
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+/// The 3D view over the copy's picture in [code]: its tools, its label and
+/// what it says; and where its model cannot come, why, and Try again.
+async function viewerSaid(browser, code, width, at) {
+  const context = await newContext(browser, code, width);
+  const tab = await context.newPage();
+  const where = `${code} 3D view ${width}`;
+  const lang = code === "en" ? "" : `/${code}`;
+  const picture = "main a.picture[data-scene]";
+  const settled = () => tab.waitForFunction(() => /^(ready|big|failed)$/.test(document.querySelector(".view3d")?.dataset.state || ""),
+    null, { timeout: 90000 });
+  try {
+    await tab.goto(`${base}${lang}${at}`, { waitUntil: "load" });
+    await tab.locator(picture).click();
+    await settled();
+    if (await tab.evaluate(() => document.querySelector(".view3d").dataset.state) === "big") {
+      // A deployment's model may be past what this device turns smoothly.
+      const big = await tab.evaluate(() => [...document.querySelectorAll(".view3d-said button")].map((b) => b.textContent.trim()));
+      check(big.includes(script(code, "Turn it anyway")), `${where}: a big model asks "${big.join('", "')}"`);
+      await tab.locator(".view3d-said button.ghost").click();
+      await settled();
+    }
+    const said = await tab.evaluate(() => ({
+      state: document.querySelector(".view3d").dataset.state,
+      tools: [...document.querySelectorAll(".view3d-tools [data-act]")].map((b) => b.getAttribute("aria-label")),
+      bar: document.querySelector(".view3d-tools")?.getAttribute("aria-label") || "",
+      app: document.querySelector(".view3d-app")?.textContent.trim() || "",
+      stage: document.querySelector(".view3d .stage")?.getAttribute("aria-label") || "",
+      name: document.querySelector("main h1")?.textContent.trim() || "",
+    }));
+    const tools = ["Zoom out", "Zoom in", "Reset the view", "Full screen", "Back to the picture"].map((word) => script(code, word));
+    check(said.state === "ready" && JSON.stringify(said.tools) === JSON.stringify(tools) && said.bar === script(code, "3D view")
+      && said.app === script(code, "Open in the app"),
+      `${where}: ${said.state}, its tools ${said.tools.map((name) => `"${name}"`).join(", ")}, "${said.app}"`);
+    const label = script(code, "{name} in 3D. Drag to turn it. With it focused, the arrow keys turn it, plus and minus zoom, "
+      + "0 goes back to the start and F is full screen.", { name: said.name });
+    check(said.stage === label, `${where}: its label says "${said.stage.slice(0, 80)}…"`);
+    if (code !== "en") {
+      const left = await englishIn(tab, "main h1", ".view3d");
+      check(!left.length, `${where}: no English in the view${left.length ? `: ${left.length}, first "${left[0].slice(0, 120)}"` : ""}`);
+    }
+    await tab.locator(".view3d").scrollIntoViewIfNeeded();
+    if (out) await tab.screenshot({ path: path.join(out, `${code}-viewer-${width}-1.png`) });
+    // Its model not coming: the site answers 404 for it, here in the browser.
+    const scene = await tab.locator(picture).getAttribute("data-scene");
+    await tab.route((url) => url.pathname === new URL(scene, base).pathname, (route) => route.fulfill({ status: 404, body: "" }));
+    await tab.reload({ waitUntil: "load" });
+    await tab.locator(picture).click();
+    await settled();
+    const failed = await tab.evaluate(() => ({
+      state: document.querySelector(".view3d").dataset.state,
+      said: document.querySelector(".view3d-said")?.firstChild?.textContent.trim() || "",
+      again: document.querySelector(".view3d-said button")?.textContent.trim() || "",
+    }));
+    const why = script(code, "The 3D view could not load: {why}. The picture is still here.",
+      { why: script(code, "the site said {status}", { status: 404 }) });
+    check(failed.state === "failed" && failed.said === why && failed.again === script(code, "Try again"),
+      `${where}: its model not coming, "${failed.said}" "${failed.again}"`);
+    await tab.locator(".view3d").scrollIntoViewIfNeeded();
+    if (out) await tab.screenshot({ path: path.join(out, `${code}-viewer-${width}-2.png`) });
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+// The owner's sign-in, planted in the browser for what the server tells
+// only them: its answers are made here, and nothing with it leaves.
+const PLANTED = "languages5-flow";
+const UNDER_13_COMMENTS = "Comments are for people 13 and over, so you can read them here but not add one. "
+  + "Building, your models and sharing by link are all yours.";
+const UNDER_13_FOLLOW = "Following people is for people 13 and over, because a follow is counted in public. "
+  + "Building, your models and sharing by link are all yours.";
+// The app's reasons, as src/assembly/tested.gd words them.
+const WHYS = {
+  stands: "At step 3 it tipped over to the left and lies on its side; At step 7 Technic Beam 3 hangs from Brick 1 x 2 "
+    + "on 2 studs past where it lets go; and 4 more steps",
+  parts: "Brick 2 x 4 (3) never made in Chrome Gold",
+  whole: "1 piece is held by nothing, and comes away when the model is lifted: Tile 1 x 2 falls off Brick 1 x 1",
+};
+
+/// The owner's answers, as the server makes them (api/_challenges.js,
+/// api/share.js testedOwn, api/_comments.js, api/_follows.js), for
+/// [route] if it is one; else a read goes out signed out, and anything
+/// else with the planted sign-in goes nowhere.
+async function ownersAnswer(route) {
+  const request = route.request();
+  if (request.headers().authorization !== `Bearer ${PLANTED}`) return route.fallback();
+  const url = new URL(request.url());
+  const op = url.origin === new URL(base).origin && url.pathname.startsWith("/api/") ? url.searchParams.get("op") : "";
+  const json = (status, body) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+  const rules = { most_parts: 1500, set_number: null, set_name: null, tested: true };
+  const checked = { ok: false, parts: { ok: false, has: 1612, most: 1500 }, tested: { ok: false } };
+  const broken = [{ rule: "parts", said: "It has 1,612 parts: this challenge allows at most 1,500." },
+    { rule: "tested", said: "Its newest version is not marked Tested: the app tests a model as it is shared (it stands at "
+      + "every step, every part made in its colour)." }];
+  if (op === "challenge_entry") {
+    return json(200, { mine: true, ready: true, challenge: { id: 9, title: "Castle November", starts_on: "2026-11-01",
+      ends_on: "2026-11-30", days_said: "1 Nov 2026 to 30 Nov 2026",
+      rules_said: ["At most 1,500 parts", "Marked Tested: it stands at every step, and every part is made in its colour"], rules },
+    entry: null, entries: 4, in_gallery: true, keeps: false, broken, check: checked });
+  }
+  if (op === "enter") {
+    return json(422, { error: `It does not keep this challenge's rules. ${broken.map((one) => one.said).join(" ")}`,
+      refused: "rules", broken, check: checked });
+  }
+  if (op === "tested") {
+    const tests = Object.fromEntries(["stands", "steps", "parts", "whole"].map((name) => [name, WHYS[name]
+      ? { ok: false, said: { stands: "Not shown to stand at every step", parts: "A part is not made in its colour",
+        whole: "It does not go together" }[name], why: WHYS[name] } : { ok: true, said: "every step reachable", why: "" }]));
+    return json(200, { id: url.searchParams.get("id"), mine: true, version: 1, tested: { passed: false, cleared: false, tests } });
+  }
+  if (op === "comments") {
+    const v = Number(url.searchParams.get("v")) || 1;
+    return json(200, { model: url.searchParams.get("id"), ready: true, version: v, newest: v, open: true, replies: true, count: 0,
+      comments: [], you: { signed_in: true, may_write: false, why_not: UNDER_13_COMMENTS, owner: false } });
+  }
+  if (op === "follows") {
+    return json(200, { ready: true, handle: url.searchParams.get("handle"), followers: 3, you_follow: false, mine: false,
+      signed_in: true, may: false, why_not: UNDER_13_FOLLOW });
+  }
+  if (request.method() !== "GET" || !op) return json(401, { error: "signed out" });
+  const headers = { ...request.headers() };
+  delete headers.authorization;
+  return route.fallback({ headers });
+}
+
+/// What the server tells a visitor on the model's copy in [code]: why
+/// they may not comment or follow, a challenge's rules and what the model
+/// breaks of them, and why it is not Tested, each in the language.
+async function serverSaid(browser, code, width, at) {
+  const context = await newContext(browser, code, width);
+  await context.addInitScript((planted) => {
+    localStorage.setItem("brickworks.session", JSON.stringify({ refresh_token: planted, email: "flow@example.invalid",
+      user_id: "", url: "", key: "" }));
+    sessionStorage.setItem("brickworks.access", JSON.stringify({ token: planted, until: Date.now() + 3600000,
+      email: "flow@example.invalid" }));
+  }, PLANTED);
+  await context.route("**/*", ownersAnswer);
+  const tab = await context.newPage();
+  const where = `${code} server words ${width}`;
+  const lang = code === "en" ? "" : `/${code}`;
+  try {
+    await tab.goto(`${base}${lang}${at}`, { waitUntil: "load" });
+    // Why they may not comment: its comments asked for as they near.
+    await tab.evaluate(() => (document.getElementById("comments-hold") || document.getElementById("comments"))?.scrollIntoView());
+    await tab.waitForFunction(() => document.querySelector("#comments .comment-why .note")?.textContent.trim(), null, { timeout: 30000 });
+    const why = (await tab.locator("#comments .comment-why .note").first().textContent()).trim();
+    check(why === script(code, UNDER_13_COMMENTS), `${where}: why not comment, "${why.slice(0, 70)}…"`);
+    // Why they may not follow its designer.
+    const follow = tab.locator(".shared-by button.follow").first();
+    await follow.waitFor({ state: "visible", timeout: 15000 });
+    await follow.click();
+    const told = await tab.waitForFunction(() => document.querySelector(".shared-by .said")?.textContent.trim(), null,
+      { timeout: 15000 }).then((said) => said.jsonValue());
+    check(told === script(code, UNDER_13_FOLLOW), `${where}: why not follow, "${told.slice(0, 70)}…"`);
+    // Why it is not Tested.
+    await tab.waitForFunction(() => document.documentElement.dataset.testedNote === "shown", null, { timeout: 15000 });
+    const note = await tab.evaluate(() => {
+      const shown = document.getElementById("tested-note");
+      return { text: shown.textContent.trim(), english: [...shown.querySelectorAll("[lang='en']")].map((one) => one.textContent),
+        failed: [...shown.querySelectorAll("[data-failed]")].map((one) => one.textContent.trim()) };
+    });
+    const heads = [script(code, "Not shown to stand at every step"), script(code, "A part is not made in its colour"),
+      script(code, "It does not go together")];
+    const left = code === "en" ? [] : note.failed.filter((line) => ENGLISH.test(line) || /\b(?:step|tipped|hangs|piece|never)\b/.test(line));
+    check(note.failed.length === 3 && note.failed.every((line, n) => line.startsWith(`${heads[n]}: `)) && !note.english.length && !left.length,
+      `${where}: why not Tested, "${(note.failed[0] || "").slice(0, 90)}…"${left.length ? `, English: "${left[0].slice(0, 80)}"` : ""}`);
+    if (out) {
+      await tab.locator("#tested-note").scrollIntoViewIfNeeded();
+      await tab.screenshot({ path: path.join(out, `${code}-server-${width}-1.png`) });
+    }
+    // This month's challenge: its rules, and what the model breaks of them.
+    const enter = tab.locator("button[data-enter]");
+    await enter.waitFor({ state: "visible", timeout: 15000 });
+    await enter.click();
+    const dialog = tab.locator("dialog.enter");
+    await dialog.waitFor({ state: "visible", timeout: 10000 });
+    const [n1500, n1612] = await tab.evaluate((code) => [1500, 1612].map((n) => n.toLocaleString(code)), code);
+    const rules = await dialog.evaluate((box) => ({ lede: box.querySelector("p")?.textContent.trim() || "",
+      rules: [...box.querySelectorAll("ul li")].map((li) => li.textContent.trim()) }));
+    const wanted = [script(code, "At most {parts}", { parts: `${n1500} ${script(code, "parts")}` }),
+      script(code, "Marked Tested: it stands at every step, and every part is made in its colour")];
+    check(rules.lede === script(code, "Brickworks checks its rules on this model as you shared it:")
+      && JSON.stringify(rules.rules) === JSON.stringify(wanted),
+      `${where}: the challenge's rules, "${rules.lede}" ${rules.rules.map((one) => `"${one}"`).join(", ")}`);
+    await dialog.locator("input[name=way][value=hand]").check();
+    await dialog.locator("button[type=submit]").click();
+    await tab.waitForFunction(() => document.documentElement.dataset.challengeRefused, null, { timeout: 10000 });
+    const refused = await dialog.evaluate((box) => [...box.querySelectorAll(".status li, [role=status] li")].map((li) => li.textContent.trim()));
+    const breaks = [script(code, "It has {parts}: this challenge allows at most {most}.",
+      { parts: `${n1612} ${script(code, "parts")}`, most: n1500 }),
+    script(code, "Its newest version is not marked Tested: the app tests a model as it is shared (it stands at every step, "
+      + "every part made in its colour).")];
+    check(JSON.stringify(refused) === JSON.stringify(breaks), `${where}: what it breaks, ${refused.map((one) => `"${one.slice(0, 60)}…"`).join(", ")}`);
+    if (out) await tab.screenshot({ path: path.join(out, `${code}-server-${width}-2.png`) });
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
 const browser = await launch({ signedOut: true });
 try {
   console.log(`site in four languages on ${base}`);
@@ -909,6 +1335,32 @@ try {
     }
   }
   if (!only || only.includes("sitemaps")) await sitemaps(browser);
+  // Where a model's copy leads (languages5): the stand-in's watchtower, its
+  // designer and the library's King's Castle; or a deployment's first
+  // listed model, its designer, and the set its first model is of.
+  const leads = ["profile", "ldraw", "embed", "viewer", "server"].filter((name) => !only || only.includes(name));
+  if (leads.length) {
+    let at = `/m/${stand.MODEL_ID}`;
+    let handle = "design-tester";
+    let set = "omr-6080-1";
+    if (remote) {
+      const listed = await (await fetch(`${remote}/api/share?op=list&page=1`, { headers })).json().catch(() => ({}));
+      at = listed.models?.[0] ? `/m/${listed.models[0].id}` : "";
+      const page = at ? await (await fetch(`${remote}${at}`, { headers })).text() : "";
+      handle = /href="\/u\/([a-z0-9-]{3,24})"/.exec(page)?.[1] || "";
+      const library = await (await fetch(`${remote}/library/set/6080-1`, { headers })).text();
+      set = /href="\/library\/(omr-[A-Za-z0-9_.-]+)"/.exec(library)?.[1] || "";
+    }
+    for (const code of langs.includes("en") ? langs : ["en", ...langs]) {
+      for (const width of widths) {
+        if (leads.includes("profile")) await (handle ? profileSaid(browser, code, width, handle) : check(false, "a designer to open"));
+        if (leads.includes("ldraw")) await (set ? ldrawSaid(browser, code, width, set) : check(false, "an LDraw set to open"));
+        if (leads.includes("embed")) await embedSaid(browser, code, width, at);
+        if (leads.includes("viewer")) await viewerSaid(browser, code, width, at);
+        if (leads.includes("server") && code !== "en") await serverSaid(browser, code, width, at);
+      }
+    }
+  }
   await choosing(browser);
   if (!only || only.includes("signin")) {
     for (const code of langs) {

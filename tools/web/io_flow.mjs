@@ -13,8 +13,8 @@
 // parts store, as the desktop reads it from its library; until 2026-10-17
 // the browser could not, and named it not shown).
 // Then File > Export > BrickLink Studio model (.io), by the keys a person
-// would use in the menu (exportStudio says which, and why not its name
-// typed), catches the download and reads it with Python's
+// would use in the menu (browser.mjs exportFromFile says which, and why not
+// its name typed), catches the download and reads it with Python's
 // zipfile: model.ldr, .info, errorPartList.err and a thumbnail. Opens that
 // file again through the picker and checks the same six parts. Then a
 // picture renamed .io: the status bar has to say it is not a Studio file.
@@ -24,7 +24,7 @@
 // six of six, none said left out, the prints drawn (4_whole.png).
 // Every result is read off window.brickworksState; pictures in --out. It
 // fails if a step does not happen or a script error reaches the console.
-import { launch } from "./browser.mjs";
+import { exportFromFile, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync, copyFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -94,64 +94,6 @@ async function where(name, seconds = 240) {
   await shot(`never_${name}.png`);
   throw new Error(`the app never showed "${name}"`);
 }
-// Open… > From a file, answered with a file. The app reads a click a frame
-// or more after the page does, so a press that brought no picker is tried
-// again (studio_flow.mjs has the same reason at length).
-async function open(file) {
-  const at = await where("open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await shot(`no_picker_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
-// File > Export > BrickLink Studio model (.io), by the menu's own keys: the
-// File menu, E for its one line that starts so, the arrow into Export, down
-// one from the LDraw model to the Studio one, Enter. Tried again if no
-// download came, as a click is.
-//
-// Not by typing "BrickLink Studio". A menu's search moves to the next line
-// that starts with what has been typed, so letter by letter it swings
-// between "BrickLink Studio model" and "BrickLink wanted list", and the
-// space chooses wherever it is. It also starts again when two keys reach the
-// app more than two seconds apart, which one slow software frame does. So
-// the line chosen depended on the frame times: on a busy machine the
-// download was the wanted list, bay_2025_bricklink.xml.
-async function exportStudio() {
-  const file = await where("menu_file");
-  for (let n = 0; n < 3; n++) {
-    const download = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
-    await page.mouse.click(file.x, file.y);
-    await page.waitForTimeout(2500 + 2500 * n);
-    await page.keyboard.press("E");
-    await page.waitForTimeout(800);
-    await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(1500);
-    await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(800);
-    if (n === 0) await shot("2_export_menu.png");
-    await page.keyboard.press("Enter");
-    const got = await download;
-    if (got) return got;
-    await shot(`no_download_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  return null;
-}
 
 await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
 ok(Boolean(await where("open", 400)), "the app came up, signed in");
@@ -162,7 +104,7 @@ await page.waitForTimeout(Number(args.load || 15000));
 // tells a person to.
 let note = null;
 for (let attempt = 0; attempt < 3; attempt++) {
-  await open(bay);
+  await openFromFile(page, bay, { shots: out });
   note = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
   console.log(`        the status bar: "${note ? note.said : (await state()).said}"`);
   if (note && !/arriving/.test(note.said)) break;
@@ -175,7 +117,7 @@ await page.waitForTimeout(6000);
 await shot("1_bay.png");
 
 // ...and out again, as a Studio file.
-const download = await exportStudio();
+const download = await exportFromFile(page, "BrickLink Studio model", { shots: out });
 ok(Boolean(download), `File > Export > BrickLink Studio model downloads ${download ? download.suggestedFilename() : "nothing"}`);
 const exported = `${out}/exported.io`;
 let members = {};
@@ -206,7 +148,7 @@ ok(members.info && members.info.total_parts === 6 && members.crlf && members.thu
 
 // ...and that file in again.
 if (download) {
-  await open(exported);
+  await openFromFile(page, exported, { shots: out });
   const again = await until((s) => /^opened \d+ parts/.test(s.said || "") && s.bricks === 6, 240);
   ok(Boolean(again), `the exported .io opens again: ${(await state()).bricks} parts, "${(await state()).said}"`);
   await page.waitForTimeout(4000);
@@ -214,13 +156,13 @@ if (download) {
 }
 
 // A picture called .io is not a Studio model, and is said not to be.
-await open(notStudio);
+await openFromFile(page, notStudio, { shots: out });
 const refused = await until((s) => /not a Studio \.io file/.test(s.said || ""), 60);
 ok(Boolean(refused) && (await state()).bricks === 6,
   `a picture renamed .io is refused, the model left as it was: "${(await state()).said}"`);
 
 // A Studio file whose parts the library has not got: each from the file.
-await open(whole);
+await openFromFile(page, whole, { shots: out });
 const wholeSaid = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
 ok(Boolean(wholeSaid) && (await state()).bricks === 6 && /^opened 6 parts/.test(wholeSaid.said)
   && !/not shown|left out|not in the library/.test(wholeSaid.said),

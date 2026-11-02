@@ -79,7 +79,7 @@
 // --model=FILE --parts=N opens FILE, of N parts, where Orthanc is opened:
 // --only=timeline with a model whose author's steps are taken out times the
 // planner (Instructions.plan_paced) in the browser.
-import { controlsWith, launch, openColumnFor, typeInMenu } from "./browser.mjs";
+import { controlsWith, launch, openColumnFor, openFromFile, typeInMenu } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -600,18 +600,7 @@ try {
   const big = ["open", "timeline", "save", "export", "select_colour", "mirror", "turn",
     "stability", "delete", "undo", "new", "save_new"].some(wanted);
   if (big) {
-    let chooser = null;
-    const at = await h.where("open");
-    for (let n = 0; n < 3 && !chooser; n++) {
-      page.choosers.length = 0;
-      await page.mouse.click(at.x, at.y);
-      await page.waitForTimeout(3000 + 3000 * n);
-      await page.mouse.click(at.x + 40, at.y + 22);
-      for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);
-      chooser = page.choosers.shift() || null;
-      if (!chooser) await page.keyboard.press("Escape");
-    }
-    if (!chooser) throw new Error("no file chooser came up for Open");
+    const chooser = await openFromFile(page, null, { shots: out });
     // The press is the file handed over: what a person does last. Over the
     // bunny Brickify left unsaved, the open asks first whether to save it
     // (ModelBar.ask_to_replace, 6d3eb0bd): it is this run's, so Don't save,

@@ -45,6 +45,7 @@
         "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
+        "tests/test_model_page.py",
         "tests/test_refresh_catalogue.py",
         "tests/test_update_parts.py"
       ]
@@ -5207,7 +5208,9 @@
       "entry": "web/embed.js",
       "reach": "https://brickworks.diy/m/<id>/embed in an iframe (the share sheet's embed code): View in 3D on its picture turns the model in the frame (web/start3d.js imports /viewer3d.js; web/view3d.css; api/share.js embedCard and embedCsp); node tools/web/embed_flow.mjs --out=DIR on the stand-in",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "ui:the gallery's builds tab",

@@ -20,7 +20,7 @@
 // seconds (default 3) during the render, or a script error reaches the
 // console. Pictures of each step in OUT, and the WebP. --size=WxH for
 // another window than 1400x900 (a laptop's 1280x720).
-import { clickStill, launch, typeInMenu } from "./browser.mjs";
+import { clickStill, launch, openFromFile, typeInMenu } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -142,26 +142,6 @@ async function menu(title, typed) {
     return;
   }
 }
-async function open(file) {
-  const at = await where("open", 400);
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
 // How long the page went without answering, from a timer every 50 ms.
 async function heartbeat() {
   await page.evaluate(() => {
@@ -195,7 +175,7 @@ try {
   // The model, opened; its parts are fetched as they are needed.
   let opened = null;
   for (let attempt = 0; attempt < 3 && !opened; attempt++) {
-    await open(model);
+    await openFromFile(page, model, { shots: out });
     opened = await until(state, (s) => s.bricks === 9 && !/arriving/.test(s.said || ""), 240);
     if (!opened) await page.waitForTimeout(15000);
   }

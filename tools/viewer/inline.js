@@ -24,7 +24,9 @@
 // for each, named. No turn on arrival for a person who asks for less
 // motion. A model past what the device can turn smoothly (BUDGET) asks
 // first; anything that fails says why and leaves the picture.
-import { iconButtonHtml } from "../../web/card.js";
+// Its words in the page's language (web/card.js say: a copy of the page
+// in German, French or Spanish carries them, tools/site_lang.py).
+import { counted, iconButtonHtml, number, say } from "../../web/card.js";
 import { sceneShape, unpack } from "./scene.js";
 import { View, shapes, webglWorks } from "./view.js";
 
@@ -76,7 +78,7 @@ export function open3d(shell, given) {
   let full = false;
   let bytes = 0;
 
-  const say = (words, busy = false) => {
+  const tell = (words, busy = false) => {
     said.textContent = words || "";
     said.hidden = !words;
     shell.setAttribute("aria-busy", busy ? "true" : "false");
@@ -87,14 +89,14 @@ export function open3d(shell, given) {
   const tools = document.createElement("div");
   tools.className = "view3d-tools";
   tools.setAttribute("role", "toolbar");
-  tools.setAttribute("aria-label", "3D view");
+  tools.setAttribute("aria-label", say("3D view"));
   tools.hidden = true;
   tools.innerHTML = [
-    iconButtonHtml({ icon: "zoom-out", name: "Zoom out", small: true, attrs: 'data-act="out"' }),
-    iconButtonHtml({ icon: "zoom-in", name: "Zoom in", small: true, attrs: 'data-act="in"' }),
-    iconButtonHtml({ icon: "reset", name: "Reset the view", small: true, attrs: 'data-act="reset"' }),
-    iconButtonHtml({ icon: "expand", name: "Full screen", small: true, pressed: false, attrs: 'data-act="full"' }),
-    iconButtonHtml({ icon: "close", name: "Back to the picture", small: true, attrs: 'data-act="close"' }),
+    iconButtonHtml({ icon: "zoom-out", name: say("Zoom out"), small: true, attrs: 'data-act="out"' }),
+    iconButtonHtml({ icon: "zoom-in", name: say("Zoom in"), small: true, attrs: 'data-act="in"' }),
+    iconButtonHtml({ icon: "reset", name: say("Reset the view"), small: true, attrs: 'data-act="reset"' }),
+    iconButtonHtml({ icon: "expand", name: say("Full screen"), small: true, pressed: false, attrs: 'data-act="full"' }),
+    iconButtonHtml({ icon: "close", name: say("Back to the picture"), small: true, attrs: 'data-act="close"' }),
   ].join("");
   shell.append(tools);
   const button = (act) => tools.querySelector(`[data-act="${act}"]`);
@@ -103,7 +105,7 @@ export function open3d(shell, given) {
   const inApp = document.createElement("a");
   inApp.className = "pill view3d-app";
   inApp.href = given.app;
-  inApp.textContent = "Open in the app";
+  inApp.textContent = say("Open in the app");
   inApp.hidden = true;
   shell.append(inApp);
   const hint = document.createElement("p");
@@ -124,11 +126,11 @@ export function open3d(shell, given) {
     state.state = "failed";
     state.errors.push(why);
     shell.dataset.state = "failed";
-    say(`The 3D view could not load: ${why}. The picture is still here.`);
+    tell(say("The 3D view could not load: {why}. The picture is still here.", { why }));
     const again = document.createElement("button");
     again.type = "button";
     again.className = "cta ghost small";
-    again.textContent = "Try again";
+    again.textContent = say("Try again");
     again.addEventListener("click", () => { again.remove(); start(); });
     said.append(" ", again);
   };
@@ -144,26 +146,28 @@ export function open3d(shell, given) {
   async function start() {
     state.state = "loading";
     shell.dataset.state = "loading";
-    say("Getting the model in 3D…", true);
+    tell(say("Getting the model in 3D…"), true);
     progress(0.04);
-    if (!webglWorks()) return failed("this browser cannot draw in 3D");
+    if (!webglWorks()) return failed(say("this browser cannot draw in 3D"));
     if (!data) {
       let answer;
       try {
         answer = await fetch(given.scene, { credentials: "omit" });
       } catch {
-        return failed("the network did not answer");
+        return failed(say("the network did not answer"));
       }
-      if (!answer.ok) return failed(answer.status === 503 ? "the site cannot draw it just now" : `the site said ${answer.status}`);
+      if (!answer.ok) {
+        return failed(answer.status === 503 ? say("the site cannot draw it just now") : say("the site said {status}", { status: answer.status }));
+      }
       const text = await answer.text();
       bytes = text.length;
       scene = sceneShape(JSON.parse(text));
       mark("scene");
-      if (!scene || scene.count < 1) return failed("there is nothing in it to draw");
+      if (!scene || scene.count < 1) return failed(say("there is nothing in it to draw"));
       try {
         data = await unpack(scene);
       } catch (trouble) {
-        return failed(`its parts could not be read (${trouble.message})`);
+        return failed(say("its parts could not be read ({why})", { why: trouble.message }));
       }
       mark("unpacked");
       state.parts = data.n;
@@ -182,23 +186,25 @@ export function open3d(shell, given) {
     state.state = "big";
     state.budget = budget;
     shell.dataset.state = "big";
-    const millions = (scene.triangles / 1e6).toFixed(1);
-    say(`${data.n.toLocaleString("en-US")} parts in ${millions} million triangles: more than this device turns smoothly.`);
+    const millions = (scene.triangles / 1e6).toLocaleString(globalThis.brickworksLang?.locale || "en-US",
+      { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    tell(say("{parts} in {millions} million triangles: more than this device turns smoothly.",
+      { parts: counted(data.n, "part"), millions }));
     const anyway = document.createElement("button");
     anyway.type = "button";
     anyway.className = "cta ghost small";
-    anyway.textContent = "Turn it anyway";
+    anyway.textContent = say("Turn it anyway");
     anyway.addEventListener("click", () => { given.anyway = true; start(); });
     const app = document.createElement("a");
     app.className = "cta small";
     app.href = given.app;
-    app.textContent = "Open in the app";
+    app.textContent = say("Open in the app");
     said.append(" ", anyway, " ", app);
   }
 
   async function draw() {
     if (view) { view.stop(false); view = null; }
-    say(`Loading its ${data.meshes.length.toLocaleString("en-US")} kinds of part…`, true);
+    tell(say("Loading its {n} kinds of part…", { n: number(data.meshes.length) }), true);
     const errors = state.errors;
     const store = shapes(scene.root, { errors });
     const counted = (mesh) => store(mesh).then((shape) => {
@@ -216,20 +222,20 @@ export function open3d(shell, given) {
         if (gl) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
         mark(what);
       },
-      lost: () => { shell.classList.remove("shown"); failed("the browser took its graphics back"); },
+      lost: () => { shell.classList.remove("shown"); failed(say("the browser took its graphics back")); },
     });
     state.view = view;
     try {
       view.start();
     } catch (trouble) {
       view = null;
-      return failed(`this browser would not draw it (${trouble.message})`);
+      return failed(say("this browser would not draw it ({why})", { why: trouble.message }));
     }
-    stage.setAttribute("aria-label", `${given.name} in 3D. Drag to turn it. With it focused, the arrow keys turn it, `
-      + "plus and minus zoom, 0 goes back to the start and F is full screen.");
+    stage.setAttribute("aria-label", say("{name} in 3D. Drag to turn it. With it focused, the arrow keys turn it, "
+      + "plus and minus zoom, 0 goes back to the start and F is full screen.", { name: given.name }));
     await view.load((share) => {
       progress(0.1 + share * 0.9);
-      say(`Loading its parts: ${Math.round(share * 100)}%`, true);
+      tell(say("Loading its parts: {share}%", { share: Math.round(share * 100) }), true);
       if (share >= SHOWN_AT) shown();
     });
     mark("loaded");
@@ -237,9 +243,9 @@ export function open3d(shell, given) {
     state.geometryBytes = bytes - state.sceneBytes;
     state.state = "ready";
     shell.dataset.state = "ready";
-    say("");
+    tell("");
     view.render();
-    hintFor(coarse() ? "Drag across to turn it · pinch to zoom" : "Drag to turn it · scroll to zoom · right-drag to move", 5000);
+    hintFor(coarse() ? say("Drag across to turn it · pinch to zoom") : say("Drag to turn it · scroll to zoom · right-drag to move"), 5000);
   }
 
   // The model in the picture's place.
@@ -260,7 +266,7 @@ export function open3d(shell, given) {
     document.documentElement.classList.toggle("view3d-full", yes);
     const b = button("full");
     b.setAttribute("aria-pressed", String(yes));
-    b.setAttribute("aria-label", yes ? "Leave full screen" : "Full screen");
+    b.setAttribute("aria-label", yes ? say("Leave full screen") : say("Full screen"));
     b.querySelector("use")?.setAttribute("href", `/icons.svg#${yes ? "shrink" : "expand"}`);
     state.full = yes;
     if (view) { view.touch(); requestAnimationFrame(() => view && view.size()); }
@@ -360,7 +366,7 @@ export function open3d(shell, given) {
     event.stopPropagation();
     if (!state.wheelHinted) {
       state.wheelHinted = true;
-      hintFor("Press the model first to zoom it with the wheel, or use + and −");
+      hintFor(say("Press the model first to zoom it with the wheel, or use + and −"));
     }
   }, { capture: true, passive: true });
 

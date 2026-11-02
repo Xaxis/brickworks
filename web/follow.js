@@ -37,7 +37,8 @@
 // is in First steps on any page, a copy or not.
 import { askToSignIn, call, email, madeUp, say, signOut, signedIn } from "/account.js";
 import { earlyOn } from "/early.js";
-import { avatarHtml } from "/kit.js";
+import { alikeSaid, langAt } from "/card.js";
+import { avatarHtml, number } from "/kit.js";
 
 // A follow sent and not yet answered, kept for this tab until it is
 // (web295): Follow is drawn at once and the server answers 260-390 ms
@@ -69,7 +70,6 @@ const keepSent = (list) => {
   }
 };
 
-const plural = (n, one, many = `${one}s`) => `${Number(n).toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
 // What a Follow button follows: a person by their handle, or a collection
 // by its id; how to ask, the counts it changes on the page, and its words.
@@ -147,10 +147,10 @@ export async function followButton(button, known = null) {
       // Said once there is one, as every count is.
       counted.hidden = !Number(state.followers);
       if (big && words) {
-        big.textContent = Number(state.followers).toLocaleString("en-US");
-        words.textContent = state.followers === 1 ? "follower" : "followers";
+        big.textContent = number(state.followers);
+        words.textContent = state.followers === 1 ? say("follower") : say("followers");
       } else {
-        counted.textContent = plural(state.followers, "follower");
+        counted.textContent = `${number(state.followers)} ${state.followers === 1 ? say("follower") : say("followers")}`;
       }
     }
   };
@@ -210,7 +210,7 @@ export function personRow(one, words, known) {
   item.dataset.handle = one.handle;
   const toProfile = (inner, attrs = {}) => {
     const link = document.createElement("a");
-    link.href = `/u/${encodeURIComponent(one.handle)}`;
+    link.href = `${langAt()}/u/${encodeURIComponent(one.handle)}`;
     for (const [name, value] of Object.entries(attrs)) link.setAttribute(name, value);
     link.append(inner);
     return link;
@@ -251,7 +251,7 @@ async function showAlike(box) {
     .catch(() => null);
   const designers = answer && answer.status === 200 && Array.isArray(answer.body.designers)
     ? answer.body.designers.filter((one) => one && HANDLE.test(String(one.handle))) : [];
-  box.querySelector(".people-list").replaceChildren(...designers.map((one) => personRow(one, String(one.said || ""),
+  box.querySelector(".people-list").replaceChildren(...designers.map((one) => personRow(one, alikeSaid(one.alike),
     { you_follow: false, mine: false, signed_in: signedIn(), may: true, why_not: "", ...(one.follow || {}) })));
   box.hidden = designers.length === 0;
   document.documentElement.dataset.alike = !answer || answer.status !== 200 ? "broken" : designers.length ? "shown" : "none";

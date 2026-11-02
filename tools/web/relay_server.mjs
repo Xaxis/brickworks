@@ -198,6 +198,12 @@ const MAPPED = [
   [/^\/sitemaps\/sets-(de|fr|es)-([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets_lang"],
   // A model's page in a language (/de/m/<id>, /de/m/<id>/v/<n>); its sitemap.
   [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})(?:\/v\/([1-9][0-9]{0,5}))?\/?$/, "share", "page_lang"],
+  // Its card for another site's page, a person's page and a set of the LDraw
+  // library's, each in a language too (/de/m/<id>/embed, /de/u/<handle>,
+  // /de/library/<id>).
+  [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed_lang"],
+  [/^\/(de|fr|es)\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page_lang"],
+  [/^\/(de|fr|es)\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set_lang"],
   [/^\/sitemaps\/models-(de|fr|es)[.]xml$/, "share", "sitemap_models_lang"],
   // The daily cron's clean-up of files no published row owns.
   [/^\/api\/share\/sweep$/, "share", "sweep"],
@@ -304,6 +310,7 @@ http.createServer(async (incoming, outgoing) => {
     if (captured[2] && mapped[1] === "share") query.v = captured[2];
     if (captured[3] && mapped[1] === "share") query.as = captured[3];
     if (captured[1] && mapped[2] === "page" && mapped[1] === "people") query.handle = captured[1];
+    if (mapped[2] === "page_lang" && mapped[1] === "people") Object.assign(query, { op: "page", lang: captured[1], handle: captured[2] });
     if (captured[1] && mapped[2] === "list_page") query.id = captured[1];
     if (captured[1] && mapped[2].startsWith("catalog_")) {
       Object.assign(query, { set: captured[1], as: captured[2] || (mapped[2] === "catalog_photo" ? "card" : "json") });
@@ -313,12 +320,14 @@ http.createServer(async (incoming, outgoing) => {
     if (mapped[2] === "catalog_set_lang") Object.assign(query, { op: "catalog_set", lang: captured[1], set: captured[2], as: undefined });
     if (mapped[2] === "sitemap_sets_lang") Object.assign(query, { op: "sitemap_sets", lang: captured[1], n: captured[2], id: undefined, v: undefined });
     // A model's page in a language, and its sitemap.
-    if (mapped[2] === "page_lang") {
+    if (mapped[2] === "page_lang" && mapped[1] === "share") {
       Object.assign(query, { op: "page", lang: captured[1], id: captured[2], as: undefined });
       if (captured[3]) query.v = captured[3];
       else delete query.v;
     }
     if (mapped[2] === "sitemap_models_lang") Object.assign(query, { op: "sitemap_models", lang: captured[1], id: undefined });
+    if (mapped[2] === "embed_lang") Object.assign(query, { op: "embed", lang: captured[1], id: captured[2], v: undefined });
+    if (mapped[2] === "set_lang") Object.assign(query, { op: "set", lang: captured[1], id: captured[2], v: undefined });
   }
   // The app is at /app, which the deployment sends on to the build with
   // its query (?view=<id>, ?copy=<id>) intact.

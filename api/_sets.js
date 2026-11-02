@@ -378,7 +378,7 @@ function facts(entry, model, at) {
     entry.figs ? `<li class="pill" data-figs="${entry.figs}">${escapeHtml(counted(entry.figs, "minifigure"))}</li>` : "",
     decade ? `<li><a class="pill" href="${at}/library?decade=${decade}&amp;year=${entry.year}">${entry.year}</a></li>` : "",
     theme,
-    model ? `<li><a class="pill good" href="/library/${escapeHtml(model.id)}">${asText(say("3D model"))}</a></li>` : "",
+    model ? `<li><a class="pill good" href="${at}/library/${escapeHtml(model.id)}">${asText(say("3D model"))}</a></li>` : "",
   ].join("");
 }
 
@@ -453,7 +453,7 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
         + `${escapeHtml(titleOf(one))}</a></li>`).join("") + "</ul></section>" : "";
   const modelsHtml = others.length
     ? `<section class="words" id="models3d" aria-labelledby="models3d-h"><h2 id="models3d-h">${asText(say("In 3D"))}</h2><ul class="list">`
-      + others.map((one) => `<li><a href="/library/${escapeHtml(one.id)}">${escapeHtml(one.name)}</a>`
+      + others.map((one) => `<li><a href="${at}/library/${escapeHtml(one.id)}">${escapeHtml(one.name)}</a>`
         + `${one.author ? asText(say(", modelled by {author} for LDraw's Official Model Repository", { author: one.author })) : ""}</li>`).join("")
       + "</ul></section>" : "";
   const partsHtml = entry.lots
@@ -535,7 +535,7 @@ ${chrome.header}
       </div>
       <ul class="facts pills">${facts(entry, model, at)}</ul>
       ${model ? `<p class="from">${sayHtml("LDraw's model of it has {page}: who modelled it, its steps and its file.",
-        { page: `<a href="/library/${escapeHtml(model.id)}">${asText(say("a page of its own"))}</a>` })}</p>` : ""}
+        { page: `<a href="${at}/library/${escapeHtml(model.id)}">${asText(say("a page of its own"))}</a>` })}</p>` : ""}
     </div>
     <div class="rest">
   ${owned}

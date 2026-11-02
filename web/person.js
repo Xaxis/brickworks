@@ -4,7 +4,7 @@
 // hidden until this is here to make it work. Without a sheet, the phone's
 // own sheet, else the page's link copied and said so in the toast. Their
 // lists are paged by web/pager.js, as every list is.
-import { toast } from "/kit.js";
+import { say, toast } from "/kit.js";
 import { wireShare } from "/share-sheet.js";
 
 const sheet = document.getElementById("share-sheet");
@@ -26,9 +26,9 @@ for (const button of document.querySelectorAll("button[data-share]")) {
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast("Link copied");
+      toast(say("Link copied"));
     } catch {
-      toast("Could not copy it: the address is in the bar above");
+      toast(say("Could not copy it: the address is in the bar above"));
     }
   });
 }
