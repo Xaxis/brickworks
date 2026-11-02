@@ -350,3 +350,52 @@ def test_the_models_copies_have_a_sitemap_in_each_language() -> None:
     assert german["status"] == 200 and "<loc>http://design.test/de/m/DesignAbc1</loc>" in german["html"]
     assert "<loc>http://design.test/es/m/DesignAbc1</loc>" in spanish["html"] and "/de/m/" not in spanish["html"]
     assert unknown["status"] == 404
+
+
+def test_a_profile_a_library_set_and_an_embed_in_each_language() -> None:
+    # The pages a model's copy links to (languages5): a profile, a set of
+    # the LDraw library, and the embed, each in the language, its links
+    # kept in it; what a person wrote stays as they wrote it.
+    said = pages("/de/u/design-tester", "/es/u/design-tester", "/de/library/omr-6080-1", "/fr/library/omr-6080-1",
+                 "/de/m/DesignAbc1/embed", "/es/m/DesignAbc1/embed", "/xx/u/design-tester", "/de/u/nobody-here",
+                 "/de/m/DesignAbc1", "/u/design-tester")
+    if said is None:
+        return
+    de_person, es_person, de_set, fr_set, de_embed, es_embed, unknown, missing, de_model, english = said
+    origin = "http://design.test"
+    words = {code: json.loads((ROOT / f"web/_lang/{code}.json").read_text(encoding="utf-8"))["scripts"]
+             for code in ("de", "fr", "es")}
+    for code, page, path in (("de", de_person, "/u/design-tester"), ("es", es_person, "/u/design-tester"),
+                             ("de", de_set, "/library/omr-6080-1"), ("fr", fr_set, "/library/omr-6080-1")):
+        html = page["html"]
+        assert page["status"] == 200 and f'<html lang="{code}">' in html, path
+        assert f'<link rel="canonical" href="{origin}/{code}{path}">' in html
+        for lang, where in (("en", ""), ("de", "/de"), ("fr", "/fr"), ("es", "/es"), ("x-default", "")):
+            assert f'<link rel="alternate" hreflang="{lang}" href="{origin}{where}{path}">' in html
+        assert '<script type="application/json" id="site-words">' in html
+    for code, page in (("de", de_person), ("es", es_person)):
+        html = page["html"]
+        for key in ("Edit profile", "Pinned", "Follows"):
+            assert f">{words[code][key]}<" in html and f">{key}<" not in html, key
+        # Its models in the language; its words as its person wrote them.
+        assert f'href="/{code}/m/DesignAbc1"' in html and 'href="/m/' not in html
+        assert "I design castles and small mechanisms" in html
+    assert words["de"]["Designer"] + " · 3 " + words["de"]["models"] in de_person["html"]
+    # A set of the library: its facts and its description in the language.
+    assert words["de"]["About it"] in de_set["html"] and ">About it<" not in de_set["html"]
+    assert "Ein LDraw-Modell des LEGO® Sets 6080-1" in de_set["html"] and 'href="/de/library/set/6080-1"' in de_set["html"]
+    assert "Un modèle LDraw du set LEGO® 6080-1" in fr_set["html"]
+    # The embed in the language, opening the copy; and the snippet that
+    # makes it names its frame in the language too.
+    for code, page in (("de", de_embed), ("es", es_embed)):
+        assert page["status"] == 200 and f'<html lang="{code}" data-embed>' in page["html"]
+        assert f'href="{origin}/{code}/m/DesignAbc1"' in page["html"] and f'>{words[code]["View in 3D"]}<' in page["html"]
+    title = words["de"]["A Brickworks model"]
+    # The model's copy opens its designer's copy, More by too.
+    assert 'href="/de/u/design-tester"' in de_model["html"] and 'href="/u/' not in de_model["html"]
+    assert f'&lt;iframe src=&quot;{origin}/de/m/DesignAbc1/embed&quot;' in de_model["html"]
+    assert f'title=&quot;{title}&quot;' in de_model["html"] and "title=&quot;A Brickworks model&quot;" not in de_model["html"]
+    assert unknown["status"] == 404
+    assert missing["status"] == 404 and '<html lang="de">' in missing["html"]
+    assert '<html lang="en">' in english["html"] and 'href="/m/DesignAbc1"' in english["html"]
+    assert f'<link rel="alternate" hreflang="de" href="{origin}/de/u/design-tester">' in english["html"]

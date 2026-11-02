@@ -45,6 +45,7 @@ import { COLOUR_NAMES } from "./_colours.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { TESTS_CACHE, Unacceptable, cardOf, escapeHtml, testsAsked } from "./_directory.js";
+import { brokenSaid as brokenWords, rulesSaid, say } from "./_card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 export const WAYS = { hand: "Built by hand", assistant: "Built with the assistant" };
@@ -89,44 +90,21 @@ const VOTE_SAID = {
   voted: [409, "You have voted in this group already: one vote in each."],
 };
 
-/// The rules a challenge has, in words: "At most 200 parts", ...
-export function rulesSaid(rules) {
-  const said = [];
-  if (rules?.most_parts) said.push(`At most ${count(rules.most_parts, "part")}`);
-  if (rules?.set_number) {
-    said.push(`Only parts of set ${rules.set_number}${rules.set_name ? `, ${rules.set_name}` : ""}: no more of each, `
-      + "in its colour, than the set has");
-  }
-  if (rules?.tested) said.push("Marked Tested: it stands at every step, and every part is made in its colour");
-  return said;
-}
+/// The rules a challenge has, in words (web/card.js rulesSaid), and those a
+/// model breaks (brokenSaid), said as a copy of a page says them too.
+export { rulesSaid } from "./_card.js";
 
 /// The rules [check] (challenge_check) says a model breaks, each in words:
-/// [{rule, said}].
+/// [{rule, said}], each colour a part is short in named (checkSaid).
 export function brokenSaid(check) {
-  const broken = [];
-  if (check?.parts && !check.parts.ok) {
-    broken.push({ rule: "parts", said: `It has ${count(check.parts.has, "part")}: this challenge allows at most `
-      + `${n(check.parts.most).toLocaleString("en-US")}.` });
-  }
-  if (check?.set && !check.set.ok) {
-    const set = `set ${check.set.number}${check.set.name ? ` (${check.set.name})` : ""}`;
-    if (!check.set.counted) {
-      broken.push({ rule: "set", said: `Its parts have not been counted yet, so they cannot be held to ${set}: `
-        + "share it again from the app, then enter it." });
-    } else {
-      const lots = (check.set.short || []).slice(0, 5).map((one) => `${one.part} in ${colourOf(one.colour)} `
-        + `(it needs ${n(one.need)}, the set has ${n(one.have)})`);
-      const more = n(check.set.short_lots) - lots.length;
-      broken.push({ rule: "set", said: `${count(check.set.short_lots, "of its parts is", "of its parts are")} not in `
-        + `${set}, or not as many: ${lots.join("; ")}${more > 0 ? `; and ${more} more` : ""}.` });
-    }
-  }
-  if (check?.tested && !check.tested.ok) {
-    broken.push({ rule: "tested", said: "Its newest version is not marked Tested: the app tests a model as it is "
-      + "shared (it stands at every step, every part made in its colour)." });
-  }
-  return broken;
+  return brokenWords(checkSaid(check));
+}
+
+/// [check] with each colour a part is short in named, for a page to say
+/// what it breaks in its own language (web/card.js brokenSaid).
+export function checkSaid(check) {
+  if (!check?.set?.short) return check ?? null;
+  return { ...check, set: { ...check.set, short: check.set.short.map((one) => ({ ...one, colour_name: colourOf(one.colour) })) } };
 }
 
 /// The caller, from their sign-in: {account, test}.
@@ -332,7 +310,9 @@ export async function withWins(cards, tests = false) {
 }
 
 /// A card's line for a win: "Won “Small houses”, by hand".
-export const wonSaid = (win) => `Won “${win.title}”${win.way === "assistant" ? ", with the assistant" : ", by hand"}`;
+export function wonSaid(win) {
+  return say(win.way === "assistant" ? "Won “{title}”, with the assistant" : "Won “{title}”, by hand", { title: win.title });
+}
 
 /// The gallery front's line: the challenge open now, or the next to open,
 /// for anybody; null when there is none (or before challenges.sql).
@@ -400,10 +380,13 @@ export async function challengeEntry(request, response) {
   const c = said.challenge;
   return response.status(200).json({ mine: true, ready: true,
     challenge: { id: n(c.id), title: String(c.title), starts_on: c.starts_on, ends_on: c.ends_on,
-      days_said: `${dayOf(c.starts_on)} to ${dayOf(c.ends_on)}`, rules_said: rulesSaid(c.rules) },
+      days_said: `${dayOf(c.starts_on)} to ${dayOf(c.ends_on)}`, rules_said: rulesSaid(c.rules),
+      // And as they are, for a page to say in its own language.
+      rules: { most_parts: c.rules?.most_parts ?? null, set_number: c.rules?.set_number ?? null,
+        set_name: c.rules?.set_name ?? null, tested: c.rules?.tested === true } },
     entry: said.entry ? { way: said.entry.way, label: WAYS[said.entry.way], at: said.entry.at } : null,
     entries: n(said.entries), in_gallery: model.listed === true && model.author !== null && model.barred !== true,
-    keeps: said.check?.ok === true, broken: brokenSaid(said.check) });
+    keeps: said.check?.ok === true, broken: brokenSaid(said.check), check: checkSaid(said.check) });
 }
 
 /// POST ?op=enter {model, way}.
@@ -423,7 +406,7 @@ export async function enter(request, response) {
   if (said?.refused === "rules") {
     const broken = brokenSaid(said.check);
     return response.status(422).json({ error: `It does not keep this challenge's rules. ${broken.map((one) => one.said).join(" ")}`,
-      refused: "rules", broken });
+      refused: "rules", broken, check: checkSaid(said.check) });
   }
   const [status, words] = ENTER_SAID[said?.refused] || [409, "It cannot enter just now."];
   return response.status(status).json({ error: words, refused: said?.refused ?? null });

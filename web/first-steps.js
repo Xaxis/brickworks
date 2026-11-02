@@ -20,7 +20,7 @@
 // tools/site_lang.py --check fails on one that is not.
 import { call, learn, say, speaking } from "/account.js";
 import { followButton, showFeedCount } from "/follow.js";
-import { avatarHtml, modelCard } from "/card.js";
+import { avatarHtml, langAt, modelCard } from "/card.js";
 
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 // How many of each step 3 suggests.
@@ -224,7 +224,7 @@ export async function firstSteps({ pending = false } = {}) {
           const row = make("li", "person-row");
           row.dataset.handle = one.handle;
           const face = make("a", "face", parsed(avatarHtml({ handle: one.handle, name: one.name, picture: one.picture })));
-          face.href = `/u/${encodeURIComponent(one.handle)}`;
+          face.href = `${langAt()}/u/${encodeURIComponent(one.handle)}`;
           face.tabIndex = -1;
           face.setAttribute("aria-hidden", "true");
           const name = make("a", "", make("b", "", String(one.name || one.handle)));

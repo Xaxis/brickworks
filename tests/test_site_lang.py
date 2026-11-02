@@ -225,3 +225,60 @@ def test_every_theme_of_the_catalogue_has_its_entry() -> None:
         assert not missing, f"{code}: {len(missing)} themes with no entry in locale/{code}.po, first {missing[:3]}"
         assert entries["Collectible Minifigures"] != "Collectible Minifigures" and entries["Technic"] == "Technic", code
         assert "Technic" not in site_lang.themes(code) and site_lang.themes(code)["LEGO® Brand Store"] != "LEGO® Brand Store", code
+
+
+def test_the_viewer_the_server_s_words_and_the_tested_why_are_said() -> None:
+    # languages5: the 3D view's own words (tools/viewer/inline.js), what the
+    # API a model's page, a profile and a library set call answers in words,
+    # a challenge's rules and what a model breaks of them (web/card.js), and
+    # the app's reasons a model is not Tested (web/model-page.js whySaid):
+    # each has its entry in each language.
+    words = site_lang.script_words()
+    for english, where in (("The 3D view could not load: {why}. The picture is still here.", "tools/viewer/inline.js"),
+                           ("Comments are off on this model.", "api/_comments.js"),
+                           ("Three of your models are in this challenge already: that is the most.", "api/_challenges.js"),
+                           ("The LDraw library has no such set.", "api/share.js"),
+                           ("At most {parts}", "web/card.js"),
+                           ("{n} of its parts are not in {set}, or not as many: {lots}.", "web/card.js"),
+                           ("Step {n}: {part} is put down in the air", "web/model-page.js"),
+                           ("Edit profile", "api/people.js"),
+                           ("first challenge", "web/card.js"),
+                           ("vote", "api/people.js")):
+        assert words.get(english) == where, (english, words.get(english))
+    for code in site_lang.LANGUAGES:
+        said = json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8"))
+        for english in ("Full screen", "Comments are off on this model.", "Step {n}: {part} is put down in the air"):
+            assert said[english] != english, f"{code}: {english}"
+
+
+def test_an_answer_shown_as_the_server_wrote_it_is_caught() -> None:
+    text = (ROOT / "web/model-page.js").read_text(encoding="utf-8")
+    assert site_lang.untold(text) == []
+    planted = text.replace('told(answer.body.error, say("The comments did not load just now."))',
+                           'answer.body.error || say("The comments did not load just now.")', 1)
+    assert planted != text and len(site_lang.untold(planted)) == 1
+    assert site_lang.untold("note.textContent = state.you?.why_not;") != []
+    assert site_lang.untold("if (answer.body.error) note.textContent = say(answer.body.error);") == []
+
+
+def test_a_link_to_a_profile_as_english_writes_it_is_caught() -> None:
+    # Every profile has its copy (/de/u/<handle>): a copy's link to one is
+    # in its language, not to the English page theme.js sends it on from.
+    designer = site_lang.scope("api/share.js", ("designerRow",))
+    assert site_lang.unled(designer) == [] and "${langAt()}/u/${handle}" in designer
+    planted = designer.replace('href="${langAt()}/u/${handle}"', 'href="/u/${handle}"', 1)
+    assert planted != designer and len(site_lang.unled(planted)) == 1
+    assert site_lang.unled("link.href = `/u/${encodeURIComponent(one.handle)}`;") != []
+    assert site_lang.unled("link.href = `${langAt()}/u/${encodeURIComponent(one.handle)}`;") == []
+
+
+def test_a_word_between_two_templates_and_a_name_s_sentence_are_caught() -> None:
+    # A template in another's ${} is read as one of its own, so the words
+    # between two are never taken for one; and "Brickworks could not ..."
+    # is a sentence, though its only capital is a name.
+    nested = 'html = `<p>${ok ? `<b>${say("Yes")}</b>` : ""} Nobody here</p>`;'
+    left = site_lang.unsaid(nested)
+    assert len(left) == 1 and left[0].endswith(" Nobody here</p>`")
+    assert site_lang.unsaid('html = `<p>${ok ? `<b>${n}</b>` : ""}</p>`;') == []
+    assert site_lang.unsaid('note.textContent = "Brickworks could not say.";') == ['"Brickworks could not say."']
+    assert site_lang.unsaid('mark.textContent = "Brickworks";') == []

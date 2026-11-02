@@ -144,7 +144,13 @@ and each language's page names the others (hreflang) with itself as its
 canonical. So is a shared model's page (`api/share.js` `sharePage`), at
 /de/m/<id> and so on: its chrome, counts, dates, version lines and parts in
 the language, and what its builder wrote as they wrote it; a card on a
-copy opens the model's copy. A theme of the sets is said by `themeSaid()` (`web/card.js`), by
+copy opens the model's copy. Where it leads is in the language too: its
+designer's profile (/de/u/<handle>), a set of the LDraw library
+(/de/library/<id>), its embed and the 3D view; a link to a profile is
+written `${langAt()}/u/`, never "/u/". What the server tells a visitor is
+said in the page: an error or a why_not through `told()`, each sentence
+an entry, and rules and checks from their data (`rulesSaid`,
+`brokenSaid`), not from a sentence the server wrote. A theme of the sets is said by `themeSaid()` (`web/card.js`), by
 the app's own entry for it (`locale/<code>.po`, context "theme"), so the
 Library and the site name it alike. "LEGO®" stays an
 adjective in every language; the company is die LEGO Gruppe, le Groupe

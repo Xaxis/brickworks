@@ -46,11 +46,19 @@ A set's page is made by the server (api/_sets.js setPage), at
 /<code>/library/set/<number> in each language, from the same words: what
 it and the scripts on it say (SAID_ALL) needs its entry here too. So is a
 shared model's (api/share.js sharePage), at /<code>/m/<id>: its page, the
-lines its versions and steps are said in, its cards, and its scripts.
+lines its versions and steps are said in, its cards, and its scripts; and
+the pages it links to: a profile (api/people.js profileHtml, /<code>/u/
+<handle>), a set of the LDraw library (/<code>/library/<id>), the embed
+(/<code>/m/<id>/embed), and the 3D view on them (tools/viewer/inline.js,
+built into web/viewer3d.js). What the API those pages call answers in
+words (TOLD) has its entry too, and a page shows it through told().
 
 A word of those scripts (SAID_ALL, or the functions of one named there)
 with a capital in it that is not said through say() fails the check, so
-none comes back in English.
+none comes back in English; so does an answer's error or why_not shown as
+the server wrote it, not through told() or say() (untold); and a link to a
+profile written /u/..., which leaves the visitor's language for English
+when every profile has its copy (unled: ${at}/u/ or ${langAt()}/u/).
 
 Which language a visitor is shown is web/theme.js's: the one they chose in
 the footer, else the first of their browser's that the site has.
@@ -91,23 +99,37 @@ META = {"description", "og:title", "og:description", "og:image:alt", "twitter:ti
 # constants (an "id" is not one), and the plans form's fixed replies; and
 # orangecheck's code's, for its button and its box (web/account.js).
 API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES", "MINE_SORTS", "LDRAW_FROM"),
-             "api/_tested.js": ("SAID",), "web/card.js": ("HOWS", "HOW_SET", "HOW_MODEL"),
+             "api/_tested.js": ("SAID", "FAILED"), "api/_trust.js": ("UNDER_13",), "web/card.js": ("HOWS", "HOW_SET", "HOW_MODEL", "TRACKS"),
              "api/_library.js": ("SET_SORTS",), "api/_sets.js": ("SETS_SORTS",), "api/plans.js": ("KEPT", "GONE"),
              "web/oc-button.mjs": ("SIGN_IN_BUSY_LABEL", "OUTCOME_COPY"),
              "web/oc-connect-consent.mjs": ("CONNECT_CONSENT_LABEL", "CONNECT_CONSENT_BLURB")}
+# Those each of whose words is said, in a list or not, but a link's (href).
+EVERY_WORD = {"TRACKS"}
 STRING = r'"(?:[^"\\\n]|\\.)*"'
 SAY = re.compile(rf"\bsay(?:Html)?\(\s*((?:{STRING}\s*\+\s*)*{STRING})")
-# And either of two: say(one ? "..." : "...").
-SAY_EITHER = re.compile(rf"\bsay(?:Html)?\(\s*(?!\")[^()]*?\?\s*({STRING})\s*:\s*({STRING})")
-COUNTED = re.compile(rf"\bcounted\((?:[^,()]|\([^()]*\))+,\s*({STRING})(?:\s*,\s*({STRING}))?\s*\)")
-# The sign-in's API, whose errors the dialogs say: each sentence an answer
-# gives as its error ("POST only" is a developer's, and no sentence).
-TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/people.js")
+# And either of two: say(one ? "..." : "..."), its question with a call in
+# it or not (say(whole(n) === 1 ? ...)).
+SAY_EITHER = re.compile(rf"\bsay(?:Html)?\(\s*(?!\")(?:[^()]|\([^()]*\))*?\?\s*({STRING})\s*:\s*({STRING})")
+# counted(n, "one", "many"), and countedSaid as api/people.js names it
+# beside a counted of its own.
+COUNTED = re.compile(rf"\bcounted(?:Said)?\((?:[^,()]|\([^()]*\))+,\s*({STRING})(?:\s*,\s*({STRING}))?\s*\)")
+# The sign-in's API, whose errors the dialogs say, and the API a model's
+# page, a profile and a set of the LDraw library call: each sentence an
+# answer gives as its error, or as why a visitor may not (why_not), each of
+# its refusals' tables ([409, "..."]), NOT_YET and ASK_FIRST ("POST only" is a
+# developer's, and no sentence). A page says each through told().
+TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/people.js", "api/share.js",
+        "api/_comments.js", "api/_follows.js", "api/_lists.js", "api/_challenges.js", "api/_bases.js")
 # And what First steps' profile can be refused with, in the functions that
 # refuse it: every sentence, ended with a full stop or not.
 TOLD_IN = {"api/people.js": ("saveProfile",), "api/_names.js": ("handleTrouble",)}
 REFUSED = re.compile(rf"(?:new Refusal\(|\breturn\s+)((?:{STRING}\s*\+\s*)*{STRING})")
-TOLD_AS = re.compile(rf"(?:\berror:\s*|\btrouble:\s*|\bsay\(response,\s*\d+,\s*|new Refusal\()((?:{STRING}\s*\+\s*)*{STRING})")
+TOLD_AS = re.compile(rf"(?:\berror:\s*|\btrouble:\s*|\bwhy_not:\s*|\bsay\(response,\s*\d+,\s*|new (?:Refusal|Unacceptable)\(|"
+                     rf"\[\d{{3}},\s*|\b(?:\w*NOT_YET|ASK_FIRST) = )((?:{STRING}\s*\+\s*)*{STRING})")
+# What a script shows of an answer's words (its error, or why_not): told()
+# or say() each, or asks whether there are any (if, !, ? or &&).
+SHOWN = re.compile(r"(?<![\w$])(?:[\w$]+\??\.)*?(?:body\??\.error|why_not)\b(?!\s*:)")
+TOLD_BY = re.compile(r"(?:\btold\(|\bsay\((?:String\()?)$")
 # A page's reason to sign in, which web/account.js says on any page.
 SIGN_IN_WHY = re.compile(r'"(Sign in\b(?:[^"\\\n]|\\.)*\.)"')
 # The scripts that say every word they show through say(), whole (()) or
@@ -119,14 +141,19 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/set-page.js": (
             "api/share.js": ("sharePage", "describe", "pageHead", "creditOf", "licenceWords", "setFacts", "testedMark",
                              "designerRow", "modelledLine", "nextRow", "actionBar", "shareSheet", "mediaStrip", "pageTabs",
                              "partsSection", "listsSection", "buildFigure", "buildsSection", "commentsSection",
-                             "versionsSection", "noVersionPage", "gonePage"),
+                             "versionsSection", "noVersionPage", "gonePage", "links", "embedCard", "setPage"),
             "api/_versions.js": ("stepsSaid", "saidOf", "changedOf", "lotSaid"), "api/_steps.js": (),
             "api/_lists.js": ("listCardHtml",), "api/_directory.js": ("movesWords",),
-            "web/card.js": ("iconButtonHtml", "shareTargets", "shareSheetHtml", "cardHtml", "buildCardHtml", "basedHtml"),
+            "api/_library.js": ("setModel",), "api/_challenges.js": ("wonSaid",),
+            "api/people.js": ("head", "page", "missingPage", "numbersHtml", "achievementsOf", "stripHtml", "tabSaid", "pastEnd",
+                              "profilePage", "profileHtml"),
+            "web/card.js": ("iconButtonHtml", "shareTargets", "shareSheetHtml", "cardHtml", "buildCardHtml", "basedHtml",
+                            "awardsHtml", "levelName", "levelAwards", "rulesSaid", "brokenSaid"),
             "web/start3d.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
-            "web/report.js": (), "web/follow.js": ()}
+            "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
+            "web/embed.js": (), "tools/viewer/inline.js": ()}
 # Capitalized words of those that are no English to say: code, and names.
-CODE_WORDS = {"Bearer", "Brickworks", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook"}
+CODE_WORDS = {"Bearer", "Brickworks", "Brickify", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook"}
 # And the keys a script listens for, each a literal of its own.
 KEY_NAMES = {'"Escape"', '"Enter"', '"Tab"'}
 # Runs that are names, the same in every language.
@@ -324,9 +351,10 @@ def script_words() -> dict[str, str]:
         text = (ROOT / path).read_text(encoding="utf-8")
         for name in names:
             block = re.search(rf"\b(?:const|var) {name} = (.*?);\n", text, re.S).group(1)
-            for key, said in re.findall(rf"(?:(\w+):\s*)?({STRING})", block):
-                if key != "id" and not (key == "" and block.lstrip().startswith(("{", "["))):
-                    words.setdefault(json.loads(said), path)
+            for key, said in re.findall(rf"(?:(\w+):\s*)?((?:{STRING}\s*\+\s*)*{STRING})", block):
+                listed = key == "" and block.lstrip().startswith(("{", "["))
+                if (key != "href") if name in EVERY_WORD else (key != "id" and not listed):
+                    words.setdefault("".join(json.loads(s) for s in re.findall(STRING, said)), path)
         for refusal in re.findall(rf"new Refusal\(({STRING})\)", text):
             words.setdefault(json.loads(refusal), path)
     for path in TOLD:
@@ -373,19 +401,92 @@ def scope(path: str, names: tuple = (), text: str | None = None) -> str:
 def unsaid(script: str) -> list[str]:
     """The words a [script] shows in English: each literal with a
     capitalized word in it (a sentence, a label) that is not said through
-    say(), its comments left out."""
-    text = re.sub(r"(?<![:\"'\w])//[^\n]*", "", script)
+    say(), its comments left out (a style's in a page's too)."""
+    text = re.sub(r"/\*.*?\*/", "", re.sub(r"(?<![:\"'\w])//[^\n]*", "", script), flags=re.S)
     # What is said through say() is said: taken out before the rest is read.
     text = SAY_EITHER.sub('say(""', SAY.sub('say(""', text))
     out = []
-    for found in re.finditer(rf"{STRING}|`(?:[^`\\]|\\.)*`", text):
+    for found, own in literals(text):
         # A key's name, or a reason to sign in, which web/account.js says.
-        if found.group(0) in KEY_NAMES or SIGN_IN_WHY.fullmatch(found.group(0)):
+        if found in KEY_NAMES or SIGN_IN_WHY.fullmatch(found):
             continue
-        words = re.findall(r"\b[A-Z][a-z]+\b", re.sub(r"\$\{[^}]*\}", "", found.group(0)))
-        if [word for word in words if word not in CODE_WORDS]:
-            out.append(found.group(0))
+        words = re.findall(r"\b[A-Z][a-z]+\b", re.sub(r"<!--.*?-->", "", own, flags=re.S))
+        # "Brickworks could not ...": a sentence, whose only capital is a name.
+        if [word for word in words if word not in CODE_WORDS] or re.match(r"[\"`]Brickworks [a-z]", own):
+            out.append(found)
     return out
+
+
+def literals(text: str) -> list[tuple[str, str]]:
+    """Each of a script's "..." strings and templates as written, with its
+    own text: a template's without its ${} (each a space). A template in
+    another's ${} is one of its own, so the words between two of them are
+    never taken for one."""
+    out: list[tuple[str, str]] = []
+    templates: list[str] = []      # the text of each template open, the innermost last
+    starts: list[int] = []         # where each begins
+    braces: list[int | None] = []  # in each, the braces open in its ${}, or None in its text
+    at = 0
+    while at < len(text):
+        c = text[at]
+        if templates and braces[-1] is None:
+            if c == "\\":
+                templates[-1] += text[at:at + 2]
+                at += 2
+            elif c == "`":
+                out.append((text[starts.pop():at + 1], f"`{templates.pop()}`"))
+                braces.pop()
+                at += 1
+            elif text.startswith("${", at):
+                templates[-1] += " "
+                braces[-1] = 0
+                at += 2
+            else:
+                templates[-1] += c
+                at += 1
+            continue
+        if c in "\"'":
+            end = at + 1
+            while end < len(text) and text[end] not in (c, "\n"):
+                end += 2 if text[end] == "\\" else 1
+            if c == '"':
+                out.append((text[at:end + 1], text[at:end + 1]))
+            at = end + 1
+            continue
+        if c == "`":
+            templates.append("")
+            starts.append(at)
+            braces.append(None)
+        elif templates and c == "{":
+            braces[-1] += 1
+        elif templates and c == "}":
+            braces[-1] = None if braces[-1] == 0 else braces[-1] - 1
+        at += 1
+    return out
+
+
+def untold(script: str) -> list[str]:
+    """The answers' words a [script] shows as the server wrote them, in
+    English: each error or why_not shown not through told() or say()."""
+    text = re.sub(r"(?<![:\"'\w])//[^\n]*", "", script)
+    out = []
+    for found in SHOWN.finditer(text):
+        if TOLD_BY.search(text[:found.start()]) or re.search(r"(?:\bif\s*\(|!)\s*$", text[:found.start()]) \
+                or re.match(r"\s*(?:\?(?![.?])|&&)", text[found.end():]):
+            continue
+        out.append(text[max(0, found.start() - 30):found.end()].strip())
+    return out
+
+
+# A link to a profile, written as English's: a literal that starts /u/.
+LED = re.compile(r"(?<![\w}])[`\"']/u/")
+
+
+def unled(script: str) -> list[str]:
+    """The links to a profile a [script] writes as English's, /u/<handle>,
+    where a copy's are /<code>/u/<handle> (${at} or ${langAt()} before)."""
+    text = re.sub(r"(?<![:\"'\w])//[^\n]*", "", script)
+    return [text[max(0, found.start() - 30):found.end() + 20].strip() for found in LED.finditer(text)]
 
 
 def table(code: str) -> dict:
@@ -585,6 +686,14 @@ def main(argv: list[str]) -> int:
         if left:
             problems.append(f"{path} shows {len(left)} words not said through say(), first {left[0]}: "
                             "say(\"...\") them, so each language has them (tools/site_lang.py --missing)")
+        raw = untold(scope(path, names))
+        if raw:
+            problems.append(f"{path} shows {len(raw)} of an answer's words as the server wrote them, first "
+                            f"{raw[0]!r}: show them through told() (web/card.js), so each language says them")
+        english = unled(scope(path, names))
+        if english:
+            problems.append(f"{path} links to {len(english)} profiles as English does, first {english[0]!r}: "
+                            "write ${langAt()}/u/ (web/card.js), so a copy's link opens the profile's copy")
     # A word a script says with no entry: it would be said in English.
     said_by_scripts = script_words()
     for code in LANGUAGES:
