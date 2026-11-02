@@ -871,6 +871,10 @@ const RPC = {
     === String(set_number).toLowerCase()).map((row) => row.model))].map((id) => ({ ...card(modelOf(id)),
     based: BASES.find((row) => row.model === id).how })),
   directory_model: ({ model_id }) => modelPage(model_id),
+  // supabase sitemap_pages: every listed model's page (people and
+  // collections have none here).
+  sitemap_pages: () => ({ models: MODELS.filter((m) => m.published && m.listed && !m.barred && !m.test)
+    .map((m) => ({ id: m.id, updated_at: m.updated_at })), people: [], collections: [] }),
   directory_models: ({ query }) => listModels(query || {}),
   gallery_models: ({ query }) => listModels(query || {}),
   profile_page: ({ wanted, tests }) => profilePage(wanted, tests === true),
@@ -1081,9 +1085,15 @@ const PAGES = [
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/parts[.](json|xml|csv)$/, "share", "catalog_parts"],
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set"],
   [/^\/(de|fr|es)\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set_lang"],
-  // The sets' sitemaps, in English and in each language.
+  // The sitemap, with every listed model in it, and the sets' sitemaps, in
+  // English and in each language.
+  [/^\/sitemap[.]xml$/, "share", "sitemap"],
   [/^\/sitemaps\/index[.]xml$/, "share", "sitemap_index"],
   [/^\/sitemaps\/sets-(?:(de|fr|es)-)?([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets"],
+  // A model's page in each language the site has (/de/m/<id>, /de/m/<id>/v/<n>),
+  // and the sitemap of those copies.
+  [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})(?:\/v\/([1-9][0-9]{0,5}))?\/?$/, "share", "page_lang"],
+  [/^\/sitemaps\/models-(de|fr|es)[.]xml$/, "share", "sitemap_models"],
 ];
 
 /// Which handler makes [pathname], and what it is asked. A path under /m/,
@@ -1095,9 +1105,11 @@ function routeOf(pathname) {
     if (!found) continue;
     if (op === "catalog_set") return { name, query: { op, set: found[1] } };
     if (op === "catalog_parts") return { name, query: { op, set: found[1], as: found[2] } };
-    if (op === "sitemap_index") return { name, query: { op } };
+    if (op === "sitemap" || op === "sitemap_index") return { name, query: { op } };
     if (op === "sitemap_sets") return { name, query: { op, n: found[2], ...(found[1] ? { lang: found[1] } : {}) } };
     if (op === "catalog_set_lang") return { name, query: { op: "catalog_set", set: found[2], lang: found[1] } };
+    if (op === "page_lang") return { name, query: { op: "page", id: found[2], lang: found[1], ...(found[3] ? { v: found[3] } : {}) } };
+    if (op === "sitemap_models") return { name, query: { op, lang: found[1] } };
     if (name === "share") {
       return { name, query: { op, ...(found[1] ? { id: found[1] } : {}), ...(found[2] ? { v: found[2] } : {}),
         ...(found[3] ? { as: found[3] } : {}) } };
@@ -2198,7 +2210,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c|library\/set|(?:de|fr|es)\/library\/set|sitemaps)\//.test(url.pathname) || /^\/(collections|oembed)\/?$/.test(url.pathname)) {
+    if (/^\/(m|u|c|library\/set|(?:de|fr|es)\/(?:library\/set|m)|sitemaps)\//.test(url.pathname) || /^\/(collections|oembed)\/?$|^\/sitemap[.]xml$/.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:

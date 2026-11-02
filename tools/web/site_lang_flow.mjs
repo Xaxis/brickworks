@@ -65,15 +65,21 @@
 // app has no words for as LDraw writes it, marked as English.
 //
 // And a model's page (/m/<id>, the stand-in's watchtower or a deployment's
-// first listed model), which has no copies: for a visitor whose browser
-// asks for a language, its parts list names them in it all the same, each
-// marked with its language on the English page.
+// first listed model, api/share.js, written on the server): from /m/<id> a
+// browser asking for a language lands on its copy, /de/m/<id>, with <html
+// lang>, the title, the crumbs, the tabs, the actions, the comments' Reply
+// and step pills, every date as the language writes it and no English but
+// what its builder wrote; the five alternates and its own canonical. Its
+// parts list names each part and colour as a set's does. And a card of the
+// gallery's copy opens the model's copy (/de/gallery to /de/m/<id>).
 //
 // The header keeps the Brickworks wordmark on every page, in every language,
 // at every width checked (390 included): Open the app takes two lines first.
 //
 // And the sitemaps (/sitemaps/index.xml): the sets' pages in English and
-// each language's copies, a file each (sets-de-1.xml), every address in it.
+// each language's copies, a file each (sets-de-1.xml), every address in it,
+// and the models' copies (models-de.xml), one for each model /sitemap.xml
+// lists.
 //
 // And First steps (web/first-steps.js), opened over the gallery's copy as a
 // first sign-in opens it, and on the stand-in after the age question: each
@@ -180,9 +186,9 @@ async function newContext(browser, code, width, state = {}) {
 /// library theme's pill under the catalogue's own name (Star Wars, The LEGO®
 /// Movie, marked), as the app keeps it: one the app names in the language
 /// (locale/<code>.po, "theme") is read like any other word.
-function readable() {
+function readable(more = "") {
   const SKIP = "script, style, code, kbd, template, svg, [translate='no'], article.model .words, article.model .frame, "
-    + ".lot-list .name, .lot-list .meta, .lot-list .group > span:not(.n)";
+    + `.lot-list .name, .lot-list .meta, .lot-list .group > span:not(.n)${more ? `, ${more}` : ""}`;
   const said = [];
   const walk = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_TEXT);
   for (let node = walk.nextNode(); node; node = walk.nextNode()) {
@@ -293,20 +299,130 @@ async function lotsSaid(tab, code, where, plate = true) {
     + `${said.heads.length ? `, heads "${said.heads.slice(0, 2).join('", "')}"` : ""}`);
 }
 
-/// A model's page, which has no copies, for a visitor whose browser asks
-/// for [code]: still English, its parts list in the language.
-async function modelNames(browser, code, width, at) {
+// What a builder wrote on a model's page, and the people and models it
+// names: read as they wrote them, in no language of the site's.
+const THEIRS = "h1, .description, .tags, .shared-by .names, .modelled-by b, .comment-body, .comment-head a, "
+  + ".comment-head b, .build q, .build .by a, .version-note, .versions q, .from a, .line a, .list-card, .based a, .based q";
+
+/// A model's page in [code] (/de/m/<id>), from its English address [at] as
+/// a browser asking for the language opens it: its words, the parts list's
+/// names as the app says them, the comments' chrome, its dates, the
+/// alternates and its own canonical.
+async function modelSaid(browser, code, width, at) {
   const context = await newContext(browser, code, width);
   const tab = await context.newPage();
   const where = `${code} model ${width}`;
+  const own = code === "en" ? at : `/${code}${at}`;
   try {
     await tab.goto(`${base}${at}`, { waitUntil: "load" });
-    check(new URL(tab.url()).pathname === at && await tab.evaluate(() => document.documentElement.lang) === "en",
-      `${where}: ${at} stays itself, in English`);
-    // Whatever the model is made of: a plate among its parts is not asked.
+    await tab.waitForLoadState("load");
+    check(new URL(tab.url()).pathname === own && await tab.evaluate(() => document.documentElement.lang) === code,
+      `${where}: opens ${own} in ${code} (at ${new URL(tab.url()).pathname})`);
+    const said = await tab.evaluate(() => ({
+      name: document.querySelector("h1")?.textContent.trim() || "",
+      title: document.title,
+      crumbs: [...document.querySelectorAll(".crumbs a")].map((a) => [a.textContent.trim(), new URL(a.href).pathname]),
+      alternates: Object.fromEntries([...document.querySelectorAll('link[rel="alternate"][hreflang]')]
+        .map((link) => [link.hreflang, new URL(link.href).pathname])),
+      canonical: new URL(document.querySelector('link[rel="canonical"]')?.href || location.href).pathname,
+      url: new URL(document.querySelector('meta[property="og:url"]')?.content || location.href).pathname,
+      tabs: [...document.querySelectorAll("#page-tabs a")].map((a) => a.firstChild.textContent.trim()),
+      actions: [...document.querySelectorAll(".side .actions a")].map((a) => a.textContent.trim()),
+      heads: [...document.querySelectorAll(".rest section > h2")].map((h) => h.textContent.trim()),
+    }));
+    check(said.title === script(code, "{name} — a Brickworks model", { name: said.name }), `${where}: its title says "${said.title}"`);
+    const want = { en: at, de: `/de${at}`, fr: `/fr${at}`, es: `/es${at}`, "x-default": at };
+    check(JSON.stringify(said.alternates) === JSON.stringify(want) && said.canonical === own && said.url === own,
+      `${where}: ${Object.keys(said.alternates).length} alternates, canonical and og:url ${said.canonical}`);
+    const lang = code === "en" ? "" : `/${code}`;
+    check(said.crumbs[0]?.[0] === script(code, "Gallery") && said.crumbs[0]?.[1] === `${lang}/gallery`,
+      `${where}: its crumbs, ${said.crumbs.map(([text, to]) => `"${text}" ${to}`).join(", ")}`);
+    const tabs = ["About", "Parts", "Comments", "Builds", "Remixes"].map((word) => script(code, word));
+    const actions = ["Build it", "Open in Brickworks", "Download"].map((word) => script(code, word));
+    check(tabs.every((word) => said.tabs.includes(word)) && actions.every((word) => said.actions.includes(word)),
+      `${where}: its tabs ${said.tabs.join(" / ")}; ${said.actions.map((text) => `"${text}"`).join(", ")}`);
+    // The comments drawn by its script: the Reply under each and a step's
+    // pill in the language, each date as the language writes it.
+    await tab.locator("#comments").scrollIntoViewIfNeeded();
+    await tab.waitForFunction(() => !document.getElementById("comments")?.hidden
+      && document.querySelector("#comments .comment-list li"), null, { timeout: 30000 });
+    const chrome = await tab.evaluate(() => ({
+      reply: document.querySelector("#comments button[data-reply]")?.textContent.trim() || "",
+      none: document.querySelector("#comments .comment-list li.none")?.textContent.trim() || "",
+      step: document.querySelector("#comments .pill.step")?.textContent.trim() || "",
+      send: document.querySelector("#comments form.comment-new button[type=submit]")?.textContent.trim() || "",
+      dates: [...document.querySelectorAll("time[datetime]")].map((time) => [time.dateTime, time.textContent.trim()]),
+    }));
+    const stepWord = script(code, "Step {n}", { n: "" }).trim();
+    // A model nobody has commented on says so; one with comments, Reply
+    // under each, and its step's pill where one is on a step.
+    check((chrome.none ? chrome.none === script(code, "Nobody has commented yet.")
+      : chrome.reply === script(code, "Reply") && (!chrome.step || chrome.step.startsWith(stepWord)))
+      && chrome.send === script(code, "Sign in and add it"),
+      `${where}: the comments say ${[chrome.none, chrome.reply, chrome.step, chrome.send].filter(Boolean).map((text) => `"${text}"`).join(", ")}`);
+    const day = new Intl.DateTimeFormat(code === "en" ? "en-GB" : code, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+    const wrongDates = chrome.dates.filter(([iso, text]) => !text.startsWith(day.format(new Date(iso))));
+    check(chrome.dates.length >= 1 && !wrongDates.length, `${where}: ${chrome.dates.length} dates as ${code} writes them`
+      + `${wrongDates.length ? `, ${wrongDates.length} not: "${wrongDates[0][1]}"` : `, "${chrome.dates[0]?.[1]}"`}`);
+    // Its parts list's names as the app says them in the language.
     await lotsSaid(tab, code, where, false);
+    // The header's Sign in, once web/follow.js has said who is here.
+    await tab.waitForFunction(() => document.querySelector(".site-head a[data-account]")?.textContent.trim(), null, { timeout: 15000 });
+    const signIn = (await tab.locator(".site-head .nav a[data-account]").textContent()).trim();
+    check(signIn === script(code, "Sign in"), `${where}: the header's Sign in says "${signIn}"`);
     check(await tab.evaluate(markShown), `${where}: the header shows the Brickworks wordmark`);
-    if (out) await tab.locator("#parts").screenshot({ path: path.join(out, `${code}-model-${width}.png`) });
+    // No English left but what its builder wrote, and the names in it.
+    if (code !== "en") {
+      const names = await tab.evaluate((theirs) => [...document.querySelectorAll(theirs)].map((el) => el.textContent.trim())
+        .filter(Boolean).sort((a, b) => b.length - a.length), THEIRS);
+      // Its description cut short for a link's preview (its meta), its
+      // paragraphs run together, is theirs too.
+      const flat = (text) => text.replace(/\s+/g, " ").trim();
+      const cutFrom = (text) => text.endsWith("…") && names.some((name) => flat(name).startsWith(flat(text.slice(0, -1))));
+      const left = (await tab.evaluate(readable, THEIRS)).filter((text) => !cutFrom(text))
+        .map((text) => names.reduce((rest, name) => rest.split(name).join(" "), text).replace(NAMES, " ")).filter((text) => ENGLISH.test(text));
+      check(!left.length, `${where}: no English left${left.length ? `: ${left.length}, first "${left[0].slice(0, 120)}"` : ""}`);
+    }
+    const cuts = await tab.evaluate(cut);
+    if (code === "en") cutInEnglish.set(`model ${width}`, new Set(cuts));
+    else {
+      const english = cutInEnglish.get(`model ${width}`) || new Set();
+      const short = cuts.filter((text) => !english.has(text));
+      check(!short.length, `${where}: nothing cut short${short.length ? `: ${short.length}, "${short.slice(0, 3).join('", "')}"` : ""}`);
+    }
+    const apps = await tab.evaluate(() => [...document.querySelectorAll("a[href]")].map((a) => new URL(a.href))
+      .filter((url) => url.pathname === "/app").map((url) => url.searchParams.get("lang")));
+    const wrong = apps.filter((asked) => asked !== (code === "en" ? null : code));
+    check(apps.length >= 2 && !wrong.length, `${where}: ${apps.length} links into the app${code === "en" ? " ask no language" : ` say lang=${code}`}${wrong.length ? `, ${wrong.length} not: ${wrong[0]}` : ""}`);
+    const shown = await tab.locator(".site-foot select[data-lang-choice]").inputValue();
+    check(shown === code, `${where}: the footer's Language shows ${shown}`);
+    if (out) {
+      await tab.addStyleTag({ content: ".defer { content-visibility: visible !important; }" });
+      await tab.screenshot({ path: path.join(out, `${code}-model-${width}.png`), fullPage: true });
+    }
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+/// The gallery's copy in [code]: a model's card opens the model's page in
+/// the language.
+async function galleryToModel(browser, code, width) {
+  const context = await newContext(browser, code, width);
+  const tab = await context.newPage();
+  const where = `${code} gallery to a model ${width}`;
+  const lang = code === "en" ? "" : `/${code}`;
+  try {
+    await tab.goto(`${base}${lang}/gallery`, { waitUntil: "load" });
+    await tab.waitForFunction(() => document.documentElement.dataset.gallery === "ready", null, { timeout: 30000 });
+    const card = tab.locator("article.model a.open[href*='/m/']").first();
+    const href = await card.getAttribute("href");
+    await Promise.all([tab.waitForURL((url) => /\/m\/[A-Za-z0-9]{10}$/.test(url.pathname), { timeout: 30000 }), card.click()]);
+    const landed = new URL(tab.url()).pathname;
+    check(href.startsWith(`${lang}/m/`) && landed === href && await tab.evaluate(() => document.documentElement.lang) === code,
+      `${where}: a card links to ${href} and opens ${landed} in ${code}`);
   } catch (trouble) {
     check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
   } finally {
@@ -316,7 +432,8 @@ async function modelNames(browser, code, width, at) {
 
 /// The sitemaps: the index names the sets' pages in English and in each
 /// language, and each language's first file lists its copies, as many as
-/// the English one lists.
+/// the English one lists; and the models' copies, one file a language
+/// listing a copy of each model /sitemap.xml lists.
 async function sitemaps(browser) {
   const context = await newContext(browser, "en", 1280);
   const tab = await context.newPage();
@@ -330,7 +447,11 @@ async function sitemaps(browser) {
       for (const code of ["en", "de", "fr", "es"]) {
         files[code] = locs(await text(`/sitemaps/sets-${code === "en" ? "" : `${code}-`}1.xml`));
       }
-      return { index, files, other: await text("/sitemaps/sets-xx-1.xml") };
+      const models = {};
+      for (const code of ["en", "de", "fr", "es"]) {
+        models[code] = locs(await text(code === "en" ? "/sitemap.xml" : `/sitemaps/models-${code}.xml`));
+      }
+      return { index, files, models, other: await text("/sitemaps/sets-xx-1.xml") };
     });
     const english = said.files.en;
     check(english.length > 1000 && english.every((at) => at.startsWith("/library/set/")),
@@ -340,6 +461,13 @@ async function sitemaps(browser) {
       check(said.index.includes(`/sitemaps/sets-${code}-1.xml`) && listed.length === english.length
         && listed.every((at, n) => at === `/${code}${english[n]}`),
         `the index names /sitemaps/sets-${code}-1.xml, ${listed.length} pages, each /${code}${english[0] || ""}...`);
+    }
+    const models = said.models.en.filter((at) => /^\/m\/[A-Za-z0-9]{10}$/.test(at));
+    for (const code of ["de", "fr", "es"]) {
+      const listed = said.models[code];
+      check(models.length >= 1 && said.index.includes(`/sitemaps/models-${code}.xml`) && listed.length === models.length
+        && listed.every((at, n) => at === `/${code}${models[n]}`),
+        `the index names /sitemaps/models-${code}.xml, ${listed.length} of ${models.length} models, each /${code}${models[0] || ""}...`);
     }
   } catch (trouble) {
     check(false, `sitemaps: ${String(trouble.message || trouble).split("\n")[0]}`);
@@ -772,10 +900,11 @@ try {
       const listed = await (await fetch(`${remote}/api/share?op=list&page=1`, { headers })).json().catch(() => ({}));
       at = listed.models?.[0] ? `/m/${listed.models[0].id}` : "";
     }
-    for (const code of langs) {
+    for (const code of langs.includes("en") ? langs : ["en", ...langs]) {
       for (const width of widths) {
-        if (at) await modelNames(browser, code, width, at);
+        if (at) await modelSaid(browser, code, width, at);
         else check(false, "a model to open: the deployment lists none");
+        await galleryToModel(browser, code, width);
       }
     }
   }

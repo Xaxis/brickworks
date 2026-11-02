@@ -44,7 +44,9 @@ sign-in, speak the same way, with the errors a new profile can meet
 
 A set's page is made by the server (api/_sets.js setPage), at
 /<code>/library/set/<number> in each language, from the same words: what
-it and the scripts on it say (SAID_ALL) needs its entry here too.
+it and the scripts on it say (SAID_ALL) needs its entry here too. So is a
+shared model's (api/share.js sharePage), at /<code>/m/<id>: its page, the
+lines its versions and steps are said in, its cards, and its scripts.
 
 A word of those scripts (SAID_ALL, or the functions of one named there)
 with a capital in it that is not said through say() fails the check, so
@@ -88,12 +90,15 @@ META = {"description", "og:title", "og:description", "og:image:alt", "twitter:ti
 # The words the API hands the copies' scripts to show: each label of these
 # constants (an "id" is not one), and the plans form's fixed replies; and
 # orangecheck's code's, for its button and its box (web/account.js).
-API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES", "MINE_SORTS"),
+API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES", "MINE_SORTS", "LDRAW_FROM"),
+             "api/_tested.js": ("SAID",), "web/card.js": ("HOWS", "HOW_SET", "HOW_MODEL"),
              "api/_library.js": ("SET_SORTS",), "api/_sets.js": ("SETS_SORTS",), "api/plans.js": ("KEPT", "GONE"),
              "web/oc-button.mjs": ("SIGN_IN_BUSY_LABEL", "OUTCOME_COPY"),
              "web/oc-connect-consent.mjs": ("CONNECT_CONSENT_LABEL", "CONNECT_CONSENT_BLURB")}
 STRING = r'"(?:[^"\\\n]|\\.)*"'
 SAY = re.compile(rf"\bsay(?:Html)?\(\s*((?:{STRING}\s*\+\s*)*{STRING})")
+# And either of two: say(one ? "..." : "...").
+SAY_EITHER = re.compile(rf"\bsay(?:Html)?\(\s*(?!\")[^()]*?\?\s*({STRING})\s*:\s*({STRING})")
 COUNTED = re.compile(rf"\bcounted\((?:[^,()]|\([^()]*\))+,\s*({STRING})(?:\s*,\s*({STRING}))?\s*\)")
 # The sign-in's API, whose errors the dialogs say: each sentence an answer
 # gives as its error ("POST only" is a developer's, and no sentence).
@@ -110,9 +115,20 @@ SIGN_IN_WHY = re.compile(r'"(Sign in\b(?:[^"\\\n]|\\.)*\.)"')
 # say(), is English left on the page. Those no copy loads are read for
 # their words too: a set's page, which the server makes, and its scripts.
 SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/set-page.js": (),
-            "web/model-page.js": ("startParts",), "api/_sets.js": ("setPage", "facts", "structured")}
+            "web/model-page.js": (), "api/_sets.js": ("setPage", "facts", "structured"),
+            "api/share.js": ("sharePage", "describe", "pageHead", "creditOf", "licenceWords", "setFacts", "testedMark",
+                             "designerRow", "modelledLine", "nextRow", "actionBar", "shareSheet", "mediaStrip", "pageTabs",
+                             "partsSection", "listsSection", "buildFigure", "buildsSection", "commentsSection",
+                             "versionsSection", "noVersionPage", "gonePage"),
+            "api/_versions.js": ("stepsSaid", "saidOf", "changedOf", "lotSaid"), "api/_steps.js": (),
+            "api/_lists.js": ("listCardHtml",), "api/_directory.js": ("movesWords",),
+            "web/card.js": ("iconButtonHtml", "shareTargets", "shareSheetHtml", "cardHtml", "buildCardHtml", "basedHtml"),
+            "web/start3d.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
+            "web/report.js": (), "web/follow.js": ()}
 # Capitalized words of those that are no English to say: code, and names.
-CODE_WORDS = {"Bearer", "Brickworks", "Rebrickable", "Dataset"}
+CODE_WORDS = {"Bearer", "Brickworks", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook"}
+# And the keys a script listens for, each a literal of its own.
+KEY_NAMES = {'"Escape"', '"Enter"', '"Tab"'}
 # Runs that are names, the same in every language.
 NAMES = {"Brickworks", "brickworks.diy/app", "Claude", "Pro", "GitHub", "3D"}
 # The JSON-LD fields a reader is shown: a description anywhere, and an
@@ -297,6 +313,9 @@ def script_words() -> dict[str, str]:
         text = (WEB / one).read_text(encoding="utf-8")
         for found in SAY.finditer(text):
             words.setdefault("".join(json.loads(s) for s in re.findall(STRING, found.group(1))), f"web/{one}")
+        for found in SAY_EITHER.finditer(text):
+            for said in found.groups():
+                words.setdefault(json.loads(said), f"web/{one}")
         for found in COUNTED.finditer(text):
             single = json.loads(found.group(1))
             for word in (single, json.loads(found.group(2)) if found.group(2) else f"{single}s"):
@@ -322,6 +341,9 @@ def script_words() -> dict[str, str]:
         text = scope(path, names)
         for found in SAY.finditer(text):
             words.setdefault("".join(json.loads(s) for s in re.findall(STRING, found.group(1))), path)
+        for found in SAY_EITHER.finditer(text):
+            for said in found.groups():
+                words.setdefault(json.loads(said), path)
         for found in COUNTED.finditer(text):
             single = json.loads(found.group(1))
             for word in (single, json.loads(found.group(2)) if found.group(2) else f"{single}s"):
@@ -354,9 +376,12 @@ def unsaid(script: str) -> list[str]:
     say(), its comments left out."""
     text = re.sub(r"(?<![:\"'\w])//[^\n]*", "", script)
     # What is said through say() is said: taken out before the rest is read.
-    text = SAY.sub('say(""', text)
+    text = SAY_EITHER.sub('say(""', SAY.sub('say(""', text))
     out = []
     for found in re.finditer(rf"{STRING}|`(?:[^`\\]|\\.)*`", text):
+        # A key's name, or a reason to sign in, which web/account.js says.
+        if found.group(0) in KEY_NAMES or SIGN_IN_WHY.fullmatch(found.group(0)):
+            continue
         words = re.findall(r"\b[A-Z][a-z]+\b", re.sub(r"\$\{[^}]*\}", "", found.group(0)))
         if [word for word in words if word not in CODE_WORDS]:
             out.append(found.group(0))

@@ -411,6 +411,41 @@ console.log(JSON.stringify({{
 
 
 @needs_node
+def test_a_models_own_copy_of_a_catalogue_part_is_named_as_the_catalogue_names_it() -> None:
+    # A model's file may carry its own copy of a part the catalogue has: as
+    # the LDraw model repository names one ("8880 - 3001.dat"), or under a
+    # name of its own whose title is the part's number. Its list names it
+    # by that part in a language, as a set's list does; a part the
+    # catalogue does not know keeps the name its file gives it.
+    table = {"parts": {"3001": ["Brick 2 x 4", 0, 0, "", "3001", "3001", "m3001"]}, "categories": ["Brick"],
+             "colours": {"4": ["Red", "c91a09", "21", 5, 4, 4], "16": ["Main", "ffff80", "", -1, -1, 16]},
+             "elements": {}}
+    names = {"parts": {"3001": "Stein 2×4"}, "colours": {"4": "Rot"}, "categories": {"Brick": "Stein"}}
+    face = "4 16 0 0 0 40 0 0 40 0 20 0 0 20"
+    model = "\n".join([
+        "0 FILE main.ldr", "0 Main", "0 !LDRAW_ORG Model",
+        "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+        "1 4 0 0 0 1 0 0 0 1 0 0 0 1 8880 - 3001.dat",
+        "1 4 0 0 0 1 0 0 0 1 0 0 0 1 mine.dat",
+        "1 4 0 0 0 1 0 0 0 1 0 0 0 1 made.dat",
+        "0 FILE 8880 - 3001.dat", "0 Brick  2 x  4", "0 !LDRAW_ORG Unofficial_Part", face,
+        "0 FILE mine.dat", "0 3001", "0 !LDRAW_ORG Unofficial_Part", face,
+        "0 FILE made.dat", "0 A Thing I Made", "0 !LDRAW_ORG Unofficial_Part", face, ""])
+    said = node(f"""
+import {{ inventoryOf, namesOf, useNames, useTable }} from "./api/_parts.js";
+useTable({json.dumps(table)});
+const names = useNames("de", {json.dumps(names)});
+const lots = inventoryOf({json.dumps(model)}).lots;
+console.log(JSON.stringify(lots.map((lot) => [lot.part, lot.name, namesOf(lot, names).said || null])));""")
+    by = {part: (name, said_as) for part, name, said_as in said}
+    assert by["3001"] == ("Brick 2 x 4", "Stein 2×4")
+    # Each copy as the catalogue's part in German, marked as made in English.
+    assert by["8880 - 3001"] == ("Brick 2 x 4 (custom element)", "Stein 2×4")
+    assert by["mine"] == ("Brick 2 x 4 (custom element)", "Stein 2×4")
+    assert by["made"] == ("A Thing I Made (custom element)", None)
+
+
+@needs_node
 def test_the_site_serves_a_set_s_own_picture_from_our_storage() -> None:
     said = node(SITE + """
 const webp = Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WEBPVP8 "), Buffer.alloc(20)]);

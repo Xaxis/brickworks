@@ -1350,7 +1350,8 @@
       "reach": "tools/minifig.py measure   (and grips, data)",
       "area": "minifig",
       "tests": [
-        "tests/test_minifig.py"
+        "tests/test_minifig.py",
+        "tests/test_realset.py"
       ]
     },
     {
@@ -3080,7 +3081,8 @@
       "reach": "godot --headless --path . --script src/dev/minifig_probe.gd",
       "area": "minifig",
       "tests": [
-        "tests/test_minifig.py"
+        "tests/test_minifig.py",
+        "tests/test_realset.py"
       ]
     },
     {
@@ -5468,6 +5470,7 @@
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
         "tests/test_plans.py",
+        "tests/test_realset.py",
         "tests/test_saved_models_plan.py"
       ]
     },

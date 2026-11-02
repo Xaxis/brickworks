@@ -11,7 +11,7 @@
 // a modal dialog hides from a screen reader too. The link is selected as it
 // opens, so a keyboard's copy takes it. Escape and Close close it, the
 // browser putting the focus back on Share.
-import { shareSheetHtml } from "/card.js";
+import { say, shareSheetHtml } from "/card.js";
 
 /// [text] on the clipboard: the browser's clipboard where the page may use
 /// it (a secure page), else the older way, through a selection. Whether it
@@ -41,7 +41,7 @@ export async function copy(text) {
   return done;
 }
 
-const COPIED = { "share-link": ["Link copied", "copied"], "share-embed": ["Embed code copied: paste it into your page", "embed"] };
+const COPIED = { "share-link": [say("Link copied"), "copied"], "share-embed": [say("Embed code copied: paste it into your page"), "embed"] };
 
 /// The sheet's own buttons, made to work once: Copy for each field, the
 /// networks (said in the sheet as each opens), and Share with another app.
@@ -56,15 +56,15 @@ function prepare(sheet) {
       const field = sheet.querySelector(`#${button.dataset.copy}`);
       const [words, mark] = COPIED[button.dataset.copy];
       const done = await copy(field.value);
-      said.textContent = done ? words : "It did not copy just now: select it and copy it yourself";
+      said.textContent = done ? words : say("It did not copy just now: select it and copy it yourself");
       document.documentElement.dataset.shared = done ? mark : "failed";
       if (!done) field.select();
     });
   }
   for (const to of sheet.querySelectorAll("[data-to]")) {
     to.addEventListener("click", () => {
-      said.textContent = to.dataset.to === "email" ? "Your email opens with its link in it"
-        : `${to.textContent.replace(/ \(opens in a new tab\)$/, "")} opens in a new tab with its link`;
+      said.textContent = to.dataset.to === "email" ? say("Your email opens with its link in it")
+        : say("{site} opens in a new tab with its link", { site: to.firstChild?.textContent || to.textContent });
       document.documentElement.dataset.shared = to.dataset.to;
     });
   }
@@ -75,7 +75,7 @@ function prepare(sheet) {
       sheet.close();
     } catch (trouble) {
       // Closed without sharing: the sheet stays.
-      if (trouble && trouble.name !== "AbortError") said.textContent = "That did not open just now: copy the link instead";
+      if (trouble && trouble.name !== "AbortError") said.textContent = say("That did not open just now: copy the link instead");
     }
   });
 }

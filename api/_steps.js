@@ -21,6 +21,7 @@
 // Pure: text in, a count out.
 
 import { fingerprint } from "./_versions.js";
+import { counted, say } from "./_card.js";
 
 const HEAD = /^0\s+!BRICKWORKS\s+PAGES\s+(\{.*\})\s*$/m;
 const PAGE = /^0\s+!BRICKWORKS\s+PAGE\s+(\{.*\})\s*$/;
@@ -79,25 +80,27 @@ export function stepCount(text, { own = false, oneModel = false, steps = 0 } = {
   return null;
 }
 
-/// "1,234 steps".
-const counted = (n, one, many = `${one}s`) => `${Number(n).toLocaleString("en-US")} ${n === 1 ? one : many}`;
-
-/// [count]'s steps in words: "87 steps".
+/// [count]'s steps in words: "87 steps", in the page's language.
 export function stepsSaid(count) {
   return counted(count.steps, "step");
 }
+
+/// What is built on the side, as its words take it: how many and in how
+/// many steps.
+const sideOf = (count) => ({ builds: counted(count.builds, "sub-assembly", "sub-assemblies"), side: counted(count.side, "step") });
 
 /// And what is built on the side, in words: "12 sub-assemblies built on the
 /// side, in 64 steps of their own"; "" for none.
 export function sideSaid(count) {
   if (!count.side) return "";
-  return `${counted(count.builds, "sub-assembly", "sub-assemblies")} built on the side, in `
-    + `${counted(count.side, "step")} of ${count.builds === 1 ? "its" : "their"} own`;
+  return say(count.builds === 1 ? "{builds} built on the side, in {side} of its own"
+    : "{builds} built on the side, in {side} of their own", sideOf(count));
 }
 
 /// Both, as one sentence's words: "87 steps, and 12 sub-assemblies built on
 /// the side in 64 steps of their own" (Instructions.count_words).
 export function countSaid(count) {
-  const side = sideSaid(count);
-  return side ? `${stepsSaid(count)}, and ${side.replace(" side, in ", " side in ")}` : stepsSaid(count);
+  if (!count.side) return stepsSaid(count);
+  return say(count.builds === 1 ? "{steps}, and {builds} built on the side in {side} of its own"
+    : "{steps}, and {builds} built on the side in {side} of their own", { steps: stepsSaid(count), ...sideOf(count) });
 }

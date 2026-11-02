@@ -8,17 +8,18 @@
 // address it came from instead, a few a day.
 //
 // Everything here is put on the page as text.
-import { call, signedIn, token } from "/account.js";
+import { call, say, signedIn, token } from "/account.js";
 
-const REASONS = [
-  ["spam", "Spam, or not a model"],
-  ["offensive", "Hateful, abusive or offensive"],
-  ["sexual", "Sexual"],
-  ["violent", "Violent or cruel"],
-  ["copied", "Somebody else's work, copied"],
-  ["trademark", "Uses a name or a mark somebody else owns"],
-  ["personal", "Somebody's personal information"],
-  ["other", "Something else"],
+// Said as the dialog opens, in the language it speaks then (web/account.js).
+const REASONS = () => [
+  ["spam", say("Spam, or not a model")],
+  ["offensive", say("Hateful, abusive or offensive")],
+  ["sexual", say("Sexual")],
+  ["violent", say("Violent or cruel")],
+  ["copied", say("Somebody else's work, copied")],
+  ["trademark", say("Uses a name or a mark somebody else owns")],
+  ["personal", say("Somebody's personal information")],
+  ["other", say("Something else")],
 ];
 
 /// The dialog, for [target] ({model} | {handle} | {collection} | {comment}),
@@ -31,17 +32,17 @@ function open(target, about) {
   const dialog = document.createElement("dialog");
   dialog.className = "sign-in report";
   const title = document.createElement("h2");
-  title.textContent = `Report ${about}`;
+  title.textContent = say("Report {about}", { about });
   title.id = "report-title";
   dialog.setAttribute("aria-labelledby", title.id);
   const said = document.createElement("p");
-  said.textContent = "Tell the site's owner what is wrong. Only they see this.";
+  said.textContent = say("Tell the site's owner what is wrong. Only they see this.");
   const form = document.createElement("form");
   const choices = document.createElement("fieldset");
   const legend = document.createElement("legend");
-  legend.textContent = "What is wrong with it";
+  legend.textContent = say("What is wrong with it");
   choices.append(legend);
-  for (const [value, words] of REASONS) {
+  for (const [value, words] of REASONS()) {
     const row = document.createElement("label");
     row.className = "choice";
     const box = document.createElement("input");
@@ -53,13 +54,13 @@ function open(target, about) {
     choices.append(row);
   }
   const noteLabel = document.createElement("label");
-  noteLabel.textContent = "Anything to add (optional)";
+  noteLabel.textContent = say("Anything to add (optional)");
   const note = document.createElement("textarea");
   note.maxLength = 1000;
   note.rows = 3;
   noteLabel.append(note);
   const contactLabel = document.createElement("label");
-  contactLabel.textContent = "If it is your work or your mark: how to reach you (optional)";
+  contactLabel.textContent = say("If it is your work or your mark: how to reach you (optional)");
   const contact = document.createElement("input");
   contact.type = "email";
   contact.maxLength = 200;
@@ -71,11 +72,11 @@ function open(target, about) {
   const send = document.createElement("button");
   send.className = "cta";
   send.type = "submit";
-  send.textContent = "Send the report";
+  send.textContent = say("Send the report");
   const close = document.createElement("button");
   close.className = "cta ghost";
   close.type = "button";
-  close.textContent = "Cancel";
+  close.textContent = say("Cancel");
   const row = document.createElement("div");
   row.className = "actions";
   row.append(send, close);
@@ -93,7 +94,7 @@ function open(target, about) {
     const reason = (form.querySelector('input[name="reason"]:checked') || {}).value;
     if (!reason) return;
     send.disabled = true;
-    status.textContent = "Sending…";
+    status.textContent = say("Sending…");
     const body = { ...target, reason, note: note.value, contact: contact.value };
     let answer;
     if (signedIn() && (await token())) {
@@ -105,17 +106,17 @@ function open(target, about) {
     }
     send.disabled = false;
     if (answer.status !== 200) {
-      status.textContent = answer.body.error || "That did not go just now. Try again in a minute.";
+      status.textContent = answer.body.error || say("That did not go just now. Try again in a minute.");
       return;
     }
     form.replaceChildren();
     said.textContent = target.comment
-      ? "Thank you. The site's owner will look at it, and remove it if it should not be there."
-      : "Thank you. The site's owner will look at it, and take it out of the gallery if it should not be there.";
+      ? say("Thank you. The site's owner will look at it, and remove it if it should not be there.")
+      : say("Thank you. The site's owner will look at it, and take it out of the gallery if it should not be there.");
     const done = document.createElement("button");
     done.className = "cta";
     done.type = "button";
-    done.textContent = "Close";
+    done.textContent = say("Close");
     done.addEventListener("click", end);
     dialog.append(done);
     done.focus();

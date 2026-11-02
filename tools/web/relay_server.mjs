@@ -196,6 +196,9 @@ const MAPPED = [
   [/^\/sitemaps\/index[.]xml$/, "share", "sitemap_index"],
   [/^\/sitemaps\/sets-([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets"],
   [/^\/sitemaps\/sets-(de|fr|es)-([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets_lang"],
+  // A model's page in a language (/de/m/<id>, /de/m/<id>/v/<n>); its sitemap.
+  [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})(?:\/v\/([1-9][0-9]{0,5}))?\/?$/, "share", "page_lang"],
+  [/^\/sitemaps\/models-(de|fr|es)[.]xml$/, "share", "sitemap_models_lang"],
   // The daily cron's clean-up of files no published row owns.
   [/^\/api\/share\/sweep$/, "share", "sweep"],
 ];
@@ -309,6 +312,13 @@ http.createServer(async (incoming, outgoing) => {
     // A set's page in a language: /de/library/set/<n>; its sitemaps.
     if (mapped[2] === "catalog_set_lang") Object.assign(query, { op: "catalog_set", lang: captured[1], set: captured[2], as: undefined });
     if (mapped[2] === "sitemap_sets_lang") Object.assign(query, { op: "sitemap_sets", lang: captured[1], n: captured[2], id: undefined, v: undefined });
+    // A model's page in a language, and its sitemap.
+    if (mapped[2] === "page_lang") {
+      Object.assign(query, { op: "page", lang: captured[1], id: captured[2], as: undefined });
+      if (captured[3]) query.v = captured[3];
+      else delete query.v;
+    }
+    if (mapped[2] === "sitemap_models_lang") Object.assign(query, { op: "sitemap_models", lang: captured[1], id: undefined });
   }
   // The app is at /app, which the deployment sends on to the build with
   // its query (?view=<id>, ?copy=<id>) intact.
