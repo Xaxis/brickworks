@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -70,10 +71,10 @@ def attribute(value: str) -> str:
     return value.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;")
 
 
-def replaced(text: str, pattern: str, new, what: str, count: int = 1) -> str:
+def replaced(text: str, pattern: str, new: str | Callable[[re.Match[str]], str], what: str, count: int = 1) -> str:
     """[text] with [pattern] put as [new] (words, or what a match is to be
     made: a function of it): exactly [count] times, or this stops."""
-    out, n = re.subn(pattern, new if callable(new) else lambda _: new, text, flags=re.S)
+    out, n = re.subn(pattern, new if callable(new) else lambda _: str(new), text, flags=re.S)
     if n != count:
         raise SystemExit(f"browse_pages: web/gallery.html's {what} was found {n} times, not {count}")
     return out
