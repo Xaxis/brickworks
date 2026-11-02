@@ -10,6 +10,8 @@
 ## the selection, the toolbar while it works, and the words that ask whoever
 ## designs (Ask … about this… on the menus, the panel's Ask button and its
 ## brief, Brick Art's Design with …). Claude's stay Claude's word for word.
+## And a call the relay names ChatGPT (an assistant signed in to the
+## account: docs/ANY_ASSISTANT.md U1) is ChatGPT's in the history.
 ## The stub's port is 9681, or -- --port=N.
 extends SceneTree
 
@@ -54,6 +56,7 @@ func _run() -> void:
 	(_main.get("_store") as ModelStore).keeps = false
 	_socket = (_main.get("_connector") as ClaudeConnector).rpc
 	await _claude()
+	await _named_by_the_relay()
 	await _model_on_a_key()
 	if _stub > 0:
 		OS.kill(_stub)
@@ -105,6 +108,17 @@ func _claude() -> void:
 	_check("the toolbar says nothing of a model on a key: \"%s\""
 		% (_main.get("_bar") as ModelBar).claude_tab_words(),
 		not (_main.get("_bar") as ModelBar).claude_tab_words().contains("working"))
+
+
+## ChatGPT's call through the relay, which names who calls on its _meta
+## from the connection (api/mcp.js callerMeta).
+func _named_by_the_relay() -> void:
+	print("\n── ChatGPT, through the relay ──")
+	_clear()
+	await _rpc("submit_design", _tower(4), {CommandSocket.WHO_KEY: "ChatGPT"})
+	var steps: PackedStringArray = _builder.history_words(3)
+	_check("the history's step is ChatGPT's: %s" % str(steps),
+		not steps.is_empty() and steps[0].begins_with("ChatGPT's submit design"))
 
 
 ## GPT-6.1 Sol on the person's OpenAI key, through the loop in the app.

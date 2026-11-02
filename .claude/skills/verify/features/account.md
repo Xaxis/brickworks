@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, cli:ChatGPT connector flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check, lib:the desktop pass, ui:the Pro screen on the desktop, cli:desktop pass probe -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check, lib:the desktop pass, ui:the Pro screen on the desktop, cli:desktop pass probe -->
 
 ## Sub-features
 
@@ -222,11 +222,38 @@ they have. A Claude connector belongs to the account that switched it on.
   issuer or `/oauth/token`; exp ahead and within an hour; jti spent once in
   `oc_spend` under `oauth:<sha256>`); an assertion is checked whoever sends it.
   Registration takes `private_key_jwt` with inline `jwks` only. Claude's rows
-  never name the new columns. The label is "ChatGPT" by a chatgpt.com return
-  address (`clientLabel`); the relay gives any client but Claude's the tool list
-  with every array's `items` said and all three hints (`toolsWithTabs`,
+  never name the new columns. The relay gives any client but Claude's the tool
+  list with every array's `items` said and all three hints (`toolsWithTabs`,
   `portable`), Claude's word for word as before. Tests:
   `tests/test_oauth_clients.py` (minitest/pytest, node).
+- `who is calling` (`api/_oauth.js` `clientLabel`, `api/mcp.js` `callerMeta`,
+  2026-11-02, docs/ANY_ASSISTANT.md U1): a connection is labelled by what was
+  checked: a known published document (Claude, Claude Code, ChatGPT, Codex,
+  VS Code, Zed) or a known host its codes go back to (claude.ai, chatgpt.com,
+  Gemini's `oauth-redirect*.googleusercontent.com`, teams.microsoft.com,
+  perplexity.ai, x.ai, cursor.com, vscode.dev); else the name it gave, as is
+  for a loopback or app-scheme return (Claude Code when it says Claude), and
+  for an https one unless it claims an assistant or maker (`CLAIMS`), which is
+  then its return host ("not-claude.example"). That label is the sign-in page's,
+  Account's, the tool list's shape (`isClaude`) and every tools/call's
+  `_meta["brickworks/who"]`; the relay drops every `brickworks/` key a client
+  sent (a tab's own address gets no who: the tab says Claude). The tab keeps it
+  on each chat (`ClaudeConnector.chats[].who`) and the history names the step
+  by it (`CommandSocket.who_of`).
+- `refresh that keeps an assistant connected` (`api/oauth.js` token, 2026-11-02,
+  U2): a client that proves itself at the token endpoint (a secret, post or
+  Basic, or a signed assertion: `callingClient`'s `proved`) keeps its refresh
+  token, its expiry moved 90 days on, and gets a new access token; a public
+  client's is replaced, a retry within 30 s answered, and one sent again after
+  that ends the connection. Tests: `tests/test_oauth_clients.py`.
+- `every assistant's sign-in` (`tools/web/clients_check.mjs`): each documented
+  shape (Claude, ChatGPT's document and a ChatGPT-shaped client signing with
+  its own key back to chatgpt.com, Codex, VS Code, Zed, Gemini with a secret,
+  Gemini CLI, Cursor, Microsoft Copilot with Basic, Perplexity, Grok, a
+  nameless client, one calling itself Claude) named on the page, given its
+  list, its call reaching a played tab with its own `brickworks/who` replaced by
+  the label, refreshed, Account's list, and the first refresh token again 32 s
+  on: kept by those that prove themselves, ending the public ones.
 - `ChatGPT connector flow` (`tools/web/chatgpt_flow.mjs`, check `chatgpt`):
   discovery; ChatGPT's real document named on the page, its code refused
   without its signature and with another key's; a stand-in client holding its
@@ -754,6 +781,19 @@ another; revocation ending a connection and what was allowed with it;
 Disconnect ending the rest at once, and the next connection asked again, with
 `before` still true and kept beside the record's own `provider`; a refresh token replayed after the grace ending its
 connection.
+
+Every assistant's sign-in as its maker documents it, what each is called on
+the page, in Account and on a call into a tab, and refresh past the grace (same
+server; a throwaway account; about 75 s, 32 of them the grace; reads the
+clients' published documents):
+
+```sh
+tools/release/live_db.sh you node tools/web/clients_check.mjs --url=http://127.0.0.1:8790
+BW_BYPASS=$VERCEL_BYPASS node tools/web/clients_check.mjs --url=<deployment>
+```
+
+Proves it when it ends "Every assistant signs in, is named by what was checked,
+and stays connected as it should".
 
 That nobody can make an account at an address they cannot read (Supabase
 itself, so any deployment; a few seconds; throwaway accounts at Resend test

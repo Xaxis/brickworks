@@ -64,7 +64,7 @@ export function challenge(origin, error = "") {
 export async function grantOf(token, resource) {
   if (!ACCESS.test(token || "")) return null;
   const rows = await db(`oauth_tokens?hash=eq.${sha256(token)}&kind=eq.access`
-    + "&select=expires_at,grant:oauth_grants(id,owner,resource,client_name,redirect_uri,"
+    + "&select=expires_at,grant:oauth_grants(id,owner,resource,client_id,client_name,redirect_uri,"
     + "client_info,channel,used_at,oc_rh,oc_aud,oc_iat)");
   const row = rows && rows[0];
   if (!row || !row.grant) return null;
@@ -117,26 +117,58 @@ export async function hadClaude(owner) {
   return Boolean((await accountRecord(owner)).claude_connected_at);
 }
 
-/// Which app a connection is, in words for the panel and the sign-in page:
-/// Claude (claude.ai and the Claude apps share one list of connectors),
-/// Claude Code (a program on somebody's machine, sent back to it on a
-/// loopback address), ChatGPT (sent back to chatgpt.com), or whatever
-/// another client called itself.
+// The assistants known by what is checked, not by what they call
+// themselves (docs/ANY_ASSISTANT.md U1): the address of the description a
+// client is named by, which api/oauth.js reads from that address, or the
+// host its codes go back to, which only that host can use. A host matches
+// itself and any host under it.
+const KNOWN = [
+  { label: "Claude", documents: [CLAUDE_AI], hosts: ["claude.ai", "claude.com"] },
+  { label: "Claude Code", documents: ["https://claude.ai/oauth/claude-code-client-metadata"] },
+  { label: "ChatGPT", documents: ["https://chatgpt.com/oauth/client.json"], hosts: ["chatgpt.com"] },
+  { label: "Codex", documents: ["https://chatgpt.com/oauth/codex/client.json"] },
+  { label: "Visual Studio Code", documents: ["https://vscode.dev/oauth/client-metadata.json"], hosts: ["vscode.dev"] },
+  { label: "Zed", documents: ["https://zed.dev/oauth/client-metadata.json"] },
+  // Google's six return addresses for Gemini's connected apps.
+  { label: "Gemini", hosts: [/^oauth-redirect[a-z0-9-]*\.googleusercontent\.com$/] },
+  { label: "Gemini Enterprise", hosts: ["vertexaisearch.cloud.google.com"] },
+  { label: "Microsoft Copilot", hosts: ["teams.microsoft.com"] },
+  { label: "Perplexity", hosts: ["perplexity.ai"] },
+  { label: "Grok", hosts: ["x.ai", "grok.com"] },
+  { label: "Cursor", hosts: ["cursor.com"] },
+];
+// A name that claims to be one of those, or their makers', or Brickworks.
+const CLAIMS = /\b(claude|anthropic|chat ?gpt|openai|codex|gemini|google|copilot|microsoft|perplexity|grok|x\.?ai|cursor|vs ?code|visual studio|zed|brickworks)\b/i;
+
+/// Which app a connection is, in words for the sign-in page, Account, the
+/// tool list's shape and the tab's history. One of KNOWN by its document
+/// or its return host. Else what it calls itself (at registration, or at
+/// initialize): as it is when its codes go back to the person's own
+/// machine (a loopback address, or an app's own scheme), where only a
+/// program they run can use them, and Claude Code when that name says
+/// Claude; as it is elsewhere too unless it claims an assistant it has not
+/// been checked to be, which is then named by its return host.
 export function clientLabel(grant) {
   const info = grant.client_info && typeof grant.client_info === "object" ? grant.client_info : {};
-  const said = `${grant.client_name || ""} ${info.name || ""}`.toLowerCase();
-  let host = "";
+  const name = String(grant.client_name || info.name || "").trim().slice(0, 60);
+  let to = null;
   try {
-    host = new URL(grant.redirect_uri || "").host.toLowerCase();
+    to = new URL(grant.redirect_uri || "");
   } catch {
-    host = "";
+    to = null;
   }
-  if (/(^|\.)claude\.(ai|com)$/.test(host)) return "Claude";
-  if (/(^|\.)chatgpt\.com$/.test(host)) return "ChatGPT";
-  if (said.includes("claude code") || said.includes("claude-code")) return "Claude Code";
-  if (LOOPBACK.test(host) && said.includes("claude")) return "Claude Code";
-  const name = String(grant.client_name || info.name || "").trim();
-  return name ? name.slice(0, 60) : "An MCP client";
+  const host = to ? to.hostname.toLowerCase() : "";
+  const known = KNOWN.find((one) => (one.documents || []).includes(grant.client_id))
+    || (to && to.protocol === "https:" && KNOWN.find((one) => (one.hosts || []).some((at) => (typeof at === "string"
+      ? host === at || host.endsWith(`.${at}`) : at.test(host)))));
+  if (known) return known.label;
+  if (to && to.protocol !== "https:") {
+    const said = `${grant.client_name || ""} ${info.name || ""}`.toLowerCase();
+    if (said.includes("claude")) return "Claude Code";
+    return name || "An MCP client";
+  }
+  if (!name) return "An MCP client";
+  return CLAIMS.test(name) ? host || "An MCP client" : name;
 }
 
 /// Whether [label] (clientLabel's) is one of Claude's apps: what the

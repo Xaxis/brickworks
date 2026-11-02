@@ -68,7 +68,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -162,7 +163,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -226,7 +228,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -595,6 +598,7 @@
         "tests/test_billing.py",
         "tests/test_brickbench.py",
         "tests/test_gallery_crons.py",
+        "tests/test_oauth_clients.py",
         "tests/test_update_parts.py"
       ]
     },
@@ -965,6 +969,14 @@
       "entry": "src/dev/empty_save_probe.gd",
       "reach": "godot --headless --path . --script src/dev/empty_save_probe.gd",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:every assistant's sign-in",
+      "kind": "cli",
+      "entry": "tools/web/clients_check.mjs",
+      "reach": "tools/release/live_db.sh you node tools/web/clients_check.mjs --url=<relay_server or deployment>   (with .env sourced; BW_BYPASS for a preview)",
+      "area": "account",
       "tests": []
     },
     {
@@ -2621,7 +2633,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -3411,7 +3424,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -4960,7 +4974,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
