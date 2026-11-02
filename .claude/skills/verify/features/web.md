@@ -1826,9 +1826,10 @@ plan with Claude as the client.
   `a.who` with an avatar, "N models", "N followers" when any, Follow);
   `html[data-collections]` `ready` or `none` (`#collections-empty`). A
   search asks `collection_directory_search` (`supabase/collection_search.sql`,
-  **not applied** until the lead applies it): before it every one is
-  listed and `#found-said` says collections cannot be searched yet
-  (`searched: false`). Follow by `web/follow.js`, the cards' states in one
+  applied to the live project 2026-11-02): every word in the name, the
+  description, the owner's handle or name; where it is not there (the
+  design stand-in) every one is listed and `#found-said` says collections
+  cannot be searched yet (`searched: false`). Follow by `web/follow.js`, the cards' states in one
   `GET ?op=list_follows&ids=A,B` (48 at most). `web/collections.html` is
   the gallery's copy (`cli:browse pages`); linked from every page's footer.
   `tests/test_collections_tab.py`.

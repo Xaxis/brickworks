@@ -285,11 +285,15 @@ try {
           const tabs = document.getElementById("tabs");
           const box = tabs.getBoundingClientRect();
           const scrolls = getComputedStyle(tabs).overflowX === "auto" || getComputedStyle(tabs).overflowX === "scroll";
-          const whole = [...tabs.querySelectorAll("[data-tab]:not([hidden])")].map((tab) => {
-            tab.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
-            const r = tab.getBoundingClientRect();
-            return { tab: tab.dataset.tab, whole: r.left >= box.left - 1 && r.right <= box.right + 1 && r.right <= innerWidth };
-          });
+          // Whole where the row can come to rest with it in view: its tabs
+          // snap to their starts, so the nearest place may leave a long
+          // one cut where the row's start or end shows it whole.
+          const whole = [...tabs.querySelectorAll("[data-tab]:not([hidden])")].map((tab) => ({ tab: tab.dataset.tab,
+            whole: ["nearest", "start", "end"].some((inline) => {
+              tab.scrollIntoView({ block: "nearest", inline, behavior: "instant" });
+              const r = tab.getBoundingClientRect();
+              return r.left >= box.left - 1 && r.right <= box.right + 1 && r.right <= innerWidth;
+            }) }));
           scrollTo({ top: 0, behavior: "instant" });
           return { fits: tabs.scrollWidth <= tabs.clientWidth + 1, scrolls, whole,
             sideways: document.documentElement.scrollWidth - innerWidth };
