@@ -20,7 +20,7 @@
 // (window.brickworksState.custom), the sticker is not stuck on, the sheet is
 // not true to size within 0.1 mm, the model does not come back with all its
 // printed parts, or a script error reaches the console.
-import { clickStill, framesDrawn, launch, openColumnFor, openFromFile, typeInMenu } from "./browser.mjs";
+import { clickStill, exportFromFile, launch, openColumnFor, openFromFile } from "./browser.mjs";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -144,27 +144,6 @@ function tools(page) {
     await picked(() => clickStill(page, name, { find: where }), file, name);
   }
   const open = (file) => openFromFile(page, file, { shots: out });
-  // File > Export > LDraw model, by the menu's own keys once File stands
-  // still, as steps_flow exports: the toolbar has had no Export since the
-  // menus came (1528cccf). Tried again when no download came.
-  async function exportLdraw() {
-    for (let n = 0; n < 3; n++) {
-      const download = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
-      await clickStill(page, "menu_file", { find: where });
-      await typeInMenu(page, "Export");
-      await framesDrawn(page, 2);
-      await page.keyboard.press("ArrowRight");
-      await typeInMenu(page, "LDraw");
-      await framesDrawn(page, 2);
-      await page.keyboard.press("Enter");
-      const got = await download;
-      if (got) return got;
-      await shot(`no_download_${n}.png`);
-      await page.keyboard.press("Escape");
-      await framesDrawn(page, 3);
-    }
-    throw new Error("File > Export > LDraw model brought no download");
-  }
   async function type(name, words) {
     await click(name);
     await page.keyboard.press("Control+A");
@@ -182,7 +161,7 @@ function tools(page) {
     await page.waitForTimeout(800);
   }
   const custom = async () => (await state())?.custom || [];
-  return { controls, state, shot, until, where, click, choose, open, exportLdraw, type, stroke, custom };
+  return { controls, state, shot, until, where, click, choose, open, type, stroke, custom };
 }
 
 const page = await page_for("first");
@@ -307,7 +286,10 @@ try {
 await $.click("sheet_close");
 
 // The model, downloaded, and opened in a browser that has never seen it.
-const exported = await $.exportLdraw();
+// File > Export > LDraw model: the toolbar has had no Export since the
+// menus came (1528cccf).
+const exported = await exportFromFile(page, "LDraw model", { shots: out });
+if (!exported) throw new Error("File > Export > LDraw model brought no download");
 const model = resolve(`${out}/model.mpd`);
 await exported.saveAs(model);
 const text = await import("node:fs").then((fs) => fs.readFileSync(model, "utf8"));

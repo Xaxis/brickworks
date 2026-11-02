@@ -15,7 +15,7 @@
 // past a second (in software, where a frame of the model alone is hundreds
 // of milliseconds). It fails if a step does not happen or a script error
 // reaches the console.
-import { launch, openFromFile, typeInMenu } from "./browser.mjs";
+import { exportFromFile, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -103,40 +103,6 @@ async function stopFrames() {
     return { most: Math.round(window.frameGaps.most), frames: window.frameGaps.frames };
   });
 }
-// File > Export > 3D model…, by the menu's own keys, then Enter on the
-// dialog. Tried again if no download came, as a click is.
-async function export3d() {
-  const file = await where("menu_file");
-  for (let n = 0; n < 3; n++) {
-    const download = page.waitForEvent("download", { timeout: 180000 }).catch(() => null);
-    await page.mouse.click(file.x, file.y);
-    await page.waitForTimeout(2500 + 2500 * n);
-    await typeInMenu(page, "Export");
-    await page.waitForTimeout(800);
-    await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(1500);
-    // Down to its third line, as Shell.SUBMENUS orders Export. Not typed:
-    // "3" is View, From the left, and the space in "3D model" pressed
-    // whichever line was lit, so the first try downloaded the LDraw file.
-    for (let down = 0; down < 2; down++) {
-      await page.keyboard.press("ArrowDown");
-      await page.waitForTimeout(800);
-    }
-    if (n === 0) await shot("2_export_menu.png");
-    await page.keyboard.press("Enter");
-    await page.waitForTimeout(4000 + 2000 * n);
-    if (n === 0) await shot("3_dialog.png");
-    await startFrames();
-    await page.keyboard.press("Enter");
-    const got = await download;
-    const frames = await stopFrames();
-    if (got) return { got, frames };
-    await shot(`no_download_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  return { got: null, frames: null };
-}
 
 await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
 ok(Boolean(await where("open", 400)), "the app came up, signed in");
@@ -152,7 +118,15 @@ ok((await state()).bricks === 61, `car.ldr opened through Open… > From a file:
 await page.waitForTimeout(6000);
 await shot("1_car.png");
 
-const { got: download, frames } = await export3d();
+// File > Export > 3D model…, then Enter on the dialog it opens, timed
+// from that Enter to the download.
+const download = await exportFromFile(page, "3D model", { ms: 180000, shots: out, chosen: async (n) => {
+  await page.waitForTimeout(4000 + 2000 * n);
+  if (n === 0) await shot("3_dialog.png");
+  await startFrames();
+  await page.keyboard.press("Enter");
+} });
+const frames = await stopFrames();
 ok(Boolean(download) && /\.glb$/.test(download.suggestedFilename()),
   `File > Export > 3D model…, Export, downloads ${download ? download.suggestedFilename() : "nothing"}`);
 const done = await until((s) => /^downloaded .*\.glb/.test(s.said || ""), 60);

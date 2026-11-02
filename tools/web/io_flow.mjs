@@ -13,8 +13,8 @@
 // parts store, as the desktop reads it from its library; until 2026-10-17
 // the browser could not, and named it not shown).
 // Then File > Export > BrickLink Studio model (.io), by the keys a person
-// would use in the menu (exportStudio says which, and why not its name
-// typed), catches the download and reads it with Python's
+// would use in the menu (browser.mjs exportFromFile says which, and why not
+// its name typed), catches the download and reads it with Python's
 // zipfile: model.ldr, .info, errorPartList.err and a thumbnail. Opens that
 // file again through the picker and checks the same six parts. Then a
 // picture renamed .io: the status bar has to say it is not a Studio file.
@@ -24,7 +24,7 @@
 // six of six, none said left out, the prints drawn (4_whole.png).
 // Every result is read off window.brickworksState; pictures in --out. It
 // fails if a step does not happen or a script error reaches the console.
-import { launch, openFromFile } from "./browser.mjs";
+import { exportFromFile, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync, copyFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -94,40 +94,6 @@ async function where(name, seconds = 240) {
   await shot(`never_${name}.png`);
   throw new Error(`the app never showed "${name}"`);
 }
-// File > Export > BrickLink Studio model (.io), by the menu's own keys: the
-// File menu, E for its one line that starts so, the arrow into Export, down
-// one from the LDraw model to the Studio one, Enter. Tried again if no
-// download came, as a click is.
-//
-// Not by typing "BrickLink Studio". A menu's search moves to the next line
-// that starts with what has been typed, so letter by letter it swings
-// between "BrickLink Studio model" and "BrickLink wanted list", and the
-// space chooses wherever it is. It also starts again when two keys reach the
-// app more than two seconds apart, which one slow software frame does. So
-// the line chosen depended on the frame times: on a busy machine the
-// download was the wanted list, bay_2025_bricklink.xml.
-async function exportStudio() {
-  const file = await where("menu_file");
-  for (let n = 0; n < 3; n++) {
-    const download = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
-    await page.mouse.click(file.x, file.y);
-    await page.waitForTimeout(2500 + 2500 * n);
-    await page.keyboard.press("E");
-    await page.waitForTimeout(800);
-    await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(1500);
-    await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(800);
-    if (n === 0) await shot("2_export_menu.png");
-    await page.keyboard.press("Enter");
-    const got = await download;
-    if (got) return got;
-    await shot(`no_download_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  return null;
-}
 
 await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
 ok(Boolean(await where("open", 400)), "the app came up, signed in");
@@ -151,7 +117,7 @@ await page.waitForTimeout(6000);
 await shot("1_bay.png");
 
 // ...and out again, as a Studio file.
-const download = await exportStudio();
+const download = await exportFromFile(page, "BrickLink Studio model", { shots: out });
 ok(Boolean(download), `File > Export > BrickLink Studio model downloads ${download ? download.suggestedFilename() : "nothing"}`);
 const exported = `${out}/exported.io`;
 let members = {};

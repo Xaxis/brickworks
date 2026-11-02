@@ -370,6 +370,46 @@ export async function openFromFile(page, file = null, { choosers = page.choosers
   throw new Error(`Open… > From a file brought no file chooser${shots ? `; see ${shots}/no_picker_*.png` : ""}`);
 }
 
+/// The first lines of File > Export, in the order Shell.SUBMENUS gives them.
+const EXPORTS = ["LDraw model", "BrickLink Studio model", "3D model"];
+
+/// File > Export > [row] (one of [EXPORTS]), by the menu's own keys, and
+/// the download it brings, or null after three tries. File is pressed once
+/// it has come to rest ([clickStill]), Export typed ([typeInMenu]) and
+/// opened by the right arrow, and the row reached by the down arrow from
+/// Export's first line. Not by its name typed: a menu's search moves to the
+/// next line that starts with what is typed, so "BrickLink" swung between
+/// the Studio model and the wanted list a letter at a time and downloaded
+/// the wanted list on a busy box (io_flow), and "3" is View, From the left
+/// (model3d_flow). Six flows read File's place once and pressed it there
+/// (2026-11-01). [chosen] runs after the row is chosen, try [n], for a row
+/// that asks something first (3D model's dialog); the download is waited
+/// for [ms]. A picture of each try that brought none in [shots].
+export async function exportFromFile(page, row, { chosen = null, ms = 90000, shots = "" } = {}) {
+  const down = EXPORTS.indexOf(row);
+  if (down < 0) throw new Error(`exportFromFile: no "${row}" among File > Export's first lines`);
+  for (let n = 0; n < 3; n++) {
+    const download = page.waitForEvent("download", { timeout: ms }).catch(() => null);
+    await clickStill(page, "menu_file", { shots });
+    await typeInMenu(page, "Export");
+    await framesDrawn(page, 2);
+    await page.keyboard.press("ArrowRight");
+    for (let line = 0; line < down; line++) {
+      await framesDrawn(page, 2);
+      await page.keyboard.press("ArrowDown");
+    }
+    await framesDrawn(page, 2);
+    await page.keyboard.press("Enter");
+    if (chosen) await chosen(n);
+    const got = await download;
+    if (got) return got;
+    if (shots) await page.screenshot({ path: `${shots}/no_download_${n}.png` }).catch(() => {});
+    await page.keyboard.press("Escape");
+    await framesDrawn(page, 3);
+  }
+  return null;
+}
+
 /// The app's address as the site links to it for someone who came for the
 /// assistant: `assistant=on` added (Main._assistant_from_address). A first
 /// visit builds by hand with the connector held off, so a flow that drives

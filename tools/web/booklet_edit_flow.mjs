@@ -32,7 +32,7 @@
 // PANEL) say so.
 // Fails if any of that does not happen or a script error reaches a console.
 // Every result read off window.brickworksState; pictures in --out.
-import { clickStill, launch, openFromFile, typeInMenu } from "./browser.mjs";
+import { clickStill, exportFromFile, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -133,27 +133,6 @@ async function says(test, seconds = 15) {
     now = await look();
   }
   return now;
-}
-async function exportLdraw() {
-  const file = await where("menu_file");
-  for (let n = 0; n < 3; n++) {
-    const download = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
-    await page.mouse.click(file.x, file.y);
-    await page.waitForTimeout(2500 + 2500 * n);
-    await typeInMenu(page, "Export");
-    await page.waitForTimeout(800);
-    await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(1500);
-    await typeInMenu(page, "LDraw");
-    await page.waitForTimeout(800);
-    await page.keyboard.press("Enter");
-    const got = await download;
-    if (got) return got;
-    await shot(`no_download_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  return null;
 }
 // Right arrow until the timeline shows step [number] (the window's own key).
 async function toStep(number) {
@@ -471,7 +450,7 @@ try {
   }
 
   await press("steps_done");
-  const download = await exportLdraw();
+  const download = await exportFromFile(page, "LDraw model", { shots: out });
   ok(Boolean(download), `File > Export > LDraw model downloads ${download ? download.suggestedFilename() : "nothing"}`);
   if (download) {
     const saved = `${out}/edited.mpd`;
