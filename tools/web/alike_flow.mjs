@@ -176,11 +176,11 @@ try {
   console.log("at 1280 px, light, signed out");
   const asked = await api(`/api/people?op=alike&handle=${handles.ann}&tests=1`);
   const ours = (asked.body.designers || []).filter((one) => Object.values(handles).includes(one.handle));
-  console.log(`  --    the API's: ${(asked.body.designers || []).map((one) => `${one.handle} "${one.said}"`).join(", ")}`);
+  console.log(`  --    the API's: ${(asked.body.designers || []).map((one) => `${one.handle} ${JSON.stringify(one.alike)}`).join(", ")}`);
   check(`the API: Bo and Di, then Cy (${order(ours).join(", ")})`, asked.status === 200 && ours.length === 3
     && ours[2].handle === handles.cy && new Set(order(ours).slice(0, 2)).size === 2
     && order(ours).slice(0, 2).every((one) => [handles.bo, handles.di].includes(one)));
-  const parts = ours.some((one) => /many of the same parts/i.test(one.said));
+  const parts = ours.some((one) => one.alike?.parts);
   console.log(`  --    the parts in common ${parts ? "counted (designers_alike.sql applied)" : "not counted (designers_alike.sql not applied)"}`);
   check(`never Ann, never Fay (${order(asked.body.designers || []).join(", ")})`,
     !(asked.body.designers || []).some((one) => [handles.ann, handles.fay].includes(one.handle)));

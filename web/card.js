@@ -63,10 +63,70 @@ export function themeSaid(name) {
 /// [n] as the page's language writes a number: 1,234, 1.234 or 1 234.
 export const number = (n) => Number(n).toLocaleString(globalThis.brickworksLang?.locale || "en-US");
 
+/// What a designer shares with the person ([alike], api/_alike.js alikeOf),
+/// in a line under their name: "Castles and fantasy, Space · knights ·
+/// many of the same parts". Tags as they were written.
+export function alikeSaid({ themes = [], tags = [], parts = false } = {}) {
+  const said = [themes.map((theme) => say(String(theme))).join(", "), tags.join(", "),
+    parts ? say("many of the same parts") : ""].filter(Boolean).join(" · ");
+  return said ? said[0].toUpperCase() + said.slice(1) : "";
+}
+
 /// "1 part", "1,234 parts".
 export function counted(n, one, many) {
   const value = Number(n) || 0;
   return `${number(value)} ${say(value === 1 ? one : many || `${one}s`)}`;
+}
+
+/// What the server answered in words ([words]: an error, why something may
+/// not be done), in the page's language: each sentence an answer gives has
+/// its entry (tools/site_lang.py TOLD); [otherwise] when it said none.
+export const told = (words, otherwise = "") => (words ? say(String(words)) : otherwise);
+
+/// The rules a challenge has, in words: "At most 200 parts", ... [rules] as
+/// challenges.sql keeps them: {most_parts, set_number, set_name, tested}.
+export function rulesSaid(rules) {
+  const said = [];
+  if (rules?.most_parts) said.push(say("At most {parts}", { parts: counted(rules.most_parts, "part") }));
+  if (rules?.set_number) {
+    said.push(say(rules.set_name ? "Only parts of set {set}, {name}: no more of each, in its colour, than the set has"
+      : "Only parts of set {set}: no more of each, in its colour, than the set has", { set: rules.set_number, name: rules.set_name }));
+  }
+  if (rules?.tested) said.push(say("Marked Tested: it stands at every step, and every part is made in its colour"));
+  return said;
+}
+
+/// The rules [check] (challenge_check) says a model breaks, each in words:
+/// [{rule, said}]. A part short of a set's is named by its number and its
+/// colour's name ([check].set.short's colour_name, which the server puts in).
+export function brokenSaid(check) {
+  const broken = [];
+  const whole = (value) => Number(value) || 0;
+  if (check?.parts && !check.parts.ok) {
+    broken.push({ rule: "parts", said: say("It has {parts}: this challenge allows at most {most}.",
+      { parts: counted(check.parts.has, "part"), most: number(whole(check.parts.most)) }) });
+  }
+  if (check?.set && !check.set.ok) {
+    const set = check.set.name ? say("set {set} ({name})", { set: check.set.number, name: check.set.name })
+      : say("set {set}", { set: check.set.number });
+    if (!check.set.counted) {
+      broken.push({ rule: "set", said: say("Its parts have not been counted yet, so they cannot be held to {set}: "
+        + "share it again from the app, then enter it.", { set }) });
+    } else {
+      const lots = (check.set.short || []).slice(0, 5).map((one) => say("{part} in {colour} (it needs {need}, the set has {have})",
+        { part: one.part, colour: one.colour_name || say("colour {code}", { code: one.colour }), need: number(whole(one.need)),
+          have: number(whole(one.have)) }));
+      const more = whole(check.set.short_lots) - lots.length;
+      broken.push({ rule: "set", said: say(whole(check.set.short_lots) === 1 ? "{n} of its parts is not in {set}, or not as many: {lots}."
+        : "{n} of its parts are not in {set}, or not as many: {lots}.", { n: number(whole(check.set.short_lots)), set,
+        lots: lots.join("; ") + (more > 0 ? `; ${say("and {n} more", { n: more })}` : "") }) });
+    }
+  }
+  if (check?.tested && !check.tested.ok) {
+    broken.push({ rule: "tested", said: say("Its newest version is not marked Tested: the app tests a model as it is "
+      + "shared (it stands at every step, every part made in its colour).") });
+  }
+  return broken;
 }
 
 /// Which of the eight avatar tiles a handle has (1-8): the same every time
@@ -136,12 +196,12 @@ export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pre
 export function awardsHtml(awards, { id = "" } = {}) {
   const shown = (awards || []).filter((one) => one && one.name);
   if (!shown.length) return "";
-  return `<ul class="pills awards"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="Achievements">${shown.map((one) => {
+  return `<ul class="pills awards"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="${escapeHtml(say("Achievements"))}">${shown.map((one) => {
     const inside = `${iconHtml("award")}${escapeHtml(one.name)}`;
     const said = one.said ? ` title="${escapeHtml(one.said)}"` : "";
     const level = Number(one.level) > 0 ? ` data-level="${Number(one.level)}"` : "";
     return `<li data-award="${escapeHtml(one.id)}"${level}${one.model ? ` data-won="${escapeHtml(one.model)}"` : ""}>${one.model
-      ? `<a class="pill new" href="/m/${escapeHtml(one.model)}"${said}>${inside}</a>` : `<span class="pill"${said}>${inside}</span>`}</li>`;
+      ? `<a class="pill new" href="${langAt()}/m/${escapeHtml(one.model)}"${said}>${inside}</a>` : `<span class="pill"${said}>${inside}</span>`}</li>`;
   }).join("")}</ul>`;
 }
 
@@ -149,19 +209,23 @@ export function awardsHtml(awards, { id = "" } = {}) {
 /// section 7), in its order: each its name, what a level's number counts
 /// ([one, many]: "Designer · 10 models"), what the number is, and the way
 /// to the next level, with a page that helps.
+/// Each track's words, said in the page's language (say): its name, what it
+/// counts, the first of it, what each is, and how to earn it.
 export const TRACKS = {
-  designer: { name: "Designer", unit: ["model", "models"], what: ["model listed in the gallery", "models listed in the gallery"],
+  designer: { name: "Designer", unit: ["model", "models"], first: "first model",
+    what: ["model listed in the gallery", "models listed in the gallery"],
     how: "Share a model from the app and list it in the gallery.", href: "/docs/sharing#share" },
-  built: { name: "Built", unit: ["time", "times"], what: ["build finished to the last step", "builds finished to the last step"],
+  built: { name: "Built", unit: ["time", "times"], first: "once",
+    what: ["build finished to the last step", "builds finished to the last step"],
     how: "Each build of one of your models that somebody finishes counts.", href: "" },
-  builder: { name: "Builder", unit: ["build", "builds"], what: ["photo of a real build", "photos of real builds"],
+  builder: { name: "Builder", unit: ["build", "builds"], first: "first build", what: ["photo of a real build", "photos of real builds"],
     how: "Build a model from the gallery and post a photo of it on its page.", href: "/gallery" },
-  remixed: { name: "Remixed", unit: ["time", "times"], what: ["remix", "remixes"],
+  remixed: { name: "Remixed", unit: ["time", "times"], first: "once", what: ["remix", "remixes"],
     how: "Each remix of one of your models counts.", href: "" },
-  tested: { name: "Tested", unit: ["model", "models"], what: ["model marked Tested", "models marked Tested"],
+  tested: { name: "Tested", unit: ["model", "models"], first: "first model", what: ["model marked Tested", "models marked Tested"],
     how: "A model is marked Tested when it stands at every step as it is shared.", href: "/docs/sharing#tested" },
-  challenger: { name: "Challenger", unit: ["challenge", "challenges"], what: ["challenge entered", "challenges entered"],
-    how: "Enter this month's building challenge.", href: "/challenge" },
+  challenger: { name: "Challenger", unit: ["challenge", "challenges"], first: "first challenge",
+    what: ["challenge entered", "challenges entered"], how: "Enter this month's building challenge.", href: "/challenge" },
 };
 
 /// A level as its pill says it: "Designer · 10 models", "Designer · first
@@ -170,8 +234,7 @@ export function levelName(track, n) {
   const one = TRACKS[track];
   if (!one) return "";
   const value = Number(n) || 0;
-  const first = one.unit[0] === "time" ? "once" : `first ${one.unit[0]}`;
-  return `${one.name} · ${value === 1 ? first : counted(value, ...one.unit)}`;
+  return `${say(one.name)} · ${value === 1 ? say(one.first) : counted(value, ...one.unit)}`;
 }
 
 /// The levels a person reached, as awardsHtml's pills, the highest first
@@ -182,7 +245,7 @@ export function levelAwards(levels) {
     .filter((one) => one && TRACKS[one.track] && Number(one.level) > 0)
     .sort((a, b) => Number(b.level) - Number(a.level))
     .map((one) => ({ id: one.track, level: Number(one.level), name: levelName(one.track, one.reached),
-      said: `Level ${Number(one.level)} of ${Number(one.of)}: ${counted(one.n, ...TRACKS[one.track].what)}` }));
+      said: say("Level {level} of {of}: {what}", { level: Number(one.level), of: Number(one.of), what: counted(one.n, ...TRACKS[one.track].what) }) }));
 }
 
 /// Where Share's sheet posts a page (docs/SOCIAL.md section 7), as
@@ -294,9 +357,10 @@ const setPageOf = (model, id) => {
   return `${langAt()}${model.library.page}`;
 };
 
-/// Where the page's language's copies are: "/de" on a German page, "" in
+/// Where the page's language's copies are: "/de" on a German page, or one
+/// the server makes in German (api/_directory.js inLanguage), "" in
 /// English. A model's page has one in each (api/share.js sharePage).
-const langAt = () => {
+export const langAt = () => {
   const code = globalThis.brickworksLang?.code;
   return /^(?:de|fr|es)$/.test(code || "") ? `/${code}` : "";
 };
@@ -409,7 +473,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
   const who = modeller
     ? `<span class="who" data-modelled-by>${escapeHtml(say("Modelled by {name}", { name: modeller }))}</span>`
     : by
-    ? `<a class="who" href="/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle,
+    ? `<a class="who" href="${langAt()}/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: by.name || by.handle,
       picture: by.picture }, { size: "small" })}`
       + `<span>${escapeHtml(by.name || by.handle)}</span></a>`
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
@@ -500,7 +564,7 @@ export function buildCardHtml(photo, { eager = false } = {}) {
   const by = photo.by && typeof photo.by === "object" && HANDLE.test(String(photo.by.handle || "")) ? photo.by : null;
   const builder = by ? String(by.name || by.handle) : "";
   const who = by
-    ? `<a class="who" href="/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: builder, picture: by.picture },
+    ? `<a class="who" href="${langAt()}/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: builder, picture: by.picture },
       { size: "small" })}<span>${escapeHtml(say("Built by {name}", { name: builder }))}</span></a>`
     : `<span class="who">${escapeHtml(say("Built by a builder"))}</span>`;
   const at = Date.parse(String(photo.at || ""));

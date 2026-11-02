@@ -187,7 +187,8 @@ import { billingMode } from "./_billing.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
-  TESTS_CACHE, Unacceptable, cardOf, count, escapeHtml, siteChrome, testsAsked, visitorKey,
+  SITE_LANGS, TESTS_CACHE, Unacceptable, asText, cardOf, count, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords,
+  testsAsked, visitorKey,
 } from "./_directory.js";
 import { handleTrouble, namesTrouble } from "./_names.js";
 import { publicTrouble, sendDigest, shownPublicly } from "./_trust.js";
@@ -215,10 +216,11 @@ import {
 import { withFaces } from "./_faces.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
-import { FIRST_SCREEN, cardHtml, marksOf, quietMarks, skeletonHtml } from "./_card.js";
+// counted as countedSaid: "1 part", "1.234 Teile", in the page's language.
+import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, levelAwards, shareSheetHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, shareSheetHtml } from "./_card.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
@@ -1054,12 +1056,16 @@ function html(response, status, body, { tests = false } = {}) {
   return response.status(status).end(body);
 }
 
-function head(origin, { title, about, url, image, robots = "", mine = false, share = false, paged = "" }) {
+/// A page's <head>; in a language, [lang], with [words] for its scripts
+/// (web/card.js say), and [alternates], the links to its copies.
+function head(origin, { title, about, url, image, robots = "", mine = false, share = false, paged = "", lang = "en", words = null,
+  alternates = "" }) {
+  const scriptWords = words ? `<script type="application/json" id="site-words">${JSON.stringify(words).replace(/</g, "\\u003c")}</script>\n` : "";
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(about)}">
-${robots ? `<meta name="robots" content="${robots}">\n` : ""}${url ? `<link rel="canonical" href="${escapeHtml(url)}">\n` : ""}<meta property="og:type" content="profile">
+${robots ? `<meta name="robots" content="${robots}">\n` : ""}${url ? `<link rel="canonical" href="${escapeHtml(url)}">\n` : ""}${alternates ? `${alternates}\n` : ""}<meta property="og:type" content="profile">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(about)}">
@@ -1072,7 +1078,7 @@ ${url ? `<meta property="og:url" content="${escapeHtml(url)}">\n` : ""}<meta pro
 <meta name="twitter:image" content="${escapeHtml(image || `${origin}/share.png`)}">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-${paged}${siteChrome().head}
+${paged}${scriptWords}${siteChrome(lang).head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>
@@ -1086,16 +1092,20 @@ ${paged}${siteChrome().head}
 /// whose marks that nearly all carry are left off (web/card.js quietMarks).
 /// [paged]: the page before and after this one, for its head
 /// (web/pager.js pagerLinks), when it holds a list that is paged.
-function page(origin, { title, about, url, image, robots, main, mine = false, share = false, cards = [], paged = "" }) {
-  const { header, footer } = siteChrome();
+///
+/// In German, French or Spanish ([lang]) as a person's page is (/de/u/X),
+/// with that copy's header and footer and [words] for its scripts.
+function page(origin, { title, about, url, image, robots, main, mine = false, share = false, cards = [], paged = "", lang = "en",
+  words = null, alternates = "" }) {
+  const { header, footer } = siteChrome(lang);
   const quiet = quietMarks(cards.map(marksOf));
   return `<!doctype html>
-<html lang="en">
+<html lang="${lang}">
 <head>
-${head(origin, { title, about, url, image, robots, mine, share, paged })}
+${head(origin, { title, about, url, image, robots, mine, share, paged, lang, words, alternates })}
 </head>
 <body${quiet ? ` data-quiet="${quiet}"` : ""}>
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main">${asText(say("Skip to content"))}</a>
 ${header}
 <main id="main">
 ${main}
@@ -1105,15 +1115,22 @@ ${footer}
 </html>`;
 }
 
-function missingPage(origin, what) {
-  return page(origin, { title: `${what} — Brickworks`, about: "A page of the Brickworks gallery.", robots: "noindex",
-    main: `<div class="wrap gone"><h1>${escapeHtml(what)}</h1>
-  <p class="lede">The address may be mistyped, or what was here has gone.</p>
-  <div class="actions"><a class="cta" href="/gallery">See the gallery</a></div></div>` });
+function missingPage(origin, what, lang = "en", words = null) {
+  const at = lang === "en" ? "" : `/${lang}`;
+  return page(origin, { title: say("{what} — Brickworks", { what }), about: say("A page of the Brickworks gallery."), robots: "noindex",
+    lang, words, main: `<div class="wrap gone"><h1>${escapeHtml(what)}</h1>
+  <p class="lede">${asText(say("The address may be mistyped, or what was here has gone."))}</p>
+  <div class="actions"><a class="cta" href="${at}/gallery">${asText(say("See the gallery"))}</a></div></div>` });
 }
 
-const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
 const SINCE_DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+/// A month as the page's language writes it: "October 2026", "Oktober 2026".
+const MONTHS = new Map();
+const sinceSaid = (at) => {
+  const locale = globalThis.brickworksLang?.locale || "en-GB";
+  if (!MONTHS.has(locale)) MONTHS.set(locale, new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }));
+  return MONTHS.get(locale).format(at);
+};
 
 /// A count is said once there is one: never "0 likes" (docs/SOCIAL.md).
 /// Kept on the page, hidden, where web/follow.js counts it again.
@@ -1126,15 +1143,15 @@ const zero = (n) => (Number(n) ? "" : " hidden");
 /// [data-followers], which web/follow.js counts again once somebody follows.
 function numbersHtml(earned, about, follows) {
   const stat = (kind, n, one, many, extra = "") => `<li data-stat="${kind}"${extra}${zero(n)}>`
-    + `<b>${escapeHtml((Number(n) || 0).toLocaleString("en-US"))}</b> <span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
+    + `<b>${escapeHtml(number(Number(n) || 0))}</b> <span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
   const ready = follows && follows.ready;
-  return `<ul class="numbers" aria-label="Their numbers">`
-    + stat("builds", earned?.builds, "build finished", "builds finished")
-    + stat("remixes", earned?.remixes, "remix", "remixes")
-    + stat("models", earned ? earned.models : about?.models, "model", "models")
-    + stat("likes", earned ? earned.likes : about?.likes, "like", "likes")
-    + (ready ? stat("followers", follows.followers, "follower", "followers", " data-followers") : "")
-    + (ready ? stat("following", follows.following, "following", "following") : "")
+  return `<ul class="numbers" aria-label="${asText(say("Their numbers"))}">`
+    + stat("builds", earned?.builds, say("build finished"), say("builds finished"))
+    + stat("remixes", earned?.remixes, say("remix"), say("remixes"))
+    + stat("models", earned ? earned.models : about?.models, say("model"), say("models"))
+    + stat("likes", earned ? earned.likes : about?.likes, say("like"), say("likes"))
+    + (ready ? stat("followers", follows.followers, say("follower"), say("followers"), " data-followers") : "")
+    + (ready ? stat("following", follows.following, say("following"), say("following")) : "")
     + "</ul>";
 }
 
@@ -1149,19 +1166,20 @@ function numbersHtml(earned, about, follows) {
 /// none taken out).
 export function achievementsOf({ about, earned, built, wins, levels = null }) {
   const out = (wins || []).map((win) => ({ id: "won", name: wonSaid(win), model: win.model,
-    said: `${win.name}: ${count(win.votes, "vote")}` }));
+    said: `${win.name}: ${countedSaid(win.votes, "vote")}` }));
   if (Array.isArray(levels)) return [...out, ...levelAwards(levels)];
   if ((Number(earned?.builds) || 0) >= 10) {
-    out.push({ id: "ten", name: "Ten builds", said: "Their models were built to the last step ten times or more" });
+    out.push({ id: "ten", name: say("Ten builds"), said: say("Their models were built to the last step ten times or more") });
   }
   if ((Number(earned?.tested) || 0) > 0) {
-    out.push({ id: "tested", name: "Tested", said: "A model of theirs is marked Tested: it stands at every step" });
+    out.push({ id: "tested", name: say("Tested"), said: say("A model of theirs is marked Tested: it stands at every step") });
   }
   if ((Number(earned ? earned.models : about?.models) || 0) > 0) {
-    out.push({ id: "listed", name: "First model listed", said: "They shared a model in the gallery with their name on it" });
+    out.push({ id: "listed", name: say("First model listed"), said: say("They shared a model in the gallery with their name on it") });
   }
   if ((built || []).length > 0) {
-    out.push({ id: "built", name: "First build finished", said: "They posted a photo of their real build of a model in the gallery" });
+    out.push({ id: "built", name: say("First build finished"),
+      said: say("They posted a photo of their real build of a model in the gallery") });
   }
   return out;
 }
@@ -1183,18 +1201,24 @@ async function levelsOf(account, tests) {
 /// [by] says who built each, for the photos of a designer's models. Any
 /// shape, so in columns (docs/SOCIAL.md D4).
 function stripHtml(photos, { by = false } = {}) {
-  return photos.map((one) => `<figure class="build" id="photo-${one.id}"><a href="/m/${one.model}#photo-${one.id}">`
-    + `<img src="/api/people?op=photo_file&amp;id=${one.id}" alt="${escapeHtml(`A build of ${one.model_name}`)}" `
+  const at = langAt();
+  return photos.map((one) => `<figure class="build" id="photo-${one.id}"><a href="${at}/m/${one.model}#photo-${one.id}">`
+    + `<img src="/api/people?op=photo_file&amp;id=${one.id}" alt="${escapeHtml(say("A build of {name}", { name: one.model_name }))}" `
     + `width="${Number(one.width) || 1}" height="${Number(one.height) || 1}" loading="lazy" decoding="async"></a>`
-    + `<figcaption>${one.words ? `<q>${escapeHtml(one.words)}</q>` : ""}<a href="/m/${one.model}">${escapeHtml(one.model_name)}</a>`
-    + `${by ? `, built by ${one.by ? `<a href="/u/${escapeHtml(one.by.handle)}">${escapeHtml(one.by.name)}</a>` : "a builder"}` : ""}`
+    + `<figcaption>${one.words ? `<q>${escapeHtml(one.words)}</q>` : ""}<a href="${at}/m/${one.model}">${escapeHtml(one.model_name)}</a>`
+    + `${by ? sayHtml(", built by {who}", { who: one.by ? `<a href="${at}/u/${escapeHtml(one.by.handle)}">${escapeHtml(one.by.name)}</a>`
+      : asText(say("a builder")) }) : ""}`
     + "</figcaption></figure>").join("");
 }
 
 /// A profile's tabs, each a page of its own (?tab=): its work, its builds,
 /// its lists, and the models they liked when they chose to show them, each
 /// with its count once there is one.
-const TABS = [["models", "Models"], ["builds", "Builds"], ["collections", "Collections"], ["likes", "Likes"]];
+const TABS = ["models", "builds", "collections", "likes"];
+/// A tab's name, in the page's language.
+function tabSaid(id) {
+  return { models: say("Models"), builds: say("Builds"), collections: say("Collections"), likes: say("Likes") }[id];
+}
 
 /// How many a list has, as [n] says, when it agrees with a page of it
 /// ([at], [shown] on it, [more] after it): else -1, and the pager says only
@@ -1206,8 +1230,10 @@ const agreed = (n, at, shown, more) => {
 
 /// A page of a list past its end (a list grown shorter, or an address
 /// made by hand): said, with the way to its first page.
-const pastEnd = (at, href) => `<p class="state">There is no page ${at.toLocaleString("en-US")} here. `
-  + `<a class="link" href="${escapeHtml(href(1))}">Back to the first page</a>.</p>`;
+function pastEnd(at, href) {
+  return `<p class="state">${sayHtml("There is no page {n} here. {back}.", { n: escapeHtml(number(at)),
+    back: `<a class="link" href="${escapeHtml(href(1))}">${asText(say("Back to the first page"))}</a>` })}</p>`;
+}
 
 /// /challenge?id=N (tools/deploy.sh): the challenge page with challenge
 /// N's own title, words and picture in its head (api/_challenges.js
@@ -1237,9 +1263,15 @@ async function profilePage(request, response) {
   const origin = originOf(request);
   const handle = String(request.query?.handle || "").toLowerCase();
   const tests = testsAsked(request.query);
+  // In German, French or Spanish (/de/u/X); a language the site has no
+  // words in is no page.
+  const lang = String(request.query?.lang || "en");
+  const words = lang === "en" ? null : siteWords(lang);
+  if (lang !== "en" && !words) return html(response, 404, missingPage(origin, say("Nobody here has that handle")), { tests });
+  const speak = (draw) => inLanguage(lang, words, draw);
   const person = await personOf(handle);
-  if (!person) return html(response, 404, missingPage(origin, "Nobody here has that handle"), { tests });
-  const asked = TABS.some(([id]) => id === request.query?.tab) ? String(request.query.tab) : "";
+  if (!person) return html(response, 404, speak(() => missingPage(origin, say("Nobody here has that handle"), lang, words)), { tests });
+  const asked = TABS.includes(request.query?.tab) ? String(request.query.tab) : "";
   const number = Number(request.query?.page ?? 1);
   const at = Number.isInteger(number) && number >= 1 && number <= MOST_PAGES ? number : 1;
   const [shown, about, built, follows, following, designer, wins, shows, liked, levels] = await Promise.all([
@@ -1257,7 +1289,6 @@ async function profilePage(request, response) {
   const showcase = await showcaseOf(origin, person, shows, tests);
   // Their picture, and the faces of whom they follow, in one lookup.
   await withFaces([person, following]);
-  const url = `${origin}/u/${person.handle}`;
   const earned = designer && designer.ready && designer.models > 0 ? designer : null;
   const lists = (about?.collections || []).filter((list) => ID.test(String(list.id)));
   const theirs = earned ? earned.photos : [];
@@ -1265,9 +1296,38 @@ async function profilePage(request, response) {
     likes: liked ?? 0 };
   // Likes only when they chose to show them: else no tab, and ?tab=likes
   // is any other profile's first tab.
-  const tabs = TABS.filter(([id]) => id !== "likes" || liked !== null);
+  const tabs = TABS.filter((id) => id !== "likes" || liked !== null);
   // The tab asked for; else the first with something in it.
-  const tab = (tabs.some(([id]) => id === asked) ? asked : "") || tabs.map(([id]) => id).find((id) => counts[id] > 0) || "models";
+  const tab = (tabs.includes(asked) ? asked : "") || tabs.find((id) => counts[id] > 0) || "models";
+  // What the tab shows, each card with its faces and wins, before the page
+  // is said in its language (inLanguage draws at once).
+  await withFaces(showcase.pins);
+  let cards = [];
+  let likedAt = null;
+  let covers = new Map();
+  if (tab === "models") {
+    cards = (await withWins(await withFaces(shown.models), tests))
+      .map((card) => ({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 }));
+  } else if (tab === "likes") {
+    likedAt = await likedPage(origin, person, at, tests);
+    cards = likedAt ? await withWins(await withFaces(likedAt.models), tests) : [];
+  } else if (tab === "collections" && lists.length) {
+    covers = await coversOf(lists, tests);
+  }
+  return html(response, 200, speak(() => profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, about, built, theirs,
+    follows, following, earned, wins, levels, showcase, lists, cards, likedAt, covers, lang, words })), { tests });
+}
+
+/// A person's page as profilePage gathered it, said in [lang]: its links to
+/// their pages, their models' and the people they follow in it too.
+function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, about, built, theirs, follows, following, earned,
+  wins, levels, showcase, lists, cards, likedAt, covers, lang, words }) {
+  const at = lang === "en" ? "" : `/${lang}`;
+  const url = `${origin}${at}/u/${person.handle}`;
+  // Its copies in each language, each naming the others; English for any other.
+  const alternates = [["en", ""], ...SITE_LANGS.map((code) => [code, `/${code}`]), ["x-default", ""]]
+    .map(([code, where]) => `<link rel="alternate" hreflang="${code}" href="${escapeHtml(`${origin}${where}/u/${person.handle}`)}">`)
+    .join("\n");
   const query = (more) => {
     const said = new URLSearchParams(more);
     if (tests) said.set("tests", "1");
@@ -1277,16 +1337,16 @@ async function profilePage(request, response) {
   const name = escapeHtml(person.name);
   const since = Date.parse(person.created_at || "");
   // Page n of a tab's list (web/pager.js): the tab said when it was asked.
-  const pageHref = (which) => (n) => `/u/${person.handle}${query({ ...(asked ? { tab: which } : {}), ...(n > 1 ? { page: n } : {}) })}`;
+  const pageHref = (which) => (n) => `${at}/u/${person.handle}${query({ ...(asked ? { tab: which } : {}), ...(n > 1 ? { page: n } : {}) })}`;
   let paged = "";
 
   // The head: who they are, what they said, where else they are, their
   // numbers, and what can be done here.
   const links = showcase.links.map((link) => `<li><a href="${escapeHtml(link.href)}" rel="ugc nofollow noopener" target="_blank">`
     + `${escapeHtml(link.said)}</a></li>`).join("");
-  const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="More">${iconHtml("more")}</summary>`
-    + `<div class="menu-list"><button type="button" data-report="this profile" data-report-handle="${escapeHtml(person.handle)}" hidden>`
-    + "Report it</button><a href=\"/takedown\">Takedown requests</a></div></details>";
+  const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="${asText(say("More"))}">${iconHtml("more")}</summary>`
+    + `<div class="menu-list"><button type="button" data-report="${asText(say("this profile"))}" data-report-handle="${escapeHtml(person.handle)}" hidden>`
+    + `${asText(say("Report it"))}</button><a href="/takedown">${asText(say("Takedown requests"))}</a></div></details>`;
   // The banner is its model's picture with nothing behind the model, on
   // the theme's own ground as a card's is (web/directory.css); the server
   // gives the picture itself for a model published before cut-outs.
@@ -1295,35 +1355,31 @@ async function profilePage(request, response) {
     ${avatarHtml({ handle: person.handle, name: person.name, picture: person.picture }, { size: "huge" })}
     <div class="who">
       <h1>${name}</h1>
-      <p class="handle">@${escapeHtml(person.handle)} · <span data-role>${earned ? "Designer" : "Builder"}</span>${Number.isFinite(since)
-        ? ` · building here since ${SINCE.format(since)}` : ""}</p>
+      <p class="handle">@${escapeHtml(person.handle)} · <span data-role>${earned ? asText(say("Designer")) : asText(say("Builder"))}</span>${Number.isFinite(since)
+        ? ` · ${asText(say("building here since {when}", { when: sinceSaid(since) }))}` : ""}</p>
     </div>
     <div class="acts">
       ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
-        data-follow="${escapeHtml(person.handle)}" hidden>Follow</button><span class="said" role="status"></span></p>
-      <a class="cta ghost" href="/profile?edit=1" data-edit-own hidden>Edit profile</a>` : ""}
-      ${iconButtonHtml({ icon: "share", name: "Share",
+        data-follow="${escapeHtml(person.handle)}" hidden>${asText(say("Follow"))}</button><span class="said" role="status"></span></p>
+      <a class="cta ghost" href="/profile?edit=1" data-edit-own hidden>${asText(say("Edit profile"))}</a>` : ""}
+      ${iconButtonHtml({ icon: "share", name: say("Share"),
         attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
       ${more}
     </div>
   </header>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
-  ${links ? `<ul class="links" aria-label="Elsewhere">${links}</ul>` : ""}
+  ${links ? `<ul class="links" aria-label="${asText(say("Elsewhere"))}">${links}</ul>` : ""}
   <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>`;
 
   // Pinned: up to three of their models, in the order they chose.
-  await withFaces(showcase.pins);
-  const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">Pinned</h2>
+  const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">${asText(say("Pinned"))}</h2>
     <div class="models scroller" role="group" aria-labelledby="pinned-h">${showcase.pins.map((card) => cardHtml({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 },
       { earned: Boolean(earned), eager: true })).join("")}</div></section>` : "";
 
   // The tab, and the cards on the page.
   let panel = "";
-  const drawn = [...showcase.pins];
+  const drawn = [...showcase.pins, ...cards];
   if (tab === "models") {
-    const cards = (await withWins(await withFaces(shown.models), tests))
-      .map((card) => ({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 }));
-    drawn.push(...cards);
     const pager = pagerHtml({ id: "models", first: shown.page, shown: cards.length, more: shown.more,
       total: agreed(counts.models, shown.page, cards.length, shown.more), href: pageHref("models"), source: "page",
       skeleton: skeletonHtml() });
@@ -1331,46 +1387,45 @@ async function profilePage(request, response) {
     const first = shown.page === 1 ? cards[0] : null;
     // The model to start with: the first by Top builds, once somebody built it.
     const start = earned && first && first.builds > 0 ? first : null;
-    panel = cards.length ? `${start ? `<p class="start-with">Start with their most built:
-      <a href="/m/${start.id}">${escapeHtml(start.name)}</a>, ${escapeHtml(count(start.builds, "build"))} finished${start.tested ? ", Tested" : ""}.
-      <a class="cta small" href="/app?view=${start.id}&amp;build">Build it</a></p>` : ""}
-    ${earned && counts.models > 1 && earned.builds + earned.remixes > 0 ? `<p class="note">Most built first: a build finished counts most, then a remix and the Tested mark.</p>` : ""}
+    panel = cards.length ? `${start ? `<p class="start-with">${sayHtml(start.tested
+      ? "Start with their most built: {model}, {builds} finished, Tested." : "Start with their most built: {model}, {builds} finished.",
+    { model: `<a href="${at}/m/${start.id}">${escapeHtml(start.name)}</a>`, builds: escapeHtml(countedSaid(start.builds, "build")) })}
+      <a class="cta small" href="/app?view=${start.id}&amp;build">${asText(say("Build it"))}</a></p>` : ""}
+    ${earned && counts.models > 1 && earned.builds + earned.remixes > 0 ? `<p class="note">${asText(say("Most built first: a build finished counts most, then a remix and the Tested mark."))}</p>` : ""}
     ${pager.earlier}
     <div class="models" id="models" data-models data-page="${shown.page}">${cards.map((card, i) => cardHtml(card, { earned: Boolean(earned),
       eager: i < (showcase.pins.length ? 4 : FIRST_SCREEN) })).join("")}</div>
     ${pager.after}`
       : shown.page > 1 ? pastEnd(shown.page, pageHref("models"))
-      : `<p class="state">Nothing in the gallery yet. The models ${name} shares in the gallery with their name show here.</p>`;
+      : `<p class="state">${sayHtml("Nothing in the gallery yet. The models {name} shares in the gallery with their name show here.", { name })}</p>`;
   } else if (tab === "builds") {
-    panel = counts.builds ? `${built.length ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">Built by ${name}</h2>
-      <p class="note">Photos of their real builds of models in the gallery.</p>
+    panel = counts.builds ? `${built.length ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">${sayHtml("Built by {name}", { name })}</h2>
+      <p class="note">${asText(say("Photos of their real builds of models in the gallery."))}</p>
       <div class="build-grid">${stripHtml(built)}</div></section>` : ""}
-    ${theirs.length ? `<section class="builds-of" aria-labelledby="built-of-h"><h2 id="built-of-h">Built by others</h2>
-      <p class="note">${escapeHtml(earned.builders === 1 ? "One person" : `${earned.builders.toLocaleString("en-US")} people`)} posted photos of their real builds of ${name}’s models.</p>
+    ${theirs.length ? `<section class="builds-of" aria-labelledby="built-of-h"><h2 id="built-of-h">${asText(say("Built by others"))}</h2>
+      <p class="note">${sayHtml(earned.builders === 1 ? "One person posted photos of their real builds of {name}’s models."
+        : "{n} people posted photos of their real builds of {name}’s models.", { n: escapeHtml(number(earned.builders)), name })}</p>
       <div class="build-grid">${stripHtml(theirs, { by: true })}</div></section>` : ""}`
-      : `<p class="state">No builds yet. Photos of real builds show here: the ones ${name} posts of what they built, and the ones other people post of ${name}’s models.</p>`;
+      : `<p class="state">${sayHtml("No builds yet. Photos of real builds show here: the ones {name} posts of what they built, "
+        + "and the ones other people post of {name}’s models.", { name })}</p>`;
   } else if (tab === "likes") {
-    const page = await likedPage(origin, person, at, tests);
-    const cards = page ? await withWins(await withFaces(page.models), tests) : [];
-    drawn.push(...cards);
-    const pager = page ? pagerHtml({ id: "models", first: page.page, shown: cards.length, more: page.more,
-      total: agreed(counts.likes, page.page, cards.length, page.more), href: pageHref("likes"), source: "page",
+    const pager = likedAt ? pagerHtml({ id: "models", first: likedAt.page, shown: cards.length, more: likedAt.more,
+      total: agreed(counts.likes, likedAt.page, cards.length, likedAt.more), href: pageHref("likes"), source: "page",
       skeleton: skeletonHtml() }) : null;
-    if (page) paged = pagerLinks({ at: page.page, more: page.more, href: pageHref("likes") });
-    panel = cards.length ? `<p class="note">${name} chose to show the models they liked, newest first.</p>
+    if (likedAt) paged = pagerLinks({ at: likedAt.page, more: likedAt.more, href: pageHref("likes") });
+    panel = cards.length ? `<p class="note">${sayHtml("{name} chose to show the models they liked, newest first.", { name })}</p>
     ${pager.earlier}
-    <div class="models" id="models" data-models data-page="${page.page}">${cards.map((card, i) => cardHtml(card, { eager: i < 4 })).join("")}</div>
+    <div class="models" id="models" data-models data-page="${likedAt.page}">${cards.map((card, i) => cardHtml(card, { eager: i < 4 })).join("")}</div>
     ${pager.after}`
-      : page && page.page > 1 ? pastEnd(page.page, pageHref("likes"))
-      : `<p class="state">No likes yet. The models ${name} likes in the gallery show here, as they chose.</p>`;
+      : likedAt && likedAt.page > 1 ? pastEnd(likedAt.page, pageHref("likes"))
+      : `<p class="state">${sayHtml("No likes yet. The models {name} likes in the gallery show here, as they chose.", { name })}</p>`;
   } else {
-    const covers = lists.length ? await coversOf(lists, tests) : new Map();
     panel = lists.length ? `<div class="list-cards">${lists.map((list, i) => listCardHtml(list, covers, { eager: i < 4 })).join("")}</div>`
-      : `<p class="state">No collections yet. The lists of models ${name} makes public show here.</p>`;
+      : `<p class="state">${sayHtml("No collections yet. The lists of models {name} makes public show here.", { name })}</p>`;
   }
-  const tabsHtml = `<nav class="tabs" aria-label="${name}’s work">${tabs.map(([id, label]) =>
-    `<a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: id }))}" data-tab="${id}"${id === tab ? ' aria-current="page"' : ""}>`
-    + `${label}${counts[id] ? ` <span class="n">${escapeHtml(counts[id].toLocaleString("en-US"))}</span>` : ""}</a>`).join("")}</nav>`;
+  const tabsHtml = `<nav class="tabs" aria-label="${sayHtml("{name}’s work", { name })}">${tabs.map((id) =>
+    `<a href="${at}/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: id }))}" data-tab="${id}"${id === tab ? ' aria-current="page"' : ""}>`
+    + `${asText(tabSaid(id))}${counts[id] ? ` <span class="n">${escapeHtml(number(counts[id]))}</span>` : ""}</a>`).join("")}</nav>`;
 
   const main = `<div class="wrap wide person profile${earned ? " designer" : ""}${showcase.banner ? " bannered" : ""}" data-handle="${escapeHtml(person.handle)}">
   ${head}
@@ -1381,31 +1436,34 @@ async function profilePage(request, response) {
   </div>
   <!-- Under the work, not over it: drawn for its designer alone once their
        sign-in is read, it moved the whole page down as it came (site273). -->
-  <section class="designs" id="designs-mine" aria-label="Your models, as only you see them" hidden></section>
-  ${following.length ? `<section class="follows" aria-labelledby="follows-h"><h2 id="follows-h">Follows</h2>
-    <p class="note">${name} chose to show whom they follow.</p>
-    <ul class="pills">${following.map((one) => `<li><a class="pill" href="/u/${escapeHtml(one.handle)}">`
+  <section class="designs" id="designs-mine" aria-label="${asText(say("Your models, as only you see them"))}" hidden></section>
+  ${following.length ? `<section class="follows" aria-labelledby="follows-h"><h2 id="follows-h">${asText(say("Follows"))}</h2>
+    <p class="note">${sayHtml("{name} chose to show whom they follow.", { name })}</p>
+    <ul class="pills">${following.map((one) => `<li><a class="pill" href="${at}/u/${escapeHtml(one.handle)}">`
       + `${avatarHtml({ handle: one.handle, name: one.name, picture: one.picture }, { size: "small" })}${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
   ${counts.models ? `<!-- More like them (api/_alike.js): drawn by web/follow.js for whoever
        asks, never them nor whom they follow, and shown only once somebody is close. -->
   <section class="alike" id="alike" data-alike="${escapeHtml(person.handle)}" aria-labelledby="alike-h" hidden>
-    <h2 id="alike-h">More like ${name}</h2>
-    <p class="note">Designers whose models share the most with ${name}’s: themes, tags and parts.</p>
+    <h2 id="alike-h">${sayHtml("More like {name}", { name })}</h2>
+    <p class="note">${sayHtml("Designers whose models share the most with {name}’s: themes, tags and parts.", { name })}</p>
     <ul class="people-list" id="alike-people"></ul>
   </section>` : ""}
 </div>
-${shareSheetHtml({ url, name: person.name, text: `${person.name} on Brickworks`,
-    about: "Its link opens their page: their models, their builds and their collections.",
+${shareSheetHtml({ url, name: person.name, text: say("{name} on Brickworks", { name: person.name }),
+    about: say("Its link opens their page: their models, their builds and their collections."),
     image: showcase.banner ? `${origin}/m/${showcase.banner}.png` : shown.models[0]?.image || "" })}`;
   const told = earned
-    ? `${count(earned.models, "model")} by ${person.name}, ${count(earned.builds, "build")} finished and ${count(earned.remixes, "remix", "remixes")}: designed in Brickworks.`
-    : `${count(about?.models ?? 0, "model")} by ${person.name}, built in Brickworks and shared in its gallery.`;
+    ? say("{models} by {name}, {builds} finished and {remixes}: designed in Brickworks.", { models: countedSaid(earned.models, "model"),
+      name: person.name, builds: countedSaid(earned.builds, "build"), remixes: countedSaid(earned.remixes, "remix", "remixes") })
+    : say("{models} by {name}, built in Brickworks and shared in its gallery.", { models: countedSaid(about?.models ?? 0, "model"),
+      name: person.name });
   const picture = showcase.banner ? `${origin}/m/${showcase.banner}.png` : shown.models[0]?.image || "";
-  return html(response, 200, page(origin, {
-    title: `${person.name} (@${person.handle}) — ${earned ? "a designer in" : "models built in"} Brickworks`,
+  return page(origin, {
+    title: earned ? say("{name} (@{handle}) — a designer in Brickworks", { name: person.name, handle: person.handle })
+      : say("{name} (@{handle}) — models built in Brickworks", { name: person.name, handle: person.handle }),
     about: person.bio ? person.bio.replace(/\s+/g, " ").slice(0, 160) : told,
-    url, image: picture, main, mine: true, cards: drawn, paged,
-  }), { tests });
+    url, image: picture, main, mine: true, cards: drawn, paged, lang, words, alternates,
+  });
 }
 
 /// /c/X: a public list's page. A private one is not shown here to anybody;

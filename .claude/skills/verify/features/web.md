@@ -1391,6 +1391,32 @@ plan with Claude as the client.
   those scopes fails `tools/site_lang.py --check`, `say(a ? "x" : "y")`
   counting as said; a key's name (`"Escape"`) and a reason to sign in,
   which `web/account.js` says, are not English left.
+- **Where a model's copy leads, in its language** (languages5, 2026-11-01):
+  a designer's profile (`/de/u/<handle>`, `/fr/...`, `/es/...`;
+  `api/people.js` `profilePage` draws `profileHtml` inside `inLanguage`; `/api/people?op=page&lang=`) and
+  an LDraw set (`/de/library/<id>`; `/api/share?op=set&lang=`,
+  `api/_library.js` `setModel`), each with `<html lang>`, a canonical and og:url of its own,
+  hreflang en/de/fr/es and x-default, and every link in the language (a
+  copy's links to a profile, its designer's, More by, a build's, a comment's
+  and More like's, open the profile's copy: `${langAt()}/u/`); the
+  embed (`/de/m/<id>/embed`; `/api/share?op=embed&lang=`), whose snippet on the copy
+  opens it and names its frame in the language; the inline 3D view's own
+  words (`tools/viewer/inline.js`, bundled into `web/viewer3d.js`). deploy.sh's
+  routes, the stand-in and the relay map all three. What the server tells a
+  visitor is said in the page: an answer's `error` and `why_not` through
+  `told()` (each sentence an entry: `tools/site_lang.py` `TOLD`), a
+  challenge's rules and what a model breaks of them from the rules themselves
+  (`rules`, `check`: `web/card.js` `rulesSaid`, `brokenSaid`), the app's
+  reasons a model is not Tested a piece at a time (`web/model-page.js`
+  `whySaid`; a piece it has no words for marked `lang="en"`), and More like's
+  line from its pieces (`api/_alike.js` `alikeOf`, `web/card.js`
+  `alikeSaid`). What people wrote stays as written. The guard: an `error` or
+  `why_not` shown not through `told()`/`say()` fails `tools/site_lang.py
+  --check` (`untold`), as does a link to a profile written `/u/` (`unled`),
+  a word left between two templates, a
+  `"Brickworks <lowercase>"` sentence outside `say()`, and a server sentence
+  (`API_WORDS`: `_tested.js` SAID and FAILED, `_trust.js` UNDER_13) with no
+  entry.
 - **A parts list's names in the visitor's language** (languages3,
   2026-11-01): a set's page, a model's and an LDraw set's ask their list
   with `?lang=<code>` (the page's language, or on a page with no copy the
@@ -3897,6 +3923,23 @@ lists. Locally 125 and 16 passed; on brickworks.diy with rel-m243 live, 68
 of 125 failed (every copy English at `/m/<id>`, no alternates, a card on
 the German gallery opening `/m/<id>`, a date "27 October 2026") and 3 of
 16 (no models' sitemaps).
+Then where a model's copy leads (`--pages=profile,ldraw,embed,viewer,server`,
+languages5, 2026-11-01), English first at each width for what it cuts
+short: its designer's profile and an LDraw set opened at their English
+address land on their copy with its title, alternates, canonical, tabs and
+footer, every model the profile links to opening its copy; the copy's
+links to a profile open the profile's copy; the embed code on the copy
+opens `/de/m/<id>/embed` and names its frame in the language, and that
+page speaks it, its links into the app with `lang=`; the 3D view's tools,
+label and Open in the app, and with its model answered 404 in the
+browser, why and Try again; and what the server tells the owner (planted
+in the browser, every answer it brings made there, nothing of it sent):
+why they may not comment or follow, a challenge's rules and what the
+model breaks of them, and the app's reasons it is not Tested. Pictures a
+screen at a time (`<code>-<page>-<width>-<n>.png`). Locally 211 passed;
+on brickworks.diy with rel-m244 live, 160 of 211 failed (no profile or
+LDraw set copies, the embed and its frame's name English, the 3D view and
+every server sentence English, the copy's 11 links to a profile English).
 
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):

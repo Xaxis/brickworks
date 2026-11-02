@@ -22,6 +22,8 @@
 
 import { SITE_LICENCE, storeIndex } from "./_omr_credit.js";
 import { SIZES } from "./_directory.js";
+// Said in the page's language where a page is made in one (sharePage).
+import { say } from "./_card.js";
 
 /// A set's id as the app makes them, "omr-10179-1" (ModelLibrary.ID), less
 /// the dot the app allows and no file name has (tools/library_build.py
@@ -193,13 +195,15 @@ export function setModel(entry, { authors = [], steps = 0 } = {}) {
   const names = creditNames(entry, authors);
   const by = namesSaid(names);
   const said = [entry.theme, entry.year ? String(entry.year) : ""].filter(Boolean).join(", ");
+  const titled = `${setTitle(entry)}${said ? ` (${said})` : ""}`;
   return {
     id: entry.id, name: entry.name, author: null, by: null, parts: entry.parts,
     has_image: true, has_thumb: true, tags: [], kind: null, from: [], remixes_listed: [],
     licence: SITE_LICENCE[entry.licence],
     modelled_by: by && entry.page ? { name: by, page: entry.page } : null,
-    description: `An LDraw model of LEGO® set ${setTitle(entry)}${said ? ` (${said})` : ""}, `
-      + `modelled ${by ? `by ${by} ` : ""}for ${FROM}.`,
+    description: by
+      ? say("An LDraw model of LEGO® set {set}, modelled by {name} for {ldraw}.", { set: titled, name: by, ldraw: say(FROM) })
+      : say("An LDraw model of LEGO® set {set}, modelled for {ldraw}.", { set: titled, ldraw: say(FROM) }),
     library: { set: entry.set, theme: themeOf(entry), year: entry.year, box: entry.box, steps,
       alternate_of: entry.alternate_of, authors: names },
   };
