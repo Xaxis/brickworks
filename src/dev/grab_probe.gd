@@ -120,6 +120,11 @@ func _run() -> void:
 			# Every hose's laying made slower by this many microseconds: the cost
 			# checks must fail on it (FlexFollow.slow_usec).
 			FlexFollow.slow_usec = int(arg.trim_prefix("--slow-lay="))
+		if arg.begins_with("--slow-walk="):
+			# Every room test with a budget made slower by this many microseconds:
+			# a slower machine, whose drag's way runs out of its frame's share
+			# (Grab.slow_usec).
+			Grab.slow_usec = int(arg.trim_prefix("--slow-walk="))
 		if arg == "--check-covers":
 			# Every turned part asked where something is is also worked out
 			# whole, and the two answers compared (Grab.check_covers).
@@ -1225,6 +1230,12 @@ func _case(name: String, path: String, want: String) -> void:
 	await _frames(3)
 	await _settled()
 	var placed: Dictionary = grab.placed.duplicate()
+	if grab.mode == "turn" and grab.link.detent > 0.0:
+		# A click hinge stands on one of its clicks: where it stops, found as
+		# it was let go, was kept between two, -144° on 22.5° clicks.
+		var clicks: float = grab.angle / grab.link.detent
+		_check("%s: let go, it stands on one of its %s° clicks (%.2f°)" % [name,
+			Balance.tidy(grab.link.detent), grab.angle], absf(clicks - roundf(clicks)) < 0.001)
 	_check("%s: let go, it is one step to undo (%s)" % [name, _builder.history_words(1)[0]
 		if _builder.history_depth() > depth else "none"], _builder.history_depth() == depth + 1)
 	if _windowed:
@@ -1322,7 +1333,11 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 	var stop_ok: bool = false
 	var stop_said: String = ""
 	var furthest: float = 0.0
+	# The least and the most it was turned to.
+	var reached := Vector2.ZERO
 	var miss_said: String = ""
+	var drag_us: int = Time.get_ticks_usec()
+	var busy: float = ProbeTime.box_load()
 	for target: float in targets:
 		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
 		var screen: Vector2 = _camera.unproject_position(turned)
@@ -1354,6 +1369,7 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 			stopped_at = NAN
 		if absf(grab.angle) > absf(furthest):
 			furthest = grab.angle
+		reached = Vector2(minf(reached.x, grab.angle), maxf(reached.y, grab.angle))
 		if not mid_shot and _windowed and absf(grab.angle) > 40.0:
 			mid_shot = true
 			await _shot(name, "2_mid")
@@ -1376,7 +1392,21 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 	if not stop_said.is_empty():
 		_check("%s: it stops where the model is: %s" % [name, stop_said], stop_ok)
 	else:
-		print("    (nothing stopped it over ±150°)")
+		# Nothing stopped it: nothing is in its way either, as far as it went
+		# each way. Shown on trust on a slower machine, its way not tested on
+		# but on a pause, 4903-1's click hinge went through its base to 150°.
+		_check("%s: nothing stopped it from %.1f° to %.1f°, and nothing is in its way there" % [name,
+			reached.x, reached.y], grab.has_room(grab.transforms_at(reached.x))
+			and grab.has_room(grab.transforms_at(reached.y)))
+	if grab.walk_budget_ms < INF:
+		# Its way, where a move's frame has no time to test all of it, is
+		# tested on in the frames after, a share each (Grab.verify_step):
+		# judged by GrabDrag's own work in the drag's frames, not the box's.
+		var own: PackedFloat64Array = _own_since(drag_us)
+		busy = maxf(busy, ProbeTime.box_load())
+		var bar: float = 1000.0 / 60.0 * ProbeTime.slack(busy)
+		_check("%s: the drag's frames keep to a frame, its way tested on in %d of them: %s of GrabDrag's own (bar %.1f, %s)"
+			% [name, grab.walks_on, _own_said(own), bar, ProbeTime.load_said(busy)], _most(own) <= bar)
 	if want == "gear" and grab.coupled.is_empty():
 		print("    (no gears turned: trains read %s, this grab's %s, ready %s; %s; pressed #%d %s)" % [
 			_grab._mechanism != null, grab.mechanism != null, _grab.is_ready(), grab.gear_note,
