@@ -83,7 +83,8 @@ def test_each_copy_points_to_its_own_pages_and_carries_its_language_into_the_app
     for code in site_lang.LANGUAGES:
         for name, where in site_lang.PAGES.items():
             text = (ROOT / "web" / code / (f"{where}.html" if where else "index.html")).read_text(encoding="utf-8")
-            assert re.search(f'<html lang="{code}"(?: data-missing)?>', text)
+            # A tab of the gallery's (tools/browse_pages.py) says which it opens on.
+            assert re.search(f'<html lang="{code}"(?: data-tab="[a-z]+")?(?: data-missing)?>', text)
             own = f"https://brickworks.diy/{code}" + (f"/{where}" if where else "")
             if name not in site_lang.UNLISTED:
                 assert f'<link rel="canonical" href="{own}">' in text and f'<meta property="og:url" content="{own}">' in text
@@ -135,7 +136,7 @@ def test_what_the_scripts_say_has_its_words() -> None:
     # hands the gallery and the library (an id is not one).
     words = site_lang.script_words()
     assert words["Tell Brickworks what you own (in the app, Build › My collection…) and this shows what in the "
-                 "gallery you can build with it."] == "web/gallery.js"
+                 "gallery you can build with it."] == "web/models.js"
     assert {"set", "sets", "build finished", "builds finished", "Show more", "Page {n}"} <= set(words)
     assert {"Castles and fantasy", "Small, under 200 parts", "Built in 3D first", "Most liked"} <= set(words)
     assert "castle" not in words and "small" not in words
@@ -311,10 +312,11 @@ def test_a_link_to_any_page_with_copies_as_english_writes_it_is_caught() -> None
                  'a.href = "/docs";', 'call("/api/people?op=profile");', "alternatesOf(origin, `c/${id}`)"):
         assert site_lang.unled(link) == [], link
     loaded = {script for name in site_lang.PAGES for script in site_lang.scripts_of(name)}
-    gallery = (ROOT / "web/gallery.js").read_text(encoding="utf-8")
-    assert "gallery.js" in loaded and "web/gallery.js" not in site_lang.SAID_ALL and site_lang.unled(gallery) == []
-    planted = gallery.replace("`${langAt()}/challenge", "`/challenge", 1)
-    assert planted != gallery and len(site_lang.unled(planted)) == 1
+    # A script the gallery's imports (web/gallery.js, its lists) is loaded too.
+    models = (ROOT / "web/models.js").read_text(encoding="utf-8")
+    assert {"gallery.js", "models.js"} <= loaded and "web/models.js" not in site_lang.SAID_ALL and site_lang.unled(models) == []
+    planted = models.replace("`${langAt()}/challenge", "`/challenge", 1)
+    assert planted != models and len(site_lang.unled(planted)) == 1
 
 
 def test_the_pages_languages6_said_have_their_words() -> None:
@@ -324,7 +326,7 @@ def test_the_pages_languages6_said_have_their_words() -> None:
     # has its entry in each language.
     words = site_lang.script_words()
     for english, where in (("Collected by {who} · updated {when}", "api/people.js"),
-                           ("Collections — the Brickworks gallery", "api/people.js"),
+                           ("Collections — the Brickworks gallery", "web/collections.js"),
                            ("{title} · Brickworks challenge", "api/_challenges.js"),
                            ("{title} · a Brickworks challenge", "web/challenge.js"),
                            ("a link is at most 200 characters", "api/people.js"),

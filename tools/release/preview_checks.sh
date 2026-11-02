@@ -243,6 +243,15 @@ declare -A CMD=(
   # Share; and Open in Brickworks opening 106-1 in the app. The store's own
   # index and files: no account, no database.
   [library_site]="tools/web/library_site_flow.mjs --url=$P --out=$S/${TAG}_library_site"
+  # The gallery one page to browse (browse, 2026-11-02): Top, New, Builds,
+  # Collections and Sets each switched in place, no new document, the
+  # address and the marked tab its own, the same header, search and grid,
+  # and each tab's first cards the API's; Back to the tab and where it was
+  # scrolled, Forward again; the search kept from tab to tab; each tab's
+  # address reloaded; /library (?theme=Town), /builds, /collections and
+  # /de/library each 200 with canonical and hreflang on the right tab; the
+  # tab row whole at 390 and 1280, en and de.
+  [browse]="tools/web/browse_flow.mjs --url=$P --out=$S/${TAG}_browse"
   # The site's one pager (web/pager.js, site357) on the LDraw library and a
   # person's models: the count and numbered links, Show more from the
   # keyboard to the first new card, a press kept while its page is on its

@@ -859,6 +859,35 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px;
 	color: var(--ink-soft); font-size: var(--t-small); line-height: 1.4; overflow-wrap: anywhere;
 }
+/* A collection's cover: up to four of its models' pictures (web/card.js
+   collectionCardHtml, api/_lists.js mosaicHtml), on its card and at the
+   head of its page. */
+/* Its shape holds whatever its pictures' own: a wide picture across both
+   columns would make its row taller than the cover's half. */
+.mosaic {
+	aspect-ratio: 4 / 3; min-height: 0; overflow: hidden; display: grid; gap: 2px; background: var(--bg-soft);
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+}
+.mosaic img { width: 100%; height: 100%; min-height: 0; object-fit: cover; background: var(--picture-ground); }
+.mosaic.n1 img { grid-column: 1 / -1; grid-row: 1 / -1; }
+/* Kept wide, as the pictures are: two one above the other, three a wide
+   one over two. */
+.mosaic.n2 img, .mosaic.n3 img:first-child { grid-column: 1 / -1; }
+.mosaic.n0 { place-items: center; grid-template-columns: 1fr; grid-template-rows: 1fr; color: var(--ink-faint); font-size: var(--t-small); }
+/* A public collection as a card (web/card.js collectionCardHtml), the
+   gallery's Collections tab: the model card's shape, its cover filling the
+   frame; whose, how many models and followers on its line, and Follow at
+   its foot (web/follow.js), over the card's link as the designer's is,
+   level across a row; nothing there when there is no Follow (your own)
+   and nothing said. */
+.collection-card .frame > .mosaic { aspect-ratio: auto; width: 100%; height: 100%; }
+.collection-card .follow-line {
+	position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
+	margin: auto 0 0; padding-top: var(--s-2);
+}
+.collection-card .follow-line:not(:has(> .follow:not([hidden]), > .said:not(:empty))) { display: none; }
+.collection-card .follow-line .said { flex-basis: 100%; color: var(--ink-soft); font-size: var(--t-small); }
+.collection-card .follow-line .said:empty { display: none; }
 /* A card 180-280 px wide: the designer's line a step smaller, so their
    name, its size and its numbers fit. The name stays 16 px at every width. */
 @media (width < 900px) {

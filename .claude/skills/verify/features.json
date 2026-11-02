@@ -484,6 +484,22 @@
       "tests": []
     },
     {
+      "id": "cli:browse browser flow",
+      "kind": "cli",
+      "entry": "tools/web/browse_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/browse_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh browse: the gallery's tabs switched in place, no new document, the address and the same header, search and grid, each tab's first cards the API's; Back to the tab and its scroll; the search kept; each tab reloaded; /library, /library?theme=Town, /builds, /collections and /de/library with canonical and hreflang; the tab row at 390 and 1280, en and de)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:browse pages",
+      "kind": "cli",
+      "entry": "tools/browse_pages.py",
+      "reach": "python3 tools/browse_pages.py [--check]   (writes web/library.html, web/builds.html and web/collections.html from web/gallery.html, each with its tab's head and its tab marked; then tools/site_lang.py; tests/test_browse_pages.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:browser check",
       "kind": "cli",
       "entry": "tools/web/check.mjs",
@@ -3687,15 +3703,15 @@
     {
       "id": "ui:LDraw library page",
       "kind": "ui",
-      "entry": "web/library.html",
-      "reach": "https://brickworks.diy/library?q=10179&theme=Star%20Wars&sort=oldest&page=2   (every set the app's Library opens, as the gallery's cards: cover, name, number, theme, year, modeller; search, themes as pills, Filters: order, size, years; web/library.js reads /api/share?op=library a page at a time; linked from the gallery's tabs and every page's footer)",
+      "entry": "web/library.js",
+      "reach": "https://brickworks.diy/library?q=10179&theme=Star%20Wars&sort=oldest&page=2   (the gallery's Sets tab, switched in place: every set, as the gallery's cards: cover, name, number, theme, year, modeller; the gallery's search, themes as pills, Filters: order, size, years; web/library.js reads /api/share?op=library a page at a time; web/library.html written by tools/browse_pages.py; linked from every page's footer as Sets)",
       "area": "web",
       "tests": [
+        "tests/test_browse_pages.py",
         "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
-        "tests/test_sets.py",
-        "tests/test_site_shell.py"
+        "tests/test_sets.py"
       ]
     },
     {
@@ -3977,15 +3993,14 @@
     {
       "id": "ui:collections directory",
       "kind": "ui",
-      "entry": "api/people.js",
-      "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
+      "entry": "web/collections.js",
+      "reach": "https://brickworks.diy/collections  (?sort=followed, ?q=, ?page=N, ?tests=1; the gallery's Collections tab, switched in place: web/collections.js reads /api/people?op=collections a page at a time, each card web/card.js collectionCardHtml; supabase/collection_directory.sql, its search supabase/collection_search.sql; web/collections.html written by tools/browse_pages.py; linked from the footer)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py",
+        "tests/test_browse_pages.py",
+        "tests/test_collections_tab.py",
         "tests/test_gallery_builds.py",
-        "tests/test_release_train.py",
-        "tests/test_site_lang.py",
-        "tests/test_together_poll.py"
+        "tests/test_model_page.py"
       ]
     },
     {
@@ -4206,7 +4221,7 @@
       "id": "ui:gallery page",
       "kind": "ui",
       "entry": "web/gallery.html",
-      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (Top, New, Following signed in; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; gallery.js reads /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
+      "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (one page to browse, browse 2026-11-02: Top, New, Following signed in, Builds, Collections and Sets, each switched in place and put in the address with pushState, Back to the tab and where it was; web/gallery.js, its lists web/models.js, builds.js, collections.js and library.js; the search asks the tab it is on; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; the models from /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
@@ -4375,7 +4390,7 @@
       "id": "ui:model card",
       "kind": "ui",
       "entry": "web/card.js",
-      "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3",
+      "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3; the gallery's sets, builds' photos and collections are the same card (web/card.js cardHtml with a set, buildCardHtml, collectionCardHtml)",
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
@@ -5152,10 +5167,11 @@
     {
       "id": "ui:the gallery's builds tab",
       "kind": "ui",
-      "entry": "web/builds.html",
-      "reach": "https://brickworks.diy/builds   (?page=N, ?tests=1; a tab of /gallery and /library; web/builds.js reads /api/people?op=builds a page at a time, each card web/card.js buildCardHtml; locally relay_server.mjs serves /builds)",
+      "entry": "web/builds.js",
+      "reach": "https://brickworks.diy/builds   (?q=, ?page=N, ?tests=1; the gallery's Builds tab, switched in place; web/builds.js reads /api/people?op=builds a page at a time, searched by the model's name, each card web/card.js buildCardHtml; web/builds.html written by tools/browse_pages.py; locally relay_server.mjs serves /builds)",
       "area": "web",
       "tests": [
+        "tests/test_browse_pages.py",
         "tests/test_designers.py",
         "tests/test_discovery.py",
         "tests/test_gallery_builds.py",

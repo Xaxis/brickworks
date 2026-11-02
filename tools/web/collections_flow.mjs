@@ -1,30 +1,30 @@
-// The directory of collections (walk256 W12, supabase/collection_directory.sql,
-// api/people.js collectionsPage), in real browsers at 390 and 1280 px, light
-// and dark: /collections lists the public collections as cards, each with
-// its cover, its name, whose, how many models and Follow.
+// The gallery's Collections tab (walk256 W12, supabase/collection_directory.sql;
+// a tab of the gallery since browse, 2026-11-02: web/collections.js, from
+// /api/people?op=collections), in real browsers at 390 and 1280 px, light
+// and dark: /collections lists the public collections as the gallery's
+// cards, each with its cover, its name, whose, how many models and Follow.
 //
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/collections_flow.mjs --url=<preview> --out=DIR
 //   node --env-file=.env tools/web/relay_server.mjs 9310 --static=web &
 //   node --env-file=.env tools/web/collections_flow.mjs --url=http://127.0.0.1:9310 --out=DIR
 //
 // The live project's tables, so collection_directory.sql applied; before it
-// the page says collections are not listed yet, and the flow says so and
-// fails. Throwaway accounts at Resend test addresses, deleted at the end
+// the tab lists none, and the flow fails. Throwaway accounts at Resend test addresses, deleted at the end
 // with their models and collections; test accounts, so their collections
 // are listed only where ?tests=1 asks, as every list of the site has it.
 //
 //   1. Ada makes a profile, shares a tower in the gallery and puts it in a
 //      public collection and in a private one.
-//   2. A visitor: /collections?tests=1 has her public one as a card (its
-//      cover a picture of the tower, its name, Ada and her avatar, 1 model,
-//      Follow), and never the private one; the address with no tests says
-//      what is there or that there is nothing yet, never a 404; the
-//      gallery links to it.
+//   2. A visitor: /collections?tests=1 opens on the Collections tab, with
+//      her public one as a card (its cover a picture of the tower, its name,
+//      Ada and her avatar, 1 model, Follow), and never the private one; the
+//      list with no tests has no test account's; the gallery's tabs and the
+//      footer link to it.
 //   3. Bob, signed in, at 390 px: Follow on the card, Following, pressed,
-//      "1 follower" on the card, and the API agrees; Most followed lists it
-//      with its follower.
-//   4. At 390 and 1280 px, light and dark: the page, its tabs and its cards,
-//      nothing sideways.
+//      "1 follower" on the card, and the API agrees; Most followed, pressed
+//      in place, lists it with its follower.
+//   4. At 390 and 1280 px, light and dark: the tab, its orders and its
+//      cards, nothing sideways.
 //   5. Made private: gone from the directory.
 //
 // Pictures in --out.
@@ -96,10 +96,6 @@ async function api(pathname, { method = "GET", token, body } = {}) {
   const reply = await fetch(`${site}${pathname}`, { method, headers: sent, body: body === undefined ? undefined : JSON.stringify(body) });
   return { status: reply.status, body: await reply.json().catch(() => ({})) };
 }
-const text = async (pathname) => {
-  const reply = await fetch(`${site}${pathname}`, { headers });
-  return { status: reply.status, html: await reply.text() };
-};
 
 async function until(page, test, what, seconds = 30, arg = null) {
   const end = Date.now() + seconds * 1000;
@@ -111,21 +107,27 @@ async function until(page, test, what, seconds = 30, arg = null) {
   }
 }
 
-/// The directory as drawn: its title, tabs, cards and empty state, and
-/// whether the page scrolls sideways.
+/// The tab as drawn: which tab, the one marked, its orders (the pressed
+/// one starred), its cards and empty state, and whether the page scrolls
+/// sideways.
 const drawn = (page) => page.evaluate(() => ({
-  title: document.querySelector("main h1")?.textContent || "",
-  tabs: [...document.querySelectorAll("main .tabs a")].map((a) => `${a.textContent}${a.getAttribute("aria-current") ? "*" : ""}`),
-  cards: [...document.querySelectorAll("#collections .list-card")].map((card) => ({
-    id: card.dataset.id, name: card.querySelector(".name b")?.textContent || "",
+  tab: document.documentElement.dataset.tab || "",
+  marked: document.querySelector('#tabs [aria-current="page"]')?.textContent.trim() || "",
+  orders: [...document.querySelectorAll("#orders [data-order]")].filter((one) => one.offsetParent)
+    .map((one) => `${one.textContent.trim()}${one.getAttribute("aria-pressed") === "true" ? "*" : ""}`),
+  cards: [...document.querySelectorAll("#models .collection-card")].map((card) => ({
+    id: card.dataset.id, name: card.querySelector("a.open b")?.textContent || "",
     who: card.querySelector("a.who")?.getAttribute("href") || "", avatar: Boolean(card.querySelector("a.who .avatar")),
-    numbers: [...card.querySelectorAll(".numbers > span")].filter((one) => !one.hidden).map((one) => one.textContent.trim()).join(" · "),
+    numbers: [...card.querySelectorAll(".by > .parts")].filter((one) => !one.hidden).map((one) => one.textContent.trim()).join(" · "),
     pictures: [...card.querySelectorAll(".mosaic img")].map((img) => ({ src: img.getAttribute("src"), drawn: img.complete && img.naturalWidth > 0 })),
     follow: (() => { const b = card.querySelector("button[data-follow-list]"); return b ? { shown: !b.hidden, text: b.textContent, pressed: b.getAttribute("aria-pressed") } : null; })(),
-    link: card.querySelector("a.name")?.getAttribute("href") || "" })),
-  empty: document.getElementById("collections-empty")?.textContent.replace(/\s+/g, " ").trim() || "",
+    link: card.querySelector("a.open")?.getAttribute("href") || "" })),
+  empty: (() => { const box = document.getElementById("collections-empty"); return box && !box.hidden ? box.textContent.replace(/\s+/g, " ").trim() : ""; })(),
   sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
 }));
+/// The tab's list asked and drawn (web/collections.js says so on <html>).
+const listed = (page, seconds = 60) => until(page, () => document.documentElement.dataset.tab === "collections"
+  && ["ready", "none", "broken"].includes(document.documentElement.dataset.collections), "the collections", seconds);
 
 let ada = null;
 let bob = null;
@@ -164,31 +166,33 @@ try {
     const page = await visitor.newPage();
     listen(page, "visitor");
     const opened = await page.goto(`${site}/collections?tests=1`, { waitUntil: "load" });
+    await listed(page);
     const seen = await drawn(page);
     const card = seen.cards.find((one) => one.id === listId);
-    check(`/collections?tests=1 ${opened.status()}: "${seen.title}", tabs ${seen.tabs.join(" · ")}, ${seen.cards.length} cards`,
-      opened.status() === 200 && seen.title === "Collections" && seen.tabs.length === 2 && seen.tabs[0].endsWith("*"));
+    check(`/collections?tests=1 ${opened.status()}: the ${seen.tab} tab, ${seen.marked} marked, orders ${seen.orders.join(" · ")}, `
+      + `${seen.cards.length} cards`, opened.status() === 200 && seen.tab === "collections" && seen.marked === "Collections"
+      && seen.orders.length === 2 && seen.orders[0].endsWith("*"));
     check(`her public one is a card: "${card?.name}", ${card?.who}, "${card?.numbers}", ${card?.pictures.length} picture`
       + `${card?.avatar ? ", her avatar" : ""}, its name a link to ${card?.link}`, Boolean(card) && card.name === LIST
       && card.who === `/u/${ADA}` && card.avatar && /^1 model\b/.test(card.numbers) && card.pictures.length === 1
       && card.link === `/c/${listId}`);
-    await until(page, (id) => [...document.querySelectorAll(`#collections [data-id="${id}"] .mosaic img`)]
+    await until(page, (id) => [...document.querySelectorAll(`#models [data-id="${id}"] .mosaic img`)]
       .every((img) => img.complete && img.naturalWidth > 0), "its cover drawn", 30, listId).catch(() => null);
     const cover = (await drawn(page)).cards.find((one) => one.id === listId);
     check(`...its cover the tower's picture, drawn (${cover?.pictures[0]?.src})`, Boolean(cover?.pictures[0]?.drawn)
       && String(cover.pictures[0].src).startsWith(`/m/${tower}`));
     const follow = await until(page, (id) => {
-      const b = document.querySelector(`#collections [data-id="${id}"] button[data-follow-list]`);
+      const b = document.querySelector(`#models [data-id="${id}"] button[data-follow-list]`);
       return b && !b.hidden ? b.textContent : null;
     }, "Follow on the card", 30, listId).catch(() => "");
     check(`...and Follow on it for a visitor: "${follow}"`, follow === "Follow");
     check(`the private one never: ${seen.cards.some((one) => one.id === hiddenId) ? "shown" : "not shown"}`,
       !seen.cards.some((one) => one.id === hiddenId) && !(await page.content()).includes(HIDDEN));
     await shot(page, "1_visitor-1280-light.png");
-    const plain = await text("/collections");
-    check(`/collections with no tests ${plain.status}: ${plain.html.includes(listId) ? "lists a test account's" : "no test account's"}`
-      + `, ${/id="collections-empty"/.test(plain.html) ? "nothing yet, said so" : "cards"}`,
-      plain.status === 200 && !plain.html.includes(listId) && !plain.html.includes("There is no collection here"));
+    const plain = await api("/api/people?op=collections");
+    const plainIds = (plain.body.collections || []).map((one) => one.id);
+    check(`the list with no tests ${plain.status}: ${plainIds.includes(listId) ? "lists a test account's" : "no test account's"}`
+      + `, ${plainIds.length} listed`, plain.status === 200 && plain.body.ready === true && !plainIds.includes(listId));
     const gallery = await page.goto(`${site}/gallery`, { waitUntil: "load" });
     const link = await page.evaluate(() => document.querySelector('#tabs a[href="/collections"]')?.textContent || "");
     const foot = await page.evaluate(() => Boolean(document.querySelector('.site-foot a[href="/collections"]')));
@@ -204,7 +208,8 @@ try {
     const page = await made.newPage();
     listen(page, "Bob");
     await page.goto(`${site}/collections?tests=1`, { waitUntil: "load" });
-    const button = `#collections [data-id="${listId}"] button[data-follow-list]`;
+    await listed(page);
+    const button = `#models [data-id="${listId}"] button[data-follow-list]`;
     await until(page, (at) => document.querySelector(at) && !document.querySelector(at).hidden, "Follow for Bob", 30, button);
     await page.locator(button).scrollIntoViewIfNeeded();
     await page.click(button);
@@ -223,11 +228,15 @@ try {
     check(`...asked for a page of cards at once: ${Object.keys(many.body.follows || {}).join(",")} (the private one left out)`,
       many.status === 200 && many.body.follows?.[listId]?.you_follow === true && !many.body.follows?.[hiddenId]);
     await shot(page, "2_followed-390-dark.png");
-    await page.goto(`${site}/collections?sort=followed&tests=1`, { waitUntil: "load" });
+    // Most followed, pressed: asked in place, the address saying it.
+    await page.evaluate(() => scrollTo(0, 0));
+    await page.click('#orders [data-order="followed"]');
+    await until(page, () => document.documentElement.dataset.collections === "ready"
+      && new URL(location.href).searchParams.get("sort") === "followed", "Most followed", 30);
     const followed = await drawn(page);
     const there = followed.cards.find((one) => one.id === listId);
-    check(`Most followed (${followed.tabs.join(" · ")}): hers listed, "${there?.numbers}", Following`,
-      followed.tabs[1]?.endsWith("*") && Boolean(there) && /1 follower\b/.test(there.numbers));
+    check(`Most followed (${followed.orders.join(" · ")}, ${new URL(page.url()).search}): hers listed, "${there?.numbers}", Following`,
+      followed.orders[1]?.endsWith("*") && Boolean(there) && /1 follower\b/.test(there.numbers));
     await made.close();
   }
 
@@ -239,6 +248,7 @@ try {
       const page = await made.newPage();
       listen(page, `${width} ${dark ? "dark" : "light"}`);
       const opened = await page.goto(`${site}/collections?tests=1`, { waitUntil: "load" });
+      await listed(page);
       await page.waitForTimeout(1200);
       const seen = await drawn(page);
       const theme = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
@@ -253,9 +263,10 @@ try {
   console.log("Ada makes it private");
   const shut = await api("/api/people?op=collection", { method: "POST", token: ada.access_token,
     body: { id: listId, name: LIST, public: false } });
-  const after = await text(`/collections?tests=1&asked=${Date.now()}`);
-  check(`made private (${shut.status}): ${after.html.includes(listId) ? "still listed" : "gone from the directory"}`,
-    shut.status === 200 && after.status === 200 && !after.html.includes(listId));
+  const after = await api(`/api/people?op=collections&tests=1&asked=${Date.now()}`);
+  const afterIds = (after.body.collections || []).map((one) => one.id);
+  check(`made private (${shut.status}): ${afterIds.includes(listId) ? "still listed" : "gone from the directory"}`,
+    shut.status === 200 && after.status === 200 && after.body.ready === true && !afterIds.includes(listId));
 } catch (trouble) {
   failed += 1;
   console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);

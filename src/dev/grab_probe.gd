@@ -1257,8 +1257,8 @@ func _round_parts_check(name: String, grab: Grab) -> void:
 				continue
 			# Beside it, not under or over it: side by side along the line by
 			# more than a plate's height.
-			var mine: Vector2 = Bodies._reach_along(brick.transform, _library.parts[brick.part_id].bounds, grab.axis)
-			var theirs: Vector2 = Bodies._reach_along(other.transform, info.bounds, grab.axis)
+			var mine: Vector2 = Grab._reach_along(brick.transform, _library.parts[brick.part_id].bounds, grab.axis)
+			var theirs: Vector2 = Grab._reach_along(other.transform, info.bounds, grab.axis)
 			if minf(mine.y, theirs.y) - maxf(mine.x, theirs.x) < 8.0:
 				continue
 			var gap: Vector3 = (other.transform * info.bounds).get_center() - box.get_center()

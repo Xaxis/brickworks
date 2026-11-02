@@ -196,8 +196,8 @@ const THEMES = Object.fromEntries(["de", "fr", "es"].map((code) => {
   return [code, said];
 }));
 const PAGES = [
-  { name: "home", path: "", title: "Brickworks — design LEGO® models with AI, in your browser",
-    heading: "#hero-h", says: "Design LEGO® models with AI, <em>in your browser</em>" },
+  { name: "home", path: "", title: "Brickworks — a CAD for LEGO® models, in your browser",
+    heading: "#hero-h", says: "A CAD for LEGO® models, <em>in your browser</em>" },
   { name: "download", path: "/download", title: "Download Brickworks for Linux, macOS and Windows",
     heading: "#get-h", says: "Download Brickworks" },
   { name: "plans", path: "/plans", title: "Pricing · Brickworks" },
@@ -207,8 +207,9 @@ const PAGES = [
   // Their lists drawn first: what their scripts say about them is checked too.
   { name: "gallery", path: "/gallery", title: "Gallery · Models built in Brickworks", heading: "#gallery-h",
     says: "Gallery", ready: "gallery", count: "#found", noun: ["model", "models"] },
-  { name: "library", path: "/library", title: "Library · Every LEGO® set and its parts, in Brickworks",
-    heading: "#library-h", says: "Library", ready: "library", count: "#found-said", noun: ["set", "sets"] },
+  // The gallery's Sets tab (/library, tools/browse_pages.py): the gallery's heading.
+  { name: "library", path: "/library", title: "Sets · Every LEGO® set and its parts, in Brickworks",
+    heading: "#gallery-h", says: "Gallery", ready: "library", count: "#found-said", noun: ["set", "sets"] },
   // A set built in 3D whose theme is a word in each language.
   { name: "set", path: "/library/set/10297-1", set: { number: "10297-1", name: "Boutique Hotel", theme: "Modular Buildings" },
     title: (code) => script(code, "{name}, LEGO® set {set}: every part — Brickworks", { name: "Boutique Hotel", set: "10297-1" }),
@@ -1422,7 +1423,7 @@ async function serverSaid(browser, code, width, at) {
 // brief are the owner's, written in English for every visitor.
 const THEIRS_CHALLENGE = "#title, #crumb, #brief, #next-title, #next-brief, .past-one h3, .winner-cards .words";
 const THEIRS_LIST = ".list-head h1, .list-head .handle a, .list-head .bio";
-const THEIRS_COLLECTIONS = ".list-card .name, .list-card .who";
+const THEIRS_COLLECTIONS = ".collection-card a.open b, .collection-card a.who";
 const THEIRS_OWN = "#title, #handle-line, #bio-shown, #links-shown, .list-card .name, .list-card .who, .people-list .name, "
   + ".people-list .handle, #pins .words, #lists .name, #following a, .follows .pills a, #email-shown, .email, [data-email], "
   + "#owned-counts .name, .lot .name, figure.build q";
@@ -1489,9 +1490,10 @@ async function challengeSaid(browser, code, width, past) {
   }
 }
 
-/// Every collection in [code], from /collections, and one of them, from
-/// /c/[id]: in the language, but their names and who made them; the
-/// collection's people and models each linked in it.
+/// Every collection in [code], from /collections (the gallery's
+/// Collections tab), and one of them, from /c/[id]: in the language, but
+/// their names and who made them; the collection's people and models each
+/// linked in it.
 async function collectionsSaid(browser, code, width, id) {
   const context = await newContext(browser, code, width);
   const tab = await context.newPage();
@@ -1499,14 +1501,19 @@ async function collectionsSaid(browser, code, width, id) {
   let where = `${code} collections ${width}`;
   try {
     const said = await copyOpened(tab, code, "/collections", where);
-    const chrome = await tab.evaluate(() => ({
-      tabs: [...document.querySelectorAll("nav.tabs a")].map((a) => [a.textContent.trim(), new URL(a.href).pathname]),
-      lists: [...document.querySelectorAll(".list-card a.name")].map((a) => new URL(a.href).pathname),
-    }));
-    const tabs = ["Recently added to", "Most followed"].map((word) => script(code, word));
-    check(said.title === script(code, "Collections — the Brickworks gallery") && JSON.stringify(chrome.tabs.map(([text]) => text)) === JSON.stringify(tabs)
-      && chrome.tabs.every(([, to]) => to === `${lang}/collections`),
-      `${where}: "${said.title}", its tabs ${chrome.tabs.map(([text, to]) => `"${text}" ${to}`).join(", ")}`);
+    await tab.waitForFunction(() => ["ready", "none"].includes(document.documentElement.dataset.collections), null, { timeout: 30000 });
+    const chrome = await tab.evaluate(() => {
+      const marked = document.querySelector('#tabs [aria-current="page"]');
+      return { title: document.title, marked: marked ? [marked.textContent.trim(), new URL(marked.href).pathname] : ["", ""],
+        orders: [...document.querySelectorAll("#orders [data-order]")].map((one) => one.textContent.trim()),
+        lists: [...document.querySelectorAll("#models .collection-card a.open")].map((a) => new URL(a.href).pathname) };
+    });
+    const { marked } = chrome;
+    const orders = ["Recently added to", "Most followed"].map((word) => page(code, word));
+    check(said.title === script(code, "Collections — the Brickworks gallery") && chrome.title === said.title
+      && JSON.stringify(chrome.orders) === JSON.stringify(orders) && marked[0] === page(code, "Collections")
+      && marked[1] === `${lang}/collections`,
+      `${where}: "${said.title}", its tab "${marked[0]}" ${marked[1]}, its orders ${chrome.orders.map((text) => `"${text}"`).join(", ")}`);
     const away = chrome.lists.filter((to) => !to.startsWith(`${lang}/c/`));
     check(chrome.lists.length && !away.length, `${where}: ${chrome.lists.length} collections open in ${code}${away.length ? `, not: ${away[0]}` : ""}`);
     await copyRead(tab, code, width, where, "collections", THEIRS_COLLECTIONS);
@@ -1816,8 +1823,8 @@ try {
     if (remote) {
       const shown = await (await fetch(`${remote}/api/people?op=challenge`, { headers })).json().catch(() => ({}));
       past = shown.past?.[0] ? { id: shown.past[0].id, title: shown.past[0].title } : null;
-      const listed = await (await fetch(`${remote}/collections`, { headers })).text().catch(() => "");
-      list = /href="\/c\/([A-Za-z0-9]{10})"/.exec(listed)?.[1] || "";
+      const listed = await (await fetch(`${remote}/api/people?op=collections`, { headers })).json().catch(() => ({}));
+      list = listed.collections?.[0]?.id || "";
     }
     for (const code of langs.includes("en") ? langs : ["en", ...langs]) {
       for (const width of widths) {

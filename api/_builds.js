@@ -377,15 +377,22 @@ export async function reportPhoto(report, photo) {
 
 export const BUILDS_PAGE = 24;
 
+/// The words of a search, as a PostgREST pattern may hold them: letters and
+/// digits only (no wildcard, comma or bracket of its own), the first eight.
+export const searchWords = (q) => String(q || "").slice(0, 100).split(/[^\p{L}\p{N}]+/u).filter(Boolean).slice(0, 8);
+
 /// What the database is asked for page [page] of the Builds tab: a
 /// PostgREST path on build_photos, with its model's name and owner, and one
 /// row more than the page holds, which says whether there is another.
 /// [barred]: accounts taken out; [waiting]: photos a report waits on.
-export function buildsQuery({ page = 1, tests = false, barred = [], waiting = [] }) {
+/// [q]: words searched, each in the name of the model built (any case,
+/// letters and digits alone, up to eight words).
+export function buildsQuery({ page = 1, tests = false, barred = [], waiting = [], q = "" }) {
   const asked = new URLSearchParams({ select: "id,model,account,words,width,height,at,shared_models!inner(name,owner)",
     removed_at: "is.null", hidden_at: "is.null", "shared_models.published": "is.true",
     "shared_models.listed": "is.true", "shared_models.barred": "is.false" });
   if (!tests) asked.set("shared_models.test", "is.false");
+  for (const word of searchWords(q)) asked.append("shared_models.name", `ilike.*${word}*`);
   if (barred.length) {
     asked.set("account", `not.in.(${barred.join(",")})`);
     asked.set("shared_models.owner", `not.in.(${barred.join(",")})`);
@@ -422,7 +429,7 @@ export function buildsPage(rows, { origin = "", people = {}, unshown = [] }) {
 /// Page [page] of the Builds tab: {photos, more}, as buildsPage makes it.
 /// [shown] says whether an account may be shown in public (api/_trust.js
 /// shownPublicly). Before builds.sql, none.
-export async function galleryBuilds({ origin = "", page = 1, tests = false, shown }) {
+export async function galleryBuilds({ origin = "", page = 1, tests = false, q = "", shown }) {
   let barred;
   let waiting;
   let rows;
@@ -431,7 +438,7 @@ export async function galleryBuilds({ origin = "", page = 1, tests = false, show
       db("barred_accounts?select=account"),
       db("report_photos?select=photo,reports!inner(resolved_at)&reports.resolved_at=is.null"),
     ]);
-    rows = await db(buildsQuery({ page, tests, barred: barred.map((one) => one.account),
+    rows = await db(buildsQuery({ page, tests, q, barred: barred.map((one) => one.account),
       waiting: [...new Set(waiting.map((one) => one.photo))].filter((id) => ID.test(String(id))) }));
   } catch (trouble) {
     if (notYet(trouble)) return { photos: [], more: false };

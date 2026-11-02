@@ -226,7 +226,7 @@ try {
       check(seen.markRows <= 1 && !common.length && seen.lonelyLike === 0,
         `${width} ${theme}: one row of marks at most (${seen.markRows}), none on 90% of the cards (${Object.entries(seen.markShare)
           .map(([mark, share]) => `${mark} ${Math.round(share * 100)}%`).join(", ")}), no card ending in its like alone (${seen.lonelyLike})`);
-      check(seen.tab === "top" && seen.window === "" && seen.tabs.join(",") === "top,new" && seen.pick && !seen.zero,
+      check(seen.tab === "top" && seen.window === "" && seen.tabs.join(",") === "top,new,builds,collections,sets" && seen.pick && !seen.zero,
         `${width} ${theme}: Top shown over all time, tabs ${seen.tabs.join(" · ")} signed out, this week's pick first (${seen.pick}), no count of 0`);
       // Today in the gallery (api/_featured.js): a model's card has its like
       // and a set's none; and the why says only what is true: Gatehouse
@@ -288,7 +288,7 @@ try {
     const { context, page } = await visit({ width: 390, signedIn: true, state: { likes: new Map() } });
     await gallery(page);
     let seen = await drawn(page);
-    check(seen.tabs.join(",") === "top,new,following", `signed in at 390: the tabs are ${seen.tabs.join(" · ")}`);
+    check(seen.tabs.join(",") === "top,new,following,builds,collections,sets", `signed in at 390: the tabs are ${seen.tabs.join(" · ")}`);
     await page.click('#tabs [data-tab="following"]');
     await until(page, () => location.search.includes("following=1") && document.documentElement.dataset.gallery === "ready");
     seen = await drawn(page);
@@ -522,7 +522,7 @@ try {
     await gallery(page);
     const seen = await drawn(page);
     const comments = await page.evaluate(() => document.querySelectorAll('#feed .model .tally[title*="comment"]').length);
-    check(seen.tabs.join(",") === "top,new" && seen.window === null && !seen.made && comments === 0 && seen.ids.length > 0,
+    check(seen.tabs.join(",") === "top,new,builds,collections,sets" && seen.window === null && !seen.made && comments === 0 && seen.ids.length > 0,
       `before: tabs ${seen.tabs.join(" · ")}, no window, no Made, no comment counts; ${seen.ids.length} cards`);
     await gallery(page, "/gallery?following=1");
     const put = await drawn(page);

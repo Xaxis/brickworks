@@ -1,33 +1,13 @@
 <!DOCTYPE html>
 <!--
-  The LDraw library, at /library (library333, 2026-10-29): every model of a
-  real set the app's Library opens (File › Library…), LDraw's Official Model
-  Repository, browsed as the gallery is, each a card that opens its own
-  page, /library/<id> (api/share.js, made as a shared model's page is).
-
-  The gallery's look and its order: a title and a search on one line, the
-  gallery's tabs with this one marked, then Filters (the order, the size
-  and the years) and the themes as a row of pills; then the cards, two to a
-  row on a phone, four from a laptop up. Each card is web/card.js's, its
-  picture the cover the app's own renderer drew, its set's number, theme
-  and year under its name, and who modelled it.
-
-  What is shown comes from /api/share?op=library (api/_library.js), a page
-  of 24 at a time, searched and filtered as the app's Library is, so the
-  two find the same sets for the same words. It is paged as every list of
-  the site is (web/pager.js, site.css .pager): Show more, the count and
-  the numbered links; the address keeps the question and the last page
-  shown (/library?q=castle&page=3), and Back from a set comes back to its
-  card. library.js draws it, every name
-  as text. No inline script: the site's content security policy allows
-  none it has not hashed. The look is /site.css; below is only how this
-  page lays it out, as the gallery's does.
---><html lang="en">
+  /library: the gallery (web/gallery.html) on its Sets tab, written by tools/browse_pages.py
+  from it: change that and run it, never this.
+--><html lang="en" data-tab="sets">
 <head>
 <meta charset="utf-8">
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Library · Every LEGO® set and its parts, in Brickworks</title>
+<title>Sets · Every LEGO® set and its parts, in Brickworks</title>
 <meta name="description" content="Every LEGO® set there is, each with its whole parts list drawn by Brickworks: see what you own of it, open its parts in Brickworks, and build the ones LDraw's Official Model Repository has in 3D.">
 <link rel="canonical" href="https://brickworks.diy/library">
 <link rel="alternate" hreflang="en" href="https://brickworks.diy/library">
@@ -64,14 +44,23 @@
    is scrolled clear of both. */
 html { scroll-padding-top: calc(var(--head-h) + 72px); }
 
-/* The head, as the gallery's: the title and a line under it, the search
-   beside them (under 600 px the search beside the title, the line left
-   out, so the first card's picture is on the first screen). */
+/* What one tab has alone (data-list: models, sets, builds or
+   collections), shown while it is the tab (<html data-tab>, gallery.js;
+   the copies at /library, /builds and /collections say theirs from the
+   first frame). The models' are Top's, New's and Following's. */
+html[data-tab="sets"] [data-list]:not([data-list~="sets"]),
+html[data-tab="builds"] [data-list]:not([data-list~="builds"]),
+html[data-tab="collections"] [data-list]:not([data-list~="collections"]),
+html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data-list]:not([data-list~="models"]) { display: none !important; }
+
+/* The head: the title and a line under it, the search beside them (under
+   600 px the search beside the title, the line left out, so the first
+   card's picture is on the first screen). */
 .finder { margin: 0 0 var(--s-4); }
-.library-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
-.library-title { min-width: 0; }
-.library-head h1 { margin: 0; }
-.library-head .lede { margin: var(--s-2) 0 0; max-width: 64ch; color: var(--ink-soft); font-size: var(--t-lede); }
+.gallery-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
+.gallery-title { min-width: 0; }
+.gallery-head h1 { margin: 0; }
+.gallery-head .lede { margin: var(--s-2) 0 0; max-width: 60ch; color: var(--ink-soft); font-size: var(--t-lede); }
 .search { position: relative; flex: 1 1 320px; max-width: 440px; }
 .search input { width: 100%; padding-left: 40px; padding-right: 40px; }
 .search .icon { position: absolute; left: 12px; top: 12px; color: var(--ink-faint); pointer-events: none; }
@@ -84,28 +73,39 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 .search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
 @media (width < 600px) {
 	.browse-band { padding-top: var(--s-4); }
-	.library-head .lede, .search .hint { display: none; }
-	.search { flex: 1 1 100%; max-width: none; }
+	.gallery-head { flex-wrap: nowrap; align-items: center; }
+	.gallery-head .lede, .search .hint { display: none; }
+	.search { flex: 1 1 auto; max-width: none; }
 	.search input { padding-right: 12px; }
 }
-.library-bar { min-width: 0; border-bottom: 1px solid var(--line); }
-.library-bar .tabs { margin: 0; border-bottom: 0; }
 
-/* The bar of filters, as the gallery's: kept under the header as the list
-   scrolls, on the page's ground carried out to the window's edges (a
-   shadow, which nothing scrolls to), with the header's edge under it once
-   stuck (browse.js data-stuck). Its themes are a scroller (site.css)
-   that starts at Filters, not out in the gutter: inset. */
+/* The tabs, and Top's time at the row's end. The tabs scroll inside
+   themselves on a phone: without min-width the row grew to all of them
+   and Top's time, and the page scrolled sideways. */
+.gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; border-bottom: 1px solid var(--line); }
+.gallery-bar .tabs { flex: 1; margin: 0; border-bottom: 0; }
+.gallery-bar .top-window { flex: none; }
+
+/* The bar of filters: the tab's Filters, then its row of pills (the
+   models' kinds, the sets' themes, the collections' orders) or the
+   builds' line, kept under the header as the list scrolls, on the page's
+   ground carried out to the window's edges (a shadow, which nothing
+   scrolls to), with the header's edge under it once it is stuck
+   (gallery.js data-stuck). Its pills are a scroller (site.css) that
+   starts at Filters, not out in the gutter: inset. The builds' line is no
+   filter: it scrolls away with the page. */
 .toolbar {
 	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
-	margin: 0 0 var(--s-3); padding: var(--s-2) 0;
+	min-height: calc(var(--control-h) + 2 * var(--s-2)); margin: 0 0 var(--s-4); padding: var(--s-2) 0;
 }
+html[data-tab="builds"] .toolbar { position: static; }
 .toolbar::before {
 	content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
 	background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
 }
 .toolbar[data-stuck]::before { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line); clip-path: inset(0 -100vmax -1px); }
 .toolbar .pills.scroller { flex: 1; min-width: 0; }
+.toolbar .said { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 .filters { flex: none; }
 .filters summary .n {
 	display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
@@ -114,11 +114,53 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 .filters summary .n[hidden] { display: none; }
 .filters .sheet { width: min(340px, calc(100vw - 32px)); gap: var(--s-3); padding: var(--s-4); }
 .filters .sheet .actions { justify-content: space-between; }
-/* While a new question is asked, the cards it will replace step back. */
-[data-library="asking"] #models { opacity: 0.55; transition: opacity var(--motion) var(--ease); }
+/* What is asked beyond the tabs and the kinds, each to let go of. */
+.chips { margin: calc(-1 * var(--s-2)) 0 var(--s-4); }
+.chips[hidden] { display: none; }
+/* How many sets a question found, and what a misspelling was taken to
+   mean; that the collections cannot be searched yet. */
+.found-said { margin: calc(-1 * var(--s-2)) 0 var(--s-4); }
+.found-said:empty { display: none; }
 
-.found-said { margin: 0 0 var(--s-3); }
+/* While a new question is asked, or another tab, the cards it will
+   replace step back. */
+[data-browse="asking"] #feed { opacity: 0.55; transition: opacity var(--motion) var(--ease); }
+
+/* The cards: this week's pick first on the front, then the list; the
+   shelves (today's spotlight, what you can build now, small builds)
+   across the grid after its first whole rows: twelve places, at two,
+   three or four to a row. The list's cards are #models' own, laid out in
+   this grid. */
+.feed #models { display: contents; }
+.feed > .pick { min-width: 0; display: grid; }
+.feed > .shelves {
+	grid-column: 1 / -1; order: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-6);
+	margin: var(--s-3) 0; min-width: 0;
+}
+.shelves > * { min-width: 0; }
+.feed[data-front="pick"] #models > .model:nth-child(n+12),
+.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+.pick-card .why, #spotlight .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
+/* The week's pick, edged as what is chosen is. */
+.feed .pick-card { border-color: var(--accent-edge); }
+/* A shelf's head is a row's (site.css .scroller-head), its words under it. */
+.shelf-said { margin: calc(-1 * var(--s-2)) 0 var(--s-3); color: var(--ink-soft); font-size: var(--t-small); }
+/* Today in the gallery (gallery362): today's featured model and today's
+   set, a shelf as the others are, in a panel lit as a landing page's last
+   offer is (site.css .closing), each card edged as what is chosen is. */
+#spotlight {
+	padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-4);
+	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
+	box-shadow: var(--highlight), var(--shadow-1);
+}
+#spotlight-models .model { border-color: var(--accent-edge); }
+@media (width < 600px) { #spotlight { padding: var(--s-4); } }
+
+.feed > #challenge-line { grid-column: 1 / -1; margin: 0; }
 .listing .state { margin-top: var(--s-2); }
+.state .said { margin: 0 0 var(--s-2); }
+.state .actions { margin-top: var(--s-3); }
+.score-said { margin: var(--s-5) 0 0; color: var(--ink-faint); font-size: var(--t-small); }
 /* The way to add yours, at the foot of the list: the kit's last offer (.closing). */
 .yours { padding: 0 0 var(--section); border-top: 0; }
 .yours h2 { margin: 0 0 var(--s-3); }
@@ -132,8 +174,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	<div class="wrap bar">
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
-			<a href="/gallery">Gallery</a>
-			<a href="/library" aria-current="page">Library</a>
+			<a href="/gallery" aria-current="page">Gallery</a>
 			<a href="/docs">Docs</a>
 			<a href="/plans">Pricing</a>
 			<a class="cta" href="/app">Open the app</a>
@@ -143,8 +184,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 			<summary>Menu</summary>
 			<div class="menu-list">
 				<nav aria-label="Menu">
-					<a href="/gallery">Gallery</a>
-					<a href="/library" aria-current="page">Library</a>
+					<a href="/gallery" aria-current="page">Gallery</a>
 					<a href="/docs">Docs</a>
 					<a href="/plans">Pricing</a>
 					<a href="/download">Download</a>
@@ -167,111 +207,234 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	     the title, the search and the tabs; the list and its bar of filters under it. -->
 	<div class="browse-band halo">
 		<div class="wrap wide">
-			<!-- Answered by library.js, never sent: the page asks /api/share itself.
-			     The search is the form; Filters and the themes are its controls too
-			     (form="finder"), laid out under it as the gallery's are, so the bar
-			     of filters can stay on screen over the whole list. -->
+			<!-- Answered by gallery.js, never sent: the page asks its lists itself.
+			     The search is the form, and searches the tab it is on; the models'
+			     controls are its controls too (form="finder"), laid out under it
+			     so the bar of filters can stay on screen over the whole list. -->
 			<form class="finder" id="finder" role="search" action="/library" method="get">
-				<div class="library-head">
-					<div class="library-title">
-						<h1 id="library-h">Library</h1>
-						<p class="lede">Every LEGO® set there is, each with its whole parts list. Those marked 3D have a model from
-							LDraw’s Official Model Repository, credited to who modelled it, to turn and build in Brickworks.</p>
+				<div class="gallery-head">
+					<div class="gallery-title">
+						<h1 id="gallery-h">Gallery</h1>
+						<p class="lede">Models people built and shared in Brickworks, and every LEGO® set with its parts. Turn one in 3D, build it step by step, or make it yours.</p>
 					</div>
 					<label class="search">
 						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-						<span class="visually-hidden">Search every set</span>
+						<span class="visually-hidden" id="q-said">Search every set</span>
 						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
 							placeholder="Search sets by name, number or theme" aria-keyshortcuts="/">
 						<kbd class="hint" aria-hidden="true">/</kbd>
 					</label>
 				</div>
 			</form>
-			<div class="library-bar">
-				<!-- The gallery's own tabs, this one marked: the community's models are a tab away. -->
-				<nav class="tabs" aria-label="The gallery">
-					<a href="/gallery">Top</a>
-					<a href="/gallery?sort=newest">New</a>
-					<a href="/builds">Builds</a>
-					<a href="/collections">Collections</a>
-					<a href="/library" aria-current="page">LDraw library</a>
+			<div class="gallery-bar">
+				<!-- What to browse, each tab at its own address and switched in place
+				     (gallery.js): Top (builds, remixes, Tested), New and Following once
+				     signed in, when the list says it can, the models; then photos of
+				     real builds, collections and every real set. -->
+				<nav class="tabs" id="tabs" aria-label="The gallery">
+					<a href="/gallery" data-tab="top"
+						title="Built most, remixed most and Tested first. Views count for nothing.">Top</a>
+					<a href="/gallery?sort=newest" data-tab="new">New</a>
+					<a href="/gallery?following=1" data-tab="following" hidden>Following</a>
+					<a href="/builds" data-tab="builds">Builds</a>
+					<a href="/collections" data-tab="collections">Collections</a>
+					<a href="/library" data-tab="sets" aria-current="page">Sets</a>
 				</nav>
+				<label class="top-window" id="window-label" data-list="models" hidden><span class="visually-hidden">Top over</span>
+					<select id="window" name="window" form="finder"><option value="">All time</option></select></label>
 			</div>
 		</div>
 	</div>
-	<section class="wrap wide listing" aria-labelledby="library-h">
+	<section class="wrap wide listing" aria-labelledby="gallery-h">
 		<!-- The bar of filters, on screen over the whole list (sticky under the
-		     header): Filters, then the themes in a row that scrolls inside itself. -->
+		     header): the tab's Filters, then its pills in a row that scrolls
+		     inside itself, or its line. -->
 		<div class="toolbar" id="toolbar">
-			<details class="filters more-menu" id="filters">
+			<details class="filters more-menu" id="filters" data-list="models">
 				<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg>
 					Filters <span class="n" id="filters-said" hidden></span></summary>
 				<div class="menu-list sheet">
 					<label>Order
-						<select id="sort" name="sort" form="finder"><option value="built">Built in 3D first</option></select></label>
+						<select id="sort" name="sort" form="finder"><option value="top">Top builds</option></select></label>
 					<label>Size
 						<select id="size" name="size" form="finder"><option value="">Any size</option></select></label>
-					<label>Years
-						<select id="decade" name="decade" form="finder"><option value="">Any year</option></select></label>
+					<label id="made-label" hidden>Made
+						<select id="made" name="made" form="finder"><option value="">By hand or with the assistant</option></select></label>
+					<label class="tick" title="Steps laid out by whoever built it. Every model has a booklet Brickworks works out.">
+						<input type="checkbox" id="instructions" name="instructions" value="1" form="finder"> Has instructions</label>
+					<label class="tick"><input type="checkbox" id="technic" name="technic" value="1" form="finder"> Technic or mechanism</label>
+					<label class="tick" title="Brickworks built it by its own steps as it was published: it stands at every step, every step can be reached, every part is made in its colour and nothing is loose.">
+						<input type="checkbox" id="tested" name="tested" value="1" form="finder"> Tested only</label>
 					<div class="actions">
 						<button type="button" class="link" id="filters-clear">Clear the filters</button>
 					</div>
 				</div>
 			</details>
-			<div class="pills scroller inset" id="themes" role="group" aria-label="Theme">
+			<div class="pills scroller inset" id="kinds" role="group" aria-label="Kind" data-list="models">
+				<button type="button" class="pill" data-kind="" aria-pressed="true">All</button>
+			</div>
+			<details class="filters more-menu" id="set-filters" data-list="sets">
+				<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg>
+					Filters <span class="n" id="set-filters-said" hidden></span></summary>
+				<div class="menu-list sheet">
+					<label>Order
+						<select id="set-sort"><option value="built">Built in 3D first</option></select></label>
+					<label>Size
+						<select id="set-size"><option value="">Any size</option></select></label>
+					<label>Years
+						<select id="decade"><option value="">Any year</option></select></label>
+					<div class="actions">
+						<button type="button" class="link" id="set-filters-clear">Clear the filters</button>
+					</div>
+				</div>
+			</details>
+			<div class="pills scroller inset" id="themes" role="group" aria-label="Theme" data-list="sets">
 				<button type="button" class="pill" data-pick="" aria-pressed="true">All</button>
 			</div>
+			<div class="pills scroller inset" id="orders" role="group" aria-label="Which collections first" data-list="collections">
+				<button type="button" class="pill" data-order="recent" aria-pressed="true">Recently added to</button>
+				<button type="button" class="pill" data-order="followed" aria-pressed="false">Most followed</button>
+			</div>
+			<p class="said" data-list="builds">Photos of models from the gallery that people built in real bricks, newest first.</p>
 		</div>
-		<p class="note found-said" id="found-said" aria-live="polite"></p>
+		<!-- What is asked beyond the tabs and the kinds (a tag a model's page
+		     links here with, an order, a size, a box ticked), each a pill to
+		     let go of, and Clear all. -->
+		<div class="pills chips" id="chips" data-list="models" hidden></div>
+		<p class="note found-said" id="found-said" data-list="sets collections" aria-live="polite"></p>
 		<!-- The list's pager (web/pager.js, site.css .pager): Show earlier over a
 		     page opened by its address, and under the list the count, Show more
 		     and the numbered links. -->
-		<p class="pager-earlier" data-pager-earlier="models" hidden><a class="cta ghost" href="/library" data-pager-go="earlier">Show earlier</a></p>
-		<!-- Four rows of skeletons at four a row (site.css .skeleton) where the
-		     first page's cards go, taken out when it comes, so nothing under
-		     them moves. web/card.js skeletonHtml draws the same. -->
-		<div class="models" id="models">
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+		<p class="pager-earlier" data-pager-earlier="models" hidden><a class="cta ghost" href="/gallery" data-pager-go="earlier">Show earlier</a></p>
+		<div class="models feed" id="feed">
+			<!-- This month's challenge, in one line (models.js sayChallenge,
+			     supabase/challenges.sql): across the grid's first row, drawn
+			     with the cards in place of their skeletons, so its coming
+			     moves nothing (over the grid, it pushed every card down). -->
+			<p class="note" id="challenge-line" data-list="models" hidden></p>
+			<!-- The front's pick, its first card (models.js drawShelves). -->
+			<section class="pick" id="pick" aria-labelledby="pick-h" data-list="models" hidden>
+				<h2 class="visually-hidden" id="pick-h">This week’s pick</h2>
+				<div id="pick-card"></div>
+			</section>
+			<!-- Four rows of skeletons at four a row (site.css .skeleton) where the first page's
+			     cards go, taken out when it comes (gallery.js), so nothing under
+			     them moves. web/card.js skeletonHtml draws the same. -->
+			<div id="models">
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			</div>
+			<!-- The front's shelves, after the first rows: hidden while anything is asked. -->
+			<div class="shelves" id="shelves" data-list="models" hidden>
+				<!-- Today's featured model and today's set from the LDraw library, as the
+				     daily cron kept them (api/_featured.js); each card says which by its
+				     data-slot, featured or library (models.js drawShelves). -->
+				<section class="shelf" id="spotlight" aria-labelledby="spotlight-h" hidden>
+					<div class="scroller-head">
+						<h2 id="spotlight-h">Today in the gallery</h2>
+						<a id="spotlight-library" href="/library">Browse every set</a>
+					</div>
+					<p class="shelf-said">A model from the gallery and a set from the LDraw library, chosen each day.</p>
+					<div class="models scroller" id="spotlight-models" role="group" aria-labelledby="spotlight-h"></div>
+				</section>
+				<section class="shelf" id="ready" aria-labelledby="ready-h" hidden>
+					<div class="scroller-head">
+						<h2 id="ready-h">You can build now</h2>
+						<a id="ready-all" href="/gallery?sort=owned" hidden>Everything by the parts you own</a>
+					</div>
+					<p class="shelf-said" id="ready-said"></p>
+					<div class="models scroller" id="ready-models" role="group" aria-labelledby="ready-h"></div>
+				</section>
+				<section class="shelf" id="small" aria-labelledby="small-h" hidden>
+					<div class="scroller-head">
+						<h2 id="small-h">Small builds</h2>
+						<a id="small-all" href="/gallery?size=small" hidden>See every small build</a>
+					</div>
+					<p class="shelf-said">Under 200 parts, an evening’s build: the most built and remixed first.</p>
+					<div class="models scroller" id="small-models" role="group" aria-labelledby="small-h"></div>
+				</section>
+			</div>
 		</div>
-		<p class="visually-hidden" id="loading" role="status">Fetching the library…</p>
-		<p class="state" id="nothing" hidden>
-			No set in the library matches that.
-			<button type="button" class="link" id="clear">Clear the search and the filters</button>
+		<p class="visually-hidden" id="found" aria-live="polite"></p>
+		<p class="visually-hidden" id="loading" role="status">Fetching the gallery…</p>
+		<!-- A list with nothing in it, each tab's own words and the way on. -->
+		<div class="state" id="empty" data-list="models" hidden>
+			Nothing is listed yet. Share a model from the app and tick
+			<b>List it in the gallery</b>, and it will be the first here.
+			<div class="actions"><a class="cta small" href="/app">Open the app</a></div>
+		</div>
+		<div class="state" id="builds-empty" data-list="builds" hidden>
+			No builds yet. A build is a photo of a model from the gallery that somebody
+			built in real bricks. Built one? Open its page, choose <b>I built it</b> and
+			add your photo, and it shows here.
+			<div class="actions"><a class="cta small" href="/gallery">Find a model to build</a></div>
+		</div>
+		<p class="state" id="collections-empty" data-list="collections" hidden>
+			No public collections yet. Anyone can make one: on a model's page, press Save to put it in a collection,
+			then make the collection public on your profile. It is listed here once a model in it is in the gallery.
 		</p>
+		<!-- Nothing matching what was asked, in the tab's words, and the way back. -->
+		<div class="state" id="nothing" hidden>
+			<p class="said" data-list="models">Nothing in the gallery matches that.</p>
+			<p class="said" data-list="sets">No set matches that.</p>
+			<p class="said" data-list="builds">No build matches that.</p>
+			<p class="said" data-list="collections">No collection matches that.</p>
+			<button type="button" class="link" id="clear">Clear the search and the filters</button>
+		</div>
+		<!-- Following with nothing yet, or Top over a quiet week: what goes
+		     here and the way in, in models.js's words. -->
+		<div class="state" id="quiet" data-list="models" hidden>
+			<span id="quiet-said"></span>
+			<div class="actions"><a class="cta ghost small" id="quiet-go" href="/gallery"></a></div>
+		</div>
 		<p class="state" id="broken" hidden>
-			The library did not load just now.
+			The gallery did not load just now.
 			<button type="button" class="link" id="retry">Retry</button>
 		</p>
 		<noscript>
-			<p class="state">The library is drawn with a little JavaScript, which is off in this browser.</p>
+			<p class="state">The gallery is drawn with a little JavaScript, which is off in this browser.</p>
 		</noscript>
-		<nav class="pager" data-pager="models" aria-label="Pages of sets" data-size="24" data-noun="set|sets" hidden>
+		<p class="score-said" id="score-said" data-list="models" hidden></p>
+		<nav class="pager" data-pager="models" aria-label="Pages of models" data-size="24" data-noun="model|models" hidden>
 			<p class="pager-count" hidden></p>
-			<a class="cta ghost pager-more" href="/library?page=2" data-pager-go="more" hidden>Show more</a>
+			<a class="cta ghost pager-more" href="/gallery?page=2" data-pager-go="more" hidden>Show more</a>
 			<p class="visually-hidden" role="status" data-pager-said></p>
 		</nav>
-		<!-- Their pictures' credit, under them: those not built in 3D are Rebrickable's. -->
-		<p class="note picture-credit" id="pictures-credit">Set pictures: <a href="https://rebrickable.com/">Rebrickable</a></p>
+		<!-- The sets' pictures' credit, under them: those not built in 3D are Rebrickable's. -->
+		<p class="note picture-credit" id="pictures-credit" data-list="sets">Set pictures: <a href="https://rebrickable.com/">Rebrickable</a></p>
 	</section>
 
-	<section class="wrap wide yours" aria-labelledby="yours-h">
+	<section class="wrap wide yours" aria-labelledby="yours-h" data-list="models">
 		<div class="closing">
-			<h2 id="yours-h">Where these come from</h2>
+			<h2 id="yours-h">Put yours here</h2>
+			<p class="lede">
+				In the app, choose <b>File › Share…</b>, give the model a name, say
+				a little about it, tag it and choose its licence, and tick
+				<b>List it in the gallery</b>. It is a copy as it is then; publish
+				again to update it, or untick the box to take it out of the gallery
+				and keep the link. Made with the assistant or Brickify? Tag it
+				<b>ai-designed</b> or <b>brickify</b>, and its card says so.
+			</p>
+			<div class="actions center"><a class="cta" href="/app">Open the app</a></div>
+		</div>
+	</section>
+	<section class="wrap wide yours" aria-labelledby="sources-h" data-list="sets">
+		<div class="closing">
+			<h2 id="sources-h">Where these come from</h2>
 			<p class="lede">
 				Every set’s facts, parts list and picture are <a href="https://rebrickable.com/">Rebrickable’s</a>,
 				the pictures kept here so your browser never asks them, and its parts are drawn by Brickworks.
@@ -322,7 +485,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 					<p class="foot-h" id="foot-community">Community</p>
 					<ul aria-labelledby="foot-community">
 						<li><a href="/gallery">Gallery</a></li>
-						<li><a href="/library">LDraw library</a></li>
+						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenge</a></li>
 						<li><a href="/collections">Collections</a></li>
 					</ul>
@@ -353,6 +516,6 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	</div>
 </footer>
 
-<script src="/library.js" type="module"></script>
+<script src="/gallery.js" type="module"></script>
 </body>
 </html>

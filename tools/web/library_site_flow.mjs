@@ -127,7 +127,7 @@ try {
   {
     const made = await context({ width: 1400, dark: false });
     const { page } = await opened(made, "/gallery");
-    check("the gallery's tabs link the LDraw library", Boolean(await page.$('#tabs a[href="/library"]')));
+    check("the gallery's Sets tab is /library", Boolean(await page.$('#tabs a[data-tab="sets"][href="/library"]')));
     await made.close();
   }
 
@@ -149,7 +149,7 @@ try {
     // best match order and Order says so; the person's own order still
     // works; and with nothing typed, Order is the library's own again.
     const state = () => page.evaluate(() => ({ said: document.getElementById("found-said").textContent.trim(),
-      order: document.getElementById("sort").selectedOptions[0]?.textContent.trim(),
+      order: document.getElementById("set-sort").selectedOptions[0]?.textContent.trim(),
       sort: new URL(location.href).searchParams.get("sort") }));
     await page.fill("#q", "milenium falcon");
     await until(page, () => document.documentElement.dataset.library === "ready"
@@ -160,16 +160,16 @@ try {
       /^Showing sets for millennium falcon · \d+ sets of [\d,]+$/.test(meant.said) && falcons[0]?.name === "Millennium Falcon");
     check(`...in best match order, which Order says (${meant.order}), the address not asking it (${meant.sort})`,
       meant.order === "Best match" && meant.sort === null);
-    await page.click("#filters summary");
-    await page.selectOption("#sort", "oldest");
+    await page.click("#set-filters summary");
+    await page.selectOption("#set-sort", "oldest");
     await until(page, () => document.documentElement.dataset.library === "ready"
       && new URL(location.href).searchParams.get("sort") === "oldest", null, 30);
     const oldest = await cards(page);
     check(`...Oldest first when chosen, still the falcons (${oldest.slice(0, 2).map((one) => one.set).join("; ")})`,
       oldest.length > 2 && oldest.every((one) => /Falcon/.test(one.name))
       && Number(oldest[0].set.match(/\b(19|20)\d\d\b/)?.[0]) <= Number(oldest[oldest.length - 1].set.match(/\b(19|20)\d\d\b/)?.[0]));
-    await page.selectOption("#sort", "built");
-    await page.click("#filters summary");
+    await page.selectOption("#set-sort", "built");
+    await page.click("#set-filters summary");
     await page.fill("#q", "castle xyzzy");
     await until(page, () => document.documentElement.dataset.library === "ready"
       && /nearest/.test(document.getElementById("found-said").textContent), null, 30);

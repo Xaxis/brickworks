@@ -1,19 +1,14 @@
-// The LDraw library, /library (library333): every model of a real set the
-// app's Library opens, a page of 24 at a time from /api/share?op=library
-// (api/_library.js), searched, filtered and ordered as the controls say,
-// as the gallery is (web/gallery.js), and as the app's Library searches
-// (ModelLibrary.search): every word in a set's name, number, theme or who
-// modelled it.
+// The gallery's Sets: every real set (library333, sets364), its tab at
+// /library (web/gallery.html, which switches between its lists,
+// web/gallery.js), a page of 24 at a time from /api/share?op=library
+// (api/_library.js, api/_sets.js), searched, filtered and ordered as the
+// controls say, and as the app's Library searches (ModelLibrary.search):
+// every word in a set's name, number, theme or who modelled it.
 //
-// The question lives in the address (?q=castle&theme=Town&sort=oldest),
-// put back with replaceState as it changes, so a search can be sent to
-// somebody and a reload asks it again. The list is paged as every list of
-// the site is (web/pager.js): Show more, the last page shown in the
-// address (&page=3), Show earlier over a page opened by its address, the
-// count and the numbered links (up to the last of 1,200 pages), and Back
-// putting the same pages and the card left where they were. A search
-// waits for typing to stop; a filter asks at once; an answer that comes
-// back after a newer question was asked is thrown away.
+// The question lives in the address (/library?q=castle&theme=Town&sort=oldest),
+// so a search can be sent to somebody and a reload asks it again; gallery.js
+// puts it there and pages the list (web/pager.js), up to the last of 1,200
+// pages.
 //
 // Words typed are read as api/_search.js reads them, misspelt or run
 // together, and the list is then in best match order ("Best match" in the
@@ -30,22 +25,16 @@
 // (#sub), a year in the decade (#year), only those with a 3D model
 // (#model) and minifigures (#figs). Each is taken from the page where it
 // has one by that id, and made at the end of the menu where not.
-import { FIRST_SCREEN, counted, modelCard, number, say, skeletonHtml, themeSaid } from "/card.js";
-// Filters closing on a click elsewhere, as a "more" menu does.
-import "/kit.js";
-// "/" to search, and the bar of filters kept under the header, as the gallery's.
-import { browseBar } from "/browse.js";
-// The site's one way to page a list.
-import { pageAsked, pager } from "/pager.js";
+import { counted, langAt, modelCard, number, say, themeSaid } from "/card.js";
 
-(function () {
-  "use strict";
+const ID = /^[a-z]{2,8}-[A-Za-z0-9._-]{1,120}$/;
+const $ = (id) => document.getElementById(id);
 
-  const ID = /^[a-z]{2,8}-[A-Za-z0-9._-]{1,120}$/;
-  const $ = (id) => document.getElementById(id);
-  const grid = $("models");
-  const q = $("q");
-  const sort = $("sort");
+/// The sets' list, as gallery.js [page] switches to it: {q, grid, tests,
+/// ask(), state(), eager()}.
+export function setsList(page) {
+  const { q, grid, tests } = page;
+  const sort = $("set-sort");
   // The order a list is in unless asked (api/_sets.js FIRST_SORT): sets built
   // in 3D first; and with words typed, best match (MATCH_SORT).
   const FIRST_SORT = "built";
@@ -56,11 +45,9 @@ import { pageAsked, pager } from "/pager.js";
   const defaultSort = () => (typed() ? MATCH_SORT : FIRST_SORT);
   /// The order asked: the person's own, but best match only with words typed.
   const order = () => (ownSort && !(ownSort === MATCH_SORT && !typed()) ? ownSort : defaultSort());
-  const size = $("size");
+  const size = $("set-size");
   const decade = $("decade");
   let filled = false;
-  // The list's pages (web/pager.js), made once the functions it calls are.
-  let paged = null;
   let theme = "";
   // Every set there is, once the first answer says.
   let every = 0;
@@ -72,15 +59,17 @@ import { pageAsked, pager } from "/pager.js";
   const wanted = {};
   const MORE = [["sub", say("Inside the theme"), say("Any")], ["year", say("Year"), say("Any year in the decade")],
     ["model", say("3D model"), say("With or without")], ["figs", say("Minifigures"), say("With or without")]];
-  const pick = (name) => (extra[name] ? (filled ? extra[name].value : extra[name].dataset.wanted || "") : wanted[name] || "");
+  // What one says: what the address asked of it until the list has filled
+  // it in (fillMore, fill), then its value.
+  const pick = (name) => (extra[name] ? extra[name].dataset.wanted || extra[name].value : wanted[name] || "");
 
   /// What a select says: until the first answer fills it in, what the
   /// address asked of it.
   const chosen = (select) => (filled ? select.value : select.dataset.wanted || "");
 
   /// The question the controls ask, as a query string; for the address,
-  /// the order left out when it is the default, and page [page].
-  function question({ address = false, page = paged ? paged.state.last : 1 } = {}) {
+  /// the order left out when it is the default, and page [n].
+  function question({ address = false, n = page.state()?.last || 1 } = {}) {
     const asked = new URLSearchParams();
     const words = q.value.trim().slice(0, 100);
     if (words) asked.set("q", words);
@@ -93,14 +82,17 @@ import { pageAsked, pager } from "/pager.js";
     }
     if (chosen(size)) asked.set("size", chosen(size));
     if (!address || order() !== defaultSort()) asked.set("sort", order());
-    if (address && page > 1) asked.set("page", String(page));
+    if (address && n > 1) asked.set("page", String(n));
+    // The OMR's arrivals staged for the lead to let out, which only a list
+    // asked with tests shows (api/share.js), as the gallery asks its own.
+    if (tests) asked.set("tests", "1");
     return asked;
   }
 
-  function addressOf(page) {
-    const query = question({ address: true, page }).toString();
-    // This page's own address: /de/library in German.
-    return query ? `${location.pathname}?${query}` : location.pathname;
+  /// Page [n]'s address: /de/library in German.
+  function addressOf(n) {
+    const query = question({ address: true, n }).toString();
+    return `${langAt()}/library${query ? `?${query}` : ""}`;
   }
 
   function fill(select, options) {
@@ -121,13 +113,11 @@ import { pageAsked, pager } from "/pager.js";
   function moreFilter([name, label, any]) {
     let select = $(name);
     if (!select) {
-      const menu = $("filters").querySelector(".menu-list");
+      const menu = $("set-filters").querySelector(".menu-list");
       const holder = document.createElement("label");
       holder.append(`${label} `);
       select = document.createElement("select");
       select.id = name;
-      select.name = name;
-      select.setAttribute("form", "finder");
       holder.append(select);
       menu.insertBefore(holder, menu.querySelector(".actions"));
     }
@@ -138,7 +128,10 @@ import { pageAsked, pager } from "/pager.js";
       select.append(first);
     }
     select.dataset.wanted = wanted[name] || "";
-    select.addEventListener("change", ask);
+    select.addEventListener("change", () => {
+      select.dataset.wanted = "";
+      page.ask();
+    });
     extra[name] = select;
   }
 
@@ -203,33 +196,25 @@ import { pageAsked, pager } from "/pager.js";
   function sayFilters() {
     const on = [chosen(size), chosen(decade), order() !== defaultSort(), ...MORE.map(([name]) => pick(name))]
       .filter(Boolean).length;
-    const n = $("filters-said");
+    const n = $("set-filters-said");
     n.textContent = on ? String(on) : "";
     n.hidden = !on;
-    $("filters").querySelector("summary").setAttribute("aria-label", on ? say("Filters, {n} on", { n: on }) : say("Filters"));
+    $("set-filters").querySelector("summary").setAttribute("aria-label", on ? say("Filters, {n} on", { n: on }) : say("Filters"));
   }
 
   const searching = () => Boolean(q.value.trim() || theme || chosen(size) || chosen(decade) || MORE.some(([name]) => pick(name)));
-
-  const tests = new URLSearchParams(location.search).get("tests") === "1";
 
   /// Page [n] of the list as cards.
   async function load(n) {
     const asked = question();
     asked.set("page", String(n));
-    // The OMR's arrivals staged for the lead to let out, which only a list
-    // asked with tests shows (api/share.js), as the gallery asks its own.
-    if (tests) asked.set("tests", "1");
     const reply = await fetch(`/api/share?op=library&${asked}`, { headers: { accept: "application/json" } });
     if (reply.status !== 200) throw new Error(String(reply.status));
     const data = await reply.json();
     // A page past the end is answered with the last: none, so the pager
     // opens the first and puts the address right.
     if (Number.isFinite(data.page) && data.page !== n) return { items: [], pages: Number(data.pages) || 1, data };
-    // As many pictures asked for at once as the first screen shows, when
-    // this page is the first drawn.
-    const eager = document.documentElement.dataset.library !== "ready"
-      ? [...grid.children].filter((one) => one.getBoundingClientRect().top < innerHeight).length || FIRST_SCREEN : 0;
+    const eager = page.eager();
     const items = (data.models || []).filter((model) => ID.test(String(model && model.id)))
       .map((model, i) => modelCard(model, { eager: i < eager }));
     return { items, pages: Number(data.pages) || 1, total: Number(data.total) || 0, data };
@@ -272,102 +257,82 @@ import { pageAsked, pager } from "/pager.js";
         $("found-said").textContent = many;
       }
     }
-    $("loading").hidden = true;
-    $("broken").hidden = true;
     $("nothing").hidden = grid.children.length > 0;
     drawThemes();
     sayFilters();
     document.documentElement.dataset.library = "ready";
-    document.documentElement.dataset.pages = String(paged.state.last);
   }
-
-  /// The first page that did not come: said in place of the list, with Retry.
-  function failed({ fresh }) {
-    if (!fresh) return;
-    for (const bones of grid.querySelectorAll(".skeleton")) bones.remove();
-    $("loading").hidden = true;
-    $("broken").hidden = false;
-    document.documentElement.dataset.library = "broken";
-  }
-
-  /// Ask again from the first page.
-  function ask() {
-    history.replaceState(null, "", addressOf(1));
-    sayFilters();
-    drawThemes();
-    document.documentElement.dataset.library = "asking";
-    return paged.restart(1);
-  }
-
-  paged = pager({ list: grid, load, href: addressOf, noun: ["set", "sets"], drawn, failed,
-    skeleton: () => {
-      const made = document.createElement("template");
-      made.innerHTML = skeletonHtml();
-      return made.content.firstElementChild;
-    } });
 
   $("themes").addEventListener("click", (event) => {
     const pill = event.target.closest("[data-pick]");
     if (!pill) return;
     theme = pill.dataset.pick;
     if (extra.sub) extra.sub.value = "";
-    ask();
+    page.ask();
   });
-
-  // The question the address asks, put in the controls before the first
-  // answer: what the selects may hold is filled in when the list says.
-  const given = new URLSearchParams(location.search);
-  q.value = (given.get("q") || "").slice(0, 100);
-  ownSort = given.get("sort") || "";
-  for (const [select, name] of [[size, "size"], [decade, "decade"]]) {
-    select.dataset.wanted = given.get(name) || "";
-  }
-  showSort();
-  // A theme inside a theme is asked as its path: "Star Wars > Ultimate Collector Series".
-  [theme, wanted.sub = ""] = (given.get("theme") || "").slice(0, 300).split(" > ").map((one) => one.trim());
-  for (const name of ["year", "model", "figs"]) wanted[name] = given.get(name) || "";
-
-  let typing = 0;
   q.addEventListener("input", () => {
-    clearTimeout(typing);
-    showSort();
-    typing = setTimeout(ask, 200);
+    if (page.on() === "sets") showSort();
   });
-  $("finder").addEventListener("submit", (event) => {
-    event.preventDefault();
-    clearTimeout(typing);
-    ask();
-  });
-  for (const control of [size, decade]) control.addEventListener("change", ask);
+  for (const control of [size, decade]) control.addEventListener("change", () => page.ask());
   sort.addEventListener("change", () => {
     ownSort = sort.value === defaultSort() ? "" : sort.value;
-    ask();
+    page.ask();
   });
-  $("filters-clear").addEventListener("click", () => {
+  $("set-filters-clear").addEventListener("click", () => {
     size.value = decade.value = "";
     for (const select of Object.values(extra)) select.value = "";
     ownSort = "";
     showSort();
-    ask();
+    page.ask();
   });
-  $("clear").addEventListener("click", () => {
-    q.value = "";
-    size.value = decade.value = "";
-    for (const select of Object.values(extra)) select.value = "";
-    theme = "";
-    showSort();
-    ask();
-  });
-  browseBar({ search: q, above: document.querySelector(".library-bar"), bar: $("toolbar") });
-  $("retry").addEventListener("click", () => {
-    $("broken").hidden = true;
-    $("loading").hidden = false;
-    document.documentElement.dataset.library = "asking";
-    paged.start(paged.state.last || 1, { restore: false });
-  });
-  sayFilters();
 
-  // The page the address shows (and, Back, the pages before it that were
-  // shown, and the card left where it was: web/pager.js).
-  paged.start(pageAsked(location.search));
-})();
+  return {
+    flag: "library",
+    page: "library",
+    noun: ["set", "sets"],
+    tabs: ["sets"],
+    tab: () => "sets",
+    title: () => say("Sets · Every LEGO® set and its parts, in Brickworks"),
+    search: () => ({ label: say("Search every set"), placeholder: say("Search sets by name, number or theme") }),
+    /// The address's question, put in the controls before the answer:
+    /// what the selects may hold is filled in when the list says.
+    enter(given) {
+      ownSort = given.get("sort") || "";
+      for (const [select, name] of [[size, "size"], [decade, "decade"]]) {
+        if (filled) select.value = given.get(name) || "";
+        else select.dataset.wanted = given.get(name) || "";
+      }
+      // A theme inside a theme is asked as its path: "Star Wars > Ultimate Collector Series".
+      [theme, wanted.sub = ""] = (given.get("theme") || "").slice(0, 300).split(" > ").map((one) => one.trim());
+      for (const name of ["year", "model", "figs"]) wanted[name] = given.get(name) || "";
+      // The theme inside and the year are filled in for the theme and the
+      // decade asked once the list answers (fillMore): wanted till then.
+      for (const [name, select] of Object.entries(extra)) {
+        select.value = wanted[name] || "";
+        if (name === "sub" || name === "year") select.dataset.wanted = wanted[name] || "";
+      }
+      showSort();
+      drawThemes();
+      sayFilters();
+    },
+    leave() {},
+    href: addressOf,
+    hrefOf: () => addressOf(1),
+    asking() {
+      showSort();
+      sayFilters();
+      drawThemes();
+    },
+    load,
+    drawn,
+    failed: () => false,
+    searching,
+    clear() {
+      size.value = decade.value = "";
+      for (const select of Object.values(extra)) select.value = "";
+      theme = "";
+      ownSort = "";
+      showSort();
+    },
+  };
+}

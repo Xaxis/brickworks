@@ -70,6 +70,16 @@ def test_newest_first_a_page_of_24_and_one_more_to_know() -> None:
     assert "shared_models.test" not in third and "id" not in third and "account" not in third
 
 
+def test_a_search_asks_for_every_word_in_the_model_built() -> None:
+    # The gallery's one search box asks the Builds tab too (web/gallery.js):
+    # every word in the model's name, whatever its case, and nothing else of
+    # what was typed.
+    _, asked = query(page=1, tests=False, barred=[], waiting=[], q="Red  castle, (tower)*")
+    assert asked["shared_models.name"] == ["ilike.*Red*", "ilike.*castle*", "ilike.*tower*"]
+    _, unasked = query(page=1, tests=False, barred=[], waiting=[], q="  ")
+    assert "shared_models.name" not in unasked
+
+
 def page(rows: list, **options) -> dict:
     return node(f"""
 import {{ buildsPage }} from "./api/_builds.js";

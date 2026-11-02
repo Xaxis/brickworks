@@ -1171,6 +1171,11 @@ func _piece_of(from: int) -> Dictionary:
 	return out
 
 
+static func _same(a: Transform3D, b: Transform3D) -> bool:
+	return a.origin.distance_to(b.origin) < 0.01 and a.basis.x.distance_to(b.basis.x) < 1e-5 \
+		and a.basis.y.distance_to(b.basis.y) < 1e-5 and a.basis.z.distance_to(b.basis.z) < 1e-5
+
+
 # -- where it stands ------------------------------------------------------------
 
 
@@ -1564,8 +1569,8 @@ func _meeting_pairs() -> void:
 			# stand off its shafts as it bends: its shafts are in its ends.
 			if turns_in_place or bodies.whole_crosses.has(one) or bodies.whole_crosses.has(other):
 				continue
-			var reach_a: Vector2 = Bodies._reach_along(a.transform, mesh_a.bounds, line)
-			var reach_b: Vector2 = Bodies._reach_along(b.transform, mesh_b.bounds, line)
+			var reach_a: Vector2 = Grab._reach_along(a.transform, mesh_a.bounds, line)
+			var reach_b: Vector2 = Grab._reach_along(b.transform, mesh_b.bounds, line)
 			if reach_a.y <= reach_b.x + apart or reach_b.y <= reach_a.x + apart:
 				continue
 			var local: Vector3 = (b.transform.basis.inverse() * line).normalized()
@@ -1676,9 +1681,9 @@ func _pair_judge(n: int) -> void:
 	# far again as the joint slides: none further can meet it.
 	var way: Vector3 = (b.transform.basis * line).normalized()
 	var middle: float = (b.transform * (pair[6] as Vector3)).dot(way)
-	var reach_a: Vector2 = Bodies._reach_along(a.transform, library.mesh_for(a.part_id).bounds, way) \
+	var reach_a: Vector2 = Grab._reach_along(a.transform, library.mesh_for(a.part_id).bounds, way) \
 		- Vector2(middle, middle)
-	var reach_b: Vector2 = Bodies._reach_along(b.transform, library.mesh_for(b.part_id).bounds, way) \
+	var reach_b: Vector2 = Grab._reach_along(b.transform, library.mesh_for(b.part_id).bounds, way) \
 		- Vector2(middle, middle)
 	var spare: float = float(pair[8]) + PAIR_ALONG_SLACK
 	# Kept by the two shapes and where the joint is in each: the same pair in
@@ -2118,16 +2123,16 @@ func _slides_over(key: int, mesh: Lbm.PartMesh, to: Transform3D, other: int,
 	# [param now]: its reach along the line at [param to], when the caller
 	# has it.
 	if is_nan(now.x):
-		now = Bodies._reach_along(to, mesh.bounds, axis)
+		now = Grab._reach_along(to, mesh.bounds, axis)
 	# Where it stood and where the other stands, kept for the grab: neither
 	# moves while it lasts.
 	if not _along.has(key):
-		_along[key] = Bodies._reach_along(rest[key], mesh.bounds, axis)
+		_along[key] = Grab._reach_along(rest[key], mesh.bounds, axis)
 	var was: Vector2 = _along[key]
 	if absf(now.x - was.x) > 0.5 or absf(now.y - was.y) > 0.5:
 		return false
 	if not _along.has(other):
-		_along[other] = Bodies._reach_along(them.transform, their_mesh.bounds, axis)
+		_along[other] = Grab._reach_along(them.transform, their_mesh.bounds, axis)
 	var theirs: Vector2 = _along[other]
 	var end_on: float = Joints.STUD_REACH + 0.5
 	return theirs.y - was.x <= end_on or was.y - theirs.x <= end_on
@@ -2187,6 +2192,17 @@ static func box_depth(a_at: Transform3D, a_box: AABB, b_at: Transform3D, b_box: 
 		var b_reach: float = absf(b0.dot(way)) + absf(b1.dot(way)) + absf(b2.dot(way))
 		least = minf(least, minf(a_at_way + a_reach, b_at_way + b_reach) - maxf(a_at_way - a_reach, b_at_way - b_reach))
 	return least
+
+
+## How far [param box] at [param at] reaches along [param way]: (lo, hi).
+static func _reach_along(at: Transform3D, box: AABB, way: Vector3) -> Vector2:
+	var lo: float = INF
+	var hi: float = -INF
+	for corner: int in 8:
+		var along: float = (at * box.get_endpoint(corner)).dot(way)
+		lo = minf(lo, along)
+		hi = maxf(hi, along)
+	return Vector2(lo, hi)
 
 
 ## Whether [param key] is round about the line through [param point] along
@@ -2553,7 +2569,7 @@ func _boxes_meet(key: int, mesh: Lbm.PartMesh, to: Transform3D, box: AABB) -> bo
 		if apart or Grab.box_depth(to, mesh.bounds, theirs[0], theirs[1]) <= TOUCHING:
 			continue
 		if is_nan(now.x) and axis != Vector3.ZERO:
-			now = Bodies._reach_along(to, mesh.bounds, axis)
+			now = Grab._reach_along(to, mesh.bounds, axis)
 		if _slides_over(key, mesh, to, other, now):
 			continue
 		if _into_cover(mesh, to, box, other, square):
@@ -4592,7 +4608,7 @@ func commit(words: String, cells: Dictionary = {}) -> int:
 		if brick == null or swapping.has(key):
 			continue
 		var to: Transform3D = placed[key]
-		if Bodies._same(to, rest[key]):
+		if Grab._same(to, rest[key]):
 			continue
 		steps.append({"undo": "move", "brick": key, "transform": rest[key]})
 		_built_for_world()
@@ -4629,7 +4645,7 @@ func drawn(full: bool = false) -> Dictionary:
 func changed() -> Dictionary:
 	var out: Dictionary = {}
 	for key: int in placed:
-		if world.get_brick(key) != null and not Bodies._same(placed[key], rest[key]):
+		if world.get_brick(key) != null and not Grab._same(placed[key], rest[key]):
 			out[key] = placed[key]
 	return out
 
