@@ -108,7 +108,7 @@ def test_a_challenge_is_said_and_grouped_the_same_everywhere() -> None:
         { kind: "challenge_open", at: "2026-10-01T00:00:00Z", on: null, challenge: 7, title: "Harbour", ends_on: "2026-10-31",
           test: false, read: false },
       ];
-      const said = (row) => noticeSaid(row, "https://x").did;
+      const said = (row) => noticeSaid(row, "https://x").line;
       console.log(JSON.stringify({
         said: rows.filter((row) => row.challenge).map(said),
         lost: said({ kind: "challenge_won", challenge: 6, title: "Castle", picked: false }),

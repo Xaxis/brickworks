@@ -282,8 +282,8 @@ try {
     const piaTold = await noticesOf(people.pia.access_token, "mention", tower);
     const piaComments = await noticesOf(people.pia.access_token, "comment", tower);
     if (applied) {
-      check(`Max is told: ${JSON.stringify(told.map((row) => [row.who, row.did, row.link]))}`, told.length === 1
-        && told[0].who === names.lia && told[0].did === "mentioned you in a comment" && told[0].link.endsWith(`/m/${tower}#comment-${id}`));
+      check(`Max is told: ${JSON.stringify(told.map((row) => [row.who, row.line, row.link]))}`, told.length === 1
+        && told[0].who === names.lia && told[0].line === "{who} mentioned you in a comment" && told[0].link.endsWith(`/m/${tower}#comment-${id}`));
       const phone = await context({ as: people.max, width: 390, height: 844, dark: true, phone: true });
       const small = await phone.newPage();
       listen(small, "Max at 390");

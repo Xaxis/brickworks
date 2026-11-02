@@ -693,10 +693,10 @@ try {
     const groupOf = async (person) => ((await api("/api/people?op=notifications", { token: person.access_token })).body.groups || [])
       .find((one) => one.challenge === ids.challenge) || null;
     const [eds, bobs, adas] = [await groupOf(who.ed), await groupOf(who.bob), await groupOf(who.ada)];
-    check(`Ed's notifications: ${eds ? `"${eds.name}", ${eds.rows.map((row) => `${row.kind}: ${row.did}`).join(" | ")}` : "no group"}; `
+    check(`Ed's notifications: ${eds ? `"${eds.name}", ${eds.rows.map((row) => `${row.kind}: ${row.line}`).join(" | ")}` : "no group"}; `
       + `Bob's ${bobs ? "has" : "has none"}, Ada's ${adas ? "has" : "has none"}`, !bobs && !adas && (told
       ? eds?.name === `Challenge: ${TITLE}` && eds.unread && eds.picture === null && eds.rows.length === 1
-        && eds.rows[0].kind === "challenge_won" && eds.rows[0].did === `“${TITLE}” has ended, and a model you voted for won`
+        && eds.rows[0].kind === "challenge_won" && eds.rows[0].line === `“${TITLE}” has ended, and a model you voted for won`
         && eds.link.endsWith(`/challenge?id=${ids.challenge}&tests=1`) && eds.rows[0].link === eds.link
       : !eds));
     if (told) {

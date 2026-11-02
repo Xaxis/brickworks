@@ -39,8 +39,8 @@
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
-import { Unacceptable } from "./_directory.js";
-import { levelName, pictureOf } from "./_card.js";
+import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
+import { counted, levelName, pictureOf, say } from "./_card.js";
 
 const NOT_THERE = /: 404$/;
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -70,21 +70,27 @@ const quoted = (text, most) => {
 // ---------------------------------------------------------------------------
 // Pure: what a notification says, and how they are grouped.
 
-/// "3 October", for a day as YYYY-MM-DD (UTC); "" for none.
-const dateWords = (day) => {
+/// "3 October", for a day as YYYY-MM-DD (UTC), as the language the
+/// notices are said in writes it ("3. Oktober"); "" for none.
+function dateWords(day) {
   const at = Date.parse(`${day}T00:00:00Z`);
-  return Number.isFinite(at) ? new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }) : "";
-};
+  const code = globalThis.brickworksLang?.code;
+  return Number.isFinite(at) ? new Date(at).toLocaleDateString(/^(?:de|fr|es)$/.test(code || "") ? code : "en-GB",
+    { day: "numeric", month: "long", timeZone: "UTC" }) : "";
+}
 
 /// "today", "yesterday" or "on 3 October", for a day as YYYY-MM-DD (UTC).
 export function dayWords(day, now = Date.now()) {
   const at = Date.parse(`${day}T00:00:00Z`);
   if (!Number.isFinite(at)) return "";
   const today = Math.floor(now / DAY) * DAY;
-  if (at === today) return "today";
-  if (at === today - DAY) return "yesterday";
-  return `on ${dateWords(day)}`;
+  if (at === today) return say("today");
+  if (at === today - DAY) return say("yesterday");
+  return say("on {day}", { day: dateWords(day) });
 }
+
+/// [text] in quotes as the language writes them: “Harbour”, „Harbour“.
+const quote = (text) => say("“{text}”", { text });
 
 /// What a challenge tells everybody who may enter it, or who voted in it.
 const CHALLENGE = new Set(["challenge_open", "challenge_closing", "challenge_won"]);
@@ -93,66 +99,74 @@ const CHALLENGE = new Set(["challenge_open", "challenge_closing", "challenge_won
 const challengeLink = (row, origin) =>
   `${origin}/challenge?id=${Number(row.challenge) || 0}${row.test === true ? "&tests=1" : ""}`;
 
-/// One notification as a person reads it: {kind, at, who, by, did, said,
-/// link}. [who] is whoever did it (null for likes and the challenges',
-/// which name nobody); [did] the rest of the line; [said] their words.
+/// One notification as a person reads it: {kind, at, who, by, said, link,
+/// line}. [who] is whoever did it (null for likes and the challenges',
+/// which name nobody); [said] their words; [line] the whole line, {who}
+/// where whoever did it goes (web/notifications.js), in the language the
+/// notices are asked in (?lang=, web/card.js say).
 export function noticeSaid(row, origin = "", now = Date.now()) {
   const by = row.by && row.by.handle ? { handle: row.by.handle, name: quoted(row.by.name, 40) } : null;
   const model = ID.test(String(row.model || "")) ? row.model : "";
   const base = { kind: row.kind, at: row.at, who: by ? by.name : null, by, said: "" };
-  const onStep = row.step ? ` on step ${Number(row.step)}` : "";
+  const step = Number(row.step) || 0;
+  // One of two sentences, on a step or not, its step said.
+  const stepped = (on, off) => (step ? on.replace("{step}", String(step)) : off);
   if (row.kind === "comment") {
     // A reply to somebody else's comment on your model is a comment on it.
-    return { ...base, who: base.who || "A builder", did: row.parent ? `replied to a comment${onStep}` : `commented${onStep}`,
-      said: quoted(row.said, 240), link: `${origin}/m/${model}#comment-${Number(row.comment)}` };
+    return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
+      link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
+      line: row.parent ? stepped(say("{who} replied to a comment on step {step}"), say("{who} replied to a comment"))
+        : stepped(say("{who} commented on step {step}"), say("{who} commented")) };
   }
   if (row.kind === "reply") {
-    return { ...base, who: base.who || "A builder",
-      did: row.yours === false ? `replied to a comment you answered${onStep}` : `replied to your comment${onStep}`,
-      said: quoted(row.said, 240), link: `${origin}/m/${model}#comment-${Number(row.comment)}` };
+    return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
+      link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
+      line: row.yours === false
+        ? stepped(say("{who} replied to a comment you answered on step {step}"), say("{who} replied to a comment you answered"))
+        : stepped(say("{who} replied to your comment on step {step}"), say("{who} replied to your comment")) };
   }
   if (row.kind === "mention") {
     // Named in a comment or a reply (supabase/comment_mentions.sql).
-    return { ...base, who: base.who || "A builder",
-      did: `mentioned you in ${row.parent ? "a reply" : "a comment"}${onStep}`,
-      said: quoted(row.said, 240), link: `${origin}/m/${model}#comment-${Number(row.comment)}` };
+    return { ...base, who: base.who || say("A builder"), said: quoted(row.said, 240),
+      link: `${origin}/m/${model}#comment-${Number(row.comment)}`,
+      line: row.parent ? stepped(say("{who} mentioned you in a reply on step {step}"), say("{who} mentioned you in a reply"))
+        : stepped(say("{who} mentioned you in a comment on step {step}"), say("{who} mentioned you in a comment")) };
   }
   if (row.kind === "photo") {
-    return { ...base, who: base.who || "A builder", did: "posted a photo of their build", said: quoted(row.words, 140),
-      link: `${origin}/m/${model}#photo-${String(row.photo || "").replace(/[^A-Za-z0-9]/g, "")}` };
+    return { ...base, who: base.who || say("A builder"), said: quoted(row.words, 140),
+      link: `${origin}/m/${model}#photo-${String(row.photo || "").replace(/[^A-Za-z0-9]/g, "")}`,
+      line: say("{who} posted a photo of their build") };
   }
   if (row.kind === "remix") {
-    return { ...base, who: base.who || "Somebody", did: `remixed it as “${quoted(row.name || "a model", 80)}”`,
-      link: `${origin}/m/${model}` };
+    return { ...base, who: base.who || say("Somebody"), link: `${origin}/m/${model}`,
+      line: say("{who} remixed it as {name}").replace("{name}", quote(quoted(row.name || say("a model"), 80))) };
   }
   if (row.kind === "likes") {
-    const n = Number(row.likes) || 0;
-    return { ...base, did: `${n.toLocaleString("en-US")} new ${n === 1 ? "like" : "likes"} ${dayWords(row.day, now)}`.trim(),
-      link: `${origin}/m/${model}` };
+    return { ...base, link: `${origin}/m/${model}`,
+      line: `${counted(Number(row.likes) || 0, "new like", "new likes")} ${dayWords(row.day, now)}`.trim() };
   }
   if (row.kind === "achievement") {
     const level = Number(row.level) || 0;
-    return { ...base, who: "You", did: `reached ${levelName(row.track, row.reached)}, level ${level} of ${Number(row.of) || level}`,
-      link: `${origin}/profile?tab=achievements` };
+    return { ...base, who: say("You"), link: `${origin}/profile?tab=achievements`,
+      line: say("{who} reached {name}, level {level} of {of}", { name: levelName(row.track, row.reached), level,
+        of: Number(row.of) || level }) };
   }
+  const title = quote(quoted(row.title || say("the challenge"), 80));
   if (CHALLENGE.has(row.kind)) {
-    const title = quoted(row.title || "the challenge", 80);
-    const ends = dateWords(row.ends_on);
-    const did = row.kind === "challenge_open" ? `“${title}” is open: enter by the end of ${ends}`
-      : row.kind === "challenge_closing" ? `The last two days to enter “${title}”: it closes at the end of ${ends}`
-      : row.picked === true ? `“${title}” has ended, and a model you voted for won` : `“${title}” has ended: see who won`;
-    return { ...base, did, link: challengeLink(row, origin) };
+    const day = dateWords(row.ends_on);
+    const line = row.kind === "challenge_open" ? say("{title} is open: enter by the end of {day}", { title, day })
+      : row.kind === "challenge_closing" ? say("The last two days to enter {title}: it closes at the end of {day}", { title, day })
+      : row.picked === true ? say("{title} has ended, and a model you voted for won", { title })
+      : say("{title} has ended: see who won", { title });
+    return { ...base, link: challengeLink(row, origin), line };
   }
   if (row.kind === "result") {
-    const title = quoted(row.title || "the challenge", 80);
-    const way = row.way === "assistant" ? "with the assistant" : "by hand";
-    const votes = Number(row.votes) || 0;
-    return row.won === true
-      ? { ...base, did: `won “${title}” among the models built ${way}, with ${votes.toLocaleString("en-US")} ${votes === 1 ? "vote" : "votes"}`,
-        link: `${origin}/challenge` }
-      : { ...base, did: `“${title}” has ended: see who won`, link: `${origin}/challenge` };
+    const votes = counted(Number(row.votes) || 0, "vote");
+    return { ...base, link: `${origin}/challenge`, line: row.won !== true ? say("{title} has ended: see who won", { title })
+      : row.way === "assistant" ? say("won {title} among the models built with the assistant, with {votes}", { title, votes })
+      : say("won {title} among the models built by hand, with {votes}", { title, votes }) };
   }
-  return { ...base, did: "something happened", link: `${origin}/m/${model}` };
+  return { ...base, link: `${origin}/m/${model}`, line: say("something happened") };
 }
 
 /// The rows of notification_list, grouped by the model they are about,
@@ -185,17 +199,17 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
     if (said.unread) unread += 1;
     if (said.new) fresh += 1;
     if (levelled && !groups.has(on)) {
-      groups.set(on, { model: "", achievements: true, name: "Your achievements", picture: null,
+      groups.set(on, { model: "", achievements: true, name: say("Your achievements"), picture: null,
         link: `${origin}/profile?tab=achievements`, at: row.at, new: false, unread: false, rows: [] });
     }
     if (challenge && !groups.has(on)) {
-      groups.set(on, { model: "", challenge, name: `Challenge: ${quoted(row.title || "a challenge", 80)}`, picture: null,
+      groups.set(on, { model: "", challenge, name: say("Challenge: {title}", { title: quoted(row.title || say("a challenge"), 80) }), picture: null,
         link: challengeLink(row, origin), at: row.at, new: false, unread: false, rows: [] });
     }
     if (!groups.has(on)) {
       const card = models[on] || {};
       const version = Date.parse(card.updated_at || "") || 0;
-      groups.set(on, { model: on, name: quoted(card.name || row.of_name || row.name || "Your model", 80),
+      groups.set(on, { model: on, name: quoted(card.name || row.of_name || row.name || say("Your model"), 80),
         picture: pictureOf({ id: on, image: card.has_image === true,
           thumb: card.has_thumb === true ? `${origin}/m/${on}.webp?v=${version.toString(36)}` : null }),
         link: `${origin}/m/${on}`, at: row.at, new: false, unread: false, rows: [] });
@@ -251,8 +265,10 @@ export async function notifications(request, response, { origin }) {
   const page = await call("notification_list", { viewer: asker, mark: true }, () => ({ missing: true }));
   const read = page && page.missing ? await listBefore(asker, true) : page;
   if (!read) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false });
+  // Each line in the language the page asks in (?lang=).
+  const lang = String(request.query?.lang || "en");
   return response.status(200).json(await withFaces({ ready: true, kept: !read.before, seen_at: read.seen_at ?? null,
-    ...noticeGroups(read, origin) }));
+    ...inLanguage(lang, siteWords(lang), () => noticeGroups(read, origin)) }));
 }
 
 export async function notificationsRead(request, response) {

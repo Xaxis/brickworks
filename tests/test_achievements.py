@@ -134,7 +134,7 @@ def test_a_level_is_said_the_same_everywhere() -> None:
     assert [(one["id"], one["level"], one["name"]) for one in out["awards"]] == [
         ("built", 2, "Built · 10 times"), ("designer", 1, "Designer · first model"), ("tested", 1, "Tested · first model")]
     assert out["awards"][0]["said"] == "Level 2 of 6: 12 builds finished to the last step"
-    assert out["said"]["who"] == "You" and out["said"]["did"] == "reached Designer · 10 models, level 3 of 6"
+    assert out["said"]["who"] == "You" and out["said"]["line"] == "{who} reached Designer · 10 models, level 3 of 6"
     assert out["said"]["link"] == "https://x/profile?tab=achievements"
     first, second = out["groups"]["groups"]
     assert first["achievements"] is True and first["model"] == "" and first["name"] == "Your achievements"

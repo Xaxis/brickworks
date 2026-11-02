@@ -1355,7 +1355,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     + `${escapeHtml(link.said)}</a></li>`).join("");
   const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="${asText(say("More"))}">${iconHtml("more")}</summary>`
     + `<div class="menu-list"><button type="button" data-report="${asText(say("this profile"))}" data-report-handle="${escapeHtml(person.handle)}" hidden>`
-    + `${asText(say("Report it"))}</button><a href="/takedown">${asText(say("Takedown requests"))}</a></div></details>`;
+    + `${asText(say("Report it"))}</button><a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`;
   // The banner is its model's picture with nothing behind the model, on
   // the theme's own ground as a card's is (web/directory.css); the server
   // gives the picture itself for a model published before cut-outs.
@@ -1531,7 +1531,7 @@ function listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, w
   const ready = follows && follows.ready;
   const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="${asText(say("More"))}" title="${asText(say("More"))}">`
     + `${iconHtml("more")}</summary><div class="menu-list"><button type="button" data-report="${asText(say("this collection"))}" `
-    + `data-report-collection="${id}" hidden>${asText(say("Report it"))}</button><a href="/takedown">${asText(say("Takedown requests"))}</a>`
+    + `data-report-collection="${id}" hidden>${asText(say("Report it"))}</button><a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a>`
     + "</div></details>";
   const main = `<div class="wrap wide person list" data-id="${id}">
   <header class="list-head">

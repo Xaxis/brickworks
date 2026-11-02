@@ -511,8 +511,8 @@ async function replies(page, stepComment) {
   const told = await api("/api/people?op=notifications", { token: writer.access_token });
   const group = (told.body.groups || []).find((g) => g.model === id);
   const row = group?.rows.find((r) => r.kind === "reply");
-  check(`the builder's notifications: "${row ? `${row.who} ${row.did}: ${row.said}` : "nothing"}", under "${group?.name}"`,
-    told.status === 200 && Boolean(row) && row.did === "replied to your comment on step 4" && row.said === REPLY_OWNER
+  check(`the builder's notifications: "${row ? `${row.line.replace("{who}", row.who)}: ${row.said}` : "nothing"}", under "${group?.name}"`,
+    told.status === 200 && Boolean(row) && row.line === "{who} replied to your comment on step 4" && row.said === REPLY_OWNER
     && row.link.endsWith(`/m/${id}#comment-${reply?.id}`) && group.name === NAME);
   const reading = await context({ as: await mintSession(writerEmail), width: 390, height: 844, phone: true });
   const inbox = await reading.newPage();

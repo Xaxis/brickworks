@@ -251,6 +251,17 @@ async function route(name) {
 
 /// A file of web/, or null.
 function page(pathname) {
+  // A page's copy in a language (tools/site_lang.py) at /de/<page>, the
+  // consent page's at /de/oauth/authorize, as deploy.sh serves them.
+  const lang = /^\/(de|fr|es)(\/.*)?$/.exec(pathname);
+  if (lang) {
+    const rest = (lang[2] || "/").replace(/\/$/, "") || "/";
+    const copy = rest === "/" ? "index.html" : rest === "/oauth/authorize" ? "oauth/authorize.html"
+      : /^\/[a-z0-9_-]+\.[a-z]+$/.test(rest) ? rest.slice(1) : `${rest.slice(1)}.html`;
+    if (!/^(?:oauth\/)?[a-z0-9_-]+\.[a-z]+$/.test(copy)) return null;
+    const file = new URL(`${lang[1]}/${copy}`, web);
+    return existsSync(file) ? { body: readFileSync(file), type: TYPES[copy.split(".").pop()] || "application/octet-stream" } : null;
+  }
   const named = PAGES.find(([pattern]) => pattern.test(pathname));
   // Any other page at its bare name, as deploy.sh serves them: /admin,
   // /takedown, /download.

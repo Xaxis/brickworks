@@ -3735,7 +3735,8 @@
       "reach": "https://brickworks.diy/<anything not there>   (answers 404)",
       "area": "web",
       "tests": [
-        "tests/test_release_links.py"
+        "tests/test_release_links.py",
+        "tests/test_site_lang.py"
       ]
     },
     {
@@ -4112,7 +4113,9 @@
       "entry": "web/authorize.html",
       "reach": "https://brickworks.diy/oauth/authorize?...   (Claude sends people here; tools/web/oauth_flow.mjs drives it)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_site_lang.py"
+      ]
     },
     {
       "id": "ui:connect by a point",
@@ -5148,7 +5151,8 @@
       "reach": "<deployment>/beta-hub   (signed out: sign in; not a tester: for testers; a tester: what's new, known issues, early features, how to tell us; GET /api/plans?op=beta_hub; Help, Beta hub in the app for a tester)",
       "area": "web",
       "tests": [
-        "tests/fixtures/feedback/api_check.mjs"
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_site_lang.py"
       ]
     },
     {
@@ -5432,7 +5436,9 @@
       "entry": "web/feed.html",
       "reach": "https://brickworks.diy/feed   (feed.js: signed in, what the people you follow made, newest first, each a post with its picture: the model's card or the photo; opening it clears its count; Notifications a tab beside it; signed out, following nobody or nothing new: Latest on Brickworks; designers to follow beside it)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_site_lang.py"
+      ]
     },
     {
       "id": "ui:your feedback on settings",

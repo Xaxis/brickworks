@@ -79,15 +79,24 @@
     .map((tag) => String(tag).slice(0, 2).toLowerCase()).find((code) => CODES.includes(code)) || null;
   const page = CODES.includes(root.lang.slice(0, 2)) ? root.lang.slice(0, 2) : "en";
   const chosen = () => kept() || browser() || "en";
-  // This page in [code], where it has a copy in it: its address here.
+  // This page in [code], where it has a copy in it: its address here. The
+  // page not found (404.html, data-missing) answers every address there is
+  // nothing at, so its copy is the same address in the language, /de/<it>,
+  // which answers with the copy's (tools/deploy.sh).
   const copyIn = (code) => {
+    if (root.hasAttribute("data-missing")) {
+      const rest = location.pathname.replace(/^\/(?:de|fr|es)(?=\/|$)/, "") || "/";
+      return code === "en" ? rest : `/${code}${rest === "/" ? "" : rest}`;
+    }
     const link = document.querySelector(`link[rel="alternate"][hreflang="${code}"]`);
     return link ? new URL(link.href).pathname : null;
   };
-  const wanted = kept() || (page === "en" ? browser() : null);
-  if (wanted && wanted !== page && copyIn(wanted)) {
-    location.replace(copyIn(wanted) + location.search + location.hash);
-  }
+  // A link that asks for a language (?lang=en: a copy's link to the English
+  // text that binds, tools/site_lang.py) is shown in it, this once.
+  const asked = new URLSearchParams(location.search).get("lang");
+  const wanted = (CODES.includes(asked) ? asked : null) || kept() || (page === "en" ? browser() : null);
+  const copy = wanted && wanted !== page ? copyIn(wanted) : null;
+  if (copy && copy !== location.pathname) location.replace(copy + location.search + location.hash);
   let words = null;
   // [english] as this page says it, each {name} in it filled from [values].
   const say = (english, values = {}) => {
@@ -120,7 +129,11 @@
       localStorage.setItem(KEY, code);
     } catch {}
     const copy = copyIn(code);
-    if (code !== page && copy) location.assign(copy + location.search + location.hash);
+    // Without a language the address asked for, which would send it back.
+    const query = new URLSearchParams(location.search);
+    query.delete("lang");
+    const search = query.toString() ? `?${query}` : "";
+    if (code !== page && copy) location.assign(copy + search + location.hash);
     else carry();
   };
   window.brickworksLang = {

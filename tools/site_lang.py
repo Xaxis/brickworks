@@ -7,7 +7,10 @@
 
 The landing page, the download page and the pages a visitor goes on to
 from them (the plans, the FAQ, the comparison, the gallery, the LDraw
-library, this month's challenge, your own profile and your settings: PAGES)
+library, this month's challenge, your own profile and your settings; the
+account menu's feed, notifications, builds, feedback and beta pages; the
+footer's terms, privacy, guidelines, takedown and changelog; the page not
+found and the connector's consent page: PAGES; only the docs stay English)
 are written in English, in web/, as every page is. Each
 language's copy is made from them here, at /de, /de/download and so on, and
 kept beside them in web/de/ (tests/test_site_lang.py fails when a copy is
@@ -66,8 +69,18 @@ page with copies written as English's (/u/..., /c/..., /collections,
 any other script a copy loads, which leaves the visitor's language for
 English (unled: ${at}/u/ or ${langAt()}/profile).
 
+The changelog's releases are written by tools/site.py in each copy, its
+headings, dates and links in the language (the scripts' months and "{day}
+{month} {year}") and each release's notes as they were written, in
+English, marked lang="en". The terms, privacy, guidelines and takedown
+pages open with a line saying the English text binds (BOUND, BINDING).
+The feed's and the notifications' lines are said by the server in the
+language asked (api/_follows.js feedSaid, api/_notifications.js
+noticeSaid, ?lang=), whole sentences with {who} where the name goes.
+
 Which language a visitor is shown is web/theme.js's: the one they chose in
-the footer, else the first of their browser's that the site has.
+the footer, else the first of their browser's that the site has; ?lang=
+once, as the binding line's link to the English text asks.
 """
 
 from __future__ import annotations
@@ -90,7 +103,21 @@ LANGUAGES = {"de": "Deutsch", "fr": "Français", "es": "Español"}
 # The pages, by their file, and where each is: / and /download in English.
 PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "faq.html": "faq",
          "compare.html": "compare", "gallery.html": "gallery", "library.html": "library",
-         "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings"}
+         "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings",
+         "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds",
+         "feedback.html": "feedback", "beta.html": "beta", "beta-hub.html": "beta-hub", "terms.html": "terms",
+         "privacy.html": "privacy", "guidelines.html": "guidelines", "takedown.html": "takedown",
+         "changelog.html": "changelog", "404.html": "404", "authorize.html": "oauth/authorize"}
+# The page not found has no address of its own: it answers every address
+# there is nothing at, its copy any such address in the language (/de/<it>,
+# web/theme.js); and the connector's consent page is only ever opened by an
+# app asking. Neither is a page a search engine lists (no canonical).
+UNLISTED = {"404.html", "authorize.html"}
+# The site's rules, each copy opening with one line in its language: the
+# English text binds, and a link to it (?lang=en keeps it English,
+# web/theme.js). Every heading, list, link and date is the English's.
+BINDING = {"terms.html", "privacy.html", "guidelines.html", "takedown.html"}
+BOUND = 'This is a translation. The <a href="{english}">English text</a> is the one that binds.'
 # The pages the server makes in each language too, at /<code>/<where>: a
 # copy's link to one opens it in the copy's language.
 SERVED = ("collections", "c/", "u/", "m/", "library/")
@@ -136,14 +163,15 @@ COUNTED = re.compile(rf"\bcounted(?:Said)?\((?:[^,()]|\([^()]*\))+,\s*({STRING})
 # developer's, and no sentence). A page says each through told().
 TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/people.js", "api/share.js",
         "api/_comments.js", "api/_follows.js", "api/_lists.js", "api/_challenges.js", "api/_bases.js",
-        "api/_avatars.js", "api/account.js", "api/plans.js", "api/_feedback.js")
+        "api/_avatars.js", "api/account.js", "api/plans.js", "api/_feedback.js", "api/_beta.js",
+        "api/_notifications.js", "api/oauth.js")
 # And what a profile can be refused with, in First steps, the profile's own
 # page and settings, in the functions that refuse it: every sentence, ended
 # with a full stop or not.
 TOLD_IN = {"api/people.js": ("saveProfile", "cleanLink", "saveShowcase", "saveList", "saveAvatar"),
            "api/_names.js": ("handleTrouble",), "api/_avatars.js": ("keepAvatar", "removeAvatar")}
 REFUSED = re.compile(rf"(?:new \w*Refusal\(|\breturn\s+)((?:{STRING}\s*\+\s*)*{STRING})")
-TOLD_AS = re.compile(rf"(?:\berror:\s*|\btrouble:\s*|\bwhy_not:\s*|\bsay\(response,\s*\d+,\s*|new (?:Refusal|Unacceptable)\(|"
+TOLD_AS = re.compile(rf"(?:\berror:\s*|\btrouble:\s*|\bwhy_not:\s*|\brefuse:\s*|\bsay\(response,\s*\d+,\s*|new (?:Refusal|Unacceptable)\(|"
                      rf"\[\d{{3}},\s*|\b(?:\w*NOT_YET|ASK_FIRST|KEPT) = )((?:{STRING}\s*\+\s*)*{STRING})")
 # What a script shows of an answer's words (its error, or why_not): told()
 # or say() each, or asks whether there are any (if, !, ? or &&).
@@ -172,9 +200,15 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/set-page.js": (
             "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
             "web/embed.js": (), "tools/viewer/inline.js": (),
             "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),
-            "web/feedback.js": ()}
+            "web/feedback.js": (), "web/follow.js": (), "web/kit.js": (),
+            "web/feed.js": (), "web/notifications.js": (), "web/builds.js": (), "web/beta.js": (), "web/beta-hub.js": (),
+            "web/takedown.js": ("send", "claim", "counter"), "web/authorize.js": (),
+            "api/_follows.js": ("feedSaid",), "api/_notifications.js": ("dateWords", "dayWords", "noticeSaid", "noticeGroups")}
+# And what the site is put together with says on a page (tools/site.py: the
+# changelog's heads, links and dates), each say("...") of it.
+WRITTEN = ("tools/site.py",)
 # Capitalized words of those that are no English to say: code, and names.
-CODE_WORDS = {"Bearer", "Brickworks", "Brickify", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook",
+CODE_WORDS = {"Bearer", "Brickworks", "Brickify", "Claude", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook",
               "Edge", "Opera", "Safari"}
 # And the keys a script listens for, each a literal of its own.
 KEY_NAMES = {'"Escape"', '"Enter"', '"Tab"'}
@@ -398,6 +432,9 @@ def script_words() -> dict[str, str]:
         for found in COUNTED.finditer(text):
             for word in counts(found):
                 words.setdefault(word, path)
+    for path in WRITTEN:
+        for found in SAY.finditer((ROOT / path).read_text(encoding="utf-8")):
+            words.setdefault("".join(json.loads(s) for s in re.findall(STRING, found.group(1))), path)
     for one in sorted(WEB.glob("*.js")):
         for why in SIGN_IN_WHY.findall(one.read_text(encoding="utf-8")):
             words.setdefault(json.loads(f'"{why}"'), f"web/{one.name}")
@@ -609,6 +646,12 @@ def translated(name: str, code: str, words: dict) -> tuple[str, list[str], list[
         if new != raw:
             edits.append((start, tokens.ends[n], new))
     out = spliced(out, edits)
+    # A rule's copy opens with the line that says the English binds, under
+    # its title, linking to the English kept English.
+    if name in BINDING:
+        line = say(BOUND).replace("{english}", f"/{PAGES[name]}?lang=en")
+        out = re.sub(r"(<main\b.*?</h1>)", lambda found: f'{found.group(1)}\n\t\t\t<p class="binding">{line}</p>', out,
+                     count=1, flags=re.S)
 
     def ld(found: re.Match) -> str:
         data = json.loads(found.group(1))
@@ -618,6 +661,10 @@ def translated(name: str, code: str, words: dict) -> tuple[str, list[str], list[
     out = re.sub(r'<script type="application/ld\+json">(.*?)</script>', ld, out, flags=re.S)
     # Its words for the page's scripts, and where it was made from.
     data = json.dumps(script_table(code, words), ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
+    # Its scripts' words, which web/theme.js reads: a page whose head is
+    # left to end by itself would carry none, and say everything in English.
+    if "</head>" not in out:
+        raise ValueError(f"web/{name} has no </head> to put its scripts' words before")
     out = out.replace("</head>", f'<script type="application/json" id="site-words">{data}</script>\n</head>', 1)
     out = re.sub(r"<!--.*?-->", f"<!-- web/{name} in {LANGUAGES[code]}, written by tools/site_lang.py from it and "
                  f"web/_lang/{code}.json: change those and run it, never this. -->", out, count=1, flags=re.S)
@@ -701,11 +748,12 @@ def main(argv: list[str]) -> int:
     wrote = 0
     for path, (text, missing, broken) in written().items():
         rel = path.relative_to(ROOT)
+        code = path.relative_to(WEB).parts[0]
         if missing:
-            problems.append(f"{rel}: {len(missing)} without words in web/_lang/{path.parent.name}.json, "
-                            f"first {missing[0]!r} (tools/site_lang.py --missing={path.parent.name})")
+            problems.append(f"{rel}: {len(missing)} without words in web/_lang/{code}.json, "
+                            f"first {missing[0]!r} (tools/site_lang.py --missing={code})")
         if broken:
-            problems.append(f"{rel}: web/_lang/{path.parent.name}.json's words for {broken[0]!r} have other "
+            problems.append(f"{rel}: web/_lang/{code}.json's words for {broken[0]!r} have other "
                             f"markup than it ({len(broken)} entries so)")
         if missing or broken:
             continue
@@ -746,7 +794,7 @@ def main(argv: list[str]) -> int:
                             f"{short[0]!r} ({said_by_scripts[short[0]]}; tools/site_lang.py --missing={code})")
     # An entry no page says any more: its English was changed or taken out.
     for code in LANGUAGES:
-        said = {key_of(k) for name in PAGES for k in Page((WEB / name).read_text(encoding="utf-8")).keys()}
+        said = {key_of(k) for name in PAGES for k in Page((WEB / name).read_text(encoding="utf-8")).keys()} | {BOUND}
         unused = [key for key in table(code)["pages"] if key not in said]
         if unused:
             problems.append(f"web/_lang/{code}.json has {len(unused)} entries no page says, first {unused[0]!r}: "

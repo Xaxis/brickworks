@@ -252,7 +252,7 @@ export async function firstSteps({ pending = false } = {}) {
       if (!pending) {
         const feed = make("a", "cta", say("See your feed"));
         feed.id = "first-feed";
-        feed.href = `/feed${tests ? `?${tests}` : ""}`;
+        feed.href = `${langAt()}/feed${tests ? `?${tests}` : ""}`;
         actions.append(feed);
       }
       const close = button(say("Done"), pending ? "cta" : "cta ghost");

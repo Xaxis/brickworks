@@ -8,7 +8,9 @@
 //                        --static=build/web; --app=http://127.0.0.1:PORT/index.html)
 //   [--widths=1280,390]  [--langs=en,de,fr,es]
 //   [--pages=home,download,plans,faq,compare,gallery,library,set,model,sitemaps,signin,firststeps,
-//            profile,ldraw,embed,viewer,server,challenge,collections,account]
+//            profile,ldraw,embed,viewer,server,challenge,collections,account,
+//            feed,notifications,builds,feedback,beta,beta-hub,terms,privacy,guidelines,takedown,
+//            changelog,missing,consent]
 //
 // The landing page and the download page, and the app's loading page
 // between them and the app, in German, French and Spanish (2026-11-01);
@@ -118,6 +120,27 @@
 //                /settings: the deployment's pages, signed in only in the
 //                browser, every call they make (its Supabase's too)
 //                answered here by the stand-in.
+//
+// And the last English pages the site linked to (2026-11-02, languages7),
+// each in the language at each width, no English left but what people
+// wrote and the release notes:
+//   feed, notifications, beta, beta-hub, feedback, consent
+//                the account menu's pages and the connector's consent page
+//                (/oauth/authorize, asking to let Claude build), signed in
+//                only in the browser as account's are, every call answered
+//                here; the feed's and the notifications' lines said whole
+//                by the server in the language; the beta's form's refusal,
+//                the feedback dialog, and the beta hub's cards as we wrote
+//                them (lang="en");
+//   builds       every photo of a real build, signed out;
+//   terms, privacy, guidelines, takedown
+//                the rules, each copy opening with one line that the English
+//                text binds, whose link opens it in English and keeps it so;
+//   changelog    its heads, dates and links in the language, the notes as
+//                written, lang="en";
+//   missing      an address with nothing at it, /de/<it> after the
+//                browser's language, answered 404 in it.
+// The docs alone stay English: choosing above opens them.
 //
 // With no --url nothing leaves this machine: the pages are served by
 // design_stand_in.mjs from this checkout's web/. Pictures with --out:
@@ -738,26 +761,27 @@ async function choosing(browser) {
     check(new URL(tab.url()).pathname === "/de", "and / opens /de from then on");
     await tab.goto(`${base}/gallery`, { waitUntil: "load" });
     check(new URL(tab.url()).pathname === "/de/gallery", "and /gallery opens /de/gallery");
-    await tab.goto(`${base}/changelog`, { waitUntil: "load" });
+    await tab.goto(`${base}/docs`, { waitUntil: "load" });
     const shown = await tab.locator(".site-foot select[data-lang-choice]").inputValue();
     const into = await tab.evaluate(() => [...document.querySelectorAll('a[href^="/app"]')].map((a) => new URL(a.href).searchParams.get("lang")));
-    check(shown === "de" && into.length >= 1 && into.every((lang) => lang === "de"),
-      `and the changelog, still in English, shows Deutsch chosen (${shown}) and opens the app in it (${into.length} links)`);
+    check(new URL(tab.url()).pathname === "/docs" && shown === "de" && into.length >= 1 && into.every((lang) => lang === "de"),
+      `and the docs, still in English, show Deutsch chosen (${shown}) and open the app in it (${into.length} links)`);
   } catch (trouble) {
     check(false, `choosing: ${String(trouble.message || trouble).split("\n")[0]}`);
   } finally {
     await context.close();
   }
-  // A page with no copy still carries the browser's language into the app.
+  // A page with no copy (the docs, since languages7) still carries the
+  // browser's language into the app.
   const french = await newContext(browser, "fr", 1280);
   const changes = await french.newPage();
   try {
-    await changes.goto(`${base}/changelog`, { waitUntil: "load" });
+    await changes.goto(`${base}/docs`, { waitUntil: "load" });
     const langs = await changes.evaluate(() => [...document.querySelectorAll('a[href^="/app"]')].map((a) => new URL(a.href).searchParams.get("lang")));
-    check(new URL(changes.url()).pathname === "/changelog" && langs.length >= 1 && langs.every((lang) => lang === "fr"),
-      `the changelog, in English, sends a French browser into a French app (${langs.length} links)`);
+    check(new URL(changes.url()).pathname === "/docs" && langs.length >= 1 && langs.every((lang) => lang === "fr"),
+      `the docs, in English, send a French browser into a French app (${langs.length} links)`);
   } catch (trouble) {
-    check(false, `changelog: ${String(trouble.message || trouble).split("\n")[0]}`);
+    check(false, `docs: ${String(trouble.message || trouble).split("\n")[0]}`);
   } finally {
     await french.close();
   }
@@ -945,7 +969,11 @@ async function screens(tab, name, most = 4) {
   for (let at = 0, n = 1; at < tall && n <= most; at += high, n += 1) {
     await tab.evaluate((y) => window.scrollTo(0, y), at);
     await tab.waitForTimeout(200);
-    await tab.screenshot({ path: path.join(out, `${name}-${n}.png`) });
+    // SwiftShader now and then fails a capture while a page's first
+    // pictures decode ("Unable to capture screenshot"): a picture, not
+    // the page, so it is asked again once.
+    const shot = { path: path.join(out, `${name}-${n}.png`) };
+    await tab.screenshot(shot).catch(() => tab.waitForTimeout(1000).then(() => tab.screenshot(shot)));
   }
   await tab.evaluate(() => window.scrollTo(0, 0));
 }
@@ -1008,8 +1036,9 @@ async function whereSaid(tab, text) {
 }
 
 /// No English but [theirs], nothing cut short that English shows whole,
-/// the footer's Language, and the pictures: the end of each page's check.
-async function copyRead(tab, code, width, where, kind, theirs) {
+/// the footer's Language (where the page has the site's [footer]), and the
+/// pictures: the end of each page's check.
+async function copyRead(tab, code, width, where, kind, theirs, footer = true) {
   if (code !== "en") {
     const left = await englishIn(tab, theirs);
     check(!left.length, `${where}: no English left${left.length
@@ -1022,8 +1051,10 @@ async function copyRead(tab, code, width, where, kind, theirs) {
     const short = cuts.filter((text) => !english.has(text));
     check(!short.length, `${where}: nothing cut short${short.length ? `: ${short.length}, "${short.slice(0, 3).join('", "')}"` : ""}`);
   }
-  const shown = await tab.locator(".site-foot select[data-lang-choice]").inputValue().catch(() => "");
-  check(shown === code, `${where}: the footer's Language shows ${shown}`);
+  if (footer) {
+    const shown = await tab.locator(".site-foot select[data-lang-choice]").inputValue().catch(() => "");
+    check(shown === code, `${where}: the footer's Language shows ${shown}`);
+  }
   await screens(tab, `${code}-${kind}-${width}`);
 }
 
@@ -1571,6 +1602,159 @@ async function ownSaid(browser, code, width, kind) {
   }
 }
 
+// The last pages languages7 put in each language, by their English file:
+// [file], where it is, whether it is drawn signed in (planted, as ownSaid's),
+// what marks it drawn, and what on it is people's (or the release notes).
+const PKCE = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+const CONSENT = `/oauth/authorize?response_type=code&client_id=flow&redirect_uri=${encodeURIComponent("https://claude.ai/api/mcp/auth_callback")}`
+  + `&code_challenge=${PKCE}&code_challenge_method=S256&state=flow`;
+const SEVENTH = [
+  { name: "feed", file: "feed.html", at: "/feed", signedIn: true, drawn: () => document.documentElement.dataset.feed === "ready",
+    theirs: ".feed-row .what b, .feed-row .what a, .feed-row q, .feed-photo figcaption, .people-list .name, .people-list .handle" },
+  { name: "notifications", file: "notifications.html", at: "/notifications", signedIn: true,
+    drawn: () => document.documentElement.dataset.notifications === "ready", theirs: ".notice h2 a, .notice .what b, .notice q" },
+  { name: "builds", file: "builds.html", at: "/builds", drawn: () => ["ready", "none"].includes(document.documentElement.dataset.builds),
+    theirs: "figure.build q, figure.build figcaption a" },
+  { name: "feedback", file: "feedback.html", at: "/feedback", signedIn: true, drawn: () => true, theirs: "" },
+  { name: "beta", file: "beta.html", at: "/beta", signedIn: true,
+    drawn: () => document.getElementById("apply-wait")?.hidden && !document.querySelector("#spots .bone"), theirs: "" },
+  { name: "beta-hub", file: "beta-hub.html", at: "/beta-hub", signedIn: true, drawn: () => !document.getElementById("hub")?.hidden,
+    theirs: "[lang='en']" },
+  ...["terms", "privacy", "guidelines", "takedown"].map((name) => ({ name, file: `${name}.html`, at: `/${name}`, binds: true,
+    drawn: () => true, theirs: "" })),
+  { name: "changelog", file: "changelog.html", at: "/changelog", drawn: () => true, theirs: ".release-notes, .release-head h2" },
+  { name: "missing", file: "404.html", at: "/no-such-brick", drawn: () => true, theirs: "" },
+  { name: "consent", file: "authorize.html", at: CONSENT, signedIn: true,
+    drawn: () => !document.getElementById("allow-step")?.classList.contains("hide"), theirs: "#signed-in-as, #back-to b" },
+];
+const titleOf = (file) => plain(/<title>([^<]*)<\/title>/.exec(readFileSync(path.join(root, "web", file), "utf8"))[1]);
+const headingOf = (file) => plain(/<main\b[\s\S]*?<h1[^>]*>([\s\S]*?)<\/h1>/.exec(readFileSync(path.join(root, "web", file), "utf8"))[1]);
+const BOUND = 'This is a translation. The <a href="{english}">English text</a> is the one that binds.';
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/// One of [one]'s pages in [code] at [width], from its English address as a
+/// browser asking for the language opens it: on its copy, its words, the
+/// checks of its own, then copyRead's.
+async function seventhSaid(browser, code, width, one) {
+  const phone = width < 600;
+  let context;
+  if (one.signedIn) {
+    // Signed in in this browser only: every call the page makes is answered
+    // here, a deployment's pages or not (ownSaid).
+    context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, locale: ASKED[code].locale,
+      extraHTTPHeaders: { ...headers, "accept-language": ASKED[code].header },
+      ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+    const db = await projectOf();
+    await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), remote, headers, remoteDb: db });
+    const kept = JSON.parse(JSON.stringify(stand.signedInStorage()).split(stand.DB).join(db || stand.DB));
+    await context.addInitScript((kept) => {
+      localStorage.setItem("brickworks.session", JSON.stringify(kept.session));
+      sessionStorage.setItem("brickworks.access", JSON.stringify(kept.access));
+    }, kept);
+  } else context = await newContext(browser, code, width);
+  const tab = await context.newPage();
+  const where = `${code} ${one.name} ${width}`;
+  const lang = code === "en" ? "" : `/${code}`;
+  const asked = new URL(one.at, "https://x");
+  const own = `${lang}${asked.pathname === "/" ? "" : asked.pathname}`;
+  // The status each page of the tab was answered with.
+  const statuses = [];
+  tab.on("response", (reply) => {
+    if (reply.request().isNavigationRequest() && reply.frame() === tab.mainFrame()) statuses.push(reply.status());
+  });
+  try {
+    await tab.goto(`${base}${one.at}`, { waitUntil: "load" });
+    await tab.waitForURL((url) => url.pathname === own, { timeout: 10000 }).catch(() => {});
+    await tab.waitForLoadState("load");
+    const at = new URL(tab.url());
+    check(at.pathname === own && at.search === asked.search && await tab.evaluate(() => document.documentElement.lang) === code,
+      `${where}: opens ${own}${asked.search ? "?…" : ""} in ${code} (at ${at.pathname}, lang ${await tab.evaluate(() => document.documentElement.lang)})`);
+    const title = await tab.title();
+    check(title === plain(page(code, titleOf(one.file))), `${where}: its title says "${title}"`);
+    await tab.waitForFunction(one.drawn, null, { timeout: 30000 });
+    if (one.name === "missing") {
+      const said = (await tab.locator("main h1").textContent()).trim();
+      check(statuses.at(-1) === 404 && said === page(code, "This brick is missing."),
+        `${where}: answered ${statuses.at(-1)}, "${said}"`);
+    }
+    if (one.binds) {
+      // One line under its heading: the English binds, a link to it.
+      const line = await tab.evaluate(() => {
+        const said = document.querySelector("main .binding");
+        return said ? { text: said.textContent.trim(), to: said.querySelector("a")?.getAttribute("href") || "",
+          after: said.previousElementSibling?.localName || "" } : null;
+      });
+      if (code === "en") check(line === null, `${where}: no line saying what binds`);
+      else {
+        check(line && line.text === plain(page(code, BOUND)) && line.to === `${one.at}?lang=en` && line.after === "h1",
+          `${where}: "${line?.text}", its link ${line?.to}`);
+        // Its link opens the English text, and it stays English.
+        if (width === widths[0]) {
+          await Promise.all([tab.waitForURL((url) => url.pathname === one.at, { timeout: 10000 }), tab.locator("main .binding a").click()]);
+          await tab.waitForTimeout(500);
+          const english = await tab.evaluate(() => ({ at: location.pathname, lang: document.documentElement.lang,
+            h1: document.querySelector("main h1")?.textContent.trim() || "" }));
+          check(english.at === one.at && english.lang === "en" && english.h1 === headingOf(one.file),
+            `${where}: the link opens ${english.at} in ${english.lang}, "${english.h1}"`);
+          await tab.goto(`${base}${own}`, { waitUntil: "load" });
+        }
+      }
+    }
+    if (one.name === "changelog") {
+      const said = await tab.evaluate(() => ({
+        notes: [...document.querySelectorAll(".release-notes")].map((notes) => notes.getAttribute("lang") || ""),
+        first: [...document.querySelectorAll(".release time[datetime]")].map((time) => [time.dateTime, time.textContent.trim()])[0],
+        download: [...document.querySelectorAll(".release .when a")].map((a) => [a.textContent.trim(), new URL(a.href).pathname])[0],
+      }));
+      const [iso, shown] = said.first || ["", ""];
+      const [y, m, d] = iso.split("-").map(Number);
+      const want = script(code, "{day} {month} {year}", { day: d, month: script(code, MONTHS[m - 1]), year: y });
+      const notesWant = code === "en" ? "" : "en";
+      check(said.notes.length >= 5 && said.notes.every((one) => one === notesWant) && shown === want
+        && said.download?.[0] === script(code, "Download") && said.download?.[1] === `${lang}/download`,
+        `${where}: ${said.notes.length} releases' notes ${code === "en" ? "" : 'lang="en", '}"${shown}", "${said.download?.[0]}" ${said.download?.[1]}`);
+    }
+    if (one.name === "feed" || one.name === "notifications") {
+      // The lines the server said in the language, {who} where it puts them.
+      const lines = await tab.evaluate(() => [...document.querySelectorAll(".feed-row .what, .notice .what")]
+        .map((what) => what.textContent.replace(/\s+/g, " ").trim()));
+      check(lines.length >= 3, `${where}: ${lines.length} lines, first "${lines[0]?.slice(0, 90)}"`);
+    }
+    if (one.name === "beta") {
+      // The form's refusal, said by its script in the language.
+      await tab.locator("#apply-send").click();
+      await tab.waitForFunction(() => document.getElementById("apply-said")?.textContent.trim(), null, { timeout: 10000 });
+      const said = (await tab.locator("#apply-said").textContent()).trim();
+      const want = script(code, "Say what you would build, in a sentence or two: at least {n} characters.", { n: 20 });
+      check(said === want, `${where}: an empty form is told "${said}"`);
+    }
+    if (one.name === "feedback") {
+      // The feedback dialog, opened from the page, in the language.
+      await tab.locator('[data-feedback="bug"]').first().click();
+      await tab.locator("dialog.feedback[open]").waitFor({ state: "visible", timeout: 10000 });
+      if (code !== "en") {
+        const left = await englishIn(tab, "dialog.feedback textarea, dialog.feedback input", "dialog.feedback");
+        check(!left.length, `${where}: its dialog, no English left${left.length ? `: ${left.length}, first "${left[0].slice(0, 120)}"` : ""}`);
+      }
+      if (out) await tab.screenshot({ path: path.join(out, `${code}-${one.name}-dialog-${width}.png`) });
+      await tab.keyboard.press("Escape");
+    }
+    if (one.name === "consent") {
+      // As plain() reads the words: a French narrow space before "?" a space.
+      const said = plain(await tab.locator("#allow-step h1").textContent());
+      const allow = (await tab.locator("#allow").textContent()).trim();
+      check(said === plain(page(code, 'Let <span class="client">Claude</span> build in Brickworks?')) && allow === script(code, "Allow"),
+        `${where}: asks "${said}", "${allow}"`);
+    }
+    // The consent page is a card of its own, with no site footer.
+    await copyRead(tab, code, width, where, one.name, one.theirs || "[translate='no']", one.name !== "consent");
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
 const browser = await launch({ signedOut: true });
 try {
   console.log(`site in four languages on ${base}`);
@@ -1644,6 +1828,13 @@ try {
           await ownSaid(browser, code, width, "settings");
         }
       }
+    }
+  }
+  // The last pages languages7 put in each language.
+  const seventh = SEVENTH.filter((one) => !only || only.includes(one.name));
+  for (const code of seventh.length ? (langs.includes("en") ? langs : ["en", ...langs]) : []) {
+    for (const width of widths) {
+      for (const one of seventh) await seventhSaid(browser, code, width, one);
     }
   }
   await choosing(browser);
