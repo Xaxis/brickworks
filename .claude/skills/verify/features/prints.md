@@ -305,8 +305,8 @@ Proves it when:
   covered, saved and clicked down; web/icon.svg on 3037's slope, its background
   cleared, in LEGO inks; Stickers… > New sticker…, a click on the two tiles, a
   sign drawn and stuck on; the sheet saved as a PDF download and measured by
-  `tools/sticker_sheet_check.py` within 0.1 mm; the model exported and opened in
-  a second, empty browser with all its printed parts. No script error reaches
+  `tools/sticker_sheet_check.py` within 0.1 mm; the model exported (File >
+  Export > LDraw model) and opened in a second, empty browser with all its printed parts. No script error reaches
   the console. **Look at** `shots/studio_web/*.png`.
 
 - `decor_probe` ends `decor: a picture given as data prints, a Studio file's prints,
@@ -396,7 +396,8 @@ Proves it when:
   just before the click, on a page whose frames took most of a second, was
   sometimes switched on after the app had asked (`input.click()` with the click
   still live), and the picker was never seen. `studio_flow.mjs` keeps one
-  `filechooser` listener on each page and takes pickers from it.
+  `filechooser` listener on each page and takes pickers from it, as
+  `browser.mjs`'s `openFromFile` does for every flow's Open… > From a file.
 - **A brick leaving the selection has to say so.** `take_off` erased the plain
   tile from the selection without `selection_changed`, and the world's rebuild
   redraws the outline only while something is selected, so after a print in

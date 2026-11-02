@@ -22,7 +22,7 @@
 // Says each render's longest frame and what it was doing then
 // (StudioRender's worst_step). Leaves OUT/*.png, the downloads and a summary.
 // --also=FILE,… draws those models too, for pictures, asking nothing.
-import { clickStill, launch } from "./browser.mjs";
+import { clickStill, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -89,28 +89,6 @@ function press(name) {
 }
 
 const state = () => page.evaluate(() => window.brickworksRender || {});
-
-// Open, From a file, and the file given to the page's chooser.
-async function openFile(file) {
-  const at = await where("open", 120);
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
 
 // Render, wait for the download and keep it.
 async function renderAndKeep(label, minutes) {
@@ -192,7 +170,7 @@ try {
   }
   // The example car's parts arrive over the network after the toolbar does.
   await page.waitForTimeout(Number(args.load || 20000));
-  await openFile(model);
+  await openFromFile(page, model, { shots: out });
   let opened = null;
   for (let n = 0; n < 480 && !opened; n++) {
     const now = await page.evaluate(() => window.brickworksState || {});
@@ -241,7 +219,7 @@ try {
   // --also=models/sports_car.ldr,… each opened and drawn in Product on
   // white at --also_quality (good).
   for (const file of (args.also ? String(args.also).split(",") : [])) {
-    await openFile(path.resolve(file));
+    await openFromFile(page, path.resolve(file), { shots: out });
     let last = -1;
     for (let n = 0, still = 0; n < 480 && still < 6; n++) {
       const now = await page.evaluate(() => window.brickworksState || {});

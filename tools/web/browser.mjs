@@ -329,6 +329,47 @@ async function nextTelling(page, name, ms = 5000) {
   return next ? (await next.jsonValue()).at : undefined;
 }
 
+/// Open… > "From a file on this computer…", as a person opens a file, and
+/// the page's file chooser it brings up, answered with [file] when one is
+/// given. Open is pressed once it has come to rest ([clickStill]), then the
+/// first row of the menu it opens. The app tells no menu's rows, but this
+/// menu opens under the pointer (ModelBar._on_open: 8 px below it), so the
+/// row is where the press put it, 40 right and 22 down, once the app has
+/// drawn the frames that read the press ([framesDrawn]). Twenty-three flows
+/// read Open's place once, pressed it there, and pressed the row a fixed 3
+/// to 12 s later: on a busy box the toolbar could still be laying itself
+/// out, or the menu not up yet (2026-11-01). Tried again, the menu shut by
+/// Escape, when no chooser comes in 30 s.
+///
+/// The chooser is caught into [choosers] (page.choosers by default) by a
+/// listener the page has had from its start: Playwright stops a chooser
+/// only while something listens for one, and a waitForEvent added just
+/// before the press was sometimes switched on after the app had asked, so
+/// the chooser was never seen (studio_flow). The chooser, or null when none
+/// came and [optional]; otherwise an error. A picture of each try that
+/// brought none, and of an Open never shown, in [shots].
+export async function openFromFile(page, file = null, { choosers = page.choosers, shots = "",
+  optional = false } = {}) {
+  if (!choosers) throw new Error("openFromFile: the page catches no file choosers (page.choosers)");
+  for (let n = 0; n < 3; n++) {
+    choosers.length = 0;
+    const at = await clickStill(page, "open", { shots });
+    await framesDrawn(page, 3);
+    await page.mouse.click(at.x + 40, at.y + 22);
+    for (let wait = 0; wait < 60 && choosers.length === 0; wait++) await page.waitForTimeout(500);
+    const chooser = choosers.shift();
+    if (chooser) {
+      if (file) await chooser.setFiles(file);
+      return chooser;
+    }
+    if (shots) await page.screenshot({ path: `${shots}/no_picker_${n}.png` }).catch(() => {});
+    await page.keyboard.press("Escape");
+    await framesDrawn(page, 3);
+  }
+  if (optional) return null;
+  throw new Error(`Open… > From a file brought no file chooser${shots ? `; see ${shots}/no_picker_*.png` : ""}`);
+}
+
 /// The app's address as the site links to it for someone who came for the
 /// assistant: `assistant=on` added (Main._assistant_from_address). A first
 /// visit builds by hand with the connector held off, so a flow that drives

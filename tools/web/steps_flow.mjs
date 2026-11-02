@@ -18,7 +18,7 @@
 // the yellow brick with the blue. Every result is read off
 // window.brickworksState; pictures in --out. It fails if a step does not
 // happen or a script error reaches the console.
-import { askApp, clickStill, launch, typeInMenu } from "./browser.mjs";
+import { askApp, clickStill, launch, openFromFile, typeInMenu } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -89,29 +89,6 @@ function press(name) {
   return clickStill(page, name, { find: where, after: 1500 });
 }
 const caption = async () => ((await state()).timeline || {}).caption || "";
-// Open… > From a file, answered with a file: tried again when a press
-// brought no picker, as io_flow.mjs does.
-async function open(file) {
-  const at = await where("open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await shot(`no_picker_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
 // File > Export > LDraw model, by the menu's own keys, as io_flow.mjs exports.
 async function exportLdraw() {
   const file = await where("menu_file");
@@ -143,7 +120,7 @@ await page.waitForTimeout(Number(args.load || 15000));
 // model opened again, as the status bar tells a person to.
 let note = null;
 for (let attempt = 0; attempt < 3; attempt++) {
-  await open(gatehouse);
+  await openFromFile(page, gatehouse, { shots: out });
   note = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
   console.log(`        the status bar: "${note ? note.said : (await state()).said}"`);
   if (note && !/arriving/.test(note.said)) break;

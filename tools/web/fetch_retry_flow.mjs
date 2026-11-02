@@ -23,7 +23,7 @@
 // part still answered 404: the same model comes back, the part still awaited
 // and said again. Until 2026-10-20 nothing of a model short of a part was
 // autosaved, so the reload brought back the crane. Pictures of each in OUT.
-import { launch, START_MS } from "./browser.mjs";
+import { launch, openFromFile, START_MS } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -164,27 +164,6 @@ async function until(test, seconds) {
   }
   return null;
 }
-// Open… > From a file, as grab_flow does.
-async function openFile(file) {
-  const at = await where("open", 400);
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
 const notLoaded = () => said.filter((line) => /could not be loaded/.test(line));
 
 try {
@@ -196,7 +175,7 @@ try {
   mode = "flaky";
   said.length = 0;
   const opening = Date.now();
-  await openFile(crane);
+  await openFromFile(page, crane, { shots: out });
   // Two waits of 2 and 6 s before the third ask, and SwiftShader's drawing.
   const opened = await until((s) => s.bricks === PARTS && !/arriving|fetching/.test(s.said || ""), 240);
   const took = Math.round((Date.now() - opening) / 1000);
@@ -216,7 +195,7 @@ try {
   asks.clear();
   answered.clear();
   said.length = 0;
-  await openFile(pair);
+  await openFromFile(page, pair, { shots: out });
   const told = await until(() => notLoaded().length > 0, 120);
   if (told) await shot("rare_part_said.png");
   // And a while longer, for anything said again.

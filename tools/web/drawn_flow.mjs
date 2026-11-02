@@ -41,7 +41,7 @@
 // Pictures in --out. Fails, exiting 1, on a count that is wrong, a step
 // that does not happen, or a script error in the console. No model is
 // called and nothing is signed in to.
-import { askApp, clickStill, controlsWith, launch, openColumnFor } from "./browser.mjs";
+import { askApp, clickStill, controlsWith, launch, openColumnFor, openFromFile } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -238,26 +238,6 @@ function whole(seen) {
     + ` in a view of ${seen.clear.w} x ${seen.clear.h} clear below ${seen.clear.top}` };
 }
 
-// Open… > From a file, answered with a file, as in_view_flow opens one.
-async function open(page, file) {
-  const at = await where(page, "open", 400);
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let w = 0; w < 60 && !page.choosers.length; w++) await page.waitForTimeout(500);
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return Boolean(await until(page, (s) => s.bricks === 9 && s.awaited === 0, 240));
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up for Open… > From a file");
-}
-
 // Anthropic, answered in the browser: the key's check, the design as one
 // submit_design, and anything after it a word that ends the turn. [drop]:
 // the design's stream dropped, so the app asks again without one and gets
@@ -404,7 +384,9 @@ async function cutAndBooklet() {
     await where(page, "open", 400);
     await where(page, "view", 120);
     await page.waitForTimeout(Number(args.load || 8000));
-    ok(await open(page, nine), `the nine bricks open through Open… > From a file: ${(await state(page)).bricks} parts`);
+    await openFromFile(page, nine, { shots: out });
+    ok(Boolean(await until(page, (s) => s.bricks === 9 && s.awaited === 0, 240)),
+      `the nine bricks open through Open… > From a file: ${(await state(page)).bricks} parts`);
     await page.waitForTimeout(3000);
     const whole = await drawn(page, "cut_0_whole");
     ok(whole.bricks === 9, `all nine drawn before the cut: ${whole.bricks}`);

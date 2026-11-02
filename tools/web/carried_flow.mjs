@@ -15,7 +15,7 @@
 // --reload then reloads the page: the last file, put back at start-up as the
 // working model, must have every part it carries built again (the fetch is
 // for the visit, so it is fetched again).
-import { launch } from "./browser.mjs";
+import { launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 
@@ -139,17 +139,7 @@ for (const model of models) {
   const name = basename(model).replace(/\.(mpd|ldr)$/i, "");
   console.log(`carried web (${label}): ${basename(model)}`);
   const carried = carriedIn(readFileSync(model, "utf8"));
-  const at = await where("open");
-  let chooser = null;
-  for (let n = 0; n < 3 && !chooser; n++) {
-    choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(3000 + 3000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && choosers.length === 0; wait++) await page.waitForTimeout(500);
-    chooser = choosers.shift() || null;
-    if (!chooser) await page.keyboard.press("Escape");
-  }
+  const chooser = await openFromFile(page, null, { choosers, shots: out, optional: true });
   if (!ok(Boolean(chooser), "Open… > From a file brought the file picker")) continue;
   fetched.length = 0;
   why.length = 0;

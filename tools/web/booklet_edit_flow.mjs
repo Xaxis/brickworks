@@ -32,7 +32,7 @@
 // PANEL) say so.
 // Fails if any of that does not happen or a script error reaches a console.
 // Every result read off window.brickworksState; pictures in --out.
-import { clickStill, launch, typeInMenu } from "./browser.mjs";
+import { clickStill, launch, openFromFile, typeInMenu } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -134,27 +134,6 @@ async function says(test, seconds = 15) {
   }
   return now;
 }
-async function open(file) {
-  const at = await where("open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await shot(`no_picker_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
 async function exportLdraw() {
   const file = await where("menu_file");
   for (let n = 0; n < 3; n++) {
@@ -203,7 +182,7 @@ try {
 
   let note = null;
   for (let attempt = 0; attempt < 3; attempt++) {
-    await open(model);
+    await openFromFile(page, model, { shots: out });
     note = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
     if (note && !/arriving/.test(note.said)) break;
     await page.waitForTimeout(20000);

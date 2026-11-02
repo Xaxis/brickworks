@@ -15,7 +15,7 @@
 // past a second (in software, where a frame of the model alone is hundreds
 // of milliseconds). It fails if a step does not happen or a script error
 // reaches the console.
-import { launch, typeInMenu } from "./browser.mjs";
+import { launch, openFromFile, typeInMenu } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -82,29 +82,6 @@ async function where(name, seconds = 240) {
   await shot(`never_${name}.png`);
   throw new Error(`the app never showed "${name}"`);
 }
-// Open… > From a file, answered with a file; tried again when no picker came
-// (io_flow.mjs has the same).
-async function open(file) {
-  const at = await where("open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await shot(`no_picker_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
 // The page's frames, timed from now until stopFrames(): the longest gap.
 async function startFrames() {
   await page.evaluate(() => {
@@ -167,7 +144,7 @@ await page.waitForTimeout(Number(args.load || 15000));
 
 let opened = null;
 for (let attempt = 0; attempt < 3 && !opened; attempt++) {
-  await open(car);
+  await openFromFile(page, car, { shots: out });
   opened = await until((s) => /^opened \d+ parts/.test(s.said || "") && !/arriving/.test(s.said || ""), 240);
   if (!opened) await page.waitForTimeout(20000);
 }

@@ -24,7 +24,7 @@
 // six of six, none said left out, the prints drawn (4_whole.png).
 // Every result is read off window.brickworksState; pictures in --out. It
 // fails if a step does not happen or a script error reaches the console.
-import { launch } from "./browser.mjs";
+import { launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync, copyFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -94,30 +94,6 @@ async function where(name, seconds = 240) {
   await shot(`never_${name}.png`);
   throw new Error(`the app never showed "${name}"`);
 }
-// Open… > From a file, answered with a file. The app reads a click a frame
-// or more after the page does, so a press that brought no picker is tried
-// again (studio_flow.mjs has the same reason at length).
-async function open(file) {
-  const at = await where("open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await shot(`no_picker_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
 // File > Export > BrickLink Studio model (.io), by the menu's own keys: the
 // File menu, E for its one line that starts so, the arrow into Export, down
 // one from the LDraw model to the Studio one, Enter. Tried again if no
@@ -162,7 +138,7 @@ await page.waitForTimeout(Number(args.load || 15000));
 // tells a person to.
 let note = null;
 for (let attempt = 0; attempt < 3; attempt++) {
-  await open(bay);
+  await openFromFile(page, bay, { shots: out });
   note = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
   console.log(`        the status bar: "${note ? note.said : (await state()).said}"`);
   if (note && !/arriving/.test(note.said)) break;
@@ -206,7 +182,7 @@ ok(members.info && members.info.total_parts === 6 && members.crlf && members.thu
 
 // ...and that file in again.
 if (download) {
-  await open(exported);
+  await openFromFile(page, exported, { shots: out });
   const again = await until((s) => /^opened \d+ parts/.test(s.said || "") && s.bricks === 6, 240);
   ok(Boolean(again), `the exported .io opens again: ${(await state()).bricks} parts, "${(await state()).said}"`);
   await page.waitForTimeout(4000);
@@ -214,13 +190,13 @@ if (download) {
 }
 
 // A picture called .io is not a Studio model, and is said not to be.
-await open(notStudio);
+await openFromFile(page, notStudio, { shots: out });
 const refused = await until((s) => /not a Studio \.io file/.test(s.said || ""), 60);
 ok(Boolean(refused) && (await state()).bricks === 6,
   `a picture renamed .io is refused, the model left as it was: "${(await state()).said}"`);
 
 // A Studio file whose parts the library has not got: each from the file.
-await open(whole);
+await openFromFile(page, whole, { shots: out });
 const wholeSaid = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
 ok(Boolean(wholeSaid) && (await state()).bricks === 6 && /^opened 6 parts/.test(wholeSaid.said)
   && !/not shown|left out|not in the library/.test(wholeSaid.said),

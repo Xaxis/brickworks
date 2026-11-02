@@ -21,7 +21,7 @@
 // Studio's form, a model does not come back with its decorated parts
 // (window.brickworksState.custom and .parts), or a script error reaches the
 // console.
-import { clickStill, controlsWith, launch, openColumnFor } from "./browser.mjs";
+import { clickStill, controlsWith, launch, openColumnFor, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -110,7 +110,6 @@ function tools(page) {
         return;
       }
       await shot(`no_picker_${what}_${n}.png`);
-      if (what === "open") await page.keyboard.press("Escape");
       await page.waitForTimeout(3000);
     }
     throw new Error(`no file picker came up for ${what}`);
@@ -118,14 +117,7 @@ function tools(page) {
   async function choose(name, file) {
     await picked(() => clickStill(page, name, { find: where }), file, name);
   }
-  async function open(file) {
-    const at = await where("open");
-    await picked(async (n) => {
-      await page.mouse.click(at.x, at.y);
-      await page.waitForTimeout(4000 + 4000 * n);
-      await page.mouse.click(at.x + 40, at.y + 22);
-    }, file, "open");
-  }
+  const open = (file) => openFromFile(page, file, { shots: out });
   async function type(name, words) {
     await click(name);
     await page.keyboard.press("Control+A");

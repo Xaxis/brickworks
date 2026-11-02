@@ -22,7 +22,7 @@
 //
 // --floor=none: the model's floor taken away first (set_floor), to tell the
 // floor's share of a frame from the parts'.
-import { askApp, launch } from "./browser.mjs";
+import { askApp, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { loadavg } from "node:os";
 import { resolve } from "node:path";
@@ -140,19 +140,7 @@ await where("model_name");
 await wait(5000);
 await quiet(3000, 180000);
 // File, Open, From a file, as cad_frames.mjs opens one.
-const at = await where("open");
-let chooser = null;
-for (let n = 0; n < 3 && !chooser; n++) {
-  choosers.length = 0;
-  await page.mouse.click(at.x, at.y);
-  await wait(3000 + 3000 * n);
-  await page.mouse.click(at.x + 40, at.y + 22);
-  for (let w = 0; w < 60 && choosers.length === 0; w++) await wait(500);
-  chooser = choosers.shift() || null;
-  if (!chooser) await page.keyboard.press("Escape");
-}
-if (!chooser) throw new Error("no file chooser came up for Open");
-await chooser.setFiles(model);
+await openFromFile(page, model, { choosers, shots: out });
 await until((x) => (x.bricks || 0) > 0 && (x.awaited || 0) === 0 && Object.keys(x.working || {}).length === 0
   && !x.playing, 600);
 if (args.floor) {

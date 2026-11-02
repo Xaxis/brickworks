@@ -24,7 +24,7 @@
 // taken, before aiming, as a hand comes: without it the parts section
 // measures the first aim after a take, which the browser leaves behind.
 // Pictures of each put-down go to --out for a person to look at.
-import { askApp, launch } from "./browser.mjs";
+import { askApp, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { keysFor, project, turnFor } from "./cad_task_flow.mjs";
@@ -352,25 +352,6 @@ if (ONLY.includes("parts")) {
 // (4262), opened; then each plate taken, aimed at its pin as the page says
 // the pin is, T for the other way on, and clicked: swung onto the axle at
 // 66.4 degrees (Builder._closings), off the 24 turns and the whole LDU.
-async function openFile(path) {
-  const at = await where("open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(path);
-      return true;
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  return false;
-}
-
 if (ONLY.includes("balance")) {
   const text = readFileSync(resolve(String(args["sets-dir"] || "vendor/omr/files"), "8841-1_Balance.mpd"), "utf8");
   const lines = text.split(/\r?\n/);
@@ -383,7 +364,7 @@ if (ONLY.includes("balance")) {
   writeFileSync(path, lines.slice(0, first).join("\n") + "\n");
   page.choosers = [];
   page.on("filechooser", (chooser) => page.choosers.push(chooser));
-  await openFile(path);
+  await openFromFile(page, path, { shots: out, optional: true });
   const opened = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
   log(`balance: "${opened.said}"`);
   await page.waitForTimeout(4000);
