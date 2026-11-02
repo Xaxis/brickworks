@@ -4802,24 +4802,27 @@ func _colours_finding(fresh: bool = true) -> String:
 	return ColoursSeen.said(_colours_shown.get("seen", []), ref, library)
 
 
-## The real sets the model's colours are measured against: of the brief's
-## theme, or of its kinds as how_real_sets_build_this reads them, and of its
-## part count (ColoursSeen.sets_like). Kept until the brief or count changes.
+## The real sets the model's colours are measured against: of the theme it
+## was asked in, or of its kinds as how_real_sets_build_this reads them, and
+## of its part count (ColoursSeen.sets_like). Read off all the app hears of
+## it, the brief a session passes submit_design first: the tab never hears
+## the person's words, and a bench session's subject alone ("street sweeper")
+## measured 7242-1 against street sets, not City's. Kept until that changes.
 func _colours_reference(standing: int) -> Dictionary:
-	var brief: String = _asked_as()
-	var parts: int = ColoursSeen.parts_in(brief, _parts_asked, standing)
-	var key: String = "%s|%d|%s" % [brief, parts, ",".join(DesignMemory.held_out())]
+	var said: String = " ".join(PackedStringArray([_brief, _words_passed, _heard, _named_as]))
+	var parts: int = ColoursSeen.parts_in(said, _parts_asked, standing)
+	var key: String = "%s|%d|%s" % [said, parts, ",".join(DesignMemory.held_out())]
 	if key == _colours_ref_for:
 		return _colours_ref
 	_colours_ref_for = key
-	var found: Array = library.kinds_for(brief)
+	var found: Array = library.kinds_for(said)
 	if found.is_empty():
-		var plainer: String = _kind_words(brief)
+		var plainer: String = _kind_words(said)
 		found = library.kinds_for(plainer) if not plainer.is_empty() else []
 	var kinds := PackedStringArray()
 	for kind: Variant in found:
 		kinds.append(str((kind as Dictionary).get("kind", "")))
-	_colours_ref = ColoursSeen.sets_like(brief, kinds, parts, library)
+	_colours_ref = ColoursSeen.sets_like(said, kinds, parts, library)
 	return _colours_ref
 
 

@@ -2511,8 +2511,11 @@ fixing what it got wrong.
   model's solid colours as drawn, every fourth pixel (r 0.99 against the
   judge's three pictures). review_model of the whole, and look_at_model when
   the finding changes, say when the model shows fewer than the real sets of the
-  brief's theme ("in the style of LEGO® City sets"), else its kind, within 1.6x
-  of its part count, none held out: "shows 6 colours …; City sets of 141 to 359
+  theme it was asked in, else its kind, within 1.6x of its part count, none held
+  out. The theme is read off all the app hears (the brief a session passes
+  submit_design, its calls' subjects, its description): "LEGO® City sets",
+  "Technic-style", then a theme's name as a word; the tab never hears the
+  person's words, and a session's subject alone measured 7242-1 by street sets: "shows 6 colours …; City sets of 141 to 359
   parts show 8 to 12, most often 9", the colours those sets add at a small
   share that it does not show, glass apart, and to add rather than recolour.
   Nothing is recoloured. A set's count is read off its parts list

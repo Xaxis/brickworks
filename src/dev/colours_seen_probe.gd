@@ -10,7 +10,8 @@
 ## Yellow, Blue, Black, Dark and Light Bluish Grey and White, Yellow 48%.
 ## The real sets it is measured against are City's of 141 to 359 parts, the
 ## set under test held out by number and name (258 sets: 8 to 12, most often
-## 9, by the same file read in Python). Then review_model of the whole and
+## 9, by the same file read in Python), City read off what a session says.
+## Then review_model of the whole and
 ## look_at_model say so, with the colours City sets add a little of; look
 ## once more and it is not said again; a model showing as many as its sets
 ## is told nothing; a brief with no theme is measured by its kind.
@@ -94,6 +95,14 @@ func _run() -> void:
 	_ok(ColoursSeen.theme_in(BRIEF) >= 0 and str(ColoursSeen.sets()["themes"][
 		ColoursSeen.theme_in(BRIEF)]) == "City", "the brief names City")
 	_ok(ColoursSeen.parts_in(BRIEF, 280, standing) == 225, "...and 170 to 280 pieces: about 225")
+	for said: Array in [["A LEGO City street sweeper, orange cab", "City"],
+			["technic sports car | Corvette ZR1", "Technic"],
+			["A Chicago skyline in the style of LEGO Architecture sets, after New York City", "Architecture"],
+			["A BrickHeadz-style bee", "Brickheadz"], ["egyptian sphinx temple", ""]]:
+		var theme: int = ColoursSeen.theme_in(str(said[0]))
+		var named: String = str(ColoursSeen.sets()["themes"][theme]) if theme >= 0 else ""
+		_ok(named == str(said[1]), "\"%s\" names %s" % [said[0],
+			named if not named.is_empty() else "no theme"])
 	var ref: Dictionary = ColoursSeen.sets_like(BRIEF, PackedStringArray(), 225, library)
 	_ok(str(ref.get("by", "")) == "City sets" and int(ref.get("sets", 0)) == 258
 		and int(ref.get("low", 0)) == 141 and int(ref.get("high", 0)) == 359,
@@ -110,7 +119,10 @@ func _run() -> void:
 		% banded.size())
 
 	print("\nwhat a session is told")
-	assistant._begin_subject(BRIEF)
+	# As a session's are heard: its first call's subject, then the brief it
+	# passes submit_design (the tab never hears the person's words).
+	assistant.heard("container stacker", true)
+	assistant._words_passed = BRIEF
 	var reviewed: String = _text_of(await assistant.review(""))
 	var finding: String = reviewed.substr(reviewed.find("Colour: "))
 	print("    " + finding.substr(0, 1400).replace("\n", "\n    "))
@@ -134,12 +146,15 @@ func _run() -> void:
 	print("\nwhen it is not short, and with no theme")
 	_ok(ColoursSeen.said([14, 1, 0, 72, 71, 15, 4, 19, 2], ref, library).is_empty(),
 		"a model showing 9, as many as its sets most often do, is told nothing")
-	var kinds := PackedStringArray(["castle"])
-	var castle: Dictionary = ColoursSeen.sets_like("A castle of about 1,200 pieces", kinds, 1200,
-		library)
-	_ok(str(castle.get("by", "")) == "castle sets" and int(castle.get("sets", 0)) >= 8,
-		"a brief with no theme is measured by its kind: %s, %d sets, most often %d" % [
-			castle.get("by", ""), int(castle.get("sets", 0)), int(castle.get("median", 0))])
+	var castle: Dictionary = ColoursSeen.sets_like("A castle of about 1,200 pieces",
+		PackedStringArray(["castle"]), 1200, library)
+	_ok(str(castle.get("by", "")) == "Castle sets", "a castle is measured by the Castle theme "
+		+ "named as a word: %s, %d sets" % [castle.get("by", ""), int(castle.get("sets", 0))])
+	var pirate: Dictionary = ColoursSeen.sets_like("A pirate ship of about 600 pieces",
+		PackedStringArray(["pirate"]), 600, library)
+	_ok(str(pirate.get("by", "")) == "pirate sets" and int(pirate.get("sets", 0)) >= 8,
+		"a brief naming no theme is measured by its kind: %s, %d sets, most often %d" % [
+			pirate.get("by", ""), int(pirate.get("sets", 0)), int(pirate.get("median", 0))])
 	_ok(ColoursSeen.sets_like("A thing", PackedStringArray(), 300, library).is_empty(),
 		"...and with neither, nothing is said")
 

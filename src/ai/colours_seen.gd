@@ -154,45 +154,62 @@ static func ensure(host: Node) -> void:
 	_read = RealSnippets.parse(await RealSnippets.fetch(host, FILE.get_file()))
 
 
-## The theme a brief names, "in the style of LEGO® City sets": its index in
-## sets()'s themes, or -1.
-static func theme_in(brief: String) -> int:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?i)\\bLEGO\\S*\\s+(.+?)\\s+sets?\\b").search(brief)
-	if found == null:
-		return -1
-	var named: String = found.get_string(1).strip_edges().to_lower()
+## The theme [param said] names: its index in sets()'s themes, or -1. Named
+## as one first ("LEGO® City sets", "a LEGO City street sweeper",
+## "Technic-style"), else as a word ("technic sports car"), the earliest in
+## what was said. What a session says reads its brief's theme so in 41 to 42
+## of 44 bench designs and another in none (2026-11-01): the brief it passes
+## submit_design, its calls' subjects, its design's description.
+static func theme_in(said: String) -> int:
+	var low: String = said.to_lower()
 	var themes: Array = sets().get("themes", [])
-	for n: int in themes.size():
-		if str(themes[n]).to_lower() == named:
-			return n
+	for ways: Array in [["\\blego\\S*\\s+%s\\b", "\\b%s[- ]style\\b", "\\b%s sets?\\b"], ["\\b%s\\b"]]:
+		var first: int = -1
+		var at: int = 0x7FFFFFFF
+		for n: int in themes.size():
+			var name: String = _escaped(str(themes[n]).to_lower())
+			for way: String in ways:
+				var found: RegExMatch = RegEx.create_from_string(way % name).search(low)
+				if found != null and (found.get_start() < at or (found.get_start() == at
+						and str(themes[n]).length() > str(themes[first]).length())):
+					at = found.get_start()
+					first = n
+		if first >= 0:
+			return first
 	return -1
 
 
-## The part count a brief names, "350 to 580 pieces" as the middle of it;
-## else [param asked], else [param standing].
-static func parts_in(brief: String, asked: int, standing: int) -> int:
+static func _escaped(text: String) -> String:
+	var out: String = ""
+	for character: String in text:
+		out += "\\" + character if "\\^$.|?*+()[]{}".contains(character) else character
+	return out
+
+
+## The part count [param said] names, "350 to 580 pieces" as the middle of
+## it; else [param asked], else [param standing].
+static func parts_in(said: String, asked: int, standing: int) -> int:
 	var found: RegExMatch = RegEx.create_from_string(
-		"(?i)\\b(\\d{2,5})\\s*(?:to|-|–)\\s*(\\d{2,5})\\s*(?:parts|pieces|bricks)\\b").search(brief)
+		"(?i)\\b(\\d{2,5})\\s*(?:to|-|–)\\s*(\\d{2,5})\\s*(?:parts|pieces|bricks)\\b").search(said)
 	if found != null:
 		return (int(found.get_string(1)) + int(found.get_string(2))) / 2
 	return asked if asked > 0 else standing
 
 
-## What real sets of the brief's theme, or else of one of [param kinds], and
-## of about [param parts] parts show, none of them under test
-## (DesignMemory.holds): {"by": "City sets", "low", "high": their part
+## What real sets of the theme [param said] names (theme_in), or else of one
+## of [param kinds], and of about [param parts] parts show, none of them under
+## test (DesignMemory.holds): {"by": "City sets", "low", "high": their part
 ## counts, "sets", "q1", "median", "q3": their colours seen, "colours":
 ## [[code, share of the sets that show it, per mille of their parts]],
 ## "glass": the same of transparent colours}. {} when too few are known.
-static func sets_like(brief: String, kinds: PackedStringArray, parts: int,
+static func sets_like(said: String, kinds: PackedStringArray, parts: int,
 		library: PartLibrary) -> Dictionary:
 	var rows: Array = sets().get("sets", [])
 	if rows.is_empty() or parts <= 0:
 		return {}
 	var picked: Array = []
 	var by: String = ""
-	var theme: int = theme_in(brief)
+	var theme: int = theme_in(said)
 	if theme >= 0:
 		picked = _of_size(rows.filter(func(row: Variant) -> bool:
 			return int((row as Array)[2]) == theme), parts)
