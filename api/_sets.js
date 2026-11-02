@@ -40,7 +40,7 @@
 // (hreflang) and is its own canonical.
 
 import { existsSync, readFileSync } from "node:fs";
-import { SIZES, SITE_LANGS, count, escapeHtml } from "./_directory.js";
+import { SIZES, SITE_LANGS, asText, count, escapeHtml, sayHtml } from "./_directory.js";
 import { counted, say, themeSaid } from "./_card.js";
 import { SET_SORTS } from "./_library.js";
 import { byKey, search } from "./_search.js";
@@ -403,14 +403,6 @@ function structured(origin, entry, picture, description, at) {
   }];
   return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>`;
 }
-
-/// Words said in a page, made safe in its text or a quoted attribute: an
-/// apostrophe is left as it is written, so the English page reads as before.
-const asText = (words) => words.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-/// [english] said in the page's language, each {name} in it filled from
-/// [html], markup made here.
-const sayHtml = (english, html) => asText(say(english)).replace(/\{(\w+)\}/g, (all, name) => (name in html ? html[name] : all));
 
 /// A set's page (/library/set/X). [chrome] the site's head, header and
 /// footer (api/_directory.js siteChrome); [held] LDraw's models of it

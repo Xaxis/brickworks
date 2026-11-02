@@ -88,10 +88,12 @@ export function useNames(code, given) {
 
 /// [lot]'s part, colour and category as [given] (partNames) says them:
 /// {said, colour_said, category_said}, each only where it has words for
-/// it, and no name for a made part, which is what its maker called it.
+/// it. A made part is what its maker called it, but a file's own copy of
+/// a catalogue part (copy_of) is that part.
 export function namesOf(lot, given) {
   if (!given) return {};
-  const named = { said: lot.custom ? undefined : given.parts?.[lot.part], colour_said: given.colours?.[String(lot.colour)],
+  const part = lot.custom ? lot.copy_of : lot.part;
+  const named = { said: part ? given.parts?.[part] : undefined, colour_said: given.colours?.[String(lot.colour)],
     category_said: given.categories?.[lot.category] };
   return Object.fromEntries(Object.entries(named).filter(([, one]) => typeof one === "string" && one));
 }
@@ -375,15 +377,19 @@ function takeInto(library, model) {
       if (line.startsWith("0")) name = line.slice(1).trim();
       break;
     }
+    // The catalogue's part it is a copy of, which it goes by (copy_of: a
+    // list in a language names it as the catalogue does, api/_parts.js
+    // namesOf): one its title names, or as the LDraw model repository names
+    // one ("8880 - 168315i", CustomParts.read_as_copy, where its drawing is
+    // the part's, as it is).
+    let copyOf = "";
     const named = library.info(name.trim());
-    if (named && !named.custom && name.trim() !== id) name = named.name;
-    // A copy of a catalogue part, named for it as the LDraw model
-    // repository names one ("8880 - 168315i"), goes by that part's name
-    // (CustomParts.read_as_copy, where its drawing is the part's, as it is).
-    const copied = id.lastIndexOf(" - ") >= 0 ? library.info(id.slice(id.lastIndexOf(" - ") + 3).trim()) : null;
-    if (copied && !copied.custom) name = copied.name;
+    if (named && !named.custom && name.trim() !== id) [name, copyOf] = [named.name, name.trim()];
+    const number = id.lastIndexOf(" - ") >= 0 ? id.slice(id.lastIndexOf(" - ") + 3).trim() : "";
+    const copied = number ? library.info(number) : null;
+    if (copied && !copied.custom) [name, copyOf] = [copied.name, number];
     library.custom.set(id, { name, category: text.includes("\n0 !CATEGORY Flexible\n") ? "Flexible" : "Custom",
-      flexible: false, moved: "", bricklink: "", rebrickable: "", custom: true });
+      flexible: false, moved: "", bricklink: "", rebrickable: "", custom: true, copy_of: copyOf });
   }
   for (const [key, sub] of skins) {
     const id = `${key}-flex`;
@@ -563,7 +569,7 @@ function lotMaker(library, given) {
       lot = {
         part, name: tidy(info ? info.name : part) + (info && info.custom ? " (custom element)" : ""),
         category: info ? info.category : "", colour: code, colour_name: colour.name, hex: colour.hex,
-        lego_colour: plain.lego, count: 0, element, custom: Boolean(info && info.custom),
+        lego_colour: plain.lego, count: 0, element, custom: Boolean(info && info.custom), copy_of: (info && info.copy_of) || "",
         bricklink: shopPart(info, part, "bricklink"), bricklink_colour: plain.bricklink,
         rebrickable: shopPart(info, part, "rebrickable"), rebrickable_colour: plain.rebrickable,
         mesh: (info && info.mesh) || "",

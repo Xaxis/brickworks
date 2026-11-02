@@ -121,7 +121,7 @@ export function iconHtml(name) {
 export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pressed = null, small = false, labelled = false,
   word = name, attrs = "" }) {
   const n = Number(count) || 0;
-  const said = n ? `${name}, ${n.toLocaleString("en-US")} ${n === 1 ? one : many || `${one}s`}` : name;
+  const said = n ? `${name}, ${counted(n, one, many)}` : name;
   return `<button type="button" class="icon-btn${small ? " small" : ""}${labelled ? " labelled" : ""}" aria-label="${escapeHtml(said)}"`
     + `${pressed === null ? "" : ` aria-pressed="${pressed ? "true" : "false"}"`}${attrs ? ` ${attrs}` : ""}>`
     + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(word)}</span>` : ""}`
@@ -200,7 +200,7 @@ export function shareTargets({ url, text, image = "" }) {
       + `&media=${encodeURIComponent(image)}&description=${t}`] : null,
     ["x", "X", `https://x.com/intent/tweet?url=${u}&text=${t}`],
     ["facebook", "Facebook", `https://www.facebook.com/sharer/sharer.php?u=${u}`],
-    ["email", "Email", `mailto:?subject=${t}&body=${u}`],
+    ["email", say("Email"), `mailto:?subject=${t}&body=${u}`],
   ].filter(Boolean);
 }
 
@@ -212,27 +212,27 @@ export function shareTargets({ url, text, image = "" }) {
 /// opens, [text] is what a post says. Closed, and inert with no script.
 export function shareSheetHtml({ url, name, about = "", text = name, image = "", embed = "" }) {
   const to = shareTargets({ url, text, image }).map(([key, label, href]) => `<a class="cta ghost small" data-to="${key}" `
-    + `href="${escapeHtml(href)}"${key === "email" ? "" : ' target="_blank" rel="noopener noreferrer"'}>${label}`
-    + `${key === "email" ? "" : '<span class="visually-hidden"> (opens in a new tab)</span>'}</a>`).join("");
+    + `href="${escapeHtml(href)}"${key === "email" ? "" : ' target="_blank" rel="noopener noreferrer"'}>${escapeHtml(label)}`
+    + `${key === "email" ? "" : `<span class="visually-hidden"> ${escapeHtml(say("(opens in a new tab)"))}</span>`}</a>`).join("");
   return `<dialog class="share-sheet" id="share-sheet" aria-labelledby="share-h" data-title="${escapeHtml(text)}">`
-    + `<h2 id="share-h">Share ${escapeHtml(name)}</h2>`
+    + `<h2 id="share-h">${escapeHtml(say("Share {name}", { name }))}</h2>`
     + (about ? `<p>${escapeHtml(about)}</p>` : "")
     + `<form method="dialog">`
-    + `<div class="copy-row"><label>Its link<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
-    + `<button type="button" class="cta" data-copy="share-link">Copy link</button></div>`
-    + `<div class="share-to" role="group" aria-labelledby="share-to-h"><p id="share-to-h">Post it to</p>${to}</div>`
-    + (embed ? `<div class="copy-row"><label>Embed it in a page <small>Its picture and name, opening it here, `
-      + `light or dark to suit whoever looks at it</small>`
+    + `<div class="copy-row"><label>${escapeHtml(say("Its link"))}<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
+    + `<button type="button" class="cta" data-copy="share-link">${escapeHtml(say("Copy link"))}</button></div>`
+    + `<div class="share-to" role="group" aria-labelledby="share-to-h"><p id="share-to-h">${escapeHtml(say("Post it to"))}</p>${to}</div>`
+    + (embed ? `<div class="copy-row"><label>${escapeHtml(say("Embed it in a page"))} <small>${escapeHtml(say("Its picture and name, "
+      + "opening it here, light or dark to suit whoever looks at it"))}</small>`
       + `<textarea id="share-embed" rows="4" readonly spellcheck="false">${escapeHtml(embed)}</textarea></label>`
-      + `<button type="button" class="cta ghost" data-copy="share-embed">Copy code</button></div>` : "")
+      + `<button type="button" class="cta ghost" data-copy="share-embed">${escapeHtml(say("Copy code"))}</button></div>` : "")
     + `<p class="said" role="status"></p>`
-    + `<div class="actions"><button type="button" class="cta ghost" data-share-app hidden>Share with another app</button>`
-    + `<button class="cta ghost" value="close">Close</button></div>`
+    + `<div class="actions"><button type="button" class="cta ghost" data-share-app hidden>${escapeHtml(say("Share with another app"))}</button>`
+    + `<button class="cta ghost" value="close">${escapeHtml(say("Close"))}</button></div>`
     + `</form></dialog>`;
 }
 
 /// A card's like, as a screen reader says it: "Like Watchtower".
-export const likeName = (name) => `Like ${String(name || "").trim() || "it"}`;
+export const likeName = (name) => (String(name || "").trim() ? say("Like {name}", { name: String(name).trim() }) : say("Like it"));
 
 /// A count as a card shows it: its icon and its number, with its words for
 /// a screen reader and on hover ("4 built"); "" at none, never "0".
@@ -291,8 +291,14 @@ const setPageOf = (model, id) => {
   if (typeof model.library.page !== "string" || !/^\/library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/.test(model.library.page)) {
     return `/library/${id}`;
   }
+  return `${langAt()}${model.library.page}`;
+};
+
+/// Where the page's language's copies are: "/de" on a German page, "" in
+/// English. A model's page has one in each (api/share.js sharePage).
+const langAt = () => {
   const code = globalThis.brickworksLang?.code;
-  return /^(?:de|fr|es)$/.test(code || "") ? `/${code}${model.library.page}` : model.library.page;
+  return /^(?:de|fr|es)$/.test(code || "") ? `/${code}` : "";
 };
 
 /// The tags that say a model was made with the assistant or Brickify, as
@@ -465,14 +471,20 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
       ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" ${eager
         ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
       : escapeHtml(say("No picture"))}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}</div>`
-    + `<div class="words"><a class="open" href="${escapeHtml(set ? setPageOf(model, id) : `/m/${id}`)}"><b title="${name}">${name}</b></a>`
+    + `<div class="words"><a class="open" href="${escapeHtml(set ? setPageOf(model, id) : `${langAt()}/m/${id}`)}"><b title="${name}">${name}</b></a>`
     + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span>`
     + `${tallies ? `<small class="acts">${tallies}</small>` : ""}</span>`
     + `${lines.join("")}</div></article>`;
 }
 
-// When a build was posted, as a card says it: "30 Oct 2026".
-const POSTED = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+// When a build was posted, as a card says it: "30 Oct 2026", as the page's
+// language writes a date.
+const POSTED = new Map();
+const posted = (at) => {
+  const locale = globalThis.brickworksLang?.code && globalThis.brickworksLang.code !== "en" ? globalThis.brickworksLang.code : "en-GB";
+  if (!POSTED.has(locale)) POSTED.set(locale, new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }));
+  return POSTED.get(locale).format(at);
+};
 
 /// A photo of a real build as a card (site.css .build-card), the gallery's
 /// Builds tab: the model card's shape, so the tab reads as the gallery
@@ -484,22 +496,22 @@ const POSTED = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short"
 export function buildCardHtml(photo, { eager = false } = {}) {
   const id = escapeHtml(String(photo.id));
   const model = escapeHtml(String(photo.model));
-  const name = String(photo.model_name || "A model");
+  const name = String(photo.model_name || say("A model"));
   const by = photo.by && typeof photo.by === "object" && HANDLE.test(String(photo.by.handle || "")) ? photo.by : null;
   const builder = by ? String(by.name || by.handle) : "";
   const who = by
     ? `<a class="who" href="/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: builder, picture: by.picture },
-      { size: "small" })}<span>${escapeHtml(`Built by ${builder}`)}</span></a>`
-    : '<span class="who">Built by a builder</span>';
+      { size: "small" })}<span>${escapeHtml(say("Built by {name}", { name: builder }))}</span></a>`
+    : `<span class="who">${escapeHtml(say("Built by a builder"))}</span>`;
   const at = Date.parse(String(photo.at || ""));
   const when = Number.isFinite(at)
-    ? `<time class="when" datetime="${escapeHtml(new Date(at).toISOString())}">${escapeHtml(POSTED.format(at))}</time>` : "";
+    ? `<time class="when" datetime="${escapeHtml(new Date(at).toISOString())}">${escapeHtml(posted(at))}</time>` : "";
   return `<article class="model build-card" data-id="${id}" data-model="${model}">`
     + `<div class="frame"><img src="/api/people?op=photo_file&amp;id=${id}" `
-    + `alt="${escapeHtml(`A build of ${name}${builder ? ` by ${builder}` : ""}`)}" `
+    + `alt="${escapeHtml(builder ? say("A build of {name} by {builder}", { name, builder }) : say("A build of {name}", { name }))}" `
     + `width="${Number(photo.width) || 4}" height="${Number(photo.height) || 3}" ${eager
       ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async"></div>`
-    + `<div class="words"><a class="open" href="/m/${model}#photo-${id}"><b title="${escapeHtml(name)}">${escapeHtml(name)}</b></a>`
+    + `<div class="words"><a class="open" href="${langAt()}/m/${model}#photo-${id}"><b title="${escapeHtml(name)}">${escapeHtml(name)}</b></a>`
     + `<span class="by">${who}${when}</span>`
     + `${photo.words ? `<q class="said">${escapeHtml(photo.words)}</q>` : ""}</div></article>`;
 }
@@ -556,17 +568,21 @@ let watching = false;
 
 /// How a model is based on something, as its line begins.
 export const HOWS = { alternate: "An alternate build of", changed: "Changed from", inspired: "Inspired by" };
+// Each line whole, in the page's language.
+const HOW_SET = { alternate: "An alternate build of {set}", changed: "Changed from {set}", inspired: "Inspired by {set}" };
+const HOW_MODEL = { alternate: "An alternate build of {model}", changed: "Changed from {model}", inspired: "Inspired by {model}" };
 
 /// A model's lines under its remix line, one a thing it is based on: "An
 /// alternate build of set 6080-1 King's Castle", "Changed from “A castle”
 /// by Someone (CC BY 4.0)". "" for none. Every word escaped.
 export function basedHtml(said) {
   if (!said.length) return "";
+  const filled = (english, name, html) => escapeHtml(say(english)).replace(`{${name}}`, html);
   const line = (one) => (one.set
-    ? `${HOWS[one.how]} <a href="${escapeHtml(one.href)}">set ${escapeHtml(one.name ? `${one.set} ${one.name}` : one.set)}</a>`
-    : `${HOWS[one.how]} <a href="${escapeHtml(one.href)}" rel="nofollow ugc noopener">“${escapeHtml(one.name)}”</a>`
-      + `${one.author ? ` by ${escapeHtml(one.author)}` : ""}${one.licence ? ` (${escapeHtml(one.licence)})` : ""}`);
-  return `<ul class="from based-on" id="based-on" aria-label="What it is based on">`
+    ? filled(HOW_SET[one.how], "set", `<a href="${escapeHtml(one.href)}">${escapeHtml(say("set {set}", { set: one.name ? `${one.set} ${one.name}` : one.set }))}</a>`)
+    : filled(HOW_MODEL[one.how], "model", `<a href="${escapeHtml(one.href)}" rel="nofollow ugc noopener">“${escapeHtml(one.name)}”</a>`)
+      + `${one.author ? ` ${escapeHtml(say("by {name}", { name: one.author }))}` : ""}${one.licence ? ` (${escapeHtml(one.licence)})` : ""}`);
+  return `<ul class="from based-on" id="based-on" aria-label="${escapeHtml(say("What it is based on"))}">`
     + `${said.map((one) => `<li data-how="${one.how}">${line(one)}</li>`).join("")}</ul>`;
 }
 

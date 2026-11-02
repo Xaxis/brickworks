@@ -9,7 +9,7 @@
 
 import { createHash, createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { ASSISTANT_TAGS, MADE_WITH } from "./_card.js";
+import { ASSISTANT_TAGS, MADE_WITH, say } from "./_card.js";
 import { SMALL, fold, readQuery, stem } from "./_search.js";
 
 /// The kinds of model the gallery filters by. The same ids, in the same
@@ -468,9 +468,9 @@ export function movesWords(card, most = MOST_MOTIONS) {
   const motions = motionsOf(card?.motions);
   if (motions.length) {
     const shown = motions.slice(0, most).map((name) => (/^[A-Z][a-z]*\b/.test(name) ? name[0].toLowerCase() + name.slice(1) : name));
-    return shown.join(", ") + (motions.length > most ? ` and ${motions.length - most} more` : "");
+    return shown.join(", ") + (motions.length > most ? ` ${say("and {n} more", { n: motions.length - most })}` : "");
   }
-  return movesOf(card?.moves).join(", ");
+  return movesOf(card?.moves).map((word) => say(word)).join(", ");
 }
 
 /// A card as a client is given it: what directory_card read, and where its
@@ -646,6 +646,14 @@ export function inLanguage(code, said, draw) {
     else globalThis.brickworksLang = before;
   }
 }
+
+/// Words said in a page, made safe in its text or a quoted attribute: an
+/// apostrophe is left as it is written, so an English page reads as before.
+export const asText = (words) => words.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/// [english] said in the page's language (say), each {name} in it filled
+/// from [html], markup made here.
+export const sayHtml = (english, html) => asText(say(english)).replace(/\{(\w+)\}/g, (all, name) => (name in html ? html[name] : all));
 
 /// "1,234 parts".
 export function count(n, one, many = `${one}s`) {

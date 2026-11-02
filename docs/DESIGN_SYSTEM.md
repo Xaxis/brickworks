@@ -141,7 +141,10 @@ page is written on the server (`api/_sets.js`), in the language at
 /de/library/set/<number> and so on, by the same `say()` and the gallery
 copy's chrome; its set's name is as LEGO® publishes it, never translated,
 and each language's page names the others (hreflang) with itself as its
-canonical. A theme of the sets is said by `themeSaid()` (`web/card.js`), by
+canonical. So is a shared model's page (`api/share.js` `sharePage`), at
+/de/m/<id> and so on: its chrome, counts, dates, version lines and parts in
+the language, and what its builder wrote as they wrote it; a card on a
+copy opens the model's copy. A theme of the sets is said by `themeSaid()` (`web/card.js`), by
 the app's own entry for it (`locale/<code>.po`, context "theme"), so the
 Library and the site name it alike. "LEGO®" stays an
 adjective in every language; the company is die LEGO Gruppe, le Groupe

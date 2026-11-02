@@ -13,7 +13,8 @@
 //   GET  ?op=page&id=X       /m/X: the link's own page — a title and a
 //                            picture for anything that previews links,
 //                            and then the viewer; with v=N, /m/X/v/N, an
-//                            older version's, marked as older
+//                            older version's, marked as older; with
+//                            lang=de (fr, es), /de/m/X, its copy in German
 //   GET  ?op=image&id=X      /m/X.png: that picture, rendered by the app
 //                            when it published; with v=N, /m/X/v/N.png
 //   GET  ?op=cutout&id=X     /m/X.cutout.png: the same with nothing behind
@@ -100,7 +101,9 @@
 //                            of it the person signed in owns
 //   GET  ?op=sitemap_index   /sitemaps/index.xml: /sitemap.xml and the
 //                            sets' own (op=sitemap_sets&n=K,
-//                            /sitemaps/sets-K.xml)
+//                            /sitemaps/sets-K.xml), and the models' copies
+//                            in each language (op=sitemap_models&lang=de,
+//                            /sitemaps/models-de.xml)
 //   GET  ?op=set&id=X        /library/X: a set's page, made as a model's
 //                            page is; op=set_cover (/library/X.webp) its
 //                            card's picture, with as=cutout
@@ -225,7 +228,7 @@ import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
   LDRAW_FROM, listQuery, looksLikePerson, modelHash, modelledByOf, motionsIn, movesWords, partFacts,
-  inLanguage, SITE_LANGS, siteChrome, siteWords, testsAsked, visitorKey,
+  inLanguage, SITE_LANGS, asText, sayHtml, siteChrome, siteWords, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { libraryCredit, storeBytes, storeFile, storeRoot } from "./_omr_credit.js";
@@ -240,7 +243,7 @@ import {
 // A model's parts list from its file, as the app's (site278).
 import { inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable, rebrickableCsv, sceneOf, wantedList } from "./_parts.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
-import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
+import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
 import { freshPool, keyed, poolOf, readShard, shardOf } from "./_owned.js";
@@ -258,7 +261,7 @@ import { challengeLine, withWins } from "./_challenges.js";
 import { bases, basesOf, basesPut, setBased } from "./_bases.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, basedHtml, cardHtml, marksOf, quietMarks } from "./_card.js";
+import { MADE_WITH, basedHtml, cardHtml, counted, marksOf, number, quietMarks, say } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -802,27 +805,28 @@ export function madeFromAddress(credit, email) {
 }
 
 function describe(row) {
-  const parts = count(row.parts, "part");
+  const parts = counted(row.parts, "part");
   const by = creditName(row);
-  return by ? `${parts}, by ${by}` : parts;
+  return by ? say("{parts}, by {name}", { parts, name: by }) : parts;
 }
 
-/// What a link preview reads: the title, a sentence, the picture.
-function pageHead(origin, row, id, title, { about = "", canonical = "" } = {}) {
+/// What a link preview reads: the title, a sentence, the picture; [url]
+/// the page's own address, and [alternates] its copies in each language.
+function pageHead(origin, row, id, title, { about = "", canonical = "", url = links(origin, id).url, alternates = "" } = {}) {
   const link = links(origin, id);
   const description = about || (row
-    ? `${describe(row)}. Turn it in 3D, step through the build, and get its booklet and parts list.`
-    : "A model built in Brickworks, the CAD app for LEGO® bricks in your browser.");
+    ? `${describe(row)}. ${say("Turn it in 3D, step through the build, and get its booklet and parts list.")}`
+    : say("A model built in Brickworks, the CAD app for LEGO® bricks in your browser."));
   const image = row && row.has_image ? link.image : `${origin}/share.png`;
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(description)}">
-${canonical ? `<link rel="canonical" href="${escapeHtml(canonical)}">\n` : ""}<meta property="og:type" content="website">
+${canonical ? `<link rel="canonical" href="${escapeHtml(canonical)}">\n` : ""}${alternates ? `${alternates}\n` : ""}<meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="${escapeHtml(title)}">
 <meta property="og:description" content="${escapeHtml(description)}">
-<meta property="og:url" content="${escapeHtml(link.url)}">
+<meta property="og:url" content="${escapeHtml(url)}">
 <meta property="og:image" content="${escapeHtml(image)}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -834,21 +838,24 @@ ${link.embed ? `<link rel="alternate" type="application/json+oembed" href="${esc
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">`;
 }
 
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+// A day as the page's language writes it: "17 October 2026", "17. Oktober 2026".
+const DAYS = new Map();
 const when = (iso) => {
   const at = Date.parse(iso || "");
-  return Number.isFinite(at) ? `<time datetime="${escapeHtml(new Date(at).toISOString())}">${DAY.format(at)}</time>` : "";
+  const locale = globalThis.brickworksLang?.locale || "en-GB";
+  if (!DAYS.has(locale)) DAYS.set(locale, new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }));
+  return Number.isFinite(at) ? `<time datetime="${escapeHtml(new Date(at).toISOString())}">${DAYS.get(locale).format(at)}</time>` : "";
 };
 
 /// Who to credit, as a page says it: their profile's name and handle, a
 /// link to it, or the name the owner gave; the link itself when they gave
 /// none.
-function creditOf(model, nobody = "this page’s link") {
+function creditOf(model, nobody = asText(say("this page’s link"))) {
   const modeller = modelledByOf(model.modelled_by);
   if (modeller) {
-    return `${escapeHtml(modeller.name)}, who modelled it for `
-      + `<a href="${escapeHtml(modeller.page)}">${escapeHtml(LDRAW_FROM)}</a>`
-      + (modeller.changed ? `, and say ${escapeHtml(sharerOf(model))} changed it` : "");
+    return sayHtml("{name}, who modelled it for {ldraw}", { name: escapeHtml(modeller.name),
+      ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })
+      + (modeller.changed ? sayHtml(", and say {name} changed it", { name: escapeHtml(sharerOf(model)) }) : "");
   }
   if (!model.author) return nobody;
   if (!model.by) return escapeHtml(model.author);
@@ -861,24 +868,25 @@ function creditOf(model, nobody = "this page’s link") {
 function licenceWords(model) {
   const licence = LICENCES[model.licence];
   if (!licence) {
-    return `<p><b>No licence chosen.</b> It was shared before Brickworks asked for one: ask whoever `
-      + `shared it before you use it anywhere else.</p>`;
+    return `<p><b>${asText(say("No licence chosen."))}</b> `
+      + `${asText(say("It was shared before Brickworks asked for one: ask whoever shared it before you use it anywhere else."))}</p>`;
   }
-  const deed = licence.url ? ` <a href="${licence.url}" rel="license">The licence</a>.` : "";
+  const deed = licence.url ? ` <a href="${licence.url}" rel="license">${asText(say("The licence"))}</a>.` : "";
   if (model.licence === "all-rights-reserved") {
-    return `<p><b>${licence.name}.</b> Look at it and build it for yourself; ask `
-      + `${creditOf(model, "whoever shared it")} before you share a copy `
-      + `or a version of it.</p>`;
+    return `<p><b>${asText(say("All rights reserved"))}.</b> `
+      + `${sayHtml("Look at it and build it for yourself; ask {credit} before you share a copy or a version of it.",
+        { credit: creditOf(model, asText(say("whoever shared it"))) })}</p>`;
   }
   if (model.licence === "cc-by-sa-4.0") {
-    return `<p><b>${licence.name}.</b> Anyone may share it, change it and build on it, as long as `
-      + `they credit ${creditOf(model)}, link to this page, and share what they make under the `
-      + `same licence.${deed}</p>`;
+    return `<p><b>${licence.name}.</b> ${sayHtml("Anyone may share it, change it and build on it, as long as they credit "
+      + "{credit}, link to this page, and share what they make under the same licence.", { credit: creditOf(model) })}${deed}</p>`;
   }
   // A set of the LDraw library: its modellers and LDraw, whose page of it
   // the credit links to; this page is not its source.
-  return `<p><b>${licence.name}.</b> Anyone may share it, change it and build on it, for any `
-    + `purpose, as long as they credit ${creditOf(model)}${model.library ? "" : " and link to this page"}.${deed}</p>`;
+  return `<p><b>${licence.name}.</b> ${sayHtml(model.library
+    ? "Anyone may share it, change it and build on it, for any purpose, as long as they credit {credit}."
+    : "Anyone may share it, change it and build on it, for any purpose, as long as they credit {credit} and link to this page.",
+  { credit: creditOf(model) })}${deed}</p>`;
 }
 
 /// A set's facts, as a model's page says a model's (sharePage): its parts,
@@ -889,13 +897,14 @@ function setFacts(set, parts) {
   const decade = set.year ? `${Math.floor(set.year / 10) * 10}s` : "";
   const box = Number(set.box) || 0;
   return [
-    `<li class="pill">${escapeHtml(count(parts, "part"))}</li>`,
-    box && Math.abs(parts - box) > 0.02 * box ? `<li class="pill">Its box: ${escapeHtml(count(box, "part"))}</li>` : "",
-    set.steps ? `<li class="pill" data-steps="${Number(set.steps)}">${escapeHtml(count(set.steps, "step"))}, laid out by its modeller</li>` : "",
+    `<li class="pill">${escapeHtml(counted(parts, "part"))}</li>`,
+    box && Math.abs(parts - box) > 0.02 * box ? `<li class="pill">${escapeHtml(say("Its box: {parts}", { parts: counted(box, "part") }))}</li>` : "",
+    set.steps ? `<li class="pill" data-steps="${Number(set.steps)}">${escapeHtml(say("{steps}, laid out by its modeller",
+      { steps: counted(set.steps, "step") }))}</li>` : "",
     // Its set's own page (sets364): every part, and what of it you own.
-    set.set ? (catalogSet(set.set) ? `<li><a class="pill" data-set="${escapeHtml(set.set)}" href="/library/set/${escapeHtml(catalogSet(set.set).set)}">Set ${escapeHtml(set.set)}</a></li>`
-      : `<li class="pill" data-set="${escapeHtml(set.set)}">Set ${escapeHtml(set.set)}</li>`) : "",
-    set.alternate_of ? `<li class="pill">Another build of ${escapeHtml(set.alternate_of)}</li>` : "",
+    set.set ? (catalogSet(set.set) ? `<li><a class="pill" data-set="${escapeHtml(set.set)}" href="/library/set/${escapeHtml(catalogSet(set.set).set)}">${escapeHtml(say("Set {set}", { set: set.set }))}</a></li>`
+      : `<li class="pill" data-set="${escapeHtml(set.set)}">${escapeHtml(say("Set {set}", { set: set.set }))}</li>`) : "",
+    set.alternate_of ? `<li class="pill">${escapeHtml(say("Another build of {set}", { set: set.alternate_of }))}</li>` : "",
     set.theme ? `<li><a class="pill" href="/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(set.theme)}</a></li>` : "",
     decade ? `<li><a class="pill" href="/library?decade=${decade}">${Number(set.year)}</a></li>` : "",
   ].join("");
@@ -943,9 +952,7 @@ async function sitemap(response, origin) {
   }
   const [pages, sets] = await Promise.all([db("rpc/sitemap_pages", { method: "POST", body: {} }).then((said) => said || {}),
     librarySets().catch(() => [])]);
-  const day = (iso) => String(iso || "").slice(0, 10);
-  const entry = (loc, when, often, rank) => `  <url><loc>${escapeHtml(loc)}</loc>`
-    + `${when ? `<lastmod>${day(when)}</lastmod>` : ""}<changefreq>${often}</changefreq><priority>${rank}</priority></url>`;
+  const entry = sitemapEntry;
   const ours = [...site.matchAll(/<url>[\s\S]*?<\/url>/g)].map((m) => `  ${m[0]}`);
   const rows = [
     ...ours,
@@ -964,16 +971,40 @@ ${rows.join("\n")}
 `);
 }
 
+/// A sitemap's row: a page, when it last changed, how often it does, and
+/// how it ranks among the site's.
+function sitemapEntry(loc, when, often, rank) {
+  return `  <url><loc>${escapeHtml(loc)}</loc>${when ? `<lastmod>${String(when).slice(0, 10)}</lastmod>` : ""}`
+    + `<changefreq>${often}</changefreq><priority>${rank}</priority></url>`;
+}
+
+/// /sitemaps/models-de.xml: the copy in [lang] of each model /sitemap.xml
+/// lists (sharePage, /de/m/X). Kept by the CDN for an hour, as that is.
+async function sitemapOfModels(response, origin, lang) {
+  if (!SITE_LANGS.includes(lang)) return response.status(404).setHeader("Cache-Control", "no-store").end("");
+  const pages = await db("rpc/sitemap_pages", { method: "POST", body: {} }).then((said) => said || {});
+  const rows = (pages.models || []).map((m) => sitemapEntry(`${origin}/${lang}/m/${m.id}`, m.updated_at, "weekly", "0.5"));
+  response.setHeader("Content-Type", "application/xml; charset=utf-8");
+  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600, stale-while-revalidate=600");
+  return response.status(200).end(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${rows.join("\n")}
+</urlset>
+`);
+}
+
 /// The Tested mark, for a version that passed (api/_tested.js publicMark):
 /// small, the four results on hover (its title) and on a tap (it opens),
 /// and whose finding it is. Nothing for any other version.
-function testedMark(mark, counted = null) {
+function testedMark(mark, steps = null) {
   if (!mark) return "";
-  return `<details class="tested-mark" data-tested="yes"><summary class="pill good" title="${escapeHtml(mark.line)}">`
-    + `<span aria-hidden="true">✓</span> Tested</summary><div class="tested-says">`
-    + `<ul>${mark.said.map((one) => `<li>${escapeHtml(one)}</li>`).join("")}</ul>`
-    + `<p class="note">Worked out by the Brickworks app ${escapeHtml(mark.app)} as it was published, `
-    + `building it by its own ${counted ? countSaid(counted) : count(mark.steps, "step")}.</p></div></details>`;
+  // Each test as the site says it passed (api/_tested.js SAID).
+  const said = mark.said.map((one) => say(one));
+  return `<details class="tested-mark" data-tested="yes"><summary class="pill good" title="${escapeHtml(said.join(" · "))}">`
+    + `<span aria-hidden="true">✓</span> ${asText(say("Tested"))}</summary><div class="tested-says">`
+    + `<ul>${said.map((one) => `<li>${escapeHtml(one)}</li>`).join("")}</ul>`
+    + `<p class="note">${escapeHtml(say("Worked out by the Brickworks app {app} as it was published, building it by its own {steps}.",
+      { app: mark.app, steps: steps ? countSaid(steps) : counted(mark.steps, "step") }))}</p></div></details>`;
 }
 
 /// Who made it, at the head of its page: their avatar, name and handle, a
@@ -985,7 +1016,7 @@ function designerRow(model) {
     const handle = escapeHtml(model.by.handle);
     return `<div class="shared-by"><a class="who" href="/u/${handle}">${avatarHtml(model.by)}`
       + `<span class="names"><b>${escapeHtml(model.by.name)}</b><small>@${handle}</small></span></a>`
-      + `<button type="button" class="cta ghost small follow" data-follow="${handle}" hidden>Follow</button>`
+      + `<button type="button" class="cta ghost small follow" data-follow="${handle}" hidden>${asText(say("Follow"))}</button>`
       + `<span class="said" role="status"></span></div>`;
   }
   if (!model.author) return "";
@@ -994,16 +1025,16 @@ function designerRow(model) {
 }
 
 /// Who shares a model, by name, as its page heads it.
-const sharerOf = (model) => (model.by && model.by.name) || model.author || "whoever shares it";
+const sharerOf = (model) => (model.by && model.by.name) || model.author || say("whoever shares it");
 
 /// Who modelled it, under who shares it, when that is somebody else: the
 /// person the app's Library credits, the page LDraw keeps of it, and, when
 /// its sharer changed it, that they did. "" for a model its sharer made.
 function modelledLine(model) {
   const modeller = modelledByOf(model.modelled_by);
-  return modeller ? `<p class="from modelled-by">Modelled by <b>${escapeHtml(modeller.name)}</b> for `
-    + `<a href="${escapeHtml(modeller.page)}">${escapeHtml(LDRAW_FROM)}</a>`
-    + `${modeller.changed ? `, changed by ${escapeHtml(sharerOf(model))}` : ""}</p>` : "";
+  return modeller ? `<p class="from modelled-by">${sayHtml("Modelled by {name} for {ldraw}", { name: `<b>${escapeHtml(modeller.name)}</b>`,
+    ldraw: `<a href="${escapeHtml(modeller.page)}">${escapeHtml(say(LDRAW_FROM))}</a>` })}`
+    + `${modeller.changed ? escapeHtml(say(", changed by {name}", { name: sharerOf(model) })) : ""}</p>` : "";
 }
 
 /// What a model's page leads on to (docs/SOCIAL.md D4, D12, D13): at most
@@ -1064,7 +1095,7 @@ async function nextOf(origin, id, model, own) {
 function nextRow(key, title, cards, all = "") {
   if (!cards.length) return "";
   return `<section class="next" id="${key}" aria-labelledby="${key}-h"><div class="scroller-head"><h2 id="${key}-h">${title}</h2>`
-    + `${all ? `<a href="${escapeHtml(all)}">See all</a>` : ""}</div>`
+    + `${all ? `<a href="${escapeHtml(all)}">${asText(say("See all"))}</a>` : ""}</div>`
     + `<div class="models scroller" role="group" aria-labelledby="${key}-h">${cards.map((card) => cardHtml(card)).join("")}</div></section>`;
 }
 
@@ -1076,36 +1107,37 @@ function nextRow(key, title, cards, all = "") {
 function actionBar(origin, id, model, url = links(origin, id).url) {
   // A set of the LDraw library has no row to like, save, comment on or say
   // was built: Share and More alone.
+  const more = asText(say("More"));
   if (model.library) {
-    return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="What you can do with it">`
-      + iconButtonHtml({ icon: "share", name: "Share",
-        attrs: 'data-share aria-haspopup="dialog" aria-controls="share-sheet" title="Share it: its link"' })
-      + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="More" title="More">`
-      + `${iconHtml("more")}</summary><div class="menu-list"><a href="/takedown">Takedown requests</a></div></details>`
+    return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="${asText(say("What you can do with it"))}">`
+      + iconButtonHtml({ icon: "share", name: say("Share"),
+        attrs: `data-share aria-haspopup="dialog" aria-controls="share-sheet" title="${asText(say("Share it: its link"))}"` })
+      + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="${more}" title="${more}">`
+      + `${iconHtml("more")}</summary><div class="menu-list"><a href="/takedown">${asText(say("Takedown requests"))}</a></div></details>`
       + `</div>` + shareSheet(origin, id, model, url);
   }
-  return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="What you can do with it">`
-    + iconButtonHtml({ icon: "like", name: "Like", count: model.likes, one: "like", pressed: false, labelled: true,
-      attrs: 'data-mark="like" title="Like it"' })
-    + `<button type="button" class="icon-btn" data-mark="save" aria-label="Save" aria-expanded="false" `
-      + `aria-controls="save-panel" title="Save it to your favourites or a collection">${iconHtml("save")}</button>`
-    + iconButtonHtml({ icon: "share", name: "Share",
-      attrs: 'data-share aria-haspopup="dialog" aria-controls="share-sheet" title="Share it: its link, and the code to embed it"' })
-    + iconButtonHtml({ icon: "comment", name: "Comment", attrs: 'data-mark="comment" title="Comments on it and its steps"' })
-    + iconButtonHtml({ icon: "build", name: "I built it", count: model.builds, one: "build", labelled: true, word: "Built",
-      attrs: 'data-mark="built" title="I built it: add a photo of your build"' })
-    + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="More" title="More">`
+  return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="${asText(say("What you can do with it"))}">`
+    + iconButtonHtml({ icon: "like", name: say("Like"), count: model.likes, one: "like", many: "likes", pressed: false,
+      labelled: true, attrs: `data-mark="like" title="${asText(say("Like it"))}"` })
+    + `<button type="button" class="icon-btn" data-mark="save" aria-label="${asText(say("Save"))}" aria-expanded="false" `
+      + `aria-controls="save-panel" title="${asText(say("Save it to your favourites or a collection"))}">${iconHtml("save")}</button>`
+    + iconButtonHtml({ icon: "share", name: say("Share"),
+      attrs: `data-share aria-haspopup="dialog" aria-controls="share-sheet" title="${asText(say("Share it: its link, and the code to embed it"))}"` })
+    + iconButtonHtml({ icon: "comment", name: say("Comment"), attrs: `data-mark="comment" title="${asText(say("Comments on it and its steps"))}"` })
+    + iconButtonHtml({ icon: "build", name: say("I built it"), count: model.builds, one: "build", many: "builds", labelled: true,
+      word: say("Built"), attrs: `data-mark="built" title="${asText(say("I built it: add a photo of your build"))}"` })
+    + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="${more}" title="${more}">`
       + `${iconHtml("more")}</summary><div class="menu-list">`
-      + `<button type="button" data-report="this model" data-report-model="${id}" hidden>Report it</button>`
-      + `<a href="/takedown">Takedown requests</a></div></details>`
+      + `<button type="button" data-report="${asText(say("this model"))}" data-report-model="${id}" hidden>${asText(say("Report it"))}</button>`
+      + `<a href="/takedown">${asText(say("Takedown requests"))}</a></div></details>`
     + `</div>`
     // Save opens your lists, Favourites first (docs/SOCIAL.md D2), and a
     // new collection's name; drawn by web/model-page.js once signed in.
-    + `<div class="save-panel" id="save-panel" hidden><p class="save-head">Save it to</p>`
+    + `<div class="save-panel" id="save-panel" hidden><p class="save-head">${asText(say("Save it to"))}</p>`
     + `<div class="collect-list"></div>`
-    + `<form class="collect-new"><label class="visually-hidden" for="new-list">A new collection's name</label>`
-    + `<input id="new-list" maxlength="80" placeholder="A new collection">`
-    + `<button class="cta ghost" type="submit">Make it</button></form></div>`
+    + `<form class="collect-new"><label class="visually-hidden" for="new-list">${asText(say("A new collection's name"))}</label>`
+    + `<input id="new-list" maxlength="80" placeholder="${asText(say("A new collection"))}">`
+    + `<button class="cta ghost" type="submit">${asText(say("Make it"))}</button></form></div>`
     + `<p class="said marks-said" role="status"></p>`
     + shareSheet(origin, id, model, url);
 }
@@ -1116,8 +1148,8 @@ function actionBar(origin, id, model, url = links(origin, id).url) {
 /// page. A set has no embed.
 function shareSheet(origin, id, model, url) {
   const link = links(origin, id);
-  return shareSheetHtml({ url, name: model.name, text: `${model.name} on Brickworks`,
-    about: "Its link opens this page, where anybody can turn it in 3D and build it, with no account.",
+  return shareSheetHtml({ url, name: model.name, text: say("{name} on Brickworks", { name: model.name }),
+    about: say("Its link opens this page, where anybody can turn it in 3D and build it, with no account."),
     image: model.has_image || model.library ? link.image : "", embed: link.embed });
 }
 
@@ -1140,8 +1172,17 @@ function shareSheet(origin, id, model, url) {
 /// of its theme. None of what is a shared model's row (versions, marks,
 /// likes, comments, builds, remixes, collections), and its number, theme
 /// and year where a model has its kind.
+///
+/// A shared model's page is in German, French and Spanish too, at
+/// /de/m/X (and /de/m/X/v/N), as a set's is (api/_sets.js setPage): made
+/// inside api/_directory.js inLanguage in [lang], with [words] the copy's
+/// for the page's own scripts, the gallery copy's header and footer, every
+/// date as the language writes it and every link to a page with a copy in
+/// the language. What its builder wrote stays as they wrote it: its name,
+/// description, tags, notes and comments. Each page names the others
+/// (hreflang) and is its own canonical.
 function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = [], next = { by: [], like: [] },
-  counted = null, lists = { count: 0, lists: [], covers: new Map() }, parts = null) {
+  stepsCounted = null, lists = { count: 0, lists: [], covers: new Map() }, parts = null, lang = "en", words = null) {
   const set = model.library || null;
   const newest = versions[0]?.n ?? 1;
   const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
@@ -1149,8 +1190,10 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // counts, its viewer, and the newest a click away. Never indexed: the
   // link is what a search should find.
   const old = version.n !== newest;
-  const title = set ? `${model.name}, LEGO® set ${set.set} — from the LDraw library`
-    : old ? `${model.name}, version ${version.n} — a Brickworks model` : `${model.name} — a Brickworks model`;
+  const at = lang === "en" ? "" : `/${lang}`;
+  const title = set ? say("{name}, LEGO® set {set} — from the LDraw library", { name: model.name, set: set.set })
+    : old ? say("{name}, version {n} — a Brickworks model", { name: model.name, n: version.n })
+    : say("{name} — a Brickworks model", { name: model.name });
   // A set is looked at in the app itself, opened as the app's Library opens
   // one; there is no copy to make of it, so Open in Brickworks is the same.
   const viewer = set ? `/app?new=1&library=${id}` : `/app?view=${id}${old ? `&v=${version.n}` : ""}`;
@@ -1167,8 +1210,8 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     : (model.has_image ? `/m/${id}.cutout.png` : "");
   const small = set ? `/library/${id}.webp` : !old && model.has_thumb
     ? `/m/${id}.webp?v=${(Date.parse(model.updated_at || "") || 0).toString(36)}` : picture;
-  const { head, header, footer } = siteChrome();
-  const kind = kindLabel(model.kind);
+  const { head, header, footer } = siteChrome(lang);
+  const kind = say(kindLabel(model.kind));
   const about = model.description
     ? model.description.replace(/\s+/g, " ").slice(0, 157) + (model.description.length > 157 ? "…" : "")
     : "";
@@ -1178,46 +1221,59 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   const parent = (model.from || [])[0];
   const fromVersion = remixVersion(versions);
   const fromLine = !parent ? "" : parent.id
-    ? `<p class="from">Remixed from <a href="/m/${parent.id}">${escapeHtml(parent.name)}</a>`
-      + `${fromVersion ? `, <a class="from-version" href="/m/${parent.id}/v/${fromVersion}">version ${fromVersion}</a>` : ""}`
-      + `${parent.author ? `, by ${escapeHtml(parent.author)}` : ""}</p>`
-    : `<p class="from">Remixed from a model shared by link</p>`;
+    ? `<p class="from">${sayHtml("Remixed from {model}", { model: `<a href="${at}/m/${parent.id}">${escapeHtml(parent.name)}</a>` })}`
+      + `${fromVersion ? `, <a class="from-version" href="${at}/m/${parent.id}/v/${fromVersion}">${asText(say("version {n}", { n: fromVersion }))}</a>` : ""}`
+      + `${parent.author ? escapeHtml(say(", by {name}", { name: parent.author })) : ""}</p>`
+    : `<p class="from">${asText(say("Remixed from a model shared by link"))}</p>`;
   // What it is, as pills, each said once there is one. Its steps are the
   // ones its step player and booklet number, counted from the file shown;
   // a file that carries none has them worked out as it opens, and they are
   // not said. What is built on the side is said apart: the orrery's 87
   // steps, and its 12 sub-assemblies' 64.
-  const side = counted ? sideSaid(counted) : "";
+  const side = stepsCounted ? sideSaid(stepsCounted) : "";
   const facts = set ? setFacts(set, shownModel.parts) : [
-    `<li class="pill">${escapeHtml(count(shownModel.parts, "part"))}</li>`,
-    counted ? `<li class="pill" data-steps="${counted.steps}">${stepsSaid(counted)}${model.own_steps ? ", laid out by its builder" : ""}</li>` : "",
-    side ? `<li class="pill" data-side="${counted.side}">${side}</li>` : "",
-    model.technic ? `<li class="pill">Technic or a mechanism</li>` : "",
+    `<li class="pill">${escapeHtml(counted(shownModel.parts, "part"))}</li>`,
+    stepsCounted ? `<li class="pill" data-steps="${stepsCounted.steps}">${model.own_steps
+      ? asText(say("{steps}, laid out by its builder", { steps: stepsSaid(stepsCounted) })) : stepsSaid(stepsCounted)}</li>` : "",
+    side ? `<li class="pill" data-side="${stepsCounted.side}">${side}</li>` : "",
+    model.technic ? `<li class="pill">${asText(say("Technic or a mechanism"))}</li>` : "",
     // What it does: its own motions' names, else what its app found moves.
-    movesWords(model) ? `<li class="pill">${escapeHtml(`Moves: ${movesWords(model)}`)}</li>` : "",
-    Number(model.views) ? `<li class="pill"><span data-count="views">${count(model.views, "view")}</span></li>` : "",
-    `<li class="pill">${model.listed ? `In the gallery since ${when(model.listed_at)}` : "Shared by link"}</li>`,
-    newest > 1 ? `<li><a class="pill version-line" href="#versions">Version ${version.n}${old ? ` of ${newest}` : ""}</a></li>` : "",
-    Number(model.remixes) ? `<li><a class="pill" href="#remixes">${count(model.remixes, "remix", "remixes")}</a></li>` : "",
+    movesWords(model) ? `<li class="pill">${escapeHtml(`${say("Moves:")} ${movesWords(model)}`)}</li>` : "",
+    Number(model.views) ? `<li class="pill"><span data-count="views">${counted(model.views, "view")}</span></li>` : "",
+    `<li class="pill">${model.listed ? sayHtml("In the gallery since {when}", { when: when(model.listed_at) })
+      : asText(say("Shared by link"))}</li>`,
+    newest > 1 ? `<li><a class="pill version-line" href="#versions">${asText(old ? say("Version {n} of {newest}", { n: version.n, newest })
+      : say("Version {n}", { n: version.n }))}</a></li>` : "",
+    Number(model.remixes) ? `<li><a class="pill" href="#remixes">${counted(model.remixes, "remix", "remixes")}</a></li>` : "",
     // In the public collections it is in (docs/SOCIAL.md U11), each a card
     // under Collections.
-    Number(lists.count) ? `<li><a class="pill" href="#collections" data-lists="${Number(lists.count)}">In ${count(lists.count, "collection")}</a></li>` : "",
+    Number(lists.count) ? `<li><a class="pill" href="#collections" data-lists="${Number(lists.count)}">`
+      + `${asText(say("In {collections}", { collections: counted(lists.count, "collection") }))}</a></li>` : "",
   ].join("");
   const tags = (model.tags || []).map((tag) =>
-    `<li><a class="pill tag" href="/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
+    `<li><a class="pill tag" href="${at}/gallery?tag=${encodeURIComponent(tag)}">${escapeHtml(tag)}</a></li>`).join("");
   const line = (model.from || []).map((one) => one.id
-    ? `<li><a href="/m/${one.id}">${escapeHtml(one.name)}</a>${one.author ? `, by ${escapeHtml(one.author)}` : ""}</li>`
-    : "<li>a model shared by link</li>").join("");
+    ? `<li><a href="${at}/m/${one.id}">${escapeHtml(one.name)}</a>${one.author ? escapeHtml(say(", by {name}", { name: one.author })) : ""}</li>`
+    : `<li>${asText(say("a model shared by link"))}</li>`).join("");
   const listedRemixes = model.remixes_listed || [];
   const unlisted = Math.max(0, (Number(model.remixes) || 0) - listedRemixes.length);
   // The marks nearly every card on the page carries, left off (web/card.js).
   const quiet = quietMarks([...listedRemixes.map((row) => cardOf(origin, row)), ...(model.by ? next.by : []), ...next.like,
     ...(next.gallery || [])].map(marksOf));
+  // A shared model's page in each language, each naming the others; English
+  // for any other. Its own address is its canonical, an older version's
+  // the newest's in its language.
+  const page = `/m/${id}${old ? `/v/${version.n}` : ""}`;
+  const alternates = set ? "" : [["en", ""], ...SITE_LANGS.map((code) => [code, `/${code}`]), ["x-default", ""]]
+    .map(([code, where]) => `<link rel="alternate" hreflang="${code}" href="${escapeHtml(`${origin}${where}${page}`)}">`).join("\n");
+  const own = at ? `${origin}${at}/m/${id}` : links(origin, id).url;
+  // The copy's words, for what the page's own scripts say (web/card.js say).
+  const scriptWords = words ? `<script type="application/json" id="site-words">${JSON.stringify(words).replace(/</g, "\\u003c")}</script>\n` : "";
   return `<!doctype html>
-<html lang="en">
+<html lang="${lang}">
 <head>
-${pageHead(origin, model, id, title, { about, canonical: links(origin, id).url })}
-${old ? '<meta name="robots" content="noindex">\n' : ""}${head}
+${pageHead(origin, model, id, title, { about, canonical: own, url: own, alternates })}
+${old ? '<meta name="robots" content="noindex">\n' : ""}${scriptWords}${head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <link rel="stylesheet" href="/view3d.css">
@@ -1228,22 +1284,23 @@ ${old ? '<meta name="robots" content="noindex">\n' : ""}${head}
 ${structured(origin, id, model)}
 </head>
 <body data-viewer="${escapeHtml(viewer)}" data-id="${id}" data-version="${version.n}" data-newest="${newest}"${quiet ? ` data-quiet="${quiet}"` : ""}>
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main">${asText(say("Skip to content"))}</a>
 ${header}
 <main id="main">
 <article class="wrap wide model-page">
-  <nav class="crumbs" aria-label="Where it is">${set ? `<a href="/library">LDraw library</a>${set.theme
-    ? ` <span aria-hidden="true">›</span> <a href="/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(set.theme)}</a>` : ""}`
-    : `<a href="/gallery">Gallery</a>${model.kind
-    ? ` <span aria-hidden="true">›</span> <a href="/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}`}</nav>
-  ${old ? `<p class="old-version" role="note"><b>An older version.</b> This is version ${version.n} of
-    ${newest}, published ${when(version.at)}. <a href="/m/${id}">See the newest, version ${newest}</a></p>` : ""}
+  <nav class="crumbs" aria-label="${asText(say("Where it is"))}">${set ? `<a href="${at}/library">${asText(say("LDraw library"))}</a>${set.theme
+    ? ` <span aria-hidden="true">›</span> <a href="${at}/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(set.theme)}</a>` : ""}`
+    : `<a href="${at}/gallery">${asText(say("Gallery"))}</a>${model.kind
+    ? ` <span aria-hidden="true">›</span> <a href="${at}/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}`}</nav>
+  ${old ? `<p class="old-version" role="note"><b>${asText(say("An older version."))}</b> ${sayHtml("This is version {n} of {newest}, "
+    + "published {when}.", { n: version.n, newest, when: when(version.at) })} <a href="${at}/m/${id}">${asText(say("See the newest, "
+    + "version {newest}", { newest }))}</a></p>` : ""}
   <div class="top">
     <div class="media">
-    <a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(model.name)} in 3D"
+    <a class="picture" href="${escapeHtml(viewer)}" aria-label="${escapeHtml(say("View {name} in 3D", { name: model.name }))}"
       data-scene="${fileAt}/scene.json" data-parts="${Number(shownModel.parts) || 0}">${picture
-      ? `<span class="waiting" aria-hidden="true">Loading its picture…</span><img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
-      : `<span class="none">No picture</span>`}<span class="go" aria-hidden="true">View in 3D</span></a>
+      ? `<span class="waiting" aria-hidden="true">${asText(say("Loading its picture…"))}</span><img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
+      : `<span class="none">${asText(say("No picture"))}</span>`}<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span></a>
     ${mediaStrip(model, picture, photos, small)}
     </div>
     <div class="side">
@@ -1251,45 +1308,46 @@ ${header}
       ${designerRow(model)}
       ${modelledLine(model)}
       <div class="actions">
-        ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours">Open in Brickworks</a>`
-    : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it</a>
-        <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>`}
-        <a class="cta ghost" href="${fileAt}.mpd" download>Download</a>
+        ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="${asText(say("Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours"))}">${asText(say("Open in Brickworks"))}</a>`
+    : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="${asText(say("Build it with real bricks, one step at a time from step 1: no account needed"))}">${asText(say("Build it"))}</a>
+        <a class="cta ghost" href="${escapeHtml(copyLink)}" title="${asText(say("Copy it into your own models, to change and make yours"))}">${asText(say("Open in Brickworks"))}</a>`}
+        <a class="cta ghost" href="${fileAt}.mpd" download>${asText(say("Download"))}</a>
       </div>
-      ${actionBar(origin, id, model, old ? `${origin}/m/${id}/v/${version.n}` : links(origin, id).url)}
-      <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, counted)}</li>` : ""}${facts}</ul>
+      ${actionBar(origin, id, model, old ? `${origin}${at}/m/${id}/v/${version.n}` : at ? own : links(origin, id).url)}
+      <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, stepsCounted)}</li>` : ""}${facts}</ul>
       ${fromLine}
       ${basedHtml(model.based || [])}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
   ${pageTabs(model, newest, lists.count, parts)}
-  <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
+  <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">${asText(say("About it"))}</h2>
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
-    ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
-    <div class="licence"><h3 id="licence-h">Licence</h3>${licenceWords(model)}</div></section>
+    ${tags ? `<ul class="tags pills" aria-label="${asText(say("Tags"))}">${tags}</ul>` : ""}
+    <div class="licence"><h3 id="licence-h">${asText(say("Licence"))}</h3>${licenceWords(model)}</div></section>
   ${partsSection(fileAt, parts)}
-  ${set ? "" : `${commentsSection(id, version.n, newest, counted ? counted.pages : null)}
+  ${set ? "" : `${commentsSection(id, version.n, newest, stepsCounted ? stepsCounted.pages : null)}
   ${buildsSection(id, model, photos)}
-  <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
-    ${line ? `<h3>It came from</h3><ol class="line">${line}</ol>` : ""}
+  <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">${asText(say("Remixes"))}</h2>
+    ${line ? `<h3>${asText(say("It came from"))}</h3><ol class="line">${line}</ol>` : ""}
     ${listedRemixes.length || unlisted
-      ? `<h3>Made from it</h3>${listedRemixes.length
+      ? `<h3>${asText(say("Made from it"))}</h3>${listedRemixes.length
         ? `<div class="models compact">${listedRemixes.map((row) => cardHtml(cardOf(origin, row))).join("")}</div>` : ""}`
-        + (unlisted ? `<p class="note">${listedRemixes.length ? "And " : ""}${count(unlisted, "remix", "remixes")} `
-          + `shared by link, not in the gallery.</p>` : "")
-      : `<p class="note none">Nobody has remixed it yet. <a href="${escapeHtml(copyLink)}">Open it in Brickworks</a>
-        to make a copy of your own to change; share that, and it shows here.</p>`}
+        + (unlisted ? `<p class="note">${asText(say(listedRemixes.length ? "And {remixes} shared by link, not in the gallery."
+          : "{remixes} shared by link, not in the gallery.", { remixes: counted(unlisted, "remix", "remixes") }))}</p>` : "")
+      : `<p class="note none">${sayHtml("Nobody has remixed it yet. {open} to make a copy of your own to change; share that, "
+        + "and it shows here.", { open: `<a href="${escapeHtml(copyLink)}">${asText(say("Open it in Brickworks"))}</a>` })}</p>`}
   </section>`}
   ${listsSection(lists)}
-  ${versionsSection(id, versions, version)}
+  ${versionsSection(id, versions, version, at)}
     </div>
   </div>
-  ${model.by ? nextRow("more-by", `More by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`, next.by,
-    `/u/${model.by.handle}`) : ""}
-  ${nextRow("similar", set ? `More ${escapeHtml(set.theme || "sets")} from the LDraw library` : "Similar models", next.like,
-    set?.theme ? `/library?theme=${encodeURIComponent(set.theme)}` : "")}
-  ${nextRow("from-gallery", "More in the gallery", next.gallery || [], "/gallery")}
+  ${model.by ? nextRow("more-by", sayHtml("More by {name}", { name: `<a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>` }),
+    next.by, `/u/${model.by.handle}`) : ""}
+  ${nextRow("similar", set ? escapeHtml(set.theme ? say("More {theme} from the LDraw library", { theme: set.theme })
+    : say("More sets from the LDraw library")) : asText(say("Similar models")), next.like,
+  set?.theme ? `${at}/library?theme=${encodeURIComponent(set.theme)}` : "")}
+  ${nextRow("from-gallery", asText(say("More in the gallery")), next.gallery || [], `${at}/gallery`)}
 </article>
 </main>
 ${footer}
@@ -1309,13 +1367,14 @@ function mediaStrip(model, picture, photos, small = picture) {
   const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
     + `width="96" height="72" loading="${shown++ < 5 ? "eager" : "lazy"}" decoding="async"></a>`;
   const file = (photo) => `/api/people?op=photo_file&amp;id=${photo.id}`;
-  return `<div class="media-strip scroller" id="pictures" role="group" aria-label="Its pictures"${photos.length ? "" : " hidden"}>`
-    + (picture ? thumb(small, `${model.name}, as it was published`,
+  return `<div class="media-strip scroller" id="pictures" role="group" aria-label="${asText(say("Its pictures"))}"${photos.length ? "" : " hidden"}>`
+    + (picture ? thumb(small, say("{name}, as it was published", { name: model.name }),
       `href="${picture}" data-picture="${picture}" aria-current="true"`) : "")
-    + photos.map((photo) => thumb(file(photo), photo.own ? `${model.name}, a photo by its designer`
-      : `A real build of ${model.name}${photo.by ? `, by ${photo.by.name}` : ""}`,
+    + photos.map((photo) => thumb(file(photo), photo.own ? say("{name}, a photo by its designer", { name: model.name })
+      : photo.by ? say("A real build of {name}, by {builder}", { name: model.name, builder: photo.by.name })
+      : say("A real build of {name}", { name: model.name }),
     `href="#photo-${photo.id}" data-picture="${file(photo)}"${photo.own ? " data-own" : ""}`)).join("")
-    + `<button type="button" class="thumb add" data-add-picture hidden>Add a picture</button></div>`;
+    + `<button type="button" class="thumb add" data-add-picture hidden>${asText(say("Add a picture"))}</button></div>`;
 }
 
 /// The page's tabs (docs/SOCIAL.md U4): a link to each part below, with its
@@ -1323,13 +1382,13 @@ function mediaStrip(model, picture, photos, small = picture) {
 /// being read is marked by web/model-page.js, which also counts the
 /// comments as it lists them. Versions only once there are two.
 function pageTabs(model, newest, inLists = 0, parts = null) {
-  const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${name}`
-    + `${Number(n) ? ` <span class="n">${Number(n).toLocaleString("en-US")}</span>` : ""}</a>`;
-  return `<nav class="tabs page-tabs" id="page-tabs" aria-label="On this page">${tab("about", "About")}`
-    + `${parts ? tab("parts", "Parts", parts.pieces) : ""}`
-    + `${model.library ? "" : `${tab("comments", "Comments")}${tab("builds", "Builds", model.builds)}${tab("remixes", "Remixes", model.remixes)}`}`
-    + `${Number(inLists) ? tab("collections", "Collections", inLists) : ""}`
-    + `${newest > 1 ? tab("versions", "Versions", newest) : ""}</nav>`;
+  const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${asText(name)}`
+    + (Number(n) ? ` <span class="n">${number(n)}</span>` : "") + "</a>";
+  return `<nav class="tabs page-tabs" id="page-tabs" aria-label="${asText(say("On this page"))}">${tab("about", say("About"))}`
+    + `${parts ? tab("parts", say("Parts"), parts.pieces) : ""}`
+    + `${model.library ? "" : `${tab("comments", say("Comments"))}${tab("builds", say("Builds"), model.builds)}${tab("remixes", say("Remixes"), model.remixes)}`}`
+    + `${Number(inLists) ? tab("collections", say("Collections"), inLists) : ""}`
+    + `${newest > 1 ? tab("versions", say("Versions"), newest) : ""}</nav>`;
 }
 
 /// How many rows the Parts list shows before Show all, and each row's
@@ -1350,16 +1409,16 @@ function partsSection(at, parts) {
   const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
   // Lean: every byte here is in the page's first bytes, and the list is not.
   return `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${at}/parts.json">`
-    + `<h2 id="parts-h">Parts</h2><p class="note">${escapeHtml(count(parts.pieces, "part"))} in `
-    + `${escapeHtml(count(parts.lots.length, "lot"))}</p>`
-    + `<div class="parts-bar"><div class="segmented" role="group" aria-label="Group them by">`
-    + `<button type="button" data-group="colour" aria-pressed="true">Colour</button>`
-    + `<button type="button" data-group="kind" aria-pressed="false">Kind</button></div>`
+    + `<h2 id="parts-h">${asText(say("Parts"))}</h2><p class="note">${escapeHtml(say("{parts} in {lots}",
+      { parts: counted(parts.pieces, "part"), lots: counted(parts.lots.length, "lot") }))}</p>`
+    + `<div class="parts-bar"><div class="segmented" role="group" aria-label="${asText(say("Group them by"))}">`
+    + `<button type="button" data-group="colour" aria-pressed="true">${asText(say("Colour"))}</button>`
+    + `<button type="button" data-group="kind" aria-pressed="false">${asText(say("Kind"))}</button></div>`
     + `<a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
     + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a></div>`
     + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
     + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all hidden>`
-      + `Show all ${escapeHtml(count(parts.lots.length, "lot"))}</button>` : "")
+      + `${escapeHtml(say("Show all {lots}", { lots: counted(parts.lots.length, "lot") }))}</button>` : "")
     + `</section>`;
 }
 
@@ -1369,10 +1428,10 @@ function partsSection(at, parts) {
 function listsSection(lists) {
   if (!Number(lists.count) || !lists.lists.length) return "";
   const more = Number(lists.count) - lists.lists.length;
-  return `<section class="in-lists" id="collections" aria-labelledby="lists-h"><h2 id="lists-h">In collections</h2>`
-    + `<p class="note">People put it in ${count(lists.count, "public collection")}.</p>`
+  return `<section class="in-lists" id="collections" aria-labelledby="lists-h"><h2 id="lists-h">${asText(say("In collections"))}</h2>`
+    + `<p class="note">${asText(say("People put it in {collections}.", { collections: counted(lists.count, "public collection") }))}</p>`
     + `<div class="list-cards">${lists.lists.map((list) => listCardHtml(list, lists.covers, { by: true })).join("")}</div>`
-    + (more > 0 ? `<p class="note">And ${count(more, "collection")} more.</p>` : "")
+    + (more > 0 ? `<p class="note">${asText(say("And {collections} more.", { collections: counted(more, "collection") }))}</p>` : "")
     + `</section>`;
 }
 
@@ -1380,13 +1439,14 @@ function listsSection(lists) {
 /// its builder wrote, who (their profile, if they made one) and when, and
 /// a way to report it. Every word is theirs, escaped.
 function buildFigure(model, photo) {
-  const by = photo.by ? `by <a href="/u/${escapeHtml(photo.by.handle)}">${escapeHtml(photo.by.name)}</a>` : "by a builder";
+  const by = photo.by ? sayHtml("by {name}", { name: `<a href="/u/${escapeHtml(photo.by.handle)}">${escapeHtml(photo.by.name)}</a>` })
+    : asText(say("by a builder"));
   return `<figure class="build" id="photo-${photo.id}" data-photo="${photo.id}">`
-    + `<img src="/api/people?op=photo_file&amp;id=${photo.id}" alt="${escapeHtml(`A real build of ${model.name}`)}" `
+    + `<img src="/api/people?op=photo_file&amp;id=${photo.id}" alt="${escapeHtml(say("A real build of {name}", { name: model.name }))}" `
     + `width="${photo.width}" height="${photo.height}" loading="lazy" decoding="async">`
     + `<figcaption>${photo.words ? `<q>${escapeHtml(photo.words)}</q>` : ""}`
     + `<span class="by">${by} · ${when(photo.at)}</span>`
-    + ` <button type="button" class="link" data-report="this photo" data-report-photo="${photo.id}" hidden>Report it</button>`
+    + ` <button type="button" class="link" data-report="${asText(say("this photo"))}" data-report-photo="${photo.id}" hidden>${asText(say("Report it"))}</button>`
     + `</figcaption></figure>`;
 }
 
@@ -1398,22 +1458,22 @@ function buildFigure(model, photo) {
 function buildsSection(id, model, photos) {
   const builds = Number(model.builds) || 0;
   return `<section class="builds" id="builds" aria-labelledby="builds-h" data-id="${id}">
-    <h2 id="builds-h">Built by people</h2>
-    ${builds ? `<p class="built-line">Built to the last step ${builds === 1 ? "once" : `${count(builds, "time")}`}, `
-      + "by people following its steps in Brickworks.</p>" : ""}
+    <h2 id="builds-h">${asText(say("Built by people"))}</h2>
+    ${builds ? `<p class="built-line">${asText(builds === 1 ? say("Built to the last step once, by people following its steps in Brickworks.")
+      : say("Built to the last step {times}, by people following its steps in Brickworks.", { times: counted(builds, "time") }))}</p>` : ""}
     ${photos.length ? `<div class="build-strip scroller" role="group" aria-labelledby="builds-h">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
-      : `<p class="note no-builds">${builds ? "No photos of a real build yet. Built it? Add yours."
-        : "Nobody has built it yet. Built it? Add a photo of yours."}</p>`}
+      : `<p class="note no-builds">${asText(builds ? say("No photos of a real build yet. Built it? Add yours.")
+        : say("Nobody has built it yet. Built it? Add a photo of yours."))}</p>`}
     <div class="add-build" id="add-build" data-id="${id}">
-      <button type="button" class="cta ghost" data-add-build>I built it: add a photo</button>
+      <button type="button" class="cta ghost" data-add-build>${asText(say("I built it: add a photo"))}</button>
       <form class="build-form" hidden>
-        <label>A photo of your build <small>JPEG, PNG or WebP, up to 8 MB</small>
+        <label>${asText(say("A photo of your build"))} <small>${asText(say("JPEG, PNG or WebP, up to 8 MB"))}</small>
           <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required></label>
-        <label>A line about it <small>optional</small>
-          <input type="text" name="words" maxlength="140" placeholder="Built it with my own bricks, one swap in step 4"></label>
-        <p class="note">Photos show the build, not people: no faces, and nobody's name or address.</p>
-        <div class="actions"><button class="cta" type="submit">Add the photo</button>
-          <button class="cta ghost" type="button" data-cancel>Cancel</button></div>
+        <label>${asText(say("A line about it"))} <small>${asText(say("optional"))}</small>
+          <input type="text" name="words" maxlength="140" placeholder="${asText(say("Built it with my own bricks, one swap in step 4"))}"></label>
+        <p class="note">${asText(say("Photos show the build, not people: no faces, and nobody's name or address."))}</p>
+        <div class="actions"><button class="cta" type="submit">${asText(say("Add the photo"))}</button>
+          <button class="cta ghost" type="button" data-cancel>${asText(say("Cancel"))}</button></div>
         <p class="said" role="status"></p>
       </form>
       <p class="said build-said" role="status"></p>
@@ -1429,10 +1489,11 @@ function commentsSection(id, shown, newest, steps) {
   // Steps not known: any step, by number.
   const many = !steps || Number(steps) > 1000;
   const options = !steps || many ? "" : Array.from({ length: Number(steps) },
-    (_, at) => `<option value="${at + 1}">step ${at + 1}</option>`).join("");
+    (_, at) => `<option value="${at + 1}">${asText(say("step {n}", { n: at + 1 }))}</option>`).join("");
+  const whole = asText(say("the whole model"));
   const picker = many
-    ? `<input id="comment-step" type="number" min="1"${steps ? ` max="${Number(steps)}"` : ""} inputmode="numeric" placeholder="the whole model">`
-    : `<select id="comment-step"><option value="">the whole model</option>${options}</select>`;
+    ? `<input id="comment-step" type="number" min="1"${steps ? ` max="${Number(steps)}"` : ""} inputmode="numeric" placeholder="${whole}">`
+    : `<select id="comment-step"><option value="">${whole}</option>${options}</select>`;
   // Shown once asked (web/model-page.js); until then a skeleton holds its
   // place at the size most are drawn at (none yet, and the box), so its
   // coming moves nothing under it: it pushed Builds down the screen (site275).
@@ -1440,17 +1501,17 @@ function commentsSection(id, shown, newest, steps) {
     <span class="bone line"></span><span class="bone line short"></span><span class="bone box"></span><span class="bone button"></span></div>
   <section class="comments" id="comments" aria-labelledby="comments-h" data-id="${id}"
     data-version="${shown}" data-newest="${newest}" hidden>
-    <h2 id="comments-h">Comments</h2>
-    <p class="note comments-lede">What builders said about it and its steps, the newest first, with
-      the replies under each. Plain words only; <a href="/guidelines">the guidelines</a> say what is welcome.</p>
+    <h2 id="comments-h">${asText(say("Comments"))}</h2>
+    <p class="note comments-lede">${sayHtml("What builders said about it and its steps, the newest first, with the replies under each. "
+      + "Plain words only; {guidelines} say what is welcome.", { guidelines: `<a href="/guidelines">${asText(say("the guidelines"))}</a>` })}</p>
     <ol class="comment-list"></ol>
     <form class="comment-new" hidden>
-      <div class="comment-on"><label for="comment-step">On</label> ${picker}
-        <span class="note">of version ${shown}${shown < newest ? ", an older one" : ""}</span></div>
-      <label class="visually-hidden" for="comment-body">Your comment</label>
+      <div class="comment-on"><label for="comment-step">${asText(say("On"))}</label> ${picker}
+        <span class="note">${asText(shown < newest ? say("of version {n}, an older one", { n: shown }) : say("of version {n}", { n: shown }))}</span></div>
+      <label class="visually-hidden" for="comment-body">${asText(say("Your comment"))}</label>
       <textarea id="comment-body" maxlength="1000" rows="3"
-        placeholder="Say something about it, or about a step: this part goes under, not over"></textarea>
-      <div class="actions"><button class="cta small" type="submit">Add the comment</button>
+        placeholder="${asText(say("Say something about it, or about a step: this part goes under, not over"))}"></textarea>
+      <div class="actions"><button class="cta small" type="submit">${asText(say("Add the comment"))}</button>
         <span class="note comment-count" aria-live="polite"></span></div>
     </form>
     <div class="comment-why" hidden><p class="note"></p></div>
@@ -1462,38 +1523,43 @@ function commentsSection(id, shown, newest, steps) {
 /// the version shown, what changed in it (worked out from the files, and
 /// part by part on request) and what its owner said, how far a builder of
 /// the one before can carry on, and the others, newest first.
-function versionsSection(id, versions, shown) {
+function versionsSection(id, versions, shown, at = "") {
   const newest = versions[0]?.n ?? 1;
   if (newest <= 1 || !shown) return "";
   const said = saidOf(shown.n, shown.changes);
   const changes = shown.changes;
-  const lots = changes ? [...changes.added.map((lot) => `<li>Added ${escapeHtml(lotSaid(lot))}</li>`),
-    ...changes.removed.map((lot) => `<li>Removed ${escapeHtml(lotSaid(lot))}</li>`)].join("") : "";
+  // Each lot's colour as the parts list names it in the page's language.
+  const colours = at ? partNames(at.slice(1))?.colours : null;
+  const lots = changes ? [...changes.added.map((lot) => `<li>${escapeHtml(say("Added {lot}", { lot: lotSaid(lot, colours) }))}</li>`),
+    ...changes.removed.map((lot) => `<li>${escapeHtml(say("Removed {lot}", { lot: lotSaid(lot, colours) }))}</li>`)].join("") : "";
   const kept = shown.n > 1 && shown.first > 1
-    ? `<p class="kept">${shown.first === 2 ? "Step 1 is" : `Steps 1–${shown.first - 1} are`} as they were in
-      version ${shown.n - 1}: a builder who got that far can carry on.</p>` : "";
+    ? `<p class="kept">${asText(shown.first === 2
+      ? say("Step 1 is as they were in version {n}: a builder who got that far can carry on.", { n: shown.n - 1 })
+      : say("Steps 1–{last} are as they were in version {n}: a builder who got that far can carry on.",
+        { last: shown.first - 1, n: shown.n - 1 }))}</p>` : "";
   const others = versions.filter((one) => one.n !== shown.n).map((one) => {
-    const href = one.n === newest ? `/m/${id}` : `/m/${id}/v/${one.n}`;
-    const words = saidOf(one.n, one.changes).replace(/^Version \d+: /, "");
-    return `<li><a href="${href}">Version ${one.n}</a>${one.n === newest ? ", the newest" : ""}, `
+    const href = one.n === newest ? `${at}/m/${id}` : `${at}/m/${id}/v/${one.n}`;
+    const words = changedOf(one.n, one.changes);
+    return `<li><a href="${href}">${asText(say("Version {n}", { n: one.n }))}</a>${one.n === newest ? asText(say(", the newest")) : ""}, `
       + `${when(one.at)}${words ? `: ${escapeHtml(words)}` : ""}${one.note ? ` <q>${escapeHtml(one.note)}</q>` : ""}</li>`;
   }).join("");
-  return `<section class="versions" id="versions" aria-labelledby="versions-h"><h2 id="versions-h">Versions</h2>
-    <p class="changed" data-version="${shown.n}">${said ? escapeHtml(said) : `Version ${shown.n}, the first.`}
+  return `<section class="versions" id="versions" aria-labelledby="versions-h"><h2 id="versions-h">${asText(say("Versions"))}</h2>
+    <p class="changed" data-version="${shown.n}">${said ? escapeHtml(said) : asText(say("Version {n}, the first.", { n: shown.n }))}
       <span class="when">${when(shown.at)}</span></p>
     ${shown.note ? `<blockquote class="version-note"><p>${escapeHtml(shown.note)}</p></blockquote>` : ""}
     ${kept}
-    ${lots ? `<details class="lots"><summary class="cta ghost small">Part by part</summary><ul>${lots}</ul></details>` : ""}
-    ${others ? `<h3>${shown.n === newest ? "Earlier versions" : "The others"}</h3><ol class="earlier">${others}</ol>` : ""}
+    ${lots ? `<details class="lots"><summary class="cta ghost small">${asText(say("Part by part"))}</summary><ul>${lots}</ul></details>` : ""}
+    ${others ? `<h3>${asText(shown.n === newest ? say("Earlier versions") : say("The others"))}</h3><ol class="earlier">${others}</ol>` : ""}
   </section>`;
 }
 
 /// /m/X/v/N for a version the model does not have.
-function noVersionPage(origin, id, model, asked, newest) {
-  const title = `There is no version ${asked} of this model`;
-  const { head, header, footer } = siteChrome();
+function noVersionPage(origin, id, model, asked, newest, lang = "en") {
+  const at = lang === "en" ? "" : `/${lang}`;
+  const title = say("There is no version {n} of this model", { n: asked });
+  const { head, header, footer } = siteChrome(lang);
   return `<!doctype html>
-<html lang="en">
+<html lang="${lang}">
 <head>
 ${pageHead(origin, model, id, title)}
 <meta name="robots" content="noindex">
@@ -1503,14 +1569,14 @@ ${head}
 <script src="/follow.js" type="module"></script>
 </head>
 <body>
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main">${asText(say("Skip to content"))}</a>
 ${header}
 <main id="main">
   <div class="wrap gone">
     <h1>${escapeHtml(title)}</h1>
-    <p class="lede">${escapeHtml(model.name)} has ${count(newest, "version")}.</p>
-    <div class="actions"><a class="cta" href="/m/${id}">See the newest</a>
-      <a class="cta ghost" href="/gallery">See the gallery</a></div>
+    <p class="lede">${escapeHtml(say("{name} has {versions}.", { name: model.name, versions: counted(newest, "version") }))}</p>
+    <div class="actions"><a class="cta" href="${at}/m/${id}">${asText(say("See the newest"))}</a>
+      <a class="cta ghost" href="${at}/gallery">${asText(say("See the gallery"))}</a></div>
   </div>
 </main>
 ${footer || `<footer><small>${NOTICE}</small></footer>`}
@@ -1645,14 +1711,15 @@ ${siteChrome().head}
 </html>`;
 }
 
-function gonePage(origin, id, existed) {
-  const title = existed ? "This model is no longer shared" : "There is no model at this link";
+function gonePage(origin, id, existed, lang = "en") {
+  const at = lang === "en" ? "" : `/${lang}`;
+  const title = existed ? say("This model is no longer shared") : say("There is no model at this link");
   const said = existed
-    ? "Whoever shared it has taken it down. If they share it again, this link will work again."
-    : "The link may be mistyped, or cut short.";
-  const { head, header, footer } = siteChrome();
+    ? say("Whoever shared it has taken it down. If they share it again, this link will work again.")
+    : say("The link may be mistyped, or cut short.");
+  const { head, header, footer } = siteChrome(lang);
   return `<!doctype html>
-<html lang="en">
+<html lang="${lang}">
 <head>
 ${pageHead(origin, null, id, title)}
 <meta name="robots" content="noindex">
@@ -1662,14 +1729,14 @@ ${head}
 <script src="/follow.js" type="module"></script>
 </head>
 <body>
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main">${asText(say("Skip to content"))}</a>
 ${header}
 <main id="main">
   <div class="wrap gone">
     <h1>${escapeHtml(title)}</h1>
     <p class="lede">${escapeHtml(said)}</p>
-    <div class="actions"><a class="cta" href="/gallery">See the gallery</a>
-      <a class="cta ghost" href="/">Go to Brickworks</a></div>
+    <div class="actions"><a class="cta" href="${at}/gallery">${asText(say("See the gallery"))}</a>
+      <a class="cta ghost" href="${at || "/"}">${asText(say("Go to Brickworks"))}</a></div>
   </div>
 </main>
 ${footer || `<footer><small>${NOTICE}</small></footer>`}
@@ -1941,6 +2008,7 @@ async function read(request, response) {
   if (op === "catalog_photo") return catalogPhoto(response, String(request.query?.set || ""), String(request.query?.as || "card"));
   if (op === "catalog_owned") return catalogOwned(request, response, origin, String(request.query?.set || ""));
   if (op === "sitemap_index") return sitemapIndex(response, origin);
+  if (op === "sitemap_models") return sitemapOfModels(response, origin, String(request.query?.lang || ""));
   if (op === "sitemap_sets") return sitemapOfSets(response, origin, String(request.query?.n || ""), String(request.query?.lang || "en"));
   if (op === "set") return setPage(response, origin, id, testsAsked(request.query || {}));
   if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"), testsAsked(request.query || {}));
@@ -1960,14 +2028,20 @@ async function read(request, response) {
   }
 
   if (op === "page") {
+    // In German, French or Spanish (/de/m/X); a language the site has no
+    // words in is no page.
+    const lang = String(request.query?.lang || "en");
+    const words = lang === "en" ? null : siteWords(lang);
+    if (lang !== "en" && !words) return html(response, 404, gonePage(origin, id, false));
+    const speak = (draw) => inLanguage(lang, words, draw);
     const page = await modelPage(id);
     if (!page) {
       const gone = await missing(id);
-      return html(response, gone.status, gonePage(origin, id, gone.unpublished));
+      return html(response, gone.status, speak(() => gonePage(origin, id, gone.unpublished, lang)));
     }
     const versions = await versionsOf(id, page);
     const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
-    if (!shown) return html(response, 404, noVersionPage(origin, id, page, asked, versions[0].n));
+    if (!shown) return html(response, 404, speak(() => noVersionPage(origin, id, page, asked, versions[0].n, lang)));
     // Whose it is: their own pictures lead its strip, and the page leads on
     // to the rest of their work. The database not answering is no owner.
     const own = await db(`shared_models?id=eq.${id}&select=owner,test`).then((rows) => rows[0]).catch(() => null);
@@ -1988,8 +2062,8 @@ async function read(request, response) {
       .sort((a, b) => Number(b.own) - Number(a.own));
     // Each person on it with their own picture, where they have one.
     await withFaces([page, ordered, next]);
-    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next, counted, lists,
-      parts));
+    return html(response, 200, speak(() => sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next, counted,
+      lists, parts, lang, words)));
   }
 
   const row = await publishedRow(id);
@@ -2379,7 +2453,8 @@ async function catalogOwned(request, response, origin, number) {
 }
 
 /// /sitemaps/index.xml: the sitemaps there are, the site's own
-/// (/sitemap.xml) and the sets' pages', a few thousand to a file.
+/// (/sitemap.xml), the sets' pages', a few thousand to a file, and the
+/// models' copies in each language.
 function sitemapIndex(response, origin) {
   const catalogue = setCatalog();
   const files = catalogue ? sitemapSets(catalogue.sets, origin).length : 0;
@@ -2387,7 +2462,8 @@ function sitemapIndex(response, origin) {
   // (/sitemaps/sets-de-1.xml...).
   const named = ["", ...SITE_LANGS.map((code) => `${code}-`)]
     .flatMap((lang) => Array.from({ length: files }, (_, k) => `${origin}/sitemaps/sets-${lang}${k + 1}.xml`));
-  const rows = [`${origin}/sitemap.xml`, ...named].map((loc) => `  <sitemap><loc>${escapeHtml(loc)}</loc></sitemap>`);
+  const models = SITE_LANGS.map((code) => `${origin}/sitemaps/models-${code}.xml`);
+  const rows = [`${origin}/sitemap.xml`, ...named, ...models].map((loc) => `  <sitemap><loc>${escapeHtml(loc)}</loc></sitemap>`);
   response.setHeader("Content-Type", "application/xml; charset=utf-8");
   response.setHeader("Cache-Control", "public, max-age=0, s-maxage=86400, stale-while-revalidate=3600");
   return response.status(200).end(`<?xml version="1.0" encoding="UTF-8"?>

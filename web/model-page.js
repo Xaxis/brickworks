@@ -27,6 +27,18 @@ import { HOWS, basedHtml, counted, mentionPieces, number, say } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 
+// A date as the page's language writes one: "30 October 2026".
+const LOCALE = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? globalThis.brickworksLang.code : "en-GB";
+
+/// [said], a sentence in the page's language (web/card.js say), into
+/// [into]: each {name} in it [parts]'s element or words.
+function sayInto(into, said, parts) {
+  for (const piece of said.split(/(\{\w+\})/)) {
+    const name = /^\{(\w+)\}$/.exec(piece)?.[1];
+    if (piece) into.append(name && name in parts ? parts[name] : piece);
+  }
+}
+
 // The comments' own loader, once they are listed (startComments), for
 // Comment in the action bar to list them again after signing in.
 let commentsLoaded = null;
@@ -92,7 +104,7 @@ function startPicture(big) {
     img.style.visibility = "hidden";
     sign.hidden = false;
     if (tries >= 2) {
-      sign.textContent = "No picture";
+      sign.textContent = say("No picture");
       return;
     }
     tries += 1;
@@ -449,8 +461,14 @@ function startComments(section) {
   // The thread whose reply box is open, and what was typed in it, kept
   // across a sign-in and a redraw.
   let replying = null;
-  const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-  const say = (text) => { said.textContent = text; };
+  const DAY = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+  // Where a comment was said, as api/_comments.js saidWhere says it.
+  const whereSaid = (one) => {
+    const where = one.step ? say("on step {step} of version {version}", { step: one.step, version: one.version })
+      : say("on version {version}", { version: one.version });
+    return one.older ? say("{where}, an older version", { where }) : where;
+  };
+  const tell = (text) => { said.textContent = text; };
 
   async function load() {
     const path = `/api/people?op=comments&id=${model}&v=${version}`;
@@ -469,7 +487,7 @@ function startComments(section) {
       hold?.remove();
       const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
       if (tab && section.hidden) tab.hidden = true;
-      return say(answer.body.error || "The comments did not load just now.");
+      return tell(answer.body.error || say("The comments did not load just now."));
     }
     state = answer.body;
     // Not open on this deployment yet (comments.sql): nothing to show.
@@ -490,7 +508,10 @@ function startComments(section) {
   }
 
   /// The viewer at [at], a step of version [of]: Build it, opened there.
-  const viewerAt = (of, at) => `/app?view=${model}${of === newest ? "" : `&v=${of}`}&step=${at}`;
+  // On a copy, in its language, as web/theme.js carries it into the links
+  // drawn with the page.
+  const lang = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? `&lang=${globalThis.brickworksLang.code}` : "";
+  const viewerAt = (of, at) => `/app?view=${model}${of === newest ? "" : `&v=${of}`}&step=${at}${lang}`;
 
   /// Who a comment may name here: the designer, then everybody who said
   /// something on the page, newest first, each once; {handle, name}.
@@ -533,7 +554,7 @@ function startComments(section) {
     if (one.by_owner) {
       const tag = document.createElement("span");
       tag.className = "pill designer";
-      tag.textContent = "Designer";
+      tag.textContent = say("Designer");
       head.append(" ", tag);
     }
     // A reply is on its comment's step: said once, on the comment.
@@ -542,22 +563,22 @@ function startComments(section) {
       pill.className = "pill step";
       const here = one.on_step !== null && one.on_step !== undefined;
       pill.href = here ? viewerAt(version, one.on_step) : viewerAt(one.version, one.step);
-      pill.textContent = here ? `Step ${one.on_step}` : `Step ${one.step} of version ${one.version}`;
-      pill.title = `Open it at this step: said ${one.said}`;
+      pill.textContent = here ? say("Step {n}", { n: one.on_step }) : say("Step {n} of version {version}", { n: one.step, version: one.version });
+      pill.title = say("Open it at this step: said {where}", { where: whereSaid(one) });
       head.append(" ", pill);
     }
     const time = document.createElement("time");
     const at = Date.parse(one.at || "");
     if (Number.isFinite(at)) {
       time.dateTime = new Date(at).toISOString();
-      time.textContent = `${DAY.format(at)}${one.edited_at ? " · edited" : ""}`;
+      time.textContent = `${DAY.format(at)}${one.edited_at ? ` · ${say("edited")}` : ""}`;
     }
     head.append(" ", time);
     // Said on an older version than the one shown, and not by its step.
     if (!reply && one.older && !(one.step && one.on_step === null)) {
       const where = document.createElement("span");
       where.className = "where";
-      where.textContent = ` · ${one.said}`;
+      where.textContent = ` · ${whereSaid(one)}`;
       head.append(where);
     }
     const words = document.createElement("p");
@@ -579,28 +600,32 @@ function startComments(section) {
     if (one.hidden) {
       const note = document.createElement("p");
       note.className = "note";
-      const what = reply ? "reply" : replies.length ? "comment and its replies" : "comment";
-      note.textContent = state.you?.owner ? `Hidden: only you and its author see this ${what}.`
-        : `Its designer hid this ${what}: only you and they see it.`;
+      const owner = state.you?.owner;
+      note.textContent = reply ? (owner ? say("Hidden: only you and its author see this reply.")
+        : say("Its designer hid this reply: only you and they see it."))
+        : replies.length ? (owner ? say("Hidden: only you and its author see this comment and its replies.")
+          : say("Its designer hid this comment and its replies: only you and they see it."))
+        : owner ? say("Hidden: only you and its author see this comment.")
+        : say("Its designer hid this comment: only you and they see it.");
       main.append(note);
     }
     const acts = document.createElement("p");
     acts.className = "comment-acts";
     if (!reply && state.replies && state.open && !one.hidden && mayTry()) {
-      const answer = button("Reply", () => openReply(one.id));
+      const answer = button(say("Reply"), () => openReply(one.id));
       answer.dataset.reply = String(one.id);
       // Whose, for a screen reader's list of buttons: six "Reply" say nothing.
-      answer.setAttribute("aria-label", `Reply to ${one.by || "a builder"}`);
+      answer.setAttribute("aria-label", one.by ? say("Reply to {name}", { name: one.by }) : say("Reply to a builder"));
       acts.append(answer);
     }
     if (state.you?.owner) {
-      acts.append(button(one.hidden ? "Show it" : "Hide it", () => change(one, one.hidden ? "show" : "hide")));
+      acts.append(button(one.hidden ? say("Show it") : say("Hide it"), () => change(one, one.hidden ? "show" : "hide")));
     }
     if (one.mine) {
-      const ask = reply ? "Remove your reply?" : replies.length ? "Remove your comment? Its replies go with it." : "Remove your comment?";
-      acts.append(button("Remove it", () => confirm(ask) && change(one, "remove")));
+      const ask = reply ? say("Remove your reply?") : replies.length ? say("Remove your comment? Its replies go with it.") : say("Remove your comment?");
+      acts.append(button(say("Remove it"), () => confirm(ask) && change(one, "remove")));
     }
-    if (!one.mine) acts.append(button("Report it", () => openReport({ comment: one.id }, reply ? "this reply" : "this comment")));
+    if (!one.mine) acts.append(button(say("Report it"), () => openReport({ comment: one.id }, reply ? say("this reply") : say("this comment"))));
     main.append(acts);
     if (!reply) {
       const under = document.createElement("ol");
@@ -644,12 +669,12 @@ function startComments(section) {
     if (empty) {
       const none = document.createElement("li");
       none.className = "note none";
-      none.textContent = state.open ? "Nobody has commented yet." : "No comments.";
+      none.textContent = state.open ? say("Nobody has commented yet.") : say("No comments.");
       list.append(none);
     }
     const you = state.you || {};
     form.hidden = !mayTry();
-    send.textContent = you.signed_in ? "Add the comment" : "Sign in and add it";
+    send.textContent = you.signed_in ? say("Add the comment") : say("Sign in and add it");
     why.replaceChildren();
     why.hidden = !you.signed_in || Boolean(you.may_write);
     if (you.signed_in && !you.may_write) {
@@ -661,15 +686,15 @@ function startComments(section) {
     if (!you.signed_in && !state.open) {
       const words = document.createElement("p");
       words.className = "note";
-      words.textContent = "Comments are off for this model.";
+      words.textContent = say("Comments are off for this model.");
       why.hidden = false;
       why.append(words);
     }
     if (you.owner) {
       const line = document.createElement("p");
       line.className = "note owner-line";
-      line.append(state.open ? "Comments are on for this model. " : "Comments are off for this model. ",
-        button(state.open ? "Turn them off" : "Turn them on", () => setOpen(!state.open)));
+      line.append(`${state.open ? say("Comments are on for this model.") : say("Comments are off for this model.")} `,
+        button(state.open ? say("Turn them off") : say("Turn them on"), () => setOpen(!state.open)));
       why.hidden = false;
       why.append(line);
     }
@@ -690,7 +715,7 @@ function startComments(section) {
     if (!(await askToSignIn(words))) return false;
     await load();
     if (state.you?.may_write) return true;
-    say(state.you?.why_not || "That did not go just now. Try again in a minute.");
+    tell(state.you?.why_not || say("That did not go just now. Try again in a minute."));
     return false;
   }
 
@@ -710,25 +735,25 @@ function startComments(section) {
       const label = document.createElement("label");
       label.className = "visually-hidden";
       label.htmlFor = `reply-${to}`;
-      label.textContent = "Your reply";
+      label.textContent = say("Your reply");
       const field = document.createElement("textarea");
       field.id = `reply-${to}`;
       field.maxLength = 1000;
       field.rows = 2;
-      field.placeholder = `Reply to ${thread.querySelector(".comment-head a, .comment-head b")?.textContent || "them"}`;
+      field.placeholder = say("Reply to {name}", { name: thread.querySelector(".comment-head a, .comment-head b")?.textContent || say("them") });
       const go = document.createElement("div");
       go.className = "actions";
       const post = document.createElement("button");
       post.type = "submit";
       post.className = "cta small";
-      post.textContent = signedIn() ? "Reply" : "Sign in and reply";
+      post.textContent = signedIn() ? say("Reply") : say("Sign in and reply");
       // Cancel, or Escape in the box: gone, the focus back on Reply.
       const cancel = () => {
         replying = null;
         made.remove();
         thread.querySelector(`[data-reply="${to}"]`)?.focus();
       };
-      go.append(post, button("Cancel", cancel, "cta ghost small"));
+      go.append(post, button(say("Cancel"), cancel, "cta ghost small"));
       made.addEventListener("keydown", (event) => {
         if (event.key !== "Escape") return;
         event.preventDefault();
@@ -753,16 +778,16 @@ function startComments(section) {
 
   async function sendReply(to, field, post) {
     const text = field.value.trim();
-    if (!text) return say("Say something first.");
+    if (!text) return tell(say("Say something first."));
     replying = { id: to, text: field.value };
     if (!(await signInFirst("Sign in to add your reply: we email you a code, no password. What you wrote is kept."))) return;
     post.disabled = true;
-    say("Adding it…");
+    tell(say("Adding it…"));
     const answer = await call("/api/people?op=reply", { method: "POST", body: { id: to, body: text } });
     post.disabled = false;
-    if (answer.status !== 201) return say(answer.body.error || "That did not go just now. Try again in a minute.");
+    if (answer.status !== 201) return tell(answer.body.error || say("That did not go just now. Try again in a minute."));
     replying = null;
-    say("Replied.");
+    tell(say("Replied."));
     await load();
     // The reply, read out where it now is; else its comment's Reply.
     const made = document.getElementById(`comment-${answer.body.comment?.id}`);
@@ -775,38 +800,38 @@ function startComments(section) {
 
   async function change(one, what) {
     const answer = await call("/api/people?op=comment_change", { method: "POST", body: { id: one.id, what } });
-    if (answer.status !== 200) return say(answer.body.error || "That did not work just now.");
-    say(what === "remove" ? "Removed." : what === "hide" ? "Hidden from everybody but you and its author." : "Shown again.");
+    if (answer.status !== 200) return tell(answer.body.error || say("That did not work just now."));
+    tell(what === "remove" ? say("Removed.") : what === "hide" ? say("Hidden from everybody but you and its author.") : say("Shown again."));
     await load();
   }
 
   async function setOpen(open) {
     const answer = await call(`/api/people?op=comments_open&id=${model}`, { method: "POST", body: { open } });
-    if (answer.status !== 200) return say(answer.body.error || "That did not work just now.");
-    say(open ? "Comments are on." : "Comments are off: what was said stays, and nobody can add more.");
+    if (answer.status !== 200) return tell(answer.body.error || say("That did not work just now."));
+    tell(open ? say("Comments are on.") : say("Comments are off: what was said stays, and nobody can add more."));
     await load();
   }
 
   box.addEventListener("input", () => {
     const n = [...box.value].length;
-    left.textContent = n > 900 ? `${1000 - n} characters left` : "";
+    left.textContent = n > 900 ? say("{n} characters left", { n: number(1000 - n) }) : "";
   });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = box.value.trim();
-    if (!text) return say("Say something first.");
+    if (!text) return tell(say("Say something first."));
     if (!(await signInFirst("Sign in to add your comment: we email you a code, no password. What you wrote is kept."))) return;
     send.disabled = true;
-    say("Adding it…");
+    tell(say("Adding it…"));
     const at = step.value === "" ? null : Number(step.value);
     const answer = await call("/api/people?op=comment", { method: "POST",
       body: { model, version, step: at, body: text } });
     send.disabled = false;
-    if (answer.status !== 201) return say(answer.body.error || "That did not go just now. Try again in a minute.");
+    if (answer.status !== 201) return tell(answer.body.error || say("That did not go just now. Try again in a minute."));
     box.value = "";
     left.textContent = "";
-    say(at ? `Added, on step ${at}.` : "Added.");
+    tell(at ? say("Added, on step {n}.", { n: at }) : say("Added."));
     await load();
   });
 
@@ -850,7 +875,7 @@ function buildPhotos(box) {
     open.click();
   });
 
-  const say = (text) => { said.textContent = text; };
+  const tell = (text) => { said.textContent = text; };
 
   /// The photos as the caller may act on them: their own, and as the
   /// model's owner, every one with Hide (or Show again).
@@ -859,8 +884,8 @@ function buildPhotos(box) {
     const answer = await call(`/api/people?op=photos&id=${model}`);
     if (answer.status !== 200) return;
     state = answer.body;
-    if (state.left === 0) open.textContent = "You have added three photos: the most";
-    else if (state.owner) open.textContent = "Add a picture of it";
+    if (state.left === 0) open.textContent = say("You have added three photos: the most");
+    else if (state.owner) open.textContent = say("Add a picture of it");
     open.disabled = state.left === 0;
     if (state.owner) ownerTools(state.photos || []);
     // Its owner adds pictures of their own under the picture: they lead
@@ -874,7 +899,7 @@ function buildPhotos(box) {
       }
       addPicture.hidden = false;
       addPicture.disabled = state.left === 0;
-      addPicture.textContent = state.left === 0 ? "Three added" : "Add a picture";
+      addPicture.textContent = state.left === 0 ? say("Three added") : say("Add a picture");
     }
     document.documentElement.dataset.buildPhotos = state.owner ? "owner" : "ready";
   }
@@ -892,20 +917,20 @@ function buildPhotos(box) {
         hide.type = "button";
         hide.className = "link owner-only";
         hide.dataset.hide = photo.id;
-        hide.textContent = "Hide";
+        hide.textContent = say("Hide");
         hide.addEventListener("click", () => setHidden(photo.id, true, hide));
         figure.querySelector("figcaption").append(" ", hide);
       } else if (photo.hidden) {
         const row = document.createElement("p");
         row.className = "note";
         row.dataset.hidden = photo.id;
-        row.textContent = `Hidden by you: a photo ${photo.by ? `by ${photo.by.name}` : "by a builder"}`
-          + `${photo.words ? `, “${photo.words}”` : ""}. `;
+        row.textContent = `${photo.by ? say("Hidden by you: a photo by {name}", { name: photo.by.name })
+          : say("Hidden by you: a photo by a builder")}${photo.words ? `, “${photo.words}”` : ""}. `;
         const show = document.createElement("button");
         show.type = "button";
         show.className = "link";
         show.dataset.show = photo.id;
-        show.textContent = "Show it again";
+        show.textContent = say("Show it again");
         show.addEventListener("click", () => setHidden(photo.id, false, show));
         row.append(show);
         hidden.append(row);
@@ -919,11 +944,11 @@ function buildPhotos(box) {
     const answer = await call("/api/people?op=photo_hide", { method: "POST", body: { photo, on } });
     button.disabled = false;
     if (answer.status !== 200) {
-      told.textContent = answer.body.error || "That did not work just now.";
+      told.textContent = answer.body.error || say("That did not work just now.");
       return;
     }
     if (on) document.getElementById(`photo-${photo}`)?.remove();
-    told.textContent = on ? "Hidden: nobody else sees it now." : "Shown again: reload to see it in the strip.";
+    told.textContent = on ? say("Hidden: nobody else sees it now.") : say("Shown again: reload to see it in the strip.");
     document.documentElement.dataset.buildHidden = on ? photo : "";
     await load();
   }
@@ -939,38 +964,41 @@ function buildPhotos(box) {
   form.querySelector("[data-cancel]").addEventListener("click", () => {
     form.hidden = true;
     open.hidden = false;
-    say("");
+    tell("");
   });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const photo = file.files && file.files[0];
-    if (!photo) return say("Choose a photo of your build first.");
+    if (!photo) return tell(say("Choose a photo of your build first."));
     if (!["image/jpeg", "image/png", "image/webp"].includes(photo.type)) {
-      return say("That is not a JPEG, a PNG or a WebP photo.");
+      return tell(say("That is not a JPEG, a PNG or a WebP photo."));
     }
-    if (photo.size > MOST) return say(`That photo is ${(photo.size / 1048576).toFixed(1)} MB: at most 8 MB, please.`);
+    if (photo.size > MOST) {
+      const size = Number((photo.size / 1048576).toFixed(1)).toLocaleString(LOCALE, { minimumFractionDigits: 1 });
+      return tell(say("That photo is {size} MB: at most 8 MB, please.", { size }));
+    }
     const send = form.querySelector('button[type="submit"]');
     send.disabled = true;
     try {
-      say("Sending the photo…");
+      tell(say("Sending the photo…"));
       const start = await call("/api/people?op=photo_start", { method: "POST",
         body: { model, type: photo.type, size: photo.size } });
-      if (start.status !== 200) return say(start.body.error || "That did not work just now.");
+      if (start.status !== 200) return tell(start.body.error || say("That did not work just now."));
       const headers = { "content-type": photo.type, "x-upsert": "false" };
       if (start.body.key) headers.apikey = start.body.key;
       const sent = await fetch(start.body.upload, { method: "PUT", headers, body: photo });
-      if (!sent.ok) return say("The photo did not go: try again in a minute.");
-      say("Making it safe to show: taking out where and when it was taken…");
+      if (!sent.ok) return tell(say("The photo did not go: try again in a minute."));
+      tell(say("Making it safe to show: taking out where and when it was taken…"));
       const kept = await call("/api/people?op=photo", { method: "POST",
         body: { model, ticket: start.body.ticket, words: words.value } });
-      if (kept.status !== 201) return say(kept.body.error || "That did not work just now.");
+      if (kept.status !== 201) return tell(kept.body.error || say("That did not work just now."));
       shown(kept.body);
       form.reset();
       form.hidden = true;
       open.hidden = false;
-      say("");
-      told.textContent = "Added. Thank you for building it.";
+      tell("");
+      told.textContent = say("Added. Thank you for building it.");
       document.documentElement.dataset.buildPhoto = kept.body.id;
       await load();
     } finally {
@@ -995,7 +1023,7 @@ function buildPhotos(box) {
     figure.dataset.photo = photo.id;
     const img = document.createElement("img");
     img.src = `/api/people?op=photo_file&id=${encodeURIComponent(photo.id)}`;
-    img.alt = "Your build";
+    img.alt = say("Your build");
     img.width = photo.width;
     img.height = photo.height;
     const caption = document.createElement("figcaption");
@@ -1019,7 +1047,7 @@ function buildPhotos(box) {
       if (state?.owner) thumb.dataset.own = "";
       const small = document.createElement("img");
       small.src = img.src;
-      small.alt = state?.owner ? "Your picture of it" : "Your build";
+      small.alt = state?.owner ? say("Your picture of it") : say("Your build");
       thumb.append(small);
       const own = pictures.querySelectorAll("a.thumb[data-own]");
       const after = state?.owner ? pictures.querySelector("a.thumb:not([href^='#'])") : own[own.length - 1]
@@ -1039,14 +1067,14 @@ async function noteForOwner(note) {
   const tested = answer.status === 200 && answer.body ? answer.body.tested : null;
   if (!tested || tested.passed) return;
   const head = document.createElement("b");
-  head.textContent = tested.cleared ? "Not marked Tested: Brickworks cleared its mark." : "Not marked Tested.";
-  note.replaceChildren(head, " Only you see this. ");
+  head.textContent = tested.cleared ? say("Not marked Tested: Brickworks cleared its mark.") : say("Not marked Tested.");
+  note.replaceChildren(head, ` ${say("Only you see this.")} `);
   for (const name of ["stands", "steps", "parts", "whole"]) {
     const one = tested.tests && tested.tests[name];
     if (!one || one.ok) continue;
     const line = document.createElement("span");
     line.dataset.failed = name;
-    line.textContent = `${one.said}: ${one.why}. `;
+    line.textContent = `${say(one.said)}: ${one.why}. `;
     note.append(line);
   }
   note.hidden = false;
@@ -1067,8 +1095,8 @@ function setCount(button, n, name, one, many = `${one}s`) {
     button.append(shown);
   }
   if (shown && !value) shown.remove();
-  else if (shown) shown.textContent = value.toLocaleString("en-US");
-  button.setAttribute("aria-label", value ? `${name}, ${value.toLocaleString("en-US")} ${value === 1 ? one : many}` : name);
+  else if (shown) shown.textContent = number(value);
+  button.setAttribute("aria-label", value ? `${name}, ${counted(value, one, many)}` : name);
 }
 
 /// A tab's count (api/share.js pageTabs), never one of none.
@@ -1081,7 +1109,7 @@ function tabCount(tab, n) {
     shown.className = "n";
     tab.append(" ", shown);
   }
-  shown.textContent = value.toLocaleString("en-US");
+  shown.textContent = number(value);
 }
 
 /// The action bar (api/share.js actionBar): Like; Save, which opens your
@@ -1101,7 +1129,7 @@ function start() {
   const said = document.querySelector(".marks-said");
   let state = null;
 
-  const say = (text) => { said.textContent = text; };
+  const tell = (text) => { said.textContent = text; };
 
   /// One of Save's lists: a box to tick, its name, and who sees it.
   function listRow(name, where, has, change, key) {
@@ -1129,12 +1157,12 @@ function start() {
     like.setAttribute("aria-pressed", String(Boolean(state && state.liked)));
     const saved = Boolean(state && (state.favourite || (state.collections || []).some((list) => list.has)));
     save.toggleAttribute("data-on", saved);
-    save.setAttribute("aria-label", saved ? "Saved" : "Save");
+    save.setAttribute("aria-label", saved ? say("Saved") : say("Save"));
     lists.replaceChildren();
     if (!state) return;
-    lists.append(listRow("Favourites", "only you", state.favourite, keep, "favourites"));
+    lists.append(listRow(say("Favourites"), say("only you"), state.favourite, keep, "favourites"));
     for (const list of state.collections || []) {
-      lists.append(listRow(list.name, list.public ? "public" : "only you", list.has, (box) => put(list, box), list.id));
+      lists.append(listRow(list.name, list.public ? say("public") : say("only you"), list.has, (box) => put(list, box), list.id));
     }
   }
 
@@ -1162,8 +1190,8 @@ function start() {
     const was = Boolean(state.liked);
     const count = Number(like.querySelector(".n")?.textContent.replace(/\D/g, "")) || 0;
     state.liked = !was;
-    setCount(like, Math.max(0, count + (was ? -1 : 1)), "Like", "like");
-    say("");
+    setCount(like, Math.max(0, count + (was ? -1 : 1)), say("Like"), "like");
+    tell("");
     draw();
     like.disabled = true;
     const answer = await call(`/api/people?op=like&id=${id}`, { method: "POST", body: { on: !was } })
@@ -1171,12 +1199,12 @@ function start() {
     like.disabled = false;
     if (answer.status !== 200) {
       state.liked = was;
-      setCount(like, count, "Like", "like");
+      setCount(like, count, say("Like"), "like");
       draw();
-      return say(answer.body.error || "That did not work just now. Try again.");
+      return tell(answer.body.error || say("That did not work just now. Try again."));
     }
     state.liked = answer.body.liked;
-    setCount(like, answer.body.likes, "Like", "like");
+    setCount(like, answer.body.likes, say("Like"), "like");
     draw();
   });
 
@@ -1201,10 +1229,10 @@ function start() {
     box.disabled = false;
     if (answer.status !== 200) {
       box.checked = !box.checked;
-      return say(answer.body.error || "That did not work just now.");
+      return tell(answer.body.error || say("That did not work just now."));
     }
     state.favourite = answer.body.favourite;
-    say(state.favourite ? "Saved to your favourites, on your account page." : "Out of your favourites.");
+    tell(state.favourite ? say("Saved to your favourites, on your account page.") : say("Out of your favourites."));
     draw();
   }
 
@@ -1215,10 +1243,10 @@ function start() {
     box.disabled = false;
     if (answer.status !== 200) {
       box.checked = !box.checked;
-      return say(answer.body.error || "That did not work just now.");
+      return tell(answer.body.error || say("That did not work just now."));
     }
     list.has = box.checked;
-    say(box.checked ? `Saved to ${list.name}.` : `Out of ${list.name}.`);
+    tell(box.checked ? say("Saved to {name}.", { name: list.name }) : say("Out of {name}.", { name: list.name }));
     draw();
   }
 
@@ -1228,7 +1256,7 @@ function start() {
     const name = field.value.trim();
     if (!name || !(await ready("Sign in to make a collection: we email you a code."))) return;
     const made = await call("/api/people?op=collection", { method: "POST", body: { name, public: false } });
-    if (made.status !== 200) return say(made.body.error || "That did not work just now.");
+    if (made.status !== 200) return tell(made.body.error || say("That did not work just now."));
     const list = { id: made.body.id, name: made.body.name, public: made.body.public, has: false };
     const box = { checked: true, disabled: false };
     await put(list, box);
@@ -1269,7 +1297,7 @@ function commentsSaid(state, setOpen) {
   // What everybody sees: not hidden, and not under a comment that is.
   const hidden = new Set((state.comments || []).filter((one) => one.hidden).map((one) => one.id));
   const shown = (state.comments || []).filter((one) => !one.hidden && !hidden.has(one.parent)).length;
-  setCount(comment, shown, "Comment", "comment");
+  setCount(comment, shown, say("Comment"), "comment");
   const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
   if (tab) {
     tab.hidden = state.ready === false;
@@ -1282,7 +1310,7 @@ function commentsSaid(state, setOpen) {
   const turn = document.createElement("button");
   turn.type = "button";
   turn.className = "owner-only";
-  turn.textContent = state.open ? "Turn comments off" : "Turn comments on";
+  turn.textContent = state.open ? say("Turn comments off") : say("Turn comments on");
   turn.addEventListener("click", () => {
     marks.querySelector("#more").open = false;
     setOpen(!state.open);
@@ -1290,7 +1318,7 @@ function commentsSaid(state, setOpen) {
   const numbers = document.createElement("a");
   numbers.className = "owner-only";
   numbers.href = "/profile#designs";
-  numbers.textContent = "How your models are doing";
+  numbers.textContent = say("How your models are doing");
   menu.prepend(turn, numbers);
   document.documentElement.dataset.modelOwner = "yes";
 }
@@ -1319,18 +1347,20 @@ async function challengeEntry() {
   named.href = "/challenge";
   named.textContent = said.challenge.title;
   if (said.entry) {
-    line.append("In this month’s challenge, ", named, `, ${said.entry.label.toLowerCase()}. `);
+    sayInto(line, said.entry.way === "assistant" ? say("In this month’s challenge, {challenge}, built with the assistant.")
+      : say("In this month’s challenge, {challenge}, built by hand."), { challenge: named });
+    line.append(" ");
     const out = document.createElement("button");
     out.type = "button";
     out.className = "link";
-    out.textContent = "Take it out";
+    out.textContent = say("Take it out");
     out.addEventListener("click", async () => {
-      if (!confirm("Take it out of the challenge? Its votes go with it.")) return;
+      if (!confirm(say("Take it out of the challenge? Its votes go with it."))) return;
       out.disabled = true;
       const gone = await call("/api/people?op=withdraw", { method: "POST", body: { model: id } });
       if (gone.status !== 200) {
         out.disabled = false;
-        line.append(` ${gone.body.error || "That did not work just now."}`);
+        line.append(` ${gone.body.error || say("That did not work just now.")}`);
         return;
       }
       await challengeEntry();
@@ -1338,12 +1368,17 @@ async function challengeEntry() {
     line.append(out);
     box.append(line);
   } else {
-    line.append("This month’s challenge is ", named, `, open until ${said.challenge.days_said.split(" to ")[1]}. `);
+    const ends = Date.parse(said.challenge.ends_on || "");
+    sayInto(line, say("This month’s challenge is {challenge}, open until {day}."), { challenge: named,
+      day: LOCALE !== "en-GB" && Number.isFinite(ends)
+        ? new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "long", timeZone: "UTC" }).format(ends)
+        : said.challenge.days_said.split(" to ")[1] });
+    line.append(" ");
     const go = document.createElement("button");
     go.type = "button";
     go.className = "cta ghost small";
     go.dataset.enter = String(said.challenge.id);
-    go.textContent = "Enter this month’s challenge";
+    go.textContent = say("Enter this month’s challenge");
     go.addEventListener("click", () => enterDialog(said));
     box.append(line, go);
   }
@@ -1356,12 +1391,12 @@ function enterDialog(said) {
   const dialog = document.createElement("dialog");
   dialog.className = "sign-in report enter";
   const title = document.createElement("h2");
-  title.textContent = `Enter “${said.challenge.title}”`;
+  title.textContent = say("Enter “{title}”", { title: said.challenge.title });
   title.id = "enter-title";
   dialog.setAttribute("aria-labelledby", title.id);
   const lede = document.createElement("p");
   lede.textContent = (said.challenge.rules_said || []).length
-    ? "Brickworks checks its rules on this model as you shared it:" : "It has no rules but its brief.";
+    ? "Brickworks checks its rules on this model as you shared it:" : say("It has no rules but its brief.");
   const rules = document.createElement("ul");
   for (const text of said.challenge.rules_said || []) {
     const item = document.createElement("li");
@@ -1371,9 +1406,9 @@ function enterDialog(said) {
   const form = document.createElement("form");
   const choices = document.createElement("fieldset");
   const legend = document.createElement("legend");
-  legend.textContent = "How did you build it? The two are judged apart.";
+  legend.textContent = say("How did you build it? The two are judged apart.");
   choices.append(legend);
-  for (const [value, words] of [["hand", "By hand"], ["assistant", "With the assistant"]]) {
+  for (const [value, words] of [["hand", say("By hand")], ["assistant", say("With the assistant")]]) {
     const row = document.createElement("label");
     row.className = "choice";
     const pick = document.createElement("input");
@@ -1390,11 +1425,11 @@ function enterDialog(said) {
   const send = document.createElement("button");
   send.className = "cta";
   send.type = "submit";
-  send.textContent = "Enter it";
+  send.textContent = say("Enter it");
   const close = document.createElement("button");
   close.className = "cta ghost";
   close.type = "button";
-  close.textContent = "Cancel";
+  close.textContent = say("Cancel");
   const row = document.createElement("div");
   row.className = "actions";
   row.append(send, close);
@@ -1412,14 +1447,14 @@ function enterDialog(said) {
     const way = (form.querySelector('input[name="way"]:checked') || {}).value;
     if (!way) return;
     send.disabled = true;
-    status.textContent = "Checking it against the rules…";
+    status.textContent = say("Checking it against the rules…");
     const answer = await call("/api/people?op=enter", { method: "POST", body: { model: id, way } });
     send.disabled = false;
     if (answer.status !== 201) {
       status.replaceChildren();
       const broken = answer.body.broken || [];
       if (broken.length) {
-        status.append("It does not keep the rules yet:");
+        status.append(say("It does not keep the rules yet:"));
         const list = document.createElement("ul");
         for (const one of broken) {
           const item = document.createElement("li");
@@ -1429,18 +1464,19 @@ function enterDialog(said) {
         }
         status.append(list);
       } else {
-        status.textContent = answer.body.error || "That did not go just now. Try again in a minute.";
+        status.textContent = answer.body.error || say("That did not go just now. Try again in a minute.");
       }
       document.documentElement.dataset.challengeRefused = answer.body.refused || "error";
       return;
     }
     form.replaceChildren();
     rules.remove();
-    lede.textContent = `It is in, ${answer.body.label.toLowerCase()}. People signed in vote until the challenge ends.`;
+    lede.textContent = way === "assistant" ? say("It is in, built with the assistant. People signed in vote until the challenge ends.")
+      : say("It is in, built by hand. People signed in vote until the challenge ends.");
     const done = document.createElement("button");
     done.className = "cta";
     done.type = "button";
-    done.textContent = "Close";
+    done.textContent = say("Close");
     done.addEventListener("click", end);
     dialog.append(done);
     done.focus();
@@ -1491,7 +1527,7 @@ function showBases(line, said) {
     made.innerHTML = basedHtml(said);
     line.before(made.content.firstElementChild);
   }
-  line.querySelector("button").textContent = said.length ? "Change what it is based on" : "Say what it is based on";
+  line.querySelector("button").textContent = said.length ? say("Change what it is based on") : say("Say what it is based on");
   document.documentElement.dataset.bases = String(said.length);
 }
 
@@ -1503,12 +1539,12 @@ function basesDialog(current) {
   const dialog = document.createElement("dialog");
   dialog.className = "sign-in report bases-dialog";
   const title = document.createElement("h2");
-  title.textContent = "What it is based on";
+  title.textContent = say("What it is based on");
   title.id = "bases-title";
   dialog.setAttribute("aria-labelledby", title.id);
   const lede = document.createElement("p");
-  lede.textContent = "A LEGO® set you built it from or changed, or work elsewhere you changed or took ideas from. "
-    + "Its page credits each, at most three.";
+  lede.textContent = say("A LEGO® set you built it from or changed, or work elsewhere you changed or took ideas from. "
+    + "Its page credits each, at most three.");
   const form = document.createElement("form");
   form.noValidate = true;
   const list = document.createElement("ol");
@@ -1516,7 +1552,7 @@ function basesDialog(current) {
   const add = document.createElement("button");
   add.type = "button";
   add.className = "link";
-  add.textContent = "Add another";
+  add.textContent = say("Add another");
   const field = (labelText, input) => {
     const label = document.createElement("label");
     label.className = "field";
@@ -1533,7 +1569,7 @@ function basesDialog(current) {
     return input;
   };
   const counted = () => {
-    [...list.children].forEach((row, at) => { row.querySelector("legend").textContent = `Based on, ${at + 1} of ${list.children.length}`; });
+    [...list.children].forEach((row, at) => { row.querySelector("legend").textContent = say("Based on, {n} of {all}", { n: at + 1, all: list.children.length }); });
     add.hidden = list.children.length >= 3;
   };
   const addRow = (one = {}) => {
@@ -1543,7 +1579,7 @@ function basesDialog(current) {
     legend.className = "visually-hidden";
     const how = document.createElement("select");
     how.name = "how";
-    for (const [value, words] of [["alternate", "An alternate build of a set"], ["changed", HOWS.changed],
+    for (const [value, words] of [["alternate", say("An alternate build of a set")], ["changed", HOWS.changed],
       ["inspired", HOWS.inspired]]) {
       const option = document.createElement("option");
       option.value = value;
@@ -1561,20 +1597,20 @@ function basesDialog(current) {
     author.value = one.author || "";
     const licence = text("licence", 60, "CC BY 4.0");
     licence.value = one.licence || "";
-    linked.append(field("Its title", named), field("Its author", author), field("Its licence", licence));
+    linked.append(field(say("Its title"), named), field(say("Its author"), author), field(say("Its licence"), licence));
     const shown = () => { linked.hidden = !/^\s*https?:/i.test(what.value); };
     what.addEventListener("input", shown);
     shown();
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "link";
-    remove.textContent = "Remove";
+    remove.textContent = say("Remove");
     remove.addEventListener("click", () => {
       row.remove();
       counted();
       add.focus();
     });
-    box.append(legend, field("How", how), field("A set's number, or a link", what), linked, remove);
+    box.append(legend, field(say("How"), how), field("A set's number, or a link", what), linked, remove);
     row.append(box);
     list.append(row);
     counted();
@@ -1589,11 +1625,11 @@ function basesDialog(current) {
   const send = document.createElement("button");
   send.className = "cta";
   send.type = "submit";
-  send.textContent = "Save";
+  send.textContent = say("Save");
   const close = document.createElement("button");
   close.className = "cta ghost";
   close.type = "button";
-  close.textContent = "Cancel";
+  close.textContent = say("Cancel");
   const actions = document.createElement("div");
   actions.className = "actions";
   actions.append(send, close);
@@ -1618,11 +1654,11 @@ function basesDialog(current) {
         : { how: value("how"), set: what };
     }).filter(Boolean);
     send.disabled = true;
-    status.textContent = "Saving…";
+    status.textContent = say("Saving…");
     const answer = await call("/api/share?op=bases", { method: "POST", body: { model: id, bases } });
     send.disabled = false;
     if (answer.status !== 200) {
-      status.textContent = answer.body.error || "That did not go just now. Try again in a minute.";
+      status.textContent = answer.body.error || say("That did not go just now. Try again in a minute.");
       document.documentElement.dataset.basesRefused = String(answer.status);
       return;
     }
@@ -1646,7 +1682,7 @@ function pickMentions(field, people) {
   list.className = "mention-pick";
   list.id = `${field.id || "box"}-people`;
   list.setAttribute("role", "listbox");
-  list.setAttribute("aria-label", "People to name");
+  list.setAttribute("aria-label", say("People to name"));
   list.hidden = true;
   const said = document.createElement("span");
   said.className = "visually-hidden";
@@ -1708,7 +1744,8 @@ function pickMentions(field, people) {
       return item;
     }));
     list.hidden = false;
-    const words = `${shown.length} ${shown.length === 1 ? "person" : "people"} to name: up and down to choose, Enter to put one in`;
+    const words = shown.length === 1 ? say("1 person to name: up and down to choose, Enter to put one in")
+      : say("{n} people to name: up and down to choose, Enter to put one in", { n: number(shown.length) });
     if (said.textContent !== words) said.textContent = words;
     mark(0);
   };

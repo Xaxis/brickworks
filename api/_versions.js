@@ -25,6 +25,7 @@
 
 import { createHash } from "node:crypto";
 import { COLOUR_NAMES } from "./_colours.js";
+import { counted, number, say } from "./_card.js";
 
 const HEAD = "0 !BRICKWORKS PAGES ";
 const PAGE = "0 !BRICKWORKS PAGE ";
@@ -304,7 +305,8 @@ export function readChanges(given) {
 }
 
 /// Step numbers said as a person says them: "step 3", "steps 12–13",
-/// "steps 2, 5 and 9–11"; past four runs, how many more.
+/// "steps 2, 5 and 9–11"; past four runs, how many more. In the page's
+/// language, as everything a version says of itself is.
 export function stepsSaid(numbers) {
   const sorted = [...new Set(numbers)].sort((a, b) => a - b);
   if (sorted.length === 0) return "";
@@ -316,49 +318,60 @@ export function stepsSaid(numbers) {
   }
   const said = runs.slice(0, 4).map(([a, b]) => (a === b ? `${a}` : `${a}–${b}`));
   const rest = runs.slice(4).reduce((n, [a, b]) => n + b - a + 1, 0);
-  if (rest > 0) said.push(`${rest} more`);
-  const words = said.length === 1 ? said[0] : `${said.slice(0, -1).join(", ")} and ${said[said.length - 1]}`;
-  return `${sorted.length === 1 ? "step" : "steps"} ${words}`;
+  if (rest > 0) said.push(say("{n} more", { n: rest }));
+  const words = said.length === 1 ? said[0] : say("{list} and {last}", { list: said.slice(0, -1).join(", "), last: said[said.length - 1] });
+  return say(sorted.length === 1 ? "step {steps}" : "steps {steps}", { steps: words });
 }
 
-const partsWord = (n) => `${n.toLocaleString("en-US")} part${n === 1 ? "" : "s"}`;
 const sameList = (a, b) => a.length === b.length && a.every((n, k) => n === b[k]);
 
 /// What a version says it changed, short: "Version 3: 4 parts added in
 /// steps 12–13; step 7 changed." Version 1 says nothing.
 export function saidOf(n, given) {
+  const changed = changedOf(n, given);
+  return changed && say("Version {n}: {changes}", { n, changes: changed });
+}
+
+/// What it changed without the version's number: "4 parts added in steps
+/// 12–13; step 7 changed."
+export function changedOf(n, given) {
   const changes = readChanges(given);
   if (!(n > 1) || !changes) return "";
   const { added_count: plus, removed_count: minus, compared } = changes;
   const gone = new Set(changes.steps_removed);
   // Parts taken from a step that is itself gone are said by that step.
   const removedFrom = changes.removed_from.filter((k) => !gone.has(k));
-  const where = (list, word) => (compared && list.length ? ` ${word} ${stepsSaid(list)}` : "");
+  // Each clause whole, with where it was when the steps were compared.
+  const placed = (list) => compared && list.length > 0;
   const clauses = [];
   if (plus && minus && sameList(changes.added_in, removedFrom)) {
-    clauses.push(`${partsWord(plus)} added and ${minus.toLocaleString("en-US")} removed`
-      + where(changes.added_in, "in"));
+    const said = { parts: counted(plus, "part"), n: number(minus), steps: stepsSaid(changes.added_in) };
+    clauses.push(placed(changes.added_in) ? say("{parts} added and {n} removed in {steps}", said)
+      : say("{parts} added and {n} removed", said));
   } else {
-    if (plus) clauses.push(`${partsWord(plus)} added${where(changes.added_in, "in")}`);
-    if (minus) clauses.push(`${partsWord(minus)} removed${where(removedFrom, "from")}`);
+    const added = { parts: counted(plus, "part"), steps: stepsSaid(changes.added_in) };
+    const removed = { parts: counted(minus, "part"), steps: stepsSaid(removedFrom) };
+    if (plus) clauses.push(placed(changes.added_in) ? say("{parts} added in {steps}", added) : say("{parts} added", added));
+    if (minus) clauses.push(placed(removedFrom) ? say("{parts} removed from {steps}", removed) : say("{parts} removed", removed));
   }
   if (compared) {
     const named = new Set([...changes.added_in, ...removedFrom]);
     const fresh = changes.steps_added.filter((k) => !named.has(k));
     const changed = changes.steps_changed.filter((k) => !named.has(k));
-    if (fresh.length) clauses.push(`${stepsSaid(fresh)} added`);
-    if (changes.steps_removed.length) clauses.push(`${stepsSaid(changes.steps_removed)} taken out`);
-    if (changed.length) clauses.push(`${stepsSaid(changed)} changed`);
+    if (fresh.length) clauses.push(say("{steps} added", { steps: stepsSaid(fresh) }));
+    if (changes.steps_removed.length) clauses.push(say("{steps} taken out", { steps: stepsSaid(changes.steps_removed) }));
+    if (changed.length) clauses.push(say("{steps} changed", { steps: stepsSaid(changed) }));
   } else if (changes.first !== null) {
-    clauses.push("its steps could not be compared");
+    clauses.push(say("its steps could not be compared"));
   }
-  if (clauses.length === 0) return `Version ${n}: no parts or steps changed.`;
-  return `Version ${n}: ${clauses.join("; ")}.`;
+  if (clauses.length === 0) return say("no parts or steps changed.");
+  return `${clauses.join("; ")}.`;
 }
 
-/// A lot as a page says it: "2 × 3001 in Red".
-export function lotSaid(lot) {
-  const colour = COLOUR_NAMES[lot.colour] || (lot.colour >= 0x2000000
-    ? `#${(lot.colour & 0xffffff).toString(16).padStart(6, "0")}` : `colour ${lot.colour}`);
-  return `${lot.count} × ${lot.part} in ${colour}`;
+/// A lot as a page says it: "2 × 3001 in Red"; with [colours] (api/_parts.js
+/// partNames), its colour as the page's language names it.
+export function lotSaid(lot, colours = null) {
+  const colour = colours?.[lot.colour] || COLOUR_NAMES[lot.colour] || (lot.colour >= 0x2000000
+    ? `#${(lot.colour & 0xffffff).toString(16).padStart(6, "0")}` : say("colour {n}", { n: lot.colour }));
+  return say("{count} × {part} in {colour}", { count: lot.count, part: lot.part, colour });
 }

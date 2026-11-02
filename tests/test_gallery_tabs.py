@@ -92,7 +92,8 @@ def test_the_card_the_api_and_the_sql_name_the_same_assistant_tags() -> None:
     made = [sorted(re.findall(r"'([a-z-]+)'", one)) for one in in_sql if "ai-designed" in one]
     assert made and all(one == in_js for one in made)
     # The API reads the card's own list, never a copy.
-    assert 'import { ASSISTANT_TAGS, MADE_WITH } from "./_card.js";' in DIRECTORY
+    imported = re.search(r'import \{([^}]*)\} from "\./_card\.js";', DIRECTORY)
+    assert imported and {"ASSISTANT_TAGS", "MADE_WITH"} <= set(re.findall(r"\w+", imported[1]))
 
 
 def test_made_and_windows_are_the_same_words_in_the_api_the_sql_and_the_stand_in() -> None:
