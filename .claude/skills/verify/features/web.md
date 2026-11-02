@@ -2561,7 +2561,7 @@ plan with Claude as the client.
   `#kinds button.pill[data-kind]`, one `aria-pressed`, a row that scrolls
   inside itself, beside `#filters` in `#toolbar`, the bar of filters that
   stays under the header over the whole list (`data-stuck` once the tabs
-  have gone under it); `#filters` (a `.more-menu` whose summary says how many are on)
+  have gone under it; on Builds, where it holds only a line, it scrolls away); `#filters` (a `.more-menu` whose summary says how many are on)
   holding the order (Top builds, Newest, Most liked, Most built, Most remixed,
   Parts I own signed in; never Most viewed), Size, `#made` (Hand-built, With the
   assistant: offered when the list sends `mades`), Has instructions, Technic,

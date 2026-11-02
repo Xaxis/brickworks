@@ -658,7 +658,8 @@ is on the page, `hidden`, for the script to show.
   the title) and the tabs, a `.scroller` on a phone, never cut; then
   **the bar of filters** (`.toolbar`), Filters and the kinds, the themes
   or the collections' orders as a `.pills.scroller.inset`, sticky under
-  the header over the whole list,
+  the header over the whole list (on Builds only a line, which scrolls
+  away),
   on the page's ground carried to the window's edges, with the header's
   edge under it once stuck (`data-stuck`). Under it, `#chips`: each filter that is on (a tag,
   an order other than the tabs', a size, how it was made, a box ticked)
