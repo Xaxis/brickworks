@@ -3370,7 +3370,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
-			return _describe_world(args)
+			var described: String = _describe_world(args)
+			var colour: String = await _colours_looked(args)
+			return described if colour.is_empty() else "%s\n\n%s" % [described, colour]
 		"view_model":
 			var from: String = str(args.get("from", "corner"))
 			var close: AABB = _box_from(args.get("where"))
@@ -4740,6 +4742,100 @@ func _subject_pictures() -> Array:
 	return []
 
 
+## What the last whole picture from the corner showed of colour
+## (ColoursSeen.count), and the model it was of (_model_state).
+var _colours_shown: Dictionary = {}
+var _colours_of: Array = []
+## What look_at_model last said of them: said again only when it changes.
+var _colours_told: String = ""
+## The real sets they are measured against, and the brief and count they
+## were picked for.
+var _colours_ref: Dictionary = {}
+var _colours_ref_for: String = ""
+## look_at_model draws a picture to count only up to this many parts: past
+## it, one picture in a browser drawing in software takes seconds. It says
+## what the last picture of the model as it stands showed.
+const COLOURS_LOOK_MOST := 2000
+
+
+## The model as it stands, as what was counted of it is kept by.
+func _model_state() -> Array:
+	return [world.get_instance_id(), world.generation(), world.revision]
+
+
+## Count the colours [param image] shows, a whole picture from the corner of
+## the model as it stood at [param state].
+func _count_colours(image: Image, state: Array) -> void:
+	var palette: Dictionary = ColoursSeen.palette_of(_bricks_inside({}), library)
+	_colours_shown = await WorkerTasks.awaited(func() -> Variant:
+		return ColoursSeen.count(image, palette), "count the colours a picture shows")
+	_colours_of = state
+
+
+## How many colours the model shows against real sets of its theme or kind
+## and part count, and what they add a little of, when it shows fewer: ""
+## when it does not, or nothing is known to measure it by. Counted off a
+## fresh picture from the corner when the last is of the model as it stood
+## before, unless [param fresh] is false.
+func _colours_finding(fresh: bool = true) -> String:
+	if world == null or library == null:
+		return ""
+	await ColoursSeen.ensure(self)
+	var bricks: Array[BrickWorld.Brick] = _bricks_inside({})
+	if bricks.is_empty():
+		return ""
+	var ref: Dictionary = _colours_reference(bricks.size())
+	if ref.is_empty():
+		return ""
+	if _colours_of != _model_state():
+		if not fresh or not ModelShot.possible():
+			return ""
+		_ensure_shot()
+		var marked: Dictionary = _shot.highlight
+		_shot.highlight = {}
+		var state: Array = _model_state()
+		var image: Image = await _shot.take(world, "corner", scenery)
+		_shot.highlight = marked
+		if image == null:
+			return ""
+		await _count_colours(image, state)
+	return ColoursSeen.said(_colours_shown.get("seen", []), ref, library)
+
+
+## The real sets the model's colours are measured against: of the brief's
+## theme, or of its kinds as how_real_sets_build_this reads them, and of its
+## part count (ColoursSeen.sets_like). Kept until the brief or count changes.
+func _colours_reference(standing: int) -> Dictionary:
+	var brief: String = _asked_as()
+	var parts: int = ColoursSeen.parts_in(brief, _parts_asked, standing)
+	var key: String = "%s|%d|%s" % [brief, parts, ",".join(DesignMemory.held_out())]
+	if key == _colours_ref_for:
+		return _colours_ref
+	_colours_ref_for = key
+	var found: Array = library.kinds_for(brief)
+	if found.is_empty():
+		var plainer: String = _kind_words(brief)
+		found = library.kinds_for(plainer) if not plainer.is_empty() else []
+	var kinds := PackedStringArray()
+	for kind: Variant in found:
+		kinds.append(str((kind as Dictionary).get("kind", "")))
+	_colours_ref = ColoursSeen.sets_like(brief, kinds, parts, library)
+	return _colours_ref
+
+
+## look_at_model of the whole model: the colour finding, when the model is
+## short and it was not what look_at_model said last.
+func _colours_looked(args: Dictionary) -> String:
+	if args.has("where") or args.has("part") or args.has("color"):
+		return ""
+	var finding: String = await _colours_finding(
+		_bricks_inside({}).size() <= COLOURS_LOOK_MOST)
+	if finding == _colours_told:
+		return ""
+	_colours_told = finding
+	return finding
+
+
 func _with_a_look(said: String, ask: String,
 		from: String = "corner", only: AABB = AABB(), small: int = 0) -> Variant:
 	_ensure_shot()
@@ -4755,7 +4851,17 @@ func _with_a_look(said: String, ask: String,
 	var during_a_run: bool = _busy
 
 	var picture: Dictionary = {}
-	if small <= 0:
+	if small <= 0 and from == "corner" and only.size == Vector3.ZERO \
+			and _shot.highlight.is_empty() and world != null:
+		# The whole model from the corner, as the judge first sees it: its
+		# colours counted on the way, for review_model and look_at_model to
+		# say against real sets (ColoursSeen).
+		var state: Array = _model_state()
+		var image: Image = await _shot.take(world, from, scenery, only)
+		if image != null:
+			await _count_colours(image, state)
+			picture = await _shot.encode(image)
+	elif small <= 0:
 		picture = await _shot.block(world, from, scenery, only)
 	else:
 		# A close look at what changed, drawn as any picture is and handed
@@ -21170,6 +21276,9 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		var stiff: String = _stiff_limbs_said(everything)
 		if not stiff.is_empty():
 			said.append(stiff)
+		var colour: String = await _colours_finding()
+		if not colour.is_empty():
+			said.append(colour)
 		said.append(CRITIQUE)
 		said.append(_features_to_review())
 		said.append(_assemblies_to_review())
