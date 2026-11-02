@@ -1785,7 +1785,18 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `Linkage.kept_state`, so its end is solved as if there were no steps; a
   free joint inside what moves that the model presses is turned aside,
   `Grab._push_aside`; a small section's drag tests its way for 2 ms a frame,
-  `walk_budget_ms`, the rest checked on a pause; a loop's turn is put on a
+  `walk_budget_ms`, and what a move's frame had no time for in each frame
+  after that no move tests in, as long, from where it was checked
+  (`Grab.verify_step`), so it stops where it would on a faster machine; a
+  click hinge stops at the last click short of what is in the way
+  (`Grab._click_short`), let go as dragged too; `grab_probe -- --only=click
+  --slow-walk=US` makes every room test with a budget that many
+  microseconds slower (`Grab.slow_usec`): before, at 150 it stopped at
+  67.5° in its base, at 250 to 1500 went through it to 157.5°, let go at
+  -144°; each turned joint's drag checks that where nothing stopped it
+  nothing is in its way, that a click hinge is let go on a click, and that
+  GrabDrag's own work in the drag's frames keeps to a 60 fps frame (three
+  past the box's cores); a loop's turn is put on a
   quarter-degree grid in a drag only, a session's goes where it asks; what
   stands near each moving part is asked of the lattice for its cells and four
   more, at the press, and sifted from that, `Grab._near`, G14a, MECHANISMS
