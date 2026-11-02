@@ -92,11 +92,13 @@ html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data
    ground carried out to the window's edges (a shadow, which nothing
    scrolls to), with the header's edge under it once it is stuck
    (gallery.js data-stuck). Its pills are a scroller (site.css) that
-   starts at Filters, not out in the gutter: inset. */
+   starts at Filters, not out in the gutter: inset. The builds' line is no
+   filter: it scrolls away with the page. */
 .toolbar {
 	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
 	min-height: calc(var(--control-h) + 2 * var(--s-2)); margin: 0 0 var(--s-4); padding: var(--s-2) 0;
 }
+html[data-tab="builds"] .toolbar { position: static; }
 .toolbar::before {
 	content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
 	background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
