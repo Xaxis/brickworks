@@ -243,6 +243,15 @@ declare -A CMD=(
   # Share; and Open in Brickworks opening 106-1 in the app. The store's own
   # index and files: no account, no database.
   [library_site]="tools/web/library_site_flow.mjs --url=$P --out=$S/${TAG}_library_site"
+  # The gallery one page to browse (browse, 2026-11-02): Top, New, Builds,
+  # Collections and Sets each switched in place, no new document, the
+  # address and the marked tab its own, the same header, search and grid,
+  # and each tab's first cards the API's; Back to the tab and where it was
+  # scrolled, Forward again; the search kept from tab to tab; each tab's
+  # address reloaded; /library (?theme=Town), /builds, /collections and
+  # /de/library each 200 with canonical and hreflang on the right tab; the
+  # tab row whole at 390 and 1280, en and de.
+  [browse]="tools/web/browse_flow.mjs --url=$P --out=$S/${TAG}_browse"
   # The site's one pager (web/pager.js, site357) on the LDraw library and a
   # person's models: the count and numbered links, Show more from the
   # keyboard to the first new card, a press kept while its page is on its
@@ -257,10 +266,9 @@ declare -A CMD=(
   # throwaway account with three of its lots, and its wanted list; Open its
   # parts in Brickworks landing in the app's bin; and the sets' sitemaps.
   [sets_flow]="tools/web/sets_flow.mjs --url=$P --out=$S/${TAG}_sets_flow"
-  # local only: download_check.mjs's gated half (a Free click refused with
-  # the way to Pro, a Pro click sent to the route's address). Every
-  # deployment answers "not gated" until the owner turns billing on (U8),
-  # so there it checks the public links, as before.
+  # The download page: each system its own build, every link answering, and
+  # the Linux button asking its public address with no sign-in and nothing
+  # of /api/plans (the desktop is free, docs/PLANS.md, 2026-11-02).
   [download]="tools/web/download_check.mjs --url=$P/download"
   # Plans, coming soon (web/plans.html, supabase/plan_interest.sql): the page
   # at 390 and 1400, light and dark; its form refusing a bad address, then a

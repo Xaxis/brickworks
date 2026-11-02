@@ -160,13 +160,26 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     # What stays free, and the promise to every account made before Pro.
     plain = re.sub(r"\s+", " ", PAGE)
     assert "What stays free" in plain and "It takes nothing out of Free" in plain
-    assert "Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date" in plain
+    assert "Every account made before 29 October 2026 gets Pro, free and with no end date" in plain
     assert "Education is free" in plain
-    # The desktop app is never listed in Free; AI is never counted.
+    # The desktop app is Free's (2026-11-02), and commercial use is Pro's,
+    # never the desktop; AI is never counted.
     free_list = re.search(r'<article class="tier" id="free".*?<ul class="ticks">(.*?)</ul>', PAGE, re.S).group(1)
-    assert "desktop" not in free_list
+    pro_list = re.search(r'<article class="tier featured" id="pro".*?<ul class="ticks">(.*?)</ul>', PAGE, re.S).group(1)
+    assert "<b>The desktop app</b>" in free_list and "Commercial use" not in free_list
+    assert "<b>Commercial use</b>" in pro_list and "desktop" not in pro_list
+    assert "Its terms come with Pro" in pro_list
+    assert re.search(r'<th scope="row">The desktop app for Windows, macOS and Linux</th><td><span class="has">', PAGE)
+    assert re.search(r'<th scope="row">Commercial use: [^<]*</th><td><span class="hasnt">.*?</td><td><span class="has">',
+                     PAGE)
     assert "Claude build" not in PAGE and not re.search(r"AI build", PAGE, re.I)
     assert "AI without a limit" in plain
+    # Only Claude works on the web: no ChatGPT, and another AI's key is the
+    # desktop app's (tools/deploy.sh: the web's policy lets in api.anthropic.com alone).
+    assert "ChatGPT" not in PAGE
+    for sentence in re.split(r"(?<=[.:;])\s", re.sub(r"<[^>]+>", "", plain)):
+        if re.search(r"OpenAI|Gemini|any provider|another AI", sentence):
+            assert "desktop" in sentence, sentence
     # Free says the models its plan keeps with an account, as Admission's
     # fallback has it; Pro any number, and the table says both.
     most = int(re.search(r'free: \{[^}]*savedModels: (\d+)', BILLING).group(1))

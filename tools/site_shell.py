@@ -40,11 +40,11 @@ OLD_BAR = re.compile(r'<meta name="theme-color"[^>]*>\n')
 STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # Each page's own address, where it is one of the header's links (or
 # Menu's: Download is there since site356). The landing page marks the
-# mark; your settings are part of your account; the gallery's Builds tab
-# is the gallery.
-OWN = {"index.html": "/", "gallery.html": "/gallery", "builds.html": "/gallery", "download.html": "/download",
-       "profile.html": "/profile", "settings.html": "/profile", "library.html": "/library",
-       "plans.html": "/plans"}
+# mark; your settings are part of your account; the gallery's tabs at
+# their own addresses (tools/browse_pages.py) are the gallery.
+OWN = {"index.html": "/", "gallery.html": "/gallery", "builds.html": "/gallery", "library.html": "/gallery",
+       "collections.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
+       "settings.html": "/profile", "plans.html": "/plans"}
 
 
 def shell() -> tuple[str, str, str]:

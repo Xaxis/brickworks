@@ -16,9 +16,12 @@
 //      Coming soon, with Tell me when it's ready and no way to pay shown
 //      (billing is off); AI without a limit and no AI builds anywhere,
 //      25 models kept with your account on Free and any number on Pro;
-//      the beta's callout shown only while the beta is open; accounts that exist keep
-//      everything; education free; what stays free; nothing sideways; the
-//      footer links /plans; the privacy page says what the form keeps.
+//      the desktop app under Free and commercial use under Pro (the owner,
+//      2026-11-02, docs/PLANS.md), and no word that ChatGPT or any key but
+//      Anthropic's works in a browser; the beta's callout shown only while
+//      the beta is open; accounts that exist keep everything; education
+//      free; what stays free; nothing sideways; the footer links /plans;
+//      the privacy page says what the form keeps.
 //   2. At 390 px, Pro's button opens the form with yearly chosen. An
 //      address that is not one is refused in words, and the API refuses
 //      one sent to it straight (422), and a plan off its list (Plus, now).
@@ -142,14 +145,27 @@ try {
         width < 600 ? tiers[0].top < tiers[1].top : tiers[0].top === tiers[1].top);
       const body = await words(page, "main");
       check(`${at}: AI without a limit, and no AI builds anywhere`, /AI without a limit/.test(body) && !/AI build/i.test(body));
+      const lists = await page.$$eval(".tiers .tier", (all) => all.map((one) =>
+        [...one.querySelectorAll("li")].map((li) => li.innerText.replace(/\s+/g, " ").trim())));
+      check(`${at}: the desktop app under Free, not Pro (${(lists[0] || []).filter((one) => /desktop/i.test(one)).join(" | ")})`,
+        (lists[0] || []).some((one) => /^The desktop app\b/.test(one)) && !(lists[1] || []).some((one) => /desktop/i.test(one)));
+      check(`${at}: commercial use under Pro, not Free (${(lists[1] || []).filter((one) => /commercial/i.test(one)).join(" | ")})`,
+        (lists[1] || []).some((one) => /^Commercial use\b/.test(one)) && !(lists[0] || []).some((one) => /commercial/i.test(one)));
+      check(`${at}: the table has the desktop app on both, commercial use on Pro only`,
+        table.some((one) => /^Works offline, with every part on disk \(the desktop app\) Yes Yes$/.test(one))
+        && table.some((one) => /^Commercial use\b.* No Yes$/.test(one)));
+      const sentences = body.split(/(?<=[.:;?!])\s+/);
+      const keyed = sentences.filter((one) => /OpenAI|Gemini|any provider|another AI/i.test(one) && !/desktop/i.test(one));
+      check(`${at}: no ChatGPT, and no other AI's key said to work in a browser (${keyed.join(" | ")})`,
+        !/ChatGPT/.test(body) && !keyed.length);
       check(`${at}: accounts that exist keep everything`,
-        /Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date/.test(body));
+        /Every account made before 29 October 2026 gets Pro, free and with no end date/.test(body));
       check(`${at}: education is free`, /Education is free/.test(body));
-      check(`${at}: what stays free: the web app, by hand, everything else, nothing taken out`,
-        /What stays free/.test(body) && /It takes nothing out of Free/.test(body) && /The web app\./.test(body)
-        && /AI and building by hand, without a limit\./.test(body) && /Everything else the app does today\./.test(body));
-      check(`${at}: no Claude builds, and no free desktop`,
-        !/Claude build/i.test(body) && !/desktop app (is|stays) free(?! to download)/i.test(body));
+      check(`${at}: what stays free: both apps, by hand and AI, everything else, nothing taken out`,
+        /What stays free/.test(body) && /It takes nothing out of Free/.test(body) && /The web app and the desktop app\./.test(body)
+        && /Building by hand, and AI, without a limit\./.test(body) && /Everything else the app does today\./.test(body));
+      check(`${at}: no Claude builds, and the commercial terms come with Pro`,
+        !/Claude build/i.test(body) && /Its terms come with Pro\./.test(body));
       check(`${at}: nothing on the page takes money (no checkout, no card form)`,
         !(await page.$('input[autocomplete^="cc-"], [href*="checkout"], [href*="stripe"]')));
       const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

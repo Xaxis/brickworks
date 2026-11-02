@@ -171,8 +171,6 @@ const MAPPED = [
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
-  // The public collections, as cards (api/people.js collectionsPage).
-  [/^\/collections\/?$/, "people", "collections_page"],
   // The sitemap, with every listed model in it (api/share.js).
   [/^\/sitemap\.xml$/, "share", "sitemap"],
   // Every set in the catalogue (api/_sets.js): its page, its parts, its
@@ -204,9 +202,8 @@ const MAPPED = [
   [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed_lang"],
   [/^\/(de|fr|es)\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page_lang"],
   [/^\/(de|fr|es)\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set_lang"],
-  // A public collection and the collections, in a language (/de/c/<id>, /de/collections).
+  // A public collection in a language (/de/c/<id>).
   [/^\/(de|fr|es)\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page_lang"],
-  [/^\/(de|fr|es)\/collections\/?$/, "people", "collections_page_lang"],
   [/^\/sitemaps\/models-(de|fr|es)[.]xml$/, "share", "sitemap_models_lang"],
   // The daily cron's clean-up of files no published row owns.
   [/^\/api\/share\/sweep$/, "share", "sweep"],
@@ -343,7 +340,6 @@ http.createServer(async (incoming, outgoing) => {
     if (mapped[2] === "embed_lang") Object.assign(query, { op: "embed", lang: captured[1], id: captured[2], v: undefined });
     if (mapped[2] === "set_lang") Object.assign(query, { op: "set", lang: captured[1], id: captured[2], v: undefined });
     if (mapped[2] === "list_page_lang") Object.assign(query, { op: "list_page", lang: captured[1], id: captured[2] });
-    if (mapped[2] === "collections_page_lang") Object.assign(query, { op: "collections_page", lang: captured[1] });
   }
   // /challenge?id=N, and its copies, are that challenge's page with its own
   // head, as deploy.sh routes them.

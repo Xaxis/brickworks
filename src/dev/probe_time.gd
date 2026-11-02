@@ -43,6 +43,18 @@ static func waited_ms() -> float:
 	return fields[1].to_float() / 1e6 if fields.size() > 1 else 0.0
 
 
+## How long the main thread has run on a CPU, in ms, since it began (field 1
+## of /proc/self/schedstat): its own work, without its wait for a CPU or for
+## anything else (the GPU, the window's copy to the screen); 0 where there is
+## none.
+static func ran_ms() -> float:
+	var stat: FileAccess = FileAccess.open("/proc/self/schedstat", FileAccess.READ)
+	if stat == null:
+		return 0.0
+	var fields: PackedStringArray = stat.get_line().split(" ", false)
+	return fields[0].to_float() / 1e6 if not fields.is_empty() else 0.0
+
+
 ## The box's load over the last minute.
 static func box_load() -> float:
 	var file: FileAccess = FileAccess.open("/proc/loadavg", FileAccess.READ)

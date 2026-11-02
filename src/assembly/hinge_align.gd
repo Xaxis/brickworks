@@ -798,7 +798,7 @@ func commit() -> int:
 		if brick == null:
 			continue
 		var to: Transform3D = placed[brick_id]
-		if Bodies._same(to, rest[brick_id]):
+		if Grab._same(to, rest[brick_id]):
 			continue
 		steps.append({"undo": "move", "brick": brick_id, "transform": rest[brick_id]})
 		world.move_brick(brick_id, to)

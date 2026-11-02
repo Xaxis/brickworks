@@ -361,7 +361,7 @@ func motion(screen: Vector2) -> void:
 	var line: String = "%s, %s" % [_capital(grab.said), grab.position_words()]
 	if grab.unchecked and grab.linkage != null and grab.stopped:
 		line += " — stopped: it meets the model (found to a tenth of a degree when you pause)"
-	elif grab.unchecked and grab.linkage == null:
+	elif grab.unchecked and grab.linkage == null and grab.budget_ms < INF:
 		line += " — too big to test every frame: checked when you pause"
 	elif grab.loop_short:
 		line += " — stopped: its loop closes no further that way"
@@ -1478,8 +1478,12 @@ func _process(_delta: float) -> void:
 	if not _falling.is_empty():
 		_fall_frame()
 	# A big section moved on trust: checked while the pointer rests, and,
-	# let go, before it is kept.
-	if grab != null and grab.unchecked and Time.get_ticks_msec() - _moved_at >= PAUSE_MS:
+	# let go, before it is kept. A small one's way its move had no time to
+	# test all of is tested on in each frame no move tests it in, within the
+	# same share (Grab.verify_step): left to a pause, a slow frame drew it
+	# into the model meanwhile, and a phone's frames are all slow.
+	if grab != null and grab.unchecked and (Time.get_ticks_msec() - _moved_at >= PAUSE_MS
+			or grab.walk_budget_ms < INF and grab.walked_frame != Engine.get_process_frames()):
 		var pausing: int = Time.get_ticks_usec()
 		grab.verify_step()
 		world.set_drawn(grab.drawn())

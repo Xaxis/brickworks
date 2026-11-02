@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages -->
 
 ## Sub-features
 
@@ -86,14 +86,9 @@ plan with Claude as the client.
   does not need are reached by name through `Later` (`src/later.gd`,
   `Later.PATHS`: the assistant and the rest of `src/ai` it names, the
   assistant's panel and Claude's connector, the dialogs and tool panels,
-  render, motions, the booklet's makers, the drag on a joint) and loaded
-  the first time something asks; main.gd's members for them are made by
-  their getters (`_make_*`, `_X_made` for a look that makes nothing). The
-  drag (`GrabDrag`, with `Grab` and what it names, 7% of the start's code)
-  is made the first time the window is left alone 3 s (`_make_when_idle`,
-  Render's dialog the next time), or by the first drag, motion or
-  session's move before then; `Bodies._reach_along` and `Bodies._same` are
-  the core's, so `Bodies` and `HingeAlign` do not name `Grab`. The start
+  render, motions, the booklet's makers) and loaded the first time
+  something asks; main.gd's members for them are made by their getters
+  (`_make_*`, `_X_made` for a look that makes nothing), and the start
   compiles 215 of 313 scripts (2026-10-31, three rounds against live at
   load 18-25: compiled at +3.0 s cold and +3.6 warm where live's scripts
   took +6.8 and +5.6; interactive 12.2 s cold and 7.4 warm against 17.5
@@ -1426,9 +1421,10 @@ plan with Claude as the client.
   `/challenge` (`web/de/challenge.html` and the rest; a challenge's own
   link `/de/challenge?id=N`, `api/_challenges.js` `challengeHead` with its
   title, words, canonical and alternates in the language, deploy.sh copying
-  each copy to `_challenge_<code>.html`), `/collections` and a collection's
-  `/c/<id>` (`/de/c/<id>`; `api/people.js` `listHtml`/`collectionsHtml`
-  inside `inLanguage`, `?op=list_page&lang=`, `?op=collections_page&lang=`),
+  each copy to `_challenge_<code>.html`), `/collections` (the gallery on
+  its Collections tab, a page of `tools/site_lang.py` PAGES) and a
+  collection's `/c/<id>` (`/de/c/<id>`; `api/people.js` `listHtml` inside
+  `inLanguage`, `?op=list_page&lang=`),
   your own `/profile` (what you earned said by the server in the page's
   language: `?op=profile&lang=`) and `/settings`, each with hreflang
   en/de/fr/es and x-default. What the server tells you there (why you may
@@ -1812,17 +1808,26 @@ plan with Claude as the client.
   (`mosaicHtml`), Follow (`web/follow.js` `followButton` with
   `data-follow-list`), its counts, Share (`web/person.js`), More.
 - `collections directory` (`supabase/collection_directory.sql`,
-  `api/_lists.js` `directoryOf`/`directoryCardHtml`, `api/people.js`
-  `collectionsPage`, W12): `/collections` (`?sort=followed`, `?page=N`,
-  `?tests=1`), the public collections with a model in the gallery whose
-  owner may be followed, 24 a page: `nav.tabs` Recently added to · Most
-  followed, `#collections` of `article.list-card.in-directory` (cover
-  `.mosaic`, name, owner `a.who` with an avatar, "N models", "N followers"
-  when any, Follow), Previous · Page N of M · Next; `#collections-empty`
-  for none, a page past the end and the SQL not applied. Follow by
-  `web/follow.js`, the cards' states in one `GET ?op=list_follows&ids=A,B`
-  (48 at most). Linked from the gallery's tabs (`#to-collections`) and the
-  footer of every page.
+  `api/_lists.js` `directoryOf`, `api/people.js` `collections`,
+  `web/collections.js`, W12): the gallery's Collections tab, `/collections`
+  (`?sort=followed`, `?q=`, `?page=N`, `?tests=1`), switched in place
+  (`ui:gallery page`): the public collections with a model in the gallery
+  whose owner may be followed, 24 a page from `GET
+  /api/people?op=collections` (`{ready, searched, total, pages,
+  collections: [{id, name, count, followers, by, covers}]}`), `#orders`
+  Recently added to · Most followed (`aria-pressed`), `#models` of
+  `article.model.collection-card` (`web/card.js` `collectionCardHtml`: the
+  cover `.mosaic` in the `.frame`, `a.open` its name to `/c/<id>`, owner
+  `a.who` with an avatar, "N models", "N followers" when any, Follow);
+  `html[data-collections]` `ready` or `none` (`#collections-empty`). A
+  search asks `collection_directory_search` (`supabase/collection_search.sql`,
+  applied to the live project 2026-11-02): every word in the name, the
+  description, the owner's handle or name; where it is not there (the
+  design stand-in) every one is listed and `#found-said` says collections
+  cannot be searched yet (`searched: false`). Follow by `web/follow.js`, the cards' states in one
+  `GET ?op=list_follows&ids=A,B` (48 at most). `web/collections.html` is
+  the gallery's copy (`cli:browse pages`); linked from every page's footer.
+  `tests/test_collections_tab.py`.
 - `collections browser flow` (`tools/web/collections_flow.mjs`, preview
   check `[collections]`): below, under "The collections directory".
 - `share sheet` (`web/card.js` `shareSheetHtml` and `shareTargets`,
@@ -2194,11 +2199,13 @@ plan with Claude as the client.
   dark), Pia hears a comment and no mention, Lia's reply in their thread
   tells Max once, as a reply. Before the file it proves the comment posts
   with nobody named, and passes.
-- `the gallery's builds tab` (`web/builds.html`, `web/builds.js`,
-  `web/card.js` `buildCardHtml` / `buildCard`, `.build-card` in
-  `web/site.css`): `/builds`, a tab of the gallery's and the LDraw
-  library's tabs between New (Following) and Collections, its own page
-  under the gallery's head and search (no bar of filters). Everybody's
+- `the gallery's builds tab` (`web/builds.js`, `web/card.js`
+  `buildCardHtml` / `buildCard`, `.build-card` in `web/site.css`):
+  `/builds`, the gallery's tab between New (Following) and Collections,
+  switched in place (`ui:gallery page`; `web/builds.html` the gallery's
+  copy, `cli:browse pages`), the search asking for builds of models whose
+  name has every word (`?q=`), no filters but a line saying what a build
+  is. Everybody's
   photos of real builds as `article.model.build-card[data-id][data-model]`:
   the photo (`/api/people?op=photo_file&id=`, cut to 4:3), `a.open` to
   `/m/<model>#photo-<id>`, `a.who` "Built by <name>" to `/u/<handle>` (a
@@ -2206,8 +2213,8 @@ plan with Claude as the client.
   `q.said`. Its name line keeps clear of the designer's link under it
   (`.model .open + .by`): the link's target reaches 4 px above its line,
   and a one-line name over a line that wraps was left 22 px tall (axe's
-  target-size at 390, uifix; `a11y_flow --only=builds --widths=390`). Paged by `web/pager.js` (`nav[data-pager=builds]`, noun
-  build|builds); `html[data-builds]` is `ready`, `none` (then
+  target-size at 390, uifix; `a11y_flow --only=builds --widths=390`). Paged by `web/pager.js` (the gallery's one
+  `nav[data-pager=models]`, noun build|builds); `html[data-builds]` is `ready`, `none` (then
   `#builds-empty` says what a build is, I built it, and links `/gallery`)
   or `broken` (Retry). `?tests=1` asks for test models' builds.
 - `builds in the gallery` (`api/_builds.js` `buildsQuery` / `buildsPage` /
@@ -2400,12 +2407,13 @@ plan with Claude as the client.
   box's load; run a build before and after in turn.
 - `play browser flow` (`tools/web/play_flow.mjs`): below.
 - **The LDraw library** (library333, 2026-10-29): `ui:LDraw library page`
-  is `/library` (`web/library.html`, `web/library.js`), every set of the
-  app's Library as the gallery's cards, a page of 24 at a time from
-  `/api/share?op=library` (`api/_library.js` `searchSets`, the app's
-  `ModelLibrary.search` in JS), laid out as the gallery is (site357: the
-  search beside the title, "/" focusing it, and `#toolbar`, Filters and the
-  themes, sticky under the header, `web/browse.js`); `ui:an LDraw set's page` is
+  is `/library`, the gallery's Sets tab since browse (2026-11-02), switched
+  in place (`web/library.js` `setsList`; `web/library.html` the gallery's
+  copy, `cli:browse pages`), every set of the app's Library as the
+  gallery's cards, a page of 24 at a time from `/api/share?op=library`
+  (`api/_library.js` `searchSets`, the app's `ModelLibrary.search` in JS),
+  under the gallery's head and search, its bar of filters `#set-filters`
+  (`#set-sort`, `#set-size`, `#decade` and more) and the themes; `ui:an LDraw set's page` is
   `/library/<id>`, `sharePage` with `model.library` (`setModel`), crediting
   every modeller its file names (`authorsIn`) with LDraw's page and its CC
   BY licence, Open in Brickworks `/app?new=1&library=<id>` as the app's
@@ -2413,7 +2421,7 @@ plan with Claude as the client.
   `/library/<id>.webp` (a card's), `.cutout.webp` (its page's) and
   `.cover.webp` (the Library's cover, for a link's preview), from the
   store's `library/cards/`, `library/pages/` and `library/covers/`. Linked
-  from the gallery's tabs and every page's footer; every set is in
+  from every page's footer (Sets); every set is in
   `/sitemap.xml`. `cli:LDraw library browser flow` checks it on a
   deployment (preview_checks.sh `library_site`).
 - **Every set in the catalogue** (sets364, 2026-10-29): `/library` lists
@@ -2535,14 +2543,20 @@ plan with Claude as the client.
   local relay maps `/gallery` itself). Since U3 (docs/SOCIAL.md, 2026-10-22)
   the work first: the title and a search (`#q`, asked 200 ms after typing
   stops, at once on Enter; "/" from anywhere but a field focuses it,
-  `web/browse.js`, site357) on one line; the tabs `#tabs [data-tab]` Top · New
+  site357) on one line; the tabs `#tabs [data-tab]` Top · New
   · Following (Following only signed in and once the list says `following:
-  true`), one `aria-current`; Top over `#window` (All time, This month, This
+  true`) · Builds · Collections · Sets, one `aria-current`, each switched
+  in place (browse, 2026-11-02, `web/gallery.js`: no new document, the
+  address put with `history.pushState`, Back and Forward to the tab and
+  where it was scrolled, `html[data-tab]` and `data-browse` `asking`,
+  `ready` or `broken`; the models' list `web/models.js`; the search asks
+  the tab it is on and keeps its words from tab to tab; the bar of filters
+  shows only the tab's own, `[data-list]`); Top over `#window` (All time, This month, This
   week: `window=month` or `week`, offered when the list sends `windows`); the kinds as
   `#kinds button.pill[data-kind]`, one `aria-pressed`, a row that scrolls
   inside itself, beside `#filters` in `#toolbar`, the bar of filters that
   stays under the header over the whole list (`data-stuck` once the tabs
-  have gone under it); `#filters` (a `.more-menu` whose summary says how many are on)
+  have gone under it; on Builds, where it holds only a line, it scrolls away); `#filters` (a `.more-menu` whose summary says how many are on)
   holding the order (Top builds, Newest, Most liked, Most built, Most remixed,
   Parts I own signed in; never Most viewed), Size, `#made` (Hand-built, With the
   assistant: offered when the list sends `mades`), Has instructions, Technic,
@@ -3200,20 +3214,27 @@ plan with Claude as the client.
 - `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`, the
   pictures in `web/img/`): rebuilt again by site356 (2026-10-29, the owner:
   "next level UI/UX", the way Linear, Vercel or Stripe sell theirs), on the
-  design system's landing kit, in the order a visitor asks: the opening
-  (`.halo`: a badge to /docs/fresh-eyes, `h1.display` "Design LEGO®
-  models with AI, in your browser", Open the app and Download for desktop,
-  the app's picture), `#how` (three `.steps`), `#assistant` (the AI
-  designer: fresh eyes, with `img/fresh-before-*` and `img/fresh-after-*`,
-  the chameleon from bench/results/ideas-2026-10-27-critic315-vs-main315a,
-  the same brief built without and with, as a `.ba`; its caption is
-  `#also`, where the strips are asked), `#community` (two live strips:
-  `#made`, the gallery's Top, and `#sets`, the LDraw library by Most parts,
-  `/api/share?op=library&sort=largest`; `data-strip` and `data-sets` on
-  `<html>` say how many, `none` when that strip is hidden, and the section
-  goes when both do), `#features` (three pictures from the app over six
-  `.feature`s with their icons), `#platforms` (the web and the desktop),
-  `#plans` (Free and Pro, as /plans has them) and `#start` (`.closing`).
+  design system's landing kit, and turned round to lead with the CAD by
+  narrative (2026-11-02, the owner: many people react badly to AI; no
+  title, h1 or first screen calls it AI), in the order a visitor asks: the
+  opening (`.halo`: a badge to /compare, `h1.display` "A CAD for LEGO®
+  models, in your browser", a line of proof (every LDraw part at true
+  size, joined as the real ones are and at any angle; stands, gears,
+  booklet), Open the app and Download for desktop, the app's picture),
+  `#how` (three `.steps` by hand: find the part, put it where it goes,
+  check it and build it), `#features` (three pictures from the app over
+  six `.feature`s with their icons, then `#also`, one line of the rest,
+  where the strips are asked), `#community` (two live strips: `#made`, the
+  gallery's Top, and `#sets`, the LDraw library's biggest sets with a 3D
+  model, `/api/share?op=library&sort=largest&model=3d`; `data-strip` and
+  `data-sets` on `<html>` say how many, `none` when that strip is hidden,
+  and the section goes when both do), `#assistant` (Optional, "Bring your
+  own assistant": your own Claude, off until you turn it on, held to the
+  same checks, a design one Undo, never limited; `.split` of words and
+  `.ticks`, no pictures), `#platforms` (the web and the desktop), `#plans`
+  (Free and Pro, as /plans has them) and `#start` (`.closing`). The
+  chameleon before and after (`img/fresh-*`) left the page with fresh eyes
+  as its headline; /docs/fresh-eyes tells it.
   Before that, rebuilt 2026-10-20 (the owner: "complete garbage";
   before that, 2026-10-13, "overly wordy and verbose and none elegant ...
   brickworks is much more than an ai tool, its also a fully advanced expert cad
@@ -3239,7 +3260,7 @@ plan with Claude as the client.
   deploy) scrolls to it at 390 and 1280, light and dark: shown with every
   card's picture drawn when the gallery has three with pictures, else
   hidden; `--out=DIR` keeps `strip_<width>_<theme>.png`);
-  `#assistant` last, short, off until you turn it on. Claim only what ships:
+  `#assistant` low and short, off until you turn it on. Claim only what ships:
   gear trains went on the page the day Tools, Simulate mechanism merged, not
   before. Every
   page shares `/site.css` (every text colour 4.5:1 or better on its background
@@ -3316,7 +3337,10 @@ plan with Claude as the client.
   Then the field, row by row (`.table.wide`, site.css): Brickworks, Studio,
   Mecabricks, LeoCAD and LDCad, from docs/COMPETITIVE.md's matrix, "—" where
   none was found. Then where the others still lead, plainly: renders, prices,
-  rubber bands and springs, years. Every
+  rubber bands and springs, years. It closes on the CAD ("Try it on a
+  model of yours"); the assistant is the field's AI design row and one
+  `.note` under the last offer, your own Claude, off until you turn it on
+  (narrative, 2026-11-02). Every
   claim about another tool is sourced at the foot (their own pages and forum
   threads, read 2026-10-12 and 13, versions rechecked 2026-10-24); a claim
   that cannot be sourced is cut, not softened. Studio has project tabs and an
@@ -3373,13 +3397,17 @@ plan with Claude as the client.
   when GET /api/plans says Pro is for sale, `web/plans.js` shows the
   `data-when="sale"` parts, Pro's Upgrade to Pro going to
   `/settings?upgrade=month|year#plan` with the choice made, and Admission's
-  prices; off, the page as written, Coming soon). Free ($0: the
-  web app, AI on your own Claude, ChatGPT or key with no limit, 25 models
-  kept with the account, saving to the device and exporting without a
-  limit) and Pro ($8 a month or $80 a year: the desktop app, every version
-  released while you pay kept, every model kept with the account), Pro
-  marked Coming soon; AI never counted on either; every account made before Pro opens gets Pro with no end;
-  education free; what stays free; five questions, one saying what changed.
+  prices; off, the page as written, Coming soon). Free ($0, for
+  personal and educational use: the web app and the desktop app, AI on your
+  own Claude with no limit, 25 models kept with the account, saving to the
+  device and exporting without a limit) and Pro ($8 a month or $80 a year:
+  every model kept with the account, and commercial use, whose terms come
+  with Pro; since 2026-11-02, docs/PLANS.md), Pro marked Coming soon; AI
+  never counted on either; every account made before 29 October 2026 gets
+  Pro with no end; education free; what stays free; six questions, one
+  saying what changed and one whether you can sell what you make. No
+  sentence says ChatGPT, or another AI's key, works in a browser (the CSP
+  lets only api.anthropic.com through).
   Nothing takes money (BRICKWORKS_BILLING off). Pro's Tell me when it's
   ready opens the interest form (a `dialog`): email, monthly or yearly, a
   line; Pro is kept as 'plus' (`api/plans.js` `PLANS`: the table allows
@@ -3395,7 +3423,7 @@ plan with Claude as the client.
   dark (2026-10-29, docs/PLANS.md unit U1, billing336). BRICKWORKS_BILLING
   is the one switch: off (unset) asks nothing and limits nothing; test or
   live with its own kind of ADMISSION_KEY reads an account's plan, its saved-models
-  cap (25 on Free, none on Pro; AI is never counted) and the desktop flag, keyed by the Supabase
+  cap (25 on Free, none on Pro; AI is never counted) and the commercial_use flag, keyed by the Supabase
   user id of the session. Snapshots go in a server-only table, so a cold
   instance answers a paying person while Admission is down; with none, the
   answer is `unknown` and refuses nothing.
@@ -3430,29 +3458,6 @@ plan with Claude as the client.
   before it say Pro ends now with nothing charged again, and the page after
   says it has ended. Off, Admission is never asked and the answer is as it
   was.
-- `GET /api/plans?op=download`, `GET /api/plans?op=entitlement` (`api/plans.js`)
-  and `the desktop's files and token` (`api/_desktop.js`,
-  `supabase/desktop_paid_through.sql`): the paid desktop, built dark
-  (2026-10-29, docs/PLANS.md units U5 and U6, desk347). Answered in every
-  mode. Downloads: no file, `{gated}`; a package's name (the release
-  manifest's), off, a 302 to the public address it always had, nobody asked;
-  on, a session whose plan has the desktop (or cannot be known just now) gets
-  GitHub's signed asset URL (the API's 302, `RELEASES_TOKEN` sent when set; a
-  200 is a 503, never a stream), Free a 403 "The desktop app comes with Pro.
-  The web app is free, in any browser." with `pro: /plans`, no session a 401,
-  anything else a 404. `Accept: application/json` gets `{url}` instead of the
-  302 (the page's fetch). `web/download.js` asks `{gated}` once and gates its
-  file links only when told. The token: off, `{billing: "off"}`; on, a JWT
-  signed RS256 with `DESKTOP_TOKEN_KEY` `{sub, plan, desktop, paid_through,
-  iat}`, never on standing `unknown` nor without a key (503 `{billing,
-  standing}`); paid_through is today at least while the plan has the desktop,
-  a period's or comp's end when later, null for no end, the largest kept per
-  account (only moves on), and never before `DESKTOP_FREE_THROUGH`.
-  `tests/test_desktop.py` runs both over the stand-in world (GitHub included)
-  and proves the token verifies with its key and no other, refused when
-  changed. Proven live against the public repo: `signedUrl` gave a
-  release-assets.githubusercontent.com URL whose first bytes (a Range
-  request) are the AppImage's ELF header.
 - `beta page` (`web/beta.html`, `web/beta.js`), `applying to the beta`
   (`api/plans.js` ?op=beta, ?op=beta_daily), `the beta's spots and months`
   (`api/_beta.js`, `supabase/beta.sql`), `the beta's owner queue`
@@ -5671,6 +5676,31 @@ ways, counted on his avatar; the tower's page "In 1 collection" and
 cover the tower; let go, Follow again with no count and nothing in his
 feed; made private, its page 404 and no collection on the tower's page.
 
+### The gallery, one page to browse (/gallery, /builds, /collections, /library)
+
+The copies and their words first (`tools/browse_pages.py --check`,
+`tests/test_browse_pages.py`, `tools/site_lang.py --check`). Then on a
+preview, signed out, nothing written:
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/browse_flow.mjs --url=<preview> --out=shots/browse
+```
+
+It passes when it ends "browse: ok": each tab pressed at 1280
+keeps the window's marker (no new document) and one header, `#q`,
+`#tabs`, `#toolbar` and `#models`, puts its address and marks itself, and
+its first cards are the API's (`op=list`, `sort=newest`, `op=builds`,
+`op=collections`, `op=library`); Back from Top to Sets scrolled to 1200
+lands on Sets within 40 px, Forward on Top; "castle" typed on Top is kept
+on Sets (`/library?q=castle`, the sets' search's cards); each tab's
+address reloaded opens on it; `/library`, `/library?theme=Town` (its pill
+pressed), `/builds`, `/collections` and `/de/library` answer 200 with
+their canonical and en/de/fr/es/x-default alternates on the right tab;
+at 390 and 1280, en and de, the tab row fits or scrolls inside itself,
+every tab reachable whole, nothing sideways. Pictures
+`<tab>_<width>_<lang>.png` and `_scrolled.png` in `--out`; look at them.
+Against brickworks.diy before this change it fails (a tab was a page).
+
 ### The collections directory (/collections)
 
 The SQL first, in a rolled-back transaction (Ada's and Bob's public ones
@@ -5696,10 +5726,10 @@ FAIL: Ada's tower in her public collection and her private one; a
 visitor's `/collections?tests=1` lists the public one as a card (name,
 Ada's avatar and link, "1 model", the tower's picture as its cover, linked
 to `/c/<id>`, Follow) and never the private one; `/collections` without
-tests no test account's and no 404; the gallery's tab and the footer link
-to it; Bob at 390 px dark presses Follow on the card, Following and "1
-follower", the API agreeing, one batched request answering for the cards;
-Most followed lists it; 390 and 1280 px in both themes with nothing
+tests no test account's; the gallery's tab and the footer link to it; Bob
+at 390 px dark presses Follow on the card, Following and "1 follower",
+the API agreeing, one batched request answering for the cards; Most
+followed, pressed in place, lists it; 390 and 1280 px in both themes with nothing
 sideways; made private, gone.
 
 ### The gallery's Builds tab (/builds) and More like on a profile
@@ -5827,9 +5857,11 @@ PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/ac
 
 AI is never limited, on any plan (the owner, 2026-10-29): what Free holds
 back is how many models an account keeps with it (Admission's
-saved_models, a cap: Free 25, Pro any number) and the desktop app.
-test_billing passes when all do: Free keeping 25 models and nothing of AI
-in its entitlement or the offer, Pro with no limit and the desktop, a comp until its date,
+saved_models, a cap: Free 25, Pro any number); Pro adds commercial_use, a
+licence the terms grant, which the app never checks. No plan gates the
+desktop app (2026-11-02). test_billing passes when all do: Free keeping 25
+models and nothing of AI in its entitlement or the offer, Pro with no limit
+and commercial use, no download or start asked of any plan, a comp until its date,
 the owner (MASTER_EMAIL) reported and given everything, a cold instance
 answering from the database's snapshot while Admission is down (Pro stays
 Pro, Free stays at its 25), no snapshot answered `unknown` (refuses
