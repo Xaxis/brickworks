@@ -541,7 +541,7 @@
   "The gallery is drawn with a little JavaScript, which is off in this browser.": "La galería se dibuja con un poco de JavaScript, que está desactivado en este navegador.",
   "Show more": "Mostrar más",
   "Put yours here": "Pon el tuyo aquí",
-  "In the app, choose <b>File › Share…</b>, give the model a name, say a little about it, tag it and choose its licence, and tick <b>List it in the gallery</b>. It is a copy as it is then; publish again to update it, or untick the box to take it out of the gallery and keep the link. Made with the assistant or Brickify? Tag it <b>ai-designed</b> or <b>brickify</b>, and its card says so.": "En la aplicación, elige <b>Archivo › Compartir…</b>, ponle un nombre al modelo, cuenta un poco sobre él, ponle etiquetas, elige su licencia y marca <b>Mostrarlo en la galería</b>. Es una copia tal como está en ese momento; publica de nuevo para actualizarla, o desmarca la casilla para sacarlo de la galería y conservar el enlace. ¿Hecho con el asistente o con Brickify? Etiquétalo <b>ai-designed</b> o <b>brickify</b>, y su tarjeta lo indicará.",
+  "In the app, choose <b>File › Share…</b>, give the model a name, say a little about it, tag it and choose its licence, and tick <b>List it in the gallery</b>. It is a copy as it is then; publish again to update it, or untick the box to take it out of the gallery and keep the link.": "En la aplicación, elige <b>Archivo › Compartir…</b>, ponle un nombre al modelo, cuenta un poco sobre él, ponle etiquetas, elige su licencia y marca <b>Mostrarlo en la galería</b>. Es una copia tal como está en ese momento; publica de nuevo para actualizarla, o desmarca la casilla para sacarlo de la galería y conservar el enlace.",
   "Models people have built in Brickworks and chosen to share: open any of them to turn it in 3D, step through its build and get its parts list, or copy it into your own models to make it yours.": "Modelos que la gente ha construido en Brickworks y ha decidido compartir: abre cualquiera para girarlo en 3D, recorrer su montaje paso a paso y conseguir su lista de piezas, o cópialo a tus propios modelos para hacerlo tuyo.",
   "The Brickworks gallery": "La galería de Brickworks",
   "Models people have built in Brickworks and shared: turn them in 3D, step through the build, or copy one and make it yours.": "Modelos que la gente ha construido en Brickworks y ha compartido: gíralos en 3D, recorre su montaje paso a paso, o copia uno y hazlo tuyo.",
@@ -1105,7 +1105,6 @@
   "as its designer tagged it": "según lo etiquetó su diseñador",
   "Made from a 3D model with Brickify, {how}": "Hecho a partir de un modelo 3D con Brickify, {how}",
   "Designed with the assistant, {how}": "Diseñado con el asistente, {how}",
-  "Assistant": "Asistente",
   "LDraw has a 3D model of it, to build in Brickworks": "LDraw tiene un modelo 3D, para construir en Brickworks",
   "Modelled by {name}": "Modelado por {name}",
   "Won “{title}”, with the assistant": "Ganó «{title}», con el asistente",
@@ -1162,7 +1161,6 @@
   "Clear all": "Borrar todo",
   "Week’s pick": "Selección",
   "Featured today": "Destacado hoy",
-  "LDraw library": "Biblioteca LDraw",
   "mark\u0004LDraw library": "Set LDraw",
   "Tell Brickworks what you own (in the app, Build › My collection…) and this shows what in the gallery you can build with it.": "Dile a Brickworks lo que tienes (en la aplicación, Construir › Mi colección…) y aquí verás lo que puedes construir de la galería con ello.",
   "Nothing in the gallery is all in your collection of {parts} yet. Parts I own, in Filters, shows what is closest.": "Aún no hay nada en la galería que esté entero en tu colección de {parts}. «Piezas que tengo», en Filtros, muestra lo más cercano.",
@@ -1390,7 +1388,6 @@
   "{parts} and {figs}": "{parts} y {figs}",
   "See every part, check what you own, and build with them in Brickworks.": "Mira cada pieza, comprueba lo que tienes y construye con ellas en Brickworks.",
   "{name}, LEGO® set {set}: every part — Brickworks": "{name}, set LEGO® {set}: todas las piezas — Brickworks",
-  "Library": "Biblioteca",
   "LDraw's 3D model of {name}": "El modelo 3D de {name} de LDraw",
   "{name}, LEGO® set {set}": "{name}, set LEGO® {set}",
   "Some of the parts of {name}, drawn by Brickworks": "Algunas piezas de {name}, dibujadas por Brickworks",
@@ -2536,6 +2533,7 @@
   "Search sets by name, number or theme": "Buscar sets por nombre, número o tema",
   "Gallery · Models built in Brickworks": "Galería · Modelos construidos en Brickworks",
   "Search the gallery": "Buscar en la galería",
-  "Search models, builders, tags": "Buscar modelos, constructores, etiquetas"
+  "Search models, builders, tags": "Buscar modelos, constructores, etiquetas",
+  "Sets": "Sets"
  }
 }

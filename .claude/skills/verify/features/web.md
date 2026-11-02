@@ -1732,8 +1732,9 @@ plan with Claude as the client.
   saying its models were made with the assistant) and `profile_shows` (the
   castle as banner, three pins), each only if not there; then, a step
   apart, `ai-designed` appended to the seven house models' tags (named by
-  id, once), so their cards carry the Assistant mark; nothing else on any
-  model. `/u/brickworks` is drawn as every person's page is. The lead
+  id, once), so the gallery's Made filter finds them and their own pages
+  say With the assistant (no card says how a model was made since
+  2026-11-02); nothing else on any model. `/u/brickworks` is drawn as every person's page is. The lead
   applies it. `supabase/house_shelf.sql` (gallery261) says its words again
   once it shares the shelf from the LDraw library ("Its own models were
   designed with the assistant… The collection From the LDraw library holds
@@ -2552,7 +2553,9 @@ plan with Claude as the client.
   `ready` or `broken`; the models' list `web/models.js`; the search asks
   the tab it is on and keeps its words from tab to tab; the bar of filters
   shows only the tab's own, `[data-list]`); Top over `#window` (All time, This month, This
-  week: `window=month` or `week`, offered when the list sends `windows`); the kinds as
+  week: `window=month` or `week`, offered when the list sends `windows`), at the tabs' end,
+  and under 600 px in `#filters` (counted there, and let go of by Clear the filters) so
+  the tabs have their row to themselves; the kinds as
   `#kinds button.pill[data-kind]`, one `aria-pressed`, a row that scrolls
   inside itself, beside `#filters` in `#toolbar`, the bar of filters that
   stays under the header over the whole list (`data-stuck` once the tabs

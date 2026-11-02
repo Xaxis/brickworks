@@ -1,11 +1,12 @@
 // A shared model's card, the one every page draws (site.css .model): the
 // gallery, the landing page's strip, a profile, a collection, a model's
 // remixes, your account. Its picture with its marks over a corner (Tested,
-// made with the assistant: one row of them, and none that nearly every
-// card shown carries) and, in the gallery, its like button over the other;
-// its name; who made it with their avatar and a link to their profile, its
-// size and its numbers once there are any (likes, builds finished,
-// comments, each an icon and a count), all on one line; then what it has
+// and 3D for a set LDraw has modelled: one row of them, and Tested not
+// when nearly every card shown carries it) and, in the gallery, its like
+// button over the other; its name; who made it with their avatar and a
+// link to their profile, its size and its numbers once there are any
+// (likes, builds finished, comments, each an icon and a count), all on one
+// line; then what it has
 // (how much of it your collection holds, what it won, what moves in it).
 // It ended in a row holding only an empty heart, a fifth of its height
 // (site273).
@@ -24,11 +25,13 @@
 // and the like button inside it can be links and buttons of their own.
 //
 // A mark is said when it tells a card apart. When 90% or more of the
-// cards on a page carry one (every model in the gallery was Tested and
-// made with the assistant, site273), <body data-quiet> names it and
-// site.css leaves it off: the server's pages say so as they are made
-// (quietMarks), and in a browser it is said again, before the page is
-// drawn, whenever cards made by modelCard come onto it.
+// cards on a page carry one (every model in the gallery was Tested,
+// site273), <body data-quiet> names it and site.css leaves it off: the
+// server's pages say so as they are made (quietMarks), and in a browser it
+// is said again, before the page is drawn, whenever cards made by
+// modelCard come onto it. How a model was made is no mark of its card's
+// (the owner, 2026-11-02: the gallery leans on the models, not on AI): its
+// own page says it (api/share.js, madeOf).
 //
 // Names and credits were typed by strangers, so every word is escaped;
 // the link is built from the model's id alone, and the caller passes only
@@ -398,26 +401,25 @@ export function madeOf(model) {
     by: brickify ? "brickify" : tags.includes("ai-designed") ? "assistant" : "hand", said: "tags" };
 }
 
-/// The marks a card for [model] carries over its picture: "tested", and
-/// "made" (with the assistant or Brickify).
+/// The marks a card for [model] carries over its picture that a page may
+/// leave off: "tested".
 export function marksOf(model) {
-  return [model.tested === true ? "tested" : "", madeOf(model).way === "assistant" ? "made" : ""].filter(Boolean);
+  return model.tested === true ? ["tested"] : [];
 }
 
 /// The marks that tell none of a page's cards apart, as <body data-quiet>
-/// says them ("tested made", or ""): each carried by 90% or more of the
+/// says them ("tested", or ""): each carried by 90% or more of the
 /// cards, [carried] being each card's marks (marksOf). Under four cards
 /// each card says its own.
 export function quietMarks(carried) {
   const all = [...carried];
   if (all.length < 4) return "";
-  return ["tested", "made"].filter((mark) => all.filter((marks) => marks.includes(mark)).length >= 0.9 * all.length).join(" ");
+  return ["tested"].filter((mark) => all.filter((marks) => marks.includes(mark)).length >= 0.9 * all.length).join(" ");
 }
 
 /// Says on <body> which marks the cards on this page now leave off.
 export function quietPage() {
-  const cards = [...document.querySelectorAll(".model")].map((card) => [
-    card.dataset.tested === "yes" ? "tested" : "", card.dataset.made === "assistant" ? "made" : ""].filter(Boolean));
+  const cards = [...document.querySelectorAll(".model")].map((card) => (card.dataset.tested === "yes" ? ["tested"] : []));
   const quiet = quietMarks(cards);
   if (quiet) document.body.dataset.quiet = quiet;
   else delete document.body.dataset.quiet;
@@ -445,21 +447,13 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
   const picture = pictureOf(model);
   const data = [`data-id="${escapeHtml(id)}"`, `data-builds="${Number(model.builds) || 0}"`];
   if (earned) data.push(`data-remixes="${Number(model.remixes) || 0}"`, `data-comments="${Number(model.comments) || 0}"`);
-  // Over the picture's corner: the Tested mark, and how it was made.
+  // Over the picture's corner: the Tested mark.
   const marks = [];
   // Marked Tested: its newest version passed the four tests the app ran
   // as it was published (api/_tested.js), said on hover.
   if (model.tested === true) {
     marks.push(`<span class="pill good tested" title="${escapeHtml(say(TESTED_SAYS))}">✓ ${escapeHtml(say("Tested"))}</span>`);
     data.push('data-tested="yes"');
-  }
-  const made = madeOf(model);
-  if (made.way === "assistant") {
-    const brickified = made.by === "brickify";
-    const how = say(made.said === "app" ? "as the app said when it was published" : "as its designer tagged it");
-    marks.push(`<span class="pill made" title="${escapeHtml(brickified ? say("Made from a 3D model with Brickify, {how}", { how })
-      : say("Designed with the assistant, {how}", { how }))}">${brickified ? "Brickify" : escapeHtml(say("Assistant"))}</span>`);
-    data.push('data-made="assistant"');
   }
   // A set of the LDraw library: its number, its theme and its year, each
   // where the index knows it.

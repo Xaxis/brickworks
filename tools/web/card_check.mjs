@@ -14,10 +14,11 @@
 //     browser draws itself with /card.js from the same handler's JSON
 //     (?op=collection&id=), card by card;
 //   and a set of cards with everything a card can say (owned, won, moves,
-//     motions, Tested, made with the assistant, its designer's avatar and
-//     link, comments, a like that is a button and pressed, no picture, a
-//     name with markup and quotes in it, a designer's earned card), drawn by
-//     the module the server imports and by the browser's /card.js;
+//     motions, Tested, its designer's avatar and link, comments, a like
+//     that is a button and pressed, no picture, a name with markup and
+//     quotes in it, a designer's earned card), drawn by the module the
+//     server imports and by the browser's /card.js, none saying how it was
+//     made, which its own page says;
 //   and a card's shape (site273): a like that is a button is over its
 //     picture, its numbers are on its designer's line, and no card ends in
 //     a row holding only a button; the marks nearly every card of a page
@@ -153,18 +154,17 @@ try {
   // A designer's link only from a handle that is one; their name as words.
   const [linked, odd] = await drawn([SAMPLES[4][0], SAMPLES[5][0]], { like: true });
   check(/href="\/u\/robin-castell"/.test(linked) && /Robin &lt;Castell&gt;/.test(linked) && /aria-pressed="true"/.test(linked)
-    && !/href="\/u\//.test(odd) && /Brickify/.test(odd), "a designer's link from a handle alone, their name as words, a liked heart pressed");
-  // How it was made: as its app said, over its tags; by its tags where the
-  // app did not say (the Liked sample).
-  const [handTagged, claudes, brickified, tagged] = await drawn([SAMPLES[8][0], SAMPLES[9][0], SAMPLES[10][0],
-    SAMPLES[4][0]], {});
-  check(!/class="pill made"/.test(handTagged) && !/data-made=/.test(handTagged),
-    "hand-built as its app said: no Assistant mark, though it is tagged ai-designed");
-  check(/class="pill made" title="Designed with the assistant, as the app said when it was published">Assistant</.test(claudes)
-    && /data-made="assistant"/.test(claudes), "Claude's as its app said: the Assistant mark, though it is not tagged");
-  check(/>Brickify</.test(brickified) && /as the app said/.test(brickified), "Brickify's as its app said: the Brickify mark");
-  check(/title="Designed with the assistant, as its designer tagged it">Assistant</.test(tagged),
-    "the app said nothing: its ai-designed tag gives the mark, as before");
+    && !/href="\/u\//.test(odd), "a designer's link from a handle alone, their name as words, a liked heart pressed");
+  // How it was made is no card's mark (the owner, 2026-11-02): not as its
+  // app said, not by its tags. Its own page says it, among its facts.
+  const madeCards = await drawn([SAMPLES[8][0], SAMPLES[9][0], SAMPLES[10][0], SAMPLES[4][0], SAMPLES[5][0]], {});
+  const saying = madeCards.filter((one) => /class="pill made"|data-made=|>Assistant<|>Brickify</.test(one));
+  check(!saying.length, `no card says how it was made: hand-built, Claude's, Brickify's, tagged ai-designed or brickify (${saying.length} of ${madeCards.length} do)`);
+  const madeFacts = async (id) => /<ul class="facts pills">[^]*?<\/ul>/.exec((await stand.serverPage(api, `/m/${id}`)).html)?.[0] || "";
+  const [houseFacts, robinFacts] = [await madeFacts("HouseMod01"), await madeFacts(stand.MODEL_ID)];
+  check(/<li class="pill made" title="Designed with the assistant, as its designer tagged it">With the assistant<\/li>/.test(houseFacts)
+    && !/class="pill made"/.test(robinFacts), "a model's own page says it: With the assistant among the facts of one tagged ai-designed, "
+    + "nothing for one built by hand");
   // Their own picture only from this site's address for one.
   const [face, elsewhere] = await drawn([SAMPLES[6][0], SAMPLES[7][0]], {});
   check(/class="avatar small c\d pictured"[^>]*><img src="\/api\/people\?op=avatar&amp;id=FaceRobin1"/.test(face)
@@ -190,13 +190,13 @@ try {
   // The marks that tell no card apart.
   const quiet = await page.evaluate(async () => {
     const { quietMarks } = await import("/card.js");
-    const both = ["tested", "made"];
+    const tested = ["tested"];
     return {
-      all: quietMarks(Array(10).fill(both)), nine: quietMarks([...Array(9).fill(both), ["tested"]]),
-      eight: quietMarks([...Array(8).fill(both), [], []]), few: quietMarks(Array(3).fill(both)),
+      all: quietMarks(Array(10).fill(tested)), nine: quietMarks([...Array(9).fill(tested), []]),
+      eight: quietMarks([...Array(8).fill(tested), [], []]), few: quietMarks(Array(3).fill(tested)),
     };
   });
-  check(quiet.all === "tested made" && quiet.nine === "tested made" && quiet.eight === "" && quiet.few === "",
+  check(quiet.all === "tested" && quiet.nine === "tested" && quiet.eight === "" && quiet.few === "",
     `quiet marks: 10 of 10 "${quiet.all}", 9 of 10 "${quiet.nine}", 8 of 10 "${quiet.eight}", three cards "${quiet.few}"`);
   const serverQuiet = /<body[^>]*\sdata-quiet="([^"]*)"/.exec(made.html)?.[1] || "";
   const browserQuiet = await page.evaluate(async (list) => {
