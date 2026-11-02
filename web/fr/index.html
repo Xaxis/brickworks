@@ -5,9 +5,9 @@
 <meta charset="utf-8">
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Brickworks — concevez des modèles LEGO® avec l’IA, dans votre navigateur</title>
+<title>Brickworks — une CAO pour les modèles LEGO®, dans votre navigateur</title>
 <meta name="oc-domain-verify" content="38ed3e13e5fecb1a4a11263170a7f3b6db925be6373c8142" />
-<meta name="description" content="Brickworks est une CAO gratuite pour les modèles LEGO® qui fonctionne dans n’importe quel navigateur, y compris sur tablette ou téléphone, sans rien installer : elle vérifie qu’un modèle tient debout et quelles liaisons vont céder, fait tourner les trains d’engrenages à leurs vrais rapports, construit un modèle à plusieurs en direct, ouvre et enregistre les fichiers Studio .io, et exporte des fichiers 3D, des rendus et des livrets à imprimer ou à enregistrer en PDF. Aussi en application de bureau.">
+<meta name="description" content="Brickworks est une CAO gratuite pour les modèles LEGO® qui fonctionne dans n’importe quel navigateur, y compris sur tablette ou téléphone, sans rien installer : chaque pièce LDraw en taille réelle, assemblée là où les vraies s’assemblent et tournée à n’importe quel angle ; une vérification qu’un modèle tient debout et des liaisons qui vont céder ; des trains d’engrenages qui tournent à leurs vrais rapports ; un modèle construit à plusieurs en direct ; vos fichiers Studio .io ouverts ; et des livrets, des rendus et des exports 3D. Aussi en application de bureau.">
 <link rel="canonical" href="https://brickworks.diy/fr">
 <link rel="alternate" hreflang="en" href="https://brickworks.diy/">
 <link rel="alternate" hreflang="de" href="https://brickworks.diy/de">
@@ -22,7 +22,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="Brickworks — une CAO complète pour les modèles LEGO®">
-<meta property="og:description" content="Dans n’importe quel navigateur ou sur un téléphone, rien à installer. Vérifie que votre modèle tient debout, construit un modèle à plusieurs en direct, ouvre et enregistre les fichiers Studio .io, et exporte des fichiers 3D, des rendus et des livrets. Gratuit.">
+<meta property="og:description" content="Dans n’importe quel navigateur ou sur un téléphone, rien à installer. Chaque pièce LDraw à n’importe quel angle ; vérifie que votre modèle tient debout, construit un modèle à plusieurs en direct, ouvre vos fichiers Studio .io, et exporte livrets, rendus et 3D. Gratuit.">
 <meta property="og:url" content="https://brickworks.diy/fr">
 <!-- Absolute, and a real file. A card reader fetches this on its own
      from wherever it saw the link, so a relative path resolves against
@@ -33,7 +33,7 @@
 <meta property="og:image:alt" content="Le logo Brickworks, un cube au coin découpé, et les mots : une CAO complète pour les modèles LEGO®, à côté du rendu d’un château de pierre gris en briques.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Brickworks — une CAO complète pour les modèles LEGO®">
-<meta name="twitter:description" content="Dans n’importe quel navigateur ou sur un téléphone, rien à installer. Vérifie que votre modèle tient debout, construit un modèle à plusieurs en direct, ouvre et enregistre les fichiers Studio .io, et exporte des fichiers 3D, des rendus et des livrets. Gratuit.">
+<meta name="twitter:description" content="Dans n’importe quel navigateur ou sur un téléphone, rien à installer. Chaque pièce LDraw à n’importe quel angle ; vérifie que votre modèle tient debout, construit un modèle à plusieurs en direct, ouvre vos fichiers Studio .io, et exporte livrets, rendus et 3D. Gratuit.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <meta name="twitter:image:alt" content="Le logo Brickworks, un cube au coin découpé, et les mots : une CAO complète pour les modèles LEGO®, à côté du rendu d’un château de pierre gris en briques.">
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
@@ -45,6 +45,8 @@
 .hero { padding: clamp(56px, 8vw, 104px) 0 0; text-align: center; }
 .hero .wrap > .badge { margin-bottom: var(--s-5); }
 .hero h1 { max-width: 16ch; margin-inline: auto; margin-bottom: var(--s-4); }
+/* "in your browser" a line of its own: left inline, it broke after "in". */
+.hero h1 em { display: block; }
 .hero .lede { margin: 0 auto var(--s-6); max-width: 58ch; }
 .hero .note { margin-top: var(--s-4); }
 .hero-shot { margin-top: clamp(40px, 6vw, 72px); border-radius: var(--r-4); }
@@ -63,9 +65,8 @@
 @media (width >= 600px) and (width < 900px) { .proofs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .proofs li:last-child { grid-column: 1 / -1; } }
 .also { margin: var(--s-5) 0 0; color: var(--ink-soft); font-size: var(--t-small); max-width: 92ch; }
 
-/* The AI designer: its words beside the before and after. */
-.designer .lines { display: grid; gap: var(--s-3); margin: var(--s-5) 0; }
-.designer .quote { margin: var(--s-4) 0 0; padding-left: var(--s-4); border-left: 2px solid var(--accent-edge); color: var(--ink-soft); font-size: var(--t-small); }
+/* The assistant, if you want one: its words beside what it is held to. */
+.assistant .actions { margin-top: var(--s-5); }
 .strip + .strip { margin-top: var(--s-7); }
 
 /* The web and the desktop, two panels with their ways in. */
@@ -123,14 +124,14 @@
 <main id="main">
 	<section class="hero halo" aria-labelledby="hero-h">
 		<div class="wrap">
-			<a class="badge accent" href="/docs/fresh-eyes">Nouveau : un regard neuf sur chaque design IA <span aria-hidden="true">→</span></a>
-			<h1 class="display" id="hero-h">Concevez des modèles LEGO® avec l’IA, <em>dans votre navigateur</em></h1>
-			<p class="lede">Décrivez un modèle et regardez une IA l’assembler avec de vraies pièces, ou construisez-le à la main. Une CAO complète qui vérifie qu’il tient debout, ouvre vos fichiers Studio et imprime le livret. Rien à installer, et c’est gratuit.</p>
+			<a class="badge accent" href="/fr/compare">Comparé à Studio <span aria-hidden="true">→</span></a>
+			<h1 class="display" id="hero-h">Une CAO pour les modèles LEGO®, <em>dans votre navigateur</em></h1>
+			<p class="lede">Chaque pièce LDraw en taille réelle, assemblée là où les vraies s’assemblent et tournée à n’importe quel angle. Voyez si votre modèle tient debout, faites tourner ses engrenages et imprimez son livret. Rien à installer, et c’est gratuit.</p>
 			<div class="actions center">
 				<a class="cta big" href="/app?lang=fr">Ouvrir l’application <span class="arrow" aria-hidden="true">→</span></a>
 				<a class="cta ghost big" href="/fr/download">Télécharger la version de bureau</a>
 			</div>
-			<p class="note">Sur ordinateur, tablette ou téléphone. L’IA, c’est votre propre Claude, ChatGPT ou clé, sans limite, et elle reste désactivée tant que vous ne l’activez pas.</p>
+			<p class="note">Sur ordinateur, tablette ou téléphone, et sous Windows, macOS et Linux.</p>
 			<figure class="shot hero-shot">
 				<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
 				<img src="/img/hero-1200.webp"
@@ -147,52 +148,62 @@
 			<div class="section-head">
 				<div>
 					<p class="eyebrow">Comment ça marche</p>
-					<h2 class="title" id="how-h">D’une phrase à un modèle que vous pouvez construire</h2>
+					<h2 class="title" id="how-h">De la première brique au livret</h2>
 				</div>
-				<a href="/docs/ai">Concevoir avec l’IA</a>
+				<a href="/docs/first-model">Votre premier modèle</a>
 			</div>
 			<ol class="steps">
-				<li><h3>Dites ce que vous voulez</h3><p>« Un camion de pompiers rouge avec une échelle qui se lève. » Tapez-le dans l’assistant de l’application, ou demandez-le à Claude sur claude.ai et il construit dans votre onglet ouvert.</p></li>
-				<li><h3>Regardez-le construire, pièce par pièce</h3><p>Chaque pièce se pose à mesure que l’IA la place, toutes issues de la bibliothèque LDraw, en taille réelle. L’application décide si chaque pièce s’emboîte et tient : ce que l’IA construit est donc constructible.</p></li>
-				<li><h3>Faites-le vôtre, puis construisez-le</h3><p>Changez ce que vous voulez à la main, vérifiez qu’il tient debout, puis imprimez le livret, emportez la liste des pièces sur BrickLink ou Rebrickable, ou partagez-le dans la galerie.</p></li>
+				<li><h3>Trouvez la pièce</h3><p>N’importe quelle pièce de LDraw, par son nom BrickLink ou Rebrickable, un numéro d’élément ou une photo de la vraie.</p></li>
+				<li><h3>Posez-la à sa place</h3><p>Tenons, connecteurs, axes et clips s’assemblent là où les vrais le font, et rien ne traverse rien. Tournez une pièce par quarts de tour, au degré près ou de l’angle que vous tapez.</p></li>
+				<li><h3>Vérifiez-le, puis construisez-le</h3><p>Voyez où il basculerait et quelles liaisons céderaient, établissez les étapes, puis imprimez le livret ou emportez la liste des pièces sur BrickLink ou Rebrickable.</p></li>
 			</ol>
 		</div>
 	</section>
 
-	<section class="section defer designer" id="assistant" aria-labelledby="assistant-h">
-		<div class="wrap split">
-			<div>
-				<p class="eyebrow">Le concepteur IA</p>
-				<h2 class="title" id="assistant-h">Il y revient, avec un regard neuf</h2>
-				<p>À son premier enregistrement, chaque nouvelle conception passe sous le regard d’un inconnu : trois images du modèle et vos propres mots. À quoi fait-il penser ? Qu’est-ce qui fait penser à une boîte quelconque ? Puis les trois changements qu’un concepteur de sets ferait en premier, déjà faits.</p>
-				<p>Face aux mêmes conceptions sans regard neuf, celles qui en avaient un ont été préférées dans deux verdicts sur trois.</p>
-				<div class="lines">
-					<p class="quote">Claude, ou une autre IA avec votre propre clé, construit avec les mêmes vraies pièces et les mêmes vérifications que vous. Désactivée, l’IA n’apparaît nulle part dans la fenêtre.</p>
+	<section class="section defer" id="features" aria-labelledby="features-h">
+		<div class="wrap">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">Dans l’application</p>
+					<h2 class="title" id="features-h">Fait pour des constructions qui doivent fonctionner</h2>
 				</div>
-				<div class="actions">
-					<a class="cta ghost" href="/docs/fresh-eyes">Comment fonctionne le regard neuf</a>
-					<a class="link" href="/fr/faq#claude">Comment utiliser votre propre Claude</a>
-				</div>
+				<a href="/fr/compare">Comment il se compare aux autres</a>
 			</div>
-			<figure class="ba">
-				<div class="pair">
-					<figure class="side">
-						<span class="badge">Sans regard neuf</span>
-						<img src="/img/fresh-before-400.webp" srcset="/img/fresh-before-400.webp 400w, /img/fresh-before-720.webp 720w"
-							sizes="(min-width: 1180px) 300px, (min-width: 900px) 26vw, calc(50vw - 22px)"
-							width="720" height="540" loading="lazy" decoding="async"
-							alt="Un caméléon en briques construit sans regard neuf : un corps vert carré rayé d’orange et de bleu sur une branche marron au-dessus d’un socle sombre, la queue en spirale plate et anguleuse derrière lui et la langue rose tendue tout droit.">
-					</figure>
-					<figure class="side">
-						<span class="badge accent">Avec regard neuf</span>
-						<img src="/img/fresh-after-400.webp" srcset="/img/fresh-after-400.webp 400w, /img/fresh-after-720.webp 720w"
-							sizes="(min-width: 1180px) 300px, (min-width: 900px) 26vw, calc(50vw - 22px)"
-							width="720" height="540" loading="lazy" decoding="async"
-							alt="La même consigne construite avec regard neuf : un caméléon plus fin aux yeux en tourelle avec une crête le long du dos, la queue enroulée en spirale ronde et la langue tendue vers une mouche, sur une branche tortueuse au-dessus d’un socle bordé de gris avec des plantes, des rochers et une plaque à son nom.">
-					</figure>
-				</div>
-				<figcaption id="also">Sur notre banc d’essai : une même consigne, « un caméléon sur une branche tortueuse, qui attrape une mouche en projetant sa langue, queue enroulée, yeux en tourelle », construite deux fois. Jugés à l’aveugle, dans un ordre puis dans l’autre, celui avec regard neuf l’a emporté en ressemblance, en réalisme, en créativité, en technique et au classement général.</figcaption>
-			</figure>
+			<ul class="proofs">
+				<li><figure class="shot">
+					<img src="/img/stability-400.webp"
+						srcset="/img/stability-400.webp 400w, /img/stability-720.webp 720w, /img/stability-1200.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="900" loading="lazy" decoding="async"
+						alt="Outils, Vérifier la stabilité sur un bras qui s’avance loin au-delà d’une petite base : l’emprise de la base tracée en rouge au sol, le centre de gravité marqué au-delà de son bord et relié par une ligne, et les liaisons qui portent plus qu’elles ne peuvent tenir teintées d’un rouge plus clair.">
+					<figcaption><b>Tiendra-t-il debout ?</b>Où il bascule, quelles liaisons portent plus qu’elles ne peuvent tenir, et comment corriger chacune.</figcaption>
+				</figure></li>
+				<li><figure class="shot">
+					<img src="/img/simulate-400.webp"
+						srcset="/img/simulate-400.webp 400w, /img/simulate-720.webp 720w, /img/compare-simulate.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="Outils, Simuler le mécanisme sur un planétaire du Soleil et de huit planètes : le panneau donne la période de chaque planète en années terrestres à côté de la vraie, toutes à 0,3 % près, et les trains d’engrenages teintés selon leur vitesse.">
+					<figcaption><b>Des engrenages à leurs vrais rapports</b>Ils s’engrènent dès que vous les posez. Tournez la manivelle et chaque train d’engrenages tourne : les planètes d’un planétaire à 0,3 % près de leurs vraies années.</figcaption>
+				</figure></li>
+				<li><figure class="shot">
+					<img src="/img/booklet-400.webp"
+						srcset="/img/booklet-400.webp 400w, /img/booklet-720.webp 720w, /img/booklet-1200.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="900" loading="lazy" decoding="async"
+						alt="Une page des instructions de montage d’une petite voiture rouge : les étapes 5 à 8, chacune avec un encadré des pièces qu’elle ajoute au-dessus d’un dessin de la voiture à ce stade, et une barre de progression et le numéro de page en bas.">
+					<figcaption><b>Livrets</b>Réglez l’ordre et les pages, puis imprimez-le comme celui de la boîte, ou enregistrez-le en PDF.</figcaption>
+				</figure></li>
+			</ul>
+			<ul class="features">
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#file"></use></svg></span><h3>Vos fichiers Studio</h3><p>Ouvrez les fichiers BrickLink Studio <code>.io</code>, avec les pièces que seul Studio possède, ainsi que les fichiers LDraw et LEGO® Digital Designer.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#move"></use></svg></span><h3>Prenez-le en main comme le vrai</h3><p>Une flèche pivote sur ses charnières, une direction tourne sur sa crémaillère, un vérin s’allonge.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#people"></use></svg></span><h3>Construire ensemble, en direct</h3><p>Un seul modèle construit par plusieurs personnes à la fois, via un lien, chacune voyant les pièces des autres se poser.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#camera"></use></svg></span><h3>Rendus et export 3D</h3><p>Des rendus jusqu’en 4K, l’export 3D en taille réelle, et des listes de pièces pour BrickLink et Rebrickable.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#build"></use></svg></span><h3>Les grands modèles, par sections</h3><p>Sous-ensembles, copies qui changent avec leur original, et sections, comme on construit les grands sets.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#devices"></use></svg></span><h3>Sur téléphone et tablette aussi</h3><p>Tout l’éditeur, disposé pour le doigt, et vos modèles sur chaque appareil où vous vous connectez.</p></li>
+			</ul>
+			<p class="also" id="also">Et aussi les minifigurines, les impressions et les autocollants, les tuyaux et les chaînes, les mosaïques, des pièces de n’importe quelle taille, et ce que vous pouvez construire avec vos propres sets. <a href="/docs">Tout, dans la documentation</a></p>
 		</div>
 	</section>
 
@@ -242,48 +253,22 @@
 		</div>
 	</section>
 
-	<section class="section defer" id="features" aria-labelledby="features-h">
-		<div class="wrap">
-			<div class="section-head">
-				<div>
-					<p class="eyebrow">Dans l’application</p>
-					<h2 class="title" id="features-h">Fait pour des constructions qui doivent fonctionner</h2>
+	<section class="section defer assistant" id="assistant" aria-labelledby="assistant-h">
+		<div class="wrap split">
+			<div>
+				<p class="eyebrow">Facultatif</p>
+				<h2 class="title" id="assistant-h">Apportez votre propre assistant</h2>
+				<p>Brickworks est fait pour construire à la main. Si vous voulez de l’aide, activez votre propre Claude : il peut assembler un modèle à partir d’une phrase, modifier les pièces que vous sélectionnez ou répondre à une question à son sujet.</p>
+				<div class="actions">
+					<a class="cta ghost" href="/docs/ai">Comment fonctionne l’assistant</a>
+					<a class="link" href="/fr/faq#claude">Comment utiliser votre propre Claude</a>
 				</div>
-				<a href="/fr/compare">Comment il se compare aux autres</a>
 			</div>
-			<ul class="proofs">
-				<li><figure class="shot">
-					<img src="/img/stability-400.webp"
-						srcset="/img/stability-400.webp 400w, /img/stability-720.webp 720w, /img/stability-1200.webp 1200w"
-						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-						width="1200" height="900" loading="lazy" decoding="async"
-						alt="Outils, Vérifier la stabilité sur un bras qui s’avance loin au-delà d’une petite base : l’emprise de la base tracée en rouge au sol, le centre de gravité marqué au-delà de son bord et relié par une ligne, et les liaisons qui portent plus qu’elles ne peuvent tenir teintées d’un rouge plus clair.">
-					<figcaption><b>Tiendra-t-il debout ?</b>Où il bascule, quelles liaisons portent plus qu’elles ne peuvent tenir, et comment corriger chacune.</figcaption>
-				</figure></li>
-				<li><figure class="shot">
-					<img src="/img/simulate-400.webp"
-						srcset="/img/simulate-400.webp 400w, /img/simulate-720.webp 720w, /img/compare-simulate.webp 1200w"
-						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-						width="1200" height="750" loading="lazy" decoding="async"
-						alt="Outils, Simuler le mécanisme sur un planétaire du Soleil et de huit planètes : le panneau donne la période de chaque planète en années terrestres à côté de la vraie, toutes à 0,3 % près, et les trains d’engrenages teintés selon leur vitesse.">
-					<figcaption><b>Des engrenages à leurs vrais rapports</b>Ils s’engrènent dès que vous les posez. Tournez la manivelle et chaque train d’engrenages tourne : les planètes d’un planétaire à 0,3 % près de leurs vraies années.</figcaption>
-				</figure></li>
-				<li><figure class="shot">
-					<img src="/img/booklet-400.webp"
-						srcset="/img/booklet-400.webp 400w, /img/booklet-720.webp 720w, /img/booklet-1200.webp 1200w"
-						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-						width="1200" height="900" loading="lazy" decoding="async"
-						alt="Une page des instructions de montage d’une petite voiture rouge : les étapes 5 à 8, chacune avec un encadré des pièces qu’elle ajoute au-dessus d’un dessin de la voiture à ce stade, et une barre de progression et le numéro de page en bas.">
-					<figcaption><b>Livrets</b>Réglez l’ordre et les pages, puis imprimez-le comme celui de la boîte, ou enregistrez-le en PDF.</figcaption>
-				</figure></li>
-			</ul>
-			<ul class="features">
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#build"></use></svg></span><h3>Chaque pièce, en taille réelle</h3><p>Toute la bibliothèque LDraw, où trouver une pièce par son nom BrickLink ou Rebrickable, un numéro d’élément ou une photo. Connecteurs, axes et tenons s’assemblent là où les vrais le font.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#file"></use></svg></span><h3>Vos fichiers Studio, dans les deux sens</h3><p>Ouvrez et enregistrez des fichiers BrickLink Studio <code>.io</code> et LDraw. Les fichiers LEGO® Digital Designer s’ouvrent aussi.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#move"></use></svg></span><h3>Prenez-le en main comme le vrai</h3><p>Une flèche pivote sur ses charnières, une direction tourne sur sa crémaillère, un vérin s’allonge.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#people"></use></svg></span><h3>Construire ensemble, en direct</h3><p>Un seul modèle construit par plusieurs personnes à la fois, via un lien, chacune voyant les pièces des autres se poser.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#camera"></use></svg></span><h3>Rendus et export 3D</h3><p>Des rendus jusqu’en 4K, l’export 3D en taille réelle, et des listes de pièces pour BrickLink et Rebrickable.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#devices"></use></svg></span><h3>Sur tous vos appareils</h3><p>Vos modèles sur chaque appareil où vous vous connectez, et ce que vous pouvez construire avec vos propres sets.</p></li>
+			<ul class="ticks">
+				<li><b>Désactivé tant que vous ne l’activez pas.</b> Désactivé, l’IA n’apparaît nulle part dans la fenêtre.</li>
+				<li><b>Soumis aux mêmes vérifications.</b> Il construit avec les mêmes vraies pièces, et l’application décide si chacune s’emboîte et tient.</li>
+				<li><b>Vous gardez la main.</b> Changez tout ce qu’il pose ; une conception entière s’annule d’un seul Annuler.</li>
+				<li><b>Jamais limité.</b> Il fonctionne avec votre propre abonnement Claude ou votre clé, jamais facturé par Brickworks.</li>
 			</ul>
 		</div>
 	</section>
@@ -304,7 +289,7 @@
 				</article>
 				<article class="tier">
 					<div class="name"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#monitor"></use></svg></span><h3>Windows, macOS et Linux</h3></div>
-					<p>L’application de bureau fonctionne hors ligne avec toutes les pièces sur le disque, gère les plus gros modèles et lance Claude Code pour vous. Elle sera fournie avec Pro dès l’ouverture de Pro ; d’ici là, elle est gratuite à télécharger.</p>
+					<p>L’application de bureau fonctionne hors ligne avec toutes les pièces sur le disque et gère les plus gros modèles. Elle sera fournie avec Pro dès l’ouverture de Pro ; d’ici là, elle est gratuite à télécharger.</p>
 					<div class="actions"><a class="cta ghost" href="/fr/download">Télécharger</a></div>
 				</article>
 			</div>
@@ -317,7 +302,7 @@
 				<div>
 					<p class="eyebrow">Tarifs</p>
 					<h2 class="title" id="plans-h">Gratuit dans votre navigateur. Pro arrive bientôt.</h2>
-					<p>Gratuit au départ, gratuit pour de bon, avec l’IA de votre propre fournisseur, sans limite. Pro ajoute l’application de bureau et conserve chaque modèle que vous créez.</p>
+					<p>Gratuit au départ, gratuit pour de bon. Pro ajoute l’application de bureau et conserve chaque modèle que vous créez.</p>
 				</div>
 			</div>
 			<div class="plans-teaser">
@@ -326,7 +311,7 @@
 					<p class="price"><b>$0</b></p>
 					<ul class="ticks">
 						<li>L’application web, dans n’importe quel navigateur</li>
-						<li><b>L’IA sans limite</b>, chez votre propre fournisseur</li>
+						<li><b>Construire ensemble</b>, livrets, rendus et exports</li>
 						<li>25 modèles conservés avec votre compte</li>
 					</ul>
 					<a class="cta ghost" href="/app?lang=fr">Ouvrir l’application</a>
@@ -350,7 +335,7 @@
 		<div class="wrap">
 			<div class="closing">
 				<h2 class="title" id="start-h">Construisez quelque chose aujourd’hui</h2>
-				<p class="lede">Ouvrez Brickworks dans votre navigateur et partez d’une phrase, d’un vrai set ou d’une seule brique.</p>
+				<p class="lede">Ouvrez Brickworks dans votre navigateur et partez d’une seule brique, d’un vrai set ou de votre propre fichier Studio.</p>
 				<div class="actions center">
 					<a class="cta big" href="/app?lang=fr">Ouvrir l’application <span class="arrow" aria-hidden="true">→</span></a>
 					<a class="cta ghost big" href="/fr/gallery">Parcourir la galerie</a>

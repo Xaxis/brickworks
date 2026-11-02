@@ -3195,20 +3195,27 @@ plan with Claude as the client.
 - `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`, the
   pictures in `web/img/`): rebuilt again by site356 (2026-10-29, the owner:
   "next level UI/UX", the way Linear, Vercel or Stripe sell theirs), on the
-  design system's landing kit, in the order a visitor asks: the opening
-  (`.halo`: a badge to /docs/fresh-eyes, `h1.display` "Design LEGO®
-  models with AI, in your browser", Open the app and Download for desktop,
-  the app's picture), `#how` (three `.steps`), `#assistant` (the AI
-  designer: fresh eyes, with `img/fresh-before-*` and `img/fresh-after-*`,
-  the chameleon from bench/results/ideas-2026-10-27-critic315-vs-main315a,
-  the same brief built without and with, as a `.ba`; its caption is
-  `#also`, where the strips are asked), `#community` (two live strips:
-  `#made`, the gallery's Top, and `#sets`, the LDraw library by Most parts,
-  `/api/share?op=library&sort=largest`; `data-strip` and `data-sets` on
-  `<html>` say how many, `none` when that strip is hidden, and the section
-  goes when both do), `#features` (three pictures from the app over six
-  `.feature`s with their icons), `#platforms` (the web and the desktop),
-  `#plans` (Free and Pro, as /plans has them) and `#start` (`.closing`).
+  design system's landing kit, and turned round to lead with the CAD by
+  narrative (2026-11-02, the owner: many people react badly to AI; no
+  title, h1 or first screen calls it AI), in the order a visitor asks: the
+  opening (`.halo`: a badge to /compare, `h1.display` "A CAD for LEGO®
+  models, in your browser", a line of proof (every LDraw part at true
+  size, joined as the real ones are and at any angle; stands, gears,
+  booklet), Open the app and Download for desktop, the app's picture),
+  `#how` (three `.steps` by hand: find the part, put it where it goes,
+  check it and build it), `#features` (three pictures from the app over
+  six `.feature`s with their icons, then `#also`, one line of the rest,
+  where the strips are asked), `#community` (two live strips: `#made`, the
+  gallery's Top, and `#sets`, the LDraw library's biggest sets with a 3D
+  model, `/api/share?op=library&sort=largest&model=3d`; `data-strip` and
+  `data-sets` on `<html>` say how many, `none` when that strip is hidden,
+  and the section goes when both do), `#assistant` (Optional, "Bring your
+  own assistant": your own Claude, off until you turn it on, held to the
+  same checks, a design one Undo, never limited; `.split` of words and
+  `.ticks`, no pictures), `#platforms` (the web and the desktop), `#plans`
+  (Free and Pro, as /plans has them) and `#start` (`.closing`). The
+  chameleon before and after (`img/fresh-*`) left the page with fresh eyes
+  as its headline; /docs/fresh-eyes tells it.
   Before that, rebuilt 2026-10-20 (the owner: "complete garbage";
   before that, 2026-10-13, "overly wordy and verbose and none elegant ...
   brickworks is much more than an ai tool, its also a fully advanced expert cad
@@ -3234,7 +3241,7 @@ plan with Claude as the client.
   deploy) scrolls to it at 390 and 1280, light and dark: shown with every
   card's picture drawn when the gallery has three with pictures, else
   hidden; `--out=DIR` keeps `strip_<width>_<theme>.png`);
-  `#assistant` last, short, off until you turn it on. Claim only what ships:
+  `#assistant` low and short, off until you turn it on. Claim only what ships:
   gear trains went on the page the day Tools, Simulate mechanism merged, not
   before. Every
   page shares `/site.css` (every text colour 4.5:1 or better on its background
@@ -3311,7 +3318,10 @@ plan with Claude as the client.
   Then the field, row by row (`.table.wide`, site.css): Brickworks, Studio,
   Mecabricks, LeoCAD and LDCad, from docs/COMPETITIVE.md's matrix, "—" where
   none was found. Then where the others still lead, plainly: renders, prices,
-  rubber bands and springs, years. Every
+  rubber bands and springs, years. It closes on the CAD ("Try it on a
+  model of yours"); the assistant is the field's AI design row and one
+  `.note` under the last offer, your own Claude, off until you turn it on
+  (narrative, 2026-11-02). Every
   claim about another tool is sourced at the foot (their own pages and forum
   threads, read 2026-10-12 and 13, versions rechecked 2026-10-24); a claim
   that cannot be sourced is cut, not softened. Studio has project tabs and an

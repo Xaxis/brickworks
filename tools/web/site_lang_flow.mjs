@@ -196,8 +196,8 @@ const THEMES = Object.fromEntries(["de", "fr", "es"].map((code) => {
   return [code, said];
 }));
 const PAGES = [
-  { name: "home", path: "", title: "Brickworks — design LEGO® models with AI, in your browser",
-    heading: "#hero-h", says: "Design LEGO® models with AI, <em>in your browser</em>" },
+  { name: "home", path: "", title: "Brickworks — a CAD for LEGO® models, in your browser",
+    heading: "#hero-h", says: "A CAD for LEGO® models, <em>in your browser</em>" },
   { name: "download", path: "/download", title: "Download Brickworks for Linux, macOS and Windows",
     heading: "#get-h", says: "Download Brickworks" },
   { name: "plans", path: "/plans", title: "Pricing · Brickworks" },

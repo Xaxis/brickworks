@@ -5,9 +5,9 @@
 <meta charset="utf-8">
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Brickworks — diseña modelos LEGO® con IA, en tu navegador</title>
+<title>Brickworks — un CAD para modelos LEGO®, en tu navegador</title>
 <meta name="oc-domain-verify" content="38ed3e13e5fecb1a4a11263170a7f3b6db925be6373c8142" />
-<meta name="description" content="Brickworks es un CAD gratuito para modelos LEGO® que funciona en cualquier navegador, también en el de una tableta o un teléfono, sin nada que instalar: comprueba que un modelo se sostiene y qué uniones cederán, hace girar los trenes de engranajes con sus relaciones reales, construye un modelo con otros en directo, abre y guarda .io de Studio, y exporta en 3D, renderizados y folletos para imprimir o guardar como PDF. También en el escritorio.">
+<meta name="description" content="Brickworks es un CAD gratuito para modelos LEGO® que funciona en cualquier navegador, también en el de una tableta o un teléfono, sin nada que instalar: cada pieza de LDraw a tamaño real, unida donde se unen las reales y girada a cualquier ángulo; una comprobación de que un modelo se sostiene y de qué uniones cederán; trenes de engranajes que giran con sus relaciones reales; un modelo construido con otros en directo; tus archivos .io de Studio abiertos; y folletos, renderizados y exportaciones en 3D. También en el escritorio.">
 <link rel="canonical" href="https://brickworks.diy/es">
 <link rel="alternate" hreflang="en" href="https://brickworks.diy/">
 <link rel="alternate" hreflang="de" href="https://brickworks.diy/de">
@@ -22,7 +22,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="Brickworks — un CAD completo para modelos LEGO®">
-<meta property="og:description" content="En cualquier navegador o en un teléfono, sin nada que instalar. Comprueba que tu modelo se sostiene, construye un modelo con otros en directo, abre y guarda .io de Studio, y exporta en 3D, renderizados y folletos. Gratis.">
+<meta property="og:description" content="En cualquier navegador o en un teléfono, sin nada que instalar. Cada pieza de LDraw a cualquier ángulo; comprueba que tu modelo se sostiene, construye un modelo con otros en directo, abre tus archivos .io de Studio y exporta folletos, renderizados y 3D. Gratis.">
 <meta property="og:url" content="https://brickworks.diy/es">
 <!-- Absolute, and a real file. A card reader fetches this on its own
      from wherever it saw the link, so a relative path resolves against
@@ -33,7 +33,7 @@
 <meta property="og:image:alt" content="La marca de Brickworks, un cubo con una esquina recortada, y las palabras: un CAD completo para modelos LEGO®, junto a un renderizado de un castillo de piedra gris hecho de ladrillos.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Brickworks — un CAD completo para modelos LEGO®">
-<meta name="twitter:description" content="En cualquier navegador o en un teléfono, sin nada que instalar. Comprueba que tu modelo se sostiene, construye un modelo con otros en directo, abre y guarda .io de Studio, y exporta en 3D, renderizados y folletos. Gratis.">
+<meta name="twitter:description" content="En cualquier navegador o en un teléfono, sin nada que instalar. Cada pieza de LDraw a cualquier ángulo; comprueba que tu modelo se sostiene, construye un modelo con otros en directo, abre tus archivos .io de Studio y exporta folletos, renderizados y 3D. Gratis.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <meta name="twitter:image:alt" content="La marca de Brickworks, un cubo con una esquina recortada, y las palabras: un CAD completo para modelos LEGO®, junto a un renderizado de un castillo de piedra gris hecho de ladrillos.">
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
@@ -45,6 +45,8 @@
 .hero { padding: clamp(56px, 8vw, 104px) 0 0; text-align: center; }
 .hero .wrap > .badge { margin-bottom: var(--s-5); }
 .hero h1 { max-width: 16ch; margin-inline: auto; margin-bottom: var(--s-4); }
+/* "in your browser" a line of its own: left inline, it broke after "in". */
+.hero h1 em { display: block; }
 .hero .lede { margin: 0 auto var(--s-6); max-width: 58ch; }
 .hero .note { margin-top: var(--s-4); }
 .hero-shot { margin-top: clamp(40px, 6vw, 72px); border-radius: var(--r-4); }
@@ -63,9 +65,8 @@
 @media (width >= 600px) and (width < 900px) { .proofs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .proofs li:last-child { grid-column: 1 / -1; } }
 .also { margin: var(--s-5) 0 0; color: var(--ink-soft); font-size: var(--t-small); max-width: 92ch; }
 
-/* The AI designer: its words beside the before and after. */
-.designer .lines { display: grid; gap: var(--s-3); margin: var(--s-5) 0; }
-.designer .quote { margin: var(--s-4) 0 0; padding-left: var(--s-4); border-left: 2px solid var(--accent-edge); color: var(--ink-soft); font-size: var(--t-small); }
+/* The assistant, if you want one: its words beside what it is held to. */
+.assistant .actions { margin-top: var(--s-5); }
 .strip + .strip { margin-top: var(--s-7); }
 
 /* The web and the desktop, two panels with their ways in. */
@@ -123,14 +124,14 @@
 <main id="main">
 	<section class="hero halo" aria-labelledby="hero-h">
 		<div class="wrap">
-			<a class="badge accent" href="/docs/fresh-eyes">Nuevo: una mirada fresca para cada diseño con IA <span aria-hidden="true">→</span></a>
-			<h1 class="display" id="hero-h">Diseña modelos LEGO® con IA, <em>en tu navegador</em></h1>
-			<p class="lede">Describe un modelo y mira cómo una IA lo monta con piezas reales, o constrúyelo a mano. Un CAD completo que comprueba que se sostiene, abre tus archivos de Studio e imprime el folleto. Nada que instalar, y gratis.</p>
+			<a class="badge accent" href="/es/compare">Cómo se compara con Studio <span aria-hidden="true">→</span></a>
+			<h1 class="display" id="hero-h">Un CAD para modelos LEGO®, <em>en tu navegador</em></h1>
+			<p class="lede">Cada pieza de LDraw a tamaño real, unida donde se unen las reales y girada a cualquier ángulo. Mira si tu modelo se sostiene, haz girar sus engranajes e imprime su folleto. Nada que instalar, y gratis.</p>
 			<div class="actions center">
 				<a class="cta big" href="/app?lang=es">Abrir la aplicación <span class="arrow" aria-hidden="true">→</span></a>
 				<a class="cta ghost big" href="/es/download">Descargar para escritorio</a>
 			</div>
-			<p class="note">En un ordenador, una tableta o un teléfono. La IA es tu propio Claude, ChatGPT o tu clave, sin límite, y está desactivada hasta que la activas.</p>
+			<p class="note">En un ordenador, una tableta o un teléfono, y en Windows, macOS y Linux.</p>
 			<figure class="shot hero-shot">
 				<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
 				<img src="/img/hero-1200.webp"
@@ -147,52 +148,62 @@
 			<div class="section-head">
 				<div>
 					<p class="eyebrow">Cómo funciona</p>
-					<h2 class="title" id="how-h">De una frase a un modelo que puedes construir</h2>
+					<h2 class="title" id="how-h">Del primer ladrillo al folleto</h2>
 				</div>
-				<a href="/docs/ai">Diseñar con IA</a>
+				<a href="/docs/first-model">Tu primer modelo</a>
 			</div>
 			<ol class="steps">
-				<li><h3>Di lo que quieres</h3><p>«Un camión de bomberos rojo con una escalera que se eleva». Escríbelo en el asistente de la aplicación, o pídeselo a Claude en claude.ai y lo construye en tu pestaña abierta.</p></li>
-				<li><h3>Mira cómo se construye, pieza a pieza</h3><p>Cada pieza aparece en cuanto la IA la coloca, todas de la biblioteca LDraw y a tamaño real. La aplicación decide si cada pieza encaja y se sujeta, así que lo que construye se puede montar.</p></li>
-				<li><h3>Hazlo tuyo y luego constrúyelo</h3><p>Cambia lo que quieras a mano, comprueba que se sostiene y luego imprime el folleto, lleva la lista de piezas a BrickLink o Rebrickable, o compártelo en la galería.</p></li>
+				<li><h3>Encuentra la pieza</h3><p>Cualquier pieza de LDraw, por su nombre de BrickLink o Rebrickable, un número de elemento o una foto de la real.</p></li>
+				<li><h3>Ponla en su sitio</h3><p>Espigas, pasadores, ejes y clips se unen donde lo hacen los reales, y nada atraviesa nada. Gira una pieza en cuartos de vuelta, al grado o al ángulo que escribas.</p></li>
+				<li><h3>Compruébalo y luego constrúyelo</h3><p>Mira dónde volcaría y qué uniones cederían, ordena los pasos y luego imprime el folleto o lleva la lista de piezas a BrickLink o Rebrickable.</p></li>
 			</ol>
 		</div>
 	</section>
 
-	<section class="section defer designer" id="assistant" aria-labelledby="assistant-h">
-		<div class="wrap split">
-			<div>
-				<p class="eyebrow">El diseñador de IA</p>
-				<h2 class="title" id="assistant-h">Lo revisa con una mirada fresca</h2>
-				<p>Cada diseño nuevo, al guardarse por primera vez, pasa por la mirada de un desconocido: tres imágenes del modelo y tus propias palabras. ¿Qué parece? ¿Qué parte parece una caja genérica? Y luego, hechos, los tres cambios que un diseñador de sets haría primero.</p>
-				<p>Frente a los mismos diseños sin ella, los diseños con mirada fresca fueron preferidos en dos de cada tres veredictos.</p>
-				<div class="lines">
-					<p class="quote">Claude, u otra IA con tu propia clave, construye con las mismas piezas reales y las mismas comprobaciones que tú. Si está desactivada, no hay IA en ninguna parte de la ventana.</p>
+	<section class="section defer" id="features" aria-labelledby="features-h">
+		<div class="wrap">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">En la aplicación</p>
+					<h2 class="title" id="features-h">Hecho para construcciones que tienen que funcionar</h2>
 				</div>
-				<div class="actions">
-					<a class="cta ghost" href="/docs/fresh-eyes">Cómo funciona la mirada fresca</a>
-					<a class="link" href="/es/faq#claude">Cómo usar tu propio Claude</a>
-				</div>
+				<a href="/es/compare">Cómo se compara</a>
 			</div>
-			<figure class="ba">
-				<div class="pair">
-					<figure class="side">
-						<span class="badge">Sin mirada fresca</span>
-						<img src="/img/fresh-before-400.webp" srcset="/img/fresh-before-400.webp 400w, /img/fresh-before-720.webp 720w"
-							sizes="(min-width: 1180px) 300px, (min-width: 900px) 26vw, calc(50vw - 22px)"
-							width="720" height="540" loading="lazy" decoding="async"
-							alt="Un camaleón de ladrillos hecho sin mirada fresca: un cuerpo verde y cuadrado con rayas naranjas y azules sobre una rama marrón encima de un soporte oscuro, la cola en una espiral plana y cuadrada detrás de él y la lengua rosa extendida en línea recta.">
-					</figure>
-					<figure class="side">
-						<span class="badge accent">Con mirada fresca</span>
-						<img src="/img/fresh-after-400.webp" srcset="/img/fresh-after-400.webp 400w, /img/fresh-after-720.webp 720w"
-							sizes="(min-width: 1180px) 300px, (min-width: 900px) 26vw, calc(50vw - 22px)"
-							width="720" height="540" loading="lazy" decoding="async"
-							alt="El mismo encargo construido con mirada fresca: un camaleón más esbelto con ojos de torreta y una cresta a lo largo del lomo, la cola enroscada en una espiral redonda y la lengua extendida hasta una mosca, sobre una rama retorcida encima de un soporte de borde gris con plantas, rocas y una placa con su nombre.">
-					</figure>
-				</div>
-				<figcaption id="also">De nuestro banco de pruebas: un encargo, «un camaleón en una rama retorcida, atrapando una mosca con la lengua disparada, cola enroscada, ojos de torreta», construido dos veces. Juzgado a ciegas, en ambos órdenes, el de la mirada fresca ganó en parecido, realismo, creatividad, técnica y valoración general.</figcaption>
-			</figure>
+			<ul class="proofs">
+				<li><figure class="shot">
+					<img src="/img/stability-400.webp"
+						srcset="/img/stability-400.webp 400w, /img/stability-720.webp 720w, /img/stability-1200.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="900" loading="lazy" decoding="async"
+						alt="Herramientas, Comprobar la estabilidad en un brazo que se extiende mucho más allá de una base pequeña: la huella de la base dibujada en rojo en el suelo, el centro de masa marcado más allá de su borde con una línea hasta él, y las uniones que cargan más de lo que pueden sostener teñidas de un rojo más claro.">
+					<figcaption><b>¿Se sostendrá?</b>Dónde vuelca, qué uniones cargan más de lo que pueden sostener y qué arreglaría cada cosa.</figcaption>
+				</figure></li>
+				<li><figure class="shot">
+					<img src="/img/simulate-400.webp"
+						srcset="/img/simulate-400.webp 400w, /img/simulate-720.webp 720w, /img/compare-simulate.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="Herramientas, Simular el mecanismo en un planetario del Sol y ocho planetas: el panel muestra el periodo de cada planeta en años terrestres junto al real, todos a menos del 0,3 %, y los trenes de engranajes teñidos según su velocidad.">
+					<figcaption><b>Engranajes con sus relaciones reales</b>Engranan en cuanto los colocas. Gira la manivela y gira cada tren de engranajes: los planetas de un planetario, a menos del 0,3 % de sus años reales.</figcaption>
+				</figure></li>
+				<li><figure class="shot">
+					<img src="/img/booklet-400.webp"
+						srcset="/img/booklet-400.webp 400w, /img/booklet-720.webp 720w, /img/booklet-1200.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="900" loading="lazy" decoding="async"
+						alt="Una página de las instrucciones de montaje de un pequeño coche rojo: los pasos 5 a 8, cada uno con un recuadro de las piezas que añade sobre un dibujo del coche hasta ese momento, y una barra de progreso y el número de página al pie.">
+					<figcaption><b>Folletos</b>Elige el orden y las páginas, y luego imprímelo como el de la caja, o guárdalo como PDF.</figcaption>
+				</figure></li>
+			</ul>
+			<ul class="features">
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#file"></use></svg></span><h3>Tus archivos de Studio</h3><p>Abre archivos <code>.io</code> de BrickLink Studio, con las piezas que solo tiene Studio, y también de LDraw y LEGO® Digital Designer.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#move"></use></svg></span><h3>Muévelo como si fuera de verdad</h3><p>Un brazo bascula sobre sus bisagras, la dirección gira con su cremallera, un actuador se alarga.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#people"></use></svg></span><h3>Construir juntos, en directo</h3><p>Un modelo construido por varias personas a la vez, mediante un enlace, y cada una ve cómo se colocan las piezas de las demás.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#camera"></use></svg></span><h3>Renderizados y exportación 3D</h3><p>Renderizados de hasta 4K, exportación 3D a tamaño real y listas de piezas para BrickLink y Rebrickable.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#build"></use></svg></span><h3>Modelos grandes, por secciones</h3><p>Subconjuntos, copias que cambian con su original y secciones, como se construyen los sets grandes.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#devices"></use></svg></span><h3>También en teléfonos y tabletas</h3><p>Todo el editor, dispuesto para el dedo, y tus modelos en cada dispositivo donde inicies sesión.</p></li>
+			</ul>
+			<p class="also" id="also">Y minifiguras, estampados y pegatinas, mangueras y cadenas, mosaicos, piezas de cualquier tamaño y lo que pueden construir tus propios sets. <a href="/docs">Todo, en la documentación</a></p>
 		</div>
 	</section>
 
@@ -242,48 +253,22 @@
 		</div>
 	</section>
 
-	<section class="section defer" id="features" aria-labelledby="features-h">
-		<div class="wrap">
-			<div class="section-head">
-				<div>
-					<p class="eyebrow">En la aplicación</p>
-					<h2 class="title" id="features-h">Hecho para construcciones que tienen que funcionar</h2>
+	<section class="section defer assistant" id="assistant" aria-labelledby="assistant-h">
+		<div class="wrap split">
+			<div>
+				<p class="eyebrow">Opcional</p>
+				<h2 class="title" id="assistant-h">Trae tu propio asistente</h2>
+				<p>Brickworks está hecho para construir a mano. Si quieres ayuda, activa tu propio Claude: puede montar un modelo a partir de una frase, cambiar las piezas que selecciones o responder a una pregunta sobre él.</p>
+				<div class="actions">
+					<a class="cta ghost" href="/docs/ai">Cómo funciona el asistente</a>
+					<a class="link" href="/es/faq#claude">Cómo usar tu propio Claude</a>
 				</div>
-				<a href="/es/compare">Cómo se compara</a>
 			</div>
-			<ul class="proofs">
-				<li><figure class="shot">
-					<img src="/img/stability-400.webp"
-						srcset="/img/stability-400.webp 400w, /img/stability-720.webp 720w, /img/stability-1200.webp 1200w"
-						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-						width="1200" height="900" loading="lazy" decoding="async"
-						alt="Herramientas, Comprobar la estabilidad en un brazo que se extiende mucho más allá de una base pequeña: la huella de la base dibujada en rojo en el suelo, el centro de masa marcado más allá de su borde con una línea hasta él, y las uniones que cargan más de lo que pueden sostener teñidas de un rojo más claro.">
-					<figcaption><b>¿Se sostendrá?</b>Dónde vuelca, qué uniones cargan más de lo que pueden sostener y qué arreglaría cada cosa.</figcaption>
-				</figure></li>
-				<li><figure class="shot">
-					<img src="/img/simulate-400.webp"
-						srcset="/img/simulate-400.webp 400w, /img/simulate-720.webp 720w, /img/compare-simulate.webp 1200w"
-						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-						width="1200" height="750" loading="lazy" decoding="async"
-						alt="Herramientas, Simular el mecanismo en un planetario del Sol y ocho planetas: el panel muestra el periodo de cada planeta en años terrestres junto al real, todos a menos del 0,3 %, y los trenes de engranajes teñidos según su velocidad.">
-					<figcaption><b>Engranajes con sus relaciones reales</b>Engranan en cuanto los colocas. Gira la manivela y gira cada tren de engranajes: los planetas de un planetario, a menos del 0,3 % de sus años reales.</figcaption>
-				</figure></li>
-				<li><figure class="shot">
-					<img src="/img/booklet-400.webp"
-						srcset="/img/booklet-400.webp 400w, /img/booklet-720.webp 720w, /img/booklet-1200.webp 1200w"
-						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-						width="1200" height="900" loading="lazy" decoding="async"
-						alt="Una página de las instrucciones de montaje de un pequeño coche rojo: los pasos 5 a 8, cada uno con un recuadro de las piezas que añade sobre un dibujo del coche hasta ese momento, y una barra de progreso y el número de página al pie.">
-					<figcaption><b>Folletos</b>Elige el orden y las páginas, y luego imprímelo como el de la caja, o guárdalo como PDF.</figcaption>
-				</figure></li>
-			</ul>
-			<ul class="features">
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#build"></use></svg></span><h3>Cada pieza, a tamaño real</h3><p>Toda la biblioteca de LDraw, y cada pieza se encuentra por su nombre de BrickLink o Rebrickable, un número de elemento o una foto. Pasadores, ejes y espigas se unen donde lo hacen los reales.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#file"></use></svg></span><h3>Tus archivos de Studio, en ambos sentidos</h3><p>Abre y guarda archivos <code>.io</code> de BrickLink Studio y de LDraw. También se abren los archivos de LEGO® Digital Designer.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#move"></use></svg></span><h3>Muévelo como si fuera de verdad</h3><p>Un brazo bascula sobre sus bisagras, la dirección gira con su cremallera, un actuador se alarga.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#people"></use></svg></span><h3>Construir juntos, en directo</h3><p>Un modelo construido por varias personas a la vez, mediante un enlace, y cada una ve cómo se colocan las piezas de las demás.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#camera"></use></svg></span><h3>Renderizados y exportación 3D</h3><p>Renderizados de hasta 4K, exportación 3D a tamaño real y listas de piezas para BrickLink y Rebrickable.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#devices"></use></svg></span><h3>En todos tus dispositivos</h3><p>Tus modelos en cada dispositivo donde inicies sesión, y lo que pueden construir tus propios sets.</p></li>
+			<ul class="ticks">
+				<li><b>Desactivado hasta que lo activas.</b> Si está desactivado, no hay IA en ninguna parte de la ventana.</li>
+				<li><b>Con las mismas comprobaciones.</b> Construye con las mismas piezas reales, y la aplicación decide si cada una encaja y aguanta.</li>
+				<li><b>Tú tienes el control.</b> Cambia todo lo que coloque; un diseño entero se deshace con un solo Deshacer.</li>
+				<li><b>Nunca limitado.</b> Funciona con tu propio plan o clave de Claude, y Brickworks nunca te lo cobra.</li>
 			</ul>
 		</div>
 	</section>
@@ -304,7 +289,7 @@
 				</article>
 				<article class="tier">
 					<div class="name"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#monitor"></use></svg></span><h3>Windows, macOS y Linux</h3></div>
-					<p>La aplicación de escritorio funciona sin conexión con todas las piezas en el disco, maneja los modelos más grandes e inicia Claude Code por ti. Se incluirá en Pro cuando Pro esté disponible; hasta entonces, se descarga gratis.</p>
+					<p>La aplicación de escritorio funciona sin conexión con todas las piezas en el disco y maneja los modelos más grandes. Se incluirá en Pro cuando Pro esté disponible; hasta entonces, se descarga gratis.</p>
 					<div class="actions"><a class="cta ghost" href="/es/download">Descargar</a></div>
 				</article>
 			</div>
@@ -317,7 +302,7 @@
 				<div>
 					<p class="eyebrow">Precios</p>
 					<h2 class="title" id="plans-h">Gratis en tu navegador. Pro está en camino.</h2>
-					<p>Empieza gratis y sigue gratis, con la IA de tu propio proveedor y sin límite. Pro añade la aplicación de escritorio y conserva todos los modelos que hagas.</p>
+					<p>Empieza gratis y sigue gratis. Pro añade la aplicación de escritorio y conserva todos los modelos que hagas.</p>
 				</div>
 			</div>
 			<div class="plans-teaser">
@@ -326,7 +311,7 @@
 					<p class="price"><b>$0</b></p>
 					<ul class="ticks">
 						<li>La aplicación web, en cualquier navegador</li>
-						<li><b>IA sin límite</b>, con tu propio proveedor</li>
+						<li><b>Construir juntos</b>, folletos, renderizados y exportaciones</li>
 						<li>25 modelos guardados con tu cuenta</li>
 					</ul>
 					<a class="cta ghost" href="/app?lang=es">Abrir la aplicación</a>
@@ -350,7 +335,7 @@
 		<div class="wrap">
 			<div class="closing">
 				<h2 class="title" id="start-h">Construye algo hoy</h2>
-				<p class="lede">Abre Brickworks en tu navegador y empieza desde una frase, un set real o un solo ladrillo.</p>
+				<p class="lede">Abre Brickworks en tu navegador y empieza desde un solo ladrillo, un set real o tu propio archivo de Studio.</p>
 				<div class="actions center">
 					<a class="cta big" href="/app?lang=es">Abrir la aplicación <span class="arrow" aria-hidden="true">→</span></a>
 					<a class="cta ghost big" href="/es/gallery">Explorar la galería</a>
