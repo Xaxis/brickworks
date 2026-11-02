@@ -126,7 +126,7 @@ try {
       const listed = await cards(page);
       check(`${what} (${listed.length}: ${listed.slice(0, 3).map((one) => one.set).join("; ")})`, listed.length > 0 && test(listed));
     }
-    const filters = await page.$$eval("#filters select", (all) => all.map((one) => one.id));
+    const filters = await page.$$eval("#set-filters select", (all) => all.map((one) => one.id));
     check(`the Filters menu has the year, the 3D model and minifigures (${filters.join(", ")})`,
       ["year", "model", "figs", "sub"].every((one) => filters.includes(one)));
     await page.close();

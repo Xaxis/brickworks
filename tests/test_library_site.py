@@ -271,6 +271,6 @@ def test_the_routes_send_library_addresses_to_share() -> None:
         assert route in deploy, route
     # The id the routes take is the one api/_library.js holds an id to.
     assert "SET_ID = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/" in (ROOT / "api/_library.js").read_text()
-    # Linked from the gallery's tabs and the site's footer.
-    assert '<a href="/library" id="to-library">LDraw library</a>' in (ROOT / "web/gallery.html").read_text()
-    assert '<a href="/library">LDraw library</a>' in (ROOT / "web/_shell.html").read_text()
+    # The gallery's Sets tab, and linked from the site's footer.
+    assert '<a href="/library" data-tab="sets">Sets</a>' in (ROOT / "web/gallery.html").read_text()
+    assert '<a href="/library">Sets</a>' in (ROOT / "web/_shell.html").read_text()

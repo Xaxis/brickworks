@@ -148,7 +148,7 @@ async function until(page, test, what, seconds = 30, arg = null) {
 
 /// The Builds tab's cards of model [id] as drawn: each one's photo, links,
 /// words and whether its picture loaded.
-const cardsOf = (page, id) => page.evaluate((model) => [...document.querySelectorAll(`#builds .build-card[data-model="${model}"]`)]
+const cardsOf = (page, id) => page.evaluate((model) => [...document.querySelectorAll(`#models .build-card[data-model="${model}"]`)]
   .map((card) => {
     const img = card.querySelector(".frame img");
     return { id: card.dataset.id, open: card.querySelector("a.open")?.getAttribute("href") || "",
@@ -216,7 +216,7 @@ try {
     const opened = await page.goto(`${site}/builds?tests=1`, { waitUntil: "domcontentloaded", timeout: 90000 });
     check(`/builds answers (${opened?.status()})`, opened?.status() === 200);
     await until(page, () => ["ready", "none", "broken"].includes(document.documentElement.dataset.builds), "the builds", 60);
-    await until(page, () => [...document.querySelectorAll("#builds .build-card img")].slice(0, 8).every((img) => img.complete), "the photos", 30)
+    await until(page, () => [...document.querySelectorAll("#models .build-card img")].slice(0, 8).every((img) => img.complete), "the photos", 30)
       .catch(() => null);
     const cards = await cardsOf(page, id);
     check(`the tab draws Cy's second then Bo's first: ${JSON.stringify(cards.map((one) => one.id))}`,
@@ -231,7 +231,7 @@ try {
     const tab = await page.evaluate(() => document.querySelector('#tabs [aria-current="page"]')?.textContent.trim());
     check(`the Builds tab is marked (${tab})`, tab === "Builds");
     await shot(page, "1_builds_1280_light_in.png");
-    await page.click(`#builds .build-card[data-id="${photos.cyShown}"] a.open`);
+    await page.click(`#models .build-card[data-id="${photos.cyShown}"] a.open`);
     await page.waitForURL((url) => url.pathname === `/m/${id}`, { timeout: 60000 }).catch(() => null);
     const there = await until(page, (photo) => Boolean(document.getElementById(`photo-${photo}`)), "the photo on its model's page", 60,
       photos.cyShown).catch(() => false);
@@ -253,7 +253,7 @@ try {
     check("nothing wider than the phone", !(await sideways(page)));
     const dark = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     check(`drawn dark (${dark})`, /rgb\((\d+), (\d+), (\d+)\)/.test(dark) && Number(dark.match(/\d+/)[0]) < 40);
-    await page.evaluate((photo) => document.querySelector(`#builds .build-card[data-id="${photo}"]`)?.scrollIntoView({ block: "center" }),
+    await page.evaluate((photo) => document.querySelector(`#models .build-card[data-id="${photo}"]`)?.scrollIntoView({ block: "center" }),
       photos.cyShown);
     await page.waitForTimeout(400);
     await shot(page, "2_builds_390_dark_out.png");
@@ -268,7 +268,7 @@ try {
       const box = document.getElementById("builds-empty");
       return { state: document.documentElement.dataset.builds, shown: Boolean(box && !box.hidden && box.offsetHeight > 0),
         words: box?.textContent.replace(/\s+/g, " ").trim() || "", link: box?.querySelector("a")?.getAttribute("href") || "",
-        cards: document.querySelectorAll("#builds .model, #builds .skeleton").length };
+        cards: document.querySelectorAll("#models .model, #models .skeleton").length };
     });
     check(`the empty tab says what a build is and how to add one ("${empty.words.slice(0, 120)}…")`,
       empty.state === "none" && empty.shown && /real bricks/.test(empty.words) && /I built it/.test(empty.words) && empty.cards === 0);

@@ -6,8 +6,9 @@
     tools/site_lang.py --missing=CODE the English CODE has no words for yet, as JSON to fill in
 
 The landing page, the download page and the pages a visitor goes on to
-from them (the plans, the FAQ, the comparison, the gallery, the LDraw
-library, this month's challenge, your own profile and your settings; the
+from them (the plans, the FAQ, the comparison, the gallery and its tabs'
+own addresses, the sets, the builds and the collections (tools/browse_pages.py),
+this month's challenge, your own profile and your settings; the
 account menu's feed, notifications, builds, feedback and beta pages; the
 footer's terms, privacy, guidelines, takedown and changelog; the page not
 found and the connector's consent page: PAGES; only the docs stay English)
@@ -52,8 +53,7 @@ it and the scripts on it say (SAID_ALL) needs its entry here too. So is a
 shared model's (api/share.js sharePage), at /<code>/m/<id>: its page, the
 lines its versions and steps are said in, its cards, and its scripts; and
 the pages it links to: a profile (api/people.js profileHtml, /<code>/u/
-<handle>), a collection (listPage, /<code>/c/<id>), every collection
-(collectionsPage, /<code>/collections), a set of the LDraw library
+<handle>), a collection (listPage, /<code>/c/<id>), a set of the LDraw library
 (/<code>/library/<id>), the embed (/<code>/m/<id>/embed), a challenge's
 link (/<code>/challenge?id=N, its head made by api/_challenges.js
 challengeHead), and the 3D view on them (tools/viewer/inline.js, built into
@@ -102,7 +102,7 @@ SITE = "https://brickworks.diy"
 LANGUAGES = {"de": "Deutsch", "fr": "Français", "es": "Español"}
 # The pages, by their file, and where each is: / and /download in English.
 PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "faq.html": "faq",
-         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library",
+         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library", "collections.html": "collections",
          "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings",
          "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds",
          "feedback.html": "feedback", "beta.html": "beta", "beta-hub.html": "beta-hub", "terms.html": "terms",
@@ -120,7 +120,7 @@ BINDING = {"terms.html", "privacy.html", "guidelines.html", "takedown.html"}
 BOUND = 'This is a translation. The <a href="{english}">English text</a> is the one that binds.'
 # The pages the server makes in each language too, at /<code>/<where>: a
 # copy's link to one opens it in the copy's language.
-SERVED = ("collections", "c/", "u/", "m/", "library/")
+SERVED = ("c/", "u/", "m/", "library/")
 
 BLOCK = {"html", "head", "body", "header", "nav", "main", "section", "article", "aside", "footer",
          "div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "figure", "figcaption",
@@ -190,18 +190,19 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/set-page.js": (
                              "partsSection", "listsSection", "buildFigure", "buildsSection", "commentsSection",
                              "versionsSection", "noVersionPage", "gonePage", "links", "embedCard", "setPage"),
             "api/_versions.js": ("stepsSaid", "saidOf", "changedOf", "lotSaid"), "api/_steps.js": (),
-            "api/_lists.js": ("listCardHtml", "directoryCardHtml", "mosaicHtml"), "api/_directory.js": ("movesWords",),
+            "api/_lists.js": ("listCardHtml",), "api/_directory.js": ("movesWords",),
             "api/_library.js": ("setModel",), "api/_challenges.js": ("wonSaid", "challengeHead"),
             "api/people.js": ("head", "page", "missingPage", "numbersHtml", "achievementsOf", "stripHtml", "tabSaid", "pastEnd",
-                              "profilePage", "profileHtml", "listPage", "listHtml", "collectionsPage", "collectionsHtml"),
-            "web/card.js": ("iconButtonHtml", "shareTargets", "shareSheetHtml", "cardHtml", "buildCardHtml", "basedHtml",
+                              "profilePage", "profileHtml", "listPage", "listHtml"),
+            "web/card.js": ("iconButtonHtml", "shareTargets", "shareSheetHtml", "cardHtml", "buildCardHtml", "mosaicHtml",
+                            "collectionCardHtml", "basedHtml",
                             "awardsHtml", "levelName", "levelAwards", "rulesSaid", "brokenSaid"),
             "web/start3d.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
             "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
             "web/embed.js": (), "tools/viewer/inline.js": (),
             "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),
             "web/feedback.js": (), "web/follow.js": (), "web/kit.js": (),
-            "web/feed.js": (), "web/notifications.js": (), "web/builds.js": (), "web/beta.js": (), "web/beta-hub.js": (),
+            "web/feed.js": (), "web/notifications.js": (), "web/builds.js": (), "web/collections.js": (), "web/beta.js": (), "web/beta-hub.js": (),
             "web/takedown.js": ("send", "claim", "counter"), "web/authorize.js": (),
             "api/_follows.js": ("feedSaid",), "api/_notifications.js": ("dateWords", "dayWords", "noticeSaid", "noticeGroups")}
 # And what the site is put together with says on a page (tools/site.py: the

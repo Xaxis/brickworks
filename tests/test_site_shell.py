@@ -24,14 +24,17 @@ def test_every_page_has_the_one_header_and_footer() -> None:
 def test_the_header_has_four_links_and_two_buttons_at_most() -> None:
     # The owner capped the bar at four links (2026-10-20: "the main nav has
     # too many links"); asked for pricing in the site (2026-10-29), it is
-    # Gallery, Library, Docs and Pricing, then Open the app and your
-    # account, and Download went to the footer and Menu (site356).
+    # Gallery, Docs and Pricing, then Open the app and your account, and
+    # Download went to the footer and Menu (site356). The Library left it
+    # when it became the gallery's Sets tab (browse, 2026-11-02: "one is
+    # just a tab in another").
     shell = (ROOT / "web/_shell.html").read_text(encoding="utf-8")
     nav = re.search(r'<nav class="nav" aria-label="Main">(.*?)</nav>', shell, re.S)
     assert nav is not None
     links = re.findall(r"<a [^>]*>", nav.group(1))
     buttons = [one for one in links if 'class="cta' in one or "data-account" in one]
     assert len(links) - len(buttons) <= 4 and len(buttons) <= 2, links
+    assert not [one for one in links if 'href="/library"' in one], links
 
 
 def test_the_account_is_last_after_open_the_app() -> None:
@@ -47,7 +50,9 @@ def test_the_account_is_last_after_open_the_app() -> None:
 
 def test_each_page_marks_only_itself() -> None:
     for name, own in {"gallery.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
-                      "plans.html": "/plans", "library.html": "/library"}.items():
+                      "plans.html": "/plans",
+                      # The gallery's tabs at their own addresses (tools/browse_pages.py).
+                      "library.html": "/gallery", "builds.html": "/gallery", "collections.html": "/gallery"}.items():
         header = re.search(r'<header class="site-head">.*?</header>',
                            (ROOT / "web" / name).read_text(encoding="utf-8"), re.S).group(0)
         current = re.findall(r'<a [^>]*href="([^"]+)"[^>]*aria-current="page"', header)

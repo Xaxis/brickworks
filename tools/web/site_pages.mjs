@@ -35,8 +35,8 @@ export function sitePages({ remote = "" } = {}) {
         await page.click("#filters summary");
         return [["filters", "#filters"]];
       } },
-    // The gallery's Builds tab (web/builds.html): photos of real builds as
-    // the gallery's cards, newest first.
+    // The gallery's Builds tab (/builds, web/gallery.js): photos of real
+    // builds as the gallery's cards, newest first.
     { name: "builds", path: "/builds",
       ready: (page) => until(page, () => ["ready", "none"].includes(document.documentElement.dataset.builds)) },
     { name: "model", path: `/m/${stand.MODEL_ID}`,
@@ -133,12 +133,14 @@ export function sitePages({ remote = "" } = {}) {
         const opened = await until(page, () => document.querySelector(".list-head .more-menu[open]"));
         return [[opened ? "more" : "more (missing)", ".list-head .more-menu"]];
       } },
-    // The directory of public collections (api/people.js collectionsPage,
+    // The gallery's Collections tab (/collections, web/collections.js,
     // walk256 W12): their cards, each with Follow once signed in.
     { name: "collections", path: "/collections",
-      ready: (page, { signedIn }) => (signedIn && !remote
-        ? until(page, () => [...document.querySelectorAll("button[data-follow-list]")].some((button) => !button.hidden)) : true) },
-    { name: "collections-followed", path: "/collections?sort=followed", local: true },
+      ready: (page, { signedIn }) => until(page, signedIn && !remote
+        ? () => [...document.querySelectorAll("button[data-follow-list]")].some((button) => !button.hidden)
+        : () => ["ready", "none"].includes(document.documentElement.dataset.collections)) },
+    { name: "collections-followed", path: "/collections?sort=followed", local: true,
+      ready: (page) => until(page, () => ["ready", "none"].includes(document.documentElement.dataset.collections)) },
     { name: "challenge", path: "/challenge",
       ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },
     // A challenge that ran, on its own page (supabase/challenge_year.sql):

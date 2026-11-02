@@ -20,7 +20,7 @@ ui:library search
 
 ## On the website {#website}
 
-[brickworks.diy/library](/library) is the same library, browsed as the gallery is: every model of a real set the app's Library opens, as cards with a cover, name, number, theme, year and modeller. Search by name, number, theme or modeller; the themes are pills; **Filters** sets the order, the size and the years. It is linked from the gallery's tabs and every page's footer.
+[brickworks.diy/library](/library) is the same library, the gallery's **Sets** tab: every model of a real set the app's Library opens, as cards with a cover, name, number, theme, year and modeller. Search by name, number, theme or modeller; the themes are pills; **Filters** sets the order, the size and the years. It is linked as Sets from every page's footer.
 
 Each set has a page of its own, at `brickworks.diy/library/<id>`, as a shared model has: its picture, who modelled it for LDraw's Official Model Repository and under which licence, its parts list to download for BrickLink or Rebrickable, **Share**, and **Open in Brickworks**, which opens it in the app as **File › Library…** does.
 

@@ -1,31 +1,40 @@
 <!DOCTYPE html>
 <!--
-  The public gallery, at /gallery (and /gallery.html, which redirects
-  here): the models people chose to list when they shared them, each a
-  card that opens its own page, /m/<id>.
+  The gallery, one page to browse everything (browse, 2026-11-02; the
+  owner: "one is just a tab in another"): the models people listed when
+  they shared them, photos of real builds, collections and every real set,
+  each a tab of this page that switches in place, as the Models, Makes and
+  Collections of Printables and Thingiverse are tabs of one page to browse.
 
-  The work first (docs/SOCIAL.md U3): a title and a search on one line,
-  then Top · New · Following (signed in), Top over all time, this month or
-  this week; the kinds as a row of pills; the rest (the order, the size,
-  instructions, Technic, Tested, hand-built or with the assistant) in one
-  Filters button; then the cards, two to a row on a phone, three on a
-  tablet and four from a laptop up. Top is the default: builds finished, remixes and the Tested mark
-  (supabase/discovery.sql), never views.
+  The tabs, each at the address its page had, so every link anyone kept
+  still lands on it: Top (/gallery), New (/gallery?sort=newest), Following
+  once signed in (/gallery?following=1), Builds (/builds), Collections
+  (/collections) and Sets (/library). Each address is this page:
+  /library, /builds and /collections are copies of it that differ only in
+  their head (title, description, canonical link) and the tab they open on
+  (<html data-tab>), written by tools/browse_pages.py from this one, then
+  in German, French and Spanish by tools/site_lang.py. Change this page and
+  run both, never a copy.
 
-  What is listed comes from /api/share?op=list (api/share.js), a page at
-  a time, searched, filtered and sorted as the controls say. Its front
-  (Top over all time, nothing asked) has this week's pick as its first
-  card and, after the first rows, the shelves: what a signed-in person can
-  build now, and small builds once there are three (/api/share?op=shelves,
-  supabase/discovery.sql). It is paged as every list of the site is
-  (web/pager.js, site.css .pager): Show more, the count and the numbered
-  links; the address keeps the question and the last page shown
-  (/gallery?q=castle&page=3), so a search can be sent to somebody, and
-  Back from a model comes back to its card. gallery.js draws
-  it, every name and credit as text and never as markup: they were typed
-  by strangers. No inline script, because the site's content security
-  policy allows none it has not hashed. The look is /site.css, shared with
-  every page of the site; what is below is only how this page lays it out.
+  One head: the title, a line under it and the search, which searches the
+  tab it is on and keeps its words from tab to tab; one bar of filters,
+  kept under the header as the list scrolls, showing what the tab has
+  (the models' Filters and kinds, the sets' Filters and themes, the
+  collections' orders, the builds' line); one grid of cards, each web/
+  card.js's, the same card for a model, a set, a build and a collection;
+  one pager (web/pager.js). What only one tab has is marked data-list, and
+  shown while it is. A tab switches with history.pushState: no page load,
+  and Back and Forward come back to the tab and the card left where it was.
+
+  Each list comes from its own API: the models from /api/share?op=list
+  (web/models.js), the sets from /api/share?op=library (web/library.js),
+  the builds from /api/people?op=builds (web/builds.js), the collections
+  from /api/people?op=collections (web/collections.js); gallery.js switches
+  between them. Every name and credit goes on the page as text, never as
+  markup: they were typed by strangers. No inline script, because the
+  site's content security policy allows none it has not hashed. The look is
+  /site.css, shared with every page of the site; what is below is only how
+  this page lays it out.
 --><html lang="en">
 <head>
 <meta charset="utf-8">
@@ -68,6 +77,15 @@
    is scrolled clear of both. */
 html { scroll-padding-top: calc(var(--head-h) + 72px); }
 
+/* What one tab has alone (data-list: models, sets, builds or
+   collections), shown while it is the tab (<html data-tab>, gallery.js;
+   the copies at /library, /builds and /collections say theirs from the
+   first frame). The models' are Top's, New's and Following's. */
+html[data-tab="sets"] [data-list]:not([data-list~="sets"]),
+html[data-tab="builds"] [data-list]:not([data-list~="builds"]),
+html[data-tab="collections"] [data-list]:not([data-list~="collections"]),
+html:not([data-tab="sets"], [data-tab="builds"], [data-tab="collections"]) [data-list]:not([data-list~="models"]) { display: none !important; }
+
 /* The head: the title and a line under it, the search beside them (under
    600 px the search beside the title, the line left out, so the first
    card's picture is on the first screen). */
@@ -94,21 +112,23 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	.search input { padding-right: 12px; }
 }
 
-/* Which models: the tabs, and Top's time at the row's end. Its tabs
-   scroll inside themselves on a phone: without min-width the row grew to
-   all of them and Top's time, and the page scrolled sideways. */
+/* The tabs, and Top's time at the row's end. The tabs scroll inside
+   themselves on a phone: without min-width the row grew to all of them
+   and Top's time, and the page scrolled sideways. */
 .gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; border-bottom: 1px solid var(--line); }
 .gallery-bar .tabs { flex: 1; margin: 0; border-bottom: 0; }
 .gallery-bar .top-window { flex: none; }
 
-/* The bar of filters: Filters, then the kinds, kept under the header as
-   the list scrolls, on the page's ground carried out to the window's
-   edges (a shadow, which nothing scrolls to), with the header's edge
-   under it once it is stuck (gallery.js data-stuck). Its kinds are a
-   scroller (site.css) that starts at Filters, not out in the gutter: inset. */
+/* The bar of filters: the tab's Filters, then its row of pills (the
+   models' kinds, the sets' themes, the collections' orders) or the
+   builds' line, kept under the header as the list scrolls, on the page's
+   ground carried out to the window's edges (a shadow, which nothing
+   scrolls to), with the header's edge under it once it is stuck
+   (gallery.js data-stuck). Its pills are a scroller (site.css) that
+   starts at Filters, not out in the gutter: inset. */
 .toolbar {
 	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
-	margin: 0 0 var(--s-4); padding: var(--s-2) 0;
+	min-height: calc(var(--control-h) + 2 * var(--s-2)); margin: 0 0 var(--s-4); padding: var(--s-2) 0;
 }
 .toolbar::before {
 	content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
@@ -116,6 +136,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 }
 .toolbar[data-stuck]::before { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line); clip-path: inset(0 -100vmax -1px); }
 .toolbar .pills.scroller { flex: 1; min-width: 0; }
+.toolbar .said { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 .filters { flex: none; }
 .filters summary .n {
 	display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
@@ -127,9 +148,14 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 /* What is asked beyond the tabs and the kinds, each to let go of. */
 .chips { margin: calc(-1 * var(--s-2)) 0 var(--s-4); }
 .chips[hidden] { display: none; }
+/* How many sets a question found, and what a misspelling was taken to
+   mean; that the collections cannot be searched yet. */
+.found-said { margin: calc(-1 * var(--s-2)) 0 var(--s-4); }
+.found-said:empty { display: none; }
 
-/* While a new question is asked, the cards it will replace step back. */
-[data-gallery="asking"] #feed { opacity: 0.55; transition: opacity var(--motion) var(--ease); }
+/* While a new question is asked, or another tab, the cards it will
+   replace step back. */
+[data-browse="asking"] #feed { opacity: 0.55; transition: opacity var(--motion) var(--ease); }
 
 /* The cards: this week's pick first on the front, then the list; the
    shelves (today's spotlight, what you can build now, small builds)
@@ -163,6 +189,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 
 .feed > #challenge-line { grid-column: 1 / -1; margin: 0; }
 .listing .state { margin-top: var(--s-2); }
+.state .said { margin: 0 0 var(--s-2); }
 .state .actions { margin-top: var(--s-3); }
 .score-said { margin: var(--s-5) 0 0; color: var(--ink-faint); font-size: var(--t-small); }
 /* The way to add yours, at the foot of the list: the kit's last offer (.closing). */
@@ -179,7 +206,6 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery" aria-current="page">Gallery</a>
-			<a href="/library">Library</a>
 			<a href="/docs">Docs</a>
 			<a href="/plans">Pricing</a>
 			<a class="cta" href="/app">Open the app</a>
@@ -190,7 +216,6 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 			<div class="menu-list">
 				<nav aria-label="Menu">
 					<a href="/gallery" aria-current="page">Gallery</a>
-					<a href="/library">Library</a>
 					<a href="/docs">Docs</a>
 					<a href="/plans">Pricing</a>
 					<a href="/download">Download</a>
@@ -213,19 +238,19 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	     the title, the search and the tabs; the list and its bar of filters under it. -->
 	<div class="browse-band halo">
 		<div class="wrap wide">
-			<!-- Answered by gallery.js, never sent: the page asks /api/share itself.
-			     The search is the form; the tabs, Filters and the kinds are its
-			     controls too (form="finder"), laid out under it so the bar of
-			     filters can stay on screen over the whole list. -->
+			<!-- Answered by gallery.js, never sent: the page asks its lists itself.
+			     The search is the form, and searches the tab it is on; the models'
+			     controls are its controls too (form="finder"), laid out under it
+			     so the bar of filters can stay on screen over the whole list. -->
 			<form class="finder" id="finder" role="search" action="/gallery" method="get">
 				<div class="gallery-head">
 					<div class="gallery-title">
 						<h1 id="gallery-h">Gallery</h1>
-						<p class="lede">Models people built in Brickworks and shared. Turn one in 3D, build it step by step, or make it yours.</p>
+						<p class="lede">Models people built and shared in Brickworks, and every LEGO® set with its parts. Turn one in 3D, build it step by step, or make it yours.</p>
 					</div>
 					<label class="search">
 						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-						<span class="visually-hidden">Search the gallery</span>
+						<span class="visually-hidden" id="q-said">Search the gallery</span>
 						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
 							placeholder="Search models, builders, tags" aria-keyshortcuts="/">
 						<kbd class="hint" aria-hidden="true">/</kbd>
@@ -233,29 +258,30 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 				</div>
 			</form>
 			<div class="gallery-bar">
-				<!-- Which models, in which order: Top (builds, remixes, Tested), New,
-				     and Following once signed in, when the list says it can; then the
-				     gallery's other tabs, each a page of its own: photos of real
-				     builds (/builds), collections and the LDraw library. -->
-				<nav class="tabs" id="tabs" aria-label="Which models">
+				<!-- What to browse, each tab at its own address and switched in place
+				     (gallery.js): Top (builds, remixes, Tested), New and Following once
+				     signed in, when the list says it can, the models; then photos of
+				     real builds, collections and every real set. -->
+				<nav class="tabs" id="tabs" aria-label="The gallery">
 					<a href="/gallery" data-tab="top" aria-current="page"
 						title="Built most, remixed most and Tested first. Views count for nothing.">Top</a>
 					<a href="/gallery?sort=newest" data-tab="new">New</a>
 					<a href="/gallery?following=1" data-tab="following" hidden>Following</a>
-					<a href="/builds" id="to-builds">Builds</a>
-					<a href="/collections" id="to-collections">Collections</a>
-					<a href="/library" id="to-library">LDraw library</a>
+					<a href="/builds" data-tab="builds">Builds</a>
+					<a href="/collections" data-tab="collections">Collections</a>
+					<a href="/library" data-tab="sets">Sets</a>
 				</nav>
-				<label class="top-window" id="window-label" hidden><span class="visually-hidden">Top over</span>
+				<label class="top-window" id="window-label" data-list="models" hidden><span class="visually-hidden">Top over</span>
 					<select id="window" name="window" form="finder"><option value="">All time</option></select></label>
 			</div>
 		</div>
 	</div>
 	<section class="wrap wide listing" aria-labelledby="gallery-h">
 		<!-- The bar of filters, on screen over the whole list (sticky under the
-		     header): Filters, then the kinds in a row that scrolls inside itself. -->
+		     header): the tab's Filters, then its pills in a row that scrolls
+		     inside itself, or its line. -->
 		<div class="toolbar" id="toolbar">
-			<details class="filters more-menu" id="filters">
+			<details class="filters more-menu" id="filters" data-list="models">
 				<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg>
 					Filters <span class="n" id="filters-said" hidden></span></summary>
 				<div class="menu-list sheet">
@@ -275,26 +301,50 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 					</div>
 				</div>
 			</details>
-			<div class="pills scroller inset" id="kinds" role="group" aria-label="Kind">
+			<div class="pills scroller inset" id="kinds" role="group" aria-label="Kind" data-list="models">
 				<button type="button" class="pill" data-kind="" aria-pressed="true">All</button>
 			</div>
+			<details class="filters more-menu" id="set-filters" data-list="sets">
+				<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg>
+					Filters <span class="n" id="set-filters-said" hidden></span></summary>
+				<div class="menu-list sheet">
+					<label>Order
+						<select id="set-sort"><option value="built">Built in 3D first</option></select></label>
+					<label>Size
+						<select id="set-size"><option value="">Any size</option></select></label>
+					<label>Years
+						<select id="decade"><option value="">Any year</option></select></label>
+					<div class="actions">
+						<button type="button" class="link" id="set-filters-clear">Clear the filters</button>
+					</div>
+				</div>
+			</details>
+			<div class="pills scroller inset" id="themes" role="group" aria-label="Theme" data-list="sets">
+				<button type="button" class="pill" data-pick="" aria-pressed="true">All</button>
+			</div>
+			<div class="pills scroller inset" id="orders" role="group" aria-label="Which collections first" data-list="collections">
+				<button type="button" class="pill" data-order="recent" aria-pressed="true">Recently added to</button>
+				<button type="button" class="pill" data-order="followed" aria-pressed="false">Most followed</button>
+			</div>
+			<p class="said" data-list="builds">Photos of models from the gallery that people built in real bricks, newest first.</p>
 		</div>
 		<!-- What is asked beyond the tabs and the kinds (a tag a model's page
 		     links here with, an order, a size, a box ticked), each a pill to
 		     let go of, and Clear all. -->
-		<div class="pills chips" id="chips" hidden></div>
+		<div class="pills chips" id="chips" data-list="models" hidden></div>
+		<p class="note found-said" id="found-said" data-list="sets collections" aria-live="polite"></p>
 		<!-- The list's pager (web/pager.js, site.css .pager): Show earlier over a
 		     page opened by its address, and under the list the count, Show more
 		     and the numbered links. -->
 		<p class="pager-earlier" data-pager-earlier="models" hidden><a class="cta ghost" href="/gallery" data-pager-go="earlier">Show earlier</a></p>
 		<div class="models feed" id="feed">
-			<!-- This month's challenge, in one line (gallery.js sayChallenge,
+			<!-- This month's challenge, in one line (models.js sayChallenge,
 			     supabase/challenges.sql): across the grid's first row, drawn
 			     with the cards in place of their skeletons, so its coming
 			     moves nothing (over the grid, it pushed every card down). -->
-			<p class="note" id="challenge-line" hidden></p>
-			<!-- The front's pick, its first card (gallery.js drawShelves). -->
-			<section class="pick" id="pick" aria-labelledby="pick-h" hidden>
+			<p class="note" id="challenge-line" data-list="models" hidden></p>
+			<!-- The front's pick, its first card (models.js drawShelves). -->
+			<section class="pick" id="pick" aria-labelledby="pick-h" data-list="models" hidden>
 				<h2 class="visually-hidden" id="pick-h">This week’s pick</h2>
 				<div id="pick-card"></div>
 			</section>
@@ -320,14 +370,14 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 			</div>
 			<!-- The front's shelves, after the first rows: hidden while anything is asked. -->
-			<div class="shelves" id="shelves" hidden>
+			<div class="shelves" id="shelves" data-list="models" hidden>
 				<!-- Today's featured model and today's set from the LDraw library, as the
 				     daily cron kept them (api/_featured.js); each card says which by its
-				     data-slot, featured or library (gallery.js drawShelves). -->
+				     data-slot, featured or library (models.js drawShelves). -->
 				<section class="shelf" id="spotlight" aria-labelledby="spotlight-h" hidden>
 					<div class="scroller-head">
 						<h2 id="spotlight-h">Today in the gallery</h2>
-						<a id="spotlight-library" href="/library">Browse the LDraw library</a>
+						<a id="spotlight-library" href="/library">Browse every set</a>
 					</div>
 					<p class="shelf-said">A model from the gallery and a set from the LDraw library, chosen each day.</p>
 					<div class="models scroller" id="spotlight-models" role="group" aria-labelledby="spotlight-h"></div>
@@ -352,18 +402,33 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 		</div>
 		<p class="visually-hidden" id="found" aria-live="polite"></p>
 		<p class="visually-hidden" id="loading" role="status">Fetching the gallery…</p>
-		<div class="state" id="empty" hidden>
+		<!-- A list with nothing in it, each tab's own words and the way on. -->
+		<div class="state" id="empty" data-list="models" hidden>
 			Nothing is listed yet. Share a model from the app and tick
 			<b>List it in the gallery</b>, and it will be the first here.
 			<div class="actions"><a class="cta small" href="/app">Open the app</a></div>
 		</div>
-		<p class="state" id="nothing" hidden>
-			Nothing in the gallery matches that.
-			<button type="button" class="link" id="clear">Clear the search and the filters</button>
+		<div class="state" id="builds-empty" data-list="builds" hidden>
+			No builds yet. A build is a photo of a model from the gallery that somebody
+			built in real bricks. Built one? Open its page, choose <b>I built it</b> and
+			add your photo, and it shows here.
+			<div class="actions"><a class="cta small" href="/gallery">Find a model to build</a></div>
+		</div>
+		<p class="state" id="collections-empty" data-list="collections" hidden>
+			No public collections yet. Anyone can make one: on a model's page, press Save to put it in a collection,
+			then make the collection public on your profile. It is listed here once a model in it is in the gallery.
 		</p>
+		<!-- Nothing matching what was asked, in the tab's words, and the way back. -->
+		<div class="state" id="nothing" hidden>
+			<p class="said" data-list="models">Nothing in the gallery matches that.</p>
+			<p class="said" data-list="sets">No set matches that.</p>
+			<p class="said" data-list="builds">No build matches that.</p>
+			<p class="said" data-list="collections">No collection matches that.</p>
+			<button type="button" class="link" id="clear">Clear the search and the filters</button>
+		</div>
 		<!-- Following with nothing yet, or Top over a quiet week: what goes
-		     here and the way in, in gallery.js's words. -->
-		<div class="state" id="quiet" hidden>
+		     here and the way in, in models.js's words. -->
+		<div class="state" id="quiet" data-list="models" hidden>
 			<span id="quiet-said"></span>
 			<div class="actions"><a class="cta ghost small" id="quiet-go" href="/gallery"></a></div>
 		</div>
@@ -374,15 +439,17 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 		<noscript>
 			<p class="state">The gallery is drawn with a little JavaScript, which is off in this browser.</p>
 		</noscript>
-		<p class="score-said" id="score-said" hidden></p>
+		<p class="score-said" id="score-said" data-list="models" hidden></p>
 		<nav class="pager" data-pager="models" aria-label="Pages of models" data-size="24" data-noun="model|models" hidden>
 			<p class="pager-count" hidden></p>
 			<a class="cta ghost pager-more" href="/gallery?page=2" data-pager-go="more" hidden>Show more</a>
 			<p class="visually-hidden" role="status" data-pager-said></p>
 		</nav>
+		<!-- The sets' pictures' credit, under them: those not built in 3D are Rebrickable's. -->
+		<p class="note picture-credit" id="pictures-credit" data-list="sets">Set pictures: <a href="https://rebrickable.com/">Rebrickable</a></p>
 	</section>
 
-	<section class="wrap wide yours" aria-labelledby="yours-h">
+	<section class="wrap wide yours" aria-labelledby="yours-h" data-list="models">
 		<div class="closing">
 			<h2 id="yours-h">Put yours here</h2>
 			<p class="lede">
@@ -392,6 +459,21 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 				again to update it, or untick the box to take it out of the gallery
 				and keep the link. Made with the assistant or Brickify? Tag it
 				<b>ai-designed</b> or <b>brickify</b>, and its card says so.
+			</p>
+			<div class="actions center"><a class="cta" href="/app">Open the app</a></div>
+		</div>
+	</section>
+	<section class="wrap wide yours" aria-labelledby="sources-h" data-list="sets">
+		<div class="closing">
+			<h2 id="sources-h">Where these come from</h2>
+			<p class="lede">
+				Every set’s facts, parts list and picture are <a href="https://rebrickable.com/">Rebrickable’s</a>,
+				the pictures kept here so your browser never asks them, and its parts are drawn by Brickworks.
+				Those marked 3D are pictured as built: models somebody built in LDraw,
+				piece by piece, for <a href="https://library.ldraw.org/omr">LDraw’s Official Model Repository</a>,
+				and shared under a Creative Commons licence that lets anyone use them as long as they credit
+				them: each card and page names who modelled it and links to its page there. In the app, the 3D
+				ones are <b>File › Library…</b>; a set opened from it keeps its credit when you share it.
 			</p>
 			<div class="actions center"><a class="cta" href="/app">Open the app</a></div>
 		</div>
@@ -434,7 +516,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 					<p class="foot-h" id="foot-community">Community</p>
 					<ul aria-labelledby="foot-community">
 						<li><a href="/gallery">Gallery</a></li>
-						<li><a href="/library">LDraw library</a></li>
+						<li><a href="/library">Sets</a></li>
 						<li><a href="/challenge">Challenge</a></li>
 						<li><a href="/collections">Collections</a></li>
 					</ul>

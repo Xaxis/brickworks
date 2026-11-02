@@ -27,12 +27,13 @@ sized its own titles, from 26 to 74 px. Now:
   (/m/, /u/, /c/) take theirs from web/gallery.html (api/_directory.js
   `siteChrome`). Edit `_shell.html`, then run the script; never a page's
   copy. The header (site356, 2026-10-29, the owner asking for pricing in
-  the site): Gallery · Library · Docs · Pricing in the middle, then
+  the site): Gallery · Docs · Pricing in the middle (the Library left it
+  when it became the gallery's Sets tab, browse, 2026-11-02), then
   **Open the app** · Account (Sign in, a `.cta.ghost`, until you are,
   then your avatar: the account menu, below), the account last at the
   far right (the owner, 2026-10-23: "an obvious pattern"; design_flow.mjs
-  fails a header in another order), from 900 px. Four links, as the
-  owner capped them (2026-10-20), and two buttons; Download moved to the
+  fails a header in another order), from 900 px. Four links at most, as
+  the owner capped them (2026-10-20), and two buttons; Download moved to the
   footer and Menu (`tests/test_site_shell.py`). Under 900 px the mark, the way in and Menu
   (your avatar, once signed in), the last 16 px from the edge as the
   page's words are, down to 320 px: where the bar has no room for the
@@ -401,8 +402,9 @@ is on the page, `hidden`, for the script to show.
   `aria-current="page"` (or `aria-selected` in a tablist), underlined in
   `--accent-edge`, a count in `.n`; a Scroller by its own class, which
   on a phone scrolls inside itself. For the gallery's Top · New ·
-  Following and a profile's Models · Builds · Collections (docs/SOCIAL.md
-  U3, U5).
+  Following · Builds · Collections · Sets, each switched in place (a page
+  to browse, below), and a profile's Models · Builds · Collections
+  (docs/SOCIAL.md U3, U5).
 - **Scroller** (scroll367, 2026-10-30, the owner: "the inline horizontal
   scroll elements… follow our style pattern for how that should best
   practice work"): **the one way anything on the site scrolls sideways.**
@@ -629,26 +631,41 @@ is on the page, `hidden`, for the script to show.
   Library does) and Download beside it; an action bar of Share and More
   alone, its sheet with no embed; its facts as pills, the theme and year
   `a.pill` links back to the shelf; About and Parts its only tabs; more of
-  its theme as `.models.scroller`. `/library` is the gallery's layout (`.tabs`
-  with LDraw library marked, then the bar of filters: Filters and a
-  `.pills.scroller` of themes).
-- **A page to browse** (the gallery and `/library`, site357): a band
-  across the window (`.browse-band.halo`, lit as a landing page opens)
-  holding its head (`.gallery-head`, `.library-head`), the title and a `.lede` under it
-  with the search beside them, which "/" focuses from anywhere but a
-  field (`web/browse.js`, said by a `kbd.hint` on the field until it is
-  used; under 600 px the lede and the hint are left out and the search
-  sits beside the title) and the tabs; then **the bar of filters**
-  (`.toolbar`), Filters and the kinds or themes as a
-  `.pills.scroller.inset`, sticky under the header over the whole list,
+  its theme as `.models.scroller`. `/library` is the gallery on its Sets
+  tab (below): Filters and a `.pills.scroller` of themes its bar of filters.
+- **A page to browse**: the gallery, one page (browse, 2026-11-02, the
+  owner: "one is just a tab in another... they should be like filters
+  too, not loading actual separate pages"), as Printables' and
+  Thingiverse's Models, Makes and Collections are tabs of one page. Its
+  tabs, Top · New · Following · Builds · Collections · Sets, switch in
+  place (`web/gallery.js`; each list its own module: `models.js`,
+  `builds.js`, `collections.js`, `library.js`): the same header, the same
+  search (it searches the tab it is on and keeps its words from tab to
+  tab), the bar of filters showing only the tab's own (`data-list`, said
+  by `html[data-tab]`), one grid, `#models`, of one card (a model, a set,
+  a build's photo, a collection: `.model`), and one pager. Each tab is at
+  the address its page had (`/gallery`, `?sort=newest`, `?following=1`,
+  `/builds`, `/collections`, `/library`, each in `/de/` and so on), put
+  with `history.pushState` so it can be sent and reloaded, and Back
+  returns to the tab and where it was scrolled; `/builds`, `/collections`
+  and `/library` are copies of `web/gallery.html` that
+  `tools/browse_pages.py` writes, each with its own head and its tab
+  marked. A band across the window (`.browse-band.halo`, lit as a landing
+  page opens) holds its head (`.gallery-head`), the title and a `.lede`
+  under it with the search beside them, which "/" focuses from anywhere
+  but a field (said by a `kbd.hint` on the field until it is used; under
+  600 px the lede and the hint are left out and the search sits beside
+  the title) and the tabs, a `.scroller` on a phone, never cut; then
+  **the bar of filters** (`.toolbar`), Filters and the kinds, the themes
+  or the collections' orders as a `.pills.scroller.inset`, sticky under
+  the header over the whole list,
   on the page's ground carried to the window's edges, with the header's
   edge under it once stuck (`data-stuck`). Under it, `#chips`: each filter that is on (a tag,
   an order other than the tabs', a size, how it was made, a box ticked)
   a pill to let go of, and Clear all once there are two. A search asks
   200 ms after typing stops, and the cards it will replace step back
-  while it is asked (`[data-gallery="asking"]`). Its styles are each
-  page's own `<style>`, the same in both, so neither waits on a sheet
-  more before it is drawn.
+  while it is asked (`[data-browse="asking"]`). Its styles are the
+  page's own `<style>`, so it waits on no sheet more before it is drawn.
 - **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
   the screen, in the page's colours the other way round, read out
   (`role="status"`, on the page empty from its load, since a screen
@@ -668,11 +685,17 @@ is on the page, `hidden`, for the script to show.
   its word, hidden at none), `.pinned` (a `.models.scroller`), the `.tabs`, and
   two cards of its own: `.list-card` (a collection, its cover) and
   `.build-grid` (photos of builds in columns, any shape).
-- **A collection's cover**: `.mosaic` (`api/_lists.js` `mosaicHtml`), up
+- **A collection's cover**: `.mosaic` (`web/card.js` `mosaicHtml`), up
   to four of its models' pictures kept wide (one whole, two one over the
   other, three a wide one over two), 4:3 whatever its pictures' own shape,
-  "No pictures yet" with none. On a `.list-card` and at the head of a
-  collection's page.
+  "No pictures yet" with none. On a `.list-card`, a collection's card and
+  at the head of a collection's page.
+- **A collection's card** (`.model.collection-card`, `web/card.js`
+  `collectionCardHtml`; the gallery's Collections tab): the model card's
+  shape, so the tab reads as the gallery does: its cover in the `.frame`,
+  its name the link to `/c/<id>`, whose with their avatar, how many models
+  and followers (hidden at none), and Follow (`web/follow.js`) on its own
+  line under them.
 - **A collection's page** (`/c/<id>`, `api/people.js` `listPage`,
   docs/SOCIAL.md U11), headed as a playlist's or a board's: `.list-head`,
   its `.cover` beside `.who` (the `.eyebrow`, the name, whose and when in
