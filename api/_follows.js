@@ -41,7 +41,8 @@
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
-import { SCORE, TESTS_CACHE, Unacceptable, cardOf, testsAsked } from "./_directory.js";
+import { SCORE, TESTS_CACHE, Unacceptable, cardOf, inLanguage, siteWords, testsAsked } from "./_directory.js";
+import { say } from "./_card.js";
 import { photosWhere } from "./_builds.js";
 import { shownPublicly } from "./_trust.js";
 
@@ -95,49 +96,61 @@ const quoted = (text, most) => {
 };
 
 /// A feed row as a person reads it, the same on the page and in the email:
-/// {kind, at, who, did, name, said, link, by}. [who] is the name of whoever
-/// did it (or "A builder", with no profile); [did] what, up to the model's
-/// name; [after] the rest of the line, if any (only a challenge's, which no
-/// email tells of); [list] the collection it was put in, {id, name, link}
-/// (only a collection's, which no email tells of either); [said] their
-/// words, if any; [link] the thing itself.
+/// {kind, at, who, did, name, said, link, by, line}. [who] is the name of
+/// whoever did it (or "A builder", with no profile); [did] what, up to the
+/// model's name; [after] the rest of the line, if any (only a challenge's,
+/// which no email tells of); [list] the collection it was put in, {id,
+/// name, link} (only a collection's, which no email tells of either);
+/// [said] their words, if any; [link] the thing itself. [line] is the
+/// whole of it as the page says it, in the language it is asked in
+/// (feed's ?lang=, web/card.js say): {who}, {name} and {list} where their
+/// links go, {of} and {title} where the model remixed and the challenge
+/// are named, each in quotes (web/feed.js), the rest said here.
 export function feedSaid(row, origin = "") {
-  const name = quoted(row.name || "a model", 80);
+  const name = quoted(row.name || say("a model"), 80);
   const by = row.by && row.by.handle ? { handle: row.by.handle, name: quoted(row.by.name, 40),
     url: `${origin}/u/${row.by.handle}` } : null;
-  const base = { kind: row.kind, at: row.at, who: by ? by.name : "A builder", by, name, said: "" };
+  const base = { kind: row.kind, at: row.at, who: by ? by.name : say("A builder"), by, name, said: "" };
+  const line = (said, values = {}) => said.replace(/\{(n|step)\}/g, (all, key) => (key in values ? String(values[key]) : all));
   if (row.kind === "model") {
-    return { ...base, did: "shared a new model", link: `${origin}/m/${row.model}` };
+    return { ...base, did: "shared a new model", link: `${origin}/m/${row.model}`, line: say("{who} shared a new model {name}") };
   }
   if (row.kind === "version") {
     return { ...base, did: `shared version ${Number(row.version)} of`, said: quoted(row.note, 280),
-      link: `${origin}/m/${row.model}/v/${Number(row.version)}` };
+      link: `${origin}/m/${row.model}/v/${Number(row.version)}`,
+      line: line(say("{who} shared version {n} of {name}"), { n: Number(row.version) }) };
   }
   if (row.kind === "photo") {
     return { ...base, did: row.yours ? "posted a photo of their build of your model" : "posted a photo of their build of",
-      said: quoted(row.words, 140), link: `${origin}/m/${row.model}#photo-${row.photo}` };
+      said: quoted(row.words, 140), link: `${origin}/m/${row.model}#photo-${row.photo}`,
+      line: row.yours ? say("{who} posted a photo of their build of your model {name}") : say("{who} posted a photo of their build of {name}") };
   }
   if (row.kind === "comment") {
     const where = row.step ? `step ${Number(row.step)} of your model` : "your model";
     return { ...base, did: `commented on ${where}`, said: quoted(row.said, 240),
-      link: `${origin}/m/${row.model}#comment-${row.comment}` };
+      link: `${origin}/m/${row.model}#comment-${row.comment}`,
+      line: row.step ? line(say("{who} commented on step {step} of your model {name}"), { step: Number(row.step) })
+        : say("{who} commented on your model {name}") };
   }
   if (row.kind === "remix") {
-    return { ...base, did: `remixed your model “${quoted(row.of_name || "a model", 80)}” as`,
-      link: `${origin}/m/${row.model}` };
+    const of = quoted(row.of_name || say("a model"), 80);
+    return { ...base, did: `remixed your model “${of}” as`, of, link: `${origin}/m/${row.model}`,
+      line: say("{who} remixed your model {of} as {name}") };
   }
   // A model put in a collection the reader follows (supabase/collection_follows.sql):
   // whose collection, and which, a link of its own.
   if (row.kind === "collection") {
-    return { ...base, did: "added", link: `${origin}/m/${row.model}`,
-      list: { id: String(row.collection || ""), name: quoted(row.list_name || "a collection", 80), link: `${origin}/c/${row.collection}` } };
+    return { ...base, did: "added", link: `${origin}/m/${row.model}`, line: say("{who} added {name} to their collection {list}"),
+      list: { id: String(row.collection || ""), name: quoted(row.list_name || say("a collection"), 80), link: `${origin}/c/${row.collection}` } };
   }
   if (row.kind === "challenge") {
+    const title = quoted(row.title || say("this month’s challenge"), 80);
     return { ...base, did: "entered",
-      after: `in the challenge “${quoted(row.title || "this month’s challenge", 80)}”, built ${row.way === "assistant"
-        ? "with the assistant" : "by hand"}`, link: `${origin}/m/${row.model}` };
+      after: `in the challenge “${title}”, built ${row.way === "assistant" ? "with the assistant" : "by hand"}`, title,
+      link: `${origin}/m/${row.model}`, line: row.way === "assistant" ? say("{who} entered {name} in the challenge {title}, built "
+        + "with the assistant") : say("{who} entered {name} in the challenge {title}, built by hand") };
   }
-  return { ...base, did: "did something with", link: `${origin}/m/${row.model}` };
+  return { ...base, did: "did something with", link: `${origin}/m/${row.model}`, line: say("{who} did something with {name}") };
 }
 
 // ---------------------------------------------------------------------------
@@ -240,6 +253,8 @@ export async function followChoiceOf(account) {
 
 export async function feed(request, response, { origin }) {
   response.setHeader("Cache-Control", "private, no-store");
+  // Each row's line in the language the page asks in (?lang=).
+  const lang = String(request.query?.lang || "en");
   const asker = await who(request);
   if (!asker) throw new Unacceptable("Sign in to see your feed: we email you a code, no password.", 401);
   const given = request.query?.before;
@@ -271,9 +286,9 @@ export async function feed(request, response, { origin }) {
     // When each follow began (supabase/feed_new_rows.sql), null before it.
     call("feed_followed_at", { viewer: asker }, () => null).catch(() => null),
   ]);
-  const rows = found.map((row) => ({ ...feedSaid(row, origin), model: row.model,
+  const rows = inLanguage(lang, siteWords(lang), () => found.map((row) => ({ ...feedSaid(row, origin), model: row.model,
     new: isNew(row, seen, followed), card: cards.get(row.model) || null,
-    ...(row.kind === "photo" ? { photo: photos.get(row.photo) || null } : {}) }));
+    ...(row.kind === "photo" ? { photo: photos.get(row.photo) || null } : {}) })));
   return response.status(200).json({ ready: true, rows: await withFaces(rows), more: page?.more === true, seen_at: page?.seen_at ?? null,
     // Whether New is reckoned from each follow too, or (before the file)
     // from the last look alone.

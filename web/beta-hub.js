@@ -4,29 +4,37 @@
 // what the page is and where the beta is. Everything is put on the page as
 // text.
 import { askToSignIn, call, signedIn } from "/account.js";
+import { langAt, say, told } from "/card.js";
 
 const $ = (id) => document.getElementById(id);
-const WHERE = { site: "On the site", app: "In the app", both: "In the app and on the site" };
+const WHERE = { site: () => say("On the site"), app: () => say("In the app"), both: () => say("In the app and on the site") };
+// A page of the site with a copy in the page's language opens it (/library
+// as /de/library); the docs have none.
+const ledTo = (href) => (/^\/(?:library|gallery|feedback|settings|plans)(?=[/?#]|$)/.test(href) ? `${langAt()}${href}` : href);
 
-/// One card: its title, its words, and where it is or a link to it.
+/// One card, of what is new, known or early: its title and words as we wrote
+/// them, notes in English like the changelog's (lang="en"), and where it
+/// is, in the page's language.
 function card({ title, words, where, href }) {
   const item = document.createElement("li");
   item.className = "card";
   const head = document.createElement("h3");
   head.textContent = title;
+  head.lang = "en";
   const said = document.createElement("p");
   said.textContent = words;
+  said.lang = "en";
   item.append(head, said);
   if (href) {
     const link = document.createElement("a");
     link.className = "pill";
-    link.href = href;
-    link.textContent = WHERE[where] ? `${WHERE[where]}: open it` : "Open it";
+    link.href = ledTo(href);
+    link.textContent = WHERE[where] ? say("{where}: open it", { where: WHERE[where]() }) : say("Open it");
     item.append(link);
   } else if (WHERE[where]) {
     const pill = document.createElement("span");
     pill.className = "pill";
-    pill.textContent = WHERE[where];
+    pill.textContent = WHERE[where]();
     item.append(pill);
   }
   return item;
@@ -46,7 +54,7 @@ async function show() {
     return;
   }
   if (status !== 200) {
-    state.textContent = body?.error || "The hub did not load just now. Try again in a minute.";
+    state.textContent = told(body?.error, say("The hub did not load just now. Try again in a minute."));
     return;
   }
   $("new").replaceChildren(...(body.new || []).map(card));

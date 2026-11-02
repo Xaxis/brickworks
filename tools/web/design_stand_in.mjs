@@ -45,7 +45,9 @@
 // deployment checks it: response_type=code, code_challenge_method=S256 and
 // a code_challenge of 43 base64url characters, or it shows its refusal.
 
-import { existsSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path, { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 // What a notification says and how they are grouped (docs/SOCIAL.md U7):
@@ -53,7 +55,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { noticeGroups } from "../../api/_notifications.js";
 // Designers to follow, read from Top builds' cards as the API reads them
 // (docs/SOCIAL.md U9): pure too.
-import { LATEST, designersFrom } from "../../api/_follows.js";
+import { LATEST, designersFrom, feedSaid } from "../../api/_follows.js";
 // More like a designer: the order the API puts them in.
 import { alikeOf, closestDesigners } from "../../api/_alike.js";
 // What a handle may not be, as the API says it (a new account's First steps).
@@ -63,6 +65,7 @@ import { featuredSaid } from "../../api/_featured.js";
 // The interest form on /plans, checked as the API checks it, and its words.
 import { GONE, KEPT, entryOf } from "../../api/plans.js";
 import { Refusal as BetaRefusal, applicationOf } from "../../api/_beta.js";
+import { EARLY, KNOWN, NEW } from "../../api/_early.js";
 // What a person earned (docs/SOCIAL.md U13), worked out as the server works it out.
 import { achievementsOf } from "../../api/people.js";
 import { inLanguage, siteWords } from "../../api/_directory.js";
@@ -1385,33 +1388,11 @@ function comments(params, who, state) {
     comments: list, you: { signed_in: Boolean(who), may_write: !trouble, why_not: trouble ? COMMENT_WORDS[trouble] : "", owner } });
 }
 
-/// api/_follows.js feedSaid: a feed row as a person reads it.
+/// A feed row as a person reads it, as api/_follows.js feedSaid says it.
 function feedRow(row) {
   const by = personOf(row.by);
-  const base = { kind: row.kind, at: row.at, who: by ? by.name : "A builder",
-    by: by ? { handle: by.handle, name: by.name, url: `${ORIGIN}/u/${by.handle}` } : null, name: row.name, said: "",
-    model: row.model, new: Date.parse(row.at) > Date.parse(FEED_SEEN) };
-  if (row.kind === "model") return { ...base, did: "shared a new model", link: `${ORIGIN}/m/${row.model}` };
-  if (row.kind === "version") {
-    return { ...base, did: `shared version ${row.version} of`, said: row.note, link: `${ORIGIN}/m/${row.model}/v/${row.version}` };
-  }
-  if (row.kind === "photo") {
-    return { ...base, did: row.yours ? "posted a photo of their build of your model" : "posted a photo of their build of",
-      said: row.words, link: `${ORIGIN}/m/${row.model}#photo-${row.photo}` };
-  }
-  if (row.kind === "comment") {
-    return { ...base, did: `commented on ${row.step ? `step ${row.step} of your model` : "your model"}`, said: row.said,
-      link: `${ORIGIN}/m/${row.model}#comment-${row.comment}` };
-  }
-  if (row.kind === "challenge") {
-    return { ...base, did: "entered", after: `in the challenge “${row.title}”, built ${row.way === "assistant"
-      ? "with the assistant" : "by hand"}`, link: `${ORIGIN}/m/${row.model}` };
-  }
-  if (row.kind === "collection") {
-    return { ...base, did: "added", link: `${ORIGIN}/m/${row.model}`,
-      list: { id: row.collection, name: row.list_name, link: `${ORIGIN}/c/${row.collection}` } };
-  }
-  return { ...base, did: `remixed your model “${row.of_name}” as`, link: `${ORIGIN}/m/${row.model}` };
+  return { ...feedSaid({ ...row, by: by ? { handle: by.handle, name: by.name } : null }, ORIGIN), model: row.model,
+    new: Date.parse(row.at) > Date.parse(FEED_SEEN) };
 }
 
 const CHALLENGE_RULES = ["At most 1,500 parts", "Marked Tested: it stands at every step, and every step can be built"];
@@ -1649,14 +1630,15 @@ function people(method, params, body, who, state) {
       // with its card and a photo's picture: asked again for an older one,
       // there is none. state.nobody: Sam follows nobody.
       const followed = state.nobody ? [] : FOLLOWS.filter((one) => one.follower === ME);
-      const rows = params.get("before") || state.nobody ? [] : FEED
+      const lang = params.get("lang") || "en";
+      const rows = params.get("before") || state.nobody ? [] : inLanguage(lang, siteWords(lang), () => FEED
         .filter((row) => ["model", "version", "challenge", "collection"].includes(row.kind) || (row.kind === "photo" && !row.yours))
         .map((row) => {
           const photo = row.kind === "photo" ? PHOTOS.find((one) => one.id === row.photo) : null;
           return { ...feedRow(row), card: apiCard(card(modelOf(row.model))),
             ...(photo ? { photo: { id: photo.id, url: `${ORIGIN}/api/people?op=photo_file&id=${photo.id}`,
               width: photo.width, height: photo.height } } : {}) };
-        });
+        }));
       return answer(200, { ready: true, rows, more: false, seen_at: FEED_SEEN,
         ...(params.get("before") ? {} : { following: followed.map((one) => personOf(one.followed)?.handle).filter(Boolean) }) });
     }
@@ -1715,8 +1697,10 @@ function people(method, params, body, who, state) {
         const m = MODELS.find((one) => one.id === id) || {};
         return [id, { name: m.name, has_image: m.has_image === true, has_thumb: m.has_thumb === true, updated_at: m.updated_at }];
       }));
-      return answer(200, { ready: true, kept: true, seen_at: FEED_SEEN, ...noticeGroups({ rows, models, seen_at: FEED_SEEN,
-        read_at: null, reads: { SamModel01: "2026-10-15T00:00:00Z", SamModel02: "2026-10-03T00:00:00Z" } }) });
+      const lang = params.get("lang") || "en";
+      return answer(200, { ready: true, kept: true, seen_at: FEED_SEEN, ...inLanguage(lang, siteWords(lang), () => noticeGroups({
+        rows, models, seen_at: FEED_SEEN, read_at: null,
+        reads: { SamModel01: "2026-10-15T00:00:00Z", SamModel02: "2026-10-03T00:00:00Z" } })) });
     }
     if (op === "designs") return designs(params);
     if (op === "challenge") return challengePage(who, params.get("id"));
@@ -2159,6 +2143,10 @@ function answered({ url, method = "GET", body, state = {} }) {
     // anything it takes answered as kept, which nothing here keeps.
     case "plans": {
       if (params.get("op") === "beta") return beta(verb, body, who, state);
+      // The beta hub (api/_beta.js betaHub): Sam is a tester.
+      if (params.get("op") === "beta_hub") {
+        return who ? answer(200, { tester: true, early: EARLY, new: NEW, known: KNOWN }) : answer(401, { error: "Sign in to see the beta hub." });
+      }
       if (verb !== "POST") return answer(405, { error: "POST {email, plan, billing, note} or {email, forget: true}" });
       try {
         return answer(200, { said: entryOf(body).forget ? GONE : KEPT });
@@ -2178,24 +2166,52 @@ const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": 
   ".xml": "application/xml", ".txt": "text/plain", ".webmanifest": "application/manifest+json" };
 const PICTURE = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../web/share.png"));
 
+/// The docs as tools/docs_site.py builds them for a deployment, built
+/// once into a folder of their own, gone when this process ends.
+let docsAt = "";
+function docsBuilt(web) {
+  if (!docsAt) {
+    docsAt = mkdtempSync(join(tmpdir(), "bw-docs-"));
+    process.once("exit", () => rmSync(docsAt, { recursive: true, force: true }));
+    execFileSync("python3", [path.join(web, "../tools/docs_site.py"), docsAt]);
+  }
+  return docsAt;
+}
+
 /// A file of [web] at the address deploy.sh serves it: bare names, / for
 /// the landing page, /oauth/authorize for the connector's sign-in, and the
-/// 404 page for anything else.
+/// 404 page for anything else; each in a language at /de/... too (the 404
+/// page for anything there is nothing at in it). The changelog filled as
+/// tools/site.py fills it, and the docs (/docs, /docs/<page>, English
+/// only) as tools/docs_site.py builds them.
 function staticFile(web, pathname) {
-  const named = { "/": "index.html", "/oauth/authorize": "authorize.html" }[pathname.replace(/\/$/, "") || "/"];
+  const lang = /^\/(de|fr|es)(?=\/|$)/.exec(pathname)?.[1] || "";
+  const rest = pathname.slice(lang ? lang.length + 1 : 0).replace(/\/$/, "") || "/";
+  if (!lang && /^\/docs(?:\/[\w-]+)?$/.test(rest)) {
+    const file = path.join(docsBuilt(web), rest === "/docs" ? "docs.html" : `${rest.slice(1)}.html`);
+    if (existsSync(file)) return { status: 200, body: readFileSync(file), type: TYPES[".html"] };
+  }
+  const named = { "/oauth/authorize": "oauth/authorize.html" }[rest];
+  const own = lang ? `${lang}/` : "";
   // A folder's page is its index.html: /de, a language's landing page.
   const bare = pathname.slice(1).replace(/\/$/, "");
-  const candidates = named ? [named] : [pathname.slice(1), `${bare}.html`, `${bare}/index.html`];
+  const candidates = pathname === "/" ? ["index.html"] : named ? [lang ? `${own}${named}` : "authorize.html"]
+    : [pathname.slice(1), `${bare}.html`, `${bare}/index.html`];
   for (const name of candidates) {
     if (!name || name.includes("..")) continue;
     const file = path.join(web, name);
     if (existsSync(file) && !file.endsWith(path.sep)) {
       try {
+        if (path.basename(file) === "changelog.html") {
+          const made = execFileSync("python3", [path.join(web, "../tools/site.py"), `--changelog=${lang || "en"}`]);
+          return { status: 200, body: made, type: TYPES[".html"] };
+        }
         return { status: 200, body: readFileSync(file), type: TYPES[path.extname(file)] || "application/octet-stream" };
       } catch { /* a directory: the next one */ }
     }
   }
-  return { status: 404, body: readFileSync(path.join(web, "404.html")), type: TYPES[".html"] };
+  const missing = lang && existsSync(path.join(web, own, "404.html")) ? path.join(web, own, "404.html") : path.join(web, "404.html");
+  return { status: 404, body: readFileSync(missing), type: TYPES[".html"] };
 }
 
 /// A person's own picture (api/people.js ?op=avatar): its bytes, null for

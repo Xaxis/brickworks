@@ -118,15 +118,15 @@ def test_a_mention_is_said_and_grouped_under_its_model() -> None:
         comment: 41, parent: null, step: 3, said: "Ask @max about the roof", by: { handle: "lia", name: "Lia" } };
       console.log(JSON.stringify({
         said: noticeSaid(row, "https://x"),
-        reply: noticeSaid({ ...row, parent: 40, step: null }, "https://x").did,
+        reply: noticeSaid({ ...row, parent: 40, step: null }, "https://x").line,
         groups: noticeGroups({ rows: [row], models: { PiaTower01: { name: "Tower" } }, seen_at: null, read_at: null, reads: {} },
           "https://x").groups.map((one) => [one.model, one.rows.length]),
       }));
     """)
     said = out["said"]
-    assert said["who"] == "Lia" and said["did"] == "mentioned you in a comment on step 3"
+    assert said["who"] == "Lia" and said["line"] == "{who} mentioned you in a comment on step 3"
     assert said["said"] == "Ask @max about the roof" and said["link"] == "https://x/m/PiaTower01#comment-41"
-    assert out["reply"] == "mentioned you in a reply"
+    assert out["reply"] == "{who} mentioned you in a reply"
     assert out["groups"] == [["PiaTower01", 1]]
 
 

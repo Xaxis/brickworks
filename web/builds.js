@@ -11,7 +11,7 @@
 // The page says where it is on <html>: data-builds is "ready" once a page
 // is drawn ("none" when there is nothing yet, and the empty tab says what a
 // build is and how to add one) or "broken" when the list did not come.
-import { FIRST_SCREEN, buildCard, counted, skeletonHtml } from "/card.js";
+import { FIRST_SCREEN, buildCard, counted, langAt, skeletonHtml } from "/card.js";
 // "/" to search the gallery.
 import { browseBar } from "/browse.js";
 import { pageAsked, pager } from "/pager.js";
@@ -27,7 +27,8 @@ const addressOf = (n) => {
   if (n > 1) asked.set("page", String(n));
   if (tests) asked.set("tests", "1");
   const query = asked.toString();
-  return query ? `/builds?${query}` : "/builds";
+  // In the page's language: /de/builds?page=2.
+  return `${langAt()}/builds${query ? `?${query}` : ""}`;
 };
 
 /// Page [n] of the builds, as cards.

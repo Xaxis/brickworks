@@ -15,16 +15,23 @@
 import { askToSignIn, call, signOut, signedIn, token } from "/account.js";
 import { showFeedCount, showTabCounts } from "/follow.js";
 import { ago, avatarHtml, iconHtml } from "/kit.js";
+import { langAt, say, told } from "/card.js";
 
 const $ = (id) => document.getElementById(id);
+// The language the server says each line in (?lang=, api/_notifications.js
+// noticeSaid).
+const LANG = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? `&lang=${globalThis.brickworksLang.code}` : "";
 
 /// Only the site's own addresses: what the server made from ids.
 function here(link) {
   try {
     const url = new URL(String(link || ""), location.origin);
-    return url.origin === location.origin ? url.pathname + url.search + url.hash : "/notifications";
+    if (url.origin !== location.origin) return `${langAt()}/notifications`;
+    // A page with a copy in the page's language opens it (/de/m/<id>).
+    const copied = /^\/(?:[muc]\/|(?:challenge|profile|collections)(?=\/?$))/.test(url.pathname);
+    return (copied ? langAt() : "") + url.pathname + url.search + url.hash;
   } catch {
-    return "/notifications";
+    return `${langAt()}/notifications`;
   }
 }
 
@@ -70,16 +77,17 @@ function line(one) {
     : ["challenge_open", "challenge_closing"].includes(one.kind) ? "build" : one.kind === "likes" ? "like" : "comment")));
   const words = document.createElement("span");
   words.className = "what";
-  if (one.who) {
-    const who = document.createElement("b");
-    who.textContent = String(one.who);
-    words.append(who, " ");
+  // The line as the server said it in the page's language, whoever did it
+  // where the language puts them.
+  const who = document.createElement("b");
+  who.textContent = String(one.who || "");
+  for (const piece of String(one.line || "").split(/(\{who\})/)) {
+    if (piece) words.append(piece === "{who}" ? who : piece);
   }
-  words.append(String(one.did || ""));
   if (one.new) {
     const tag = document.createElement("span");
     tag.className = "pill new";
-    tag.textContent = "New";
+    tag.textContent = say("New");
     words.append(" ", tag);
   }
   if (one.said) {
@@ -125,15 +133,15 @@ function group(one, i = 0) {
   const title = document.createElement("h2");
   const name = document.createElement("a");
   name.href = here(one.link);
-  name.textContent = String(one.name || "Your model");
+  name.textContent = String(one.name || say("Your model"));
   title.append(name);
   if (one.unread) {
     const dot = document.createElement("span");
     dot.className = "dot";
-    dot.title = "Not opened yet";
+    dot.title = say("Not opened yet");
     const words = document.createElement("span");
     words.className = "visually-hidden";
-    words.textContent = "Not opened yet";
+    words.textContent = say("Not opened yet");
     dot.append(words);
     title.append(dot);
   }
@@ -162,7 +170,7 @@ async function load() {
     return;
   }
   $("signed-out").hidden = true;
-  const answer = await call("/api/people?op=notifications");
+  const answer = await call(`/api/people?op=notifications${LANG}`);
   if (answer.status === 401) {
     signOut();
     return load();
@@ -170,7 +178,7 @@ async function load() {
   $("loading").hidden = true;
   $("signed-in").hidden = false;
   if (answer.status !== 200) {
-    $("said").textContent = answer.body.error || "Brickworks could not show your notifications just now. Try again in a minute.";
+    $("said").textContent = told(answer.body.error, say("Brickworks could not show your notifications just now. Try again in a minute."));
     document.documentElement.dataset.notifications = "failed";
     return;
   }
@@ -193,7 +201,7 @@ $("all-read").addEventListener("click", async () => {
   const answer = await call("/api/people?op=notifications_read", { method: "POST", body: { all: true } }).catch(() => null);
   $("all-read").disabled = false;
   if (!answer || answer.status !== 200) {
-    $("said").textContent = answer?.body?.error || "That did not work just now. Try again in a minute.";
+    $("said").textContent = told(answer?.body?.error, say("That did not work just now. Try again in a minute."));
     return;
   }
   for (const one of document.querySelectorAll("#groups .notice.unread")) {
@@ -209,7 +217,7 @@ $("all-read").addEventListener("click", async () => {
     title.focus();
   }
   allRead();
-  $("said").textContent = "All read.";
+  $("said").textContent = say("All read.");
   showTabCounts(await showFeedCount().catch(() => null));
 });
 // Back to the list from a model: what was opened is shown read.
