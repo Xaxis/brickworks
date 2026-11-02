@@ -77,7 +77,10 @@ The Python side: LDraw in, mesh cache and catalogue out.
   tooth none are).
 - `pack the web parts`: chooses which parts the WebAssembly build carries, smallest
   mesh first, with per-family caps so no family is absent entirely. Everything else
-  is a fetch away at run time.
+  is a fetch away at run time. Its catalogue marks `"exact": false` on each part
+  whose exact shape is in no folder the build reads or fetches from (13,249 of
+  29,668 on 2026-11-02), so the app never asks storage for one (`mark_exact`,
+  `tests/test_web_pack_exact.py`); it says how many ("N without an exact shape").
 - `upload parts to storage`: puts the rest in the Supabase bucket under
   content-hash names, cached for a year, so a name's bytes can never change.
   The exact shapes (`exact/<hash>.bwx`) go up beside the meshes: the web build
