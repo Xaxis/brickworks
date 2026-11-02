@@ -222,7 +222,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { isCron } from "./_cron.js";
-import { db, dbConfigured } from "./_db.js";
+import { db, dbConfigured, reach } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
@@ -626,22 +626,22 @@ function storageHeaders(extra = {}) {
 }
 
 async function putFile(name, body, type) {
-  const answer = await fetch(`${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
+  const what = `storage POST ${name.split(".").pop()}`;
+  const answer = await reach(what, 20, `${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
     method: "POST",
     headers: storageHeaders({ "content-type": type, "x-upsert": "true", "cache-control": "no-store" }),
     body,
-    signal: AbortSignal.timeout(20000),
   });
-  if (!answer.ok) throw new Error(`storage POST ${name.split(".").pop()}: ${answer.status}`);
+  if (!answer.ok) throw new Error(`${what}: ${answer.status}`);
 }
 
 async function getFile(name) {
-  const answer = await fetch(`${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
+  const what = `storage GET ${name.split(".").pop()}`;
+  const answer = await reach(what, 20, `${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
     headers: storageHeaders(),
-    signal: AbortSignal.timeout(20000),
   });
   if (answer.status === 400 || answer.status === 404) return null;
-  if (!answer.ok) throw new Error(`storage GET ${name.split(".").pop()}: ${answer.status}`);
+  if (!answer.ok) throw new Error(`${what}: ${answer.status}`);
   return Buffer.from(await answer.arrayBuffer());
 }
 
@@ -649,13 +649,12 @@ async function deleteFiles(names) {
   for (const bucket of [BUCKET, THUMBS]) {
     const these = names.filter((name) => bucketOf(name) === bucket);
     if (these.length === 0) continue;
-    const answer = await fetch(`${project()}/storage/v1/object/${bucket}`, {
+    const answer = await reach(`storage DELETE ${bucket}`, 20, `${project()}/storage/v1/object/${bucket}`, {
       method: "DELETE",
       headers: storageHeaders({ "content-type": "application/json" }),
       body: JSON.stringify({ prefixes: these }),
-      signal: AbortSignal.timeout(20000),
     });
-    if (!answer.ok) throw new Error(`storage DELETE: ${answer.status}`);
+    if (!answer.ok) throw new Error(`storage DELETE ${bucket}: ${answer.status}`);
   }
 }
 
@@ -664,13 +663,12 @@ async function listFiles() {
   const files = [];
   for (const bucket of [BUCKET, THUMBS]) {
     for (let offset = 0; ; offset += 1000) {
-      const answer = await fetch(`${project()}/storage/v1/object/list/${bucket}`, {
+      const answer = await reach(`storage list ${bucket}`, 20, `${project()}/storage/v1/object/list/${bucket}`, {
         method: "POST",
         headers: storageHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ prefix: "", limit: 1000, offset, sortBy: { column: "name", order: "asc" } }),
-        signal: AbortSignal.timeout(20000),
       });
-      if (!answer.ok) throw new Error(`storage list: ${answer.status}`);
+      if (!answer.ok) throw new Error(`storage list ${bucket}: ${answer.status}`);
       const page = await answer.json();
       files.push(...page.filter((file) => file.id !== null));
       if (page.length < 1000) break;

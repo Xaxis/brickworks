@@ -6,7 +6,7 @@
 // SHA-256, so the database cannot be read back into a working token.
 
 import { createHash, randomBytes } from "node:crypto";
-import { db } from "./_db.js";
+import { db, reach } from "./_db.js";
 
 export const SCOPE = "build";
 // claude.ai's published identity, which the Claude desktop and mobile apps
@@ -93,11 +93,10 @@ export async function grantOf(token, resource) {
 async function accountRecord(owner, change = null) {
   const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
   const key = process.env.SUPABASE_SECRET_KEY;
-  const reply = await fetch(`${base}/auth/v1/admin/users/${encodeURIComponent(owner)}`, {
+  const reply = await reach(`accounts ${change ? "PUT" : "GET"}`, 15, `${base}/auth/v1/admin/users/${encodeURIComponent(owner)}`, {
     method: change ? "PUT" : "GET",
     headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
     body: change ? JSON.stringify({ app_metadata: change }) : undefined,
-    signal: AbortSignal.timeout(15000),
   });
   if (!reply.ok) throw new Error(`accounts ${change ? "PUT" : "GET"}: ${reply.status}`);
   const user = await reply.json();

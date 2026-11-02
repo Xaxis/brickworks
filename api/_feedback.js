@@ -33,7 +33,7 @@
 // a picture and a model are each at most MOST.picture and MOST.model.
 import { AuthError, bearer, verify } from "./_auth.js";
 import { framedMail, Refusal, resend, siteOrigin } from "./_beta.js";
-import { db, dbConfigured } from "./_db.js";
+import { db, dbConfigured, reach } from "./_db.js";
 
 export const KINDS = Object.freeze({ bug: "Something is wrong", idea: "An idea", question: "A question" });
 export const SOURCES = ["site", "app"];
@@ -166,15 +166,15 @@ function storageHeaders(extra = {}) {
 }
 
 async function putFile(name, bytes, type) {
-  const answer = await fetch(`${project()}/storage/v1/object/${BUCKET}/${name}`, {
+  const answer = await reach(`storage POST ${BUCKET}`, 30, `${project()}/storage/v1/object/${BUCKET}/${name}`, {
     method: "POST", headers: storageHeaders({ "content-type": type, "x-upsert": "true", "cache-control": "no-store" }),
-    body: bytes, signal: AbortSignal.timeout(30000) });
+    body: bytes });
   if (!answer.ok) throw new Error(`storage POST ${BUCKET}: ${answer.status}`);
 }
 
 async function getFile(name) {
-  const answer = await fetch(`${project()}/storage/v1/object/${BUCKET}/${name}`, {
-    headers: storageHeaders(), signal: AbortSignal.timeout(30000) });
+  const answer = await reach(`storage GET ${BUCKET}`, 30, `${project()}/storage/v1/object/${BUCKET}/${name}`, {
+    headers: storageHeaders() });
   if (answer.status === 400 || answer.status === 404) return null;
   if (!answer.ok) throw new Error(`storage GET ${BUCKET}: ${answer.status}`);
   return Buffer.from(await answer.arrayBuffer());
@@ -183,9 +183,9 @@ async function getFile(name) {
 /// Exactly these files of the bucket, and nothing else.
 export async function deleteFeedbackFiles(names) {
   for (let at = 0; at < names.length; at += 100) {
-    const answer = await fetch(`${project()}/storage/v1/object/${BUCKET}`, {
+    const answer = await reach(`storage DELETE ${BUCKET}`, 20, `${project()}/storage/v1/object/${BUCKET}`, {
       method: "DELETE", headers: storageHeaders({ "content-type": "application/json" }),
-      body: JSON.stringify({ prefixes: names.slice(at, at + 100) }), signal: AbortSignal.timeout(20000) });
+      body: JSON.stringify({ prefixes: names.slice(at, at + 100) }) });
     if (!answer.ok) throw new Error(`storage DELETE ${BUCKET}: ${answer.status}`);
   }
 }
