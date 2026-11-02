@@ -27,7 +27,7 @@
 //
 // Screenshots of every page at phone and laptop size go to --out.
 import { launch, allPictures } from "./browser.mjs";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -356,7 +356,7 @@ async function resolves(href, from) {
   if (url.hash && url.hash.length > 1) {
     const id = url.hash.slice(1);
     const target = url.pathname === "/" ? pageHtml["/"] : (pageHtml[url.pathname] || (await get(url.pathname)).body);
-    const made = MADE_BY[`${url.pathname}#${id}`];
+    const made = MADE_BY[`${url.pathname.replace(COPY, "")}#${id}`];
     const there = new RegExp(`id="${id}"`).test(target || "")
       || (made && new RegExp(`\\.id = "${id}";`).test((await get(made)).body || ""));
     if (!there) fail(`${from} links to ${url.pathname}${url.hash}, and there is no such id`);
@@ -366,8 +366,11 @@ async function resolves(href, from) {
 // /settings is drawn for whoever is signed in, so its plan's row is not in
 // its HTML. Read in that script, an id renamed there still fails here.
 // /plans' Upgrade links to it, unchecked until its copies in each language
-// joined PAGES (rel-m240).
+// joined PAGES (rel-m240). A copy (/de/settings) runs the same scripts, so
+// it is looked up by its English address.
 const MADE_BY = { "/settings#plan": "/plan.js" };
+const COPY = new RegExp(`^/(?:${readdirSync(new URL("../../web/_lang/", import.meta.url))
+  .filter((name) => name.endsWith(".json")).map((name) => name.slice(0, -5)).join("|")})(?=/)`);
 for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
   const html = pageHtml[page] || (await get(page)).body;
   const hrefs = [...html.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
