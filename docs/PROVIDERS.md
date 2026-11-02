@@ -514,6 +514,14 @@ OPENAI_API_KEY=sk-stub-key-for-a-test-only godot --path . -- --ask-provider="a r
 
 Each is one agent's unit from `origin/main`, ending in the lead's merge.
 
+*Status, 2026-11-02 (anyai, docs/ANY_ASSISTANT.md):* P1 to P4 and P8 built;
+P1's real ChatGPT connection still not made, and ChatGPT's own limits are now
+known to be the harder part (consumer plans may not add a custom server;
+pictures from tools do not reliably reach its model): ANY_ASSISTANT U5 and
+U6. P5, P6 and P7 not done; `.env` still holds no OpenAI or Google key. P8's
+gap (connector calls named Claude) is ANY_ASSISTANT U1. P9 no longer
+applies. ANY_ASSISTANT section F is the order now.
+
 **P1. ChatGPT on the relay.** `api/oauth.js` takes ChatGPT's client document
 (`private_key_jwt` verified against its `jwks_uri`, or as a public client
 where its document allows `none`), says so in the metadata, and the consent
@@ -652,3 +660,7 @@ Claude in the history, as the relay does not pass the client's name on a call.
 **P9. The plan's word.** `docs/PLANS.md`: `claude_builds` becomes `ai_builds`,
 "AI builds", before U0 creates the product. *Bar:* the dry run of section 10
 shows the new name.
+*No longer applies (2026-11-02):* no plan counts or limits AI any more
+(`api/plans.js:36`, "nothing of AI, which no plan limits"; the FAQ's "AI is
+never limited, on any plan"), and nothing in `api/`, `src/` or `supabase/`
+says `claude_builds`. Section 7 is history.
