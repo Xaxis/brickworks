@@ -183,17 +183,34 @@ await shot("6_changed_placed.png");
 
 // A piece cut out of a plain brick, changed as itself.
 // Scroll the dialog's controls until [name] is on show: the app publishes
-// only what can be pressed.
+// only what can be pressed (ElementDialog.controls_by_name), and a place
+// only once the control has stood there for a telling (Main._page_places).
+// So each look is at what the app tells after the wheel has turned, not 500
+// ms on: the dialog keeps its scroll, and for 3003 the wheel took it up to
+// "element from" and on past it before the row had ever been told.
 async function reveal(name) {
   if (await showing(name)) return true;
+  if (await toldAfter(name)) return true;
   const anchor = await page.evaluate(() => window.brickworksControls["element add"]);
   if (!anchor) return false;
   await page.mouse.move(anchor.x - 120, anchor.y - 200);
   await page.mouse.wheel(0, -2000);
-  await page.waitForTimeout(500);
-  for (let n = 0; n < 12 && !(await showing(name)); n++) {
+  for (let n = 0; n < 12; n++) {
+    if (await toldAfter(name)) return true;
     await page.mouse.wheel(0, 160);
-    await page.waitForTimeout(500);
+  }
+  return toldAfter(name);
+}
+// Whether the app tells [name] once it has told the page [tellings] times
+// more: a control that has just come into view is told at the second
+// telling after (it is where it was at the one before). A telling is a new
+// window.brickworksControls; none in 10 s is an app that has stopped.
+async function toldAfter(name, tellings = 3) {
+  for (let n = 0; n < tellings; n++) {
+    await page.evaluate(() => { window.elementSeen = window.brickworksControls; });
+    const told = await page.waitForFunction(() => window.brickworksControls !== window.elementSeen, null,
+      { timeout: 10000, polling: 100 }).catch(() => null);
+    if (!told) break;
   }
   return showing(name);
 }

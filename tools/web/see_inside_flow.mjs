@@ -18,7 +18,7 @@
 // what window.brickworksControls says is where, and every result is read
 // off window.brickworksState. Pictures of each in --out. It fails if a step
 // does not happen or a script error reaches the console.
-import { clickStill, launch } from "./browser.mjs";
+import { clickStill, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -92,30 +92,6 @@ function press(name) {
     await page.mouse.click(at.x, at.y);
   } });
 }
-// Open… > From a file, answered with a file. The app reads a click a frame
-// or more after the page does, so a press that brought no picker is tried
-// again (studio_flow.mjs has the same reason at length).
-async function open(file) {
-  const at = await where("open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await shot(`no_picker_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
 async function key(name) {
   await page.keyboard.press(name);
   await page.waitForTimeout(1500);
@@ -130,7 +106,7 @@ await page.waitForTimeout(Number(args.load || 15000));
 // person to.
 let note = null;
 for (let attempt = 0; attempt < 3; attempt++) {
-  await open(lxf);
+  await openFromFile(page, lxf, { shots: out });
   note = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
   console.log(`        the status bar: "${note ? note.said : (await state()).said}"`);
   if (note && !/arriving/.test(note.said)) break;
@@ -143,7 +119,7 @@ await page.waitForTimeout(6000);
 await shot("1_lxf.png");
 
 // A tower.
-await open(tower);
+await openFromFile(page, tower, { shots: out });
 const big = await until((s) => s.bricks > 8000, 600);
 ok(Boolean(big), `the tower opened: ${(await state()).bricks} parts`);
 await page.waitForTimeout(20000);

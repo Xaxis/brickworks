@@ -31,7 +31,7 @@
 // checks what a step shows, passed (docs/CADTASK.md, section 6).
 //   node tools/web/cad_frames.mjs --url=URL/app --bypass=X --gate --arrive=300 \
 //     --only=orbit,select_all,step --out=DIR vendor/omr/files/75969-1.mpd
-import { launch, openColumnFor, typeInMenu } from "./browser.mjs";
+import { launch, openColumnFor, openFromFile, typeInMenu } from "./browser.mjs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 
@@ -223,18 +223,7 @@ for (const model of models) {
   console.log(`frames: ${basename(model)}`);
   const row = { file: basename(model) };
   // File, Open, From a file: the file handed over is the press.
-  const at = await where("open");
-  let chooser = null;
-  for (let n = 0; n < 3 && !chooser; n++) {
-    choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(3000 + 3000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && choosers.length === 0; wait++) await page.waitForTimeout(500);
-    chooser = choosers.shift() || null;
-    if (!chooser) await page.keyboard.press("Escape");
-  }
-  if (!chooser) throw new Error("no file chooser came up for Open");
+  const chooser = await openFromFile(page, null, { choosers, shots: out });
   const before = (await state()).bricks || 0;
   const opened = await now();
   await chooser.setFiles(model);

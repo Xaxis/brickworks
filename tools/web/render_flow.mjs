@@ -28,7 +28,7 @@
 // or a script error reaches the console. Each render also says which of
 // its frames was longest and what it was doing then (StudioRender's
 // worst_step). Leaves OUT/*.png, the downloads and a summary.
-import { clickStill, launch } from "./browser.mjs";
+import { clickStill, launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -182,28 +182,6 @@ async function renderAndKeep(button, label, minutes) {
   return { file, seen, stall, seconds };
 }
 
-// Open, From a file, and the file given to the page's chooser.
-async function openFile(file) {
-  const at = await where("open", 120);
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
-}
-
 function pngSize(file) {
   const bytes = readFileSync(file);
   if (bytes.slice(1, 4).toString() !== "PNG") return null;
@@ -325,7 +303,7 @@ try {
 
   // Animation: the crane's own motion, framed on what moves.
   await press("render_close");
-  await openFile(crane);
+  await openFromFile(page, crane, { shots: out });
   let opened = null;
   for (let n = 0; n < 480 && !opened; n++) {
     const now = await page.evaluate(() => window.brickworksState || {});

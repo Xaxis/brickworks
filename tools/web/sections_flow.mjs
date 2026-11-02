@@ -13,7 +13,7 @@
 // (window.brickworksControls, and brickworksState.sections.rows for the
 // model tree's rows), and every result is read back off the app
 // (window.brickworksState.sections, .tree, .bricks).
-import { launch, openColumnFor } from "./browser.mjs";
+import { launch, openColumnFor, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -123,28 +123,10 @@ async function rowAt(id, seconds = 30) {
   }
   throw new Error(`the model tree never showed row ${id}`);
 }
-// File, Open's own button, then its "from this computer" row, as a person.
-async function openFile(path) {
-  const at = await controlAt("open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await wait(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let w = 0; w < 60 && page.choosers.length === 0; w++) await wait(500);
-    const picker = page.choosers.shift();
-    if (picker) {
-      await picker.setFiles(path);
-      return true;
-    }
-    await key("Escape", 3000);
-  }
-  return false;
-}
 
 await controlAt("model_name");
 await wait(8000);
-check(`opened ${set}`, await openFile(set));
+check(`opened ${set}`, Boolean(await openFromFile(page, set, { shots: out, optional: true })));
 const opened = await until((s) => /^opened \d+ parts/.test(s.said || ""), 300);
 console.log(`    "${opened.said}"`);
 // Parts fetched on demand still on their way (ModelStore.awaited): none left.

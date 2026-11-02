@@ -13,13 +13,14 @@
 // prints web/icon.svg on 3037's slope with its background cleared in LEGO
 // inks; presses Stickers… > New sticker…, clicks the two tiles in the middle
 // of the view, draws a sign and saves it; saves the sheet as a PDF and
-// measures it with tools/sticker_sheet_check.py; exports the model, and in
-// a second, empty browser opens it and photographs it. It fails if a
+// measures it with tools/sticker_sheet_check.py; exports the model (File >
+// Export > LDraw model), and in a second, empty browser opens it and
+// photographs it. It fails if a
 // control never appears, a save adds no part made here
 // (window.brickworksState.custom), the sticker is not stuck on, the sheet is
 // not true to size within 0.1 mm, the model does not come back with all its
 // printed parts, or a script error reaches the console.
-import { clickStill, launch, openColumnFor } from "./browser.mjs";
+import { clickStill, exportFromFile, launch, openColumnFor, openFromFile } from "./browser.mjs";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -119,9 +120,6 @@ function tools(page) {
       }
       await shot(`no_picker_${what}_${n}.png`);
       console.log(`  --    no picker for ${what}; frames take ${await frameTimes()} ms`);
-      // A menu left open is closed before the next try; a dialog is not,
-      // since Escape closes the print designer too.
-      if (what === "open") await page.keyboard.press("Escape");
       await page.waitForTimeout(3000);
     }
     throw new Error(`no file picker came up for ${what}`);
@@ -145,16 +143,7 @@ function tools(page) {
   async function choose(name, file) {
     await picked(() => clickStill(page, name, { find: where }), file, name);
   }
-  async function open(file) {
-    const at = await where("open");
-    await picked(async (n) => {
-      await page.mouse.click(at.x, at.y);
-      // The menu opens under the pointer; its first line is "From a file".
-      await page.waitForTimeout(4000 + 4000 * n);
-      if (n === 0) await shot("open_menu.png");
-      await page.mouse.click(at.x + 40, at.y + 22);
-    }, file, "open");
-  }
+  const open = (file) => openFromFile(page, file, { shots: out });
   async function type(name, words) {
     await click(name);
     await page.keyboard.press("Control+A");
@@ -297,11 +286,10 @@ try {
 await $.click("sheet_close");
 
 // The model, downloaded, and opened in a browser that has never seen it.
-const export_at = await $.where("export");
-const [exported] = await Promise.all([
-  page.waitForEvent("download", { timeout: 60000 }),
-  page.mouse.click(export_at.x, export_at.y),
-]);
+// File > Export > LDraw model: the toolbar has had no Export since the
+// menus came (1528cccf).
+const exported = await exportFromFile(page, "LDraw model", { shots: out });
+if (!exported) throw new Error("File > Export > LDraw model brought no download");
 const model = resolve(`${out}/model.mpd`);
 await exported.saveAs(model);
 const text = await import("node:fs").then((fs) => fs.readFileSync(model, "utf8"));

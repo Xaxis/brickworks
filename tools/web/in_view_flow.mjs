@@ -47,7 +47,7 @@
 // Pictures of the window in that state in --out, named by the size, and
 // in_view's text. No model is called; costs nothing. Fails, exiting 1, on any
 // check that does not hold or a script error in the console.
-import { askApp, clickStill, controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
+import { askApp, clickStill, controlsWith, launch, openColumnFor, openFromFile, withJobs } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -208,27 +208,6 @@ async function bricksDrawn(name) {
   return { ...counted, drawn: counted.red > 50 && counted.yellow > 50 };
 }
 
-// Open… > From a file, answered with a file, as steps_flow.mjs opens one.
-async function open(file) {
-  const at = await where("open");
-  for (let n = 0; n < 3; n++) {
-    choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && choosers.length === 0; wait++) await page.waitForTimeout(500);
-    const picker = choosers.shift();
-    if (picker) {
-      await picker.setFiles(file);
-      return;
-    }
-    await shot(`no_picker_${n}_${tag}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up for Open… > From a file");
-}
-
 // Make › Reference picture…, by Find a command, as palette_flow.mjs finds one:
 // the page's own file chooser answered with the photo.
 async function layReference(file) {
@@ -331,7 +310,7 @@ async function run() {
   // 2. The model, nine steps of the author's.
   let note = null;
   for (let attempt = 0; attempt < 3; attempt++) {
-    await open(nine);
+    await openFromFile(page, nine, { choosers, shots: out });
     note = await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
     console.log(`        the status bar: "${note ? note.said : (await state()).said}"`);
     if (note && !/arriving/.test(note.said)) break;

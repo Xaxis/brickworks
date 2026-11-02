@@ -47,7 +47,7 @@
 //
 // What this measures is this box: SwiftShader, a shared machine. Times are
 // said, not judged; the counts are the finding.
-import { askApp, launch } from "./browser.mjs";
+import { askApp, exportFromFile, launch, openFromFile } from "./browser.mjs";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1199,47 +1199,13 @@ async function putFirst(part, view, want) {
 
 // -- reading the model back -----------------------------------------------------------
 
+// The model as the app writes it, File > Export > LDraw model, kept as [name].
 async function exportLdraw(name) {
-  const file = await where("menu_file");
-  for (let n = 0; n < 3; n++) {
-    const download = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
-    await page.mouse.click(file.x, file.y);
-    await page.waitForTimeout(2500 + 2500 * n);
-    await page.keyboard.press("E");
-    await page.waitForTimeout(800);
-    await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(1500);
-    await page.keyboard.press("Enter");
-    const got = await download;
-    if (got) {
-      const path = `${out}/${name}`;
-      await got.saveAs(path);
-      return readFileSync(path, "utf8");
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  return null;
-}
-async function openFile(path) {
-  const at = await where("open");
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);
-    const picker = page.choosers.shift();
-    if (picker) {
-      const before = (await state()).said;
-      await picker.setFiles(path);
-      await dontSave(before);
-      return true;
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  return false;
+  const got = await exportFromFile(page, "LDraw model", { shots: out });
+  if (!got) return null;
+  const path = `${out}/${name}`;
+  await got.saveAs(path);
+  return readFileSync(path, "utf8");
 }
 // The set's file opened over the model built from it asks first whether to
 // save that (ModelBar.ask_to_replace): it was exported to be compared, so
@@ -1497,7 +1463,12 @@ await page.waitForTimeout(8000);
   const exported = await exportLdraw(`${stem}_built.ldr`);
   const compared = exported ? compareParts(set, readSet(exported), foundAs) : null;
   // The set as its file has it, from the same view.
-  await openFile(`${SETS_DIR}/${name}`);
+  const chooser = await openFromFile(page, null, { shots: out, optional: true });
+  if (chooser) {
+    const before = (await state()).said;
+    await chooser.setFiles(`${SETS_DIR}/${name}`);
+    await dontSave(before);
+  }
   await until((s) => /^opened \d+ parts/.test(s.said || ""), 240);
   await page.waitForTimeout(6000);
   const shotFile = `${out}/${stem}_file.png`;

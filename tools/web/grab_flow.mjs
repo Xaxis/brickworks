@@ -46,7 +46,7 @@
 // live build and m54 both waited 300-800 ms on the first drag at load 30-43,
 // while the app's own drag frames never passed 7.3 ms, and it held m54's
 // turntable fix three times.
-import { launch } from "./browser.mjs";
+import { launch, openFromFile } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -171,27 +171,12 @@ async function until(read, test, seconds) {
   }
   return null;
 }
+// Open… > From a file, and Don't save if the model there asks.
 async function open(file) {
-  const at = await where("open", 400);
-  for (let n = 0; n < 3; n++) {
-    page.choosers.length = 0;
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(4000 + 4000 * n);
-    await page.mouse.click(at.x + 40, at.y + 22);
-    for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) {
-      await page.waitForTimeout(500);
-    }
-    const picker = page.choosers.shift();
-    if (picker) {
-      const before = (await state()).said;
-      await picker.setFiles(file);
-      await dontSave(before);
-      return;
-    }
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  throw new Error("no file picker came up");
+  const chooser = await openFromFile(page, null, { shots: out });
+  const before = (await state()).said;
+  await chooser.setFiles(file);
+  await dontSave(before);
 }
 // An open over a model with changes not saved asks first whether to save
 // them (ModelBar.ask_to_replace), as the crane has by the time the tube

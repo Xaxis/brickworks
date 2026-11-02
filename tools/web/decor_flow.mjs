@@ -21,7 +21,7 @@
 // Studio's form, a model does not come back with its decorated parts
 // (window.brickworksState.custom and .parts), or a script error reaches the
 // console.
-import { clickStill, controlsWith, launch, openColumnFor } from "./browser.mjs";
+import { clickStill, controlsWith, exportFromFile, launch, openColumnFor, openFromFile } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -110,7 +110,6 @@ function tools(page) {
         return;
       }
       await shot(`no_picker_${what}_${n}.png`);
-      if (what === "open") await page.keyboard.press("Escape");
       await page.waitForTimeout(3000);
     }
     throw new Error(`no file picker came up for ${what}`);
@@ -118,14 +117,7 @@ function tools(page) {
   async function choose(name, file) {
     await picked(() => clickStill(page, name, { find: where }), file, name);
   }
-  async function open(file) {
-    const at = await where("open");
-    await picked(async (n) => {
-      await page.mouse.click(at.x, at.y);
-      await page.waitForTimeout(4000 + 4000 * n);
-      await page.mouse.click(at.x + 40, at.y + 22);
-    }, file, "open");
-  }
+  const open = (file) => openFromFile(page, file, { shots: out });
   async function type(name, words) {
     await click(name);
     await page.keyboard.press("Control+A");
@@ -136,30 +128,6 @@ function tools(page) {
   const custom = async () => (await state()).custom || [];
   const parts = async () => (await state()).parts || [];
   return { controls, state, shot, until, where, click, choose, open, type, custom, parts };
-}
-
-// File > Export > BrickLink Studio model (.io), by the menu's keys, as
-// io_flow.mjs does it (and says why not by typing its name).
-async function exportStudio(page, $) {
-  const file = await $.where("menu_file");
-  for (let n = 0; n < 3; n++) {
-    const download = page.waitForEvent("download", { timeout: 90000 }).catch(() => null);
-    await page.mouse.click(file.x, file.y);
-    await page.waitForTimeout(2500 + 2500 * n);
-    await page.keyboard.press("E");
-    await page.waitForTimeout(800);
-    await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(1500);
-    await page.keyboard.press("ArrowDown");
-    await page.waitForTimeout(800);
-    await page.keyboard.press("Enter");
-    const got = await download;
-    if (got) return got;
-    await $.shot(`no_download_${n}.png`);
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(3000);
-  }
-  return null;
 }
 
 const page = await pageFor("first");
@@ -260,7 +228,7 @@ await page.waitForTimeout(4000);
 await $.shot("4_swapped.png");
 
 // 4. Out as a Studio file, ours carried in Studio's form.
-const download = await exportStudio(page, $);
+const download = await exportFromFile(page, "BrickLink Studio model", { shots: out });
 ok(Boolean(download), `File > Export > BrickLink Studio model downloads ${download ? download.suggestedFilename() : "nothing"}`);
 const exported = `${out}/decorated.io`;
 let members = {};
