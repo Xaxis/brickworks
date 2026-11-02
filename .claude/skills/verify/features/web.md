@@ -3464,7 +3464,11 @@ plan with Claude as the client.
   (`web/beta-admin.html`, `web/beta-admin.js`, `api/admin.js` ?op=beta,
   ?op=beta_decide, ?op=beta_grant) and `beta browser flow`
   (`tools/web/beta_flow.mjs`): the beta (2026-10-29, beta361), dark behind
-  BRICKWORKS_BETA (off unless "open"; production's off). Off: /beta says
+  BRICKWORKS_BETA (off unless "open"; production's off). What testers get
+  is what Pro is (2026-11-02, docs/PLANS.md): every model kept and
+  commercial use; the desktop app is everyone's, so neither the page nor a
+  mail offers it as theirs, and the AI card says only Claude works in a
+  browser (the flow checks #get first, open or off). Off: /beta says
   Coming soon with no form and no count, GET ?op=beta is `{beta: off}` and
   asks nothing, POST is 403. Open: the spots left (`N of 100 spots left`),
   signed out Sign in to apply (the sign-in dialog), signed in the form (what
