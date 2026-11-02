@@ -228,7 +228,7 @@ import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
   LDRAW_FROM, listQuery, looksLikePerson, modelHash, modelledByOf, motionsIn, movesWords, partFacts,
-  inLanguage, SITE_LANGS, asText, sayHtml, siteChrome, siteWords, testsAsked, visitorKey,
+  inLanguage, SITE_LANGS, asText, sayHtml, siteChrome, siteWords, summary, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { libraryCredit, storeBytes, storeFile, storeRoot } from "./_omr_credit.js";
@@ -1216,9 +1216,7 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     ? `/m/${id}.webp?v=${(Date.parse(model.updated_at || "") || 0).toString(36)}` : picture;
   const { head, header, footer } = siteChrome(lang);
   const kind = say(kindLabel(model.kind));
-  const about = model.description
-    ? model.description.replace(/\s+/g, " ").slice(0, 157) + (model.description.length > 157 ? "…" : "")
-    : "";
+  const about = model.description ? summary(model.description) : "";
   // The one it came from, while it is listed; one shared only by link is
   // not named. And which version of it the copy was made of, when its app
   // said: that version's page, which is the newest's while it is newest.

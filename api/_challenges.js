@@ -44,7 +44,7 @@ import { bearer, isTestAccount, verify } from "./_auth.js";
 import { COLOUR_NAMES } from "./_colours.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
-import { TESTS_CACHE, Unacceptable, cardOf, escapeHtml, testsAsked } from "./_directory.js";
+import { TESTS_CACHE, Unacceptable, cardOf, escapeHtml, summary, testsAsked } from "./_directory.js";
 import { brokenSaid as brokenWords, rulesSaid, say } from "./_card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -187,7 +187,7 @@ export function challengeHead(html, origin, page, tests = false) {
   const brief = String(page.brief || "").replace(/\s+/g, " ").trim();
   const days = daysSaid(page.starts_on, page.ends_on);
   const when = page.state === "ended" ? `Ran ${days}: see who won.` : page.state === "upcoming" ? `From ${days}.` : `Open ${days}.`;
-  const about = `${brief.length > 220 ? `${brief.slice(0, 219)}…` : brief} ${when}`.trim();
+  const about = `${summary(brief, 220)} ${when}`.trim();
   const url = `${origin}/challenge?id=${n(page.id)}${tests && page.test ? "&tests=1" : ""}`;
   const entries = new Map((page.entries || []).filter((one) => one && one.card).map((one) => [one.model, one.card]));
   const won = (page.winners || []).map((one) => entries.get(one.model)).find((card) => card && card.has_image);

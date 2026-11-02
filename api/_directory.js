@@ -555,6 +555,17 @@ export function visitorKey(request, id, day = new Date().toISOString().slice(0, 
 export const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+/// [text] as a page's description (meta description, og:description): on
+/// one line, and where it is longer than [most], cut after a whole word
+/// with "…", never mid-word as a search result would show it ("The collec").
+export function summary(text, most = 160) {
+  const line = String(text ?? "").replace(/\s+/g, " ").trim();
+  if (line.length <= most) return line;
+  const space = line.lastIndexOf(" ", most - 1);
+  const kept = (space > most / 2 ? line.slice(0, space) : line.slice(0, most - 1)).replace(/[\s,;:–—-]+$/, "");
+  return `${kept}…`;
+}
+
 // The LEGO Group's Fair Play policy asks for this on any page that names
 // its mark (docs/TRADEMARKS.md); tests/test_trademarks.py holds it here.
 export const NOTICE = "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site.";

@@ -188,7 +188,7 @@ import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
   SITE_LANGS, TESTS_CACHE, Unacceptable, asText, cardOf, count, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords,
-  testsAsked, visitorKey,
+  summary, testsAsked, visitorKey,
 } from "./_directory.js";
 import { handleTrouble, namesTrouble } from "./_names.js";
 import { publicTrouble, sendDigest, shownPublicly } from "./_trust.js";
@@ -1461,7 +1461,7 @@ ${shareSheetHtml({ url, name: person.name, text: say("{name} on Brickworks", { n
   return page(origin, {
     title: earned ? say("{name} (@{handle}) — a designer in Brickworks", { name: person.name, handle: person.handle })
       : say("{name} (@{handle}) — models built in Brickworks", { name: person.name, handle: person.handle }),
-    about: person.bio ? person.bio.replace(/\s+/g, " ").slice(0, 160) : told,
+    about: person.bio ? summary(person.bio) : told,
     url, image: picture, main, mine: true, cards: drawn, paged, lang, words, alternates,
   });
 }
@@ -1534,7 +1534,7 @@ ${shareSheetHtml({ url, name: list.name, text: `${list.name}, a collection on Br
     image: first && first.image ? first.image : "" })}`;
   return html(response, 200, page(origin, {
     title: `${list.name} — a collection in the Brickworks gallery`,
-    about: list.description ? list.description.replace(/\s+/g, " ").slice(0, 160)
+    about: list.description ? summary(list.description)
       : `${count(list.count, "model")} built in Brickworks, collected by ${list.by ? list.by.name : "a builder"}.`,
     url, image: first && first.image ? first.image : "", main, share: true, cards: shown.models,
     paged: pagerLinks({ at: shown.page, more: shown.more, href: pageHref }),
