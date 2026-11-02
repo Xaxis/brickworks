@@ -54,10 +54,17 @@ export function say(words, values = {}) {
 /// own, not a word's: Space the theme stays Space where Space the kind of
 /// model is Weltraum.
 export function themeSaid(name) {
-  const marked = String(name).replace(/\bLEGO\b(?!®| Group)/g, "LEGO®").replace(/\bLegoland\b|\bLEGOLAND\b(?!®)/g, "LEGOLAND®");
-  const key = `theme\u0004${marked}`;
+  return sayIn("theme", String(name).replace(/\bLEGO\b(?!®| Group)/g, "LEGO®").replace(/\bLegoland\b|\bLEGOLAND\b(?!®)/g, "LEGOLAND®"));
+}
+
+/// [words] as the page's language says them in one place of their own
+/// (gettext's context: "mark\u0004LDraw library"), where that place wants
+/// them worded its own way: a card's mark short ("LDraw-Set") where the
+/// crumb names the library ("LDraw-Bibliothek"). English as written.
+export function sayIn(context, words) {
+  const key = `${context}\u0004${words}`;
   const said = globalThis.brickworksLang ? globalThis.brickworksLang.say(key) : key;
-  return said === key ? marked : said;
+  return said === key ? words : said;
 }
 
 /// [n] as the page's language writes a number: 1,234, 1.234 or 1 234.

@@ -45,7 +45,7 @@
 // talk to itself and a short list of others.
 //
 // Each card is web/card.js's, the one every page of the site draws.
-import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard, number, say, skeletonHtml, themeSaid } from "/card.js";
+import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard, number, say, sayIn, skeletonHtml, themeSaid } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
 // "/" to search, and the bar of filters kept under the header.
@@ -336,7 +336,7 @@ import { pageAsked, pager } from "/pager.js";
     // (featuredSaid: only what is true of it), the set's its theme and
     // decade. A set is nobody's to like: its card has no like.
     const spot = shown && front ? [["featured", front.featured, ID, say("Featured today")],
-      ["library", front.library, SET_ID, say("LDraw library")]]
+      ["library", front.library, SET_ID, sayIn("mark", "LDraw library")]]
       .filter(([, one, valid]) => one && one.model && valid.test(String(one.model.id))) : [];
     $("spotlight").hidden = spot.length === 0;
     $("spotlight-models").replaceChildren(...spot.map(([slot, one, , label]) => {

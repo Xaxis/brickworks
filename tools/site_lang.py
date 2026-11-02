@@ -110,6 +110,9 @@ SAY = re.compile(rf"\bsay(?:Html)?\(\s*((?:{STRING}\s*\+\s*)*{STRING})")
 # And either of two: say(one ? "..." : "..."), its question with a call in
 # it or not (say(whole(n) === 1 ? ...)).
 SAY_EITHER = re.compile(rf"\bsay(?:Html)?\(\s*(?!\")(?:[^()]|\([^()]*\))*?\?\s*({STRING})\s*:\s*({STRING})")
+# sayIn("mark", "LDraw library"): words in a place of their own, keyed by
+# their context as gettext keys it ("mark\x04LDraw library", web/card.js).
+SAY_IN = re.compile(rf"\bsayIn\(\s*({STRING})\s*,\s*({STRING})\s*\)")
 # counted(n, "one", "many"), and countedSaid as api/people.js names it
 # beside a counted of its own.
 COUNTED = re.compile(rf"\bcounted(?:Said)?\((?:[^,()]|\([^()]*\))+,\s*({STRING})(?:\s*,\s*({STRING}))?\s*\)")
@@ -343,6 +346,8 @@ def script_words() -> dict[str, str]:
         for found in SAY_EITHER.finditer(text):
             for said in found.groups():
                 words.setdefault(json.loads(said), f"web/{one}")
+        for context, said in SAY_IN.findall(text):
+            words.setdefault(f"{json.loads(context)}\x04{json.loads(said)}", f"web/{one}")
         for found in COUNTED.finditer(text):
             single = json.loads(found.group(1))
             for word in (single, json.loads(found.group(2)) if found.group(2) else f"{single}s"):
