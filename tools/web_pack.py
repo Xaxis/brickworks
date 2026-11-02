@@ -401,10 +401,13 @@ def _write_remote(
             shutil.rmtree(stale)
         for part in document["parts"]:
             part["reachable"] = True
+        # tools/deploy.sh has put every exact shape in storage before this.
+        none = mark_exact(document, GENERATED / "exact")
         (out / "catalogue.json").write_text(
             json.dumps(document, separators=(",", ":")))
         print(f"  on demand: from object storage — all "
-              f"{len(document['parts']):,} parts placeable, nothing in the deploy")
+              f"{len(document['parts']):,} parts placeable, nothing in the deploy; "
+              f"{none:,} without an exact shape")
         return
 
     remote = out / "remote"
@@ -438,11 +441,41 @@ def _write_remote(
         1 for p in document["parts"] if p["mesh"] in packed or p["mesh"] in taken)
     for part in document["parts"]:
         part["reachable"] = part["mesh"] in packed or part["mesh"] in taken
+    none = mark_exact(document, out / "exact", remote)
     (out / "catalogue.json").write_text(
         json.dumps(document, separators=(",", ":")))
 
     print(f"  on demand: {len(taken):,} more meshes, {used / 1e6:.0f} MB "
-          f"— {reachable:,} of {len(document['parts']):,} parts placeable")
+          f"— {reachable:,} of {len(document['parts']):,} parts placeable; "
+          f"{none:,} without an exact shape")
+
+
+def mark_exact(document: dict, *where: Path) -> int:
+    """Mark ``"exact": false`` on each part whose exact shape is in none of
+    these folders, the places this build's app reads or fetches it from; how
+    many.
+
+    The app fetched every part's from storage when a check first needed it
+    and took the bucket's 400 to mean "none". BrickNet has no shape for 44%
+    of the library, and 310 meshes BrickNet has were rebuilt after their
+    shapes were made, which stayed under the old names (tools/build_exact.py
+    makes them again), so each was a failed request in a visitor's console:
+    the example car's tyre, 3641, every time a part was picked beside it,
+    which failed the deploy's browser check too (2026-11-02). Only the misses
+    are marked, as having one is the default (PartLibrary.PartInfo.exact).
+    """
+    have: set[str] = set()
+    for folder in where:
+        if folder.is_dir():
+            have |= {shape.stem for shape in folder.glob("*.bwx")}
+    none = 0
+    for part in document["parts"]:
+        if part.get("mesh") and part["mesh"] not in have:
+            part["exact"] = False
+            none += 1
+        else:
+            part.pop("exact", None)
+    return none
 
 
 if __name__ == "__main__":

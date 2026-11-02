@@ -24,7 +24,8 @@
 ##   for again later is put down, and the bar does not say it again;
 ## - the same for a file the app wrote itself, which is written whole rather
 ##   than back from the file;
-## - an exact shape is asked again the same way, and a 404 for one once;
+## - an exact shape is asked again the same way, and a 404 for one once; one
+##   the catalogue says has none never;
 ## - the working model short of 4519 is autosaved after a change nobody made
 ##   by hand, 4519 in it where the file had it, and reopened from it with the
 ##   change, 4519 awaited and put down when it comes (someone else's file and
@@ -267,6 +268,18 @@ func _run() -> void:
 		and Exact.shape_for(_library, "3001") != null
 		and _asks.get(shape_of.call("3020"), []).size() == 1 and Exact.known(_library, "3020")
 		and Exact.shape_for(_library, "3020") == null and heard.size() == 2)
+	# One the catalogue says has none is not asked for at all: none at once.
+	# The example car's tyre asked storage on every pick beside it, and its
+	# 400 failed the deploy's browser check (2026-11-02).
+	var shapeless: PartLibrary.PartInfo = _library.parts["3023"]
+	shapeless.exact = false
+	var sent: bool = _library.request_exact("3023")
+	await _seconds(0.5)
+	_check("3023, which the catalogue says has no exact shape: sent %s, asked %d times, known as none %s"
+		% [sent, _asks.get(shape_of.call("3023"), []).size(), Exact.known(_library, "3023")],
+		not sent and not _asks.has(shape_of.call("3023")) and Exact.known(_library, "3023")
+		and Exact.shape_for(_library, "3023") == null and not _library.is_exact_on_its_way("3023"))
+	shapeless.exact = true
 	# 3709b twice, 3673 once, 3649 three times, 3001's shape twice.
 	deadline = Time.get_ticks_msec() + 10_000
 	while int(_library._open.get("lbm", 0)) + int(_library._open.get("bwx", 0)) != 0 \

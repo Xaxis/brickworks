@@ -317,6 +317,12 @@ class PartInfo extends RefCounted:
 	## is a short wait, an unreachable one is a dead end, and only the
 	## second should be hidden.
 	var reachable: bool = true
+	## False when this build has no exact shape for the part (Exact): BrickNet
+	## has none, or none was made for its mesh. The web pack says so
+	## (tools/web_pack.py mark_exact), so nothing asks storage for a file that
+	## is not there. The desktop's catalogue does not say; it reads its own
+	## folder.
+	var exact: bool = true
 	## When this id is only a redirect, the part it was renamed to. 1,160
 	## entries in the library are stubs like "~Moved to 3665": they render
 	## correctly, because each forwards to its target, but they are not
@@ -950,6 +956,7 @@ func _read_part(entry: Dictionary) -> PartInfo:
 		info.fixed_colour = int(fixed[0])
 	info.packed = bool(entry.get("packed", true))
 	info.reachable = bool(entry.get("reachable", true))
+	info.exact = bool(entry.get("exact", true))
 	info.moved_to = entry.get("moved_to", "")
 	var moved_by: Variant = entry.get("moved_by", [])
 	if moved_by is Array and (moved_by as Array).size() == 12:
@@ -1563,12 +1570,16 @@ func _on_fetched(code: int, body: PackedByteArray, hash_name: String,
 
 ## Ask for a part's exact shape (Exact, tools/build_exact.py) where this build
 ## did not ship it: the web build's, fetched from beside the geometry as
-## <hash>.bwx. A part BrickNet does not have answers 404, which is kept as
-## "none" so it is not asked again; a fault that may pass is asked again
-## first, as geometry is ([method _ask]). Listen for [signal exact_fetched].
+## <hash>.bwx. A part the catalogue says has none ([member PartInfo.exact])
+## is kept as "none" at once, and so is a 404 or the bucket's 400, so it is
+## not asked again; a fault that may pass is asked again first, as geometry
+## is ([method _ask]). Listen for [signal exact_fetched].
 func request_exact(part_id: String) -> bool:
 	var info: PartInfo = shaped_as(part_id)
 	if info == null or info.mesh_hash.is_empty():
+		return false
+	if not info.exact:
+		Exact.keep(info.mesh_hash, PackedByteArray())
 		return false
 	part_id = info.id
 	if _fetching_exact.has(info.mesh_hash) or _exact_waiting.has(part_id):
