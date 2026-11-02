@@ -15,6 +15,7 @@
 // Refused here, before anything is sent: a file that is not a JPEG, a PNG
 // or a WebP, one over 8 MB, one that does not decode, or one under 120
 // pixels a side.
+import { say } from "/card.js";
 
 export const TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const MOST_BYTES = 8 * 1024 * 1024;
@@ -29,9 +30,14 @@ const CIRCLE = VIEW - 2 * MARGIN;
 
 /// Why [file] cannot be a picture here, in words; "" when it can.
 export function pictureTrouble(file) {
-  if (!file) return "Choose a picture first.";
-  if (!TYPES.includes(file.type)) return "That is not a JPEG, a PNG or a WebP picture.";
-  if (file.size > MOST_BYTES) return `That picture is ${(file.size / 1048576).toFixed(1)} MB: at most 8 MB, please.`;
+  if (!file) return say("Choose a picture first.");
+  if (!TYPES.includes(file.type)) return say("That is not a JPEG, a PNG or a WebP picture.");
+  if (file.size > MOST_BYTES) {
+    // In the page's language, with its one decimal: 8.5, 8,5.
+    const size = (file.size / 1048576).toLocaleString(globalThis.brickworksLang?.locale || "en-US",
+      { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false });
+    return say("That picture is {size} MB: at most 8 MB, please.", { size });
+  }
   return "";
 }
 
@@ -46,12 +52,12 @@ export async function cropPicture(file, dialog) {
     // Turned the way the phone was held, as a browser shows it.
     bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
   } catch {
-    throw new Error("That picture would not open: try another.");
+    throw new Error(say("That picture would not open: try another."));
   }
   const { width, height } = bitmap;
   if (Math.min(width, height) < LEAST) {
     bitmap.close();
-    throw new Error(`That picture is ${width} × ${height}: at least ${LEAST} pixels a side, please.`);
+    throw new Error(say("That picture is {width} × {height}: at least {least} pixels a side, please.", { width, height, least: LEAST }));
   }
   const canvas = dialog.querySelector("canvas");
   canvas.width = VIEW;
@@ -213,7 +219,7 @@ export async function cropPicture(file, dialog) {
   o.drawImage(bitmap, chosen.x, chosen.y, chosen.side, chosen.side, 0, 0, side, side);
   bitmap.close();
   const blob = await new Promise((resolve) => out.toBlob(resolve, "image/jpeg", 0.92));
-  if (!blob) throw new Error("That picture could not be made just now: try again.");
+  if (!blob) throw new Error(say("That picture could not be made just now: try again."));
   return { blob, side };
 }
 

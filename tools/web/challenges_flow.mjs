@@ -533,7 +533,9 @@ try {
     const page = await visitor.newPage();
     listen(page, "gallery");
     await page.goto(`${site}/gallery?tests=1`, { waitUntil: "load" });
-    await until(page, () => document.documentElement.dataset.shelves, "the gallery's front");
+    // The shelves come before the first page, which draws the line with it.
+    await until(page, () => document.documentElement.dataset.shelves && document.documentElement.dataset.gallery === "ready",
+      "the gallery's front");
     const line = await page.evaluate(() => ({ shown: !document.getElementById("challenge-line").hidden,
       text: document.getElementById("challenge-line").textContent, href: document.querySelector("#challenge-line a")?.getAttribute("href") }));
     check(`the gallery's front: "${line.text}" → ${line.href}`, line.shown && line.text.startsWith(`This month’s challenge: ${TITLE}, open until`)
@@ -775,13 +777,14 @@ try {
       await raw(`/challenge?id=${ids.challenge}`)];
     const pictured = [ids.house, ids.shed].find((id) => (list.body.models || []).find((one) => one.id === id)?.image);
     check(`its link's head: "${tag(own.html, "og:title")}", ${tag(own.html, "og:url").replace(site, "")}, `
-      + `${tag(own.html, "og:image").replace(site, "")}, ${tag(own.html, "robots")}; the page's policy ${own.csp === plain.csp && Boolean(own.csp)}`,
+      + `${tag(own.html, "og:image").replace(site, "")}, ${tag(own.html, "robots")}; `
+      + `the page's policy ${local ? "(the deployment's header; none here)" : own.csp === plain.csp && Boolean(own.csp)}`,
       own.status === 200 && tag(own.html, "og:title") === `${TITLE} · Brickworks challenge`
       && tag(own.html, "twitter:title") === tag(own.html, "og:title")
       && tag(own.html, "og:url") === `${site}/challenge?id=${ids.challenge}&amp;tests=1`
       && tag(own.html, "og:description").endsWith(": see who won.") && tag(own.html, "robots") === "noindex"
       && tag(own.html, "og:image") === (pictured ? `${site}/m/${pictured}.png` : `${site}/share.png`)
-      && Boolean(own.csp) && own.csp === plain.csp && own.html.split("</head>")[1] === plain.html.split("</head>")[1]);
+      && (local || (Boolean(own.csp) && own.csp === plain.csp)) && own.html.split("</head>")[1] === plain.html.split("</head>")[1]);
     check(`...a visitor's, without tests=1: "${tag(visitor.html, "og:title")}"`,
       visitor.status === 200 && tag(visitor.html, "og:title") === tag(plain.html, "og:title") && !visitor.html.includes(TITLE));
   }

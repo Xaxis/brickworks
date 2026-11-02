@@ -40,6 +40,12 @@ export const SOURCES = ["site", "app"];
 export const STATUSES = ["new", "seen", "planned", "fixed", "wont_fix"];
 export const MOST = Object.freeze({ words: 4000, page: 300, log: 20000, note: 2000, reply: 4000, email: 254,
   detail: 200, details: 20, picture: 1_500_000, model: 1_500_000 });
+// What a report's sender is thanked with after "Thank you.", a sentence
+// each (web/feedback.js says each in the page's language): where its
+// answer comes, and what of it did not go.
+const THANKS = Object.freeze({ kept: "We read every report ourselves; this one is on your settings page, with where it stands "
+  + "and our answer.", mailed: "We read every report ourselves, and answer by email.", picture: "The picture did not go with it.",
+  model: "The model did not go with it.", both: "The picture and the model did not go with it." });
 const BUCKET = "feedback";
 const PICTURES = Object.freeze({ "image/png": "png", "image/jpeg": "jpg" });
 const ADDRESS = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -245,9 +251,8 @@ async function send(request, response, claims, place) {
     await db("rpc/feedback_files", { method: "POST", body: { p_id: id, p_picture: names.picture, p_model: names.model } });
   }
   const lost = Object.entries(attached).filter(([, went]) => !went).map(([what]) => what);
-  const said = `Thank you. We read every report ourselves${claims ? "; this one is on your settings page, with "
-    + "where it stands and our answer" : ", and answer by email"}.${lost.length ? ` The ${lost.join(" and the ")} did `
-    + "not go with it." : ""}`;
+  const said = ["Thank you.", THANKS[claims ? "kept" : "mailed"], ...(lost.length ? [THANKS[lost.length > 1 ? "both" : lost[0]]] : [])]
+    .join(" ");
   return response.status(200).json({ id, beta: kept.beta === true, attached, said });
 }
 

@@ -204,6 +204,9 @@ const MAPPED = [
   [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed_lang"],
   [/^\/(de|fr|es)\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page_lang"],
   [/^\/(de|fr|es)\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set_lang"],
+  // A public collection and the collections, in a language (/de/c/<id>, /de/collections).
+  [/^\/(de|fr|es)\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page_lang"],
+  [/^\/(de|fr|es)\/collections\/?$/, "people", "collections_page_lang"],
   [/^\/sitemaps\/models-(de|fr|es)[.]xml$/, "share", "sitemap_models_lang"],
   // The daily cron's clean-up of files no published row owns.
   [/^\/api\/share\/sweep$/, "share", "sweep"],
@@ -328,6 +331,15 @@ http.createServer(async (incoming, outgoing) => {
     if (mapped[2] === "sitemap_models_lang") Object.assign(query, { op: "sitemap_models", lang: captured[1], id: undefined });
     if (mapped[2] === "embed_lang") Object.assign(query, { op: "embed", lang: captured[1], id: captured[2], v: undefined });
     if (mapped[2] === "set_lang") Object.assign(query, { op: "set", lang: captured[1], id: captured[2], v: undefined });
+    if (mapped[2] === "list_page_lang") Object.assign(query, { op: "list_page", lang: captured[1], id: captured[2] });
+    if (mapped[2] === "collections_page_lang") Object.assign(query, { op: "collections_page", lang: captured[1] });
+  }
+  // /challenge?id=N, and its copies, are that challenge's page with its own
+  // head, as deploy.sh routes them.
+  const challenged = /^\/(?:(de|fr|es)\/)?challenge\/?$/.exec(url.pathname);
+  if (!handler && challenged && /^[1-9][0-9]{0,15}$/.test(query.id || "")) {
+    handler = await route("people");
+    Object.assign(query, { op: "challenge_page" }, challenged[1] ? { lang: challenged[1] } : {});
   }
   // The app is at /app, which the deployment sends on to the build with
   // its query (?view=<id>, ?copy=<id>) intact.

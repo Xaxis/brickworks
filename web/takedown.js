@@ -4,11 +4,12 @@
 // asks (/api/people?op=report). Nothing typed is shown back as markup.
 const $ = (id) => document.getElementById(id);
 
-/// What an address names, or null.
+/// What an address names, or null: its copy's address in a language
+/// (/de/m/<id>) names it too.
 function target(given) {
   let path = "";
   try {
-    path = new URL(String(given).trim(), location.origin).pathname;
+    path = new URL(String(given).trim(), location.origin).pathname.replace(/^\/(?:de|fr|es)(?=\/[muc]\/)/, "");
   } catch {
     return null;
   }

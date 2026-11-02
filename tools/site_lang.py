@@ -6,8 +6,9 @@
     tools/site_lang.py --missing=CODE the English CODE has no words for yet, as JSON to fill in
 
 The landing page, the download page and the pages a visitor goes on to
-from them (the plans, the FAQ, the comparison, the gallery and the LDraw
-library: PAGES) are written in English, in web/, as every page is. Each
+from them (the plans, the FAQ, the comparison, the gallery, the LDraw
+library, this month's challenge, your own profile and your settings: PAGES)
+are written in English, in web/, as every page is. Each
 language's copy is made from them here, at /de, /de/download and so on, and
 kept beside them in web/de/ (tests/test_site_lang.py fails when a copy is
 not what this would write): the same markup with its words in the
@@ -48,17 +49,22 @@ it and the scripts on it say (SAID_ALL) needs its entry here too. So is a
 shared model's (api/share.js sharePage), at /<code>/m/<id>: its page, the
 lines its versions and steps are said in, its cards, and its scripts; and
 the pages it links to: a profile (api/people.js profileHtml, /<code>/u/
-<handle>), a set of the LDraw library (/<code>/library/<id>), the embed
-(/<code>/m/<id>/embed), and the 3D view on them (tools/viewer/inline.js,
-built into web/viewer3d.js). What the API those pages call answers in
-words (TOLD) has its entry too, and a page shows it through told().
+<handle>), a collection (listPage, /<code>/c/<id>), every collection
+(collectionsPage, /<code>/collections), a set of the LDraw library
+(/<code>/library/<id>), the embed (/<code>/m/<id>/embed), a challenge's
+link (/<code>/challenge?id=N, its head made by api/_challenges.js
+challengeHead), and the 3D view on them (tools/viewer/inline.js, built into
+web/viewer3d.js). What the API those pages call answers in words (TOLD)
+has its entry too, and a page shows it through told().
 
 A word of those scripts (SAID_ALL, or the functions of one named there)
 with a capital in it that is not said through say() fails the check, so
 none comes back in English; so does an answer's error or why_not shown as
 the server wrote it, not through told() or say() (untold); and a link to a
-profile written /u/..., which leaves the visitor's language for English
-when every profile has its copy (unled: ${at}/u/ or ${langAt()}/u/).
+page with copies written as English's (/u/..., /c/..., /collections,
+/profile, /settings, /challenge and the rest of PAGES), in those or in
+any other script a copy loads, which leaves the visitor's language for
+English (unled: ${at}/u/ or ${langAt()}/profile).
 
 Which language a visitor is shown is web/theme.js's: the one they chose in
 the footer, else the first of their browser's that the site has.
@@ -83,7 +89,11 @@ SITE = "https://brickworks.diy"
 LANGUAGES = {"de": "Deutsch", "fr": "Français", "es": "Español"}
 # The pages, by their file, and where each is: / and /download in English.
 PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "faq.html": "faq",
-         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library"}
+         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library",
+         "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings"}
+# The pages the server makes in each language too, at /<code>/<where>: a
+# copy's link to one opens it in the copy's language.
+SERVED = ("collections", "c/", "u/", "m/", "library/")
 
 BLOCK = {"html", "head", "body", "header", "nav", "main", "section", "article", "aside", "footer",
          "div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "figure", "figcaption",
@@ -101,6 +111,7 @@ META = {"description", "og:title", "og:description", "og:image:alt", "twitter:ti
 API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES", "MINE_SORTS", "LDRAW_FROM"),
              "api/_tested.js": ("SAID", "FAILED"), "api/_trust.js": ("UNDER_13",), "web/card.js": ("HOWS", "HOW_SET", "HOW_MODEL", "TRACKS"),
              "api/_library.js": ("SET_SORTS",), "api/_sets.js": ("SETS_SORTS",), "api/plans.js": ("KEPT", "GONE"),
+             "api/_feedback.js": ("THANKS",),
              "web/oc-button.mjs": ("SIGN_IN_BUSY_LABEL", "OUTCOME_COPY"),
              "web/oc-connect-consent.mjs": ("CONNECT_CONSENT_LABEL", "CONNECT_CONSENT_BLURB")}
 # Those each of whose words is said, in a list or not, but a link's (href).
@@ -114,21 +125,26 @@ SAY_EITHER = re.compile(rf"\bsay(?:Html)?\(\s*(?!\")(?:[^()]|\([^()]*\))*?\?\s*(
 # their context as gettext keys it ("mark\x04LDraw library", web/card.js).
 SAY_IN = re.compile(rf"\bsayIn\(\s*({STRING})\s*,\s*({STRING})\s*\)")
 # counted(n, "one", "many"), and countedSaid as api/people.js names it
-# beside a counted of its own.
-COUNTED = re.compile(rf"\bcounted(?:Said)?\((?:[^,()]|\([^()]*\))+,\s*({STRING})(?:\s*,\s*({STRING}))?\s*\)")
+# beside a counted of its own; and a pager's noun: ["one", "many"]
+# (web/pager.js says each).
+COUNTED = re.compile(rf"\bcounted(?:Said)?\((?:[^,()]|\([^()]*\))+,\s*({STRING})(?:\s*,\s*({STRING}))?\s*\)"
+                     rf"|\bnoun:\s*\[({STRING}),\s*({STRING})\]")
 # The sign-in's API, whose errors the dialogs say, and the API a model's
 # page, a profile and a set of the LDraw library call: each sentence an
 # answer gives as its error, or as why a visitor may not (why_not), each of
 # its refusals' tables ([409, "..."]), NOT_YET and ASK_FIRST ("POST only" is a
 # developer's, and no sentence). A page says each through told().
 TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/people.js", "api/share.js",
-        "api/_comments.js", "api/_follows.js", "api/_lists.js", "api/_challenges.js", "api/_bases.js")
-# And what First steps' profile can be refused with, in the functions that
-# refuse it: every sentence, ended with a full stop or not.
-TOLD_IN = {"api/people.js": ("saveProfile",), "api/_names.js": ("handleTrouble",)}
-REFUSED = re.compile(rf"(?:new Refusal\(|\breturn\s+)((?:{STRING}\s*\+\s*)*{STRING})")
+        "api/_comments.js", "api/_follows.js", "api/_lists.js", "api/_challenges.js", "api/_bases.js",
+        "api/_avatars.js", "api/account.js", "api/plans.js", "api/_feedback.js")
+# And what a profile can be refused with, in First steps, the profile's own
+# page and settings, in the functions that refuse it: every sentence, ended
+# with a full stop or not.
+TOLD_IN = {"api/people.js": ("saveProfile", "cleanLink", "saveShowcase", "saveList", "saveAvatar"),
+           "api/_names.js": ("handleTrouble",), "api/_avatars.js": ("keepAvatar", "removeAvatar")}
+REFUSED = re.compile(rf"(?:new \w*Refusal\(|\breturn\s+)((?:{STRING}\s*\+\s*)*{STRING})")
 TOLD_AS = re.compile(rf"(?:\berror:\s*|\btrouble:\s*|\bwhy_not:\s*|\bsay\(response,\s*\d+,\s*|new (?:Refusal|Unacceptable)\(|"
-                     rf"\[\d{{3}},\s*|\b(?:\w*NOT_YET|ASK_FIRST) = )((?:{STRING}\s*\+\s*)*{STRING})")
+                     rf"\[\d{{3}},\s*|\b(?:\w*NOT_YET|ASK_FIRST|KEPT) = )((?:{STRING}\s*\+\s*)*{STRING})")
 # What a script shows of an answer's words (its error, or why_not): told()
 # or say() each, or asks whether there are any (if, !, ? or &&).
 SHOWN = re.compile(r"(?<![\w$])(?:[\w$]+\??\.)*?(?:body\??\.error|why_not)\b(?!\s*:)")
@@ -146,17 +162,20 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/set-page.js": (
                              "partsSection", "listsSection", "buildFigure", "buildsSection", "commentsSection",
                              "versionsSection", "noVersionPage", "gonePage", "links", "embedCard", "setPage"),
             "api/_versions.js": ("stepsSaid", "saidOf", "changedOf", "lotSaid"), "api/_steps.js": (),
-            "api/_lists.js": ("listCardHtml",), "api/_directory.js": ("movesWords",),
-            "api/_library.js": ("setModel",), "api/_challenges.js": ("wonSaid",),
+            "api/_lists.js": ("listCardHtml", "directoryCardHtml", "mosaicHtml"), "api/_directory.js": ("movesWords",),
+            "api/_library.js": ("setModel",), "api/_challenges.js": ("wonSaid", "challengeHead"),
             "api/people.js": ("head", "page", "missingPage", "numbersHtml", "achievementsOf", "stripHtml", "tabSaid", "pastEnd",
-                              "profilePage", "profileHtml"),
+                              "profilePage", "profileHtml", "listPage", "listHtml", "collectionsPage", "collectionsHtml"),
             "web/card.js": ("iconButtonHtml", "shareTargets", "shareSheetHtml", "cardHtml", "buildCardHtml", "basedHtml",
                             "awardsHtml", "levelName", "levelAwards", "rulesSaid", "brokenSaid"),
             "web/start3d.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
             "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
-            "web/embed.js": (), "tools/viewer/inline.js": ()}
+            "web/embed.js": (), "tools/viewer/inline.js": (),
+            "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),
+            "web/feedback.js": ()}
 # Capitalized words of those that are no English to say: code, and names.
-CODE_WORDS = {"Bearer", "Brickworks", "Brickify", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook"}
+CODE_WORDS = {"Bearer", "Brickworks", "Brickify", "Rebrickable", "Dataset", "Reddit", "Bluesky", "Pinterest", "Facebook",
+              "Edge", "Opera", "Safari"}
 # And the keys a script listens for, each a literal of its own.
 KEY_NAMES = {'"Escape"', '"Enter"', '"Tab"'}
 # Runs that are names, the same in every language.
@@ -349,8 +368,7 @@ def script_words() -> dict[str, str]:
         for context, said in SAY_IN.findall(text):
             words.setdefault(f"{json.loads(context)}\x04{json.loads(said)}", f"web/{one}")
         for found in COUNTED.finditer(text):
-            single = json.loads(found.group(1))
-            for word in (single, json.loads(found.group(2)) if found.group(2) else f"{single}s"):
+            for word in counts(found):
                 words.setdefault(word, f"web/{one}")
     for path, names in API_WORDS.items():
         text = (ROOT / path).read_text(encoding="utf-8")
@@ -378,13 +396,21 @@ def script_words() -> dict[str, str]:
             for said in found.groups():
                 words.setdefault(json.loads(said), path)
         for found in COUNTED.finditer(text):
-            single = json.loads(found.group(1))
-            for word in (single, json.loads(found.group(2)) if found.group(2) else f"{single}s"):
+            for word in counts(found):
                 words.setdefault(word, path)
     for one in sorted(WEB.glob("*.js")):
         for why in SIGN_IN_WHY.findall(one.read_text(encoding="utf-8")):
             words.setdefault(json.loads(f'"{why}"'), f"web/{one.name}")
     return {word: where for word, where in words.items() if says_something(word)}
+
+
+def counts(found: re.Match) -> tuple[str, str]:
+    """The one and the many a COUNTED match says: a counted()'s ("part",
+    and "parts" when it names none) or a pager's noun."""
+    if found.group(3):
+        return json.loads(found.group(3)), json.loads(found.group(4))
+    single = json.loads(found.group(1))
+    return single, json.loads(found.group(2)) if found.group(2) else f"{single}s"
 
 
 def scope(path: str, names: tuple = (), text: str | None = None) -> str:
@@ -483,13 +509,17 @@ def untold(script: str) -> list[str]:
     return out
 
 
-# A link to a profile, written as English's: a literal that starts /u/.
-LED = re.compile(r"(?<![\w}])[`\"']/u/")
+# A link to a page with copies, written as English's: a literal that starts
+# /u/ or /c/ (a profile, a collection), or is one of the pages (/collections,
+# /challenge, /profile?edit=1).
+LED = re.compile(r"(?<![\w}])[`\"'](?:/[uc]/|/(?:collections|" + "|".join(where for where in PAGES.values() if where)
+                 + r")(?=[`\"'?#$]))")
 
 
 def unled(script: str) -> list[str]:
-    """The links to a profile a [script] writes as English's, /u/<handle>,
-    where a copy's are /<code>/u/<handle> (${at} or ${langAt()} before)."""
+    """The links to a page with copies a [script] writes as English's,
+    /u/<handle>, /c/<id> or /profile, where a copy's are /<code>/u/<handle>
+    and so on (${at} or ${langAt()} before)."""
     text = re.sub(r"(?<![:\"'\w])//[^\n]*", "", script)
     return [text[max(0, found.start() - 30):found.end() + 20].strip() for found in LED.finditer(text)]
 
@@ -637,6 +667,8 @@ def link(href: str, code: str, tag: str, attrs: dict) -> str:
     for where in PAGES.values():
         if path == ("/" + where if where else "/"):
             return address(code, where) + (f"?{query}" if query else "") + rest
+    if any(path == f"/{where}" if not where.endswith("/") else path.startswith(f"/{where}") for where in SERVED):
+        return f"/{code}{href}"
     return href
 
 
@@ -695,10 +727,15 @@ def main(argv: list[str]) -> int:
         if raw:
             problems.append(f"{path} shows {len(raw)} of an answer's words as the server wrote them, first "
                             f"{raw[0]!r}: show them through told() (web/card.js), so each language says them")
+    # And every other script a copy loads: a link it writes as English's
+    # leaves the visitor's language.
+    for path, names in [*SAID_ALL.items(), *((f"web/{one}", ()) for one in sorted({script for name in PAGES
+                                                                                 for script in scripts_of(name)})
+                                             if f"web/{one}" not in SAID_ALL)]:
         english = unled(scope(path, names))
         if english:
-            problems.append(f"{path} links to {len(english)} profiles as English does, first {english[0]!r}: "
-                            "write ${langAt()}/u/ (web/card.js), so a copy's link opens the profile's copy")
+            problems.append(f"{path} links to {len(english)} pages with copies as English does, first {english[0]!r}: "
+                            "write ${langAt()}/u/, ${langAt()}/profile (web/card.js), so a copy's link opens the page's copy")
     # A word a script says with no entry: it would be said in English.
     said_by_scripts = script_words()
     for code in LANGUAGES:

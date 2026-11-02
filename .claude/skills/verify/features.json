@@ -136,6 +136,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -3780,6 +3781,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -3859,6 +3861,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -4043,6 +4046,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -4743,6 +4747,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
     },
@@ -5290,7 +5295,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_challenges.py"
+        "tests/test_challenges.py",
+        "tests/test_site_lang.py"
       ]
     },
     {
@@ -5416,6 +5422,7 @@
       "area": "web",
       "tests": [
         "tests/test_achievements.py",
+        "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -5485,6 +5492,7 @@
       "area": "web",
       "tests": [
         "tests/test_achievements.py",
+        "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
     },

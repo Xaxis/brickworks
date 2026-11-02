@@ -351,9 +351,13 @@ for handler in api/*.js; do
     done
   fi
   # /challenge?id=N is the challenge page with that challenge's own head
-  # (api/_challenges.js challengeHead), so a link to one shows it.
+  # (api/_challenges.js challengeHead), so a link to one shows it; and
+  # /de/challenge?id=N its copy's (tools/site_lang.py).
   if [ "$route" = people ]; then
     cp web/challenge.html "$fn/_challenge.html"
+    for copy in web/*/challenge.html; do
+      cp "$copy" "$fn/_challenge_$(basename "$(dirname "$copy")").html"
+    done
   fi
   if [ "$route" = share ]; then
     # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
@@ -623,6 +627,8 @@ $docs_moved
     { "src": "/($langs)/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$2&lang=\$1" },
     { "src": "/($langs)/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$2&lang=\$1" },
     { "src": "/($langs)/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/?", "dest": "/api/share?op=set&id=\$2&lang=\$1" },
+    { "src": "/($langs)/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$2&lang=\$1" },
+    { "src": "/($langs)/collections/?", "dest": "/api/people?op=collections_page&lang=\$1" },
     { "src": "/sitemaps/index[.]xml", "dest": "/api/share?op=sitemap_index" },
     { "src": "/sitemaps/sets-([1-9][0-9]{0,2})[.]xml", "dest": "/api/share?op=sitemap_sets&n=\$1" },
     { "src": "/sitemaps/sets-($langs)-([1-9][0-9]{0,2})[.]xml", "dest": "/api/share?op=sitemap_sets&lang=\$1&n=\$2" },
@@ -647,6 +653,8 @@ $docs_moved
       "continue": true },
     { "src": "/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
       "dest": "/api/people?op=challenge_page" },
+    { "src": "/($langs)/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
+      "dest": "/api/people?op=challenge_page&lang=\$1" },
     { "src": "/(app|b/.*)",
       "headers": { "Cross-Origin-Opener-Policy": "same-origin" },
       "continue": true },
