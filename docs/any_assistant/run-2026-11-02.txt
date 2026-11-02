@@ -1,0 +1,92 @@
+== chatgpt_flow
+ChatGPT connecting to Brickworks at http://127.0.0.1:9671
+
+discovery, as ChatGPT finds where to sign in
+  ok    the MCP address with no token: 401, naming http://127.0.0.1:9671/.well-known/oauth-protected-resource/api/mcp
+  ok    protected resource metadata: http://127.0.0.1:9671/api/mcp, server http://127.0.0.1:9671
+  ok    Client ID Metadata Documents, S256 and the issuer on the way back: ChatGPT's stable return address
+  ok    token endpoint takes none, client_secret_post, client_secret_basic, private_key_jwt, signed RS256
+
+ChatGPT, by its own published document
+  ok    its document, read now: private_key_jwt, keys at https://chatgpt.com/oauth/jwks.json
+  ok    the sign-in page is told: ChatGPT, back to chatgpt.com
+  ok    Allow: a code at ChatGPT's return address, with state and iss
+  ok    its code without ChatGPT's signature: 401 this client signs its token requests: send a client_assertion
+  ok    ...and signed by a key that is not ChatGPT's: 401 client_assertion is not signed by a key of this client
+
+a client shaped as ChatGPT, holding a key of its own
+  ok    registered with its public key: no secret
+  ok    the sign-in page names it: ChatGPT stand-in
+  ok    the code, its verifier and a signed assertion, for tokens in 1001 ms
+
+the MCP address, as ChatGPT uses it
+  ok    a tab of this account switches on, serving the app's 68 tools
+  ok    initialize: brickworks, protocol 2025-06-18, a session id
+  ok    tools/list: 70 tools, the app's and the relay's two
+  ok    every array says what its items are (0 do not)
+  ok    all three hints on 70 of 70
+  ok    tools/call reaches this account's tab
+  ok    ...and the tab's answer reaches ChatGPT
+
+refresh
+  ok    a refresh token and a fresh assertion: new tokens
+  ok    the same assertion again: 401 client_assertion was used before
+  ok    a refresh token with no assertion: refused
+  ok    an assertion for another server: refused
+  ok    the refreshed token works
+
+Claude on the same account, as before
+  ok    Claude Code signs in as a public client, with nothing more sent
+  ok    Claude's 70 tools are the tab's as it sent them, schemas and hints untouched
+
+the account's connections
+  ok    listed: Claude Code, ChatGPT stand-in
+
+  (removed the throwaway account, and its connections with it)
+
+ChatGPT can connect to Brickworks and build in its tab
+exit=0
+== clients_probe
+tab hello: 204 (68 tools)
+{"who":"Claude (claude.ai)","page":"\"Claude\" claude=true back=claude.ai","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"41ed31f0\",\"since\":\"2026-11-02T14:07:52.343Z\"}}"}
+{"who":"Codex","page":"\"Codex\" claude=false back=127.0.0.1:50647","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"0113d571\",\"since\":\"2026-11-02T14:08:01.052Z\"}}"}
+{"who":"VS Code","page":"\"Visual Studio Code\" claude=false back=vscode.dev","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"7830725f\",\"since\":\"2026-11-02T14:08:10.257Z\"}}"}
+{"who":"Zed","page":"\"Zed\" claude=false back=127.0.0.1:40640","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"5aaf0da2\",\"since\":\"2026-11-02T14:08:18.556Z\"}}"}
+{"who":"Gemini app (DCR, secret)","register":"201 +secret","page":"\"Gemini\" claude=false back=oauth-redirect.googleusercontent.com","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"5693850f\",\"since\":\"2026-11-02T14:08:26.695Z\"}}","refresh1":"200 rotated=true","refresh_same_after_grace":"400 invalid_grant that refresh token is no longer good","newest_access_after":401,"newest_refresh_after":"400 invalid_grant"}
+{"who":"Gemini CLI (DCR)","register":"201","page":"\"Gemini CLI MCP Client\" claude=false back=localhost:50195","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"423fcce0\",\"since\":\"2026-11-02T14:09:09.314Z\"}}"}
+{"who":"Cursor (DCR)","register":"201","page":"\"Cursor\" claude=false back=www.cursor.com","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"70df4eef\",\"since\":\"2026-11-02T14:09:17.125Z\"}}"}
+{"who":"M365 Copilot (DCR, Basic)","register":"201 +secret","page":"\"Microsoft Copilot\" claude=false back=teams.microsoft.com","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"dfcdf078\",\"since\":\"2026-11-02T14:09:24.692Z\"}}"}
+{"who":"Perplexity (DCR)","register":"201","page":"\"Perplexity\" claude=false back=www.perplexity.ai","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"0f3a9ad7\",\"since\":\"2026-11-02T14:09:32.572Z\"}}"}
+{"who":"Grok (DCR)","register":"201","page":"\"Grok\" claude=false back=console.x.ai","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"a6da3643\",\"since\":\"2026-11-02T14:09:42.092Z\"}}"}
+{"who":"Nameless DCR client","register":"201","page":"\"An MCP client\" claude=false back=assistant.example","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"a9d19a3e\",\"since\":\"2026-11-02T14:09:49.817Z\"}}"}
+{"who":"A client calling itself Claude","register":"201","page":"\"Claude\" claude=true back=not-claude.example","token":"200","instructions":30,"tools":"70 (portable)","tab_sees":"{\"brickworks/chat\":{\"chat\":\"c5e31f54\",\"since\":\"2026-11-02T14:09:57.791Z\"}}"}
+Account lists: Claude | x | Grok | Perplexity | Microsoft Copilot | Cursor | Gemini CLI MCP Client | Zed | Visual Studio Code | Codex | Claude
+throwaway account removed
+exit=0
+== oauth_probe
+the account's connections
+  ok    listed for the account: Claude, Claude, Claude Code, Claude
+  ok    ...with when Claude last used it
+  ok    another account sees none of them, and had none
+  ok    nobody signed in sees nothing: 401
+
+revocation and disconnecting
+  ok    Claude Code's refresh token revoked (RFC 7009): 200
+  ok    ...and its whole connection with it: its access token is refused
+  ok    ...and what was allowed with it: Claude Code is asked again
+  ok    Disconnect Claude: 3 connection(s) ended
+  ok    Claude's token is refused at once, and told where to sign in again
+  ok    ...and so is its refresh token
+  ok    none left
+  ok    ...but the account had Claude: Connect Claude goes to the Brickworks in its Claude, not to add another
+  ok    kept in the account's server-only record, beside what was there: ["claude_connected_at","provider","providers"]
+  ok    ...and the next connection asks again: Disconnect ended what was allowed
+
+a refresh token used again long after it was replaced
+  ok    after the grace: invalid_grant
+  ok    ...and the connection is ended: somebody else has a copy
+
+  (removed 2 throwaway account(s), and their connections with them)
+
+Claude can sign in to Brickworks, and nothing else can
+exit=0
