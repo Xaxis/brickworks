@@ -44,7 +44,7 @@ import { bearer, isTestAccount, verify } from "./_auth.js";
 import { COLOUR_NAMES } from "./_colours.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
-import { TESTS_CACHE, Unacceptable, cardOf, escapeHtml, summary, testsAsked } from "./_directory.js";
+import { SITE_LANGS, TESTS_CACHE, Unacceptable, cardOf, escapeHtml, inLanguage, siteWords, summary, testsAsked } from "./_directory.js";
 import { brokenSaid as brokenWords, rulesSaid, say } from "./_card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -56,7 +56,8 @@ const missing = (trouble) => /: 404$/.test(String(trouble?.message || ""));
 const n = (value) => Number(value) || 0;
 const count = (value, one, many = `${one}s`) => `${n(value).toLocaleString("en-US")} ${n(value) === 1 ? one : many}`;
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
-export const dayOf = (iso) => DAY.format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
+const dateOf = (iso) => new Date(`${String(iso).slice(0, 10)}T00:00:00Z`);
+export const dayOf = (iso) => DAY.format(dateOf(iso));
 const colourOf = (code) => COLOUR_NAMES[code] || `colour ${code}`;
 
 const ASK_FIRST = "Brickworks asks everyone one question first. Sign in again, in the app or on brickworks.diy, "
@@ -160,35 +161,45 @@ async function pageOf(tests, id = null) {
 // ---------------------------------------------------------------------------
 // A challenge's own link preview.
 
-let pageHtml = null;
+const pages = new Map();
 
-/// /challenge's page as the site serves it: web/challenge.html, beside the
-/// function as _challenge.html in a deployment.
-function challengeFile() {
-  if (pageHtml !== null) return pageHtml;
-  pageHtml = "";
-  for (const where of ["./_challenge.html", "../web/challenge.html"]) {
+/// /challenge's page as the site serves it, in [lang]: web/challenge.html,
+/// or its copy (web/de/challenge.html, tools/site_lang.py), beside the
+/// function as _challenge.html and _challenge_de.html in a deployment.
+function challengeFile(lang = "en") {
+  if (pages.has(lang)) return pages.get(lang);
+  const at = lang === "en" ? "" : `_${lang}`;
+  let found = "";
+  for (const where of [`./_challenge${at}.html`, `../web/${lang === "en" ? "" : `${lang}/`}challenge.html`]) {
     const url = new URL(where, import.meta.url);
     if (existsSync(url)) {
-      pageHtml = readFileSync(url, "utf8");
+      found = readFileSync(url, "utf8");
       break;
     }
   }
-  return pageHtml;
+  pages.set(lang, found);
+  return found;
 }
 
 /// [html], /challenge's page, with the head of challenge [page]
-/// (challenge_page_at's): its title, its brief and days, its own address,
-/// and the first winner's picture once it has one, for search engines and
-/// the cards chat apps draw of a link. Pure. [page] null: the page's own.
-export function challengeHead(html, origin, page, tests = false) {
+/// (challenge_page_at's): its title, its brief and days, its own address
+/// and its copies', and the first winner's picture once it has one, for
+/// search engines and the cards chat apps draw of a link. In the page's
+/// language (say), its address the copy's ([lang]). Pure. [page] null:
+/// the page's own.
+export function challengeHead(html, origin, page, tests = false, lang = "en") {
   if (!page || !page.id || !page.title) return html;
-  const title = `${String(page.title).replace(/\s+/g, " ").trim()} · Brickworks challenge`;
+  const title = say("{title} · Brickworks challenge", { title: String(page.title).replace(/\s+/g, " ").trim() });
   const brief = String(page.brief || "").replace(/\s+/g, " ").trim();
-  const days = daysSaid(page.starts_on, page.ends_on);
-  const when = page.state === "ended" ? `Ran ${days}: see who won.` : page.state === "upcoming" ? `From ${days}.` : `Open ${days}.`;
+  const days = lang === "en" ? daysSaid(page.starts_on, page.ends_on) : new Intl.DateTimeFormat(lang,
+    { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).formatRange(dateOf(page.starts_on), dateOf(page.ends_on));
+  const when = page.state === "ended" ? say("Ran {days}: see who won.", { days })
+    : page.state === "upcoming" ? say("From {days}.", { days }) : say("Open {days}.", { days });
   const about = `${summary(brief, 220)} ${when}`.trim();
-  const url = `${origin}/challenge?id=${n(page.id)}${tests && page.test ? "&tests=1" : ""}`;
+  const asked = `?id=${n(page.id)}${tests && page.test ? "&tests=1" : ""}`;
+  // The page in [code], English's for x-default.
+  const copy = (code) => `${origin}${["en", "x-default"].includes(code) ? "" : `/${code}`}/challenge${asked}`;
+  const url = copy(lang);
   const entries = new Map((page.entries || []).filter((one) => one && one.card).map((one) => [one.model, one.card]));
   const won = (page.winners || []).map((one) => entries.get(one.model)).find((card) => card && card.has_image);
   const image = won ? cardOf(origin, won).image : `${origin}/share.png`;
@@ -203,20 +214,25 @@ export function challengeHead(html, origin, page, tests = false) {
     [/<meta name="twitter:title" content="[^"]*">/, `<meta name="twitter:title" content="${escapeHtml(title)}">`],
     [/<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${escapeHtml(about)}">`],
     [/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${escapeHtml(image)}">`],
+    ...["en", ...SITE_LANGS, "x-default"].map((code) => [new RegExp(`<link rel="alternate" hreflang="${code}" href="[^"]*">`),
+      `<link rel="alternate" hreflang="${code}" href="${escapeHtml(copy(code))}">`]),
   ];
   // A test challenge's page is never one to find.
   const head = swaps.reduce((made, [find, put]) => made.replace(find, () => put), html);
   return page.test ? head.replace(/<meta name="description"/, () => '<meta name="robots" content="noindex">\n<meta name="description"') : head;
 }
 
-/// /challenge?id=N: the page, with challenge N's head when it is there to
-/// show (a test one only asked with tests=1), else the page as it is,
-/// which says so itself.
-export async function challengePageHtml(origin, id, tests) {
-  const html = challengeFile();
+/// /challenge?id=N (and /de/challenge?id=N, in [lang]): the page, with
+/// challenge N's head when it is there to show (a test one only asked with
+/// tests=1), else the page as it is, which says so itself. A language the
+/// site has no copy in is English.
+export async function challengePageHtml(origin, id, tests, lang = "en") {
+  const code = SITE_LANGS.includes(lang) && challengeFile(lang) ? lang : "en";
+  const html = challengeFile(code);
   if (!id) return html;
   const page = await db("rpc/challenge_page_at", { method: "POST", body: { challenge_id: id, tests } }).catch(() => null);
-  return challengeHead(html, origin, page && page.id ? page : null, tests);
+  return inLanguage(code, code === "en" ? null : siteWords(code),
+    () => challengeHead(html, origin, page && page.id ? page : null, tests, code));
 }
 
 /// "1 to 31 October 2026", "28 September to 4 October 2026": a challenge's

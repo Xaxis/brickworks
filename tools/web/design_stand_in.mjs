@@ -65,6 +65,7 @@ import { GONE, KEPT, entryOf } from "../../api/plans.js";
 import { Refusal as BetaRefusal, applicationOf } from "../../api/_beta.js";
 // What a person earned (docs/SOCIAL.md U13), worked out as the server works it out.
 import { achievementsOf } from "../../api/people.js";
+import { inLanguage, siteWords } from "../../api/_directory.js";
 // Whose picture is beside their name (supabase/avatars.sql), given as the
 // API gives it; and the pictures themselves, made here.
 import { facesOn, pictureAt } from "../../api/_faces.js";
@@ -887,6 +888,13 @@ const RPC = {
   achievement_read: () => ({ read: 0 }),
   // supabase/challenge_notices.sql
   challenge_read: () => ({ read: true }),
+  // A challenge's own head for /challenge?id=N (api/_challenges.js
+  // challengePageHtml): this month's, or one that ran.
+  challenge_page_at: ({ challenge_id }) => {
+    const one = [CHALLENGE, ...PAST].find((it) => it.id === Number(challenge_id));
+    return one ? { id: one.id, title: one.title, brief: one.brief, starts_on: one.starts_on, ends_on: one.ends_on,
+      state: one === CHALLENGE ? CHALLENGE.state : "ended", test: false, entries: [], winners: [] } : {};
+  },
   follow_state: ({ asker, wanted }) => followState(asker || null, wanted),
   follow_list: ({ wanted }) => followList(wanted),
   // supabase/collection_follows.sql
@@ -1095,6 +1103,9 @@ const PAGES = [
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
   [/^\/collections\/?$/, "people", "collections_page"],
+  // A challenge's link (/challenge?id=N), its head the challenge's own.
+  [/^\/challenge\/?$/, "people", "challenge_page"],
+  [/^\/(de|fr|es)\/challenge\/?$/, "people", "challenge_page_lang"],
   // A LEGO® set's page (api/_sets.js), from this checkout's catalogue, and
   // in each language the site has; its parts list from the set's shard.
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/parts[.](json|xml|csv)$/, "share", "catalog_parts"],
@@ -1114,6 +1125,9 @@ const PAGES = [
   // above), each in a language too.
   [/^\/(de|fr|es)\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed_lang"],
   [/^\/(de|fr|es)\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page_lang"],
+  // A public collection and the collections, in a language too.
+  [/^\/(de|fr|es)\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page_lang"],
+  [/^\/(de|fr|es)\/collections\/?$/, "people", "collections_page_lang"],
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set"],
   [/^\/(de|fr|es)\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set_lang"],
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.](?:(cutout|cover)[.])?webp$/, "share", "set_cover"],
@@ -1140,6 +1154,10 @@ function routeOf(pathname) {
     if (op === "sitemap_models") return { name, query: { op, lang: found[1] } };
     if (op === "embed_lang") return { name, query: { op: "embed", id: found[2], lang: found[1] } };
     if (op === "page_lang") return { name, query: { op: "page", handle: found[2], lang: found[1] } };
+    if (op === "list_page_lang") return { name, query: { op: "list_page", id: found[2], lang: found[1] } };
+    if (op === "collections_page_lang") return { name, query: { op: "collections_page", lang: found[1] } };
+    if (op === "challenge_page") return { name, query: { op } };
+    if (op === "challenge_page_lang") return { name, query: { op: "challenge_page", lang: found[1] } };
     if (op === "set_lang") return { name, query: { op: "set", id: found[2], lang: found[1] } };
     if (op === "set_cover") return { name, query: { op, id: found[1], ...(found[2] ? { as: found[2] } : {}) } };
     if (op === "set_parts") return { name, query: { op, id: found[1], as: found[2] } };
@@ -1413,7 +1431,10 @@ function challengePage(who, asked = null) {
     const entries = past.winners.map(([id, way, votes]) => ({ ...cardFor(id), way, entered_at: `${past.starts_on}T10:00:00Z`,
       keeps: true, votes, winner: true, won: [] }));
     return answer(200, { ready: true, challenge: { id: past.id, title: past.title, brief: past.brief, starts_on: past.starts_on,
-      ends_on: past.ends_on, state: "ended", test: false, settled: true, rules: past.rules,
+      ends_on: past.ends_on, state: "ended", test: false, settled: true,
+      // As api/_challenges.js challengeOf answers them, from the table's.
+      rules: { most_parts: past.rules.most_parts, set: past.rules.set_number ? { number: past.rules.set_number,
+        name: past.rules.set_name } : null, tested: past.rules.tested },
       rules_said: past.rules.most_parts ? [`At most ${past.rules.most_parts} parts`]
         : [`Only parts of set ${past.rules.set_number}, ${past.rules.set_name}: no more of each, in its colour, than the set has`],
       days_said: monthDays(past.starts_on, past.ends_on),
@@ -1489,8 +1510,9 @@ function listFollows(id, who, state, on = null) {
     why_not: found.trouble ? LIST_WORDS[found.trouble] : "", signed_in: Boolean(who) });
 }
 
-/// /api/people?op=profile&handle=X: a profile as anybody sees it, as JSON.
-function profile(handle, page = 1, tests = false) {
+/// /api/people?op=profile&handle=X: a profile as anybody sees it, as JSON,
+/// what they earned said in [lang].
+function profile(handle, page = 1, tests = false, lang = "en") {
   const person = personNamed(handle);
   if (!person) return answer(404, { error: "nobody has that handle" });
   const about = profilePage(person.handle, tests);
@@ -1507,8 +1529,9 @@ function profile(handle, page = 1, tests = false) {
         page: `${ORIGIN}/m/${one.model}#photo-${one.id}` })) } : null,
     collections: about.collections, built, url: `${ORIGIN}/u/${person.handle}`, ...cards,
     liked_count: CHOICES.some((one) => one.account === person.account && one.shows_likes) ? likedOf(person.account, tests).length : null,
-    achievements: achievementsOf({ about, earned: earned.models ? earned : null, built,
-      wins: RPC.challenge_wins({ owner: person.account }), levels: achievementLevels(person.account, tests) }),
+    achievements: inLanguage(lang, lang === "en" ? null : siteWords(lang), () => achievementsOf({ about,
+      earned: earned.models ? earned : null, built, wins: RPC.challenge_wins({ owner: person.account }),
+      levels: achievementLevels(person.account, tests) })),
     levels: achievementLevels(person.account, tests),
     models: cards.models.map((one) => ({ ...one, comments: earned.cards[one.id]?.comments ?? 0 })) });
 }
@@ -1571,7 +1594,7 @@ function people(method, params, body, who, state) {
         // whether they show the models they liked (supabase/avatars.sql).
         avatar: avatarSaid(ME), likes: { ready: true, shows_likes: CHOICES.some((one) => one.account === ME && one.shows_likes) } });
     }
-    if (op === "profile") return profile(params.get("handle"), page, asked(params.get("tests")));
+    if (op === "profile") return profile(params.get("handle"), page, asked(params.get("tests")), params.get("lang") || "en");
     if (op === "likes") {
       const person = personNamed(params.get("handle"));
       const tests = asked(params.get("tests"));
@@ -2244,7 +2267,9 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c|library|(?:de|fr|es)\/(?:library|m|u)|sitemaps)\//.test(url.pathname) || /^\/(collections|oembed)\/?$|^\/sitemap[.]xml$/.test(url.pathname)) {
+    if (/^\/(m|u|c|library|(?:de|fr|es)\/(?:library|m|u|c)|sitemaps)\//.test(url.pathname)
+      || /^\/((?:de|fr|es)\/)?collections\/?$|^\/oembed\/?$|^\/sitemap[.]xml$/.test(url.pathname)
+      || (/^\/((?:de|fr|es)\/)?challenge\/?$/.test(url.pathname) && /^[1-9][0-9]{0,15}$/.test(url.searchParams.get("id") || ""))) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:

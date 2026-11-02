@@ -1417,6 +1417,30 @@ plan with Claude as the client.
   `"Brickworks <lowercase>"` sentence outside `say()`, and a server sentence
   (`API_WORDS`: `_tested.js` SAID and FAILED, `_trust.js` UNDER_13) with no
   entry.
+- **The last pages the site links to, in its language** (languages6, 2026-11-02):
+  `/challenge` (`web/de/challenge.html` and the rest; a challenge's own
+  link `/de/challenge?id=N`, `api/_challenges.js` `challengeHead` with its
+  title, words, canonical and alternates in the language, deploy.sh copying
+  each copy to `_challenge_<code>.html`), `/collections` and a collection's
+  `/c/<id>` (`/de/c/<id>`; `api/people.js` `listHtml`/`collectionsHtml`
+  inside `inLanguage`, `?op=list_page&lang=`, `?op=collections_page&lang=`),
+  your own `/profile` (what you earned said by the server in the page's
+  language: `?op=profile&lang=`) and `/settings`, each with hreflang
+  en/de/fr/es and x-default. What the server tells you there (why you may
+  not vote, a handle taken, a picture refused, an account deleted, a
+  feedback's thanks: `api/_feedback.js` `THANKS`) has an entry and is shown
+  through `told()`. The Tested reasons on a model's page name each part
+  and colour as its parts list does (`web/model-page.js` `namesSaid`,
+  from the list's `said` and `colour_said`; a name it has none for marked
+  `lang="en"`), German writes a capital after a colon (`afterColon`) and
+  French a narrow space before a colon or semicolon (`stop`); each French
+  and Spanish reason is worded so no word agrees with a part's gender.
+  What people wrote stays as written. The guard: `tools/site_lang.py
+  --check`'s `unled` reads every script a copied page loads (an English
+  link to any page with copies fails), `untold` reads accounts, avatars,
+  plans and feedback (`TOLD`, `TOLD_IN`), and `API_WORDS` holds
+  `_feedback.js`'s `THANKS`. The relay answers `/challenge?id=N` as
+  deploy.sh routes it.
 - **A parts list's names in the visitor's language** (languages3,
   2026-11-01): a set's page, a model's and an LDraw set's ask their list
   with `?lang=<code>` (the page's language, or on a page with no copy the
@@ -3940,6 +3964,21 @@ screen at a time (`<code>-<page>-<width>-<n>.png`). Locally 211 passed;
 on brickworks.diy with rel-m244 live, 160 of 211 failed (no profile or
 LDraw set copies, the embed and its frame's name English, the 3D view and
 every server sentence English, the copy's 11 links to a profile English).
+Then the last pages the site links to (`--pages=challenge,collections,account,server`,
+languages6, 2026-11-02), at their English address in a browser asking
+for the language, landing on the copy: `/challenge` with its rules, days,
+Coming next and Past challenges, why an account under 13 may not vote
+(planted), and `/de/challenge?id=N`'s head (title, words, canonical,
+alternates); `/collections` and a collection's `/c/<id>`, their titles,
+tabs, alternates, cards and links; your own `/profile`, each tab, Edit
+profile and what you earned, and `/settings`, the deployment's pages
+signed in only in the browser, every call they make answered by the
+stand-in; and in `server` the Tested reasons naming each part and colour
+as the parts list does, a capital after a German colon and a narrow space
+before a French one. Locally 333 passed; on brickworks.diy with rel-m245
+live, 210 of 333 failed (none of the four pages had a copy, the
+challenge's link head English, the reasons' parts and colours English,
+"Bei Schritt 3: es ist ...").
 
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):

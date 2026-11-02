@@ -17,12 +17,24 @@
 import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followsSent, showFeedCount } from "/follow.js";
 import { avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
+import { counted, langAt, number, say, told } from "/card.js";
 import { openShare, sheetFor } from "/share-sheet.js";
+
+// A date as the page's language writes one: "October 2026".
+const LOCALE = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? globalThis.brickworksLang.code : "en-GB";
+
+/// [said], a sentence in the page's language (web/card.js say), into
+/// [into]: each {name} in it [parts]'s element or words.
+function sayInto(into, said, parts) {
+  for (const piece of said.split(/(\{\w+\})/)) {
+    const name = /^\{(\w+)\}$/.exec(piece)?.[1];
+    if (piece) into.append(name && name in parts ? parts[name] : piece);
+  }
+}
 
 // What only a signed-in page draws (card.js, designs.js), fetched as the
 // page starts when this browser has a sign-in, and not at all when not:
 // the page a visitor who is not signed in gets is two lines and a button.
-let counted;
 let modelCard;
 let levelName;
 let TRACKS;
@@ -30,7 +42,7 @@ let showDesigns;
 let drawing = null;
 function drawn() {
   drawing ||= Promise.all([import("/card.js"), import("/designs.js")]).then(([cards, designs]) => {
-    ({ counted, modelCard, levelName, TRACKS } = cards);
+    ({ modelCard, levelName, TRACKS } = cards);
     ({ showDesigns } = designs);
   });
   return drawing;
@@ -40,7 +52,7 @@ if (signedIn()) drawn();
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
-const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+const SINCE = new Intl.DateTimeFormat(LOCALE, { month: "long", year: "numeric", timeZone: "UTC" });
 const TABS = ["models", "builds", "likes", "saved", "sets", "insights", "achievements"];
 // Models are shown a row at a time on a laptop (two on a phone), so the
 // page is your profile and its work, not a wall of cards (docs/SOCIAL.md
@@ -99,15 +111,15 @@ function kept(model, action) {
 function numbersOf(body) {
   const earned = body && body.designer && Number(body.designer.models) > 0 ? body.designer : null;
   const rows = [
-    ["builds", earned?.builds, "build finished", "builds finished"],
-    ["remixes", earned?.remixes, "remix", "remixes"],
-    ["models", earned ? earned.models : body?.models_count, "model", "models"],
-    ["likes", earned ? earned.likes : body?.likes, "like", "likes"],
-    ["followers", body?.followers, "follower", "followers"],
-    ["following", body?.following, "following", "following"],
+    ["builds", earned?.builds, say("build finished"), say("builds finished")],
+    ["remixes", earned?.remixes, say("remix"), say("remixes")],
+    ["models", earned ? earned.models : body?.models_count, say("model"), say("models")],
+    ["likes", earned ? earned.likes : body?.likes, say("like"), say("likes")],
+    ["followers", body?.followers, say("follower"), say("followers")],
+    ["following", body?.following, say("following"), say("following")],
   ];
   return rows.filter(([, n]) => Number(n) > 0).map(([kind, n, one, many]) => {
-    const li = make("li", "", make("b", "", Number(n).toLocaleString("en-US")), " ", make("span", "", Number(n) === 1 ? one : many));
+    const li = make("li", "", make("b", "", number(n)), " ", make("span", "", Number(n) === 1 ? one : many));
     li.dataset.stat = kind;
     return li;
   });
@@ -123,8 +135,8 @@ function drawHead() {
   const designer = body.designer && Number(body.designer.models) > 0;
   const since = Date.parse(body.since || person.created_at || "");
   const line = $("handle-line");
-  line.replaceChildren(`@${handle} · `, make("span", "", designer ? "Designer" : "Builder"),
-    Number.isFinite(since) ? ` · building here since ${SINCE.format(since)}` : "");
+  line.replaceChildren(`@${handle} · `, make("span", "", designer ? say("Designer") : say("Builder")),
+    Number.isFinite(since) ? ` · ${say("building here since {when}", { when: SINCE.format(since) })}` : "");
   line.querySelector("span").dataset.role = "";
   const bio = body.bio ?? person.bio;
   $("bio-shown").textContent = bio ? String(bio) : "";
@@ -165,7 +177,7 @@ function drawHead() {
   const pins = (Array.isArray(body.pins) ? body.pins : []).filter((one) => ID.test(String(one.id)));
   $("pins").replaceChildren(...pins.map((card) => modelCard(card, { earned: Boolean(designer) })));
   $("pinned").hidden = pins.length === 0;
-  $("view").href = `/u/${handle}`;
+  $("view").href = `${langAt()}/u/${handle}`;
   $("edit").disabled = young;
   // The tabs' counts, once there is one.
   const counts = { models: Number(body.models_count) || 0,
@@ -173,7 +185,7 @@ function drawHead() {
     likes: Number(body.liked_count) || 0 };
   for (const [tab, n] of Object.entries(counts)) {
     const said = document.querySelector(`#tabs [data-tab="${tab}"] .n`);
-    said.textContent = n.toLocaleString("en-US");
+    said.textContent = number(n);
     said.hidden = !n;
   }
 }
@@ -187,7 +199,10 @@ async function readShown() {
     shown = null;
     return;
   }
-  const answer = await call(`/api/people?op=profile&handle=${encodeURIComponent(handle)}&tests=1`).catch(() => null);
+  // What you earned, said in the page's language.
+  const lang = globalThis.brickworksLang?.code || "en";
+  const answer = await call(`/api/people?op=profile&handle=${encodeURIComponent(handle)}&tests=1${lang === "en" ? "" : `&lang=${lang}`}`)
+    .catch(() => null);
   // None for an account the site's owner took out of the gallery, or under
   // 13: the head is drawn from what you saved.
   shown = answer && answer.status === 200 ? answer.body : null;
@@ -216,7 +231,7 @@ async function showModels({ focus = false, first = false } = {}) {
     const answer = await call(`/api/people?op=profile&handle=${encodeURIComponent(handle)}&tests=1&page=${models.page + 1}`)
       .catch(() => null);
     if (!answer || answer.status !== 200) {
-      toast("That did not load just now. Try again in a minute.");
+      toast(say("That did not load just now. Try again in a minute."));
       return;
     }
     models.page += 1;
@@ -234,20 +249,20 @@ async function showModels({ focus = false, first = false } = {}) {
 function buildFigure(photo, { by = false } = {}) {
   const img = make("img");
   img.src = `/api/people?op=photo_file&id=${photo.id}`;
-  img.alt = `A build of ${String(photo.model_name || "a model")}`;
+  img.alt = say("A build of {name}", { name: String(photo.model_name || say("a model")) });
   img.width = Number(photo.width) || 1;
   img.height = Number(photo.height) || 1;
   img.loading = "lazy";
   img.decoding = "async";
   const open = make("a", "", img);
-  open.href = `/m/${photo.model}#photo-${photo.id}`;
-  const model = make("a", "", String(photo.model_name || "The model"));
-  model.href = `/m/${photo.model}`;
+  open.href = `${langAt()}/m/${photo.model}#photo-${photo.id}`;
+  const model = make("a", "", String(photo.model_name || say("The model")));
+  model.href = `${langAt()}/m/${photo.model}`;
   const caption = make("figcaption", "", photo.words ? make("q", "", String(photo.words)) : null, model);
   if (by) {
     const who = photo.by && HANDLE.test(String(photo.by.handle)) ? make("a", "", String(photo.by.name)) : null;
-    if (who) who.href = `/u/${photo.by.handle}`;
-    caption.append(", built by ", who || "a builder");
+    if (who) who.href = `${langAt()}/u/${photo.by.handle}`;
+    sayInto(caption, say(", built by {who}"), { who: who || say("a builder") });
   }
   const figure = make("figure", "build", open, caption);
   figure.id = `photo-${photo.id}`;
@@ -266,8 +281,8 @@ function drawBuilds() {
   $("builds-of").hidden = theirs.length === 0;
   if (theirs.length) {
     const people = Number(designer.builders) || 0;
-    $("builds-of-said").textContent = `${people === 1 ? "One person" : `${people.toLocaleString("en-US")} people`} posted photos `
-      + "of their real builds of your models.";
+    $("builds-of-said").textContent = say(people === 1 ? "One person posted photos of their real builds of your models."
+      : "{n} people posted photos of their real builds of your models.", { n: number(people) });
   }
   $("builds-said").hidden = built.length + theirs.length > 0;
 }
@@ -285,7 +300,7 @@ async function moreLikes({ focus = false } = {}) {
   const answer = await call(`/api/people?op=likes&handle=${encodeURIComponent(handle)}&tests=1&page=${liked.page + 1}`)
     .catch(() => null);
   if (!answer || answer.status !== 200) {
-    if (liked.page > 0) toast("That did not load just now. Try again in a minute.");
+    if (liked.page > 0) toast(say("That did not load just now. Try again in a minute."));
     liked.more = false;
     $("likes-paging").hidden = true;
     return;
@@ -304,7 +319,7 @@ async function favourites() {
   grid.replaceChildren();
   const models = (answer.status === 200 ? answer.body.models : []).filter((m) => ID.test(String(m.id)));
   for (const model of models) {
-    grid.append(kept(model, { label: "Let it go", run: async (button, box) => {
+    grid.append(kept(model, { label: say("Let it go"), run: async (button, box) => {
       button.disabled = true;
       const gone = await call(`/api/people?op=favourite&id=${model.id}`, { method: "POST", body: { on: false } });
       if (gone.status === 200) box.remove();
@@ -324,25 +339,25 @@ function listRow(list) {
   const name = document.createElement("input");
   name.value = String(list.name);
   name.maxLength = 80;
-  name.setAttribute("aria-label", "The collection's name");
+  name.setAttribute("aria-label", say("The collection's name"));
   const open = document.createElement("label");
   open.className = "tick";
   const box = document.createElement("input");
   box.type = "checkbox";
   box.checked = Boolean(list.public);
-  open.append(box, document.createTextNode(" Public"));
+  open.append(box, document.createTextNode(` ${say("Public")}`));
   if (young) box.disabled = true;
   const save = document.createElement("button");
   save.type = "button";
   save.className = "cta ghost";
-  save.textContent = "Save";
+  save.textContent = say("Save");
   const drop = document.createElement("button");
   drop.type = "button";
   drop.className = "cta ghost";
-  drop.textContent = "Delete";
+  drop.textContent = say("Delete");
   const page = document.createElement("a");
-  page.href = `/c/${list.id}`;
-  page.textContent = "Its page";
+  page.href = `${langAt()}/c/${list.id}`;
+  page.textContent = say("Its page");
   page.hidden = !list.public;
   const many = document.createElement("small");
   many.textContent = counted(list.count, "model");
@@ -350,7 +365,7 @@ function listRow(list) {
   const shownIn = document.createElement("details");
   const summary = document.createElement("summary");
   summary.className = "cta ghost small";
-  summary.textContent = "What is in it";
+  summary.textContent = say("What is in it");
   const grid = document.createElement("div");
   grid.className = "models compact";
   shownIn.append(summary, grid);
@@ -359,7 +374,7 @@ function listRow(list) {
     grid.dataset.loaded = "1";
     const answer = await call(`/api/people?op=collection&id=${list.id}&page=1`);
     for (const model of (answer.body.models || []).filter((m) => ID.test(String(m.id)))) {
-      grid.append(kept(model, { label: "Take it out", run: async (button, card) => {
+      grid.append(kept(model, { label: say("Take it out"), run: async (button, card) => {
         button.disabled = true;
         const out = await call("/api/people?op=collect", { method: "POST",
           body: { collection: list.id, model: model.id, on: false } });
@@ -373,15 +388,15 @@ function listRow(list) {
     const answer = await call("/api/people?op=collection", { method: "POST",
       body: { id: list.id, name: name.value, public: box.checked } });
     save.disabled = false;
-    $("lists-said").textContent = answer.status === 200 ? `Saved "${answer.body.name}".`
-      : answer.body.error || "That did not work just now.";
+    $("lists-said").textContent = answer.status === 200 ? say("Saved \"{name}\".", { name: answer.body.name })
+      : told(answer.body.error, say("That did not work just now."));
     if (answer.status === 200) page.hidden = !answer.body.public;
   });
   drop.addEventListener("click", async () => {
-    if (!confirm(`Delete the collection "${name.value}"? The models in it are not touched.`)) return;
+    if (!confirm(say("Delete the collection \"{name}\"? The models in it are not touched.", { name: name.value }))) return;
     const answer = await call(`/api/people?op=uncollection&id=${list.id}`, { method: "POST", body: {} });
     if (answer.status === 200) row.remove();
-    else $("lists-said").textContent = answer.body.error || "That did not work just now.";
+    else $("lists-said").textContent = told(answer.body.error, say("That did not work just now."));
   });
   row.append(top, shownIn);
   return row;
@@ -396,24 +411,25 @@ async function following() {
   list.replaceChildren();
   const people = answer && answer.status === 200 ? (answer.body.following || []) : null;
   if (!people) {
-    $("following-said").textContent = (answer && answer.body && answer.body.error) || "Whom you follow could not be read just now.";
+    $("following-said").textContent = told(answer?.body?.error, say("Whom you follow could not be read just now."));
     return;
   }
-  const nobody = "Nobody yet. Press Follow on a designer’s page, or beside their name on a model’s, and what they share comes into your feed.";
+  const nobody = say("Nobody yet. Press Follow on a designer’s page, or beside their name on a model’s, and what they share comes into your feed.");
   if (answer.body.ready === false) {
     const many = shown ? Number(shown.following) || 0 : null;
-    $("following-said").textContent = many ? `You follow ${counted(many, "designer")}: what they share comes into your feed.`
-      : many === 0 ? nobody : "What the designers you follow share comes into your feed.";
+    $("following-said").textContent = many
+      ? say("You follow {designers}: what they share comes into your feed.", { designers: counted(many, "designer") })
+      : many === 0 ? nobody : say("What the designers you follow share comes into your feed.");
     return;
   }
   for (const one of people.filter((p) => HANDLE.test(String(p.handle)))) {
     const to = make("a", "pill", String(one.name || one.handle), make("small", "", `@${one.handle}`));
-    to.href = `/u/${one.handle}`;
+    to.href = `${langAt()}/u/${one.handle}`;
     to.insertAdjacentHTML("afterbegin", avatarHtml({ handle: one.handle, name: one.name, picture: one.picture }, { size: "small" }));
     list.append(make("li", "", to));
   }
   $("following-said").textContent = people.length
-    ? `${counted(people.length, "designer")}: what they share comes into your feed.` : nobody;
+    ? say("{designers}: what they share comes into your feed.", { designers: counted(people.length, "designer") }) : nobody;
 }
 
 async function drawSaved() {
@@ -438,24 +454,24 @@ async function drawSets() {
   const pool = shelves && shelves.status === 200 ? shelves.body.mine : null;
   const pieces = pool ? Number(pool.pieces) || 0 : parts.reduce((all, one) => all + (Number(one.qty) || 0), 0);
   if (!sets.length && !parts.length && !pieces) {
-    said.textContent = "Tell Brickworks what you own (in the app, Build › My collection…: a Rebrickable or "
-      + "BrickLink export, or set numbers) and this shows what in the gallery you can build with it.";
+    said.textContent = say("Tell Brickworks what you own (in the app, Build › My collection…: a Rebrickable or "
+      + "BrickLink export, or set numbers) and this shows what in the gallery you can build with it.");
     counts.hidden = true;
     row.hidden = true;
     $("owned-more").hidden = true;
     return;
   }
-  const stat = (n, words) => make("li", "", make("b", "", Number(n).toLocaleString("en-US")), " ", make("span", "", words));
+  const stat = (n, words) => make("li", "", make("b", "", number(n)), " ", make("span", "", words));
   const boxes = sets.reduce((all, one) => all + (Number(one.qty) || 1), 0);
-  counts.replaceChildren(stat(boxes, boxes === 1 ? "set" : "sets"), stat(pieces, pieces === 1 ? "part" : "parts"));
+  counts.replaceChildren(stat(boxes, say(boxes === 1 ? "set" : "sets")), stat(pieces, say(pieces === 1 ? "part" : "parts")));
   counts.hidden = false;
   const ready = shelves && shelves.status === 200 && shelves.body.ready
     ? (shelves.body.ready.models || []).filter((m) => m && ID.test(String(m.id))) : [];
   row.replaceChildren(...ready.map((model) => modelCard(model)));
   row.hidden = ready.length === 0;
   said.textContent = ready.length
-    ? "Every part of these is in what you own: the most built and remixed first."
-    : "Nothing in the gallery is all in what you own yet.";
+    ? say("Every part of these is in what you own: the most built and remixed first.")
+    : say("Nothing in the gallery is all in what you own yet.");
   $("owned-more").hidden = false;
 }
 
@@ -469,22 +485,23 @@ function drawAchievements() {
     const next = Number(one.next) || 0;
     const award = document.createElement("template");
     award.innerHTML = iconHtml("award");
-    const tile = make("li", "", make("h3", "", document.importNode(award.content, true), level ? levelName(one.track, one.reached) : track.name),
-      make("p", "level", level ? `Level ${level} of ${Number(one.of)}` : "Not reached yet"));
+    const tile = make("li", "", make("h3", "", document.importNode(award.content, true), level ? levelName(one.track, one.reached) : say(track.name)),
+      make("p", "level", level ? say("Level {level} of {of}", { level, of: Number(one.of) }) : say("Not reached yet")));
     tile.dataset.track = one.track;
     tile.dataset.level = String(level);
     const bar = make("div", "reach", make("span"));
     bar.setAttribute("aria-hidden", "true");
     bar.firstChild.style.width = `${next ? Math.min(100, Math.round((n / next) * 100)) : 100}%`;
     tile.append(bar, make("p", "", `${counted(n, ...track.what)}.`), make("p", "to-next", next
-      ? `${(next - n).toLocaleString("en-US")} more to reach ${levelName(one.track, next)}.` : "Every level of it reached."));
+      ? say("{n} more to reach {level}.", { n: number(next - n), level: levelName(one.track, next) }) : say("Every level of it reached.")));
     if (next) {
       const how = make("p", "how");
       if (track.href) {
-        const link = make("a", "", track.how);
-        link.href = track.href;
+        const link = make("a", "", say(track.how));
+        // The gallery and the challenge have a copy in each language; the docs not.
+        link.href = track.href.startsWith("/docs/") ? track.href : `${langAt()}${track.href}`;
         how.append(link);
-      } else how.append(track.how);
+      } else how.append(say(track.how));
       tile.append(how);
     }
     return tile;
@@ -565,7 +582,7 @@ function placeForm(start) {
   else dialog.append(form);
   for (const part of form.querySelectorAll("[data-more]")) part.hidden = start;
   $("showcase").hidden = start || !(mine.showcase && mine.showcase.ready) || young;
-  $("save").textContent = start ? "Make my profile" : "Save";
+  $("save").textContent = start ? say("Make my profile") : say("Save");
   for (const field of form.querySelectorAll("input, textarea, select, button[type=submit]")) field.disabled = young;
 }
 
@@ -574,12 +591,12 @@ function fillForm() {
   $("name").value = person.name ? String(person.name) : "";
   $("handle").value = person.handle ? String(person.handle) : "";
   $("bio").value = person.bio ? String(person.bio) : "";
-  $("handle-shown").textContent = $("handle").value || "your-handle";
+  $("handle-shown").textContent = $("handle").value || say("your-handle");
   drawPicture();
   const showcase = mine.showcase || {};
   const choices = (showcase.models || []).filter((one) => ID.test(String(one.id)));
   const fill = (select, chosen, pictured) => {
-    select.replaceChildren(make("option", "", "None"));
+    select.replaceChildren(make("option", "", say("None")));
     select.firstChild.value = "";
     for (const one of choices) {
       if (pictured && !one.picture) continue;
@@ -608,14 +625,14 @@ function drawPicture() {
   const ready = Boolean(mine?.avatar?.ready) && !young;
   $("avatar-acts").hidden = !ready;
   $("avatar-remove").hidden = !picture;
-  $("avatar-choose").textContent = picture ? "Choose another" : "Choose a picture";
+  $("avatar-choose").textContent = picture ? say("Choose another") : say("Choose a picture");
   $("avatar-said").textContent = picture
-    ? "Your picture, in a circle, wherever your name is: your profile, your cards, your comments."
-    : mine?.avatar?.removed ? "Your picture was taken out by Brickworks, as against the guidelines: your avatar is "
-      + "made from your handle again. You may choose another."
-      : ready ? "Your avatar is made from your handle: its colour and your name’s first letter. Or choose a picture "
-        + "of your own: a JPEG, a PNG or a WebP, at most 8 MB, cropped to a circle."
-        : "Your avatar is made from your handle: its colour and your name’s first letter.";
+    ? say("Your picture, in a circle, wherever your name is: your profile, your cards, your comments.")
+    : mine?.avatar?.removed ? say("Your picture was taken out by Brickworks, as against the guidelines: your avatar is "
+      + "made from your handle again. You may choose another.")
+      : ready ? say("Your avatar is made from your handle: its colour and your name’s first letter. Or choose a picture "
+        + "of your own: a JPEG, a PNG or a WebP, at most 8 MB, cropped to a circle.")
+        : say("Your avatar is made from your handle: its colour and your name’s first letter.");
 }
 
 /// After the picture changed: your page, your header, Edit profile.
@@ -639,34 +656,34 @@ $("avatar-file").addEventListener("change", async () => {
   try {
     made = await cropPicture(file, $("crop-dialog"));
   } catch (trouble) {
-    note.textContent = String(trouble?.message || "That picture would not do: try another.");
+    note.textContent = String(trouble?.message || say("That picture would not do: try another."));
     return;
   }
   if (!made) return;
   $("avatar-choose").disabled = true;
-  note.textContent = "Saving your picture…";
+  note.textContent = say("Saving your picture…");
   const answer = await call("/api/people?op=avatar", { method: "POST",
     body: { picture: await base64Of(made.blob), type: "image/jpeg" } }).catch(() => null);
   $("avatar-choose").disabled = false;
   if (!answer || answer.status !== 200) {
-    note.textContent = (answer && answer.body && answer.body.error) || "That did not work just now. Try again in a minute.";
+    note.textContent = told(answer?.body?.error, say("That did not work just now. Try again in a minute."));
     return;
   }
   note.textContent = "";
   pictureChanged(answer.body);
-  toast("Your picture is your avatar now");
+  toast(say("Your picture is your avatar now"));
 });
 $("avatar-remove").addEventListener("click", async () => {
-  if (!confirm("Take your picture off? Your avatar is made from your handle again.")) return;
+  if (!confirm(say("Take your picture off? Your avatar is made from your handle again."))) return;
   $("avatar-remove").disabled = true;
   const answer = await call("/api/people?op=avatar_remove", { method: "POST", body: {} }).catch(() => null);
   $("avatar-remove").disabled = false;
   if (!answer || answer.status !== 200) {
-    $("avatar-note").textContent = (answer && answer.body && answer.body.error) || "That did not work just now.";
+    $("avatar-note").textContent = told(answer?.body?.error, say("That did not work just now."));
     return;
   }
   pictureChanged(answer.body);
-  toast("Your picture is off: your avatar is made from your handle");
+  toast(say("Your picture is off: your avatar is made from your handle"));
 });
 
 function showcaseFields() {
@@ -686,7 +703,7 @@ function openEdit() {
 $("edit").addEventListener("click", openEdit);
 $("cancel").addEventListener("click", () => dialog.close());
 $("handle").addEventListener("input", () => {
-  $("handle-shown").textContent = $("handle").value.trim().toLowerCase() || "your-handle";
+  $("handle-shown").textContent = $("handle").value.trim().toLowerCase() || say("your-handle");
 });
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -698,7 +715,7 @@ form.addEventListener("submit", async (event) => {
   };
   const answer = await call("/api/people?op=profile", { method: "POST", body: {
     handle: $("handle").value.trim().toLowerCase(), name: $("name").value, bio: start ? "" : $("bio").value } });
-  if (answer.status !== 200) return said(answer.body.error || "That did not work just now.");
+  if (answer.status !== 200) return said(told(answer.body.error, say("That did not work just now.")));
   // Links, the banner and pins: only what was changed, so a pin the list
   // here cannot offer (a model taken out of the gallery since) is kept.
   if (!start && mine.showcase && mine.showcase.ready && !young) {
@@ -711,14 +728,14 @@ form.addEventListener("submit", async (event) => {
       const kept = await call("/api/people?op=showcase", { method: "POST", body: changed });
       if (kept.status !== 200) {
         await refresh();
-        return said(`Your name was saved; the rest was not: ${kept.body.error || "that did not work just now."}`);
+        return said(say("Your name was saved; the rest was not: {why}", { why: told(kept.body.error, say("that did not work just now.")) }));
       }
     }
   }
-  said("Saved.");
+  said(say("Saved."));
   await refresh();
   if (dialog.open) dialog.close();
-  toast(start ? "Your profile is made" : "Saved. Your page shows it within a minute.");
+  toast(start ? say("Your profile is made") : say("Saved. Your page shows it within a minute."));
 });
 
 /// Everything asked again and drawn: after a save, your page shows it at
@@ -820,8 +837,8 @@ async function load() {
 for (const button of document.querySelectorAll("[data-share-page]")) button.addEventListener("click", () => {
   const banner = $("banner-shown").querySelector("img")?.getAttribute("src")?.match(/^\/m\/([A-Za-z0-9]{10})\./)?.[1];
   const name = mine?.profile?.name || handleOf();
-  openShare(sheetFor({ url: `${location.origin}/u/${handleOf()}`, name, text: `${name} on Brickworks`,
-    about: "Its link opens your page, as everybody sees it: your models, your builds and your collections.",
+  openShare(sheetFor({ url: `${location.origin}${langAt()}/u/${handleOf()}`, name, text: say("{name} on Brickworks", { name }),
+    about: say("Its link opens your page, as everybody sees it: your models, your builds and your collections."),
     image: banner ? `${location.origin}/m/${banner}.png` : "" }));
 });
 $("sign-in").addEventListener("click", async () => {
@@ -836,7 +853,7 @@ $("new-list").addEventListener("submit", async (event) => {
   if (!name) return;
   const answer = await call("/api/people?op=collection", { method: "POST", body: { name, public: false } });
   if (answer.status !== 200) {
-    $("lists-said").textContent = answer.body.error || "That did not work just now.";
+    $("lists-said").textContent = told(answer.body.error, say("That did not work just now."));
     return;
   }
   $("new-name").value = "";

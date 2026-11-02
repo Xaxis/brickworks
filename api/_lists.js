@@ -33,8 +33,8 @@
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
-import { Unacceptable, count, escapeHtml } from "./_directory.js";
-import { avatarHtml, counted, pictureOf } from "./_card.js";
+import { Unacceptable, escapeHtml } from "./_directory.js";
+import { avatarHtml, counted, langAt, pictureOf, say } from "./_card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const NOT_THERE = /: 404$/;
@@ -162,21 +162,22 @@ export async function directoryOf({ sort = "recent", page = 1, tests = false } =
 /// whose, with their avatar, a link to their profile; how many models and
 /// followers, each said once there is one; and Follow, which web/follow.js
 /// shows once it knows who is asking (not inside the link: a button in a
-/// link is neither).
+/// link is neither). In the page's language, its links to the copies.
 export function directoryCardHtml(list, covers) {
   const id = escapeHtml(list.id);
+  const at = langAt();
   const by = list.by && list.by.handle
-    ? `<a class="who" href="/u/${escapeHtml(list.by.handle)}">${avatarHtml({ handle: list.by.handle,
+    ? `<a class="who" href="${at}/u/${escapeHtml(list.by.handle)}">${avatarHtml({ handle: list.by.handle,
       name: list.by.name || list.by.handle, picture: list.by.picture }, { size: "small" })}`
       + `<span>${escapeHtml(list.by.name || list.by.handle)}</span></a>`
     : "";
   const followers = Number(list.followers) || 0;
   return `<article class="list-card in-directory" data-id="${id}">`
-    + `<a class="cover" href="/c/${id}" tabindex="-1" aria-hidden="true">${mosaicHtml(covers.get(list.id) || [])}</a>`
-    + `<div class="words"><a class="name" href="/c/${id}"><b>${escapeHtml(list.name)}</b></a>${by}`
-    + `<span class="numbers"><span>${escapeHtml(count(list.count, "model"))}</span>`
-    + `<span data-list-followers="${id}"${followers ? "" : " hidden"}>${escapeHtml(count(followers, "follower"))}</span></span>`
-    + `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>Follow</button>`
+    + `<a class="cover" href="${at}/c/${id}" tabindex="-1" aria-hidden="true">${mosaicHtml(covers.get(list.id) || [])}</a>`
+    + `<div class="words"><a class="name" href="${at}/c/${id}"><b>${escapeHtml(list.name)}</b></a>${by}`
+    + `<span class="numbers"><span>${escapeHtml(counted(list.count, "model"))}</span>`
+    + `<span data-list-followers="${id}"${followers ? "" : " hidden"}>${escapeHtml(counted(followers, "follower"))}</span></span>`
+    + `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>${escapeHtml(say("Follow"))}</button>`
     + `<span class="said" role="status"></span></p></div></article>`;
 }
 
@@ -204,7 +205,7 @@ export function mosaicHtml(pictures, { eager = false } = {}) {
   return `<div class="mosaic n${pictures.length}">${pictures.length ? pictures.map((src) =>
     `<img src="${escapeHtml(src)}" alt="" width="1200" height="630" ${eager ? 'loading="eager" fetchpriority="high"'
       : 'loading="lazy"'} decoding="async">`).join("")
-    : "<span>No pictures yet</span>"}</div>`;
+    : `<span>${escapeHtml(say("No pictures yet"))}</span>`}</div>`;
 }
 
 /// A public collection as a card: its cover, its name, how many; and whose,
@@ -212,7 +213,7 @@ export function mosaicHtml(pictures, { eager = false } = {}) {
 /// [eager]: one of the first screen's.
 export function listCardHtml(list, covers, { by = false, eager = false } = {}) {
   const whose = by && list.by && list.by.name ? ` · ${escapeHtml(list.by.name)}` : "";
-  return `<a class="list-card" href="/c/${escapeHtml(list.id)}" data-id="${escapeHtml(list.id)}">`
+  return `<a class="list-card" href="${langAt()}/c/${escapeHtml(list.id)}" data-id="${escapeHtml(list.id)}">`
     + mosaicHtml(covers.get(list.id) || [], { eager })
     + `<div class="words"><b>${escapeHtml(list.name)}</b><span>${escapeHtml(counted(list.count, "model"))}${whose}</span></div></a>`;
 }

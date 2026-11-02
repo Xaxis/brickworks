@@ -12,11 +12,14 @@
 import {
   age, askAgeIfAsked, askToSignIn, call, email, madeUp, orangecheckButton, redeem, sendCode, signOut, signedIn,
 } from "/account.js";
+import { langAt, say, told } from "/card.js";
 import { showFeedCount } from "/follow.js";
 
 const $ = (id) => document.getElementById(id);
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
+// A date as the page's language writes one: "30 October 2026".
+const LOCALE = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? globalThis.brickworksLang.code : "en-GB";
+const DAY = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "long", year: "numeric" });
 const when = (iso) => (Number.isFinite(Date.parse(iso || "")) ? DAY.format(new Date(iso)) : "");
 
 /// An element, its class, and what is in it: text or elements.
@@ -27,8 +30,19 @@ function make(tag, className = "", ...inside) {
   return made;
 }
 
-const KINDS = { bug: "Something wrong", idea: "An idea", question: "A question" };
-const STANDS = { new: "Received", seen: "Read", planned: "Planned", fixed: "Fixed", wont_fix: "Not planned" };
+/// [said], a sentence in the page's language (web/card.js say), into
+/// [into]: each {name} in it [parts]'s element or words.
+function sayInto(into, said, parts) {
+  for (const piece of said.split(/(\{\w+\})/)) {
+    const name = /^\{(\w+)\}$/.exec(piece)?.[1];
+    if (piece) into.append(name && name in parts ? parts[name] : piece);
+  }
+  return into;
+}
+
+const KINDS = { bug: () => say("Something wrong"), idea: () => say("An idea"), question: () => say("A question") };
+const STANDS = { new: () => say("Received"), seen: () => say("Read"), planned: () => say("Planned"), fixed: () => say("Fixed"),
+  wont_fix: () => say("Not planned") };
 
 /// Your feedback: each report, newest first, with where it stands and our
 /// answers (GET /api/plans?op=feedback). Not open here, it says so.
@@ -36,27 +50,31 @@ async function feedback() {
   const answer = await call("/api/plans?op=feedback");
   const list = $("reports");
   if (answer.status !== 200) {
-    $("feedback-said").textContent = answer.status === 503 ? "Feedback is not open here yet."
-      : "Your reports did not load just now.";
+    $("feedback-said").textContent = answer.status === 503 ? say("Feedback is not open here yet.")
+      : say("Your reports did not load just now.");
     return;
   }
   const reports = Array.isArray(answer.body.reports) ? answer.body.reports : [];
-  $("feedback-said").textContent = reports.length
-    ? `What you sent us, where each stands, and our answers${answer.body.beta ? ". As a beta tester, yours are marked as a tester's" : ""}.`
-    : "Nothing sent yet. Something wrong, an idea or a question: we read every one ourselves.";
+  $("feedback-said").textContent = !reports.length
+    ? say("Nothing sent yet. Something wrong, an idea or a question: we read every one ourselves.")
+    : answer.body.beta ? say("What you sent us, where each stands, and our answers. As a beta tester, yours are marked as a tester's.")
+      : say("What you sent us, where each stands, and our answers.");
   list.replaceChildren(...reports.map((one) => {
     const item = make("li", "report");
     item.dataset.report = String(one.id);
     item.dataset.status = one.status;
-    const marks = make("p", "marks", make("span", "pill", KINDS[one.kind] || "A report"),
-      make("span", `pill${one.status === "fixed" ? " good" : one.status === "new" ? "" : " new"}`, STANDS[one.status] || one.status),
-      one.beta ? make("span", "pill", "Beta") : null, make("small", "", when(one.at)));
+    const marks = make("p", "marks", make("span", "pill", KINDS[one.kind] ? KINDS[one.kind]() : say("A report")),
+      make("span", `pill${one.status === "fixed" ? " good" : one.status === "new" ? "" : " new"}`,
+        STANDS[one.status] ? STANDS[one.status]() : one.status),
+      one.beta ? make("span", "pill", say("Beta")) : null, make("small", "", when(one.at)));
     const words = make("p", "words", one.words.length > 600 ? `${one.words.slice(0, 600)}…` : one.words);
-    const sent = [one.picture ? "a picture" : "", one.model ? "the model" : ""].filter(Boolean);
+    const sent = one.picture && one.model ? say("With a picture and the model.") : one.picture ? say("With a picture.")
+      : one.model ? say("With the model.") : "";
     item.append(marks, words);
-    if (sent.length) item.append(make("p", "with", `With ${sent.join(" and ")}.`));
+    if (sent) item.append(make("p", "with", sent));
     for (const reply of one.replies || []) {
-      item.append(make("div", "answer", make("p", "who", `Our answer, ${when(reply.at)}`), make("p", "words", reply.words)));
+      item.append(make("div", "answer", make("p", "who", say("Our answer, {day}", { day: when(reply.at) })),
+        make("p", "words", reply.words)));
     }
     return item;
   }));
@@ -72,25 +90,27 @@ async function claude() {
   list.replaceChildren();
   const connections = answer && answer.status === 200 && Array.isArray(answer.body.connections) ? answer.body.connections : null;
   if (!connections) {
-    $("claude-said").textContent = "Whether your Claude is connected could not be read just now.";
+    $("claude-said").textContent = say("Whether your Claude is connected could not be read just now.");
     return;
   }
   $("claude-how").hidden = connections.length > 0;
   $("claude-said").textContent = connections.length
-    ? "These can work in your Brickworks tabs, as you, while a tab is open."
-    : "Not connected. With the assistant on, Connect Claude in the app, or add Brickworks to Claude yourself.";
+    ? say("These can work in your Brickworks tabs, as you, while a tab is open.")
+    : say("Not connected. With the assistant on, Connect Claude in the app, or add Brickworks to Claude yourself.");
   for (const one of connections) {
     const since = when(one.since);
     const used = when(one.last_used);
-    const words = make("span", "", make("b", "", String(one.client || "A Claude app")),
-      since ? ` since ${since}` : "", used ? `, last used ${used}` : "");
-    const end = make("button", "link", "Disconnect");
+    const app = make("b", "", one.client ? String(one.client) : say("A Claude app"));
+    const words = sayInto(make("span"), since && used ? say("{app} since {since}, last used {used}", { since, used })
+      : since ? say("{app} since {since}", { since }) : used ? say("{app}, last used {used}", { used }) : "{app}", { app });
+    const end = make("button", "link", say("Disconnect"));
     end.type = "button";
     end.addEventListener("click", async () => {
       // Claude forgets the tool permissions given to a connection when it is
       // disconnected, which is why nothing here suggests doing it (2026-10-20).
-      if (!confirm(`Disconnect ${String(one.client || "this app")}? It can no longer work in your tabs. Claude also `
-        + "forgets the tool permissions you gave it, so connecting again asks for them all again.")) return;
+      if (!confirm(say("Disconnect {app}? It can no longer work in your tabs. Claude also "
+        + "forgets the tool permissions you gave it, so connecting again asks for them all again.",
+      { app: one.client ? String(one.client) : say("this app") }))) return;
       end.disabled = true;
       const gone = await call(`/api/oauth?op=disconnect&id=${encodeURIComponent(String(one.id))}`, { method: "POST" });
       if (gone.status === 200) claude();
@@ -112,10 +132,10 @@ async function orangecheck() {
   if (!ocState) return;
   const did = ocState.did || "";
   $("oc-said").textContent = ocState.only
-    ? `You sign in with orangecheck (${did}). Brickworks has this id for you, not an email address.`
-    : did ? `orangecheck (${did}) is linked: it signs you in here as well as your email.`
-      : "Link orangecheck to sign in with it as well as your email: a Bitcoin wallet, email, Google or GitHub. "
-        + "Brickworks gets an id for you, not your address.";
+    ? say("You sign in with orangecheck ({did}). Brickworks has this id for you, not an email address.", { did })
+    : did ? say("orangecheck ({did}) is linked: it signs you in here as well as your email.", { did })
+      : say("Link orangecheck to sign in with it as well as your email: a Bitcoin wallet, email, Google or GitHub. "
+        + "Brickworks gets an id for you, not your address.");
   $("oc-go").hidden = ocState.only || Boolean(did) || !linkReady;
   $("oc-unlink").hidden = ocState.only || !did;
 }
@@ -126,11 +146,12 @@ async function askForCode(unlinking, button) {
   button.disabled = true;
   try {
     const to = await sendCode(email());
-    $("oc-code-said").textContent = `The code we emailed to ${to}`;
+    $("oc-code-said").textContent = say("The code we emailed to {to}", { to });
     $("oc-code").hidden = false;
     $("oc-code-field").value = "";
     $("oc-code-field").focus();
-    $("oc-status").textContent = unlinking ? "Confirm it is you, then press Unlink." : "Confirm it is you, then press Link orangecheck.";
+    $("oc-status").textContent = unlinking ? say("Confirm it is you, then press Unlink.")
+      : say("Confirm it is you, then press Link orangecheck.");
   } catch (trouble) {
     $("oc-status").textContent = trouble.message;
   } finally {
@@ -141,21 +162,21 @@ async function askForCode(unlinking, button) {
 // Shown once orangecheck's button code is in.
 let linkReady = false;
 orangecheckButton($("oc-go"), {
-  label: "Link orangecheck",
+  label: say("Link orangecheck"),
   before: () => {
     $("oc-status").textContent = "";
     if (!ocState || !ocState.fresh) {
       askForCode(false, $("oc-go"));
       return false;
     }
-    $("oc-status").textContent = "Signing in with orangecheck, in its own window.";
+    $("oc-status").textContent = say("Signing in with orangecheck, in its own window.");
     return true;
   },
   onToken: async (token) => {
     const answer = await call("/api/orangecheck?op=link", { method: "POST", body: { token } });
     $("oc-status").textContent = answer.status === 200
-      ? "Linked. orangecheck signs you in here now, and your email is told."
-      : answer.body.error || "That did not work just now.";
+      ? say("Linked. orangecheck signs you in here now, and your email is told.")
+      : told(answer.body.error, say("That did not work just now."));
     await orangecheck();
   },
   say: (words) => {
@@ -175,8 +196,8 @@ $("oc-unlink").addEventListener("click", async () => {
   try {
     const answer = await call("/api/orangecheck?op=unlink", { method: "POST", body: {} });
     $("oc-status").textContent = answer.status === 200
-      ? "Unlinked. The sign-ins orangecheck started here are ended, and your email is told."
-      : answer.body.error || "That did not work just now.";
+      ? say("Unlinked. The sign-ins orangecheck started here are ended, and your email is told.")
+      : told(answer.body.error, say("That did not work just now."));
     await orangecheck();
   } catch (trouble) {
     $("oc-status").textContent = trouble.message;
@@ -192,9 +213,8 @@ $("oc-code").addEventListener("submit", async (event) => {
     await redeem(email(), $("oc-code-field").value);
     $("oc-code").hidden = true;
     await orangecheck();
-    $("oc-status").textContent = ocState && ocState.fresh
-      ? `Thank you. Now press ${ocState.did ? "Unlink" : "Link orangecheck"}.`
-      : "That did not confirm it just now. Try again.";
+    $("oc-status").textContent = !(ocState && ocState.fresh) ? say("That did not confirm it just now. Try again.")
+      : ocState.did ? say("Thank you. Now press Unlink.") : say("Thank you. Now press Link orangecheck.");
     $(ocState && ocState.did ? "oc-unlink" : "oc-go").focus();
   } catch (trouble) {
     $("oc-status").textContent = trouble.message;
@@ -210,12 +230,12 @@ function drawAge(kept, handle) {
   $("young").hidden = !young;
   document.documentElement.dataset.young = young ? "yes" : "no";
   $("age-said").textContent = kept && kept.over_13 === true
-    ? "You told Brickworks you are 13 or over. Only that is kept, never your date of birth."
+    ? say("You told Brickworks you are 13 or over. Only that is kept, never your date of birth.")
     : kept && kept.over_13 === false
-      ? "You told Brickworks you are under 13, so your profile and collections stay private. Only that is kept."
-      : "Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.";
+      ? say("You told Brickworks you are under 13, so your profile and collections stay private. Only that is kept.")
+      : say("Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.");
   $("edit-profile").hidden = young;
-  if (young && !handle) $("profile-line").textContent = "A public profile is for people 13 and over.";
+  if (young && !handle) $("profile-line").textContent = say("A public profile is for people 13 and over.");
   $("follows-choice").hidden = !$("follows-choice").dataset.ready || young;
   $("likes-choice").hidden = !$("likes-choice").dataset.ready || young || !handle;
 }
@@ -244,8 +264,8 @@ async function load() {
   // mails it nothing. It is deleted by signing in with orangecheck again.
   const ocOnly = madeUp(email());
   $("who").textContent = ocOnly
-    ? "Signed in with orangecheck. Brickworks has an id for you, not an email address, so it emails you nothing."
-    : `Signed in as ${email()}. Only you see the address; the gallery shows your profile’s name.`;
+    ? say("Signed in with orangecheck. Brickworks has an id for you, not an email address, so it emails you nothing.")
+    : say("Signed in as {email}. Only you see the address; the gallery shows your profile’s name.", { email: email() });
   $("delete-confirm").placeholder = ocOnly ? "" : email();
   $("delete-confirm").required = !ocOnly;
   $("delete-confirm").closest("label").hidden = ocOnly;
@@ -254,10 +274,10 @@ async function load() {
   const mine = answer.body.profile;
   const handle = mine && HANDLE.test(String(mine.handle)) ? String(mine.handle) : "";
   $("profile-line").textContent = handle
-    ? `brickworks.diy/u/${handle}: your name, words, links and pinned models, as everybody sees them.`
-    : "No profile yet: choose a name and a handle, and your models in the gallery have a page of their own.";
-  $("edit-profile").textContent = handle ? "Edit profile" : "Make your profile";
-  $("edit-profile").href = handle ? "/profile?edit=1" : "/profile";
+    ? say("brickworks.diy/u/{handle}: your name, words, links and pinned models, as everybody sees them.", { handle })
+    : say("No profile yet: choose a name and a handle, and your models in the gallery have a page of their own.");
+  $("edit-profile").textContent = handle ? say("Edit profile") : say("Make your profile");
+  $("edit-profile").href = handle ? `${langAt()}/profile?edit=1` : `${langAt()}/profile`;
   // What is emailed (api/_comments.js): comments on their models, at most
   // once a day, off until chosen. Not there before comments.sql. And the
   // feed's kinds, one choice each, since follows.sql.
@@ -306,16 +326,23 @@ $("mail-comments").addEventListener("change", async () => {
   box.disabled = false;
   if (answer.status !== 200) {
     box.checked = !box.checked;
-    $("mail-said").textContent = answer.body.error || "That did not work just now.";
+    $("mail-said").textContent = told(answer.body.error, say("That did not work just now."));
     return;
   }
   $("mail-said").textContent = answer.body.comments
-    ? "On: at most one email a day, when somebody comments on a model you shared."
-    : "Off: no emails about comments.";
+    ? say("On: at most one email a day, when somebody comments on a model you shared.")
+    : say("Off: no emails about comments.");
 });
 
-const KIND_WORDS = { models: "new models from people you follow", versions: "new versions of their models",
-  photos: "photos of builds", remixes: "remixes of your models" };
+// Each kind's two sentences, on and off.
+const KIND_WORDS = {
+  models: [() => say("On: new models from people you follow in the day's one email."),
+    () => say("Off: no emails about new models from people you follow.")],
+  versions: [() => say("On: new versions of their models in the day's one email."),
+    () => say("Off: no emails about new versions of their models.")],
+  photos: [() => say("On: photos of builds in the day's one email."), () => say("Off: no emails about photos of builds.")],
+  remixes: [() => say("On: remixes of your models in the day's one email."), () => say("Off: no emails about remixes of your models.")],
+};
 for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) {
   box.addEventListener("change", async () => {
     const kind = box.dataset.kind;
@@ -324,12 +351,10 @@ for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) {
     box.disabled = false;
     if (answer.status !== 200) {
       box.checked = !box.checked;
-      $("mail-said").textContent = answer.body.error || "That did not work just now.";
+      $("mail-said").textContent = told(answer.body.error, say("That did not work just now."));
       return;
     }
-    $("mail-said").textContent = answer.body[kind]
-      ? `On: ${KIND_WORDS[kind]} in the day's one email.`
-      : `Off: no emails about ${KIND_WORDS[kind]}.`;
+    $("mail-said").textContent = KIND_WORDS[kind][answer.body[kind] ? 0 : 1]();
   });
 }
 
@@ -340,12 +365,12 @@ $("shows-follows").addEventListener("change", async () => {
   box.disabled = false;
   if (answer.status !== 200) {
     box.checked = !box.checked;
-    $("follows-said").textContent = answer.body.error || "That did not work just now.";
+    $("follows-said").textContent = told(answer.body.error, say("That did not work just now."));
     return;
   }
   $("follows-said").textContent = answer.body.shows_follows
-    ? "Shown: your profile lists whom you follow."
-    : "Not shown: your profile says only how many.";
+    ? say("Shown: your profile lists whom you follow.")
+    : say("Not shown: your profile says only how many.");
 });
 
 $("shows-likes").addEventListener("change", async () => {
@@ -355,12 +380,12 @@ $("shows-likes").addEventListener("change", async () => {
   box.disabled = false;
   if (answer.status !== 200) {
     box.checked = !box.checked;
-    $("likes-said").textContent = answer.body.error || "That did not work just now.";
+    $("likes-said").textContent = told(answer.body.error, say("That did not work just now."));
     return;
   }
   $("likes-said").textContent = answer.body.shows_likes
-    ? "Shown: your profile has a Likes tab of the models you liked."
-    : "Not shown: nobody sees which models you liked.";
+    ? say("Shown: your profile has a Likes tab of the models you liked.")
+    : say("Not shown: nobody sees which models you liked.");
 });
 
 $("sign-in").addEventListener("click", async () => {
@@ -390,7 +415,7 @@ $("delete-form").closest("details").addEventListener("toggle", () => {
 /// again, or a fresh sign-in with orangecheck. Asked first, for good.
 async function deleteAccount(body) {
   const ends = planEnds();
-  if (!confirm(`Delete this account and everything in it, for good?${ends ? ` ${ends.words}` : ""}`)) return;
+  if (!confirm(`${say("Delete this account and everything in it, for good?")}${ends ? ` ${ends.words}` : ""}`)) return;
   $("delete-go").disabled = true;
   const answer = await call("/api/account?op=delete", { method: "POST", body });
   $("delete-go").disabled = false;
@@ -399,19 +424,19 @@ async function deleteAccount(body) {
     // to it first, as unlinking asks (api/account.js).
     try {
       const to = await sendCode(email());
-      $("delete-code-said").textContent = `The code we emailed to ${to}`;
+      $("delete-code-said").textContent = say("The code we emailed to {to}", { to });
       $("delete-code-part").hidden = false;
       $("delete-code").required = true;
       $("delete-code").value = "";
       $("delete-code").focus();
-      $("delete-said").textContent = "Confirm it is you with the code, then press Delete my account again.";
+      $("delete-said").textContent = say("Confirm it is you with the code, then press Delete my account again.");
     } catch (trouble) {
       $("delete-said").textContent = trouble.message;
     }
     return;
   }
   if (answer.status !== 200) {
-    $("delete-said").textContent = answer.body.error || "That did not work just now.";
+    $("delete-said").textContent = told(answer.body.error, say("That did not work just now."));
     return;
   }
   signOut();
@@ -420,20 +445,20 @@ async function deleteAccount(body) {
   await load();
   // An orangecheck account Connect made that orangecheck would not delete
   // stays the person's, and they are told where (api/account.js).
-  const kept = answer.body.orangecheck && answer.body.orangecheck.kept ? `${answer.body.orangecheck.said} ` : "";
+  const kept = answer.body.orangecheck && answer.body.orangecheck.kept ? told(answer.body.orangecheck.said) : "";
   // Its Pro plan, ended at Admission first (api/account.js).
-  const ended = answer.body.plan && answer.body.plan.ended ? "Your Pro plan has ended, and you will not be charged again. " : "";
-  $("signed-out").querySelector(".lede").textContent = `Your account is deleted, and everything in it. ${ended}${kept}`
-    + "Sign in again with any address to start a new one.";
+  const ended = answer.body.plan && answer.body.plan.ended ? say("Your Pro plan has ended, and you will not be charged again.") : "";
+  $("signed-out").querySelector(".lede").textContent = [say("Your account is deleted, and everything in it."), ended, kept,
+    say("Sign in again with any address to start a new one.")].filter(Boolean).join(" ");
 }
 
 // An orangecheck account, whose address is made up, signs in with
 // orangecheck again instead of typing it: orangecheck's button, whose
 // window opens from the click (one opened after a question is blocked).
 orangecheckButton($("delete-oc"), {
-  label: "Sign in with orangecheck to delete",
+  label: say("Sign in with orangecheck to delete"),
   before: () => {
-    $("delete-said").textContent = "Signing in with orangecheck, in its own window.";
+    $("delete-said").textContent = say("Signing in with orangecheck, in its own window.");
     return true;
   },
   onToken: async (token) => {
@@ -449,7 +474,7 @@ $("delete-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const typed = $("delete-confirm").value.trim();
   if (typed.toLowerCase() !== email().toLowerCase()) {
-    $("delete-said").textContent = "That is not the address this account signs in with.";
+    $("delete-said").textContent = say("That is not the address this account signs in with.");
     return;
   }
   // Asked for below, when this browser signed in with orangecheck: the

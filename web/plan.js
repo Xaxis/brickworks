@@ -18,14 +18,19 @@
 //
 // Every word goes on the page as text, never as markup.
 import { call } from "/account.js";
+import { langAt, number, say, told } from "/card.js";
 
 const ATYPIC = { terms: "https://atypic.ai/terms", refunds: "https://atypic.ai/refunds", support: "support@atypic.ai" };
+// The page's language: a date as it writes one, "30 October 2026", and
+// money as it writes it, in the currency Admission gives. English writes
+// money as the US does ("$8.00", where en-GB writes "US$8.00").
+const LOCALE = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? globalThis.brickworksLang.code : "en-GB";
+const MONEY = LOCALE === "en-GB" ? "en-US" : LOCALE;
 // Days as Admission keeps them, in UTC.
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+const DAY = new Intl.DateTimeFormat(LOCALE, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const dated = (iso) => (Number.isFinite(Date.parse(iso || "")) ? DAY.format(new Date(iso)) : "");
 // How long Stripe's word may take before the page says it is taking a while.
 const FINISH_MS = 45000;
-const TRY_AGAIN = "That did not work just now. Try again in a minute.";
 
 /// An element, its class, and what is in it: text or elements.
 function make(tag, className = "", ...inside) {
@@ -41,16 +46,27 @@ function link(href, words) {
   return a;
 }
 
+/// [said], a sentence in the page's language (web/card.js say), into
+/// [into]: each {name} in it [parts]'s element or words.
+function sayInto(into, said, parts) {
+  for (const piece of said.split(/(\{\w+\})/)) {
+    const name = /^\{(\w+)\}$/.exec(piece)?.[1];
+    if (piece) into.append(name && name in parts ? parts[name] : piece);
+  }
+  return into;
+}
+
 /// "$8.00 USD a month", as the terms say a price.
 function charge(amount, currency, interval) {
-  const money = new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase(),
+  const money = new Intl.NumberFormat(MONEY, { style: "currency", currency: currency.toUpperCase(),
     minimumFractionDigits: 2 }).format(amount / 100);
-  return `${money} ${currency.toUpperCase()} a ${interval}`;
+  const code = currency.toUpperCase();
+  return interval === "year" ? say("{money} {code} a year", { money, code }) : say("{money} {code} a month", { money, code });
 }
 
 /// "$8" or "$80", for a line that only mentions the price.
 function short(amount, currency) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase(),
+  return new Intl.NumberFormat(MONEY, { style: "currency", currency: currency.toUpperCase(),
     minimumFractionDigits: amount % 100 ? 2 : 0 }).format(amount / 100);
 }
 
@@ -60,17 +76,17 @@ function monthsFree(prices) {
   return Math.max(0, Math.round((prices.month * 12 - prices.year) / prices.month));
 }
 
-/// The way to Stripe for [body] at [path], then there; or [say] what went wrong.
-async function toStripe(path, body, button, say) {
+/// The way to Stripe for [body] at [path], then there; or [tell] what went wrong.
+async function toStripe(path, body, button, tell) {
   button.disabled = true;
-  say("");
+  tell("");
   const answer = await call(path, { method: "POST", body }).catch(() => ({ status: 0, body: {} }));
   if (answer.status === 200 && typeof answer.body.url === "string" && /^https:\/\//.test(answer.body.url)) {
     location.assign(answer.body.url);
     return;
   }
   button.disabled = false;
-  say(answer.body.error || TRY_AGAIN);
+  tell(told(answer.body.error, say("That did not work just now. Try again in a minute.")));
 }
 
 /// The step before Checkout, over the page: what Pro adds, monthly or
@@ -82,20 +98,25 @@ function upgrade(offer, start, opener) {
   let interval = intervals.includes(start) ? start : intervals[intervals.length - 1];
   const dialog = make("dialog", "consent-step");
   dialog.id = "upgrade";
-  const title = make("h2", "", "Upgrade to Pro");
+  const title = make("h2", "", say("Upgrade to Pro"));
   title.id = "upgrade-title";
   dialog.setAttribute("aria-labelledby", title.id);
-  const adds = make("p", "", "Pro has everything Free has, and two things more: ",
-    make("b", "", "any number of models kept with your account"), " (Free keeps ",
-    String(offer.free.savedModels === "unlimited" ? "any number" : offer.free.savedModels), "), and ",
-    make("b", "", "the desktop app"), " for Windows, macOS and Linux, which works offline with every part on your "
-      + "computer. Every version released while you pay is yours to keep. ", link("/plans", "Compare the plans"), ".");
+  const kept = offer.free.savedModels;
+  const adds = sayInto(make("p"), say("Pro has everything Free has, and two things more: {models} (Free keeps {kept}), and "
+    + "{app} for Windows, macOS and Linux, which works offline with every part on your "
+    + "computer. Every version released while you pay is yours to keep. {compare}.", {
+    kept: kept === "unlimited" ? say("any number") : Number.isFinite(Number(kept)) ? number(kept) : String(kept),
+  }), {
+    models: make("b", "", say("any number of models kept with your account")),
+    app: make("b", "", say("the desktop app")),
+    compare: link(`${langAt()}/plans`, say("Compare the plans")),
+  });
   // Monthly or yearly: the site's segmented control, the chosen one pressed.
   const choose = make("div", "segmented");
   choose.setAttribute("role", "group");
-  choose.setAttribute("aria-label", "How often you pay");
+  choose.setAttribute("aria-label", say("How often you pay"));
   const buttons = intervals.map((i) => {
-    const b = make("button", "", i === "month" ? "Monthly" : "Yearly");
+    const b = make("button", "", i === "month" ? say("Monthly") : say("Yearly"));
     b.type = "button";
     b.dataset.interval = i;
     choose.append(b);
@@ -110,14 +131,14 @@ function upgrade(offer, start, opener) {
   box.setAttribute("aria-describedby", terms.id);
   const agreeing = make("span");
   const tick = make("label", "choice", box, agreeing);
-  const go = make("button", "cta", "Continue to checkout");
+  const go = make("button", "cta", say("Continue to checkout"));
   go.type = "submit";
-  const later = make("button", "cta ghost", "Not now");
+  const later = make("button", "cta ghost", say("Not now"));
   later.type = "button";
   const said = make("p", "said");
   said.setAttribute("role", "status");
   const form = make("form", "", choose, price, terms, tick, make("div", "actions", go, later), said);
-  const where = make("p", "note", "You pay on Stripe's checkout page. Your card is never sent to Brickworks.");
+  const where = make("p", "note", say("You pay on Stripe's checkout page. Your card is never sent to Brickworks."));
   dialog.append(title, adds, form, where);
 
   const show = () => {
@@ -125,15 +146,25 @@ function upgrade(offer, start, opener) {
     const each = charge(amount, currency, interval);
     for (const b of buttons) b.setAttribute("aria-pressed", String(b.dataset.interval === interval));
     const free = interval === "year" ? monthsFree(pro.prices) : 0;
-    price.replaceChildren(make("b", "", each), free ? `, ${free} months free` : "");
+    price.replaceChildren();
+    sayInto(price, free ? say("{price}, {n} months free", { n: number(free) }) : "{price}", { price: make("b", "", each) });
+    const yearly = interval === "year";
     terms.replaceChildren(
-      make("p", "", `${each}, plus any tax where you live, shown at checkout. Charged today, then at the start of `
-        + `each ${interval}: it renews automatically at ${each} until you cancel.`),
-      make("p", "", "Cancel any time in Settings, under Plan, with Manage billing, or at link.com. Pro stays on to "
-        + `the end of the ${interval} you have paid for, and you are not charged again.`),
-      make("p", "", "Sold through Link, the merchant of record, for Atypic: your statement reads LINK.COM* ATYPIC. ",
-        link(ATYPIC.terms, "Terms of sale"), " · ", link(ATYPIC.refunds, "Refunds and cancelling")));
-    agreeing.textContent = `I agree that Pro renews automatically at ${each} until I cancel.`;
+      make("p", "", yearly
+        ? say("{price}, plus any tax where you live, shown at checkout. Charged today, then at the start of "
+          + "each year: it renews automatically at {price} until you cancel.", { price: each })
+        : say("{price}, plus any tax where you live, shown at checkout. Charged today, then at the start of "
+          + "each month: it renews automatically at {price} until you cancel.", { price: each })),
+      make("p", "", yearly
+        ? say("Cancel any time in Settings, under Plan, with Manage billing, or at link.com. Pro stays on to "
+          + "the end of the year you have paid for, and you are not charged again.")
+        : say("Cancel any time in Settings, under Plan, with Manage billing, or at link.com. Pro stays on to "
+          + "the end of the month you have paid for, and you are not charged again.")),
+      sayInto(make("p"), say("Sold through Link, the merchant of record, for Atypic: your statement reads LINK.COM* ATYPIC. "
+        + "{terms} · {refunds}"), {
+        terms: link(ATYPIC.terms, say("Terms of sale")), refunds: link(ATYPIC.refunds, say("Refunds and cancelling")),
+      }));
+    agreeing.textContent = say("I agree that Pro renews automatically at {price} until I cancel.", { price: each });
     // An agreement is to one price: another one is agreed afresh.
     box.checked = false;
     go.disabled = true;
@@ -161,7 +192,7 @@ function upgrade(offer, start, opener) {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     if (!box.checked) {
-      said.textContent = "Tick the box to agree that Pro renews until you cancel.";
+      said.textContent = say("Tick the box to agree that Pro renews until you cancel.");
       return;
     }
     toStripe("/api/plans?op=checkout", { interval, consent: true, amount: pro.prices[interval] }, go, (words) => {
@@ -193,44 +224,53 @@ function standing(mine, offer, status) {
   const s = mine.subscription;
   const pro = offer?.pro;
   if (mine.standing !== "known") {
-    return { state: "unknown", lines: ["Your plan cannot be read just now. Nothing is held back meanwhile; look "
-      + "again in a minute."] };
+    return { state: "unknown", lines: [say("Your plan cannot be read just now. Nothing is held back meanwhile; look "
+      + "again in a minute.")] };
   }
-  if (mine.owner) return { state: "owner", lines: ["An owner's account: everything, with no limits, and nothing to pay."] };
+  if (mine.owner) return { state: "owner", lines: [say("An owner's account: everything, with no limits, and nothing to pay.")] };
   if (s && (s.status === "past_due" || s.status === "unpaid")) {
-    return { state: "unpaid", lines: [make("b", "", "Your last payment did not go through."), " Pro stays on while "
-      + "the card is tried again over the next few days. Update your card so it goes through."],
-    buttons: [portalButton("Update your card", "payment_method_update", status, false), portalButton("Manage billing", "", status)] };
+    return { state: "unpaid", lines: [make("b", "", say("Your last payment did not go through.")), ` ${say("Pro stays on while "
+      + "the card is tried again over the next few days. Update your card so it goes through.")}`],
+    buttons: [portalButton(say("Update your card"), "payment_method_update", status, false),
+      portalButton(say("Manage billing"), "", status)] };
   }
   if (s && s.status !== "canceled" && s.endsAt) {
-    return { state: "ending", lines: [make("b", "", `Pro until ${dated(s.endsAt)}.`), " You will not be charged "
-      + "again. Then this account moves to Free and keeps everything in it; you can subscribe again at any time."],
-    buttons: [portalButton("Manage billing", "", status)] };
+    return { state: "ending", lines: [make("b", "", say("Pro until {day}.", { day: dated(s.endsAt) })), ` ${say("You will not be charged "
+      + "again. Then this account moves to Free and keeps everything in it; you can subscribe again at any time.")}`],
+    buttons: [portalButton(say("Manage billing"), "", status)] };
   }
   if (s && s.status !== "canceled" && mine.plan?.source === "subscription") {
     const interval = s.interval === "year" ? "year" : "month";
     const amount = pro?.prices?.[interval];
-    const what = Number.isInteger(amount) ? `Pro, ${charge(amount, pro.currency || "usd", interval)}.` : "Pro.";
-    return { state: "pro", lines: [make("b", "", what), ` Renews ${dated(s.periodEnd)}.`],
-      more: "In Stripe's billing portal: your card, monthly or yearly, your invoices, or cancelling. Receipts "
-        + "come from Link by email.",
-      buttons: [portalButton("Manage billing", "", status)] };
+    const what = Number.isInteger(amount) ? say("Pro, {price}.", { price: charge(amount, pro.currency || "usd", interval) })
+      : say("Pro.");
+    return { state: "pro", lines: [make("b", "", what), ` ${say("Renews {day}.", { day: dated(s.periodEnd) })}`],
+      more: say("In Stripe's billing portal: your card, monthly or yearly, your invoices, or cancelling. Receipts "
+        + "come from Link by email."),
+      buttons: [portalButton(say("Manage billing"), "", status)] };
   }
   if (mine.plan?.key === "pro") {
-    const until = mine.plan.until ? ` until ${dated(mine.plan.until)}` : "";
-    return { state: "given", lines: [make("b", "", `Pro, given to you${until}.`), " Nothing to pay."] };
+    const given = mine.plan.until ? say("Pro, given to you until {day}.", { day: dated(mine.plan.until) })
+      : say("Pro, given to you.");
+    return { state: "given", lines: [make("b", "", given), ` ${say("Nothing to pay.")}`] };
   }
   const most = mine.savedModels?.limit;
-  const lines = [make("b", "", "Free."), Number.isInteger(most) ? ` Up to ${most} models kept with your account.` : ""];
-  if (!pro || !offer.forSale) return { state: "free", lines, more: "Pro opens soon." };
-  const prices = ["month", "year"].filter((i) => Number.isInteger(pro.prices[i]))
-    .map((i) => `${short(pro.prices[i], pro.currency || "usd")} a ${i}`).join(" or ");
-  const up = make("button", "cta", "Upgrade to Pro");
+  const lines = [make("b", "", say("Free.")),
+    Number.isInteger(most) ? ` ${say("Up to {n} models kept with your account.", { n: number(most) })}` : ""];
+  if (!pro || !offer.forSale) return { state: "free", lines, more: say("Pro opens soon.") };
+  const currency = pro.currency || "usd";
+  const month = Number.isInteger(pro.prices.month) ? short(pro.prices.month, currency) : "";
+  const year = Number.isInteger(pro.prices.year) ? short(pro.prices.year, currency) : "";
+  const more = month && year
+    ? say("Pro: any number of models kept with your account, and the desktop app, at {month} a month or {year} a year.",
+      { month, year })
+    : month ? say("Pro: any number of models kept with your account, and the desktop app, at {month} a month.", { month })
+      : say("Pro: any number of models kept with your account, and the desktop app, at {year} a year.", { year });
+  const up = make("button", "cta", say("Upgrade to Pro"));
   up.type = "button";
   up.id = "upgrade-go";
   up.addEventListener("click", () => upgrade(offer, null, up));
-  return { state: "free", lines, more: `Pro: any number of models kept with your account, and the desktop app, at ${prices}.`,
-    buttons: [up], upgrade: (start) => upgrade(offer, start, up) };
+  return { state: "free", lines, more, buttons: [up], upgrade: (start) => upgrade(offer, start, up) };
 }
 
 /// The plan's row, drawn into [row]; [fresh] asks Admission past what the
@@ -244,8 +284,8 @@ async function draw(row, fresh = false) {
   status.setAttribute("role", "status");
   const said = mine.status === 200
     ? standing(mine.body, offer.status === 200 ? offer.body : null, status)
-    : { state: "unknown", lines: [mine.body.error || "Your plan could not be read just now."] };
-  const words = make("div", "", make("h2", "", "Plan"), make("p", "", ...said.lines),
+    : { state: "unknown", lines: [told(mine.body.error, say("Your plan could not be read just now."))] };
+  const words = make("div", "", make("h2", "", say("Plan")), make("p", "", ...said.lines),
     said.more ? make("p", "", said.more) : null);
   words.id = "plan-said";
   row.replaceChildren(words, said.buttons ? make("div", "actions", ...said.buttons) : "", status);
@@ -260,8 +300,9 @@ async function draw(row, fresh = false) {
 /// for a plan nobody pays for.
 export function endsWithAccount(state) {
   if (!["pro", "ending", "unpaid"].includes(state)) return null;
-  const words = "Your Pro plan ends now, with the account, and you are not charged again.";
-  const said = make("p", "", `${words} Any refund is as the `, link(ATYPIC.refunds, "terms of sale"), " say.");
+  const words = say("Your Pro plan ends now, with the account, and you are not charged again.");
+  const said = sayInto(make("p", "", `${words} `), say("Any refund is as the {terms} say."),
+    { terms: link(ATYPIC.refunds, say("terms of sale")) });
   said.id = "delete-plan";
   return { words, said };
 }
@@ -280,16 +321,16 @@ export async function planPart(after) {
   if (back || start) history.replaceState(null, "", `${location.pathname}${location.hash}`);
   let drawn = await draw(row, back === "done" || back === "portal");
   if (back === "cancelled" && drawn.state === "free") {
-    drawn.status.textContent = "Checkout closed. You have not been charged, and this account is still on Free.";
+    drawn.status.textContent = say("Checkout closed. You have not been charged, and this account is still on Free.");
   }
   if (back === "portal") setTimeout(() => draw(row, true), 4000);
   if (back === "done" && drawn.state === "free") {
     const began = Date.now();
     const waiting = () => {
       drawn.status.textContent = Date.now() - began > FINISH_MS
-        ? "Stripe has not told Brickworks yet. It usually takes seconds, and this shows Pro as soon as it knows; "
-          + `do not pay again. If Pro has not come on in a few minutes, write to ${ATYPIC.support}.`
-        : "Finishing your upgrade… This usually takes a few seconds.";
+        ? say("Stripe has not told Brickworks yet. It usually takes seconds, and this shows Pro as soon as it knows; "
+          + "do not pay again. If Pro has not come on in a few minutes, write to {address}.", { address: ATYPIC.support })
+        : say("Finishing your upgrade… This usually takes a few seconds.");
     };
     waiting();
     // Asked again every few seconds, for five minutes at most.

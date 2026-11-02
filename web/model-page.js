@@ -518,7 +518,7 @@ function startComments(section) {
   function people() {
     const found = new Map();
     const designer = document.querySelector(".shared-by a.who");
-    const handle = /^\/u\/([a-z0-9-]{3,24})$/.exec(designer?.getAttribute("href") || "");
+    const handle = /^(?:\/(?:de|fr|es))?\/u\/([a-z0-9-]{3,24})$/.exec(designer?.getAttribute("href") || "");
     if (handle) found.set(handle[1], { handle: handle[1], name: designer.querySelector(".names b")?.textContent || handle[1] });
     for (const one of [...(state?.comments || [])].reverse()) {
       if (one.handle && !found.has(one.handle)) found.set(one.handle, { handle: one.handle, name: one.by || one.handle });
@@ -1066,6 +1066,7 @@ async function noteForOwner(note) {
   const answer = await call(`/api/share?op=tested&id=${note.dataset.id}${version}`);
   const tested = answer.status === 200 && answer.body ? answer.body.tested : null;
   if (!tested || tested.passed) return;
+  const names = await namesSaid();
   const head = document.createElement("b");
   head.textContent = tested.cleared ? say("Not marked Tested: Brickworks cleared its mark.") : say("Not marked Tested.");
   note.replaceChildren(head, ` ${say("Only you see this.")} `);
@@ -1074,13 +1075,18 @@ async function noteForOwner(note) {
     if (!one || one.ok) continue;
     const line = document.createElement("span");
     line.dataset.failed = name;
-    line.append(`${say(one.said)}: `);
-    whySaid(one.why).forEach(([words, said], at) => {
-      if (at) line.append("; ");
-      // A piece it has no words for, as the app wrote it, is English.
-      const piece = said ? document.createTextNode(words) : Object.assign(document.createElement("span"), { lang: "en" });
-      if (!said) piece.textContent = words;
-      line.append(piece);
+    line.append(`${say(one.said)}${stop(":")}`);
+    whySaid(one.why, names).forEach(([words, said], at) => {
+      if (at) line.append(stop(";"));
+      // A piece it has no words for, as the app wrote it, is English, and
+      // so is a name in a piece said that the catalogue has no words for.
+      if (!said) line.append(Object.assign(document.createElement("span"), { lang: "en", textContent: words }));
+      else {
+        (at ? words : afterColon(words)).split(/\u0001(.*?)\u0002/).forEach((text, odd) => {
+          if (odd % 2) line.append(Object.assign(document.createElement("span"), { lang: "en", textContent: text }));
+          else if (text) line.append(text);
+        });
+      }
     });
     line.append(". ");
     note.append(line);
@@ -1089,14 +1095,50 @@ async function noteForOwner(note) {
   document.documentElement.dataset.testedNote = "shown";
 }
 
+/// The model's parts and colours as its parts list names them in the
+/// page's language (api/_parts.js namesOf): {parts, colours}, each a Map
+/// from the name the app writes (src/assembly/tested.gd _named, the
+/// catalogue's colour name) to the name said; null on an English page.
+async function namesSaid() {
+  const code = globalThis.brickworksLang?.code || "en";
+  const list = document.getElementById("parts")?.dataset.parts;
+  if (code === "en") return null;
+  const names = { parts: new Map(), colours: new Map() };
+  if (!list) return names;
+  const from = new URL(list, location.href);
+  from.searchParams.set("lang", code);
+  const body = await fetch(from).then((answer) => (answer.ok ? answer.json() : null)).catch(() => null);
+  for (const lot of Array.isArray(body?.lots) ? body.lots : []) {
+    let named = String(lot.name || "").replace(/^~/, "");
+    if (lot.custom) named = named.replace(/ \(custom element\)$/, "");
+    if (lot.said) names.parts.set(named, lot.said);
+    if (lot.colour_said) names.colours.set(lot.colour_name, lot.colour_said);
+  }
+  return names;
+}
+
+/// A part or colour [name] the app wrote, as [said] (a Map of namesSaid)
+/// says it; one it has no words for stays as the app wrote it, marked
+/// English between U+0001 and U+0002 (noteForOwner).
+const nameSaid = (name, said) => (said ? said.get(name) || `\u0001${name}\u0002` : name);
+
+/// A colon or semicolon and the space after it, as the page's language
+/// sets them: French with a narrow space before, as its own words have it.
+const stop = (sign) => (globalThis.brickworksLang?.code === "fr" ? `\u202f${sign} ` : `${sign} `);
+
+/// [said], a whole sentence after a colon, opened as the page's language
+/// opens one: German with a capital letter, French and Spanish as it is.
+const afterColon = (said) => (globalThis.brickworksLang?.code === "de"
+  ? said.replace(/^(\u0001?)(\p{Ll})/u, (all, mark, letter) => mark + letter.toUpperCase()) : said);
+
 /// Why a model failed a test, as the app wrote it (src/assembly/tested.gd:
 /// its pieces "; " apart), in the page's language a piece at a time:
 /// [[words, said]], [said] false for a piece left as the app wrote it (one
 /// cut short at the site's 300 characters, or words this has no entry
-/// for). The parts and colours stay as the app named them.
-function whySaid(why) {
+/// for). Its parts and colours are as [names] (namesSaid) says them.
+function whySaid(why, names = null) {
   return String(why || "").split("; ").map((piece) => {
-    const said = pieceSaid(piece);
+    const said = pieceSaid(piece, names);
     return said ? [said, true] : [piece, false];
   });
 }
@@ -1105,7 +1147,8 @@ const whole = (text) => Number(String(text).replace(/,/g, "")) || 0;
 
 /// One piece of a why (whySaid), said, or "" where it is not one the app
 /// says.
-function pieceSaid(piece) {
+function pieceSaid(piece, names) {
+  const part = (name) => nameSaid(name, names?.parts);
   let m;
   if (/^Nothing in it stands on anything to weigh$/.test(piece)) return say("Nothing in it stands on anything to weigh");
   if ((m = /^Not finished: built to step ([\d,]+) of ([\d,]+) in the time a share takes(, standing at each|, each part on what was built, in sight)?$/.exec(piece))) {
@@ -1122,47 +1165,47 @@ function pieceSaid(piece) {
     return say("and {n} more {things}", { n: number(whole(m[1])), things: things() });
   }
   if ((m = /^At step ([\d,]+) (.+)$/.exec(piece))) {
-    const what = tipSaid(m[2]);
-    return what && say("At step {n}: {what}", { n: number(whole(m[1])), what });
+    const what = tipSaid(m[2], part);
+    return what && say("At step {n}: {what}", { n: number(whole(m[1])), what: afterColon(what) });
   }
   if ((m = /^it does not come to rest within ([\d,]+) falls$/.exec(piece))) {
     return say("it does not come to rest within {falls}", { falls: counted(whole(m[1]), "fall") });
   }
   if ((m = /^Step ([\d,]+): (.+) is put down in the air$/.exec(piece))) {
-    return say("Step {n}: {part} is put down in the air", { n: number(whole(m[1])), part: m[2] });
+    return say("Step {n}: {part} is put down in the air", { n: number(whole(m[1])), part: part(m[2]) });
   }
   if ((m = /^Step ([\d,]+): (.+) is hidden behind what is already built$/.exec(piece))) {
-    return say("Step {n}: {part} is hidden behind what is already built", { n: number(whole(m[1])), part: m[2] });
+    return say("Step {n}: {part} is hidden behind what is already built", { n: number(whole(m[1])), part: part(m[2]) });
   }
   if ((m = /^(.+?)( \((\d+)\))? (in a colour typed in, not one parts are made in|made here, not a real element|never made in (.+))$/.exec(piece))) {
-    const part = m[3] ? `${m[1]} (${number(whole(m[3]))})` : m[1];
-    if (m[5]) return say("{part} never made in {colour}", { part, colour: m[5] });
-    return m[4].startsWith("made") ? say("{part} made here, not a real element", { part })
-      : say("{part} in a colour typed in, not one parts are made in", { part });
+    const lot = m[3] ? `${part(m[1])} (${number(whole(m[3]))})` : part(m[1]);
+    if (m[5]) return say("{part} never made in {colour}", { part: lot, colour: nameSaid(m[5], names?.colours) });
+    return m[4].startsWith("made") ? say("{part} made here, not a real element", { part: lot })
+      : say("{part} in a colour typed in, not one parts are made in", { part: lot });
   }
   if ((m = /^([\d,]+) pairs? of parts pass(?:es)? into each other: (.+)$/.exec(piece))) {
-    const what = pieceSaid(m[2]);
+    const what = pieceSaid(m[2], names);
     const n = whole(m[1]);
     return what && say(n === 1 ? "{n} pair of parts passes into each other: {what}" : "{n} pairs of parts pass into each other: {what}",
       { n: number(n), what });
   }
   if ((m = /^(and )?([\d,]+) pieces? (?:is|are) held by nothing, and comes? away when the model is lifted: (.+)$/.exec(piece))) {
-    const what = pieceSaid(m[3]);
+    const what = pieceSaid(m[3], names);
     const n = whole(m[2]);
     const said = what && say(n === 1 ? "{n} piece is held by nothing, and comes away when the model is lifted: {what}"
       : "{n} pieces are held by nothing, and come away when the model is lifted: {what}", { n: number(n), what });
     return said && m[1] ? say("and {what}", { what: said }) : said;
   }
   if ((m = /^(.+) into (.+) by ([\d.]+) LDU$/.exec(piece))) {
-    return say("{part} into {other} by {ldu} LDU", { part: m[1], other: m[2], ldu: number(Number(m[3])) });
+    return say("{part} into {other} by {ldu} LDU", { part: part(m[1]), other: part(m[2]), ldu: number(Number(m[3])) });
   }
   if ((m = /^(.+?)(?: and ([\d,]+) parts? with it)? (stands against (.+)|leans on the rest to stand|stands on (.+) where it has no stud|rests on (.+)|rests where it is|falls off (.+)|falls)$/.exec(piece))) {
-    const who = m[2] ? say("{part} and {parts} with it", { part: m[1], parts: counted(whole(m[2]), "part") }) : m[1];
+    const who = m[2] ? say("{part} and {parts} with it", { part: part(m[1]), parts: counted(whole(m[2]), "part") }) : part(m[1]);
     const how = m[3];
-    if (m[4]) return say("{who} stands against {part}", { who, part: m[4] });
-    if (m[5]) return say("{who} stands on {part} where it has no stud", { who, part: m[5] });
-    if (m[6]) return say("{who} rests on {part}", { who, part: m[6] });
-    if (m[7]) return say("{who} falls off {part}", { who, part: m[7] });
+    if (m[4]) return say("{who} stands against {part}", { who, part: part(m[4]) });
+    if (m[5]) return say("{who} stands on {part} where it has no stud", { who, part: part(m[5]) });
+    if (m[6]) return say("{who} rests on {part}", { who, part: part(m[6]) });
+    if (m[7]) return say("{who} falls off {part}", { who, part: part(m[7]) });
     if (how === "leans on the rest to stand") return say("{who} leans on the rest to stand", { who });
     if (how === "rests where it is") return say("{who} rests where it is", { who });
     return say("{who} falls", { who });
@@ -1171,11 +1214,12 @@ function pieceSaid(piece) {
 }
 
 /// How a build tipped at a step, as src/assembly/topple.gd words and
-/// tested.gd's weighing say it, said; "" where it is not.
-function tipSaid(tip) {
+/// tested.gd's weighing say it, said, its parts as [part] says them; ""
+/// where it is not.
+function tipSaid(tip, part) {
   let m;
   if ((m = /^(?:it (tipped over .+), and )?(.+?) (hangs from|is held by) (.+) on ([\d,]+) studs? past where it lets go$/.exec(tip))) {
-    const at = { part: m[2], other: m[4], studs: counted(whole(m[5]), "stud") };
+    const at = { part: part(m[2]), other: part(m[4]), studs: counted(whole(m[5]), "stud") };
     const held = m[3] === "hangs from" ? say("{part} hangs from {other} on {studs} past where it lets go", at)
       : say("{part} is held by {other} on {studs} past where it lets go", at);
     if (!m[1]) return held;
@@ -1457,7 +1501,7 @@ function commentsSaid(state, setOpen) {
   });
   const numbers = document.createElement("a");
   numbers.className = "owner-only";
-  numbers.href = "/profile#designs";
+  numbers.href = `${langAt()}/profile#designs`;
   numbers.textContent = say("How your models are doing");
   menu.prepend(turn, numbers);
   document.documentElement.dataset.modelOwner = "yes";
@@ -1484,7 +1528,7 @@ async function challengeEntry() {
   const line = document.createElement("p");
   line.className = "note";
   const named = document.createElement("a");
-  named.href = "/challenge";
+  named.href = `${langAt()}/challenge`;
   named.textContent = said.challenge.title;
   if (said.entry) {
     sayInto(line, said.entry.way === "assistant" ? say("In this month’s challenge, {challenge}, built with the assistant.")

@@ -19,6 +19,7 @@
 // same plan changes the first), and Take it off deletes that address's
 // entries, every plan. Nothing typed is shown back as markup.
 import { email, madeUp } from "/account.js";
+import { langAt } from "/card.js";
 
 // In the page's language (web/theme.js): the form's own words, and the
 // API's fixed replies (api/plans.js KEPT, GONE and its refusals).
@@ -45,7 +46,7 @@ function bill(interval) {
   }
   for (const one of document.querySelectorAll("[data-billed]")) one.hidden = one.dataset.billed !== billed;
   $("interest-billing").value = billed === "month" ? "monthly" : "yearly";
-  if (upgrade) upgrade.href = `/settings?upgrade=${billed}#plan`;
+  if (upgrade) upgrade.href = `${langAt()}/settings?upgrade=${billed}#plan`;
 }
 for (const button of document.querySelectorAll("[data-billing]")) {
   button.addEventListener("click", () => bill(button.dataset.billing));

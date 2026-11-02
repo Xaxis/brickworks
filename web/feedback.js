@@ -20,8 +20,9 @@
 //
 // Everything here is put on the page as text.
 import { call, signedIn } from "/account.js";
+import { langAt, number, say, told } from "/card.js";
 
-const KINDS = [["bug", "Something is wrong"], ["idea", "An idea"], ["question", "A question"]];
+const KINDS = [["bug", () => say("Something is wrong")], ["idea", () => say("An idea")], ["question", () => say("A question")]];
 const WIDEST = 1600;
 const MOST_WORDS = 4000;
 
@@ -35,9 +36,8 @@ const el = (tag, props = {}, ...children) => {
 function browserOf() {
   const agent = navigator.userAgent;
   const named = /(Firefox|Edg|OPR|Chrome|Version)\/(\d+)/.exec(agent);
-  const name = !named ? "" : named[1] === "Edg" ? "Edge" : named[1] === "OPR" ? "Opera"
-    : named[1] === "Version" ? "Safari" : named[1];
-  const system = /Windows|Mac OS X|Android|iPhone|iPad|Linux|CrOS/.exec(agent)?.[0]?.replace("Mac OS X", "macOS") || "";
+  const name = !named ? "" : { Edg: "Edge", OPR: "Opera", Version: "Safari" }[named[1]] || named[1];
+  const system = /Windows|Mac OS X|Android|iPhone|iPad|Linux|CrOS/.exec(agent)?.[0]?.replace(/^Mac OS X$/, "macOS") || "";
   return [name && `${name} ${named[2]}`, system].filter(Boolean).join(", ");
 }
 
@@ -63,48 +63,49 @@ const base64Of = (blob) => new Promise((done, failed) => {
 export function openFeedback({ kind = "" } = {}) {
   const signed = signedIn();
   const dialog = el("dialog", { className: "sign-in feedback" });
-  const title = el("h2", { id: "feedback-title", textContent: "Send feedback" });
+  const title = el("h2", { id: "feedback-title", textContent: say("Send feedback") });
   dialog.setAttribute("aria-labelledby", title.id);
-  const said = el("p", { textContent: "Tell us what is wrong, what you would like, or ask us anything. We read every one ourselves." });
+  const said = el("p", { textContent: say("Tell us what is wrong, what you would like, or ask us anything. We read every one ourselves.") });
   const form = el("form", { noValidate: false });
 
-  const kinds = el("fieldset", { className: "kinds" }, el("legend", { textContent: "What is it" }));
-  for (const [value, words] of KINDS) {
+  const kinds = el("fieldset", { className: "kinds" }, el("legend", { textContent: say("What is it") }));
+  for (const [value, saying] of KINDS) {
     const box = el("input", { type: "radio", name: "kind", value, required: true, checked: value === kind });
-    kinds.append(el("label", { className: "choice" }, box, ` ${words}`));
+    kinds.append(el("label", { className: "choice" }, box, ` ${saying()}`));
   }
   const words = el("textarea", { name: "words", rows: 5, maxLength: MOST_WORDS, required: true });
-  const wordsLabel = el("label", {}, "What happened, or what would you like?", words);
+  const wordsLabel = el("label", {}, say("What happened, or what would you like?"), words);
   const address = el("input", { type: "email", name: "email", autocomplete: "email", required: true, maxLength: 254 });
-  const addressLabel = el("label", {}, "Your email, so we can answer", address);
+  const addressLabel = el("label", {}, say("Your email, so we can answer"), address);
   addressLabel.hidden = signed;
   address.disabled = signed;
 
   // What goes with it.
-  const sent = el("fieldset", { className: "attach" }, el("legend", { textContent: "Send with it" }));
+  const sent = el("fieldset", { className: "attach" }, el("legend", { textContent: say("Send with it") }));
   let picture = null;
   const shown = el("figure", { className: "attached", hidden: true });
   const caption = el("figcaption");
-  const remove = el("button", { type: "button", className: "cta ghost small", textContent: "Remove the picture" });
+  const remove = el("button", { type: "button", className: "cta ghost small", textContent: say("Remove the picture") });
   shown.append(caption, remove);
   const choose = el("input", { type: "file", accept: "image/png,image/jpeg,image/webp", className: "visually-hidden" });
-  choose.setAttribute("aria-label", "Choose a picture");
-  const capture = el("button", { type: "button", className: "cta ghost small", textContent: "Picture of this page" });
+  choose.setAttribute("aria-label", say("Choose a picture"));
+  const capture = el("button", { type: "button", className: "cta ghost small", textContent: say("Picture of this page") });
   capture.hidden = !navigator.mediaDevices?.getDisplayMedia;
-  const pick = el("button", { type: "button", className: "cta ghost small", textContent: "Choose a picture…" });
+  const pick = el("button", { type: "button", className: "cta ghost small", textContent: say("Choose a picture…") });
   const adding = el("div", { className: "actions" }, capture, pick, choose);
   const page = `${location.pathname}${location.search}`.slice(0, 300);
   const size = `${window.innerWidth} × ${window.innerHeight}`;
   const browser = browserOf();
   const details = el("input", { type: "checkbox", name: "details" });
   const detailsLabel = el("label", { className: "tick" }, details,
-    el("span", { textContent: `This page and your browser: ${page}, ${size}${browser ? `, ${browser}` : ""}` }));
+    el("span", { textContent: browser ? say("This page and your browser: {page}, {size}, {browser}", { page, size, browser })
+      : say("This page and your browser: {page}, {size}", { page, size }) }));
   sent.append(adding, shown, detailsLabel);
 
   const status = el("p", { className: "said" });
   status.setAttribute("role", "status");
-  const send = el("button", { type: "submit", className: "cta", textContent: "Send" });
-  const cancel = el("button", { type: "button", className: "cta ghost", textContent: "Cancel" });
+  const send = el("button", { type: "submit", className: "cta", textContent: say("Send") });
+  const cancel = el("button", { type: "button", className: "cta ghost", textContent: say("Cancel") });
   form.append(kinds, wordsLabel, addressLabel, sent, el("div", { className: "actions" }, send, cancel), status);
   dialog.append(title, said, form);
   document.body.append(dialog);
@@ -126,8 +127,9 @@ export function openFeedback({ kind = "" } = {}) {
     shown.querySelector("canvas")?.remove();
     shown.prepend(made.canvas);
     made.canvas.setAttribute("role", "img");
-    made.canvas.setAttribute("aria-label", `The picture: ${from}`);
-    caption.textContent = `${from}, ${made.canvas.width} × ${made.canvas.height}, ${Math.max(1, Math.round(made.blob.size / 1000))} kB`;
+    made.canvas.setAttribute("aria-label", say("The picture: {from}", { from }));
+    caption.textContent = say("{from}, {width} × {height}, {size} kB", { from, width: number(made.canvas.width),
+      height: number(made.canvas.height), size: number(Math.max(1, Math.round(made.blob.size / 1000))) });
     shown.hidden = false;
     adding.hidden = true;
     remove.focus();
@@ -147,10 +149,10 @@ export function openFeedback({ kind = "" } = {}) {
     status.textContent = "";
     try {
       const bitmap = await createImageBitmap(file);
-      await attach(await redrawn(bitmap, bitmap.width, bitmap.height), file.name.slice(0, 80) || "A picture");
+      await attach(await redrawn(bitmap, bitmap.width, bitmap.height), file.name.slice(0, 80) || say("A picture"));
       bitmap.close();
     } catch {
-      status.textContent = "That file is not a picture this browser can read. Choose a PNG or a JPEG.";
+      status.textContent = say("That file is not a picture this browser can read. Choose a PNG or a JPEG.");
     }
   });
   capture.addEventListener("click", async () => {
@@ -166,9 +168,9 @@ export function openFeedback({ kind = "" } = {}) {
       await video.play();
       // A frame or two, so the browser's own bar has gone and the page is drawn.
       await new Promise((done) => setTimeout(done, 350));
-      await attach(await redrawn(video, video.videoWidth, video.videoHeight), "This page");
+      await attach(await redrawn(video, video.videoWidth, video.videoHeight), say("This page"));
     } catch {
-      status.textContent = "No picture was taken. Choose one instead, or send it without.";
+      status.textContent = say("No picture was taken. Choose one instead, or send it without.");
     } finally {
       for (const track of stream?.getTracks() || []) track.stop();
       delete dialog.dataset.capturing;
@@ -180,11 +182,11 @@ export function openFeedback({ kind = "" } = {}) {
     event.preventDefault();
     const chosen = form.querySelector('input[name="kind"]:checked')?.value;
     if (!chosen) {
-      status.textContent = "Choose what it is: something wrong, an idea or a question.";
+      status.textContent = say("Choose what it is: something wrong, an idea or a question.");
       return;
     }
     send.disabled = true;
-    status.textContent = "Sending…";
+    status.textContent = say("Sending…");
     const body = { kind: chosen, words: words.value, source: "site" };
     if (!signed) body.email = address.value;
     if (details.checked) {
@@ -200,15 +202,17 @@ export function openFeedback({ kind = "" } = {}) {
     }
     send.disabled = false;
     if (answer.status !== 200) {
-      status.textContent = answer.body?.error || "That did not go just now. Try again in a minute.";
+      status.textContent = told(answer.body?.error, say("That did not go just now. Try again in a minute."));
       return;
     }
     form.replaceChildren();
-    said.textContent = answer.body.said || "Thank you.";
-    const done = el("button", { type: "button", className: "cta", textContent: "Close" });
+    // The server's thanks, a sentence at a time (api/_feedback.js THANKS).
+    said.textContent = answer.body.said ? String(answer.body.said).split(/(?<=\.) (?=[A-Z])/).map((one) => told(one)).join(" ")
+      : say("Thank you.");
+    const done = el("button", { type: "button", className: "cta", textContent: say("Close") });
     done.addEventListener("click", end);
     const row = el("div", { className: "actions" });
-    if (signed) row.append(el("a", { className: "cta ghost", href: "/settings#feedback", textContent: "See your reports" }));
+    if (signed) row.append(el("a", { className: "cta ghost", href: `${langAt()}/settings#feedback`, textContent: say("See your reports") }));
     row.prepend(done);
     dialog.append(row);
     dialog.dataset.sent = String(answer.body.id);
