@@ -45,7 +45,7 @@
 // talk to itself and a short list of others.
 //
 // Each card is web/card.js's, the one every page of the site draws.
-import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard, number, say, sayIn, skeletonHtml, themeSaid } from "/card.js";
+import { FIRST_SCREEN, counted, iconButtonHtml, langAt, likeName, modelCard, number, say, sayIn, skeletonHtml, themeSaid } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
 // "/" to search, and the bar of filters kept under the header.
@@ -418,7 +418,7 @@ import { pageAsked, pager } from "/pager.js";
       { day: "numeric", month: "long", timeZone: "UTC" })
       .format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
     const link = document.createElement("a");
-    link.href = tests ? "/challenge?tests=1" : "/challenge";
+    link.href = `${langAt()}/challenge${tests ? "?tests=1" : ""}`;
     link.textContent = String(challenge.title);
     if (challenge.state === "open") {
       line.append(say("This month’s challenge: "), link,

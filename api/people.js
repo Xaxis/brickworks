@@ -187,7 +187,7 @@ import { billingMode } from "./_billing.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
-  SITE_LANGS, TESTS_CACHE, Unacceptable, asText, cardOf, count, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords,
+  SITE_LANGS, TESTS_CACHE, Unacceptable, asText, cardOf, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords,
   summary, testsAsked, visitorKey,
 } from "./_directory.js";
 import { handleTrouble, namesTrouble } from "./_names.js";
@@ -538,6 +538,8 @@ async function saveProfile(request, response) {
 
 async function profile(request, response) {
   const handle = String(request.query?.handle || "").toLowerCase();
+  // What they earned is said in the language the page asks in (?lang=).
+  const lang = String(request.query?.lang || "en");
   const tests = testsAsked(request.query);
   const person = await personOf(handle);
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
@@ -574,7 +576,8 @@ async function profile(request, response) {
     // What they earned (docs/SOCIAL.md U13), as their page has it, and
     // their level on every track, for your own profile's Achievements tab:
     // null before supabase/achievements.sql.
-    achievements: achievementsOf({ about, earned, built, wins, levels }), levels, ...page, models: cards }));
+    achievements: inLanguage(lang, lang === "en" ? null : siteWords(lang), () => achievementsOf({ about, earned, built, wins, levels })),
+    levels, ...page, models: cards }));
 }
 
 /// How many models [account] liked, when they chose to show which (and
@@ -1123,7 +1126,13 @@ function missingPage(origin, what, lang = "en", words = null) {
   <div class="actions"><a class="cta" href="${at}/gallery">${asText(say("See the gallery"))}</a></div></div>` });
 }
 
-const SINCE_DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+/// A day as the page's language writes it: "1 October 2026", "1. Oktober 2026".
+const DAYS = new Map();
+const daySaid = (at) => {
+  const locale = globalThis.brickworksLang?.locale || "en-GB";
+  if (!DAYS.has(locale)) DAYS.set(locale, new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }));
+  return DAYS.get(locale).format(at);
+};
 /// A month as the page's language writes it: "October 2026", "Oktober 2026".
 const MONTHS = new Map();
 const sinceSaid = (at) => {
@@ -1237,13 +1246,13 @@ function pastEnd(at, href) {
 
 /// /challenge?id=N (tools/deploy.sh): the challenge page with challenge
 /// N's own title, words and picture in its head (api/_challenges.js
-/// challengeHead). Its security policy and the rest are the route's, the
-/// same as the page served alone.
+/// challengeHead); /de/challenge?id=N its German copy's. Its security
+/// policy and the rest are the route's, the same as the page served alone.
 async function challengePage(request, response) {
   const origin = originOf(request);
   const tests = testsAsked(request.query);
   const id = /^[1-9][0-9]{0,15}$/.test(String(request.query?.id || "")) ? Number(request.query.id) : null;
-  const body = await challengePageHtml(origin, id, tests);
+  const body = await challengePageHtml(origin, id, tests, String(request.query?.lang || "en"));
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : PAGE_CACHE);
   return response.status(200).end(body);
@@ -1361,7 +1370,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     <div class="acts">
       ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
         data-follow="${escapeHtml(person.handle)}" hidden>${asText(say("Follow"))}</button><span class="said" role="status"></span></p>
-      <a class="cta ghost" href="/profile?edit=1" data-edit-own hidden>${asText(say("Edit profile"))}</a>` : ""}
+      <a class="cta ghost" href="${at}/profile?edit=1" data-edit-own hidden>${asText(say("Edit profile"))}</a>` : ""}
       ${iconButtonHtml({ icon: "share", name: say("Share"),
         attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
       ${more}
@@ -1466,18 +1475,31 @@ ${shareSheetHtml({ url, name: person.name, text: say("{name} on Brickworks", { n
   });
 }
 
+/// The copies of a page the server makes at /[where] (c/X, collections),
+/// each naming the others; English for any other language.
+function alternatesOf(origin, where) {
+  return [["en", ""], ...SITE_LANGS.map((code) => [code, `/${code}`]), ["x-default", ""]]
+    .map(([code, at]) => `<link rel="alternate" hreflang="${code}" href="${escapeHtml(`${origin}${at}/${where}`)}">`).join("\n");
+}
+
 /// /c/X: a public list's page. A private one is not shown here to anybody;
 /// its owner sees it on /profile. Its head as a playlist's or a board's
 /// is (docs/SOCIAL.md U11): its cover, up to four of its models' pictures,
 /// beside its name, whose it is, its words and numbers, Follow, Share and
 /// More; then its models, the last put in first. How many follow it, never
-/// who; Follow is shown by web/follow.js once it knows who is asking.
+/// who; Follow is shown by web/follow.js once it knows who is asking. In
+/// German, French or Spanish at /de/c/X and so on, as a profile is: what
+/// its owner wrote as they wrote it.
 async function listPage(request, response) {
   const origin = originOf(request);
   const id = String(request.query?.id || "");
   const tests = testsAsked(request.query);
+  const lang = String(request.query?.lang || "en");
+  const words = lang === "en" ? null : siteWords(lang);
+  if (lang !== "en" && !words) return html(response, 404, missingPage(origin, say("There is no collection here")), { tests });
+  const speak = (draw) => inLanguage(lang, words, draw);
   const list = await listFor(id, null, tests);
-  if (!list) return html(response, 404, missingPage(origin, "There is no collection here"), { tests });
+  if (!list) return html(response, 404, speak(() => missingPage(origin, say("There is no collection here"), lang, words)), { tests });
   const asked = Number(request.query?.page ?? 1);
   const at = Number.isInteger(asked) && asked >= 1 && asked <= MOST_PAGES ? asked : 1;
   const [shown, covers, follows] = await Promise.all([
@@ -1485,39 +1507,47 @@ async function listPage(request, response) {
     coversOf([list], tests),
     listFollowsOf(id).catch(() => null),
   ]);
-  const url = `${origin}/c/${id}`;
+  return html(response, 200, speak(() => listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, words })), { tests });
+}
+
+/// A collection's page as listPage gathered it, said in [lang].
+function listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, words }) {
+  const here = lang === "en" ? "" : `/${lang}`;
+  const url = `${origin}${here}/c/${id}`;
   // Page n of its models (web/pager.js).
   const pageHref = (n) => {
     const said = new URLSearchParams();
     if (n > 1) said.set("page", String(n));
     if (tests) said.set("tests", "1");
-    return `/c/${id}${said.size ? `?${said}` : ""}`;
+    return `${here}/c/${id}${said.size ? `?${said}` : ""}`;
   };
   const pager = pagerHtml({ id: "models", first: shown.page, shown: shown.models.length, more: shown.more,
     href: pageHref, source: "page", skeleton: skeletonHtml() });
-  const by = list.by ? `<a href="/u/${escapeHtml(list.by.handle)}">${escapeHtml(list.by.name)}</a>` : "a Brickworks builder";
+  const by = list.by ? `<a href="${here}/u/${escapeHtml(list.by.handle)}">${escapeHtml(list.by.name)}</a>` : asText(say("a Brickworks builder"));
   const first = shown.models[0];
   const updated = Date.parse(list.updated_at || "");
   const stat = (kind, n, one, many, extra = "") => `<li data-stat="${kind}"${extra}${zero(n)}>`
-    + `<b>${escapeHtml((Number(n) || 0).toLocaleString("en-US"))}</b> <span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
+    + `<b>${escapeHtml(number(Number(n) || 0))}</b> <span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
   const ready = follows && follows.ready;
-  const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="More" title="More">${iconHtml("more")}</summary>`
-    + `<div class="menu-list"><button type="button" data-report="this collection" data-report-collection="${id}" hidden>`
-    + "Report it</button><a href=\"/takedown\">Takedown requests</a></div></details>";
+  const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="${asText(say("More"))}" title="${asText(say("More"))}">`
+    + `${iconHtml("more")}</summary><div class="menu-list"><button type="button" data-report="${asText(say("this collection"))}" `
+    + `data-report-collection="${id}" hidden>${asText(say("Report it"))}</button><a href="/takedown">${asText(say("Takedown requests"))}</a>`
+    + "</div></details>";
   const main = `<div class="wrap wide person list" data-id="${id}">
   <header class="list-head">
     <div class="cover">${mosaicHtml(covers.get(id) || [], { eager: true })}</div>
     <div class="who">
-      <p class="eyebrow">Collection</p>
+      <p class="eyebrow">${asText(say("Collection"))}</p>
       <h1>${escapeHtml(list.name)}</h1>
-      <p class="handle">Collected by ${by}${Number.isFinite(updated) ? ` · updated ${SINCE_DAY.format(updated)}` : ""}</p>
+      <p class="handle">${Number.isFinite(updated) ? sayHtml("Collected by {who} · updated {when}", { who: by, when: escapeHtml(daySaid(updated)) })
+        : sayHtml("Collected by {who}", { who: by })}</p>
       ${list.description ? `<p class="bio">${escapeHtml(list.description)}</p>` : ""}
-      <ul class="numbers" aria-label="Its numbers">${stat("models", list.count, "model", "models")}${ready
-        ? stat("followers", follows.followers, "follower", "followers", ` data-list-followers="${id}"`) : ""}</ul>
+      <ul class="numbers" aria-label="${asText(say("Its numbers"))}">${stat("models", list.count, say("model"), say("models"))}${ready
+        ? stat("followers", follows.followers, say("follower"), say("followers"), ` data-list-followers="${id}"`) : ""}</ul>
       <div class="acts">
-        ${ready ? `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>Follow</button>`
-          + `<span class="said" role="status"></span></p>` : ""}
-        ${iconButtonHtml({ icon: "share", name: "Share",
+        ${ready ? `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>`
+          + `${asText(say("Follow"))}</button><span class="said" role="status"></span></p>` : ""}
+        ${iconButtonHtml({ icon: "share", name: say("Share"),
           attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
         ${more}
       </div>
@@ -1527,18 +1557,19 @@ async function listPage(request, response) {
   <div class="models" id="models">${shown.models.map((card, i) => cardHtml(card, { eager: i < FIRST_SCREEN })).join("")}</div>
   ${pager.after}`
     : at > 1 ? pastEnd(at, pageHref)
-    : `<p class="state">Nothing in it is in the gallery just now. The models put in it show here once they are.</p>`}
+    : `<p class="state">${asText(say("Nothing in it is in the gallery just now. The models put in it show here once they are."))}</p>`}
 </div>
-${shareSheetHtml({ url, name: list.name, text: `${list.name}, a collection on Brickworks`,
-    about: `Its link opens this collection: the models in it, and who collected them.`,
+${shareSheetHtml({ url, name: list.name, text: say("{name}, a collection on Brickworks", { name: list.name }),
+    about: say("Its link opens this collection: the models in it, and who collected them."),
     image: first && first.image ? first.image : "" })}`;
-  return html(response, 200, page(origin, {
-    title: `${list.name} — a collection in the Brickworks gallery`,
+  return page(origin, {
+    title: say("{name} — a collection in the Brickworks gallery", { name: list.name }),
     about: list.description ? summary(list.description)
-      : `${count(list.count, "model")} built in Brickworks, collected by ${list.by ? list.by.name : "a builder"}.`,
+      : list.by ? say("{models} built in Brickworks, collected by {name}.", { models: countedSaid(list.count, "model"), name: list.by.name })
+        : say("{models} built in Brickworks, collected by a builder.", { models: countedSaid(list.count, "model") }),
     url, image: first && first.image ? first.image : "", main, share: true, cards: shown.models,
-    paged: pagerLinks({ at: shown.page, more: shown.more, href: pageHref }),
-  }), { tests });
+    paged: pagerLinks({ at: shown.page, more: shown.more, href: pageHref }), lang, words, alternates: alternatesOf(origin, `c/${id}`),
+  });
 }
 
 /// /collections: the public collections anyone may see, as cards, the way
@@ -1549,53 +1580,65 @@ ${shareSheetHtml({ url, name: list.name, text: `${list.name}, a collection on Br
 /// whose, how many models and followers, and Follow (web/follow.js, all the
 /// page's in one ask). A private collection never; nor one with nothing in
 /// the gallery, which would be a blank card. With nothing to list it says
-/// so, and how a collection gets here.
+/// so, and how a collection gets here. In each language at /de/collections
+/// and so on.
 async function collectionsPage(request, response) {
   const origin = originOf(request);
   const tests = testsAsked(request.query);
+  const lang = String(request.query?.lang || "en");
+  const words = lang === "en" ? null : siteWords(lang);
+  if (lang !== "en" && !words) return html(response, 404, missingPage(origin, say("There is nothing here")), { tests });
   const sort = request.query?.sort === "followed" ? "followed" : "recent";
   const asked = Number.parseInt(String(request.query?.page ?? "1"), 10);
   const at = Number.isInteger(asked) ? Math.min(Math.max(asked, 1), MOST_PAGES) : 1;
   const listed = await directoryOf({ sort, page: at, tests });
   const rows = await withFaces(listed.rows);
   const covers = await coversOf(rows, tests);
+  return html(response, 200, inLanguage(lang, words, () => collectionsHtml(origin, { sort, at, listed, rows, covers, tests, lang, words })),
+    { tests });
+}
+
+/// The collections' page as collectionsPage gathered it, said in [lang].
+function collectionsHtml(origin, { sort, at, listed, rows, covers, tests, lang, words }) {
+  const here = lang === "en" ? "" : `/${lang}`;
   const keep = (query) => {
     const params = new URLSearchParams();
     if (query.sort === "followed") params.set("sort", "followed");
     if (query.page > 1) params.set("page", String(query.page));
     if (tests) params.set("tests", "1");
     const text = params.toString();
-    return `/collections${text ? `?${text}` : ""}`;
+    return `${here}/collections${text ? `?${text}` : ""}`;
   };
-  const tab = (which, words) => `<a href="${escapeHtml(keep({ sort: which, page: 1 }))}" data-sort="${which}"`
-    + `${which === sort ? ' aria-current="page"' : ""}>${escapeHtml(words)}</a>`;
+  const tab = (which, said) => `<a href="${escapeHtml(keep({ sort: which, page: 1 }))}" data-sort="${which}"`
+    + `${which === sort ? ' aria-current="page"' : ""}>${asText(said)}</a>`;
   const pages = Math.max(1, Math.ceil(listed.total / DIRECTORY_PAGE));
   const pageHref = (n) => keep({ sort, page: n });
   const pager = pagerHtml({ id: "collections", first: at, shown: rows.length, pages, total: listed.total,
     size: DIRECTORY_PAGE, noun: ["collection", "collections"], href: pageHref, source: "page" });
   const empty = !listed.ready
-    ? `<p class="state" id="collections-empty">Collections are not listed on Brickworks yet. Each one has its own page `
-      + "in the meantime, linked from its owner's profile and from the models in it.</p>"
+    ? `<p class="state" id="collections-empty">${asText(say("Collections are not listed on Brickworks yet. Each one has its own page "
+      + "in the meantime, linked from its owner's profile and from the models in it."))}</p>`
     : at > 1 && !rows.length
     ? pastEnd(at, pageHref).replace('<p class="state">', '<p class="state" id="collections-empty">')
-    : `<p class="state" id="collections-empty">No public collections yet. Anyone can make one: on a model's page, `
+    : `<p class="state" id="collections-empty">${asText(say("No public collections yet. Anyone can make one: on a model's page, "
       + "press Save to put it in a collection, then make the collection public on your profile. It is listed here "
-      + "once a model in it is in the gallery.</p>";
+      + "once a model in it is in the gallery."))}</p>`;
   const main = `<div class="wrap wide page collections" data-sort="${sort}" data-page="${at}">
-  <div class="page-head"><h1>Collections</h1>
-  <p class="lede">Models put together by the people who build them. Follow one to see what goes in it next.</p></div>
-  <nav class="tabs" aria-label="Which collections first">${tab("recent", "Recently added to")}${tab("followed", "Most followed")}</nav>
+  <div class="page-head"><h1>${asText(say("Collections"))}</h1>
+  <p class="lede">${asText(say("Models put together by the people who build them. Follow one to see what goes in it next."))}</p></div>
+  <nav class="tabs" aria-label="${asText(say("Which collections first"))}">${tab("recent", say("Recently added to"))}${tab("followed", say("Most followed"))}</nav>
   ${rows.length ? `${pager.earlier}
   <div class="list-cards" id="collections">${rows.map((list) => directoryCardHtml(list, covers)).join("")}</div>
   ${pager.after}` : empty}
-  <p class="crumbs" id="collections-gallery"><a href="/gallery">Models in the gallery</a></p>
+  <p class="crumbs" id="collections-gallery"><a href="${here}/gallery">${asText(say("Models in the gallery"))}</a></p>
 </div>`;
-  return html(response, 200, page(origin, {
-    title: "Collections — the Brickworks gallery",
-    about: "Collections of models built in Brickworks, made by the people who build them: follow one to see what is put in it.",
+  return page(origin, {
+    title: say("Collections — the Brickworks gallery"),
+    about: say("Collections of models built in Brickworks, made by the people who build them: follow one to see what is put in it."),
     url: `${origin}${keep({ sort, page: at })}`, robots: at > 1 || sort !== "recent" ? "noindex" : "", image: "", main,
-    paged: rows.length ? pagerLinks({ at, more: at < pages, href: pageHref }) : "",
-  }), { tests });
+    paged: rows.length ? pagerLinks({ at, more: at < pages, href: pageHref }) : "", lang, words,
+    alternates: alternatesOf(origin, "collections"),
+  });
 }
 
 export default async function handler(request, response) {

@@ -8,7 +8,7 @@
 //                        --static=build/web; --app=http://127.0.0.1:PORT/index.html)
 //   [--widths=1280,390]  [--langs=en,de,fr,es]
 //   [--pages=home,download,plans,faq,compare,gallery,library,set,model,sitemaps,signin,firststeps,
-//            profile,ldraw,embed,viewer,server]
+//            profile,ldraw,embed,viewer,server,challenge,collections,account]
 //
 // The landing page and the download page, and the app's loading page
 // between them and the app, in German, French and Spanish (2026-11-01);
@@ -46,8 +46,8 @@
 // asks for, or the one kept, and in English with neither.
 //
 // And signing in (2026-11-01, web/account.js), in each language at each
-// width: from Sign in on /profile, a page with no copy, where the header's
-// Sign in and the app's orangecheck send people, and from Like on the
+// width: from Sign in on /profile, where the header's Sign in and the
+// app's orangecheck send people, and from Like on the
 // gallery's copy. The dialog in the language, none of it English or cut
 // short; the server's "too many codes" in it; the code's step; a wrong
 // code's error; and on the stand-in, signed in, the age question with the
@@ -99,9 +99,25 @@
 //   server   what the server tells a visitor, said in the language: why
 //            they may not comment or follow (why_not), a challenge's rules
 //            and what a model breaks of them, and the app's reasons a model
-//            is not Tested. The owner's sign-in is planted in the browser
-//            and every answer it would bring is made there, so nothing of it
-//            reaches a deployment; any other call goes out signed out.
+//            is not Tested, each part and colour in them named as the parts
+//            list names it, and in German a capital after a colon. The
+//            owner's sign-in is planted in the browser and every answer it
+//            would bring is made there, so nothing of it reaches a
+//            deployment; any other call goes out signed out.
+//
+// And the last pages the site links to (2026-11-02, languages6), each in
+// the language at each width, no English left but what people wrote:
+//   challenge    /challenge, its rules, days, Coming next and Past
+//                challenges, and why an account under 13 may not vote
+//                (planted, as server's are); and /challenge?id=N's head:
+//                its title and words, canonical /de/challenge?id=N and the
+//                alternates;
+//   collections  /collections and a collection's /c/<id>: titles, tabs,
+//                alternates and every card and link in the language;
+//   account      your own /profile, each of its tabs and Edit profile, and
+//                /settings: the deployment's pages, signed in only in the
+//                browser, every call they make (its Supabase's too)
+//                answered here by the stand-in.
 //
 // With no --url nothing leaves this machine: the pages are served by
 // design_stand_in.mjs from this checkout's web/. Pictures with --out:
@@ -1187,15 +1203,41 @@ async function viewerSaid(browser, code, width, at) {
 const PLANTED = "languages5-flow";
 const UNDER_13_COMMENTS = "Comments are for people 13 and over, so you can read them here but not add one. "
   + "Building, your models and sharing by link are all yours.";
+const UNDER_13_VOTE = "Voting is for people 13 and over, so this account cannot vote. The entries are here to look at "
+  + "all the same.";
 const UNDER_13_FOLLOW = "Following people is for people 13 and over, because a follow is counted in public. "
   + "Building, your models and sharing by link are all yours.";
-// The app's reasons, as src/assembly/tested.gd words them.
-const WHYS = {
-  stands: "At step 3 it tipped over to the left and lies on its side; At step 7 Technic Beam 3 hangs from Brick 1 x 2 "
+// The app's reasons, as src/assembly/tested.gd words them, naming two of
+// the model's own parts and one of its colours (whysOf).
+let WHYS = {};
+const whysOf = ({ part, other, colour }) => ({
+  stands: `At step 3 it tipped over to the left and lies on its side; At step 7 ${part} hangs from ${other} `
     + "on 2 studs past where it lets go; and 4 more steps",
-  parts: "Brick 2 x 4 (3) never made in Chrome Gold",
-  whole: "1 piece is held by nothing, and comes away when the model is lifted: Tile 1 x 2 falls off Brick 1 x 1",
-};
+  parts: `${part} (3) never made in ${colour}`,
+  whole: `1 piece is held by nothing, and comes away when the model is lifted: ${part} falls off ${other}`,
+});
+
+/// The model at [at]'s parts list, in [code] (?lang=): a deployment's, or
+/// the stand-in's from this checkout's handlers.
+async function lotsOf(at, code = "en") {
+  const asked = `${at}/parts.json${code === "en" ? "" : `?lang=${code}`}`;
+  const text = remote ? await (await fetch(`${remote}${asked}`, { headers })).text()
+    : (await stand.serverPage(path.join(root, "api"), asked)).html;
+  return JSON.parse(text).lots || [];
+}
+
+/// Two of the model at [at]'s parts and one of its colours that [code]
+/// names its own way, as the app writes them and as the language says them.
+async function namedIn(at, code) {
+  const said = new Map((await lotsOf(at, code)).map((lot) => [`${lot.part}/${lot.colour}`, lot]));
+  const lots = (await lotsOf(at)).map((lot) => ({ ...lot, ...said.get(`${lot.part}/${lot.colour}`), name: lot.name }))
+    .filter((lot) => !lot.custom && lot.said && lot.said !== lot.name);
+  const [one, two] = [lots[0], lots.find((lot) => lot.name !== lots[0]?.name)];
+  const tint = lots.find((lot) => lot.colour_said && lot.colour_said !== lot.colour_name);
+  if (!one || !two || !tint) return null;
+  return { english: { part: one.name, other: two.name, colour: tint.colour_name },
+    said: { part: one.said, other: two.said, colour: tint.colour_said } };
+}
 
 /// The owner's answers, as the server makes them (api/_challenges.js,
 /// api/share.js testedOwn, api/_comments.js, api/_follows.js), for
@@ -1222,6 +1264,16 @@ async function ownersAnswer(route) {
     return json(422, { error: `It does not keep this challenge's rules. ${broken.map((one) => one.said).join(" ")}`,
       refused: "rules", broken, check: checked });
   }
+  if (op === "challenge" && !url.searchParams.has("id")) {
+    // This month's, as anybody is shown it, and why this account may not
+    // vote in it (api/_challenges.js VOTE_SAID.under_13).
+    const asked = new URL(url.pathname + url.search, stand.ORIGIN);
+    const out = { ...request.headers() };
+    delete out.authorization;
+    const body = remote ? await (await route.fetch({ headers: out })).json() : stand.apiAnswer({ url: asked, state: {} }).json;
+    return json(200, { ...body, you: { signed_in: true, voted: { hand: null, assistant: null }, entries: [], may_vote: false,
+      why_not: UNDER_13_VOTE } });
+  }
   if (op === "tested") {
     const tests = Object.fromEntries(["stands", "steps", "parts", "whole"].map((name) => [name, WHYS[name]
       ? { ok: false, said: { stands: "Not shown to stand at every step", parts: "A part is not made in its colour",
@@ -1247,6 +1299,9 @@ async function ownersAnswer(route) {
 /// they may not comment or follow, a challenge's rules and what the model
 /// breaks of them, and why it is not Tested, each in the language.
 async function serverSaid(browser, code, width, at) {
+  const named = await namedIn(at, code);
+  if (!named) return check(false, `${code} server words ${width}: two parts and a colour of ${at} the language names`);
+  WHYS = whysOf(named.english);
   const context = await newContext(browser, code, width);
   await context.addInitScript((planted) => {
     localStorage.setItem("brickworks.session", JSON.stringify({ refresh_token: planted, email: "flow@example.invalid",
@@ -1272,7 +1327,10 @@ async function serverSaid(browser, code, width, at) {
     const told = await tab.waitForFunction(() => document.querySelector(".shared-by .said")?.textContent.trim(), null,
       { timeout: 15000 }).then((said) => said.jsonValue());
     check(told === script(code, UNDER_13_FOLLOW), `${where}: why not follow, "${told.slice(0, 70)}…"`);
-    // Why it is not Tested.
+    // Why it is not Tested: its parts and colour named as its parts list
+    // names them in the language, in German a whole sentence after a
+    // colon opened with a capital ("Bei Schritt 3: Es ist ..."), and in
+    // French a narrow space before every colon and semicolon.
     await tab.waitForFunction(() => document.documentElement.dataset.testedNote === "shown", null, { timeout: 15000 });
     const note = await tab.evaluate(() => {
       const shown = document.getElementById("tested-note");
@@ -1281,9 +1339,18 @@ async function serverSaid(browser, code, width, at) {
     });
     const heads = [script(code, "Not shown to stand at every step"), script(code, "A part is not made in its colour"),
       script(code, "It does not go together")];
-    const left = code === "en" ? [] : note.failed.filter((line) => ENGLISH.test(line) || /\b(?:step|tipped|hangs|piece|never)\b/.test(line));
-    check(note.failed.length === 3 && note.failed.every((line, n) => line.startsWith(`${heads[n]}: `)) && !note.english.length && !left.length,
-      `${where}: why not Tested, "${(note.failed[0] || "").slice(0, 90)}…"${left.length ? `, English: "${left[0].slice(0, 80)}"` : ""}`);
+    const left = code === "en" ? [] : note.failed.filter((line) => ENGLISH.test(line) || /\b(?:step|tipped|hangs|piece|never)\b/.test(line)
+      || Object.values(named.english).some((name) => line.includes(name)));
+    const unnamed = Object.values(named.said).filter((name) => !note.failed.some((line) => line.includes(name)));
+    const small = code === "de" ? note.failed.filter((line) => /: \p{Ll}/u.test(line)) : [];
+    const bare = code === "fr" ? note.failed.filter((line) => /[^\s\u202f\u00a0][:;](?:\s|$)/u.test(line)) : [];
+    const colon = code === "fr" ? "\u202f: " : ": ";
+    check(note.failed.length === 3 && note.failed.every((line, n) => line.startsWith(`${heads[n]}${colon}`)) && !note.english.length
+      && !left.length && !unnamed.length && !small.length && !bare.length,
+      `${where}: why not Tested, "${(note.failed[0] || "").slice(0, 110)}…", naming ${Object.values(named.said).join(", ")}`
+      + `${left.length ? `; English: "${left[0].slice(0, 100)}"` : ""}${note.english.length ? `; marked English: "${note.english[0]}"` : ""}`
+      + `${unnamed.length ? `; not named: ${unnamed.join(", ")}` : ""}${small.length ? `; small after a colon: "${small[0].slice(0, 100)}"` : ""}`
+      + `${bare.length ? `; no space before a colon: "${bare[0].slice(0, 100)}"` : ""}`);
     if (out) {
       await tab.locator("#tested-note").scrollIntoViewIfNeeded();
       await tab.screenshot({ path: path.join(out, `${code}-server-${width}-1.png`) });
@@ -1312,6 +1379,191 @@ async function serverSaid(browser, code, width, at) {
       + "every part made in its colour).")];
     check(JSON.stringify(refused) === JSON.stringify(breaks), `${where}: what it breaks, ${refused.map((one) => `"${one.slice(0, 60)}…"`).join(", ")}`);
     if (out) await tab.screenshot({ path: path.join(out, `${code}-server-${width}-2.png`) });
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+// The pages languages6 put in each language. What people wrote on them,
+// and the names they say: as they wrote them. A challenge's title and
+// brief are the owner's, written in English for every visitor.
+const THEIRS_CHALLENGE = "#title, #crumb, #brief, #next-title, #next-brief, .past-one h3, .winner-cards .words";
+const THEIRS_LIST = ".list-head h1, .list-head .handle a, .list-head .bio";
+const THEIRS_COLLECTIONS = ".list-card .name, .list-card .who";
+const THEIRS_OWN = "#title, #handle-line, #bio-shown, #links-shown, .list-card .name, .list-card .who, .people-list .name, "
+  + ".people-list .handle, #pins .words, #lists .name, #following a, .follows .pills a, #email-shown, .email, [data-email], "
+  + "#owned-counts .name, .lot .name, figure.build q";
+
+/// This month's challenge in [code], from /challenge: its words, its days
+/// and rules as the language says them, and why this account may not vote
+/// (its sign-in planted, as serverSaid's); then a challenge's own link,
+/// /challenge?id=N, its head in the language.
+async function challengeSaid(browser, code, width, past) {
+  const context = await newContext(browser, code, width);
+  await context.addInitScript((planted) => {
+    localStorage.setItem("brickworks.session", JSON.stringify({ refresh_token: planted, email: "flow@example.invalid",
+      user_id: "", url: "", key: "" }));
+    sessionStorage.setItem("brickworks.access", JSON.stringify({ token: planted, until: Date.now() + 3600000,
+      email: "flow@example.invalid" }));
+  }, PLANTED);
+  await context.route("**/*", ownersAnswer);
+  const tab = await context.newPage();
+  const where = `${code} challenge ${width}`;
+  const lang = code === "en" ? "" : `/${code}`;
+  try {
+    await tab.goto(`${base}/challenge`, { waitUntil: "load" });
+    const at = new URL(tab.url()).pathname;
+    check(at === `${lang}/challenge` && await tab.evaluate(() => document.documentElement.lang) === code,
+      `${where}: opens ${lang}/challenge in ${code} (at ${at})`);
+    await tab.waitForFunction(() => document.documentElement.dataset.challenge, null, { timeout: 20000 });
+    const state = await tab.evaluate(() => document.documentElement.dataset.challenge);
+    const title = await tab.title();
+    const name = (await tab.locator("#title").textContent()).trim();
+    check(title === script(code, "{title} · a Brickworks challenge", { title: name }), `${where}: its title says "${title}"`);
+    const shown = await tab.evaluate(() => ({ why: document.querySelector("#groups .why-not")?.textContent.trim() || "",
+      eyebrow: document.getElementById("eyebrow")?.textContent.trim() || "", days: document.getElementById("days")?.textContent.trim() || "",
+      rules: [...document.querySelectorAll("#rules li")].map((li) => li.textContent.trim()) }));
+    check(["open", "ended", "upcoming"].includes(state), `${where}: drawn (${state}), "${shown.eyebrow}", "${shown.days}"`);
+    if (state === "open") {
+      check(shown.why === script(code, UNDER_13_VOTE), `${where}: why this account may not vote, "${shown.why.slice(0, 80)}…"`);
+    }
+    await copyRead(tab, code, width, where, "challenge", THEIRS_CHALLENGE);
+    // A challenge's own link, its head made by the server in the language.
+    if (past) {
+      await tab.goto(`${base}/challenge?id=${past.id}`, { waitUntil: "load" });
+      const head = await tab.evaluate(() => ({ path: location.pathname + location.search, lang: document.documentElement.lang,
+        title: document.querySelector('meta[property="og:title"]')?.content || "",
+        about: document.querySelector('meta[name="description"]')?.content || "",
+        canonical: new URL(document.querySelector('link[rel="canonical"]')?.href || location.href),
+        alternates: Object.fromEntries([...document.querySelectorAll('link[rel="alternate"][hreflang]')]
+          .map((link) => [link.hreflang, new URL(link.href).pathname + new URL(link.href).search])) }));
+      const own = `${lang}/challenge?id=${past.id}`;
+      const english = `/challenge?id=${past.id}`;
+      const want = { en: english, de: `/de${english}`, fr: `/fr${english}`, es: `/es${english}`, "x-default": english };
+      // Its head as the server made it: the page's script names the tab
+      // itself once it has drawn the challenge.
+      const titled = script(code, "{title} · Brickworks challenge", { title: past.title });
+      const when = code === "en" ? "" : script(code, "Ran {days}: see who won.").split("{days}")[0];
+      check(head.path === own && head.lang === code && head.title === titled && head.canonical.pathname + head.canonical.search === own
+        && JSON.stringify(head.alternates) === JSON.stringify(want) && head.about.includes(when),
+        `${where}: ${own} answers in ${head.lang}, "${head.title}", "…${head.about.slice(-60)}", canonical ${head.canonical.pathname}`
+        + `${head.canonical.search}, ${Object.keys(head.alternates).length} alternates`);
+    }
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+/// Every collection in [code], from /collections, and one of them, from
+/// /c/[id]: in the language, but their names and who made them; the
+/// collection's people and models each linked in it.
+async function collectionsSaid(browser, code, width, id) {
+  const context = await newContext(browser, code, width);
+  const tab = await context.newPage();
+  const lang = code === "en" ? "" : `/${code}`;
+  let where = `${code} collections ${width}`;
+  try {
+    const said = await copyOpened(tab, code, "/collections", where);
+    const chrome = await tab.evaluate(() => ({
+      tabs: [...document.querySelectorAll("nav.tabs a")].map((a) => [a.textContent.trim(), new URL(a.href).pathname]),
+      lists: [...document.querySelectorAll(".list-card a.name")].map((a) => new URL(a.href).pathname),
+    }));
+    const tabs = ["Recently added to", "Most followed"].map((word) => script(code, word));
+    check(said.title === script(code, "Collections — the Brickworks gallery") && JSON.stringify(chrome.tabs.map(([text]) => text)) === JSON.stringify(tabs)
+      && chrome.tabs.every(([, to]) => to === `${lang}/collections`),
+      `${where}: "${said.title}", its tabs ${chrome.tabs.map(([text, to]) => `"${text}" ${to}`).join(", ")}`);
+    const away = chrome.lists.filter((to) => !to.startsWith(`${lang}/c/`));
+    check(chrome.lists.length && !away.length, `${where}: ${chrome.lists.length} collections open in ${code}${away.length ? `, not: ${away[0]}` : ""}`);
+    await copyRead(tab, code, width, where, "collections", THEIRS_COLLECTIONS);
+    where = `${code} collection ${width}`;
+    const list = await copyOpened(tab, code, `/c/${id}`, where);
+    const shown = await tab.evaluate(() => ({ name: document.querySelector(".list-head h1")?.textContent.trim() || "",
+      eyebrow: document.querySelector(".list-head .eyebrow")?.textContent.trim() || "",
+      by: document.querySelector(".list-head .handle")?.textContent.trim() || "",
+      who: document.querySelector(".list-head .handle a")?.textContent.trim() || "",
+      links: [...document.querySelectorAll("main a[href]")].map((a) => new URL(a.href, location.href))
+        .filter((url) => url.origin === location.origin && /^(?:\/[a-z]{2})?\/[mu]\//.test(url.pathname)).map((url) => url.pathname) }));
+    const collected = script(code, "Collected by {who} · updated {when}", { who: shown.who, when: "" });
+    const wrong = shown.links.filter((to) => !to.startsWith(`${lang}/`) || !/^\/(?:[a-z]{2}\/)?[mu]\//.test(to) || (code !== "en" && !to.startsWith(`/${code}/`)));
+    check(list.title === script(code, "{name} — a collection in the Brickworks gallery", { name: shown.name })
+      && shown.eyebrow === script(code, "Collection") && shown.by.startsWith(collected.trim()) && shown.links.length && !wrong.length,
+      `${where}: "${list.title}", "${shown.eyebrow}", "${shown.by}", ${shown.links.length} links to its people and models in ${code}`
+      + `${wrong.length ? `, not: ${wrong[0]}` : ""}`);
+    await copyRead(tab, code, width, where, "collection", THEIRS_LIST);
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+/// The deployment's Supabase project, which a page signed in on it asks.
+let projectAsked = null;
+const projectOf = () => (projectAsked ||= remote ? fetch(`${remote}/api/account`, { headers }).then((reply) => reply.json())
+  .then((said) => new URL(said.url).origin).catch(() => "") : Promise.resolve(""));
+
+/// Your own profile and your settings in [code], signed in as the
+/// stand-in's Sam: the sign-in kept in this browser only, and every API
+/// call answered here, a deployment's pages or not. Each tab of the
+/// profile, its Edit dialog, and the settings page, none of it English but
+/// what Sam wrote.
+async function ownSaid(browser, code, width, kind) {
+  const phone = width < 600;
+  const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, locale: ASKED[code].locale,
+    extraHTTPHeaders: { ...headers, "accept-language": ASKED[code].header },
+    ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+  const db = await projectOf();
+  await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), remote, headers, remoteDb: db });
+  const kept = JSON.parse(JSON.stringify(stand.signedInStorage()).split(stand.DB).join(db || stand.DB));
+  await context.addInitScript((kept) => {
+    localStorage.setItem("brickworks.session", JSON.stringify(kept.session));
+    sessionStorage.setItem("brickworks.access", JSON.stringify(kept.access));
+  }, kept);
+  const tab = await context.newPage();
+  const where = `${code} ${kind} ${width}`;
+  const lang = code === "en" ? "" : `/${code}`;
+  try {
+    await tab.goto(`${base}/${kind}`, { waitUntil: "load" });
+    const at = new URL(tab.url()).pathname;
+    check(at === `${lang}/${kind}` && await tab.evaluate(() => document.documentElement.lang) === code,
+      `${where}: opens ${lang}/${kind} in ${code} (at ${at})`);
+    const title = await tab.title();
+    check(title === page(code, kind === "profile" ? "Your profile · Brickworks" : "Settings · Brickworks"), `${where}: its title says "${title}"`);
+    await tab.waitForFunction((kind) => ["ready", "signed-out"].includes(document.documentElement.dataset[kind]), kind, { timeout: 30000 });
+    check(await tab.evaluate((kind) => document.documentElement.dataset[kind], kind) === "ready", `${where}: drawn signed in`);
+    if (kind === "profile") {
+      // Each of its tabs, and what each says.
+      const tabs = await tab.evaluate(() => [...document.querySelectorAll("#tabs a[data-tab]")].filter((a) => !a.hidden)
+        .map((a) => [a.dataset.tab, a.firstChild.textContent.trim(), new URL(a.href).pathname]));
+      const away = tabs.filter(([, , to]) => to !== `${lang}/profile`);
+      check(tabs.length >= 4 && !away.length, `${where}: its tabs ${tabs.map(([, text]) => text).join(" / ")}${away.length ? `, ${away[0][0]} opens ${away[0][2]}` : ""}`);
+      for (const [name] of tabs) {
+        await tab.locator(`#tabs a[data-tab="${name}"]`).click();
+        await tab.waitForFunction((name) => document.querySelector(`#tabs a[data-tab="${name}"]`)?.getAttribute("aria-current") === "page"
+          && !document.querySelector("#tab-loading:not([hidden])"), name, { timeout: 15000 });
+        await tab.waitForTimeout(500);
+        if (code !== "en") {
+          const left = await englishIn(tab, THEIRS_OWN);
+          check(!left.length, `${where}: its ${name} tab, no English left${left.length
+            ? `: ${left.length}, first "${left[0].slice(0, 120)}" in ${await whereSaid(tab, left[0].trim())}` : ""}`);
+        }
+        await screens(tab, `${code}-${kind}-${name}-${width}`, 2);
+      }
+      // Edit profile: its dialog.
+      await tab.locator("#edit").click();
+      await tab.locator("#edit-dialog").waitFor({ state: "visible", timeout: 10000 });
+      if (code !== "en") {
+        const left = await englishIn(tab, `${THEIRS_OWN}, #edit-dialog input, #edit-dialog textarea, #edit-dialog option`, "#edit-dialog");
+        check(!left.length, `${where}: Edit profile, no English left${left.length ? `: ${left.length}, first "${left[0].slice(0, 120)}"` : ""}`);
+      }
+      if (out) await tab.screenshot({ path: path.join(out, `${code}-${kind}-edit-${width}.png`) });
+      await tab.keyboard.press("Escape");
+    }
+    await copyRead(tab, code, width, where, kind, THEIRS_OWN);
   } catch (trouble) {
     check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
   } finally {
@@ -1366,6 +1618,31 @@ try {
         if (leads.includes("embed")) await embedSaid(browser, code, width, at);
         if (leads.includes("viewer")) await viewerSaid(browser, code, width, at);
         if (leads.includes("server") && code !== "en") await serverSaid(browser, code, width, at);
+      }
+    }
+  }
+  // The pages languages6 put in each language: this month's challenge and
+  // one that ran, every collection and one, your own profile and your
+  // settings. The stand-in's, or a deployment's: its challenges, and the
+  // first collection it lists.
+  const sixth = ["challenge", "collections", "account"].filter((name) => !only || only.includes(name));
+  if (sixth.length) {
+    let past = { id: 2, title: "Castle September" };
+    let list = "ListAbcde1";
+    if (remote) {
+      const shown = await (await fetch(`${remote}/api/people?op=challenge`, { headers })).json().catch(() => ({}));
+      past = shown.past?.[0] ? { id: shown.past[0].id, title: shown.past[0].title } : null;
+      const listed = await (await fetch(`${remote}/collections`, { headers })).text().catch(() => "");
+      list = /href="\/c\/([A-Za-z0-9]{10})"/.exec(listed)?.[1] || "";
+    }
+    for (const code of langs.includes("en") ? langs : ["en", ...langs]) {
+      for (const width of widths) {
+        if (sixth.includes("challenge")) await challengeSaid(browser, code, width, past);
+        if (sixth.includes("collections")) await (list ? collectionsSaid(browser, code, width, list) : check(false, "a collection to open"));
+        if (sixth.includes("account")) {
+          await ownSaid(browser, code, width, "profile");
+          await ownSaid(browser, code, width, "settings");
+        }
       }
     }
   }

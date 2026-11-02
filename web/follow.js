@@ -335,8 +335,10 @@ function accountPart(state) {
   const places = document.createElement("nav");
   places.setAttribute("aria-label", say("Your account"));
   const counted = { "/notifications": state.notifications, "/feed": state.feed };
-  for (const [href, words, data] of [["/profile", say("Your profile"), "profile"], ["/notifications", say("Notifications"), "notifications"],
-    ["/feed", say("Your feed"), "feed"], ["/profile?tab=saved", say("Saved"), "saved"], ["/settings", say("Settings"), "settings"]]) {
+  // Your profile and Settings have a copy in each language; the others not yet.
+  const at = langAt();
+  for (const [href, words, data] of [[`${at}/profile`, say("Your profile"), "profile"], ["/notifications", say("Notifications"), "notifications"],
+    ["/feed", say("Your feed"), "feed"], [`${at}/profile?tab=saved`, say("Saved"), "saved"], [`${at}/settings`, say("Settings"), "settings"]]) {
     const link = document.createElement("a");
     link.href = href;
     link.dataset.place = data;
@@ -397,7 +399,7 @@ function drawSignedOut() {
   for (const link of document.querySelectorAll(".site-head a[data-account]")) {
     link.hidden = false;
     link.textContent = say("Sign in");
-    link.href = "/profile";
+    link.href = `${langAt()}/profile`;
   }
   for (const made of document.querySelectorAll(".site-head .account-menu, .site-head .account-part, .site-head .menu .sign-out")) made.remove();
   for (const menu of document.querySelectorAll(".site-head .menu summary")) {

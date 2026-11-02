@@ -241,9 +241,9 @@ def test_the_viewer_the_server_s_words_and_the_tested_why_are_said() -> None:
                            ("At most {parts}", "web/card.js"),
                            ("{n} of its parts are not in {set}, or not as many: {lots}.", "web/card.js"),
                            ("Step {n}: {part} is put down in the air", "web/model-page.js"),
-                           ("Edit profile", "api/people.js"),
+                           ("Edit profile", "web/settings.js"),
                            ("first challenge", "web/card.js"),
-                           ("vote", "api/people.js")):
+                           ("vote", "web/challenge.js")):
         assert words.get(english) == where, (english, words.get(english))
     for code in site_lang.LANGUAGES:
         said = json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8"))
@@ -282,3 +282,78 @@ def test_a_word_between_two_templates_and_a_name_s_sentence_are_caught() -> None
     assert site_lang.unsaid('html = `<p>${ok ? `<b>${n}</b>` : ""}</p>`;') == []
     assert site_lang.unsaid('note.textContent = "Brickworks could not say.";') == ['"Brickworks could not say."']
     assert site_lang.unsaid('mark.textContent = "Brickworks";') == []
+
+
+def test_a_link_to_any_page_with_copies_as_english_writes_it_is_caught() -> None:
+    # languages6: a collection, every collection, this month's challenge,
+    # your own profile and your settings have copies too, so a link to one
+    # is in the page's language, in any script a copy loads.
+    for link in ('a.href = "/collections";', "a.href = `/c/${id}`;", 'a.href = "/profile?edit=1";',
+                 'a.href = "/settings#plan";', 'link.href = `/challenge${tests ? "?tests=1" : ""}`;'):
+        assert site_lang.unled(link) != [], link
+    for link in ("a.href = `${langAt()}/collections`;", "a.href = `${langAt()}/settings#plan`;", 'img.src = "/m/X.png";',
+                 'a.href = "/takedown";', 'call("/api/people?op=profile");', "alternatesOf(origin, `c/${id}`)"):
+        assert site_lang.unled(link) == [], link
+    loaded = {script for name in site_lang.PAGES for script in site_lang.scripts_of(name)}
+    gallery = (ROOT / "web/gallery.js").read_text(encoding="utf-8")
+    assert "gallery.js" in loaded and "web/gallery.js" not in site_lang.SAID_ALL and site_lang.unled(gallery) == []
+    planted = gallery.replace("`${langAt()}/challenge", "`/challenge", 1)
+    assert planted != gallery and len(site_lang.unled(planted)) == 1
+
+
+def test_the_pages_languages6_said_have_their_words() -> None:
+    # A collection and every collection (api/people.js), this month's
+    # challenge and a challenge's link, your own profile, your settings and
+    # the feedback form, and what the API they call answers in words: each
+    # has its entry in each language.
+    words = site_lang.script_words()
+    for english, where in (("Collected by {who} · updated {when}", "api/people.js"),
+                           ("Collections — the Brickworks gallery", "api/people.js"),
+                           ("{title} · Brickworks challenge", "api/_challenges.js"),
+                           ("{title} · a Brickworks challenge", "web/challenge.js"),
+                           ("a link is at most 200 characters", "api/people.js"),
+                           ("make your profile first: a name and a handle", "api/people.js"),
+                           ("The picture did not go with it.", "api/_feedback.js"),
+                           ("Pictures of your own and likes on your profile are not open on Brickworks yet.", "api/_avatars.js")):
+        assert words.get(english) == where, (english, words.get(english))
+    assert any(where == "api/_oc.js" and english.startswith("orangecheck could not delete") for english, where in words.items())
+    for code in site_lang.LANGUAGES:
+        said = json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8"))
+        for english in ("Collections — the Brickworks gallery", "{title} · a Brickworks challenge",
+                        "Delete this account and everything in it, for good?"):
+            assert said[english] != english, f"{code}: {english}"
+
+
+def test_a_challenge_s_link_has_its_head_in_the_language() -> None:
+    script = """
+      import { readFileSync } from "node:fs";
+      import { challengeHead } from "./api/_challenges.js";
+      import { inLanguage, siteWords } from "./api/_directory.js";
+      const page = { id: 7, title: "Harbour", brief: "Build a harbour.", starts_on: "2026-10-01", ends_on: "2026-10-31",
+        state: "ended", test: false, winners: [], entries: [] };
+      const made = inLanguage("de", siteWords("de"), () => challengeHead(readFileSync("web/de/challenge.html", "utf8"),
+        "https://x", page, false, "de"));
+      const tag = (pattern) => (pattern.exec(made) || [])[1];
+      console.log(JSON.stringify({ title: tag(/<title>([^<]*)<\\/title>/), about: tag(/<meta name="description" content="([^"]*)">/),
+        canonical: tag(/<link rel="canonical" href="([^"]*)">/),
+        alternates: Object.fromEntries([...made.matchAll(/<link rel="alternate" hreflang="([a-z-]+)" href="([^"]*)">/g)]
+          .map((m) => [m[1], m[2]])) }));
+    """
+    out = json.loads(subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, check=True,
+                                    capture_output=True, text=True).stdout)
+    said = json.loads((ROOT / "web/de/words.json").read_text(encoding="utf-8"))
+    assert out["title"] == said["{title} · Brickworks challenge"].replace("{title}", "Harbour")
+    assert out["about"] == "Build a harbour. " + said["Ran {days}: see who won."].replace("{days}", "1.–31. Oktober 2026")
+    assert out["canonical"] == "https://x/de/challenge?id=7"
+    assert out["alternates"] == {"en": "https://x/challenge?id=7", "de": "https://x/de/challenge?id=7",
+                                 "fr": "https://x/fr/challenge?id=7", "es": "https://x/es/challenge?id=7",
+                                 "x-default": "https://x/challenge?id=7"}
+
+
+def test_the_tested_why_names_parts_and_colours_as_the_parts_list_does() -> None:
+    # Every part and colour a why names goes through nameSaid (the parts
+    # list's words in the language), none as the app wrote it; and German
+    # opens the sentence after "Bei Schritt 3:" with a capital.
+    said = site_lang.scope("web/model-page.js", ("pieceSaid", "tipSaid"))
+    assert not re.search(r"\b(?:part|other|who|colour):\s*m\[\d\]", said), said
+    assert "afterColon(what)" in said and "nameSaid(m[5], names?.colours)" in said
