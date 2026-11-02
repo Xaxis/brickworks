@@ -234,7 +234,8 @@
     }
     document.getElementById("notes-date").textContent = say("Released {date}", { date: day(release.date) }) + " · ";
     // The site's own changelog, at this release, rather than the file on GitHub.
-    document.getElementById("notes-link").href = "/changelog#v" + release.version;
+    // In the page's language: the changelog's copy (/de/changelog).
+    document.getElementById("notes-link").href = `${LANG.code === "en" ? "" : `/${LANG.code}`}/changelog#v${release.version}`;
     document.getElementById("notes").hidden = false;
   }
 

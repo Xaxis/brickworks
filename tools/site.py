@@ -11,8 +11,13 @@ Everything in web/ is copied as it is, apart from names starting with "_"
 or "." (working parts: the render the share card is composed from) and
 img/manifest.json, which says where each picture came from. One page is
 written rather than copied: the changelog, filled from CHANGELOG.md and
-web/releases.json, so it can never say something the release notes do not.
+web/releases.json, so it can never say something the release notes do not;
+and each language's copy of it (web/de/changelog.html, tools/site_lang.py),
+its heads, links and dates in the language from its words
+(web/<code>/words.json), the notes as written, in English (lang="en").
 And the documentation at /docs is made from docs-site/ (tools/docs_site.py).
+
+    tools/site.py --changelog=CODE   the changelog page in CODE's language
 """
 
 from __future__ import annotations
@@ -43,13 +48,20 @@ def inline(text: str) -> str:
     return out
 
 
-def day(iso: str) -> str:
-    """"2026-10-11" as "11 October 2026"; anything else as it is."""
+def english(words: str) -> str:
+    return words
+
+
+def day(iso: str, say=english) -> str:
+    """"2026-10-11" as "11 October 2026", in [say]'s language ("11. Oktober
+    2026"); anything else as it is."""
     try:
         d = datetime.date.fromisoformat(iso)
     except ValueError:
         return html.escape(iso)
-    return f"{d.day} {d:%B %Y}"
+    month = (say("January"), say("February"), say("March"), say("April"), say("May"), say("June"), say("July"),
+             say("August"), say("September"), say("October"), say("November"), say("December"))[d.month - 1]
+    return say("{day} {month} {year}").replace("{day}", str(d.day)).replace("{month}", month).replace("{year}", str(d.year))
 
 
 def sections(markdown: str) -> list[dict]:
@@ -95,8 +107,14 @@ def sections(markdown: str) -> list[dict]:
     return found
 
 
-def render(found: list[dict], releases: dict) -> str:
+def render(found: list[dict], releases: dict, say=english, code: str = "en") -> str:
+    """The releases as the changelog shows them: each one's head, links and
+    date in [say]'s language, [code]'s, its links to that language's pages;
+    its notes as they were written, in English."""
     by_version = {r["version"]: r for r in releases.get("releases", [])}
+    at = "" if code == "en" else f"/{code}"
+    app = "/app" if code == "en" else f"/app?lang={code}"
+    notes = '<div class="release-notes">' if code == "en" else '<div class="release-notes" lang="en">'
     parts: list[str] = []
     for section in found:
         version = section["version"]
@@ -112,17 +130,18 @@ def render(found: list[dict], releases: dict) -> str:
         # notes as they scroll on a laptop (web/changelog.html).
         parts.append('<div class="release-head">')
         if unreleased:
-            parts.append(f'<h2 id="{anchor}-h">On the web now</h2>')
-            parts.append('<p class="when">In the app at <a href="/app">brickworks.diy/app</a>; '
-                         'in the next desktop release.</p>')
+            parts.append(f'<h2 id="{anchor}-h">{html.escape(say("On the web now"))}</h2>')
+            where = html.escape(say("In the app at {app}; in the next desktop release.")).replace(
+                "{app}", f'<a href="{app}">brickworks.diy/app</a>')
+            parts.append(f'<p class="when">{where}</p>')
         else:
             parts.append(f'<h2 id="{anchor}-h">Brickworks {html.escape(version)}</h2>')
-            links = ['<a href="/download">Download</a>']
+            links = [f'<a href="{at}/download">{html.escape(say("Download"))}</a>']
             if release.get("page"):
-                links.append(f'<a href="{html.escape(release["page"])}">On GitHub</a>')
-            when = f'<time datetime="{html.escape(date)}">{day(date)}</time>' if date else ""
+                links.append(f'<a href="{html.escape(release["page"])}">{html.escape(say("On GitHub"))}</a>')
+            when = f'<time datetime="{html.escape(date)}">{html.escape(day(date, say))}</time>' if date else ""
             parts.append(f'<p class="when">{when}{" · " if when else ""}{" · ".join(links)}</p>')
-        parts.append('</div>\n<div class="release-notes">')
+        parts.append(f'</div>\n{notes}')
         open_list = False
         for kind, text in blocks:
             if kind != "li" and open_list:
@@ -143,13 +162,16 @@ def render(found: list[dict], releases: dict) -> str:
     return "\n".join(parts)
 
 
-def changelog_page() -> str:
-    template = (WEB / "changelog.html").read_text(encoding="utf-8")
+def changelog_page(code: str = "en") -> str:
+    """web/changelog.html filled, or [code]'s copy of it in its words."""
+    name = "changelog.html" if code == "en" else f"{code}/changelog.html"
+    template = (WEB / name).read_text(encoding="utf-8")
     if MARK not in template:
-        raise SystemExit(f"site: web/changelog.html has no {MARK} to fill")
+        raise SystemExit(f"site: web/{name} has no {MARK} to fill")
     found = sections((ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))
     releases = json.loads((WEB / "releases.json").read_text(encoding="utf-8"))
-    body = render(found, releases)
+    words = {} if code == "en" else json.loads((WEB / code / "words.json").read_text(encoding="utf-8"))
+    body = render(found, releases, lambda english: words.get(english, english), code)
     if "<article" not in body:
         raise SystemExit("site: CHANGELOG.md gave the changelog page nothing to say")
     return template.replace(MARK, body)
@@ -166,8 +188,8 @@ def build(out: Path) -> int:
             continue
         target = out / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        if rel.as_posix() == "changelog.html":
-            target.write_text(changelog_page(), encoding="utf-8")
+        if rel.name == "changelog.html":
+            target.write_text(changelog_page(rel.parent.as_posix() if rel.parent.parts else "en"), encoding="utf-8")
         else:
             shutil.copyfile(item, target)
         count += 1
@@ -175,6 +197,9 @@ def build(out: Path) -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 2 and sys.argv[1].startswith("--changelog="):
+        sys.stdout.write(changelog_page(sys.argv[1].split("=", 1)[1]))
+        sys.exit(0)
     if len(sys.argv) != 2 or sys.argv[1].startswith("-"):
         print((__doc__ or "").strip())
         sys.exit(2)

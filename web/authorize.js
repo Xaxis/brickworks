@@ -15,7 +15,10 @@
 // the page first asks /api/oauth?op=remembered whether this account is
 // connected to this same app already, and if it is goes straight back with
 // a code, asking nothing. Everything shown is put on the page as text,
-// never markup.
+// never markup, in the page's language (web/card.js say: its copy at
+// /de/oauth/authorize, tools/site_lang.py), what the server refuses with
+// through told().
+import { say, told } from "/card.js";
 
 const $ = (id) => document.getElementById(id);
 // Where the app keeps its session (src/account/account.gd).
@@ -33,12 +36,12 @@ const CLAUDE_TITLE = document.title;
 
 function show(step) {
   for (const id of STEPS) $(id).classList.toggle("hide", id !== step);
-  say("");
+  status("");
   const field = { "email-step": "email", "code-step": "code" }[step];
   if (field) $(field).focus();
 }
 
-function say(text, bad = false) {
+function status(text, bad = false) {
   $("say").textContent = text;
   $("say").classList.toggle("bad", bad);
 }
@@ -51,9 +54,22 @@ function speakAs(label, claude) {
   for (const name of document.querySelectorAll(".client")) name.textContent = label;
   for (const one of document.querySelectorAll(".for-claude")) one.classList.toggle("hide", !claude);
   for (const one of document.querySelectorAll(".for-other")) one.classList.toggle("hide", claude);
-  $("chats").textContent = claude ? "Claude conversations"
-    : label === "An MCP client" ? "conversations" : `${label} conversations`;
-  document.title = claude ? CLAUDE_TITLE : `Connect ${label} to Brickworks`;
+  $("chats").textContent = claude ? say("Claude conversations")
+    : label === say("An MCP client") ? say("conversations") : say("{client} conversations", { client: label });
+  document.title = claude ? CLAUDE_TITLE : say("Connect {client} to Brickworks", { client: label });
+}
+
+/// Who is asking, as the page says it: an app's own name as it is, the
+/// server's words for one with none in the page's language.
+const labelSaid = (label) => (/^An MCP client$/.test(label) ? say("An MCP client") : label);
+
+/// [said], a sentence in the page's language, into [into]: each {name} in
+/// it [parts]'s element.
+function sayInto(into, said, parts) {
+  for (const piece of said.split(/(\{\w+\})/)) {
+    const name = /^\{(\w+)\}$/.exec(piece)?.[1];
+    if (piece) into.append(name && name in parts ? parts[name] : piece);
+  }
 }
 
 function busy(button, on, label) {
@@ -123,17 +139,17 @@ function readable(body) {
   switch (body.error_code) {
     case "otp_expired":
     case "invalid_credentials":
-      return "That code is wrong or has expired. Check it, or ask for a new one.";
+      return say("That code is wrong or has expired. Check it, or ask for a new one.");
     case "over_email_send_rate_limit":
     case "over_request_rate_limit":
-      return "Too many attempts just now. Wait a minute and try again.";
+      return say("Too many attempts just now. Wait a minute and try again.");
     default:
-      return body.msg || body.error_description || body.message || "Could not sign in. Try again.";
+      return told(body.msg || body.error_description || body.message, say("Could not sign in. Try again."));
   }
 }
 
 function toAllow() {
-  $("signed-in-as").textContent = session.email || "your account";
+  $("signed-in-as").textContent = session.email || say("your account");
   show("allow-step");
   $("allow").focus();
 }
@@ -151,8 +167,8 @@ async function remembered() {
     });
     const body = await json(reply);
     if (!reply.ok || !body.redirect) return false;
-    $("leaving-why").textContent = `You allowed ${client} before, signed in as `
-      + `${session.email || "this account"}. Disconnect it any time from Account in Brickworks.`;
+    $("leaving-why").textContent = say("You allowed {client} before, signed in as {who}. Disconnect it any time from "
+      + "Account in Brickworks.", { client, who: session.email || say("this account") });
     show("leaving");
     location.assign(body.redirect);
     return true;
@@ -165,20 +181,21 @@ async function start() {
   // Before the server says who is asking: Claude's words for a request from
   // one of Claude's own addresses, as the page always had, and no app's
   // name for any other, so ChatGPT's person never reads "Claude".
-  if (!String(request.client_id || "").startsWith("https://claude.ai/")) speakAs("your app", false);
+  if (!String(request.client_id || "").startsWith("https://claude.ai/")) speakAs(say("your app"), false);
   // What the request is, before anything is asked of the person.
   let checked;
   try {
     const reply = await fetch(`/api/oauth?op=check&${new URLSearchParams(request)}`);
     checked = await json(reply);
-    if (!reply.ok && !checked.refuse) throw new Error(checked.error_description || `the server said ${reply.status}`);
+    if (!reply.ok && !checked.refuse) throw new Error(checked.error_description || say("the server said {status}", { status: reply.status }));
   } catch (trouble) {
-    $("refused-why").textContent = `Brickworks could not check it just now (${trouble.message}). Try again in a minute.`;
+    $("refused-why").textContent = say("Brickworks could not check it just now ({why}). Try again in a minute.",
+      { why: trouble.message });
     return show("refused");
   }
   if (checked.refuse) {
-    if (checked.client && !checked.claude) speakAs(checked.client, false);
-    $("refused-why").textContent = checked.refuse;
+    if (checked.client && !checked.claude) speakAs(labelSaid(checked.client), false);
+    $("refused-why").textContent = told(checked.refuse);
     return show("refused");
   }
   if (checked.back) {
@@ -187,31 +204,24 @@ async function start() {
     // anyone may register a return address, and a page that forwards
     // automatically to it would be a redirector for any link.
     const back = new URL(checked.back);
-    $("refused-why").textContent = `${back.searchParams.get("error_description") || "The request was not one "
-      + "Brickworks can answer"}.`;
+    const why = back.searchParams.get("error_description");
+    $("refused-why").textContent = why ? `${why}.` : say("The request was not one Brickworks can answer.");
     const link = document.createElement("a");
     link.href = checked.back;
-    link.textContent = `Back to ${back.host || "the app"}`;
+    link.textContent = say("Back to {where}", { where: back.host || say("the app") });
     $("refused-why").append(" ", link);
     return show("refused");
   }
 
-  speakAs(checked.client, Boolean(checked.claude));
+  speakAs(labelSaid(checked.client), Boolean(checked.claude));
   const back = $("back-to");
   back.replaceChildren();
-  if (checked.loopback) {
-    back.classList.add("warn");
-    back.append("You will go back to a program on this computer, at ");
-    const where = document.createElement("b");
-    where.textContent = checked.return_to;
-    back.append(where, ". Allow it only if you just started connecting one — Claude Code, for example.");
-  } else {
-    back.append("You will go back to ");
-    const where = document.createElement("b");
-    where.textContent = checked.return_to;
-    back.append(where, ".");
-  }
-  $("leaving-to").textContent = `Taking you back to ${checked.return_to}…`;
+  const where = document.createElement("b");
+  where.textContent = checked.return_to;
+  back.classList.toggle("warn", Boolean(checked.loopback));
+  sayInto(back, checked.loopback ? say("You will go back to a program on this computer, at {where}. Allow it only if you "
+    + "just started connecting one — Claude Code, for example.") : say("You will go back to {where}."), { where });
+  $("leaving-to").textContent = say("Taking you back to {where}…", { where: checked.return_to });
 
   try {
     const account = await json(await fetch("/api/account"));
@@ -220,7 +230,7 @@ async function start() {
     project = null;
   }
   if (!project) {
-    $("refused-why").textContent = "Brickworks cannot sign anyone in just now. Try again in a minute.";
+    $("refused-why").textContent = say("Brickworks cannot sign anyone in just now. Try again in a minute.");
     return show("refused");
   }
   session = await renewKept();
@@ -231,8 +241,8 @@ async function start() {
 $("email-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   email = $("email").value.trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return say("That is not an email address.", true);
-  busy($("send"), true, "Sending…");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return status(say("That is not an email address."), true);
+  busy($("send"), true, say("Sending…"));
   try {
     const reply = await fetch("/api/otp", {
       method: "POST",
@@ -240,24 +250,24 @@ $("email-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ email }),
     });
     if (!reply.ok) {
-      say((await json(reply)).error || `Could not send a code just now (${reply.status}).`, true);
+      status(told((await json(reply)).error, say("Could not send a code just now ({status}).", { status: reply.status })), true);
       return;
     }
     $("sent-to").textContent = email;
     $("code").value = "";
     show("code-step");
   } catch {
-    say("Could not reach Brickworks to send a code. Check your connection.", true);
+    status(say("Could not reach Brickworks to send a code. Check your connection."), true);
   } finally {
-    busy($("send"), false, "Email me a code");
+    busy($("send"), false, say("Email me a code"));
   }
 });
 
 $("code-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const token = $("code").value.replace(/[\s-]/g, "");
-  if (!token) return say("Enter the code from the email.", true);
-  busy($("verify"), true, "Signing in…");
+  if (!token) return status(say("Enter the code from the email."), true);
+  busy($("verify"), true, say("Signing in…"));
   try {
     const reply = await fetch(`${project.url}/auth/v1/verify`, {
       method: "POST",
@@ -266,14 +276,14 @@ $("code-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ type: "email", email, token }),
     });
     const body = await json(reply);
-    if (!reply.ok || !body.access_token) return say(readable(body), true);
+    if (!reply.ok || !body.access_token) return status(readable(body), true);
     keep(body);
     session = { access: body.access_token, email: body.user?.email || email };
     if (!(await remembered())) toAllow();
   } catch {
-    say("Could not reach Brickworks to sign in. Check your connection.", true);
+    status(say("Could not reach Brickworks to sign in. Check your connection."), true);
   } finally {
-    busy($("verify"), false, "Sign in");
+    busy($("verify"), false, say("Sign in"));
   }
 });
 
@@ -281,7 +291,7 @@ async function answer(op) {
   const button = op === "approve" ? $("allow") : $("deny");
   busy($("allow"), true);
   busy($("deny"), true);
-  button.textContent = op === "approve" ? "Connecting…" : "Cancelling…";
+  button.textContent = op === "approve" ? say("Connecting…") : say("Cancelling…");
   try {
     const headers = { "content-type": "application/json" };
     if (op === "approve") headers.authorization = `Bearer ${session.access}`;
@@ -294,21 +304,22 @@ async function answer(op) {
       return location.assign(body.redirect);
     }
     if (body.refuse) {
-      $("refused-why").textContent = body.refuse;
+      $("refused-why").textContent = told(body.refuse);
       return show("refused");
     }
     if (reply.status === 401) {
       // The session ended between signing in and saying yes.
       session = null;
       show("email-step");
-      return say("Your sign-in had ended. Sign in again to connect.", true);
+      return status(say("Your sign-in had ended. Sign in again to connect."), true);
     }
-    say(body.error_description || body.error || `Something went wrong (${reply.status}). Try again.`, true);
+    status(told(body.error_description) || told(body.error, say("Something went wrong ({status}). Try again.",
+      { status: reply.status })), true);
   } catch {
-    say("Could not reach Brickworks. Check your connection and try again.", true);
+    status(say("Could not reach Brickworks. Check your connection and try again."), true);
   } finally {
-    busy($("allow"), false, "Allow");
-    busy($("deny"), false, "Cancel");
+    busy($("allow"), false, say("Allow"));
+    busy($("deny"), false, say("Cancel"));
   }
 }
 

@@ -68,6 +68,8 @@ def test_each_copy_has_the_english_page_s_markup() -> None:
         for name, where in site_lang.PAGES.items():
             copy = (ROOT / "web" / code / (f"{where}.html" if where else "index.html")).read_text(encoding="utf-8")
             copy = re.sub(r'<script type="application/json" id="site-words">.*?</script>\n', "", copy, flags=re.S)
+            # A rule page's copy adds one line: that the English binds.
+            copy = re.sub(r'\n\t*<p class="binding">.*?</p>', "", copy, count=name in site_lang.BINDING)
             assert shape(copy) == shape((ROOT / "web" / name).read_text(encoding="utf-8")), (code, name)
 
 
@@ -81,20 +83,28 @@ def test_each_copy_points_to_its_own_pages_and_carries_its_language_into_the_app
     for code in site_lang.LANGUAGES:
         for name, where in site_lang.PAGES.items():
             text = (ROOT / "web" / code / (f"{where}.html" if where else "index.html")).read_text(encoding="utf-8")
-            assert f'<html lang="{code}">' in text
+            assert re.search(f'<html lang="{code}"(?: data-missing)?>', text)
             own = f"https://brickworks.diy/{code}" + (f"/{where}" if where else "")
-            assert f'<link rel="canonical" href="{own}">' in text and f'<meta property="og:url" content="{own}">' in text
+            if name not in site_lang.UNLISTED:
+                assert f'<link rel="canonical" href="{own}">' in text and f'<meta property="og:url" content="{own}">' in text
             links = re.findall(r'<a [^>]*href="([^"]*)"', text)
             english = {"/" + page for page in site_lang.PAGES.values()}
-            assert not [one for one in links if re.split(r"[?#]", one)[0] in english], (code, name)
+            # Only the binding line's link to the English text, which asks for it.
+            assert not [one for one in links if re.split(r"[?#]", one)[0] in english and "lang=en" not in one], (code, name)
             assert not [one for one in links if re.split(r"[?#]", one)[0] == "/app" and f"lang={code}" not in one]
-            assert f"/app?lang={code}" in links and f"/{code}/download" in links
+            if name != "authorize.html":  # the consent page leads only back to the app that asked
+                assert f"/app?lang={code}" in links and f"/{code}/download" in links
 
 
 def test_each_english_page_names_its_copies() -> None:
     # web/theme.js finds a copy by its <link rel="alternate" hreflang>.
     for name, where in site_lang.PAGES.items():
         text = (ROOT / "web" / name).read_text(encoding="utf-8")
+        if name == "404.html":
+            # It has no address of its own: its copy is the one at the
+            # address asked for, in the language (data-missing).
+            assert "<html lang=\"en\" data-missing>" in text
+            continue
         for code in site_lang.LANGUAGES:
             own = f"https://brickworks.diy/{code}" + (f"/{where}" if where else "")
             assert f'<link rel="alternate" hreflang="{code}" href="{own}">' in text, (name, code)
@@ -109,7 +119,9 @@ def test_the_mark_and_the_notice_in_each_language() -> None:
         for name, where in site_lang.PAGES.items():
             text = (ROOT / "web" / code / (f"{where}.html" if where else "index.html")).read_text(encoding="utf-8")
             footer = re.search(r"<footer.*?</footer>", text, re.S).group(0)
-            assert notice in footer, (code, name)
+            # The consent page's footer has the notice's first sentence alone.
+            said = notice.split(". ")[0] + "." if name == "authorize.html" else notice
+            assert said.replace('href="/terms', f'href="/{code}/terms') in footer, (code, name)
         for value in [*words["pages"].values(), *words["scripts"].values()]:
             rest = re.sub(COMPANY[code], "", value)
             assert not re.search(r"LEGO(?!®)", rest), f"{code}: LEGO carries its ® but in the company's name: {value}"
@@ -291,8 +303,12 @@ def test_a_link_to_any_page_with_copies_as_english_writes_it_is_caught() -> None
     for link in ('a.href = "/collections";', "a.href = `/c/${id}`;", 'a.href = "/profile?edit=1";',
                  'a.href = "/settings#plan";', 'link.href = `/challenge${tests ? "?tests=1" : ""}`;'):
         assert site_lang.unled(link) != [], link
+    # languages7: the account menu's pages, the footer's and the consent page too.
+    for link in ('a.href = "/takedown";', 'href="/terms#notices"', 'a.href = "/feed";', 'a.href = "/beta-hub";',
+                 '`<a href="/changelog">`', 'location.href = "/oauth/authorize?" + query;'):
+        assert site_lang.unled(link) != [], link
     for link in ("a.href = `${langAt()}/collections`;", "a.href = `${langAt()}/settings#plan`;", 'img.src = "/m/X.png";',
-                 'a.href = "/takedown";', 'call("/api/people?op=profile");', "alternatesOf(origin, `c/${id}`)"):
+                 'a.href = "/docs";', 'call("/api/people?op=profile");', "alternatesOf(origin, `c/${id}`)"):
         assert site_lang.unled(link) == [], link
     loaded = {script for name in site_lang.PAGES for script in site_lang.scripts_of(name)}
     gallery = (ROOT / "web/gallery.js").read_text(encoding="utf-8")
@@ -357,3 +373,127 @@ def test_the_tested_why_names_parts_and_colours_as_the_parts_list_does() -> None
     said = site_lang.scope("web/model-page.js", ("pieceSaid", "tipSaid"))
     assert not re.search(r"\b(?:part|other|who|colour):\s*m\[\d\]", said), said
     assert "afterColon(what)" in said and "nameSaid(m[5], names?.colours)" in said
+
+
+def copy_of(code: str, where: str) -> str:
+    return (ROOT / "web" / code / (f"{where}.html" if where else "index.html")).read_text(encoding="utf-8")
+
+
+def years(page: str) -> list[str]:
+    return sorted(re.findall(r"\b20\d\d\b", re.sub(r"<!--.*?-->|<script.*?</script>", "", page, flags=re.S)))
+
+
+def test_a_rule_page_s_copy_says_the_english_text_binds() -> None:
+    # languages7: the terms, privacy, guidelines and takedown pages are
+    # translated in full, and each copy opens with one line in its language
+    # that the English text binds, linking to it (?lang=en keeps it English,
+    # web/theme.js). Every date of the English is kept.
+    for name in site_lang.BINDING:
+        assert 'class="binding"' not in (ROOT / "web" / name).read_text(encoding="utf-8")
+    for code in site_lang.LANGUAGES:
+        line = json.loads((ROOT / "web/_lang" / f"{code}.json").read_text(encoding="utf-8"))["pages"][site_lang.BOUND]
+        assert line != site_lang.BOUND and '<a href="{english}">' in line
+        for name, where in site_lang.PAGES.items():
+            text = copy_of(code, where)
+            said = re.findall(r'<p class="binding">(.*?)</p>', text)
+            if name not in site_lang.BINDING:
+                assert said == [], (code, name)
+                continue
+            assert said == [line.replace("{english}", f"/{where}?lang=en")], (code, name)
+            assert re.search(r'</h1>\n\t*<p class="binding">', text), (code, name)
+            english = (ROOT / "web" / name).read_text(encoding="utf-8")
+            assert years(text) == years(english), (code, name)
+
+
+def test_the_page_not_found_and_the_consent_page_have_copies() -> None:
+    # The page not found answers /de/<anything> in German (tools/deploy.sh),
+    # and theme.js sends a visitor who chose German from the English one to
+    # the same address under /de; the consent page is at /de/oauth/authorize.
+    theme = (ROOT / "web/theme.js").read_text(encoding="utf-8")
+    assert 'hasAttribute("data-missing")' in theme and 'get("lang")' in theme
+    deploy = (ROOT / "tools/deploy.sh").read_text(encoding="utf-8")
+    assert '"/($langs)/.*", "status": 404, "dest": "/\\$1/404.html"' in deploy
+    assert '"src": "/($langs)/oauth/authorize/?", "dest": "/\\$1/oauth/authorize.html"' in deploy
+    for code in site_lang.LANGUAGES:
+        words = json.loads((ROOT / "web/_lang" / f"{code}.json").read_text(encoding="utf-8"))["pages"]
+        missing = copy_of(code, "404")
+        assert f'<html lang="{code}" data-missing>' in missing and 'rel="canonical"' not in missing
+        assert f"<h1>{words['This brick is missing.']}</h1>" in missing
+        consent = copy_of(code, "oauth/authorize")
+        assert f'<html lang="{code}">' in consent and 'rel="canonical"' not in consent
+        assert f'<link rel="alternate" hreflang="{code}" href="https://brickworks.diy/{code}/oauth/authorize">' in consent
+        assert '<script type="module" src="/authorize.js"></script>' in consent
+
+
+def test_the_changelog_s_copy_says_its_chrome_and_keeps_the_notes_as_written() -> None:
+    def page(code: str) -> str:
+        return subprocess.run([sys.executable, "tools/site.py", f"--changelog={code}"], cwd=ROOT, check=True,
+                              capture_output=True, text=True).stdout
+    english = page("en")
+    notes = re.findall(r'<div class="release-notes">(.*?)</div>\n</article>', english, re.S)
+    assert len(notes) > 5
+    for code in site_lang.LANGUAGES:
+        said = json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8"))
+        title = json.loads((ROOT / "web/_lang" / f"{code}.json").read_text(encoding="utf-8"))["pages"]["Changelog · Brickworks"]
+        copy = page(code)
+        assert f'<html lang="{code}">' in copy and f"<title>{title}</title>" in copy and title != "Changelog · Brickworks"
+        # Each release's notes as they were written, marked English.
+        assert re.findall(r'<div class="release-notes" lang="en">(.*?)</div>\n</article>', copy, re.S) == notes
+        assert '<div class="release-notes">' not in copy
+        # Its date, links and their words in the language.
+        stamp = re.search(r'<time datetime="(\d{4})-(\d\d)-(\d\d)">([^<]*)</time>', copy)
+        year, month, day = (int(n) for n in stamp.groups()[:3])
+        months = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+                  "October", "November", "December"]
+        assert stamp.group(4) == said["{day} {month} {year}"].replace("{day}", str(day)).replace(
+            "{month}", said[months[month - 1]]).replace("{year}", str(year))
+        assert f'<a href="/{code}/download">{said["Download"]}</a>' in copy and f'>{said["On GitHub"]}</a>' in copy
+        assert 'href="/download"' not in copy
+
+
+def test_the_feed_and_the_notifications_say_their_lines_in_the_language() -> None:
+    # The server says each line whole in the language asked (?lang=), with
+    # {who} where the language puts the name: no English verb left in it.
+    script = """
+      import { feedSaid } from "./api/_follows.js";
+      import { dayWords, noticeSaid } from "./api/_notifications.js";
+      import { inLanguage, siteWords } from "./api/_directory.js";
+      const now = Date.parse("2026-11-02T12:00:00Z");
+      const by = { handle: "ana", name: "Ana" };
+      const said = (code) => inLanguage(code, siteWords(code), () => ({
+        feed: feedSaid({ kind: "comment", step: 3, model: "abcdefghij", name: "Harbour", by }).line,
+        remix: feedSaid({ kind: "remix", model: "abcdefghij", name: "Harbour", of_name: "Boat", by }),
+        reply: noticeSaid({ kind: "reply", step: 2, model: "abcdefghij", by, said: "Nice" }, "", now).line,
+        likes: noticeSaid({ kind: "likes", model: "abcdefghij", likes: 3, day: "2026-10-03" }, "", now).line,
+        one: noticeSaid({ kind: "likes", model: "abcdefghij", likes: 1, day: "2026-11-02" }, "", now).line,
+        yesterday: dayWords("2026-11-01", now) }));
+      console.log(JSON.stringify({ en: said("en"), de: said("de"), fr: said("fr") }));
+    """
+    out = json.loads(subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, check=True,
+                                    capture_output=True, text=True).stdout)
+    assert out["en"]["feed"] == "{who} commented on step 3 of your model {name}"
+    assert out["en"]["likes"] == "3 new likes on 3 October" and out["en"]["one"] == "1 new like today"
+    for code in ("de", "fr"):
+        said = json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8"))
+        got = out[code]
+        assert got["feed"] == said["{who} commented on step {step} of your model {name}"].replace("{step}", "3")
+        assert got["reply"] == said["{who} replied to your comment on step {step}"].replace("{step}", "2")
+        assert got["remix"]["line"] == said["{who} remixed your model {of} as {name}"] and got["remix"]["of"] == "Boat"
+        assert got["likes"].startswith(f"3 {said['new likes']} ") and got["one"] == f"1 {said['new like']} {said['today']}"
+        assert got["yesterday"] == said["yesterday"]
+        for line in got["feed"], got["reply"], got["likes"]:
+            assert not re.search(r"\b(?:commented|replied|new likes?|October|on step)\b", line), (code, line)
+    assert "3 octobre" in out["fr"]["likes"] and "3. Oktober" in out["de"]["likes"]
+
+
+def test_the_account_and_rule_pages_scripts_say_every_word() -> None:
+    # A word left in English in the scripts these pages run fails the check
+    # (SAID_ALL), and an answer shown as the server wrote it (untold).
+    for path in ("web/feed.js", "web/notifications.js", "web/builds.js", "web/beta.js", "web/beta-hub.js",
+                 "web/authorize.js", "web/takedown.js"):
+        text = site_lang.scope(path, site_lang.SAID_ALL[path])
+        assert len(text) > 500 and site_lang.unsaid(text) == [] and site_lang.untold(text) == [], path
+        planted = text + '\nstatus.textContent = "Mark all read";\nnote.textContent = body.error;\n'
+        assert site_lang.unsaid(planted) == ['"Mark all read"'] and len(site_lang.untold(planted)) == 1, path
+    for server in ("api/_beta.js", "api/_notifications.js", "api/oauth.js"):
+        assert server in site_lang.TOLD, server

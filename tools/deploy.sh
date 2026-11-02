@@ -467,7 +467,9 @@ echo "deploy: pages at /${pages//|/, /}"
 # The landing page and the download page in German, French and Spanish
 # (tools/site_lang.py): /de is de/index.html, /de/download de/download.html,
 # each .html address and a trailing slash redirected below. A folder of
-# the site with an index.html of its own is a language's.
+# the site with an index.html of its own is a language's. Its 404.html is
+# what any unknown address in it gets, with a 404 (/de/<it>), and its
+# oauth/authorize.html is /de/oauth/authorize, as the English ones are.
 langs=""
 for home in .vercel/output/static/*/index.html; do
   [ -e "$home" ] || continue
@@ -475,6 +477,7 @@ for home in .vercel/output/static/*/index.html; do
   langs="$langs${langs:+|}$lang"
   for page in ".vercel/output/static/$lang"/*.html; do
     name=$(basename "$page" .html)
+    [ "$name" = 404 ] && continue
     where="$lang/$name"
     [ "$name" = index ] && where="$lang"
     overrides="$overrides,\"$lang/$name.html\": { \"path\": \"$where\", \"contentType\": \"text/html; charset=utf-8\" }"
@@ -570,6 +573,7 @@ cat > .vercel/output/config.json <<EOF
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
     { "src": "/authorize[.]html", "status": 308, "headers": { "Location": "/oauth/authorize" } },
+    { "src": "/($langs)/oauth/authorize[.]html", "status": 308, "headers": { "Location": "/\$1/oauth/authorize" } },
     { "src": "/challenges/?", "status": 308, "headers": { "Location": "/challenge" } },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
 $docs_moved
@@ -591,6 +595,12 @@ $docs_moved
     { "src": "/oauth/token/?", "dest": "/api/oauth?op=token" },
     { "src": "/oauth/revoke/?", "dest": "/api/oauth?op=revoke" },
     { "src": "/oauth/authorize/?", "dest": "/authorize.html",
+      "headers": {
+        "Content-Security-Policy": "$authorize_csp",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
+        "Cache-Control": "no-store" } },
+    { "src": "/($langs)/oauth/authorize/?", "dest": "/\$1/oauth/authorize.html",
       "headers": {
         "Content-Security-Policy": "$authorize_csp",
         "X-Content-Type-Options": "nosniff",
@@ -683,6 +693,7 @@ $docs_moved
       "headers": { "Content-Type": "text/plain" } },
     { "src": "/sets/(.*)", "status": 404,
       "headers": { "Content-Type": "text/plain" } },
+    { "src": "/($langs)/.*", "status": 404, "dest": "/\$1/404.html" },
     { "src": "/(.*)", "status": 404, "dest": "/404.html" }
   ]
 }

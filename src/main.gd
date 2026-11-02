@@ -2674,20 +2674,8 @@ func _enter_view() -> void:
 	_shell.read_only = true
 	# Somebody else's steps, to step through and not to change.
 	_steps.editable = false
-	# What moves is taken hold of and played with (_play_press), but only
-	# once the model is up, its steps worked out and its lattice told of its
-	# parts: the grab's reading of the joints waits till then (_ready_play),
-	# off this thread where there are threads. Read as the model opened, on
-	# 4,000 parts of a slowed phone it was 260 to 460 ms of a frame every
-	# half second with the handles (now found only when a page asks), and a
-	# page turned in such a frame waited for it (share_steps_flow --trace).
-	# What a drag says goes in the viewer's own pill, and what it changes is
-	# this visit's alone: the store writes nothing, and Reset undoes it.
-	if _grab_drag != null:
-		_grab_drag.set_process(false)
-		_grab_drag.say = _play_says
-		_grab_drag.edited = _played
-		_grab_drag.show_marks = false
+	# What moves is taken hold of and played with once the model is up
+	# (_ready_play): the drag is made then, the viewer's way (_make_grab_drag).
 	# The lattice is told of the parts once the model is up (what is under
 	# a pointer is all it is for here): over a second of a slowed phone's
 	# way to the first step on 4,000 parts.
@@ -3657,8 +3645,8 @@ func _view_input(event: InputEvent) -> void:
 			return
 		_press_at = button.position
 		# A section swinging is caught where it is, as a hand would.
-		if _grab_drag != null and _grab_drag.is_swinging():
-			_grab_drag.catch()
+		if _grab_drag_made != null and _grab_drag_made.is_swinging():
+			_grab_drag_made.catch()
 		var brick: int = _play_brick_at(button.position) if not button.shift_pressed else 0
 		if brick != 0:
 			_press_brick = brick
@@ -3751,7 +3739,7 @@ const PLAY_NAMES: Dictionary = {"steering": "The steering", "turntable": "The tu
 ## joints (a worker's work from 300 parts where there are threads), and once
 ## they are read the viewer says what moves (_play_found).
 func _ready_play() -> void:
-	if _grab_drag == null or _share_view == null or _share_view.state != "ready":
+	if _share_view == null or _share_view.state != "ready" or _grab_drag == null:
 		return
 	_play_depth = _builder.history_depth()
 	_play_reading = true
@@ -3777,10 +3765,10 @@ func _play_stop() -> void:
 	play_found = {}
 	_finger = -1
 	_finger_grabbing = false
-	if _grab_drag != null:
-		if _grab_drag.is_grabbing() or _grab_drag.is_settling():
-			_grab_drag.cancel()
-		_grab_drag.set_process(false)
+	if _grab_drag_made != null:
+		if _grab_drag_made.is_grabbing() or _grab_drag_made.is_settling():
+			_grab_drag_made.cancel()
+		_grab_drag_made.set_process(false)
 	_grabbing = false
 	_motion_stop()
 	_motion_due = ""
@@ -3798,7 +3786,7 @@ func _play_stop() -> void:
 ## Each frame of the viewer: the joints read, said; a Reset asked for during
 ## a fall, done once it lands.
 func _play_frame() -> void:
-	if _grab_drag == null:
+	if _grab_drag_made == null:
 		return
 	if _finger != -1:
 		_touch_hold.saw()
@@ -3851,7 +3839,7 @@ func _touch_screen() -> bool:
 ## of it are not there to the eye, and are in a move's way), and not while
 ## the step player has the window.
 func _play_brick_at(at: Vector2) -> int:
-	if _grab_drag == null or _share_view == null or not _share_view.play_ready \
+	if _grab_drag_made == null or _share_view == null or not _share_view.play_ready \
 			or (_build_mode != null and _build_mode.is_open()):
 		return 0
 	if _steps.is_playing_back():
@@ -3887,7 +3875,7 @@ func _play_brick_near(at: Vector2) -> Array:
 
 ## Whether [param brick_id] hangs on a joint, as the grab read them.
 func _moves_on_a_joint(brick_id: int) -> bool:
-	var bodies: Bodies = _grab_drag.read_bodies() if _grab_drag != null else null
+	var bodies: Bodies = _grab_drag_made.read_bodies() if _grab_drag_made != null else null
 	if bodies == null or not bodies.body_of.has(brick_id):
 		return false
 	var body: int = int(bodies.body_of[brick_id])
@@ -3935,10 +3923,10 @@ func _play_says(words: String) -> void:
 	if _share_view == null:
 		return
 	if _play_kind.is_empty() or not PLAY_NAMES.has(_play_kind) \
-			or (_grab_drag != null and _grab_drag.chain != null):
+			or (_grab_drag_made != null and _grab_drag_made.chain != null):
 		_share_view.play_said(words.get_slice(" · ", 0))
 		return
-	var held: Grab = _grab_drag.grab if _grab_drag != null else null
+	var held: RefCounted = _grab_drag_made.grab if _grab_drag_made != null else null
 	if held != null and held.state == "moves":
 		_play_at = held.position_words()
 	var name: String = PLAY_NAMES[_play_kind]
@@ -3977,8 +3965,8 @@ func _play_touch(event: InputEvent) -> bool:
 						or (_steps.is_visible_in_tree() and _steps.get_global_rect().has_point(touch.position)):
 					_finger_said = "over a panel"
 					return false
-				if _grab_drag != null and _grab_drag.is_swinging():
-					_grab_drag.catch()
+				if _grab_drag_made != null and _grab_drag_made.is_swinging():
+					_grab_drag_made.catch()
 				var near: Array = _play_brick_near(touch.position)
 				var brick_id: int = int(near[0])
 				_finger_said = "a part (%d, at %d, %d)" % [touch.index, roundi(touch.position.x),
@@ -4037,7 +4025,7 @@ func _played() -> void:
 ## built, by undoing every play's step. A swing is stopped where it is
 ## first; a section still being checked, or falling, comes to rest first.
 func _play_reset() -> void:
-	if _grab_drag == null or _play_depth < 0:
+	if _grab_drag_made == null or _play_depth < 0:
 		return
 	if _grab_drag.is_swinging():
 		_grab_drag.cancel()
@@ -4291,7 +4279,7 @@ func _box_of(brick: BrickWorld.Brick) -> AABB:
 ## The playing motion's frame for now, drawn; its words said once it ends. A
 ## drag taken up stops it where it is: the model stands where it ends.
 func _motion_frame() -> void:
-	if _grab_drag != null and _grab_drag.is_grabbing():
+	if _grab_drag_made != null and _grab_drag_made.is_grabbing():
 		_motion_stop()
 		return
 	var fps: int = Later.script(&"MotionPlayer").PLAY_FPS
@@ -5259,7 +5247,6 @@ func _build_ui() -> void:
 	_tool_panels.add_child(_flex.panel)
 	_flex.panel.visibility_changed.connect(_tool_column_shown)
 	_flex.changed.connect(_on_model_edited)
-	_make_grab_drag()
 
 	# Along the top of the model, when a model opened with parts a fraction
 	# of a stud off their studs: src/ui/seat_offer.gd.
@@ -5380,7 +5367,8 @@ func _build_ui() -> void:
 	# Each motion's joint written where it stands (Motions.Joint.at).
 	_store.motion_rebase = func(joint: Motions.Joint) -> void: _motions.rebase(joint)
 	# Render's renderer was made ready the first time the window was left
-	# alone (RenderDialog._warm_when_idle): its dialog is made then.
+	# alone (RenderDialog._warm_when_idle): its dialog is made then
+	# (_make_when_idle).
 	get_tree().root.window_input.connect(func(_event: InputEvent) -> void:
 		_touched_ms = Time.get_ticks_msec())
 	# View, Stress's legend under them: at the model's right edge under the
@@ -5967,24 +5955,29 @@ func _make_render() -> void:
 
 
 ## When anything last reached the window, and when it last drew a frame:
-## Render's dialog is made once both are RENDER_IDLE_MS ago, as the app
-## runs, and it then makes its renderer ready (RenderDialog._warm_when_idle)
-## as it did when the dialog was made with the window.
+## once both are IDLE_MS ago, as the app runs, the drag is made, and it
+## reads the model's joints ahead as it did when it was made with the
+## window; the next time, Render's dialog, which then makes its renderer
+## ready (RenderDialog._warm_when_idle).
 var _touched_ms: int = 0
 var _drawn_ms: int = 0
 var _drawn_frames: int = -1
-const RENDER_IDLE_MS := 3000
-static var _renders_when_idle: bool = not OS.get_cmdline_args().has("--script")
+const IDLE_MS := 3000
+static var _makes_when_idle: bool = not OS.get_cmdline_args().has("--script")
 
 
-func _render_when_idle() -> void:
-	if _render_made != null or not _built or not _renders_when_idle:
+func _make_when_idle() -> void:
+	if (_grab_drag_made != null and _render_made != null) or not _built or not _makes_when_idle:
 		return
 	var now: int = Time.get_ticks_msec()
 	if Engine.get_frames_drawn() != _drawn_frames:
 		_drawn_frames = Engine.get_frames_drawn()
 		_drawn_ms = now
-	if now - _drawn_ms < RENDER_IDLE_MS or now - _touched_ms < RENDER_IDLE_MS:
+	if now - _drawn_ms < IDLE_MS or now - _touched_ms < IDLE_MS:
+		return
+	if _grab_drag_made == null:
+		_make_grab_drag()
+		_drawn_ms = now
 		return
 	_make_render()
 
@@ -6059,6 +6052,7 @@ func _make_simulate() -> void:
 	simulate.named = _bar.model_name
 	simulate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	simulate.grabbing = _grab_drag
 	_seat_tool_panel(simulate)
 	_builder.selection_changed.connect(Callable(simulate, &"_on_selection"))
 
@@ -8098,7 +8092,7 @@ var _weighed_us: int = 0
 
 
 func _process_main(_delta: float) -> void:
-	_render_when_idle()
+	_make_when_idle()
 	_watch_view()
 	_steer_from_keys(_delta)
 	# Aimed from the keyboard: the ghost keeps to the middle of the view as
@@ -8206,8 +8200,18 @@ var _press_at: Vector2 = Vector2.ZERO
 var _press_copies: bool = false
 ## A part (with its selection) picked up by a drag and following it.
 var _dragging_part: bool = false
-## A part grabbed by a drag and moved about its joint (GrabDrag).
-var _grab_drag: GrabDrag
+## A part grabbed by a drag and moved about its joint (GrabDrag), made the
+## first time a drag, a motion or a session asks, or once the window is
+## left alone (_make_when_idle): with what it names it was 7% of the
+## code the first screen compiled, and nobody drags in a visit's first
+## seconds.
+var _grab_drag: Node:
+	get:
+		if _grab_drag_made == null and _built:
+			_make_grab_drag()
+		return _grab_drag_made
+## The GrabDrag if it has been made, else null (_make_grab_drag).
+var _grab_drag_made: Node = null
 var _grabbing: bool = false
 ## How long the press that may become a grab has been held still where it
 ## began, and how long it must be to take the part by its chain of joints
@@ -8555,18 +8559,33 @@ func _grab_on_joint(brick_id: int) -> bool:
 
 
 func _make_grab_drag() -> void:
-	_grab_drag = GrabDrag.new()
-	_grab_drag.world = _world
-	_grab_drag.builder = _builder
-	_grab_drag.library = _library
-	_grab_drag.camera = _camera
-	_grab_drag.scenery = _store.scenery
-	_grab_drag.say = _bar.say
-	_grab_drag.edited = _on_model_edited
-	_grab_drag.assemblies = _shell.assemblies
-	add_child(_grab_drag)
-	if _simulate_made != null:
-		_simulate.grabbing = _grab_drag
+	var drag: Node = Later.make(&"GrabDrag")
+	_grab_drag_made = drag
+	drag.world = _world
+	drag.builder = _builder
+	drag.library = _library
+	drag.camera = _camera
+	drag.scenery = _store.scenery
+	drag.say = _bar.say
+	drag.edited = _on_model_edited
+	drag.assemblies = _shell.assemblies
+	add_child(drag)
+	if _viewing.is_empty():
+		return
+	# A shared model's viewer: what moves is taken hold of and played with
+	# (_play_press), but only once the model is up, its steps worked out and
+	# its lattice told of its parts: the grab's reading of the joints waits
+	# till then (_ready_play), off this thread where there are threads. Read
+	# as the model opened, on 4,000 parts of a slowed phone it was 260 to
+	# 460 ms of a frame every half second with the handles (now found only
+	# when a page asks), and a page turned in such a frame waited for it
+	# (share_steps_flow --trace). What a drag says goes in the viewer's own
+	# pill, and what it changes is this visit's alone: the store writes
+	# nothing, and Reset undoes it.
+	drag.set_process(false)
+	drag.say = _play_says
+	drag.edited = _played
+	drag.show_marks = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -8799,8 +8818,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	# places nothing; a click places, selects, or does what the tool does.
 	if button.pressed:
 		# A section swinging on a free joint is caught where it is.
-		if _grab_drag != null and _grab_drag.is_swinging():
-			_grab_drag.catch()
+		if _grab_drag_made != null and _grab_drag_made.is_swinging():
+			_grab_drag_made.catch()
 		_box_dropped = false
 		_box_began = false
 		_left_spent = false

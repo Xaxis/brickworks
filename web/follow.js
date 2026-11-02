@@ -334,16 +334,17 @@ function accountPart(state) {
   whoIs.append(avatarOf(state, ""), words);
   const places = document.createElement("nav");
   places.setAttribute("aria-label", say("Your account"));
-  const counted = { "/notifications": state.notifications, "/feed": state.feed };
-  // Your profile and Settings have a copy in each language; the others not yet.
+  const counted = { notifications: state.notifications, feed: state.feed };
+  // Each place in the page's language: its copy (/de/feed).
   const at = langAt();
-  for (const [href, words, data] of [[`${at}/profile`, say("Your profile"), "profile"], ["/notifications", say("Notifications"), "notifications"],
-    ["/feed", say("Your feed"), "feed"], [`${at}/profile?tab=saved`, say("Saved"), "saved"], [`${at}/settings`, say("Settings"), "settings"]]) {
+  for (const [href, words, data] of [[`${at}/profile`, say("Your profile"), "profile"],
+    [`${at}/notifications`, say("Notifications"), "notifications"], [`${at}/feed`, say("Your feed"), "feed"],
+    [`${at}/profile?tab=saved`, say("Saved"), "saved"], [`${at}/settings`, say("Settings"), "settings"]]) {
     const link = document.createElement("a");
     link.href = href;
     link.dataset.place = data;
     link.append(words);
-    const n = Number(counted[href]) || 0;
+    const n = Number(counted[data]) || 0;
     if (n > 0) link.append(" ", badge(n, say("{n} new", { n })));
     if (location.pathname === href) link.setAttribute("aria-current", "page");
     places.append(link);
@@ -352,7 +353,7 @@ function accountPart(state) {
   // the beta hub (an early feature: web/early.js), added once the server
   // has said.
   const feedback = document.createElement("a");
-  feedback.href = "/feedback";
+  feedback.href = `${at}/feedback`;
   feedback.dataset.feedback = "";
   feedback.dataset.place = "feedback";
   feedback.append(say("Send feedback"));
@@ -360,10 +361,10 @@ function accountPart(state) {
   earlyOn("beta_hub").then((on) => {
     if (!on || places.querySelector('[data-place="beta-hub"]')) return;
     const hub = document.createElement("a");
-    hub.href = "/beta-hub";
+    hub.href = `${at}/beta-hub`;
     hub.dataset.place = "beta-hub";
     hub.append(say("Beta hub"));
-    if (location.pathname === "/beta-hub") hub.setAttribute("aria-current", "page");
+    if (location.pathname === hub.getAttribute("href")) hub.setAttribute("aria-current", "page");
     feedback.before(hub);
   }).catch(() => null);
   part.append(whoIs, places);
@@ -514,7 +515,7 @@ document.addEventListener("pager:drawn", (event) => {
 });
 // /feed and /notifications ask once they have opened (web/feed.js,
 // web/notifications.js), so their own count is cleared first.
-showFeedCount({ ask: !["/feed", "/notifications"].includes(location.pathname) }).catch(() => null);
+showFeedCount({ ask: ![`${langAt()}/feed`, `${langAt()}/notifications`].includes(location.pathname) }).catch(() => null);
 
 // Send feedback (web/feedback.js): the footer's link, the account menu's
 // and /feedback's buttons, each a[data-feedback] or button[data-feedback]
@@ -527,6 +528,6 @@ document.addEventListener("click", (event) => {
   event.preventDefault();
   asked.closest("details")?.removeAttribute("open");
   import("/feedback.js").then(({ openFeedback }) => openFeedback({ kind: asked.dataset.feedback || "" }))
-    .catch(() => { location.href = "/feedback"; });
+    .catch(() => { location.href = `${langAt()}/feedback`; });
 });
 addEventListener("brickworks:signed-in", () => showFeedCount().catch(() => null));

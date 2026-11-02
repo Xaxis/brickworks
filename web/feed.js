@@ -19,13 +19,17 @@
 // load.
 //
 // Every word is put on the page as text; a card and an avatar are the kit's,
-// which escape their own.
+// which escape their own. The page's words are in its language (web/card.js
+// say), and so is each post's line, said by the server (?lang=,
+// api/_follows.js feedSaid); what people wrote as they wrote it.
 import { askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followsSent, personRow, showFeedCount, showTabCounts } from "/follow.js";
 import { ago, avatarHtml } from "/kit.js";
-import { FIRST_SCREEN, modelCard } from "/card.js";
+import { FIRST_SCREEN, langAt, modelCard, say, told } from "/card.js";
 
 const $ = (id) => document.getElementById(id);
+// The language the server says each post's line in.
+const LANG = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? `&lang=${globalThis.brickworksLang.code}` : "";
 // How many designers it suggests.
 const SUGGESTED = 5;
 let oldest = null;
@@ -33,11 +37,14 @@ let oldest = null;
 // dialog, say) makes an older one's answers stale, and they are dropped.
 let run = 0;
 
-/// Only the site's own addresses: what the server made from ids.
-function here(link, otherwise = "/feed") {
+/// Only the site's own addresses: what the server made from ids, a page
+/// with a copy in the page's language opening it (/de/m/<id>).
+function here(link, otherwise = `${langAt()}/feed`) {
   try {
     const url = new URL(String(link || ""), location.origin);
-    return url.origin === location.origin ? url.pathname + url.search + url.hash : otherwise;
+    if (url.origin !== location.origin) return otherwise;
+    const copied = /^\/(?:[muc]\/|(?:challenge|profile|collections)(?=\/?$))/.test(url.pathname);
+    return (copied ? langAt() : "") + url.pathname + url.search + url.hash;
   } catch {
     return otherwise;
   }
@@ -53,7 +60,7 @@ const parsed = (html) => {
 function toProfile(by, inner, attrs = {}) {
   if (!by || !by.handle) return inner;
   const link = document.createElement("a");
-  link.href = `/u/${encodeURIComponent(by.handle)}`;
+  link.href = `${langAt()}/u/${encodeURIComponent(by.handle)}`;
   for (const [name, value] of Object.entries(attrs)) link.setAttribute(name, value);
   link.append(inner);
   return link;
@@ -68,7 +75,7 @@ function photoFigure(one, eager = false) {
   link.href = here(one.link);
   const img = document.createElement("img");
   img.src = here(one.photo.url, "");
-  img.alt = `A build of ${String(one.name || "a model")}`;
+  img.alt = say("A build of {name}", { name: String(one.name || say("a model")) });
   if (one.photo.width && one.photo.height) {
     img.width = Number(one.photo.width);
     img.height = Number(one.photo.height);
@@ -80,11 +87,24 @@ function photoFigure(one, eager = false) {
   const caption = document.createElement("figcaption");
   const model = document.createElement("a");
   model.href = here(`/m/${encodeURIComponent(String(one.model || ""))}`);
-  model.textContent = String(one.name || "a model");
-  caption.append("A build of ", model);
+  model.textContent = String(one.name || say("a model"));
+  sayInto(caption, say("A build of {name}"), { name: model });
   figure.append(link, caption);
   return figure;
 }
+
+/// [said], a sentence in the page's language, into [into]: each {name} in
+/// it [parts]'s element or words.
+function sayInto(into, said, parts) {
+  for (const piece of said.split(/(\{\w+\})/)) {
+    const name = /^\{(\w+)\}$/.exec(piece)?.[1];
+    if (piece) into.append(name && name in parts ? parts[name] : piece);
+  }
+  return into;
+}
+
+/// [text] in quotes as the page's language writes them: “Tower”, „Tower“.
+const quoted = (text) => say("“{text}”", { text });
 
 function row(one, eager = false) {
   const item = document.createElement("li");
@@ -98,25 +118,26 @@ function row(one, eager = false) {
   const what = document.createElement("p");
   what.className = "what";
   const who = document.createElement("b");
-  who.textContent = String(one.who || "A builder");
+  who.textContent = String(one.who || say("A builder"));
   const name = document.createElement("a");
   name.className = "go";
   name.href = here(one.link);
-  name.textContent = `“${String(one.name || "")}”`;
-  what.append(toProfile(one.by, who, { class: "who" }), ` ${String(one.did || "")} `, name);
-  if (one.after) what.append(` ${String(one.after)}`);
-  // Put in a collection you follow: which, to its page.
+  name.textContent = quoted(String(one.name || ""));
+  // The line as the server said it, each link where the language puts it;
+  // put in a collection you follow: which, to its page.
+  const parts = { who: toProfile(one.by, who, { class: "who" }), name, of: quoted(String(one.of || "")),
+    title: quoted(String(one.title || "")) };
   if (one.list && one.list.name) {
-    const list = document.createElement("a");
-    list.className = "list";
-    list.href = here(one.list.link);
-    list.textContent = `“${String(one.list.name)}”`;
-    what.append(" to their collection ", list);
+    parts.list = document.createElement("a");
+    parts.list.className = "list";
+    parts.list.href = here(one.list.link);
+    parts.list.textContent = quoted(String(one.list.name));
   }
+  sayInto(what, String(one.line || "{who} {name}"), parts);
   if (one.new) {
     const tag = document.createElement("span");
     tag.className = "pill new";
-    tag.textContent = "New";
+    tag.textContent = say("New");
     what.append(" ", tag);
   }
   const words = document.createElement("div");
@@ -158,7 +179,7 @@ function buildFigure(one) {
   link.href = here(one.page);
   const img = document.createElement("img");
   img.src = here(one.url, "");
-  img.alt = `A build of ${String(one.model_name || "a model")}`;
+  img.alt = say("A build of {name}", { name: String(one.model_name || say("a model")) });
   img.width = Number(one.width) || 1;
   img.height = Number(one.height) || 1;
   img.loading = "lazy";
@@ -172,13 +193,13 @@ function buildFigure(one) {
   }
   const model = document.createElement("a");
   model.href = here(`/m/${encodeURIComponent(String(one.model || ""))}`);
-  model.textContent = String(one.model_name || "a model");
+  model.textContent = String(one.model_name || say("a model"));
   caption.append(model);
   if (one.by && one.by.handle) {
     const who = document.createElement("a");
-    who.href = `/u/${encodeURIComponent(one.by.handle)}`;
+    who.href = `${langAt()}/u/${encodeURIComponent(one.by.handle)}`;
     who.textContent = String(one.by.name || one.by.handle);
-    caption.append(", built by ", who);
+    sayInto(caption, say(", built by {who}"), { who });
   }
   figure.append(link, caption);
   return figure;
@@ -211,14 +232,14 @@ async function page(mine) {
   // first: the feed is asked as it is then, never without them (web295).
   if (first) await followsSent();
   if (mine !== run) return;
-  const answer = await call(`/api/people?op=feed${oldest ? `&before=${encodeURIComponent(oldest)}` : ""}`);
+  const answer = await call(`/api/people?op=feed${oldest ? `&before=${encodeURIComponent(oldest)}` : ""}${LANG}`);
   if (mine !== run) return;
   if (answer.status === 401) {
     signOut();
     return load();
   }
   if (answer.status !== 200) {
-    $("said").textContent = answer.body.error || "Brickworks could not show your feed just now. Try again in a minute.";
+    $("said").textContent = told(answer.body.error, say("Brickworks could not show your feed just now. Try again in a minute."));
     document.documentElement.dataset.feed = "failed";
     return;
   }

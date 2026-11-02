@@ -3758,6 +3758,295 @@ kind. The app can count the colours seen in its own pictures, over 1%, as
 this read did, and say when a design is short of what such sets show. The
 read used only the bench's pictures and model files, by the method above.
 
+### Technique: each assembly plans its faces on their side, two smokes and no bench (2026-11-01, `20f512db`, `11b7c09b`, not benched)
+
+Parts on their side are the largest measured gap: 5.5% of ours against 22.7%
+of the sets' over the 44 (final329t), 4% against 37% in the silhouette smoke.
+design8's surface pass at save (d8surf) already skins flanks, and on 41
+paired subjects it cost 12.2 points of surface [-23.2, -2.4] and moved no
+technique. So this round plans the faces instead (`20f512db`,
+`src/ai/sideways.gd`):
+
+- Each assembly in `submit_design` says `sideways`, which is required: each
+  face built on its side and what holds it (brackets, bricks with studs on
+  the side, headlight bricks, clips and bars, hinges), or an empty list.
+- The app counts each assembly's parts on their side as style.py does. The
+  submit answer and the whole review name an assembly planned with a face
+  that still stands studs up, with the holders' part numbers.
+  `how_real_sets_build_this` ends with "Plan which faces are built on their
+  side".
+
+**Smoke 1, planning (d10side, `20f512db`).** Same five subjects, one design
+each, on the owner's path. No login lapse, no held-out set named.
+
+| | d10side |
+|---|---|
+| assemblies that planned a face | 43 of 49, 48 faces |
+| parts on their side in `submit_design` itself | 0 of 915 |
+| assemblies named not built | 33 |
+| edits after that turned parts / parts turned | 20 / 66 |
+| median share on their side, final | 7.1% (d10smoke 3.9%, d5base 10.7%, sets 37%) |
+| verdicts won: overall, surface, technique | 4/10, 4/10, 3/10 |
+| minutes, the five together | 90 |
+
+Sessions name the face and stack it studs up anyway. The bar was too low
+to say so. It called a face built at two to seven parts on their side
+whatever the assembly's size, which passed a lamp where a set turns a flank.
+
+**Smoke 2, the app lays it and the bar scales (d10lay, `11b7c09b`).** Two
+changes at once:
+
+- When the design is built, `SurfacePass.lay_planned` skins the plain flanks
+  standing in an assembly that planned a face. These are the surface pass's
+  own flank skins, settled as accepted.
+- A face counts as built at 15% of its assembly's parts (2 at least), under
+  the 19% median of sets since 2010. The count reads the box a stud wider each
+  way.
+
+| | d10lay |
+|---|---|
+| sessions where the app laid a skin | 2 of 5, 3 skins; 40270-1 rejected its one ("rounded tiles a plate proud read as a snout") |
+| parts the skins left on their side, final | about 4, in 21016-1 |
+| edits after hearing the share bar / parts turned | 17 / 91 (57 in one session, 7746-1) |
+| planned assemblies built at the 15% bar, final | 5 of 12 (d10side, read at the same bar: 0 of 16) |
+| median share on their side, final | 16.3% |
+| verdicts won: overall, surface, technique | 4/10, 4/10, 3/10 |
+| minutes | 78 |
+
+Per subject, against d8surf's arm: 30.5 v 21.3, 6.0 v 6.1, 16.9 v 3.3, 16.3
+v 4.0, 7.3 v 0.3. The median paired difference is +9.2 points. The laying
+did almost none of it. It fires only at `submit_design`, and sessions submit an
+outline and build the bulk with `edit_model`: 295 parts submitted over 14
+calls, 52 for 42093-1 over 6. The bar did it. Told the share an assembly of
+that size takes, sessions turned the parts themselves.
+
+**Not benched as smoked.** The skin is taken out. It barely fires, a session
+can reject it, and a skin at save is what cost d8surf its surface. The bar
+goes to the bench alone: planned faces, the per-assembly share in the tool
+results, 15% of the assembly, no laying (branch `bar10`).
+
+### Technique: a planned face built into the body the shape pattern lays, a smoke and no bench (2026-11-01, `ea29ebda`, not benched)
+
+The three subjects that always lose are vehicles. Which pattern lays their
+bodies was counted at d5base's last built `submit_design` for each subject:
+
+| kind | parts built at submit | laid by `shape` | next |
+|---|---|---|---|
+| vehicles (8 sessions) | 2707 | 1473 | fill + mirror + repeat, 211 |
+| architecture and buildings | 5442 | 178 alone (1 session), 390 with fill and round (1) | fill + repeat, 1285 |
+
+On the losers, `shape` laid 671 of 42093-1's 683 parts and 236 of 7746-1's
+256. 5763-1 laid no pattern. `shape` already lays a curved side on its side
+(shells on side studs). It lays a flat side upright, with a side-stud brick and
+a tile every other course. So the lever (`Shapes.planned`, `Plan.flat_sides`)
+shells a flat side too, but only when most of the shape stands in an
+assembly that planned a face on its side.
+
+**On built shapes it works.** `side_faces_probe` builds a fixture body:
+
+- Each flank goes from 3 parts on its side to 17, 9 of them in one plane
+  flush with the body's side.
+- It is held by 20 side-stud bricks (14 unplanned), and it is one piece that
+  stands.
+- With no face planned, or one planned for another assembly's box, it lays
+  exactly as before.
+
+d5base's own submits, rebuilt offline:
+
+| subject | unplanned | planned |
+|---|---|---|
+| 42093-1 | 10.2% | 23.8% |
+| 42111-1 | 16.9% | 24.7% |
+| 7746-1 | 45.5% | 44.6% |
+| 7242-1 | 34.7% | 32.8% |
+
+All of them are buildable, and the piece counts are unchanged. A band
+narrower than a row on its side (2.5 plates) is lost: 42093-1's 2-plate
+black sill goes yellow.
+
+**The smoke (d10body), on the owner's path, changed nothing.** Each
+session's built `shape` submit was rebuilt both ways, as planned and with
+the plan stripped:
+
+- 42093-1: 92 parts on their side either way. The session rounded its
+  flanks, so they were shelled already.
+- 5763-1: 0 either way. A buggy 6 plates tall on wheels gives its shells back
+  and lays upright.
+- 7746-1: its shape submit planned no face.
+
+The finals' median share was 9.5%. Verdicts won: overall 2/10, surface 4/10,
+technique 2/10. 40270-1 laid another set's BrickHeadz whole and recoloured
+it in 6 minutes: 41.4% on their side, and it lost.
+
+Of 7 shape bodies, the lever adds parts on their side in 2, the two d5base
+cars with flat flanks (about +75 parts each). Flat-flanked shape bodies are
+too rare on this path to matter. Kept on branch `body10`.
+
+Results: `bench/results/realset-2026-11-01-d10side/`, `-d10lay/`, `-d10body/`.
+
+### Technique: silhouettes, faces planned on their side and the 15% bar, on the 44 of proof (2026-11-02, `262f4f32`, no gain)
+
+This arm carries design10's three changes together, as they would ship:
+
+- Each assembly plans its silhouette: the lines its outline must follow
+  (`19c59f1a`, above).
+- Each assembly plans which faces are built on their side and what holds
+  them (`20f512db`).
+- The app counts each assembly's share of parts on their side. A planned face
+  is not built until 15% of its assembly's parts stand so, and 2 at least
+  (`e9c8a689`). The submit answer, the whole review and the close review say
+  which assemblies have not built theirs.
+
+The app lays nothing and shells nothing. The session builds what it planned.
+The question is whether shipping this beats main.
+
+**How it ran.** There were two locked snapshots, each imported first:
+`snapd10base` at `c9924a44` (main, rel-m241) and `snapd10bar` at
+`262f4f32`. Both ran the same 44 subjects on the owner's path: the relay, the
+connector's own instructions, no Claude Code in the tab, and one design per
+subject. Each arm ran 2 at a time, and the two arms ran side by side from
+2026-11-02 04:09Z to 11:29Z.
+
+- No session or judge hit a login lapse or a usage limit.
+- Every session used the app's tools and submitted and saved a design.
+- Sessions took a median of 14 minutes (base) and 16 (bar). The longest
+  took 37 and 41, and none reached the 45-minute timeout.
+- No tool result gave a session its own set. Eighteen sessions (8 base,
+  10 bar) searched LDraw's real-set models for their own number or name, and
+  each search came back empty. The other matches are the session's own words read back to it
+  (its nameplate prints, its description) and part names, such as a level
+  crossing sign.
+
+| dimension | d10base (95%) | d10bar (95%) | bar minus base, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 31% (19-45) | 30% (18-44) | -1 (-11, +9) | 6 / 6 |
+| surface | 33% (21-48) | 32% (20-47) | -1 (-14, +11) | 6 / 7 |
+| colour | 38% (25-52) | 32% (20-47) | -6 (-16, +3) | 5 / 8 |
+| technique | 14% (6-27) | 14% (6-27) | 0 (-7, +7) | 3 / 2 |
+| creativity | 44% (31-59) | 50% (36-64) | +6 (-6, +17) | 10 / 6 |
+| overall | 23% (13-37) | 24% (14-38) | +1 (-7, +8) | 6 / 5 |
+
+Head to head, judged in both orders, with bar's design preferred to base's:
+
+| dimension | bar preferred (95%) |
+|---|---|
+| likeness | 55% (40-68%) |
+| surface | 47% (33-61%) |
+| colour | 55% (40-68%) |
+| technique | 53% (39-67%) |
+| creativity | 56% (41-69%) |
+| overall | 55% (40-68%) |
+
+**What the sessions heard and did** (their logs and transcripts):
+
+| | d10base | d10bar |
+|---|---|---|
+| `submit_design` calls | 130 | 126 |
+| assemblies submitted | 565 | 605 |
+| ...with a face planned on its side | - | 285 (298 faces) |
+| `how_real_sets_build_this` said to plan the faces on their side | - | 47 of 51 calls |
+| answers naming assemblies whose planned face is not built | - | 96, naming 166; 14 more said every assembly was planned studs up |
+| close reviews reading "On their side" / with a face not built | - | 128 / 49 |
+| parts submitted on their side | 33 of 6,361 | 144 of 7,466 |
+| parts turned onto their side by edits after hearing the count | - | 598, in 100 edits |
+| `shape` pattern submits | 53 | 44, every one with a face planned |
+| surface passes the session turned down | 35 | 30 |
+| at the last submit: silhouette lines planned / not built | - | 205 over 212 assemblies / 72 |
+| at the last submit: faces planned / assemblies short of 15% | - | 92 / 71 |
+
+**The share on their side** is the share of the final design's parts whose
+studs do not point up, as `tools/style.py` counts it:
+
+- Median: base 3.4%, bar 8.0%, the sets 26.7%.
+- Paired by subject, the median difference is +3.1 points (+0.2, +4.9) and
+  the mean +1.6 (-2.2, +4.3). The share rose on 29 subjects and fell on 11.
+- At 15% or more: 7 of bar's designs, 6 of base's, and 32 of the sets.
+
+The table below lists each subject.
+
+| set | subject | d10base | d10bar | set |
+|---|---|---|---|---|
+| 21013-1 | Big Ben | 6.0% | 5.4% | 22.3% |
+| 21016-1 | Sungnyemun | 0.3% | 5.1% | 4.0% |
+| 21017-1 | Imperial Hotel | 6.3% | 4.8% | 31.4% |
+| 21020-1 | The Trevi Fountain | 4.4% | 0.7% | 3.3% |
+| 21023-1 | Flatiron Building | 0.0% | 0.0% | 70.3% |
+| 21024-1 | Louvre | 0.0% | 0.2% | 16.0% |
+| 21028-1 | New York City | 4.2% | 1.1% | 33.1% |
+| 21031-1 | Burj Khalifa | 0.0% | 0.0% | 43.2% |
+| 21032-1 | Sydney | 0.4% | 4.6% | 18.0% |
+| 21033-1 | Chicago | 0.5% | 9.9% | 35.4% |
+| 21035-1 | Solomon R. Guggenheim Museum | 0.0% | 10.0% | 35.8% |
+| 21041-1 | Great Wall of China | 2.3% | 2.7% | 9.6% |
+| 21045-1 | Trafalgar Square | 1.2% | 4.6% | 24.7% |
+| 21047-1 | Las Vegas | 2.3% | 8.0% | 17.3% |
+| 21052-1 | Dubai | 0.4% | 10.3% | 22.3% |
+| 21113-1 | The Cave | 8.7% | 11.5% | 0.8% |
+| 3189-1 | Heartlake Stables | 8.6% | 11.5% | 6.0% |
+| 3936-1 | Emma’s Fashion Design Studio | 0.0% | 3.3% | 1.4% |
+| 3939-1 | Mia's Bedroom | 1.4% | 2.9% | 11.4% |
+| 40141-1 | Bricktober Hotel | 3.5% | 8.2% | 2.1% |
+| 40183-1 | Bricktober Town Hall | 1.5% | 7.8% | 5.0% |
+| 40270-1 | Valentine's Bee | 15.0% | 29.9% | 45.0% |
+| 41072-1 | Naida's Spa Secret | 1.1% | 1.1% | 8.0% |
+| 41612-1 | Steve & Creeper | 3.9% | 0.0% | 35.8% |
+| 41630-1 | Jack Skellington & Sally | 32.0% | 28.0% | 44.0% |
+| 42033-1 | Record Breaker | 0.0% | 14.6% | 79.2% |
+| 42060-1 | Roadwork Crew | 11.3% | 19.9% | 77.9% |
+| 42062-1 | Container Yard | 1.1% | 3.0% | 79.2% |
+| 42063-1 | BMW R 1200 GS Adventure | 13.2% | 18.2% | 84.4% |
+| 42072-1 | WHACK! | 72.7% | 6.6% | 77.5% |
+| 42075-1 | First Responder | 12.7% | 6.4% | 85.3% |
+| 42081-1 | Volvo Concept Wheel Loader ZEUX | 21.0% | 18.1% | 82.6% |
+| 42093-1 | Chevrolet Corvette ZR1 | 21.2% | 14.1% | 80.2% |
+| 42111-1 | Dom’s Dodge Charger | 16.7% | 22.6% | 74.1% |
+| 5763-1 | Dune Hopper | 4.1% | 9.1% | 24.6% |
+| 5934-1 | Dino Explorer | 1.9% | 8.0% | 6.9% |
+| 7242-1 | Street Sweeper | 9.6% | 14.5% | 16.7% |
+| 7326-1 | Rise of the Sphinx | 0.3% | 8.7% | 19.0% |
+| 7732-1 | Air Mail | 9.6% | 12.2% | 2.6% |
+| 7746-1 | Single-Drum Roller | 5.2% | 14.6% | 37.0% |
+| 7936-1 | Level Crossing | 3.3% | 0.0% | 28.7% |
+| 7992-1 | Container Stacker | 5.3% | 8.7% | 18.9% |
+| 9469-1 | Gandalf Arrives | 0.0% | 0.0% | 41.9% |
+| 9471-1 | Uruk-hai Army | 3.1% | 15.4% | 34.0% |
+
+The largest rises were 40270-1 (+14.9, to 29.9%), 42033-1 (+14.6), 9471-1
+(+12.3), 21035-1 (+10.0) and 21052-1 (+9.9). One subject drove the low mean.
+Base built 42072-1 from Technic beams lying on their side (72.7%), while bar's
+session built it studs up (6.6%).
+
+**What the judge said.** Where we lost on technique, the judge called ours
+stacked in 86% of verdicts (base 91%). Where we lost on surface, it named
+our open studs in 52% (base 56%) and the set's curved or shaped parts in 70%
+(base 80%). Technique was won 12 times in each arm. A sideways or SNOT
+build was named in 9 of bar's technique wins and 7 of base's.
+
+The 15 subjects whose share rose 5 points or more won technique 4 times of
+30 (base 2) and overall 6 times (base 4). The other 29 subjects went from 10
+to 8 on technique and 16 to 15 overall. The 9 Technic subjects won no
+overall verdict in either arm.
+
+**No gain.** The arm does build more on its side: the median share more than
+doubled. The judge did not credit it:
+
+- Technique: unchanged at 14%.
+- Overall: +1 (-7, +8).
+- Colour: -6, inside its noise.
+- Creativity: +6, inside its noise.
+
+The faces sessions turn are small: a nameplate, a few tiles on a wall. The
+bar moves the count, not how the body reads. Only 7 designs reach 15%, against
+32 sets. Silhouettes, planned faces and the bar stay on branch `bar10` and
+do not ship.
+
+**Next.** What the judge misses is the body, as in the last round: ours read
+as stacked, and the sets' curved and shaped parts stand out to it. A share
+check on top of a stacked body does not change how the body reads.
+
+Results: `bench/results/realset-2026-11-02-d10base/`, `-d10bar/` and
+`realset-2026-11-02-d10base-vs-d10bar/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

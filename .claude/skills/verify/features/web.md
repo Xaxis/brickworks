@@ -86,9 +86,14 @@ plan with Claude as the client.
   does not need are reached by name through `Later` (`src/later.gd`,
   `Later.PATHS`: the assistant and the rest of `src/ai` it names, the
   assistant's panel and Claude's connector, the dialogs and tool panels,
-  render, motions, the booklet's makers) and loaded the first time
-  something asks; main.gd's members for them are made by their getters
-  (`_make_*`, `_X_made` for a look that makes nothing), and the start
+  render, motions, the booklet's makers, the drag on a joint) and loaded
+  the first time something asks; main.gd's members for them are made by
+  their getters (`_make_*`, `_X_made` for a look that makes nothing). The
+  drag (`GrabDrag`, with `Grab` and what it names, 7% of the start's code)
+  is made the first time the window is left alone 3 s (`_make_when_idle`,
+  Render's dialog the next time), or by the first drag, motion or
+  session's move before then; `Bodies._reach_along` and `Bodies._same` are
+  the core's, so `Bodies` and `HingeAlign` do not name `Grab`. The start
   compiles 215 of 313 scripts (2026-10-31, three rounds against live at
   load 18-25: compiled at +3.0 s cold and +3.6 warm where live's scripts
   took +6.8 and +5.6; interactive 12.2 s cold and 7.4 warm against 17.5
@@ -1441,6 +1446,36 @@ plan with Claude as the client.
   plans and feedback (`TOLD`, `TOLD_IN`), and `API_WORDS` holds
   `_feedback.js`'s `THANKS`. The relay answers `/challenge?id=N` as
   deploy.sh routes it.
+- **Every page the site links to, in its language** (languages7, 2026-11-02):
+  the account menu's `/feed`, `/notifications`, `/builds`, `/feedback`,
+  `/beta` and `/beta-hub`; the footer's `/terms`, `/privacy`,
+  `/guidelines`, `/takedown` and `/changelog`; the page not found and the
+  connector's consent page (`/de/oauth/authorize`, `web/de/oauth/
+  authorize.html`). Only the docs stay English. The feed's and the
+  notifications' lines are said whole by the server in the language asked
+  (`?op=feed&lang=`, `?op=notifications&lang=`: `api/_follows.js`
+  `feedSaid` and `api/_notifications.js` `noticeSaid` return `line` with
+  `{who}` where the language puts the name; the page fills it in), their
+  dates as the language writes them. A notice has no `did` any more (a
+  piece of an English sentence no language could finish): the flows that
+  read one (notifications, comments, mentions, challenges) read `line`.
+  The feed keeps `did` for the English email digest (`api/_comments.js`). Each rule page's copy opens with one
+  line that the English text binds (`tools/site_lang.py` `BOUND`,
+  `BINDING`, `.binding` in `web/site.css`), linking to `/terms?lang=en`,
+  which `web/theme.js` honours once without changing the choice. The
+  changelog's copies are filled by `tools/site.py --changelog=<code>`: heads,
+  dates and links in the language, each release's notes as written,
+  `lang="en"`. The page not found (`web/404.html` `data-missing`) has a copy
+  at the address asked for under `/de` (deploy.sh routes `/de/<anything>`
+  to `/de/404.html` with a 404; theme.js sends a German visitor there from
+  the English one). A beta hub card is our note, `lang="en"`. The guard:
+  `SAID_ALL` reads feed, notifications, builds, beta, beta hub, takedown,
+  the consent page and the server's notice and feed lines; `TOLD` adds
+  `_beta.js`, `_notifications.js` and `oauth.js`; `unled` catches an
+  English link to any of these pages, the server's pages' links to the
+  takedown page and the guidelines included; and a page with no
+  `</head>` to carry its scripts' words stops the copy (the consent page
+  had none, and said everything in English).
 - **A parts list's names in the visitor's language** (languages3,
   2026-11-01): a set's page, a model's and an LDraw set's ask their list
   with `?lang=<code>` (the page's language, or on a page with no copy the
@@ -3979,6 +4014,19 @@ before a French one. Locally 333 passed; on brickworks.diy with rel-m245
 live, 210 of 333 failed (none of the four pages had a copy, the
 challenge's link head English, the reasons' parts and colours English,
 "Bei Schritt 3: es ist ...").
+Then every other page the site links to (`--pages=feed,notifications,builds,
+feedback,beta,beta-hub,terms,privacy,guidelines,takedown,changelog,missing,consent`,
+languages7, 2026-11-02): the account menu's pages signed in in the browser
+only, every call answered by the stand-in, the feed and the notifications
+showing at least three of the server's lines with the name where the
+language puts it; the beta's empty form refused in words; the feedback
+dialog with no English; each rule page's line that the English text
+binds, its link opening the English page and staying there; the
+changelog's notes `lang="en"` under the language's heads and dates;
+`/de/no-such-page` answered 404 with the German page not found; and the
+consent page's heading and Allow, asked with PKCE. Locally 567 passed; on
+brickworks.diy with rel-m246 live, 342 of 531 failed (none of the
+thirteen had a copy, the menu's links English).
 
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):

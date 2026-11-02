@@ -1117,7 +1117,7 @@ function actionBar(origin, id, model, url = links(origin, id).url) {
       + iconButtonHtml({ icon: "share", name: say("Share"),
         attrs: `data-share aria-haspopup="dialog" aria-controls="share-sheet" title="${asText(say("Share it: its link"))}"` })
       + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="${more}" title="${more}">`
-      + `${iconHtml("more")}</summary><div class="menu-list"><a href="/takedown">${asText(say("Takedown requests"))}</a></div></details>`
+      + `${iconHtml("more")}</summary><div class="menu-list"><a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
       + `</div>` + shareSheet(origin, id, model, url);
   }
   return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="${asText(say("What you can do with it"))}">`
@@ -1133,7 +1133,7 @@ function actionBar(origin, id, model, url = links(origin, id).url) {
     + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="${more}" title="${more}">`
       + `${iconHtml("more")}</summary><div class="menu-list">`
       + `<button type="button" data-report="${asText(say("this model"))}" data-report-model="${id}" hidden>${asText(say("Report it"))}</button>`
-      + `<a href="/takedown">${asText(say("Takedown requests"))}</a></div></details>`
+      + `<a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a></div></details>`
     + `</div>`
     // Save opens your lists, Favourites first (docs/SOCIAL.md D2), and a
     // new collection's name; drawn by web/model-page.js once signed in.
@@ -1505,7 +1505,7 @@ function commentsSection(id, shown, newest, steps) {
     data-version="${shown}" data-newest="${newest}" hidden>
     <h2 id="comments-h">${asText(say("Comments"))}</h2>
     <p class="note comments-lede">${sayHtml("What builders said about it and its steps, the newest first, with the replies under each. "
-      + "Plain words only; {guidelines} say what is welcome.", { guidelines: `<a href="/guidelines">${asText(say("the guidelines"))}</a>` })}</p>
+      + "Plain words only; {guidelines} say what is welcome.", { guidelines: `<a href="${langAt()}/guidelines">${asText(say("the guidelines"))}</a>` })}</p>
     <ol class="comment-list"></ol>
     <form class="comment-new" hidden>
       <div class="comment-on"><label for="comment-step">${asText(say("On"))}</label> ${picker}

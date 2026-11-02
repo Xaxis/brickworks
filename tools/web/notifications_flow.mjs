@@ -192,9 +192,9 @@ try {
   // the list before) and seen as she opens it, so not counted again.
   const reached = first.body.groups?.find((one) => one.achievements);
   check(`her notifications, none yet${levelled ? " but her first level" : ""}: ${first.status}, ${first.body.groups?.length} groups`
-    + `${reached ? ` (${reached.rows.map((one) => `${one.who} ${one.did}`).join("; ")})` : ""}`,
+    + `${reached ? ` (${reached.rows.map((one) => one.line.replace("{who}", one.who)).join("; ")})` : ""}`,
     first.status === 200 && first.body.ready === true && first.body.groups.length === (levelled ? 1 : 0)
-    && (!levelled || (reached?.rows.length === 1 && reached.rows[0].did === "reached Designer · first model, level 1 of 6"
+    && (!levelled || (reached?.rows.length === 1 && reached.rows[0].line.replace("{who}", reached.rows[0].who) === "You reached Designer · first model, level 1 of 6"
       && reached.rows[0].new && reached.rows[0].unread)));
   await api("/api/people?op=feed", { token: ada.access_token });
 

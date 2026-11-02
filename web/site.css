@@ -850,6 +850,11 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
    who built it and when on one line, and what they said of it, two lines
    at most, its quote marks the browser's. */
 .model .when { color: var(--ink-faint); font-size: var(--t-tiny); white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Who built it takes a second line before the name is cut: "Gebaut von
+   Robin Castell" is wider than a phone's card, where the English fits. */
+.build-card .who span:not(.avatar) {
+	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; overflow-wrap: anywhere;
+}
 .build-card .said {
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px;
 	color: var(--ink-soft); font-size: var(--t-small); line-height: 1.4; overflow-wrap: anywhere;
@@ -1400,6 +1405,9 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .page-hero h1 { max-width: 22ch; }
 .page-hero .lede { margin-bottom: 0; }
 .page-hero .actions { margin-top: var(--s-5); }
+/* A rule page's copy in another language: one line under its heading,
+   that the English text binds (tools/site_lang.py BOUND). */
+.page-hero .binding { margin: 0 0 var(--s-3); color: var(--ink-faint); font-size: var(--t-small); }
 /* A head that ends in .tabs (the legal pages, /feed and /notifications):
    the tabs sit on the head's line, the one shown underlined on it. */
 .page-hero:has(> .wrap > .tabs:last-child) { padding-bottom: 0; }
