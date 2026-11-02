@@ -205,8 +205,7 @@ import {
   feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows, latest,
 } from "./_follows.js";
 import { feedCount, notifications, notificationsRead } from "./_notifications.js";
-import { DIRECTORY_PAGE, coversOf, directoryCardHtml, directoryOf, getListFollows, listCardHtml, listFollow, listFollowsOf,
-  mosaicHtml } from "./_lists.js";
+import { DIRECTORY_PAGE, coversOf, directoryOf, getListFollows, listCardHtml, listFollow, listFollowsOf } from "./_lists.js";
 import { designerOf, designs } from "./_designers.js";
 import { designersAlike } from "./_alike.js";
 import {
@@ -220,7 +219,7 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, shareSheetHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, shareSheetHtml } from "./_card.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
@@ -995,7 +994,8 @@ async function alike(request, response) {
 async function builds(request, response) {
   const tests = testsAsked(request.query);
   const page = pageOf(request.query || {});
-  const said = await galleryBuilds({ origin: originOf(request), page, tests, shown: shownPublicly });
+  const said = await galleryBuilds({ origin: originOf(request), page, tests, q: String(request.query?.q || ""),
+    shown: shownPublicly });
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json(await withFaces({ page, ...said }));
 }
@@ -1572,73 +1572,28 @@ ${shareSheetHtml({ url, name: list.name, text: say("{name}, a collection on Bric
   });
 }
 
-/// /collections: the public collections anyone may see, as cards, the way
-/// Rebrickable lists its MOC lists and Flickr its albums (walk256 W12,
-/// supabase/collection_directory.sql). What was put in last first, or the
-/// most followed; 24 a page, the next a link, so it works with no script.
-/// Each card: its cover (up to four of its models' pictures), its name,
-/// whose, how many models and followers, and Follow (web/follow.js, all the
-/// page's in one ask). A private collection never; nor one with nothing in
-/// the gallery, which would be a blank card. With nothing to list it says
-/// so, and how a collection gets here. In each language at /de/collections
-/// and so on.
-async function collectionsPage(request, response) {
-  const origin = originOf(request);
+/// The gallery's Collections tab (web/collections.js): the public
+/// collections anyone may see, the way Printables lists its collections,
+/// Rebrickable its MOC lists and Flickr its albums (walk256 W12,
+/// supabase/collection_directory.sql), a page of DIRECTORY_PAGE as JSON:
+/// what was put in last first, or the most followed (&sort=followed);
+/// searched by &q= (supabase/collection_search.sql: searched false before
+/// it is applied, and every one listed). Each with its cover (up to four of
+/// its models' pictures) and whose, with their picture. A private
+/// collection never; nor one with nothing in the gallery, which would be a
+/// blank card.
+async function collections(request, response) {
   const tests = testsAsked(request.query);
-  const lang = String(request.query?.lang || "en");
-  const words = lang === "en" ? null : siteWords(lang);
-  if (lang !== "en" && !words) return html(response, 404, missingPage(origin, say("There is nothing here")), { tests });
   const sort = request.query?.sort === "followed" ? "followed" : "recent";
-  const asked = Number.parseInt(String(request.query?.page ?? "1"), 10);
-  const at = Number.isInteger(asked) ? Math.min(Math.max(asked, 1), MOST_PAGES) : 1;
-  const listed = await directoryOf({ sort, page: at, tests });
+  const page = pageOf(request.query || {});
+  const listed = await directoryOf({ sort, page, tests, q: String(request.query?.q || "") });
   const rows = await withFaces(listed.rows);
   const covers = await coversOf(rows, tests);
-  return html(response, 200, inLanguage(lang, words, () => collectionsHtml(origin, { sort, at, listed, rows, covers, tests, lang, words })),
-    { tests });
-}
-
-/// The collections' page as collectionsPage gathered it, said in [lang].
-function collectionsHtml(origin, { sort, at, listed, rows, covers, tests, lang, words }) {
-  const here = lang === "en" ? "" : `/${lang}`;
-  const keep = (query) => {
-    const params = new URLSearchParams();
-    if (query.sort === "followed") params.set("sort", "followed");
-    if (query.page > 1) params.set("page", String(query.page));
-    if (tests) params.set("tests", "1");
-    const text = params.toString();
-    return `${here}/collections${text ? `?${text}` : ""}`;
-  };
-  const tab = (which, said) => `<a href="${escapeHtml(keep({ sort: which, page: 1 }))}" data-sort="${which}"`
-    + `${which === sort ? ' aria-current="page"' : ""}>${asText(said)}</a>`;
-  const pages = Math.max(1, Math.ceil(listed.total / DIRECTORY_PAGE));
-  const pageHref = (n) => keep({ sort, page: n });
-  const pager = pagerHtml({ id: "collections", first: at, shown: rows.length, pages, total: listed.total,
-    size: DIRECTORY_PAGE, noun: ["collection", "collections"], href: pageHref, source: "page" });
-  const empty = !listed.ready
-    ? `<p class="state" id="collections-empty">${asText(say("Collections are not listed on Brickworks yet. Each one has its own page "
-      + "in the meantime, linked from its owner's profile and from the models in it."))}</p>`
-    : at > 1 && !rows.length
-    ? pastEnd(at, pageHref).replace('<p class="state">', '<p class="state" id="collections-empty">')
-    : `<p class="state" id="collections-empty">${asText(say("No public collections yet. Anyone can make one: on a model's page, "
-      + "press Save to put it in a collection, then make the collection public on your profile. It is listed here "
-      + "once a model in it is in the gallery."))}</p>`;
-  const main = `<div class="wrap wide page collections" data-sort="${sort}" data-page="${at}">
-  <div class="page-head"><h1>${asText(say("Collections"))}</h1>
-  <p class="lede">${asText(say("Models put together by the people who build them. Follow one to see what goes in it next."))}</p></div>
-  <nav class="tabs" aria-label="${asText(say("Which collections first"))}">${tab("recent", say("Recently added to"))}${tab("followed", say("Most followed"))}</nav>
-  ${rows.length ? `${pager.earlier}
-  <div class="list-cards" id="collections">${rows.map((list) => directoryCardHtml(list, covers)).join("")}</div>
-  ${pager.after}` : empty}
-  <p class="crumbs" id="collections-gallery"><a href="${here}/gallery">${asText(say("Models in the gallery"))}</a></p>
-</div>`;
-  return page(origin, {
-    title: say("Collections — the Brickworks gallery"),
-    about: say("Collections of models built in Brickworks, made by the people who build them: follow one to see what is put in it."),
-    url: `${origin}${keep({ sort, page: at })}`, robots: at > 1 || sort !== "recent" ? "noindex" : "", image: "", main,
-    paged: rows.length ? pagerLinks({ at, more: at < pages, href: pageHref }) : "", lang, words,
-    alternates: alternatesOf(origin, "collections"),
-  });
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : SHARED_CACHE);
+  return response.status(200).json({ ready: listed.ready, searched: listed.searched, sort, page, total: listed.total,
+    pages: Math.max(1, Math.ceil(listed.total / DIRECTORY_PAGE)),
+    collections: rows.map((list) => ({ id: list.id, name: String(list.name || ""), count: Number(list.count) || 0,
+      followers: Number(list.followers) || 0, by: list.by || null, covers: covers.get(list.id) || [] })) });
 }
 
 export default async function handler(request, response) {
@@ -1665,7 +1620,7 @@ export default async function handler(request, response) {
       if (op === "favourites") return await favourites(request, response);
       if (op === "collection") return await collection(request, response);
       if (op === "list_page") return await listPage(request, response);
-      if (op === "collections_page") return await collectionsPage(request, response);
+      if (op === "collections") return await collections(request, response);
       if (op === "comments") return await listComments(request, response);
       if (op === "photos") return await photos(request, response);
       if (op === "photo_file") return await photoServe(request, response);

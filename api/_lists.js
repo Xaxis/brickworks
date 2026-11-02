@@ -12,11 +12,14 @@
 // api/people.js answers the requests with these and draws a collection's
 // page; api/share.js asks listsOf for a model's page.
 //
-// And the directory (2026-10-25, walk256 W12, supabase/collection_directory.sql):
+// And the directory (2026-10-25, walk256 W12, supabase/collection_directory.sql),
+// the gallery's Collections tab (/collections, web/collections.js):
 //
-//   GET  /collections             the public collections as cards, what was
-//                                 put in last first, or ?sort=followed most
-//                                 followed first; ?page=N, 24 a page
+//   GET  ?op=collections          the public collections, what was put in
+//                                 last first, or &sort=followed most
+//                                 followed first; &q= words searched
+//                                 (supabase/collection_search.sql); &page=N,
+//                                 24 a page
 //   GET  ?op=list_follows&ids=A,B  each one's follows as ?op=list_follows&id
 //                                 says it, in one answer, for a page of
 //                                 cards each with its Follow (at most 48)
@@ -34,7 +37,7 @@
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { Unacceptable, escapeHtml } from "./_directory.js";
-import { avatarHtml, counted, langAt, pictureOf, say } from "./_card.js";
+import { counted, langAt, mosaicHtml, pictureOf } from "./_card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const NOT_THERE = /: 404$/;
@@ -141,44 +144,27 @@ export async function listsOf(id, tests = false) {
 }
 
 // ---------------------------------------------------------------------------
-// The directory of public collections (/collections).
+// The directory of public collections (the gallery's Collections tab).
 
 /// How many cards a page of the directory has.
 export const DIRECTORY_PAGE = 24;
 
 /// One page of the public collections as the directory lists them:
-/// {ready, total, rows: [{id, name, description, count, followers, added,
-/// by}]}, [sort] "recent" or "followed"; ready false before
-/// collection_directory.sql is applied.
-export async function directoryOf({ sort = "recent", page = 1, tests = false } = {}) {
-  const said = await call("collection_directory", { sort: sort === "followed" ? "followed" : "recent", page,
-    size: DIRECTORY_PAGE, tests }, () => ({ missing: true }));
-  if (!said || said.missing) return { ready: false, total: 0, rows: [] };
+/// {ready, searched, total, rows: [{id, name, description, count,
+/// followers, added, by}]}, [sort] "recent" or "followed"; with words [q],
+/// those whose name, words or owner hold every one of them
+/// (collection_search.sql). ready false before collection_directory.sql is
+/// applied; searched false when words were asked before
+/// collection_search.sql is, and every one is listed.
+export async function directoryOf({ sort = "recent", page = 1, tests = false, q = "" } = {}) {
+  const asked = { sort: sort === "followed" ? "followed" : "recent", page, size: DIRECTORY_PAGE, tests };
+  const words = String(q || "").trim().slice(0, 100);
+  let said = words ? await call("collection_directory_search", { q: words, ...asked }, () => ({ missing: true })) : null;
+  const searched = Boolean(said && !said.missing);
+  if (!searched) said = await call("collection_directory", asked, () => ({ missing: true }));
+  if (!said || said.missing) return { ready: false, searched: false, total: 0, rows: [] };
   const rows = (Array.isArray(said.rows) ? said.rows : []).filter((row) => ID.test(String(row?.id)));
-  return { ready: true, total: Number(said.total) || 0, rows };
-}
-
-/// A collection in the directory: its cover and name, a link to its page;
-/// whose, with their avatar, a link to their profile; how many models and
-/// followers, each said once there is one; and Follow, which web/follow.js
-/// shows once it knows who is asking (not inside the link: a button in a
-/// link is neither). In the page's language, its links to the copies.
-export function directoryCardHtml(list, covers) {
-  const id = escapeHtml(list.id);
-  const at = langAt();
-  const by = list.by && list.by.handle
-    ? `<a class="who" href="${at}/u/${escapeHtml(list.by.handle)}">${avatarHtml({ handle: list.by.handle,
-      name: list.by.name || list.by.handle, picture: list.by.picture }, { size: "small" })}`
-      + `<span>${escapeHtml(list.by.name || list.by.handle)}</span></a>`
-    : "";
-  const followers = Number(list.followers) || 0;
-  return `<article class="list-card in-directory" data-id="${id}">`
-    + `<a class="cover" href="${at}/c/${id}" tabindex="-1" aria-hidden="true">${mosaicHtml(covers.get(list.id) || [])}</a>`
-    + `<div class="words"><a class="name" href="${at}/c/${id}"><b>${escapeHtml(list.name)}</b></a>${by}`
-    + `<span class="numbers"><span>${escapeHtml(counted(list.count, "model"))}</span>`
-    + `<span data-list-followers="${id}"${followers ? "" : " hidden"}>${escapeHtml(counted(followers, "follower"))}</span></span>`
-    + `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>${escapeHtml(say("Follow"))}</button>`
-    + `<span class="said" role="status"></span></p></div></article>`;
+  return { ready: true, searched: searched || !words, total: Number(said.total) || 0, rows };
 }
 
 // ---------------------------------------------------------------------------
@@ -197,15 +183,6 @@ export async function coversOf(lists, tests) {
     .map((row) => [row.id, pictureOf({ id: row.id, thumb: row.has_thumb ? `?v=${(Date.parse(row.updated_at || "") || 0).toString(36)}` : null,
       image: row.has_image })]));
   return new Map(shown.map((list, at) => [list.id, items[at].map((row) => pictures.get(row.model)).filter(Boolean).slice(0, 4)]));
-}
-
-/// A cover: up to four pictures kept wide, or what it waits for. [eager]:
-/// in the first screen, asked at once and first (a lazy one came last).
-export function mosaicHtml(pictures, { eager = false } = {}) {
-  return `<div class="mosaic n${pictures.length}">${pictures.length ? pictures.map((src) =>
-    `<img src="${escapeHtml(src)}" alt="" width="1200" height="630" ${eager ? 'loading="eager" fetchpriority="high"'
-      : 'loading="lazy"'} decoding="async">`).join("")
-    : `<span>${escapeHtml(say("No pictures yet"))}</span>`}</div>`;
 }
 
 /// A public collection as a card: its cover, its name, how many; and whose,
