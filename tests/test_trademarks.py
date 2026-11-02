@@ -175,7 +175,8 @@ def _function(source: str, name: str) -> str:
 def test_the_share_page_carries_the_notice() -> None:
     """A shared model's page and the page of a link taken down (api/share.js)
     end in the site's own footer, read from web/gallery.html, whose footer
-    carries the notice (above); and where that page is not there, in one of
+    carries the notice (above), or in a language from its copy there
+    (web/de/gallery.html); and where that page is not there, in one of
     their own with it (api/_directory.js siteChrome)."""
     shared = (ROOT / "api/_directory.js").read_text()
     said = re.search(r'export const NOTICE = "([^"]+)";', shared)
@@ -185,7 +186,7 @@ def test_the_share_page_carries_the_notice() -> None:
     source = (ROOT / "api/share.js").read_text()
     for page in ["sharePage", "gonePage"]:
         body = _function(source, page)
-        assert "${NOTICE}" in body or ("siteChrome()" in body and "${footer}" in body), \
+        assert "${NOTICE}" in body or (re.search(r"siteChrome\((?:lang)?\)", body) and "${footer}" in body), \
             f"{page} does not show the notice"
 
 

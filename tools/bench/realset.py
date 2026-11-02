@@ -988,6 +988,35 @@ def relay_lost(stream: Path) -> bool:
     return RELAY_LOST in last
 
 
+# What Claude Code answers a call to a tool the session does not have.
+NO_SUCH_TOOL = "No such tool available"
+
+
+class NoToolReached(SystemExit):
+    """A session that reached none of the app's tools: no design, and not the machine's
+    fault for long, so it is designed again at once."""
+
+
+def no_tool_reached(stream: Path) -> bool:
+    """Whether a session called tools and every one answered that there is no such tool.
+    d9base's 21023-1 asked for the app's tools without their mcp__brickworks__ prefix four
+    times and ended in 23 s with no model, while 70 of them were connected; designed
+    again on the same snapshot it built (2026-11-02). Nine more sessions of that round
+    missed so 1-3 times at their start and recovered."""
+    answers: list[str] = []
+    for line in stream.read_text(errors="replace").splitlines() if stream.exists() else []:
+        try:
+            content = (json.loads(line).get("message") or {}).get("content")
+        except (ValueError, AttributeError):
+            continue
+        for block in content if isinstance(content, list) else []:
+            if isinstance(block, dict) and block.get("type") == "tool_result":
+                said = block.get("content")
+                answers.append(" ".join(b.get("text", "") for b in said if isinstance(b, dict))
+                               if isinstance(said, list) else str(said))
+    return bool(answers) and all(NO_SUCH_TOOL in a for a in answers)
+
+
 def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: Path,
                      instructions: str = "all", claude_code: bool = True) -> dict:
     """One brief designed as the owner designs: Claude through the connector relay, the
@@ -1065,6 +1094,11 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
             # Nor did the design end itself: the relay lost Supabase under it.
             raise SystemExit(f"design {subject.id}: the relay lost Supabase and the session "
                              "ended on it; not recorded")
+        if no_tool_reached(stream):
+            kept = stream.with_name(f"session.no-tool-{int(started)}.jsonl")
+            stream.rename(kept)
+            raise NoToolReached(f"design {subject.id}: the session reached none of the app's "
+                                f"tools; not recorded, kept as {kept.name}")
         ldr = run_dir / "design.ldr"
         name = f"realset-{subject.id}-{app_port}.ldr"
         saved: dict = {}
@@ -1148,11 +1182,17 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
                                            "theme": c.theme, "year": c.year})
     canned = bench.CANNED / "design.ldr" if args.dry_run else None
     try:
-        made = (design_via_relay(subject, out, args.timeout, args.checkout, args.instructions,
-                                 not args.no_claude_code)
-                if args.via == "relay" and canned is None else
-                bench.design(subject, out, args.timeout, canned, app=args.checkout,
-                             extra=(f"--held-out-name={subject.title}",)))
+        if args.via == "relay" and canned is None:
+            try:
+                made = design_via_relay(subject, out, args.timeout, args.checkout,
+                                        args.instructions, not args.no_claude_code)
+            except NoToolReached as failed:  # once more now, as design9 redid 21023-1 by hand
+                bench.say(f"{c.number}: {failed}; designing again")
+                made = design_via_relay(subject, out, args.timeout, args.checkout,
+                                        args.instructions, not args.no_claude_code)
+        else:
+            made = bench.design(subject, out, args.timeout, canned, app=args.checkout,
+                                extra=(f"--held-out-name={subject.title}",))
     except SystemExit as failed:      # the machine failed, not the design: tried again next time
         bench.say(f"{c.number}: {failed}")
         return {}

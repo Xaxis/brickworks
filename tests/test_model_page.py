@@ -299,3 +299,54 @@ def test_oembed_answers_a_models_link_and_nothing_else() -> None:
     assert versioned["status"] == 200 and json.loads(versioned["html"])["title"] == "Riverside Watchtower"
     assert xml["status"] == 501
     assert foreign["status"] == 404 and person["status"] == 404 and missing["status"] == 404
+
+
+def test_a_model_s_page_in_each_language_of_the_site() -> None:
+    said = pages("/de/m/DesignAbc1", "/fr/m/DesignAbc1", "/es/m/DesignAbc1", "/de/m/DesignAbc1/v/1", "/m/DesignAbc1",
+                 "/xx/m/DesignAbc1", "/de/m/Nosuchxxx1")
+    if said is None:
+        return
+    *copies, older, english, unknown, missing = said
+    origin = "http://design.test"
+    day = {"de": "28. September 2026", "fr": "28 septembre 2026", "es": "28 de septiembre de 2026"}
+    for code, page in zip(("de", "fr", "es"), copies):
+        words = json.loads((ROOT / f"web/_lang/{code}.json").read_text(encoding="utf-8"))["scripts"]
+        html = page["html"]
+        assert page["status"] == 200 and f'<html lang="{code}">' in html
+        # Its own canonical, and each copy named, English the default.
+        assert f'<link rel="canonical" href="{origin}/{code}/m/DesignAbc1">' in html
+        assert f'<meta property="og:url" content="{origin}/{code}/m/DesignAbc1">' in html
+        for lang, where in (("en", ""), ("de", "/de"), ("fr", "/fr"), ("es", "/es"), ("x-default", "")):
+            assert f'<link rel="alternate" hreflang="{lang}" href="{origin}{where}/m/DesignAbc1">' in html
+        # Its chrome in the language; what its builder wrote as they wrote it.
+        name = words["{name} — a Brickworks model"].replace("{name}", "Riverside Watchtower")
+        assert f"<title>{name}</title>" in html
+        assert f'<a href="/{code}/gallery">{words["Gallery"]}</a>' in html
+        for key in ("About it", "Build it", "Open in Brickworks", "Remixes", "Versions", "Made from it"):
+            # (French writes Versions as English does.)
+            assert f">{words[key]}<" in html and (words[key] == key or f">{key}<" not in html), key
+        assert "A three-storey watchtower on a riverbank" in html
+        assert day[code] in html and "28 September 2026" not in html
+        # Its links stay in the language: the gallery, the remix line, cards.
+        assert f'href="/{code}/m/DesignRmx1"' in html and 'class="open" href="/m/' not in html
+        # The page's own scripts say the copy's words.
+        assert '<script type="application/json" id="site-words">' in html
+    assert older["status"] == 200 and '<html lang="de">' in older["html"]
+    assert f'<link rel="alternate" hreflang="fr" href="{origin}/fr/m/DesignAbc1/v/1">' in older["html"]
+    # English as it was, naming its copies.
+    assert '<html lang="en">' in english["html"] and ">About it<" in english["html"] and "site-words" not in english["html"]
+    assert f'<link rel="alternate" hreflang="de" href="{origin}/de/m/DesignAbc1">' in english["html"]
+    assert unknown["status"] == 404
+    assert missing["status"] == 404 and '<html lang="de">' in missing["html"]
+
+
+def test_the_models_copies_have_a_sitemap_in_each_language() -> None:
+    said = pages("/sitemaps/index.xml", "/sitemaps/models-de.xml", "/sitemaps/models-es.xml", "/sitemaps/models-xx.xml")
+    if said is None:
+        return
+    index, german, spanish, unknown = said
+    for code in ("de", "fr", "es"):
+        assert f"<loc>http://design.test/sitemaps/models-{code}.xml</loc>" in index["html"]
+    assert german["status"] == 200 and "<loc>http://design.test/de/m/DesignAbc1</loc>" in german["html"]
+    assert "<loc>http://design.test/es/m/DesignAbc1</loc>" in spanish["html"] and "/de/m/" not in spanish["html"]
+    assert unknown["status"] == 404

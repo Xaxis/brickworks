@@ -34,7 +34,7 @@
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { Unacceptable, count, escapeHtml } from "./_directory.js";
-import { avatarHtml, pictureOf } from "./_card.js";
+import { avatarHtml, counted, pictureOf } from "./_card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const NOT_THERE = /: 404$/;
@@ -214,5 +214,5 @@ export function listCardHtml(list, covers, { by = false, eager = false } = {}) {
   const whose = by && list.by && list.by.name ? ` · ${escapeHtml(list.by.name)}` : "";
   return `<a class="list-card" href="/c/${escapeHtml(list.id)}" data-id="${escapeHtml(list.id)}">`
     + mosaicHtml(covers.get(list.id) || [], { eager })
-    + `<div class="words"><b>${escapeHtml(list.name)}</b><span>${escapeHtml(count(list.count, "model"))}${whose}</span></div></a>`;
+    + `<div class="words"><b>${escapeHtml(list.name)}</b><span>${escapeHtml(counted(list.count, "model"))}${whose}</span></div></a>`;
 }

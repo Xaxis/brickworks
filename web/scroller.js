@@ -14,7 +14,7 @@
 //
 // web/kit.js loads it on every page that has the kit; a page without the
 // kit imports it itself (/admin).
-import { iconHtml } from "./card.js";
+import { iconHtml, say } from "./card.js";
 
 const SCROLLERS = ".scroller, .tabs, .table, .code > pre";
 const FOCUSABLE = "a[href], button, input, select, textarea, summary, [tabindex]";
@@ -52,7 +52,7 @@ function buttonsFor(el) {
     button.addEventListener("click", () => turn(el, way === "back" ? -1 : 1));
     return button;
   };
-  const go = [make("back", "Previous", "back"), make("next", "Next", "next")];
+  const go = [make("back", say("Previous"), "back"), make("next", say("Next"), "next")];
   el.after(...go);
   return go;
 }

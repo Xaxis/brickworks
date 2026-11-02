@@ -6,6 +6,12 @@
 // is /viewer3d.js (tools/viewer/inline.js, three.js and all) asked for.
 // Its looks are web/view3d.css.
 
+// [words] with each {name} filled from [values], in the page's language
+// (web/theme.js brickworksLang). Here, not imported: the embed loads this
+// and theme.js alone.
+const say = (words, values = {}) => (globalThis.brickworksLang ? globalThis.brickworksLang.say(words) : words)
+  .replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
+
 /// The model in 3D over [big], the picture, which without this script is
 /// the way into the app: a click on it (or Enter, or a drag across it)
 /// opens the 3D view in its frame instead; with a key held, a new tab is
@@ -14,9 +20,13 @@
 /// the picture's own shape over it (web/view3d.css .view3d). {open(how),
 /// close()} for the page.
 export function start3d(big) {
-  const name = big.getAttribute("aria-label")?.replace(/^View (.*) in 3D$/, "$1") || "The model";
+  // The model's name, from the picture's label as its page wrote it.
+  const label = big.getAttribute("aria-label") || "";
+  const [before, after = ""] = say("View {name} in 3D").split("{name}");
+  const name = (label.length > before.length + after.length && label.startsWith(before) && label.endsWith(after)
+    ? label.slice(before.length, label.length - after.length) : label) || say("The model");
   big.setAttribute("role", "button");
-  big.setAttribute("aria-label", `View ${name} in 3D, here`);
+  big.setAttribute("aria-label", say("View {name} in 3D, here", { name }));
   big.setAttribute("draggable", "false");
   const img = big.querySelector("img");
   if (img) img.draggable = false;
@@ -35,9 +45,11 @@ export function start3d(big) {
     shell.className = "view3d";
     shell.dataset.state = "loading";
     shell.setAttribute("aria-busy", "true");
-    shell.innerHTML = '<div class="stage" tabindex="0" role="application" aria-roledescription="3D view"></div>'
-      + '<div class="view3d-bar" aria-hidden="true"><span></span></div><p class="view3d-said" role="status">Getting the model in 3D…</p>';
-    shell.querySelector(".stage").setAttribute("aria-label", `${name} in 3D`);
+    shell.innerHTML = '<div class="stage" tabindex="0" role="application"></div>'
+      + '<div class="view3d-bar" aria-hidden="true"><span></span></div><p class="view3d-said" role="status"></p>';
+    shell.querySelector(".stage").setAttribute("aria-roledescription", say("3D view"));
+    shell.querySelector(".stage").setAttribute("aria-label", say("{name} in 3D", { name }));
+    shell.querySelector(".view3d-said").textContent = say("Getting the model in 3D…");
     shell.dataset.how = how;
     // A picture published before cut-outs carries the ground it was drawn
     // on: the model in 3D is put on that ground too, so nothing jumps.
@@ -50,7 +62,7 @@ export function start3d(big) {
       .catch(() => {
         // Not even the code came: said, and asked again on the next try.
         shell.dataset.state = "failed";
-        shell.querySelector(".view3d-said").textContent = "The 3D view could not load. The picture is still here; try again in a moment.";
+        shell.querySelector(".view3d-said").textContent = say("The 3D view could not load. The picture is still here; try again in a moment.");
         shell.setAttribute("aria-busy", "false");
         viewing = null;
         setTimeout(() => { if (shell && shell.dataset.state === "failed") { shell.remove(); shell = null; } }, 6000);

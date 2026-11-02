@@ -1364,6 +1364,33 @@ plan with Claude as the client.
   set page, English too, links to the library and other sets in the
   language. The set's name is as LEGO® publishes it. Another language is a
   404.
+- **A model's page in each language** (languages4, 2026-11-01:
+  `/de/m/<id>` and `/de/m/<id>/v/<n>`, `/fr/...`, `/es/...`; deploy.sh's
+  routes send `&lang=` to `?op=page`, the stand-in and the relay map them):
+  `api/share.js` writes `sharePage`, `noVersionPage` and `gonePage` inside
+  `inLanguage`, every word of its chrome through `say`/`sayHtml`/`counted`/
+  `number` (`tools/site_lang.py` `SAID_ALL`: those and their sections, the
+  version lines of `api/_versions.js`, the step counts of `api/_steps.js`,
+  the cards and Share's sheet of `web/card.js`, and the page's scripts
+  `web/model-page.js`, `start3d.js`, `share-sheet.js`, `scroller.js`,
+  `report.js`, `follow.js`), its dates as the language writes them, a
+  version's lots in the parts list's colours, `<html lang>`, a canonical
+  and og:url of its own, hreflang en/de/fr/es and x-default (English) on
+  the English page too. What its builder wrote stays as written: its name,
+  description, tags, notes, photo lines and comments. A card on a copy
+  (`web/card.js` `cardHtml`, `buildCardHtml`) links to the model's copy,
+  so the gallery's copy opens `/de/m/<id>`; a profile (English) opens
+  `/m/<id>`, which `web/theme.js` sends a German visitor on to by its
+  alternates. Another language is a 404. `/sitemaps/models-de.xml`
+  (`-fr`, `-es`; `?op=sitemap_models`) lists each listed model's copy,
+  and `/sitemaps/index.xml` names them. A copy of a catalogue part carried
+  in a model's own file (`8880 - 3001.dat`, a sub-file titled `0 3001`) is
+  named from the catalogue in its parts list, as the part is
+  (`api/_parts.js` `copy_of`); one the catalogue does not know keeps the
+  file's name. The guard: a capitalised literal outside `say()` in any of
+  those scopes fails `tools/site_lang.py --check`, `say(a ? "x" : "y")`
+  counting as said; a key's name (`"Escape"`) and a reason to sign in,
+  which `web/account.js` says, are not English left.
 - **A parts list's names in the visitor's language** (languages3,
   2026-11-01): a set's page, a model's and an LDraw set's ask their list
   with `?lang=<code>` (the page's language, or on a page with no copy the
@@ -3856,6 +3883,20 @@ locally; on brickworks.diy (`--pages=gallery,set,model,sitemaps`) 79 of 237
 failed: no names in German, French or Spanish on any set or model page
 (12), no language sitemaps (3), the French and Spanish gallery at 390
 without the wordmark (2), and the set copies not live yet (the rest).
+Then a model's page in each language (`--pages=model`, languages4,
+2026-11-01): the model opened as a German, French or Spanish browser opens
+it lands on its copy (`/de/m/<id>`), `<html lang>`, its title, the five
+alternates and its own canonical and og:url, its crumbs, tabs and actions,
+the comments' Reply, step pill and "Sign in and add it", every date as the
+language writes it, its parts list's names, the header's Sign in, no
+English left but what its builder wrote and the names in it, nothing cut
+short, every link into the app with `lang=`; and a card on the gallery's
+copy opens the model's copy. `--pages=sitemaps` also checks
+`models-de.xml` and the rest: one copy for each `/m/` page `/sitemap.xml`
+lists. Locally 125 and 16 passed; on brickworks.diy with rel-m243 live, 68
+of 125 failed (every copy English at `/m/<id>`, no alternates, a card on
+the German gallery opening `/m/<id>`, a date "27 October 2026") and 3 of
+16 (no models' sitemaps).
 
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):

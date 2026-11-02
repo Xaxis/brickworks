@@ -229,7 +229,7 @@ export function personRow(one, words, known) {
   button.type = "button";
   button.className = "cta ghost small follow";
   button.dataset.follow = one.handle;
-  button.textContent = "Follow";
+  button.textContent = say("Follow");
   const told = document.createElement("span");
   told.className = "said";
   told.setAttribute("role", "status");
@@ -335,12 +335,12 @@ function accountPart(state) {
   const places = document.createElement("nav");
   places.setAttribute("aria-label", say("Your account"));
   const counted = { "/notifications": state.notifications, "/feed": state.feed };
-  for (const [href, words, data] of [["/profile", "Your profile", "profile"], ["/notifications", "Notifications", "notifications"],
-    ["/feed", "Your feed", "feed"], ["/profile?tab=saved", "Saved", "saved"], ["/settings", "Settings", "settings"]]) {
+  for (const [href, words, data] of [["/profile", say("Your profile"), "profile"], ["/notifications", say("Notifications"), "notifications"],
+    ["/feed", say("Your feed"), "feed"], ["/profile?tab=saved", say("Saved"), "saved"], ["/settings", say("Settings"), "settings"]]) {
     const link = document.createElement("a");
     link.href = href;
     link.dataset.place = data;
-    link.append(say(words));
+    link.append(words);
     const n = Number(counted[href]) || 0;
     if (n > 0) link.append(" ", badge(n, say("{n} new", { n })));
     if (location.pathname === href) link.setAttribute("aria-current", "page");

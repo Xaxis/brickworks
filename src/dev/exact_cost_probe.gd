@@ -78,7 +78,10 @@ func _run() -> void:
 		for placement: Assistant.Placement in fresh.placements:
 			placement.id = 0
 		_time(assistant, fresh, "  as a whole new design")
-	print("exact cost probe: %s" % ("ok" if _failed == 0 else "%d FAILED" % _failed))
+	if _failed == 0:
+		print("ok   each edit's own exact check is under %.0f ms" % EDIT_BUDGET_MS)
+	else:
+		print("exact cost probe: %d FAILED" % _failed)
 	quit(1 if _failed > 0 else 0)
 
 
