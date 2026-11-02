@@ -31,6 +31,9 @@
 //   7. Deleting an account (POST /api/account?op=delete, the person's own
 //      path) erases its application and its emails.
 //
+// Before either: what testers get is what Pro is (every model kept and
+// commercial use), the desktop app is not sold as theirs, and no ChatGPT.
+//
 // Pictures in --out. It passes when it ends "beta: all ok".
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
@@ -172,6 +175,20 @@ try {
   const off = await api("/api/plans?op=beta");
   const on = off.status === 200 && off.json?.beta === "open";
   console.log(`beta flow: ${site} (beta ${on ? "open" : off.json?.beta || off.status})`);
+
+  // What testers get is what Pro is (2026-11-02, docs/PLANS.md): every model
+  // kept and commercial use. The desktop app is everyone's, and in a browser
+  // only Claude works, so neither is sold as a tester's.
+  {
+    const { page, context } = await open("/beta", { width: 1280, label: "what testers get" });
+    const get = await page.locator("#get").innerText();
+    const heads = await page.$$eval("#get h3", (all) => all.map((one) => one.textContent.trim()));
+    check(`what testers get: ${heads.join(", ")}`, heads.includes("Every model kept") && heads.includes("Commercial use")
+      && !heads.some((one) => /desktop/i.test(one)));
+    check("...no ChatGPT, and other AIs' keys only in the desktop app",
+      !/ChatGPT/.test(get) && get.split(/(?<=[.:;?!])\s+/).every((one) => !/OpenAI|Gemini|your own key\b/.test(one) || /desktop/.test(one)));
+    await context.close();
+  }
 
   if (!on) {
     console.log("The beta off: coming soon, and nothing taken");

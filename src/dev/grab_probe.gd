@@ -92,6 +92,7 @@ func _run() -> void:
 	_verbs = _main.get("_verbs")
 	_grab = _main.get("_grab_drag")
 	_store = _main.get("_store")
+	_own_begin_recorders()
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	if "--survey" in args:
 		for file: String in args:
@@ -119,6 +120,11 @@ func _run() -> void:
 			# Every hose's laying made slower by this many microseconds: the cost
 			# checks must fail on it (FlexFollow.slow_usec).
 			FlexFollow.slow_usec = int(arg.trim_prefix("--slow-lay="))
+		if arg.begins_with("--slow-walk="):
+			# Every room test with a budget made slower by this many microseconds:
+			# a slower machine, whose drag's way runs out of its frame's share
+			# (Grab.slow_usec).
+			Grab.slow_usec = int(arg.trim_prefix("--slow-walk="))
 		if arg == "--check-covers":
 			# Every turned part asked where something is is also worked out
 			# whole, and the two answers compared (Grab.check_covers).
@@ -163,6 +169,26 @@ func _run() -> void:
 		await _move_sweep(listed, rows_out)
 		quit(0)
 		return
+	# --only=a,b: each in turn, in one run.
+	for one: String in only.split(","):
+		await _cases(one, args)
+	if Grab.check_covers:
+		_check("a turned part's cover asked where something is answers as the whole cover does, %d of %d"
+			% [Grab.covers_checked - Grab.covers_differ, Grab.covers_checked], Grab.covers_differ == 0)
+	var file := FileAccess.open(OUT.path_join("timings.json"), FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify(_timings, "  "))
+	print("")
+	if _failures == 0:
+		print("grab: %d checks passed: parts dragged on their joints on real sets, stopped by the "
+			% _passed + "model, gears driven by their teeth, the structure weighed, one undo each")
+	else:
+		print("grab: %d FAILED, %d passed" % [_failures, _passed])
+	quit(1 if _failures > 0 else 0)
+
+
+## The cases [param only] names, every one when it is empty.
+func _cases(only: String, args: PackedStringArray) -> void:
 	for case: Array in CASES:
 		if not only.is_empty() and only != "cases" and not str(case[0]).contains(only):
 			continue
@@ -312,19 +338,6 @@ func _run() -> void:
 				await _hose_set(one[0], one[1], one[2], one[3], one[4] if one.size() > 4 else "")
 	if only.is_empty() or only == "big":
 		await _big()
-	if Grab.check_covers:
-		_check("a turned part's cover asked where something is answers as the whole cover does, %d of %d"
-			% [Grab.covers_checked - Grab.covers_differ, Grab.covers_checked], Grab.covers_differ == 0)
-	var file := FileAccess.open(OUT.path_join("timings.json"), FileAccess.WRITE)
-	if file != null:
-		file.store_string(JSON.stringify(_timings, "  "))
-	print("")
-	if _failures == 0:
-		print("grab: %d checks passed: parts dragged on their joints on real sets, stopped by the "
-			% _passed + "model, gears driven by their teeth, the structure weighed, one undo each")
-	else:
-		print("grab: %d FAILED, %d passed" % [_failures, _passed])
-	quit(1 if _failures > 0 else 0)
 
 
 func _open(path: String) -> bool:
@@ -575,28 +588,44 @@ const HOSES_FRAME_MS := 3.5
 
 ## A grab's hoses laid again cost a drag's frame within its budget (G10),
 ## judged by what load cannot make slower (G13b): each hose laid again where
-## it stands, the fastest of seven layings (FlexFollow.lay_cost). A frame lays
-## while the budget lasts and at least one, so it costs no more than the budget
-## and the costliest laying. The worst frame of the drag, [param worst_ms], is
-## said, not judged: timed by the wall clock, 42080-1's tubes took 16.8 ms of a
-## frame at load 28 and 3.7 on the same code a few minutes later, and held a
-## release.
+## it stands, the fastest of seven layings (FlexFollow.lay_cost), each of its
+## own time (ProbeTime: less the main thread's wait for a CPU), and what is
+## left of the frame for the costliest three times as long at a load past the
+## box's cores (a busy box slows the work itself: 42043-1's took 1.66 ms for
+## 0.94, rel-m247). A frame lays while the budget lasts and at least one, so
+## it costs no more than the budget and the costliest laying. The worst frame
+## of the drag, [param worst_ms], is said, not judged: timed by the wall
+## clock, 42080-1's tubes took 16.8 ms of a frame at load 28 and 3.7 on the
+## same code a few minutes later, and held a release.
 func _lay_checks(name: String, held: Grab, worst_ms: float, rests: int) -> void:
 	var costs := PackedFloat64Array()
+	var busy: float = ProbeTime.box_load()
 	for item: FlexFollow.Item in held.flex.items:
-		costs.append(held.flex.lay_cost(item, held.placed))
+		var fastest: float = INF
+		for _n: int in 7:
+			var span := ProbeTime.Span.new()
+			if held.flex.lay_cost(item, held.placed, 1) <= 0.0:
+				fastest = 0.0
+				break
+			fastest = minf(fastest, span.end().own)
+			busy = maxf(busy, span.busy)
+		costs.append(fastest)
+	var slack: float = ProbeTime.slack(busy)
 	var total: float = 0.0
 	var costliest: float = 0.0
 	for one: float in costs:
 		total += one
 		costliest = maxf(costliest, one)
 	var bent: int = maxi(costs.size(), 1)
-	_check(("%s: laying the %d hoses it bends again costs a few ms a frame (%.2f ms a hose, the fastest of "
-		+ "seven layings each; the drag's worst frame %.2f ms, said, not judged)")
-		% [name, costs.size(), total / float(bent), worst_ms], total / float(bent) <= 2.0)
-	_check(("%s: and they fit a drag's frame (the budget %.1f ms and the costliest laying %.2f: %.2f, of %.1f; "
-		+ "%d frames to lay every one at rest)") % [name, FlexFollow.BUDGET_MS, costliest,
-		FlexFollow.BUDGET_MS + costliest, HOSES_FRAME_MS, rests], FlexFollow.BUDGET_MS + costliest <= HOSES_FRAME_MS)
+	_check(("%s: laying the %d hoses it bends again costs a few ms a frame (%.2f ms a hose, under %.0f, the "
+		+ "fastest of seven layings each, of its own; %s; the drag's worst frame %.2f ms, said, not judged)")
+		% [name, costs.size(), total / float(bent), 2.0 * slack, ProbeTime.load_said(busy), worst_ms],
+		total / float(bent) <= 2.0 * slack)
+	var share: float = (HOSES_FRAME_MS - FlexFollow.BUDGET_MS) * slack
+	_check(("%s: and they fit a drag's frame (the budget %.1f ms and the costliest laying %.2f of its own, "
+		+ "within the %.1f past the budget of %.1f%s; %s; %d frames to lay every one at rest)") % [name,
+		FlexFollow.BUDGET_MS, costliest, share, HOSES_FRAME_MS, ", three times as long at this load"
+		if slack > 1.0 else "", ProbeTime.load_said(busy), rests], costliest <= share)
 	_timings["hoses_cost_" + name.get_slice(":", 0)] = {"hoses": costs.size(), "per_hose_ms": total / float(bent),
 		"costliest_ms": costliest, "worst_frame_ms": worst_ms}
 
@@ -1201,6 +1230,12 @@ func _case(name: String, path: String, want: String) -> void:
 	await _frames(3)
 	await _settled()
 	var placed: Dictionary = grab.placed.duplicate()
+	if grab.mode == "turn" and grab.link.detent > 0.0:
+		# A click hinge stands on one of its clicks: where it stops, found as
+		# it was let go, was kept between two, -144° on 22.5° clicks.
+		var clicks: float = grab.angle / grab.link.detent
+		_check("%s: let go, it stands on one of its %s° clicks (%.2f°)" % [name,
+			Balance.tidy(grab.link.detent), grab.angle], absf(clicks - roundf(clicks)) < 0.001)
 	_check("%s: let go, it is one step to undo (%s)" % [name, _builder.history_words(1)[0]
 		if _builder.history_depth() > depth else "none"], _builder.history_depth() == depth + 1)
 	if _windowed:
@@ -1298,7 +1333,11 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 	var stop_ok: bool = false
 	var stop_said: String = ""
 	var furthest: float = 0.0
+	# The least and the most it was turned to.
+	var reached := Vector2.ZERO
 	var miss_said: String = ""
+	var drag_us: int = Time.get_ticks_usec()
+	var busy: float = ProbeTime.box_load()
 	for target: float in targets:
 		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
 		var screen: Vector2 = _camera.unproject_position(turned)
@@ -1330,6 +1369,7 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 			stopped_at = NAN
 		if absf(grab.angle) > absf(furthest):
 			furthest = grab.angle
+		reached = Vector2(minf(reached.x, grab.angle), maxf(reached.y, grab.angle))
 		if not mid_shot and _windowed and absf(grab.angle) > 40.0:
 			mid_shot = true
 			await _shot(name, "2_mid")
@@ -1352,7 +1392,21 @@ func _turn_drag(name: String, grab: Grab, want: String) -> void:
 	if not stop_said.is_empty():
 		_check("%s: it stops where the model is: %s" % [name, stop_said], stop_ok)
 	else:
-		print("    (nothing stopped it over ±150°)")
+		# Nothing stopped it: nothing is in its way either, as far as it went
+		# each way. Shown on trust on a slower machine, its way not tested on
+		# but on a pause, 4903-1's click hinge went through its base to 150°.
+		_check("%s: nothing stopped it from %.1f° to %.1f°, and nothing is in its way there" % [name,
+			reached.x, reached.y], grab.has_room(grab.transforms_at(reached.x))
+			and grab.has_room(grab.transforms_at(reached.y)))
+	if grab.walk_budget_ms < INF:
+		# Its way, where a move's frame has no time to test all of it, is
+		# tested on in the frames after, a share each (Grab.verify_step):
+		# judged by GrabDrag's own work in the drag's frames, not the box's.
+		var own: PackedFloat64Array = _own_since(drag_us)
+		busy = maxf(busy, ProbeTime.box_load())
+		var bar: float = 1000.0 / 60.0 * ProbeTime.slack(busy)
+		_check("%s: the drag's frames keep to a frame, its way tested on in %d of them: %s of GrabDrag's own (bar %.1f, %s)"
+			% [name, grab.walks_on, _own_said(own), bar, ProbeTime.load_said(busy)], _most(own) <= bar)
 	if want == "gear" and grab.coupled.is_empty():
 		print("    (no gears turned: trains read %s, this grab's %s, ready %s; %s; pressed #%d %s)" % [
 			_grab._mechanism != null, grab.mechanism != null, _grab.is_ready(), grab.gear_note,
@@ -1641,10 +1695,14 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 			slop = (_camera.unproject_position(on + tangent.normalized() * 3.0) - screen).normalized() * 7.0
 	# What a frame costs with nothing moving: drawing the model and the window.
 	_cost_idle.clear()
+	var idle_busy: float = ProbeTime.box_load()
+	var idle_ran := PackedFloat64Array()
 	for _n: int in 30:
 		var idle_began: int = Time.get_ticks_usec()
+		var r0: float = ProbeTime.ran_ms()
 		await _frames(1)
 		_cost_idle.append(float(Time.get_ticks_usec() - idle_began) / 1000.0)
+		idle_ran.append(ProbeTime.ran_ms() - r0)
 	await _move(screen, 0)
 	await _button(screen, true)
 	await _move(screen + slop, MOUSE_BUTTON_MASK_LEFT)
@@ -1711,12 +1769,15 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 	var form := {"prev": NAN}
 	var frame_worst: float = 0.0
 	var whole := PackedFloat64Array()
+	var whole_ran := PackedFloat64Array()
 	_costs_begin()
 	for target: float in targets:
 		var turned: Vector3 = _about(grab.pivot, grab.axis, target) * hold
 		var began: int = Time.get_ticks_usec()
+		var r0: float = ProbeTime.ran_ms()
 		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
 		whole.append(float(Time.get_ticks_usec() - began) / 1000.0)
+		whole_ran.append(ProbeTime.ran_ms() - r0)
 		frame_worst = maxf(frame_worst, whole[whole.size() - 1])
 		_costs_sample()
 		if grab.stopped:
@@ -1768,10 +1829,20 @@ func _loop_case(name: String, path: String, kind: String) -> void:
 		# A whole frame is the window's own frame, as it costs with nothing
 		# moving, plus the drag's work: drawing what moved adds next to
 		# nothing. Under xvfb the window's own frame is most of it, its
-		# picture copied to the screen in software (section 13).
-		var drawn: float = _mean(whole) - _mean(_cost_idle) - _mean(_cost_drag)
-		_check("%s: a drag frame is the window's idle frame and the drag's own work, the drawing %.1f ms more on average (whole %s; idle %s; the drag's own %s)"
-			% [name, drawn, _spread(whole), _spread(_cost_idle), _spread(_cost_drag)], drawn < 4.0)
+		# picture copied to the screen in software (section 13). Each frame is
+		# judged by its time on a CPU, the main thread's (ProbeTime.ran_ms): on
+		# a loaded box the clock, less the main thread's wait for a CPU, still
+		# held its wait for that copy, which the box slows unevenly: 14.7 ms
+		# more a drag frame at load 57, -2.8 at 22. The GPU's time is said
+		# with the costs above.
+		var drawn: float = _mean(whole_ran) - _mean(idle_ran) - _mean(_cost_drag)
+		idle_busy = maxf(idle_busy, ProbeTime.box_load())
+		var bar: float = 4.0 * ProbeTime.slack(idle_busy)
+		_check(("%s: a drag frame is the window's idle frame and the drag's own work, the drawing %.1f ms more "
+			+ "on average, under %.0f (each frame's time on a CPU, the main thread's: whole %s; idle %s; the "
+			+ "drag's own %s; %s; on the clock whole %s, idle %s)") % [name, drawn, bar, _spread(whole_ran),
+			_spread(idle_ran), _spread(_cost_drag), ProbeTime.load_said(idle_busy), _spread(whole),
+			_spread(_cost_idle)], drawn < bar)
 	print("    the slowest part to test: %s" % grab.slowest_said)
 	_timings[name] = {"frames": _grab.frames, "worst_ms": snappedf(_grab.worst_ms, 0.01),
 		"mean_ms": snappedf(_grab.mean_ms, 0.01), "worst_follow_ms": snappedf(_grab.worst_follow_ms, 0.01),
@@ -2825,15 +2896,17 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 	var poses: Array = []
 	var pose_keys: Array = grab.moving.keys()
 	pose_keys.sort()
-	# The drag's own work each frame (GrabDrag.last_motion_ms), and where the
-	# rod was at the last.
+	# The drag's own work each frame (GrabDrag.last_motion_ms) less the main
+	# thread's wait for a CPU while it was done, and where the rod was at the
+	# last.
 	var own := PackedFloat64Array()
 	var last_e: float = 0.0
+	var busy: float = ProbeTime.box_load()
 	for target: float in targets:
 		var began: int = Time.get_ticks_usec()
 		await _move(_camera.unproject_position(hold + way * target), MOUSE_BUTTON_MASK_LEFT)
 		frame_worst = maxf(frame_worst, float(Time.get_ticks_usec() - began) / 1000.0)
-		own.append(_grab.last_motion_ms)
+		own.append(maxf(_grab.last_motion_ms - _move_waited, 0.0))
 		var origins: Array = []
 		for key: int in pose_keys:
 			var o: Vector3 = (grab.placed.get(key, _world.get_brick(key).transform) as Transform3D).origin
@@ -2897,9 +2970,12 @@ func _actuator_case(name: String, path: String, reaches_an_end: bool = false) ->
 		own_mean += ms / maxf(own.size(), 1.0)
 	var own_95: float = sorted_own[mini(sorted_own.size() - 1, int(sorted_own.size() * 0.95))] \
 		if not sorted_own.is_empty() else 0.0
-	_check("%s: the drag's own work a frame, mean %.1f ms, 95%% %.1f, worst %.1f, within a 33 ms frame"
-		% [name, own_mean, own_95, sorted_own[sorted_own.size() - 1] if not sorted_own.is_empty() else 0.0],
-		not own.is_empty() and own_mean <= 33.0 and own_95 <= 33.0)
+	busy = maxf(busy, ProbeTime.box_load())
+	_check(("%s: the drag's own work a frame, mean %.1f ms, 95%% %.1f, worst %.1f, within a %.0f ms frame "
+		+ "(less the main thread's wait for a CPU; %s)") % [name, own_mean, own_95,
+		sorted_own[sorted_own.size() - 1] if not sorted_own.is_empty() else 0.0, 33.0 * ProbeTime.slack(busy),
+		ProbeTime.load_said(busy)], not own.is_empty() and own_mean <= 33.0 * ProbeTime.slack(busy)
+		and own_95 <= 33.0 * ProbeTime.slack(busy))
 	_timings[name + " " + path.get_file()]["p95_ms"] = snappedf(own_95, 0.01)
 	var behind: Array = _left_behind(grab, bodies)
 	_check("%s: nothing it carries is left behind: %d parts moved, %s" % [name, grab.changed().size(),
@@ -3488,7 +3564,7 @@ func _made_fall() -> void:
 		if _windowed and n == 12:
 			await _shot("falling", "2_mid_drag")
 	# Held there a moment: it is weighed every 50 ms.
-	await create_timer(0.08).timeout
+	await _still_for(80.0)
 	await _move(_last_screen + Vector2(0.5, 0), MOUSE_BUTTON_MASK_LEFT)
 	var posed: float = grab.angle
 	print("    posed to %.1f° (asked %.0f°)%s" % [posed, way * 90.0, " — stopped by the model" if grab.stopped else ""])
@@ -3684,7 +3760,7 @@ func _drag_out(moving: PackedInt64Array, bodies: Bodies, degrees: float,
 	for n: int in range(1, steps + 1):
 		var turned: Vector3 = _about(grab.pivot, grab.axis, way * degrees * n / steps) * hold
 		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
-	await create_timer(0.06).timeout
+	await _still_for(60.0)
 	await _move(_last_screen + Vector2(0.5, 0), MOUSE_BUTTON_MASK_LEFT)
 	return grab
 
@@ -3807,9 +3883,13 @@ func _swing_case() -> void:
 	trial.turn_to(grab.angle)
 	trial._settle_joint()
 	var statics: float = trial.angle
+	var let_go_us: int = Time.get_ticks_usec()
+	var busy: float = ProbeTime.box_load()
 	await _button(_last_screen, false)
 	_check("swinging: let go, it swings (%s)" % _grab.last_words, _grab.is_swinging())
 	var drawn: PackedFloat64Array = await _watch_swing("swing_small", 0, 0)
+	var own: PackedFloat64Array = _own_since(let_go_us)
+	busy = maxf(busy, ProbeTime.box_load())
 	var swing: Swing = _grab.last_swing
 	if swing == null:
 		_check("swinging: a swing ran", false)
@@ -3866,9 +3946,11 @@ func _swing_case() -> void:
 	_timings["swing_small"] = {"frames": _grab.swing_frames, "worst_ms": _grab.swing_worst_ms,
 		"mean_ms": _grab.swing_mean_ms, "simulated_s": swing.time, "clock_s": _grab.swing_clock_s,
 		"tests": swing.tests, "worst_test_ms": swing.worst_test_ms}
-	_check("swinging: its frames' own work mean %.2f ms, worst %.2f ms (%d frames, %d room tests, the worst %.2f ms)"
-		% [_grab.swing_mean_ms, _grab.swing_worst_ms, _grab.swing_frames, swing.tests, swing.worst_test_ms],
-		_grab.swing_worst_ms < 33.0)
+	_check(("swinging: its frames' own work %s, under %.0f (less the main thread's wait for a CPU; %s; "
+		+ "on the clock mean %.2f, worst %.2f ms; %d frames, %d room tests, the worst %.2f ms)")
+		% [_own_said(own), 33.0 * ProbeTime.slack(busy), ProbeTime.load_said(busy), _grab.swing_mean_ms,
+		_grab.swing_worst_ms, _grab.swing_frames, swing.tests, swing.worst_test_ms],
+		not own.is_empty() and _most(own) < 33.0 * ProbeTime.slack(busy))
 	_builder.undo()
 	await _frames(3)
 	_check("swinging: one undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
@@ -3918,7 +4000,7 @@ func _swing_case() -> void:
 	if grab != null:
 		depth = _builder.history_depth()
 		await _button(_last_screen, false)
-		await create_timer(0.15).timeout
+		await _still_for(150.0)
 		var caught_at: float = (_grab.get("_swinging") as Grab).angle if _grab.is_swinging() else NAN
 		await _button(_last_screen, true)
 		await _button(_last_screen, false)
@@ -4035,8 +4117,12 @@ func _double_case() -> void:
 	var static_inner: float = trial.angle
 	if _windowed:
 		await _shot("double", "0_held")
+	var let_go_us: int = Time.get_ticks_usec()
+	var busy: float = ProbeTime.box_load()
 	await _button(_last_screen, false)
 	var drawn: PackedFloat64Array = await _watch_swing("double", 3, 14)
+	var own: PackedFloat64Array = _own_since(let_go_us)
+	busy = maxf(busy, ProbeTime.box_load())
 	var swing: Swing = _grab.last_swing
 	print("    said: %s" % _grab.last_words)
 	_check("double pendulum: both joints swing together (%d joints)" % (swing.joints.size() if swing else 0),
@@ -4058,9 +4144,11 @@ func _double_case() -> void:
 	_timings["double"] = {"frames": _grab.swing_frames, "worst_ms": _grab.swing_worst_ms,
 		"mean_ms": _grab.swing_mean_ms, "simulated_s": swing.time, "clock_s": _grab.swing_clock_s,
 		"tests": swing.tests, "worst_test_ms": swing.worst_test_ms}
-	_check("double pendulum: its frames' own work mean %.2f ms, worst %.2f ms (%d frames; %.2f s simulated, %.2f on the clock)"
-		% [_grab.swing_mean_ms, _grab.swing_worst_ms, _grab.swing_frames, swing.time, _grab.swing_clock_s],
-		_grab.swing_worst_ms < 33.0)
+	_check(("double pendulum: its frames' own work %s, under %.0f (less the main thread's wait for a CPU; %s; "
+		+ "on the clock mean %.2f, worst %.2f ms; %d frames; %.2f s simulated, %.2f on the clock)")
+		% [_own_said(own), 33.0 * ProbeTime.slack(busy), ProbeTime.load_said(busy), _grab.swing_mean_ms,
+		_grab.swing_worst_ms, _grab.swing_frames, swing.time, _grab.swing_clock_s],
+		not own.is_empty() and _most(own) < 33.0 * ProbeTime.slack(busy))
 	if _windowed:
 		await _shot("double", "9_rest")
 	_builder.undo()
@@ -4384,16 +4472,17 @@ func _coast_case() -> void:
 		await _camera_still()
 		var before: Dictionary = _snapshot()
 		var depth: int = _builder.history_depth()
+		var busy: float = ProbeTime.box_load()
 		var flick: Array = await _flick(bodies.members[wheel], bodies, FLICK_RATE, FLICK_S, name, slow_ms)
 		var grab: Grab = flick[0]
 		if grab == null:
 			continue
 		var swinging: Grab = _grab.get("_swinging")
 		var swing: Swing = swinging.swing if swinging != null else null
-		# Within 15%: the pointer's rate is the probe's, by when it asked for
-		# each move; the app reads each move a frame later, when it comes, and
-		# on a loaded box one frame late in the last tenth of a second moved
-		# the reading 11% (1,195° a second). On a quiet box it reads to 1%.
+		# Within 15%: the pointer's rate is the probe's, by the clock as it put
+		# each move (_flick), and the grab reads it from when each came. While
+		# the app read each move only as the next frame began, a loaded box's
+		# uneven frames moved the reading by a fifth and more (rel-m247).
 		_check("%s: let go while it turns, it carries on at the pointer's speed: %.0f° a second against the pointer's %.0f"
 			% [name, absf(rad_to_deg(swing.flung)) if swing != null else 0.0, float(flick[1])], swing != null
 			and absf(absf(rad_to_deg(swing.flung)) - float(flick[1])) <= float(flick[1]) * 0.15)
@@ -4412,6 +4501,8 @@ func _coast_case() -> void:
 					await _clean_shot("coast " + ("train" if train else "flywheel") + ("_slow" if slow_ms > 0 else ""), "2_mid")
 			await process_frame
 		await _settled()
+		var own: PackedFloat64Array = _own_since(int(flick[3]))
+		busy = maxf(busy, ProbeTime.box_load())
 		print("    mid-coast the status line said: %s; the app's own work at the let-go %.2f ms, at the keep %.2f ms"
 			% [said_mid, _grab.let_go_ms, _grab.kept_ms])
 		_check("%s: while it coasts the status line says so: %s" % [name, said_mid], said_mid.contains("coasting at"))
@@ -4439,9 +4530,11 @@ func _coast_case() -> void:
 			"coast_s": took, "by_hand_s": hand["seconds"], "swing_frames": _grab.swing_frames,
 			"swing_mean_ms": _grab.swing_mean_ms, "swing_worst_ms": _grab.swing_worst_ms,
 			"clock_s": _grab.swing_clock_s}
-		_check("%s: its own work a coasting frame, mean %.2f ms, worst %.2f, within a 33 ms frame" % [name,
-			_grab.swing_mean_ms, _grab.swing_worst_ms], _grab.swing_frames > 0 and _grab.swing_mean_ms <= 33.0
-			and _grab.swing_worst_ms <= 33.0)
+		_check(("%s: its own work a coasting frame %s, within a %.0f ms frame (less the main thread's wait "
+			+ "for a CPU; %s; on the clock mean %.2f, worst %.2f ms)") % [name, _own_said(own),
+			33.0 * ProbeTime.slack(busy), ProbeTime.load_said(busy), _grab.swing_mean_ms, _grab.swing_worst_ms],
+			_grab.swing_frames > 0 and not own.is_empty() and _mean(own) <= 33.0 * ProbeTime.slack(busy)
+			and _most(own) <= 33.0 * ProbeTime.slack(busy))
 		_check("%s: let go, it says how it spun and where it stopped: %s" % [name, _grab.last_words],
 			_grab.last_words.contains("coasted") and _grab.last_words.contains("came to rest at"))
 		if train:
@@ -4527,7 +4620,7 @@ func _hinge_flick() -> void:
 ## [param rate] degrees a second by the clock for [param seconds], then let
 ## go while it still turns: [the grab or null, the pointer's rate over its
 ## last tenth of a second by the probe's own clock, the turn as it was let
-## go].
+## go, the clock's usec as the button came up].
 func _flick(ids: PackedInt64Array, bodies: Bodies, rate: float, seconds: float, name: String,
 		slow_ms: int = 0) -> Array:
 	var joined: Bodies.Link = bodies.parent_link[int(bodies.body_of[int(ids[0])])]
@@ -4547,16 +4640,37 @@ func _flick(ids: PackedInt64Array, bodies: Bodies, rate: float, seconds: float, 
 		await _button(_last_screen, false)
 		return [null, 0.0, 0.0]
 	var hold: Vector3 = grab._hold
-	var began: int = Time.get_ticks_usec()
 	var asked: Array = []   ## [s, degrees]
 	var start: float = grab.angle
+	# Each move put to the app as it is made, as a frame begins, where the
+	# pointer is then: a real pointer's moves are read as a frame begins,
+	# where it is then. Queued as other moves are (Input's accumulated
+	# moves), a move was read only as the next frame began, and how long
+	# after it was made the box decided (1 ms one frame, 46 the next at load
+	# 29): the app read the flick up to a third slow or fast against the
+	# clock it was made by (rel-m247: 892° a second for 1080; 1,422 once).
+	var accumulated: bool = Input.use_accumulated_input
+	Input.use_accumulated_input = false
+	await process_frame
+	var began: int = Time.get_ticks_usec()
+	var at_once: int = 0
+	var latest_ms: float = 0.0
 	while true:
-		var t: float = float(Time.get_ticks_usec() - began) / 1000000.0
+		var made: int = Time.get_ticks_usec()
+		var t: float = float(made - began) / 1000000.0
 		var target: float = start + rate * t
 		asked.append([t, target])
-		await _move(_camera.unproject_position(_about(grab.pivot, grab.axis, target) * hold), MOUSE_BUTTON_MASK_LEFT)
+		_put_move(_camera.unproject_position(_about(grab.pivot, grab.axis, target) * hold), MOUSE_BUTTON_MASK_LEFT)
+		var noted: int = int(grab._turns_seen[grab._turns_seen.size() - 1][0]) if not grab._turns_seen.is_empty() else 0
+		if noted >= made:
+			at_once += 1
+			latest_ms = maxf(latest_ms, (noted - made) / 1000.0)
 		if t >= seconds:
 			break
+		await process_frame
+	Input.use_accumulated_input = accumulated
+	_check("%s: each move reached the grab as it was put (%d of %d, the latest %.2f ms after)" % [name, at_once,
+		asked.size(), latest_ms], at_once == asked.size())
 	var let_go_at: float = grab.angle
 	if slow_ms > 0:
 		# One slow frame between the last move and the button coming up, slow
@@ -4564,6 +4678,7 @@ func _flick(ids: PackedInt64Array, bodies: Bodies, rate: float, seconds: float, 
 		# in software): the release is read at the start of the next.
 		await RenderingServer.frame_post_draw
 		OS.delay_msec(slow_ms)
+	var let_go_us: int = Time.get_ticks_usec()
 	await _button(_last_screen, false)
 	# The pointer's own rate over its last tenth of a second, by the probe's
 	# clock: what the grab reads from the moves it was given. From the last
@@ -4579,7 +4694,7 @@ func _flick(ids: PackedInt64Array, bodies: Bodies, rate: float, seconds: float, 
 	var measured: float = (float(asked[asked.size() - 1][1]) - float(first[1])) / maxf(t_end - float(first[0]), 0.001)
 	print("    flicked at %.0f° a second for %.2f s in %d moves; the grab read %.0f° a second" % [measured, seconds,
 		asked.size(), rad_to_deg(_grab.held_fling)])
-	return [grab, absf(measured), let_go_at]
+	return [grab, absf(measured), let_go_at, let_go_us]
 
 
 ## A train coasting, by hand from its parts: each part's mass (Stability's)
@@ -5171,7 +5286,7 @@ func _chain_case(name: String, path: String, end: String) -> void:
 	await _move(screen, 0)
 	await _button(screen, true)
 	# Held still, as a person does to take it by its chain.
-	await create_timer(0.5).timeout
+	await _still_for(500.0)
 	await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
 	var links: GrabChain = _grab.chain
 	_check("%s: held still then dragged, it is taken by its chain (%s)" % [name,
@@ -7568,6 +7683,7 @@ func _big() -> void:
 	var pressed_any: bool = false
 	var screen := Vector2.ZERO
 	var grabbed_ms: float = 0.0
+	var grabbed: ProbeTime.Span = null
 	var grab: Grab = null
 	for entry: Array in tried.slice(0, 12):
 		var press: Dictionary = _press_point(bodies.members[int(entry[1])], bodies)
@@ -7577,9 +7693,9 @@ func _big() -> void:
 		screen = press["screen"]
 		await _move(screen, 0)
 		await _button(screen, true)
-		var began: int = Time.get_ticks_usec()
+		grabbed = ProbeTime.Span.new()
 		await _move(screen + Vector2(0, 7), MOUSE_BUTTON_MASK_LEFT)
-		grabbed_ms = float(Time.get_ticks_usec() - began) / 1000.0
+		grabbed_ms = grabbed.end().ms
 		grab = _grab.grab
 		if grab != null and grab.state == "moves":
 			break
@@ -7601,16 +7717,24 @@ func _big() -> void:
 		_differs(before) == "none differs")
 	var frame_worst: float = 0.0
 	var frame_total: float = 0.0
+	# The drag's own work each frame (GrabDrag.last_motion_ms) less the main
+	# thread's wait for a CPU while it was done.
+	var drag_own := PackedFloat64Array()
+	var busy: float = ProbeTime.box_load()
 	for n: int in 60:
 		var turned: Vector3 = _about(grab.pivot, grab.axis if grab.axis != Vector3.ZERO
 			else Vector3.UP, 3.0 * n) * grab._hold
 		var at: int = Time.get_ticks_usec()
+		var frames_before: int = _grab.frames
 		await _move(_camera.unproject_position(turned), MOUSE_BUTTON_MASK_LEFT)
 		var spent: float = float(Time.get_ticks_usec() - at) / 1000.0
 		frame_worst = maxf(frame_worst, spent)
 		frame_total += spent
+		if _grab.frames > frames_before:
+			drag_own.append(maxf(_grab.last_motion_ms - _move_waited, 0.0))
 	if _windowed:
 		await _shot("big", "2_mid")
+	var let_go_us: int = Time.get_ticks_usec()
 	await _button(_last_screen, false)
 	var settling: int = Time.get_ticks_msec()
 	await _settled()
@@ -7629,13 +7753,19 @@ func _big() -> void:
 		+ "mean %.1f ms, worst %.1f ms") % [_world.brick_count(), grab.said, grab.moving.size(),
 		grabbed_ms, _grab.frames, _grab.mean_ms, _grab.worst_ms, _grab.worst_follow_ms,
 		_grab.worst_weigh_ms, frame_total / 60.0, frame_worst])
-	_check("the grab began within 200 ms at %d parts (%.0f ms)" % [_world.brick_count(), grabbed_ms],
-		grabbed_ms < 200.0)
-	_check("a drag frame's work at %d parts is under 33 ms on average and 100 at worst (%.2f, %.2f)"
-		% [_world.brick_count(), _grab.mean_ms, _grab.worst_ms],
-		_grab.mean_ms < 33.0 and _grab.worst_ms < 100.0)
-	_check("let go, no frame of checking and keeping it is over 100 ms (%.1f)" % _grab.worst_settle_ms,
-		_grab.worst_settle_ms < 100.0)
+	var settle_own: PackedFloat64Array = _own_since(let_go_us)
+	busy = maxf(maxf(busy, grabbed.busy), ProbeTime.box_load())
+	var slack: float = ProbeTime.slack(busy)
+	_check("the grab began within %.0f ms at %d parts (%s)" % [200.0 * grabbed.slack(), _world.brick_count(),
+		grabbed.said()], grabbed.own < 200.0 * grabbed.slack())
+	_check(("a drag frame's own work at %d parts is under %.0f ms on average and %.0f at worst (%s, less the "
+		+ "main thread's wait for a CPU; %s; on the clock %.2f, %.2f)") % [_world.brick_count(), 33.0 * slack,
+		100.0 * slack, _own_said(drag_own), ProbeTime.load_said(busy), _grab.mean_ms, _grab.worst_ms],
+		not drag_own.is_empty() and _mean(drag_own) < 33.0 * slack and _most(drag_own) < 100.0 * slack)
+	_check(("let go, no frame of checking and keeping it is over %.0f ms of its own (%s, less the main "
+		+ "thread's wait for a CPU; %s; on the clock the worst %.1f)") % [100.0 * slack, _own_said(settle_own),
+		ProbeTime.load_said(busy), _grab.worst_settle_ms], not settle_own.is_empty()
+		and _most(settle_own) < 100.0 * slack)
 	_builder.undo()
 	await _frames(3)
 	_check("big: one undo puts every part back exactly (%s)" % _differs(before),
@@ -7815,7 +7945,7 @@ func _costs_sample() -> void:
 	_cost_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(viewport)
 		+ RenderingServer.get_frame_setup_time_cpu())
 	_cost_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(viewport))
-	_cost_drag.append(_grab.last_motion_ms)
+	_cost_drag.append(maxf(_grab.last_motion_ms - _move_waited, 0.0))
 	_cost_flush.append(_world.rebuilt_ms)
 	_cost_batches = maxi(_cost_batches, _world.rebuilt_batches)
 	_world.rebuilt_ms = 0.0
@@ -7945,6 +8075,19 @@ func _frames(count: int) -> void:
 		await process_frame
 
 
+## [param ms] by the clock, a frame at a time: the pointer held still for a
+## moment, as the app reads it (Grab.fling_rate, a press held by its clock).
+## Not a SceneTree timer: it counts the steps of the frames it sees, the first
+## the whole step of the frame it was made in, which began before it, so after
+## a slow frame on a loaded box it ended in the frame it was made. The pointer
+## had not stood still, and a beam let go from rest was flung on (rel-m247's
+## swing lost 3.632° a half swing for 4.304°).
+func _still_for(ms: float) -> void:
+	var from: int = Time.get_ticks_usec()
+	while Time.get_ticks_usec() - from < int(ms * 1000.0):
+		await process_frame
+
+
 func _as_event(at: Vector2) -> Vector2:
 	var rect: Vector2 = root.get_visible_rect().size
 	var window := Vector2(DisplayServer.window_get_size())
@@ -7954,6 +8097,31 @@ func _as_event(at: Vector2) -> Vector2:
 
 
 func _move(at: Vector2, mask: int) -> void:
+	_put_move(at, mask)
+	_read_waited = NAN
+	physics_frame.connect(_note_read, CONNECT_ONE_SHOT)
+	await _frames(_move_frames)
+	if physics_frame.is_connected(_note_read):
+		physics_frame.disconnect(_note_read)
+	_move_waited = (ProbeTime.waited_ms() if is_nan(_read_waited) else _read_waited) - _heard.waited
+
+
+## The main thread's wait for a CPU, ms, from when the last move reached the
+## app to the physics step just after it was read (or, a frame with none, to
+## when the probe went on): what of the drag's own work
+## (GrabDrag.last_motion_ms) was the box's. To when the probe went on, it
+## took in the frame's drawing too, and a wait there hid the drag's own.
+var _move_waited: float = 0.0
+var _read_waited: float = NAN
+
+
+func _note_read() -> void:
+	_read_waited = ProbeTime.waited_ms()
+
+
+## The pointer moved to [param at], the app to read it as the next frame
+## begins.
+func _put_move(at: Vector2, mask: int) -> void:
 	var move := InputEventMouseMotion.new()
 	move.position = _as_event(at)
 	move.global_position = move.position
@@ -7961,7 +8129,6 @@ func _move(at: Vector2, mask: int) -> void:
 	move.button_mask = mask
 	Input.parse_input_event(move)
 	_last_screen = at
-	await _frames(_move_frames)
 
 
 func _button(at: Vector2, down: bool) -> void:
@@ -7981,3 +8148,84 @@ func _shot(name: String, when: String) -> void:
 	var path: String = OUT.path_join("%s_%s.png" % [name.replace(" ", "_"), when])
 	image.save_png(path)
 	print("    picture: %s" % path)
+
+
+# -- the app's own time -----------------------------------------------------------
+
+## Releases run this probe four at a time on a box that other work shares, at
+## a load of 15 to 45 on 12 cores, and its bars on the clock counted the box
+## against the app: rel-m247 held twice on code identical to what was live.
+## So each bar on a time judges the app's own (ProbeTime): the clock's time
+## less the main thread's wait for a CPU, the bar three times as long at a
+## load past the box's cores. Where the app times its own work (GrabDrag),
+## the wait is read either side of where it does it: a move's, from the first
+## _input to hear it to the probe's next turn ([member _heard]); what is let
+## go, from just before GrabDrag's _process to just after ([member _beside]).
+var _heard: Heard
+var _beside: Beside
+
+
+func _own_begin_recorders() -> void:
+	_heard = Heard.new()
+	root.add_child(_heard)
+	_beside = Beside.new()
+	var after := Beside.new()
+	after.before = _beside
+	var parent: Node = _grab.get_parent()
+	parent.add_child(_beside)
+	parent.move_child(_beside, _grab.get_index())
+	_grab.add_sibling(after)
+
+
+## GrabDrag's own work in each frame since [param from] (usec), ms: its
+## _process on the clock less the main thread's wait for a CPU in it.
+func _own_since(from: int) -> PackedFloat64Array:
+	var out := PackedFloat64Array()
+	for frame: Array in _beside.frames:
+		if int(frame[0]) >= from:
+			out.append(maxf(float(frame[1]) - float(frame[2]), 0.0))
+	return out
+
+
+## Of [param frames], the most and the mean, ms: "mean 0.31, worst 2.07 ms".
+static func _own_said(frames: PackedFloat64Array) -> String:
+	var most: float = 0.0
+	for ms: float in frames:
+		most = maxf(most, ms)
+	return "mean %.2f, worst %.2f ms" % [_mean(frames), most]
+
+
+static func _most(frames: PackedFloat64Array) -> float:
+	var most: float = 0.0
+	for ms: float in frames:
+		most = maxf(most, ms)
+	return most
+
+
+## The main thread's wait for a CPU when the last event reached the app.
+## Added last to the tree, its _input is the first to hear an event.
+class Heard extends Node:
+	var waited: float = 0.0
+
+	func _input(_event: InputEvent) -> void:
+		waited = ProbeTime.waited_ms()
+
+
+## Two of these either side of GrabDrag among its siblings, processed just
+## before it and just after: each frame's [end usec, its _process on the
+## clock, ms, of them the main thread's wait for a CPU], on the one before.
+class Beside extends Node:
+	var before: Beside = null
+	var frames: Array = []
+	var _from: int = 0
+	var _waited: float = 0.0
+
+	func _process(_delta: float) -> void:
+		if before == null:
+			_from = Time.get_ticks_usec()
+			_waited = ProbeTime.waited_ms()
+			if frames.size() > 4000:
+				frames = frames.slice(2000)
+			return
+		var now: int = Time.get_ticks_usec()
+		before.frames.append([now, (now - before._from) / 1000.0, ProbeTime.waited_ms() - before._waited])

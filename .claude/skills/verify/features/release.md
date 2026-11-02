@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:desktop token key, cli:outside probe -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe -->
 
 ## Sub-features
 
@@ -146,12 +146,6 @@ that offers each system its own build. The cycle and its cadence are
   asset's bytes, followed to the signed URL, the token never sent past the
   API): the check that still means something once the repo is private (U8).
   Both ways 15 of 15 on 2026-10-29 (a gh token standing in).
-- `desktop token key` (`tools/desktop_key.mjs`): `new FILE` makes the RSA key
-  a desktop token is signed with, the private half to FILE (0600, never over
-  another) and only the public half's id and KEYS line printed; `public`
-  prints the id of the key in DESKTOP_TOKEN_KEY; `sign FILE JSON` signs claims
-  with a test key (the desktop pass probe's). docs/RELEASING.md, "The desktop
-  token's key", says how to set and rotate it.
 - `download page`: `web/download.html` with `web/download.js`, served at
   `/download` (tools/site.py copies every file in `web/`; the old
   `/download.html` 308s to `/download`). Reads same-origin `releases.json`, detects the
@@ -167,7 +161,9 @@ that offers each system its own build. The cycle and its cadence are
   sentences. A phone is told the desktop app is for a computer and offered
   the web app first. No release in the manifest reads "on its way" with a
   link to the web app (2026-10-20: the owner found the page that listed
-  everything at once broken and "way too verbose").
+  everything at once broken and "way too verbose"). Free, like the web app
+  (2026-11-02, docs/PLANS.md): every link is the file's public address, with
+  no sign-in and no plan asked.
 - `download page check`: `tools/web/download_check.mjs` serves `web/` with a
   CSP at least as strict as the site's and loads the page as Linux, macOS,
   Windows and an Android phone through the DevTools protocol, then checks
@@ -364,8 +360,10 @@ windows the windows zip, each as the one primary button with the version and
 size, about 100 words before anything is opened (150 at most); the phone is
 offered the web app first and told why; the other systems are one click away,
 each with its own steps and checksums, nothing past the edge at 1280 or 390 px
-with everything opened; every link answers; nothing is refused by the CSP; it
-ends `the download page offers each system its own build`. With a manifest
+with everything opened; every link answers; nothing is refused by the CSP;
+the Linux button, pressed, asks its public address and nothing of
+/api/plans, with no sign-in shown (`free linux:`); it ends `the download
+page offers each system its own build`. With a manifest
 that has no release it reads `no release yet` for all four.
 
 ## Gotchas

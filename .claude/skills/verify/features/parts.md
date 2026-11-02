@@ -290,7 +290,9 @@ geometry in front of them.
   and every one of them has to hear that it arrived. Geometry and exact shapes
   (and so the bin's previews) go through one fetch, `PartLibrary._ask`: a fault
   that may pass (no answer, 408, 429, 5xx: `may_pass`) is asked again after
-  `RETRY_AFTER` (2, 6, 12 s), a 404 or the bucket's 400 is final; a part asked
+  `RETRY_AFTER` (2, 6, 12 s), a 404 or the bucket's 400 is final, and a part
+  the web catalogue marks `"exact": false` has its shape kept as none unasked
+  (`fetch_retry_probe`'s 3023); a part asked
   for while it waits joins the wait, and a wait holds no place of the six open
   at once. A model's parts still not come once nothing of it is on its way are
   said once in the status bar ("27 bricks — 2 parts could not be loaded, and

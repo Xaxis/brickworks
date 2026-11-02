@@ -410,7 +410,10 @@ def test_every_email_is_plain_and_html_and_says_what_it_must() -> None:
     approved = got["approved"]["text"]
     assert "spot 7 of 100" in approved and "2 November 2026 to 2 December 2026" in approved
     assert "Nothing is charged, no card is asked for, and nothing is deleted" in approved
-    assert "more than 25 models" in approved and "desktop app" in approved
+    assert "more than 25 models" in approved and "commercial use" in approved
+    # The desktop app is free to everyone (2026-11-02): no mail sells it as Pro's.
+    for kind in ("approved", "started"):
+        assert not re.search(r"desktop", got[kind]["text"] + got[kind]["html"], re.I), kind
     assert "starts the day Pro launches" in got["pending"]["text"]
     assert "spot" not in got["early"]["subject"] and "no end date" in got["early"]["text"]
     assert "apply again from 1 December 2026" in got["declined"]["text"]

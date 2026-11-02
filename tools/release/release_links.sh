@@ -12,13 +12,13 @@
 # too, in seconds. Making Xaxis/brickworks private would have turned every one
 # into a 404 (2026-10-27). ship.sh runs it before a release goes out.
 #
-# With RELEASES_TOKEN set (docs/PLANS.md U5: contents read-only on
-# Xaxis/brickworks-releases), the releases repo's addresses are asked the
-# way /api/plans?op=download asks them, through GitHub's API with the token:
-# a release by its tag, a file as its asset's bytes (a 302 to a signed URL,
-# followed; the token is never sent past GitHub's API). That is the check
-# that still means something once the repo is private (U8); without the
-# token, a private repo's every address fails here, as it would for a person.
+# With RELEASES_TOKEN set (contents read-only on Xaxis/brickworks-releases),
+# the releases repo's addresses are asked through GitHub's API with the
+# token: a release by its tag, a file as its asset's bytes (a 302 to a signed
+# URL, followed; the token is never sent past GitHub's API). That is the
+# check that would still mean something were the repo ever private; without
+# the token, a private repo's every address fails here, as it would for a
+# person. The desktop is free (docs/PLANS.md, 2026-11-02), so it stays public.
 set -u
 M=${1:-$(cd "$(dirname "$0")/../.." && pwd)/web/releases.json}
 [ -f "$M" ] || { echo "release_links: no manifest at $M"; exit 2; }

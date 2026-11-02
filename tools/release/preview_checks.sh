@@ -266,10 +266,9 @@ declare -A CMD=(
   # throwaway account with three of its lots, and its wanted list; Open its
   # parts in Brickworks landing in the app's bin; and the sets' sitemaps.
   [sets_flow]="tools/web/sets_flow.mjs --url=$P --out=$S/${TAG}_sets_flow"
-  # local only: download_check.mjs's gated half (a Free click refused with
-  # the way to Pro, a Pro click sent to the route's address). Every
-  # deployment answers "not gated" until the owner turns billing on (U8),
-  # so there it checks the public links, as before.
+  # The download page: each system its own build, every link answering, and
+  # the Linux button asking its public address with no sign-in and nothing
+  # of /api/plans (the desktop is free, docs/PLANS.md, 2026-11-02).
   [download]="tools/web/download_check.mjs --url=$P/download"
   # Plans, coming soon (web/plans.html, supabase/plan_interest.sql): the page
   # at 390 and 1400, light and dark; its form refusing a bad address, then a

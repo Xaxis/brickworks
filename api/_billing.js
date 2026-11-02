@@ -30,16 +30,16 @@
 //            the account brought up to now: refuse what it does not include
 //   unknown  Admission cannot be reached and has no snapshot of this
 //            account, or was asked wrongly: refuse nothing on it, since
-//            this could be someone who pays, and grant nothing lasting on
-//            it either (a desktop token, U6): ask again later
+//            this could be someone who pays: ask again later
 //
-// mostModels and mayDesktop say that rule once for the routes that use it.
+// mostModels says that rule once for the routes that use it.
 //
 // AI is never limited, on any plan (the owner, 2026-10-29): people bring
-// their own, their Claude or ChatGPT or their own key, and Brickworks pays
-// for no tokens and counts no AI use. What Free holds back is how many
-// models an account keeps with it (saved_models, api/models.js) and the
-// desktop app.
+// their own, and Brickworks pays for no tokens and counts no AI use. The
+// desktop app is free (2026-11-02). What Free holds back is how many models
+// an account keeps with it (saved_models, api/models.js); Pro adds a licence
+// for commercial use (commercial_use), a promise of the terms, not anything
+// the app checks: the terms that grant it come with Pro (docs/PLANS.md).
 //
 // Paying (unit U3): Stripe Checkout and its billing portal are Admission's,
 // asked through checkout and portal on the client (api/plans.js ?op=checkout,
@@ -64,12 +64,12 @@ import { originOf } from "./_oauth.js";
 /// Admission's names for Brickworks (docs/PLANS.md, section 1).
 export const PRODUCT = "brickworks";
 export const SAVED_MODELS = "saved_models";
-export const DESKTOP = "desktop";
+export const COMMERCIAL_USE = "commercial_use";
 
 /// What /plans says when Admission cannot: section 1 of docs/PLANS.md.
 export const PUBLISHED = Object.freeze({
-  free: { key: "free", name: "Free", savedModels: 25, desktop: false, prices: {}, currency: "usd" },
-  pro: { key: "pro", name: "Pro", savedModels: "unlimited", desktop: true, prices: { month: 800, year: 8000 },
+  free: { key: "free", name: "Free", savedModels: 25, commercialUse: false, prices: {}, currency: "usd" },
+  pro: { key: "pro", name: "Pro", savedModels: "unlimited", commercialUse: true, prices: { month: 800, year: 8000 },
     currency: "usd" },
   forSale: false,
 });
@@ -155,7 +155,7 @@ export function forgetClient() {
 }
 
 const OFF = Object.freeze({ billing: "off", standing: "off", plan: null, owner: false, savedModels: null,
-  desktop: null, subscription: null, freshness: null });
+  commercialUse: null, subscription: null, freshness: null });
 
 const unknown = (billing) => ({ ...OFF, billing, standing: "unknown" });
 
@@ -166,7 +166,7 @@ function entitlementFrom(billing, c) {
   // enough to refuse anybody.
   if (c.freshness === "default") return unknown(billing);
   const saved = c.features?.[SAVED_MODELS];
-  const desktop = c.features?.[DESKTOP];
+  const commercial = c.features?.[COMMERCIAL_USE];
   const s = c.subscription;
   return {
     billing,
@@ -175,7 +175,7 @@ function entitlementFrom(billing, c) {
     owner: c.owner === true,
     // How many models it keeps with the account: limit null for no limit.
     savedModels: saved?.kind === "cap" ? { limit: saved.unlimited ? null : (saved.limit ?? 0) } : null,
-    desktop: desktop?.enabled === true,
+    commercialUse: commercial?.enabled === true,
     subscription: s
       ? { status: s.status, interval: s.interval, periodEnd: s.currentPeriodEnd, endsAt: s.endsAt,
         graceEndsAt: s.graceEndsAt ?? null }
@@ -211,11 +211,6 @@ export function mostModels(e) {
   return e.savedModels.limit;
 }
 
-/// Whether [e] lets its account have the desktop app now (U5, U6).
-export function mayDesktop(e) {
-  return e.standing !== "known" || e.desktop === true;
-}
-
 /// Tells Admission whether the signed-in [claims] are the owner's
 /// (MASTER_EMAIL), so the owner's account has every feature unlimited
 /// (Admission's ADR-0009). Admission is asked only when what the client
@@ -242,12 +237,12 @@ export function offerOf(plans) {
   const one = (key) => {
     const p = plans.plans.find((x) => x.key === key);
     if (!p) return { offer: PUBLISHED[key], status: "retired" };
-    const desktop = amountOf(p.includes, DESKTOP);
+    const commercial = amountOf(p.includes, COMMERCIAL_USE);
     const prices = {};
     for (const price of p.prices) prices[price.interval] = price.amount;
     return {
       offer: { key, name: p.name, savedModels: amountOf(p.includes, SAVED_MODELS),
-        desktop: desktop === "unlimited" || (typeof desktop === "number" && desktop > 0), prices,
+        commercialUse: commercial === "unlimited" || (typeof commercial === "number" && commercial > 0), prices,
         currency: p.prices[0]?.currency ?? "usd" },
       status: p.status,
     };
