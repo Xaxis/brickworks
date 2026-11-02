@@ -76,7 +76,7 @@ func _run() -> void:
 	print("  looked at %d pieces of text" % _looked_at)
 	if _missing.is_empty():
 		print("")
-		print("every character the app shows is one the font can draw")
+		print("ok   every character the app shows is one the font can draw")
 		quit(0)
 		return
 

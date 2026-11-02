@@ -11,6 +11,7 @@ var _camera: CadCamera
 var _library: PartLibrary
 var _grab: GrabDrag
 var _store: ModelStore
+var _failed: int = 0
 
 
 func _initialize() -> void:
@@ -119,6 +120,18 @@ func _run() -> void:
 		worst_tests.append(test_worst)
 		print("  worst frame %.2f ms, worst room test %.2f ms; drag's worst %.2f (%s)" % [frame_worst, test_worst,
 			_grab.worst_ms, _grab.worst_follow_said])
+		# It measured and passed whatever it read until 2026-11-02; a frame past
+		# the grab's own budget is a drag that stutters on a phone.
+		var budget: float = grab.budget_ms if grab.budget_ms < INF else GrabDrag.FRAME_BUDGET_MS
+		if absf(grab.angle) < 1.0:
+			_failed += 1
+			print("  FAIL the wheel did not turn (%.3f°), so its frames prove nothing" % grab.angle)
+		elif frame_worst > budget:
+			_failed += 1
+			print("  FAIL a drag frame took %.2f ms, over the grab's %.0f ms" % [frame_worst, budget])
+		else:
+			print("  ok   the wheel turned %.1f° with every drag frame under the grab's %.0f ms (worst %.2f)"
+				% [grab.angle, budget, frame_worst])
 		var verified: int = 0
 		while grab.unchecked and verified < 200:
 			grab.verify_step()
@@ -138,6 +151,9 @@ func _run() -> void:
 	var total: float = 0.0
 	for v: float in sorted_tests:
 		total += v
-	print("room tests: %d, mean %.3f ms, median %.3f ms, worst %.3f ms" % [sorted_tests.size(),
-		total / maxf(1.0, sorted_tests.size()), sorted_tests[sorted_tests.size() / 2], sorted_tests.back()])
-	quit(0)
+	if sorted_tests.is_empty():
+		print("room tests: none")
+	else:
+		print("room tests: %d, mean %.3f ms, median %.3f ms, worst %.3f ms" % [sorted_tests.size(),
+			total / sorted_tests.size(), sorted_tests[sorted_tests.size() / 2], sorted_tests.back()])
+	quit(1 if _failed > 0 else 0)
