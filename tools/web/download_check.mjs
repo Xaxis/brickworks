@@ -375,7 +375,8 @@ for (const system of SYSTEMS) {
 
 // -- no download is gated ---------------------------------------------------------
 if (release) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 },
+    extraHTTPHeaders: args.url ? bypass : {} });
   const page = await context.newPage();
   const fail = (text) => problems.push(`free download: ${text}`);
   const asked = [];
@@ -383,16 +384,20 @@ if (release) {
   // The file itself is never fetched: its address is all that is checked.
   await page.route("https://github.com/**", (route) => route.abort());
   await page.goto(`${target}?os=linux`, { waitUntil: "load", timeout: 45000 });
-  await page.waitForFunction(() => !document.getElementById("notes").hidden, null, { timeout: 15000 })
-    .catch(() => fail("the page did not draw its offer"));
-  const href = await page.getAttribute("#offer-button", "href");
-  if (href !== primary("linux").url) fail(`the button's link is ${href}, not the manifest's`);
-  const went = page.waitForRequest((r) => r.url() === primary("linux").url, { timeout: 8000 }).catch(() => null);
-  await page.click("#offer-button");
-  if (!(await went)) fail("a click did not go to the file's public address");
-  if (await page.$("#gate-said, dialog[open]")) fail("a click was answered with a refusal or a sign-in");
-  if (asked.length) fail(`the page asked ${asked.join(", ")} before the download`);
-  console.log(`  free     linux: a click goes to ${primary("linux").url.split("/").pop()}, nothing asked first`);
+  const drawn = await page.waitForFunction(() => !document.getElementById("notes")?.hidden, null, { timeout: 15000 })
+    .then(() => true, () => false);
+  if (!drawn) {
+    fail("the page did not draw its offer");
+  } else {
+    const href = await page.getAttribute("#offer-button", "href");
+    if (href !== primary("linux").url) fail(`the button's link is ${href}, not the manifest's`);
+    const went = page.waitForRequest((r) => r.url() === primary("linux").url, { timeout: 8000 }).catch(() => null);
+    await page.click("#offer-button");
+    if (!(await went)) fail("a click did not go to the file's public address");
+    if (await page.$("#gate-said, dialog[open]")) fail("a click was answered with a refusal or a sign-in");
+    if (asked.length) fail(`the page asked ${asked.join(", ")} before the download`);
+    console.log(`  free     linux: a click goes to ${primary("linux").url.split("/").pop()}${asked.length ? ", after asking /api/plans" : ", nothing asked first"}`);
+  }
   await context.close();
 }
 
