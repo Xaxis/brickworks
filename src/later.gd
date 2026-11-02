@@ -66,6 +66,7 @@ const PATHS: Dictionary[StringName, String] = {
 	&"BookletPng": "res://src/render/booklet_png.gd",
 	&"BookletRead": "res://src/render/booklet_read.gd",
 	&"FigureTool": "res://src/minifig/figure_tool.gd",
+	&"GrabDrag": "res://src/ui/grab_drag.gd",
 	&"HeldSteps": "res://src/assembly/held_steps.gd",
 	&"MosaicArt": "res://src/assembly/mosaic_art.gd",
 	&"MotionPlayer": "res://src/assembly/motion_player.gd",

@@ -2388,7 +2388,7 @@ func _rounds_room(shaft: int, hole: int, point: Vector3, way: Vector3) -> Vector
 			for one: Array in widths:
 				lowest = minf(lowest, float(one[0]))
 				highest = maxf(highest, float(one[1]))
-			var reach: Vector2 = Grab._reach_along(brick.transform, mesh.bounds, way) - Vector2(at, at)
+			var reach: Vector2 = Bodies._reach_along(brick.transform, mesh.bounds, way) - Vector2(at, at)
 			if reach.x < lowest - END_SLACK:
 				spans.append([reach.x, lowest, INF, false])
 			if reach.y > highest + END_SLACK:
@@ -2510,8 +2510,8 @@ func _room_between(one: int, other: int, point: Vector3, way: Vector3, within: V
 		return within
 	# Along the line, how far apart their boxes stand each way: a pair that
 	# cannot meet within the slide is not asked.
-	var reach_a: Vector2 = Grab._reach_along(a.transform, mesh_a.bounds, way)
-	var reach_b: Vector2 = Grab._reach_along(b.transform, mesh_b.bounds, way)
+	var reach_a: Vector2 = Bodies._reach_along(a.transform, mesh_a.bounds, way)
+	var reach_b: Vector2 = Bodies._reach_along(b.transform, mesh_b.bounds, way)
 	var gaps := Vector2(reach_b.x - reach_a.y, reach_a.x - reach_b.y)   ## back, on
 	# Going back, the other part comes towards this one only from the far
 	# side of it along the line; going on, from the near side.
@@ -2896,6 +2896,23 @@ static func _same_line(p: Vector3, u: Vector3, q: Vector3, v: Vector3) -> bool:
 	var off: Vector3 = gap - u.normalized() * gap.dot(u.normalized())
 	return off.length() < SAME_LINE
 
+
+## How far [param box] at [param at] reaches along [param way]: (lo, hi).
+static func _reach_along(at: Transform3D, box: AABB, way: Vector3) -> Vector2:
+	var lo: float = INF
+	var hi: float = -INF
+	for corner: int in 8:
+		var along: float = (at * box.get_endpoint(corner)).dot(way)
+		lo = minf(lo, along)
+		hi = maxf(hi, along)
+	return Vector2(lo, hi)
+
+
+## Whether [param a] and [param b] place a part the same, within a hundredth
+## of an LDU and a rounding's turn.
+static func _same(a: Transform3D, b: Transform3D) -> bool:
+	return a.origin.distance_to(b.origin) < 0.01 and a.basis.x.distance_to(b.basis.x) < 1e-5 \
+		and a.basis.y.distance_to(b.basis.y) < 1e-5 and a.basis.z.distance_to(b.basis.z) < 1e-5
 
 ## What a probe and a session read: bodies, joints, anchors.
 func summary() -> String:
