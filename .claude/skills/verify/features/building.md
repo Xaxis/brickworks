@@ -1677,7 +1677,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   selection left by the last) and presses only once the view has stopped
   easing (`_camera_still`); a case that dies on a script error counts as a
   failure. `-- --only=cases` runs the single-joint cases in the full run's
-  order. A turn stopped by the model names the two parts that met, in the
+  order; `-- --only=coast,big` runs each named in turn in one run. A turn stopped by the model names the two parts that met, in the
   status bar and in move_part's answer. A tyre scrubs on the baseplate and a
   part that bends (a hose, a cable or rubber band skin) is never in a move's
   way; what touched where the model was built is forgiven in each later
@@ -1841,7 +1841,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   against finite differences. `-- --only=fourbar` (windowed) also takes the
   drag's frames apart: the window's idle frame (30 before the press), the
   renderer's CPU and GPU time, the drag's own work and the batches rewritten,
-  and checks the drawing's share of a frame under 4 ms. Whole frames depend
+  and checks the drawing's share of a frame under 4 ms, each frame's own time
+  less the main thread's wait for a CPU (`ProbeTime`, 12 ms at a load past
+  the box's cores). Whole frames depend
   on the box's load (MECHANISMS §13): read them on a quiet box.
 - `racks and their pinions` (`src/assembly/racks.gd`, `Racks`; MECHANISMS
   §12): a pinion standing in a gear rack (the gear table's `racks`: teeth 8
@@ -1938,8 +1940,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   was let go; 75° out with a sequence of pictures; caught by a press; over
   MCP; a column in its swing stopping it where a drag stops. `-- --only=double`:
   two beams on two free pins swinging together, the outer coming to rest
-  where the settle hangs it, with pictures. The swing's own frame cost is
-  checked under 33 ms and written to timings.json. A stop pushes on the
+  where the settle hangs it, with pictures. The swing's frames' own work
+  (the clock less the main thread's wait for a CPU, `ProbeTime`; three times
+  the bar at a load past the box's cores) is checked under 33 ms and written
+  to timings.json; the pointer stands still 60 ms by the clock, not a timer
+  a loaded frame can spend at once, before it lets go. A stop pushes on the
   stopped joint alone (through the inverse mass) and a meet keeps the other
   joints' momentum, so a wheel on a free axle in a stopped frame does not
   spin up; move_part's run stops after `Swing.RUN_MOST_MS` (8 s) by the
@@ -1976,8 +1981,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   at …";
   `move_part spin=` (degrees a second) over MCP.
   `grab_probe -- --only=coast` (windowed): a made gear 40 on an axle turned
-  by the pointer at 1,080° a second by the clock and let go turning, its
-  start against the pointer's rate, its coast against ω²/2α and ω/α worked
+  by the pointer at 1,080° a second by the clock and let go turning (each
+  move put to the app as it is made, as a frame begins, as a real pointer's
+  are read; the grab notes each move's time as it comes), its
+  start against the pointer's rate, its coasting frames' own work under
+  33 ms, its coast against ω²/2α and ω/α worked
   by hand from its parts, then the same with a gear 8 it drives (the 8 at
   rest where five times the 40's turn puts it), a picture mid-coast and at
   rest, one undo, move_part spin=720 against the hand form, and 4096's hinge
@@ -2017,11 +2025,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (saved and reopened, LDCad's path between the new ends), 42043-1's cylinder,
   42050-1's ribbed hoses. What laying them costs a frame is judged by each
   hose laid again where it stands, the fastest of seven layings
-  (`FlexFollow.lay_cost`): a hose's mean at most 2 ms, and the budget plus the
-  costliest laying within 3.5. The drag's worst frame, a wall-clock figure
+  (`FlexFollow.lay_cost`), each of its own time (`ProbeTime`): a hose's mean
+  at most 2 ms, and the budget plus the costliest laying within 3.5, the
+  costliest given three times the 1.5 past the budget at a load past the
+  box's cores. The drag's worst frame, a wall-clock figure
   other jobs on the box inflate, is said, not judged (G13b). `--slow-lay=US`
   makes every laying that many microseconds slower (`FlexFollow.slow_usec`):
-  at 3000 the cost checks fail, as they must.
+  the cost checks fail, as they must, at 3000 on a box under its cores' load
+  and at 7000 past it.
   `grab_probe -- --flex-survey FILE...` lists every
   flexible thing held at both ends and the joint between its ends (FLEX rows).
 - `grab in a browser` (`tools/web/grab_flow.mjs`): opens a crane from a file,

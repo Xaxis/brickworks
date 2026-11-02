@@ -3766,6 +3766,10 @@ func _meshed_at(value: float) -> String:
 func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D) -> void:
 	if state != "moves":
 		return
+	# When the move came, not when its turn was worked out: the room tests
+	# take longer some moves than others, more so on a loaded box, and the
+	# pointer's speed is read from these times (fling_rate).
+	var came: int = Time.get_ticks_usec()
 	if not _decided:
 		if _hold_screen == Vector2.ZERO:
 			_hold_screen = screen
@@ -3801,7 +3805,7 @@ func follow(origin: Vector3, direction: Vector3, screen: Vector2, eye: Camera3D)
 				turn_to(_pointer_loop(screen, eye))
 			else:
 				turn_to(_pointer_angle(origin, direction, screen, eye))
-			_note_turn(Time.get_ticks_usec())
+			_note_turn(came)
 		"slide":
 			slide_to(_pointer_along(origin, direction))
 		"ball":
