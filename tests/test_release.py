@@ -509,6 +509,14 @@ def test_a_model_s_parts_count_its_sub_models_where_they_are_placed():
                                "1 4 0 0 0 1 0 0 0 1 0 0 0 1 b.ldr\n0 FILE b.ldr\n"
                                "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
                                "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3002.dat\n") == 4
+    # A part carried in the file, as a Studio .io carries its own, is one
+    # part however many lines draw it: the app wrote 5 for bay_2025.io and
+    # this counted 6 until it read the headers as the app does.
+    assert release.ldraw_parts("0 FILE a.ldr\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+                               "1 4 0 0 0 1 0 0 0 1 0 0 0 1 custom.dat\n0 FILE custom.dat\n"
+                               "0 !LDRAW_ORG Unofficial_Part\n"
+                               "1 16 0 0 0 1 0 0 0 1 0 0 0 1 s/custom01.dat\n"
+                               "1 16 0 0 0 1 0 0 0 1 0 0 0 1 stud.dat\n") == 2
 
 
 def test_the_deb_installs_the_app_its_entry_icons_and_types(tmp_path):

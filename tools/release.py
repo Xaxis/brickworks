@@ -2056,22 +2056,35 @@ def opened_line(text: str, model: Path) -> int:
 
 def ldraw_parts(text: str) -> int:
     """The parts in an LDraw model, a sub-model's counted each time it is
-    placed, as the app counts them (ModelStore.count_in)."""
-    sections: dict[str, list[str]] = {}
+    placed, as the app counts them (ModelStore.count_in): a section whose
+    header says it is a part, as a Studio file's own parts do, is one part."""
+    def key(named: str) -> str:
+        leaf = named.replace("\\", "/").strip().lower().rsplit("/", 1)[-1]
+        return next((leaf[:-4] for suffix in (".ldr", ".dat", ".mpd") if leaf.endswith(suffix)), leaf)
+    refs: dict[str, list[str]] = {}
+    is_part: dict[str, bool] = {}
     order: list[str] = []
-    name = ""
-    for line in text.splitlines():
-        line = line.strip()
-        if line.startswith("0 FILE "):
-            name = line[7:].strip().lower()
-        elif line.startswith("1 ") and len(line.split()) >= 15:
-            if name not in sections:
+    name, lines, head = "", [], []  # type: str, list[str], list[str]
+    for raw in (text + "\n0 NOFILE").split("\n"):
+        line = raw.strip()
+        if line.startswith("0 FILE ") or line.startswith("0 NOFILE"):
+            if lines and name not in refs:
+                refs[name] = lines
+                is_part[name] = any(said.startswith("0 !LDRAW_ORG") and "part" in said.lower()
+                                    for said in head)
                 order.append(name)
-            sections.setdefault(name, []).append(line.split(None, 14)[-1].strip().lower())
+            name = key(line[7:]) if line.startswith("0 FILE ") else ""
+            lines, head = [], []
+            continue
+        if len(head) < 16:
+            head.append(line)
+        fields = line.split()
+        if line.startswith("1 ") and len(fields) >= 15:
+            lines.append(key(" ".join(fields[14:])))
 
     def count(section: str, depth: int) -> int:
-        return sum(count(used, depth + 1) if used in sections and depth < 32 else 1
-                   for used in sections.get(section, []))
+        return sum(count(used, depth + 1) if depth < 32 and used in refs and used != section
+                   and not is_part[used] else 1 for used in refs[section])
     return count(order[0], 0) if order else 0
 
 
@@ -2089,13 +2102,26 @@ def logs_say(folder: Path, model: Path, seconds: int) -> int:
 
 def held_windows(data: Path) -> list[int]:
     """The process of each window open on [data] (an app_userdata folder):
-    a window holds its session with its process id (TabSession._hold)."""
+    a window holds its session with its process id (TabSession._hold). A
+    run that quit without letting go leaves its hold behind, so only those
+    still running a Brickworks count: the smoke counted three windows for
+    two, and end_windows would have killed whatever had the old id since."""
     found = []
     for pid in data.glob("sessions/*/held/pid"):
         text = pid.read_text().strip()
-        if text.isdigit():
+        if text.isdigit() and app_running(int(text)):
             found.append(int(text))
     return found
+
+
+def app_running(pid: int) -> bool:
+    if os.name == "nt":
+        listed = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/FO", "CSV", "/NH"],
+                                capture_output=True, text=True).stdout
+    else:
+        listed = subprocess.run(["ps", "-p", str(pid), "-o", "comm="],
+                                capture_output=True, text=True).stdout
+    return "brickworks" in listed.lower()
 
 
 def end_windows(data: Path) -> None:
@@ -2134,16 +2160,22 @@ def opens_models(package: Path, base: list[str], env: dict[str, str],
         code, output = run_app(base + ["--headless", str(model), "--", "--out=%s" % out], env)
         parts = opened_line(output, model)
         written = ldraw_parts(out.read_text()) if out.exists() else 0
-        said.append(("opens %s given as the system gives it: %d parts, %d written back"
-                     % (model.name, parts, written), code == 0 and parts > 0 and written == parts,
-                     output))
+        # A part a Studio file carries, built from LDraw files a package
+        # has only as meshes, is not drawn but is kept: bay_2025.io's own
+        # part draws in the editor, 6 parts, and in a package says why not
+        # and goes back out with the other 5.
+        kept = max(0, written - parts) if "could not build a part the file carries" in output else 0
+        said.append(("opens %s given as the system gives it: %d parts, %d written back%s"
+                     % (model.name, parts, written, ", %d it carries but cannot draw" % kept
+                        if kept else ""),
+                     code == 0 and parts > 0 and written == parts + kept, output))
 
     twice = [folder / "car one.ldr", folder / "car two.ldr"]
     for copy in twice:
         shutil.copy2(models[0], copy)
     name = package.name
     if name.endswith(".deb"):
-        said += double_click_linux(root, env, twice)
+        said += double_click_linux(root / "unpacked", env, twice)
     elif name.endswith(".dmg"):
         said += double_click_mac(twice)
     elif name.endswith("-setup.exe"):
@@ -2191,7 +2223,9 @@ def double_click_linux(root: Path, env: dict[str, str],
                       '  for _ in $(seq 1 300); do\n'
                       '    grep -qsF "$name: " "$logs"/*.log && break\n'
                       '    sleep 1\n  done\ndone\n'
-                      'ls "%s"/sessions/*/held/pid 2>/dev/null | wc -l > "%s"\n'
+                      'n=0\nfor held in "%s"/sessions/*/held/pid; do\n'
+                      '  ps -p "$(cat "$held" 2>/dev/null)" -o comm= 2>/dev/null | grep -qi brickworks'
+                      ' && n=$((n + 1))\ndone\necho "$n" > "%s"\n'
                       'for id in $(xwininfo -root -children | awk \'/^ +0x/ {print $1}\'); do\n'
                       '  xprop -id "$id" WM_CLASS\ndone > "%s"\n'
                       % (data, data, root / "windows.txt", root / "classes.txt"))
