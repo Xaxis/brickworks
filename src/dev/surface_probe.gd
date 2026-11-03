@@ -470,7 +470,7 @@ func _run() -> void:
 		"the baseplate's %d open studs are left as they were (%d)" % [play, _open_on(baseplate)])
 
 	print("\nan edge settled flat: its curved slopes off and its top tiled flat")
-	await _build("block", _head())
+	await _build("block", _block())
 	var block_top: float = assistant._bounds_of(_bricks()).end.y
 	await assistant.surface_review()
 	var edge: SurfacePass.Finding = _finding("edge")
@@ -482,9 +482,10 @@ func _run() -> void:
 	flat_pass._read = OpenPoints.read(assistant)
 	_ok(edge != null and edge.verdict == "adjusted" and _count(_bricks(), ["15068", "11477"]) == 0,
 		"...no curved slope left (%d)" % _count(_bricks(), ["15068", "11477"]))
+	# A tile is a plate high where a stud stood 4 LDU over the plate.
 	_ok(flat_pass.open_tops().is_empty() and absf(assistant._bounds_of(_bricks()).end.y
-		- block_top - 8.0) < 1.0, "...its top tiled flat, a tile high, no stud open (%d)"
-		% flat_pass.open_tops().size())
+		- block_top - 4.0) < 1.0, "...its top tiled flat, a tile high, no stud open (%d, %.0f LDU up)"
+		% [flat_pass.open_tops().size(), assistant._bounds_of(_bricks()).end.y - block_top])
 	report = await assistant._check(assistant._model_from_world())
 	_ok(bool(report["ok"]) and int(report.get("pieces", 0)) == 1,
 		"...and it holds as one: %s" % report["summary"])
@@ -742,6 +743,11 @@ func _tiled_steps() -> Array:
 	return _steps() + [{"part": "2431", "color": 72, "x": 0, "y": 3, "z": 0, "rot": 0},
 		{"part": "2431", "color": 72, "x": 0, "y": 6, "z": 1, "rot": 0},
 		{"part": "87079", "color": 72, "x": 0, "y": 9, "z": 2, "rot": 0}]
+
+
+## A block: 2 x 2 bricks under a 6 x 6 plate, its top studs.
+func _block() -> Array:
+	return _head().slice(0, 10)
 
 
 ## A tan head: 2 x 2 bricks under a 6 x 6 plate, its top tiled.

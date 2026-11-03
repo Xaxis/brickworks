@@ -1965,7 +1965,7 @@
       "readOnlyHint": false,
       "title": "Settle the surface pass"
     },
-    "description": "Settle what the surface pass laid (review_model {\"surface\": true}, or the app's own turn for it): accept a finding, adjusted if need be; reject it with a reason, which takes the app's pieces off and puts back what they replaced; or keep the studs there for good with a reason — a yard, a mosaic, a studded texture, where a touch will stand. \"tile\" lays ground the pass only offered.",
+    "description": "Settle what the surface pass laid (review_model {\"surface\": true}, or the app's own turn for it): accept a finding, adjusted if need be; reject it with a reason, which takes the app's pieces off and puts back what they replaced; or keep the studs there for good with a reason — a yard, a mosaic, a studded texture, where a touch will stand. \"flat\" takes an edge's curved slopes off and tiles its top flat. \"tile\" lays ground the pass only offered.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -1993,6 +1993,7 @@
             "accept",
             "reject",
             "keep",
+            "flat",
             "tile"
           ],
           "type": "string"

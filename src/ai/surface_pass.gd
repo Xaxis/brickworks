@@ -598,9 +598,12 @@ func _flat(one: Finding) -> String:
 				int((tops[key] as Dictionary)["colour"])]
 	var studs: int = free.size()
 	if free.is_empty():
+		# A top that was tiles: taking the edge off put them back, flat.
 		one.verdict = "rejected"
-		one.reason = "wanted flat; its top had no open stud to tile"
-		return "%s: the curved edge is off; its top had no open stud left to tile." % one.key
+		one.reason = "wanted flat; its own tiles are back"
+		zones.append([one.box.grow(2.0), one.reason])
+		return "%s: the curved edge is off, and the tiles it covered are back: its top is flat." \
+			% one.key
 	var y: float = ((free.values()[0] as Array)[0] as Vector3).y
 	var made: Array[int] = []
 	var add: Array = _tiles_over(free, y, 0, made, true)
