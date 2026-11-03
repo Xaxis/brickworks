@@ -735,7 +735,9 @@ PATH; My Claude and My Copilot untick each other. With `--copilot`, the real
 CLI runs on Copilot's own BYOK against `tools/provider_stub.py --tool-prefix
 brickworks-`, in a COPILOT_HOME of its own whose "mail" server marks its
 start: unfenced it offers bash, web_fetch and mail-send_email and starts the
-mail server; sent through the panel with My Copilot ticked, the six-brick tower
+mail server; the port answers an id of 1 with 1, not 1.0 (Copilot's rmcp
+client gave up on 1.0 with 0 tools); sent through the panel with My Copilot
+ticked, the six-brick tower
 stands, every request offers the app's tools and nothing else and carries HOW
 TO WORK, and the mail server never starts. Without `--copilot` the live part
 prints "----" and is not run. A real design on a plan is by hand:

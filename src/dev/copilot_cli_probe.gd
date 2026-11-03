@@ -307,10 +307,16 @@ func _live(copilot: String) -> void:
 	_main.call("_open_commands", port)
 	var commands: Node = _main.get("_commands")
 	_check("the panel offers My Copilot, the CLI being found", chat != null and chat.copilot_here
-		and chat._use_copilot != null and chat._use_copilot.is_visible_in_tree())
+		and chat._use_copilot != null and chat._use_copilot.visible)
 	if chat == null or chat._use_copilot == null or commands == null:
 		_end_live(stub, kept)
 		return
+	# Every number JSON.parse_string reads is a float; Copilot's client (Rust's
+	# rmcp) reads an answer to id 1 sent back as 1.0 as an answer to nothing.
+	var pong: Variant = await commands.answer_rpc({"jsonrpc": "2.0", "id": 1.0, "method": "ping"})
+	_check("the port answers an id of 1 with 1, not 1.0: %s" % JSON.stringify(pong),
+		pong is Dictionary and typeof((pong as Dictionary).get("id")) == TYPE_INT
+		and not JSON.stringify(pong).contains("1.0"))
 	_main.call("clear_model")
 	await process_frame
 	if chat._sketch_first != null:

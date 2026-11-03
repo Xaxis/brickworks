@@ -725,6 +725,12 @@ or Gemini, and the spec has told new servers not to build on it.
    once, not twice (BestOfTwo stays Claude Code's). Copilot's default model is
    the person's own choice in Copilot; Claude Opus and Sonnet 5.5 are among its
    models on plans that have them. `src/dev/copilot_cli_probe.gd` is the proof.
+   It found one fault in the app's port, not Copilot's: an id of 1 went back
+   as 1.0 (Godot reads every JSON number as a float), and Copilot's client,
+   Rust's rmcp, which Codex uses too, read that as an answer to nothing and
+   gave up with 0 tools. The port sends a whole-number id back whole now.
+   Not yet known: whether Copilot shows the model view_model's picture. On the
+   stand-in, the request after it carried none in a message of its own.
 3. **Sign in with GitHub on the web, Copilot on our server** (allowed, not
    built). The Copilot SDK's multi-user mode: a GitHub OAuth app, the person's
    token per session, the Copilot runtime on a server of ours (Vercel cannot
