@@ -27,7 +27,7 @@ sized its own titles, from 26 to 74 px. Now:
   (/m/, /u/, /c/) take theirs from web/gallery.html (api/_directory.js
   `siteChrome`). Edit `_shell.html`, then run the script; never a page's
   copy. The header (site356, 2026-10-29, the owner asking for pricing in
-  the site): Gallery · Docs · Pricing in the middle (the Library left it
+  the site): Gallery · Docs · Plans (Pricing until 2026-11-03) in the middle (the Library left it
   when it became the gallery's Sets tab, browse, 2026-11-02), then
   **Open the app** · Account (Sign in, a `.cta.ghost`, until you are,
   then your avatar: the account menu, below), the account last at the
