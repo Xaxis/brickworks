@@ -47,6 +47,7 @@
         "tests/test_library_site.py",
         "tests/test_model_page.py",
         "tests/test_refresh_catalogue.py",
+        "tests/test_share_unknowns.py",
         "tests/test_update_parts.py"
       ]
     },
@@ -110,6 +111,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
@@ -3494,7 +3496,8 @@
       "tests": [
         "tests/test_achievements.py",
         "tests/test_discovery.py",
-        "tests/test_gallery_crons.py"
+        "tests/test_gallery_crons.py",
+        "tests/test_share_unknowns.py"
       ]
     },
     {
@@ -3757,6 +3760,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
@@ -3837,6 +3841,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
@@ -4022,7 +4027,8 @@
         "tests/test_browse_pages.py",
         "tests/test_collections_tab.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_share_unknowns.py"
       ]
     },
     {
@@ -4731,6 +4737,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
@@ -5192,7 +5199,8 @@
       "reach": "https://brickworks.diy/m/<id>/embed in an iframe (the share sheet's embed code): View in 3D on its picture turns the model in the frame (web/start3d.js imports /viewer3d.js; web/view3d.css; api/share.js embedCard and embedCsp); node tools/web/embed_flow.mjs --out=DIR on the stand-in",
       "area": "web",
       "tests": [
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_share_unknowns.py"
       ]
     },
     {
@@ -5208,7 +5216,8 @@
         "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_share_unknowns.py"
       ]
     },
     {
@@ -5275,6 +5284,7 @@
       "tests": [
         "tests/test_challenge_notices.py",
         "tests/test_challenges.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py"
       ]
     },
@@ -5401,6 +5411,7 @@
       "area": "web",
       "tests": [
         "tests/test_achievements.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
@@ -5472,6 +5483,7 @@
       "area": "web",
       "tests": [
         "tests/test_achievements.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
