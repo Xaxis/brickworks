@@ -106,7 +106,7 @@
 // the project's key, which has not come back.
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
-import { db } from "./_db.js";
+import { db, reach } from "./_db.js";
 import { modelHash } from "./_directory.js";
 import { BuildRefusal, photoFileForAdmin, photosReported, removePhoto } from "./_builds.js";
 import { AvatarRefusal, removeAvatar } from "./_avatars.js";
@@ -127,9 +127,8 @@ function project() {
 async function asServer(path) {
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!secret) throw new AuthError("accounts are not configured here", 503);
-  const reply = await fetch(`${project()}${path}`, {
+  const reply = await reach(`server GET ${path.split("?")[0]}`, 10, `${project()}${path}`, {
     headers: { apikey: secret, authorization: `Bearer ${secret}` },
-    signal: AbortSignal.timeout(10000),
   });
   if (!reply.ok) throw new AuthError(`the database said ${reply.status}`, 502);
   return reply.json();
@@ -217,9 +216,8 @@ export default async function handler(request, response) {
 /// files went (taken down by its owner).
 async function modelText(id) {
   const secret = process.env.SUPABASE_SECRET_KEY;
-  const reply = await fetch(`${project()}/storage/v1/object/shared-models/${id}.mpd`, {
+  const reply = await reach("storage GET mpd", 20, `${project()}/storage/v1/object/shared-models/${id}.mpd`, {
     headers: { apikey: secret, authorization: `Bearer ${secret}` },
-    signal: AbortSignal.timeout(20000),
   });
   return reply.ok ? reply.text() : null;
 }

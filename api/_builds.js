@@ -32,7 +32,7 @@
 // counted, no photo is shown, and asking to add one says so.
 
 import { createHmac, randomBytes } from "node:crypto";
-import { db } from "./_db.js";
+import { db, reach } from "./_db.js";
 import { cleanPhoto, MAX_PHOTO_BYTES, PhotoTrouble, TYPES } from "./_photo.js";
 
 export const UPLOADS = "build-photo-uploads";
@@ -120,26 +120,26 @@ function storageHeaders(extra = {}) {
 }
 
 export async function getFile(bucket, name) {
-  const answer = await fetch(`${project()}/storage/v1/object/${bucket}/${name}`, {
-    headers: storageHeaders(), signal: AbortSignal.timeout(30000) });
+  const answer = await reach(`storage GET ${bucket}`, 30, `${project()}/storage/v1/object/${bucket}/${name}`, {
+    headers: storageHeaders() });
   if (answer.status === 400 || answer.status === 404) return null;
   if (!answer.ok) throw new Error(`storage GET ${bucket}: ${answer.status}`);
   return Buffer.from(await answer.arrayBuffer());
 }
 
 export async function putFile(bucket, name, body, type) {
-  const answer = await fetch(`${project()}/storage/v1/object/${bucket}/${name}`, {
+  const answer = await reach(`storage POST ${bucket}`, 30, `${project()}/storage/v1/object/${bucket}/${name}`, {
     method: "POST", headers: storageHeaders({ "content-type": type, "x-upsert": "true", "cache-control": "no-store" }),
-    body, signal: AbortSignal.timeout(30000) });
+    body });
   if (!answer.ok) throw new Error(`storage POST ${bucket}: ${answer.status}`);
 }
 
 /// Exactly these files of [bucket], and nothing else.
 export async function deleteFiles(bucket, names) {
   if (names.length === 0) return;
-  const answer = await fetch(`${project()}/storage/v1/object/${bucket}`, {
+  const answer = await reach(`storage DELETE ${bucket}`, 20, `${project()}/storage/v1/object/${bucket}`, {
     method: "DELETE", headers: storageHeaders({ "content-type": "application/json" }),
-    body: JSON.stringify({ prefixes: names }), signal: AbortSignal.timeout(20000) });
+    body: JSON.stringify({ prefixes: names }) });
   if (!answer.ok) throw new Error(`storage DELETE ${bucket}: ${answer.status}`);
 }
 
@@ -147,9 +147,8 @@ export async function deleteFiles(bucket, names) {
 /// bucket. Supabase answers a path under /storage/v1; a stand-in may answer
 /// an address of its own.
 async function signUpload(name) {
-  const answer = await fetch(`${project()}/storage/v1/object/upload/sign/${UPLOADS}/${name}`, {
-    method: "POST", headers: storageHeaders({ "content-type": "application/json" }), body: "{}",
-    signal: AbortSignal.timeout(15000) });
+  const answer = await reach("storage sign", 15, `${project()}/storage/v1/object/upload/sign/${UPLOADS}/${name}`, {
+    method: "POST", headers: storageHeaders({ "content-type": "application/json" }), body: "{}" });
   if (answer.status === 400 || answer.status === 404) {
     const said = await answer.text().catch(() => "");
     if (/bucket|not found/i.test(said)) throw new BuildRefusal("photos of builds are not open on this deployment yet", 503);
@@ -164,9 +163,9 @@ async function signUpload(name) {
 export async function uploadsLeft() {
   const out = [];
   const list = async (prefix) => {
-    const answer = await fetch(`${project()}/storage/v1/object/list/${UPLOADS}`, {
+    const answer = await reach(`storage list ${UPLOADS}`, 20, `${project()}/storage/v1/object/list/${UPLOADS}`, {
       method: "POST", headers: storageHeaders({ "content-type": "application/json" }),
-      body: JSON.stringify({ prefix, limit: 1000, offset: 0 }), signal: AbortSignal.timeout(20000) });
+      body: JSON.stringify({ prefix, limit: 1000, offset: 0 }) });
     if (answer.status === 400 || answer.status === 404) return [];
     if (!answer.ok) throw new Error(`storage list ${UPLOADS}: ${answer.status}`);
     return answer.json();
