@@ -396,6 +396,21 @@ func _online() -> void:
 			and str(_handed[8]) == BuildInfo.version() and not _notice.showing())
 	dialog.hide()
 
+	# What an earlier start could not take away goes at the next: an older
+	# version's folder, never a newer one's, which another window may be
+	# fetching.
+	var left: String = _root.path_join("install/.brickworks-update/0.0.1/previous")
+	var fetching: String = _root.path_join("install/.brickworks-update/99.9.9")
+	DirAccess.make_dir_recursive_absolute(left)
+	DirAccess.make_dir_recursive_absolute(fetching)
+	_put(left.path_join("Brickworks.console.exe"), "MZ".to_utf8_buffer())
+	_put(fetching.path_join("Brickworks-99.9.9-linux-x86_64.tar.xz.part"), "part".to_utf8_buffer())
+	_updater.call("_sweep")
+	_check("a start takes away what an earlier one left of an older version, and leaves a newer one's download",
+		not DirAccess.dir_exists_absolute(left.get_base_dir())
+			and FileAccess.file_exists(fetching.path_join("Brickworks-99.9.9-linux-x86_64.tar.xz.part")))
+	_remove(fetching)
+
 
 func _check_at(name: String) -> void:
 	OS.set_environment("BRICKWORKS_UPDATE_URL", "http://127.0.0.1:%d/%s/" % [_port, name])

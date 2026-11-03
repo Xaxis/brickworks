@@ -104,6 +104,7 @@ func _ready() -> void:
 ## says it started, and the day's check is made a little later.
 func begin() -> void:
 	_started_after_update()
+	_sweep()
 	if _asked == "report":
 		_report.call_deferred()
 		return
@@ -314,10 +315,12 @@ func _helper(how: String, user: PackedStringArray) -> Array:
 	if script.is_empty():
 		return []
 	var launch: Array = _launch(user)
-	var target: String = "-"
-	var staged: String = "-"
-	var backup: String = "-"
-	var about: String = "-"
+	# Unused by a restart, but never "-": powershell -File passed nothing at
+	# all to a restart given four of them, and Restart did nothing on Windows.
+	var target: String = "none"
+	var staged: String = "none"
+	var backup: String = "none"
+	var about: String = "none"
 	var version: String = BuildInfo.version()
 	if how != "restart":
 		target = str(install["target"])
@@ -446,6 +449,21 @@ func _started_after_update() -> void:
 		_say_later("Brickworks was updated to %s" % BuildInfo.version())
 	else:
 		_say_later("Brickworks %s was reinstalled" % BuildInfo.version())
+
+
+## What an earlier start could not take away, tried again at each start:
+## the stage's folders for versions older than this one, which no download
+## is for (another window may be fetching a newer one, or this one again).
+## On Windows a copy started by its console wrapper left the wrapper's own
+## file behind: the wrapper runs until everything the app started has
+## ended, the new copy among them (Godot's console_wrapper_windows.cpp).
+func _sweep() -> void:
+	var stage: String = str(install.get("stage", ""))
+	if stage.is_empty() or not DirAccess.dir_exists_absolute(stage):
+		return
+	for name: String in DirAccess.get_directories_at(stage):
+		if Updates.is_version(name) and Updates.compare(name, BuildInfo.version()) < 0:
+			_drop(stage.path_join(name))
 
 
 func _say_later(line: String) -> void:

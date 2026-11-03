@@ -249,8 +249,16 @@ class Run:
             for line in detail.strip().splitlines()[-15:]:
                 say("        " + line)
 
-    def app(self, program: Path, base: str, user: list[str], seconds: int = 300) -> tuple[int, str]:
+    def app(self, program: Path, base: str, user: list[str], seconds: int = 300,
+            person: bool = False) -> tuple[int, str]:
+        """[person]: started as a person starts it, for a step judged by the
+        updater's log. On Windows that is Brickworks.exe, not the console
+        wrapper, which keeps all the app starts in a job of its own and runs
+        until the last has ended (Godot's console_wrapper_windows.cpp): the
+        new copy among them, so the old wrapper's own file could not go."""
         env = dict(self.env, BRICKWORKS_UPDATE_URL="http://127.0.0.1:%d/%s/" % (self.port, base))
+        if person and program.name == "Brickworks.console.exe":
+            program = program.with_name("Brickworks.exe")
         return release.run_app([str(program), "--headless", "--", *user], env, seconds)
 
     def about(self, program: Path) -> str:
@@ -319,7 +327,7 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             # comes back is the new version, in the same session, on that model.
             mark = run.mark()
             code, output = run.app(program, "hop", ["--model=res://models/house.ldr",
-                                                         "--update=install"])
+                                                         "--update=install"], person=True)
             text = run.log_after(mark, "report:")
             before = re.search(r"restart: model “([^”]*)”, (\d+) parts; session (\w+)", text)
             after = re.search(r"report: running (\S+); model “([^”]*)”, (\d+) parts; session (\w+)", text)
@@ -337,14 +345,14 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
                       not run.staged(install))
 
             mark = run.mark()
-            run.app(program, "good", ["--update=restart"])
+            run.app(program, "good", ["--update=restart"], person=True)
             text = run.log_after(mark, "report:")
             after2 = re.search(r"report: running (\S+); model “([^”]*)”, (\d+) parts; session (\w+)", text)
             run.check("Restart Brickworks: %s" % (after2.group(0) if after2 else "no report"),
                       bool(after and after2) and after2.groups() == after.groups(), text)
 
             mark = run.mark()
-            code, output = run.app(program, "good", ["--update=reinstall"])
+            code, output = run.app(program, "good", ["--update=reinstall"], person=True)
             text = run.log_after(mark, "report:")
             after3 = re.search(r"report: running (\S+); model “([^”]*)”, (\d+) parts", text)
             run.check("Reinstall Brickworks: %s" % (after3.group(0) if after3 else "no report"),
@@ -358,7 +366,7 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             again.mkdir()
             program2 = program_in(old, again)
             mark = run.mark()
-            code, output = run.app(program2, "good", ["--update=fetch"])
+            code, output = run.app(program2, "good", ["--update=fetch"], person=True)
             text = run.log_after(mark, "the new copy says it is", 180)
             said = run.about(program2)
             run.check("Automatic: fetched, put in as it quit; the next start says %s" % said,
@@ -370,7 +378,7 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             program3 = program_in(old, again)
             mark = run.mark()
             code, output = run.app(program3, "broken", ["--model=res://models/house.ldr",
-                                                       "--update=install"])
+                                                       "--update=install"], person=True)
             text = run.log_after(mark, "report:")
             back = re.search(r"report: running (\S+);", text)
             said = run.about(program3)
