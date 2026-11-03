@@ -280,18 +280,24 @@ func _designer(handle: String) -> String:
 	var lines := PackedStringArray(["%s (@%s, %s)%s" % [person.get("name", handle), handle, url,
 		": " + str(person["bio"]).replace("\n", " ").left(300) if person.get("bio") is String
 			and not str(person["bio"]).is_empty() else ""]])
+	# A number the server could not read is null, and left unsaid.
+	var known := func(from: Dictionary, key: String) -> bool: return from.get(key) is float or from.get(key) is int
 	if person.get("designer") is Dictionary:
 		var earned: Dictionary = person["designer"]
 		lines.append("What their models earned: %s models, %s, %s remixes, %s Tested, %s comments, "
 			% [_count(int(earned.get("models", 0))), _built(int(earned.get("builds", 0))),
 			_count(int(earned.get("remixes", 0))), _count(int(earned.get("tested", 0))),
 			_count(int(earned.get("comments", 0)))]
-			+ "%s likes, %s followers." % [_count(int(earned.get("likes", 0))),
-			_count(int(earned.get("followers", 0)))])
+			+ "%s likes%s." % [_count(int(earned.get("likes", 0))),
+			", %s followers" % _count(int(earned["followers"])) if known.call(earned, "followers") else ""])
 	else:
-		lines.append("%s models in the gallery, %s likes, %s followers, following %s." % [
-			_count(int(person.get("models_count", 0))), _count(int(person.get("likes", 0))),
-			_count(int(person.get("followers", 0))), _count(int(person.get("following", 0)))])
+		var said := PackedStringArray()
+		for one: Array in [["models_count", "%s models in the gallery"], ["likes", "%s likes"],
+				["followers", "%s followers"], ["following", "following %s"]]:
+			if known.call(person, one[0]):
+				said.append(str(one[1]) % _count(int(person[one[0]])))
+		if not said.is_empty():
+			lines.append(", ".join(said) + ".")
 	var models: Array = person["models"] if person.get("models") is Array else []
 	lines.append("Their models, Top builds first:%s" % ("" if not models.is_empty() else " none listed."))
 	for one: Variant in models.slice(0, 12):

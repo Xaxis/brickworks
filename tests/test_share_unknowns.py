@@ -29,8 +29,10 @@ def asked(failing: list[str], body: str) -> dict | None:
     """[body] (an async function's body that returns something JSON) run in
     a fresh node process over the stand-in, every database request whose
     path starts with one of [failing] answering 555. It has `share(query)`
-    and `people(query, body)` (signed in as Sam, POST), each {status, json,
-    html}, and `logged`, every console.error line so far."""
+    `people(query, body)` and `built(query, body)` (signed in as Sam, POST),
+    `signed(handler, method, query, body)`, `visit(query)` (api/people.js as
+    a visitor), each {status, json, html}, and `logged`, every console.error
+    line so far."""
     if shutil.which("node") is None:
         return None
     script = (
@@ -61,16 +63,17 @@ def asked(failing: list[str], body: str) -> dict | None:
         "const answer = (r) => { let json = null; try { json = JSON.parse(r.html); } catch {} return { status: r.status, json, html: r.html }; };"
         "const share = async (query) => answer(await s.serverAsk('api', { name: 'share', query }));"
         "const handlers = { share: (await import('./api/share.js')).default, people: (await import('./api/people.js')).default };"
-        "const post = async (name, query, body) => {"
+        "const signed = async (name, method, query, body) => {"
         "  const response = { statusCode: 200, body: '', setHeader() { return this; },"
         "    status(code) { this.statusCode = code; return this; },"
         "    json(value) { this.body = JSON.stringify(value); return this; }, end(text) { this.body = text ?? ''; return this; } };"
-        "  await handlers[name]({ method: 'POST', query, body, headers: { authorization: `Bearer ${token}`,"
+        "  await handlers[name]({ method, query, body, headers: { authorization: `Bearer ${token}`,"
         "    host: 'design.test', 'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) Brickworks unknowns check',"
         "    'sec-fetch-site': 'same-origin' } }, response);"
         "  return answer({ status: response.statusCode, html: response.body }); };"
-        "const people = (query, body) => post('people', query, body);"
-        "const built = (query, body) => post('share', query, body);"
+        "const people = (query, body) => signed('people', 'POST', query, body);"
+        "const built = (query, body) => signed('share', 'POST', query, body);"
+        "const visit = async (query) => answer(await s.serverAsk('api', { name: 'people', query }));"
         f"const out = await (async () => {{ {body} }})();"
         "console.error = said;"
         "console.log(JSON.stringify(out));"
@@ -159,3 +162,69 @@ return {{ page: [page.status, page.html], embed: [embed.status, embed.html], log
     for table in ("share_tests", "build_photos", "rpc/model_lists", "rpc/model_bases_of", "rpc/avatars_of"):
         assert any(f"database {'POST' if table.startswith('rpc/') else 'GET'} {table}: 555" in line
                    for line in got["logged"]), (table, got["logged"])
+
+
+def logged_all(got: dict, tables: list[str]) -> None:
+    for table in tables:
+        said = f"database {'POST' if table.startswith('rpc/') else 'GET'} {table}: 555"
+        assert any(said in line for line in got["logged"]), (table, got["logged"])
+
+
+# What a profile is beside its person and their models: their numbers and
+# collections, builds, follows, what their models earned, their showcase,
+# what they won, their levels, whom they follow and how many they liked.
+PROFILE_BESIDE = ["rpc/profile_page", "build_photos", "rpc/follow_state", "rpc/designer_page", "profile_shows",
+                  "rpc/challenge_wins", "rpc/achievement_levels", "rpc/follow_list", "rpc/profile_likes_count",
+                  "profile_choices"]
+
+
+def test_a_profile_goes_out_when_what_is_beside_its_person_cannot_be_read() -> None:
+    got = asked(PROFILE_BESIDE, """
+const json = await visit({ op: 'profile', handle: 'design-tester' });
+const page = await visit({ op: 'page', handle: 'design-tester' });
+const builds = await visit({ op: 'page', handle: 'design-tester', tab: 'builds' });
+return { json: [json.status, json.json], page: [page.status, page.html], builds: [builds.status, builds.html], logged };""")
+    if got is None:
+        return
+    status, body = got["json"]
+    assert status == 200, body
+    assert body["handle"] == "design-tester" and body["name"] == "Robin Castell" and body["models"]
+    # Unknown, never none.
+    for key in ("models_count", "likes", "followers", "following", "collections", "built", "links", "banner", "pins",
+                "levels", "designer", "liked_count"):
+        assert body[key] is None, (key, body[key])
+    status, html = got["page"]
+    assert status == 200, html[-1500:]
+    assert "<h1>Robin Castell</h1>" in html or ">Robin Castell<" in html
+    assert "0 models by" not in html
+    status, html = got["builds"]
+    assert status == 200 and "No builds yet" not in html, html[-1500:]
+    logged_all(got, PROFILE_BESIDE[:-2])
+
+
+def test_a_collection_page_goes_out_when_its_cover_and_follows_cannot_be_read() -> None:
+    got = asked(["model_collection_items", "rpc/list_follow_state"], """
+const page = await visit({ op: 'list_page', id: 'ListAbcde1' });
+return { page: [page.status, page.html], logged };""")
+    if got is None:
+        return
+    status, html = got["page"]
+    assert status == 200, html[-1500:]
+    assert 'data-id="' in html
+    logged_all(got, ["rpc/list_follow_state"])
+
+
+def test_a_challenge_goes_out_when_your_vote_cannot_be_read() -> None:
+    got = asked(["rpc/challenge_mine"], """
+const seen = await visit({ op: 'challenge', id: '3' });
+const mine = await signed('people', 'GET', { op: 'challenge', id: '3' });
+return { seen: [seen.status, seen.json], mine: [mine.status, mine.json], logged };""")
+    if got is None:
+        return
+    status, body = got["seen"]
+    assert status == 200 and body["challenge"]["title"] == "Off-world October", body
+    status, body = got["mine"]
+    assert status == 200 and body["challenge"]["id"] == 3, body
+    # Signed in, and nothing said of their vote: not "you may not".
+    assert body["you"] == {"signed_in": True}
+    logged_all(got, ["rpc/challenge_mine"])

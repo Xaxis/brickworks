@@ -387,8 +387,9 @@ async function ownShown(account, ids, tests = false) {
 
 /// What [person]'s page shows of what they chose: {links: [{href, said}],
 /// banner: id of a model of theirs with a picture, or null, pins: cards},
-/// each only while it may be shown.
+/// each only while it may be shown; null when [shows] could not be read.
 async function showcaseOf(origin, person, shows, tests) {
+  if (!shows) return null;
   const shown = await ownShown(person.account, [...shows.pins, ...(shows.banner ? [shows.banner] : [])], tests);
   const pins = (await Promise.all(shows.pins.filter((id) => shown.has(id)).map((id) =>
     db("rpc/directory_model", { method: "POST", body: { model_id: id } }).catch(() => null))))
@@ -544,16 +545,19 @@ async function profile(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
+  // Who they are and their models are what was asked for; the rest is
+  // beside them, and one not read is null (orUnknown), said as unknown.
+  const unknown = (read) => orUnknown("people", read);
   const [page, about, built, follows, designer, shows, liked, wins, levels] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, pageOf(request.query || {})),
-    db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
-    builtBy(origin, person, tests),
-    followsOf(handle),
-    designerOf(originOf(request), handle, tests),
-    showsOf(person.account),
+    unknown(db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } })),
+    unknown(builtBy(origin, person, tests)),
+    unknown(followsOf(handle)),
+    unknown(designerOf(originOf(request), handle, tests)),
+    unknown(showsOf(person.account)),
     likedShown(person.account, tests),
-    winsBy(person.account, tests).catch(() => []),
-    levelsOf(person.account, tests),
+    unknown(winsBy(person.account, tests)),
+    unknown(levelsOf(person.account, tests)),
   ]);
   // What their models earned (supabase/designers.sql), and each card's
   // comments beside its builds and remixes, and what it won: the same
@@ -561,17 +565,17 @@ async function profile(request, response) {
   const earned = designer && designer.ready ? designer : null;
   const cards = (await withWins(page.models, tests))
     .map((card) => (earned ? { ...card, comments: earned.cards[card.id]?.comments ?? 0 } : card));
-  const showcase = await showcaseOf(origin, person, shows, tests);
+  const showcase = await unknown(showcaseOf(origin, person, shows, tests));
   return response.status(200).json(await withFaces({ handle: person.handle, name: person.name, bio: person.bio,
-    since: person.created_at, models_count: about?.models ?? 0, likes: about?.likes ?? 0,
+    since: person.created_at, models_count: about ? about.models ?? 0 : null, likes: about ? about.likes ?? 0 : null,
     // How many models they liked, when they chose to show which: else null.
     liked_count: liked,
-    followers: follows?.followers ?? 0, following: follows?.following ?? 0,
+    followers: follows ? follows.followers : null, following: follows ? follows.following : null,
     designer: earned ? { models: earned.models, builds: earned.builds, remixes: earned.remixes,
       comments: earned.comments, tested: earned.tested, likes: earned.likes, builders: earned.builders,
-      followers: follows?.followers ?? 0, photos: earned.photos } : null,
-    collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`,
-    links: showcase.links, banner: showcase.banner, pins: showcase.pins,
+      followers: follows ? follows.followers : null, photos: earned.photos } : null,
+    collections: about ? about.collections ?? [] : null, built, url: `${origin}/u/${person.handle}`,
+    links: showcase && showcase.links, banner: showcase && showcase.banner, pins: showcase && showcase.pins,
     // What they earned (docs/SOCIAL.md U13), as their page has it, and
     // their level on every track, for your own profile's Achievements tab:
     // null before supabase/achievements.sql.
@@ -582,8 +586,8 @@ async function profile(request, response) {
 /// How many models [account] liked, when they chose to show which (and
 /// avatars.sql is applied); else null, and no Likes tab.
 async function likedShown(account, tests) {
-  const choice = await likesChoiceOf(account).catch(() => ({ ready: false }));
-  return choice.ready && choice.shows_likes ? likesCount(account, tests).catch(() => null) : null;
+  const choice = (await orUnknown("people", likesChoiceOf(account))) || { ready: false };
+  return choice.ready && choice.shows_likes ? orUnknown("people", likesCount(account, tests)) : null;
 }
 
 /// A page of the models [person] liked, as cards: only when they chose to
@@ -1285,25 +1289,29 @@ async function profilePage(request, response) {
   const asked = TABS.includes(request.query?.tab) ? String(request.query.tab) : "";
   const number = Number(request.query?.page ?? 1);
   const at = Number.isInteger(number) && number >= 1 && number <= MOST_PAGES ? number : 1;
+  // Who they are and their models are what was asked for; the rest is
+  // beside them, and one not read is null (orUnknown): the page says
+  // nothing of it, never none.
+  const unknown = (read) => orUnknown("people", read);
   const [shown, about, built, follows, following, designer, wins, shows, liked, levels] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, asked === "models" || !asked ? at : 1),
-    db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
-    builtBy(origin, person, tests),
-    followsOf(handle),
-    followingOf(handle),
-    designerOf(origin, handle, tests),
-    winsBy(person.account, tests).catch(() => []),
-    showsOf(person.account),
+    unknown(db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } })),
+    unknown(builtBy(origin, person, tests)),
+    unknown(followsOf(handle)),
+    unknown(followingOf(handle)),
+    unknown(designerOf(origin, handle, tests)),
+    unknown(winsBy(person.account, tests)),
+    unknown(showsOf(person.account)),
     likedShown(person.account, tests),
-    levelsOf(person.account, tests),
+    unknown(levelsOf(person.account, tests)),
   ]);
-  const showcase = await showcaseOf(origin, person, shows, tests);
+  const showcase = (await unknown(showcaseOf(origin, person, shows, tests))) || { links: [], banner: null, pins: [] };
   // Their picture, and the faces of whom they follow, in one lookup.
   await withFaces([person, following]);
   const earned = designer && designer.ready && designer.models > 0 ? designer : null;
   const lists = (about?.collections || []).filter((list) => ID.test(String(list.id)));
   const theirs = earned ? earned.photos : [];
-  const counts = { models: Number(about?.models) || 0, builds: built.length + theirs.length, collections: lists.length,
+  const counts = { models: Number(about?.models) || 0, builds: (built?.length ?? 0) + theirs.length, collections: lists.length,
     likes: liked ?? 0 };
   // Likes only when they chose to show them: else no tab, and ?tab=likes
   // is any other profile's first tab.
@@ -1410,14 +1418,15 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
       : shown.page > 1 ? pastEnd(shown.page, pageHref("models"))
       : `<p class="state">${sayHtml("Nothing in the gallery yet. The models {name} shares in the gallery with their name show here.", { name })}</p>`;
   } else if (tab === "builds") {
-    panel = counts.builds ? `${built.length ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">${sayHtml("Built by {name}", { name })}</h2>
+    panel = counts.builds ? `${built?.length ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">${sayHtml("Built by {name}", { name })}</h2>
       <p class="note">${asText(say("Photos of their real builds of models in the gallery."))}</p>
       <div class="build-grid">${stripHtml(built)}</div></section>` : ""}
     ${theirs.length ? `<section class="builds-of" aria-labelledby="built-of-h"><h2 id="built-of-h">${asText(say("Built by others"))}</h2>
       <p class="note">${sayHtml(earned.builders === 1 ? "One person posted photos of their real builds of {name}’s models."
         : "{n} people posted photos of their real builds of {name}’s models.", { n: escapeHtml(number(earned.builders)), name })}</p>
       <div class="build-grid">${stripHtml(theirs, { by: true })}</div></section>` : ""}`
-      : `<p class="state">${sayHtml("No builds yet. Photos of real builds show here: the ones {name} posts of what they built, "
+      // Their own builds not read (null): not said to be none.
+      : !built ? "" : `<p class="state">${sayHtml("No builds yet. Photos of real builds show here: the ones {name} posts of what they built, "
         + "and the ones other people post of {name}’s models.", { name })}</p>`;
   } else if (tab === "likes") {
     const pager = likedAt ? pagerHtml({ id: "models", first: likedAt.page, shown: cards.length, more: likedAt.more,
@@ -1448,7 +1457,7 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
   <!-- Under the work, not over it: drawn for its designer alone once their
        sign-in is read, it moved the whole page down as it came (site273). -->
   <section class="designs" id="designs-mine" aria-label="${asText(say("Your models, as only you see them"))}" hidden></section>
-  ${following.length ? `<section class="follows" aria-labelledby="follows-h"><h2 id="follows-h">${asText(say("Follows"))}</h2>
+  ${following?.length ? `<section class="follows" aria-labelledby="follows-h"><h2 id="follows-h">${asText(say("Follows"))}</h2>
     <p class="note">${sayHtml("{name} chose to show whom they follow.", { name })}</p>
     <ul class="pills">${following.map((one) => `<li><a class="pill" href="${at}/u/${escapeHtml(one.handle)}">`
       + `${avatarHtml({ handle: one.handle, name: one.name, picture: one.picture }, { size: "small" })}${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
@@ -1466,8 +1475,10 @@ ${shareSheetHtml({ url, name: person.name, text: say("{name} on Brickworks", { n
   const told = earned
     ? say("{models} by {name}, {builds} finished and {remixes}: designed in Brickworks.", { models: countedSaid(earned.models, "model"),
       name: person.name, builds: countedSaid(earned.builds, "build"), remixes: countedSaid(earned.remixes, "remix", "remixes") })
-    : say("{models} by {name}, built in Brickworks and shared in its gallery.", { models: countedSaid(about?.models ?? 0, "model"),
-      name: person.name });
+    : about ? say("{models} by {name}, built in Brickworks and shared in its gallery.", { models: countedSaid(about.models ?? 0, "model"),
+      name: person.name })
+    // How many not read: no number said.
+    : say("Its link opens their page: their models, their builds and their collections.");
   const picture = showcase.banner ? `${origin}/m/${showcase.banner}.png` : shown.models[0]?.image || "";
   return page(origin, {
     title: earned ? say("{name} (@{handle}) — a designer in Brickworks", { name: person.name, handle: person.handle })
@@ -1504,10 +1515,12 @@ async function listPage(request, response) {
   if (!list) return html(response, 404, speak(() => missingPage(origin, say("There is no collection here"), lang, words)), { tests });
   const asked = Number(request.query?.page ?? 1);
   const at = Number.isInteger(asked) && asked >= 1 && asked <= MOST_PAGES ? asked : 1;
+  // Its models are what was asked for; its cover and its follows are
+  // beside them, and drawn as none when they cannot be read (orUnknown).
   const [shown, covers, follows] = await Promise.all([
     withFaces(await models(origin, { collection: id, sort: "added", tests }, at)),
-    coversOf([list], tests),
-    listFollowsOf(id).catch(() => null),
+    orUnknown("people", coversOf([list], tests)).then((found) => found || new Map()),
+    orUnknown("people", listFollowsOf(id)),
   ]);
   return html(response, 200, speak(() => listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, words })), { tests });
 }
