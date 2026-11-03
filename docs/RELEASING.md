@@ -63,8 +63,12 @@ tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.tar.xz --window
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.AppImage
 
 # 4. Upload to a draft on Xaxis/brickworks-releases. Nobody else can see it
-#    yet. GitHub's own SHA-256 of every file is compared with dist/.
+#    yet. GitHub's own SHA-256 of every file is compared with dist/. With
+#    the packages goes latest.json, what the desktop app updates itself from,
+#    signed by both keys in .env (UPDATE_SIGN_KEY, UPDATE_SIGN_KEY_BACKUP;
+#    docs/UPDATES.md); without them nothing is uploaded.
 tools/release.py publish --draft
+tools/release.py latest --check dist/0.2.0/latest.json
 
 # 5. Each package on its own system: macOS on Apple silicon and on Intel,
 #    and Windows, each unpacked and run in a clean home (Linux was step 3).
@@ -107,7 +111,15 @@ stale and shadows the keyring login. `tools/release.py` drops it itself.
   `--window` run, and its pictures show the example car: drawn
   (`shots/release-linux.png`) and path traced (`shots/release-linux-best.png`).
 - The release workflow is green on all five jobs.
-- `publish` prints `ok` for every file: GitHub's SHA-256 matches.
+- `publish` prints `ok` for every file: GitHub's SHA-256 matches, and
+  `latest.json signed by 2 keys the app carries`.
+- Once published, the newest release's manifest is this one, as every
+  installed copy will read it:
+
+  ```sh
+  curl -sL https://github.com/Xaxis/brickworks-releases/releases/latest/download/latest.json -o /tmp/latest.json
+  tools/release.py latest --check /tmp/latest.json
+  ```
 - `tools/release/release_links.sh` ends `all N addresses ... answer`: every
   release's page and every file in `web/releases.json`, the file at its
   size. `tools/release/ship.sh` holds a deploy until it does.
@@ -127,6 +139,7 @@ stale and shadows the keyring login. `tools/release.py` drops it itself.
 | `Brickworks-X-macos-universal.zip` | `Brickworks.app`, Apple silicon and Intel in one |
 | `Brickworks-X-windows-x86_64.zip` | `Brickworks.exe`, `Brickworks.console.exe`, `Brickworks.pck` |
 | `SHA256SUMS` | `sha256sum -c SHA256SUMS` |
+| `latest.json` | the desktop app's update manifest: every package's address, size and SHA-256, signed (docs/UPDATES.md) |
 
 Each carries `README.txt` (how to start it, the first-launch steps while it
 is unsigned, where saves live), `ATTRIBUTION.md` (the LDraw and LEGO notices

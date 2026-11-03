@@ -3964,6 +3964,55 @@
       "area": "release"
     },
     {
+      "kind": "lib",
+      "label": "the desktop app updates itself",
+      "entry": "src/net/updater.gd",
+      "reach": "tools/probe.sh updater_probe; for real: python3 tools/update_check.py packages --versions=0.90.0,0.91.0 --out=DIR linux, then python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.AppImage --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.AppImage (and the two tar.xz)",
+      "area": "release"
+    },
+    {
+      "kind": "lib",
+      "label": "the signed update manifest",
+      "entry": "src/net/updates.gd",
+      "reach": "tools/probe.sh updater_probe; python3 tools/release.py latest --check dist/<version>/latest.json",
+      "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "update notice",
+      "entry": "src/ui/update_notice.gd",
+      "reach": "tools/probe.sh updater_probe   (by hand: BRICKWORKS_UPDATE_URL=http://127.0.0.1:PORT/good/ against python3 tools/update_check.py serve, Settings, Updates, Ask first)",
+      "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "check for updates, reinstall and restart",
+      "entry": "src/ui/update_dialog.gd",
+      "reach": "tools/probe.sh updater_probe   (Help, Check for updates…, Reinstall Brickworks…, Restart Brickworks: desktop only)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "update helper",
+      "entry": "src/net/update_helper.sh",
+      "reach": "python3 tools/minitest.py tests/test_updates.py   (update_helper.ps1 is Windows': python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.zip --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.zip (and the two tar.xz) on a Windows runner)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "updater probe",
+      "entry": "src/dev/updater_probe.gd",
+      "reach": "tools/probe.sh updater_probe",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "update check",
+      "entry": "tools/update_check.py",
+      "reach": "python3 tools/update_check.py packages --versions=0.90.0,0.91.0 --out=DIR linux, then python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.AppImage --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.AppImage (and the two tar.xz)",
+      "area": "release"
+    },
+    {
       "kind": "ui",
       "label": "meet on hinges",
       "entry": "src/assembly/hinge_align.gd",

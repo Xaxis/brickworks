@@ -12,6 +12,12 @@ refusal and through a real install that restarts with the model kept.
           Check for updates; Update and restart (the model kept); Restart;
           Reinstall; Automatic, put in as the app quits; and a new copy that
           cannot start, put back.
+    tools/update_check.py run --laid=DIR
+        the same, served from a folder `lay` made: a runner on macOS or
+        Windows has no signing key, so its manifests are signed here
+    tools/update_check.py lay --old FILE --new FILE --port=N --out=DIR
+        the packages and every scenario's signed manifest, for `run --laid`
+        on another machine at the same port
     tools/update_check.py serve --dir=DIR [--port=N] [--seconds=N]
         the test server alone (src/dev/updater_probe.gd starts it), for
         --seconds or until stopped
@@ -190,6 +196,8 @@ def lay_out(serve_dir: Path, old: Path, new: Path, port: int) -> dict[str, str]:
         "a redirect on the same host, followed")
     scenario("broken", release.sign_update_manifest(
         manifest(B, [entry(bad, url("broken/" + bad.name))])), "a copy that cannot start")
+    (serve_dir / "laid.json").write_text(json.dumps(
+        {"port": port, "old": old.name, "new": new.name, "scenarios": scenarios}, indent=1))
     return scenarios
 
 
@@ -257,11 +265,15 @@ class Run:
         return sorted(str(p.relative_to(install)) for p in stage.rglob("*")) if stage.exists() else []
 
 
-def drive(old: Path, new: Path, port: int, keep_log: Path | None) -> int:
+def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | None = None) -> int:
     with tempfile.TemporaryDirectory(prefix="brickworks-update-", ignore_cleanup_errors=True) as scratch:
         root = Path(scratch)
         serve_dir = root / "serve"
-        scenarios = lay_out(serve_dir, old, new, port)
+        if laid is None:
+            scenarios = lay_out(serve_dir, old, new, port)
+        else:
+            serve_dir = laid
+            scenarios = json.loads((laid / "laid.json").read_text())["scenarios"]
         server = serve(serve_dir, port)
         run = Run(old, new, port, root)
         say("── %s → %s, %s, served at http://127.0.0.1:%d/ ──" % (run.A, run.B,
@@ -459,10 +471,23 @@ def main(argv: list[str]) -> int:
             pass
         return 0
     if command == "run":
+        log = Path(option(args, "log")).resolve() if option(args, "log") else None
+        if option(args, "laid"):
+            laid = Path(option(args, "laid")).resolve()
+            facts = json.loads((laid / "laid.json").read_text())
+            return drive(laid / "files" / facts["old"], laid / "files" / facts["new"], facts["port"],
+                         log, laid)
         old, new = Path(option(args, "old")).resolve(), Path(option(args, "new")).resolve()
         port = int(option(args, "port", "0")) or free_port()
-        log = option(args, "log")
-        return drive(old, new, port, Path(log).resolve() if log else None)
+        return drive(old, new, port, log)
+    if command == "lay":
+        out = Path(option(args, "out")).resolve()
+        if out.exists() and any(out.iterdir()):
+            raise SystemExit("%s is not empty" % out)
+        scenarios = lay_out(out, Path(option(args, "old")).resolve(), Path(option(args, "new")).resolve(),
+                            int(option(args, "port")))
+        say("laid out %d scenarios in %s" % (len(scenarios), out))
+        return 0
     if command == "trim":
         return trim(Path(option(args, "out")).resolve())
     if command == "packages":
