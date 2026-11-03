@@ -3631,7 +3631,7 @@
       "kind": "ui",
       "label": "your plan on settings",
       "entry": "web/plan.js",
-      "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
+      "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing and Cancel Pro, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
       "area": "web"
     },
     {

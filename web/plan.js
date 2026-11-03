@@ -161,9 +161,9 @@ function upgrade(offer, start, opener) {
         : say("{price}, plus any tax where you live, shown at checkout. Charged today, then at the start of "
           + "each month: it renews automatically at {price} until you cancel.", { price: each })),
       make("p", "", yearly
-        ? say("Cancel any time in Settings, under Plan, with Manage billing, or at link.com. Pro stays on to "
+        ? say("Cancel any time in Settings, under Plan, with Cancel Pro, or at link.com. Pro stays on to "
           + "the end of the year you have paid for, and you are not charged again.")
-        : say("Cancel any time in Settings, under Plan, with Manage billing, or at link.com. Pro stays on to "
+        : say("Cancel any time in Settings, under Plan, with Cancel Pro, or at link.com. Pro stays on to "
           + "the end of the month you have paid for, and you are not charged again.")),
       sayInto(make("p"), say("Sold through Link, the merchant of record, for Atypic: your statement reads LINK.COM* ATYPIC. "
         + "{terms} · {refunds}"), {

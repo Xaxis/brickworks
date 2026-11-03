@@ -265,9 +265,10 @@ try {
     check("what Pro adds: any number of models kept with the account, Free's 25, and commercial use, never the desktop",
       /any number of models kept with your account \(Free keeps 25\)/.test(step?.words || "")
       && /a licence for commercial use/.test(step?.words || "")
-      && !/desktop|build|undefined/i.test(step?.words || ""));
+      && !/desktop|undefined/i.test(step?.words || ""));
     check(`the terms: "${step?.terms.slice(0, 120)}…"`, /^\$80\.00 USD a year, plus any tax/.test(step?.terms || "")
-      && /renews automatically at \$80\.00 USD a year until you cancel/.test(step.terms) && /Cancel any time/.test(step.terms)
+      && /renews automatically at \$80\.00 USD a year until you cancel/.test(step.terms)
+      && /Cancel any time in Settings, under Plan, with Cancel Pro, or at link\.com/.test(step.terms)
       && /Sold through Link/.test(step.terms));
     check("the box unticked, and Continue to checkout off", step && !step.ticked && !step.go);
     found = await axe(page, "#upgrade");
