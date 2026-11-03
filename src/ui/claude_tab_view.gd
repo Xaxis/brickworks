@@ -4,7 +4,7 @@
 ## The owner (2026-10-17): with two Brickworks tabs on two projects and two
 ## Claude chats, how does a person tie each chat to its tab so they do not
 ## get in each other's way? So, where the person looks for Claude (Account,
-## and the assistant panel's "Or with your Claude plan"):
+## and the assistant panel's "Connect your AI"):
 ##
 ##   - this tab's name to say to Claude: its id and its model's name;
 ##   - New chat for this tab: Claude opened on a new chat whose first

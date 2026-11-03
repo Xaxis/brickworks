@@ -145,7 +145,9 @@ func _run() -> void:
 		assistant.progress.emit("step %d" % n)
 	_check(panel._run_past.get_child_count() == ChatPanel.RUN_STEPS,
 		"only the last %d are kept" % ChatPanel.RUN_STEPS)
-	panel._run_started -= 75_000
+	# 75 s from now, not 75 s more than it has run: on a busy machine the
+	# card had been open over a second already, and the clock read 1:16.
+	panel._run_started = Time.get_ticks_msec() - 75_000
 	panel._process(0.0)
 	_check(panel._run_clock.text == "1:15",
 		"the clock says how long it has been going: %s" % panel._run_clock.text)
@@ -556,8 +558,12 @@ func _run() -> void:
 	connector.answered.emit("plan_scale", true, "90 studs")
 	_check(panel._run_clock.text != clock_was,
 		"...and the clock moves with the next of them: %s" % panel._run_clock.text)
+	# Quiet means longer than claude_quiet_ms since the last call: with it
+	# 0, at least a millisecond, which two headless frames can come within.
 	panel.claude_quiet_ms = 0
-	await process_frame
+	var quiet_from: int = Time.get_ticks_msec() + 5
+	while Time.get_ticks_msec() < quiet_from:
+		await process_frame
 	await process_frame
 	_check(not panel._claude_card() and panel._run_title.text == "Done",
 		"when Claude goes quiet the card says Done")
