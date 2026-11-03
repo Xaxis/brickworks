@@ -232,7 +232,7 @@ if grep -q "a unit's preview" "$S/${TAG}_preview.log" \
     || ! timeout 900 tools/deploy.sh --promote="$URL" >> "$S/${TAG}_prod.log" 2>&1; then
   echo "SHIP: $URL not promoted; deploying production afresh"
   LIVE=$SHA
-  timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod >> "$S/${TAG}_prod.log" 2>&1
+  timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod >> "$S/${TAG}_prod.log" 2>&1
   deployed=$?
 fi
 grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
