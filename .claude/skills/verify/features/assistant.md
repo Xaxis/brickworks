@@ -2504,6 +2504,27 @@ fixing what it got wrong.
   changes; the door technique ends the wall level with the frame meanwhile. Being *told* to stagger a wall is not the
   same as knowing where the stud sits, and the arithmetic is the part that goes
   wrong.
+- **Colours seen, against real sets of its theme** (`ColoursSeen`,
+  `Assistant._colours_finding`, colour10, 2026-11-01). Each whole picture from
+  the corner `_with_a_look` takes (submit_design, view_model) is counted on the
+  way: colours over 1% of the model's pixels, each pixel the nearest of the
+  model's solid colours as drawn, every fourth pixel (r 0.99 against the
+  judge's three pictures). review_model of the whole, and look_at_model when
+  the finding changes, say when the model shows fewer than the real sets of the
+  theme it was asked in, else its kind, within 1.6x of its part count, none held
+  out. The theme is read off all the app hears (the brief a session passes
+  submit_design, its calls' subjects, its description): "LEGO® City sets",
+  "Technic-style", then a theme's name as a word; the tab never hears the
+  person's words, and a session's subject alone measured 7242-1 by street sets: "shows 6 colours …; City sets of 141 to 359
+  parts show 8 to 12, most often 9", the colours those sets add at a small
+  share that it does not show, glass apart, and to add rather than recolour.
+  Nothing is recoloured. A set's count is read off its parts list
+  (`assets/knowledge/set_colours.json.gz`, `tools/set_colours.py`: colours at
+  1.5% of its parts, r 0.84 against its pictures); the theme predicts a held-out
+  set's count at r 0.84, the kind at 0.62. look_at_model draws a picture only up
+  to 2,000 parts. Probe: `colours_seen_probe` (a bench design of 7992-1 and the
+  judge's picture of it: the Python read's six colours, City's 258 sets with
+  7992-1 left out, both tools' words).
 
 ## How to reach it
 
