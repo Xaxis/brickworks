@@ -123,12 +123,18 @@ def put(folder: Path, envelope: dict[str, Any]) -> None:
     (folder / "latest.json").write_text(json.dumps(envelope, indent=1))
 
 
-def broken(package: Path, into: Path) -> Path:
+def broken(package: Path, into: Path, old: Path) -> Path:
     """A package of the same name whose program cannot start: an update
-    that passes every check but the copy's own start (Updater's put back)."""
+    that passes every check but the copy's own start (Updater's put back).
+    On a Mac an app that will not start fails its code signature first, so
+    there it is the old version under the new one's name, which the helper
+    puts back as surely: it says the wrong version."""
     into.mkdir(parents=True, exist_ok=True)
     target = into / package.name
     version = version_in(package.name)
+    if "-macos-" in package.name:
+        shutil.copy2(old, target)
+        return target
     stop = b"#!/bin/sh\necho 'not Brickworks'\nexit 3\n"
     if package.name.endswith(".AppImage"):
         target.write_bytes(stop)
@@ -141,14 +147,10 @@ def broken(package: Path, into: Path) -> Path:
             import io
             archive.addfile(info, io.BytesIO(stop))
     else:
-        folder = "Brickworks-%s-%s" % (version, "macos" if "-macos-" in package.name
-                                       else "windows-x86_64")
         with zipfile.ZipFile(target, "w") as archive:
-            inside = ("Brickworks.app/Contents/MacOS/Brickworks" if "-macos-" in package.name
-                      else "Brickworks.exe")
-            archive.writestr(folder + "/" + inside, stop)
-            if "-windows-" in package.name:
-                archive.writestr(folder + "/Brickworks.console.exe", stop)
+            folder = "Brickworks-%s-windows-x86_64" % version
+            archive.writestr(folder + "/Brickworks.exe", stop)
+            archive.writestr(folder + "/Brickworks.console.exe", stop)
     return target
 
 
@@ -160,7 +162,7 @@ def lay_out(serve_dir: Path, old: Path, new: Path, port: int) -> dict[str, str]:
     files.mkdir(parents=True)
     for package in (old, new):
         release.link_or_copy(package, files / package.name)
-    bad = broken(new, files / "broken")
+    bad = broken(new, files / "broken", old)
     A, B = version_in(old.name), version_in(new.name)
     url = lambda name: base + "files/" + name  # noqa: E731
     good = manifest(B, [entry(new, url(new.name))],
