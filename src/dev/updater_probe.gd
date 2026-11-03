@@ -194,7 +194,6 @@ func _menus() -> void:
 	store.keeps = true
 	var own: String = ModelStore.autosave()
 	DirAccess.remove_absolute(own)
-	store.touch()
 	await _frames(10)
 	shell.run("restart")
 	await _until(func() -> bool: return not _handed.is_empty(), 30.0)
@@ -362,10 +361,10 @@ func _online() -> void:
 	named = _notice.controls_by_name()
 	_check("the notice says it is ready", _notice.showing() and _texts(_notice).contains("Brickworks 99.0.0 is ready"))
 
-	var store: ModelStore = _main.get("_store")
+	# Not changed since it was last written, as a model opened from the
+	# command line is not: what is on screen is what comes back all the same.
 	var own: String = ModelStore.autosave()
 	DirAccess.remove_absolute(own)
-	store.touch()
 	_handed = []
 	(named["update_restart"] as Button).pressed.emit()
 	await _until(func() -> bool: return not _handed.is_empty(), 30.0)

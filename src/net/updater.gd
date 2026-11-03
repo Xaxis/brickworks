@@ -388,10 +388,14 @@ func _hand_over(helper: Array) -> void:
 	get_tree().quit()
 
 
-## The working model written before the app goes, and stored (as Reload).
+## The working model written before the app goes, and stored (as Reload):
+## what is on screen, changed or not. A model opened from the command line
+## and not touched since had never been written, so the window that came
+## back opened the session's model before it.
 func _keep_the_model() -> void:
 	if store == null:
 		return
+	store.touch()
 	var path: String = store.write_now()
 	var waited: float = 0.0
 	while not path.is_empty() and not ModelStore.stored(path) and waited < 30.0:

@@ -64,9 +64,10 @@ func _run() -> void:
 		written == own and own.begins_with(TabSession.ROOT + TabSession.id() + "/")
 			and FileAccess.get_file_as_string(own).begins_with("0 Update Probe House"))
 
-	# Reload: the working model written first, then the page reloaded.
+	# Reload: the working model written first, then the page reloaded. Not
+	# changed since it was last written, as a model a link opened is not:
+	# what is on screen is written all the same.
 	DirAccess.remove_absolute(own)
-	store.touch()
 	var reloaded: Array = [false]
 	var had_file: Array = [false]
 	(offer as UpdateOffer).reload_page = func() -> void:
