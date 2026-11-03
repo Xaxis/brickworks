@@ -11,14 +11,17 @@
 // a click on its key, then Shift-B, sets it. Shift-B takes the Paint tool.
 // The page is loaded again, and Shift-B takes the Paint tool still.
 //
-// The page is signed in as the flows' shared test account (browser.mjs), and
-// a key set signed in is kept on the account too (api/account.js ?op=keys):
-// once keymap.sql was applied, one run's Shift-B was there for the next to
-// find, and for every other flow (rel-m222, 2026-10-30). So the account's
-// keys are put back to the app's own before the run and after it, and a
-// browser of its own, signed in to the same account, must find the key.
+// A key set signed in is kept on the account too (api/account.js ?op=keys),
+// so the page is signed in to a throwaway account of its own, deleted after
+// with its keys. On the flows' shared test account one run's Shift-B was
+// there for every other flow (rel-m222, 2026-10-30), and putting the keys
+// back before and after was not enough: rel-m249 ran this flow on
+// brickworks.diy and on its preview at once, each put the shared keys back
+// while the other's Shift-B was on them, and both failed with nothing wrong
+// in the app (2026-11-02). A browser of its own, signed in to the same
+// account, must find the key.
 import { askApp, launch } from "./browser.mjs";
-import { canSignIn, mintSession } from "./session.mjs";
+import { canSignIn, deleteAccount, mintSession, signInContext } from "./session.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -40,17 +43,16 @@ const ok = (passed, line) => {
 };
 
 const site = url.replace(/\/app\/?(\?.*)?$/, "").replace(/\/$/, "");
-const session = canSignIn() ? await mintSession().catch(() => null) : null;
-// The account's keys: read, or kept with [body]. Null where there is no
-// account to ask (a local server has no /api).
-async function accountKeys(body) {
+const email = canSignIn() ? `delivered+bwkeys${Date.now()}@resend.dev` : "";
+const session = email ? await mintSession(email).catch(() => null) : null;
+// The account's keys. Null where there is no account to ask (a local
+// server has no /api).
+async function accountKeys() {
   if (!session) return null;
   const bypass = args.bypass ? `&x-vercel-protection-bypass=${args.bypass}` : "";
   try {
     const answer = await fetch(`${site}/api/account?op=keys${bypass}`, {
-      method: body ? "POST" : "GET",
-      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
-      body: body ? JSON.stringify(body) : undefined,
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
     if (answer.status === 404) return null;
     return answer.ok ? await answer.json() : { status: answer.status };
@@ -58,11 +60,10 @@ async function accountKeys(body) {
     return null;
   }
 }
-const plainKeys = () => accountKeys({ preset: "brickworks", own: {}, at: Math.floor(Date.now() / 1000) });
-const reset = await plainKeys();
-if (reset !== null) ok(!reset.status, `the account's keys put back to the app's own first (${JSON.stringify(reset)})`);
+const before = await accountKeys();
+if (before !== null) ok(!before.status && before.keys === null, `a new account keeps no keys (${JSON.stringify(before)})`);
 
-const browser = await launch();
+const browser = await launch({ signedOut: true });
 const errors = [];
 // The engine's own errors; a missing file the local server has not (an
 // /api route) is not the app's.
@@ -72,8 +73,16 @@ function listen(one) {
   });
   one.on("pageerror", (e) => errors.push(String(e)));
 }
-let page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
-listen(page);
+// A page of its own browser, signed in to the flow's account.
+async function browserOfItsOwn() {
+  const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  if (session) await signInContext(context, email);
+  const one = await context.newPage();
+  one.on("close", () => context.close().catch(() => {}));
+  listen(one);
+  return one;
+}
+let page = await browserOfItsOwn();
 
 const wait = (ms) => page.waitForTimeout(ms);
 const state = () => page.evaluate(() => window.brickworksState || {});
@@ -117,71 +126,71 @@ async function shiftB() {
   return now.mode;
 }
 
-await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
-await started();
-ok(await shiftB() !== "paint", "Shift-B takes no tool before it is set");
-
-await page.keyboard.press("F1");
-const find = await controlAt("keys_find", 20);
-await page.mouse.click(find.x, find.y);
-await page.keyboard.type("paint", { delay: 60 });
-await wait(1000);
-const chip = await controlAt("key_mode_paint", 20);
-ok(chip.y > 0 && chip.y < 900, `F1, "paint": the Paint tool's key in sight (${chip.x}, ${chip.y})`);
-await page.mouse.click(chip.x, chip.y);
-await wait(800);
-let said = await words();
-ok(said.some((w) => w.startsWith("Press the key for Paint tool")),
-  `a click on it asks for a key: ${JSON.stringify(said.find((w) => w.startsWith("Press")) || "nothing")}`);
-await page.keyboard.press("Shift+KeyB");
-await wait(800);
-said = await words();
-ok(said.includes("Paint tool is now shift-B."),
-  `Shift-B sets it: ${JSON.stringify(said.find((w) => w.startsWith("Paint tool")) || "nothing")}`);
-await page.screenshot({ path: `${out}/keys_set.png` });
-const done = await controlAt("settings_done", 20);
-await page.mouse.click(done.x, done.y);
-await wait(800);
-ok(await shiftB() === "paint", "Shift-B takes the Paint tool");
-
-// The browser keeps what the app wrote a moment after it wrote it.
-await wait(3000);
-await page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });
-await page.evaluate(() => { window.brickworksControls = {}; window.brickworksState = {}; });
-await started();
-ok(await shiftB() === "paint", "the page loaded again: Shift-B takes the Paint tool still");
-await page.keyboard.press("F1");
-const again = await controlAt("keys_find", 20);
-await page.mouse.click(again.x, again.y);
-await page.keyboard.type("paint", { delay: 60 });
-await wait(1000);
-said = await words();
-ok(said.includes("B") && said.includes("the Paint tool: click a part to paint it"), "...and the sheet's Paint tool row says B");
-await page.screenshot({ path: `${out}/keys_after_reload.png` });
-
-// Kept on the account as well: a browser of its own, signed in to the same
-// account and with nothing of this one's, has the key too.
-if (reset !== null) {
-  let kept = null;
-  for (let n = 0; n < 20 && !kept?.keys?.own?.mode_paint; n++) {
-    kept = await accountKeys();
-    await wait(500);
-  }
-  ok(Boolean(kept?.keys?.own?.mode_paint), `the account keeps it (${JSON.stringify(kept?.keys?.own ?? kept)})`);
-  await page.close();
-  page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
-  listen(page);
+try {
   await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
   await started();
-  ok(await shiftB() === "paint", "a browser of its own, signed in to the account: Shift-B takes the Paint tool");
-}
-ok(errors.length === 0, `no script error in the console${errors.length ? `: ${errors[0]}` : ""}`);
+  ok(await shiftB() !== "paint", "Shift-B takes no tool before it is set");
 
-await browser.close();
-// Every other flow signs in as the same account and must find the app's own keys.
-if (reset !== null) {
-  const after = await plainKeys();
-  ok(after && !after.status, `the account's keys put back to the app's own after (${JSON.stringify(after)})`);
+  await page.keyboard.press("F1");
+  const find = await controlAt("keys_find", 20);
+  await page.mouse.click(find.x, find.y);
+  await page.keyboard.type("paint", { delay: 60 });
+  await wait(1000);
+  const chip = await controlAt("key_mode_paint", 20);
+  ok(chip.y > 0 && chip.y < 900, `F1, "paint": the Paint tool's key in sight (${chip.x}, ${chip.y})`);
+  await page.mouse.click(chip.x, chip.y);
+  await wait(800);
+  let said = await words();
+  ok(said.some((w) => w.startsWith("Press the key for Paint tool")),
+    `a click on it asks for a key: ${JSON.stringify(said.find((w) => w.startsWith("Press")) || "nothing")}`);
+  await page.keyboard.press("Shift+KeyB");
+  await wait(800);
+  said = await words();
+  ok(said.includes("Paint tool is now shift-B."),
+    `Shift-B sets it: ${JSON.stringify(said.find((w) => w.startsWith("Paint tool")) || "nothing")}`);
+  await page.screenshot({ path: `${out}/keys_set.png` });
+  const done = await controlAt("settings_done", 20);
+  await page.mouse.click(done.x, done.y);
+  await wait(800);
+  ok(await shiftB() === "paint", "Shift-B takes the Paint tool");
+
+  // The browser keeps what the app wrote a moment after it wrote it.
+  await wait(3000);
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });
+  await page.evaluate(() => { window.brickworksControls = {}; window.brickworksState = {}; });
+  await started();
+  ok(await shiftB() === "paint", "the page loaded again: Shift-B takes the Paint tool still");
+  await page.keyboard.press("F1");
+  const again = await controlAt("keys_find", 20);
+  await page.mouse.click(again.x, again.y);
+  await page.keyboard.type("paint", { delay: 60 });
+  await wait(1000);
+  said = await words();
+  ok(said.includes("B") && said.includes("the Paint tool: click a part to paint it"), "...and the sheet's Paint tool row says B");
+  await page.screenshot({ path: `${out}/keys_after_reload.png` });
+
+  // Kept on the account as well: a browser of its own, signed in to the same
+  // account and with nothing of this one's, has the key too.
+  if (before !== null) {
+    let kept = null;
+    for (let n = 0; n < 20 && !kept?.keys?.own?.mode_paint; n++) {
+      kept = await accountKeys();
+      await wait(500);
+    }
+    ok(Boolean(kept?.keys?.own?.mode_paint), `the account keeps it (${JSON.stringify(kept?.keys?.own ?? kept)})`);
+    await page.close();
+    page = await browserOfItsOwn();
+    await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
+    await started();
+    ok(await shiftB() === "paint", "a browser of its own, signed in to the account: Shift-B takes the Paint tool");
+  }
+  ok(errors.length === 0, `no script error in the console${errors.length ? `: ${errors[0]}` : ""}`);
+} finally {
+  await browser.close();
+  if (session) {
+    const gone = await deleteAccount(email).catch(() => false);
+    ok(gone, `the throwaway account is deleted (${email})`);
+  }
 }
 console.log(`\nkeys (web): ${failed === 0 ? "every check passed" : `${failed} FAILED`}`);
 process.exit(failed === 0 ? 0 : 1);
