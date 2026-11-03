@@ -245,10 +245,10 @@ deployed=0
 # checks changed since (reused_preview), or SHA built afresh.
 LIVE=${PREVIEW_MADE:-$SHA}
 if grep -q "a unit's preview" "$S/${TAG}_preview.log" \
-    || ! timeout 900 tools/deploy.sh --promote="$URL" >> "$S/${TAG}_prod.log" 2>&1; then
+    || ! SHIP_DEPLOY=1 timeout 900 tools/deploy.sh --promote="$URL" >> "$S/${TAG}_prod.log" 2>&1; then
   echo "SHIP: $URL not promoted; deploying production afresh"
   LIVE=$SHA
-  timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod >> "$S/${TAG}_prod.log" 2>&1
+  SHIP_DEPLOY=1 timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh --prod >> "$S/${TAG}_prod.log" 2>&1
   deployed=$?
 fi
 grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
@@ -257,7 +257,7 @@ grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
 # live checks passed against m173, and m175's ship began on top of it
 # (2026-10-26).
 if [ $deployed -ne 0 ]; then
-  echo "SHIP: main is $SHA but production is not (deploy exit $deployed): deploy it again with tools/deploy.sh --prod"
+  echo "SHIP: main is $SHA but production is not (deploy exit $deployed): deploy it again with PROD_BY_HAND=\"$TAG's deploy failed\" tools/deploy.sh --prod"
   exit 1
 fi
 # The CDN keeps serving the last pages for a minute or so after the promotion.

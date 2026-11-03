@@ -46,6 +46,15 @@ def test_a_probe_named_bare_runs_with_the_arguments_its_suite_line_gives(tmp_pat
     assert _dry(r, "motions_render") == "-- /motions_render_probe"
 
 
+def test_a_double_dash_before_the_arguments_is_probe_sh_s_own(tmp_path):
+    """2026-11-03: `probe.sh connector_probe -- 8797` handed the probe "--" as its first argument,
+    which it read as its relay's port, and every check failed for the setup."""
+    r = _yard(tmp_path)
+    assert _dry(r, "command", "--", "8797") == "-- 8797"
+    assert _dry(r, "command", "8797") == "-- 8797"
+    assert _dry(r, "command", "--", "--other") == "-- --other"
+
+
 def test_run_probes_and_the_train_ask_for_the_suites_arguments():
     """Both ways a release runs a probe set PROBE_LISTED."""
     assert "PROBE_LISTED=1 timeout 2400 tools/probe.sh" in (ROOT / "tools/release/run_probes.sh").read_text()

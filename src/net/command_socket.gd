@@ -362,6 +362,12 @@ func answer_rpc(request: Dictionary) -> Variant:
 	var params: Dictionary = request.get("params", {}) as Dictionary
 	if sent_id == null:
 		return null
+	# Sent back as it came. JSON.parse_string makes every number a float, and
+	# an id of 1 went back as 1.0, which a strict client (GitHub Copilot's CLI,
+	# Codex's: Rust's rmcp) cannot read as an answer to anything: it gave up
+	# on the port with "data did not match any variant of JsonRpcMessage".
+	if sent_id is float and float(sent_id) == floorf(sent_id):
+		sent_id = int(sent_id)
 
 	if method == "initialize":
 		var wanted: Variant = params.get("protocolVersion")
@@ -501,15 +507,19 @@ static func _result(sent_id: Variant, result: Dictionary) -> Dictionary:
 	return {"jsonrpc": "2.0", "id": sent_id, "result": result}
 
 
-## The tools, as tools/list gives them.
+## The tools, as tools/list gives them. The title twice, as MCP has it:
+## the tool's own (Tool.title, what Anthropic's quickstart sets and a
+## directory's scan may read) and its annotations' (2026-11-03, claudedir).
 func served_tools() -> Array:
 	var listed: Array = []
 	for one: Dictionary in catalogue():
+		var hints: Dictionary = one.get("annotations", {})
 		listed.append({
 			"name": one.get("name", ""),
+			"title": str(hints.get("title", one.get("name", ""))),
 			"description": one.get("description", ""),
 			"inputSchema": one.get("input_schema", {}),
-			"annotations": one.get("annotations", {}),
+			"annotations": hints,
 		})
 	return listed
 

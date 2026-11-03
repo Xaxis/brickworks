@@ -53,7 +53,7 @@ for round in $(seq 1 "$ROUNDS"); do
     args=()
     for a in "$@"; do a=${a//@URL@/http://127.0.0.1:$port}; args+=("${a//@OUT@/$run}"); done
     load=$(cut -d' ' -f1 /proc/loadavg)
-    (cd "$NEW" && timeout 900 ~/.claude/claude-core/bin/heavy "${args[@]}" > "$run.log" 2>&1)
+    (cd "$NEW" && timeout 10800 ~/.claude/claude-core/bin/heavy timeout 900 "${args[@]}" > "$run.log" 2>&1)
     echo "$side r$round load=$load exit=$? $(grep -E "$SHOW" "$run.log" | tr -s ' ' | cut -c1-220 | tr '\n' ' ')"
   done
 done

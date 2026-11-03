@@ -49,7 +49,8 @@ export const asksViews = (name) => VIEWER_TOOLS.includes(name) || name === "job"
 const ONLY_APP = { ui: { resourceUri: VIEWER_URI, visibility: ["app"] } };
 const LOOKS = (title) => ({ title, readOnlyHint: true, openWorldHint: false });
 
-// The card's own tools (src/net/viewer_tools.gd), for the app alone.
+// The card's own tools (src/net/viewer_tools.gd), for the app alone, each with
+// its title as the app's are (CommandSocket.served_tools).
 export const VIEWER_ONLY = [
   {
     name: "viewer_scene",
@@ -91,7 +92,7 @@ export const VIEWER_ONLY = [
       idempotentHint: true, openWorldHint: false },
     _meta: ONLY_APP,
   },
-];
+].map((tool) => ({ ...tool, title: tool.annotations.title }));
 export const isViewerOnly = (name) => VIEWER_ONLY.some((tool) => tool.name === name);
 
 // What a host may read in place of calling them: brickworks://viewer/scene,

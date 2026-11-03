@@ -10208,3 +10208,355 @@ msgstr "Znap"
 msgctxt "theme"
 msgid "Zooters"
 msgstr "Zooters"
+
+# Connect your AI: every assistant from one table, the caller named (connectany, U3)
+msgid "Connect your AI"
+msgstr "Deine KI verbinden"
+
+msgid "Or connect your AI"
+msgstr "Oder deine KI verbinden"
+
+msgid "Let your AI build in this tab, or stop it"
+msgstr "Deine KI in diesem Tab bauen lassen oder sie stoppen"
+
+msgid "No key needed: connect the AI app you use to your Brickworks account once, then ask it to build. It builds here, on your plan with it."
+msgstr "Kein Schlüssel nötig: Verbinde die KI-App, die du nutzt, einmal mit deinem Brickworks-Konto und bitte sie dann ums Bauen. Sie baut hier, im Rahmen deines Abos dort."
+
+msgid "Your AI"
+msgstr "Deine KI"
+
+msgid "The AI app you use: Connect adds Brickworks to it"
+msgstr "Die KI-App, die du nutzt: Verbinden fügt ihr Brickworks hinzu"
+
+msgid "Another app"
+msgstr "Eine andere App"
+
+msgid "your AI app"
+msgstr "deine KI-App"
+
+msgid "Your AI builds in this tab while you talk to it in its own app, and keeps going when it is out of view. Side by side, you can watch it build."
+msgstr "Deine KI baut in diesem Tab, während du in ihrer eigenen App mit ihr sprichst, und macht weiter, wenn er nicht sichtbar ist. Nebeneinander kannst du ihr beim Bauen zusehen."
+
+msgid "Every AI app connected to your Brickworks account loses it until you connect it again."
+msgstr "Jede mit deinem Brickworks-Konto verbundene KI-App verliert den Zugang, bis du sie wieder verbindest."
+
+msgid "Connect %s"
+msgstr "%s verbinden"
+
+msgid "Connect %s again"
+msgstr "%s erneut verbinden"
+
+msgid "Disconnect %s"
+msgstr "%s trennen"
+
+msgid "Disconnect"
+msgstr "Trennen"
+
+msgid "Opens %s with Brickworks filled in"
+msgstr "Öffnet %s mit Brickworks bereits eingetragen"
+
+msgid "Copies the command that adds Brickworks to %s"
+msgstr "Kopiert den Befehl, der Brickworks zu %s hinzufügt"
+
+msgid "Copies the address and opens %s"
+msgstr "Kopiert die Adresse und öffnet %s"
+
+msgid "Copies the address"
+msgstr "Kopiert die Adresse"
+
+msgid "Connected to %s — it builds in this tab."
+msgstr "Verbunden mit %s — es baut in diesem Tab."
+
+msgid "Connected to %s — %s reached this tab at %s."
+msgstr "Verbunden mit %s — %s hat diesen Tab um %s erreicht."
+
+msgid "%s is connected to your account, but switched off in this tab."
+msgstr "%s ist mit deinem Konto verbunden, aber in diesem Tab ausgeschaltet."
+
+msgid "Disconnected. %s can no longer reach your Brickworks; connect again any time."
+msgstr "Getrennt. %s kann dein Brickworks nicht mehr erreichen; verbinde jederzeit wieder."
+
+msgid "%s can reach this tab"
+msgstr "%s kann diesen Tab erreichen"
+
+msgid "Waiting for you to connect in %s…"
+msgstr "Warte darauf, dass du in %s verbindest…"
+
+msgid "Connected — %s reached this tab at %s."
+msgstr "Verbunden — %s hat diesen Tab um %s erreicht."
+
+msgid "Connected through this tab's private address."
+msgstr "Verbunden über die private Adresse dieses Tabs."
+
+msgid "On. Waiting for %s — press Connect %s."
+msgstr "An. Warte auf %1$s — drücke „%2$s verbinden“."
+
+msgid "Off. %s cannot reach this tab."
+msgstr "Aus. %s kann diesen Tab nicht erreichen."
+
+msgid "%s is building"
+msgstr "%s baut"
+
+msgid "%d call in %s"
+msgstr "%d Aufruf in %s"
+
+msgid "%d calls in %s"
+msgstr "%d Aufrufe in %s"
+
+msgid "%s opens with Brickworks filled in, if it is installed. There:"
+msgstr "%s öffnet sich mit Brickworks bereits eingetragen, wenn es installiert ist. Dort:"
+
+msgid "The command that adds Brickworks to %s is copied:"
+msgstr "Der Befehl, der Brickworks zu %s hinzufügt, ist kopiert:"
+
+msgid "The address is copied, and %s has opened in a new tab. There:"
+msgstr "Die Adresse ist kopiert, und %s hat sich in einem neuen Tab geöffnet. Dort:"
+
+msgid "The address is copied. In your AI app:"
+msgstr "Die Adresse ist kopiert. In deiner KI-App:"
+
+msgid "Nothing opened? Add a remote MCP server named brickworks at this address in %s (it is copied):"
+msgstr "Nichts geöffnet? Füge in %s einen Remote-MCP-Server namens brickworks mit dieser Adresse hinzu (sie ist kopiert):"
+
+msgid "The command, to copy again:"
+msgstr "Der Befehl, zum erneuten Kopieren:"
+
+msgid "No new tab? Open %s yourself and paste this (it is copied):"
+msgstr "Kein neuer Tab? Öffne %s selbst und füge dies ein (es ist kopiert):"
+
+msgid "The address (it is copied):"
+msgstr "Die Adresse (sie ist kopiert):"
+
+msgid "%d. Sign in to Brickworks as %s if asked, and press Allow."
+msgstr "%d. Melde dich bei Brickworks als %s an, falls gefragt, und drücke „Erlauben“."
+
+msgid "%d. Sign in to Brickworks if asked, and press Allow."
+msgstr "%d. Melde dich bei Brickworks an, falls gefragt, und drücke „Erlauben“."
+
+msgid "%d. Come back: this says Connected. Then ask %s: “Build a small red house in Brickworks.”"
+msgstr "%d. Komm zurück: Hier steht dann „Verbunden“. Dann bitte %s: „Bau in Brickworks ein kleines rotes Haus.“"
+
+msgid "1. Press Add, then Connect."
+msgstr "1. Drücke „Add“, dann „Connect“."
+
+msgid "Press Add, then Connect."
+msgstr "Drücke „Add“, dann „Connect“."
+
+msgid "Every Claude plan: Free adds one custom connector, and on Team and Enterprise an Owner adds it."
+msgstr "Jedes Claude-Abo: Free fügt einen eigenen Konnektor hinzu, und bei Team und Enterprise fügt ihn ein Owner hinzu."
+
+msgid "Press +, then Add custom MCP server."
+msgstr "Drücke +, dann „Add custom MCP server“."
+
+msgid "Name it Brickworks, paste the address as its Connection and choose OAuth."
+msgstr "Nenne ihn Brickworks, füge die Adresse als „Connection“ ein und wähle OAuth."
+
+msgid "Press I understand and want to continue, then Create as a plugin."
+msgstr "Drücke „I understand and want to continue“, dann „Create as a plugin“."
+
+msgid "Business, Enterprise and Edu workspaces, where an admin or owner adds it; other plans may not offer it yet."
+msgstr "Business-, Enterprise- und Edu-Workspaces, wo ein Admin oder Owner es hinzufügt; andere Abos bieten es vielleicht noch nicht."
+
+msgid "Pictures may not reach its model, and a changed tool list needs Refresh on its page."
+msgstr "Bilder erreichen sein Modell vielleicht nicht, und eine geänderte Tool-Liste braucht „Refresh“ auf seiner Seite."
+
+msgid "Open Settings, then Connected Apps."
+msgstr "Öffne „Settings“, dann „Connected Apps“."
+
+msgid "Press Add a custom app, paste the address and press Next."
+msgstr "Drücke „Add a custom app“, füge die Adresse ein und drücke „Next“."
+
+msgid "Personal Google accounts in the US, 18 or over, in English, with Keep Activity on."
+msgstr "Private Google-Konten in den USA, ab 18, auf Englisch, mit aktivierter „Keep Activity“."
+
+msgid "Open Connectors, press Add, then Custom MCP Connector."
+msgstr "Öffne „Connectors“, drücke „Add“, dann „Custom MCP Connector“."
+
+msgid "Name it Brickworks and paste the address."
+msgstr "Nenne ihn Brickworks und füge die Adresse ein."
+
+msgid "The workspace's admin adds it; on Free, Pro and Student that is you."
+msgstr "Der Admin des Workspaces fügt es hinzu; bei Free, Pro und Student bist das du."
+
+msgid "A changed tool list needs a new connection."
+msgstr "Eine geänderte Tool-Liste braucht eine neue Verbindung."
+
+msgid "Press Add custom, then Remote."
+msgstr "Drücke „Add custom“, dann „Remote“."
+
+msgid "Pro, Max and Enterprise, on the web; not on phones yet."
+msgstr "Pro, Max und Enterprise, im Web; noch nicht auf Smartphones."
+
+msgid "Press New, then Custom."
+msgstr "Drücke „New“, dann „Custom“."
+
+msgid "Every Grok plan; on Business and Enterprise an admin allows it first."
+msgstr "Jedes Grok-Abo; bei Business und Enterprise erlaubt es zuerst ein Admin."
+
+msgid "Run the command in a terminal."
+msgstr "Führe den Befehl in einem Terminal aus."
+
+msgid "In Claude Code, type /mcp, choose brickworks and Authenticate."
+msgstr "Tippe in Claude Code /mcp, wähle brickworks und Authenticate."
+
+msgid "Every Claude plan with Claude Code; signed in with the same Claude account as claude.ai, it has the connector from there too."
+msgstr "Jedes Claude-Abo mit Claude Code; mit demselben Claude-Konto wie claude.ai angemeldet, hat es den Konnektor auch von dort."
+
+msgid "Run the command in a terminal: it adds Brickworks, then opens your browser to sign in."
+msgstr "Führe den Befehl in einem Terminal aus: Er fügt Brickworks hinzu und öffnet dann deinen Browser zur Anmeldung."
+
+msgid "Every ChatGPT plan; Enterprise admins may restrict it."
+msgstr "Jedes ChatGPT-Abo; Enterprise-Admins können es einschränken."
+
+msgid "In Gemini CLI, type /mcp auth brickworks."
+msgstr "Tippe in Gemini CLI /mcp auth brickworks."
+
+msgid "Paid Gemini Code Assist plans."
+msgstr "Kostenpflichtige Gemini-Code-Assist-Abos."
+
+msgid "Press Install where Cursor asks, then Connect beside brickworks in its MCP settings."
+msgstr "Drücke „Install“, wenn Cursor fragt, dann „Connect“ neben brickworks in seinen MCP-Einstellungen."
+
+msgid "Every Cursor plan."
+msgstr "Jedes Cursor-Abo."
+
+msgid "Press Install where VS Code asks, then use Brickworks from Copilot's chat in Agent mode."
+msgstr "Drücke „Install“, wenn VS Code fragt, und nutze Brickworks dann im Chat von Copilot im Agent-Modus."
+
+msgid "VS Code with GitHub Copilot; on Business and Enterprise an admin turns MCP on."
+msgstr "VS Code mit GitHub Copilot; bei Business und Enterprise schaltet ein Admin MCP ein."
+
+msgid "Add a remote MCP server, name it Brickworks, paste the address and sign in with OAuth."
+msgstr "Füge einen Remote-MCP-Server hinzu, nenne ihn Brickworks, füge die Adresse ein und melde dich mit OAuth an."
+
+msgid "Any app that takes a remote MCP server and signs in with OAuth."
+msgstr "Jede App, die einen Remote-MCP-Server annimmt und sich mit OAuth anmeldet."
+
+msgid "This tab is %s. Say it to %s to work here."
+msgstr "Dieser Tab ist %s. Sag das %s, um hier zu arbeiten."
+
+msgid "Your AI knows this tab as %s. In a chat, say “the %s tab” (or its model's name) and it works here."
+msgstr "Deine KI kennt diesen Tab als %s. Sag in einem Chat „den Tab %s“ (oder den Namen seines Modells), und sie arbeitet hier."
+
+msgid "No chat is working in this tab."
+msgstr "In diesem Tab arbeitet kein Chat."
+
+msgid "A %s chat is working here: %s."
+msgstr "Ein %s-Chat arbeitet hier: %s."
+
+msgid "%d %s chats are working in this tab, on the one model."
+msgstr "%d %s-Chats arbeiten in diesem Tab am selben Modell."
+
+msgid "%d chats are working in this tab, on the one model."
+msgstr "%d Chats arbeiten in diesem Tab am selben Modell."
+
+msgid "Keep one; the other is moved off and asked to choose another tab."
+msgstr "Behalte einen; der andere wird verschoben und gebeten, einen anderen Tab zu wählen."
+
+msgid "%s working"
+msgstr "%s arbeitet"
+
+msgid "tab %s"
+msgstr "Tab %s"
+
+msgid "%d %s chats"
+msgstr "%d %s-Chats"
+
+msgid "%d chats"
+msgstr "%d Chats"
+
+msgid "%s are working in this tab, on the one model. Open Account to keep one."
+msgstr "%s arbeiten in diesem Tab am selben Modell. Öffne das Konto, um einen zu behalten."
+
+msgid "A %s chat is working in this tab: %s."
+msgstr "Ein %s-Chat arbeitet in diesem Tab: %s."
+
+msgid "Your AI knows this tab as %s. No chat is working in it. Account has New chat for this tab."
+msgstr "Deine KI kennt diesen Tab als %s. Kein Chat arbeitet darin. Unter Konto gibt es „Neuer Chat für diesen Tab“."
+
+msgid "Run this in a terminal, in any folder: %s starts a chat for this tab. It is copied."
+msgstr "Führe dies in einem Terminal aus, in einem beliebigen Ordner: %s startet einen Chat für diesen Tab. Es ist kopiert."
+
+msgid "%s has opened in a new tab. The first message, naming this tab, is copied: paste it into a new chat there, add what to build and send it."
+msgstr "%s hat sich in einem neuen Tab geöffnet. Die erste Nachricht, die diesen Tab nennt, ist kopiert: Füge sie dort in einen neuen Chat ein, ergänze, was gebaut werden soll, und sende sie."
+
+msgid "The first message, naming this tab, is copied: paste it into a new chat in %s, add what to build and send it."
+msgstr "Die erste Nachricht, die diesen Tab nennt, ist kopiert: Füge sie in %s in einen neuen Chat ein, ergänze, was gebaut werden soll, und sende sie."
+
+msgid "Copies a command that starts %s on a chat for %s"
+msgstr "Kopiert einen Befehl, der %s mit einem Chat für %s startet"
+
+msgid "Opens %s and copies a first message naming %s"
+msgstr "Öffnet %s und kopiert eine erste Nachricht, die %s nennt"
+
+msgid "Copies a first message naming %s, for a new chat in %s"
+msgstr "Kopiert eine erste Nachricht, die %s nennt, für einen neuen Chat in %s"
+
+msgid "%s is calling Brickworks from your chat. Each step shows here and the model appears on the baseplate, in view or not."
+msgstr "%s ruft Brickworks aus deinem Chat auf. Jeder Schritt erscheint hier und das Modell auf der Grundplatte, sichtbar oder nicht."
+
+msgid "Stop %s in this tab"
+msgstr "%s in diesem Tab stoppen"
+
+msgid "%s's next call is refused. What it has built stays."
+msgstr "Der nächste Aufruf von %s wird abgelehnt. Was gebaut ist, bleibt."
+
+msgid "Ask %s for a change in your chat, or carry on building it by hand."
+msgstr "Bitte %s in deinem Chat um eine Änderung, oder baue von Hand weiter."
+
+msgid "%s stopped"
+msgstr "%s hat aufgehört"
+
+msgid "%s has stopped calling for now."
+msgstr "%s ruft vorerst nicht mehr auf."
+
+msgid "%s has stopped calling. Ask it to build in your chat."
+msgstr "%s ruft nicht mehr auf. Bitte es in deinem Chat ums Bauen."
+
+msgid "Switched off. %s cannot reach this tab until it is switched on again."
+msgstr "Ausgeschaltet. %s kann diesen Tab nicht erreichen, bis er wieder eingeschaltet ist."
+
+msgid "Not connected. Connect %s once and it can build in any Brickworks tab you have open, on your plan with it."
+msgstr "Nicht verbunden. Verbinde %s einmal, und es kann in jedem offenen Brickworks-Tab bauen, im Rahmen deines Abos dort."
+
+msgid "Connected — %s can build in your open Brickworks tabs."
+msgstr "Verbunden — %s kann in deinen offenen Brickworks-Tabs bauen."
+
+msgid "Adds Brickworks to %s, as Connect your AI in the assistant's column does"
+msgstr "Fügt Brickworks zu %s hinzu, wie „Deine KI verbinden“ in der Spalte des Assistenten"
+
+msgid "Sign out of Brickworks on this device. Your models stay here. Your AI stops building in this tab, and stays connected to your account until you disconnect it."
+msgstr "Auf diesem Gerät von Brickworks abmelden. Deine Modelle bleiben hier. Deine KI baut in diesem Tab nicht mehr und bleibt mit deinem Konto verbunden, bis du sie trennst."
+
+msgid "%s opens with Brickworks filled in, if it is installed: press Install, and Allow when Brickworks asks."
+msgstr "%s öffnet sich mit Brickworks bereits eingetragen, wenn es installiert ist: Drücke „Install“ und dann „Erlauben“, wenn Brickworks fragt."
+
+msgid "The command that adds Brickworks to %s is copied: run it in a terminal, and Allow when Brickworks asks."
+msgstr "Der Befehl, der Brickworks zu %s hinzufügt, ist kopiert: Führe ihn in einem Terminal aus und drücke „Erlauben“, wenn Brickworks fragt."
+
+msgid "%s has opened in a new tab and the address is copied: add Brickworks there as Connect your AI says, and Allow when Brickworks asks."
+msgstr "%s hat sich in einem neuen Tab geöffnet und die Adresse ist kopiert: Füge Brickworks dort hinzu, wie „Deine KI verbinden“ es sagt, und drücke „Erlauben“, wenn Brickworks fragt."
+
+msgid "The address is copied: add Brickworks in your AI app, and Allow when Brickworks asks."
+msgstr "Die Adresse ist kopiert: Füge Brickworks in deiner KI-App hinzu und drücke „Erlauben“, wenn Brickworks fragt."
+
+msgid "Connect your AI…"
+msgstr "Deine KI verbinden…"
+
+msgid "Let your AI app (Claude, ChatGPT, Gemini and others) build here, from your own account with it"
+msgstr "Deine KI-App (Claude, ChatGPT, Gemini und andere) hier bauen lassen, über dein eigenes Konto dort"
+
+msgid "Connect your AI is at the foot of the assistant panel"
+msgstr "„Deine KI verbinden“ ist unten im Assistenten-Bereich"
+
+msgid "Every command is in Find a command (%s), and every key in Help, Keys and controls (%s). Or connect your AI in the assistant's column and ask it for a model: it builds it with you."
+msgstr "Jeder Befehl ist unter Befehl suchen (%s), jede Taste unter Hilfe, Tasten und Steuerung (%s). Oder verbinde deine KI in der Spalte des Assistenten und bitte sie um ein Modell: Sie baut es mit dir."
+
+msgid "Or connect your AI in the assistant's column and ask it for a model: it builds it with you."
+msgstr "Oder verbinde deine KI in der Spalte des Assistenten und bitte sie um ein Modell: Sie baut es mit dir."
+
+msgid "Claude, on your Anthropic key or Claude plan"
+msgstr "Claude, mit deinem Anthropic-Schlüssel oder Claude-Abo"
+
+msgid "Your AI app (Claude, ChatGPT, Gemini and others) connects with Connect your AI in the assistant's column, whichever designs here."
+msgstr "Deine KI-App (Claude, ChatGPT, Gemini und andere) verbindest du mit „Deine KI verbinden“ in der Spalte des Assistenten, egal wer hier entwirft."

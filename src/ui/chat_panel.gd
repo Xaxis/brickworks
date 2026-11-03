@@ -331,17 +331,36 @@ func _build_settings() -> void:
 			+ "this machine, on your own Claude subscription. No key, no "
 			+ "account, nothing billed here — and the session can reach "
 			+ "this app's bricks and nothing else on your computer.")
-		_use_claude_code.toggled.connect(func(_on: bool) -> void:
-			# The model and effort pickers belong to the loop inside the
-			# app; the Claude on this machine brings its own.
-			_show_settings()
-			_status.text = ("Your own Claude will design it."
-				if designing_locally() else "")
-			# With no key, ticked is what makes the button usable at all.
-			_send.disabled = _working or not (OwnKey.has_key() or designing_locally()))
+		_use_claude_code.toggled.connect(_on_local_toggled.bind(_use_claude_code))
 		_settings.add_child(_use_claude_code)
+	# The same on a GitHub Copilot plan, where this machine has its CLI
+	# (CopilotCli): one or the other designs, never both.
+	if copilot_here:
+		_use_copilot = CheckBox.new()
+		_use_copilot.text = "My Copilot"
+		_use_copilot.add_theme_font_size_override("font_size", 11)
+		_use_copilot.tooltip_text = ("Design with the GitHub Copilot CLI on "
+			+ "this machine, on your own Copilot plan. No key, no account, "
+			+ "nothing billed here — and the session can reach this app's "
+			+ "bricks and nothing else on your computer.")
+		_use_copilot.toggled.connect(_on_local_toggled.bind(_use_copilot))
+		_settings.add_child(_use_copilot)
 
 	_show_settings()
+
+
+## My Claude or My Copilot ticked or unticked.
+func _on_local_toggled(on: bool, box: CheckBox) -> void:
+	for other: CheckBox in [_use_claude_code, _use_copilot]:
+		if on and other != null and other != box:
+			other.button_pressed = false
+	# The model and effort pickers belong to the loop inside the
+	# app; the Claude or Copilot on this machine brings its own.
+	_show_settings()
+	_status.text = ("Your own Copilot will design it." if designing_with_copilot()
+		else "Your own Claude will design it." if designing_locally() else "")
+	# With no key, ticked is what makes the button usable at all.
+	_send.disabled = _working or not (OwnKey.has_key() or designing_locally())
 
 
 ## Put the row in step with what is saved. Called after a change as
@@ -354,7 +373,7 @@ func _show_settings() -> void:
 		_settings.visible = not designing_elsewhere()
 	# The model and effort belong to the loop inside the app. When the
 	# person's own Claude is doing the designing, it chooses its own.
-	if _which != null and _use_claude_code != null:
+	if _which != null and (_use_claude_code != null or _use_copilot != null):
 		var mine: bool = designing_locally()
 		_which.disabled = mine
 		_how_hard.disabled = mine
@@ -376,8 +395,16 @@ func _show_settings() -> void:
 ## panel shows the choice only then, because offering something that is
 ## not installed is worse than not offering it.
 var claude_code_here: bool = false
+## The same for the GitHub Copilot CLI (CopilotCli).
+var copilot_here: bool = false
 signal design_locally(brief: String)
 var _use_claude_code: CheckBox = null
+var _use_copilot: CheckBox = null
+
+
+## True when this machine has a CLI of the person's own to design with.
+func _local_here() -> bool:
+	return claude_code_here or copilot_here
 
 ## Designing with another AI on the person's own key, chosen in Settings, AI
 ## (ProviderSettings.who): the brief goes to Main's DesignerLoop, as a brief
@@ -424,9 +451,15 @@ func focus_brief() -> void:
 		_input.grab_focus.call_deferred()
 
 
-## True when the person has asked for their own Claude to do it.
+## True when the person has asked for their own Claude, or Copilot, to do it.
 func designing_locally() -> bool:
-	return _use_claude_code != null and _use_claude_code.button_pressed
+	return (_use_claude_code != null and _use_claude_code.button_pressed) \
+		or designing_with_copilot()
+
+
+## True when it is their own Copilot.
+func designing_with_copilot() -> bool:
+	return _use_copilot != null and _use_copilot.button_pressed
 
 
 ## A run that never started, said in the panel rather than swallowed.
@@ -499,11 +532,14 @@ func ask_about(selected: Array, words: String = "") -> void:
 	_input.placeholder_text = ABOUT_PLACEHOLDER.replace("Claude", ProviderSettings.designer_name())
 	if not words.is_empty():
 		_input.text = words
-	# With no key, the Claude on this machine is the way to ask that works.
-	if not OwnKey.has_key() and claude_code_here and _use_claude_code != null \
-			and not _use_claude_code.button_pressed:
-		_use_claude_code.button_pressed = true
-	if OwnKey.has_key() or claude_code_here:
+	# With no key, the Claude (or Copilot) on this machine is the way to ask
+	# that works.
+	if not OwnKey.has_key() and not designing_locally():
+		for box: CheckBox in [_use_claude_code, _use_copilot]:
+			if box != null:
+				box.button_pressed = true
+				break
+	if OwnKey.has_key() or _local_here():
 		_input.grab_focus()
 	elif _connector_form != null and _connector_form.is_on():
 		note("Ask Claude in your chat about the %d selected part%s. It sees what is "
@@ -851,12 +887,15 @@ func _on_spent(model_id: String, tokens: Brain.Spend) -> void:
 ## both layouts without touching the key this machine holds.
 func _show_for_key(has_key: bool) -> void:
 	# Another AI chosen in Settings, AI, designs with its own key: the brief
-	# box is for it, and Claude's key form and connector stand aside.
+	# box is for it, and Claude's key form stands aside. Connect your AI does
+	# not: the AI app a person connects (ChatGPT's way in among them) and a
+	# model on a key are two different things, and choosing the second hid
+	# the first (docs/ANY_ASSISTANT.md, C).
 	var elsewhere: bool = designing_elsewhere()
 	has_key = has_key or elsewhere
 	# On a desktop with Claude Code the brief box stays: "My Claude" sits
 	# in it, and is a way to design that needs no key.
-	_composer.visible = has_key or claude_code_here
+	_composer.visible = has_key or _local_here()
 	_footer.visible = has_key
 	_show_sketch_first()
 	# While Claude is connected on the person's plan, the key's form is a
@@ -869,9 +908,10 @@ func _show_for_key(has_key: bool) -> void:
 	if _connector_form != null:
 		_connector_form.alone(not _key_form.visible)
 	# The other way in, offered beside the key, and kept on screen while it
-	# is on so the address and what Claude is doing stay in view.
+	# is on so the address and what your AI is doing stay in view; beside
+	# another AI's brief box too, which is not a way to connect one.
 	if _connector_form != null:
-		_connector_form.visible = not has_key or _connector_form.is_on()
+		_connector_form.visible = not has_key or elsewhere or _connector_form.is_on()
 	# With nothing to show, the conversation took the panel's height and
 	# pushed the key form to its foot under an empty dark field. Folded
 	# away, the form is the first thing under the title.
@@ -880,7 +920,7 @@ func _show_for_key(has_key: bool) -> void:
 	# a blank space two-thirds of its height. The card opens it when Claude
 	# first calls (_on_claude_called).
 	var talking: bool = assistant != null and assistant.has_conversation()
-	_scroll.visible = has_key or claude_code_here or talking or _logged() \
+	_scroll.visible = has_key or _local_here() or talking or _logged() \
 		or _claude_card()
 	# The openers only mean anything if pressing one would do something.
 	# They used to run a design for a visitor with no key, which spent
@@ -1329,7 +1369,7 @@ func use_connector(connector: ClaudeConnector) -> void:
 	_key_form.get_parent().move_child(_key_instead, _connector_form.get_index() + 1)
 	connector.listening.connect(func(on: bool, _address: String) -> void:
 		if not on and _claude_card():
-			_close_claude("Connector off", "Switched off. Claude cannot reach "
+			_close_claude("Connector off", "Switched off. %s cannot reach " % _claude_who
 				+ "this tab until it is switched on again.")
 		_show_for_key(OwnKey.has_key()))
 	connector.called.connect(_on_claude_called)
@@ -1360,6 +1400,8 @@ var _claude_on: bool = false
 var _claude_busy: bool = false
 var _claude_built: bool = false
 var _claude_last: int = 0
+## Whose card is open: the caller's name.
+var _claude_who: String = "Claude"
 ## How long Claude can be quiet before its card says it is done. It thinks
 ## between calls, sometimes for a minute; a probe shortens this.
 var claude_quiet_ms: int = 90000
@@ -1374,25 +1416,26 @@ func _on_claude_called(tool: String, arguments: Dictionary, _chat: String = "") 
 		return
 	_claude_last = Time.get_ticks_msec()
 	var step: String = ConnectorForm.said(tool, arguments)
+	# Who is calling, as the relay names it: Claude when no one is named.
+	var who: String = _connector.caller if _connector != null else "Claude"
 	# The app's own design has the card; say it alongside instead.
 	if _working:
-		note("Claude: " + step)
+		note("%s: %s" % [who, step])
 		return
 	if not _claude_card():
 		_claude_on = true
 		_claude_built = false
+		_claude_who = who
 		_open_run(true, func() -> void:
 			if _connector != null:
 				_connector.stop(true))
 		_run_keep = 500
-		_run_title.text = "Claude is building"
+		_run_title.text = "%s is building" % who
 		_run_now.text = ""
-		_run_hint.text = ("Claude, on your plan, is calling Brickworks from "
-			+ "your chat. Each step shows here and the model appears on the "
-			+ "baseplate, in view or not.")
-		_run_stop.text = "Stop Claude in this tab"
-		_run_stop.tooltip_text = ("Claude's next call is refused. What it "
-			+ "has built stays.")
+		_run_hint.text = ("%s is calling Brickworks from your chat. Each step "
+			+ "shows here and the model appears on the baseplate, in view or not.") % who
+		_run_stop.text = "Stop %s in this tab" % who
+		_run_stop.tooltip_text = "%s's next call is refused. What it has built stays." % who
 		_show_for_key(OwnKey.has_key())
 	_claude_busy = true
 	_run_clock.text = _elapsed()
@@ -1423,7 +1466,7 @@ func _close_claude(how: String, summary: String) -> void:
 	_claude_on = false
 	_claude_busy = false
 	_close_run(how, summary, built,
-		"Ask Claude for a change in your chat, or carry on building it by hand.")
+		"Ask %s for a change in your chat, or carry on building it by hand." % _claude_who)
 
 
 ## Keep the newest step in view as the card grows.
@@ -1535,9 +1578,9 @@ func _process(_delta: float) -> void:
 		# Quiet for long enough, with nothing in hand: Claude has finished,
 		# or stopped to talk to the person.
 		if not _claude_busy and Time.get_ticks_msec() - _claude_last > claude_quiet_ms:
-			_close_claude("Done" if _claude_built else "Claude stopped",
-				"Claude has stopped calling for now." if _claude_built
-				else "Claude has stopped calling. Ask it to build in your chat.")
+			_close_claude("Done" if _claude_built else "%s stopped" % _claude_who,
+				"%s has stopped calling for now." % _claude_who if _claude_built
+				else "%s has stopped calling. Ask it to build in your chat." % _claude_who)
 	if not _working:
 		return
 	if _run != null and is_instance_valid(_run):

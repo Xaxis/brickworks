@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
 
 ## Sub-features
 
@@ -210,6 +210,16 @@ they have. A Claude connector belongs to the account that switched it on.
   paragraph and Connect Claude (`.for-claude`) are hidden and a neutral one
   (`.for-other`) shown, and before the check a request whose client_id is not
   claude.ai's says "your app". For Claude the page reads as before.
+- `review sign-in page` (`web/review.html`, `web/review.js`, `/review`,
+  2026-11-03, docs/directory/claude.md): where an app directory's reviewer
+  signs in. Everyone else signs in by an emailed code, which a reviewer could
+  not receive, so the review account is at a Resend test address with a
+  password (`tools/web/relay_account.mjs review` makes it, password in `.env`
+  as `BW_REVIEW_PASSWORD`), the only kind a password signs in to. The page
+  refuses any other address before asking, keeps the session where the app and
+  the connector's sign-in read it (`signInWithPassword` in `web/account.js`),
+  then lists the next steps (open the app, connect at `/api/mcp`). Linked from
+  nowhere, `noindex`, English only.
 - `ChatGPT, and any client that signs` (`api/oauth.js`, `api/_assertion.js`,
   `supabase/oauth_keys.sql`, 2026-10-29, docs/PROVIDERS.md P1): ChatGPT's
   document (`https://chatgpt.com/oauth/client.json`) says `private_key_jwt`;
@@ -566,11 +576,19 @@ Against the real functions and Supabase (needs `.env`; makes throwaway accounts
 at `delivered+bw…@resend.dev`, Resend's test addresses, and deletes them):
 
 ```sh
+tools/relay_probe.sh account     # and connector, tabs, tabpair, together, desktop_cloud
 set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8790 &
-BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd
 BRICKWORKS_API=http://127.0.0.1:8790 godot --path . --resolution 1400x900 --script src/dev/gate_probe.gd -- live
-godot --headless --path . --script src/dev/connector_probe.gd -- 8790
 ```
+
+`tools/relay_probe.sh NAME` runs one of the relay's probes (those
+`tools/suite/out.txt` keeps out for want of it) on a relay of its own: a free
+port, `.env`'s keys (the main checkout's from a worktree), the address handed
+as that probe's header takes it, the live database's lock held, the relay
+stopped after. Run with no relay, or with `--` for a port, `connector_probe`
+fails every check for the setup, and was read as the code's twice
+(2026-11-03); `tools/probe.sh` now drops a `--` before its ARGS, which it puts
+there itself.
 
 `account_probe` ends "signing in works from the app's side" (26 checks: a
 malformed address refused in words, a code sent, a wrong code refused in words,
@@ -844,6 +862,22 @@ it. Before Claude is connected, the panel's **Claude Code** link puts the
 `claude mcp add` command on the clipboard in one click. Pictures
 `1_before_connect.png` to `11_asked_again.png` (`2a_claude_code_copied`,
 `10c_already_in_claude`).
+
+The review sign-in, in a real browser (a throwaway review account, deleted at
+the end; no mail; under a minute):
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/review_flow.mjs --url=<deployment> --out=shots/review_flow
+```
+
+Proves it when it ends "review_flow: all ok", at 1280 and 390 px: `/review`
+answers 200 with the sign-in and `noindex, nofollow`; another address is
+refused in words with nothing kept; a wrong password is refused in words; the
+right one shows "Signed in as" the address and the steps, keeps
+`brickworks.session` with the account's id, and `/api/account` takes the
+access token; a reload shows the steps at once and Sign out clears the
+session; no script errors; the account gone. Pictures `<width>_1_sign_in.png`,
+`_2_refused`, `_3_signed_in`.
 
 On a deployment, in a real browser (needs `.env` sourced; `BW_BYPASS` for a
 preview):

@@ -47,6 +47,8 @@
         "tests/test_library_site.py",
         "tests/test_model_page.py",
         "tests/test_refresh_catalogue.py",
+        "tests/test_release.py",
+        "tests/test_share_unknowns.py",
         "tests/test_update_parts.py"
       ]
     },
@@ -110,6 +112,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
@@ -123,7 +126,8 @@
       "tests": [
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
-        "tests/test_model_bases.py"
+        "tests/test_model_bases.py",
+        "tests/test_release.py"
       ]
     },
     {
@@ -217,6 +221,7 @@
         "tests/test_feedback.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_release.py",
         "tests/test_sets.py"
       ]
     },
@@ -763,6 +768,14 @@
       "entry": "tools/web/oauth_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_flow.mjs --url=<deployment>/app --out=shots/oauth   (with .env sourced)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:connect any probe",
+      "kind": "cli",
+      "entry": "src/dev/connect_any_probe.gd",
+      "reach": "tools/probe.sh connect_any_probe -- --shots=DIR   (each assistant's Connect read back from Outside and the clipboard, its steps and plan beside it; New chat for this tab per assistant; a call named ChatGPT's in the panel, the tab, the toolbar, the card and the history; Another AI in Settings leaves Connect on screen; PROBE_SIZE=1024x768)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -1886,6 +1899,14 @@
       "tests": []
     },
     {
+      "id": "cli:review sign-in flow",
+      "kind": "cli",
+      "entry": "tools/web/review_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/review_flow.mjs --url=<deployment> --out=shots/review_flow",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:round trip probe",
       "kind": "cli",
       "entry": "src/dev/roundtrip_probe.gd",
@@ -1925,7 +1946,8 @@
       "area": "assistant",
       "tests": [
         "tests/test_bench.py",
-        "tests/test_elements.py"
+        "tests/test_elements.py",
+        "tests/test_release.py"
       ]
     },
     {
@@ -3141,7 +3163,8 @@
       "area": "web",
       "tests": [
         "tests/test_library_site.py",
-        "tests/test_model_bases.py"
+        "tests/test_model_bases.py",
+        "tests/test_release.py"
       ]
     },
     {
@@ -3510,7 +3533,8 @@
       "tests": [
         "tests/test_achievements.py",
         "tests/test_discovery.py",
-        "tests/test_gallery_crons.py"
+        "tests/test_gallery_crons.py",
+        "tests/test_share_unknowns.py"
       ]
     },
     {
@@ -3789,6 +3813,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
@@ -3869,6 +3894,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
@@ -4062,7 +4088,8 @@
         "tests/test_browse_pages.py",
         "tests/test_collections_tab.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_share_unknowns.py"
       ]
     },
     {
@@ -4140,6 +4167,14 @@
       "tests": []
     },
     {
+      "id": "ui:connect your AI",
+      "kind": "ui",
+      "entry": "src/net/assistants.gd",
+      "reach": "godot --path .  (the assistant's column, Connect your AI: Your AI chooses Claude, ChatGPT, Gemini, Le Chat, Perplexity, Grok, Claude Code, Codex, Gemini CLI, Cursor, VS Code or another app, from assets/assistants.json; Connect does its own way with its steps beside)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "ui:controls panel and hint",
       "kind": "ui",
       "entry": "src/ui/controls_hint.gd",
@@ -4161,6 +4196,14 @@
       "entry": "src/ui/see_inside.gd",
       "reach": "xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_probe.gd   (by hand: K, or View, Cut away; drag the strip's slider; X, Y, Z, Flip, Ghost)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:design on your own Copilot plan",
+      "kind": "ui",
+      "entry": "src/ai/copilot_cli.gd",
+      "reach": "godot --path . -- --ask-copilot=\"a small post box\"   (SPENDS A GITHUB COPILOT PLAN; or tick My Copilot in the design panel)",
+      "area": "mcp",
       "tests": []
     },
     {
@@ -4650,7 +4693,9 @@
       "entry": "src/assembly/pattern.gd",
       "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/test_release.py"
+      ]
     },
     {
       "id": "ui:photo-real render",
@@ -4763,6 +4808,7 @@
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
@@ -4851,6 +4897,14 @@
       "tests": [
         "tests/test_feedback.py"
       ]
+    },
+    {
+      "id": "ui:review sign-in page",
+      "kind": "ui",
+      "entry": "web/review.html",
+      "reach": "https://brickworks.diy/review   (an app directory's reviewer: the review account's address and password, from tools/web/relay_account.mjs review; tools/web/review_flow.mjs drives it)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "ui:save as a studio model",
@@ -5224,7 +5278,8 @@
       "reach": "https://brickworks.diy/m/<id>/embed in an iframe (the share sheet's embed code): View in 3D on its picture turns the model in the frame (web/start3d.js imports /viewer3d.js; web/view3d.css; api/share.js embedCard and embedCsp); node tools/web/embed_flow.mjs --out=DIR on the stand-in",
       "area": "web",
       "tests": [
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_share_unknowns.py"
       ]
     },
     {
@@ -5240,7 +5295,8 @@
         "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_share_unknowns.py"
       ]
     },
     {
@@ -5307,6 +5363,7 @@
       "tests": [
         "tests/test_challenge_notices.py",
         "tests/test_challenges.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py"
       ]
     },
@@ -5314,7 +5371,7 @@
       "id": "ui:this tab and its claude chats",
       "kind": "ui",
       "entry": "src/ui/claude_tab_view.gd",
-      "reach": "Claude connected: the toolbar's Tab <id> line, Account's Claude part and the assistant panel's Or with your Claude plan: New chat for this tab, the chats working here, Keep this one",
+      "reach": "Your AI connected: the toolbar's Tab <id> line, Account's Your AI part and the assistant panel's Connect your AI: New chat for this tab, the chats working here (each named for the AI the relay says calls), Keep this one",
       "area": "web",
       "tests": []
     },
@@ -5441,6 +5498,7 @@
       "area": "web",
       "tests": [
         "tests/test_achievements.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
@@ -5512,6 +5570,7 @@
       "area": "web",
       "tests": [
         "tests/test_achievements.py",
+        "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]

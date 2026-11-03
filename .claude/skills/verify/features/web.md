@@ -410,10 +410,11 @@ plan with Claude as the client.
   `undo` tool stops at a step another chat made, saying so
   (`AppTools._undo`, `AppTools.chat`).
 - `this tab and its claude chats` (`src/ui/claude_tab_view.gd`, in Account's
-  Claude part and the assistant panel's "Or with your Claude plan"; the
+  Your AI part and the assistant panel's "Connect your AI"; the
   toolbar's line from `ClaudeTabView.badge`, `ModelBar.show_claude_tab`):
-  "This tab is k7qd (“Castle”). Say it to Claude to work here."; "No Claude
-  chat is working in this tab." / "A Claude chat is working here: since 14:05,
+  "This tab is k7qd (“Castle”). Say it to Claude to work here." (to the
+  assistant chosen in Connect your AI, from 2026-11-02); "No chat is working
+  in this tab." / "A Claude chat is working here: since 14:05,
   last: changed the model at 14:07." (a time of day, so nothing on it runs on
   a timer: `chat_probe`) / "2 Claude chats are working in this
   tab…" with Keep this one beside each (`ClaudeConnector.keep_chat`). New chat
@@ -423,7 +424,10 @@ plan with Claude as the client.
   (followed in place on the web, so no empty tab is left); Claude Code
   `claude-cli://open?q=` and the command line `claude "…"` to copy. The
   toolbar reads `Tab k7qd`, `Claude working · tab k7qd` or `2 Claude chats ·
-  tab k7qd`, and opens Account. The page says it all in
+  tab k7qd`, and opens Account. Each chat is named for whoever the relay
+  says calls (`_meta["brickworks/who"]`): `ChatGPT working · tab k7qd`, "A
+  ChatGPT chat is working here", and `2 chats · tab k7qd` with each row
+  "ChatGPT, since …" when two apps share it (`connect_any_probe`). The page says it all in
   `window.brickworksClaude` (`tab`, `chats`, `badge`, `account_says`,
   `first_message`, `opened`).
 - `two chats probe` (`tools/web/tabpair_probe.mjs`, `--url=` a local relay or
@@ -3267,8 +3271,8 @@ plan with Claude as the client.
   gear trains went on the page the day Tools, Simulate mechanism merged, not
   before. Every
   page shares `/site.css` (every text colour 4.5:1 or better on its background
-  in both schemes), a skip link, a sticky bar (Gallery, Library, Docs and
-  Pricing, then Open the app and Sign in, since site356) with a `<details>`
+  in both schemes), a skip link, a sticky bar (Gallery, Docs and Plans,
+  then Open the app and Sign in, since site356) with a `<details>`
   menu under 900 px (no script: the CSP runs none inline) whose last item keeps the 16 px
   gutter at every phone width (under 390 px the mark is the cube alone, its
   name still Brickworks), and one footer: the header and
@@ -3395,7 +3399,9 @@ plan with Claude as the client.
   (`api/plans.js`, `supabase/plan_interest.sql`) and `plan interest counts`
   (`tools/plan_interest.py`): Plans (2026-10-28, plans323; Free and Pro
   since 2026-10-29, gate M1 of docs/PLANS.md, plansite346; a pricing page
-  since site356: Monthly or Yearly, yearly first, `[data-billing]` showing
+  since site356, called Plans in its nav, title and heading since
+  plansname, 2026-11-03, with /pricing and /<lang>/pricing a 308 to it:
+  Monthly or Yearly, yearly first, `[data-billing]` showing
   `[data-billed]`; every row side by side in `#compare`, a `.table.matrix`;
   when GET /api/plans says Pro is for sale, `web/plans.js` shows the
   `data-when="sale"` parts, Pro's Upgrade to Pro going to
@@ -3686,7 +3692,7 @@ plan with Claude as the client.
 
 ```sh
 tools/deploy.sh                 # a preview URL
-tools/deploy.sh --prod          # the one brickworks.diy points at
+tools/deploy.sh --prod          # the one brickworks.diy points at: ship.sh's alone (SHIP_DEPLOY), or PROD_BY_HAND="why"
 tools/deploy.sh --promote=URL   # brickworks.diy onto a checked deployment of HEAD (ship.sh's)
 tools/deploy.sh --no-export     # deploy what is already in build/web
 node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png
@@ -5237,6 +5243,33 @@ in, and the steps are weighed as they go (`Tested.Weighing`: what is held
 to the floor two ways or more is weighed as the floor, a piece hanging off
 it again only when a part joins it), where every step's build was weighed
 afresh and its 1,420 steps took ten minutes.
+
+A part falls in the whole test only when it does (stability, 2026-11-03):
+the floor and what stands on it are read from the parts' real shapes where
+they are (`Exact.Item.low` and `high`), not from their boxes turned with them,
+and a piece resting on another is judged square by the parts it rests by
+(`ExactCheck.rests`), not by every part it is built of. A build of two parts
+or more parked on another, standing by its foot alone with its weight over
+what it stands on (`ExactCheck.rests_on`), is a build of its own, as one on
+the floor is, and no fault: the whole test's reason ends "...; <it> rests on
+<part>". Wedged into, worn on, hanging from or against another, or on studs
+where it has no stud, it is still held by nothing, and so is one part alone
+resting on another (`tested_models_probe`'s brick on a tile):
+
+```sh
+tools/probe.sh tested_falls_probe
+```
+
+Proves it when it ends "a part is said to fall when it falls, and not when it
+stands": a stack beside 6043-1's halberdier, whose halberd's turned box reaches
+under the floor, is "2 builds"; 928-1's buggy, its driver's arm raised, parked
+on a 6 x 6 plate's studs, passes as "2 builds" ending "...Tread and 22 parts
+with it rests on Plate 6 x 6", a tyre of it named; the same buggy with its back
+wheels off the plate's edge "falls off Plate 6 x 6"; a 1 x 2 brick in the air, a 1 x 6 plate
+past the edge of the tile under it, and a 1 x 2 tile lying on a slope's face,
+each joined to nothing, fall; and four 1 x 1 bricks against a stack each "stand
+against Brick 2 x 4", the fourth named as the first. `tested_seeds_probe` prints
+each seed's parked builds as "parked:" lines, never counted as failures.
 
 The SQL, dry (never applied by an agent):
 

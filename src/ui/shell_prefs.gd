@@ -108,6 +108,9 @@ const DEFAULTS: Dictionary = {
 	# version and puts it in as the app quits, "ask" says it is out, "off"
 	# asks nothing until Help, Check for updates….
 	"updates": "auto",
+	# The AI app Connect your AI connects (Assistants' id), Claude until
+	# another is chosen.
+	"connect_with": "claude",
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

@@ -1425,10 +1425,10 @@ func _define() -> void:
 			+ "or side, as big sets do, so you can find your place while building")
 	_add("reseat", "Seat parts on their studs", 0, _reseat, something,
 		"Find parts a fraction of a stud off their studs, and offer to seat them")
-	_add("connector", "Claude connector…", 0, func() -> void:
+	_add("connector", "Connect your AI…", 0, func() -> void:
 		(app.get("_chat_dock") as SideDock).set_open(true)
-		bar.say("the connector is at the foot of the assistant panel"), Callable(),
-		"Let Claude build here, from your own Claude account")
+		bar.say("Connect your AI is at the foot of the assistant panel"), Callable(),
+		"Let your AI app (Claude, ChatGPT, Gemini and others) build here, from your own account with it")
 	_add("settings", "Settings…", KEY_COMMA, func() -> void: bar.controls_wanted.emit(),
 		Callable(), "Which way the wheel zooms, and what the middle button does")
 	# Help

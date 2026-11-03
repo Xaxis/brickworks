@@ -775,7 +775,11 @@ def test_a_check_or_probe_the_branch_has_no_name_for_is_refused_when_staged(tmp_
         # 2026-10-30: together, kept out of runs for want of the relay, skipped itself and held rel-m225.
         out = y.train("stage", "t-m2", "stage2", "--probes", "fits together")
         assert out.returncode == 2, out.stdout + out.stderr
-        assert "train: stage2 has no runnable probe together (needs the relay)" in out.stdout, out.stdout
+        assert "train: stage2 has no runnable probe together (needs the relay; tools/relay_probe.sh runs it by hand)" in out.stdout, out.stdout
+        # 2026-11-03: named by its file, connector_probe passed where connector would not, and held rel-m252.
+        out = y.train("stage", "t-m2", "stage2", "--probes", "fits together_probe")
+        assert out.returncode == 2, out.stdout + out.stderr
+        assert "train: stage2 has no runnable probe together_probe (needs the relay; tools/relay_probe.sh runs it by hand)" in out.stdout, out.stdout
         assert not (y.ro / "t-m2.train" / "pid").exists() and y.spec("t-m2", "checks") == ""
         good = y.train("stage", "t-m2", "stage2", "--checks", "io sets_flow", "--probes", "fits offgrid")
         assert good.returncode == 0, good.stdout + good.stderr

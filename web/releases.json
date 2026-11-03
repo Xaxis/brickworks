@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.14.0",
+ "latest": "0.15.0",
  "releases": [
+  {
+   "version": "0.15.0",
+   "tag": "v0.15.0",
+   "date": "2026-11-03",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.15.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.15.0",
+   "summary": "The desktop app is free, as brickworks.diy now says, and nothing in it asks about a plan. Instructions keeps the window moving while it works out a model's steps, where 0.14.0 held one frame there for a fifth to two fifths of a second. A click hinge turned on a slow or busy machine stops on a click short of what is in its way, where it could end inside its base. A model opened while the last was still being weighed shows its own weight. When Claude looks over a design, it hears when the model shows fewer colours than real sets of its theme. And in German, French and Spanish more of the Library's themes are named in the language.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.15.0-linux-x86_64.AppImage",
+     "size": 603449848,
+     "sha256": "311d2dbe8a66410fc8f7d9a06a61e5e82357f7753c3f0edc1e21a53c968e721a",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.15.0/Brickworks-0.15.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.15.0-linux-x86_64.tar.xz",
+     "size": 451860376,
+     "sha256": "79c28c79349e088b031f2ddb1f73556a5dc0394271279daf32f635a0bc37f3f8",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.15.0/Brickworks-0.15.0-linux-x86_64.tar.xz",
+     "unpacked": 1530729104,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.15.0-macos-universal.zip",
+     "size": 785039427,
+     "sha256": "5b75b5651c2ce12947e1490df91cc075dcb16b422515d205649daa4c0b7cc84b",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.15.0/Brickworks-0.15.0-macos-universal.zip",
+     "unpacked": 1627483572,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.15.0-windows-x86_64.zip",
+     "size": 763402595,
+     "sha256": "be3d7495bc263c6c87dcc114e3ec42b8c6aa6efe4f6f606f4efc8b2e03ed560b",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.15.0/Brickworks-0.15.0-windows-x86_64.zip",
+     "unpacked": 1566431984,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.14.0",
    "tag": "v0.14.0",

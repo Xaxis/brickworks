@@ -151,11 +151,12 @@ func _run() -> void:
 		var want: Dictionary = CommandSocket.annotations(tool_name) if CommandSocket.HINTS.has(tool_name) \
 			else {"title": hints.get("title", ""), "readOnlyHint": true, "openWorldHint": false}
 		if str(hints.get("title", "")).is_empty() \
+				or str((tool as Dictionary).get("title", "")) != str(hints["title"]) \
 				or JSON.stringify(hints, "", true) != JSON.stringify(want, "", true):
 			unsaid.append(tool_name)
 		read_only += 1 if bool(hints.get("readOnlyHint", false)) else 0
 	_check(unsaid.is_empty() and read_only > 10,
-		"...each with its annotations as the app's table says them, %d read-only%s" % [read_only,
+		"...each with its title and annotations as the app's table says them, %d read-only%s" % [read_only,
 			"" if unsaid.is_empty() else ": not " + ", ".join(unsaid)])
 	await create_timer(1.5).timeout
 	_check(calls.has(""), "...and the tab hears that Claude has connected")

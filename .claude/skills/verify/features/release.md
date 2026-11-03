@@ -22,12 +22,23 @@ that offers each system its own build. The cycle and its cadence are
   `tools/check.sh` and CI's `check` both run `tools/release.py version`.
 - `build the desktop packages`: `tools/release.py build [linux mac windows]`
   stages `git archive HEAD` with only the meshes the catalogue names, exports
-  each preset, packages (AppImage and tar.xz; a universal macOS zip, signed
-  by rcodesign, ad hoc without a Developer ID; a Windows zip with the console
-  wrapper), writes
+  each preset, packages them the way each system's own apps come
+  (docs/DISTRIBUTION.md): the AppImage, a .deb (`write_deb`) and the tar.xz,
+  each with the menu entry, hicolor icons and MIME types of the four model
+  files (`desktop_files`); a universal macOS app, its model types declared
+  (`declare_types`) and signed by rcodesign (ad hoc without a Developer ID),
+  in a disk image laid out to drag onto Applications (`write_dmg`:
+  mkfs.hfsplus, libdmg-hfsplus and a `.DS_Store`, built on Linux and read
+  back by fsck and file by file), signed and notarised with the app
+  (`sign_dmg`); the per-user NSIS installer for Windows (`write_installer`,
+  `tools/release/windows/brickworks.nsi`); and, for one release, the zips
+  from before them. It writes
   `SHA256SUMS`, and reads every package back: Info.plist version, Mach-O
   architectures and oldest macOS per slice, the code signature parsed from
-  the binary, PE machine, version and Authenticode, archive contents. Into
+  the binary, PE machine, version and Authenticode, archive contents, the
+  .deb's control, command link, types and icons, the disk image's
+  Applications link, volume icon, layout and types, and the installer's
+  version. Into
   `dist/<version>/`, with `build.json` holding what was read. Signing plugs in
   by environment (`APPLE_SIGN_P12`..., `WINDOWS_SIGN_COMMAND`; see
   `docs/RELEASING.md`).
@@ -48,12 +59,28 @@ that offers each system its own build. The cycle and its cadence are
   licence, its components, BrickNet's notice and permission, LDraw's notice,
   Rebrickable's credit). `docs/ATTRIBUTION.md` says why each term is what it
   is.
-- `smoke a package`: `tools/release.py smoke FILE [--window]` unpacks it the
-  way a person's system would into a fresh home, then: `--about` must say the
+- `smoke a package`: `tools/release.py smoke FILE [--window]` unpacks or
+  installs it the way a person's system would into a fresh home (the .deb's
+  files under a folder of their own; on a Mac the disk image mounted and its
+  app copied to /Applications; on Windows the installer run with
+  /VERYSILENT), then: `--about` must say the
   version and that it is a release; the example car is opened from the
   package and written back with every part; the app is started with `--mcp`
   and `tools/mcp_check.py --port` drives it (search, clear, place two
-  bricks, save, read back); its state must land in the fresh home. An
+  bricks, save, read back); each of .ldr, .mpd, .io and .lxf is given to it
+  as a bare path, as a double-click gives it (`opens_models`), from a folder
+  with a space in its name, and must say `opened <path>: N parts` and write
+  back N (a package cannot draw a part a Studio file builds from LDraw
+  subparts, which it has only as meshes: it says `could not build a part
+  the file carries` and writes that part back too, bay_2025.io's 5 + 1);
+  then the system's own double-click on two models, the second with
+  the first still open, each in a window of its own (a hold whose process
+  is not a running Brickworks is not one): gio with the .deb's
+  entry and MIME types (and each window's WM_CLASS the entry's
+  StartupWMClass), Launch Services' `open` on a Mac, `os.startfile` on
+  Windows, where the Start menu entry, Settings ▸ Apps line, ProgIDs and
+  then the uninstaller are checked too; an AppImage must carry its entry,
+  icons and types inside; its state must land in the fresh home. An
   AppImage also runs with `--appimage-extract-and-run`. `--window` draws the
   car on Xvfb (under `gpu`) and keeps `shots/release-<os>.png`, and fails
   a package that boots on Godot's logo because the splash project.godot
@@ -94,9 +121,17 @@ that offers each system its own build. The cycle and its cadence are
   Linux's on a private one). It checks out the source's tools from
   Xaxis/brickworks (`BRICKWORKS_SOURCE_TOKEN` once that is private, else the
   run's own token), downloads a release there, draft or published, on
-  macos-15 (Apple silicon), macos-15-intel and windows-2022, runs `inspect`
-  and `smoke` on each package, and on macOS `codesign --verify --deep
-  --strict` and `lipo -archs`. It builds nothing: the part library is not in
+  macos-15 (Apple silicon), macos-15-intel, windows-2022 and ubuntu-24.04,
+  runs `inspect` and `smoke` on each package (the disk image, the installer
+  and the .deb first, then the zips while a release has them), on macOS
+  `hdiutil verify`, `codesign --verify --deep --strict` and `lipo -archs` on
+  the mounted image's app and a screenshot of the image's window kept as a
+  run artifact, and on Ubuntu `apt install` of the .deb (/ keeps its mode,
+  the four types default to the app, `brickworks --about`) and `apt remove`
+  leaving nothing. The Intel runner's only GPU is Apple's paravirtual one,
+  which MoltenVK aborts on, so the smoke prints its double-click as `--  not
+  run here` with the reason (`mac_cannot_draw`) instead of failing; a check
+  this machine cannot make neither passes nor fails. It builds nothing: the part library is not in
   git. A change to it goes to that repository by hand.
 - `move the downloads to the releases repository`:
   `tools/release/releases_repo.sh [--go] [--dir=DIR]`. A dry run reads
@@ -161,9 +196,13 @@ that offers each system its own build. The cycle and its cadence are
   its primary file as the one primary button, version and size in small
   type, the other systems as links (`?os=`, in place). Folded away
   (`details.qa`): the first launch, one line saying what happens, its steps
-  (the Gatekeeper and SmartScreen ones only while unsigned, what it needs
-  read from the packages), and Verify the download, a command per file
-  that prints OK or True. What is new: the four lines written for the
+  for the kind of file offered (`data-kind`: the disk image, the
+  installer, or a release's zips before them; the Gatekeeper and
+  SmartScreen ones only while unsigned; how to uninstall; the .deb's
+  command where a release has one, `data-has`; what it needs read from the
+  packages), and All files and checksums: every file for the system, linked
+  with its size, and a command per file that prints OK or True. The file
+  offered first is the first of `PREFER`'s kinds a release has. What is new: the four lines written for the
   release in `<ul data-highlights="X">`, or else the summary's first four
   sentences. A phone is told the desktop app is for a computer and offered
   the web app first. No release in the manifest reads "on its way" with a
@@ -174,7 +213,27 @@ that offers each system its own build. The cycle and its cadence are
 - `download page check`: `tools/web/download_check.mjs` serves `web/` with a
   CSP at least as strict as the site's and loads the page as Linux, macOS,
   Windows and an Android phone through the DevTools protocol, then checks
-  every link the page has.
+  every link the page has. `--manifest=FILE` serves another releases.json:
+  one with the disk image, the installer and the .deb holds the page to
+  offering them first, with their steps, sizes and checksums.
+- `open a model by double-click`: `TabSession.given_file()` is the first
+  bare argument that is an existing .ldr, .mpd, .io, .lxf or .lxfml file,
+  as each system hands a double-clicked model over (Exec=brickworks %f, the
+  installer's `"%1"`, the openFiles event Godot puts in the arguments on a
+  Mac); `Main._open_given` opens it (`ModelFilePicker.read` turns Studio's
+  and LDD's into LDraw) in a session of its own, so a second double-click
+  with the app open comes up in a window of its own and replaces nothing,
+  and says `opened <path>: N parts` on stderr and in the log, or `could not
+  open`. `src/dev/given_file_probe.gd` runs the editor build on each kind
+  with `--out=` and on a file that is not a model:
+
+  ```sh
+  godot --headless --path . --script src/dev/given_file_probe.gd
+  ```
+
+  Proves it when: each kind says it opened N parts, N > 0, and the file
+  written back holds N; the garbled one says it could not open; it ends
+  `given_file: each kind opens as a double-click gives it`.
 - `outside probe`: nothing a probe or a check does opens on the owner's
   desktop (noopen, 2026-10-29). Every link and Show in folder goes through
   `Outside` (src/ui/outside.gd), held in any script's run or with
