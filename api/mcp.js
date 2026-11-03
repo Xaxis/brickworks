@@ -87,7 +87,9 @@
 //     not chosen. A chat started from a tab (the app's "New chat for this
 //     tab") opens with a first message naming it, so its first call does.
 //   - The tab is told which chats work in it (brickworks/chats, and the
-//     chat on every call's _meta) and shows them; with two, the person
+//     chat on every call's _meta) and who each is (brickworks/who on every
+//     call, from the connection: docs/ANY_ASSISTANT.md U1, never what the
+//     client put there) and shows them; with two, the person
 //     keeps one (op=keep), and the other's next call is told it was moved
 //     off and does nothing until it chooses a tab again.
 //   - A resumed chat is a new chat here (2026-10-19). Claude Code starts a
@@ -782,7 +784,9 @@ function oneTab(channel, session) {
   return {
     shows: sessionShows(session),
     // A tab's own address is pasted into Claude: its list as it always was.
+    // Who has the address is not known, so the tab is told no name.
     claude: true,
+    who: "",
     tabs: async () => {
       const tab = await tabOf(channel);
       return tab ? [tab] : [];
@@ -808,11 +812,14 @@ function accountTabs(grant, origin, session, early = null) {
     if (begun) early[name] = null;
     return begun;
   };
+  const label = clientLabel(grant);
   return {
     shows: sessionShows(session),
     // Which app signed in (api/oauth.js): Claude's are given the tool list
     // as they always were, any other (ChatGPT) the portable one.
-    claude: isClaude(clientLabel(grant)),
+    claude: isClaude(label),
+    // What the tab calls whoever is calling: the same label.
+    who: label,
     tabs: () => ahead("tabs") || tabsOf(grant.owner),
     pick: () => ahead("pick") || pickOf(key),
     lists: () => ahead("lists") || listsOf(key),
@@ -870,6 +877,19 @@ async function tellTab(channel, asked) {
     body: { channel, request: { jsonrpc: "2.0", method: "brickworks/claude_here", params: { asked } } },
   });
   wake(`channel:${channel}`);
+}
+
+// A call's _meta as the tab is to read it: what the client sent, but none
+// of the keys the relay tells the tab things by ("brickworks/…"), which a
+// client could otherwise write itself (its name in the history, another
+// chat's undo); and who is calling, from the connection, where that is
+// known.
+export function callerMeta(params, who) {
+  const sent = params && params._meta && typeof params._meta === "object" && !Array.isArray(params._meta)
+    ? params._meta : {};
+  const meta = Object.fromEntries(Object.entries(sent).filter(([key]) => !key.startsWith("brickworks/")));
+  if (who) meta["brickworks/who"] = who;
+  return meta;
 }
 
 function text(id, words, isError = false) {
@@ -1086,7 +1106,8 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     const args = given && typeof given === "object" && !Array.isArray(given) ? { ...given } : {};
     const target = typeof args.target === "string" ? args.target.trim() : "";
     delete args.target;
-    message = { ...message, params: { ...message.params, arguments: args } };
+    message = { ...message,
+      params: { ...message.params, arguments: args, _meta: callerMeta(message.params, where.who) } };
     // A client that shows the viewer: the tab adds what it shows, to the
     // answer of a call that became a job too once it has ended (job).
     if (asksViews(name) && (where.shows || showsApps(message))) {

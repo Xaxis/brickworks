@@ -1,8 +1,9 @@
 // What api/oauth.js's client checks talk to, in memory, behind the one
-// fetch: the database's oauth_clients and oc_spend, and the clients'
-// published documents and keys. ChatGPT's and Claude's documents are as
-// they read on 2026-10-29; ChatGPT's keys are a test key standing in for
-// its own, since only ChatGPT holds that one. Every request is in [calls].
+// fetch: the database's oauth_clients, oauth_grants, oauth_tokens and
+// oc_spend, and the clients' published documents and keys. ChatGPT's and
+// Claude's documents are as they read on 2026-10-29; ChatGPT's keys are a
+// test key standing in for its own, since only ChatGPT holds that one.
+// Every request is in [calls].
 //
 //   const w = await world();
 //   const jwt = w.sign({ iss: CHATGPT, sub: CHATGPT, aud: `${ORIGIN}/oauth/token` });
@@ -35,6 +36,8 @@ export async function world() {
   const clients = new Map();
   const spent = new Map();
   const calls = [];
+  // Connections and their tokens, as rows (supabase/oauth.sql).
+  const tables = { oauth_grants: [], oauth_tokens: [] };
   const documents = new Map([
     [CHATGPT, {
       client_id: CHATGPT, client_uri: "https://chatgpt.com/",
@@ -78,11 +81,43 @@ export async function world() {
         return json(201);
       }
     }
+    const table = tables[url.pathname.replace("/rest/v1/", "")];
+    if (table) {
+      // PostgREST's eq, is.null and gt, which is all the token endpoint asks.
+      const wanted = [...url.searchParams].filter(([name]) => name !== "select");
+      const matches = (row) => wanted.every(([name, said]) => {
+        const [op, ...rest] = said.split(".");
+        const value = rest.join(".");
+        if (op === "eq") return String(row[name]) === value;
+        if (op === "is") return row[name] === null || row[name] === undefined;
+        if (op === "gt") return Date.parse(row[name]) > Date.parse(value);
+        throw new Error(`the test world has no filter ${op}`);
+      });
+      const found = table.filter(matches);
+      if (method === "GET") return json(200, found);
+      if (method === "POST") {
+        const added = (Array.isArray(body) ? body : [body]).map((row) => ({ id: randomUUID(), ...row }));
+        table.push(...added);
+        return json(201, added);
+      }
+      if (method === "PATCH") {
+        for (const row of found) Object.assign(row, body);
+        return json(200, found);
+      }
+      if (method === "DELETE") {
+        for (const row of found) table.splice(table.indexOf(row), 1);
+        // A connection's tokens go with it, as the foreign key cascades.
+        if (url.pathname.endsWith("/oauth_grants")) {
+          tables.oauth_tokens = tables.oauth_tokens.filter((one) => !found.some((g) => g.id === one.grant_id));
+        }
+        return json(200, found);
+      }
+    }
     return json(404, { message: `the test world has no ${method} ${url.pathname}` });
   };
 
   return {
-    calls, clients, spent, documents, keys, chatgptKey,
+    calls, clients, spent, documents, keys, chatgptKey, tables,
     /// A request with these headers, as Vercel hands one over.
     request: (headers = {}) => ({ method: "POST", headers, query: {} }),
     /// A client assertion: [claims] over the usual ones, signed by [pair]

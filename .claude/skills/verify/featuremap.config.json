@@ -3776,6 +3776,13 @@
     },
     {
       "kind": "cli",
+      "label": "every assistant's sign-in",
+      "entry": "tools/web/clients_check.mjs",
+      "reach": "tools/release/live_db.sh you node tools/web/clients_check.mjs --url=<relay_server or deployment>   (with .env sourced; BW_BYPASS for a preview)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
       "label": "product look in a browser",
       "entry": "tools/web/product_render_flow.mjs",
       "reach": "node tools/web/product_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT   (a local export served by tools/web/serve.py, with .env sourced; or --url=<a preview>/app --bypass=$VERCEL_BYPASS: Product under Compatibility on each backdrop, the red glass red and the clear see-through)",

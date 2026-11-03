@@ -58,9 +58,12 @@
 //
 // What is kept (supabase/oauth.sql): codes good once, for two minutes;
 // access tokens for an hour; refresh tokens until used, then replaced —
-// all by SHA-256, never the token. A refresh token used twice, outside a
-// few seconds' grace for a retry, ends the whole connection. Disconnect in
-// the app deletes the connection, and every token of it goes with it.
+// all by SHA-256, never the token. A public client's refresh token used
+// twice, outside a few seconds' grace for a retry, ends the whole
+// connection. A client that proves itself (a secret, or a signed
+// assertion) keeps one refresh token, good for 90 days from its last use.
+// Disconnect in the app deletes the connection, and every token of it goes
+// with it.
 
 import { timingSafeEqual } from "node:crypto";
 import { ASSERTION_TYPE, assertionTrouble, claimedClient, givenKeys, keysAt } from "./_assertion.js";
@@ -372,7 +375,8 @@ async function authorization(params, origin) {
   if (!returnAddressMatches(client.redirect_uris, redirect)) {
     return { refuse: "The app that sent you here asked to be answered at an "
       + "address it did not declare, so Brickworks will not send you there.",
-    client: clientLabel({ client_name: client.client_name, redirect_uri: client.redirect_uris[0] }) };
+    client: clientLabel({ client_id: client.client_id, client_name: client.client_name,
+      redirect_uri: client.redirect_uris[0] }) };
   }
   const state = text(params.state);
   const back = (error, description) => ({
@@ -403,7 +407,8 @@ async function check(request, response, origin) {
   if (asked.back) return response.status(200).json({ back: asked.back });
   const to = new URL(asked.redirect);
   const loopback = to.protocol === "http:" && LOOPBACK.has(to.hostname);
-  const client = clientLabel({ client_name: asked.client.client_name, redirect_uri: asked.redirect });
+  const client = clientLabel({ client_id: asked.client.client_id, client_name: asked.client.client_name,
+    redirect_uri: asked.redirect });
   return response.status(200).json({
     client,
     claude: isClaude(client),
@@ -519,11 +524,11 @@ const spender = (clientId) => async (jti, until) => (await db("rpc/oc_spend", {
   body: { token_id: `oauth:${sha256(`${clientId} ${jti}`)}`, until: new Date(until * 1000).toISOString() },
 })) === true;
 
-/// The client making a token request, proved: { client }, or { why } it is
-/// not. One that signs sends a client_assertion its keys check
-/// (api/_assertion.js); one that holds a secret, the secret; a public one,
-/// nothing more, its PKCE verifier being the proof. An assertion sent is
-/// checked whoever sends it, never ignored.
+/// The client making a token request: { client, proved }, or { why } it is
+/// not that client. One that signs sends a client_assertion its keys check
+/// (api/_assertion.js); one that holds a secret, the secret; both are
+/// [proved]. A public one sends nothing more, its PKCE verifier being the
+/// proof. An assertion sent is checked whoever sends it, never ignored.
 export async function callingClient(request, given, origin) {
   let clientId = given.client_id;
   let clientSecret = given.client_secret;
@@ -556,13 +561,13 @@ export async function callingClient(request, given, origin) {
       clientId: client.client_id, keysOf, audiences: [origin, `${origin}/oauth/token`],
       spend: spender(client.client_id),
     });
-    return why ? { why } : { client };
+    return why ? { why } : { client, proved: true };
   }
   if (client.auth_method === SIGNED) return { why: "this client signs its token requests: send a client_assertion" };
   if (client.auth_method !== "none" && !sameSecret(clientSecret, client.secret_hash)) {
     return { why: "unknown client, or a wrong secret" };
   }
-  return { client };
+  return { client, proved: client.auth_method !== "none" };
 }
 
 function verifierMatches(verifier, challenge) {
@@ -576,14 +581,17 @@ function sha256Base64Url(value) {
   return Buffer.from(sha256(value), "hex").toString("base64url");
 }
 
-async function issue(grant) {
+/// A new access token for [grant], with a new refresh token, or with
+/// [kept], the one the client holds and keeps.
+async function issue(grant, kept = "") {
   const access = secret("bwa");
-  const refresh = secret("bwr");
+  const refresh = kept || secret("bwr");
   await db("oauth_tokens", {
     method: "POST",
     body: [
       { hash: sha256(access), grant_id: grant.id, kind: "access", expires_at: iso(ACCESS_TTL_S * 1000) },
-      { hash: sha256(refresh), grant_id: grant.id, kind: "refresh", expires_at: iso(REFRESH_TTL_S * 1000) },
+      ...(kept ? [] : [{ hash: sha256(refresh), grant_id: grant.id, kind: "refresh",
+        expires_at: iso(REFRESH_TTL_S * 1000) }]),
     ],
   });
   return {
@@ -613,7 +621,7 @@ async function tellTabs(owner, client) {
 async function token(request, response, origin) {
   response.setHeader("pragma", "no-cache");
   const given = fields(request);
-  const { client, why } = await callingClient(request, given, origin);
+  const { client, proved, why } = await callingClient(request, given, origin);
   if (!client) {
     // Said in the log too: ChatGPT shows a person only that it failed. The
     // id is the caller's say, so printable characters only, one line.
@@ -671,10 +679,16 @@ async function token(request, response, origin) {
       return oauthError(response, 400, "invalid_grant", "that refresh token is unknown");
     }
     const hash = sha256(presented);
-    // Replaced as it is read, so two requests cannot both trade it.
-    const traded = await db(
-      `oauth_tokens?hash=eq.${hash}&kind=eq.refresh&replaced_at=is.null&expires_at=gt.${iso()}`,
-      { method: "PATCH", body: { replaced_at: iso() }, prefer: "return=representation" });
+    const live = `oauth_tokens?hash=eq.${hash}&kind=eq.refresh&replaced_at=is.null&expires_at=gt.${iso()}`;
+    // A client that proved itself keeps its refresh token: OAuth 2.1 asks
+    // rotation only of public clients, since a copy of this one is no use
+    // without the client's secret or key, and Gemini, as Google tells it,
+    // sends the first one again an hour on (docs/ANY_ASSISTANT.md U2).
+    // A public client's is replaced as it is read, so two requests cannot
+    // both trade it.
+    const [held] = proved ? await db(`${live}&select=grant_id`) || [] : [];
+    const traded = held ? [held]
+      : await db(live, { method: "PATCH", body: { replaced_at: iso() }, prefer: "return=representation" });
     let grantId = traded && traded[0] ? traded[0].grant_id : null;
     if (!grantId) {
       const [seen] = await db(`oauth_tokens?hash=eq.${hash}&kind=eq.refresh&select=grant_id,replaced_at,expires_at`) || [];
@@ -708,7 +722,12 @@ async function token(request, response, origin) {
       return oauthError(response, 400, "invalid_target", "resource is not the one the token was issued for");
     }
     await db(`oauth_grants?id=eq.${grant.id}`, { method: "PATCH", body: { used_at: iso() } });
-    return response.status(200).json(await issue(grant));
+    if (held) {
+      await db(`oauth_tokens?hash=eq.${hash}&kind=eq.refresh`, {
+        method: "PATCH", body: { expires_at: iso(REFRESH_TTL_S * 1000) },
+      });
+    }
+    return response.status(200).json(await issue(grant, held ? presented : ""));
   }
 
   return oauthError(response, 400, "unsupported_grant_type",

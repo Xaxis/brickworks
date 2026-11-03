@@ -306,6 +306,171 @@ return { labels, claude: labels.map(isClaude) };
     assert got["claude"] == [False, False, True, True, False]
 
 
+def test_a_label_is_what_was_checked_not_what_a_client_calls_itself() -> None:
+    """docs/ANY_ASSISTANT.md U1: a client is labelled by its published
+    document's address or by a known host its codes go back to; a name it
+    chose is shown only where the codes go to the person's own machine, or
+    when it names no assistant it is not."""
+    got = run("""
+const { clientLabel, isClaude } = await import('./api/_oauth.js');
+const cases = {
+  claudeAi: { client_id: CLAUDE, client_name: 'Claude', redirect_uri: 'https://claude.ai/api/mcp/auth_callback' },
+  claudeCodeDocument: { client_id: 'https://claude.ai/oauth/claude-code-client-metadata', client_name: 'Claude Code',
+    redirect_uri: 'http://localhost:51123/callback' },
+  codex: { client_id: 'https://chatgpt.com/oauth/codex/client.json', client_name: 'codex',
+    redirect_uri: 'http://127.0.0.1:1455/callback' },
+  vscode: { client_id: 'https://vscode.dev/oauth/client-metadata.json', client_name: 'VS Code',
+    redirect_uri: 'https://vscode.dev/redirect' },
+  zed: { client_id: 'https://zed.dev/oauth/client-metadata.json', client_name: 'zed.dev',
+    redirect_uri: 'http://127.0.0.1:52001/callback' },
+  gemini: { client_id: 'bwc_g', client_name: 'Gemini',
+    redirect_uri: 'https://oauth-redirect.googleusercontent.com/r/gemini-connected-apps' },
+  geminiOtherName: { client_id: 'bwc_g2', client_name: 'Google connected apps',
+    redirect_uri: 'https://oauth-redirect-sandbox.googleusercontent.com/a/gemini' },
+  copilot: { client_id: 'bwc_m', client_name: 'Copilot connector',
+    redirect_uri: 'https://teams.microsoft.com/api/platform/v1.0/oAuthRedirect' },
+  perplexity: { client_id: 'bwc_p', client_name: 'Perplexity',
+    redirect_uri: 'https://www.perplexity.ai/rest/connections/oauth_callback' },
+  grok: { client_id: 'bwc_x', client_name: 'Grok', redirect_uri: 'https://console.x.ai/connectors-oauth-exchange-code/' },
+  cursorWeb: { client_id: 'bwc_c', client_name: 'Cursor', redirect_uri: 'https://www.cursor.com/agents/mcp/oauth/callback' },
+  geminiCli: { client_id: 'bwc_gc', client_name: 'Gemini CLI MCP Client', redirect_uri: 'http://localhost:7777/oauth/callback' },
+  someoneNew: { client_id: 'bwc_n', client_name: 'Brick Buddy', redirect_uri: 'https://buddy.example/callback' },
+  nameless: { client_id: 'bwc_0', client_name: null, redirect_uri: 'https://assistant.example/oauth/callback' },
+  fakeClaude: { client_id: 'bwc_f', client_name: 'Claude', redirect_uri: 'https://not-claude.example/callback' },
+  fakeClaudeCode: { client_id: 'bwc_f2', client_name: 'Claude Code', redirect_uri: 'https://not-claude.example/cc' },
+  fakeChatgpt: { client_id: 'bwc_f3', client_name: 'ChatGPT', redirect_uri: 'https://chatgpt.example.net/back' },
+  fakeByHello: { client_id: 'bwc_f4', client_name: null, client_info: { name: 'claude-ai', version: '1' },
+    redirect_uri: 'https://assistant.example/oauth/callback' },
+  fakeDocument: { client_id: 'https://not-claude.example/client.json', client_name: 'Claude',
+    redirect_uri: 'https://not-claude.example/callback' },
+};
+const labels = Object.fromEntries(Object.entries(cases).map(([k, v]) => [k, clientLabel(v)]));
+return { labels, claude: Object.keys(cases).filter((k) => isClaude(labels[k])) };
+""")
+    if got is None:
+        return
+    assert got["labels"] == {
+        "claudeAi": "Claude", "claudeCodeDocument": "Claude Code", "codex": "Codex",
+        "vscode": "Visual Studio Code", "zed": "Zed", "gemini": "Gemini", "geminiOtherName": "Gemini",
+        "copilot": "Microsoft Copilot", "perplexity": "Perplexity", "grok": "Grok", "cursorWeb": "Cursor",
+        "geminiCli": "Gemini CLI MCP Client", "someoneNew": "Brick Buddy", "nameless": "An MCP client",
+        "fakeClaude": "not-claude.example", "fakeClaudeCode": "not-claude.example",
+        "fakeChatgpt": "chatgpt.example.net", "fakeByHello": "assistant.example",
+        "fakeDocument": "not-claude.example",
+    }
+    assert got["claude"] == ["claudeAi", "claudeCodeDocument"]
+
+
+# A connection of [client] holding one refresh token, as trading a code
+# leaves it; a refresh as the client sends it; the clock moved on.
+CONNECT = """
+const { sha256 } = await import('./api/_oauth.js');
+const { randomBytes, randomUUID } = await import('node:crypto');
+const connect = (client) => {
+  const grant = { id: randomUUID(), owner: randomUUID(), client_id: client, resource: `${ORIGIN}/api/mcp`,
+    scope: 'build', oc_rh: null };
+  w.tables.oauth_grants.push(grant);
+  const refresh = `bwr_${randomBytes(32).toString('base64url')}`;
+  w.tables.oauth_tokens.push({ hash: sha256(refresh), grant_id: grant.id, kind: 'refresh', replaced_at: null,
+    expires_at: new Date(Date.now() + 86400e3).toISOString() });
+  return { grant, refresh };
+};
+const refresh = async (fields, headers = {}) => {
+  const got = await askOAuth({ method: 'POST', query: { op: 'token' }, headers,
+    body: { grant_type: 'refresh_token', ...fields } });
+  return { status: got.status, error: got.json.error || null, refresh: got.json.refresh_token || null,
+    access: /^bwa_/.test(got.json.access_token || '') };
+};
+const later = (ms) => { const was = Date.now; Date.now = () => was() + ms; };
+const alive = (grant) => w.tables.oauth_grants.some((one) => one.id === grant.id);
+const register = async (more) => (await askOAuth({ method: 'POST', query: { op: 'register' },
+  body: { grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'], ...more } })).json;
+const basic = (id, secret) => `Basic ${Buffer.from(`${id}:${secret}`).toString('base64')}`;
+"""
+
+
+def test_a_client_that_proves_itself_keeps_its_refresh_token() -> None:
+    """docs/ANY_ASSISTANT.md U2: Gemini registers with a secret and, as
+    Google tells it to, sends the first refresh token again after the
+    access token's hour. A client that proves itself (a secret, either way,
+    or a signed assertion) keeps one refresh token, its expiry moved on;
+    the connection stays."""
+    got = run(CONNECT + """
+const gemini = await register({ client_name: 'Gemini', token_endpoint_auth_method: 'client_secret_post',
+  redirect_uris: ['https://oauth-redirect.googleusercontent.com/r/gemini-connected-apps'] });
+const copilot = await register({ client_name: 'Microsoft Copilot', token_endpoint_auth_method: 'client_secret_basic',
+  redirect_uris: ['https://teams.microsoft.com/api/platform/v1.0/oAuthRedirect'] });
+const ways = {
+  gemini: [gemini.client_id, (r) => refresh({ refresh_token: r, client_id: gemini.client_id,
+    client_secret: gemini.client_secret })],
+  copilot: [copilot.client_id, (r) => refresh({ refresh_token: r },
+    { authorization: basic(copilot.client_id, copilot.client_secret) })],
+  chatgpt: [CHATGPT, (r) => refresh({ refresh_token: r, client_assertion_type: ASSERTION_TYPE,
+    client_assertion: w.sign() })],
+};
+const held = Object.fromEntries(Object.entries(ways).map(([name, [id]]) => [name, connect(id)]));
+const out = {};
+for (const [name, [, send]] of Object.entries(ways)) {
+  const { refresh: r0 } = held[name];
+  const row = () => w.tables.oauth_tokens.find((one) => one.hash === sha256(r0));
+  const was = row().expires_at;
+  const first = await send(r0);
+  out[name] = { first: [first.status, first.refresh === r0, first.access], moved: row().expires_at > was };
+}
+later(32_000);
+for (const [name, [, send]] of Object.entries(ways)) {
+  const again = await send(held[name].refresh);
+  out[name].again = [again.status, again.refresh === held[name].refresh, again.access, again.error];
+  out[name].stays = alive(held[name].grant);
+}
+// Another client's refresh token, presented by one that proves itself: no.
+const other = connect(CLAUDE);
+const stolen = await ways.gemini[1](other.refresh);
+out.stolen = [stolen.status, stolen.error, alive(other.grant)];
+return out;
+""")
+    if got is None:
+        return
+    for name in ("gemini", "copilot", "chatgpt"):
+        assert got[name]["first"] == [200, True, True], (name, got[name])
+        assert got[name]["moved"], (name, got[name])
+        assert got[name]["again"] == [200, True, True, None], (name, got[name])
+        assert got[name]["stays"], (name, got[name])
+    assert got["stolen"] == [400, "invalid_grant", True]
+
+
+def test_a_public_client_still_rotates_and_a_late_reuse_ends_the_connection() -> None:
+    """OAuth 2.1 asks rotation of public clients: Claude's refresh token is
+    replaced; sent again within the grace it is a retry, after it somebody
+    else's copy, which ends the connection."""
+    got = run(CONNECT + """
+const cursor = await register({ client_name: 'Cursor', token_endpoint_auth_method: 'none',
+  redirect_uris: ['https://www.cursor.com/agents/mcp/oauth/callback'] });
+const out = {};
+for (const [name, id] of [['claude', CLAUDE], ['cursor', cursor.client_id]]) {
+  const { grant, refresh: r0 } = connect(id);
+  const first = await refresh({ refresh_token: r0, client_id: id });
+  const retry = await refresh({ refresh_token: r0, client_id: id });
+  out[name] = { grant, r0, first: [first.status, first.refresh !== r0 && Boolean(first.refresh)],
+    retry: retry.status, newest: first.refresh };
+}
+later(32_000);
+for (const [name, id] of [['claude', CLAUDE], ['cursor', cursor.client_id]]) {
+  const late = await refresh({ refresh_token: out[name].r0, client_id: id });
+  const newest = await refresh({ refresh_token: out[name].newest, client_id: id });
+  Object.assign(out[name], { late: [late.status, late.error], ended: !alive(out[name].grant),
+    newestAfter: newest.status });
+  delete out[name].grant; delete out[name].r0; delete out[name].newest;
+}
+return out;
+""")
+    if got is None:
+        return
+    for name in ("claude", "cursor"):
+        assert got[name] == {"first": [200, True], "retry": 200, "late": [400, "invalid_grant"], "ended": True,
+                             "newestAfter": 400}, (name, got[name])
+
+
 def test_the_relay_gives_claude_its_list_as_before_and_others_a_portable_one() -> None:
     got = run("""
 const { toolsWithTabs } = await import('./api/mcp.js');
@@ -339,3 +504,27 @@ return {
     # Claude's list keeps its arrays that say no items; nobody else's has one.
     assert got["bareClaude"] > 0 and got["bareOther"] == 0
     assert got["hintsOther"] == 70 and got["hintsClaude"] < 70
+
+
+def test_the_tab_is_told_who_calls_by_the_connection_not_by_the_client() -> None:
+    """docs/ANY_ASSISTANT.md U1: a call's `brickworks/who` is the
+    connection's label, whatever the client put in its _meta, and no
+    other `brickworks/` key of the client's reaches the tab; the rest of
+    its _meta does."""
+    got = run("""
+const { callerMeta } = await import('./api/mcp.js');
+const forged = { _meta: { 'brickworks/who': 'Somebody else', 'brickworks/chat': { chat: 'forged' },
+  'brickworks/views': true, progressToken: 7 } };
+return {
+  account: callerMeta(forged, 'ChatGPT'),
+  tabAddress: callerMeta(forged, ''),
+  nothingSent: callerMeta({ name: 'search_parts' }, 'Gemini'),
+  notAnObject: callerMeta({ _meta: ['brickworks/who'] }, 'Grok'),
+};
+""")
+    if got is None:
+        return
+    assert got["account"] == {"progressToken": 7, "brickworks/who": "ChatGPT"}
+    assert got["tabAddress"] == {"progressToken": 7}
+    assert got["nothingSent"] == {"brickworks/who": "Gemini"}
+    assert got["notAnObject"] == {"brickworks/who": "Grok"}

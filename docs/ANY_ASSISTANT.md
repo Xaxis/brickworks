@@ -107,8 +107,9 @@ docs/CONNECTING.md (connecting Claude) are not repeated here.
 
 `tools/web/chatgpt_flow.mjs` and `tools/web/oauth_probe.mjs` against
 `relay_server.mjs` on port 9671, and a probe written for this unit
-(`docs/any_assistant/clients_probe.mjs`; section F's U1 makes it a
-check; the run's whole output is `docs/any_assistant/run-2026-11-02.txt`)
+(`docs/any_assistant/clients_probe.mjs`, which section F's U1 made the
+check `tools/web/clients_check.mjs`; the run's whole output is
+`docs/any_assistant/run-2026-11-02.txt`)
 that plays each assistant's sign-in as its maker documents it (B.1): its
 published client document where it has one, else registration with its
 documented return address. Each row: registered or document read, what the
