@@ -24,7 +24,7 @@ api:POST /api/mcp
 
 ## Connect {#connect}
 
-1. In Brickworks, with the assistant on, press **Connect Claude** in the assistant panel (or **Tools › Claude connector…**).
+1. In Brickworks, with the assistant on, press **Connect Claude** in the assistant panel (or **Tools › Connect your AI…**).
 2. claude.ai opens its *Add custom connector* dialog with the name and address filled in. Press **Add**, then **Connect**.
 3. Claude sends you to Brickworks to sign in, by email code, or straight to the question if this browser is already signed in. It names who is asking and where the answer goes. Press **Allow**.
 4. You are back in Claude, connected. A connector added on claude.ai is in the Claude desktop and mobile apps too, and in Claude Code signed in with the same Claude account.
@@ -59,7 +59,7 @@ Claude asks before each Brickworks tool until you choose **Always allow** for th
 
 Each tab has a short name while Claude can reach it, shown on the toolbar: `Tab k7qd`. **Account** says it in full, with the model's name.
 
-- **Start the chat from the tab.** **New chat for this tab** (in Account, and in the assistant panel's *Or with your Claude plan*) opens claude.ai on a new chat with its first message filled in: *Use my Brickworks tab k7qd ("Castle") for this chat.* Add what to build and send it. It is copied too, and offered as a command line for Claude Code.
+- **Start the chat from the tab.** **New chat for this tab** (in Account, and in the assistant panel's *Connect your AI*) opens claude.ai on a new chat with its first message filled in: *Use my Brickworks tab k7qd ("Castle") for this chat.* Add what to build and send it. It is copied too, and offered as a command line for Claude Code.
 - **A chat that has not chosen asks first.** With one tab open, a new chat works there. With several, its first change does nothing until Claude chooses a tab, by its name or its model's (*work in the castle tab*).
 - **A chat stays in its tab** until it chooses another. Clicking into another tab to watch changes nothing.
 - **The tab says who is working in it**: *Claude working · tab k7qd* on the toolbar while a chat works there. If two chats work in one tab, Account has **Keep this one** beside each.

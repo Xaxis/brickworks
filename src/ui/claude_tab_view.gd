@@ -1,9 +1,10 @@
-## This tab, as Claude knows it, and the Claude chats working in it.
+## This tab, as your AI knows it, and the chats working in it, each in its
+## caller's name (ChatGPT's, Claude's: the relay's brickworks/who).
 ##
 ## The owner (2026-10-17): with two Brickworks tabs on two projects and two
 ## Claude chats, how does a person tie each chat to its tab so they do not
 ## get in each other's way? So, where the person looks for Claude (Account,
-## and the assistant panel's "Or with your Claude plan"):
+## and the assistant panel's "Connect your AI"):
 ##
 ##   - this tab's name to say to Claude: its id and its model's name;
 ##   - New chat for this tab: Claude opened on a new chat whose first
@@ -14,6 +15,11 @@
 ##     moved off and told so on its next call (api/mcp.js).
 ##
 ## The toolbar says the same in one quiet line ([method badge]).
+##
+## New chat for this tab is the chosen assistant's (ClaudeConnector.
+## assistant, Assistants.new_chat): Claude's filled in, as above; another
+## app's own page opened with the first message copied; a command copied
+## (Claude Code, Codex, Gemini CLI); or the message alone copied.
 class_name ClaudeTabView
 extends VBoxContainer
 
@@ -40,7 +46,6 @@ func setup(with: Node) -> void:
 	add_theme_constant_override("separation", 6)
 
 	_name = _line("", 12, 0.85)
-	_name.tooltip_text = "What Claude calls this tab. Say “the %s tab” in a chat to work here."
 	add_child(_name)
 
 	_chats = VBoxContainer.new()
@@ -52,7 +57,7 @@ func setup(with: Node) -> void:
 	_start.focus_mode = Control.FOCUS_NONE
 	_start.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_start.tooltip_text = "Opens claude.ai on a new chat whose first message names this tab"
-	_start.pressed.connect(func() -> void: _open("claude.ai"))
+	_start.pressed.connect(_start_chat)
 	add_child(_start)
 
 	_ways = HBoxContainer.new()
@@ -94,6 +99,10 @@ func setup(with: Node) -> void:
 	connector.chats_changed.connect(func(_now: Array) -> void: show_now())
 	connector.listening.connect(func(_on: bool, _address: String) -> void: show_now())
 	connector.connections_changed.connect(func(_now: Array) -> void: show_now())
+	connector.assistant_chosen.connect(func(_id: String) -> void:
+		_said.visible = false
+		_command_row.visible = false
+		show_now())
 	# No clock: a chat's last call is said by the time of day it came, which
 	# stays true. A Timer kept "2 min ago" true twice a minute, and so the
 	# rows were made again and the window drawn again between Claude's calls,
@@ -102,6 +111,25 @@ func setup(with: Node) -> void:
 		if is_visible_in_tree():
 			show_now())
 	show_now()
+
+
+## New chat for this tab, in the chosen assistant, as far as it allows, and
+## what was done said under it.
+func _start_chat() -> void:
+	if connector.assistant == Assistants.CLAUDE:
+		_open("claude.ai")
+		return
+	var name: String = connector.assistant_name()
+	var chat: Dictionary = connector.start_chat_with()
+	_said.visible = true
+	_command_row.visible = str(chat["way"]) == "command"
+	_command.text = str(chat["copy"])
+	_said.text = {
+		"command": "Run this in a terminal, in any folder: %s starts a chat for this tab. It is copied." % name,
+		"open": "%s has opened in a new tab. The first message, naming this tab, is copied: "
+			% name + "paste it into a new chat there, add what to build and send it.",
+	}.get(str(chat["way"]), "The first message, naming this tab, is copied: paste it into a new "
+		+ "chat in %s, add what to build and send it." % name)
 
 
 ## Opened on Claude for this tab: [param where] is "claude.ai", "app" or "code".
@@ -155,25 +183,35 @@ func show_now() -> void:
 	if not on:
 		return
 	var tab: String = connector.tab()
-	_name.text = "This tab is %s. Say it to Claude to work here." % connector.tab_words()
-	_name.tooltip_text = ("Claude knows this tab as %s. In a chat, say “the %s tab” "
-		+ "(or its model's name) and Claude works here.") % [tab, tab]
+	var name: String = connector.assistant_name()
+	_name.text = "This tab is %s. Say it to %s to work here." % [connector.tab_words(), name]
+	_name.tooltip_text = ("Your AI knows this tab as %s. In a chat, say “the %s tab” "
+		+ "(or its model's name) and it works here.") % [tab, tab]
+	# Claude's own apps, beside its new chat.
+	_ways.visible = connector.assistant == Assistants.CLAUDE
 	for child: Node in _chats.get_children():
 		_chats.remove_child(child)
 		child.queue_free()
 	_keeps.clear()
 	var now: Array = connector.working()
+	var callers: String = _callers(now)
 	if now.is_empty():
-		_chats.add_child(_line("No Claude chat is working in this tab.", 11, 0.7))
+		_chats.add_child(_line("No chat is working in this tab.", 11, 0.7))
 	elif now.size() == 1:
-		_chats.add_child(_dotted("A Claude chat is working here: %s." % chat_words(now[0]), WORKING))
+		_chats.add_child(_dotted("A %s chat is working here: %s." % [who(now[0]), chat_words(now[0])],
+			WORKING))
 	else:
-		_chats.add_child(_dotted("%d Claude chats are working in this tab, on the one model. "
-			% now.size() + "Keep one; the other is moved off and asked to choose another tab.", TWO))
+		_chats.add_child(_dotted(("%d %s chats are working in this tab, on the one model. "
+				% [now.size(), callers] if not callers.is_empty() else
+				"%d chats are working in this tab, on the one model. " % now.size())
+			+ "Keep one; the other is moved off and asked to choose another tab.", TWO))
 		for one: Variant in now:
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 8)
-			var words: Label = _line(chat_words(one).left(1).to_upper() + chat_words(one).substr(1), 11, 0.85)
+			# Each named where they are not all one app's.
+			var said: String = chat_words(one)
+			var words: Label = _line("%s, %s" % [who(one), said] if callers.is_empty()
+				else said.left(1).to_upper() + said.substr(1), 11, 0.85)
 			words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			row.add_child(words)
 			var keep := Button.new()
@@ -190,7 +228,27 @@ func show_now() -> void:
 			row.add_child(keep)
 			_keeps.append(keep)
 			_chats.add_child(row)
-	_start.tooltip_text = "Opens claude.ai on a new chat whose first message names %s" % tab
+	var chat: Dictionary = Assistants.new_chat(connector.assistant, "")
+	_start.tooltip_text = ("Opens claude.ai on a new chat whose first message names %s" % tab
+		if connector.assistant == Assistants.CLAUDE else
+		{"command": "Copies a command that starts %s on a chat for %s" % [name, tab],
+			"open": "Opens %s and copies a first message naming %s" % [name, tab],
+		}.get(str(chat["way"]), "Copies a first message naming %s, for a new chat in %s" % [tab, name]))
+
+
+## Who [param one] chat is, as its calls named it: "Claude" when none did.
+static func who(one: Variant) -> String:
+	var named: String = str((one as Dictionary).get("who", "")) if one is Dictionary else ""
+	return named if not named.is_empty() else "Claude"
+
+
+## The one name all of [param chats] share, or "" when they are more than one
+## app's.
+static func _callers(chats: Array) -> String:
+	var names: Dictionary = {}
+	for one: Variant in chats:
+		names[who(one)] = true
+	return str(names.keys()[0]) if names.size() == 1 else ""
 
 
 ## One chat, in words: "since 14:05, last: built “Castle” at 14:07".
@@ -218,14 +276,17 @@ static func badge(connector: Node) -> Array:
 		return ["", Color.TRANSPARENT, ""]
 	var now: Array = connector.working()
 	var tab: String = connector.tab()
+	var callers: String = _callers(now)
 	if now.size() >= 2:
-		return ["%d Claude chats · tab %s" % [now.size(), tab], TWO,
-			"%d Claude chats are working in this tab, on the one model. Open Account to keep one." % now.size()]
+		var count: String = ("%d %s chats" % [now.size(), callers] if not callers.is_empty()
+			else "%d chats" % now.size())
+		return ["%s · tab %s" % [count, tab], TWO,
+			"%s are working in this tab, on the one model. Open Account to keep one." % count]
 	if now.size() == 1:
-		return ["Claude working · tab %s" % tab, WORKING,
-			"A Claude chat is working in this tab: %s." % chat_words(now[0])]
+		return ["%s working · tab %s" % [who(now[0]), tab], WORKING,
+			"A %s chat is working in this tab: %s." % [who(now[0]), chat_words(now[0])]]
 	return ["Tab %s" % tab, Color(0.55, 0.57, 0.6),
-		"Claude knows this tab as %s. No Claude chat is working in it. Account has New chat for this tab." % tab]
+		"Your AI knows this tab as %s. No chat is working in it. Account has New chat for this tab." % tab]
 
 
 ## The time of day, here, of an ISO time from the relay (UTC).

@@ -24,10 +24,10 @@ def test_every_page_has_the_one_header_and_footer() -> None:
 def test_the_header_has_four_links_and_two_buttons_at_most() -> None:
     # The owner capped the bar at four links (2026-10-20: "the main nav has
     # too many links"); asked for pricing in the site (2026-10-29), it is
-    # Gallery, Docs and Pricing, then Open the app and your account, and
-    # Download went to the footer and Menu (site356). The Library left it
-    # when it became the gallery's Sets tab (browse, 2026-11-02: "one is
-    # just a tab in another").
+    # Gallery, Docs and Plans (Pricing until 2026-11-03), then Open the app
+    # and your account, and Download went to the footer and Menu (site356).
+    # The Library left it when it became the gallery's Sets tab (browse,
+    # 2026-11-02: "one is just a tab in another").
     shell = (ROOT / "web/_shell.html").read_text(encoding="utf-8")
     nav = re.search(r'<nav class="nav" aria-label="Main">(.*?)</nav>', shell, re.S)
     assert nav is not None

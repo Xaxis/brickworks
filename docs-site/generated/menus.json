@@ -1317,9 +1317,9 @@
 				},
 				{
 					"name": "connector",
-					"words": "Claude connector…",
+					"words": "Connect your AI…",
 					"key": "",
-					"tip": "Let Claude build here, from your own Claude account"
+					"tip": "Let your AI app (Claude, ChatGPT, Gemini and others) build here, from your own account with it"
 				},
 				{
 					"name": "settings",

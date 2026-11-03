@@ -145,7 +145,9 @@ func _run() -> void:
 		assistant.progress.emit("step %d" % n)
 	_check(panel._run_past.get_child_count() == ChatPanel.RUN_STEPS,
 		"only the last %d are kept" % ChatPanel.RUN_STEPS)
-	panel._run_started -= 75_000
+	# 75 s from now, not 75 s more than it has run: on a busy machine the
+	# card had been open over a second already, and the clock read 1:16.
+	panel._run_started = Time.get_ticks_msec() - 75_000
 	panel._process(0.0)
 	_check(panel._run_clock.text == "1:15",
 		"the clock says how long it has been going: %s" % panel._run_clock.text)
@@ -363,9 +365,10 @@ func _run() -> void:
 			and not offer._disconnect.visible and offer._connect.visible,
 		"disconnected: not connected, and Connect Claude, in both places")
 	# As Disconnect Claude leaves it: no connections, and this tab no longer
-	# listening — not "Claude is building", which it said with a count.
+	# listening — not "Claude is building", which it said with a count. It
+	# names the apps it was connected to (connectany: ChatGPT's own, too).
 	connector.stop()
-	_check(offer._status.text.begins_with("Disconnected. Claude can no longer reach")
+	_check(offer._status.text.begins_with("Disconnected. Claude and Claude Code can no longer reach")
 			and offer._calls == 0,
 		"...and the panel says Disconnected, not that Claude is building: %s" % offer._status.text)
 	var stamp: String = Time.get_datetime_string_from_system(true).substr(0, 19) + "+00:00"
@@ -476,7 +479,7 @@ func _run() -> void:
 	_check(panel._connector_form.visible and not panel._scroll.visible,
 		"with no key, the connector on and nothing yet, its steps are under the title, not under an empty field")
 	_check(not panel._key_form.visible and panel._key_instead.visible
-			and panel._connector_form._title.text.begins_with("Designing with your Claude plan"),
+			and panel._connector_form._title.text == "Connect your AI",
 		"...and the key's form folds to one line while the plan is in use")
 	panel._key_instead.pressed.emit()
 	panel._show_for_key(false)
@@ -555,8 +558,12 @@ func _run() -> void:
 	connector.answered.emit("plan_scale", true, "90 studs")
 	_check(panel._run_clock.text != clock_was,
 		"...and the clock moves with the next of them: %s" % panel._run_clock.text)
+	# Quiet means longer than claude_quiet_ms since the last call: with it
+	# 0, at least a millisecond, which two headless frames can come within.
 	panel.claude_quiet_ms = 0
-	await process_frame
+	var quiet_from: int = Time.get_ticks_msec() + 5
+	while Time.get_ticks_msec() < quiet_from:
+		await process_frame
 	await process_frame
 	_check(not panel._claude_card() and panel._run_title.text == "Done",
 		"when Claude goes quiet the card says Done")
