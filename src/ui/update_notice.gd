@@ -7,9 +7,9 @@
 ## Settings, Updates, Automatic the version is already downloaded by the
 ## time this shows, and goes in as the app quits if Later is pressed; in
 ## Ask first it is downloaded on the press. Where this copy cannot update
-## itself (installed where it may not write), the press opens the download
-## page instead; on a Mac run from Downloads, it moves the app to
-## Applications as it updates it.
+## itself, the press is Download: the new .deb for a copy installed from
+## one, the download page for one installed where it may not write. On a
+## Mac run from Downloads, it moves the app to Applications as it updates it.
 class_name UpdateNotice
 extends PanelContainer
 
@@ -132,7 +132,7 @@ func _show() -> void:
 
 func _pressed() -> void:
 	if not updater.can_install():
-		Outside.open_link(Updates.DOWNLOAD)
+		Outside.open_link(updater.download_link())
 		return
 	_going = true
 	await updater.update_and_restart()

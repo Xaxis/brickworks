@@ -8,7 +8,8 @@
 ## refused when its words were changed, when another key signed it, when it
 ## is not Brickworks', or names a file with no SHA-256, over plain HTTP or
 ## off GitHub; the release's two public keys load and are the ids they are
-## filed under; and the addresses let in.
+## filed under; the addresses let in; and which copy this is from where it
+## runs (a .deb's never updates itself).
 ##
 ## Then the app on the real scene, against a server on this machine
 ## (tools/update_check.py serve, which BRICKWORKS_UPDATE_URL points at):
@@ -16,6 +17,9 @@
 ## what is out; in Ask first the notice says so with What's new, Update and
 ## restart and Later; in Automatic a download is refused when its SHA-256 or
 ## its size is not the manifest's, or a redirect leaves the server, and a
+## redirect to any host but GitHub's and brickworks.diy is refused however
+## like one of them it looks; a copy installed from the .deb is told what is
+## out, downloads nothing, and its Download opens the new .deb; and a
 ## good one is checked, unpacked beside the install and said ready. Update
 ## and restart, pressed on the notice, writes the working model and hands
 ## the helper the swap, the new copy and the same session; Help, Restart
@@ -30,6 +34,8 @@ extends SceneTree
 
 const VERSION := "99.0.0"
 const PACKAGE := "Brickworks-99.0.0-linux-x86_64.tar.xz"
+## The release's .deb, never fetched: a .deb's copy only opens its address.
+const DEB_URL := "https://github.com/Xaxis/brickworks-releases/releases/download/v99.0.0/Brickworks-99.0.0-linux-amd64.deb"
 
 var _failures: int = 0
 var _main: Node
@@ -51,6 +57,7 @@ func _run() -> void:
 	OS.unset_environment("BRICKWORKS_UPDATE_URL")
 	_versions()
 	_addresses()
+	_copies()
 	var key: CryptoKey = Crypto.new().generate_rsa(2048)
 	Updates.keys_for_probe = {"probe": key.save_to_string(true)}
 	_manifests(key)
@@ -110,6 +117,10 @@ func _addresses() -> void:
 		"https://example.net/github.com/x": "refused an address off GitHub",
 		"ftp://github.com/x": "not an address",
 		"https://github.com@example.net/x": "not an address",
+		"https://evilgithub.com/x": "refused an address off GitHub",
+		"https://github.com./x": "refused an address off GitHub",
+		"https://brickworks.diy.example/x": "refused an address off GitHub",
+		"https://release-assets.githubusercontent.com.example.net/x": "refused an address off GitHub",
 	}
 	var wrong: Array = []
 	for url: String in let_in:
@@ -126,7 +137,22 @@ func _addresses() -> void:
 	_check("a redirect's path stays on its host; an absolute one is checked as any address",
 		Updates.resolve("https://github.com/a/b", "/c/d") == "https://github.com/c/d"
 			and Updates.resolve("https://github.com/a", "https://example.com/x") == "https://example.com/x"
-			and Updates.resolve("https://github.com/a", "c") == "")
+			and Updates.resolve("https://github.com/a", "c") == ""
+			and Updates.resolve("https://github.com/a", "//example.com/x") == "https://example.com/x")
+
+
+## Which copy this is, from where it runs. The .deb's (in /usr/lib/brickworks)
+## is dpkg's, and the system's software installer updates it; a folder of
+## its own is the tar.xz's; the AppImage is its own file.
+func _copies() -> void:
+	var deb: Dictionary = Updates.on_linux("/usr/lib/brickworks/brickworks.x86_64", "")
+	var folder: Dictionary = Updates.on_linux("/home/someone/Brickworks-0.16.0-linux-x86_64/brickworks.x86_64", "")
+	var image: Dictionary = Updates.on_linux("/tmp/.mount_Brick/brickworks.x86_64", "/home/someone/Brickworks.AppImage")
+	_check("a copy in /usr/lib/brickworks is the .deb's, which says why it can't update itself: %s" % deb.get("why_not", ""),
+		deb["kind"] == "deb" and deb["package"] == "deb" and str(deb.get("why_not", "")).contains(".deb"))
+	_check("...a folder of its own is the tar.xz's, and an AppImage is put in place of itself",
+		folder["kind"] == "tar.xz" and not folder.has("why_not")
+			and image["kind"] == "appimage" and image["target"] == "/home/someone/Brickworks.AppImage")
 
 
 ## The manifest: believed only once a known key's signature over its exact
@@ -252,7 +278,9 @@ func _serve(key: CryptoKey) -> bool:
 	var sha: String = Updates.sha256_file(package)
 	var direct: String = base + "files/" + PACKAGE
 	var lay: Dictionary = {
-		"good": _signed(_manifest(VERSION, [_file(base + "redirect/files/" + PACKAGE, size, sha)]), key),
+		"good": _signed(_manifest(VERSION, [_file(base + "redirect/files/" + PACKAGE, size, sha),
+			{"os": "linux", "kind": "deb", "name": DEB_URL.get_file(), "url": DEB_URL, "size": size,
+				"sha256": sha}]), key),
 		"badsig": _signed(_manifest(VERSION, [_file(direct, size, sha)]), key, "99.0.0", "99.0.1"),
 		"older": _signed(_manifest("0.0.1", [_file(direct, size, sha)]), key),
 		"badhash": _signed(_manifest(VERSION, [_file(direct, size, "0".repeat(64))]), key),
@@ -335,6 +363,26 @@ func _online() -> void:
 			and dialog.get_cancel_button().text == "Later")
 	dialog.hide()
 
+	# A copy installed from the .deb, even in Automatic: told what is out,
+	# nothing downloaded or staged, and Download opens the new .deb.
+	var kept: Dictionary = _updater.install
+	_updater.install = Updates.on_linux("/usr/lib/brickworks/brickworks.x86_64", "")
+	_updater.install["stage"] = _root.path_join("usr/lib/.brickworks-update")
+	Updater.choose("auto")
+	Outside.opened.clear()
+	await _check_at("good")
+	await _frames(3)
+	var offered: Dictionary = _notice.controls_by_name()
+	var download: Button = offered.get("update_restart")
+	if download != null:
+		download.pressed.emit()
+	_check("a .deb's copy, in Automatic, is told %s is out and downloads nothing; Download opens %s"
+		% [VERSION, ", ".join(Outside.opened)], _updater.state == Updater.OUT and download != null
+			and download.text == "Download" and Outside.opened.size() == 1 and Outside.opened[0] == DEB_URL
+			and not DirAccess.dir_exists_absolute(_root.path_join("usr")))
+	_updater.install = kept
+	_notice.set("_put_off", "")
+
 	Updater.choose("auto")
 	var refusals: Dictionary = {
 		"badhash": "refused the download: its SHA-256 is not the manifest's",
@@ -347,6 +395,25 @@ func _online() -> void:
 		_check("in Automatic, a download is refused (%s): %s" % [name, _updater.said],
 			_updater.state == Updater.FAILED and _updater.said.ends_with(str(refusals[name]))
 				and not DirAccess.dir_exists_absolute(stage))
+
+	# A redirect is followed only to GitHub's release hosts and brickworks.diy
+	# (and the test server): never to a host that only looks like one.
+	var elsewhere: Array[String] = ["https://example.com/x", "https://github.com.evil.example/x",
+		"https://evilgithub.com/x", "https://objects.githubusercontent.co/x",
+		"https://release-assets.githubusercontent.com.example.net/x", "https://brickworks.diy.example/x",
+		"https://github.com./x", "https://github.com@evil.example/x", "https://evil.example\\@github.com/x",
+		"//evil.example/x", "http://github.com/x", "https://127.0.0.2/x", "https://[::1]/x",
+		"ftp://github.com/x"]
+	var followed: Array[String] = []
+	for location: String in elsewhere:
+		var got: Dictionary = await _updater._fetch("http://127.0.0.1:%d/redirect-to?%s" % [_port, location.uri_encode()],
+			"", 4096)
+		var why: String = str(got.get("why", "followed"))
+		if got.has("body") or not (why.begins_with("refused") or why.begins_with("not an address")
+				or why == "a redirect to nowhere"):
+			followed.append("%s (%s)" % [location, why])
+	_check("a redirect to any other host is refused, however like an allowed one it looks%s"
+		% ("" if followed.is_empty() else ": followed " + ", ".join(followed)), followed.is_empty())
 
 	await _check_at("good")
 	_check("in Automatic, the download runs out of sight: %s" % _updater.said,

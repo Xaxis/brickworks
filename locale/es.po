@@ -8376,9 +8376,6 @@ msgstr "rechazado: su firma de código no es válida"
 msgid "refused: it is signed by someone else"
 msgstr "rechazado: está firmada por otra persona"
 
-msgid "the zip would not unpack"
-msgstr "el zip no se pudo descomprimir"
-
 msgid "no %s in it"
 msgstr "no contiene %s"
 
@@ -8387,9 +8384,6 @@ msgstr "los paquetes de este sistema no se conocen"
 
 msgid "tar: %s"
 msgstr "tar: %s"
-
-msgid "ditto: %s"
-msgstr "ditto: %s"
 
 msgid "The web app is updated by the site"
 msgstr "La aplicación web la actualiza el sitio"
@@ -8405,6 +8399,12 @@ msgstr "Brickworks no puede actualizarse en %s"
 
 msgid "Brickworks can't update itself in %s, where it is installed: download the new version from brickworks.diy/download"
 msgstr "Brickworks no puede actualizarse en %s, donde está instalado: descarga la versión nueva en brickworks.diy/download"
+
+msgid "Brickworks was installed from its .deb, so the system's software installer updates it: download the new .deb and open it"
+msgstr "Brickworks se instaló desde su .deb, así que lo actualiza el instalador de software del sistema: descarga el nuevo .deb y ábrelo"
+
+msgid "hdiutil: %s"
+msgstr "hdiutil: %s"
 
 msgid "not an address: %s"
 msgstr "no es una dirección: %s"

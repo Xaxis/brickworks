@@ -8376,9 +8376,6 @@ msgstr "abgelehnt: Ihre Codesignatur ist ungültig"
 msgid "refused: it is signed by someone else"
 msgstr "abgelehnt: Sie ist von jemand anderem signiert"
 
-msgid "the zip would not unpack"
-msgstr "das ZIP ließ sich nicht entpacken"
-
 msgid "no %s in it"
 msgstr "kein %s darin"
 
@@ -8387,9 +8384,6 @@ msgstr "die Pakete dieses Systems sind unbekannt"
 
 msgid "tar: %s"
 msgstr "tar: %s"
-
-msgid "ditto: %s"
-msgstr "ditto: %s"
 
 msgid "The web app is updated by the site"
 msgstr "Die Web-App wird von der Website aktualisiert"
@@ -8405,6 +8399,12 @@ msgstr "Brickworks kann sich unter %s nicht selbst aktualisieren"
 
 msgid "Brickworks can't update itself in %s, where it is installed: download the new version from brickworks.diy/download"
 msgstr "Brickworks kann sich in %s, wo es installiert ist, nicht selbst aktualisieren: Lade die neue Version von brickworks.diy/download herunter"
+
+msgid "Brickworks was installed from its .deb, so the system's software installer updates it: download the new .deb and open it"
+msgstr "Brickworks wurde aus seinem .deb installiert, also aktualisiert es die Softwareverwaltung des Systems: Lade das neue .deb herunter und öffne es"
+
+msgid "hdiutil: %s"
+msgstr "hdiutil: %s"
 
 msgid "not an address: %s"
 msgstr "keine Adresse: %s"

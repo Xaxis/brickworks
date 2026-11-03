@@ -6,9 +6,10 @@
 #   helper.ps1 MODE PID TARGET STAGED BACKUP MARKER VERSION ABOUT LOG -- LAUNCH...
 #
 # restart  wait for the app (PID) to end, then start LAUNCH.
-# install  wait for it to end; put the STAGED folder in place of TARGET, the
-#          old one kept as BACKUP; ask the copy now there its version (ABOUT
-#          --about); start LAUNCH and wait for the new copy to write MARKER.
+# install  wait for it to end; move TARGET aside as BACKUP and run the STAGED
+#          installer silently into TARGET (or, a STAGED folder, move it in);
+#          ask the copy now there its version (ABOUT --about); start LAUNCH
+#          and wait for the new copy to write MARKER.
 #          A copy that cannot say its version, or ends before it has
 #          started, is taken away and BACKUP put back, then started saying so
 #          (--update-failed=VERSION). The new copy takes BACKUP away itself.
@@ -82,26 +83,44 @@ if (-not (Test-Path -LiteralPath $staged)) {
   exit 1
 }
 
+# The installer (tools/release/windows/brickworks.nsi) says in Settings,
+# Apps which version is installed: put back with the old copy.
+$listing = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Brickworks"
+$listed = (Get-ItemProperty -LiteralPath $listing -Name DisplayVersion -ErrorAction SilentlyContinue).DisplayVersion
+
+function Put-Back($why) {
+  Say "${why}: putting the old copy back"
+  if (Test-Path -LiteralPath "$backup.failed") { Remove-Item -LiteralPath "$backup.failed" -Recurse -Force }
+  if (Test-Path -LiteralPath $target) { Move-Retried $target "$backup.failed" | Out-Null }
+  if (Test-Path -LiteralPath $backup) { Move-Retried $backup $target | Out-Null }
+  if ($listed) { Set-ItemProperty -LiteralPath $listing -Name DisplayVersion -Value $listed -ErrorAction SilentlyContinue }
+  if ($mode -eq "install") { Start-Launch @("--update-failed=$version") | Out-Null }
+  exit 1
+}
+
 if ((Test-Path -LiteralPath $target) -and -not (Move-Retried $target $backup)) {
   Say "nothing changed: close Brickworks' other windows, and it is put in place next time"
   if ($mode -eq "install") { Start-Launch @("--update-failed=$version") | Out-Null }
   exit 1
 }
-if (-not (Move-Retried $staged $target)) {
+if ($staged -like "*.exe") {
+  # Into the folder the old copy left, so the old one is whole until the new
+  # one has started. /S is NSIS's silent install, for this person alone; /D=
+  # its folder, which must come last and is never quoted.
+  $into = $target -replace "/", "\"
+  $setup = Start-Process -FilePath $staged -ArgumentList "/S /D=$into" -PassThru
+  $null = $setup.Handle
+  if (-not $setup.WaitForExit(600000)) {
+    Stop-Process -Id $setup.Id -Force -ErrorAction SilentlyContinue
+    Put-Back "the installer did not finish in 10 minutes"
+  }
+  if ($setup.ExitCode -ne 0) { Put-Back "the installer exited $($setup.ExitCode)" }
+} elseif (-not (Move-Retried $staged $target)) {
   if (Test-Path -LiteralPath $backup) { Move-Item -LiteralPath $backup -Destination $target }
   if ($mode -eq "install") { Start-Launch @("--update-failed=$version") | Out-Null }
   exit 1
 }
 Say "put $version in place at $target"
-
-function Put-Back($why) {
-  Say "${why}: putting the old copy back"
-  if (Test-Path -LiteralPath "$backup.failed") { Remove-Item -LiteralPath "$backup.failed" -Recurse -Force }
-  Move-Retried $target "$backup.failed" | Out-Null
-  if (Test-Path -LiteralPath $backup) { Move-Retried $backup $target | Out-Null }
-  if ($mode -eq "install") { Start-Launch @("--update-failed=$version") | Out-Null }
-  exit 1
-}
 
 # The copy now in place asked which version it is, as a person reporting a
 # bug would: a copy that cannot start says nothing.

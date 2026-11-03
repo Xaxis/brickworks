@@ -245,6 +245,17 @@ func reinstall() -> void:
 	reinstalling = false
 
 
+## Where Download goes, for a copy that cannot update itself: a .deb's
+## copy to the new .deb, which the browser saves and the system's software
+## installer opens; any other to the download page.
+func download_link() -> String:
+	if str(install.get("kind", "")) == "deb":
+		var file: Dictionary = Updates.file_for(manifest, "linux", "deb")
+		if not file.is_empty() and Updates.refuse_url(str(file["url"])).is_empty():
+			return str(file["url"])
+	return Updates.DOWNLOAD
+
+
 ## Update and restart: the newer version downloaded first if it is not yet.
 func update_and_restart() -> void:
 	if state == OUT or (state == FAILED and not manifest.is_empty() and _staged.is_empty()):
@@ -583,8 +594,8 @@ func _off_thread(work: Callable) -> Variant:
 	return thread.wait_to_finish()
 
 
-## The archive unpacked in [param folder]: {"item": the AppImage, folder or
-## .app to put in place}, or {"why"}. On a worker thread.
+## The package made ready in [param folder]: {"item": the AppImage, folder,
+## .app or installer to put in place}, or {"why"}. On a worker thread.
 func _unpack(archive: String, folder: String) -> Dictionary:
 	var output: Array = []
 	match str(install["kind"]):
@@ -600,30 +611,37 @@ func _unpack(archive: String, folder: String) -> Dictionary:
 			DirAccess.remove_absolute(archive)
 			return _found_in(folder, "brickworks.x86_64")
 		"mac":
-			# ditto is what Finder unpacks with, and keeps the bundle's seal.
-			if OS.execute("ditto", ["-x", "-k", archive, folder], output, true) != 0:
-				return {"why": "ditto: %s" % "".join(output).strip_edges().left(200)}
-			DirAccess.remove_absolute(archive)
-			var app: String = ""
-			for each: String in DirAccess.get_directories_at(folder):
-				if DirAccess.dir_exists_absolute(folder.path_join(each).path_join("Brickworks.app")):
-					app = folder.path_join(each).path_join("Brickworks.app")
-			if app.is_empty():
-				return {"why": "no Brickworks.app in it"}
-			var why: String = _signature_refused(app)
-			return {"why": why} if not why.is_empty() else {"item": app}
+			return _from_disk_image(archive, folder)
 		"windows":
-			# Windows 10 and later have bsdtar, which reads a zip.
-			var tar: String = OS.get_environment("SystemRoot").path_join("System32/tar.exe")
-			if OS.execute(tar, ["-xf", archive, "-C", folder], output, true) != 0:
-				output.clear()
-				if OS.execute("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
-						"Expand-Archive -LiteralPath '%s' -DestinationPath '%s'" % [archive, folder]],
-						output, true) != 0:
-					return {"why": "the zip would not unpack"}
-			DirAccess.remove_absolute(archive)
-			return _found_in(folder, OS.get_executable_path().get_file())
+			# The installer is what goes in: the helper runs it silently into
+			# this copy's folder once this copy has quit (update_helper.ps1).
+			return {"item": archive}
 	return {"why": "this system's packages are not known"}
+
+
+## The disk image's Brickworks.app copied out beside the install, as
+## dragging it to Applications copies it: attached unseen and read-only,
+## the app copied by ditto, which keeps the bundle's seal, and detached
+## before anything else is done.
+func _from_disk_image(image: String, folder: String) -> Dictionary:
+	var output: Array = []
+	var volume: String = folder.path_join("volume")
+	DirAccess.make_dir_recursive_absolute(volume)
+	if OS.execute("hdiutil", ["attach", "-readonly", "-nobrowse", "-noautoopen", "-mountpoint", volume,
+			image], output, true) != 0:
+		DirAccess.remove_absolute(volume)
+		return {"why": "hdiutil: %s" % "".join(output).strip_edges().left(200)}
+	var app: String = folder.path_join("Brickworks.app")
+	var copied: bool = DirAccess.dir_exists_absolute(volume.path_join("Brickworks.app")) \
+		and OS.execute("ditto", [volume.path_join("Brickworks.app"), app], output, true) == 0
+	if OS.execute("hdiutil", ["detach", volume], [], true) != 0:
+		OS.execute("hdiutil", ["detach", volume, "-force"], [], true)
+	DirAccess.remove_absolute(volume)
+	if not copied:
+		return {"why": "no Brickworks.app in it"}
+	DirAccess.remove_absolute(image)
+	var why: String = _signature_refused(app)
+	return {"why": why} if not why.is_empty() else {"item": app}
 
 
 ## The folder in [param folder] holding [param program].
@@ -766,6 +784,8 @@ func _run_asked() -> void:
 			restart("restart")
 			return
 	print("update: %s: %s" % [_asked, said])
+	if not can_install() and not manifest.is_empty():
+		print("update: download: %s" % download_link())
 	get_tree().quit(0 if state in [UP_TO_DATE, OUT, READY] else 1)
 
 

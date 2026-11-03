@@ -3,16 +3,22 @@
 server in place of GitHub's releases, and the real app driven through every
 refusal and through a real install that restarts with the model kept.
 
-    tools/update_check.py run --old FILE --new FILE [--port=N] [--log=FILE]
-        FILE: two packages of one kind (AppImage, tar.xz, macOS zip or Windows
-        zip), the new one a newer version. Unpacks the old one as a person
-        would, serves both, and drives the app (--update=...) through:
+    tools/update_check.py run --old FILE --new FILE [--port=N] [--log=FILE] [--system]
+        FILE: two packages of one kind (AppImage, tar.xz, .deb, macOS disk
+        image or Windows installer), the new one a newer version. Installs
+        the old one as a person would, serves both, and drives the app
+        (--update=...) through:
           refused: a bad signature, a wrong SHA-256, a wrong size, an older
           version, a plain-HTTP address, a redirect off the allowed hosts;
           Check for updates; Update and restart (the model kept); Restart;
           Reinstall; Automatic, put in as the app quits; and a new copy that
-          cannot start, put back.
-    tools/update_check.py run --laid=DIR
+          cannot start (on a Mac and Windows, says the wrong version), put
+          back. A .deb's copy is never written over: it says the new
+          version is out and downloads the new .deb.
+        --system: the first copy where its installer puts it, /Applications
+        or %LOCALAPPDATA%\\Programs, and taken away after: for a runner's
+        throwaway machine, and refused where a Brickworks is already there
+    tools/update_check.py run --laid=DIR [--system]
         the same, served from a folder `lay` made: a runner on macOS or
         Windows has no signing key, so its manifests are signed here
     tools/update_check.py lay --old FILE --new FILE --port=N --out=DIR
@@ -48,6 +54,7 @@ import tarfile
 import tempfile
 import threading
 import time
+import urllib.parse
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -67,11 +74,18 @@ def say(text: str) -> None:
 # -- the server --------------------------------------------------------------
 
 class Handler(http.server.SimpleHTTPRequestHandler):
-    """Files from the folder, and three kinds of redirect:
+    """Files from the folder, and four kinds of redirect:
     /redirect/X to /X on this host; /redirect-off/X to https://example.com/X;
-    /redirect-localhost/X to http://localhost:PORT/X (another host, plain HTTP)."""
+    /redirect-localhost/X to http://localhost:PORT/X (another host, plain HTTP);
+    /redirect-to?LOCATION to LOCATION as it is, %-escaped in the address."""
 
     def do_GET(self) -> None:  # noqa: N802
+        if self.path.startswith("/redirect-to?"):
+            self.send_response(302)
+            self.send_header("Location", urllib.parse.unquote(self.path[len("/redirect-to?"):]))
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         for prefix, to in (("/redirect-off/", "https://example.com/"),
                            ("/redirect-localhost/", "http://localhost:%d/" % self.server.server_port),
                            ("/redirect/", "/")):
@@ -134,13 +148,14 @@ def put(folder: Path, envelope: dict[str, Any]) -> None:
 def broken(package: Path, into: Path, old: Path) -> Path:
     """A package of the same name whose program cannot start: an update
     that passes every check but the copy's own start (Updater's put back).
-    On a Mac an app that will not start fails its code signature first, so
-    there it is the old version under the new one's name, which the helper
-    puts back as surely: it says the wrong version."""
+    On a Mac an app that will not start fails its code signature first, and
+    an installer is a program of its own, so there it is the old version
+    under the new one's name, which the helper puts back as surely: it says
+    the wrong version."""
     into.mkdir(parents=True, exist_ok=True)
     target = into / package.name
     version = version_in(package.name)
-    if "-macos-" in package.name:
+    if package.name.endswith((".dmg", "-setup.exe", ".deb")):
         shutil.copy2(old, target)
         return target
     stop = b"#!/bin/sh\necho 'not Brickworks'\nexit 3\n"
@@ -214,8 +229,67 @@ def lay_out(serve_dir: Path, old: Path, new: Path, port: int) -> dict[str, str]:
 
 # -- running the app ---------------------------------------------------------
 
-def program_in(package: Path, install: Path) -> Path:
+def program_in(package: Path, install: Path, system: bool = False) -> Path:
+    """The package installed in [install] as a person installs it: the disk
+    image's app dragged out of it, the installer run silently into a folder
+    there, the .deb's files where dpkg puts them (under [install]/root,
+    which needs no root). [system]: the first copy where its installer puts
+    it, /Applications or the installer's own folder."""
+    name = package.name
+    if name.endswith(".dmg"):
+        app = Path("/Applications/Brickworks.app") if system else install / "Brickworks.app"
+        if app.exists():
+            raise release.Failed("%s is there already: --system is for a throwaway machine" % app)
+        with tempfile.TemporaryDirectory(prefix="brickworks-dmg-") as scratch:
+            mount = Path(scratch) / "volume"
+            mount.mkdir()
+            subprocess.run(["hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount),
+                            str(package)], check=True, capture_output=True)
+            try:
+                subprocess.run(["ditto", str(mount / "Brickworks.app"), str(app)], check=True)
+            finally:
+                subprocess.run(["hdiutil", "detach", str(mount)], capture_output=True)
+        return app / "Contents" / "MacOS" / "Brickworks"
+    if name.endswith("-setup.exe"):
+        folder = release.WINDOWS_INSTALLED if system else install / "Brickworks"
+        if folder.exists():
+            raise release.Failed("%s is there already: --system is for a throwaway machine" % folder)
+        # As the updater runs it; /D= (NSIS's folder) last, and only for a
+        # folder of the test's own.
+        done = subprocess.run([str(package), "/VERYSILENT"] + ([] if system else ["/D=%s" % folder]),
+                              timeout=1200)
+        if done.returncode != 0:
+            raise release.Failed("%s /VERYSILENT exited %d" % (name, done.returncode))
+        return folder / "Brickworks.console.exe"
     return release.unpack(package, install)
+
+
+def take_away(programs: list[Path], system: bool) -> None:
+    """The test's installs gone: each installer's copy by its own
+    uninstaller, and what --system put in a person's places."""
+    for program in programs:
+        folder = program.parent
+        uninstaller = folder / "Uninstall Brickworks.exe"
+        if os.name == "nt" and uninstaller.exists():
+            # _?= runs it in place, so it is waited for, and leaves the folder.
+            subprocess.run([str(uninstaller), "/S", "_?=%s" % folder], timeout=300)
+            shutil.rmtree(folder, ignore_errors=True)
+    if system:
+        place = Path("/Applications") if sys.platform == "darwin" else release.WINDOWS_INSTALLED.parent
+        shutil.rmtree(place / ".brickworks-update", ignore_errors=True)
+        if sys.platform == "darwin":
+            shutil.rmtree(place / "Brickworks.app", ignore_errors=True)
+        else:
+            shutil.rmtree(release.WINDOWS_INSTALLED, ignore_errors=True)
+
+
+def tree(folder: Path) -> dict[str, tuple[int, int, int]]:
+    """Every file and link under [folder], with its size, time and mode."""
+    out: dict[str, tuple[int, int, int]] = {}
+    for path in sorted(folder.rglob("*")):
+        facts = path.lstat()
+        out[str(path.relative_to(folder))] = (facts.st_size, facts.st_mtime_ns, facts.st_mode)
+    return out
 
 
 def user_dir(home: Path) -> Path:
@@ -286,7 +360,63 @@ class Run:
         return sorted(str(p.relative_to(install)) for p in stage.rglob("*")) if stage.exists() else []
 
 
-def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | None = None) -> int:
+def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None) -> int:
+    """A copy installed from the .deb: dpkg's files are never written over.
+    It says the newer version is out, refuses to fetch or install it, and
+    its Download is the new .deb, for the system's software installer."""
+    with tempfile.TemporaryDirectory(prefix="brickworks-update-", ignore_cleanup_errors=True) as scratch:
+        root = Path(scratch)
+        lay_out(root / "serve", old, new, port)
+        server = serve(root / "serve", port)
+        run = Run(old, new, port, root)
+        say("── %s → %s, deb, served at http://127.0.0.1:%d/ ──" % (run.A, run.B, port))
+        try:
+            install = root / "install"
+            install.mkdir()
+            program = program_in(old, install)
+            said = run.about(program)
+            run.check("the old copy, in usr/lib/brickworks as dpkg puts it, says %s" % said,
+                      said.startswith("Brickworks %s" % run.A))
+            before = tree(install)
+            code, output = run.app(program, "good", ["--update=check"])
+            verdict = next((line for line in output.splitlines() if line.startswith("update: check: ")), "")
+            run.check("Check for updates: %s" % verdict.removeprefix("update: check: "),
+                      code == 0 and "Brickworks %s is out" % run.B in verdict, output)
+            link = "http://127.0.0.1:%d/files/%s" % (port, new.name)
+            for asked in ("fetch", "install"):
+                code, output = run.app(program, "good", ["--update=" + asked])
+                verdict = next((line for line in output.splitlines()
+                                if line.startswith("update: %s: " % asked)), "(nothing said)")
+                download = next((line for line in output.splitlines()
+                                 if line.startswith("update: download: ")), "")
+                run.check("--update=%s is refused (%s), and Download is the new .deb: %s"
+                          % (asked, verdict.removeprefix("update: %s: " % asked),
+                             download.removeprefix("update: download: ")),
+                          code == 1 and "installed from its .deb" in verdict
+                          and download == "update: download: " + link, output)
+            after = tree(install)
+            run.check("nothing dpkg put there was changed, and nothing was staged beside it",
+                      after == before, "\n".join(sorted(str(x) for x in set(after.items()) ^ set(before.items())))[:2000])
+            said = run.about(program)
+            run.check("the copy is still %s" % run.A, said.startswith("Brickworks %s" % run.A))
+        finally:
+            server.shutdown()
+            if keep_log is not None and run.log.exists():
+                keep_log.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(run.log, keep_log)
+    say("")
+    if run.failures:
+        say("%d check(s) failed: the .deb's copy does not leave its update to the system" % run.failures)
+        return 1
+    say("%s → %s: the .deb's copy says the new version is out and offers the new .deb" % (old.name, new.name))
+    return 0
+
+
+def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | None = None,
+          system: bool = False) -> int:
+    if release.describe_file(old.name)["kind"] == "deb":
+        return drive_deb(old, new, port, keep_log)
+    programs: list[Path] = []
     with tempfile.TemporaryDirectory(prefix="brickworks-update-", ignore_cleanup_errors=True) as scratch:
         root = Path(scratch)
         serve_dir = root / "serve"
@@ -302,7 +432,10 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
         try:
             install = root / "install"
             install.mkdir()
-            program = program_in(old, install)
+            program = program_in(old, install, system)
+            programs.append(program)
+            if system:
+                install = program.parents[3] if sys.platform == "darwin" else program.parents[1]
             said = run.about(program)
             run.check("the old copy says %s" % said, said.startswith("Brickworks %s" % run.A))
 
@@ -365,6 +498,7 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             again = root / "install2"
             again.mkdir()
             program2 = program_in(old, again)
+            programs.append(program2)
             mark = run.mark()
             code, output = run.app(program2, "good", ["--update=fetch"], person=True)
             text = run.log_after(mark, "the new copy says it is", 180)
@@ -376,6 +510,7 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             again = root / "install3"
             again.mkdir()
             program3 = program_in(old, again)
+            programs.append(program3)
             mark = run.mark()
             code, output = run.app(program3, "broken", ["--model=res://models/house.ldr",
                                                        "--update=install"], person=True)
@@ -392,6 +527,7 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             if keep_log is not None and run.log.exists():
                 keep_log.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(run.log, keep_log)
+            take_away(programs, system)
     say("")
     if run.failures:
         say("%d check(s) failed: the %s package does not update itself" % (
@@ -505,10 +641,10 @@ def main(argv: list[str]) -> int:
             laid = Path(option(args, "laid")).resolve()
             facts = json.loads((laid / "laid.json").read_text())
             return drive(laid / "files" / facts["old"], laid / "files" / facts["new"], facts["port"],
-                         log, laid)
+                         log, laid, "--system" in args)
         old, new = Path(option(args, "old")).resolve(), Path(option(args, "new")).resolve()
         port = int(option(args, "port", "0")) or free_port()
-        return drive(old, new, port, log)
+        return drive(old, new, port, log, system="--system" in args)
     if command == "lay":
         out = Path(option(args, "out")).resolve()
         if out.exists() and any(out.iterdir()):

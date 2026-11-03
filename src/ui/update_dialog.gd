@@ -48,7 +48,7 @@ func _confirmed() -> void:
 			updater.restart("install")
 		return
 	if not updater.can_install():
-		Outside.open_link(Updates.DOWNLOAD)
+		Outside.open_link(updater.download_link())
 		hide()
 		return
 	updater.update_and_restart()

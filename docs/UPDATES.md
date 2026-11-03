@@ -41,7 +41,10 @@ one starts.
   one (a replayed old manifest is a downgrade attack); plain HTTP; any
   address, a redirect included, off `github.com`,
   `objects.githubusercontent.com`, `release-assets.githubusercontent.com`
-  (where GitHub sends release downloads since 2025) and `brickworks.diy`.
+  (where GitHub sends release downloads since 2025) and `brickworks.diy`,
+  matched whole: `github.com.example.net`, `evilgithub.com`, `github.com.`
+  and `github.com@example.net` are all refused, and so is a `//host/path`
+  redirect to any of them.
 - **The check**: once a day, 8 s after the model is back, on HTTPRequest's
   own thread; hashing and unpacking on a thread of their own. Help ▸
   **Check for updates…** asks at once and says "You're up to date (0.x.y)"
@@ -61,10 +64,11 @@ one starts.
   model as it was. Help ▸ **Restart Brickworks** does only that; Help ▸
   **Reinstall Brickworks…** downloads this same version, checked the same
   way, and puts it in place.
-- **Never half installed.** The download is unpacked in
+- **Never half installed.** The download is made ready in
   `.brickworks-update/` beside the install, on the same disk, so the swap is
   a rename. A helper (`src/net/update_helper.sh`, `.ps1` on Windows) waits
-  for the app to exit, moves the old copy aside, moves the new one in, asks
+  for the app to exit, moves the old copy aside, puts the new one in (on
+  Windows by running the new installer into the folder the old one left), asks
   it its version (`--about`), starts it, and waits for it to say its window
   is up. A copy that cannot say its version, or ends first, is taken away,
   the old one put back and started with `--update-failed=`, which the app
@@ -77,11 +81,23 @@ one starts.
 |---|---|---|
 | Linux | AppImage | verified, then renamed over `$APPIMAGE` (the old one hard-linked aside first), relaunched |
 | Linux | tar.xz | unpacked beside the folder with `tar`, the folders swapped after exit, relaunched |
-| macOS | zip | unpacked with `ditto`; `codesign --verify --deep --strict`, and the same Developer ID team when this copy has one; the `.app` swapped after quit and opened with `open -n`. Run from Downloads or a disk image (translocated), the button reads **Move to Applications and update** and it goes to /Applications (or ~/Applications) |
-| Windows | zip | unpacked with Windows' own `tar.exe`; the PowerShell helper waits for the exe to exit, swaps the folders (retrying while another window holds them), relaunches |
+| Linux | .deb | never written over: the notice says the version is out, and **Download** opens the new `.deb`, which the browser saves and the system's software installer (or `sudo apt install ./…deb`) installs |
+| macOS | DMG | attached read-only and unseen (`hdiutil attach -nobrowse -noautoopen`), `Brickworks.app` copied out with `ditto` as a drag to Applications copies it, detached; `codesign --verify --deep --strict`, and the same Developer ID team when this copy has one; the `.app` where it is installed (normally /Applications) swapped after quit and opened with `open -n`. Run from Downloads or the disk image itself (translocated), the button reads **Move to Applications and update** and it goes to /Applications (or ~/Applications) |
+| Windows | installer | the NSIS `setup.exe` (tools/release/windows/brickworks.nsi) downloaded and checked; after the app exits the PowerShell helper moves the install folder aside, runs `setup.exe /S /D=<that folder>` (per person, no administrator), needs exit 0, and relaunches; put back, it also puts back the version Settings ▸ Apps lists |
+
+The zips beside the DMG and the installer stay for one release, for links
+already shared; the updater never takes them.
 
 A copy that cannot write where it is installed (a tar.xz under /opt) says so,
 and its button opens the download page.
+
+**Why the .deb leaves its update to the system.** Its files are dpkg's
+(`/usr/lib/brickworks`, linked from `/usr/bin`): written over by the app,
+`dpkg -L` and `apt remove` would describe a version that is not there, and
+only root may write there, which an app should never ask for itself. A
+`.deb` with no apt repository is updated the way Discord's is, by its new
+`.deb`; one in an apt repository (Chrome's, VS Code's) by apt with the rest
+of the system, which would be the next step if the releases ever have one.
 
 **On Windows the helper first leaves the app's folder.** An exported Godot
 app makes its own folder its working directory as it starts (`main.cpp`),
@@ -90,10 +106,12 @@ folder that is a process's working directory, so on the first runner proof
 every install said `could not move` and 0.90.0 stayed (2026-11-03). Linux
 and macOS rename it all the same.
 
-**A Windows installer** (per-user, Start menu, Uninstall in Settings ▸ Apps,
-as VS Code, Figma and Obsidian ship) is standard, and is the packaging
-unit's. A copy it installs is a folder in `%LOCALAPPDATA%\Programs`, which
-this updater swaps the same way.
+**On Windows the update is the installer, run into the same folder.** The
+folder is moved aside first, so the installer finds no running Brickworks
+to wait for and the old copy is whole until the new one has started. `/D=`
+must come last and unquoted, as NSIS reads it, and it wins over the folder
+the installer remembers (`HKCU\Software\Brickworks`), so a copy installed
+anywhere is updated where it is.
 
 ## Testing it
 
@@ -105,7 +123,10 @@ keys. `tools/update_check.py` builds two versions, serves them, and drives
 through a real install that restarts with the model kept. A macOS or
 Windows runner has no signing key, so `update_check.py lay` signs every
 scenario here and `run --laid=DIR` drives them there, at the same port; the
-first proof ran them from a throwaway branch's workflow and a draft release,
-both deleted after.
+proofs run them from a throwaway branch's workflow and a draft release,
+both deleted after, with the runs. `run --system` installs the first copy
+where its installer puts it (/Applications, `%LOCALAPPDATA%\Programs`) on a
+runner's throwaway machine. A `.deb` pair runs the .deb's own checks: told
+what is out, nothing of dpkg's changed, Download the new `.deb`.
 `src/dev/updater_probe.gd` checks the manifest, the versions and the
 addresses, and drives the notice, the Help menu and the setting.

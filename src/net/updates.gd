@@ -119,15 +119,18 @@ static func _split(url: String) -> Dictionary:
 		"port": port if not port.is_empty() else ("443" if scheme == "https" else "80")}
 
 
-## Where a redirect's Location sends [param from]: an absolute address, or a
-## path on the same host.
+## Where a redirect's Location sends [param from]: an absolute address, a
+## path on the same host, or "//host/path", another host in the same scheme
+## (which refuse_url then judges as any address).
 static func resolve(from: String, location: String) -> String:
 	if location.begins_with("https://") or location.begins_with("http://"):
 		return location
-	var root: RegExMatch = RegEx.create_from_string("^(https?://[^/]+)").search(from)
+	var root: RegExMatch = RegEx.create_from_string("^(https?:)//[^/]+").search(from)
 	if root == null or not location.begins_with("/"):
 		return ""
-	return root.get_string(1) + location
+	if location.begins_with("//"):
+		return root.get_string(1) + location
+	return root.get_string(0) + location
 
 
 ## -1, 0 or 1 as version [param a] is older than, the same as or newer than
@@ -295,9 +298,10 @@ static func sha256_file(path: String) -> String:
 
 
 ## What this copy of the app is, and where an update of it would go:
-##   kind      "appimage", "tar.xz", "mac", "windows", or "" where it cannot
-##             update itself (the web, a build run from source)
-##   os, package   the manifest's system and kind of file for it
+##   kind      "appimage", "tar.xz", "deb", "mac", "windows", or "" where it
+##             cannot update itself (the web, a build run from source)
+##   os, package   the manifest's system and kind of file for it: on a Mac
+##             the disk image, on Windows the installer (docs/UPDATES.md)
 ##   target    what is replaced: the AppImage, or the folder or .app
 ##   stage     the folder an update is unpacked in, beside the target so the
 ##             swap is a rename on one disk
@@ -314,20 +318,13 @@ static func here() -> Dictionary:
 	var exe: String = OS.get_executable_path()
 	var found: Dictionary = {}
 	if OS.get_name() == "Linux" or OS.get_name() == "FreeBSD":
-		var image: String = OS.get_environment("APPIMAGE")
-		if not image.is_empty():
-			found = {"kind": "appimage", "os": "linux", "package": "AppImage", "target": image,
-				"launch": [image], "about": [image]}
-		else:
-			var folder: String = exe.get_base_dir()
-			found = {"kind": "tar.xz", "os": "linux", "package": "tar.xz", "target": folder,
-				"launch": [exe], "about": [folder.path_join(exe.get_file())]}
+		found = on_linux(exe, OS.get_environment("APPIMAGE"))
 	elif OS.get_name() == "macOS":
 		# .../Brickworks.app/Contents/MacOS/Brickworks
 		var app: String = exe.get_base_dir().get_base_dir().get_base_dir()
 		if not app.ends_with(".app"):
 			return {"kind": "", "why_not": "Brickworks is not in an app bundle here"}
-		found = {"kind": "mac", "os": "macos", "package": "zip", "target": app,
+		found = {"kind": "mac", "os": "macos", "package": "dmg", "target": app,
 			"launch": ["open", "-n", app, "--args"],
 			"about": [app.path_join("Contents/MacOS").path_join(exe.get_file())]}
 		# Run from Downloads or a disk image, macOS gives the app a read-only
@@ -342,15 +339,37 @@ static func here() -> Dictionary:
 			found["launch"] = ["open", "-n", found["moves_to"], "--args"]
 			found["about"] = [str(found["moves_to"]).path_join("Contents/MacOS").path_join(exe.get_file())]
 	elif OS.get_name() == "Windows":
+		# The folder the installer put it in: the new installer is run into
+		# the same one (update_helper.ps1).
 		var folder: String = exe.get_base_dir()
-		found = {"kind": "windows", "os": "windows", "package": "zip", "target": folder,
+		found = {"kind": "windows", "os": "windows", "package": "installer", "target": folder,
 			"launch": [exe], "about": [folder.path_join(exe.get_file().get_basename() + ".console.exe")]}
 	else:
 		return {"kind": "", "why_not": "Brickworks cannot update itself on %s" % OS.get_name()}
 	var parent: String = str(found["target"]).get_base_dir()
 	found["stage"] = parent.path_join(".brickworks-update")
-	found["why_not"] = "" if _writable(parent) else (
-		"Brickworks can't update itself in %s, where it is installed: download the new version from brickworks.diy/download" % parent)
+	if not found.has("why_not"):
+		found["why_not"] = "" if _writable(parent) else (
+			"Brickworks can't update itself in %s, where it is installed: download the new version from brickworks.diy/download" % parent)
+	return found
+
+
+## A Linux copy run as [param exe], from the AppImage [param image] if that
+## is not "". The .deb's copy (in /usr/lib/brickworks, linked from
+## /usr/bin) is dpkg's: written over, the system's record of what it
+## installed would be wrong, and only root may. So it is updated as the
+## system's other packages are, with the new .deb (Updater.download_link).
+static func on_linux(exe: String, image: String) -> Dictionary:
+	if not image.is_empty():
+		return {"kind": "appimage", "os": "linux", "package": "AppImage", "target": image,
+			"launch": [image], "about": [image]}
+	var folder: String = exe.get_base_dir()
+	var found: Dictionary = {"kind": "tar.xz", "os": "linux", "package": "tar.xz", "target": folder,
+		"launch": [exe], "about": [folder.path_join(exe.get_file())]}
+	if folder.ends_with("/usr/lib/brickworks"):
+		found["kind"] = "deb"
+		found["package"] = "deb"
+		found["why_not"] = "Brickworks was installed from its .deb, so the system's software installer updates it: download the new .deb and open it"
 	return found
 
 
