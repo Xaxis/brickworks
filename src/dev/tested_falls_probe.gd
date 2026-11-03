@@ -17,6 +17,8 @@
 ##
 ## A build parked on another, standing there by its foot alone, is a build
 ## of its own, as one on the floor is, and no fault: the buggy on its plate.
+## (One part alone resting on another is still a part left loose:
+## tested_models_probe's brick on a tile.)
 ## Parked with its back wheels off the plate's edge, it falls off it. And
 ## every piece said to stand against another names it, the fourth as the
 ## first (Tested.NAMED names only three in full).

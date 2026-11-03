@@ -5248,12 +5248,13 @@ A part falls in the whole test only when it does (stability, 2026-11-03):
 the floor and what stands on it are read from the parts' real shapes where
 they are (`Exact.Item.low` and `high`), not from their boxes turned with them,
 and a piece resting on another is judged square by the parts it rests by
-(`ExactCheck.rests`), not by every part it is built of. A build parked on
-another, standing by its foot alone with its weight over what it stands on
-(`ExactCheck.rests_on`), is a build of its own, as one on the floor is, and no
-fault: the whole test's reason ends "...; <it> rests on <part>". Wedged into,
-worn on, hanging from or against another, or on studs where it has no stud,
-it is still held by nothing:
+(`ExactCheck.rests`), not by every part it is built of. A build of two parts
+or more parked on another, standing by its foot alone with its weight over
+what it stands on (`ExactCheck.rests_on`), is a build of its own, as one on
+the floor is, and no fault: the whole test's reason ends "...; <it> rests on
+<part>". Wedged into, worn on, hanging from or against another, or on studs
+where it has no stud, it is still held by nothing, and so is one part alone
+resting on another (`tested_models_probe`'s brick on a tile):
 
 ```sh
 tools/probe.sh tested_falls_probe

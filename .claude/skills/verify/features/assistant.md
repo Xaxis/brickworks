@@ -3084,9 +3084,9 @@ in verify.py, are refused. Square is asked of the parts a piece rests by, not of
 every part of it (a driver's raised arm is held by its joint), and where a part is
 lowest, how tall it is and what it stands on are its real shape's
 (`Exact.Item.low` and `high`), not its box turned with it (`tested_falls_probe`).
-Tested's whole test counts a piece that stands by its foot alone on another build
-(`ExactCheck.rests_on`), a set's car parked on its baseplate, a build of its own;
-the design check does not ask it. In a browser (`tools/web/freeze_check.mjs`, the shapes
+Tested's whole test counts a build of two parts or more that stands by its foot
+alone on another (`ExactCheck.rests_on`), a set's car parked on its baseplate, a
+build of its own; the design check does not ask it. In a browser (`tools/web/freeze_check.mjs`, the shapes
 fetched, not packed) check_design's own longest frame stays under 500 ms on the
 Falcon: 7,530 ms before the shapes were asked for once a part, 313 ms after.
 

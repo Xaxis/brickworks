@@ -66,12 +66,13 @@
 ##           (ExactCheck.comes_away). A piece on the floor that stands by
 ##           itself and touches no bigger piece is a build of its own (a
 ##           set's figures beside its car); one that leans, or stands
-##           against or inside a bigger one, is not held. One that stands by
-##           its foot alone on another build, its weight over what it stands
-##           on, is a build of its own too (a set's car parked on its
-##           baseplate, rests_on); wedged into, worn on, hanging from or
-##           against another, or on studs where it has no stud for them, it
-##           is not. A part with no
+##           against or inside a bigger one, is not held. A build of two parts
+##           or more that stands by its foot alone on another, its weight
+##           over what it stands on, is a build of its own too (a set's car
+##           parked on its baseplate, rests_on); wedged into, worn on, hanging
+##           from or against another, or on studs where it has no stud for
+##           them, it is not, nor is one part alone left resting on another.
+##           A part with no
 ##           exact shape is held as the joints and what rests on what hold
 ##           it, as before.
 ##           models175 found the test before this held a part whenever it
@@ -1473,8 +1474,9 @@ const FETCH_WAIT_MS := 120000
 ## [param joints] where either has no exact shape. The piece with the most
 ## parts on the floor is the model; another on the floor that stands by
 ## itself and touches no bigger piece is a build of its own, as a set's
-## figures beside its car are, and so is one that stands by its foot alone on
-## another, as its car parked on its baseplate is (ExactCheck.rests_on). Any
+## figures beside its car are, and so is one of two parts or more that stands
+## by its foot alone on another, as its car parked on its baseplate is
+## (ExactCheck.rests_on). Any
 ## other piece that stands where it is and is caught
 ## there stays, as the orrery's planet rings do (connect166, models175:
 ## ExactCheck.comes_away), unless what catches it comes away itself; and so
@@ -1588,11 +1590,13 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 		if not stands[key]:
 			for n: int in members[key]:
 				gone[n] = true
-	# One that comes away, standing by its foot alone on another build, is
-	# parked there, a build of its own, as one on the floor is: 928-1's buggy on
-	# its baseplate, a train on its track, a lid on its bin. Wedged into, worn on,
-	# hanging from or against another (ExactCheck.rests_on), or on its studs
-	# where it has no stud to take them (it missed them), it is held by nothing.
+	# A build that comes away, standing by its foot alone on another, is parked
+	# there, a build of its own, as one on the floor is: 928-1's buggy on its
+	# baseplate, a figure on a floor. Wedged into, worn on, hanging from or
+	# against another (ExactCheck.rests_on), or on its studs where it has no
+	# stud to take them (it missed them), it is held by nothing; and so is one
+	# part alone resting on another, a part left loose and not a build: a brick
+	# on a tile (tested_models_probe).
 	var away: Dictionary = {}
 	var atop: Dictionary = {}          ## root -> [its part, the part it is parked on]
 	var more: bool = true
@@ -1601,7 +1605,7 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 		for key: int in stands:
 			if not stands[key] or away.has(key) or atop.has(key) or not exact.comes_away(members[key], gone):
 				continue
-			var on: Array = exact.rests_on(members[key], gone)
+			var on: Array = exact.rests_on(members[key], gone) if (members[key] as Array).size() > 1 else []
 			if not on.is_empty() and exact.on_missing_stud(members[key]) < 0:
 				atop[key] = on
 				continue
