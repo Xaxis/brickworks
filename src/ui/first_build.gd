@@ -476,7 +476,7 @@ func _end_words() -> String:
 	var words: String = "Every command is in Find a command (%s), and every key in Help, Keys and controls (%s)." \
 		% [_key("palette", "the app menu"), _key("keys", "F1")]
 	if shell.assistant_shown:
-		words += " Or describe a model to the assistant, and Claude builds it with you."
+		words += " Or connect your AI in the assistant's column and ask it for a model: it builds it with you."
 	return words
 
 

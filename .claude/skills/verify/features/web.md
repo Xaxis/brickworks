@@ -410,10 +410,11 @@ plan with Claude as the client.
   `undo` tool stops at a step another chat made, saying so
   (`AppTools._undo`, `AppTools.chat`).
 - `this tab and its claude chats` (`src/ui/claude_tab_view.gd`, in Account's
-  Claude part and the assistant panel's "Or with your Claude plan"; the
+  Your AI part and the assistant panel's "Connect your AI"; the
   toolbar's line from `ClaudeTabView.badge`, `ModelBar.show_claude_tab`):
-  "This tab is k7qd (“Castle”). Say it to Claude to work here."; "No Claude
-  chat is working in this tab." / "A Claude chat is working here: since 14:05,
+  "This tab is k7qd (“Castle”). Say it to Claude to work here." (to the
+  assistant chosen in Connect your AI, from 2026-11-02); "No chat is working
+  in this tab." / "A Claude chat is working here: since 14:05,
   last: changed the model at 14:07." (a time of day, so nothing on it runs on
   a timer: `chat_probe`) / "2 Claude chats are working in this
   tab…" with Keep this one beside each (`ClaudeConnector.keep_chat`). New chat
@@ -423,7 +424,10 @@ plan with Claude as the client.
   (followed in place on the web, so no empty tab is left); Claude Code
   `claude-cli://open?q=` and the command line `claude "…"` to copy. The
   toolbar reads `Tab k7qd`, `Claude working · tab k7qd` or `2 Claude chats ·
-  tab k7qd`, and opens Account. The page says it all in
+  tab k7qd`, and opens Account. Each chat is named for whoever the relay
+  says calls (`_meta["brickworks/who"]`): `ChatGPT working · tab k7qd`, "A
+  ChatGPT chat is working here", and `2 chats · tab k7qd` with each row
+  "ChatGPT, since …" when two apps share it (`connect_any_probe`). The page says it all in
   `window.brickworksClaude` (`tab`, `chats`, `badge`, `account_says`,
   `first_message`, `opened`).
 - `two chats probe` (`tools/web/tabpair_probe.mjs`, `--url=` a local relay or
@@ -3688,7 +3692,7 @@ plan with Claude as the client.
 
 ```sh
 tools/deploy.sh                 # a preview URL
-tools/deploy.sh --prod          # the one brickworks.diy points at
+tools/deploy.sh --prod          # the one brickworks.diy points at: ship.sh's alone (SHIP_DEPLOY), or PROD_BY_HAND="why"
 tools/deploy.sh --promote=URL   # brickworks.diy onto a checked deployment of HEAD (ship.sh's)
 tools/deploy.sh --no-export     # deploy what is already in build/web
 node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png

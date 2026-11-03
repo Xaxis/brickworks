@@ -228,7 +228,9 @@ if [ "$dry" = 0 ]; then
     fi
   else
     printf '  FAIL  pipeline — %s\n' "$verdict"
-    echo "$pyout" | grep -E 'FAIL|Error|error' | head -10 | sed 's/^/          /'
+    said=$(echo "$pyout" | awk -f tools/failures.awk)
+    [ -n "$said" ] || said=$(echo "$pyout" | grep -E 'FAIL|Error|error' | head -10 | sed 's/^/  /')
+    echo "$said" | sed 's/^/        /'
     fail=1
   fi
 fi

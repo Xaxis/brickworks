@@ -310,8 +310,9 @@ whose size is one byte off is `FAIL ... answered '200 <size>'`.
 python3 tools/minitest.py tests/test_release_train.py
 ```
 
-Proves it when: `20 passed`, in about 56 s, and 8 copies at once all pass
-(about 56 s each). Each test makes a repository with an origin and unit
+Proves it when: `22 passed`, in about 80 s, and 8 copies at once all pass
+(about 56 s each); the killed-train test passes 1000 runs of 16 at once at
+load 33 (4 of 300 failed so before 2026-11-03). Each test makes a repository with an origin and unit
 worktrees; train.sh, ship.sh, preview_lib.sh and retire_wt.sh are the real
 ones, with stand-ins for release_wt.sh, merge_unit.sh, the gates,
 deploy.sh, preview_checks.sh, check.sh and probe.sh, and for heavy, godot
@@ -334,7 +335,12 @@ stops the probes beside it; preview_checks.sh runs 3 checks at once
 (`PC_AT_ONCE`) and begins none once the probes failed (`exit=125`); a tree left dirty or
 mid-merge is refused, and so is a probe with a FAIL line or a nonzero exit;
 it stops when the release before held, was killed, or died without a word,
-and at its deadline; and `status` reads `checks: 2 of 4 passed; failed: io; 1 to run`
+and at its deadline; stopped by hand, by its group, its pid alone or an INT,
+it says `stopped: killed`, its probes stop with it and nothing of it runs
+on; its ship, stopped with the group while it waits for the probes, writes
+143 to its `.done`, and left to run on holds, writing 1 (0 of 5400 stops of
+ship.sh so at load 32-74 went on; 4 of 1800 ran on before 2026-11-03),
+and killed outright by its pid its work takes no step after; and `status` reads `checks: 2 of 4 passed; failed: io; 1 to run`
 mid-ship, `failed: io (passed alone)` once ship.sh has run it alone, and `live: brickworks.diy serves it (SHA)` after,
 its first line `live: brickworks.diy serves SHA, TAG's, since HH:MMZ`, and
 a ship begun by hand is listed with its ETA (a median ship after it began)
