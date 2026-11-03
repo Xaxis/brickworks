@@ -54,7 +54,7 @@ def test_a_run_with_no_words_stops_the_copy() -> None:
     words = site_lang.table("de")
     key = next(k for k in words["pages"] if '<a href="/plans#had">' in k)
     words["pages"][key] = re.sub(r"<[^>]+>", "", words["pages"][key])
-    _, _, broken = site_lang.translated("index.html", "de", words)
+    _, _, broken = site_lang.translated("beta.html", "de", words)
     assert broken == [key]
 
 
