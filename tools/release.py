@@ -2136,7 +2136,7 @@ def end_windows(data: Path) -> None:
 
 
 def opens_models(package: Path, base: list[str], env: dict[str, str],
-                 root: Path) -> list[tuple[str, bool, str]]:
+                 root: Path) -> list[tuple[str, bool | None, str]]:
     """The model files a person opens, opened as their system hands them over.
 
     Every package: each kind given to the program as a bare path, as a file
@@ -2148,7 +2148,7 @@ def opens_models(package: Path, base: list[str], env: dict[str, str],
     Explorer does, then its uninstaller. Each twice, the second with the
     app already open: it comes up in a window of its own.
     """
-    said: list[tuple[str, bool, str]] = []
+    said: list[tuple[str, bool | None, str]] = []
     folder = root / "my models"
     folder.mkdir(exist_ok=True)
     models = []
@@ -2257,14 +2257,17 @@ def double_click_linux(root: Path, env: dict[str, str],
     return said
 
 
-def double_click_mac(models: list[Path]) -> list[tuple[str, bool, str]]:
+def double_click_mac(models: list[Path]) -> list[tuple[str, bool | None, str]]:
     """The app in /Applications (unpack put it there), registered with
     Launch Services as Finder registers a new app, then each model opened
     with open(1), which is a double-click in Finder."""
-    said: list[tuple[str, bool, str]] = []
+    said: list[tuple[str, bool | None, str]] = []
     app = Path("/Applications/Brickworks.app")
     subprocess.run(["/System/Library/Frameworks/CoreServices.framework/Frameworks/"
                     "LaunchServices.framework/Support/lsregister", "-f", str(app)], check=True)
+    why = mac_cannot_draw()
+    if why:
+        return [("a double-click on a model, not run here: %s" % why, None, "")]
     # Launch Services starts it as the person, in their own home.
     data = Path.home() / "Library" / "Application Support" / "Godot" / "app_userdata" / "Brickworks"
     try:
@@ -2279,6 +2282,28 @@ def double_click_mac(models: list[Path]) -> list[tuple[str, bool, str]]:
     finally:
         end_windows(data)
     return said
+
+
+def mac_cannot_draw() -> str:
+    """Why this Mac cannot open the app's window at all, or "" if it can.
+
+    An Intel Mac draws through Vulkan on MoltenVK; Apple silicon through
+    Metal. The only GPU a macOS VM on an Intel host has is Apple's
+    paravirtual one, 64 MB and Metal 2, and MoltenVK aborts on it in
+    vkCreateInstance (an argument encoder it cannot make), or with argument
+    buffers off runs out of device memory. GitHub's macos-15-intel is such a
+    VM: its double-clicks crashed every time, while on OpenGL the same app
+    started with the model's name on its window. A real Intel Mac has a
+    real GPU."""
+    arm = subprocess.run(["sysctl", "-n", "hw.optional.arm64"], capture_output=True, text=True)
+    if arm.stdout.strip() == "1":
+        return ""
+    gpus = subprocess.run(["system_profiler", "SPDisplaysDataType"], capture_output=True,
+                          text=True).stdout
+    chips = re.findall(r"Chipset Model: (.+)", gpus)
+    if chips and all("Paravirtual" in chip for chip in chips):
+        return "an Intel Mac whose only GPU is %s, which MoltenVK cannot draw on" % chips[0].strip()
+    return ""
 
 
 def mac_state(data: Path) -> str:
@@ -2535,10 +2560,12 @@ def smoke(package: Path, window: bool, expect: str) -> int:
     """Unpack a package and run it in a clean home. Exit 0 only if every check held."""
     failures = 0
 
-    def check(what: str, ok: bool, detail: str = "") -> None:
+    # ok is None for a check this machine cannot make: said, and why, and
+    # neither passed nor failed.
+    def check(what: str, ok: bool | None, detail: str = "") -> None:
         nonlocal failures
-        say("  %s  %s" % ("ok  " if ok else "FAIL", what))
-        if not ok:
+        say("  %s  %s" % ("ok  " if ok else "--  " if ok is None else "FAIL", what))
+        if ok is False:
             failures += 1
             for line in detail.strip().splitlines()[-12:]:
                 say("        " + line)

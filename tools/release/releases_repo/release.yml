@@ -9,9 +9,10 @@
 # The packages are built by tools/release.py on a machine that has the part
 # library: a gigabyte of geometry that is not in git and takes ninety minutes
 # to rebuild, so building here would cost more than it proves. What only a
-# runner can prove is that each package starts on its own system: a Mac and
-# Windows. Linux is the machine that built it, and docs/RELEASING.md smokes
-# both Linux packages there before the upload.
+# runner can prove is that each package starts on its own system: a Mac,
+# Windows, and a stock Ubuntu for the .deb, whose dependencies only a clean
+# system proves. Linux is the machine that built it, and docs/RELEASING.md
+# smokes the AppImage and the tar.xz there before the upload.
 #
 # So this downloads what was uploaded to a release here and installs each
 # package the way a person would, into a clean home: the disk image mounted
@@ -19,8 +20,12 @@
 # updater runs it. tools/release.py smoke asks it which build it is, opens
 # the example model and writes it back, has a session place bricks in it
 # over MCP, opens a model of each kind given as a double-click gives it, and
-# double-clicks two (Launch Services on a Mac, the shell on Windows), the
-# second with the app open; on Windows it then uninstalls it. The zips the
+# double-clicks two (Launch Services on a Mac, the shell on Windows, GIO on
+# Ubuntu), the second with the app open; on Windows it then uninstalls it.
+# On Ubuntu apt installs the .deb too, and removes it. macos-15-intel is a
+# VM whose only GPU MoltenVK cannot draw on, so its double-clicks say "not
+# run here" and why; Apple silicon's run the same app's Launch Services
+# path. The zips the
 # disk image and the installer replaced are run too while a release has
 # them (docs/DISTRIBUTION.md). Those
 # tools are the source's, checked out from Xaxis/brickworks: once that is
@@ -64,6 +69,7 @@ jobs:
           - { name: "macOS, Apple silicon", os: macos-15, pattern: "*-macos-universal.*" }
           - { name: "macOS, Intel", os: macos-15-intel, pattern: "*-macos-universal.*" }
           - { name: "Windows", os: windows-2022, pattern: "*-windows-x86_64*" }
+          - { name: "Ubuntu", os: ubuntu-24.04, pattern: "*-linux-amd64.deb" }
     env:
       TAG: ${{ inputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -92,6 +98,15 @@ jobs:
             --pattern "${{ matrix.pattern }}" --pattern SHA256SUMS
           ls -l "dist/$version"
 
+      # A runner has no desktop: Xvfb to draw on, and what a desktop has to
+      # say which app opens a file (GIO, the shared MIME database, xdg-utils).
+      - name: What a desktop needs to open a file and draw a window
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq xvfb x11-utils xdg-utils desktop-file-utils \
+            libglib2.0-bin shared-mime-info mesa-vulkan-drivers libgl1-mesa-dri >/dev/null
+
       - name: It is what was built
         run: python tools/release.py inspect "dist/$VERSION"
 
@@ -101,9 +116,34 @@ jobs:
       - name: Installed as a person installs it, it starts, opens models and takes bricks
         run: |
           for package in $(ls dist/"$VERSION"/Brickworks-*.dmg dist/"$VERSION"/Brickworks-*-setup.exe \
-                              dist/"$VERSION"/Brickworks-*.zip 2>/dev/null); do
+                              dist/"$VERSION"/Brickworks-*.deb dist/"$VERSION"/Brickworks-*.zip 2>/dev/null); do
             python tools/release.py smoke "$package" --expect="$VERSION"
           done
+
+      # The smoke unpacks the .deb into a clean home; this is apt's own
+      # install on the whole system. A package's "./" entry once carried the
+      # build's umask, which dpkg can give to /, so / is checked too.
+      - name: apt installs it, the system opens models with it, and apt removes it
+        if: runner.os == 'Linux'
+        run: |
+          before=$(stat -c %a /)
+          sudo apt-get install -y ./dist/"$VERSION"/Brickworks-*-linux-amd64.deb
+          echo "/ was $before, is $(stat -c %a /)"
+          [ "$(stat -c %a /)" = "$before" ]
+          dpkg -s brickworks | grep -E '^(Status|Version)'
+          readlink -f /usr/bin/brickworks
+          for type in application/x-ldraw application/x-multi-part-ldraw \
+                      application/x-bricklink-studio application/x-lxf; do
+            echo "$type: $(xdg-mime query default "$type")"
+            [ "$(xdg-mime query default "$type")" = dev.brickworks.app.desktop ]
+          done
+          brickworks --headless -- --about | grep '^Brickworks '
+          sudo apt-get remove -y brickworks
+          for left in /usr/lib/brickworks /usr/bin/brickworks \
+                      /usr/share/applications/dev.brickworks.app.desktop; do
+            if [ -e "$left" ] || [ -L "$left" ]; then echo "apt remove left $left"; exit 1; fi
+          done
+          echo "removed: no /usr/lib/brickworks, /usr/bin/brickworks or menu entry left"
 
       - name: macOS accepts its signature
         if: runner.os == 'macOS'
@@ -120,6 +160,8 @@ jobs:
           spctl --assess --type execute --verbose=4 "$app" || true
           spctl --assess --type open --context context:primary-signature --verbose=4 "$image" || true
           hdiutil detach "$RUNNER_TEMP/mac"
+          # And still valid once copied to /Applications, as the smoke did.
+          codesign --verify --deep --strict --verbose=2 /Applications/Brickworks.app
 
       # What a person sees when they open the disk image: its window, laid
       # out by its .DS_Store over the background, kept with the run.

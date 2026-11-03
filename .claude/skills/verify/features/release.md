@@ -121,11 +121,17 @@ that offers each system its own build. The cycle and its cadence are
   Linux's on a private one). It checks out the source's tools from
   Xaxis/brickworks (`BRICKWORKS_SOURCE_TOKEN` once that is private, else the
   run's own token), downloads a release there, draft or published, on
-  macos-15 (Apple silicon), macos-15-intel and windows-2022, runs `inspect`
-  and `smoke` on each package (the disk image and the installer first, then
-  the zips while a release has them), on macOS `hdiutil verify`, `codesign
-  --verify --deep --strict` and `lipo -archs` on the mounted image's app and
-  a screenshot of the image's window kept as a run artifact. It builds nothing: the part library is not in
+  macos-15 (Apple silicon), macos-15-intel, windows-2022 and ubuntu-24.04,
+  runs `inspect` and `smoke` on each package (the disk image, the installer
+  and the .deb first, then the zips while a release has them), on macOS
+  `hdiutil verify`, `codesign --verify --deep --strict` and `lipo -archs` on
+  the mounted image's app and a screenshot of the image's window kept as a
+  run artifact, and on Ubuntu `apt install` of the .deb (/ keeps its mode,
+  the four types default to the app, `brickworks --about`) and `apt remove`
+  leaving nothing. The Intel runner's only GPU is Apple's paravirtual one,
+  which MoltenVK aborts on, so the smoke prints its double-click as `--  not
+  run here` with the reason (`mac_cannot_draw`) instead of failing; a check
+  this machine cannot make neither passes nor fails. It builds nothing: the part library is not in
   git. A change to it goes to that repository by hand.
 - `move the downloads to the releases repository`:
   `tools/release/releases_repo.sh [--go] [--dir=DIR]`. A dry run reads

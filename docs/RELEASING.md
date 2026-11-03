@@ -70,10 +70,12 @@ tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-amd64.deb
 tools/release.py publish --draft
 
 # 5. Each package on its own system: macOS on Apple silicon and on Intel,
-#    and Windows, each installed as a person installs it (the disk image's
-#    app copied to /Applications, the installer run silently) and run in a
-#    clean home, models double-clicked into it, and on Windows uninstalled
-#    (Linux was step 3).
+#    Windows, and the .deb on a stock Ubuntu, each installed as a person
+#    installs it (the disk image's app copied to /Applications, the
+#    installer run silently, the .deb by apt) and run in a clean home,
+#    models double-clicked into it, and on Windows and Ubuntu removed again
+#    (the AppImage and the tar.xz were step 3). The Intel runner is a VM
+#    whose GPU MoltenVK cannot draw on: its double-clicks say "not run here".
 #    Wait for green. It runs once, here: publishing does not run it again.
 #    The workflow lives in the releases repository, where Actions are free.
 gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.2.0

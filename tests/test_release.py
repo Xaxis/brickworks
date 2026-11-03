@@ -435,6 +435,39 @@ def test_a_best_with_shapes_refused_fails_the_smoke(tmp_path, monkeypatch, capsy
     assert "ok    ...and the editor's own picture of it" in said
 
 
+def test_a_check_this_machine_cannot_make_is_said_and_neither_passes_nor_fails(
+        tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(release, "opens_models", lambda package, base, env, root: [
+        ("a double-click on a model, not run here: no GPU", None, "")])
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys,
+                              release.BEST_REFERENCE.read_bytes(), "Opened Car.\n" + TRACED)
+    assert code == 0, said
+    assert "  --    a double-click on a model, not run here: no GPU" in said
+
+
+def _mac_with(monkeypatch, arm64: str, gpus: str) -> str:
+    def run(command, **_):
+        out = arm64 if command[0] == "sysctl" else gpus
+        return subprocess.CompletedProcess(command, 0, out, "")
+    monkeypatch.setattr(release.subprocess, "run", run)
+    return release.mac_cannot_draw()
+
+
+def test_an_intel_mac_vm_says_why_it_cannot_draw(monkeypatch):
+    # GitHub's macos-15-intel: MoltenVK aborts on this GPU in vkCreateInstance.
+    vm = "    Apple Paravirtualized Graphics Device:\n      Chipset Model: Apple Paravirtualized Graphics Device\n"
+    assert "Apple Paravirtualized Graphics Device" in _mac_with(monkeypatch, "", vm)
+    assert _mac_with(monkeypatch, "0\n", vm) != ""
+
+
+def test_apple_silicon_and_a_real_intel_gpu_are_double_clicked(monkeypatch):
+    # macos-15 has the same paravirtual GPU and draws on it through Metal.
+    vm = "      Chipset Model: Apple Paravirtualized Graphics Device\n"
+    assert _mac_with(monkeypatch, "1\n", vm) == ""
+    assert _mac_with(monkeypatch, "", "      Chipset Model: AMD Radeon Pro 5500M\n"
+                                      "      Chipset Model: Intel UHD Graphics 630\n") == ""
+
+
 def test_the_smokes_session_keeps_its_tool_list_out_of_the_checkout(tmp_path, monkeypatch):
     # The relay keeps the last tools/list it heard in tools/mcp_tools.json.
     # A package from another commit serves another list, and smoking 0.13.0
