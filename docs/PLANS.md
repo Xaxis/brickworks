@@ -135,7 +135,65 @@ every call was in Admission's test mode, on Stripe's sandbox.
 
 ### 8.1 Test mode, end to end
 
-TEST_MODE_PROOF
+Run 2026-11-03 on Admission's test mode and Stripe's sandbox ("Atypic
+sandbox").
+
+- **A purchase in a real browser** (`tools/web/billing_real_test.mjs
+  --stage=buy,paid,cancel`, all ok), on a preview of 713ec7b3 deployed with
+  `tools/deploy.sh --unit --billing-test` (BRICKWORKS_BILLING=test for that
+  deployment alone): a new account at a Resend test address; /plans for
+  sale at $8 and $80; Upgrade to Pro, the step before Checkout, Continue off
+  until the box is ticked; Stripe's Checkout saying "$8.00 per month,
+  Brickworks Pro, Billed monthly", "Sold through Link"; paid with 4242 by
+  the script. No bot check stopped it. Back on /settings as Pro at once
+  ("Plan Pro, $8.00 USD a month. Renews 3 December 2026. Included: any
+  number of models kept with your account, and a licence for commercial
+  use"), Manage billing and Cancel Pro offered; `?op=plan` Pro by
+  subscription, commercialUse true, no limit; /plans "You have Pro: your
+  plan"; **26 models saved**, every save 200, and the list names no totals.
+- **Admission's record** of that account (e84a1556), test mode:
+  `subscription.created` and `invoice.paid` (800 usd, 17:24:35Z), then
+  `subscription.changed` at the cancel (cancelAt 2026-12-03), Pro by
+  subscription until then.
+- **The agreement kept** before Checkout was asked for, in
+  `plan_consents` at 17:24:19Z: pro, month, 800 usd, and the terms "Pro at
+  $8.00 USD a month, plus any tax; charged today, then renews automatically
+  at that price until cancelled; cancel any time in Settings, under Plan,
+  with Cancel Pro, or at link.com, and Pro stays on to the end of the month
+  paid for; sold through Link, the merchant of record."
+- **Cancelling**: Cancel Pro on /settings, then on Stripe's page Continue to
+  cancellation (it asks why; no answer needed) and Cancel subscription:
+  **three clicks**, asserted by the run. Back on /settings: "Plan Pro until
+  3 December 2026. You will not be charged again. Then this account moves
+  to Free and keeps everything in it". The pages said two clicks until this
+  run; they now say "then confirm".
+- **Free after Pro, nothing lost** (`--stage=free`, all ok): an account
+  given Pro, 26 models saved, Pro ended: `?op=plan` Free, limit 25, kept 26;
+  every model still kept and the 26th read back; one of them saved again
+  over the cap (200, v2); a new one refused with the way to Pro (413).
+- **The site against a stand-in Admission** (`tools/web/billing_flow.mjs
+  --stand-in`, 44 checks, all ok): Checkout refused without the box (422),
+  the portal 409 for an account that never paid, 401 signed out; a webhook
+  unsigned or signed with another secret 400, Admission's signed 200; the
+  step before Checkout at 1280 light and 390 dark, axe clean; Checkout
+  closed says nothing was charged; paid, cancelled, and an account deleted
+  while Pro renews ends its subscription at Admission.
+- **The webhook, signed by Admission's own code**
+  (`tools/web/webhook_replay.mjs`, run under Admission's tsx, its
+  `signatureHeader`) into a billing-test preview: Pro given by
+  `grant_override`, then removed by `end_override`; each time the held
+  answer stood within its 30 s, a body signed with another secret or ten
+  minutes old was refused (400) and forgot nothing, the signed event was
+  heard (200), the same event again said "again", and `?op=plan` then read
+  the new plan. Real delivery to brickworks.diy is proven at the switch
+  (8.8 step 7): a preview is behind Vercel's protection, and its bypass is
+  never put in a URL Admission keeps.
+- **The plan is read on load.** `GET /api/plans?op=plan` asks Admission's
+  entitlement (held for 30 s), and the page asks
+  fresh (`fresh=1`) when it comes back from Checkout or the portal, which
+  is why Pro showed at once with no webhook in test mode.
+- **Comps, dry run**: the 42 `grant_override` calls of 8.7 made in test
+  mode (kind plan, plan pro, no end), each in Admission's audit log.
 
 ### 8.2 What a paying customer has
 
