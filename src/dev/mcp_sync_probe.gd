@@ -26,6 +26,8 @@ extends SceneTree
 const CACHED := "res://tools/mcp_tools.json"
 ## Claude Code shows about 3,800 characters of a server's instructions.
 const HEAD_MOST := 3500
+## And reads the first 4,096 of them, measured (2.1.316, 2026-11-03).
+const CLAUDE_CODE_READS := 4096
 
 var _failures: int = 0
 
@@ -75,11 +77,13 @@ func _run() -> void:
 	var looking: int = 0
 	for tool: Dictionary in socket.served_tools():
 		var said: Dictionary = tool.get("annotations", {}) as Dictionary
+		# The title on the tool too, the one a directory's scan may read.
 		if str(said.get("title", "")).is_empty() or not said.has("readOnlyHint") \
-				or (not bool(said["readOnlyHint"]) and not said.has("destructiveHint")):
+				or (not bool(said["readOnlyHint"]) and not said.has("destructiveHint")) \
+				or str(tool.get("title", "")) != str(said["title"]):
 			bare.append(str(tool["name"]))
 		looking += 1 if bool(said.get("readOnlyHint", false)) else 0
-	_check("tools/list gives each its annotations, %d of them read-only%s" % [looking,
+	_check("tools/list gives each its title and annotations, %d of them read-only%s" % [looking,
 		"" if bare.is_empty() else ": not " + ", ".join(bare)], bare.is_empty() and looking > 10)
 
 	# 1. The cached list is the served one.
@@ -125,6 +129,13 @@ func _run() -> void:
 	var served_head: int = ClaudeConnector.CONNECTED_NOTE.length() + head.length()
 	_check("...and %d with the connector's note before it, under %d" % [served_head, HEAD_MOST],
 		served_head < HEAD_MOST)
+	# What the connector serves is that and the rules' opening, the start of
+	# what the design loop is told, all of it inside what Claude Code reads.
+	var connector_says: String = ClaudeConnector.CONNECTED_NOTE + Assistant.SERVED
+	_check("the connector serves the head and the rules' opening, %d characters, under %d"
+		% [connector_says.length(), CLAUDE_CODE_READS],
+		connector_says.length() <= CLAUDE_CODE_READS and guidance.begins_with(Assistant.SERVED)
+			and Assistant.SERVED.contains("LEGO® is a brand name"))
 	var served_sections := ""
 	var headings: Array[String] = []
 	var heading := RegEx.create_from_string("(?m)^[A-Z][A-Z ,'-]{4,}$")

@@ -1896,6 +1896,14 @@
       "tests": []
     },
     {
+      "id": "cli:review sign-in flow",
+      "kind": "cli",
+      "entry": "tools/web/review_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/review_flow.mjs --url=<deployment> --out=shots/review_flow",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:round trip probe",
       "kind": "cli",
       "entry": "src/dev/roundtrip_probe.gd",
@@ -4826,6 +4834,14 @@
       "tests": [
         "tests/test_feedback.py"
       ]
+    },
+    {
+      "id": "ui:review sign-in page",
+      "kind": "ui",
+      "entry": "web/review.html",
+      "reach": "https://brickworks.diy/review   (an app directory's reviewer: the review account's address and password, from tools/web/relay_account.mjs review; tools/web/review_flow.mjs drives it)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "ui:save as a studio model",

@@ -271,6 +271,8 @@ export function sitePages({ remote = "" } = {}) {
       ready: (page, { signedIn }) => (signedIn ? until(page, () => document.getElementById("view")?.hidden === false) : true) },
     { name: "authorize", path: AUTHORIZE,
       ready: (page) => until(page, () => [...document.querySelectorAll("main section")].some((s) => !s.classList.contains("hide"))) },
+    // The review sign-in (web/review.html), signed out: the form.
+    { name: "review", path: "/review", ready: (page) => until(page, () => document.getElementById("sign-in-step")) },
     { name: "compare", path: "/compare" },
     // Plans (web/plans.html): its interest form open from Pro's Tell me
     // when it's ready, as a person opens it.
