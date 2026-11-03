@@ -1653,9 +1653,23 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 	said.append("%d step%s, %s." % [count, "" if count == 1 else "s",
 		"the model's own" if authored
 			else "worked out by the app (the first edit makes them the model's own)"])
+	# The steps of a sub-model built where it stands, not in a callout, are
+	# named as a callout's are: listed bare, the island's rocks read as the
+	# model's own parts, and a session moved them "to" the baseplates' step
+	# (stepsto).
+	var built: Dictionary = {}      ## sub-model's path -> how many steps it is built in
+	for step: Instructions.Step in steps:
+		if _built_in_place(step):
+			built[step.authored_in] = int(built.get(step.authored_in, 0)) + 1
+	if not built.is_empty():
+		said.append("A sub-model's steps take only its own parts, and a sub-model goes in a "
+			+ "step whole, built in its own steps before that step.")
+	var counted: Dictionary = {}
 	var shown: int = 0
 	var characters: int = 0
 	for step: Instructions.Step in steps:
+		if _built_in_place(step):
+			counted[step.authored_in] = int(counted.get(step.authored_in, 0)) + 1
 		if step.number < from:
 			continue
 		var ids: PackedInt64Array = step.brick_ids
@@ -1668,6 +1682,9 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 		if step.callout_step > 0:
 			where = " (in the %s, %d of %d)" % [step.assembly, step.callout_step,
 				step.callout_steps]
+		elif _built_in_place(step):
+			where = " (in the %s, %d of %d)" % [Instructions._name_of(step.authored_in),
+				int(counted[step.authored_in]), int(built[step.authored_in])]
 		elif not step.copies.is_empty():
 			where = " (puts on the %s%s)" % [step.assembly,
 				" x%d" % step.copies.size() if step.copies.size() > 1 else ""]
@@ -1681,6 +1698,12 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 	if shown == 0:
 		said.append("  none from step %d." % from)
 	return "\n".join(said)
+
+
+## Whether [param step] is one of a sub-model's own, built where it stands
+## rather than in a callout.
+static func _built_in_place(step: Instructions.Step) -> bool:
+	return step.callout == 0 and step.authored_step >= 0 and not step.authored_in.is_empty()
 
 
 ## A part by its look_at_model number, or null: the baseplate is not one.

@@ -6864,11 +6864,56 @@ msgstr "étape %d reculée"
 msgid "merged step %d with the next"
 msgstr "étape %d fusionnée avec la suivante"
 
-msgid "took out step %d; its parts are in the step before"
-msgstr "étape %d retirée ; ses pièces sont dans l'étape précédente"
+msgid "moved %s to steps %d to %d"
+msgstr "%s déplacé vers les étapes %d à %d"
 
-msgid "took out step %d; its parts are in the step after"
-msgstr "étape %d retirée ; ses pièces sont dans l'étape suivante"
+msgid "the %s is built in its own steps before step %d, which puts it on"
+msgstr "%s est construit en étapes propres avant l'étape %d, qui le pose"
+
+msgid "the %s are built in their own steps before step %d, which puts them on"
+msgstr "%s sont construits en étapes propres avant l'étape %d, qui les pose"
+
+msgid "now in step %d"
+msgstr "maintenant à l'étape %d"
+
+msgid "now in steps %d to %d"
+msgstr "maintenant aux étapes %d à %d"
+
+msgid "it is step %d now"
+msgstr "c'est maintenant l'étape %d"
+
+msgid "took out step %d; its parts are in step %d"
+msgstr "étape %d retirée ; ses pièces sont dans l'étape %d"
+
+msgid "step %d has no step of the model's own to put them in"
+msgstr "l'étape %d n'a pas d'étape propre au modèle où les mettre"
+
+msgid "step %d is one of the model's own steps"
+msgstr "l'étape %d est une des étapes propres au modèle"
+
+msgid "step %d is one of the %s's steps"
+msgstr "l'étape %d est une des étapes de %s"
+
+msgid "the %s whole, which goes in a step of the model's own"
+msgstr "%s entier, qui va dans une étape propre au modèle"
+
+msgid "the %s whole, which goes in a step of the %s"
+msgstr "%s entier, qui va dans une étape de %s"
+
+msgid "%s of the model's own, in step %d"
+msgstr "%s du modèle lui-même, à l'étape %d"
+
+msgid "%s of the model's own, in steps %d to %d"
+msgstr "%s du modèle lui-même, aux étapes %d à %d"
+
+msgid "%s of the %s, in step %d"
+msgstr "%s de %s, à l'étape %d"
+
+msgid "%s of the %s, in steps %d to %d"
+msgstr "%s de %s, aux étapes %d à %d"
+
+msgid "A step takes only the parts of its own sub-model, or a sub-model whole, all its parts given together"
+msgstr "Une étape ne prend que les pièces de son propre sous-modèle, ou un sous-modèle entier, toutes ses pièces données ensemble"
 
 msgid "the steps are as they were"
 msgstr "les étapes sont telles qu'elles étaient"

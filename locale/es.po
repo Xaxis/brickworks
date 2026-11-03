@@ -6864,11 +6864,56 @@ msgstr "paso %d atrasado"
 msgid "merged step %d with the next"
 msgstr "paso %d unido con el siguiente"
 
-msgid "took out step %d; its parts are in the step before"
-msgstr "paso %d quitado; sus piezas están en el paso anterior"
+msgid "moved %s to steps %d to %d"
+msgstr "%s movido a los pasos %d a %d"
 
-msgid "took out step %d; its parts are in the step after"
-msgstr "paso %d quitado; sus piezas están en el paso siguiente"
+msgid "the %s is built in its own steps before step %d, which puts it on"
+msgstr "%s se construye en pasos propios antes del paso %d, que lo coloca"
+
+msgid "the %s are built in their own steps before step %d, which puts them on"
+msgstr "%s se construyen en pasos propios antes del paso %d, que los coloca"
+
+msgid "now in step %d"
+msgstr "ahora en el paso %d"
+
+msgid "now in steps %d to %d"
+msgstr "ahora en los pasos %d a %d"
+
+msgid "it is step %d now"
+msgstr "ahora es el paso %d"
+
+msgid "took out step %d; its parts are in step %d"
+msgstr "paso %d quitado; sus piezas están en el paso %d"
+
+msgid "step %d has no step of the model's own to put them in"
+msgstr "el paso %d no tiene un paso propio del modelo donde ponerlas"
+
+msgid "step %d is one of the model's own steps"
+msgstr "el paso %d es uno de los pasos propios del modelo"
+
+msgid "step %d is one of the %s's steps"
+msgstr "el paso %d es uno de los pasos de %s"
+
+msgid "the %s whole, which goes in a step of the model's own"
+msgstr "%s entero, que va en un paso propio del modelo"
+
+msgid "the %s whole, which goes in a step of the %s"
+msgstr "%s entero, que va en un paso de %s"
+
+msgid "%s of the model's own, in step %d"
+msgstr "%s del propio modelo, en el paso %d"
+
+msgid "%s of the model's own, in steps %d to %d"
+msgstr "%s del propio modelo, en los pasos %d a %d"
+
+msgid "%s of the %s, in step %d"
+msgstr "%s de %s, en el paso %d"
+
+msgid "%s of the %s, in steps %d to %d"
+msgstr "%s de %s, en los pasos %d a %d"
+
+msgid "A step takes only the parts of its own sub-model, or a sub-model whole, all its parts given together"
+msgstr "Un paso solo toma las piezas de su propio submodelo, o un submodelo entero, con todas sus piezas dadas juntas"
 
 msgid "the steps are as they were"
 msgstr "los pasos están como estaban"

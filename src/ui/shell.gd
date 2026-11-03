@@ -2416,11 +2416,12 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 			_take_back(undo)
 			return blocked
 	# Any step, for the selection (steps3): one of the section they are in.
-	if op == "to" and (int(where[1]) < 0
-			or AuthorSteps.outside(world, ids, level, str(where[0]), skip) > 0):
+	if op == "to" and int(where[1]) < 0:
 		_take_back(undo)
-		return "step %d builds %s, and the selection is not in it" % [number,
-			"the " + at.assembly if not at.assembly.is_empty() else "another sub-model"]
+		return "step %d has no step of the model's own to put them in" % number
+	if op == "to" and AuthorSteps.outside(world, ids, level, str(where[0]), skip) > 0:
+		_take_back(undo)
+		return _not_in_step(number, str(where[0]), ids, level, skip)
 	# What the edit takes out of its step: a step keeps its look with the
 	# parts it keeps.
 	var taken: Dictionary = {}
@@ -2433,54 +2434,206 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 			if int(item["step"]) == int(where[1]):
 				taken[BookletLooks.item_name(item)] = true
 	var count: int = ids.size()
-	var words: String = ""
+	# What the step edit moves, to find again after it: the parts given, or
+	# the step's own.
+	var moved: Array = ids if not ids.is_empty() else _parts_of(at)
 	match op:
 		"prev", "next":
 			undo.append_array(AuthorSteps.move(world, ids, -1 if op == "prev" else 1, level, skip))
-			words = "moved %s to the %s step" % [_parts(count), "previous" if op == "prev" else "next"]
 		"to":
 			undo.append_array(AuthorSteps.move_to(world, ids, level, str(where[0]),
 				int(where[1]), skip))
-			# A step the selection left empty is taken out, and the step it
-			# went to is numbered one less for each before it.
-			var now: Array = AuthorSteps._selected(world, ids, level, skip).get(str(where[0]), [])
-			if str(where[0]).is_empty() and not now.is_empty():
-				number -= int(where[1]) - int((now[0] as Dictionary)["step"])
-			words = "moved %s to step %d" % [_parts(count), number] if at.callout_step <= 0 \
-				else "moved %s to the %s's step %d, in step %d" % [_parts(count), at.assembly,
-					at.callout_step, number]
 		"new":
 			undo.append_array(AuthorSteps.new_step(world, ids, level, str(where[0]),
 				int(where[1]), skip))
-			words = "made a new step of %s" % _parts(count)
-			number += 1
 		"earlier", "later":
 			if int(where[1]) >= 0:
 				undo.append_array(AuthorSteps.swap(world, str(where[0]), int(where[1]),
 					-1 if op == "earlier" else 1, skip))
-			words = "put step %d %s" % [number, "earlier" if op == "earlier" else "later"]
-			number += -1 if op == "earlier" else 1
 		"merge":
 			if int(where[1]) >= 0:
 				undo.append_array(AuthorSteps.merge(world, str(where[0]), int(where[1]), skip))
-			words = "merged step %d with the next" % number
 		"delete":
 			if int(where[1]) >= 0:
 				undo.append_array(AuthorSteps.remove(world, str(where[0]), int(where[1]), skip))
-			words = "took out step %d; its parts are in the step %s" % [number,
-				"before" if int(where[1]) > 0 else "after"]
-			number = maxi(number - 1, 1)
 	undo.append_array(BookletLooks.follow(world, looked, skip, taken))
 	undo = AuthorSteps.squash(undo)
 	if undo.is_empty():
 		return "the steps are as they were"
+	# Where they are now, read off the booklet's plan, as the timeline and
+	# edit_steps's list number them. Worked out from the edit instead, "moved
+	# 236 parts to step 1" was said of parts the booklet had put in steps 1
+	# to 52, with the baseplates of step 1 at 53 (stepsto).
+	var planned: Array[Instructions.Step] = Instructions.plan(world, library, skip, {}, true)
+	var now: Array = numbers_of(planned, moved)
+	if now.is_empty():
+		now = [number, number]
+	# Each a line of its own for the languages (locale/*.po), joined by "; ".
+	var first: int = int(now[0])
+	var last: int = int(now[1])
+	var words: String = ""
+	match op:
+		"prev", "next":
+			words = ("moved %s to the previous step" if op == "prev"
+				else "moved %s to the next step") % _parts(count) + "; " + _now_in(now)
+		"to":
+			if at.callout_step > 0:
+				words = "moved %s to the %s's step %d, in step %d" % [_parts(count), at.assembly,
+					at.callout_step, first]
+			elif first == last:
+				words = "moved %s to step %d" % [_parts(count), first]
+			else:
+				words = "moved %s to steps %d to %d" % [_parts(count), first, last]
+			words += _built_before(planned, now, ids, level, str(where[0]), skip)
+		"new":
+			words = "made a new step of %s" % _parts(count) + "; " + _now_in(now)
+		"earlier", "later":
+			words = ("put step %d earlier" if op == "earlier" else "put step %d later") % number \
+				+ "; " + "it is step %d now" % first
+		"merge":
+			words = "merged step %d with the next" % number
+			if first != number:
+				words += "; " + "it is step %d now" % first
+		"delete":
+			words = "took out step %d; its parts are in step %d" % [number, first]
+	if not now.is_empty():
+		number = int(now[0])
 	builder.record(undo, words)
 	# Saved with the model, as any edit is (not _on_model_edited, which
 	# would work the timeline out a second time).
 	store.adopt()
 	store.touch()
-	steps.refresh(number)
+	steps.refresh(number, 0, planned)
 	return words
+
+
+## The booklet's numbers the steps holding [param ids] have in
+## [param steps]: [first, last], or [] when none of them is in one.
+static func numbers_of(steps: Array[Instructions.Step], ids: Array) -> Array:
+	var wanted: Dictionary = {}
+	for brick_id: Variant in ids:
+		wanted[int(brick_id)] = true
+	var first: int = 0
+	var last: int = 0
+	for step: Instructions.Step in steps:
+		for brick_id: int in step.brick_ids:
+			if wanted.has(brick_id):
+				first = step.number if first == 0 else mini(first, step.number)
+				last = maxi(last, step.number)
+				break
+	return [] if first == 0 else [first, last]
+
+
+## Where parts are now, [method numbers_of]'s [first, last] said.
+static func _now_in(numbers: Array) -> String:
+	if int(numbers[0]) == int(numbers[1]):
+		return "now in step %d" % int(numbers[0])
+	return "now in steps %d to %d" % [int(numbers[0]), int(numbers[1])]
+
+
+## The parts step [param at] puts on: its own, or the copies it puts on.
+static func _parts_of(at: Instructions.Step) -> Array:
+	var out: Array = Array(at.brick_ids)
+	for copy: PackedInt64Array in at.copies:
+		out.append_array(Array(copy))
+	return out
+
+
+## After "to": a sub-model moved whole and built in its own steps is built
+## before the step it goes on in, whose number is then after theirs; said,
+## so that step's own parts are not lost from sight (stepsto). "" when
+## nothing was moved so.
+func _built_before(planned: Array[Instructions.Step], now: Array, ids: Array, level: String,
+		section: String, skip: Dictionary) -> String:
+	var items: Array = AuthorSteps._selected(world, ids, level, skip).get(section, [])
+	var names := PackedStringArray()
+	var step: int = -1
+	for item: Dictionary in items:
+		step = int(item["step"])
+		if item.has("unit"):
+			names.append(Instructions._name_of(str(item["unit"])))
+	if names.is_empty():
+		return ""
+	for planned_step: Instructions.Step in planned:
+		if planned_step.authored_in == section and planned_step.authored_step == step \
+				and not planned_step.in_callout() and planned_step.number > int(now[1]):
+			return "; " + ("the %s is built in its own steps before step %d, which puts it on"
+				if names.size() == 1
+				else "the %s are built in their own steps before step %d, which puts them on") \
+				% [" and the ".join(names), planned_step.number]
+	return ""
+
+
+## Why [param ids] cannot go in step [param number], one of the steps of
+## [param section] (the sub-model's path, "" for the model): which of them
+## are another sub-model's, and the steps that one is built in, so a
+## session can name one of those instead. Told "step 1 builds another
+## sub-model, and the selection is not in it", a session did not know which,
+## nor that the parts it named were in the island (stepsto). Each a line of
+## its own for the languages, joined by "; " and ". ".
+func _not_in_step(number: int, section: String, ids: Array, level: String,
+		skip: Dictionary) -> String:
+	var planned: Array[Instructions.Step] = Instructions.plan(world, library, skip, {}, true)
+	var picked: Dictionary = AuthorSteps._selected(world, ids, level, skip)
+	var said := PackedStringArray([("step %d is one of the model's own steps" % number)
+		if section.is_empty()
+		else "step %d is one of the %s's steps" % [number, Instructions._name_of(section)]])
+	for other: String in picked:
+		if other == section:
+			continue
+		var parts: int = 0
+		for item: Dictionary in picked[other]:
+			if not item.has("unit"):
+				parts += 1
+			elif other.is_empty():
+				said.append("the %s whole, which goes in a step of the model's own"
+					% Instructions._name_of(str(item["unit"])))
+			else:
+				said.append("the %s whole, which goes in a step of the %s" % [
+					Instructions._name_of(str(item["unit"])), Instructions._name_of(other)])
+		if parts == 0:
+			continue
+		# Numbered by their parts, as the list numbers them: in steps the app
+		# works out no step is a sub-model's, and the lighthouse's tower was
+		# said to be "in step 0".
+		var built: Array = numbers_of(planned, _parts_in(other, skip))
+		var one: bool = int(built[0]) == int(built[1])
+		if other.is_empty():
+			said.append(("%s of the model's own, in step %d" % [_parts(parts), int(built[0])])
+				if one else "%s of the model's own, in steps %d to %d" % [_parts(parts),
+					int(built[0]), int(built[1])])
+		else:
+			var named: String = Instructions._name_of(other)
+			said.append(("%s of the %s, in step %d" % [_parts(parts), named, int(built[0])])
+				if one else "%s of the %s, in steps %d to %d" % [_parts(parts), named,
+					int(built[0]), int(built[1])])
+	return "; ".join(said) + ". " + ("A step takes only the parts of its own sub-model, or a "
+		+ "sub-model whole, all its parts given together")
+
+
+## The parts of [param section], a sub-model's path at any depth below it,
+## or the model's own alone for "".
+func _parts_in(section: String, skip: Dictionary) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		var path: String = Assemblies.path_of(brick)
+		if not skip.has(brick.id) and (path == section
+				or (not section.is_empty() and Assemblies.within(path, section))):
+			out.append(brick.id)
+	return out
+
+
+## The booklet's numbers of the steps that build [param section], within
+## it at any depth: [first, last], or [].
+static func _section_numbers(steps: Array[Instructions.Step], section: String) -> Array:
+	var first: int = 0
+	var last: int = 0
+	for step: Instructions.Step in steps:
+		if step.authored_step >= 0 and Assemblies.within(step.authored_in, section) \
+				and (not section.is_empty() or step.authored_in.is_empty()):
+			first = step.number if first == 0 else mini(first, step.number)
+			last = maxi(last, step.number)
+	return [] if first == 0 else [first, last]
 
 
 ## A Booklet page command on the step the timeline is on.
@@ -2921,19 +3074,26 @@ static func _parts(count: int) -> String:
 ## made a step, one undo, said with its number as the timeline counts it.
 func _close_step(level: String, skip: Dictionary) -> String:
 	var undo: Array = AuthorSteps.close_step(world, level, skip)
-	var made: int = AuthorSteps.steps_in(world, level, skip).size()
+	# Numbered as the timeline numbers it, read off the plan: the count of
+	# the level's own steps is another list's number once a sub-model is
+	# built in steps of its own among them (stepsto).
+	var planned: Array[Instructions.Step] = Instructions.plan(world, library, skip, {}, true)
+	var closed: Array = []
+	for entry: Dictionary in undo:
+		if entry.has("brick"):
+			closed.append(int(entry["brick"]))
+	var now: Array = numbers_of(planned, closed) if not closed.is_empty() \
+		else _section_numbers(planned, level)
+	var made: int = int(now[1]) if not now.is_empty() else 0
 	if undo.is_empty():
 		return ("step %d is done: the next part starts step %d" % [made, made + 1]) \
 			if made > 0 else "put a part down first: a step is the parts put down since the last"
-	var count: int = 0
-	for entry: Dictionary in undo:
-		count += 1 if entry.has("brick") else 0
 	var words: String = "step %d: %s; the next part starts step %d" % [made,
-		_parts(count), made + 1]
+		_parts(closed.size()), made + 1]
 	builder.record(undo, words)
 	store.adopt()
 	store.touch()
-	(app.get("_steps") as StepsBar).refresh()
+	(app.get("_steps") as StepsBar).refresh(-1, 0, planned)
 	return words
 
 
