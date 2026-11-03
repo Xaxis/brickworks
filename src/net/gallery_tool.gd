@@ -281,7 +281,6 @@ func _designer(handle: String) -> String:
 		": " + str(person["bio"]).replace("\n", " ").left(300) if person.get("bio") is String
 			and not str(person["bio"]).is_empty() else ""]])
 	# A number the server could not read is null, and left unsaid.
-	var known := func(from: Dictionary, key: String) -> bool: return from.get(key) is float or from.get(key) is int
 	if person.get("designer") is Dictionary:
 		var earned: Dictionary = person["designer"]
 		lines.append("What their models earned: %s models, %s, %s remixes, %s Tested, %s comments, "
@@ -289,12 +288,12 @@ func _designer(handle: String) -> String:
 			_count(int(earned.get("remixes", 0))), _count(int(earned.get("tested", 0))),
 			_count(int(earned.get("comments", 0)))]
 			+ "%s likes%s." % [_count(int(earned.get("likes", 0))),
-			", %s followers" % _count(int(earned["followers"])) if known.call(earned, "followers") else ""])
+			", %s followers" % _count(int(earned["followers"])) if _known(earned, "followers") else ""])
 	else:
 		var said := PackedStringArray()
 		for one: Array in [["models_count", "%s models in the gallery"], ["likes", "%s likes"],
 				["followers", "%s followers"], ["following", "following %s"]]:
-			if known.call(person, one[0]):
+			if _known(person, one[0]):
 				said.append(str(one[1]) % _count(int(person[one[0]])))
 		if not said.is_empty():
 			lines.append(", ".join(said) + ".")
@@ -410,9 +409,8 @@ func _open(id: String, with_picture: bool) -> Variant:
 	# What people did with it, as its page says it and the list says it of
 	# each model: how many built it, and the Tested mark. A count the
 	# server could not read is null, and nothing is said of it.
-	var builds: Variant = shared.get("builds")
-	if builds is float or builds is int:
-		lines.append("Built to its last step %s." % _times(int(builds)) if int(builds) > 0
+	if _known(shared, "builds"):
+		lines.append("Built to its last step %s." % _times(int(shared["builds"])) if int(shared["builds"]) > 0
 			else "Nobody has built it to its last step yet.")
 	if shared.get("tested") is Dictionary:
 		lines.append("Tested: %s." % str((shared["tested"] as Dictionary).get("line", "the app checked it")))
@@ -606,6 +604,12 @@ static func _line(model: Dictionary) -> String:
 		facts.append("you own %s of its %s pieces" % [_count(int(owned.get("have", 0))),
 			_count(int(owned.get("pieces", 0)))])
 	return "%s (%s) — %s" % [model.get("name", "?"), model.get("id", "?"), " · ".join(facts)]
+
+
+## Whether [param from] has [param key] as a number: null is one the server
+## could not read.
+static func _known(from: Dictionary, key: String) -> bool:
+	return from.get(key) is float or from.get(key) is int
 
 
 ## "built 3 times", or "not built yet": finished to its last step by people
