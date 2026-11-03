@@ -52,7 +52,9 @@
 ##              stud turned out.
 ##
 ## Every finding is laid at once, up to MOST_FINDINGS; any over are counted
-## and said, for the next review to lay.
+## and said, for the next review to lay. An edge settled "flat" has its curved
+## slopes taken off and its top tiled flat. Saving after the creative pass
+## says, once, what open fields were built since the pass (built_since).
 ##
 ## Whatever takes a part off is refused if the model would then be in more
 ## pieces: edit_model keeps to the count the model is in (Assistant
@@ -71,11 +73,13 @@
 ##     detail itself; and a stud whose square is not all part (a wedge's
 ##     corner) is left, since a tile there would overhang;
 ##   - a Brick Art mosaic is all studs on purpose: nothing is proposed;
-##   - a field a figure, an animal or a plant stands among is a yard;
-##   - the ground (a plate or two up from the model's bottom, spanning most
-##     of it: a base) is a floor things will stand on, the creative pass's
-##     figures among them: it is offered (G1), laid only when the design says
-##     "tile";
+##   - a field a figure, an animal or a plant stands among is a yard: the
+##     studs it stands on and the ring a stud round it are left, its standing
+##     place, and the rest of the field is tiled round them, the ground too;
+##   - bare ground (a plate or two up from the model's bottom, spanning most
+##     of it: a base, nothing standing on it yet) is a floor things will
+##     stand on, the creative pass's figures among them: it is offered (G1),
+##     laid only when the design says "tile";
 ##   - fewer than four studs together are a detail, not a field;
 ##   - and wherever the design said "keep", or rejected the app's pieces, is
 ##     never proposed again for this design.
@@ -102,6 +106,9 @@ const SMALLEST_FIELD := 4
 const DEEPEST_TREAD := 3
 ## Studs a field has before it is varied with a textured tile.
 const ACCENTS_FROM := 16
+## How far past a figure's, an animal's or a plant's footprint a yard keeps
+## its studs, in studs: its standing place.
+const STANDING_ROOM := 1.0
 
 ## Flat tiles, largest first by area (Patterns.TILES has plates).
 const TILES: Array = ["10202", "1751", "69729", "87079", "4162", "26603", "6636",
@@ -210,6 +217,8 @@ var zones: Array = []
 var ran: bool = false
 ## Whether saving has said so to a session that never ran it.
 var reminded: bool = false
+## Whether saving has said what was built since the pass last ran.
+var since_said: bool = false
 ## What the last reading left alone, in a line each, and how many it found
 ## but did not lay (over MOST_FINDINGS).
 var left_alone: PackedStringArray = PackedStringArray()
@@ -233,6 +242,7 @@ func reset() -> void:
 	zones = []
 	ran = false
 	reminded = false
+	since_said = false
 	left_alone = PackedStringArray()
 	more = 0
 	held_back = 0
@@ -279,7 +289,10 @@ func record() -> String:
 				"wall":
 					walls += 1
 				"edge":
-					rounded += 1
+					if one.of == "flat":
+						tiled += one.studs
+					else:
+						rounded += 1
 				"flank":
 					skinned += 1
 					of_plates += 1 if one.of == "plates" else 0
@@ -342,6 +355,7 @@ func for_touches() -> String:
 ## String where there is no picture or nothing was found. Awaited.
 func hand() -> Variant:
 	ran = true
+	since_said = false
 	if assistant._bricks_inside({}).is_empty():
 		return "The baseplate is bare: build the model before its surface."
 	assistant.progress.emit("the surface pass: reading the model's studs, steps and walls")
@@ -409,8 +423,9 @@ func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
 const SETTLE_HOW := """Settle each with settle_surface {"finding": "S1", \
 "verdict": ...} (or "finding": "all"): "accept" keeps it — with "plain": true \
 for plain tiles where the textured ones are, or "recolor": {"4": 320}, to \
-adjust it; "reject" with a reason takes the app's pieces off and puts back \
-what they replaced, to finish it your own way; "keep" with a reason does the \
+adjust it; "flat" takes an edge's curved slopes off and tiles its top flat, \
+its edge left square; "reject" with a reason takes the app's pieces off and \
+puts back what they replaced, to finish it your own way; "keep" with a reason does the \
 same and leaves the studs for good — a yard, a mosaic, a studded texture, \
 where a touch will stand. A real set leaves studs only where something is \
 built on them."""
@@ -455,8 +470,9 @@ func settle(args: Dictionary) -> String:
 	var asked: String = str(args.get("finding", "")).strip_edges()
 	var verdict: String = str(args.get("verdict", "")).strip_edges().to_lower()
 	var reason: String = str(args.get("reason", "")).strip_edges()
-	if not verdict in ["accept", "reject", "keep", "tile"]:
-		return "verdict is one of \"accept\", \"reject\", \"keep\" or, for ground offered, \"tile\"."
+	if not verdict in ["accept", "reject", "keep", "tile", "flat"]:
+		return ("verdict is one of \"accept\", \"reject\", \"keep\", \"flat\" for an edge "
+			+ "or, for ground offered, \"tile\".")
 	if findings.is_empty():
 		return ("Nothing has been proposed yet: review_model {\"surface\": true} reads the "
 			+ "model and lays the surface pass's pieces.")
@@ -503,6 +519,8 @@ func _named(asked: String, verdict: String) -> Array[Finding]:
 
 func _settle_one(one: Finding, verdict: String, reason: String, args: Dictionary) -> String:
 	match verdict:
+		"flat":
+			return await _flat(one)
 		"accept", "tile":
 			if one.offered and one.ids.is_empty():
 				if not await _lay(one):
@@ -557,6 +575,87 @@ func _settle_one(one: Finding, verdict: String, reason: String, args: Dictionary
 func close() -> void:
 	for one: Finding in open():
 		one.verdict = "left"
+
+
+## An edge settled "flat": its curved slopes and the plate raising the rest
+## taken off, and the top tiled flat, its edges left square. design12's 44
+## kept or rejected a third of its edges, and most said why in the words of a
+## top wanted flat: "crisp flat-topped box; I tile its roof flat instead",
+## "flat terraces ... I'll tile them flat", "square-edged boxes". The studs
+## stayed: rejecting took the tiles off with the curves.
+func _flat(one: Finding) -> String:
+	if one.kind != "edge":
+		return "%s: \"flat\" is for an edge; accept, reject or keep it." % one.key
+	if not one.ids.is_empty() and not await _take_off(one):
+		return "%s: could not take the curved edge off (%s); settle it another way." % [
+			one.key, _why_not]
+	_read = OpenPoints.read(assistant)
+	var tops: Dictionary = open_tops("", _points())
+	var free: Dictionary = {}
+	for key: Vector3i in one.cells:
+		if tops.has(key):
+			free[Vector2i(key.x, key.z)] = [(tops[key] as Dictionary)["here"],
+				int((tops[key] as Dictionary)["colour"])]
+	var studs: int = free.size()
+	if free.is_empty():
+		one.verdict = "rejected"
+		one.reason = "wanted flat; its top had no open stud to tile"
+		return "%s: the curved edge is off; its top had no open stud left to tile." % one.key
+	var y: float = ((free.values()[0] as Array)[0] as Vector3).y
+	var made: Array[int] = []
+	var add: Array = _tiles_over(free, y, 0, made, true)
+	var ids: Array[int] = []
+	if not add.is_empty():
+		var none: Array[int] = []
+		ids = await _edit(add, none)
+	if ids.is_empty():
+		one.verdict = "rejected"
+		one.reason = "wanted flat; tiles would not lie there"
+		zones.append([one.box.grow(2.0), one.reason])
+		return "%s: the curved edge is off, and its top could not be tiled flat (%s)." % [
+			one.key, _why_not]
+	one.add = add
+	one.restore = []
+	one.remove = []
+	one.ids = ids
+	one.studs = studs
+	one.verdict = "adjusted"
+	one.of = "flat"
+	return "%s: the curved edge is off, and its %d open studs are tiled flat%s." % [one.key,
+		studs, _bricks_said(ids)]
+
+
+## What saving says once after the creative pass, when building since the
+## surface pass left open stud fields it would finish: where and how many. ""
+## when there are none, before the pass ran, or once said since it ran. Every
+## design of design12's 44 was changed after its last pass, a median of eight
+## edits (the creative pass's figures and touches among them), and a tenth of
+## the studs left open on the subjects whose surface lost were built then.
+func built_since() -> String:
+	if not ran or since_said or not open().is_empty():
+		return ""
+	_read = OpenPoints.read(assistant)
+	var tops: Dictionary = open_tops("", _points())
+	var kept := left_alone.duplicate()
+	var fields: Array[Finding] = _fields(tops, {}, "", false)
+	left_alone = kept
+	var studs: int = 0
+	var count: int = 0
+	var places := PackedStringArray()
+	for one: Finding in fields:
+		if one.offered:
+			continue
+		studs += one.studs
+		count += 1
+		if places.size() < 4:
+			places.append("%d %s" % [one.studs, _where_said(one.box)])
+	if studs == 0:
+		return ""
+	since_said = true
+	return ("Since the surface pass, %d open studs were built in %d place%s (%s%s), which "
+		% [studs, count, "" if count == 1 else "s", "; ".join(places), "; ..." if count > 4 else ""]
+		+ "it would finish: review_model {\"surface\": true} lays tiles for them to settle, "
+		+ "leaving the studs figures stand on; then save again.")
 
 
 # -- reading the model ---------------------------------------------------------
@@ -1787,7 +1886,8 @@ func _crown(field: Dictionary, cell_key: Dictionary, levels: Dictionary, curves:
 
 ## The open stud fields left, each at one height and joined stud to stud:
 ## tiles for each that is not a yard, the ground offered, small ones left.
-func _fields(tops: Dictionary, claimed: Dictionary, section: String = "") -> Array[Finding]:
+func _fields(tops: Dictionary, claimed: Dictionary, section: String = "",
+		lay: bool = true) -> Array[Finding]:
 	var out: Array[Finding] = []
 	var seen: Dictionary = {}
 	var small: int = 0
@@ -1822,15 +1922,31 @@ func _fields(tops: Dictionary, claimed: Dictionary, section: String = "") -> Arr
 			small_studs += field.size()
 			continue
 		var box: AABB = _box_of(field, tops)
-		if _lived_on(box, living):
-			left_alone.append("%d studs %s that a figure, an animal or a plant stands among: a yard"
-				% [field.size(), _where_said(box)])
-			continue
+		# A yard keeps the studs its figures, animals and plants stand on and
+		# beside, not the whole field: design12's 44 left 1,000 to 1,400 studs
+		# a run as yards, nine in ten of them past a stud from anything
+		# standing, and the judge named "a large exposed-stud plate" under two
+		# guards on a walkway, "a large expanse of open tan studs" round two
+		# figures on a floor.
+		var standing: int = 0
+		var lived: Array = _living_among(box, living)
+		if not lived.is_empty():
+			var rest: Array[Vector3i] = []
+			for key: Vector3i in field:
+				if _standing_place((tops[key] as Dictionary)["at"], lived):
+					standing += 1
+				else:
+					rest.append(key)
+			if rest.size() < SMALLEST_FIELD:
+				left_alone.append("%d studs %s that a figure, an animal or a plant stands among: a yard"
+					% [field.size(), _where_said(box)])
+				continue
+			field = rest
 		var one := Finding.new()
 		one.kind = "studs"
 		one.section = section
 		one.cells = field
-		one.box = box
+		one.box = _box_of(field, tops) if standing > 0 else box
 		one.studs = field.size()
 		var free: Dictionary = {}
 		var colours: Dictionary = {}
@@ -1839,25 +1955,32 @@ func _fields(tops: Dictionary, claimed: Dictionary, section: String = "") -> Arr
 			free[Vector2i(key.x, key.z)] = [top["here"], int(top["colour"])]
 			colours[int(top["colour"])] = true
 		var y: float = ((tops[field[0]] as Dictionary)["here"] as Vector3).y
-		one.offered = section.is_empty() and _ground(box, model_box)
+		# Bare ground waits for what the creative pass stands on it; ground
+		# things already stand on is a yard, laid round them.
+		one.offered = section.is_empty() and _ground(box, model_box) and standing == 0
 		var accents: int = 0
 		if field.size() >= ACCENTS_FROM and not one.offered:
 			accents = 1 if field.size() < 40 else (2 if field.size() < 80 else 3)
 		var made: Array[int] = []
-		one.add = _tiles_over(free, y, accents, made, true, TILES, section)
-		one.accents = made
-		if one.add.is_empty():
-			continue
+		if lay:
+			one.add = _tiles_over(free, y, accents, made, true, TILES, section)
+			one.accents = made
+			if one.add.is_empty():
+				continue
 		var names := PackedStringArray()
 		for code: int in colours:
 			names.append(assistant._colour_name(code).to_lower())
-		var across: int = roundi(box.size.x / STUD)
-		var deep: int = roundi(box.size.z / STUD)
-		one.said = "%s, %d open stud%s in %s, %d x %d studs %s%s." % [
+		var across: int = roundi(one.box.size.x / STUD)
+		var deep: int = roundi(one.box.size.z / STUD)
+		one.said = "%s, %d open stud%s in %s, %d x %d studs %s%s%s." % [
 			"the ground, a floor things will stand on" if one.offered
 				else ("a joint's studs in a tiled top" if joint else _what_top(box, model_box)),
 			field.size(), "" if field.size() == 1 else "s", ", ".join(names), across, deep,
-			_where_said(box), "" if section.is_empty() else ", in section '%s'" % section]
+			_where_said(one.box), "" if section.is_empty() else ", in section '%s'" % section,
+			"" if standing == 0 else (", a yard: the %d stud%s where %s stand%s and beside %s "
+				% [standing, "" if standing == 1 else "s", _living_said(lived),
+					"s" if lived.size() == 1 else "", "it" if lived.size() == 1 else "them"]
+				+ "left open")]
 		one.laid = _pieces_said(one)
 		out.append(one)
 	if small > 0:
@@ -1930,13 +2053,38 @@ func _living_boxes() -> Array:
 
 ## Whether a figure, an animal or a plant stands on or among a field.
 static func _lived_on(box: AABB, living: Array) -> bool:
+	return not _living_among(box, living).is_empty()
+
+
+## The figures, animals and plants that stand on or among a field: their boxes.
+static func _living_among(box: AABB, living: Array) -> Array:
+	var out: Array = []
 	var reach := AABB(box.position - Vector3(STUD, 2.0, STUD),
 		box.size + Vector3(2.0 * STUD, 14.0, 2.0 * STUD))
 	for one: Variant in living:
 		var other: AABB = one
 		if reach.intersects(other) and other.position.y >= box.position.y - 4.0:
+			out.append(other)
+	return out
+
+
+## Whether a stud at [param at] is a standing place: under or beside one of
+## [param lived], within STANDING_ROOM studs of its footprint, where a figure
+## is moved about and a plant is set among others.
+static func _standing_place(at: Vector3, lived: Array) -> bool:
+	for one: Variant in lived:
+		var box: AABB = one
+		var dx: float = maxf(0.0, maxf(box.position.x - at.x, at.x - box.end.x))
+		var dz: float = maxf(0.0, maxf(box.position.z - at.z, at.z - box.end.z))
+		if maxf(dx, dz) <= STANDING_ROOM * STUD:
 			return true
 	return false
+
+
+## What stands in a yard, in words: "a figure", "3 figures, animals or plants".
+static func _living_said(lived: Array) -> String:
+	return "a figure, an animal or a plant" if lived.size() == 1 \
+		else "%d figures, animals or plants" % lived.size()
 
 
 ## Tiles over half-stud cells, each {cell: [stud position, colour]}, largest
