@@ -1782,6 +1782,7 @@ func _ready() -> void:
 
 	var stress: String = _argument("--stress")
 	var wanted: String = _argument("--model")
+	var given: String = TabSession.given_file()
 	var placed: int = 0
 	if not stress.is_empty():
 		placed = _build_stress(stress.to_int())
@@ -1789,6 +1790,8 @@ func _ready() -> void:
 		placed = _open(wanted)
 		if not _store.not_opened.is_empty():
 			push_error("could not open %s: %s" % [wanted, _store.not_opened])
+	elif not given.is_empty():
+		placed = await _open_given(given)
 	else:
 		# Whatever was on screen last time comes back first; the sample
 		# model is only for a first visit. Not for a probe, which starts
@@ -7437,6 +7440,30 @@ func _open(path: String) -> int:
 	elif not ModelBar.unshown_words(_store).is_empty():
 		_bar.say("opened %s%s" % [_store.title, ModelBar.unshown_words(_store)])
 	return placed
+
+
+## A model the system handed the app to open (TabSession.given_file), read
+## as File, Open from a file reads one: a Studio .io or an LDD .lxf
+## double-clicked opens as it does from the menu. What it says goes to the
+## log too, where a package's check on each system reads it while the app
+## runs (tools/release.py smoke): on stderr, which a release build writes
+## at once, where a print waits in a buffer until the app quits.
+func _open_given(path: String) -> int:
+	var made: Dictionary = ModelFilePicker.read(FileAccess.get_file_as_bytes(path), path.get_file(),
+		_store.library)
+	var result: Dictionary = {"error": made["error"], "placed": 0}
+	if str(made["error"]).is_empty():
+		result = await _store.open_text_fetched(str(made["text"]), path.get_file().get_basename())
+	if not str(result["error"]).is_empty():
+		_bar.say("could not open %s: %s" % [path.get_file(), result["error"]])
+		printerr("could not open %s: %s" % [path, result["error"]])
+		return 0
+	var said: String = "opened %d parts" % int(result["placed"]) + ModelBar.left_out_words(result)
+	if not str(made["note"]).is_empty():
+		said += " — " + str(made["note"])
+	_bar.say(said)
+	printerr("opened %s: %d parts" % [path, int(result["placed"])])
+	return int(result["placed"])
 
 
 ## A fallback when no sample model is around: a wall that exercises the

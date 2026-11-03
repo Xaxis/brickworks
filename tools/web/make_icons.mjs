@@ -18,7 +18,7 @@
 // the deploy check and it renders the SVG with the same engine the tab
 // will.
 import { launch } from "./browser.mjs";
-import { readFileSync, mkdirSync, copyFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 
 const root = resolve(dirname(new URL(import.meta.url).pathname), "../..");
@@ -42,7 +42,17 @@ const WANTED = [
   // the mark a fifth of its height whatever the window's size. Godot's own
   // was the engine's logo (walk256 DS1, 2026-10-25).
   ["assets/splash.png", [2560, 1440], "splash"],
+  // The desktop packages (tools/release.py): the Linux icon theme's sizes,
+  // which the .deb and the AppImage carry, and the Windows installer's
+  // icon, which is made of the 16 to 256.
+  ...[16, 22, 24, 32, 48, 64, 128, 256, 512].map((size) =>
+    [`tools/release/package/icons/${size}.png`, size, "tile"]),
 ];
+// Pictures drawn as they are, at 1x and 2x: the macOS disk image's window.
+const PICTURES = [["tools/release/package/dmg-background.svg", [640, 400]]];
+// The scalable icon the Linux packages carry beside the sizes: the mark on
+// its tile, as the PNGs draw it.
+const TILED_SVG = "tools/release/package/icons/brickworks.svg";
 const ONLY = process.argv.slice(2);
 
 // And the mark itself for the app, which reads no file under web/ (its
@@ -55,6 +65,20 @@ if (!ONLY.length || ONLY.includes(COPY)) {
   console.log(`  ${COPY}  a copy of web/icon.svg`);
 }
 if (ONLY.length && ONLY.every((one) => one === COPY)) process.exit(0);
+
+if (!ONLY.length || ONLY.includes(TILED_SVG)) {
+  const mark = svg.replace(/<!--[\s\S]*?-->\s*/g, "").replace(/^<svg[^>]*>|<\/svg>\s*$/g, "").trim();
+  const tiled = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="${64 * 0.225}" fill="${TILE}"/>
+  <g transform="translate(${64 * 0.17} ${64 * 0.17}) scale(${1 - 2 * 0.17})">
+  ${mark.split("\n").map((line) => line.trim()).join("\n  ")}
+  </g>
+</svg>
+`;
+  mkdirSync(dirname(resolve(root, TILED_SVG)), { recursive: true });
+  writeFileSync(resolve(root, TILED_SVG), tiled);
+  console.log(`  ${TILED_SVG}  the mark on its tile`);
+}
 
 const browser = await launch({ signedOut: true });  // a page of the site, not the app
 for (const [where, size, ground] of WANTED) {
@@ -92,5 +116,20 @@ for (const [where, size, ground] of WANTED) {
   }
   await page.close();
   console.log(`  ${where}  ${width}x${height}, ${ground}`);
+}
+for (const [where, [width, height]] of PICTURES) {
+  for (const scale of [1, 2]) {
+    const out = resolve(root, where.replace(/\.svg$/, scale === 1 ? ".png" : "@2x.png"));
+    if (ONLY.length && !ONLY.includes(where)) continue;
+    const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale });
+    await page.setContent(
+      `<!doctype html><style>html,body{margin:0;padding:0}svg{display:block}</style>
+       ${readFileSync(resolve(root, where), "utf8")}`,
+      { waitUntil: "load" },
+    );
+    await page.screenshot({ path: out, timeout: 60000 });
+    await page.close();
+    console.log(`  ${out.slice(root.length + 1)}  ${width * scale}x${height * scale}`);
+  }
 }
 await browser.close();

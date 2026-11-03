@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14.4" fill="#14181e"/>
+  <g transform="translate(10.88 10.88) scale(0.6599999999999999)">
+  <path d="M32 4L56.25 18L44.125 25L32 18L19.875 25L7.75 18Z" fill="#f2cd37"/>
+  <path d="M7.75 18L19.875 25V39L32 46V60L7.75 46Z" fill="#d0332f"/>
+  <path d="M56.25 18L44.125 25V39L32 46V60L56.25 46Z" fill="#2a6fc4"/>
+  <path d="M32 46L44.125 39L32 32L19.875 39Z" fill="#c29d22"/>
+  <path d="M44.125 25L32 18V32L44.125 39Z" fill="#94211e"/>
+  <path d="M19.875 25L32 18V32L19.875 39Z" fill="#1c4b88"/>
+  </g>
+</svg>
