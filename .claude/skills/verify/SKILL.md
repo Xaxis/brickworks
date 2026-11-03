@@ -20,8 +20,9 @@ description: Verify Brickworks — a Godot 4.7 LEGO CAD app (desktop and WebAsse
   hears through it (`RELAY_FROM`: the connector, the method, the guide;
   model_view went unrun from rel-m237 to m250 so):
   `tools/release/unit_preview.sh <worktree>` deploys a preview of the
-  branch and runs them there, for a change to `web/`, `api/` or `tools/web/`.
-  Every feature it lists is in scope.
+  branch and runs them there, whenever flows_for names a check for the
+  diff, a `src/` one included. A release's train adds them to the checks
+  the lead names (`train.sh stage`). Every feature it lists is in scope.
 - **Keeping it current:** when you add, rename, move or remove a feature, run
   `$FM generate --write`, update the matching `features/<area>.md`, and confirm
   `$FM check` exits 0. Commit that with the feature change.
