@@ -41,20 +41,22 @@ const LIST := "res://tools/web/gallery_seeds/ldraw_library.json"
 ## 40138-1's 14 rims (93595) stand 1.2 LDU into the mudguards over them,
 ## and 31025-1's 4 rims (93594) 2 LDU into their tyres (51011), the meshes
 ## so drawn, a fit KnownFits cannot learn: no other set builds either pose
-## (30192-1 and 30572-1 sit the rim 8 LDU lower). At stability, whole 29
-## and 5 for seeds 12 and 22, once the floor is the parts' real lowest
+## (30192-1 and 30572-1 sit the rim 8 LDU lower). At stability, whole 10,
+## 29 and 5 for seeds 10, 12 and 22, once the floor is the parts' real lowest
 ## point and not their boxes turned with them: 6043-1's held halberd's box
 ## reached 7.7 LDU under the ground and 40138-1's spun rims' 5.1, so the
 ## trebuchet, its boulders and the train's tree stood over the floor and
 ## fell. The boulders are loose 1 x 1 bricks, and still said so: two stand
 ## against each other, one leans, and one lies tilted in the trebuchet's
-## bucket. And 928-1's buggy, its driver's arm raised, is no longer said
-## to fall (ExactCheck.rests judges a piece square by the parts it rests
-## by): parked on the baseplate's studs and joined to them by nothing, it
-## rests there and comes away in the hand, so seed 2 keeps its 9.
+## bucket. And a piece is judged square by the parts it rests by, not by
+## every part of it (ExactCheck.rests): a figure on 6396-1's baseplate
+## stands, and its 48-part piece on the crossroads and 928-1's buggy, its
+## driver's arm raised, are no longer said to fall but, standing on their
+## baseplates' studs and joined to them by nothing, to rest there and come
+## away in the hand, so seed 2 keeps its 9.
 const MOST: Dictionary = {
 	1: [0, 0, 0, 4], 2: [0, 0, 0, 9], 3: [0, 1, 0, 7], 4: [0, 0, 0, 8], 5: [0, 5, 0, 3],
-	6: [0, 0, 0, 8], 7: [0, 0, 0, 2], 8: [0, 0, 0, 7], 9: [0, 4, 1, 6], 10: [0, 1, 1, 11],
+	6: [0, 0, 0, 8], 7: [0, 0, 0, 2], 8: [0, 0, 0, 7], 9: [0, 4, 1, 6], 10: [0, 1, 1, 10],
 	11: [0, 0, 1, 7], 12: [0, 0, 1, 29], 13: [0, 0, 0, 2], 14: [0, 2, 0, 16], 15: [0, 4, 0, 11],
 	16: [0, 0, 0, 7], 17: [0, 2, 0, 8], 18: [0, 0, 0, 2], 19: [0, 4, 0, 7], 20: [0, 0, 0, 18],
 	21: [0, 0, 0, 0], 22: [0, 0, 0, 5], 23: [0, 3, 0, 0], 24: [0, 0, 1, 2], 25: [0, 0, 0, 0],
