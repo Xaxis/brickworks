@@ -329,7 +329,12 @@ def run(path: Path) -> tuple[int, int, int]:
     for label, error in failures:
         print("")
         print("FAIL  %s" % label)
-        print("  %s: %s" % (type(error).__name__, error) if str(error) else "  %s" % type(error).__name__)
+        said = ("%s: %s" % (type(error).__name__, error) if str(error) else type(error).__name__).splitlines()
+        # Every line of the message indented, so a failure is one block to
+        # its last line, as tools/failures.awk reads it.
+        print("  " + said[0])
+        for line in said[1:]:
+            print("    " + line)
         for line in _why_it_failed(error):
             print("  " + line)
     # Said out loud, not counted as a pass: a skipped measurement is one

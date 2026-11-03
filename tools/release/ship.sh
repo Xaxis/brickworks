@@ -36,11 +36,27 @@ S=$(realpath -m "${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}"); mkdir -p 
 # begun by hand or queued: m181's promote, begun by hand, wrote none, and
 # m182 queued behind it could only have waited for ever (2026-10-26).
 rm -f "$S/$TAG.done" "$S/$TAG.gave_up"
-trap 'echo $? > "$S/$TAG.done"' EXIT
-# Stopped, it did not ship: without these the EXIT trap wrote the status of
-# the command the signal cut short, 0, and a waiter read a stopped m185 as
-# shipped (2026-10-27).
-trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
+# The ship runs in a child of this shell, which only waits for it: bash 5.2
+# runs a trap that has come due as it begins to parse a "$(...)" it
+# expands, the trap's own parse fails there, and the shell either goes on
+# with its next command or keeps on as it was, the stop lost. Stopped so
+# while it waited for a train's probes, this one ran on a minute in 4 of
+# 1800, and a script of the same traps went on to its next command, writing
+# done 0, in 33 of 200 (2026-11-03).
+if [ -z "${SHIP_WORK:-}" ]; then
+  work=""
+  trap 'echo $? > "$S/$TAG.done"' EXIT
+  # Stopped, it did not ship: without these the EXIT trap wrote the status
+  # of the command the signal cut short, 0, and a waiter read a stopped m185
+  # as shipped (2026-10-27). The ship first, which INT spares as a job in
+  # the background.
+  stopped() { [ -z "$work" ] || { kill -TERM "$work" 2>/dev/null; wait "$work"; }; exit "$1"; }
+  trap 'stopped 129' HUP; trap 'stopped 130' INT; trap 'stopped 143' TERM
+  SHIP_WORK=1 bash "$0" "$W" "$TAG" "$@" &
+  work=$!
+  wait "$work"
+  exit
+fi
 export BOX_HEAVY_PRIORITY=1
 # A train runs the release's probes beside its ship (train.sh) and names in
 # SHIP_PROBES the file it keeps while they run: "running PID: NAMES", then

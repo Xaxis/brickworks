@@ -17,7 +17,8 @@ then ships; edits to its spec after staging are what it ships; a hold stops
 it before the merge and before the probes and the ship, and one set while
 the ship waits still holds; a tree left dirty or mid-merge, or a probe that
 failed or skipped itself, is never shipped; it stops when the release before
-did not ship, was stopped or died, or at its deadline; and status says each
+did not ship, was stopped or died, or at its deadline; stopped by hand, it
+says so and nothing of it runs on, its probes included; and status says each
 step, the checks, the probes and what is live. Its probes run beside the
 ship, four at a time, one failing beside others again alone, and main moves
 only once every one has passed. It ships the tip it merged when the branch
@@ -157,6 +158,7 @@ exit 0
 # there, each noting when it began and ended; flaky fails the first time it
 # runs and passes after.
 echo "$1" >> "$RELEASE_OUT/probes_run"
+echo $$ >> "$RELEASE_OUT/probe_pids"
 case "$1" in slow_*|gated*)
   echo "$1 began $(date +%s.%N)" >> "$RELEASE_OUT/probe_times"
   case "$1" in
@@ -269,7 +271,13 @@ class Yard:
             time.sleep(0.05)
 
     def logs(self) -> str:
-        return "\n".join(p.read_text() for p in sorted(self.ro.glob("*_train.out")) + sorted(self.ro.glob("*_lead.out")))
+        """What each train wrote as its result, a line each, then their logs
+        and the ships': a train's log says its result only after writing it,
+        and ci_gate.sh once showed a failure's first line alone."""
+        results = ["%s: %s" % (d.name[:-6], self.spec(d.name[:-6], "result") or "(none)")
+                   for d in sorted(self.ro.glob("*.train"))]
+        return "results:\n%s\n\n%s" % ("\n".join(results), "\n".join(
+            p.read_text() for p in sorted(self.ro.glob("*_train.out")) + sorted(self.ro.glob("*_lead.out"))))
 
     def times(self, name: str) -> dict:
         """probe_times or check_times: each NAME's began and ended, as epoch seconds."""
@@ -278,6 +286,17 @@ class Yard:
             *who, what, when = line.split()
             spans.setdefault(" ".join(who), {})[what] = float(when)
         return spans
+
+    def probes_running(self) -> list:
+        """The stand-in probes of this yard still running."""
+        found = []
+        for pid in self.text("probe_pids").split():
+            try:
+                if "tools/probe.sh" in Path("/proc/%s/cmdline" % pid).read_text():
+                    found.append(pid)
+            except OSError:
+                pass
+        return found
 
     def unmoved(self) -> None:
         """Main and origin are where the yard began, and nothing was promoted."""
@@ -325,14 +344,14 @@ def _minute(text: str, after: str) -> float:
     return (int(hhmm[:2]) * 60 + int(hhmm[3:]) - now.tm_hour * 60 - now.tm_min) % 1440
 
 
-def _running(what: str) -> list:
-    """The processes whose command line holds WHAT."""
+def _group(pgid: int) -> list:
+    """The command lines of the processes in process group PGID."""
     found = []
-    for cmdline in Path("/proc").glob("[0-9]*/cmdline"):
+    for stat in Path("/proc").glob("[0-9]*/stat"):
         try:
-            if what in cmdline.read_text().replace("\0", " "):
-                found.append(cmdline.parent.name)
-        except OSError:
+            if int(stat.read_text().rsplit(")", 1)[1].split()[2]) == pgid:
+                found.append((stat.parent / "cmdline").read_text().replace("\0", " "))
+        except (OSError, IndexError, ValueError):
             pass
     return found
 
@@ -833,6 +852,46 @@ def test_it_stops_when_the_release_before_did_not_ship_or_its_wait_runs_out(tmp_
         y.stop()
 
 
+def test_a_train_stopped_by_hand_stops_its_work_and_its_probes_and_says_so(tmp_path):
+    """Its work runs beside the shell named in its pid, which only waits, so
+    the trap that says "killed" never runs as bash parses a "$(...)": there
+    it failed to parse and the train died saying nothing (2026-11-03)."""
+    y = Yard(tmp_path)
+    try:
+        # While its ship waits for its probes, by its group as status says
+        # (kill -- -PID), or by its pid alone: its probes, in a group of their
+        # own, stop with it, and its work writes nothing after. The ship,
+        # stopped with the group, says it did not ship (143); left to run on,
+        # it holds, its train gone (1).
+        for tag, kill, done in (("t-m2", os.killpg, "143"), ("t-m3", os.kill, "1")):
+            assert y.train("stage", tag, "stage2", "--checks", "io", "--probes", "gated").returncode == 0
+            y.until(lambda: "main waits for the probes" in y.text(tag + "_lead.out") and y.probes_running())
+            kill(int(y.spec(tag, "pid")), signal.SIGTERM)
+            y.until(lambda: y.spec(tag, "result"))
+            y.until(lambda: not y.probes_running(), 10)
+            y.until(lambda: y.text(tag + ".done"))
+            assert y.spec(tag, "result") == "stopped: killed", y.logs()
+            assert y.text(tag + ".done").strip() == done, y.logs()
+            if done == "1":
+                assert "SHIP: held, the train running the probes" in y.text(tag + "_lead.out"), y.logs()
+            y.unmoved()
+
+        # Waiting: an INT, which a job in the background ignores, stops its
+        # work all the same; killed outright by its pid alone, the work takes
+        # no step after, and nothing of the train runs on.
+        for tag, kill, said in (("t-m4", lambda pid: os.killpg(pid, signal.SIGINT), "stopped: killed"),
+                                ("t-m5", lambda pid: os.kill(pid, signal.SIGKILL), "")):
+            assert y.train("stage", tag, "stage2", "--after", "t-m99").returncode == 0
+            y.until(lambda: "waits" in y.spec(tag, "step"))
+            pid = int(y.spec(tag, "pid"))
+            kill(pid)
+            y.until(lambda: not any("train.sh run " in c for c in _group(pid)), 10)
+            assert y.spec(tag, "result") == said, y.logs()
+            assert not (y.wt / tag).exists()
+    finally:
+        y.stop()
+
+
 def test_what_fails_on_the_preview_runs_on_the_live_site_after_its_battery_as_a_units_check(tmp_path):
     y = Yard(tmp_path)
     try:
@@ -995,7 +1054,7 @@ def test_a_ship_that_ends_first_stops_the_probes_beside_it(tmp_path):
         # Stopped, not left to run on: it never ended, and nothing of it runs.
         assert "gated" in y.times("probe_times") and "ended" not in y.times("probe_times")["gated"]
         time.sleep(0.5)
-        assert not _running(str(y.r / "tools/probe.sh"))
+        assert y.text("probe_pids") and not y.probes_running()
         y.unmoved()
     finally:
         y.stop()
