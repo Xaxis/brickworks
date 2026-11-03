@@ -12,11 +12,13 @@ LIVE_DB="$(git rev-parse --path-format=absolute --git-common-dir)/live-db"
 # A release's check goes first. flock serves no one in order, and a unit's
 # A/B of together runs, taking the lock run after run, held rel-m232's
 # arrival for 24 minutes (2026-10-31). So a release's battery, waiting,
-# leaves a file named for its pid in live-db.release, as its train does for
-# as long as it runs (train.sh run), and any other run that gets the lock
-# while one is there hands it back and waits. The release's own (its
-# battery, BOX_HEAVY_PRIORITY; its checks on the live site, LIVE_DB_RELEASE)
-# take it.
+# leaves a file named for its pid in live-db.release, as its train does
+# until its battery on the preview is done (train.sh run, ship.sh), and any
+# other run that gets the lock while one is there hands it back and waits.
+# The release's own battery (BOX_HEAVY_PRIORITY) takes it. What failed on
+# its preview then runs on brickworks.diy as a unit's checks do (ship.sh,
+# SHIP_STALE): given a release's turn, rel-m249's 72 checks there, from its
+# staging, took the lock as often as its preview's did (2026-11-02).
 release_waits() {
   local f
   for f in "$LIVE_DB.release"/*; do
@@ -41,11 +43,11 @@ take_live_db() {
   local lock="$1" until=$(( $(date +%s) + ${LIVE_WAIT:-3600} )) mine="" ticket="" left
   if [ "${BOX_HEAVY_PRIORITY:-}" = 1 ]; then
     mkdir -p "$LIVE_DB.release"; mine="$BASHPID"; : > "$LIVE_DB.release/$mine"
-  elif [ "${LIVE_DB_RELEASE:-}" != 1 ]; then
+  else
     mkdir -p "$LIVE_DB.queue"; ticket="$(date +%s%N).$BASHPID"; : > "$LIVE_DB.queue/$ticket"
   fi
   while left=$(( until - $(date +%s) )); [ "$left" -gt 0 ] && flock -w "$left" "$lock"; do
-    if [ -n "$mine" ] || [ "${LIVE_DB_RELEASE:-}" = 1 ] || { ! release_waits && ! older_waits "$ticket"; }; then
+    if [ -n "$mine" ] || { ! release_waits && ! older_waits "$ticket"; }; then
       [ -n "$mine" ] && rm -f "${LIVE_DB:?}.release/${mine:?}"
       [ -n "$ticket" ] && rm -f "${LIVE_DB:?}.queue/${ticket:?}"
       return 0

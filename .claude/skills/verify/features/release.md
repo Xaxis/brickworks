@@ -127,9 +127,12 @@ that offers each system its own build. The cycle and its cadence are
   or half-merged tree, runs the lists, then the probes (four at a time, at
   the release's priority) and `ship.sh` side by side, main moving only once
   every probe passed (`TAG.probes`), and retires the worktrees once live.
-  Staged with checks, it runs them on brickworks.diy as it is at once
-  (`train.sh stale`). `status` says each one's step, its checks and probes
-  passed of all, which of its checks already fail on brickworks.diy, and
+  Each check failing in the battery runs once more alone (timing checks
+  not); what still fails then runs on brickworks.diy as it is, after the
+  battery and as a unit's check would (`ship.sh`, `SHIP_STALE`), and the
+  train's mark on the live database goes once its battery is done
+  (`SHIP_LIVE_MARK`). `status` says each one's step, its checks and probes
+  passed of all, which of its failures already fail on brickworks.diy, and
   when it should serve, under what brickworks.diy serves and since when; `hold TAG`
   and `release TAG` set and lift a hold. Restaging a stopped TAG clears
   its worktree and branch when they hold its merge alone, and refuses when
@@ -138,6 +141,10 @@ that offers each system its own build. The cycle and its cadence are
   (a check's fix committed there), on the same preview when only checks or
   release tools changed (SHIP_REUSE), beside the probes that did not pass,
   and keeps the train's record so a release staged after it waits for it.
+  `--accept CHECK "REASON"` (at reship or stage) ships past a check that
+  failed on brickworks.diy too as the same script, and is refused for one
+  that passes there; the log, status and merge message name it with both
+  failure lines.
   tools/release/README.md has the
   rest. `tests/test_release_train.py` runs it with stand-ins for the hour's
   work.
@@ -303,8 +310,8 @@ whose size is one byte off is `FAIL ... answered '200 <size>'`.
 python3 tools/minitest.py tests/test_release_train.py
 ```
 
-Proves it when: `14 passed`, in about 45 s, and 8 copies at once all pass
-(about 52 s each). Each test makes a repository with an origin and unit
+Proves it when: `20 passed`, in about 56 s, and 8 copies at once all pass
+(about 56 s each). Each test makes a repository with an origin and unit
 worktrees; train.sh, ship.sh, preview_lib.sh and retire_wt.sh are the real
 ones, with stand-ins for release_wt.sh, merge_unit.sh, the gates,
 deploy.sh, preview_checks.sh, check.sh and probe.sh, and for heavy, godot
@@ -315,9 +322,14 @@ probes and the ship, and one set while the ship waits for its probes still
 holds; the battery runs while a probe still runs, and the preview is
 promoted only after the last probe ended (`probe_times`, `check_times`,
 `promoted`); a probe failing then stops the ship before main moves, the
-result `stopped: probes failed: NAME (TAG_probe_NAME.log)`; its checks run
-on brickworks.diy as it is staged, status saying `already failing there:
-people; failing there, changed since: light_render`; a ship that ends first
+result `stopped: probes failed: NAME (TAG_probe_NAME.log)`; every check
+failing on the preview runs again alone whatever else failed, a timing
+check not (`SHIP: held, failed on the preview: progress`); what still fails
+runs on brickworks.diy only after the preview's battery, at no priority and
+with the train's mark gone (`check_how`), status saying `already failing
+there: people; failing there, changed since: light_render; passing there:
+keys`; `--accept` ships past progress where it fails there too, its merge
+message naming it, and is refused for keys, which passes there; a ship that ends first
 stops the probes beside it; preview_checks.sh runs 3 checks at once
 (`PC_AT_ONCE`) and begins none once the probes failed (`exit=125`); a tree left dirty or
 mid-merge is refused, and so is a probe with a FAIL line or a nonzero exit;

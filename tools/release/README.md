@@ -20,6 +20,7 @@ tools/release/train.sh stage rel-m219 stage219 --after rel-m218 \
 tools/release/train.sh status                  # what is live since when, what is in flight, ETAs
 tools/release/train.sh hold rel-m219 "why"     # train.sh release rel-m219 lifts it
 tools/release/train.sh reship rel-m219 io      # a stopped one again, from its worktree
+tools/release/train.sh reship rel-m219 --accept progress "why"  # past a check failing on brickworks.diy too
 ```
 
 `reship TAG [--probes "..."] CHECK...` is for a train that stopped after its
@@ -31,6 +32,20 @@ changed since (`SHIP_REUSE`), beside the probes that did not pass (or those
 `--after TAG` waits for it to serve. rel-m227 and rel-m228 were shipped by
 hand instead, and the hand ship left rel-m227's train saying stopped, which
 the release after it then stopped on (2026-10-31).
+
+`--accept CHECK "REASON"` (at `reship`, or at `stage`) ships past a check
+that fails on brickworks.diy too, as the same script: its run there after
+the preview (below) failed, and its script has not changed since the build
+brickworks.diy serves. One that passes there, or did not run there, is
+refused: its failure is the release's own. The train's log, its status and
+the release's merge message name the check, the reason, and both failure
+lines (`<tag>_accepted`). At `reship` the merge's message is written again,
+every tree as it was, so the preview is made afresh (about 17 minutes); at
+`stage`, where the lead already knows the check fails on brickworks.diy, it
+costs nothing. rel-m249's progress failed on its preview and worse on
+brickworks.diy (295 ms against 158), on a booklet delay the release did not
+touch, and the lead could ship past it only by reshipping with `site` alone,
+which recorded nothing (2026-11-02).
 
 The train waits detached until `rel-m218_lead.out` says `SHIP: deploy:
 brickworks.diy serves`, never on rel-m218's process: its live checks after
@@ -50,10 +65,15 @@ before main moves (the checks under way end as they would; none more
 begins). One after the other, rel-m226's 35 probes took 50 minutes and its
 ship an hour more, while the GPU the probes wait for sat idle through the
 ship (2026-10-30). The ship promotes the very preview its checks passed.
-A train staged with checks also runs them at once on brickworks.diy as it
-is (`train.sh stale`, from the worktree the branch is checked out in, as
-ordinary jobs), and `status` says which already fail there: people, stale
-since achievements, held rel-m226 two hours on. Once brickworks.diy serves the
+A check that fails on the preview, and alone after it, runs on
+brickworks.diy as it is, after the preview's battery and as a unit's check
+would (`ship.sh`, `SHIP_STALE`: no release's priority at the lock or for a
+slot), and `status` says which already fail there: people, stale since
+achievements, held rel-m226 two hours on. Every check named used to run
+there from the moment the train was staged, beside the preview's battery:
+rel-m249's 74 there ran 10 hours of checks at load 43 on 24 cores, four of
+its preview's checks held for the load, and its preview's checks waited
+3.0 hours for the lock behind them (2026-11-02). Once brickworks.diy serves the
 release's sha, it retires the release's worktree and each unit's whose HEAD
 is on main and which holds no file git does not track (`retire_wt.sh`). Its
 spec is a file each in `bench/results/release-out/<tag>.train/` (branch,
@@ -167,6 +187,14 @@ What each one guards against, all learned the hard way on 2026-10-13:
   `$RELEASE_OUT/<tag>.hold` (one): a queued release waits, and one already
   shipping stops before main moves. Remove the file to let them go. Killing
   a queued waiter does not stop a ship it already started.
+- `ship.sh` runs each check that failed in its battery once more, alone,
+  before it holds, every one whatever else failed, and one that wrote no
+  line for the first time. Timing checks (frames, play, progress, placing,
+  grab) get no second go: alone they would pass what the load showed.
+  rel-m249's progress, a timing check, kept keys, library, model_page and
+  together from theirs, and the lead reshipped them by hand (2026-11-02).
+  Its last line names what still fails: `SHIP: held, failed on the
+  preview: X Y (failing on brickworks.diy too: X)`.
 - `SHIP_REUSE=1 ship.sh <worktree> <tag> <check…>` reuses the preview that
   tag made, only if it was made from the same commit (`<tag>_preview.sha`),
   and runs the named checks on it again; each must still pass. A timing
@@ -275,10 +303,27 @@ What each one guards against, all learned the hard way on 2026-10-13:
   battery that gets the lock while one is there hands it back and waits.
   flock serves no one in order, and a unit's A/B, taking the lock run after
   run, held rel-m232's arrival 24 minutes (2026-10-31). A train leaves such
-  a file for as long as it runs, so no unit begins a live check from its
-  staging to its end: a run already in the lock cannot be taken back, and
-  one begun while rel-m233 merged held its oauth 33 minutes. The train's
-  checks on the live site (`LIVE_DB_RELEASE`) take the lock all the same.
+  a file from its start until its battery on the preview, with the checks
+  run again alone, is done (`ship.sh` takes it away, `SHIP_LIVE_MARK`), so
+  no unit begins a live check meanwhile: a run already in the lock cannot
+  be taken back, and one begun while rel-m233 merged held its oauth 33
+  minutes. Then units take it in their turn again, and the release's own
+  checks on brickworks.diy wait theirs among them. Left for as long as the
+  train ran, the file shut units out of the live database for all but an
+  hour of the sixteen from rel-m247's staging to rel-m250's battery: 13
+  unit checks gave up after an hour each, and the 15 that ran waited 7.5
+  hours between them (2026-11-02).
+- The checks that take no lock run side by side, in one battery and across
+  two, signed in to the flows' shared test account (`tools/web/session.mjs`).
+  None may change what that account keeps and then read it back: rel-m249's
+  keys ran on its preview and on brickworks.diy a minute apart, each put
+  the account's keys back while the other's were on it, and both failed
+  with nothing wrong in the app. A flow that must, signs in to a throwaway
+  account of its own and deletes it after, as `keys_flow.mjs` does since
+  keysync (which makes it take the lock). Swept on 2026-11-02: of the rest,
+  only `dialogs_flow.mjs` writes there, and only things of its own (a link
+  it publishes and takes back, a session it starts and ends, its own page
+  signed out), which no other run can undo.
 - A unit's own run on the live site, an A/B or a diagnostic outside a
   battery, takes the lock only through `tools/release/live_db.sh WHO CMD...`,
   which takes it by the same rule (`live_db_lib.sh`, which
