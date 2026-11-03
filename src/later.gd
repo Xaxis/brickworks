@@ -95,6 +95,34 @@ static func script(name: StringName) -> GDScript:
 		return load(path)
 	var started: int = Time.get_ticks_msec()
 	var loaded: GDScript = load(path)
+	_note(name, started)
+	return loaded
+
+
+## [method script], compiled on a worker while [param job]'s bar is up and
+## the frames go on (ResourceLoader's threaded load), for a first use whose
+## compile would hold a frame too long: in a browser BookletMaker held one
+## for 161 to 342 ms of its own work, and HeldSteps with the four scripts it
+## names 343 (the car's booklet on previews at load 6 to 26, bookletbar,
+## 2026-11-02). Where it cannot be, compiled here.
+static func script_in_background(name: StringName, job: Working.Job) -> GDScript:
+	var path: String = PATHS[name]
+	if ResourceLoader.has_cached(path):
+		return load(path)
+	var started: int = Time.get_ticks_msec()
+	if ResourceLoader.load_threaded_request(path, "GDScript") == OK:
+		while ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			await job.next()
+		var loaded: GDScript = ResourceLoader.load_threaded_get(path) as GDScript
+		if loaded != null:
+			_note(name, started)
+			return loaded
+	return script(name)
+
+
+## [param name] loaded since [param started]: kept in [member took], and
+## told to the page the first time.
+static func _note(name: StringName, started: int) -> void:
 	_lock.lock()
 	var first: bool = not took.has(name)
 	if first:
@@ -103,7 +131,6 @@ static func script(name: StringName) -> GDScript:
 	if first and OS.has_feature("web") and OS.get_thread_caller_id() == OS.get_main_thread_id():
 		JavaScriptBridge.eval("(window.brickworksLoaded = window.brickworksLoaded || {})[%s] = [performance.now() - %d, %d]"
 			% [JSON.stringify(String(name)), took[name], took[name]], true)
-	return loaded
 
 
 ## A new [param name], made with no arguments.
@@ -121,3 +148,4 @@ static func loaded(name: StringName) -> bool:
 ## for null, and without loading a class nothing has made one of.
 static func is_a(thing: Object, name: StringName) -> bool:
 	return thing != null and loaded(name) and is_instance_of(thing, script(name))
+

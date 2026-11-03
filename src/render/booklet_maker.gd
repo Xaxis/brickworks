@@ -141,11 +141,11 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	# In the author's steps, when the model has them.
 	var steps: Array[Instructions.Step] = []
 	# Planned and staged with the drawing held (GpuFence) while the booklet's
-	# own tab is in front and says how it goes (tell_tab), a person's input
-	# still drawn. Nothing is drawn meanwhile but the model again, as it
+	# own tab is in front and says how it goes (BookletTab.tell), a person's
+	# input still drawn. Nothing is drawn meanwhile but the model again, as it
 	# was, and in a browser drawing in software each of those frames is a
 	# second: the castle's plan took 23 of them.
-	var held: bool = not dry and only.is_empty() and tab_open()
+	var held: bool = not dry and only.is_empty() and BookletTab.is_open()
 	if held:
 		GpuFence.hold()
 	if job != null:
@@ -1737,57 +1737,6 @@ static func _data_uri(image: Image, on: Color = Color(0, 0, 0, 0)) -> String:
 ## The booklet's Print button's own handler, which only a file opened on
 ## its own may run (Booklet's header).
 const PRINT_INLINE := " onclick=\"print()\""
-
-
-## In a browser: open the tab the booklet will be shown in, now, while
-## the click that asked for it still counts as a click. A page may only
-## open a window in answer to one, and the pictures take seconds.
-static func open_tab() -> void:
-	if not OS.has_feature("web"):
-		return
-	JavaScriptBridge.eval("""
-		window.brickworksBooklet = window.open('', '_blank');
-		if (window.brickworksBooklet) {
-			window.brickworksBooklet.document.write(
-				'<title>Building instructions</title>' +
-				'<p style="font:16px system-ui,sans-serif;margin:40px">' +
-				'Drawing your building instructions&hellip;</p>' +
-				'<p id="working" style="font:14px system-ui,sans-serif;margin:0 40px;color:#555"></p>');
-		}
-	""", true)
-
-
-## Say in the tab opened for the booklet how it is going: that tab is in
-## front while the booklet is drawn, and it said only "Drawing your
-## building instructions…" for as long as that took.
-static func tell_tab(line: String) -> void:
-	if not OS.has_feature("web"):
-		return
-	JavaScriptBridge.eval("""
-		(() => {
-			const tab = window.brickworksBooklet;
-			const said = tab && !tab.closed && tab.document.getElementById('working');
-			if (said) said.textContent = %s;
-		})();
-	""" % JSON.stringify(line), true)
-
-
-## Whether the tab opened for the booklet is there, in a browser.
-static func tab_open() -> bool:
-	if not OS.has_feature("web"):
-		return false
-	return bool(JavaScriptBridge.eval(
-		"!!(window.brickworksBooklet && !window.brickworksBooklet.closed)", true))
-
-
-## Close the tab opened for a booklet that was stopped or came to nothing.
-static func close_tab() -> void:
-	if not OS.has_feature("web"):
-		return
-	JavaScriptBridge.eval("""
-		if (window.brickworksBooklet && !window.brickworksBooklet.closed) window.brickworksBooklet.close();
-		window.brickworksBooklet = null;
-	""", true)
 
 
 ## Put an Instructions button on the toolbar, after the button that says

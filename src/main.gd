@@ -6149,22 +6149,25 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	else:
 		job.say("Planning the booklet…")
 		job.can_cancel = true
+	# Busy from here (_booklet_busy): what draws it is made frames later.
+	_booklet_starting = true
 	await job.shown()
-	var maker: Node = Later.make(&"BookletMaker")
+	# What draws it, compiled on a worker with the bar up the first time
+	# (Later.script_in_background): in the press it held the bar back.
+	var maker: Node = (await Later.script_in_background(&"BookletMaker", job)).new()
 	maker.library = _library
 	maker.job = job
 	# The hidden parts' colours, shown where each group starts.
 	maker.marks = HiddenColours.live_marks(_store.hidden_scheme, _world, _library,
 		_store.scenery)
 	add_child(maker)
-	maker.progress.connect(func(_said: String) -> void:
-		Later.script(&"BookletMaker").tell_tab(job.line()))
+	maker.progress.connect(func(_said: String) -> void: BookletTab.tell(job.line()))
 	var file_name: String = title.to_snake_case() + "_instructions.html"
 	# Into its file and in front of the reader as it is drawn (BookletOut):
 	# the last booklet's pages, kept for its tab, go.
 	if is_instance_valid(_booklet_out):
 		_booklet_out.queue_free()
-	_booklet_out = Later.make(&"BookletOut")
+	_booklet_out = (await Later.script_in_background(&"BookletOut", job)).new()
 	add_child(_booklet_out)
 	var show: bool = not given and Later.script(&"BookletMaker").open_when_written
 	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
@@ -6172,6 +6175,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	maker.wrote.connect(Callable(_booklet_out, &"take"))
 	_booklet_out.save_wanted.connect(_save_booklet)
 	# A section's own booklet (SectionsUi) leaves the rest of the model out.
+	_booklet_starting = false
 	var made: String = await maker.make(_world,
 		skip if skip is Dictionary else _store.scenery, title)
 	var steps: int = maker.document.steps if maker.document != null else 0
@@ -6367,7 +6371,7 @@ func _brickify_booklet(path: String, title: String) -> void:
 		_brickify.tell("already drawing the booklet…")
 		return
 	if OS.has_feature("web"):
-		Later.script(&"BookletMaker").open_tab()
+		BookletTab.open()
 	var skip: Dictionary = _outside_of(path)
 	skip.merge(_store.scenery)
 	_brickify.tell(await _export_booklet("", null, skip, title))
@@ -6382,14 +6386,17 @@ func _booklet_wanted() -> void:
 	if _share_view != null and _share_view.played:
 		_play_reset()
 	if OS.has_feature("web"):
-		Later.script(&"BookletMaker").open_tab()
+		BookletTab.open()
 	await _export_booklet()
 
 
-## Whether a booklet is being drawn (BookletMaker.busy), without loading
-## what draws one.
+## Whether a booklet is being drawn (BookletMaker.busy), or its bar is up
+## and what draws it is being made, without loading what draws one.
 static func _booklet_busy() -> bool:
-	return Later.loaded(&"BookletMaker") and Later.script(&"BookletMaker").busy
+	return _booklet_starting or Later.loaded(&"BookletMaker") and Later.script(&"BookletMaker").busy
+
+
+static var _booklet_starting: bool = false
 
 
 ## What was built, without the baseplate it was built on. Falls back to

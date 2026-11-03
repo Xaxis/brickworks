@@ -4047,6 +4047,209 @@ check on top of a stacked body does not change how the body reads.
 Results: `bench/results/realset-2026-11-02-d10base/`, `-d10bar/` and
 `realset-2026-11-02-d10base-vs-d10bar/`.
 
+### Technique: the app sets big flat faces in as panels, a smoke and no bench (2026-11-02, `85f26c45`, not benched)
+
+Told how sets panel a face, one session in five built a panel (design10,
+branch `panel10`). So this arm has the app do it. After each submit_design
+and edit_model, it finds each big plain face: three studs across and five
+bricks tall or more, nothing in front of it, and two studs thick or backed by
+bricks. It sets that face in as a panel: the outer row of the courses it
+covers is taken up and laid again in one-wide bricks. The row behind becomes
+side-stud bricks (87087, 11211, 30414). A plate panel faced in tiles stands
+on them, flush with the face, each tile in the colour the face had there.
+The course below it becomes two plates and a tile. Nothing stands proud,
+because 369b006's proud skins took likeness from 30% to 10%. Each panel's
+laying is its own undo step. The answer names every panel, and
+`edit_model {"unpanel": [...]}` takes one back exactly.
+
+**How it ran.** A locked snapshot, `snapd11panel` at `85f26c45`, was
+imported first. It ran 5 subjects on the owner's path, against design10's
+base arm `d10pbase` (`81a95fc2`, main). No session hit a login lapse or a
+limit. No script errors.
+
+**What the app laid.** It laid 10 panels, on 2 of the 5 subjects:
+
+- 21033-1 Chicago: 8 panels, 3-4 studs by 6-12, on four towers. The session
+  kept every one and built on.
+- 9471-1 Uruk-hai: 2 panels on the wall. Two more failed at laying: the trial
+  on the copy passed, but the real edit found a one-wide 3622 overlapping a
+  side-stud brick by 3 LDU. Both were refused cleanly.
+- 21023-1 Flatiron and 7746-1 roller have no plain face: wedge plates, and
+  curved slopes on the drum. The bee's head this time is about four bricks
+  tall, under the five a panel needs.
+
+No session unpanelled anything.
+
+**Share of parts on their side** (`tools/style.py`, sideways):
+
+| subject | d10pbase | d11panel | set |
+|---|---|---|---|
+| 21033-1 Chicago (panelled) | 0.8% | 25.4% | 34.5% |
+| 9471-1 Uruk-hai (panelled) | 9.2% | 16.3% | 14.2% |
+| 40270-1 Bee | 9.4% | 14.9% | 42.3% |
+| 7746-1 Roller | 5.7% | 9.0% | 34.7% |
+| 21023-1 Flatiron | 0.0% | 0.2% | 70.3% |
+| median | 5.7% | 14.9% | 34.7% |
+
+**Verdicts won**, of 10 per dimension (5 subjects, both orders):
+
+| dimension | d10pbase | d11panel | the 2 panelled subjects, base / panel |
+|---|---|---|---|
+| likeness | 4 | 6 | 3 / 2 |
+| surface | 0 | 1 | 0 / 0 |
+| colour | 1 | 4 | 1 / 0 |
+| technique | 0 | 3 | 0 / 0 |
+| creativity | 2 | 5 | 1 / 1 |
+| overall | 1 | 4 | 1 / 0 |
+
+Every rise came from subjects the app never touched. The bee won 11 of 12,
+with a new design: a heart, a smile and heart-shaped wings. Flatiron won 9
+of 12, a window-banded tower in place of base's tan stack. On the two subjects
+it panelled, nothing was won and Chicago's likeness went from 2/2 to 0/2.
+
+**What the judge said.** Chicago's session packed its towers into one wall.
+The judge called it "a dense wall of squat brick blocks"
+with "large faces of exposed running-bond brick", and "mostly stacked
+bricks". The Uruk-hai wall was "a plain stacked-brick wall". The panels did
+not read as panels. Each is a 1-stud tile row stood on edge, 20 LDU tall
+against a course's 24. Its tiles run in a running bond and take the face's
+own colour, so from the front it looks like the brickwork it replaced. The
+front and close renders show this: Chicago's panelled white tower looks
+like brick.
+
+**Not benched.** The side share rises where the app lays panels. But the
+judge does not credit them, and every win came from sessions the lever never
+touched. Kept on branch `design11`. A face the judge reads as a panel needs a
+different look: long tiles in a stack bond, or grille and ribbed tiles,
+banded or set off in another colour. Sets do that ("smooth vertical tiles",
+"ribbed tile facades").
+
+Results: `bench/results/realset-2026-11-02-d11panel/`, against
+`realset-2026-11-02-d10pbase/`.
+
+### Colour: the app counts the colours its picture shows, against real sets of its theme, on the 44 of proof (2026-11-02, `3bf02433`, ready: masses no bigger, a small gain)
+
+The read above found one feature that separates a colour verdict won from
+one lost: colours seen in the picture, against what the set shows. The set
+is held out, so this lever takes the number from sets that are not
+(`d23705a6`, `3bf02433`):
+
+- `ColoursSeen` (`src/ai/colours_seen.gd`) counts the colours over 1% of the
+  model's pixels in the corner picture the app already takes for `submit_design`,
+  edits and `view_model`, by the read's method: each model pixel to the
+  nearest of the model's solid colours as drawn, lit 0.7 to 1.1 times. It
+  takes about 50 ms.
+- The reference is real sets of the subject's theme within 1.6 times its
+  parts (2.5 times when fewer than 8), else of its kind, held-out sets left
+  out. A set's count comes from its inventory: colours at 1.5% or more of
+  its parts. That proxy matches the read's picture count on the 44 sets
+  (r 0.84, mean error 1.2 colours). `assets/knowledge/set_colours.json.gz`
+  holds every set's colours (`tools/set_colours.py`).
+- Over the connector the app never hears the brief, so the theme is read
+  from what the session says: the description it passes, the subjects of its
+  calls, the model's name. Themes named as "LEGO City", "City-style" or
+  "City sets" come first, then the plain name. It reads the right theme on
+  40 to 42 of the 44 bench designs.
+- When the design shows fewer colours than the median of those sets, the
+  answer says so with the numbers, then names up to five colours those sets
+  add a little of that the design does not show, and the glass apart. It
+  ends: "Add them as real sets do, in small parts … Don't recolour a wall, a
+  roof or a hull: the big masses keep their colour." The whole review says
+  it too; `look_at_model` says it only when it changed. Nothing is recoloured
+  by the app.
+- `src/dev/colours_seen_probe.gd` proves it headless (27 checks).
+
+**The smoke.** On 5 subjects the lever's largest one-colour region was
+bigger than the last base's (0.42 against 0.31 of the model), so the paired
+44 was to decide whether the colour gain comes with bigger masses. A first
+smoke was stopped when 7242-1, a street sweeper, was measured against
+"street sets": the app had read the theme from a brief it never hears.
+`3bf02433` reads it from what the session says.
+
+**How it ran.** Two arms at once: the base on a locked snapshot of the
+lever's parent (`snapc10base`, `e2cce845`), the lever on its own
+(`snapc10b`, `3bf02433`), both imported first. Same 44, same path
+(`--via relay --no-claude-code`), one design a subject, 2 at a time each,
+ports 9750-9759 and 9760-9769, 2026-11-02 12:56Z to 21:23Z, audited after.
+No session hit a limit or a lapsed login, none was dropped, and every one
+reached the app's tools. 42063-1, a motorcycle of 661 parts, hit the
+45-minute timeout in both arms with a model saved. No tool result carried a
+held-out set's number. The base's Gandalf session wrote "as in set 9469"
+into its own description, from what it knew, and the review echoed it; seven
+sessions searched the index for their own set and found nothing. Sessions
+took a median 18 minutes (base) and 16 (lever).
+
+| dimension | base (95%) | colours seen against real sets (95%) | lever minus base, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 25% (15-39) | 31% (19-45) | +6 (-5, +16) | 7 / 3 |
+| surface | 33% (21-48) | 28% (17-43) | -5 (-18, +8) | 7 / 9 |
+| colour | 27% (16-42) | 31% (19-45) | +3 (-5, +11) | 6 / 4 |
+| technique | 11% (5-24) | 12% (6-25) | +1 (-5, +7) | 3 / 2 |
+| creativity | 44% (31-59) | 47% (33-61) | +2 (-8, +12) | 8 / 7 |
+| overall | 23% (13-37) | 24% (14-38) | +1 (-7, +10) | 4 / 5 |
+
+No head to head was judged. For scale, this base against the last one
+(d9base, near the same code, 11-01): surface -8 (-20, +3), overall -5
+(-15, +6), colours seen -0.17. Two runs of one app differ by as much as this
+lever moved.
+
+**The pictures,** read as the read above read them, mean of the three views,
+lever minus base paired over subjects (95%, resampling subjects):
+
+| | base | lever | lever minus base (95%) |
+|---|---|---|---|
+| largest one-colour region, share of the model | 0.287 | 0.250 | -0.036 (-0.075, +0.001) |
+| ...bigger in the lever's design | - | 19 of 44 | - |
+| most-seen colour's share | 0.415 | 0.404 | -0.011 (-0.037, +0.013) |
+| colours seen over 1% (the sets: 7.97) | 7.30 | 7.71 | +0.41 (-0.04, +0.85) |
+| designs at or above their set's colours seen | 18 of 44 | 22 of 44 | +4 (-2, +10) |
+| colour verdicts won, at or above the set | 10 of 36 | 18 of 44 | - |
+| ...below the set | 14 of 52 | 9 of 44 | - |
+| colours in the model file, median | 10 | 11 | - |
+| parts, median / shaped share | 318 / 25.3% | 291 / 23.6% | - |
+
+**What the sessions heard and did:**
+
+| | lever |
+|---|---|
+| told the design shows fewer colours than its sets | 33 of 44 sessions, 51 times |
+| edits after the finding / parts they added | 337 / 4,813 |
+| ...in a colour the finding named | 775 (16%), in 139 edits |
+| ...in the design's mass colour (its largest in the final picture) | 1,583 (33%; the final models: 39%) |
+| parts recoloured after the finding / to a named colour / to the mass colour | 568 / 167 / 98 |
+
+The first finding came early, a median 14% of the way through a session's
+calls (quartiles 7% and 22%), with the model still going up, so the parts
+added after are most of the build. They went into the mass colour less often
+than the models as a whole, and into a named colour one time in six.
+
+**Ready: the masses are no bigger, and colour points up.** The criterion
+that failed on the five does not fail on the 44: the lever's largest region
+is smaller, by 0.036 (-0.075, +0.001), and bigger on only 19 subjects. The
+colour gain is small and inside the noise: colours seen +0.41 (-0.04,
++0.85), 22 designs at or above their set against 18, the colour verdict +3
+(-5, +11) with 6 subjects better and 4 worse. No dimension fell beyond
+noise; surface -5 (-18, +8) is the one that leans down, with the shaped
+share 25% to 24%, as in the last colour round. The pictures agree. Where the
+lever's region grew it is mostly a body colour chosen for the subject:
+Flatiron in tan where the base striped grey and black, an Air Mail on a
+green plate, Gandalf's pony in the cart's reddish brown. Of the 98 parts
+recoloured to a mass colour after the finding, 41 are 21031-1's: it made its
+tower one grey while refining the spire, though its finding had asked for a
+second grey. Where it shrank the colours are
+added as parts: a blue and gold headdress and obelisks on the Sphinx, a
+black frame under a yellow roller. Unlike the three colour levers before, this one
+moves the count the judge goes by, and the masses do not grow with it.
+Within the lever, designs at or above their set won 41% of their colour
+verdicts and those below 20%; in the base, 28% and 27%.
+
+**Next.** The count rose by less than half a colour, and the sets show 8.
+Most of what a session adds after the finding is the rest of the build, in
+the colours it had planned. A finding said once more at the end, after the
+build, when the design is still short, would reach the parts it names.
+Results: `bench/results/realset-2026-11-02-c10base/`,
+`realset-2026-11-02-c10lever/`; the smoke, `realset-2026-11-02-c10smoke/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
