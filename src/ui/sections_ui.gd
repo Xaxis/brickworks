@@ -496,7 +496,7 @@ func booklet(to: String = "") -> String:
 	if shell.app.call("_booklet_busy"):
 		return "already drawing a booklet"
 	if OS.has_feature("web") and to.is_empty():
-		Later.script(&"BookletMaker").open_tab()
+		BookletTab.open()
 	return await shell.app.call("_export_booklet", to, null, _rest(),
 		"%s - %s" % [shell.bar.model_name(), _evaluated_name])
 

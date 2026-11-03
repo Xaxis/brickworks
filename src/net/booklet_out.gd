@@ -13,7 +13,7 @@
 ##            one over HTTP is drawn as it comes. The pieces are kept, so the
 ##            page can be opened again while the app runs.
 ##   web      into the tab opened as the button was pressed
-##            (BookletMaker.open_tab), by document.write, which draws as it
+##            (BookletTab.open), by document.write, which draws as it
 ##            comes too; with no tab (the browser blocked it), downloaded
 ##            whole at the end.
 class_name BookletOut
@@ -160,7 +160,7 @@ func finish(whole: bool) -> bool:
 			_save_pressed = JavaScriptBridge.create_callback(_pressed_in_tab)
 			JavaScriptBridge.get_interface("window").brickworksBookletSave = _save_pressed
 		elif not whole:
-			BookletMaker.close_tab()
+			BookletTab.close()
 		return true
 	var written: bool = not _unwritable
 	if _file != null:
