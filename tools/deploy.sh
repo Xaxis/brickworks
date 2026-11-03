@@ -561,6 +561,8 @@ authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signi
 # with a 404, now. The app is /app itself (a rewrite, so the address bar
 # keeps it, ?view= and ?model= and all), never cached, since it is what
 # names the build; the build it names under /b/<sha>/ is cached forever.
+# /pricing, in English and each language, is the plans page's name before
+# the owner asked for Plans (2026-11-03), so a link that guessed it lands.
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
@@ -575,6 +577,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/authorize[.]html", "status": 308, "headers": { "Location": "/oauth/authorize" } },
     { "src": "/($langs)/oauth/authorize[.]html", "status": 308, "headers": { "Location": "/\$1/oauth/authorize" } },
     { "src": "/challenges/?", "status": 308, "headers": { "Location": "/challenge" } },
+    { "src": "/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/plans" } },
+    { "src": "/($langs)/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/plans" } },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
 $docs_moved
     { "src": "/docs/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/docs/\$1" } },

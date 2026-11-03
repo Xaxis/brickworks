@@ -3267,8 +3267,8 @@ plan with Claude as the client.
   gear trains went on the page the day Tools, Simulate mechanism merged, not
   before. Every
   page shares `/site.css` (every text colour 4.5:1 or better on its background
-  in both schemes), a skip link, a sticky bar (Gallery, Library, Docs and
-  Pricing, then Open the app and Sign in, since site356) with a `<details>`
+  in both schemes), a skip link, a sticky bar (Gallery, Docs and Plans,
+  then Open the app and Sign in, since site356) with a `<details>`
   menu under 900 px (no script: the CSP runs none inline) whose last item keeps the 16 px
   gutter at every phone width (under 390 px the mark is the cube alone, its
   name still Brickworks), and one footer: the header and
@@ -3395,7 +3395,9 @@ plan with Claude as the client.
   (`api/plans.js`, `supabase/plan_interest.sql`) and `plan interest counts`
   (`tools/plan_interest.py`): Plans (2026-10-28, plans323; Free and Pro
   since 2026-10-29, gate M1 of docs/PLANS.md, plansite346; a pricing page
-  since site356: Monthly or Yearly, yearly first, `[data-billing]` showing
+  since site356, called Plans in its nav, title and heading since
+  plansname, 2026-11-03, with /pricing and /<lang>/pricing a 308 to it:
+  Monthly or Yearly, yearly first, `[data-billing]` showing
   `[data-billed]`; every row side by side in `#compare`, a `.table.matrix`;
   when GET /api/plans says Pro is for sale, `web/plans.js` shows the
   `data-when="sale"` parts, Pro's Upgrade to Pro going to
