@@ -3,7 +3,7 @@
 ## sliders and key strips, and drags of the real parts in the view.
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/motions_panel_probe.gd
-##   ... -- OUT_DIR   (pictures and files; bench/results/motions2-2026-10-20 when not given)
+##   ... -- OUT_DIR   (pictures and files; shots/motions_panel when not given)
 ##
 ##  1. 1484-1's doors: the panel suggests opening them, Keep keeps it (one
 ##     undo step), Play opens them in the view and leaves them open, Play
@@ -61,7 +61,7 @@ func _run() -> void:
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	var args: PackedStringArray = OS.get_cmdline_user_args()
-	_out = args[0] if not args.is_empty() else "/mnt/Projects/brickworks/bench/results/motions2-2026-10-20"
+	_out = args[0] if not args.is_empty() else ProjectSettings.globalize_path("res://shots/motions_panel")
 	DirAccess.make_dir_recursive_absolute(_out)
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)

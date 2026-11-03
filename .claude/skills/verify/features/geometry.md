@@ -816,7 +816,7 @@ along the axle") dragged along its axle: the gear slides, the axle stays, it sto
 mesh, and then turns 1:1. On 8c0cc501, before this, 34 of 42 checks fail. Windowed
 (`godot --path . --resolution 1400x900 --script src/dev/gear_mesh_probe.gd`, in the
 app itself) each pair is pictured built and turned in `GEAR_MESH_OUT`
-(bench/results/gears186 by default); `-- only=worm` runs the pairs whose name holds
+(shots/gear_mesh by default); `-- only=worm` runs the pairs whose name holds
 it, `only=why`, `only=slide`.
 `simulate mechanism` (`src/ui/simulate_panel.gd` over `src/assembly/simulation.gd`,
 docs/MECHANISMS.md phases P1b and P1c's readout): Tools, Simulate mechanism…, beside
