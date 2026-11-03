@@ -851,7 +851,10 @@ func _on_spent(model_id: String, tokens: Brain.Spend) -> void:
 ## both layouts without touching the key this machine holds.
 func _show_for_key(has_key: bool) -> void:
 	# Another AI chosen in Settings, AI, designs with its own key: the brief
-	# box is for it, and Claude's key form and connector stand aside.
+	# box is for it, and Claude's key form stands aside. Connect your AI does
+	# not: the AI app a person connects (ChatGPT's way in among them) and a
+	# model on a key are two different things, and choosing the second hid
+	# the first (docs/ANY_ASSISTANT.md, C).
 	var elsewhere: bool = designing_elsewhere()
 	has_key = has_key or elsewhere
 	# On a desktop with Claude Code the brief box stays: "My Claude" sits
@@ -869,9 +872,10 @@ func _show_for_key(has_key: bool) -> void:
 	if _connector_form != null:
 		_connector_form.alone(not _key_form.visible)
 	# The other way in, offered beside the key, and kept on screen while it
-	# is on so the address and what Claude is doing stay in view.
+	# is on so the address and what your AI is doing stay in view; beside
+	# another AI's brief box too, which is not a way to connect one.
 	if _connector_form != null:
-		_connector_form.visible = not has_key or _connector_form.is_on()
+		_connector_form.visible = not has_key or elsewhere or _connector_form.is_on()
 	# With nothing to show, the conversation took the panel's height and
 	# pushed the key form to its foot under an empty dark field. Folded
 	# away, the form is the first thing under the title.
@@ -1329,7 +1333,7 @@ func use_connector(connector: ClaudeConnector) -> void:
 	_key_form.get_parent().move_child(_key_instead, _connector_form.get_index() + 1)
 	connector.listening.connect(func(on: bool, _address: String) -> void:
 		if not on and _claude_card():
-			_close_claude("Connector off", "Switched off. Claude cannot reach "
+			_close_claude("Connector off", "Switched off. %s cannot reach " % _claude_who
 				+ "this tab until it is switched on again.")
 		_show_for_key(OwnKey.has_key()))
 	connector.called.connect(_on_claude_called)
@@ -1360,6 +1364,8 @@ var _claude_on: bool = false
 var _claude_busy: bool = false
 var _claude_built: bool = false
 var _claude_last: int = 0
+## Whose card is open: the caller's name.
+var _claude_who: String = "Claude"
 ## How long Claude can be quiet before its card says it is done. It thinks
 ## between calls, sometimes for a minute; a probe shortens this.
 var claude_quiet_ms: int = 90000
@@ -1374,25 +1380,26 @@ func _on_claude_called(tool: String, arguments: Dictionary, _chat: String = "") 
 		return
 	_claude_last = Time.get_ticks_msec()
 	var step: String = ConnectorForm.said(tool, arguments)
+	# Who is calling, as the relay names it: Claude when no one is named.
+	var who: String = _connector.caller if _connector != null else "Claude"
 	# The app's own design has the card; say it alongside instead.
 	if _working:
-		note("Claude: " + step)
+		note("%s: %s" % [who, step])
 		return
 	if not _claude_card():
 		_claude_on = true
 		_claude_built = false
+		_claude_who = who
 		_open_run(true, func() -> void:
 			if _connector != null:
 				_connector.stop(true))
 		_run_keep = 500
-		_run_title.text = "Claude is building"
+		_run_title.text = "%s is building" % who
 		_run_now.text = ""
-		_run_hint.text = ("Claude, on your plan, is calling Brickworks from "
-			+ "your chat. Each step shows here and the model appears on the "
-			+ "baseplate, in view or not.")
-		_run_stop.text = "Stop Claude in this tab"
-		_run_stop.tooltip_text = ("Claude's next call is refused. What it "
-			+ "has built stays.")
+		_run_hint.text = ("%s is calling Brickworks from your chat. Each step "
+			+ "shows here and the model appears on the baseplate, in view or not.") % who
+		_run_stop.text = "Stop %s in this tab" % who
+		_run_stop.tooltip_text = "%s's next call is refused. What it has built stays." % who
 		_show_for_key(OwnKey.has_key())
 	_claude_busy = true
 	_run_clock.text = _elapsed()
@@ -1423,7 +1430,7 @@ func _close_claude(how: String, summary: String) -> void:
 	_claude_on = false
 	_claude_busy = false
 	_close_run(how, summary, built,
-		"Ask Claude for a change in your chat, or carry on building it by hand.")
+		"Ask %s for a change in your chat, or carry on building it by hand." % _claude_who)
 
 
 ## Keep the newest step in view as the card grows.
@@ -1535,9 +1542,9 @@ func _process(_delta: float) -> void:
 		# Quiet for long enough, with nothing in hand: Claude has finished,
 		# or stopped to talk to the person.
 		if not _claude_busy and Time.get_ticks_msec() - _claude_last > claude_quiet_ms:
-			_close_claude("Done" if _claude_built else "Claude stopped",
-				"Claude has stopped calling for now." if _claude_built
-				else "Claude has stopped calling. Ask it to build in your chat.")
+			_close_claude("Done" if _claude_built else "%s stopped" % _claude_who,
+				"%s has stopped calling for now." % _claude_who if _claude_built
+				else "%s has stopped calling. Ask it to build in your chat." % _claude_who)
 	if not _working:
 		return
 	if _run != null and is_instance_valid(_run):

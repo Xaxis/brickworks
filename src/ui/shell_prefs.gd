@@ -104,6 +104,9 @@ const DEFAULTS: Dictionary = {
 	# Settings, Language (Language): "en", "de", "fr" or "es". English, as
 	# the app is written, until somebody chooses.
 	"language": "en",
+	# The AI app Connect your AI connects (Assistants' id), Claude until
+	# another is chosen.
+	"connect_with": "claude",
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

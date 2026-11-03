@@ -32,6 +32,21 @@ This connects once for your account; the Claude desktop and mobile apps have it 
 
 Connected before, and Brickworks is still in your Claude? Press **Connect** on that one under *Your connectors* instead of adding another: it keeps the tool permissions you chose. **Already in your Claude? Open your connectors**, under Connect Claude, takes you there.
 
+## ChatGPT, Gemini and other AI apps {#your-ai}
+
+*Connect your AI*, at the foot of the assistant panel, starts on Claude. Choose the app you use under **Your AI**, then press **Connect**:
+
+- **Claude, Cursor, VS Code:** the app's own link opens with Brickworks filled in.
+- **Claude Code, Codex, Gemini CLI:** the command that adds Brickworks is copied, to run in a terminal.
+- **ChatGPT, Gemini, Le Chat, Perplexity, Grok:** the address is copied and the app's own page opens, to paste it in.
+- **Another app:** the address is copied, for any app that takes a remote MCP server and signs in with OAuth.
+
+The app's steps, which of its plans can add one, and what it cannot do yet are shown under the button. Then sign in to Brickworks and **Allow**, as for Claude.
+
+<!-- covers
+ui:connect your AI
+-->
+
 ## Claude Code {#claude-code}
 
 ```sh
