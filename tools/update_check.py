@@ -201,7 +201,8 @@ def lay_out(serve_dir: Path, old: Path, new: Path, port: int) -> dict[str, str]:
     scenario("offhost", release.sign_update_manifest(
         manifest(B, [entry(new, base + "redirect-off/files/" + new.name)])),
         "a redirect to example.com")
-    scenario("redirect", release.sign_update_manifest(
+    # Not named "redirect": the server sends /redirect/... on to /...
+    scenario("hop", release.sign_update_manifest(
         manifest(B, [entry(new, base + "redirect/files/" + new.name)])),
         "a redirect on the same host, followed")
     scenario("broken", release.sign_update_manifest(
@@ -317,7 +318,7 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             # Update and restart, from a run with a model open: the copy that
             # comes back is the new version, in the same session, on that model.
             mark = run.mark()
-            code, output = run.app(program, "redirect", ["--model=res://models/house.ldr",
+            code, output = run.app(program, "hop", ["--model=res://models/house.ldr",
                                                          "--update=install"])
             text = run.log_after(mark, "report:")
             before = re.search(r"restart: model “([^”]*)”, (\d+) parts; session (\w+)", text)
