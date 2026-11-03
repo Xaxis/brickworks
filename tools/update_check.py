@@ -454,9 +454,12 @@ def free_port() -> int:
 
 
 def option(args: list[str], name: str, default: str = "") -> str:
-    for arg in args:
+    """--name=VALUE or --name VALUE."""
+    for at, arg in enumerate(args):
         if arg.startswith("--%s=" % name):
             return arg.split("=", 1)[1]
+        if arg == "--" + name and at + 1 < len(args):
+            return args[at + 1]
     return default
 
 
@@ -499,7 +502,7 @@ def main(argv: list[str]) -> int:
         return trim(Path(option(args, "out")).resolve())
     if command == "packages":
         versions = option(args, "versions").split(",")
-        platforms = [a for a in args if not a.startswith("--")] or ["linux"]
+        platforms = [a for a in args if a in ("linux", "mac", "windows")] or ["linux"]
         return packages(versions, platforms, Path(option(args, "out")).resolve())
     raise SystemExit("unknown command %s: see --help" % command)
 

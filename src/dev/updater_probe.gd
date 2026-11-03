@@ -350,6 +350,8 @@ func _online() -> void:
 				and not DirAccess.dir_exists_absolute(stage))
 
 	await _check_at("good")
+	_check("in Automatic, the download runs out of sight: %s" % _updater.said,
+		_updater.state == Updater.DOWNLOADING and not _notice.showing())
 	await _until(func() -> bool: return _updater.state in [Updater.FAILED, Updater.READY], 60.0)
 	var item: String = stage.path_join("Brickworks-99.0.0-linux")
 	_check("in Automatic, a good one is downloaded by a redirect on its host, checked and unpacked beside the install: %s"

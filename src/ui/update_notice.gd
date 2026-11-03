@@ -24,6 +24,8 @@ var _notes_link: LinkButton
 var _notes_row: HBoxContainer
 ## The version Later was pressed for: not shown again this run.
 var _put_off: String = ""
+## Whether Update and restart was pressed here: its download is shown.
+var _going: bool = false
 
 
 func _ready() -> void:
@@ -94,8 +96,10 @@ func _show() -> void:
 	var shown: bool = not version.is_empty() and version != _put_off and not updater.reinstalling \
 		and updater.state in [Updater.OUT, Updater.DOWNLOADING, Updater.READY, Updater.FAILED] \
 		and Updates.compare(version, BuildInfo.version()) > 0
-	# Ask first and Automatic say a version is out; Off only once asked (Help).
-	if updater.state == Updater.OUT and Updater.mode() == "auto" and updater.can_install():
+	# Ask first says a version is out; Automatic downloads it unseen and says
+	# it once it is ready; Off only once asked (Help).
+	if updater.state in [Updater.OUT, Updater.DOWNLOADING] and Updater.mode() == "auto" \
+			and updater.can_install() and not _going:
 		shown = false
 	if not shown:
 		visible = false
@@ -130,7 +134,9 @@ func _pressed() -> void:
 	if not updater.can_install():
 		Outside.open_link(Updates.DOWNLOAD)
 		return
-	updater.update_and_restart()
+	_going = true
+	await updater.update_and_restart()
+	_going = false
 
 
 ## Later: put away until the app starts again.
