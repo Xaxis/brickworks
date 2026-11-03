@@ -143,7 +143,7 @@ def test_the_pages_and_the_stand_in_ask_the_same_functions() -> None:
     assert 'if (op === "set_based") return setBased(request, response, origin);' in share
     assert 'if (op === "bases") return await basesPut(request, response);' in share
     assert "${basedHtml(model.based || [])}" in share
-    assert "isBasedOn: basedOn.length ? basedOn : undefined" in share and "based_on: (based || [])" in share
+    assert "isBasedOn: basedOn.length ? basedOn : undefined" in share and "based_on: based && based.map(" in share
     bases = (ROOT / "api/_bases.js").read_text()
     for name in ("model_bases_of", "model_bases_put", "set_based"):
         assert f'"rpc/{name}"' in bases, name

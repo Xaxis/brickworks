@@ -222,7 +222,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { isCron } from "./_cron.js";
-import { db, dbConfigured, reach } from "./_db.js";
+import { db, dbConfigured, orUnknown, reach } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
@@ -783,14 +783,16 @@ export const creditName = (model) => modelledByOf(model.modelled_by)?.name
 /// The profile a published model's credit names, for an answer made from
 /// its row alone: its owner's, while shown in public (supabase/follows.sql
 /// feed_who), and only when it credits anybody. null when there is none,
-/// or the database does not say.
+/// or before follows.sql; a read that fails throws, for its caller to take
+/// as unknown (orUnknown).
 async function profileOf(id, author) {
   if (!author) return null;
   try {
     const rows = await db(`shared_models?id=eq.${id}&select=owner`);
     return rows[0] ? await db("rpc/feed_who", { method: "POST", body: { account: rows[0].owner } }) : null;
-  } catch {
-    return null;
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) return null;
+    throw trouble;
   }
 }
 
@@ -1059,8 +1061,8 @@ export const NEXT_LEAST = 3;
 async function nextOf(origin, id, model, own) {
   const none = { by: [], like: [], gallery: [] };
   if (!own) return none;
-  const ask = (query) => db("rpc/directory_models", { method: "POST",
-    body: { query: { sort: "top", tests: own.test === true, ...query } } }).catch(() => []);
+  const ask = (query) => orUnknown("share", db("rpc/directory_models", { method: "POST",
+    body: { query: { sort: "top", tests: own.test === true, ...query } } }));
   const tags = model.tags || [];
   const [theirs, kin, ...tagged] = await Promise.all([
     model.by ? ask({ owner: own.owner, size: NEXT_MOST + 1 }) : [],
@@ -1262,7 +1264,7 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     Number(model.remixes) ? `<li><a class="pill" href="#remixes">${counted(model.remixes, "remix", "remixes")}</a></li>` : "",
     // In the public collections it is in (docs/SOCIAL.md U11), each a card
     // under Collections.
-    Number(lists.count) ? `<li><a class="pill" href="#collections" data-lists="${Number(lists.count)}">`
+    Number(lists?.count) ? `<li><a class="pill" href="#collections" data-lists="${Number(lists.count)}">`
       + `${asText(say("In {collections}", { collections: counted(lists.count, "collection") }))}</a></li>` : "",
   ].join("");
   const tags = (model.tags || []).map((tag) =>
@@ -1336,7 +1338,7 @@ ${header}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
-  ${pageTabs(model, newest, lists.count, parts)}
+  ${pageTabs(model, newest, lists?.count, parts)}
   <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">${asText(say("About it"))}</h2>
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
     ${tags ? `<ul class="tags pills" aria-label="${asText(say("Tags"))}">${tags}</ul>` : ""}
@@ -1383,10 +1385,10 @@ function mediaStrip(model, picture, photos, small = picture) {
   const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
     + `width="96" height="72" loading="${shown++ < 5 ? "eager" : "lazy"}" decoding="async"></a>`;
   const file = (photo) => `/api/people?op=photo_file&amp;id=${photo.id}`;
-  return `<div class="media-strip scroller" id="pictures" role="group" aria-label="${asText(say("Its pictures"))}"${photos.length ? "" : " hidden"}>`
+  return `<div class="media-strip scroller" id="pictures" role="group" aria-label="${asText(say("Its pictures"))}"${photos?.length ? "" : " hidden"}>`
     + (picture ? thumb(small, say("{name}, as it was published", { name: model.name }),
       `href="${picture}" data-picture="${picture}" aria-current="true"`) : "")
-    + photos.map((photo) => thumb(file(photo), photo.own ? say("{name}, a photo by its designer", { name: model.name })
+    + (photos || []).map((photo) => thumb(file(photo), photo.own ? say("{name}, a photo by its designer", { name: model.name })
       : photo.by ? say("A real build of {name}, by {builder}", { name: model.name, builder: photo.by.name })
       : say("A real build of {name}", { name: model.name }),
     `href="#photo-${photo.id}" data-picture="${file(photo)}"${photo.own ? " data-own" : ""}`)).join("")
@@ -1442,7 +1444,7 @@ function partsSection(at, parts) {
 /// with its cover and whose it is, the one it was put in last first; only
 /// once it is in one, since a part that says nothing is a dead end.
 function listsSection(lists) {
-  if (!Number(lists.count) || !lists.lists.length) return "";
+  if (!lists || !Number(lists.count) || !lists.lists.length) return "";
   const more = Number(lists.count) - lists.lists.length;
   return `<section class="in-lists" id="collections" aria-labelledby="lists-h"><h2 id="lists-h">${asText(say("In collections"))}</h2>`
     + `<p class="note">${asText(say("People put it in {collections}.", { collections: counted(lists.count, "public collection") }))}</p>`
@@ -1470,15 +1472,16 @@ function buildFigure(model, photo) {
 /// photos of their real builds, and the way to add one (web/model-page.js
 /// shows the form to somebody signed in, and to the model's owner the
 /// photos they hid, with a way to hide each). Nobody yet is one line and
-/// the way in, never a count of none.
+/// the way in, never a count of none; photos that could not be read (null)
+/// are not said to be none.
 function buildsSection(id, model, photos) {
   const builds = Number(model.builds) || 0;
   return `<section class="builds" id="builds" aria-labelledby="builds-h" data-id="${id}">
     <h2 id="builds-h">${asText(say("Built by people"))}</h2>
     ${builds ? `<p class="built-line">${asText(builds === 1 ? say("Built to the last step once, by people following its steps in Brickworks.")
       : say("Built to the last step {times}, by people following its steps in Brickworks.", { times: counted(builds, "time") }))}</p>` : ""}
-    ${photos.length ? `<div class="build-strip scroller" role="group" aria-labelledby="builds-h">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
-      : `<p class="note no-builds">${asText(builds ? say("No photos of a real build yet. Built it? Add yours.")
+    ${photos?.length ? `<div class="build-strip scroller" role="group" aria-labelledby="builds-h">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
+      : !photos ? `<p class="note no-builds" hidden></p>` : `<p class="note no-builds">${asText(builds ? say("No photos of a real build yet. Built it? Add yours.")
         : say("Nobody has built it yet. Built it? Add a photo of yours."))}</p>`}
     <div class="add-build" id="add-build" data-id="${id}">
       <button type="button" class="cta ghost" data-add-build>${asText(say("I built it: add a photo"))}</button>
@@ -2071,21 +2074,24 @@ async function read(request, response) {
     if (!shown) return html(response, 404, speak(() => noVersionPage(origin, id, page, asked, versions[0].n, lang)));
     // Whose it is: their own pictures lead its strip, and the page leads on
     // to the rest of their work. The database not answering is no owner.
-    const own = await db(`shared_models?id=eq.${id}&select=owner,test`).then((rows) => rows[0]).catch(() => null);
+    const own = await orUnknown("share", db(`shared_models?id=eq.${id}&select=owner,test`).then((rows) => rows[0] || null));
     // The collections it is in, with their covers: a test model's own page
-    // counts a test account's too, as it offers test models.
+    // counts a test account's too, as it offers test models. Each of these
+    // is beside the model, not it: one not read is null (orUnknown), and
+    // the page says nothing of it.
     const tests = own?.test === true;
-    const [mark, photos, next, { counted, parts }, lists, based] = await Promise.all([markOf(db, id, shown.n),
-      photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page, own),
+    const [mark, photos, next, { counted, parts }, lists, based] = await Promise.all([
+      orUnknown("share", markOf(db, id, shown.n)),
+      orUnknown("share", photosWhere(`model=eq.${id}`, shownPublicly)), nextOf(origin, id, page, own),
       countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
-      listsOf(id, tests).then(async (found) => ({ ...found,
+      listsOf(id, tests).then(async (found) => found && ({ ...found,
         covers: found.lists.length ? await coversOf(found.lists, tests).catch(() => new Map()) : new Map() })),
-      basesOf(id).catch(() => null)]);
+      orUnknown("share", basesOf(id))]);
     // What it is based on, under its remix line and in its structured data.
     page.based = based || [];
     // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
     // then the builds of everybody else, newest first.
-    const ordered = photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
+    const ordered = photos && photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
       .sort((a, b) => Number(b.own) - Number(a.own));
     // Each person on it with their own picture, where they have one.
     await withFaces([page, ordered, next]);
@@ -2105,7 +2111,7 @@ async function read(request, response) {
       const gone = await missing(id);
       return html(response, gone.status, speak(() => gonePage(origin, id, gone.unpublished, lang)), { embed: true });
     }
-    const by = await profileOf(id, row.author);
+    const by = await orUnknown("share", profileOf(id, row.author));
     return html(response, 200, speak(() => embedCard(origin, id, { ...row, by }, lang, words)), { embed: true });
   }
 
@@ -2146,7 +2152,7 @@ async function read(request, response) {
   // What it was remixed from, while that is listed: read as a visitor
   // reads it, so a link taken down, or only ever sent to some people, is
   // not named.
-  const parent = row.remixed_from ? await publishedRow(row.remixed_from) : null;
+  const parent = row.remixed_from ? await orUnknown("share", publishedRow(row.remixed_from)) : null;
   const from = parent && parent.listed ? parent : null;
   // Which version: the newest unless one is asked for, and each version's
   // first changed step, for a builder's place (BuildSteps.changed_since).
@@ -2160,13 +2166,16 @@ async function read(request, response) {
   const model = await getFile(versionFile(id, shown.n, newest, "mpd"));
   if (!model) return response.status(410).json({ error: "This model is no longer shared.", unpublished: true });
   // The mark this version passed, for the viewer's bar; a failure is its
-  // owner's alone (?op=tested), so here it is no mark at all.
-  const [mark, builds, by, based] = await Promise.all([markOf(db, id, shown.n), buildsOf(id), profileOf(id, row.author),
-    basesOf(id).catch(() => null)]);
+  // owner's alone (?op=tested), so here it is no mark at all. Each of these
+  // is beside the model: one not read is null, unknown (orUnknown), and the
+  // model still goes out.
+  const [mark, builds, by, based] = await Promise.all([orUnknown("share", markOf(db, id, shown.n)),
+    orUnknown("share", buildsOf(id)), orUnknown("share", profileOf(id, row.author)), orUnknown("share", basesOf(id))]);
   const tested = publicMark(mark);
   return response.status(200).json({
     tested,
-    // How many have built it to the last step (supabase/builds.sql).
+    // How many have built it to the last step (supabase/builds.sql); null
+    // when that could not be read.
     builds,
     id,
     name: row.name,
@@ -2189,8 +2198,9 @@ async function read(request, response) {
     remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}`,
       version: remixVersion(versions) } : null,
     // What else it credits (api/_bases.js): a set built from or changed, a
-    // work elsewhere; a set's href its page here.
-    based_on: (based || []).map((one) => ({ ...one, href: one.set ? `${origin}${one.href}` : one.href })),
+    // work elsewhere; a set's href its page here. null when that could not
+    // be read, or before model_bases.sql: unknown, not "nothing".
+    based_on: based && based.map((one) => ({ ...one, href: one.set ? `${origin}${one.href}` : one.href })),
     ...links(origin, id),
     model: model.toString("utf8"),
   });

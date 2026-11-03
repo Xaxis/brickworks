@@ -402,9 +402,11 @@ func _open(id: String, with_picture: bool) -> Variant:
 	else:
 		lines.append("Licence: none chosen — learn from it; do not copy it into what you make or share.")
 	# What people did with it, as its page says it and the list says it of
-	# each model: how many built it, and the Tested mark.
-	if shared.has("builds"):
-		lines.append("Built to its last step %s." % _times(int(shared["builds"])) if int(shared["builds"]) > 0
+	# each model: how many built it, and the Tested mark. A count the
+	# server could not read is null, and nothing is said of it.
+	var builds: Variant = shared.get("builds")
+	if builds is float or builds is int:
+		lines.append("Built to its last step %s." % _times(int(builds)) if int(builds) > 0
 			else "Nobody has built it to its last step yet.")
 	if shared.get("tested") is Dictionary:
 		lines.append("Tested: %s." % str((shared["tested"] as Dictionary).get("line", "the app checked it")))

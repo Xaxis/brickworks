@@ -184,7 +184,7 @@
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { billingMode } from "./_billing.js";
-import { db, dbConfigured } from "./_db.js";
+import { db, dbConfigured, orUnknown } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
   SITE_LANGS, TESTS_CACHE, Unacceptable, asText, cardOf, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords,
@@ -699,9 +699,11 @@ async function toggle(request, response, table) {
   } else {
     await db(`${table}?model=eq.${id}&account=eq.${account}`, { method: "DELETE" });
   }
+  // The like is kept: a new count that cannot be read is null, unknown,
+  // not a like refused (shareread, 2026-11-03).
   if (table === "model_likes") {
-    const stats = await db(`model_stats?model=eq.${id}&select=likes`);
-    return response.status(200).json({ id, liked: on, likes: Number(stats[0]?.likes) || 0 });
+    const stats = await orUnknown("people", db(`model_stats?model=eq.${id}&select=likes`));
+    return response.status(200).json({ id, liked: on, likes: stats && (Number(stats[0]?.likes) || 0) });
   }
   return response.status(200).json({ id, favourite: on });
 }

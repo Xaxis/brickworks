@@ -48,8 +48,9 @@ var _next: int = 0
 ## The tool, its requests answered here: a model with each licence.
 class FakeGallery extends GalleryTool:
 	var licence: Variant = null
-	## How many built each model to its last step.
-	var built: int = 3
+	## How many built each model to its last step; null, a count the server
+	## could not read.
+	var built: Variant = 3
 	## What was asked, and with which session.
 	var asked: Array = []
 	## A model with motions of its own, its text, in place of the tower.
@@ -260,6 +261,13 @@ func _played() -> void:
 		% said.get_slice("Nobody", 1).get_slice("\n", 0).left(60),
 		said.contains("Nobody has built it to its last step yet.")
 		and said.contains("Tested: builds step by step · stands on its own."))
+	# A count the server could not read (null, shareread): the model opened,
+	# and nothing said of how many built it, neither nobody nor a number.
+	fake.built = null
+	said = _text_of(await fake.run({"open": "Fake000001", "picture": false}))
+	_check("opened with its count unknown, nothing said of it: %s" % said.get_slice("\n", 0).left(80),
+		said.begins_with("Played Tower (") and not said.contains("Built to its last step")
+		and not said.contains("Nobody has built it"))
 	fake.built = 3
 	said = _text_of(await fake.run({"open": "Fake000001", "picture": false}))
 	_check("opened, how many built it: %s" % said.get_slice("Built to", 1).get_slice("\n", 0),

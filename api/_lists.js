@@ -35,7 +35,7 @@
 // no collections, and everything else is as before.
 
 import { bearer, verify } from "./_auth.js";
-import { db } from "./_db.js";
+import { db, orUnknown } from "./_db.js";
 import { Unacceptable, escapeHtml } from "./_directory.js";
 import { counted, langAt, mosaicHtml, pictureOf } from "./_card.js";
 
@@ -132,13 +132,14 @@ export async function listFollow(request, response) {
 
 /// The public collections model [id] is in: {count, lists: [{id, name,
 /// count, by}]}, the one it was put in last first; with [tests] (a test
-/// model's own page) a test account's too. Nothing before the file is
-/// applied, or when the database does not answer: the page is drawn
-/// without them, never refused.
+/// model's own page) a test account's too. None before the file is
+/// applied; null, unknown, when the database does not answer: the page is
+/// drawn without them, never refused.
 export async function listsOf(id, tests = false) {
   const none = { count: 0, lists: [] };
-  const said = await call("model_lists", { model: id, tests, most: LISTS_SHOWN }, () => none).catch(() => none);
-  if (!said || typeof said !== "object") return none;
+  const said = await orUnknown("lists", call("model_lists", { model: id, tests, most: LISTS_SHOWN }, () => none)
+    .then((found) => (found && typeof found === "object" ? found : none)));
+  if (said === null) return null;
   const lists = (Array.isArray(said.lists) ? said.lists : []).filter((list) => ID.test(String(list?.id)));
   return { count: Math.max(Number(said.count) || 0, lists.length), lists };
 }
