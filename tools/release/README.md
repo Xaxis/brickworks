@@ -79,7 +79,10 @@ is on main and which holds no file git does not track (`retire_wt.sh`). Its
 spec is a file each in `bench/results/release-out/<tag>.train/` (branch,
 after, checks, probes, units, title, deadline), each read only when its step
 comes: a unit merged into the branch meanwhile brings its checks by an edit
-of `checks`. Its log is `<tag>_train.out`, its result `<tag>.train/result`,
+of `checks`. Staging adds to the checks named every one `flows_for.py` (the
+branch's, on its own tree) finds for what the branch changed since it left
+main, or since the merge of it the release before ships, and says which it
+added: rel-m237's hand-picked list missed model_view (2026-11-02). Its log is `<tag>_train.out`, its result `<tag>.train/result`,
 and a train that stops before the ship writes `<tag>.gave_up` as
 `ship_after.sh` does, so the release staged behind it stops too. It runs
 from a copy of itself: a release fast-forwards the main checkout, this

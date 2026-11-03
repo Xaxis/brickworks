@@ -27,7 +27,9 @@ whatever else failed (a timing check never), and what still fails runs on
 the live site only after the preview's battery, as a unit's check, the
 train's mark on the live database gone; status says which already fail
 there. It ships past such a check with --accept only where the live site
-fails it too, naming it in the merge message, the log and status.
+fails it too, naming it in the merge message, the log and status. Staging
+adds to the checks named those flows_for.py finds for what the branch changed,
+and says which.
 """
 
 from __future__ import annotations
@@ -110,6 +112,8 @@ declare -A CMD=(
   [light_render]="tools/web/light_render_flow.mjs --url=$P/app"
   [keys]="tools/web/keys_flow.mjs --url=$P/app"
   [progress]="tools/web/progress_check.mjs --url=$P/app"
+  [site]="tools/web/site_check.mjs --url=$P"
+  [model_view]="tools/web/model_view_check.mjs --url=$P/app"
 )
 echo "$P $WT $*" > "$S/${OUT}_args"
 : > "$S/$OUT.out"
@@ -206,7 +210,7 @@ class Yard:
         self.env = env
         self.git(where, "init", "-q", "--bare", "--initial-branch=main", str(where / "origin.git"))
         self.git(where, "init", "-q", "--initial-branch=main", str(self.r))
-        for name in ("train.sh", "retire_wt.sh", "ship.sh", "preview_lib.sh", "deploy_reads.sh"):
+        for name in ("train.sh", "retire_wt.sh", "ship.sh", "preview_lib.sh", "deploy_reads.sh", "flows_for.py"):
             self.put("tools/release/" + name, (ROOT / "tools" / "release" / name).read_text())
         for name, text in STUBS.items():
             self.put(name, text)
@@ -756,6 +760,39 @@ def test_a_check_or_probe_the_branch_has_no_name_for_is_refused_when_staged(tmp_
         assert not (y.ro / "t-m2.train" / "pid").exists() and y.spec("t-m2", "checks") == ""
         good = y.train("stage", "t-m2", "stage2", "--checks", "io sets_flow", "--probes", "fits offgrid")
         assert good.returncode == 0, good.stdout + good.stderr
+    finally:
+        y.stop()
+
+
+def test_staging_adds_the_checks_whose_flows_reach_what_the_branch_changed(tmp_path):
+    """A change to what a session hears through the connector runs model_view
+    when the lead named only site: rel-m237 changed it under a hand-picked
+    list, and model_view went unrun to rel-m250 (mcpview, 2026-11-02)."""
+    y = Yard(tmp_path)
+    try:
+        # The flow on main, as it was before the change; the change on stage2.
+        y.put("tools/web/model_view_check.mjs", "await fetch(`${site}/api/mcp`, { method: 'POST' });\n")
+        y.git(y.r, "add", "tools/web/model_view_check.mjs")
+        y.git(y.r, "commit", "-q", "-m", "the flow")
+        y.git(y.r, "push", "-q", "origin", "main")
+        y.git(y.r, "checkout", "-q", "stage2")
+        y.git(y.r, "merge", "-q", "--no-edit", "main")
+        y.put("src/net/claude_connector.gd", "class_name ClaudeConnector\n")
+        y.git(y.r, "add", "src/net/claude_connector.gd")
+        y.git(y.r, "commit", "-q", "-m", "what a chat hears first")
+        y.git(y.r, "checkout", "-q", "main")
+        staged = y.train("stage", "t-m2", "stage2", "--checks", "site")
+        assert staged.returncode == 0, staged.stdout + staged.stderr
+        assert "flows_for.py since %s, adds model_view to the checks named" % y.git(y.r, "rev-parse", "--short", "main") \
+            in staged.stdout, staged.stdout
+        assert y.spec("t-m2", "checks") == "site model_view"
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert y.text("t-m2_pv_args").split()[2:] == ["site", "model_view", "frames"], y.logs()
+        # A diff no flow reaches adds none, and says so.
+        again = y.train("stage", "t-m3", "unitB", "--checks", "io")
+        assert again.returncode == 0, again.stdout + again.stderr
+        assert "adds no check to those named" in again.stdout and y.spec("t-m3", "checks") == "io", again.stdout
     finally:
         y.stop()
 

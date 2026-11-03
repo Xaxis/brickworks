@@ -115,12 +115,16 @@ date says when.
   deployment before ready. Two flows proven only against the local server
   held a release three times on a real deployment (2026-10-19). ship.sh holds
   a release with an unwired new flow.
-- **A unit that changes web/, api/ or tools/web/ runs
+- **A unit whose diff flows_for names any check for runs
   `tools/release/unit_preview.sh <its worktree>` on its branch before
   ready** (with `RELEASE_OUT` in its scratch folder), and puts its
-  `pass`/`FAIL` lines in its report. It deploys a preview, never
-  production. Four release previews held on 2026-10-22, about an hour
-  each, every time on a check that read markup a unit had changed.
+  `pass`/`FAIL` lines in its report: `python3 tools/release/flows_for.py
+  --since main`, `src/` included, not only web/, api/ and tools/web/. It
+  deploys a preview, never production. Four release previews held on
+  2026-10-22, about an hour each, every time on a check that read markup a
+  unit had changed; and a change to what a connector chat hears first
+  (src/ only, rel-m237) never ran model_view, the check it broke, until
+  rel-m250 (2026-11-02).
   **Name the checks** (`unit_preview.sh <worktree> CHECK...`): the flows
   for the pages and APIs you changed, about eight at most. When flows_for
   lists more (a shell, site.css or shared-JS change lists nearly all ~40),
