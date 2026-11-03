@@ -860,7 +860,9 @@ def write_deb(folder: Path, target: Path, version: str, epoch: int) -> None:
         "Brickworks %s, https://brickworks.diy\n\nATTRIBUTION.md and THIRD-PARTY-NOTICES.txt "
         "beside this file name everyone whose work it is made with, and carry their "
         "licences in full.\n" % version)
-    for path in root.rglob("*"):
+    # The root too: its mode is the "./" entry, which dpkg has been known to
+    # give the system's / (a group-writable / breaks sshd and sudo).
+    for path in [root, *root.rglob("*")]:
         if not path.is_symlink():
             path.chmod(0o755 if path.is_dir() or path.name == "brickworks.x86_64" else 0o644)
     glibc = glibc_needed((folder / "brickworks.x86_64").read_bytes()) or "2.28"
@@ -1608,7 +1610,7 @@ def inspect_deb(path: Path) -> dict[str, Any]:
                 fields = dict(line.split(": ", 1) for line in text.splitlines()
                               if ": " in line and not line.startswith(" "))
     control.close()
-    contents, links, beside = [], {}, {}
+    contents, links, beside, loose = [], {}, {}, []
     binary, data = None, b""
     wanted = {"usr/lib/brickworks/brickworks.x86_64",
               "usr/share/applications/%s.desktop" % APP_ID,
@@ -1619,6 +1621,9 @@ def inspect_deb(path: Path) -> dict[str, Any]:
         for member in archive:
             name = member.name.lstrip("./")
             contents.append(name)
+            # dpkg gives these to the system's own folders, "./" to / itself.
+            if (member.isdir() and member.mode & 0o7777 != 0o755) or (member.uid, member.gid) != (0, 0):
+                loose.append("%s %o %d:%d" % (name or "/", member.mode, member.uid, member.gid))
             if member.issym():
                 links[name] = member.linkname
             leaf = name.rsplit("/", 1)[-1]
@@ -1648,7 +1653,7 @@ def inspect_deb(path: Path) -> dict[str, Any]:
                             if name.startswith("usr/share/icons/hicolor/")
                             and name.endswith("/apps/%s.png" % APP_ID)),
             "contents": [name for name in contents if not name.endswith("/")],
-            "licences": licences(beside.get)}
+            "loose": loose, "licences": licences(beside.get)}
 
 
 def dmg_reader(path: Path, into: Path) -> tuple[Callable[[str], bytes | None], int]:
@@ -1790,6 +1795,9 @@ def inspect(out: Path) -> list[dict[str, Any]]:
                     path.name, facts["version"], facts["executable"], facts["command"]))
             if sorted(facts["opens"]) != sorted(kind["ext"] for kind in MODEL_TYPES):
                 raise Failed("%s opens only %s" % (path.name, facts["opens"]))
+            if facts["loose"]:
+                raise Failed("%s would install these other than 0755 root: %s" % (
+                    path.name, ", ".join(facts["loose"][:5])))
         elif path.name.endswith(".dmg"):
             facts = inspect_dmg(path)
             say("  %s  %s; %s %s (build %s), %s; architectures %s; oldest macOS %s" % (

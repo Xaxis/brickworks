@@ -537,6 +537,7 @@ def test_the_deb_installs_the_app_its_entry_icons_and_types(tmp_path):
     assert sorted(facts["icons"], key=lambda size: int(size.split("x")[0])) == [
         "%dx%d" % (n, n) for n in (16, 22, 24, 32, 48, 64, 128, 256, 512)]
     assert "usr/share/icons/hicolor/scalable/apps/%s.svg" % release.APP_ID in facts["contents"]
+    assert facts["loose"] == []
     assert facts["licences"]["lacking"] == []
 
 
