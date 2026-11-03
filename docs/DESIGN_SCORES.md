@@ -4047,6 +4047,86 @@ check on top of a stacked body does not change how the body reads.
 Results: `bench/results/realset-2026-11-02-d10base/`, `-d10bar/` and
 `realset-2026-11-02-d10base-vs-d10bar/`.
 
+### Technique: the app sets big flat faces in as panels, a smoke and no bench (2026-11-02, `85f26c45`, not benched)
+
+Told how sets panel a face, one session in five built a panel (design10,
+branch `panel10`). So this arm has the app do it. After each submit_design
+and edit_model, it finds each big plain face: three studs across and five
+bricks tall or more, nothing in front of it, and two studs thick or backed by
+bricks. It sets that face in as a panel: the outer row of the courses it
+covers is taken up and laid again in one-wide bricks. The row behind becomes
+side-stud bricks (87087, 11211, 30414). A plate panel faced in tiles stands
+on them, flush with the face, each tile in the colour the face had there.
+The course below it becomes two plates and a tile. Nothing stands proud,
+because 369b006's proud skins took likeness from 30% to 10%. Each panel's
+laying is its own undo step. The answer names every panel, and
+`edit_model {"unpanel": [...]}` takes one back exactly.
+
+**How it ran.** A locked snapshot, `snapd11panel` at `85f26c45`, was
+imported first. It ran 5 subjects on the owner's path, against design10's
+base arm `d10pbase` (`81a95fc2`, main). No session hit a login lapse or a
+limit. No script errors.
+
+**What the app laid.** It laid 10 panels, on 2 of the 5 subjects:
+
+- 21033-1 Chicago: 8 panels, 3-4 studs by 6-12, on four towers. The session
+  kept every one and built on.
+- 9471-1 Uruk-hai: 2 panels on the wall. Two more failed at laying: the trial
+  on the copy passed, but the real edit found a one-wide 3622 overlapping a
+  side-stud brick by 3 LDU. Both were refused cleanly.
+- 21023-1 Flatiron and 7746-1 roller have no plain face: wedge plates, and
+  curved slopes on the drum. The bee's head this time is about four bricks
+  tall, under the five a panel needs.
+
+No session unpanelled anything.
+
+**Share of parts on their side** (`tools/style.py`, sideways):
+
+| subject | d10pbase | d11panel | set |
+|---|---|---|---|
+| 21033-1 Chicago (panelled) | 0.8% | 25.4% | 34.5% |
+| 9471-1 Uruk-hai (panelled) | 9.2% | 16.3% | 14.2% |
+| 40270-1 Bee | 9.4% | 14.9% | 42.3% |
+| 7746-1 Roller | 5.7% | 9.0% | 34.7% |
+| 21023-1 Flatiron | 0.0% | 0.2% | 70.3% |
+| median | 5.7% | 14.9% | 34.7% |
+
+**Verdicts won**, of 10 per dimension (5 subjects, both orders):
+
+| dimension | d10pbase | d11panel | the 2 panelled subjects, base / panel |
+|---|---|---|---|
+| likeness | 4 | 6 | 3 / 2 |
+| surface | 0 | 1 | 0 / 0 |
+| colour | 1 | 4 | 1 / 0 |
+| technique | 0 | 3 | 0 / 0 |
+| creativity | 2 | 5 | 1 / 1 |
+| overall | 1 | 4 | 1 / 0 |
+
+Every rise came from subjects the app never touched. The bee won 11 of 12,
+with a new design: a heart, a smile and heart-shaped wings. Flatiron won 9
+of 12, a window-banded tower in place of base's tan stack. On the two subjects
+it panelled, nothing was won and Chicago's likeness went from 2/2 to 0/2.
+
+**What the judge said.** Chicago's session packed its towers into one wall.
+The judge called it "a dense wall of squat brick blocks"
+with "large faces of exposed running-bond brick", and "mostly stacked
+bricks". The Uruk-hai wall was "a plain stacked-brick wall". The panels did
+not read as panels. Each is a 1-stud tile row stood on edge, 20 LDU tall
+against a course's 24. Its tiles run in a running bond and take the face's
+own colour, so from the front it looks like the brickwork it replaced. The
+front and close renders show this: Chicago's panelled white tower looks
+like brick.
+
+**Not benched.** The side share rises where the app lays panels. But the
+judge does not credit them, and every win came from sessions the lever never
+touched. Kept on branch `design11`. A face the judge reads as a panel needs a
+different look: long tiles in a stack bond, or grille and ribbed tiles,
+banded or set off in another colour. Sets do that ("smooth vertical tiles",
+"ribbed tile facades").
+
+Results: `bench/results/realset-2026-11-02-d11panel/`, against
+`realset-2026-11-02-d10pbase/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
