@@ -357,6 +357,24 @@ func _gather() -> void:
 	# And a shop's, on the button that sends a list to it.
 	for name: String in ["Claude", "Claude Code", "BrickLink"]:
 		_names[name] = true
+	# Every assistant of Connect your AI, as each would be chosen: its name
+	# kept, and what the panel says of it from assets/assistants.json (its
+	# steps, who may, what it cannot do yet) and around it, translated.
+	for one: Dictionary in Assistants.all():
+		var id: String = str(one["id"])
+		if one.has("called"):
+			_add("the assistants' words", str(one["name"]), null)
+			_add("the assistants' words", str(one["called"]), null)
+		else:
+			_names[str(one["name"])] = true
+		for step: Variant in one.get("steps", []):
+			_add("the assistants' words", str(step), null)
+		for said: String in ["plan", "limits"]:
+			if not str(one.get(said, "")).is_empty():
+				_add("the assistants' words", str(one[said]), null)
+		_add("the assistants' words", ConnectorForm.done_words(str(one["way"]),
+			Assistants.called(id)), null)
+		_add("the assistants' words", "Connect %s" % Assistants.called(id), null)
 	var bin: PartsBin = _main.get("_bin")
 	for selected: bool in [true, false]:
 		if not selected:

@@ -601,9 +601,8 @@ reached the model, whether the card drew, Refresh after a release, what
 Gemini registered with. *Bar:* both build in the owner's tab; the facts
 written into the assistants table and CONNECTING.md.
 
-**U7. P6, the tiers measured** (bench). As PROVIDERS P6, on the owner's
-OpenAI and Google keys with spend limits. *Bar:* the numbers, the presets
-ordered by them.
+**U7. Dropped** (2026-11-03). Every AI in Brickworks is the person's own,
+whatever the provider; we keep no provider keys of ours to bench on.
 
 **U8. Directory submissions** (owner's yes, external sends). Claude's
 directory first; OpenAI's after U6 and U5; Google's when its preview opens
@@ -619,11 +618,12 @@ submissions made, and each listing's Connect, once live, added to the table.
    consumer plans cannot add a custom server, a Business workspace (paid,
    the owner's call) or waiting for the directory.
 2. **A US personal Google account** for Gemini in U6, if one exists.
-3. **API keys** for OpenAI and Google, with spend limits, for U7 (and U5's
-   second half if it uses them).
-4. **Yes or no to each directory** (U8): submissions under the owner's name,
-   OpenAI's identity or business verification, a demo video.
-5. Nothing else: U1 to U5 need no account of the owner's.
+3. **Each directory's submit** (U8): under the owner's name. Claude's: yes
+   (2026-11-03); the unit prepares it and the owner presses submit.
+   OpenAI's (its identity or business verification) and Google's when each
+   is ready.
+4. Nothing else: U1 to U5 need no account of the owner's, and no provider
+   key of ours.
 
 ### Order, and why
 
@@ -633,7 +633,7 @@ behaviour before anything says "ChatGPT" or "Gemini" to a person. Then U3
 and U4 together, the change people see. U5 before any directory, because a
 ChatGPT listing whose designs are blind would be the first impression for
 the largest audience. U6 as soon as U1 and U2 are on a preview, in
-parallel. U7 and U8 last.
+parallel. U8 last.
 
 ## G. The app's own panel, on a plan the person already pays for
 

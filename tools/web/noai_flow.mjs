@@ -247,8 +247,8 @@ ok(s.columns.assistant === true, `its column is open (columns ${JSON.stringify(s
 const back = await assistantControls();
 ok(back.includes("assistant_rail"), `...with its controls: ${back.join(", ")}`);
 let all = await words() || [];
-ok(all.includes("Ask Claude about this…") && all.includes("Claude connector…"),
-  "Edit has Ask Claude about this… and Tools has Claude connector… again");
+ok(all.includes("Ask Claude about this…") && all.includes("Connect your AI…"),
+  "Edit has Ask Claude about this… and Tools has Connect your AI… again");
 await shot("assistant_on");
 ok(await rightClick(), "a right click on a part");
 all = await words() || [];

@@ -60,6 +60,14 @@ if [ "$stand_in" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --billing-stand-in
 if [ "$billing_test" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --billing-test is a unit's preview's alone (--unit)"; exit 2; fi
 if [ "$billing_test" = 1 ] && [ "$stand_in" = 1 ]; then echo "deploy: --billing-test or --billing-stand-in, not both"; exit 2; fi
 if [ "$beta_open" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --beta-open is a unit's preview's alone (--unit)"; exit 2; fi
+# Production is the release train's: ship.sh sets SHIP_DEPLOY for its
+# --promote and --prod. A unit's own --prod put 0.15.0's download page on
+# brickworks.diy with none of its checks run (2026-11-03). By hand, the lead
+# names why in PROD_BY_HAND.
+if { [ "$prod" = 1 ] || [ -n "$promote" ]; } && [ -z "${SHIP_DEPLOY:-}" ] && [ -z "${PROD_BY_HAND:-}" ]; then
+  echo "deploy: production is the release train's (tools/release/ship.sh); a web change ships on a train. By hand: PROD_BY_HAND=\"why\" tools/deploy.sh $*"
+  exit 2
+fi
 
 [ -f .env ] && set -a && . ./.env && set +a
 # A test key only, by its shape (api/_billing.js KEYS): a live key never
@@ -561,6 +569,8 @@ authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signi
 # with a 404, now. The app is /app itself (a rewrite, so the address bar
 # keeps it, ?view= and ?model= and all), never cached, since it is what
 # names the build; the build it names under /b/<sha>/ is cached forever.
+# /pricing, in English and each language, is the plans page's name before
+# the owner asked for Plans (2026-11-03), so a link that guessed it lands.
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
@@ -575,6 +585,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/authorize[.]html", "status": 308, "headers": { "Location": "/oauth/authorize" } },
     { "src": "/($langs)/oauth/authorize[.]html", "status": 308, "headers": { "Location": "/\$1/oauth/authorize" } },
     { "src": "/challenges/?", "status": 308, "headers": { "Location": "/challenge" } },
+    { "src": "/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/plans" } },
+    { "src": "/($langs)/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/plans" } },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
 $docs_moved
     { "src": "/docs/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/docs/\$1" } },

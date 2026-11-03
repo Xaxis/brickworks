@@ -86,8 +86,13 @@ gh run watch -R Xaxis/brickworks-releases "$(gh run list -R Xaxis/brickworks-rel
 tools/release.py publish                       # writes web/releases.json
 python3 tools/site_lang.py                     # web/de/, web/fr/, web/es/ from it
 git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
-  commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html web/_lang web/de web/fr web/es && git push
-tools/deploy.sh --prod
+  commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html web/_lang web/de web/fr web/es
+# Not pushed to main and not deployed by hand: the page is a web change,
+# and it ships on the next release train with its checks (download, site,
+# site_lang and what flows_for names). Send the lead `ready: <sha>`.
+# tools/deploy.sh refuses --prod outside ship.sh: 0.15.0's page went live
+# by this step's old `git push && tools/deploy.sh --prod` with no check run
+# (2026-11-03).
 
 # 7. Check it live: the page, and every address in its manifest.
 node tools/web/download_check.mjs --url=https://brickworks.diy/download

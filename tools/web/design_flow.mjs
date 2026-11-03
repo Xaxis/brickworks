@@ -30,7 +30,7 @@
 //     view: each scrolled to its end and back, as a person would;
 //   a count of none shown ("0 likes", "following 0"): a count is said once
 //     there is one (docs/SOCIAL.md);
-//   a header out of its order: Gallery, Docs, Pricing, Open the
+//   a header out of its order: Gallery, Docs, Plans, Open the
 //     app, then your account (Sign in, or your avatar) last at the far
 //     right; under 900 px Open the app, then Menu (your avatar signed in)
 //     (site356, 2026-10-29: Download went to the footer and Menu). The owner,
@@ -374,7 +374,7 @@ async function headerOrder(page, signedIn) {
   if (!said) return [];
   const wide = page.viewportSize().width >= 900;
   const account = signedIn ? "avatar" : wide ? "Sign in" : "Menu";
-  const want = wide ? ["Brickworks", "Gallery", "Docs", "Pricing", "Open the app", account]
+  const want = wide ? ["Brickworks", "Gallery", "Docs", "Plans", "Open the app", account]
     : ["Brickworks", "Open the app", account];
   const words = said.items.map((one) => one.word);
   const findings = [];

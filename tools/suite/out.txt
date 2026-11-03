@@ -5,6 +5,8 @@
 # on the code as it is goes here only with its finding and the day it was
 # found, as a unit to fix and bring back, under the last heading. A new one
 # goes on a line of its own (merged as a union, as headless.txt).
+# The relay's own (account, connector, tabs, tabpair, together,
+# desktop_cloud) run by hand with tools/relay_probe.sh NAME.
 bakeoff           # spends money: real designs on the API key, dollars a run
 revise            # spends money: a design on the API key
 sideways          # spends money: a design on the API key
