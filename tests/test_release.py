@@ -488,7 +488,7 @@ def test_each_model_extension_is_its_own_mime_type(tmp_path):
     globs = {kind.get("type"): [g.get("pattern") for g in kind.iter(space + "glob")]
              for kind in root.iter(space + "mime-type")}
     assert globs == {kind["mime"]: ["*." + kind["ext"]] for kind in release.MODEL_TYPES}
-    if shutil.which("update-mime-database") and shutil.which("xdg-mime"):
+    if shutil.which("update-mime-database") and shutil.which("gio"):
         share = tmp_path / "share"
         release.desktop_files(share, "brickworks")
         subprocess.run(["update-mime-database", str(share / "mime")], capture_output=True, check=True)
@@ -496,9 +496,7 @@ def test_each_model_extension_is_its_own_mime_type(tmp_path):
         for kind in release.MODEL_TYPES:
             model = tmp_path / ("model." + kind["ext"])
             model.write_bytes(b"0 a model\n" if kind["text"] else b"PK\x03\x04")
-            said = subprocess.run(["xdg-mime", "query", "filetype", str(model)], env=env,
-                                  capture_output=True, text=True).stdout.strip()
-            assert said == kind["mime"], kind["ext"]
+            assert release.content_type(model, env) == kind["mime"], kind["ext"]
 
 
 def test_a_model_s_parts_count_its_sub_models_where_they_are_placed():

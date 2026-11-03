@@ -2185,6 +2185,17 @@ def opens_models(package: Path, base: list[str], env: dict[str, str],
     return said
 
 
+def content_type(path: Path, env: dict[str, str]) -> str:
+    """The type a file manager gives [path]: GIO's, from the shared MIME
+    database, as Files, Nemo and Thunar read it. Not xdg-mime's: outside a
+    desktop it asks file(1), which knows no LDraw, and a runner with no
+    desktop said every .ldr was text/plain while gio opened it with us."""
+    said = subprocess.run(["gio", "info", "--attributes=standard::content-type", str(path)],
+                          env=env, capture_output=True, text=True).stdout
+    found = re.search(r"standard::content-type: (\S+)", said)
+    return found.group(1) if found else ""
+
+
 def double_click_linux(root: Path, env: dict[str, str],
                        models: list[Path]) -> list[tuple[str, bool, str]]:
     """The .deb's files, told to a desktop as dpkg's triggers tell it, then
@@ -2206,8 +2217,7 @@ def double_click_linux(root: Path, env: dict[str, str],
         return said
     for model in MODEL_FIXTURES:
         kind = next(k for k in MODEL_TYPES if k["ext"] == model.suffix[1:])
-        typed = subprocess.run(["xdg-mime", "query", "filetype", str(model)], env=desk,
-                               capture_output=True, text=True).stdout.strip()
+        typed = content_type(model, desk)
         handler = subprocess.run(["xdg-mime", "query", "default", kind["mime"]], env=desk,
                                  capture_output=True, text=True).stdout.strip()
         said.append(("a .%s is %s, which opens in %s" % (kind["ext"], typed or "nothing", handler or
@@ -2532,7 +2542,9 @@ def smoke(package: Path, window: bool, expect: str) -> int:
         program = unpack(package.resolve(), root / "unpacked")
         env = clean_env(root / "home")
         say("── %s, unpacked in a clean home ──" % package.name)
-        say("  %s" % program.relative_to(root))
+        # Where it went: inside the scratch for most, /Applications or
+        # %LOCALAPPDATA%\Programs for the disk image and the installer.
+        say("  %s" % (program.relative_to(root) if program.is_relative_to(root) else program))
         base = [str(program)]
 
         code, output = run_app(base + ["--headless", "--", "--about"], env, 180)
