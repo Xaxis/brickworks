@@ -121,3 +121,32 @@ static func loaded(name: StringName) -> bool:
 ## for null, and without loading a class nothing has made one of.
 static func is_a(thing: Object, name: StringName) -> bool:
 	return thing != null and loaded(name) and is_instance_of(thing, script(name))
+
+
+## What a class's first compile brings in beyond the first screen's, in an
+## order that compiles them one at a time: none names one after it. Read by
+## [method script_paced]; tests/test_later.py keeps each list whole.
+const PIECES: Dictionary[StringName, Array] = {
+	&"HeldSteps": ["res://src/parts/parts_only.gd", "res://src/ai/known_fits.gd",
+		"res://src/ai/exact_check.gd", "res://src/assembly/tested.gd"],
+}
+
+
+## [method script], for work whose bar ([param job]) is up while it loads:
+## its [constant PIECES] first, then its own, each in a slice of the job's
+## (Working.Job.due) and so a frame of its own when the one before took it.
+## Compiled at once, a browser spent 343 ms of one frame on HeldSteps and
+## the four scripts it names as the car's booklet was planned, and the
+## press 180 ms on BookletMaker before the bar was drawn (a preview at
+## load 6, bookletbar, 2026-11-02).
+static func script_paced(name: StringName, job: Working.Job) -> GDScript:
+	var paths: Array = (PIECES.get(name, []) as Array).duplicate()
+	paths.append(PATHS[name])
+	for path: String in paths:
+		if ResourceLoader.has_cached(path):
+			continue
+		if job.due():
+			await job.next()
+		if path != PATHS[name]:
+			load(path)
+	return script(name)

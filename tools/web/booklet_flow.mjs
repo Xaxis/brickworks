@@ -7,7 +7,7 @@
 // toolbar's Instructions (the app publishes where it is,
 // window.brickworksControls.instructions, see main._tell_page), and the app
 // opens a tab while the click still counts as one and writes the booklet
-// into it when its pictures are drawn (BookletMaker.open_tab, fill_tab).
+// into it when its pictures are drawn (BookletTab.open, BookletOut).
 // The web build draws with the Compatibility renderer, which the desktop
 // booklet probe runs under too, but only here does the tab, the click and
 // the browser's own rules about popups get exercised.

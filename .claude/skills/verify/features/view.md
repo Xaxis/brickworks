@@ -1326,9 +1326,14 @@ picture the assistant is shown.
   it with the first piece (a page opened from a file is read only as far as
   it then goes); the pieces are kept, so the page opens again while the app
   runs. On the web it is written into a tab opened as the button was pressed
-  (`BookletMaker.open_tab`, then `document.write` a piece at a time; a page
-  may only open a tab in answer to a click), or downloaded whole if the
-  browser blocked the tab. `booklet_stream_probe` presses Instructions on
+  (`BookletTab.open`, `src/net/booklet_tab.gd`, then `document.write` a piece
+  at a time; a page may only open a tab in answer to a click), or downloaded
+  whole if the browser blocked the tab. The press opens the tab and begins
+  the bar, and nothing else: the maker, `BookletOut` and the planner's
+  `HeldSteps` are compiled a script a frame after the bar is drawn
+  (`Later.script_paced`, `Later.PIECES`, kept whole by `tests/test_later.py`).
+  Compiling the maker in the press held the bar back 158 to 295 ms, over
+  `progress_check.mjs --only=booklet`'s 150 (bookletbar, 2026-11-02). `booklet_stream_probe` presses Instructions on
   the castle and reads the HTTP stream as a browser does: the cover within
   5 s, the first page of steps long before the last, what it read the file
   written, the page opened again whole, no frame of the app's over 500 ms.
@@ -1338,7 +1343,7 @@ picture the assistant is shown.
   While it works the status bar says which part of it and how far (`Working`,
   `BookletMaker.job`: planning, the parts, the views, the steps, counted, with
   Cancel, which closes the tab), and so does that tab, which is the one in
-  front (`BookletMaker.tell_tab`). The plan is `Instructions.plan_paced`
+  front (`BookletTab.tell`). The plan is `Instructions.plan_paced`
   (in a browser with the booklet's tab in front, with the drawing held,
   `GpuFence.hold`: each frame given back drew the model again, a second each
   in software), and each picture is read back once the card has drawn it

@@ -159,6 +159,46 @@ def test_the_connector_made_with_the_window_names_no_other_later_class():
     assert not named, f"ClaudeConnector compiles {', '.join(named)}; reach them with Later.script"
 
 
+def _compiled_from(seeds: list[str], deps: dict[str, set[str]], stop: set[str]) -> set[str]:
+    """Every script compiled with [seeds], not walking into [stop]."""
+    seen = set(seeds)
+    queue = list(seeds)
+    while queue:
+        for nxt in deps.get(queue.pop(), ()):
+            if nxt not in seen and nxt not in stop:
+                seen.add(nxt)
+                queue.append(nxt)
+    return seen
+
+
+def test_later_pieces_are_what_a_first_compile_brings_one_at_a_time():
+    """Later.script_paced compiles a class's PIECES a frame each, then the
+    class, while its bar is up: the booklet's first plan compiled HeldSteps
+    and the four scripts it names in one frame. A script it comes to name
+    that is not in its pieces is compiled in the frame of the one naming it,
+    and so is a piece named by one before it: either makes that frame long
+    again, so each list is everything the class brings beyond the first
+    screen, in an order where none names one after it."""
+    text = (SRC / "later.gd").read_text()
+    table = text[text.index("const PIECES"):]
+    table = table[:table.index("\n}")]
+    pieces = {name: re.findall(r'"(res://[^"]+)"', paths)
+              for name, paths in re.findall(r'&"(\w+)":\s*\[([^\]]*)\]', table)}
+    assert "HeldSteps" in pieces
+    _classes, deps = _graph()
+    later = _later()
+    start = _compiled_from(_first_screen(), deps, set(later.values()))
+    for name, listed in pieces.items():
+        own = later[name]
+        brings = _compiled_from([own], deps, start)
+        order = listed + [own]
+        assert set(order) == brings, (f"Later.PIECES[{name}] is not what it brings: "
+            f"missing {sorted(brings - set(order))}, not brought {sorted(set(order) - brings)}")
+        for n, path in enumerate(order):
+            after = deps[path] & set(order[n + 1:])
+            assert not after, f"Later.PIECES[{name}]: {path} names {sorted(after)}, after it"
+
+
 def _body(text: str, signature: str) -> list[str]:
     """The lines of the function at [signature], unindented, to its end."""
     lines = text.split("\n")
