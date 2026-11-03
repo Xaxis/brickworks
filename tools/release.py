@@ -2273,12 +2273,25 @@ def double_click_mac(models: list[Path]) -> list[tuple[str, bool, str]]:
             parts = logs_say(data / "logs", model, 300) if done.returncode == 0 else -1
             said.append(("a double-click on %s opens it in Brickworks%s: %d parts"
                          % (model.name, ", the app already open" if at else "", parts), parts > 0,
-                         done.stderr))
+                         done.stderr + ("" if parts > 0 else mac_state(data))))
         windows = held_windows(data)
         said.append(("...each in a window of its own: %d open" % len(windows), len(windows) == 2, ""))
     finally:
         end_windows(data)
     return said
+
+
+def mac_state(data: Path) -> str:
+    """What a Mac shows of an app that did not say it opened a model: its
+    processes, the end of its newest log, and any crash report."""
+    listed = subprocess.run(["ps", "-axo", "pid,etime,comm"], capture_output=True, text=True).stdout
+    running = [line for line in listed.splitlines() if "Brickworks" in line]
+    logs = sorted((data / "logs").glob("*.log"), key=lambda log: log.stat().st_mtime)
+    tail = logs[-1].read_text(errors="replace")[-1500:] if logs else "no log in %s" % (data / "logs")
+    reports = sorted((Path.home() / "Library" / "Logs" / "DiagnosticReports").glob("Brickworks*"))
+    # The log first: a check prints only the last lines it is given.
+    return tail + "\n" + "\n".join(running or ["no Brickworks running"]) + "\n" + (
+        "crash reports: " + ", ".join(r.name for r in reports) if reports else "no crash report")
 
 
 def double_click_windows(package: Path, models: list[Path]) -> list[tuple[str, bool, str]]:
