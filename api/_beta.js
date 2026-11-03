@@ -4,7 +4,8 @@
 // The owner: "a 'beta tester' signup that lightly vets people so that we
 // can say have a 'beta promotion' where say the first 100 beta/user
 // signups get a free month". A month of Pro is 30 days of models kept
-// with the account without a limit (Free keeps 25) and the desktop app.
+// with the account without a limit (Free keeps 25) and commercial use; the
+// desktop app is free to everyone (docs/PLANS.md, 2026-11-02).
 //
 // BRICKWORKS_BETA is the switch, read here (betaMode) and nowhere else:
 // "open" takes applications on /beta; anything else (unset, production's
@@ -222,8 +223,8 @@ export function siteOrigin(env = process.env) {
   return String(env.PUBLIC_ORIGIN || "").replace(/\/+$/, "") || "https://brickworks.diy";
 }
 
-const WHAT = "30 days of Pro: any number of models kept with your account (Free keeps 25), and the desktop app for "
-  + "Windows, macOS and Linux, which works with your AI exactly as the web app does, and with Claude Code too.";
+const WHAT = "30 days of Pro: any number of models kept with your account (Free keeps 25), and commercial use: "
+  + "selling instructions, kits, renders or builds made to order, under Pro's terms.";
 const AFTER = "When the month ends you are back on Free. Nothing is charged, no card is asked for, and nothing is "
   + "deleted. If you have more than 25 models kept with your account then, you keep every one of them, but cannot "
   + "add new ones until you are under 25.";
@@ -270,15 +271,14 @@ function wordsOf(kind, data, origin) {
         ASK,
         AFTER,
       ],
-      action: month ? { label: "Download the desktop app", href: `${origin}/download` }
-        : { label: "Open Brickworks", href: `${origin}/app` },
+      action: { label: "Open Brickworks", href: `${origin}/app` },
     };
   }
   if (kind === "started") {
     return {
       subject: "Your month of Brickworks Pro has started",
       paragraphs: [`Pro has launched, and your beta month with it (${spot}). ${month}`, `What you get: ${WHAT}`, AFTER],
-      action: { label: "Download the desktop app", href: `${origin}/download` },
+      action: { label: "Open Brickworks", href: `${origin}/app` },
     };
   }
   if (kind === "reminder") {

@@ -384,11 +384,11 @@ function facts(entry, model, at) {
 
 /// What a search engine reads of the page: schema.org's CreativeWork (never
 /// a Product: there is nothing sold here, no offer and no price) and its
-/// place in the library as a BreadcrumbList. A data block, never run; its
-/// "<" written as \u003c.
+/// place in the gallery's Sets as a BreadcrumbList. A data block, never
+/// run; its "<" written as \u003c.
 function structured(origin, entry, picture, description, at) {
   const url = `${origin}${at}${pageOf(entry)}`;
-  const crumbs = [[say("Library"), `${origin}${at}/library`], ...entry.theme.map((name, n) =>
+  const crumbs = [[say("Gallery"), `${origin}${at}/gallery`], [say("Sets"), `${origin}${at}/library`], ...entry.theme.map((name, n) =>
     [themeSaid(name), `${origin}${at}/library?theme=${encodeURIComponent(entry.theme.slice(0, n + 1).join(" > "))}`]),
   [entry.name, url]];
   const data = [{
@@ -432,8 +432,10 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
   const alternates = [["en", ""], ...SITE_LANGS.map((code) => [code, `/${code}`]), ["x-default", ""]]
     .map(([code, where]) => `<link rel="alternate" hreflang="${code}" href="${escapeHtml(`${origin}${where}${pageOf(entry)}`)}">`)
     .join("\n");
-  const crumbs = [`<a href="${at}/library">${asText(say("Library"))}</a>`, ...entry.theme.map((name, n) =>
-    `<a href="${at}/library?theme=${encodeURIComponent(entry.theme.slice(0, n + 1).join(" > "))}">${escapeHtml(themeSaid(name))}</a>`)]
+  // Where it is: the gallery, its Sets tab, then its theme and sub-themes.
+  const crumbs = [`<a href="${at}/gallery">${asText(say("Gallery"))}</a>`, `<a href="${at}/library">${asText(say("Sets"))}</a>`,
+    ...entry.theme.map((name, n) =>
+      `<a href="${at}/library?theme=${encodeURIComponent(entry.theme.slice(0, n + 1).join(" > "))}">${escapeHtml(themeSaid(name))}</a>`)]
     .join(' <span aria-hidden="true">›</span> ');
   const viewer = model ? `/app?new=1&library=${encodeURIComponent(model.id)}` : "";
   const alt = model ? say("LDraw's 3D model of {name}", { name: entry.name })

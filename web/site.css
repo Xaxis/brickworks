@@ -782,7 +782,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	display: grid; place-items: center; color: var(--ink-faint); font-size: var(--t-small);
 	background: linear-gradient(180deg, var(--panel-hi), var(--bg-soft));
 }
-/* Its marks over the picture's top corner: Tested, how it was made. One
+/* Its marks over the picture's top corner: Tested, 3D. One
    row of them: a mark that does not fit is left off whole, never cut (the
    row is one pill tall, its 3 px edge holding their shadows). They stacked
    two and three rows deep on a phone, 30% of the picture (site273). A
@@ -793,7 +793,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	display: flex; flex-wrap: wrap; gap: var(--s-1);
 }
 .model .marks .pill { box-shadow: 0 1px 3px var(--shade); }
-[data-quiet~="tested"] .model .marks .tested, [data-quiet~="made"] .model .marks .made { display: none; }
+[data-quiet~="tested"] .model .marks .tested { display: none; }
 /* The gallery's like, over the picture's other corner, on a ground of its
    own over any picture; the marks keep clear of it. */
 .model .frame > .icon-btn {

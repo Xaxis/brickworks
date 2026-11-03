@@ -374,7 +374,8 @@ console.log(JSON.stringify({ de: de.body, es: es.body, en: en.body, statuses: [d
         for other, at in (("en", ""), ("de", "/de"), ("fr", "/fr"), ("es", "/es"), ("x-default", "")):
             assert f'<link rel="alternate" hreflang="{other}" href="https://brickworks.test{at}/library/set/{number}">' in page
         # Its links stay in the language; the scripts on it read its words.
-        assert f'<a href="/{code}/library">{words[code]["Library"]}</a>' in page and 'id="site-words"' in page
+        assert (f'<a href="/{code}/gallery">{words[code]["Gallery"]}</a> <span aria-hidden="true">›</span> '
+                f'<a href="/{code}/library">{words[code]["Sets"]}</a>') in page and 'id="site-words"' in page
         assert f'<a class="skip" href="#main">{words[code]["Skip to content"]}</a>' in page
     # What it shows, its words for its scripts left out.
     de, es = (re.sub(r'<script [^>]*id="site-words".*?</script>', "", said[code], flags=re.S) for code in ("de", "es"))

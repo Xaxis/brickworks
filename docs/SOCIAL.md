@@ -561,6 +561,10 @@ tags, which the house's seven did not have (their descriptions say
 "Designed by Claude"): the script's second step, apart and the lead's
 call, appends ai-designed to those seven, so the mark is on every one and
 With the assistant finds them.
+*Changed (2026-11-02, the owner: the site leans less on AI):* no card says
+how a model was made; its own page does, among its facts (With the
+assistant, or Brickify, `api/share.js` madeFact), and the gallery's Made
+filter still finds them.
 
 ### Phase 6: depth (after the first five, in this order)
 

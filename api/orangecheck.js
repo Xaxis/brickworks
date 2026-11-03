@@ -54,7 +54,7 @@
 
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
-import { db } from "./_db.js";
+import { db, reach } from "./_db.js";
 import {
   checkToken, codeOf, connectConfigured, endToken, keepHandle, madeUp, merged, nativeOffered, ocConfigured, provision, spendToken,
   tradeCode,
@@ -82,8 +82,8 @@ function claimsOf(jwt) {
 /// first.
 async function newAccount() {
   const email = `${randomBytes(16).toString("hex")}@oc.brickworks.diy`;
-  const reply = await fetch(`${supabase()}/auth/v1/admin/users`, {
-    method: "POST", headers: admin(), signal: AbortSignal.timeout(10000),
+  const reply = await reach("auth POST admin/users", 10, `${supabase()}/auth/v1/admin/users`, {
+    method: "POST", headers: admin(),
     body: JSON.stringify({ email, email_confirm: true, app_metadata: { orangecheck: true } }) });
   const body = await reply.json().catch(() => ({}));
   if (!reply.ok || !body.id) throw new Error(`auth: no account made: ${reply.status}`);
@@ -91,8 +91,8 @@ async function newAccount() {
 }
 
 async function dropAccount(account) {
-  const reply = await fetch(`${supabase()}/auth/v1/admin/users/${account}`, {
-    method: "DELETE", headers: admin(), signal: AbortSignal.timeout(10000) });
+  const reply = await reach("auth DELETE admin/users", 10, `${supabase()}/auth/v1/admin/users/${account}`, {
+    method: "DELETE", headers: admin() });
   if (!reply.ok && reply.status !== 404) console.error(`orangecheck: an account made for a lost race was not deleted: ${reply.status}`);
 }
 
@@ -106,8 +106,8 @@ async function dropAccount(account) {
 /// session's own token carries the mark and has every request asked after
 /// (oc188's review, L1).
 async function sessionFor(account) {
-  const who = await fetch(`${supabase()}/auth/v1/admin/users/${account}`, {
-    headers: admin(), signal: AbortSignal.timeout(10000) });
+  const who = await reach("auth GET admin/users", 10, `${supabase()}/auth/v1/admin/users/${account}`, {
+    headers: admin() });
   const user = await who.json().catch(() => ({}));
   if (!who.ok || user.id !== account || !user.email) throw new Error(`auth: the account was not read: ${who.status}`);
   if (user.app_metadata?.orangecheck !== true) await mark(account, true);
@@ -122,14 +122,14 @@ async function sessionFor(account) {
 }
 
 async function redeemedFor(account, email) {
-  const link = await fetch(`${supabase()}/auth/v1/admin/generate_link`, {
-    method: "POST", headers: admin(), signal: AbortSignal.timeout(10000),
+  const link = await reach("auth POST admin/generate_link", 10, `${supabase()}/auth/v1/admin/generate_link`, {
+    method: "POST", headers: admin(),
     body: JSON.stringify({ type: "magiclink", email }) });
   const made = await link.json().catch(() => ({}));
   const hashed = made.hashed_token || made.properties?.hashed_token;
   if (!link.ok || !hashed || (made.id || made.user?.id) !== account) throw new Error(`auth: no link: ${link.status}`);
-  const verify = await fetch(`${supabase()}/auth/v1/verify`, {
-    method: "POST", signal: AbortSignal.timeout(10000),
+  const verify = await reach("auth POST verify", 10, `${supabase()}/auth/v1/verify`, {
+    method: "POST",
     headers: { apikey: process.env.SUPABASE_PUBLISHABLE_KEY, "content-type": "application/json" },
     body: JSON.stringify({ type: "magiclink", token_hash: hashed }) });
   const session = await verify.json().catch(() => ({}));
@@ -318,8 +318,8 @@ async function asking(request) {
 /// orangecheck's mark on the account (app_metadata.orangecheck), which is
 /// what has its sessions asked after on every request (api/_auth.js).
 async function mark(account, on) {
-  const reply = await fetch(`${supabase()}/auth/v1/admin/users/${account}`, {
-    method: "PUT", headers: admin(), signal: AbortSignal.timeout(10000),
+  const reply = await reach("auth PUT admin/users", 10, `${supabase()}/auth/v1/admin/users/${account}`, {
+    method: "PUT", headers: admin(),
     body: JSON.stringify({ app_metadata: { orangecheck: on } }) });
   if (!reply.ok) throw new Error(`auth: the account was not marked: ${reply.status}`);
 }

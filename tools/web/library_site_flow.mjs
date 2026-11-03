@@ -224,7 +224,7 @@ try {
         && facts.pills.includes("Star Wars") && facts.pills.includes("2007"));
       check(`${at}: View in 3D and Open in Brickworks open it in the app (${facts.viewer}, ${facts.open})`,
         facts.viewer === `/app?new=1&library=${SET}` && facts.open === facts.viewer);
-      check(`${at}: under the LDraw library and its theme (${facts.crumbs})`, facts.crumbs === "LDraw library › Star Wars");
+      check(`${at}: under the gallery's Sets and its theme (${facts.crumbs})`, facts.crumbs === "Gallery › Sets › Star Wars");
       check(`${at}: more Star Wars sets under it (${facts.next})`, facts.next >= 3);
       const wide = await sideways(page);
       check(`${at}: nothing sideways (${wide} px past the window)`, wide <= 0);

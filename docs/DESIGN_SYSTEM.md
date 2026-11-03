@@ -290,9 +290,10 @@ is on the page, `hidden`, for the script to show.
   the same markup (`tools/web/card_check.mjs` proves it). Its picture is
   4:3, the middle of the 1200 x 630 one by `object-fit: cover`
   (docs/SOCIAL.md D3), with its marks over the top-left corner (`.marks`:
-  the Tested `.pill.good`, and `.pill.made` Assistant or Brickify, read
-  from its tags), one row of them: a mark that does not fit is left off
-  whole. A mark carried by 90% or more of the cards on a page (four cards
+  the Tested `.pill.good`, and 3D on a set LDraw has modelled), one row of
+  them: a mark that does not fit is left off whole. How a model was made
+  is no mark of a card's (2026-11-02): its own page says it among its
+  facts (`.pill.made`, With the assistant or Brickify). A mark carried by 90% or more of the cards on a page (four cards
   or more) tells none apart and is not shown: `<body data-quiet>` names it
   (`quietMarks`; the server's pages say it as they are made, and in a
   browser it is said again whenever cards `modelCard` made come onto the
@@ -655,7 +656,9 @@ is on the page, `hidden`, for the script to show.
   under it with the search beside them, which "/" focuses from anywhere
   but a field (said by a `kbd.hint` on the field until it is used; under
   600 px the lede and the hint are left out and the search sits beside
-  the title) and the tabs, a `.scroller` on a phone, never cut; then
+  the title) and the tabs, a `.scroller` on a phone, never cut, with
+  Top's time (`#window`) at their end, and under 600 px in Filters so
+  they have the row to themselves; then
   **the bar of filters** (`.toolbar`), Filters and the kinds, the themes
   or the collections' orders as a `.pills.scroller.inset`, sticky under
   the header over the whole list (on Builds only a line, which scrolls
