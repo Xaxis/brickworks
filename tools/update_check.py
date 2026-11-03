@@ -88,9 +88,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             super().log_message(format, *args)
 
 
+class Server(http.server.ThreadingHTTPServer):
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        # The app hanging up on a download it refused is the point, not an error.
+        if not isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError)):
+            super().handle_error(request, client_address)
+
+
 def serve(folder: Path, port: int) -> http.server.ThreadingHTTPServer:
     handler = lambda *a, **k: Handler(*a, directory=str(folder), **k)  # noqa: E731
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
+    server = Server(("127.0.0.1", port), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
 
@@ -98,7 +105,8 @@ def serve(folder: Path, port: int) -> http.server.ThreadingHTTPServer:
 # -- manifests ---------------------------------------------------------------
 
 def version_in(name: str) -> str:
-    found = re.match(r"Brickworks-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)-", name)
+    # The system after it, or "-linux" reads as a pre-release.
+    found = re.match(r"Brickworks-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)-(?:linux|macos|windows)-", name)
     if not found:
         raise SystemExit("no version in %s" % name)
     return found.group(1)

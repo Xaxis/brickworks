@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 import release  # noqa: E402
+import update_check  # noqa: E402
 
 HELPER = ROOT / "src" / "net" / "update_helper.sh"
 HAVE_OPENSSL = shutil.which("openssl") is not None
@@ -265,3 +266,9 @@ def test_shellcheck_has_nothing_to_say_of_the_helper() -> None:
     done = subprocess.run(["shellcheck", "-s", "sh", str(HELPER)], capture_output=True, text=True)
     assert done.returncode == 0, done.stdout
 
+
+def test_a_test_package_s_version_is_read_without_its_system():
+    # "-linux" once read as a pre-release: 0.91.0-linux, which no copy says.
+    assert update_check.version_in("Brickworks-0.91.0-linux-x86_64.AppImage") == "0.91.0"
+    assert update_check.version_in("Brickworks-0.91.0-macos-universal.zip") == "0.91.0"
+    assert update_check.version_in("Brickworks-1.0.0-beta.2-windows-x86_64.zip") == "1.0.0-beta.2"
