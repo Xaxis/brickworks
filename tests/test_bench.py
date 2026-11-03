@@ -276,7 +276,11 @@ def test_two_designs_at_once_are_lent_two_ports_and_get_them_back():
     # both were handed BENCH_PORTS' first port, and the second app took 8787.
     from bench import run
     saved = os.environ.get("BENCH_PORTS")
-    os.environ["BENCH_PORTS"] = "9196-9199"
+    # A range of this run's own: the ports' locks are the whole box's, and with
+    # one fixed range two units' ci_gates at once took all four between them,
+    # and the second found "no free port" (2026-11-03).
+    lo = 20000 + (os.getpid() % 4000) * 4
+    os.environ["BENCH_PORTS"] = f"{lo}-{lo + 3}"
     got = []
     try:
         got = [run._free_port(), run._free_port()]
