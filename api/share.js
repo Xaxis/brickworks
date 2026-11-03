@@ -261,7 +261,7 @@ import { challengeLine, withWins } from "./_challenges.js";
 import { bases, basesOf, basesPut, setBased } from "./_bases.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, basedHtml, cardHtml, counted, langAt, marksOf, number, quietMarks, say, themeSaid } from "./_card.js";
+import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, quietMarks, say, themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -1157,6 +1157,18 @@ function shareSheet(origin, id, model, url) {
     image: model.has_image || model.library ? link.image : "", embed: link.embed });
 }
 
+/// How [model] was made, as a fact of its page when it was made with the
+/// assistant or Brickify, and who says so on hover (web/card.js madeOf);
+/// "" for one built by hand.
+function madeFact(model) {
+  const made = madeOf(model);
+  if (made.way !== "assistant") return "";
+  const how = say(made.said === "app" ? "as the app said when it was published" : "as its designer tagged it");
+  return made.by === "brickify"
+    ? `<li class="pill made" title="${escapeHtml(say("Made from a 3D model with Brickify, {how}", { how }))}">Brickify</li>`
+    : `<li class="pill made" title="${escapeHtml(say("Designed with the assistant, {how}", { how }))}">${asText(say("With the assistant"))}</li>`;
+}
+
 /// /m/X: the model's own page. Its picture first, with the strip of its
 /// other pictures, and beside it on a laptop (under it on a phone) what it
 /// is, who made it, the way into the viewer and the app, and the action
@@ -1239,6 +1251,9 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
       ? asText(say("{steps}, laid out by its builder", { steps: stepsSaid(stepsCounted) })) : stepsSaid(stepsCounted)}</li>` : "",
     side ? `<li class="pill" data-side="${stepsCounted.side}">${side}</li>` : "",
     model.technic ? `<li class="pill">${asText(say("Technic or a mechanism"))}</li>` : "",
+    // How it was made, when not by hand: said here, never on its card
+    // (web/card.js).
+    madeFact(model),
     // What it does: its own motions' names, else what its app found moves.
     movesWords(model) ? `<li class="pill">${escapeHtml(`${say("Moves:")} ${movesWords(model)}`)}</li>` : "",
     Number(model.views) ? `<li class="pill"><span data-count="views">${counted(model.views, "view")}</span></li>` : "",
@@ -1290,7 +1305,8 @@ ${structured(origin, id, model)}
 ${header}
 <main id="main">
 <article class="wrap wide model-page">
-  <nav class="crumbs" aria-label="${asText(say("Where it is"))}">${set ? `<a href="${at}/library">${asText(say("LDraw library"))}</a>${set.theme
+  <nav class="crumbs" aria-label="${asText(say("Where it is"))}">${set ? `<a href="${at}/gallery">${asText(say("Gallery"))}</a>`
+    + ` <span aria-hidden="true">›</span> <a href="${at}/library">${asText(say("Sets"))}</a>${set.theme
     ? ` <span aria-hidden="true">›</span> <a href="${at}/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(themeSaid(set.theme))}</a>` : ""}`
     : `<a href="${at}/gallery">${asText(say("Gallery"))}</a>${model.kind
     ? ` <span aria-hidden="true">›</span> <a href="${at}/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}`}</nav>

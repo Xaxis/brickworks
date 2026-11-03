@@ -243,8 +243,8 @@ try {
         made: card.dataset.made || "", mark: card.querySelector(".marks .pill.made")?.textContent || "" })));
       check(`gallery at ${width}: every card links to a profile, with its avatar (${cards.filter((one) => one.who === `/u/${HOUSE}` && one.face).length} of ${cards.length})`,
         cards.length === 7 && cards.every((one) => one.who === `/u/${HOUSE}` && one.face));
-      check(`...and every card says it was made with the assistant (${cards.filter((one) => one.made === "assistant" && one.mark === "Assistant").length} of ${cards.length})`,
-        cards.every((one) => one.made === "assistant" && one.mark === "Assistant"));
+      check(`...and no card says how it was made, which its own page says (${cards.filter((one) => one.made || one.mark).length} of ${cards.length} do)`,
+        cards.every((one) => !one.made && !one.mark));
       await shots(page, `1_gallery-${width}`, theme);
       await page.goto(`${site}/u/${HOUSE}`, { waitUntil: "load" });
       const house = await page.evaluate(() => ({ name: document.querySelector(".profile-head h1")?.textContent || "",
