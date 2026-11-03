@@ -24,8 +24,8 @@
 //           the account, the 26th too.
 //   save26  no browser: 26 models kept with the account (an account given
 //           Pro by an override, to see Free after it).
-//   cancel  browser: Cancel Pro, Stripe's cancel step confirmed: two clicks;
-//           back on /settings, "Pro until" the period's end.
+//   cancel  browser: Cancel Pro, Stripe's why (unanswered) and confirm,
+//           every click counted; back on /settings, "Pro until" the period's end.
 //   free    browser: once Admission has the account on Free (an override
 //           ended, or the subscription over): Free, 25 kept at most, every
 //           model kept still listed and read, one of them saved again, a new
@@ -170,11 +170,18 @@ async function payOnStripe() {
   if (await name.isVisible().catch(() => false)) await name.fill("Brickworks Test");
   const country = page.locator("select#billingCountry");
   if (await country.isVisible().catch(() => false)) await country.selectOption("US");
-  const zip = page.locator("input#billingPostalCode");
-  if (await zip.isVisible().catch(() => false)) await zip.fill("99501");
-  // Link's own "save my information": not asked of a throwaway.
+  // Stripe asks the whole billing address of a US card.
+  for (const [id, words] of [["billingAddressLine1", "1 Test Street"], ["billingLocality", "Anchorage"],
+    ["billingPostalCode", "99501"]]) {
+    const field = page.locator(`input#${id}`);
+    if (await field.isVisible().catch(() => false)) await field.fill(words);
+  }
+  // Link's own "save my information": not asked of a throwaway, or Stripe
+  // wants a phone number too. Its box is drawn over, so a plain untick fails.
   const save = page.locator("input#enableStripePass");
-  if (await save.isChecked().catch(() => false)) await save.uncheck().catch(() => {});
+  if (await save.isChecked().catch(() => false)) await save.setChecked(false, { force: true }).catch(() => {});
+  if (await save.isChecked().catch(() => false)) await save.dispatchEvent("click").catch(() => {});
+  console.log(`    Link's save box left ticked: ${await save.isChecked().catch(() => false)}`);
   await shot("stripe-filled", true);
   await page.locator('button[type="submit"], [data-testid="hosted-payment-submit-button"]').first().click();
 }
@@ -255,17 +262,46 @@ try {
     await page.waitForLoadState("domcontentloaded");
     await pause(4000);
     await shot("stripe-cancel-step", true);
-    const confirm = page.locator('button:has-text("Cancel subscription"), button:has-text("Cancel plan"), [data-testid="confirm"]').first();
-    await confirm.waitFor({ state: "visible", timeout: 30000 });
-    await confirm.click();
+    let clicks = 1;
+    // What Stripe offers at each turn, so a step it adds is seen, not guessed.
+    const controls = () => page.evaluate(() => [...document.querySelectorAll("button, [role=button], select, a")]
+      .filter((e) => e.offsetWidth || e.offsetHeight)
+      .map((e) => `${e.tagName.toLowerCase()}${e.disabled || e.getAttribute("aria-disabled") === "true" ? " (off)" : ""} `
+        + `"${(e.textContent || "").replace(/\s+/g, " ").trim().slice(0, 40)}"`));
+    console.log(`    on Stripe's cancel step: ${(await controls()).join(" | ")}`);
+    // Admission's portal asks why first (its cancellation_reason). Continue
+    // waits for an answer when the portal wants one, and that is a click too.
+    const onward = page.getByRole("button", { name: "Continue to cancellation" });
+    if (await onward.isVisible().catch(() => false)) {
+      if (!(await onward.isEnabled().catch(() => true))) {
+        const why = page.locator("select").first();
+        const options = await why.locator("option").evaluateAll((all) => all.map((o) => o.value).filter(Boolean));
+        await why.selectOption(options.includes("other") ? "other" : options[options.length - 1]);
+        clicks += 1;
+        console.log(`    Continue was off until a reason was chosen, of: ${options.join(", ")}`);
+      }
+      await onward.click({ timeout: 15000 });
+      clicks += 1;
+      await pause(3000);
+      await shot("stripe-cancel-asked-why", true);
+      console.log(`    then: ${(await controls()).join(" | ")}`);
+    }
+    const confirm = page.getByRole("button", { name: /^(Cancel subscription|Cancel plan|Confirm cancellation)$/ }).first();
+    if (await confirm.waitFor({ state: "visible", timeout: 15000 }).then(() => true, () => false)) {
+      await confirm.click({ timeout: 15000 });
+      clicks += 1;
+    }
     await pause(5000);
     await shot("stripe-cancelled", true);
-    const back = page.locator('a:has-text("Return to"), a:has-text("Brickworks"), button:has-text("Return to")').first();
-    if (await back.isVisible().catch(() => false)) {
-      await Promise.all([page.waitForURL(/\/settings/, { timeout: 60000 }).catch(() => null), back.click()]);
-    } else {
-      await page.goto(`${site}/settings?billing=portal#plan`, { waitUntil: "load" });
+    // docs/PLANS.md 8.2 says three: Cancel Pro, Stripe's Continue (why,
+    // unanswered) and its Cancel subscription.
+    check(`clicks from Cancel Pro to cancelled: ${clicks}`, clicks <= 3);
+    // Stripe sends the person back itself (the flow's after_completion);
+    // if it has not, the address does.
+    if (!/\/settings/.test(page.url())) {
+      await page.waitForURL(/\/settings/, { timeout: 15000 }).catch(() => null);
     }
+    if (!/\/settings/.test(page.url())) await page.goto(`${site}/settings?billing=portal#plan`, { waitUntil: "load" });
     await settled();
     const began = Date.now();
     let plan = await planSaid();

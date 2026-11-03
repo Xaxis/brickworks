@@ -18,8 +18,8 @@
 //
 // Pro, paid for or given, says what it includes, the licence for
 // commercial use linked to its terms (/terms#commercial-use); a paid one has
-// Cancel Pro, the portal's own cancel step, so cancelling is two clicks:
-// that and Stripe's confirm.
+// Cancel Pro, the portal's own cancel step: Stripe asks why (no answer
+// needed), then confirms, three clicks in all (golive, 2026-11-03).
 //
 // Every word goes on the page as text, never as markup.
 import { call } from "/account.js";

@@ -86,7 +86,7 @@ The report's nine conditions, none optional. Where each stands on 2026-11-03 (go
 | 4 | An "All rights reserved" licence (repos private only if the desktop is sold) | Done 2026-11-03: `LICENSE` (8.3) |
 | 5 | Signed builds for macOS and Windows | Open, and no longer a gate for Pro (8.6) |
 | 6 | Claims match the product on /plans, /faq, /download | Done 2026-11-02 (plans2): only Anthropic's key in a browser, other AIs' keys on the desktop; `.io` written but not yet opened in Studio; the beta shown only while open |
-| 7 | Billing and terms: live prices, seller terms that cover commercial use, consent to renewal (M7, built), cancelling in two clicks, a refund policy | Terms, refunds, consent and Cancel Pro done 2026-11-03 (8.2), proven in test mode (8.1); live prices and live plans wait for the switch (8.8) |
+| 7 | Billing and terms: live prices, seller terms that cover commercial use, consent to renewal (M7, built), cancelling from Settings, a refund policy | Terms, refunds, consent and Cancel Pro done 2026-11-03 (8.2), proven in test mode (8.1); live prices and live plans wait for the switch (8.8) |
 | 8 | An audience: about 2,000 monthly active designers, and a count of who nears 25 | Not met |
 | 9 | Proof of demand: 30 founding annual plans, or stay free | Not run |
 
@@ -189,9 +189,13 @@ TEST_MODE_PROOF
   and who sells it, beside a box nobody ticks but the person;
   `?op=checkout` refuses without it and keeps the agreement first
   (`supabase/plan_consents.sql`). Shown and kept in 8.1.
-- **Cancelling in two clicks**: `Cancel Pro` on /settings, under Plan, opens the
-  portal's own cancel step (`?op=portal` flow `cancel`), and Stripe's
-  confirm is the second. Manage billing stays for the card and invoices.
+- **Cancelling from Settings**: `Cancel Pro` on /settings, under Plan, opens the
+  portal's own cancel step (`?op=portal` flow `cancel`). Stripe then asks
+  why (Admission's portal has `cancellation_reason` on; no answer is
+  needed: Continue to cancellation) and confirms (Cancel subscription):
+  three clicks in all, measured in 8.1. Two would need that question off
+  in Admission's portal configuration, which is Admission's to change.
+  Manage billing stays for the card and invoices.
 - **Receipts come from Link**, never from us: "Stripe always sends
   receipts, invoices, and any refund or credit note notifications directly
   to the customer ... These emails are sent from Link"

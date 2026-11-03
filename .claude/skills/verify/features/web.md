@@ -3442,8 +3442,8 @@ plan with Claude as the client.
   yearly, the price, that it renews until cancelled, how to cancel, who
   sells it, a box nobody ticks but the person), the agreement kept first
   (four years, the server's alone); the portal for an account that pays,
-  and Cancel Pro, the portal's cancel step, so cancelling is two clicks
-  (golive, 2026-11-03); Pro, paid or given, says what it includes, its
+  and Cancel Pro, the portal's cancel step (Stripe asks why, no answer
+  needed, then confirms: three clicks; golive, 2026-11-03); Pro, paid or given, says what it includes, its
   licence linked to `/terms#commercial-use`;
   Admission's signed webhook forgetting what is kept of the account. Back
   to this site's `/settings#plan` (live: brickworks.diy). Off, each POST is

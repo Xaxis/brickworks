@@ -298,8 +298,8 @@ export function charge(amount, currency, interval) {
 /// Checkout says beside its box (web/plan.js), in a line.
 export function renewalTerms(amount, currency, interval) {
   return `Pro at ${charge(amount, currency, interval)}, plus any tax; charged today, then renews automatically at `
-    + "that price until cancelled; cancel any time in Settings, Manage billing, or at link.com, and Pro stays on "
-    + `to the end of the ${interval} paid for; sold through Link, the merchant of record.`;
+    + "that price until cancelled; cancel any time in Settings, under Plan, with Cancel Pro, or at link.com, and Pro "
+    + `stays on to the end of the ${interval} paid for; sold through Link, the merchant of record.`;
 }
 
 /// The account [userId] erased at Admission as it is deleted (Bookwright's

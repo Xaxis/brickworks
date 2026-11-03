@@ -34,8 +34,8 @@
 //   6. With --stand-in (this machine's, which can be paid): paid, and the
 //      webhook heard, the page says Pro and renews and what it includes,
 //      the licence linked to its terms; Manage billing goes to Stripe's
-//      portal, and Cancel Pro to its cancel step (flow "cancel"), the first
-//      of two clicks; cancelled there, "Pro until".
+//      portal, and Cancel Pro to its cancel step (flow "cancel"), where
+//      Stripe asks why and confirms; cancelled there, "Pro until".
 //   7. With --stand-in: paid again, renewing, and the account deleted from
 //      /settings. Its delete form, at 390 dark and 1280 light, and the
 //      question before it, say Pro ends now with nothing charged again
