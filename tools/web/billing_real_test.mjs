@@ -6,18 +6,30 @@
 //
 // The preview is reached with Vercel's bypass cookie, set for its own host
 // alone, so the bypass is never sent to Stripe. A throwaway account at a
-// Resend test address (--email to name one, so later stages find it again):
+// Resend test address (--email to name one, so later stages find it again).
+// Stages, comma-separated, in this order; a browser only for those marked:
 //
-//   buy     /plans says Pro is for sale, Upgrade to Pro, the step before
-//           Checkout ticked for the month, Stripe's real Checkout paid with
-//           the test card 4242 4242 4242 4242, back on /settings as Pro,
-//           what it includes and Cancel Pro shown; /plans then says
-//           "You have Pro"; 26 models kept with the account, the 26th too.
-//   cancel  Cancel Pro, Stripe's cancel step confirmed: two clicks; back on
-//           /settings, "Pro until" the period's end.
-//   free    once Admission has the account on Free (the subscription over):
-//           Free, 25 kept at most, every model kept still listed and read,
-//           one of them saved again, a new one refused with the way to Pro.
+//   link    no browser: the account agrees to the monthly terms and is given
+//           Stripe's Checkout for them (?op=checkout), its address written
+//           to checkout.txt, for a person to pay: Stripe's bot check stops
+//           a Checkout a script fills in (Admission's own finding).
+//   buy     browser: /plans says Pro is for sale, Upgrade to Pro, the step
+//           before Checkout ticked for the month, on to Stripe's real
+//           Checkout, which says $8.00, filled with the test card 4242 4242
+//           4242 4242 and paid. When Stripe does not send it back (its bot
+//           check), its address goes to checkout.txt for a person, and the
+//           run stops there, exit 3.
+//   paid    browser: back on /settings as Pro, what it includes and Cancel
+//           Pro shown; /plans then says "You have Pro"; 26 models kept with
+//           the account, the 26th too.
+//   save26  no browser: 26 models kept with the account (an account given
+//           Pro by an override, to see Free after it).
+//   cancel  browser: Cancel Pro, Stripe's cancel step confirmed: two clicks;
+//           back on /settings, "Pro until" the period's end.
+//   free    browser: once Admission has the account on Free (an override
+//           ended, or the subscription over): Free, 25 kept at most, every
+//           model kept still listed and read, one of them saved again, a new
+//           one refused with the way to Pro.
 //
 // Pictures of each step in --out. No account is deleted: a later stage
 // needs it, and Admission's records of it are the proof (audit_log,
@@ -39,7 +51,8 @@ if (!args.url) {
 }
 const site = String(args.url).replace(/\/+$/, "");
 const out = String(args.out || "shots/billing_real");
-const stages = String(args.stage || "buy,cancel").split(",");
+const stages = String(args.stage || "buy,paid,cancel").split(",");
+const BROWSER = ["buy", "paid", "cancel", "free"];
 const email = String(args.email || `delivered+bw-real-${randomBytes(4).toString("hex")}@resend.dev`);
 const bypass = process.env.BW_BYPASS || process.env.VERCEL_BYPASS || "";
 mkdirSync(out, { recursive: true });
@@ -65,6 +78,38 @@ async function api(route, { method = "GET", body } = {}) {
   return { status: r.status, json: await r.json().catch(() => null) };
 }
 
+/// 26 models kept with the account: the 26th is past Free's 25.
+async function save26() {
+  const statuses = [];
+  for (let i = 1; i <= 26; i += 1) {
+    const ldr = `0 golive model ${i}\n0 Name: golive-${i}.ldr\n1 4 0 ${-24 * i} 0 1 0 0 0 1 0 0 0 1 3001.dat\n`;
+    const r = await api("/api/models", { method: "POST", body: { name: `golive ${String(i).padStart(2, "0")}`, base: 0,
+      model: gzipSync(Buffer.from(ldr)).toString("base64") } });
+    statuses.push(r.status);
+  }
+  const kept = await api("/api/models");
+  check(`26 models saved (${[...new Set(statuses)].join(",")}), ${kept.json?.models?.length} kept, totals named: ${
+    "most_models" in (kept.json?.kept || {})}`, statuses.every((s) => s === 200) && kept.json?.models?.length === 26);
+}
+
+if (stages.includes("link")) {
+  console.log("link: the monthly terms agreed, Stripe's Checkout for a person to pay");
+  const offer = await api("/api/plans");
+  const made = await api("/api/plans?op=checkout", { method: "POST",
+    body: { interval: "month", consent: true, amount: offer.json?.pro?.prices?.month } });
+  check(`?op=checkout: ${made.status} ${made.json?.kind} ${String(made.json?.url || made.json?.error).slice(0, 50)}`,
+    made.status === 200 && /^https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_/.test(made.json?.url || ""));
+  if (made.json?.url) writeFileSync(path.join(out, "checkout.txt"), `${made.json.url}\n`);
+}
+if (stages.includes("save26")) {
+  console.log("save26: 26 models kept with the account");
+  await save26();
+}
+if (!stages.some((s) => BROWSER.includes(s))) {
+  console.log(failed ? `billing real: ${failed} FAILED` : "billing real: all ok");
+  process.exit(failed ? 1 : 0);
+}
+
 const browser = await launch({ signedOut: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
 await context.addInitScript(([key, value]) => {
@@ -84,6 +129,7 @@ const shot = async (name, full = false) => {
 if (bypass) {
   await page.goto(`${site}/?x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=samesitenone`, { waitUntil: "load" });
 }
+let handedOver = false;
 const planSaid = () => page.evaluate(() => {
   const row = document.getElementById("plan");
   return row ? { state: row.dataset.plan, words: row.innerText.replace(/\s+/g, " ").trim(),
@@ -147,8 +193,24 @@ try {
     await Promise.all([page.waitForURL(/checkout\.stripe\.com/, { timeout: 60000 }),
       page.click("#upgrade button[type=submit]")]);
     check(`on to Stripe's Checkout: ${page.url().slice(0, 60)}`, /^https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_/.test(page.url()));
-    await payOnStripe();
-    await page.waitForURL(new RegExp(`^${site.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/settings`), { timeout: 120000 });
+    const checkoutUrl = page.url();
+    const filled = await payOnStripe().then(() => true, (trouble) => {
+      console.log(`    Stripe's Checkout could not be filled in: ${String(trouble?.message || trouble).split("\n")[0].slice(0, 160)}`);
+      return false;
+    });
+    const back = filled && await page.waitForURL(new RegExp(`^${site.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/settings`), { timeout: 120000 })
+      .then(() => true, () => false);
+    if (!back) {
+      await shot("stripe-held", true);
+      writeFileSync(path.join(out, "checkout.txt"), `${checkoutUrl}\n`);
+      console.log(`    Stripe did not send it back (its bot check?): a person pays ${path.join(out, "checkout.txt")}`);
+      handedOver = true;
+    }
+  }
+
+  if (stages.includes("paid") && !handedOver) {
+    console.log("paid: back on /settings as Pro, /plans says so, 26 models kept");
+    await page.goto(`${site}/settings?billing=done#plan`, { waitUntil: "load" });
     await settled();
     const began = Date.now();
     let plan = await planSaid();
@@ -175,20 +237,10 @@ try {
       href: document.getElementById("pro-upgrade")?.getAttribute("href") }));
     check(`/plans for a Pro account: "${button.words}" to ${button.href}`, button.words === "You have Pro: your plan" && button.href === "/settings#plan");
     await shot("plans-has-pro");
-    // 26 models kept with the account: the 26th is past Free's 25.
-    const statuses = [];
-    for (let i = 1; i <= 26; i += 1) {
-      const ldr = `0 golive model ${i}\n0 Name: golive-${i}.ldr\n1 4 0 ${-24 * i} 0 1 0 0 0 1 0 0 0 1 3001.dat\n`;
-      const r = await api("/api/models", { method: "POST", body: { name: `golive ${String(i).padStart(2, "0")}`, base: 0,
-        model: gzipSync(Buffer.from(ldr)).toString("base64") } });
-      statuses.push(r.status);
-    }
-    const kept = await api("/api/models");
-    check(`26 models saved on Pro (${[...new Set(statuses)].join(",")}), ${kept.json?.models?.length} kept`,
-      statuses.every((s) => s === 200) && kept.json?.models?.length === 26);
+    await save26();
   }
 
-  if (stages.includes("cancel")) {
+  if (stages.includes("cancel") && !handedOver) {
     console.log("cancel: Cancel Pro, Stripe's confirm, Pro until the period's end");
     await page.goto(`${site}/settings#plan`, { waitUntil: "load" });
     await settled();
@@ -222,7 +274,7 @@ try {
     await shot("settings-pro-until");
   }
 
-  if (stages.includes("free")) {
+  if (stages.includes("free") && !handedOver) {
     console.log("free: the subscription over, Free, nothing lost");
     const mine = await api("/api/plans?op=plan&fresh=1");
     check(`?op=plan: ${mine.json?.plan?.key}, limit ${mine.json?.savedModels?.limit}, kept ${mine.json?.savedModels?.kept}`,
@@ -253,6 +305,10 @@ try {
 } finally {
   if (errors.length) console.log(`  page errors: ${errors.slice(0, 5).join(" | ")}`);
   await browser.close();
+}
+if (handedOver && !failed) {
+  console.log("billing real: Checkout handed to a person (checkout.txt); run --stage=paid,cancel after it is paid");
+  process.exit(3);
 }
 console.log(failed ? `billing real: ${failed} FAILED` : "billing real: all ok");
 process.exit(failed ? 1 : 0);

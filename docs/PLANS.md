@@ -330,39 +330,66 @@ unregistered use included, is still the owner's (condition 2).
 
 ### 8.8 The switch, as steps (not run)
 
-The lead runs these only after the owner's final yes. Steps 1 to 3 and 6
-take money or change what customers pay: Admission asks for the owner's
-yes on each.
+Done already (golive, 2026-11-03, with the owner's leave to use
+admission.sh as a tool): the live key, minted by Admission's
+`scripts/key.ts brickworks live` into .env as `ADMISSION_LIVE_KEY` (label
+"Brickworks (live)", key_fJ7oi43A3dHx); the live webhook URL
+`https://brickworks.diy/api/plans?op=webhook`, set by its
+`scripts/webhook.ts`, its secret in .env as `ADMISSION_LIVE_WEBHOOK_SECRET`,
+not pinged (a refused ping retries for three days); the product's Website,
+https://brickworks.diy, set before (live Checkout and the portal answer
+409 `no_product_url` without it); `supabase/account_models_any.sql`
+applied. Nothing in Production's env has changed. The test webhook has no
+URL, and keeps none: a preview is behind Vercel's protection, and the
+bypass never goes in a URL Admission keeps.
+
+The lead runs the rest only after the owner's final yes, which covers the
+prices and the 42 comps together. Steps 1, 2, 5 and 6 take money or change
+what customers pay: Admission asks for the owner's yes on each.
 
 1. **Live prices**: `set_price brickworks live pro month 800 usd` and
    `set_price brickworks live pro year 8000 usd`; `get_product brickworks
    live` then lists both active.
 2. **The plans live**: `set_plan_status brickworks live free live`, then
    `pro live` (plans are shared by both modes).
-3. **Live key and webhook** (the admission.sh session): a live key
-   (`adm_live_…`) labelled "Brickworks live", and the live webhook URL
-   `https://brickworks.diy/api/plans?op=webhook` (live webhooks must be on
-   the product's own site), with its signing secret. Then on Vercel,
-   Production scope only: `ADMISSION_KEY` the live key,
-   `ADMISSION_WEBHOOK_SECRET` its secret, `BRICKWORKS_BILLING=live`, and
-   `PUBLIC_ORIGIN=https://brickworks.diy` if not set. Remove any
-   `ADMISSION_URL`. Admission's "Send test event" then shows 200 in
-   `webhook_deliveries brickworks live`.
-4. **The words of the release that turns Pro on** (M1), shipped with step
-   3's deploy: /faq's "Pro, coming soon at $8 a month or $80 a year ...
-   Nothing takes money yet." made present, and the changelog saying Pro
-   opened; /plans and /terms need nothing (they read Admission).
-5. **The comps** (8.7): `python3 tools/plan_comps.py` for the 42 ids, then
-   one `grant_override brickworks live <id> plan pro` each, note "made
-   before 2026-10-29: Pro free for life (docs/PLANS.md)". `plan_comps.py
-   --mode=live` afterwards must say 42 given, 0 left.
+3. **Production's env** on Vercel, Production scope only, each value from
+   .env and never printed: `ADMISSION_KEY` = `ADMISSION_LIVE_KEY`,
+   `ADMISSION_WEBHOOK_SECRET` = `ADMISSION_LIVE_WEBHOOK_SECRET` (marked
+   sensitive), `BRICKWORKS_BILLING=live`, and
+   `PUBLIC_ORIGIN=https://brickworks.diy` if not set; no `ADMISSION_URL`.
+   Then the release that carries step 4, promoted as usual.
+4. **The words of the release that turns Pro on** (M1): /faq's "Pro,
+   coming soon at $8 a month or $80 a year ... Nothing takes money yet."
+   made present, and the changelog saying Pro opened; /plans, /settings and
+   /terms need nothing (they read Admission).
+5. **The comps** (8.7): `python3 tools/plan_comps.py` (with .env sourced)
+   lists the 42 ids, the ones given in test mode on 2026-11-03; for each,
+   `grant_override` product `brickworks`, mode `live`, customerId the id,
+   kind `plan`, plan `pro`, no expires, note "made before 2026-10-29: Pro
+   free for life (docs/PLANS.md 8.7)". `plan_comps.py --mode=live` then
+   says "live: 42 given, 0 left of 42".
 6. **The beta's comps**: `set_api_comps brickworks live` with the beta's
    limit (100), only if the beta is open.
-7. **A live checkout opens, without paying**: signed in on brickworks.diy
+7. **The webhook answers**: Admission's ping, `cd ~/Projects/admission.sh/apps/admission
+   && pnpm exec tsx --env-file=../../.env scripts/webhook.ts brickworks
+   live --keep --ping`, says `delivered, answered 200`, and
+   `webhook_deliveries brickworks live` shows it and step 5's
+   customer.updated events delivered, each answered 200.
+8. **A live checkout opens, without paying**: signed in on brickworks.diy
    as a throwaway Free account, /plans, Upgrade to Pro, tick the box,
    Continue to checkout: the page is `checkout.stripe.com/c/pay/cs_live_…`
    and shows $8.00 a month (or $80.00 a year) and "Sold through Link".
    Close it; /settings says "Checkout closed. You have not been charged".
    `plan_consents` has the row. Delete the throwaway.
-8. Atypic's pages (atypicbw, `land.sh`): atypic.ai lists Brickworks Pro and
-   its prices, and its refund page names the 14-day rule of 8.2.
+9. **Atypic's pages** (atypicbw, `land.sh`): atypic.ai lists Brickworks Pro,
+   its prices and "Every model kept with your account, with no limit on
+   how many (each model up to 4 MB as saved)", and its terms carry the
+   Brickworks section; its refund page is the one /terms points to.
+
+In Stripe's Dashboard, the owner's, before step 8: "Upcoming renewal
+events" at 21 days or less, and Billing's own automations left off
+(Admission ends a subscription after Stripe's retries, about two weeks,
+and keeps Pro while they run). Receipts, invoices and renewal reminders
+are Stripe's and Link's under Managed Payments; the one email Brickworks
+owes is the notice of a price change (Admission's integrating.md, "When
+the owner changes a price").
