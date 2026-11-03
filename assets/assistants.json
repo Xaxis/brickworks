@@ -1,0 +1,179 @@
+{
+  "about": "Every AI app Brickworks connects to, one row each: how it adds Brickworks in the fewest steps it allows, the steps in its own screens' words, who may, and what it cannot do yet. Read by the app's Connect your AI (src/net/assistants.gd) and, from U4, the site's pages. Claude first. docs/ANY_ASSISTANT.md, section B.1, is where each fact comes from.",
+  "server": {"name": "Brickworks", "key": "brickworks"},
+  "ways": {
+    "link": "a link that opens the app with Brickworks filled in",
+    "command": "a command, copied, to run in a terminal",
+    "open": "the address copied, and the app's own page opened to paste it in",
+    "copy": "the address copied, to paste wherever the app takes one"
+  },
+  "assistants": [
+    {
+      "id": "claude",
+      "name": "Claude",
+      "group": "chat",
+      "way": "link",
+      "add": "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName={name_uri}&connectorUrl={address_uri}",
+      "steps": ["Press Add, then Connect."],
+      "plan": "Every Claude plan: Free adds one custom connector, and on Team and Enterprise an Owner adds it.",
+      "limits": "",
+      "new_chat": {"way": "link", "to": "https://claude.ai/new?q={message_uri}"},
+      "checked": "2026-10-31"
+    },
+    {
+      "id": "chatgpt",
+      "name": "ChatGPT",
+      "group": "chat",
+      "way": "open",
+      "add": "https://chatgpt.com/plugins",
+      "steps": [
+        "Press +, then Add custom MCP server.",
+        "Name it Brickworks, paste the address as its Connection and choose OAuth.",
+        "Press I understand and want to continue, then Create as a plugin."
+      ],
+      "plan": "Business, Enterprise and Edu workspaces, where an admin or owner adds it; other plans may not offer it yet.",
+      "limits": "Pictures may not reach its model, and a changed tool list needs Refresh on its page.",
+      "new_chat": {"way": "open", "to": "https://chatgpt.com/"},
+      "checked": "2026-11-02"
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini",
+      "group": "chat",
+      "way": "open",
+      "add": "https://gemini.google.com/app",
+      "steps": [
+        "Open Settings, then Connected Apps.",
+        "Press Add a custom app, paste the address and press Next."
+      ],
+      "plan": "Personal Google accounts in the US, 18 or over, in English, with Keep Activity on.",
+      "limits": "",
+      "new_chat": {"way": "open", "to": "https://gemini.google.com/app"},
+      "checked": "2026-11-02"
+    },
+    {
+      "id": "le_chat",
+      "name": "Le Chat",
+      "group": "chat",
+      "way": "open",
+      "add": "https://chat.mistral.ai/",
+      "steps": [
+        "Open Connectors, press Add, then Custom MCP Connector.",
+        "Name it Brickworks and paste the address."
+      ],
+      "plan": "The workspace's admin adds it; on Free, Pro and Student that is you.",
+      "limits": "A changed tool list needs a new connection.",
+      "new_chat": {"way": "open", "to": "https://chat.mistral.ai/"},
+      "checked": "2026-11-02"
+    },
+    {
+      "id": "perplexity",
+      "name": "Perplexity",
+      "group": "chat",
+      "way": "open",
+      "add": "https://www.perplexity.ai/computer/plugins",
+      "steps": [
+        "Press Add custom, then Remote.",
+        "Name it Brickworks and paste the address."
+      ],
+      "plan": "Pro, Max and Enterprise, on the web; not on phones yet.",
+      "limits": "A changed tool list needs a new connection.",
+      "new_chat": {"way": "open", "to": "https://www.perplexity.ai/"},
+      "checked": "2026-11-02"
+    },
+    {
+      "id": "grok",
+      "name": "Grok",
+      "group": "chat",
+      "way": "open",
+      "add": "https://grok.com/connectors",
+      "steps": [
+        "Press New, then Custom.",
+        "Name it Brickworks and paste the address."
+      ],
+      "plan": "Every Grok plan; on Business and Enterprise an admin allows it first.",
+      "limits": "",
+      "new_chat": {"way": "open", "to": "https://grok.com/"},
+      "checked": "2026-11-02"
+    },
+    {
+      "id": "claude_code",
+      "name": "Claude Code",
+      "group": "terminal",
+      "way": "command",
+      "add": "claude mcp add --transport http {key} {address}",
+      "steps": [
+        "Run the command in a terminal.",
+        "In Claude Code, type /mcp, choose brickworks and Authenticate."
+      ],
+      "plan": "Every Claude plan with Claude Code; signed in with the same Claude account as claude.ai, it has the connector from there too.",
+      "limits": "",
+      "new_chat": {"way": "command", "to": "claude \"{message}\""},
+      "checked": "2026-10-31"
+    },
+    {
+      "id": "codex",
+      "name": "Codex",
+      "group": "terminal",
+      "way": "command",
+      "add": "codex mcp add {key} --url {address} && codex mcp login {key}",
+      "steps": ["Run the command in a terminal: it adds Brickworks, then opens your browser to sign in."],
+      "plan": "Every ChatGPT plan; Enterprise admins may restrict it.",
+      "limits": "",
+      "new_chat": {"way": "command", "to": "codex \"{message}\""},
+      "checked": "2026-11-02"
+    },
+    {
+      "id": "gemini_cli",
+      "name": "Gemini CLI",
+      "group": "terminal",
+      "way": "command",
+      "add": "gemini mcp add --transport http {key} {address}",
+      "steps": [
+        "Run the command in a terminal.",
+        "In Gemini CLI, type /mcp auth brickworks."
+      ],
+      "plan": "Paid Gemini Code Assist plans.",
+      "limits": "",
+      "new_chat": {"way": "command", "to": "gemini -i \"{message}\""},
+      "checked": "2026-11-02"
+    },
+    {
+      "id": "cursor",
+      "name": "Cursor",
+      "group": "editor",
+      "way": "link",
+      "add": "cursor://anysphere.cursor-deeplink/mcp/install?name={key}&config={config_base64}",
+      "steps": ["Press Install where Cursor asks, then Connect beside brickworks in its MCP settings."],
+      "plan": "Every Cursor plan.",
+      "limits": "",
+      "new_chat": {"way": "copy"},
+      "checked": "2026-11-02"
+    },
+    {
+      "id": "vscode",
+      "name": "VS Code",
+      "group": "editor",
+      "way": "link",
+      "add": "vscode:mcp/install?{config_json_uri}",
+      "steps": ["Press Install where VS Code asks, then use Brickworks from Copilot's chat in Agent mode."],
+      "plan": "VS Code with GitHub Copilot; on Business and Enterprise an admin turns MCP on.",
+      "limits": "",
+      "new_chat": {"way": "copy"},
+      "checked": "2026-11-02"
+    },
+    {
+      "id": "other",
+      "name": "Another app",
+      "called": "your AI app",
+      "group": "other",
+      "way": "copy",
+      "add": "",
+      "steps": ["Add a remote MCP server, name it Brickworks, paste the address and sign in with OAuth."],
+      "plan": "Any app that takes a remote MCP server and signs in with OAuth.",
+      "limits": "",
+      "new_chat": {"way": "copy"},
+      "checked": "2026-11-02"
+    }
+  ]
+}

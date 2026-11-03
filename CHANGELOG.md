@@ -21,6 +21,50 @@ whole cycle.
   at once, with its email address. The computer keeps only that it was told,
   so the next sign-in there says so at once.
 
+## [0.15.0] - 2026-11-03
+
+The desktop app is free, as brickworks.diy now says, and nothing in it asks
+about a plan. Instructions keeps the window moving while it works out a
+model's steps, where 0.14.0 held one frame there for a fifth to two fifths
+of a second. A click hinge turned on a slow or busy machine stops on a click
+short of what is in its way, where it could end inside its base. A model
+opened while the last was still being weighed shows its own weight. When
+Claude looks over a design, it hears when the model shows fewer colours than
+real sets of its theme. And in German, French and Spanish more of the
+Library's themes are named in the language.
+
+### Changed
+
+- The desktop app is free. brickworks.diy's plans and download pages have
+  said so since 2 November, and 0.15.0 holds no plan check at all: the paid
+  desktop's check at start and its screen, built for a Pro desktop and never
+  switched on, are gone. Signing in is as it was.
+- Instructions works out a model's steps without stopping the window. On
+  the example car, timed in the Linux downloads the same hour, six tries
+  each, the longest frame while it worked out the steps was 0.18 to 0.39 s in
+  0.14.0 and is 0.02 to 0.10 s in 0.15.0: the code that lays out the steps
+  and draws the booklet is now loaded off the window's thread the first time
+  it is used. Its bar comes up in the first frame after Save, as it did.
+- When Claude looks over a design (review_model, look_at_model), it hears
+  when the model shows fewer colours than real sets of its theme and size
+  show, and which colours those sets add a little of. Nothing is recoloured
+  for it.
+- In German, French and Spanish the Library names every theme as the site
+  does: themes that are words are translated (Collectible Minifigures,
+  Educational and Dacta, the numbered minifigure series), and product lines
+  and licences keep their names.
+- Following someone in Build together draws nothing while neither view
+  moves, where it drew the whole window every frame.
+
+### Fixed
+
+- A click hinge turned on a slow or busy machine stops on the last click
+  short of what is in its way. It could go through its base, or stop inside
+  it between two clicks.
+- A model opened while the last one was still being weighed shows its own
+  weight in the status bar, where it could show the last model's verdict, or
+  a weight below zero.
+
 ## [0.14.0] - 2026-11-01
 
 A release for big models and touch screens. Replacing a part across a

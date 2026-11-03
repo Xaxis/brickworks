@@ -71,10 +71,13 @@ import_here() {
 # deploy_preview NAME SHA [OPTION...]: this worktree on Vercel, unpromoted
 # (tools/deploy.sh without --prod: no domain points at it), in URL, with the
 # deploy's options (a unit's: --unit). Its log is NAME_preview.log, and the
-# commit it was made from NAME_preview.sha.
+# commit it was made from NAME_preview.sha. The deploy's own 50 minutes start
+# once heavy gives it a slot; the wait for one has three hours of its own.
+# With the timeout outside heavy, shareread's deploy spent its 50 minutes
+# queued behind rel-m252's checks and failed with an empty log (2026-11-03).
 deploy_preview() {
   local name=$1 sha=$2; shift 2
-  timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh "$@" > "$S/${name}_preview.log" 2>&1
+  timeout 10800 ~/.claude/claude-core/bin/heavy timeout 3000 tools/deploy.sh "$@" > "$S/${name}_preview.log" 2>&1
   URL=$(grep -oE "deploy done https://[^ ]+" "$S/${name}_preview.log" | cut -d' ' -f3)
   [ -n "$URL" ] || { echo "$WHO: preview deploy failed"; tail -3 "$S/${name}_preview.log"; return 1; }
   echo "$sha" > "$S/${name}_preview.sha"

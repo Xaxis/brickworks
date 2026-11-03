@@ -200,7 +200,7 @@ const PAGES = [
     heading: "#hero-h", says: "A CAD for LEGO® models, <em>in your browser</em>" },
   { name: "download", path: "/download", title: "Download Brickworks for Linux, macOS and Windows",
     heading: "#get-h", says: "Download Brickworks" },
-  { name: "plans", path: "/plans", title: "Pricing · Brickworks" },
+  { name: "plans", path: "/plans", title: "Plans · Brickworks" },
   { name: "faq", path: "/faq", title: "Questions · Brickworks", heading: "main h1", says: "Questions" },
   { name: "compare", path: "/compare", title: "Brickworks beside Studio, Mecabricks, LeoCAD and LDCad",
     heading: "main h1", says: "Studio exists. Why Brickworks?" },

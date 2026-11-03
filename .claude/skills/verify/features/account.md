@@ -577,11 +577,19 @@ Against the real functions and Supabase (needs `.env`; makes throwaway accounts
 at `delivered+bw…@resend.dev`, Resend's test addresses, and deletes them):
 
 ```sh
+tools/relay_probe.sh account     # and connector, tabs, tabpair, together, desktop_cloud
 set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8790 &
-BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd
 BRICKWORKS_API=http://127.0.0.1:8790 godot --path . --resolution 1400x900 --script src/dev/gate_probe.gd -- live
-godot --headless --path . --script src/dev/connector_probe.gd -- 8790
 ```
+
+`tools/relay_probe.sh NAME` runs one of the relay's probes (those
+`tools/suite/out.txt` keeps out for want of it) on a relay of its own: a free
+port, `.env`'s keys (the main checkout's from a worktree), the address handed
+as that probe's header takes it, the live database's lock held, the relay
+stopped after. Run with no relay, or with `--` for a port, `connector_probe`
+fails every check for the setup, and was read as the code's twice
+(2026-11-03); `tools/probe.sh` now drops a `--` before its ARGS, which it puts
+there itself.
 
 `account_probe` ends "signing in works from the app's side" (26 checks: a
 malformed address refused in words, a code sent, a wrong code refused in words,

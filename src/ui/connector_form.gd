@@ -1,4 +1,17 @@
-## Design on your Claude plan: Claude, connected to your Brickworks account.
+## Connect your AI: the AI app a person already uses, connected to their
+## Brickworks account, building in their tab.
+##
+## The owner (2026-11-02): connecting ChatGPT, Gemini or any provider should
+## be as easy as Claude, and the workflows as alike as each allows. So the
+## section is a chooser of every assistant in one table (Assistants,
+## assets/assistants.json), Claude first, and Connect does the chosen one's
+## way in the fewest steps it allows, its steps beside: Claude's form filled
+## in, as below; Cursor's or VS Code's install link; Claude Code's, Codex's
+## or Gemini CLI's command copied; or the address copied and ChatGPT's,
+## Gemini's, Le Chat's, Perplexity's or Grok's own page opened. The sign-in,
+## the tab listening, the line saying who is building and the card in the
+## conversation are the same for all of them, each said in the caller's
+## name (ClaudeConnector.caller).
 ##
 ## The other way in besides an API key. Someone on a Claude plan presses
 ## Connect Claude: claude.ai opens on "Add custom connector" with Brickworks
@@ -40,6 +53,10 @@ const ALREADY := ("A Brickworks already in your connectors connects again "
 var _title: Label
 var _here: CheckButton
 var _intro: Label
+## The AI app to connect, from the table (ClaudeConnector.assistant).
+var _choice: OptionButton
+## Who may, for the chosen one, and what it cannot do yet.
+var _plan: Label
 var _connect: Button
 var _already: VBoxContainer
 var _already_link: LinkButton
@@ -50,6 +67,9 @@ var _status: Label
 var _guide: VBoxContainer
 var _guide_head: Label
 var _step_one: Label
+## The chosen one's steps after its first, a line each.
+var _step_more: Label
+var _come_back: Label
 var _fallback: Label
 var _signed_as: Label
 var _shared: LineEdit
@@ -82,8 +102,9 @@ var _since: int = 0
 var _counts: Dictionary = {}
 var _heard: String = ""
 ## Claude was connected, and has been disconnected since: said until it is
-## connected again or the tab is switched on.
+## connected again or the tab is switched on. [member _parted_from] is who.
 var _parted: bool = false
+var _parted_from: String = ""
 var _linked: bool = false
 
 const WAITING := Color(0.95, 0.72, 0.25)
@@ -101,7 +122,7 @@ func setup(with: Node) -> void:
 	var head := HBoxContainer.new()
 	add_child(head)
 	_title = Label.new()
-	_title.text = "Or with your Claude plan"
+	_title.text = "Or connect your AI"
 	_title.add_theme_font_size_override("font_size", 14)
 	_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_title)
@@ -109,7 +130,7 @@ func setup(with: Node) -> void:
 	# connected to the account; the person can switch this tab off.
 	_here = CheckButton.new()
 	_here.focus_mode = Control.FOCUS_NONE
-	_here.tooltip_text = "Let Claude build in this tab, or stop it"
+	_here.tooltip_text = "Let your AI build in this tab, or stop it"
 	_here.toggled.connect(func(on: bool) -> void:
 		if on:
 			connector.start()
@@ -117,10 +138,38 @@ func setup(with: Node) -> void:
 			connector.stop(true))
 	head.add_child(_here)
 
-	_intro = _line("On Claude Pro or Max, no key needed: connect Claude to "
-		+ "your Brickworks account once, then ask Claude to build. It builds "
-		+ "here, on your plan's usage.", 11, 0.8)
+	_intro = _line("No key needed: connect the AI app you use to your "
+		+ "Brickworks account once, then ask it to build. It builds here, on "
+		+ "your plan with it.", 11, 0.8)
 	add_child(_intro)
+
+	# Which one, Claude first, in the table's order; a line between the
+	# chat apps, the terminal's, the editors' and any other.
+	var choice_row := HBoxContainer.new()
+	choice_row.add_theme_constant_override("separation", 8)
+	add_child(choice_row)
+	var your_ai: Label = _line("Your AI", 12, 0.85)
+	your_ai.autowrap_mode = TextServer.AUTOWRAP_OFF
+	choice_row.add_child(your_ai)
+	_choice = OptionButton.new()
+	_choice.add_theme_font_size_override("font_size", 12)
+	_choice.accessibility_name = "Your AI"
+	_choice.tooltip_text = "The AI app you use: Connect adds Brickworks to it"
+	_choice.focus_mode = Control.FOCUS_NONE
+	_choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_choice.fit_to_longest_item = false
+	var group: String = ""
+	for one: Dictionary in Assistants.all():
+		if not group.is_empty() and str(one.get("group", "")) != group:
+			_choice.add_separator()
+		group = str(one.get("group", ""))
+		_choice.add_item(str(one["name"]))
+		_choice.set_item_metadata(_choice.item_count - 1, str(one["id"]))
+	_choice.item_selected.connect(func(at: int) -> void:
+		connector.choose(str(_choice.get_item_metadata(at))))
+	choice_row.add_child(_choice)
+	_plan = _line("", 11, 0.7)
+	add_child(_plan)
 
 	_connect = Button.new()
 	_connect.text = "Connect Claude"
@@ -128,7 +177,7 @@ func setup(with: Node) -> void:
 	_connect.focus_mode = Control.FOCUS_NONE
 	_connect.tooltip_text = "Opens claude.ai with Brickworks filled in"
 	_connect.pressed.connect(func() -> void:
-		if connector.connected():
+		if _claude() and connector.connected():
 			connector.open_in_claude()
 			return
 		_connect_in_claude(false))
@@ -191,16 +240,18 @@ func setup(with: Node) -> void:
 	_guide.add_child(_guide_head)
 	_step_one = _line("", 12, 0.85)
 	_guide.add_child(_step_one)
+	_step_more = _line("", 12, 0.85)
+	_guide.add_child(_step_more)
 	_signed_as = _line("", 12, 0.85)
 	_guide.add_child(_signed_as)
-	_guide.add_child(_line("3. Come back: this says Connected. Then ask Claude: "
-		+ ASK, 12, 0.85))
+	_come_back = _line("", 12, 0.85)
+	_guide.add_child(_come_back)
 	_fallback = _line("", 11, 0.7)
 	_guide.add_child(_fallback)
 	var shared_row := _row()
 	_guide.add_child(shared_row)
 	_shared = _field(shared_row, "")
-	_copy = _copy_button(shared_row, func() -> String: return connector.shared_address())
+	_copy = _copy_button(shared_row, func() -> String: return str(connector.adding()["copy"]))
 
 	_code_box = _box()
 	_code_said = _line("Copied. Run it in a terminal, then type /mcp in Claude "
@@ -264,14 +315,14 @@ func setup(with: Node) -> void:
 
 	# The one thing about this way that surprises people, said where they
 	# will be when it matters.
-	_in_view = _line("Claude builds in this tab while you talk to it in "
-		+ "Claude, and keeps going when it is out of view. Side by side, you "
+	_in_view = _line("Your AI builds in this tab while you talk to it in its "
+		+ "own app, and keeps going when it is out of view. Side by side, you "
 		+ "can watch it build.", 11, 0.7)
 	add_child(_in_view)
 
 	_disconnect = Look.link("Disconnect Claude", 11)
-	_disconnect.tooltip_text = ("Claude can no longer reach your Brickworks "
-		+ "account, from any of its apps, until you connect it again.")
+	_disconnect.tooltip_text = ("Every AI app connected to your Brickworks "
+		+ "account loses it until you connect it again.")
 	_disconnect.pressed.connect(func() -> void:
 		if await connector.disconnect_claude() < 0:
 			_say("Could not reach Brickworks to disconnect. Try again.", TROUBLE))
@@ -282,6 +333,7 @@ func setup(with: Node) -> void:
 	connector.connections_changed.connect(func(_now: Array) -> void:
 		if connector.connected():
 			_parted = false
+			_parted_from = _clients()
 		elif _linked:
 			# Disconnected, here or anywhere: what Claude did is over.
 			_parted = true
@@ -296,6 +348,10 @@ func setup(with: Node) -> void:
 	# Let in while the session kept here is renewed, and then answered.
 	if connector.account != null:
 		connector.account.changed.connect(_settle)
+	connector.assistant_chosen.connect(func(_id: String) -> void:
+		_guide.visible = false
+		_copied.visible = false
+		_settle())
 	connector.replaced.connect(func() -> void:
 		_say("Another Brickworks tab took this one's place. Switch it on here "
 			+ "to take it back.", OFF))
@@ -323,12 +379,12 @@ func _adopt() -> void:
 ## Titled as the only way on screen, or as the second of two.
 func alone(only: bool) -> void:
 	if _title != null:
-		_title.text = "Designing with your Claude plan" if only else "Or with your Claude plan"
+		_title.text = "Connect your AI" if only else "Or connect your AI"
 
 
 func controls_by_name() -> Dictionary:
 	var named: Dictionary = _tab_view.controls_by_name() if _tab_view != null else {}
-	return named.merged({"connect_claude": _connect, "claude_here": _here,
+	return named.merged({"connect_claude": _connect, "connect_choice": _choice, "claude_here": _here,
 		"connector_shared": _shared, "connector_copy": _copy,
 		"connector_already": _already_link,
 		"connector_code": _code_link, "connector_code_copy": _code_copy,
@@ -347,10 +403,13 @@ func _on_listening(on: bool, address: String) -> void:
 	_settle()
 
 
-## Connect Claude, or its list ([param listed]): this tab listens, and
-## says what to do in the tab that opened.
+## Connect the chosen assistant, or Claude's list ([param listed]): this
+## tab listens, and says what to do where it went.
 func _connect_in_claude(listed: bool) -> void:
-	connector.connect_claude(listed)
+	if listed:
+		connector.connect_claude(true)
+	else:
+		connector.connect_assistant()
 	_guide.visible = true
 	_code_box.visible = false
 	_desktop_box.visible = false
@@ -381,38 +440,39 @@ func _into_view(box: Control) -> void:
 func _settle() -> void:
 	var on: bool = connector.is_on()
 	var linked: bool = connector.connected()
+	var name: String = connector.assistant_name()
 	if linked:
 		_guide.visible = false
 	if on and _calls > 0:
 		_tick()
 	elif linked and on:
-		_say("Connected to %s — %s." % [_clients(), "Claude reached this tab at "
-			+ _heard if not _heard.is_empty() else "it builds in this tab"], CONNECTED)
+		_say("Connected to %s — %s." % [_clients(), "%s reached this tab at %s" % [connector.caller, _heard]
+			if not _heard.is_empty() else "it builds in this tab"], CONNECTED)
 	elif linked:
 		_say("%s is connected to your account, but switched off in this tab."
 			% _clients(), OFF)
 	elif _parted and not on:
-		_say("Disconnected. Claude can no longer reach your Brickworks; connect "
-			+ "again any time.", OFF)
+		_say("Disconnected. %s can no longer reach your Brickworks; connect again any time."
+			% (_parted_from if not _parted_from.is_empty() else "Claude"), OFF)
 	elif on and connector.account != null and connector.account.renewing:
-		_say(Account.waiting_words("Claude can reach this tab"), WAITING)
+		_say(Account.waiting_words("%s can reach this tab" % name), WAITING)
 	elif connector.waiting_for_claude():
-		_say("Waiting for you to connect in Claude…", WAITING)
+		_say("Waiting for you to connect in %s…" % name, WAITING)
 	elif on and not _heard.is_empty():
-		_say("Connected — Claude reached this tab at %s." % _heard, CONNECTED)
+		_say("Connected — %s reached this tab at %s." % [connector.caller, _heard], CONNECTED)
 	elif on and connector.used():
 		_say("Connected through this tab's private address.", CONNECTED)
 	elif on:
-		_say("On. Waiting for Claude — press Connect Claude.", WAITING)
+		_say("On. Waiting for %s — press Connect %s." % [name, name], WAITING)
 	elif connector.used():
-		_say("Off. Claude cannot reach this tab.", OFF)
+		_say("Off. %s cannot reach this tab." % name, OFF)
 	else:
 		_say("", OFF)
 	_show()
 
 
-## Claude reached the tab: a tool by name, or "" for the handshake and
-## the tool list, which is Claude connecting.
+## Your AI reached the tab: a tool by name, or "" for the handshake and
+## the tool list, which is it connecting.
 func _on_called(tool: String, _arguments: Dictionary, chat: String = "") -> void:
 	var now: Dictionary = Time.get_time_dict_from_system()
 	_heard = "%02d:%02d" % [now.hour, now.minute]
@@ -430,9 +490,10 @@ func _on_called(tool: String, _arguments: Dictionary, chat: String = "") -> void
 	_show()
 
 
-## How much Claude has done, and for how long. Each step is told in the
-## conversation above, on a card like the app's own designs get; the model
-## itself is the main report, built on the baseplate as this updates.
+## How much the caller has done, and for how long, in its name: "ChatGPT
+## is building — 3 calls in 0:41". Each step is told in the conversation
+## above, on a card like the app's own designs get; the model itself is the
+## main report, built on the baseplate as this updates.
 ##
 ## Said as each call comes, from the first call to this one, and not again
 ## every second: the line ticked on a one-second timer from Claude's first
@@ -446,12 +507,11 @@ func _tick() -> void:
 	if _calls == 0 or not connector.is_on():
 		return
 	var seconds: int = (Time.get_ticks_msec() - _since) / 1000
-	_say("Claude is building — %d call%s in %d:%02d" % [_calls,
+	_say("%s is building — %d call%s in %d:%02d" % [connector.caller, _calls,
 		"" if _calls == 1 else "s", seconds / 60, seconds % 60], CONNECTED)
 
 
-## Which of Claude's apps are connected, in words: "Claude", "Claude and
-## Claude Code".
+## Which AI apps are connected, in words: "Claude", "Claude and ChatGPT".
 func _clients() -> String:
 	var names := PackedStringArray()
 	for one: Variant in connector.connections:
@@ -471,38 +531,97 @@ func _say(text: String, colour: Color) -> void:
 	_state_row.visible = not text.is_empty()
 
 
+## Whether Claude is the one chosen, whose form, list and apps are its own.
+func _claude() -> bool:
+	return connector.assistant == Assistants.CLAUDE
+
+
+## What the chosen one's Connect has done, as the guide's first line says
+## it: [param way] as Assistants.adding gives it.
+static func done_words(way: String, name: String) -> String:
+	match way:
+		"link":
+			return "%s opens with Brickworks filled in, if it is installed. There:" % name
+		"command":
+			return "The command that adds Brickworks to %s is copied:" % name
+		"open":
+			return "The address is copied, and %s has opened in a new tab. There:" % name
+	return "The address is copied. In your AI app:"
+
+
 ## Which parts of the section are on screen, from the state it is in.
 func _show() -> void:
 	var on: bool = connector.is_on()
 	var linked: bool = connector.connected()
+	var claude: bool = _claude()
+	var row: Dictionary = Assistants.find(connector.assistant)
+	var name: String = connector.assistant_name()
+	var way: Dictionary = connector.adding()
+	var steps: Array = row.get("steps", []) if row.get("steps") is Array else []
+	for n: int in _choice.item_count:
+		if str(_choice.get_item_metadata(n)) == connector.assistant and _choice.selected != n:
+			_choice.select(n)
+	_plan.text = str(row.get("plan", "")) + ("\n" + str(row["limits"])
+		if not str(row.get("limits", "")).is_empty() else "")
+	_plan.visible = not _plan.text.is_empty()
 	var who: String = connector.account.email if connector.account != null else ""
-	_signed_as.text = ("2. Sign in to Brickworks as %s if asked, and press Allow." % who
-		if not who.is_empty() else "2. Sign in to Brickworks if asked, and press Allow.")
-	if connector.last_opened == CONNECTORS:
+	if claude and connector.last_opened == CONNECTORS:
 		_guide_head.text = ("Claude's connectors have opened in a new tab "
 			+ "(Customize › Connectors). There:")
 		_step_one.text = ("1. Under Your connectors, select Brickworks and press "
 			+ "Connect, or Reconnect if it says so.")
+		_step_more.text = ""
 		_fallback.text = ("Not in your list? Press Connect Claude above, which "
 			+ "fills the form in, or paste this there (it is copied):")
-	else:
+	elif claude:
 		_guide_head.text = "claude.ai has opened in a new tab with Brickworks filled in. There:"
 		_step_one.text = "1. Press Add, then Connect."
+		_step_more.text = ""
 		_fallback.text = ("No new tab? In Claude, open Customize, Connectors, "
 			+ "Add custom connector, and paste this (it is copied):")
+	else:
+		_guide_head.text = done_words(str(way["way"]), name)
+		var lines := PackedStringArray()
+		for n: int in steps.size():
+			lines.append("%d. %s" % [n + 1, steps[n]])
+		_step_one.text = lines[0] if not lines.is_empty() else ""
+		_step_more.text = "\n".join(lines.slice(1))
+		_fallback.text = {"link": "Nothing opened? Add a remote MCP server named brickworks at "
+				+ "this address in %s (it is copied):" % name,
+			"command": "The command, to copy again:",
+			"open": "No new tab? Open %s yourself and paste this (it is copied):" % name,
+		}.get(str(way["way"]), "The address (it is copied):")
+	_step_more.visible = not _step_more.text.is_empty()
+	var count: int = 1 if claude else maxi(steps.size(), 1)
+	_signed_as.text = ("%d. Sign in to Brickworks as %s if asked, and press Allow." % [count + 1, who]
+		if not who.is_empty() else "%d. Sign in to Brickworks if asked, and press Allow." % (count + 1))
+	_come_back.text = ("%d. Come back: this says Connected. Then ask %s: " % [count + 2, name]) + ASK
 	_connect.tooltip_text = ("Opens your connectors in Claude, where Brickworks is"
-		if linked else "Opens claude.ai with Brickworks filled in")
-	_already.visible = connector.had_claude and not linked
-	_shared.text = connector.shared_address()
+		if claude and linked else "Opens claude.ai with Brickworks filled in" if claude
+		else {"link": "Opens %s with Brickworks filled in" % name,
+			"command": "Copies the command that adds Brickworks to %s" % name,
+			"open": "Copies the address and opens %s" % name,
+		}.get(str(way["way"]), "Copies the address"))
+	_already.visible = claude and connector.had_claude and not linked
+	_shared.text = str(way["copy"])
 	_command.text = connector.claude_code_command()
 	for one: Node in _desktop_box.find_children("*", "LineEdit", true, false):
 		(one as LineEdit).text = connector.shared_address()
 	_intro.visible = not linked and not on and not connector.used()
-	_connect.text = ("Open in Claude" if linked
-		else "Connect Claude again" if connector.waiting_for_claude() else "Connect Claude")
+	var waiting: bool = connector.waiting_for_claude()
+	_connect.text = ("Open in Claude" if claude and linked
+		else "Connect %s again" % name if waiting else "Connect %s" % name)
+	# Claude's own apps, beside Claude: Claude Code's command and the
+	# desktop app. The private address is anyone's.
+	_code_link.visible = claude
+	_desktop_link.visible = claude
+	if not claude:
+		_code_box.visible = false
+		_desktop_box.visible = false
 	_here.visible = linked or on or connector.used() or _private_box.visible
 	_in_view.visible = on
 	_disconnect.visible = linked
+	_disconnect.text = "Disconnect %s" % _clients()
 	_new_address.visible = not connector.address().is_empty()
 
 

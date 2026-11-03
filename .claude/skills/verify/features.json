@@ -766,6 +766,14 @@
       "tests": []
     },
     {
+      "id": "cli:connect any probe",
+      "kind": "cli",
+      "entry": "src/dev/connect_any_probe.gd",
+      "reach": "tools/probe.sh connect_any_probe -- --shots=DIR   (each assistant's Connect read back from Outside and the clipboard, its steps and plan beside it; New chat for this tab per assistant; a call named ChatGPT's in the panel, the tab, the toolbar, the card and the history; Another AI in Settings leaves Connect on screen; PROBE_SIZE=1024x768)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:connect probe",
       "kind": "cli",
       "entry": "src/dev/connect_probe.gd",
@@ -4092,6 +4100,14 @@
       "tests": []
     },
     {
+      "id": "ui:connect your AI",
+      "kind": "ui",
+      "entry": "src/net/assistants.gd",
+      "reach": "godot --path .  (the assistant's column, Connect your AI: Your AI chooses Claude, ChatGPT, Gemini, Le Chat, Perplexity, Grok, Claude Code, Codex, Gemini CLI, Cursor, VS Code or another app, from assets/assistants.json; Connect does its own way with its steps beside)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "ui:controls panel and hint",
       "kind": "ui",
       "entry": "src/ui/controls_hint.gd",
@@ -5266,7 +5282,7 @@
       "id": "ui:this tab and its claude chats",
       "kind": "ui",
       "entry": "src/ui/claude_tab_view.gd",
-      "reach": "Claude connected: the toolbar's Tab <id> line, Account's Claude part and the assistant panel's Or with your Claude plan: New chat for this tab, the chats working here, Keep this one",
+      "reach": "Your AI connected: the toolbar's Tab <id> line, Account's Your AI part and the assistant panel's Connect your AI: New chat for this tab, the chats working here (each named for the AI the relay says calls), Keep this one",
       "area": "web",
       "tests": []
     },

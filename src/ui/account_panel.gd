@@ -101,14 +101,15 @@ func setup(with_account: Account) -> void:
 	_kept = _line(StorageKeep.words(), 12, 0.7)
 	column.add_child(_kept)
 
-	# Claude, connected to this account: shown once a connector is given.
+	# Your AI (Claude, ChatGPT, ...), connected to this account: shown once a
+	# connector is given.
 	_claude_box = VBoxContainer.new()
 	_claude_box.add_theme_constant_override("separation", 6)
 	_claude_box.visible = false
 	column.add_child(_claude_box)
 	_claude_box.add_child(HSeparator.new())
 	var claude_title := Label.new()
-	claude_title.text = "Claude"
+	claude_title.text = "Your AI"
 	claude_title.add_theme_font_size_override("font_size", 14)
 	_claude_box.add_child(claude_title)
 	_claude_state = _line("", 12, 0.8)
@@ -116,10 +117,10 @@ func setup(with_account: Account) -> void:
 	_claude_connect = Look.link("Connect Claude", 12)
 	_claude_connect.tooltip_text = "Opens claude.ai with Brickworks filled in"
 	_claude_connect.pressed.connect(func() -> void:
-		if connector.connected():
+		if connector.connected() and connector.assistant == Assistants.CLAUDE:
 			connector.open_in_claude()
 			return
-		connector.connect_claude()
+		connector.connect_assistant()
 		_claude_state.text = connector.connect_words())
 	# One row, side by side: stacked, the link's tooltip opened over
 	# Disconnect Claude below it and took the click meant for it.
@@ -132,8 +133,8 @@ func setup(with_account: Account) -> void:
 	_claude_disconnect.text = "Disconnect Claude"
 	_claude_disconnect.focus_mode = Control.FOCUS_NONE
 	_claude_disconnect.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_claude_disconnect.tooltip_text = ("Claude can no longer reach your "
-		+ "Brickworks, from any of its apps, until you connect it again.")
+	_claude_disconnect.tooltip_text = ("Every AI app connected to your Brickworks "
+		+ "account loses it until you connect it again.")
 	_claude_disconnect.pressed.connect(func() -> void:
 		var ended: int = await connector.disconnect_claude()
 		if ended < 0:
@@ -315,6 +316,7 @@ func use_connector(with: Node) -> void:
 	_claude_box.move_child(_tab_view, _claude_state.get_index() + 1)
 	_tab_view.setup(connector)
 	connector.connections_changed.connect(func(_now: Array) -> void: _show_claude())
+	connector.assistant_chosen.connect(func(_id: String) -> void: _show_claude())
 	_show_claude()
 
 
@@ -334,15 +336,17 @@ func show_claude(on: bool) -> void:
 	claude_shown = on
 	_claude_box.visible = on and connector != null
 	_sign_out.tooltip_text = "Sign out of Brickworks on this device. Your models stay here." \
-		+ (" Claude stops building in this tab, and stays connected to your account "
+		+ (" Your AI stops building in this tab, and stays connected to your account "
 			+ "until you disconnect it." if on else "")
 
 
-## Which of Claude's apps are connected to this account, since when and
-## when last used; or that none is.
+## Which AI apps are connected to this account, since when and when last
+## used; or that none is. Connect is the chosen one's (Connect your AI).
 func _show_claude() -> void:
 	if connector == null:
 		return
+	var name: String = connector.assistant_name()
+	var claude: bool = connector.assistant == Assistants.CLAUDE
 	var lines := PackedStringArray()
 	for one: Variant in connector.connections:
 		var it: Dictionary = one
@@ -351,22 +355,33 @@ func _show_claude() -> void:
 		if it.get("last_used") != null:
 			line += ", last used %s" % when(str(it.get("last_used", "")))
 		lines.append(line)
-	if lines.is_empty() and connector.had_claude:
+	var names := PackedStringArray()
+	for one: Variant in connector.connections:
+		var client: String = str((one as Dictionary).get("client", "Claude"))
+		if not names.has(client):
+			names.append(client)
+	var connected: String = ", ".join(names.slice(0, names.size() - 1)) + " and " + names[names.size() - 1] \
+		if names.size() > 1 else "".join(names)
+	if lines.is_empty() and connector.had_claude and claude:
 		_claude_state.text = ("Not connected now. Connect Claude opens claude.ai "
 			+ "with Brickworks filled in. " + ConnectorForm.ALREADY)
 	elif lines.is_empty():
-		_claude_state.text = ("Not connected. Connect Claude once and it can "
-			+ "build in any Brickworks tab you have open, on your Claude plan."
+		_claude_state.text = ("Not connected. Connect %s once and it can build in any "
+			% name + "Brickworks tab you have open, on your plan with it."
 			if connector.connections_known else "Checking…")
 	else:
-		_claude_state.text = "Connected — Claude can build in your open Brickworks tabs.\n" \
-			+ "\n".join(lines)
-	# Always one click to Claude: Connect while it is not connected, and
-	# while it is, Open in Claude for the connector's tools and permissions.
-	_claude_connect.text = "Connect Claude" if lines.is_empty() else "Open in Claude"
+		_claude_state.text = "Connected — %s can build in your open Brickworks tabs.\n" \
+			% connected + "\n".join(lines)
+	# Always one click to your AI: Connect while it is not connected, and
+	# while Claude is, Open in Claude for the connector's tools and
+	# permissions. Another app is connected again, or as well, with Connect.
+	_claude_connect.text = ("Open in Claude" if claude and not lines.is_empty()
+		else "Connect %s" % name)
 	_claude_connect.tooltip_text = ("Opens your connectors in Claude, where Brickworks is"
-		if not lines.is_empty() else "Opens claude.ai with Brickworks filled in")
+		if claude and not lines.is_empty() else "Opens claude.ai with Brickworks filled in"
+		if claude else "Adds Brickworks to %s, as Connect your AI in the assistant's column does" % name)
 	_claude_disconnect.visible = not lines.is_empty()
+	_claude_disconnect.text = "Disconnect %s" % connected if not connected.is_empty() else "Disconnect"
 
 
 ## An ISO time from the deployment, in words: "today at 14:05", or "11 Oct".

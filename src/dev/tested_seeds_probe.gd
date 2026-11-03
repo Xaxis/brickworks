@@ -35,13 +35,24 @@ const LIST := "res://tools/web/gallery_seeds/ldraw_library.json"
 ## at tested305, none failing stands; at tested306, steps 28, once a step's
 ## parts are judged as a real booklet shows them, by their shapes from every
 ## side and turned over, and a callout drawn where it goes is built in the
-## hand.
+## hand. At exactmost (2026-11-03), whole 9, 30, 16 and 6 for seeds 2, 12,
+## 14 and 22, once 310 parts the pack had no shape for were given BrickNet's
+## (exactmiss), none a shape gone wrong: each is as wide as its part's mesh.
+## 40138-1's 14 rims (93595) stand 1.2 LDU into the mudguards over them,
+## and 31025-1's 4 rims (93594) 2 LDU into their tyres (51011), the meshes
+## so drawn, a fit KnownFits cannot learn: no other set builds either pose
+## (30192-1 and 30572-1 sit the rim 8 LDU lower). And 928-1's buggy on the
+## baseplate's studs and 6043-1's trebuchet on the ground, no longer held
+## as before by their shapeless wheels, are said to fall: the buggy's
+## driver has an arm raised and the trebuchet a plate turned 45 degrees,
+## which ExactCheck.rests takes for a part tilted loose, and 6043-1's floor
+## is a held halberd's turned box, 7.7 LDU under the ground.
 const MOST: Dictionary = {
-	1: [0, 0, 0, 4], 2: [0, 0, 0, 8], 3: [0, 1, 0, 7], 4: [0, 0, 0, 8], 5: [0, 5, 0, 3],
+	1: [0, 0, 0, 4], 2: [0, 0, 0, 9], 3: [0, 1, 0, 7], 4: [0, 0, 0, 8], 5: [0, 5, 0, 3],
 	6: [0, 0, 0, 8], 7: [0, 0, 0, 2], 8: [0, 0, 0, 7], 9: [0, 4, 1, 6], 10: [0, 1, 1, 11],
-	11: [0, 0, 1, 7], 12: [0, 0, 1, 16], 13: [0, 0, 0, 2], 14: [0, 2, 0, 12], 15: [0, 4, 0, 11],
+	11: [0, 0, 1, 7], 12: [0, 0, 1, 30], 13: [0, 0, 0, 2], 14: [0, 2, 0, 16], 15: [0, 4, 0, 11],
 	16: [0, 0, 0, 7], 17: [0, 2, 0, 8], 18: [0, 0, 0, 2], 19: [0, 4, 0, 7], 20: [0, 0, 0, 18],
-	21: [0, 0, 0, 0], 22: [0, 0, 0, 5], 23: [0, 3, 0, 0], 24: [0, 0, 1, 2], 25: [0, 0, 0, 0],
+	21: [0, 0, 0, 0], 22: [0, 0, 0, 6], 23: [0, 3, 0, 0], 24: [0, 0, 1, 2], 25: [0, 0, 0, 0],
 	26: [0, 0, 0, 5], 27: [0, 2, 16, 16], 28: [0, 0, 1, 8], 29: [0, 0, 0, 11], 30: [0, 0, 0, 3],
 }
 ## Faults the files really have, each still to be found: [seed, test, what
