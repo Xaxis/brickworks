@@ -4555,6 +4555,172 @@ brick, and on Architecture subjects the sets win on massing.
 Results: `bench/results/realset-2026-11-03-d12b44/` against
 `realset-2026-11-03-d12l44/`.
 
+### Surface: where design12's exposed studs come from, and a yard that keeps only its standing places (2026-11-03, design13)
+
+**Why.** design12's paired 44 lost surface on studs: of the lever's 59 surface
+verdicts lost against the set, 54 name exposed studs (29 subjects); of the
+base's 60, 42 (27). The app has a surface pass that proposes tiles over open
+stud fields. The studs still show, so first where they are and why.
+
+**Measured, before any change.** Every final design of both d12 arms (88) and
+every set of the 44 was opened in the app and read as the surface pass reads
+it (`standing_free`: nothing on a stud, nothing within a brick over it, seen):
+each upward stud open or not, the open ones grouped, each group placed (base or
+plaza, roof, terrace step, wall top, wing or ledge, body top) and traced to why
+the pass leaves it. Scratch: `stud_read.gd`, `py/trace.py`.
+
+What the judge names, near "stud" in the clause about our model (lever arm, 54
+verdicts): roofs and tops 18, base, floor or plaza 14, deck, hood or body 10,
+studs on a side 8, ledges and terraces 6, walkway or wall top 4, a creature's
+head 4.
+
+| | sets (44) | base arm | lever arm |
+|---|---|---|---|
+| open upward studs | 2,355 | 6,837 | 7,191 |
+| per model (median) | 54 (20) | 155 (48) | 163 (36) |
+| per 100 parts | 12.8 | 38.1 | 39.9 |
+| share of upward studs | 8.0% | 7.9% | 8.5% |
+| at the base | 915 | 4,330 | 4,556 |
+| terrace steps | 588 | 715 | 914 |
+| body tops | 303 | 933 | 1,041 |
+| wings and ledges | 242 | 385 | 313 |
+| wall tops | 185 | 329 | 274 |
+| roofs | 122 | 145 | 93 |
+| beside a figure, animal or plant | 454 | 3,943 | 4,241 |
+
+On the 23 non-Technic proof sets: 995 open, 43 a set (median 35), 5.0% of
+upward studs, 10.1 per 100 parts; ours 1,781 and 2,003 (77 and 87 a model,
+medians 27 and 24), 4.8%, 19 and 21 per 100 parts. So a typical design of
+ours does not show more studs than its set: the median model shows fewer. The
+excess is a few big fields, at the base and round figures, on the subjects the
+judge faults.
+
+**Why each is open** (lever arm; the subjects whose surface loss named studs,
+6,299 open studs; the base arm's 5,639 in brackets):
+
+| why | lever | base |
+|---|---|---|
+| a baseplate: the pass never reads one | 46.0% | 32.6% |
+| a yard: a figure, animal or plant stands among the field, so all of it is left | 16.8% | 24.7% |
+| a part the pass never tiles (round plates, cones, Technic bricks, fences) | 11.7% | 12.5% |
+| built after the last pass | 7.5% | 10.6% |
+| an edge proposed, then kept or rejected (its tiles went with it) | 7.7% | 4.7% |
+| under the four-stud floor | 6.5% | 5.1% |
+| ground offered, not tiled | 0.1% | 3.3% |
+| over the cap of 40 findings, never laid | 0.3% | 2.2% |
+| proposed and accepted, then undone or built over | 1.3% | 2.2% |
+
+- **The pass ran in every session** (44 of 44, both arms). It is never the
+  pass missing a session.
+- **Every session built on after its last pass**: a median of 7 (base) and 8
+  (lever) edits after it, mostly edit_model (486), add_minifig (103) and
+  print_part (77): the creative pass and fixes.
+- **Baseplates** are three or four subjects (Heartlake Stables, Container Yard,
+  Rise of the Sphinx, Dino Explorer): 2,428 and 2,899 studs. No set of the 44
+  shows an open baseplate stud. The brief keeps a baseplate's play area open,
+  so it is left.
+- **Yards are whole fields.** `_lived_on` leaves a field whole when anything
+  living stands within a stud of it: 1,539 studs in 24 fields (11 sessions,
+  base) and 1,427 in 21 (10, lever), at their last review. Uruk-hai's 333-stud
+  base and 132-stud walkway, Naida's 227 and 134, the Container Stacker's two
+  79s, Mia's 115-stud floor. The sets keep 454 studs beside living things over
+  all 44; ours 3,943 and 4,241.
+- **Edges kept or rejected**, in the sessions' words: "a crisp flat-topped box;
+  I tile its roof flat instead of curving its front edge" (Chicago), "its roof
+  is tiled flat by hand instead" (Guggenheim), "flat terraces behind a
+  balustrade ... I'll tile them flat" (Trevi), "crisp flat cantilevers"
+  (Imperial Hotel), "square-edged boxes ... no curved edges" (Container Yard),
+  "raising one verge alone would make it lopsided" (Level Crossing), "Minecraft
+  is all cubes" (The Cave). Rejecting an edge takes its tiles off with its
+  curves, so the top it would have finished stays studs.
+- **Studs sets keep open on purpose**: grass and play areas at the base
+  (Heartlake Stables 584 open, 259 of them round its horses; The Cave 237;
+  Trevi's water 121, trans plates), the walls' tops of Sungnyemun (62), the
+  container tops of the Container Stacker (78), and a figure's standing place.
+  Round plates 196 and cones are the sets' too: a texture, not a lapse.
+
+**The change** (`db9fa31d`), each still a proposal the session settles:
+
+- **A yard keeps its standing places, not the whole field.** The studs a
+  figure, animal or plant stands on, and a stud's ring round its footprint
+  (`STANDING_ROOM`), stay open; the rest of the field is tiled round them and
+  said as a yard ("a yard: the 10 studs where 2 figures ... stand and beside
+  them left open"). Under four studs left, the field is left whole as before.
+  Ground something already stands on is laid the same way, not only offered;
+  bare ground is still offered, for the creative pass's figures.
+- **An edge can be settled "flat".** Its curved slopes come off and its top's
+  open studs are tiled flat, its edge left square: what the sessions that
+  refused an edge said they wanted. A top that was tiles gets its tiles back.
+- **Saving after the creative pass says, once, what was built since.** If
+  open fields the pass would finish were built after it ran, the save's
+  answer names them and how to lay them (review_model {"surface": true}),
+  then says nothing more until the pass runs again.
+- Left as they were: baseplates (a play area), round plates, cones and
+  Technic tops (a texture), groups under four studs.
+
+**Proof in the app** (surface_probe, 98 checks): a yard on an 8 x 8 field
+with a gardener keeps 10 of its 62 studs, every one under or beside the
+figure, and the rest lies as tiles that hold, the model one piece; ground a
+visitor stands on is laid round them (10 of 58 left); a baseplate's 122 open
+studs stay open with a child on it; an edge settled flat leaves no curved
+slope and no open stud, a tile high, holding; a 2 x 4 brick added after the
+pass is named once on save ("8 open studs were built in 1 place") and laid by
+the next review. mcp_sync: the settle_surface schema served, rewritten.
+
+**Smoke.** Two locked snapshots, each imported first: `snapd13base` at
+`b1ae9277` (stage225) and `snapd13lev` at `db9fa31d`. One job each on the
+owner's path, on five subjects whose d12 surface losses named studs: 21033-1
+Chicago (a building), 7746-1 Single-Drum Roller (a vehicle), 5934-1 Dino
+Explorer (a creature), 9471-1 Uruk-hai Army (a scene on a base) and 41072-1
+Naida's Spa Secret (a scene with yards). No login lapse. The holdout held in
+all ten: the one session that searched for its own set (Naida, lever) was
+told "nothing matches".
+
+Verdicts won, of 10 per dimension (5 subjects, both orders):
+
+| dimension | d13base | d13lev | subjects better / worse |
+|---|---|---|---|
+| likeness | 2 | 4 | 2 / 0 |
+| surface | 2 | 5 | 2 / 0 |
+| colour | 3 | 2 | 1 / 2 |
+| technique | 1 | 1 | 0 / 0 |
+| creativity | 5 | 4 | 1 / 2 |
+| overall | 2 | 4 | 2 / 0 |
+| surface verdicts naming our studs | 7 | 4 | |
+
+Where the lever acted, and where it did not:
+
+- **Naida**: the base left one 308-stud yard round its figure; the lever laid
+  two yards round them (11 and 13 studs left), 237 studs tiled against 94.
+  Surface 1 → 2: "B's tiled pool floor, smooth white pool rim, round tower
+  and tiled base give clean, sleek surfaces". The base's: "large studded
+  green baseplates bare", "floors studded light blue nearly everywhere".
+- **Uruk-hai**: the base left a 267-stud yard; the lever laid it round two
+  figures (11 left of 111). The session kept two curved edges, the wall walk
+  and the battlefield, "where the Uruk-hai army stands, so its studs stay
+  open for figures". One order still says "a wide open stretch of studded tan
+  baseplate". Overall 1 → 2.
+- **Chicago**: surface 0 → 2, but from a different design (X-braced Hancock,
+  round Marina City), not from the lever: the base's lost on "studs showing
+  on its glass tower's setbacks, on the L track".
+- **Single-Drum Roller**: saving said "Since the surface pass, 31 open studs
+  were built in 2 places", in the same answer as the creative pass's fresh
+  look; the session answered the fresh look and never laid them. The judge:
+  "its deck is a wide area of exposed studs". The note is said once and
+  loses to the step beside it.
+- **Dino Explorer**: 7 studs tiled; the judge names "open studs all over its
+  back" both ways. A creature's back of stepped plates, not a field.
+
+Front renders, each looked at: Naida's lever pool and base are tiles with
+the figures' studs round them; Uruk-hai's front strip still shows tan studs
+(the kept battlefield); the Roller's yellow deck studs show; the Dino's tan
+ground shows studs at the front; Chicago's two are different skylines.
+
+**GO for the paired 44** on all three of the brief's terms: surface won more
+often (2 → 5), likeness no worse (2 → 4; creativity 5 → 4), and the judge
+names our studs less (7 → 4). Running: `realset-2026-11-03-d13b44` against
+`-d13l44`, 2 jobs an arm.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
