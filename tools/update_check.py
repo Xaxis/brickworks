@@ -283,6 +283,16 @@ def take_away(programs: list[Path], system: bool) -> None:
             shutil.rmtree(release.WINDOWS_INSTALLED, ignore_errors=True)
 
 
+LISTING = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Brickworks"
+
+
+def listed() -> str:
+    """The version Settings, Apps lists for Brickworks: the installer's."""
+    done = subprocess.run(["reg", "query", LISTING, "/v", "DisplayVersion"], capture_output=True, text=True)
+    found = re.search(r"DisplayVersion\s+REG_SZ\s+(\S+)", done.stdout)
+    return found.group(1) if found else ""
+
+
 def tree(folder: Path) -> dict[str, tuple[int, int, int]]:
     """Every file and link under [folder], with its size, time and mode."""
     out: dict[str, tuple[int, int, int]] = {}
@@ -473,6 +483,9 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             run.log_after(mark, "is up", 60)
             said = run.about(program)
             run.check("the copy in place says %s" % said, said.startswith("Brickworks %s" % run.B))
+            installer = old.name.endswith("-setup.exe")
+            if installer:
+                run.check("Settings, Apps lists %s" % listed(), listed() == run.B)
             time.sleep(2)
             run.check("the old copy is gone once the new one started: %s" % (run.staged(install) or "nothing left"),
                       not run.staged(install))
@@ -511,6 +524,11 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             again.mkdir()
             program3 = program_in(old, again)
             programs.append(program3)
+            if installer:
+                # Marked, since the broken installer is A's and lists A too: put
+                # back, the listing is the one from before, word for word.
+                subprocess.run(["reg", "add", LISTING, "/v", "DisplayVersion", "/d", run.A + "-before", "/f"],
+                               capture_output=True)
             mark = run.mark()
             code, output = run.app(program3, "broken", ["--model=res://models/house.ldr",
                                                        "--update=install"], person=True)
@@ -522,6 +540,9 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
                       said.startswith("Brickworks %s" % run.A) and bool(back)
                       and back.group(1) == run.A and "putting the old copy back" in text,
                       output + "\n" + text)
+            if installer:
+                run.check("...and Settings, Apps lists what it did before: %s" % listed(),
+                          listed() == run.A + "-before")
         finally:
             server.shutdown()
             if keep_log is not None and run.log.exists():
