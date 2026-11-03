@@ -3686,7 +3686,7 @@ plan with Claude as the client.
 
 ```sh
 tools/deploy.sh                 # a preview URL
-tools/deploy.sh --prod          # the one brickworks.diy points at
+tools/deploy.sh --prod          # the one brickworks.diy points at: ship.sh's alone (SHIP_DEPLOY), or PROD_BY_HAND="why"
 tools/deploy.sh --promote=URL   # brickworks.diy onto a checked deployment of HEAD (ship.sh's)
 tools/deploy.sh --no-export     # deploy what is already in build/web
 node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png

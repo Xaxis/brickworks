@@ -60,6 +60,14 @@ if [ "$stand_in" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --billing-stand-in
 if [ "$billing_test" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --billing-test is a unit's preview's alone (--unit)"; exit 2; fi
 if [ "$billing_test" = 1 ] && [ "$stand_in" = 1 ]; then echo "deploy: --billing-test or --billing-stand-in, not both"; exit 2; fi
 if [ "$beta_open" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --beta-open is a unit's preview's alone (--unit)"; exit 2; fi
+# Production is the release train's: ship.sh sets SHIP_DEPLOY for its
+# --promote and --prod. A unit's own --prod put 0.15.0's download page on
+# brickworks.diy with none of its checks run (2026-11-03). By hand, the lead
+# names why in PROD_BY_HAND.
+if { [ "$prod" = 1 ] || [ -n "$promote" ]; } && [ -z "${SHIP_DEPLOY:-}" ] && [ -z "${PROD_BY_HAND:-}" ]; then
+  echo "deploy: production is the release train's (tools/release/ship.sh); a web change ships on a train. By hand: PROD_BY_HAND=\"why\" tools/deploy.sh $*"
+  exit 2
+fi
 
 [ -f .env ] && set -a && . ./.env && set +a
 # A test key only, by its shape (api/_billing.js KEYS): a live key never
