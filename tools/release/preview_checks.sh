@@ -287,6 +287,8 @@ declare -A CMD=(
   # card on a unit's preview from tools/deploy.sh --unit --billing-test,
   # against Admission's real test mode (docs/PLANS.md 8.1); every release's
   # preview has plans off, so it has nothing to buy there.
+  # local only: webhook_replay.mjs. Admission's webhook, signed by its own
+  # code, into such a preview, which Admission's deliveries cannot reach.
   # The beta (api/_beta.js, supabase/beta.sql): on a deployment with the
   # beta off, as every release's is, /beta says Coming soon with no form and
   # no count and the API refuses an application. On a unit's preview from
