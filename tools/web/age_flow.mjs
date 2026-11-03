@@ -1,7 +1,9 @@
 // The ground rules (2026-10-18), in a real browser: the terms and the
 // guidelines on every page, the age question on the site and in the app,
-// what an answer under 13 refuses and an answer of 13 or over allows, and
-// the guidelines beside Publish.
+// and the guidelines beside Publish. Accounts are for 13 and over
+// (2026-11-03): an answer under 13 deletes the account just made, with its
+// address, and the browser keeps only that it was told; an answer of 13 or
+// over lets them in.
 //
 //   set -a; . ./.env; set +a
 //   node tools/web/relay_server.mjs 8790 --static=build/web --trust-stand-in &
@@ -11,27 +13,31 @@
 // --trust-stand-in answers supabase/trust.sql's five functions in the local
 // server's own memory until the file is applied to the project
 // (tools/web/trust_stand_in.mjs); with it applied, run it with no stand-in.
-// Four throwaway accounts at Resend test addresses, never asked their age
-// beforehand (mintSession's age: false), deleted at the end with all of
-// theirs:
+// Throwaway accounts at Resend test addresses, never asked their age
+// beforehand (mintSession's age: false); the ones under 13 are deleted by
+// the answer, the rest at the end with all of theirs:
 //
 //   1. The pages: /terms and /guidelines, and every page's footer naming
 //      them; the operator's line on /terms and the copyright agent's on
-//      /takedown marked for the owner; the counter-notice there. At 390
+//      /takedown marked for the owner; the counter-notice there; /terms,
+//      /privacy and the FAQ saying accounts are for 13 and over. At 390
 //      and 1280 px, nothing sideways.
 //   2. On the site: /profile signed in asks "When were you born?" with no
-//      word of 13 before the answer. Under 13: said after, the profile form
-//      off; and the server refuses a profile, a public collection, a
-//      listing and a credit, in words, while sharing by link goes. A second
-//      answer changes nothing.
+//      word of 13 before the answer. Under 13: the dialog says accounts are
+//      for 13 and over and to ask a parent or guardian; the account is gone
+//      (its auth user and profile, read through the admin API), and no row
+//      holds its address (the codes' count); its token saves nothing and
+//      shares nothing, and a second answer brings nothing back; the browser
+//      keeps "1" and no sign-in. A retry there: Sign in says so at once, and
+//      a new account signed in there is not asked but deleted the same way.
 //   3. Another account, 13 or over: asked the same, then a profile, a
 //      public collection and a listing all go.
 //   4. In the app: a third account is asked in the sign-in screen, under 13;
-//      the screen says what that means, Start building lets them in, and
-//      Share has List it in the gallery and Show who made it off, a line
-//      why, and "Publishing means you agree to the guidelines", which opens
-//      /guidelines. A fourth, 13 or over, is let straight in, and its Share
-//      has the box to tick.
+//      the account is gone, the screen back at the way in saying so, the
+//      browser told; reloaded, it says so at once, and a new account is not
+//      asked but deleted. A fourth, 13 or over, is let straight in, and its
+//      Share has the box to tick, a name to show, and "Publishing means you
+//      agree to the guidelines" just under Publish, which opens /guidelines.
 import { clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
@@ -53,9 +59,16 @@ const bypass = process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const rand = randomBytes(4).toString("hex");
 const young = `delivered+bw-age-young-${rand}@resend.dev`;
+const youngAgain = `delivered+bw-age-again-${rand}@resend.dev`;
 const grown = `delivered+bw-age-grown-${rand}@resend.dev`;
 const appYoung = `delivered+bw-age-appyoung-${rand}@resend.dev`;
+const appAgain = `delivered+bw-age-appagain-${rand}@resend.dev`;
 const appGrown = `delivered+bw-age-appgrown-${rand}@resend.dev`;
+// What somebody under 13 is told (api/_trust.js TOO_YOUNG), and the key the
+// browser keeps that it was told under (web/account.js REFUSED).
+const TOO_YOUNG = "Brickworks accounts are for 13 and over. Ask a parent or guardian to sign in with their own email "
+  + "and build with you.";
+const REFUSED = "brickworks.age_refused";
 const now = new Date();
 const thisYear = now.getUTCFullYear();
 const thisMonth = now.getUTCMonth() + 1;
@@ -101,6 +114,41 @@ async function signedInContext(email, width = 1280, height = 900) {
   return context;
 }
 
+// A browser whose sign-ins are put in by hand, so that one deleted stays
+// gone: an account under 13 is signed out by its answer, and a session an
+// init script put back at every page would be its again.
+async function plainContext(width = 1280, height = 900) {
+  return browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });
+}
+// [email]'s session put where this browser keeps one: asked for by its
+// code first, as a person signs in, so the codes' count holds its address.
+async function signIn(page, email) {
+  const asked = await api("/api/otp", { method: "POST", body: { email } });
+  const made = await mintSession(email, { age: false });
+  sessions[email] = made;
+  await page.evaluate(([name, value]) => {
+    sessionStorage.clear();
+    localStorage.setItem(name, value);
+  }, [STORAGE_KEY, JSON.stringify(made.kept)]);
+  return asked.status;
+}
+// What is left of an account, read through the admin API: its auth user
+// (200, or 404 gone), its profile's rows, and the rows of the codes' count
+// that hold its address (api/otp.js may_ask_for_code).
+const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+const ADMIN = { apikey: process.env.SUPABASE_SECRET_KEY, authorization: `Bearer ${process.env.SUPABASE_SECRET_KEY}` };
+async function leftOf(email) {
+  const id = sessions[email]?.kept?.user_id;
+  const user = await fetch(`${SUPABASE}/auth/v1/admin/users/${id}`, { headers: ADMIN });
+  const profile = await (await fetch(`${SUPABASE}/rest/v1/profiles?id=eq.${id}&select=id`, { headers: ADMIN })).json();
+  const codes = await (await fetch(`${SUPABASE}/rest/v1/otp_requests?email=eq.${encodeURIComponent(email)}&select=asked_at`,
+    { headers: ADMIN })).json();
+  return { user: user.status, profiles: Array.isArray(profile) ? profile.length : -1, codes: Array.isArray(codes) ? codes.length : -1 };
+}
+const gone = (left) => left.user === 404 && left.profiles === 0 && left.codes === 0;
+const kept = (page) => page.evaluate(([flag, session]) => ({ flag: localStorage.getItem(flag),
+  session: localStorage.getItem(session) }), [REFUSED, STORAGE_KEY]);
+
 // A file of its own: the moderation flow bars house.ldr's fingerprint while it
 // runs, and a flow beside it listing the same file would be refused for that.
 const house = `${readFileSync(new URL("../../models/house.ldr", import.meta.url), "utf8").trimEnd()}\r\n0 // age flow ${rand}\r\n`;
@@ -132,8 +180,17 @@ try {
   const terms = await look.textContent("main");
   check("/terms: a contact for questions, and no blank left showing",
     /Questions about these terms/.test(terms) && !/\[the operator’s legal name\]|To be filled in/.test(terms));
-  check("/terms: says the under-13 rule and the LEGO Group's disclaimer",
-    /13 or over/.test(terms) && /not made, sponsored, authorised or endorsed by the LEGO Group/.test(terms));
+  check("/terms: accounts are for 13 and over, an answer under 13 deletes the account, and the LEGO Group's disclaimer",
+    /accounts are for people 13 and over/.test(terms) && /Under 13, the account just made is deleted at once/.test(terms)
+      && !/Under 13, you can build/.test(terms)
+      && /not made, sponsored, authorised or endorsed by the LEGO Group/.test(terms));
+  await look.goto(`${site}/privacy`, { waitUntil: "load" });
+  check("/privacy: Children, accounts for 13 and over, nothing kept of anyone under 13",
+    /Brickworks accounts are for people 13 and over, and Brickworks keeps no personal information about anyone under 13/
+      .test(await look.textContent("#children + p").catch(() => "")));
+  await look.goto(`${site}/faq`, { waitUntil: "load" });
+  check("/faq: Can children use Brickworks? With a parent or guardian",
+    /With a parent or guardian\. Brickworks accounts are for people 13 and over/.test(await look.textContent("#age").catch(() => "")));
   await look.goto(`${site}/guidelines`, { waitUntil: "load" });
   const rules = await look.textContent("main");
   for (const [what, pattern] of [["credit", /credit/i], ["the three licences", /CC BY 4\.0[\s\S]*CC BY-SA 4\.0[\s\S]*All rights reserved/],
@@ -168,49 +225,69 @@ try {
 
   // --- 2. Under 13, on the site.
   console.log("under 13, on the site");
-  const kid = await signedInContext(young, 1280, 900);
+  const kid = await plainContext(1280, 900);
   const kidPage = await kid.newPage();
   listen(kidPage, "site, under 13");
+  await kidPage.goto(`${site}/terms`, { waitUntil: "load" });
+  const asked = await signIn(kidPage, young);
+  check(`a code asked for first, as a person signs in: ${asked}`, asked === 200);
+  check(`before the answer the account is there (${JSON.stringify(await leftOf(young))})`, (await leftOf(young)).user === 200);
   await kidPage.goto(`${site}/profile`, { waitUntil: "load" });
   await kidPage.waitForSelector("dialog.age[open]", { timeout: 30000 });
   // What a visitor reads: the dialog's words without its lists' options,
   // which hold every year (2013 among them) and are not read out at once.
-  const asked = await kidPage.evaluate(() => {
+  const question = await kidPage.evaluate(() => {
     const copy = document.querySelector("dialog.age").cloneNode(true);
     for (const option of copy.querySelectorAll("option:not([hidden])")) option.remove();
     return copy.textContent;
   });
-  check(`asked "${(await kidPage.textContent("dialog.age p")).trim()}"`, /When were you born\?/.test(asked));
-  check("nothing about 13, or any age, before the answer", !/13|thirteen|old enough|must be/i.test(asked));
+  check(`asked "${(await kidPage.textContent("dialog.age p")).trim()}"`, /When were you born\?/.test(question));
+  check("nothing about 13, or any age, before the answer", !/13|thirteen|old enough|must be/i.test(question));
   await shot(kidPage, "2_site_question.png");
   await kidPage.selectOption("#age-month", String(thisMonth));
   await kidPage.selectOption("#age-year", String(thisYear - 10));
   await kidPage.click("#age-go");
-  await kidPage.waitForSelector("#age-done", { timeout: 20000 });
-  const after = await kidPage.textContent("dialog.age");
-  check("after the answer, it says what is open and what is for 13 and over",
-    /share them by link/.test(after) && /13 and over/.test(after));
+  await kidPage.waitForSelector("#age-done", { timeout: 30000 });
+  const told = await kidPage.textContent("dialog.age");
+  check(`after the answer: "${(await kidPage.textContent("#age-refused")).trim()}"`,
+    (await kidPage.textContent("#age-refused")).trim() === TOO_YOUNG && /Accounts are for 13 and over/.test(told)
+      && /The account is deleted, with your email address\. The date was never kept\./.test(told));
+  check("...and nothing says what is open on the account", !/share them by link|Carry on|You can build here/.test(told));
   await shot(kidPage, "2_site_under_13.png");
-  await kidPage.click("#age-done");
-  await kidPage.waitForFunction(() => document.documentElement.dataset.profile === "ready", null, { timeout: 30000 });
-  check("/profile: the profile form off, and why", await kidPage.isVisible("#young") && await kidPage.isDisabled("#save"));
-  await shot(kidPage, "2_site_profile_off.png");
+  const left = await leftOf(young);
+  check(`the account is gone: auth user ${left.user}, ${left.profiles} profile rows, ${left.codes} rows holding its address`, gone(left));
+  const browserKept = await kept(kidPage);
+  check(`the browser keeps that it was told ("${browserKept.flag}"), and no sign-in (${browserKept.session ? "one left" : "none"})`,
+    browserKept.flag === "1" && !browserKept.session);
   const kidToken = sessions[young].access_token;
-  let r = await api("/api/people?op=profile", { method: "POST", token: kidToken, body: { handle: `young-${rand}`, name: "Young Builder" } });
-  check(`the server refuses a profile: ${r.status} "${r.json?.error}"`, r.status === 422 && /13 and over/.test(r.json?.error || ""));
-  r = await api("/api/people?op=collection", { method: "POST", token: kidToken, body: { name: "My towers", public: true } });
-  check(`a public collection: ${r.status} "${r.json?.error}"`, r.status === 422 && /13 and over/.test(r.json?.error || ""));
-  r = await api("/api/people?op=collection", { method: "POST", token: kidToken, body: { name: "My towers", public: false } });
-  check(`a private one goes: ${r.status}`, r.status === 200);
-  r = await publish(kidToken, { listed: true });
-  check(`listing a model: ${r.status} "${r.json?.error}"`, r.status === 422 && /gallery is for people 13 and over/.test(r.json?.error || ""));
-  r = await publish(kidToken, { author: "Young Builder" });
-  check(`a name on its link: ${r.status} "${r.json?.error}"`, r.status === 422 && /13 and over/.test(r.json?.error || ""));
+  const house64 = (await import("node:zlib")).gzipSync(Buffer.from(house)).toString("base64");
+  let r = await api("/api/models", { method: "POST", token: kidToken, body: { name: `Age flow ${rand}`, base: 0, model: house64 } });
+  check(`its token saves nothing to an account: ${r.status}`, r.status !== 200);
   r = await publish(kidToken, {});
   if (r.json?.id) shared.push([young, r.json.id]);
-  check(`shared by link, unlisted and uncredited: ${r.status}`, r.status === 201 && r.json?.listed === false);
+  check(`...and shares nothing by link: ${r.status}`, r.status !== 201);
   r = await api("/api/account?op=age", { method: "POST", token: kidToken, body: { month: 1, year: 1990 } });
-  check(`answered again as grown up: the first answer stands (${JSON.stringify(r.json?.age)})`, r.status === 200 && r.json?.age?.over_13 === false);
+  check(`answered again as grown up: nothing comes back (${r.status})`, !(r.status === 200 && r.json?.age?.over_13 === true));
+  check(`...and still nothing is kept (${JSON.stringify(await leftOf(young))})`, gone(await leftOf(young)));
+  await kidPage.click("#age-done");
+  await kidPage.waitForFunction(() => document.documentElement.dataset.profile === "signed-out", null, { timeout: 30000 });
+  check("closed, the page is signed out", await kidPage.isVisible("#signed-out"));
+  // A retry in the same browser: told at once, before an address is typed.
+  await kidPage.click("#sign-in");
+  await kidPage.waitForSelector("dialog.sign-in[open] #age-refused", { timeout: 30000 });
+  check(`a retry here is told at once: "${(await kidPage.textContent("dialog.sign-in #age-refused")).trim().slice(0, 60)}…"`,
+    (await kidPage.textContent("dialog.sign-in #age-refused")).trim() === TOO_YOUNG
+      && await kidPage.isVisible("dialog.sign-in input[type=email]"));
+  await shot(kidPage, "2_site_retry.png");
+  await kidPage.keyboard.press("Escape");
+  // And a new account signed in here is not asked again, but goes the same way.
+  await signIn(kidPage, youngAgain);
+  await kidPage.goto(`${site}/profile`, { waitUntil: "load" });
+  await kidPage.waitForSelector("#age-done", { timeout: 30000 });
+  check("a new account signed in here is not asked: no question, the refusal at once",
+    !(await kidPage.isVisible("#age-go")) && (await kidPage.textContent("#age-refused")).trim() === TOO_YOUNG);
+  const again = await leftOf(youngAgain);
+  check(`...and it is gone too: auth user ${again.user}, ${again.profiles} profile rows, ${again.codes} rows holding its address`, gone(again));
   await kid.close();
 
   // --- 3. 13 or over, on the site.
@@ -255,7 +332,7 @@ try {
 
   // --- 4. In the app.
   console.log("in the app");
-  const appKid = await signedInContext(appYoung, 1400, 900);
+  const appKid = await plainContext(1400, 900);
   const app = await appKid.newPage();
   listen(app, "app, under 13");
   const controls = () => app.evaluate(() => window.brickworksControls || {});
@@ -275,6 +352,8 @@ try {
     }
   };
   const press = (name, page = app) => clickStill(page, name, { seconds: 60, after: 400 });
+  await app.goto(`${site}/terms`, { waitUntil: "load" });
+  await signIn(app, appYoung);
   await app.goto(`${site}/app`, { waitUntil: "load", timeout: 120000 });
   await until(() => (window.brickworksAccount || {}).age_ask === true && window.brickworksAccount.gated, "the age question in the sign-in screen");
   // The page is told where a control is once two of the app's reports agree.
@@ -290,32 +369,40 @@ try {
   // Keys reach the field a frame at a time; a click straight after can land first.
   await app.waitForTimeout(1500);
   await press("age_go");
-  await until(() => Object.keys(window.brickworksControls || {}).includes("age_done"), "what under 13 means", 60);
+  const after = await until(() => {
+    const a = window.brickworksAccount || {};
+    return a.state === "signed_out" && a.refused === true && a.refused_now === true && a.gated ? a : null;
+  }, "the way in again, told", 60);
+  check(`under 13: signed out at the way in, told (${JSON.stringify({ state: after.state, refused: after.refused, gated: after.gated })})`, true);
+  await until(() => Object.keys(window.brickworksControls || {}).includes("signin_email"), "the form, for a parent", 60);
+  check("...with the form there for a parent, and no question", !Object.keys(await controls()).includes("age_go"));
   await shot(app, "4_app_under_13.png");
-  await press("age_done");
-  await until(() => !(window.brickworksAccount || {}).gated && window.brickworksAccount.over_13 === false, "let in", 60);
-  check("Start building lets them in, kept under 13", true);
-  await press("tool_share");
-  await until(() => ((window.brickworksShare || {}).panel || {}).open, "the Share panel", 60);
-  const panel = await app.evaluate(() => window.brickworksShare.panel);
-  check(`Share: List it in the gallery and Show who made it off, with a line why (${JSON.stringify({
-    list: panel.list_disabled, credit: panel.credit_disabled, young: panel.young })})`,
-    panel.list_disabled === true && panel.credit_disabled === true && panel.young === true);
-  const beside = await until(() => Object.keys(window.brickworksControls || {}).includes("share_guidelines"),
-    "the guidelines beside Publish", 60).catch(() => false);
-  const placed = await controls();
-  const [publishAt, agreeAt, nameAt] = [placed.share_publish, placed.share_guidelines, placed.share_name];
-  check(`"Publishing means you agree to the guidelines" just under Publish (${panel.guidelines}; at ${agreeAt?.y}, Publish ${publishAt?.y})`,
-    Boolean(beside) && /\/guidelines$/.test(panel.guidelines || "") && publishAt && agreeAt
-    && agreeAt.y > publishAt.y && agreeAt.y - publishAt.y < 60);
-  check("the rest of the panel laid out above it as before", Boolean(nameAt) && nameAt.y < publishAt.y);
-  await shot(app, "4_app_share_under_13.png");
-  const opened = appKid.waitForEvent("page", { timeout: 30000 }).catch(() => null);
-  await press("share_guidelines");
-  const tab = await opened;
-  if (tab) await tab.waitForLoadState("load").catch(() => {});
-  check(`pressed, it opens the guidelines (${tab ? tab.url() : "nothing opened"})`,
-    Boolean(tab) && /\/guidelines$/.test(tab.url()) && /Community guidelines/.test(await tab.textContent("h1").catch(() => "")));
+  const appLeft = await leftOf(appYoung);
+  check(`the account is gone: auth user ${appLeft.user}, ${appLeft.profiles} profile rows, ${appLeft.codes} rows holding its address`, gone(appLeft));
+  const appKept = await kept(app);
+  check(`the browser keeps that it was told ("${appKept.flag}"), and no sign-in (${appKept.session ? "one left" : "none"})`,
+    appKept.flag === "1" && !appKept.session);
+  // A retry: the app opened again here says so at once.
+  await app.reload({ waitUntil: "load", timeout: 120000 });
+  const retry = await until(() => {
+    const a = window.brickworksAccount || {};
+    return a.state === "signed_out" && a.refused === true && a.gated ? a : null;
+  }, "the way in, told at once", 240);
+  check(`opened again, the way in says so at once (refused ${retry.refused}, the account just deleted ${retry.refused_now})`,
+    retry.refused === true && retry.refused_now === false);
+  await shot(app, "4_app_retry.png");
+  // And a new account signed in here is not asked, but deleted the same way.
+  await signIn(app, appAgain);
+  await app.reload({ waitUntil: "load", timeout: 120000 });
+  let askedAgain = false;
+  await until(() => {
+    const a = window.brickworksAccount || {};
+    return a.state === "signed_out" && a.refused_now === true ? a : null;
+  }, "the new account refused", 240).catch(() => null);
+  askedAgain = Object.keys(await controls()).includes("age_go");
+  const appAgainLeft = await leftOf(appAgain);
+  check(`a new account signed in here is not asked (${askedAgain ? "asked" : "not asked"}), and is gone: auth user ${appAgainLeft.user}, `
+    + `${appAgainLeft.profiles} profile rows, ${appAgainLeft.codes} rows holding its address`, !askedAgain && gone(appAgainLeft));
   await appKid.close();
 
   const appAdult = await signedInContext(appGrown, 1400, 900);
@@ -344,7 +431,21 @@ try {
   const open = await app2.evaluate(() => window.brickworksShare.panel);
   check(`Share: the box to tick, and a name to show (${JSON.stringify({ list: open.list_disabled, credit: open.credit_disabled, young: open.young })})`,
     open.list_disabled === false && open.credit_disabled === false && open.young === false);
+  const beside = await until2(() => Object.keys(window.brickworksControls || {}).includes("share_guidelines"),
+    "the guidelines beside Publish", 60).catch(() => false);
+  const placed = await app2.evaluate(() => window.brickworksControls || {});
+  const [publishAt, agreeAt, nameAt] = [placed.share_publish, placed.share_guidelines, placed.share_name];
+  check(`"Publishing means you agree to the guidelines" just under Publish (${open.guidelines}; at ${agreeAt?.y}, Publish ${publishAt?.y})`,
+    Boolean(beside) && /\/guidelines$/.test(open.guidelines || "") && publishAt && agreeAt
+    && agreeAt.y > publishAt.y && agreeAt.y - publishAt.y < 60);
+  check("the rest of the panel laid out above it as before", Boolean(nameAt) && nameAt.y < publishAt.y);
   await shot(app2, "4_app_share_13_or_over.png");
+  const opened = appAdult.waitForEvent("page", { timeout: 30000 }).catch(() => null);
+  await press("share_guidelines", app2);
+  const tab = await opened;
+  if (tab) await tab.waitForLoadState("load").catch(() => {});
+  check(`pressed, it opens the guidelines (${tab ? tab.url() : "nothing opened"})`,
+    Boolean(tab) && /\/guidelines$/.test(tab.url()) && /Community guidelines/.test(await tab.textContent("h1").catch(() => "")));
   await appAdult.close();
 } catch (trouble) {
   failed += 1;
@@ -357,10 +458,15 @@ try {
     const token = sessions[email]?.access_token;
     if (token) await api(`/api/share?op=unpublish&id=${id}`, { method: "POST", token });
   }
-  let gone = 0;
-  const made = Object.keys(sessions);
-  for (const email of made) if (await deleteAccount(email)) gone += 1;
-  check(`the accounts made deleted, and everything of theirs with them (${gone} of ${made.length})`, gone === made.length);
+  // Those under 13 went with their answer; the rest go now.
+  const answered = [young, youngAgain, appYoung, appAgain];
+  let deleted = 0;
+  const made = Object.keys(sessions).filter((email) => !answered.includes(email));
+  for (const email of made) if (await deleteAccount(email)) deleted += 1;
+  const left = (await Promise.all(Object.keys(sessions).filter((email) => answered.includes(email))
+    .map((email) => deleteAccount(email)))).filter(Boolean).length;
+  check(`the accounts made deleted, and everything of theirs with them (${deleted} of ${made.length}; `
+    + `${left} under 13 left to delete)`, deleted === made.length && left === 0);
 }
-console.log(failed ? `${failed} FAILED` : "the age question is asked neutrally, and what it answers holds on the site, in the app and on the server");
+console.log(failed ? `${failed} FAILED` : "the age question is asked neutrally; under 13 nothing is kept, and 13 or over holds on the site, in the app and on the server");
 process.exit(failed ? 1 : 0);

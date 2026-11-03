@@ -1119,10 +1119,15 @@ plan with Claude as the client.
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
   `api/account.js` `?op=age`, `api/_trust.js`, `supabase/trust.sql`): asked
   once, after a first sign-in, on the site and in the app — "When were you
-  born?", month and year, nothing about 13 before the answer. Under 13 the
-  server refuses (422, in words) a listing, a credit, a profile and a public
-  collection, and the database's triggers refuse them again; an account not
-  asked yet is told to answer first before anything new goes public.
+  born?", month and year, nothing about 13 before the answer. Accounts are
+  for 13 and over (2026-11-03): under 13 the account is deleted at once,
+  with its address's code count, the dialog says so with a parent line, and
+  the browser keeps `brickworks.age_refused` ("1", nothing personal), so a
+  retry there is told at once and an account new there deleted unasked. A
+  row from before that says under 13 is refused (422, in words) a listing,
+  a credit, a profile and a public collection, and the database's triggers
+  refuse them again; an account not asked yet is told to answer first
+  before anything new goes public.
 - `age browser flow` (`tools/web/age_flow.mjs`) and `report digest browser
   flow` (`tools/web/digest_flow.mjs`): below.
 - `design system` (`web/site.css`, `docs/DESIGN_SYSTEM.md`, 2026-10-19;
@@ -4166,20 +4171,25 @@ put on a page at once, and five two frames after they were made, each
 naming theirs on `<body>`. It proves it when it ends
 `card check: 15 cards compared, 0 failed` (2026-10-26).
 
-`age_flow` proves it when it ends "the age question is asked neutrally, and
-what it answers holds on the site, in the app and on the server": every
-page's footer links `/terms` and `/guidelines`; each topic on
-`/guidelines`; the operator's and the agent's lines marked; the
-counter-notice form; nothing sideways at 390 and 1280; on `/profile`, "When
-were you born?" with no word of 13 before the answer; under 13, what that
-means said after, the profile form off, and the server refusing a profile, a
-public collection, a listing and a credit (422) while a private list and a
-link go, and a second answer changing nothing; 13 or over, a profile, a
-public list and a credited listing; in the app, the sign-in screen asking it
-(only its controls pressable), under 13 its words and Start building, Share
-with List it and Show who made it off and "Publishing means you agree to
-the guidelines" opening `/guidelines`; 13 or over, let straight in with the
-box to tick. `digest_flow` ends "a report reaches the owner as one email an
+`age_flow` proves it when it ends "the age question is asked neutrally;
+under 13 nothing is kept, and 13 or over holds on the site, in the app and
+on the server": every page's footer links `/terms` and `/guidelines`; each
+topic on `/guidelines`; the operator's and the agent's lines marked; the
+counter-notice form; `/terms`, `/privacy#children` and the FAQ's `#age`
+saying accounts are for 13 and over; nothing sideways at 390 and 1280; on
+`/profile`, "When were you born?" with no word of 13 before the answer;
+under 13, the dialog's `#age-refused` words, the account gone through the
+admin API (auth user 404, no profile row, no `otp_requests` row with its
+address), its token saving and sharing nothing and a second answer bringing
+nothing back, the browser holding the flag and no session; a retry there
+told at once in the sign-in dialog, and a new account there deleted
+unasked; 13 or over, a profile, a public list and a credited listing; in
+the app, the sign-in screen asking it (only its controls pressable), under
+13 the way in again with `refused` and `refused_now`, the account gone and
+the flag kept; reloaded, told at once, and a new account not asked but
+deleted; 13 or over, let straight in, Share with the box to tick and
+"Publishing means you agree to the guidelines" opening `/guidelines`.
+`digest_flow` ends "a report reaches the owner as one email an
 hour, and a test's is only ever a dry run": a report from a model's page
 makes a dry digest at once, recorded with its subject, its link to
 `/admin#report-<id>` and the note escaped; a second that hour makes none;

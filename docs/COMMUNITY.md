@@ -95,12 +95,26 @@ everyone, and nothing about 13 until after the answer. `POST
 /api/account?op=age` turns the date into 13-or-over (`api/_trust.js`,
 a birthday this month counts as had) and lets the date go; the database
 keeps `profiles.over_13` and `profiles.age_asked_at` only. An answer stands:
-a second try changes nothing. An answer under 13 is asked again a year
-later, so somebody who has turned 13 can say so.
+a second try changes nothing.
 
-Under 13, an account builds, keeps its models and shares them by link like
-anyone. It may not have, and the server refuses in words (422) before the
-database refuses too:
+Accounts are for 13 and over (2026-11-03). An answer under 13 deletes the
+account just made at once (`api/account.js` `erase`, as Delete account does,
+then the address's rows in `otp_requests`), so nothing about the child is
+kept: not the address, not the date. They are told, in the app's own words
+(`api/_trust.js` `TOO_YOUNG`): "Brickworks accounts are for 13 and over. Ask
+a parent or guardian to sign in with their own email and build with you."
+The browser or computer keeps that it was told and nothing about the person
+(`brickworks.age_refused` in localStorage, `user://age_refused` on the
+desktop), so the next sign-in there says so at once, and an account new
+there is deleted without the question (`{again: true}`). An account with an
+answer already, a parent's, signs in there as anywhere. The owner's
+account is never deleted by it (403). Resend's log of the code it sent and
+Supabase Auth's audit log are theirs, and kept as they keep them.
+
+An account from before 2026-11-03 whose row says under 13 (none but test
+accounts, deleted then) builds and keeps its models and shares them by
+link, and nothing new of it is kept in public. The server refuses in words
+(422) before the database refuses too:
 
 | Public thing | API | Database |
 |---|---|---|
@@ -116,10 +130,10 @@ database refuses too:
 
 Something new in public needs the question answered 13 or over: an account
 not asked yet is told to answer it first. What an account had in public
-before it answered stays until it answers; answered under 13, its listed
-models leave the gallery and its public collections go private
-(`answer_age`), nothing is deleted, and a profile it had is no longer shown
-(`shown_publicly`, `profile_page`, `directory_card`).
+before it answered stays until it answers. A row that says under 13 has its
+listed models out of the gallery and its collections private
+(`answer_age`), and a profile it had is not shown (`shown_publicly`,
+`profile_page`, `directory_card`); those refusals stay for such a row.
 
 ## Comments
 
