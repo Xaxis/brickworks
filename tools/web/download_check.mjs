@@ -8,11 +8,14 @@
 //   --shots=DIR                                           a screenshot per system
 //   --port=N                                              serve web/ on N (default: any free)
 //
-// Each computer is offered its own build as the page's one primary button,
-// with the manifest's url, version and size; the first launch's steps and
-// the checksums folded away until asked for, then right for that build
-// (the Gatekeeper and SmartScreen steps only while it is unsigned); at most
-// 150 words before anything is opened. A phone is told the desktop app is
+// Each computer is offered its own build as the page's one primary button
+// (a Mac the disk image, Windows the installer, Linux the AppImage; a
+// release from before them its zips), with the manifest's url, version and
+// size; the first launch's steps and the checksums folded away until asked
+// for, then right for that build (the steps for that kind of file, the
+// Gatekeeper and SmartScreen ones only while it is unsigned), and every
+// file for the system there with its size and checksum; at most 150 words
+// before anything is opened. A phone is told the desktop app is
 // for a computer and offered the web app first, a desktop file only once it
 // chooses a system. From every view each other system is one click away,
 // and with everything opened nothing runs past the edge at 1280 or 390 px.
@@ -92,8 +95,11 @@ const SYSTEMS = [
     platform: "Linux armv8l", hints: { platform: "Android", mobile: true }, want: "" },
 ];
 const NAMES = { linux: "Linux", macos: "macOS", windows: "Windows" };
-const ENDS = { linux: "-linux-x86_64.AppImage", macos: "-macos-universal.zip",
-  windows: "-windows-x86_64.zip" };
+// Each system's file to offer, the first of these a release has: the disk image
+// and the installer, and before them the zips (docs/DISTRIBUTION.md).
+const ENDS = { linux: ["-linux-x86_64.AppImage"],
+  macos: ["-macos-universal.dmg", "-macos-universal.zip"],
+  windows: ["-windows-x86_64-setup.exe", "-windows-x86_64.zip"] };
 // As the page says a size.
 const megabytes = (bytes) => (bytes >= 1e9 ? (bytes / 1e9).toFixed(1) + " GB"
   : (bytes / 1e6).toFixed(bytes >= 1e8 ? 0 : 1) + " MB");
@@ -207,7 +213,8 @@ const browser = await launch({ signedOut: true });  // a page of the site, not t
 const problems = [];
 if (args.shots) await mkdir(args.shots, { recursive: true });
 const release = manifest ? (manifest.releases || []).find((r) => r.version === manifest.latest) : null;
-const primary = (os) => (release ? release.files.find((f) => f.os === os && f.name.endsWith(ENDS[os])) : null);
+const primary = (os) => (release ? ENDS[os].map((end) => release.files.find((f) => f.os === os
+  && f.name.endsWith(end))).find(Boolean) : null);
 const links = new Set();
 
 // What a person sees of the offer, read off the page as drawn.
@@ -231,7 +238,8 @@ const look = (page) => page.evaluate(() => {
     stepsOpen: !!steps && steps.open, verifyOpen: !!document.getElementById("verify")?.open,
     stepsLine: (document.getElementById("steps-line") || {}).textContent || "",
     stepsFor: block ? block.dataset.steps : "",
-    unsigned: block ? [...block.querySelectorAll("[data-unsigned]")].some((e) => !e.hidden) : false,
+    unsigned: block ? [...block.querySelectorAll("[data-unsigned]")].some(shown) : false,
+    kinds: block ? [...block.querySelectorAll("[data-kind]")].filter(shown).map((e) => e.dataset.kind) : [],
     verify: (document.getElementById("sums") || {}).textContent || "",
     notes: lists.map((u) => ({ version: u.dataset.highlights || "", items: u.children.length })),
     notesLink: (document.getElementById("notes-link") || {}).getAttribute?.("href") || "",
@@ -308,8 +316,10 @@ for (const system of SYSTEMS) {
     seen = await look(page);
     if (seen.stepsFor !== system.want) fail(`its steps are ${seen.stepsFor}'s`);
     if (seen.unsigned !== unsigned) fail(`the ${unsigned ? "unsigned build's" : "signed build's"} steps are ${seen.unsigned ? "shown" : "missing"}`);
+    if (seen.kinds.some((kind) => kind !== file.kind)) fail(`the steps shown are for ${seen.kinds.join(", ")}, not the ${file.kind}`);
     for (const f of release.files.filter((f) => f.os === system.want)) {
       if (!seen.verify.includes(f.sha256) || !seen.verify.includes(f.name)) fail(`Verify does not check ${f.name}`);
+      if (!seen.verify.includes(megabytes(f.size))) fail(`Verify does not say ${f.name}'s size`);
     }
   } else if (release) {
     // A phone: the web app first; a desktop file only once a system is chosen.

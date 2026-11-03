@@ -46,31 +46,33 @@ func ask() -> void:
 
 ## A file's bytes and name, made into LDraw text and handed on.
 func take(bytes: PackedByteArray, file_name: String) -> void:
+	var made: Dictionary = read(bytes, file_name, library)
+	notes = str(made["note"])
+	if not str(made["error"]).is_empty():
+		failed.emit(str(made["error"]))
+		return
+	picked.emit(str(made["text"]), file_name)
+
+
+## A model file's bytes made into LDraw text: {text, note, error}, the note
+## saying what it left out and the error why there is no text. Also how a
+## file the system hands the app to open is read (Main._open_given).
+static func read(bytes: PackedByteArray, file_name: String, parts: PartLibrary) -> Dictionary:
 	if bytes.is_empty():
-		failed.emit("could not read that file")
-		return
+		return {"text": "", "note": "", "error": "could not read that file"}
 	if bytes.size() > MAX_BYTES:
-		failed.emit("that file is too large")
-		return
-	notes = ""
+		return {"text": "", "note": "", "error": "that file is too large"}
 	match file_name.get_extension().to_lower():
 		"io":
-			var read: Dictionary = StudioIo.read(bytes, library)
-			if not str(read["error"]).is_empty():
-				failed.emit(str(read["error"]))
-				return
+			var studio: Dictionary = StudioIo.read(bytes, parts)
 			# Studio's own prints and Part Designer parts, carried in.
-			notes = str(read.get("note", ""))
-			picked.emit(str(read["text"]), file_name)
+			return {"text": str(studio.get("text", "")), "note": str(studio.get("note", "")),
+				"error": str(studio["error"])}
 		"lxf", "lxfml":
-			var read: Dictionary = LddLxf.read(bytes, file_name.get_basename())
-			if not str(read["error"]).is_empty():
-				failed.emit(str(read["error"]))
-				return
-			notes = str(read["note"])
-			picked.emit(str(read["text"]), file_name)
-		_:
-			picked.emit(bytes.get_string_from_utf8(), file_name)
+			var ldd: Dictionary = LddLxf.read(bytes, file_name.get_basename())
+			return {"text": str(ldd.get("text", "")), "note": str(ldd.get("note", "")),
+				"error": str(ldd["error"])}
+	return {"text": bytes.get_string_from_utf8(), "note": "", "error": ""}
 
 
 func _ask_browser() -> void:

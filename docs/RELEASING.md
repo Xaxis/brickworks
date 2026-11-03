@@ -59,15 +59,23 @@ tools/release.py build
 # 3. Run it, as a person would, in a clean home. --window also asks the
 #    app over its own socket, as a Claude Code session does, for the car
 #    path traced at Best, and holds the picture to the editor's.
+#    The .deb is installed into the clean home and its models opened with
+#    gio, as a file manager opens a double-click, in windows of their own.
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.tar.xz --window
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.AppImage
+tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-amd64.deb
 
 # 4. Upload to a draft on Xaxis/brickworks-releases. Nobody else can see it
 #    yet. GitHub's own SHA-256 of every file is compared with dist/.
 tools/release.py publish --draft
 
 # 5. Each package on its own system: macOS on Apple silicon and on Intel,
-#    and Windows, each unpacked and run in a clean home (Linux was step 3).
+#    Windows, and the .deb on a stock Ubuntu, each installed as a person
+#    installs it (the disk image's app copied to /Applications, the
+#    installer run silently, the .deb by apt) and run in a clean home,
+#    models double-clicked into it, and on Windows and Ubuntu removed again
+#    (the AppImage and the tar.xz were step 3). The Intel runner is a VM
+#    whose GPU MoltenVK cannot draw on: its double-clicks say "not run here".
 #    Wait for green. It runs once, here: publishing does not run it again.
 #    The workflow lives in the releases repository, where Actions are free.
 gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.2.0
@@ -127,11 +135,22 @@ stale and shadows the keyring login. `tools/release.py` drops it itself.
 
 | File | What |
 |---|---|
-| `Brickworks-X-linux-x86_64.AppImage` | one file, runs as it is (FUSE, or `--appimage-extract-and-run`) |
-| `Brickworks-X-linux-x86_64.tar.xz` | the same, as a folder |
-| `Brickworks-X-macos-universal.zip` | `Brickworks.app`, Apple silicon and Intel in one |
-| `Brickworks-X-windows-x86_64.zip` | `Brickworks.exe`, `Brickworks.console.exe`, `Brickworks.pck` |
+| `Brickworks-X-linux-x86_64.AppImage` | one file, runs as it is (FUSE, or `--appimage-extract-and-run`); carries its menu entry, icons and model types |
+| `Brickworks-X-linux-amd64.deb` | for Debian and Ubuntu: `/usr/lib/brickworks`, `brickworks` on the PATH, in the menu, opening models |
+| `Brickworks-X-linux-x86_64.tar.xz` | the same program, as a folder |
+| `Brickworks-X-macos-universal.dmg` | `Brickworks.app` (Apple silicon and Intel in one) and an Applications link, laid out to drag one onto the other |
+| `Brickworks-X-windows-x86_64-setup.exe` | the per-user installer: no admin, Start menu, Settings ▸ Apps, model types; `/VERYSILENT` for the updater |
+| `Brickworks-X-macos-universal.zip`, `Brickworks-X-windows-x86_64.zip` | the packages from before the disk image and the installer, kept for one release (docs/DISTRIBUTION.md) |
 | `SHA256SUMS` | `sha256sum -c SHA256SUMS` |
+
+What a person meets with each, and why, is docs/DISTRIBUTION.md. The disk
+image is made on Linux as Mozilla makes Firefox's: `mkfs.hfsplus`,
+libdmg-hfsplus built from a pinned source (a minute, once), and a
+`.DS_Store` written with the pinned `ds_store` and `mac_alias` wheels; it is
+read back byte for byte, by `fsck.hfsplus`, and file by file before it is
+kept. The installer is NSIS from Ubuntu's packages, unpacked, never
+installed (tools/release/windows/brickworks.nsi); its LZMA takes the longest
+of any step, about half an hour on a busy box.
 
 Each carries `README.txt` (how to start it, the first-launch steps while it
 is unsigned, where saves live), `ATTRIBUTION.md` (the LDraw and LEGO notices
@@ -229,8 +248,9 @@ with `{file}` where the path goes. In `.env`, for example:
 WINDOWS_SIGN_COMMAND=jsign --storetype TRUSTEDSIGNING --keystore weu.codesigning.azure.net --storepass "$(az account get-access-token --resource https://codesigning.azure.net -q accessToken -o tsv)" --alias ACCOUNT/PROFILE --tsaurl http://timestamp.acs.microsoft.com --tsmode RFC3161 {file}
 ```
 
-The build runs it on `Brickworks.exe` and `Brickworks.console.exe` and
-fails if either still carries no signature afterwards. Even signed,
+The build runs it on `Brickworks.exe` and `Brickworks.console.exe`, on the
+installer's uninstaller as it is written and on the installer once it is
+made, and fails if any still carries no signature afterwards. Even signed,
 SmartScreen warns until the certificate has built reputation from
 downloads; that fades on its own.
 
@@ -290,11 +310,10 @@ unsigned first launch.
 
 Done differently: the packages live on GitHub Releases in a public
 repository of builds only, where Reelwright's repository is private and
-serves its own; the macOS package is a zip rather
-than a DMG, because a zip is built and inspected on Linux and a DMG needs
-`hdiutil`; nothing is built in CI, because the part library is not in git;
-there is no installer for Windows yet (a zip, extracted); and signing is
-wired in, by environment, rather than planned.
+serves its own; the disk image is made on Linux with libdmg-hfsplus, where
+Reelwright's is made by `hdiutil` on a Mac; nothing is built in CI, because
+the part library is not in git; and signing is wired in, by environment,
+rather than planned. The Windows installer is NSIS, as Reelwright's is.
 
 ## Gotchas
 
@@ -323,7 +342,10 @@ wired in, by environment, rather than planned.
   `unzip` or `ditto`, which keep them; a person's Finder does too.
 - **Windows runs nothing from inside a zip** that needs a file beside it:
   `Brickworks.pck` has to be next to `Brickworks.exe`. The page says
-  extract first.
+  extract first, for as long as the zip is offered.
+- **`hfsplus extract` crashes on a link that leaves the volume**
+  (`/Applications`), and `cat` follows links. `write_dmg` checks the link
+  with `extractall`; `inspect` on Linux reads only its length.
 - **A download from a browser on macOS is quarantined**; one from `gh` or
   `curl` is not. The release workflow therefore proves the signature and the
   launch, not the Gatekeeper prompt; `spctl --assess` is the closest it gets.
