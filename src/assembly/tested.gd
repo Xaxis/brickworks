@@ -1477,17 +1477,27 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 		resting: Dictionary) -> Dictionary:
 	var count: int = parts.size()
 	var exact := ExactCheck.new(shapes, count)
-	var low := PackedFloat64Array()
+	var low := PackedFloat64Array()    ## each part's box's lowest
 	low.resize(count)
-	var floor_y: float = INF
 	var entries: Array = []
 	for n: int in count:
 		exact.place(n, parts[n][0], parts[n][1])
 		var item: Exact.Item = exact.items[n]
 		var mesh: Lbm.PartMesh = parts[n][2]
 		low[n] = item.lo.y if item != null else ((parts[n][1] as Transform3D) * mesh.bounds).position.y
-		floor_y = minf(floor_y, low[n])
 		entries.append([n, parts[n][1], mesh, parts[n][0]])
+	# The floor is the parts' real lowest point (Exact.Item.low), not their
+	# boxes': a box turned with its part reaches under it, and 6043-1's held
+	# halberd put the floor 7.7 LDU under the trebuchet standing on it, which
+	# then fell. A box is never higher than its part, so they are asked lowest
+	# box first, until no box is lower than the floor found.
+	var by_box: Array = range(count)
+	by_box.sort_custom(func(a: int, b: int) -> bool: return low[a] < low[b])
+	var floor_y: float = INF
+	for n: int in by_box:
+		if low[n] >= floor_y:
+			break
+		floor_y = minf(floor_y, (_extent(exact, parts, n)[0] as Vector3).y)
 	exact.ground = floor_y
 	var meshing: Dictionary = Joints.meshing(entries)
 	var into: Array = []
@@ -1518,7 +1528,7 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 		if not members.has(key):
 			members[key] = []
 		(members[key] as Array).append(n)
-		if low[n] - floor_y <= ON_GROUND:
+		if low[n] - floor_y <= ON_GROUND and (_extent(exact, parts, n)[0] as Vector3).y - floor_y <= ON_GROUND:
 			on_floor[key] = true
 		if exact.items[n] == null and resting.has(n):
 			by_covers[key] = true
@@ -1533,15 +1543,16 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 	# bigger one (a part left against a wall, a dish in a ring of bricks), is
 	# a part held by nothing. The model is turned any way: its outline is no
 	# guide, what touches what is.
-	var outline: Dictionary = {}       ## root -> [lo, hi]
-	for n: int in count:
-		var item: Exact.Item = exact.items[n]
-		var box: AABB = (parts[n][1] as Transform3D) * (parts[n][2] as Lbm.PartMesh).bounds
-		var lo: Vector3 = item.lo if item != null else box.position
-		var hi: Vector3 = item.hi if item != null else box.end
-		var was: Array = outline.get(root[n], [lo, hi])
-		outline[root[n]] = [(was[0] as Vector3).min(lo), (was[1] as Vector3).max(hi)]
+	var outline: Dictionary = {}       ## root -> [lo, hi], each worked out as it is asked
 	var bulk := func(key: int) -> float:
+		if not outline.has(key):
+			var lo := Vector3.INF
+			var hi := -Vector3.INF
+			for n: int in members[key]:
+				var one: Array = _extent(exact, parts, n)
+				lo = lo.min(one[0])
+				hi = hi.max(one[1])
+			outline[key] = [lo, hi]
 		var size: Vector3 = (outline[key][1] as Vector3) - (outline[key][0] as Vector3)
 		return size.x * size.y * size.z
 	var builds: Dictionary = {}        ## root -> true: a build of its own
@@ -1608,6 +1619,29 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 				one["on"] = missed
 		one.erase("key")
 	return {"into": into, "builds": 1 + builds.size(), "apart": apart}
+
+
+## Where part [param n] of [param parts] really reaches: [lo, hi]. By its
+## exact shape (Exact.Item.low and high); a part with none, by its mesh's box
+## carried with it, and turned off the axes, where the cells of its cover
+## carried one by one are nearer it: each holds all of the part, so on each
+## side the nearer of the two.
+static func _extent(exact: ExactCheck, parts: Array, n: int) -> Array:
+	var item: Exact.Item = exact.items[n]
+	if item != null:
+		return [item.low(), item.high()]
+	var at: Transform3D = parts[n][1]
+	var mesh: Lbm.PartMesh = parts[n][2]
+	var box: AABB = at * mesh.bounds
+	if Exact.square(at.basis) or mesh.boxes.is_empty():
+		return [box.position, box.end]
+	var lo := Vector3.INF
+	var hi := -Vector3.INF
+	for cells: AABB in mesh.boxes:
+		var one: AABB = at * AABB(cells.position * mesh.cell_ldu, cells.size * mesh.cell_ldu)
+		lo = lo.min(one.position)
+		hi = hi.max(one.end)
+	return [box.position.max(lo), box.end.min(hi)]
 
 
 ## A part of another piece that one of [param members] touches, by their

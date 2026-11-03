@@ -392,10 +392,13 @@ func pieces(extra: Array, among: Dictionary = {}, edges_out: Array = []) -> Pack
 
 
 ## The ground: y = 0, the floor every model stands on here. Within ON_GROUND
-## a piece is held by it; [param within] 0.5 asks whether a part stands on
-## it, which a seat never moves off it.
+## of it by its real lowest point (Exact.Item.low, not its box turned, which
+## reaches under it: asked first, as it is never higher) a piece is held by
+## it; [param within] 0.5 asks whether a part stands on it, which a seat never
+## moves off it.
 func on_ground(i: int, within: float = ON_GROUND) -> bool:
-	return items[i] != null and (items[i] as Exact.Item).lo.y - ground <= within
+	var item: Exact.Item = items[i]
+	return item != null and item.lo.y - ground <= within and item.low().y - ground <= within
 
 
 ## Whether a piece of [param members] that nothing joins stands where it is,
@@ -413,17 +416,20 @@ func rests(members: Array) -> bool:
 	var mass: float = 0.0
 	var middle := Vector3.ZERO
 	var touching := PackedVector3Array()
+	var leans_by: Array = []           ## its parts that touch another
 	var around: PackedInt32Array = _around(members)
 	for i: Variant in members:
 		var item: Exact.Item = items[int(i)]
 		if item == null or not item.shape.has_pieces():
 			return false
+		# Each piece weighs its own box, as [method tips] weighs it: turned,
+		# its box carried with it is bigger, and a raised arm weighed more.
 		for p: Exact.Piece in item.shape.pieces:
-			var box: Array = Exact.box_in(p.lo, p.hi, item.at)
-			var size: Vector3 = (box[1] as Vector3) - (box[0] as Vector3)
+			var size: Vector3 = p.hi - p.lo
 			var weight: float = maxf(size.x * size.y * size.z, 0.001)
 			mass += weight
-			middle += ((box[0] as Vector3) + (box[1] as Vector3)) * 0.5 * weight
+			middle += (item.at * ((p.lo + p.hi) * 0.5)) * weight
+		var had: int = touching.size()
 		for j: int in Exact._near(items, int(i), around, TOUCH + Exact.TAU):
 			if mine.has(j) or items[j] == null:
 				continue
@@ -431,12 +437,18 @@ func rests(members: Array) -> bool:
 			if found is Dictionary and not (found as Dictionary).is_empty():
 				return false
 			_touching(item, items[j], touching)
+		if touching.size() > had:
+			leans_by.append(i)
 	if touching.size() < 3 or mass <= 0.0:
 		return false
-	# Square to gravity: a part tilted off it, nothing joining it, rolls or
-	# slides off what it leans on (a flower at 35 degrees on a round plate,
-	# held-out model-017, fell in BrickBench's simulation).
-	for i: Variant in members:
+	# Square to gravity where it rests: a part it leans on another by, tilted
+	# off it, nothing joining the two, rolls or slides off (a flower at 35
+	# degrees on a round plate, held-out model-017, fell in BrickBench's
+	# simulation). The piece is one body, its parts held to each other by
+	# their connections, so a part turned on purpose that touches nothing
+	# else is how it is built, not loose: the driver of 928-1's buggy, which
+	# stands on the baseplate's studs, raises an arm.
+	for i: Variant in leans_by:
 		var b: Basis = (items[int(i)] as Exact.Item).at.basis
 		if maxf(absf(b.x.normalized().y), maxf(absf(b.y.normalized().y),
 				absf(b.z.normalized().y))) < SQUARE:
@@ -787,7 +799,7 @@ func set_down(members: Array) -> bool:
 		return false
 	var item: Exact.Item = items[int(members[0])]
 	if item == null or item.at.basis.y.normalized().dot(Vector3.UP) < SQUARE \
-			or item.hi.y - item.lo.y > TILE_HIGH:
+			or item.high().y - item.low().y > TILE_HIGH:
 		return false
 	for one: Array in item.world():
 		if item.shape.kind[one[0]] == Exact.STUD:
@@ -813,7 +825,7 @@ func on_studded(members: Array) -> int:
 				continue
 			var studded: bool = false
 			for stud: Array in other.world():
-				var dy: float = (stud[1] as Vector3).y - item.lo.y
+				var dy: float = (stud[1] as Vector3).y - item.low().y
 				if other.shape.kind[stud[0]] == Exact.STUD \
 						and (stud[2] as Vector3).dot(Vector3.UP) >= Exact.AXIS_THR \
 						and dy <= 1.0 and dy >= -STUD_HIGH - 1.0:
@@ -987,25 +999,27 @@ func tips(members: Array) -> Dictionary:
 	for i: Variant in members:
 		var item: Exact.Item = items[int(i)]
 		if item != null and item.shape.has_pieces():
-			floor_at = minf(floor_at, item.lo.y)
+			floor_at = minf(floor_at, item.low().y)
 	if floor_at == INF:
 		return {}
 	# What can catch it within the budget: no point higher than the budget over
 	# the floor comes down to it before the piece has moved further than that.
 	var low := PackedVector3Array()
 	var owner := PackedInt32Array()
-	var far := PackedVector3Array()     ## each item's box corners: how far it moves
+	var far := PackedVector3Array()     ## each item's real extent's corners: how far it moves
 	var lowest: float = INF
 	var highest: float = -INF
 	for i: Variant in members:
 		var item: Exact.Item = items[int(i)]
 		if item == null or not item.shape.has_pieces():
 			continue
-		highest = maxf(highest, item.hi.y)
+		var lo: Vector3 = item.low()
+		var hi: Vector3 = item.high()
+		highest = maxf(highest, hi.y)
 		for corner: int in 8:
-			far.append(Vector3(item.hi.x if corner & 1 else item.lo.x,
-				item.hi.y if corner & 2 else item.lo.y, item.hi.z if corner & 4 else item.lo.z))
-		var near_floor: bool = item.lo.y <= floor_at + BUDGET + 1.0
+			far.append(Vector3(hi.x if corner & 1 else lo.x, hi.y if corner & 2 else lo.y,
+				hi.z if corner & 4 else lo.z))
+		var near_floor: bool = lo.y <= floor_at + BUDGET + 1.0
 		for p: Exact.Piece in item.shape.pieces:
 			var size: Vector3 = p.hi - p.lo
 			var weight: float = maxf(size.x * size.y * size.z, 0.001)
@@ -1250,17 +1264,24 @@ func under(i: int) -> int:
 		return -1
 	var best: int = -1
 	var top: float = -INF
+	var lo: Vector3 = item.low()
+	var hi: Vector3 = item.high()
 	for j: int in items.size():
 		var other: Exact.Item = items[j]
-		if j == i or other == null:
+		# Their boxes first, which hold their real extents, to ask few for those.
+		if j == i or other == null or other.hi.y < lo.y - 2.0 or other.lo.y > lo.y + 4.5 \
+				or minf(hi.x, other.hi.x) - maxf(lo.x, other.lo.x) <= 0.5 \
+				or minf(hi.z, other.hi.z) - maxf(lo.z, other.lo.z) <= 0.5:
 			continue
-		if minf(item.hi.x, other.hi.x) - maxf(item.lo.x, other.lo.x) <= 0.5 \
-				or minf(item.hi.z, other.hi.z) - maxf(item.lo.z, other.lo.z) <= 0.5:
+		var o_lo: Vector3 = other.low()
+		var o_hi: Vector3 = other.high()
+		if minf(hi.x, o_hi.x) - maxf(lo.x, o_lo.x) <= 0.5 \
+				or minf(hi.z, o_hi.z) - maxf(lo.z, o_lo.z) <= 0.5:
 			continue
-		if other.hi.y > item.lo.y + 4.5 or other.hi.y < item.lo.y - 2.0:
+		if o_hi.y > lo.y + 4.5 or o_hi.y < lo.y - 2.0:
 			continue
-		if other.hi.y > top:
-			top = other.hi.y
+		if o_hi.y > top:
+			top = o_hi.y
 			best = j
 	return best
 
@@ -1462,12 +1483,13 @@ func mate_move(a: int, b: int) -> Dictionary:
 		"connector": (items[onto] as Exact.Item).shape.named(int(found["other"]))}
 
 
-## The size of an item's box, LDU cubed: which of two is the smaller.
+## The size of an item's own box, LDU cubed, however it is turned: which of
+## two is the smaller.
 func _volume(i: int) -> float:
 	var item: Exact.Item = items[i] if i >= 0 and i < items.size() else null
 	if item == null:
 		return INF
-	var size: Vector3 = item.hi - item.lo
+	var size: Vector3 = item.shape.hi - item.shape.lo
 	return size.x * size.y * size.z
 
 
