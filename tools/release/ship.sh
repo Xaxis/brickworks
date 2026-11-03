@@ -1,6 +1,7 @@
 #!/bin/bash
 # ship.sh WORKTREE TAG CHECK... : a release from a staging worktree.
-# Preview deploy, the browser checks named, and only if every one passes,
+# Preview deploy, the browser checks named, and only if every one passes
+# (or fails on brickworks.diy too, where a train accepts it: SHIP_ACCEPT),
 # and every probe a train runs beside it (SHIP_PROBES): main fast-forwarded
 # and pushed, that very preview promoted, the live site checked. Release
 # jobs take BOX_HEAVY_PRIORITY, as other projects' do.
@@ -98,26 +99,82 @@ probes_failed && exit 1
 # batteries, runs once more alone before the release holds. m162's oc, and
 # m164's oc and cloud_library, each stalled under load and passed alone on
 # the same deployment (2026-10-24), and each time the rerun was done by
-# hand. Timing checks never get a second go: alone they would pass what the
-# load showed. Both answers are kept: TAG_pv.out keeps the first, and
+# hand. Each one does, whatever else failed: one timing check among rel-m249's
+# five kept keys, library, model_page and together from theirs, and the lead
+# reshipped them by hand (2026-11-02). Timing checks never get a second go:
+# alone they would pass what the load showed. One that wrote no line gets
+# its first. Both answers are kept: TAG_pv.out keeps the first, and
 # TAG_alone_NAME.out the second.
-if ! passed $S/${TAG}_pv.out $#; then
-  failed=$(grep -E ' exit=[^0]' $S/${TAG}_pv.out | awk '{print $1}')
-  timing=$(echo "$failed" | grep -xE 'frames|play|progress|placing|grab|drag_cost' || true)
-  ran=$(grep -cE ' exit=' $S/${TAG}_pv.out)
-  if [ -z "$timing" ] && [ -n "$failed" ] && [ "$ran" -eq $# ]; then
-    for name in $failed; do
-      echo "SHIP: $name failed beside others; once more, alone"
-      # Through run_checks, which clears the answer first: a run that died
-      # before writing one would leave the last attempt's pass to be read.
-      run_checks "$URL" ${TAG}_alone_$name $name >/dev/null 2>&1
-      cut -c1-160 $S/${TAG}_alone_$name.out | head -1
-      passed $S/${TAG}_alone_$name.out 1 || { echo "SHIP: held, $name failed alone too"; exit 1; }
-    done
-    echo "SHIP: every check that failed beside others passed alone"
+still=""; again=""
+for name in "$@"; do
+  line=$(grep -m1 "^$name exit=" $S/${TAG}_pv.out)
+  case "$line" in *" exit=0 "*) continue ;; esac
+  if [ -z "$line" ]; then
+    echo "SHIP: $name did not run; once, alone"
   else
-    echo "SHIP: held, a check failed or did not run on the preview"; exit 1
+    case "$name" in frames|play|progress|placing|grab) still="$still $name"; continue ;; esac
+    echo "SHIP: $name failed beside others; once more, alone"
   fi
+  probes_failed && exit 1
+  # Through run_checks, which clears the answer first: a run that died
+  # before writing one would leave the last attempt's pass to be read.
+  run_checks "$URL" ${TAG}_alone_$name $name >/dev/null 2>&1
+  cut -c1-160 $S/${TAG}_alone_$name.out | head -1
+  again=1
+  passed $S/${TAG}_alone_$name.out 1 || still="$still $name"
+done
+[ -n "$again" ] && [ -z "$still" ] && echo "SHIP: every check that failed beside others passed alone"
+# The release is done with the live database until it is live: the train's
+# mark goes, and units take it in their turn again (live_db_lib.sh). Left
+# until each train ended, the marks kept units off it for all but an hour
+# of the sixteen from rel-m247's staging on, and 13 of their checks gave up
+# after an hour each (2026-11-02).
+[ -n "${SHIP_LIVE_MARK:-}" ] && rm -f "$SHIP_LIVE_MARK"
+# What still fails here runs on brickworks.diy as it is, as a unit's check
+# would: no release's priority at the lock or for a slot. A train staged
+# runs it (SHIP_STALE). Every check named used to run there from the
+# train's staging, beside the preview's battery: rel-m249's 74, ten hours
+# of checks, at load 43 on 24 cores, and its preview's checks waited three
+# hours for the lock behind them, to say which of the five that failed on
+# its preview already failed there (2026-11-02).
+# TAG_stale.failing: those that ran there and failed, as the same script
+# (live's build has it unchanged), which a train may ship past
+# (SHIP_ACCEPT: CHECK<TAB>REASON lines).
+if [ -n "$still" ] && [ -n "${SHIP_STALE:-}" ]; then
+  still=${still# }
+  echo "SHIP: failed here: $still; each runs on brickworks.diy as it is now"
+  rm -f $S/${TAG}_stale.{out,failing}
+  echo "$still" > $S/${TAG}_stale.asked
+  built=$(curl -s --max-time 20 https://brickworks.diy/app | grep -o '/b/[^/"]*/' | head -1)
+  echo "$built" > $S/${TAG}_stale.build; built=${built#/b/}; built=${built%/}
+  for name in $still; do
+    script=$(sed -n "s/^[[:space:]]*\[$name\]=\"\([^ \"]*\).*/\1/p" tools/release/preview_checks.sh | head -1)
+    [ -n "$script" ] && [ -n "$built" ] && git cat-file -e "$built^{commit}" 2>/dev/null \
+      && ! git diff --quiet "$built" HEAD -- "$script" 2>/dev/null && echo "$name"
+  done > $S/${TAG}_stale.changed
+  env -u BOX_HEAVY_PRIORITY "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_stale $still >/dev/null 2>&1
+  for name in $still; do
+    case "$(grep -m1 "^$name exit=" $S/${TAG}_stale.out)" in
+      ""|*" exit=0 "*|*" exit=75 "*|*" exit=125 "*|*" exit=127 "*) ;;
+      *) grep -qx "$name" $S/${TAG}_stale.changed || echo "$name" ;;
+    esac
+  done > $S/${TAG}_stale.failing
+  held=""
+  for name in $still; do
+    why=$(awk -F'\t' -v n="$name" '$1 == n {print $2; exit}' "${SHIP_ACCEPT:-/dev/null}" 2>/dev/null)
+    if [ -n "$why" ] && grep -qx "$name" $S/${TAG}_stale.failing; then
+      here=$(grep -m1 "^$name exit=" $S/${TAG}_alone_$name.out 2>/dev/null || grep -m1 "^$name exit=" $S/${TAG}_pv.out)
+      printf '%s: %s\n  here: %s\n  there: %s\n' "$name" "$why" "$(cut -c1-200 <<< "$here")" \
+        "$(grep -m1 "^$name exit=" $S/${TAG}_stale.out | cut -c1-200)" >> $S/${TAG}_accepted
+      echo "SHIP: ships past $name, which fails on brickworks.diy too: $why"
+    else
+      held="$held $name"
+    fi
+  done
+  there=$(grep -xF -f $S/${TAG}_stale.failing <<< "$(tr ' ' '\n' <<< "${held# }")" | paste -sd' ')
+  [ -z "$held" ] || { echo "SHIP: held, failed on the preview:$held${there:+ (failing on brickworks.diy too: $there)}"; exit 1; }
+elif [ -n "$still" ]; then
+  echo "SHIP: held, failed on the preview:$still"; exit 1
 fi
 # The train's probes, until every one has passed. The train's pid is in
 # the file: one gone with no answer holds the release, where a train

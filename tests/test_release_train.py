@@ -22,8 +22,12 @@ step, the checks, the probes and what is live. Its probes run beside the
 ship, four at a time, one failing beside others again alone, and main moves
 only once every one has passed. It ships the tip it merged when the branch
 moves on meanwhile, and a restage clears a stopped attempt's own merge but
-never a fix made in it. Its checks run on the live site as it is staged, and
-status says which already fail there.
+never a fix made in it. Every check failing on the preview runs again alone,
+whatever else failed (a timing check never), and what still fails runs on
+the live site only after the preview's battery, as a unit's check, the
+train's mark on the live database gone; status says which already fail
+there. It ships past such a check with --accept only where the live site
+fails it too, naming it in the merge message, the log and status.
 """
 
 from __future__ import annotations
@@ -91,10 +95,11 @@ esac
 """,
     "tools/release/preview_checks.sh": """#!/bin/bash
 # stand-in: one line a check as the real one writes it, at once, and when
-# each began in check_times. STUB_FLAKY fails that check in the battery and
-# passes it alone; STUB_GATE holds the battery's last check until that file
-# is there; STUB_STALE_FAILS fails those on the live site as a train is
-# staged.
+# each began and ended in check_times, with the priority it ran at. STUB_FLAKY
+# fails those in the battery and passes them alone; STUB_FAILS fails those
+# on the preview, alone too, and STUB_MISSING writes no line for those in
+# the battery; STUB_GATE holds the battery's last check until that file is
+# there; STUB_STALE_FAILS fails those on the live site.
 P=$1 WT=$2 OUT=$3; shift 3
 S=$RELEASE_OUT
 # The checks it has, as the real one's table names them for train.sh stage.
@@ -103,6 +108,8 @@ declare -A CMD=(
   [gallery]="tools/web/gallery_flow.mjs --url=$P"
   [people]="tools/web/people_flow.mjs --url=$P"
   [light_render]="tools/web/light_render_flow.mjs --url=$P/app"
+  [keys]="tools/web/keys_flow.mjs --url=$P/app"
+  [progress]="tools/web/progress_check.mjs --url=$P/app"
 )
 echo "$P $WT $*" > "$S/${OUT}_args"
 : > "$S/$OUT.out"
@@ -110,17 +117,25 @@ n=0
 for c in "$@"; do
   n=$((n + 1))
   echo "$OUT $c began $(date +%s.%N)" >> "$S/check_times"
+  marks=0
+  for f in "$(git rev-parse --path-format=absolute --git-common-dir)"/live-db.release/*; do
+    [ -e "$f" ] && kill -0 "${f##*/}" 2>/dev/null && marks=$((marks + 1))
+  done
+  echo "$OUT $c priority=${BOX_HEAVY_PRIORITY:-0} marks=$marks" >> "$S/check_how"
   fail=""
   case "$OUT" in
     *_pv)
       if [ "$n" -eq $# ] && [ -n "${STUB_GATE:-}" ]; then
         for _ in $(seq 1 600); do [ -e "$STUB_GATE" ] && break; sleep 0.05; done
       fi
-      [ "$c" = "${STUB_FLAKY:-}" ] && fail="FAIL beside others" ;;
+      case " ${STUB_MISSING:-} " in *" $c "*) continue ;; esac
+      case " ${STUB_FLAKY:-} ${STUB_FAILS:-} " in *" $c "*) fail="FAIL beside others" ;; esac ;;
+    *_alone_*) case " ${STUB_FAILS:-} " in *" $c "*) fail="FAIL alone too" ;; esac ;;
     *_stale) case " ${STUB_STALE_FAILS:-} " in *" $c "*) fail="FAIL on the live site" ;; esac ;;
   esac
   if [ -n "$fail" ]; then echo "$c exit=1 fails=1 1s :: $fail" >> "$S/$OUT.out"
   else echo "$c exit=0 fails=0 1s :: passed" >> "$S/$OUT.out"; fi
+  echo "$OUT $c ended $(date +%s.%N)" >> "$S/check_times"
 done
 echo done >> "$S/$OUT.out"
 """,
@@ -289,8 +304,8 @@ class Yard:
                       "SHIP: deploy: brickworks.diy serves 1111111\n" % tag)
 
     def stop(self) -> None:
-        """Ends every train still running, as `kill -- -PID` would, and its checks on the live site."""
-        for pid_file in [*self.ro.glob("*.train/pid"), *self.ro.glob("*.train/stale_pid")]:
+        """Ends every train still running, as `kill -- -PID` would."""
+        for pid_file in self.ro.glob("*.train/pid"):
             pid = int(pid_file.read_text())
             try:
                 if "train.sh" in Path("/proc/%d/cmdline" % pid).read_text():
@@ -781,7 +796,7 @@ def test_it_stops_when_the_release_before_did_not_ship_or_its_wait_runs_out(tmp_
         y.stop()
 
 
-def test_its_checks_run_on_the_live_site_as_it_is_staged_and_status_says_which_fail_there(tmp_path):
+def test_what_fails_on_the_preview_runs_on_the_live_site_after_its_battery_as_a_units_check(tmp_path):
     y = Yard(tmp_path)
     try:
         y.git(y.r, "worktree", "add", "-q", str(y.wt / "stage2"), "stage2")
@@ -792,29 +807,141 @@ def test_its_checks_run_on_the_live_site_as_it_is_staged_and_status_says_which_f
         y.git(y.wt / "stage2", "commit", "-q", "-m", "a new check")
         build = y.git(y.r, "rev-parse", "--short", "main")
         y.live.write_text('<script src="/b/%s/index.js"></script>\n' % build)
-        # Staged behind a release still shipping: its checks run on the live
-        # site now, not two hours on at its own ship.
-        y.shipping("t-m1")
-        staged = y.train("stage", "t-m2", "stage2", "--after", "t-m1",
-                         "--checks", "io people gallery light_render",
+        staged = y.train("stage", "t-m2", "stage2", "--checks", "io people gallery light_render keys",
+                         STUB_FLAKY="io", STUB_FAILS="people light_render keys",
                          STUB_STALE_FAILS="people light_render")
         assert staged.returncode == 0, staged.stdout + staged.stderr
-        assert "its checks run on https://brickworks.diy meanwhile" in staged.stdout, staged.stdout
-        y.until(lambda: y.text("t-m2_stale.out").endswith("done\n"))
+        # Staged, nothing runs on the live site: rel-m249's 72 there beside its
+        # preview's doubled the load and the lock (2026-11-02).
+        assert "meanwhile" not in staged.stdout, staged.stdout
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == (
+            "not live: ship.sh ended exit 1: SHIP: held, failed on the preview: people light_render keys "
+            "(failing on brickworks.diy too: people)"), y.logs()
+        # Each failure ran again alone first; only what failed alone too went there.
+        assert [y.text("t-m2_alone_%s_args" % n).split()[2:] for n in ("io", "people", "light_render", "keys")] \
+            == [["io"], ["people"], ["light_render"], ["keys"]]
         assert y.text("t-m2_stale_args").split() == [
-            "https://brickworks.diy", str(y.wt / "stage2"), "io", "people", "gallery", "light_render"]
+            "https://brickworks.diy", str(y.wt / "t-m2"), "people", "light_render", "keys"]
+        spans = y.times("check_times")
+        here = max(s["ended"] for who, s in spans.items() if not who.startswith("t-m2_stale "))
+        there = min(s["began"] for who, s in spans.items() if who.startswith("t-m2_stale "))
+        assert here < there, spans
+        # The preview's battery at the release's priority with the train's mark up;
+        # on the live site as a unit's, the mark gone while the train still ran.
+        how = {" ".join(line.split()[:2]): line.split()[2:] for line in y.text("check_how").splitlines()}
+        assert how["t-m2_pv io"] == ["priority=1", "marks=1"], how
+        assert how["t-m2_alone_io io"] == ["priority=1", "marks=1"], how
+        assert how["t-m2_stale keys"] == ["priority=0", "marks=0"], how
         status = y.train("status", "t-m2").stdout
-        assert "waits for t-m1 to serve" in status, status
-        assert ("on https://brickworks.diy (serving %s) as staged: 2 of 4 passed; already failing there: "
-                "people; failing there, changed since: light_render (t-m2_stale_NAME.log)" % build) in status, status
-        assert not (y.ro / "probes_run").exists() and not (y.wt / "t-m2").exists()
+        assert ("on https://brickworks.diy (serving %s): already failing there: people; "
+                "failing there, changed since: light_render; passing there: keys (t-m2_stale_NAME.log)" % build) \
+            in status, status
+        assert "checks: 3 of 7 passed; failed: io (passed alone) people light_render keys" in status, status
+        assert y.git(y.r, "rev-parse", "main") == y.base and not (y.ro / "promoted").exists()
 
-        # A branch no worktree has checked out is not checked there, and says why.
-        y.git(y.r, "worktree", "remove", str(y.wt / "stage2"))
-        assert y.train("stage", "t-m3", "stage2", "--after", "t-m1", "--checks", "io").returncode == 0
-        y.until(lambda: y.text("t-m3_stale.skipped"))
-        status = y.train("status", "t-m3").stdout
-        assert "on https://brickworks.diy: not checked: no worktree has stage2 checked out" in status, status
+        # Nothing failed alone: nothing runs there.
+        assert y.train("stage", "t-m3", "stage2", "--checks", "io", STUB_FLAKY="io").returncode == 0
+        y.until(lambda: y.spec("t-m3", "result"))
+        assert y.spec("t-m3", "result") == "live", y.logs()
+        assert not (y.ro / "t-m3_stale_args").exists() and "on https://" not in y.train("status", "t-m3").stdout
+    finally:
+        y.stop()
+
+
+def test_every_check_failing_beside_others_runs_again_alone_whatever_else_failed(tmp_path):
+    """rel-m249: progress, a timing check, failed beside keys, library, model_page and together,
+    and none of the four ran again alone (2026-11-02)."""
+    y = Yard(tmp_path)
+    try:
+        assert y.train("stage", "t-m2", "stage2", "--checks", "io gallery keys progress",
+                       STUB_FLAKY="io keys progress", STUB_MISSING="gallery",
+                       STUB_STALE_FAILS="progress").returncode == 0
+        y.until(lambda: y.spec("t-m2", "result"))
+        lead = y.text("t-m2_lead.out")
+        assert "SHIP: io failed beside others; once more, alone" in lead, lead
+        assert "SHIP: keys failed beside others; once more, alone" in lead, lead
+        assert "SHIP: gallery did not run; once, alone" in lead, lead
+        # A timing check gets no second go: alone it would pass what the load showed.
+        assert not (y.ro / "t-m2_alone_progress_args").exists()
+        assert y.spec("t-m2", "result") == ("not live: ship.sh ended exit 1: SHIP: held, failed on the preview: "
+                                            "progress (failing on brickworks.diy too: progress)"), y.logs()
+        assert y.text("t-m2_stale_args").split()[2:] == ["progress"]
+        y.unmoved()
+    finally:
+        y.stop()
+
+
+def test_it_ships_past_a_check_only_where_brickworks_diy_fails_it_too(tmp_path):
+    y = Yard(tmp_path)
+    reason = "the booklet's bar is late on brickworks.diy too, and this release does not touch it"
+    try:
+        # Held on progress, which fails on brickworks.diy too, and keys, which passes there.
+        assert y.train("stage", "t-m2", "stage2", "--checks", "keys progress",
+                       STUB_FAILS="keys progress", STUB_STALE_FAILS="progress").returncode == 0
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result").endswith(
+            "held, failed on the preview: keys progress (failing on brickworks.diy too: progress)"), y.logs()
+        merge = y.git(y.wt / "t-m2", "rev-parse", "HEAD")
+        made = y.text("t-m2_preview.sha").strip()
+
+        # Never past one that passes there: its failure is the release's own.
+        refused = y.train("reship", "t-m2", "--accept", "keys", "it is flaky")
+        assert refused.returncode == 1, refused.stdout + refused.stderr
+        assert "train: keys passes on https://brickworks.diy (keys exit=0 " in refused.stdout, refused.stdout
+        assert "not one to ship past" in refused.stdout, refused.stdout
+        assert y.spec("t-m2", "accept") == "" and y.git(y.wt / "t-m2", "rev-parse", "HEAD") == merge
+        assert not (y.ro / "t-m2_accepted").exists()
+        assert "--accept wants a check and the reason" in y.train("reship", "t-m2", "--accept", "progress").stdout
+        both = y.train("reship", "t-m2", "--accept", "progress", reason, "--accept", "keys", "x")
+        assert both.returncode == 1 and "keys passes on" in both.stdout, both.stdout
+        assert y.spec("t-m2", "accept") == "" and y.git(y.wt / "t-m2", "rev-parse", "HEAD") == merge
+
+        # keys fixed in the release's worktree; progress shipped past.
+        (y.wt / "t-m2" / "keys.txt").write_text("keys, fixed\n")
+        y.git(y.wt / "t-m2", "add", "keys.txt")
+        y.git(y.wt / "t-m2", "commit", "-q", "-m", "keys, fixed")
+        out = y.train("reship", "t-m2", "--accept", "progress", reason, STUB_FAILS="")
+        assert out.returncode == 0, out.stdout + out.stderr
+        assert "t-m2's merge now says: Ships past progress where it fails on brickworks.diy too: " + reason \
+            in out.stdout, out.stdout
+        assert "reships from" in out.stdout and ": keys (and site, frames)" in out.stdout, out.stdout
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        # The merge's words, the trees as they were and the fix on top; a preview of that commit.
+        assert y.git(y.r, "log", "-1", "--format=%s", "main") == "keys, fixed"
+        assert y.git(y.r, "log", "-1", "--format=%B", "main^") == (
+            "Merge: stage2\n\nShips past progress where it fails on brickworks.diy too: " + reason)
+        assert y.git(y.r, "rev-parse", "main^^{tree}") == y.git(y.r, "rev-parse", "%s^{tree}" % merge)
+        assert y.git(y.r, "log", "-1", "--format=%an <%ae>", "main^") == "Xaxis <william.neeley@gmail.com>"
+        assert y.text("t-m2_preview.sha").strip() not in ("", made)
+        assert "reusing preview" not in y.text("t-m2_lead.out")
+        assert y.text("t-m2_pv_args").split()[2:] == ["keys", "site", "frames"]
+        record = y.text("t-m2_accepted")
+        assert record.startswith("progress: %s\n  here: progress exit=1 " % reason), record
+        assert "FAIL beside others" in record and "  there: progress exit=1 fails=1 1s :: FAIL on the live site" in record
+        assert "shipped past what fails on brickworks.diy too:\n  progress: " + reason in y.text("t-m2_train.out")
+        status = y.train("status", "t-m2").stdout
+        assert "ships past what fails on https://brickworks.diy too:\n    progress: " + reason in status, status
+        assert "      there: progress exit=1" in status, status
+
+        # Given when staged: shipped past where it fails there too, held where it passes there.
+        assert y.train("stage", "t-m3", "unitB", "--checks", "progress", "--accept", "progress", reason,
+                       STUB_FAILS="progress", STUB_STALE_FAILS="progress").returncode == 0
+        y.until(lambda: y.spec("t-m3", "result"))
+        assert y.spec("t-m3", "result") == "live", y.logs()
+        assert "SHIP: ships past progress, which fails on brickworks.diy too: " + reason in y.text("t-m3_lead.out")
+        assert ("Ships past progress where it fails on brickworks.diy too: " + reason
+                in y.git(y.r, "log", "-1", "--format=%B", "main"))
+        assert y.train("stage", "t-m4", "stage2", "--checks", "progress", "--accept", "progress", reason,
+                       STUB_FAILS="progress").returncode == 0
+        waiting = y.train("status", "t-m4").stdout
+        assert "may ship past progress should it fail on https://brickworks.diy too: " + reason in waiting, waiting
+        y.until(lambda: y.spec("t-m4", "result"))
+        assert y.spec("t-m4", "result") == "not live: ship.sh ended exit 1: SHIP: held, failed on the preview: progress"
+        assert not (y.ro / "t-m4_accepted").exists()
+        bad = y.train("stage", "t-m5", "stage2", "--accept", "nosuch", "why")
+        assert bad.returncode == 2 and "has no check nosuch" in bad.stdout, bad.stdout
     finally:
         y.stop()
 
@@ -898,7 +1025,8 @@ echo "$name: all passed"
 
 def test_a_release_takes_the_live_database_before_a_unit_that_waited_longer(tmp_path):
     """The real preview_checks.sh: a unit's arrival and a release's wait for the live database's
-    lock, the unit's first; once it is let go the release's runs first, and leaves no mark."""
+    lock, the unit's first; once it is let go the release's runs first, and leaves no mark. The
+    release's checks on the live site take it as a unit's do, in the order they came."""
     import fcntl
     y = Yard(tmp_path)
     for name in ("preview_checks.sh", "live_db_lib.sh"):
@@ -934,20 +1062,25 @@ def test_a_release_takes_the_live_database_before_a_unit_that_waited_longer(tmp_
     assert [line.split()[0] for line in y.text("check_spans").splitlines()] == ["t-release", "t-unit"]
     assert not any((y.r / ".git" / "live-db.release").iterdir())
 
-    # A train running (a file named for its pid, as train.sh run leaves): a unit's battery
-    # begins nothing on the live database until it ends; the release's checks on the live
-    # site (LIVE_DB_RELEASE) take it all the same.
+    # A train's mark (a file named for its pid, as train.sh run leaves until its battery is
+    # done): a unit's battery begins nothing on the live database while it is there, and
+    # neither do the release's own checks on the live site, which wait their turn as a unit's.
     (y.ro / "check_spans").unlink()
     train = subprocess.Popen(["sleep", "5"])
-    (y.r / ".git" / "live-db.release" / str(train.pid)).write_text("")
+    mark = y.r / ".git" / "live-db.release" / str(train.pid)
+    mark.write_text("")
     unit = battery("t-unit2")
     time.sleep(0.5)
+    # LIVE_DB_RELEASE, which put a train's checks there ahead of every unit, counts for nothing:
+    # a train copied before trainlean still sets it.
     stale = battery("t-stale", LIVE_DB_RELEASE="1")
-    assert stale.wait(timeout=30) == 0
-    assert unit.poll() is None, "the unit's check ran while the train did"
-    train.wait()
-    assert unit.wait(timeout=30) == 0
-    assert [line.split()[0] for line in y.text("check_spans").splitlines()] == ["t-stale", "t-unit2"]
+    time.sleep(1)
+    assert unit.poll() is None and stale.poll() is None, "a check ran while the train's mark was there"
+    mark.unlink()  # as ship.sh takes it away once the release's battery is done
+    assert unit.wait(timeout=30) == 0 and stale.wait(timeout=30) == 0
+    assert train.poll() is None, "the train ended first"
+    assert [line.split()[0] for line in y.text("check_spans").splitlines()] == ["t-unit2", "t-stale"]
+    train.kill()
 
 
 def test_a_units_own_run_on_the_live_site_waits_for_a_release(tmp_path):
