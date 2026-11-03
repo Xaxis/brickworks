@@ -42,8 +42,8 @@ the same reason: our own pictures draw no brick and knob.
 live registration of BRICKWORKS for software or toys:
 
 - USPTO 97709741, BRICKWORKS, Glen-Gery Corporation (a brick maker), filed
-  2022-12-08, abandoned. Its services included design of computer software
-  (class 42), which is the nearest anyone came.
+  2022-12-08, abandoned. Its class 42 was interior design (corrected by the
+  register search of 2026-11-03, docs/PLANS.md 8.5).
   (https://gleanmark.com/owner/glengerycorp, https://trademarks.justia.com/977/09/brickworks-97709741.html)
 - USPTO reg. 4802624, BRICKWORKS, masonry contracting (class 37), live.
 - USPTO reg. 7435871, BRICKWORKS DESIGN STUDIO, interior design (class 42),
@@ -52,7 +52,12 @@ live registration of BRICKWORKS for software or toys:
   (class 36), filed 2026-08-20, pending.
   (https://trademarkregistration.app/Trademark/Details/50062315)
 - Brickworks Limited of Australia holds marks for building materials
-  (class 19).
+  (class 19), and class 42 design marks in Australia and New Zealand, with
+  BRICKWORKS pending in Australia in classes 9, 16, 41 and 42 (its class 9
+  is publications and media, not software). Glen-Gery is its US arm.
+- Found 2026-11-03: BRICKWORK (singular), Brickwork India, USPTO reg.
+  7376310, class 42 consultancy in IT and software development, the
+  nearest live mark (docs/PLANS.md 8.5).
 - An LDraw model viewer called Brickworks was on the Mac App Store, last
   updated around 2017 (https://apps.apple.com/us/app/id1176177802). No
   registration for it was found. It is the closest in kind, and dormant.
@@ -329,8 +334,11 @@ put, for whoever reviews them before anything paid.
    Mac App Store app called Brickworks, an LDraw model viewer by Matusalem
    Marques, last updated 2017 (https://apps.apple.com/us/app/id1176177802).
    Brickworks Limited is a large Australian maker of building materials. A
-   quick search found no BRICKWORKS mark for software or toys (classes 9
-   and 28), but that is not a search of the USPTO, EUIPO and WIPO records.
+   knock-out search of the USPTO, EUIPO (with TMview) and WIPO records on
+   2026-11-03 found no live BRICKWORKS mark for software or toys in classes
+   9, 28 or 42; class 42 carries a moderate risk from BRICKWORK (US) and the
+   Brickworks Ltd group (Australia, New Zealand) (docs/PLANS.md 8.5). It is
+   a screen, not a clearance.
 3. **Minifigure likeness** (decided: in the app, never our branding, Decision 3). The Minifigure is a LEGO Group trademark
    [BR p.14]. The app has a minifigure builder and draws minifigures from
    LDraw parts, and the site's pictures show them (the Orthanc's two

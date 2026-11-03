@@ -168,7 +168,10 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     pro_list = re.search(r'<article class="tier featured" id="pro".*?<ul class="ticks">(.*?)</ul>', PAGE, re.S).group(1)
     assert "<b>The desktop app</b>" in free_list and "Commercial use" not in free_list
     assert "<b>Commercial use</b>" in pro_list and "desktop" not in pro_list
-    assert "Its terms come with Pro" in pro_list
+    # Its licence is the terms' (golive, 2026-11-03), and the trial, not built,
+    # is said only while Pro is coming soon.
+    assert 'under <a href="/terms#commercial-use">its terms</a>' in pro_list
+    assert '<li data-when="soon">30 days free' in pro_list
     assert re.search(r'<th scope="row">The desktop app for Windows, macOS and Linux</th><td><span class="has">', PAGE)
     assert re.search(r'<th scope="row">Commercial use: [^<]*</th><td><span class="hasnt">.*?</td><td><span class="has">',
                      PAGE)

@@ -32,8 +32,10 @@
 //   5. At 390 px dark, ?upgrade=year opens the step on Yearly, nothing
 //      sideways, and on to Checkout for the year.
 //   6. With --stand-in (this machine's, which can be paid): paid, and the
-//      webhook heard, the page says Pro and renews, Manage billing goes to
-//      Stripe's portal; cancelled there, "Pro until".
+//      webhook heard, the page says Pro and renews and what it includes,
+//      the licence linked to its terms; Manage billing goes to Stripe's
+//      portal, and Cancel Pro to its cancel step (flow "cancel"), the first
+//      of two clicks; cancelled there, "Pro until".
 //   7. With --stand-in: paid again, renewing, and the account deleted from
 //      /settings. Its delete form, at 390 dark and 1280 light, and the
 //      question before it, say Pro ends now with nothing charged again
@@ -170,7 +172,8 @@ async function deleteSaid(page) {
 const planSaid = (page) => page.evaluate(() => {
   const row = document.getElementById("plan");
   return row ? { state: row.dataset.plan, words: row.innerText.replace(/\s+/g, " ").trim(),
-    buttons: [...row.querySelectorAll("button")].map((b) => b.textContent.trim()) } : null;
+    buttons: [...row.querySelectorAll("button")].map((b) => b.textContent.trim()),
+    licence: row.querySelector(".included a")?.getAttribute("href") || null } : null;
 });
 const stepSaid = (page) => page.evaluate(() => {
   const d = document.getElementById("upgrade");
@@ -320,12 +323,24 @@ try {
       ({ page, context } = await open("/settings#plan", { width: 1280, theme: "dark", who, label: "pro" }));
       plan = await planSaid(page);
       check(`Pro, renewing: "${plan?.words.slice(0, 90)}"`, plan?.state === "pro" && /Pro, \$80\.00 USD a year\. Renews/.test(plan.words));
-      check(`Manage billing offered: ${plan?.buttons.join(", ")}`, plan?.buttons.join() === "Manage billing");
+      check(`Manage billing and Cancel Pro offered: ${plan?.buttons.join(", ")}`,
+        plan?.buttons.join() === "Manage billing,Cancel Pro");
+      check(`what Pro includes, its licence linked to the terms (${plan?.licence})`,
+        /Included: any number of models kept with your account, and a licence for commercial use\./.test(plan?.words || "")
+        && plan?.licence === "/terms#commercial-use");
       await page.locator("#plan").scrollIntoViewIfNeeded();
       await shot(page, "settings-pro-1280-dark.png");
       await Promise.all([page.waitForURL(/billing\.stripe\.test/, { timeout: 30000 }).catch(() => null),
         page.click("#plan button:has-text('Manage billing')")]);
       check(`on to Stripe's billing portal: ${page.url()}`, /^https:\/\/billing\.stripe\.test\/p\/session\//.test(page.url()));
+      await page.goto(`${site}/settings#plan`, { waitUntil: "load" });
+      await until(page, () => document.documentElement.dataset.settings === "ready", null, 40000);
+      await Promise.all([page.waitForURL(/billing\.stripe\.test/, { timeout: 30000 }).catch(() => null),
+        page.click("#plan button:has-text('Cancel Pro')")]);
+      const portals = (await (await fetch(`${standIn}/__stand_in/portals`, { method: "POST",
+        body: JSON.stringify({ customerId: who.kept.user_id }) })).json()).portals || [];
+      check(`Cancel Pro: one click to the portal's cancel step (${portals.map((one) => one.flow ?? "home").join(", ")})`,
+        /^https:\/\/billing\.stripe\.test\/p\/session\//.test(page.url()) && portals.at(-1)?.flow === "cancel");
       r = await api("/api/plans?op=checkout", { method: "POST", token: who.access_token, body: { interval: "month", consent: true } });
       check(`Checkout again for one who pays: the portal (${r.json?.kind})`, r.status === 200 && r.json?.kind === "portal");
       const cancel = await (await fetch(`${standIn}/__stand_in/cancel`, { method: "POST",

@@ -13,12 +13,16 @@
 // prices as Admission has them. Asked once; until it answers, and if it
 // cannot, the page is as written: coming soon.
 //
+// For sale and signed in, an account that has Pro already (paid for,
+// given, or the owner's: GET /api/plans?op=plan) is not asked to upgrade:
+// Pro's button says so and goes to its plan on /settings.
+//
 // "Tell me when it's ready" on Pro opens the form for that plan, the
 // address of whoever is signed in filled in. Sent to /api/plans, which
 // answers the same words for a first entry and a second (a second for the
 // same plan changes the first), and Take it off deletes that address's
 // entries, every plan. Nothing typed is shown back as markup.
-import { email, madeUp } from "/account.js";
+import { call, email, madeUp, signedIn } from "/account.js";
 import { langAt } from "/card.js";
 
 // In the page's language (web/theme.js): the form's own words, and the
@@ -46,7 +50,7 @@ function bill(interval) {
   }
   for (const one of document.querySelectorAll("[data-billed]")) one.hidden = one.dataset.billed !== billed;
   $("interest-billing").value = billed === "month" ? "monthly" : "yearly";
-  if (upgrade) upgrade.href = `${langAt()}/settings?upgrade=${billed}#plan`;
+  if (upgrade && !upgrade.dataset.has) upgrade.href = `${langAt()}/settings?upgrade=${billed}#plan`;
 }
 for (const button of document.querySelectorAll("[data-billing]")) {
   button.addEventListener("click", () => bill(button.dataset.billing));
@@ -79,8 +83,19 @@ async function onSale() {
     if (shown && Number.isInteger(amount) && amount > 0) shown.textContent = money(amount, offer.pro.currency);
   }
   document.documentElement.dataset.plans = "sale";
+  if (signedIn()) hasPro();
 }
 onSale();
+
+/// Pro's button, for an account with Pro already: to its plan.
+async function hasPro() {
+  const mine = await call("/api/plans?op=plan").catch(() => null);
+  const plan = mine?.status === 200 ? mine.body : null;
+  if (!upgrade || plan?.standing !== "known" || !(plan.owner || plan.plan?.key === "pro")) return;
+  upgrade.textContent = say("You have Pro: your plan");
+  upgrade.href = `${langAt()}/settings#plan`;
+  upgrade.dataset.has = "pro";
+}
 
 /// The beta's callout under the plans, only while the beta is open
 /// (GET /api/plans?op=beta_spots, beta361: {beta: "open", cap, left}; off,

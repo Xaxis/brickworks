@@ -16,6 +16,11 @@
 // Deleting the account ends a plan it pays for (endsWithAccount), and the
 // delete form says so before anyone presses it.
 //
+// Pro, paid for or given, says what it includes, the licence for
+// commercial use linked to its terms (/terms#commercial-use); a paid one has
+// Cancel Pro, the portal's own cancel step, so cancelling is two clicks:
+// that and Stripe's confirm.
+//
 // Every word goes on the page as text, never as markup.
 import { call } from "/account.js";
 import { langAt, number, say, told } from "/card.js";
@@ -162,7 +167,8 @@ function upgrade(offer, start, opener) {
           + "the end of the month you have paid for, and you are not charged again.")),
       sayInto(make("p"), say("Sold through Link, the merchant of record, for Atypic: your statement reads LINK.COM* ATYPIC. "
         + "{terms} · {refunds}"), {
-        terms: link(ATYPIC.terms, say("Terms of sale")), refunds: link(ATYPIC.refunds, say("Refunds and cancelling")),
+        terms: link(ATYPIC.terms, say("Terms of sale")),
+        refunds: link(`${langAt()}/terms#refunds`, say("Refunds and cancelling")),
       }));
     agreeing.textContent = say("I agree that Pro renews automatically at {price} until I cancel.", { price: each });
     // An agreement is to one price: another one is agreed afresh.
@@ -217,6 +223,14 @@ function portalButton(label, flow, status, ghost = true) {
   return b;
 }
 
+/// What Pro includes, its licence linked to the terms.
+function included() {
+  return sayInto(make("p", "included"), say("Included: {models}, and {licence}."), {
+    models: say("any number of models kept with your account"),
+    licence: link(`${langAt()}/terms#commercial-use`, say("a licence for commercial use")),
+  });
+}
+
 /// What the plan's row says of [mine] (GET /api/plans?op=plan), with the
 /// offer [offer] (GET /api/plans): its words, its buttons, and a state for
 /// checks to read.
@@ -245,14 +259,15 @@ function standing(mine, offer, status) {
     const what = Number.isInteger(amount) ? say("Pro, {price}.", { price: charge(amount, pro.currency || "usd", interval) })
       : say("Pro.");
     return { state: "pro", lines: [make("b", "", what), ` ${say("Renews {day}.", { day: dated(s.periodEnd) })}`],
+      included: included(),
       more: say("In Stripe's billing portal: your card, monthly or yearly, your invoices, or cancelling. Receipts "
         + "come from Link by email."),
-      buttons: [portalButton(say("Manage billing"), "", status)] };
+      buttons: [portalButton(say("Manage billing"), "", status), portalButton(say("Cancel Pro"), "cancel", status)] };
   }
   if (mine.plan?.key === "pro") {
     const given = mine.plan.until ? say("Pro, given to you until {day}.", { day: dated(mine.plan.until) })
       : say("Pro, given to you.");
-    return { state: "given", lines: [make("b", "", given), ` ${say("Nothing to pay.")}`] };
+    return { state: "given", lines: [make("b", "", given), ` ${say("Nothing to pay.")}`], included: included() };
   }
   const most = mine.savedModels?.limit;
   const lines = [make("b", "", say("Free.")),
@@ -285,7 +300,7 @@ async function draw(row, fresh = false) {
   const said = mine.status === 200
     ? standing(mine.body, offer.status === 200 ? offer.body : null, status)
     : { state: "unknown", lines: [told(mine.body.error, say("Your plan could not be read just now."))] };
-  const words = make("div", "", make("h2", "", say("Plan")), make("p", "", ...said.lines),
+  const words = make("div", "", make("h2", "", say("Plan")), make("p", "", ...said.lines), said.included ?? null,
     said.more ? make("p", "", said.more) : null);
   words.id = "plan-said";
   row.replaceChildren(words, said.buttons ? make("div", "actions", ...said.buttons) : "", status);

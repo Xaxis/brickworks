@@ -8,11 +8,18 @@
   api/share.js, licences api/_directory.js. Change one, change this.
 
   Paid plans (#paid-plans, 2026-10-29, gate M1 of docs/PLANS.md): Free and
-  Pro as /plans says them, said as coming, since nothing is sold while
-  BRICKWORKS_BILLING is off. AI is never limited on any plan (the owner,
-  2026-10-29); Free keeps 25 models with the account. Its structure and its promises are Bookwright's
-  (bookwright.diy/terms, "Plans" and "Paying for Pro"), sold the same way
-  (section 8, M5), and nothing more: what Pro includes lives on /plans.
+  Pro as /plans says them. Every word is true before the switch to live and
+  after it: Pro is on sale only once /plans and the account page offer it
+  (BRICKWORKS_BILLING, api/_billing.js). AI is never limited on any plan
+  (the owner, 2026-10-29); Free keeps 25 models with the account. Paying
+  (#paying) is Bookwright's (bookwright.diy/terms, "Paying for Pro"), sold
+  the same way through Link, with the step before Checkout (web/plan.js,
+  supabase/plan_consents.sql) and Cancel Pro, two clicks (web/plan.js,
+  the portal's cancel flow). Refunds (#refunds) and the licence for
+  commercial use (#commercial-use) are golive's, 2026-11-03 (docs/PLANS.md
+  section 8): written before a lawyer has read them, which is condition 1.
+  The licence keeps docs/TRADEMARKS.md's rules; photo search is
+  Brickognize's, whose terms allow personal, non-commercial use only.
 -->
 <html lang="en">
 <head>
@@ -91,7 +98,7 @@
 			<p class="eyebrow">Legal</p>
 			<h1>Terms of use</h1>
 			<p class="lede">Brickworks is a CAD for LEGO® models: this website, the app in your browser and on your computer, and a gallery of what people share. Using any of it means these terms. They say what the site does and what it asks of you, in plain words.</p>
-			<p class="hero-meta">Updated 29 October 2026</p>
+			<p class="hero-meta">Updated 3 November 2026</p>
 			<nav class="tabs" aria-label="The site’s rules"><a href="/terms" aria-current="page">Terms of use</a><a href="/privacy">Privacy</a><a href="/guidelines">Community guidelines</a><a href="/takedown">Takedown requests</a></nav>
 		</div>
 	</div>
@@ -105,7 +112,10 @@
 				<li><a href="#the-rules">The rules</a></li>
 				<li><a href="#something-here-is-yours">Something here is yours</a></li>
 				<li><a href="#the-ai-designer">The AI designer</a></li>
-				<li><a href="#paid-plans">Paid plans, when they open</a></li>
+				<li><a href="#paid-plans">Paid plans</a></li>
+				<li><a href="#paying">Paying for Pro</a></li>
+				<li><a href="#refunds">Refunds</a></li>
+				<li><a href="#commercial-use">Pro’s licence for commercial use</a></li>
 				<li><a href="#beta">The beta</a></li>
 				<li><a href="#no-promises-we-cannot-keep">No promises we cannot keep</a></li>
 				<li><a href="#lego">LEGO®</a></li>
@@ -139,10 +149,31 @@
 			<h2 id="the-ai-designer">The AI designer</h2>
 			<p>It runs on your own AI: your Claude plan, or your own API key for Claude or another AI, never on ours, so its maker’s terms apply to what you send it, and Brickworks never limits it or bills for it. What it designs is yours to use like anything you build here.</p>
 
-			<h2 id="paid-plans">Paid plans, when they open</h2>
-			<p>Brickworks has a Free plan, and a paid plan, Pro, is coming. Nothing is sold yet, and nothing here takes money. What each plan includes, and what Pro costs in US dollars, is on the <a href="/plans">plans page</a>, and will be on your account page before you buy. AI is never limited, on any plan: it runs on your own AI plan or key. Once Pro opens, Free keeps up to 25 models with your account and Pro any number; saving to your device and exporting are never limited, and every account made before 29 October 2026 keeps Pro, free and with no end date. Don’t get around a plan’s limits with several free accounts.</p>
-			<p>Pro will be sold by Atypic through Link: Sold through Link, LLC, an affiliate of Stripe, is the merchant of record. Link takes the payment, works out any sales tax, VAT or GST and shows it before you pay, and emails your receipts. Buying Pro also means <a href="https://atypic.ai/terms">Atypic’s terms of service</a> and <a href="https://link.com/terms#sold-through-link-terms">Link’s terms</a>. Pro is billed monthly or yearly, as you choose, and renews automatically at the same price until you cancel. If the price ever changes, you will be told by email before it applies to you, and can cancel before then.</p>
-			<p>You can cancel at any time, from your account page or at link.com. Pro stays on to the end of the month or year you have paid for, and then your account moves to Free. How cancelling and refunds work is in Atypic’s <a href="https://atypic.ai/refunds">refund and cancellation policy</a>; Link may also refund within 60 days of a purchase under its own policy.</p>
+			<h2 id="paid-plans">Paid plans</h2>
+			<p>Brickworks has two plans. Free is for personal and educational use. Pro adds any number of models kept with your account and a <a href="#commercial-use">licence for commercial use</a>. What each includes, and what Pro costs in US dollars, is on the <a href="/plans">plans page</a> and on your account page before you pay. Pro is on sale once those pages offer it; until then nothing here takes money.</p>
+			<p>AI is never limited, on any plan: it runs on your own AI plan or key. Once Pro opens, Free keeps up to 25 models with your account and Pro any number; saving to your device and exporting are never limited. Over 25, nothing is deleted or locked: every model already kept stays, and you can open, change and save each one; a new one is kept once there are fewer than 25. Don’t get around a plan’s limits with several free accounts.</p>
+			<p>Every account made before 29 October 2026 has Pro, free and with no end date. Students and teachers can have Pro free, a year at a time: write to <a href="mailto:support@atypic.ai">support@atypic.ai</a> from your school or university address, or say where you study or teach.</p>
+
+			<h2 id="paying">Paying for Pro</h2>
+			<p>Pro is sold by Atypic through Link: Sold through Link, LLC, an affiliate of Stripe, is the merchant of record. Link takes the payment, works out any sales tax, VAT or GST and shows it before you pay, and emails your receipts and invoices. Buying Pro also means <a href="https://atypic.ai/terms">Atypic’s terms of service</a> and <a href="https://link.com/terms#sold-through-link-terms">Link’s terms</a>. Pro is billed monthly or yearly, as you choose, and renews automatically at the same price until you cancel. If the price ever changes, you will be told by email before it applies to you, and can cancel before then.</p>
+			<p>Before you pay, your account page says the price, how often it is charged, that it renews until you cancel and how to cancel, beside a box only you can tick. What you agreed to is kept, as the <a href="/privacy#paying">privacy page</a> says.</p>
+			<p>You can cancel at any time, in two clicks: on your account page, <b>Cancel Pro</b>, then confirm. Or at link.com. Pro stays on to the end of the month or year you have paid for, you are not charged again, and then your account moves to Free, with every model in it.</p>
+
+			<h2 id="refunds">Refunds</h2>
+			<p>If Pro is not for you, ask within 14 days of your first payment for it and we refund that payment in full, with no reason needed, once an account. The same goes for a yearly renewal, within 14 days of its charge. Write to <a href="mailto:support@atypic.ai">support@atypic.ai</a> from the address on your account. A refund ends Pro at once, and its licence for commercial use with it; your account moves to Free, with every model in it.</p>
+			<p>Otherwise refunds are as Atypic’s <a href="https://atypic.ai/refunds">refund and cancellation policy</a> says, and Link may also refund within 60 days of a purchase under its own policy. Nothing here takes away a right to cancel or to a refund that the law where you live gives you.</p>
+
+			<h2 id="commercial-use">Pro’s licence for commercial use</h2>
+			<p>While your account has Pro, paid for or given, Atypic licenses you to use Brickworks in a business and to sell what you make with it: instructions and booklets, renders, parts lists, model files, kits, and builds made to order. The licence is yours alone, and cannot be passed on. What you sold while you had Pro stays sold; to sell more after Pro ends, you need Pro again. Free is for personal and educational use only.</p>
+			<p>It is a licence for Brickworks alone. It gives you no right in anything Brickworks does not own: the LEGO Group’s trademarks and designs, the names of licensed themes, other people’s models, or the services the app asks for you. So:</p>
+			<ul>
+				<li>Brickworks is not made, sponsored, authorised or endorsed by the LEGO Group, and neither is anything you sell. Never say or suggest it is.</li>
+				<li>Write LEGO® only as an adjective, with its ®, for the bricks a model uses (“built from LEGO® bricks”). Never put it in the name of a product, a kit or a shop, never call something “LEGO® compatible”, and never use the LEGO Group’s logo, box art or Minifigure in your own branding. The LEGO Group’s Fair Play policy covers non-commercial use only, so the marks in what you sell are yours to clear.</li>
+				<li>Sell only designs that are yours to sell: not instructions for a LEGO® set or a copy of one, including the models of real sets in the app’s library, and not someone else’s model unless its licence allows it.</li>
+				<li>Part geometry comes from the LDraw™ Parts Library under CC BY: keep its credit on what you sell, as the booklet prints it.</li>
+				<li>Photo search is <a href="https://brickognize.com">Brickognize</a>’s, a separate service whose terms allow personal, non-commercial use: the licence does not reach it.</li>
+			</ul>
+			<p>What you sell, and how, is yours to keep within the law where you sell it: tax, toy safety for a kit, and the rest.</p>
 
 			<h2 id="beta">The beta</h2>
 			<p>While the <a href="/beta">beta</a> is open, a signed-in account may apply once to be a tester. We read every application ourselves and choose whom to approve; nothing is decided by a machine, and an application may be declined without a reason. A declined account may apply again 30 days later. Don’t apply from several accounts.</p>
