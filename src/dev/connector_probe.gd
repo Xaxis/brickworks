@@ -21,7 +21,9 @@
 ## And Claude signed in to the account with OAuth (2026-10-11), at the one
 ## address for everybody: its calls answered by this tab, which never gave
 ## Claude its own address; told no tab is open once it is off; refused
-## after Disconnect.
+## after Disconnect. And Gemini signed in the same way beside it, its
+## design named Gemini's in the history and its chat Gemini in the tab,
+## though it said it was Claude (docs/ANY_ASSISTANT.md U1).
 ##
 ## Not in the suite: it needs the relay running and the project's keys.
 extends SceneTree
@@ -193,6 +195,30 @@ func _run() -> void:
 		"a call is run in this account's tab, which never gave Claude its address: %s"
 			% _text_of(by_account[1] as Dictionary).substr(0, 40).replace("\n", " "))
 	_check(calls.size() > before and calls.has("search_parts"), "...and the tab saw it")
+	_check(_who_did(connector, "search_parts") == "Claude",
+		"...and its chat in the tab is Claude's: %s" % _who_did(connector, "search_parts"))
+	# Gemini as Google documents it: it registers, with a secret, to come
+	# back to googleusercontent.com. It calls itself Claude on its call; the
+	# relay tells the tab who it is from its connection.
+	var gemini_back: String = "https://oauth-redirect.googleusercontent.com/r/gemini-connected-apps"
+	var registered: Variant = JSON.parse_string(((await _send(_base + "/oauth/register", JSON.stringify({
+		"client_name": "Gemini", "redirect_uris": [gemini_back],
+		"token_endpoint_auth_method": "client_secret_post"}), ""))[3] as PackedByteArray).get_string_from_utf8())
+	var gemini: Dictionary = registered if registered is Dictionary else {}
+	var gemini_token: String = await _oauth_token(account, str(gemini.get("client_id", "")), gemini_back,
+		str(gemini.get("client_secret", "")))
+	var depth: int = builder.history_depth()
+	var designed: Array = await _claude_as(gemini_token, "tools/call", {"name": "submit_design",
+		"arguments": {"name": "A red tower", "description": "a red tower", "floor": "none", "bricks": [
+			{"part": "3003", "color": 4, "x": 10, "y": 0, "z": 10, "rot": 0},
+			{"part": "3003", "color": 4, "x": 10, "y": 3, "z": 10, "rot": 0}]},
+		"_meta": {"brickworks/who": "Claude"}})
+	var step: String = builder.history_words(1)[0] if builder.history_depth() > depth else ""
+	_check(step.begins_with("Gemini's submit design"),
+		"Gemini, signed in beside Claude, designs in this tab, its step Gemini's though it said Claude: %s (%s)"
+			% [step, _text_of(designed[1] as Dictionary).substr(0, 60).replace("\n", " ")])
+	_check(_who_did(connector, "submit_design") == "Gemini",
+		"...and its chat in the tab is Gemini's: %s" % _who_did(connector, "submit_design"))
 	connector.stop()
 	# Until its word that it has closed has reached the relay (a third of a
 	# second here, and longer than a second on a loaded machine): the relay's
@@ -406,10 +432,11 @@ func _claude_as(token: String, method: String, params: Dictionary) -> Array:
 
 ## Claude's sign-in, as claude.ai does it: its published identity, a PKCE
 ## challenge, the person's yes as [param signed_in] (the call the sign-in
-## page makes), and the code traded for a token. "" if any step failed.
-func _oauth_token(signed_in: Account) -> String:
-	var client: String = "https://claude.ai/oauth/mcp-oauth-client-metadata"
-	var back: String = "https://claude.ai/api/mcp/auth_callback"
+## page makes), and the code traded for a token. "" if any step failed. Or
+## another [param client]'s, sent back to [param back], with its
+## [param secret] if it holds one.
+func _oauth_token(signed_in: Account, client: String = "https://claude.ai/oauth/mcp-oauth-client-metadata",
+		back: String = "https://claude.ai/api/mcp/auth_callback", secret: String = "") -> String:
 	var verifier: String = ClaudeConnector._new_token()
 	var hashing := HashingContext.new()
 	hashing.start(HashingContext.HASH_SHA256)
@@ -431,12 +458,21 @@ func _oauth_token(signed_in: Account) -> String:
 	get_root().add_child(http)
 	http.request(_base + "/oauth/token", PackedStringArray([
 		"content-type: application/x-www-form-urlencoded"]), HTTPClient.METHOD_POST,
-		"grant_type=authorization_code&code=%s&redirect_uri=%s&client_id=%s&code_verifier=%s&resource=%s"
-		% [code, back.uri_encode(), client.uri_encode(), verifier, (_base + "/api/mcp").uri_encode()])
+		"grant_type=authorization_code&code=%s&redirect_uri=%s&client_id=%s&code_verifier=%s&resource=%s%s"
+		% [code, back.uri_encode(), client.uri_encode(), verifier, (_base + "/api/mcp").uri_encode(),
+			"&client_secret=" + secret.uri_encode() if not secret.is_empty() else ""])
 	var done: Array = await http.request_completed
 	http.queue_free()
 	var tokens: Variant = JSON.parse_string((done[3] as PackedByteArray).get_string_from_utf8())
 	return str((tokens as Dictionary).get("access_token", "")) if tokens is Dictionary else ""
+
+
+## Who the tab says the chat whose last call was [param tool] is.
+func _who_did(connector: ClaudeConnector, tool: String) -> String:
+	for one: Variant in connector.chats:
+		if one is Dictionary and str((one as Dictionary).get("did", "")) == tool:
+			return str((one as Dictionary).get("who", ""))
+	return ""
 
 
 ## A GET with a session, parsed.

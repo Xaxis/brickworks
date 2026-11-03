@@ -4438,6 +4438,13 @@
       "entry": "tools/browse_pages.py",
       "reach": "python3 tools/browse_pages.py [--check]   (writes web/library.html, web/builds.html and web/collections.html from web/gallery.html, each with its tab's head and its tab marked; then tools/site_lang.py; tests/test_browse_pages.py)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "every assistant's sign-in",
+      "entry": "tools/web/clients_check.mjs",
+      "reach": "tools/release/live_db.sh you node tools/web/clients_check.mjs --url=<relay_server or deployment>   (with .env sourced; BW_BYPASS for a preview)",
+      "area": "account"
     }
   ]
 }

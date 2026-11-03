@@ -157,7 +157,7 @@ const ALREADY := ConnectorForm.ALREADY
 var assistant: String = Assistants.CLAUDE
 signal assistant_chosen(id: String)
 ## Who made the newest call, by the name the relay gives it on the call
-## (_meta brickworks/who, CommandSocket.who_of): "ChatGPT", "Claude Code".
+## (_meta brickworks/who, _who_said): "ChatGPT", "Claude Code".
 ## A call that names no one is Claude's, as every call was before.
 var caller: String = "Claude"
 
@@ -508,7 +508,8 @@ func refresh_chats() -> void:
 		_set_chats((body as Dictionary)["chats"])
 
 
-## The relay's list, keeping the words this tab heard for a chat's last call.
+## The relay's list, keeping the words this tab heard for a chat's last call,
+## and who the chat is (the relay's list says no one).
 ## The relay lists the chats that chose this tab; one that named it on its
 ## calls instead (target) and called in the last two minutes stays shown,
 ## unless [param whole]: the list after Keep this one is the whole of it.
@@ -545,7 +546,9 @@ func _set_chats(given: Array, whole: bool = false) -> void:
 
 
 ## A call from a chat working in this tab (the relay names it on the call's
-## _meta): when, and what it did.
+## _meta): when, what it did, and who it is (ChatGPT, Gemini, Claude: the
+## relay's label for its connection, brickworks/who, docs/ANY_ASSISTANT.md
+## U1).
 func _chat_called(request: Dictionary, tool: String, arguments: Dictionary) -> void:
 	var said: Dictionary = _chat_said(request)
 	var chat: String = str(said.get("chat", ""))
@@ -562,8 +565,9 @@ func _chat_called(request: Dictionary, tool: String, arguments: Dictionary) -> v
 	found["last"] = at
 	found["did"] = tool
 	found["words"] = ConnectorForm.said(tool, arguments)
-	found["who"] = Later.script(&"CommandSocket").who_of(request.get("params", {})
-		if request.get("params") is Dictionary else {})
+	var who: String = _who_said(request)
+	if not who.is_empty():
+		found["who"] = who
 	chats_changed.emit(chats)
 
 
@@ -572,6 +576,14 @@ static func _chat_said(request: Dictionary) -> Dictionary:
 	var params: Dictionary = request.get("params", {}) if request.get("params") is Dictionary else {}
 	var meta: Dictionary = params.get("_meta", {}) if params.get("_meta") is Dictionary else {}
 	return meta.get("brickworks/chat", {}) if meta.get("brickworks/chat") is Dictionary else {}
+
+
+## Who the relay says made [param request], or "" (CommandSocket.who_of
+## reads the same for the history).
+static func _who_said(request: Dictionary) -> String:
+	var params: Dictionary = request.get("params", {}) if request.get("params") is Dictionary else {}
+	var meta: Dictionary = params.get("_meta", {}) if params.get("_meta") is Dictionary else {}
+	return str(meta.get("brickworks/who", "")).strip_edges().left(60)
 
 
 ## Each chat working in this tab, by the relay's short name ("" for calls that
@@ -1241,7 +1253,8 @@ func _answer(token: String, work: Dictionary) -> void:
 		arguments = given if given is Dictionary else {}
 		# Who is calling, as the relay names the connection (U1,
 		# docs/ANY_ASSISTANT.md): the panels say it before they hear the call.
-		caller = Later.script(&"CommandSocket").who_of(params)
+		var who: String = _who_said(request)
+		caller = who if not who.is_empty() else "Claude"
 	if not _used:
 		_used = true
 		_save()
