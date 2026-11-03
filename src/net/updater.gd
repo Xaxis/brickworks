@@ -69,7 +69,11 @@ var _state: Dictionary = {}
 var _asked: String = ""
 
 
+## The setting, or Off where BRICKWORKS_UPDATES=off says so: a test run of
+## a package (tools/release.py smoke), or a machine an administrator updates.
 static func mode() -> String:
+	if OS.get_environment("BRICKWORKS_UPDATES").to_lower() == "off":
+		return "off"
 	var chosen: String = str(ShellPrefs.value("updates"))
 	return chosen if chosen in MODES else "auto"
 
@@ -106,7 +110,9 @@ func begin() -> void:
 	if not _asked.is_empty():
 		_run_asked.call_deferred()
 		return
-	if mode() == "off" or OS.get_cmdline_args().has("--script"):
+	# Run from source, as every probe and its windows are, it never asks by
+	# itself: only a downloaded copy has anything to update.
+	if mode() == "off" or not OS.has_feature("template") or OS.get_cmdline_args().has("--script"):
 		return
 	var last: float = float(_state.get("checked", 0.0))
 	if Time.get_unix_time_from_system() - last < EVERY_S:

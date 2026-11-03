@@ -52,7 +52,10 @@ one starts.
 - **Settings ▸ Updates**, beside the version: **Automatic** (the default:
   downloads in the background, puts it in as the app quits, or now on
   Update and restart), **Ask first** (says it is out; downloads on the
-  press), **Off** (nothing until Help asks).
+  press), **Off** (nothing until Help asks). `BRICKWORKS_UPDATES=off` in the
+  environment is Off whatever the setting: a package under test
+  (`tools/release.py smoke`), or a machine an administrator updates. A copy
+  run from source never asks by itself.
 - **Restart** writes the working model first, as the web's Reload does, and
   the window comes back in the same session (`--session=`), so it opens the
   model as it was. Help ▸ **Restart Brickworks** does only that; Help ▸

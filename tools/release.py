@@ -1100,7 +1100,8 @@ def clean_env(home: Path) -> dict[str, str]:
     keep = ("PATH", "LANG", "LC_ALL", "SystemRoot", "ComSpec", "PATHEXT", "WINDIR", "TMPDIR",
             "VK_DRIVER_FILES", "VK_ICD_FILENAMES", "BOX_GPU_STATE", "BOX_GPU_HELD")
     env = {name: os.environ[name] for name in keep if name in os.environ}
-    env.update({"HOME": str(home), "USERPROFILE": str(home),
+    # The package under test never updates itself mid-run (Updater.mode).
+    env.update({"BRICKWORKS_UPDATES": "off", "HOME": str(home), "USERPROFILE": str(home),
                 "APPDATA": str(home / "AppData" / "Roaming"),
                 "LOCALAPPDATA": str(home / "AppData" / "Local"),
                 "TEMP": str(home / "tmp"), "TMP": str(home / "tmp")})
@@ -1827,7 +1828,8 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
         if not git("branch", "-r", "--contains", full):
             raise Failed("%s, which this was built from, is not pushed: push it first" % commit)
         commit = full
-    files = [out / f["name"] for f in facts["files"]] + [out / "SHA256SUMS", out / "latest.json"]
+    latest_json = out / "latest.json"
+    files = [out / f["name"] for f in facts["files"]] + [out / "SHA256SUMS"]
     existing = release_view(tag)
     # Public only by promoting a draft that was checked. Creating it public
     # in one step skipped the run on macOS and Windows, and one mistyped
@@ -1847,8 +1849,17 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
         problems = check_update_manifest(latest)
         if problems:
             raise Failed("latest.json would be refused by the app: " + "; ".join(problems))
-        (out / "latest.json").write_text(json.dumps(latest, indent=1) + "\n")
+        latest_json.write_text(json.dumps(latest, indent=1) + "\n")
         say("  latest.json signed by %d keys the app carries" % len(latest["signatures"]))
+    elif existing["isDraft"] and not draft \
+            and "latest.json" not in {asset["name"] for asset in existing["assets"]}:
+        # Every installed copy reads the newest release's latest.json: one
+        # without it would leave them all unable to update.
+        raise Failed("the draft %s has no latest.json, so no installed copy could update to it: "
+                     "delete it (gh release delete %s --yes) and publish --draft again" % (tag, tag))
+    if latest_json.exists() and (existing is None
+                                 or "latest.json" in {a["name"] for a in existing["assets"]}):
+        files.append(latest_json)
     if existing is None:
         # Uploaded once. A draft is how a release is checked on the
         # systems it is for before anyone can see it; publishing then

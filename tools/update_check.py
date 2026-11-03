@@ -227,6 +227,8 @@ class Run:
         # (a runner's is a throwaway), and a clean one elsewhere.
         self.home = Path.home() if sys.platform == "darwin" else root / "home"
         self.env = release.clean_env(root / "home")
+        # The updater is what is tested here: in its default, Automatic.
+        self.env.pop("BRICKWORKS_UPDATES", None)
         if sys.platform == "darwin":
             self.env.update({"HOME": str(Path.home())})
         self.log = user_dir(self.home) / "updates" / "log.txt"
