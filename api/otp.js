@@ -32,6 +32,8 @@
 // Resend bill, and a serverless instance forgets everything whenever it
 // recycles.
 
+import { reach } from "./_db.js";
+
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const TTL_MINUTES = 10;
 
@@ -56,17 +58,15 @@ function asServer() {
 /// already is answered 422, and asked its code all the same. The daily
 /// canary (api/_canary.js) signs in by this, and by deliver below.
 export async function mint(email) {
-  const made = await fetch(`${project()}/auth/v1/admin/users`, {
+  const made = await reach("auth POST admin/users", 10, `${project()}/auth/v1/admin/users`, {
     method: "POST", headers: asServer(), body: JSON.stringify({ email, email_confirm: true }),
-    signal: AbortSignal.timeout(10000),
   });
   if (!made.ok && made.status !== 422) return null;
-  const reply = await fetch(`${project()}/auth/v1/admin/generate_link`, {
+  const reply = await reach("auth POST admin/generate_link", 10, `${project()}/auth/v1/admin/generate_link`, {
     method: "POST",
     headers: asServer(),
     // magiclink: a one-time code for the account, and nothing sent.
     body: JSON.stringify({ type: "magiclink", email }),
-    signal: AbortSignal.timeout(10000),
   });
   if (!reply.ok) return null;
   const body = await reply.json();
@@ -111,7 +111,7 @@ const SENDER = "Brickworks <noreply@brickworks.diy>";
 let borrowed = null;
 
 async function post(key, from, email, code) {
-  return fetch("https://api.resend.com/emails", {
+  return reach("Resend POST emails", 10, "https://api.resend.com/emails", {
     method: "POST",
     headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
     body: JSON.stringify({
@@ -122,7 +122,6 @@ async function post(key, from, email, code) {
       text: `Your Brickworks sign-in code is ${code}. `
         + `It works once and expires in ${TTL_MINUTES} minutes.`,
     }),
-    signal: AbortSignal.timeout(10000),
   });
 }
 
@@ -166,11 +165,10 @@ export async function deliver(email, code) {
 }
 
 async function allowed(email, ip) {
-  const reply = await fetch(`${project()}/rest/v1/rpc/may_ask_for_code`, {
+  const reply = await reach("database POST rpc/may_ask_for_code", 8, `${project()}/rest/v1/rpc/may_ask_for_code`, {
     method: "POST",
     headers: asServer(),
     body: JSON.stringify({ for_email: email, from_ip: ip }),
-    signal: AbortSignal.timeout(8000),
   });
   if (!reply.ok) {
     // Fails closed. Letting requests through because the limiter is

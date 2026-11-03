@@ -70,7 +70,7 @@ import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { entitlementOf, mostModels, reportOwner } from "./_billing.js";
-import { db, dbConfigured } from "./_db.js";
+import { db, dbConfigured, reach } from "./_db.js";
 
 // As supabase/account_models.sql holds them.
 export const MOST_STORED = 4 * 1024 * 1024;
@@ -317,11 +317,10 @@ async function saved(args, most = null) {
   const name = within ? "save_account_model_within" : "save_account_model";
   const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
   const key = process.env.SUPABASE_SECRET_KEY;
-  const answer = await fetch(`${base}/rest/v1/rpc/${name}`, {
+  const answer = await reach(`database POST rpc/${name}`, 20, `${base}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
     body: JSON.stringify(within ? { ...args, p_most: most } : args),
-    signal: AbortSignal.timeout(20000),
   });
   if (answer.ok) return answer.json();
   const said = await answer.json().catch(() => ({}));

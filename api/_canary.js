@@ -36,7 +36,7 @@
 import { randomBytes } from "node:crypto";
 import { verify } from "./_auth.js";
 import { isCron } from "./_cron.js";
-import { db } from "./_db.js";
+import { db, reach } from "./_db.js";
 
 const SENDER = "Brickworks <noreply@brickworks.diy>";
 // Only these are ever deleted as left behind: a canary's own, by its address.
@@ -60,8 +60,8 @@ function server() {
 }
 
 async function auth(path, { method = "POST", headers = visitor(), body } = {}) {
-  const reply = await fetch(`${project()}/auth/v1${path}`, {
-    method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(10000),
+  const reply = await reach(`auth ${method} ${path.split("?")[0]}`, 10, `${project()}/auth/v1${path}`, {
+    method, headers, body: body === undefined ? undefined : JSON.stringify(body),
   });
   return { status: reply.status, body: await reply.json().catch(() => ({})) };
 }

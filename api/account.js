@@ -80,7 +80,7 @@
 // anyone reinstalling.
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
-import { db, dbConfigured } from "./_db.js";
+import { db, dbConfigured, reach } from "./_db.js";
 import { earlyFor } from "./_early.js";
 import { orangecheckOffer } from "./_oc_config.js";
 import { ageOf, answerAge, birthOf, thirteenOrOver } from "./_trust.js";
@@ -530,10 +530,9 @@ async function deleteAccount(request, response) {
     // imported from there: this route answers every start of the app, and
     // _builds.js brings the picture decoders with it.
     for (let at = 0; at < photos.length; at += 100) {
-      const files = await fetch(`${base}/storage/v1/object/build-photos`, {
+      const files = await reach("storage DELETE build-photos", 20, `${base}/storage/v1/object/build-photos`, {
         method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify({ prefixes: photos.slice(at, at + 100).map((one) => `${one.id}.jpg`) }),
-        signal: AbortSignal.timeout(20000) });
+        body: JSON.stringify({ prefixes: photos.slice(at, at + 100).map((one) => `${one.id}.jpg`) }) });
       if (!files.ok) throw new Error(`storage DELETE build-photos: ${files.status}`);
     }
     // Its own picture as its avatar (api/_avatars.js AVATARS), by name too.
@@ -544,17 +543,17 @@ async function deleteAccount(request, response) {
       if (!/: 40[04]$/.test(String(trouble?.message || ""))) throw trouble;
     }
     if (avatars.length) {
-      const files = await fetch(`${base}/storage/v1/object/avatars`, {
+      const files = await reach("storage DELETE avatars", 20, `${base}/storage/v1/object/avatars`, {
         method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify({ prefixes: avatars.map((one) => `${one.id}.jpg`) }), signal: AbortSignal.timeout(20000) });
+        body: JSON.stringify({ prefixes: avatars.map((one) => `${one.id}.jpg`) }) });
       if (!files.ok) throw new Error(`storage DELETE avatars: ${files.status}`);
     }
     // The files of its feedback (api/_feedback.js): its reports go with the
     // account, their files by name first. Imported here, not above: this
     // route answers every start of the app.
     const feedback = await (await import("./_feedback.js")).deleteFeedbackOf(account);
-    const gone = await fetch(`${base}/auth/v1/admin/users/${account}`, {
-      method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000) });
+    const gone = await reach("auth DELETE", 20, `${base}/auth/v1/admin/users/${account}`, {
+      method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` } });
     if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
     return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length, feedback,
       ...(kept ? { orangecheck: { kept: true, said: kept } } : {}), ...(ended ? { plan: { ended } } : {}) });
