@@ -183,15 +183,24 @@ class Conversation {
   }
 }
 
-// The working method a chat hears once, ahead of its first answer in a tab
-// (claude_connector.gd _taught, since m181): not the call's words, so no
-// comparison of two answers reads it; told() counts it.
-const method = (b) => b.type === "text" && /^How to work here, said once as this chat begins/.test(b.text);
-const told = (answer) => ((answer.result || {}).content || []).filter(method).length;
+// How to work here, which a chat hears once, in a block of its own ahead of
+// its first answer in a tab (claude_connector.gd _taught, since m181): the
+// working method, or the guide's section on changing a model when the
+// chat's first call reads one already built (cadmethod, 2026-10-31). Judged
+// as said, not by its words: this check pinned the method's first words, and
+// a chat opening on look_at_model hears the other (mcpview, 2026-11-02).
+// What a first answer heard once is what the same call, asked again in that
+// chat, no longer carries; the relay's line naming the tab aside, which says
+// how long ago another chat called.
+const below = (answer) => ((answer.result || {}).content || []).filter((b) => !(b.type === "text" && /^Tab \S+, /.test(b.text)));
+const heardOnce = (first, again) => {
+  const later = below(again).map((b) => JSON.stringify(b));
+  return below(first).filter((b) => !later.includes(JSON.stringify(b)));
+};
 // The model's sizes, said to each chat once a change (Assistant._sizes_once,
 // mcp_lean_probe): compared on their own (sizes), since a look asked again for
 // want of a picture heard them in the answer before.
-const once = (b) => method(b) || (b.type === "text" && /^Measured, in studs: /.test(b.text));
+const once = (b) => b.type === "text" && /^Measured, in studs: /.test(b.text);
 // What an answer said of the sizes: a block of their own, or within the
 // letters a look without a picture falls back to. "" when it said none.
 const sizes = (answer) => (/Measured, in studs: [\s\S]*?(?=\n\n|$)/.exec(((answer.result || {}).content || [])
@@ -363,10 +372,20 @@ try {
   check(Boolean(plainGreeted.result?.serverInfo), "a client that does not show pages connects as before");
   const plainLooked = await plain.call("look_at_model");
   const [plainViewed, plainSizes] = await aPicture(plain);
+  const plainAgain = await plain.call("look_at_model");
   check(!shownOf(plainLooked) && !shownOf(plainViewed) && !plainLooked.result?.structuredContent,
     "...its answers carry nothing for a viewer");
-  check(told(plainLooked) === 1 && told(plainViewed) === 0,
-    `...and it hears how to work here once, with its first answer, and not again (${told(plainLooked)}, then ${told(plainViewed)})`);
+  // Once: one block, first after the tab's line, that the look asked again
+  // lacks; and nothing view_model said that the first chat's, told long
+  // since, did not. How to work: it names the app's tools to work with.
+  const heard = heardOnce(plainLooked, plainAgain);
+  const heardAgain = ownTexts(plainViewed).filter((t) => !ownTexts(viewed).includes(t)).length
+    + heardOnce(plainAgain, plainLooked).length;
+  const how = heard.length ? app.filter((n) => new RegExp(`\\b${n}\\b`).test(String(heard[0].text))) : [];
+  check(heard.length === 1 && heard[0].type === "text" && below(plainLooked)[0] === heard[0] && how.length >= 2 && heardAgain === 0,
+    `...and it hears how to work here once, with its first answer, and not again (${heard.length}`
+      + `${heard.length ? `: "${String(heard[0].text).split("\n")[0].slice(0, 60)}", naming ${how.join(", ") || "no tool"}` : ""}`
+      + `, then ${heardAgain})`);
   // A second chat in the tab hears the sizes the first heard (conn308): each
   // is told them once a change, and this is each one's first look.
   check(Boolean(viewedSizes) && plainSizes === viewedSizes,
@@ -379,13 +398,15 @@ try {
   };
   // The first line names the tab, and a second chat in it is warned that
   // another chat has been working there (Two chats, two tabs, 2026-10-17):
-  // that line differs by design. What the model is must not.
+  // that line differs by design. What the model is must not; what the
+  // chat heard once is not the call's words.
   const header = (t) => t.join("\n").split("\n")[0];
   const body = (t) => t.join("\n").split("\n").slice(1);
-  const sameTab = header(texts(plainLooked)).split(".")[0] === header(texts(looked)).split(".")[0];
-  const apart = firstApart(body(texts(plainLooked)), body(texts(looked)));
+  const plainWords = texts(plainLooked).filter((t) => !heard.some((b) => b.text === t));
+  const sameTab = header(plainWords).split(".")[0] === header(texts(looked)).split(".")[0];
+  const apart = firstApart(body(plainWords), body(texts(looked)));
   check(sameTab && !apart, `...and look_at_model's words are the same, word for word, under a line naming the same tab`
-    + `${!sameTab ? ` (tab lines: "${header(texts(plainLooked)).slice(0, 60)}" / "${header(texts(looked)).slice(0, 60)}")` : ""}`
+    + `${!sameTab ? ` (tab lines: "${header(plainWords).slice(0, 60)}" / "${header(texts(looked)).slice(0, 60)}")` : ""}`
     + `${apart ? ` (${apart})` : ""}`);
   check(ownKinds(plainViewed) === ownKinds(viewed) && JSON.stringify(ownTexts(plainViewed)) === JSON.stringify(ownTexts(viewed))
       && images(plainViewed)[0]?.mimeType === images(viewed)[0]?.mimeType,

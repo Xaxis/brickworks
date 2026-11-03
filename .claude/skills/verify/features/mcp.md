@@ -244,7 +244,12 @@ asking for an API key.
   that call as before (the bench's relay sessions all open so).
   `src/dev/cad_sitting_probe.gd` (headless, in the suite);
   `tools/bench/realset.py --via relay` proves it through the relay and Claude
-  Code (assistant.md, "Real sets").
+  Code (assistant.md, "Real sets"). `tools/web/model_view_check.mjs`
+  section 2 holds it on a deployment by what is said, not its words: a
+  second chat opening on look_at_model at a model the first built hears one
+  block once, after the tab's line, naming the tools to work with, and
+  nothing of it again (it pinned the method's first words, and failed from
+  rel-m237 until mcpview, 2026-11-02).
 - `the model in Claude` (MCP Apps, 2026-10-14): claude.ai and the Claude
   apps show the model inline beside `submit_design`, `look_at_model`,
   `view_model` and `edit_model`. The relay serves one `ui://brickworks/model.html`
