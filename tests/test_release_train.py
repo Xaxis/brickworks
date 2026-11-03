@@ -858,20 +858,22 @@ def test_a_train_stopped_by_hand_stops_its_work_and_its_probes_and_says_so(tmp_p
     it failed to parse and the train died saying nothing (2026-11-03)."""
     y = Yard(tmp_path)
     try:
-        # While it ships, by its group as status says (kill -- -PID), or by its
-        # pid alone: its probes, in a group of their own, stop with it, and
-        # its work writes nothing after, though the ship it began runs on to
-        # its end when the group was not stopped.
-        for tag, kill in (("t-m2", os.killpg), ("t-m3", os.kill)):
+        # While its ship waits for its probes, by its group as status says
+        # (kill -- -PID), or by its pid alone: its probes, in a group of their
+        # own, stop with it, and its work writes nothing after. The ship,
+        # stopped with the group, says it did not ship (143); left to run on,
+        # it holds, its train gone (1).
+        for tag, kill, done in (("t-m2", os.killpg, "143"), ("t-m3", os.kill, "1")):
             assert y.train("stage", tag, "stage2", "--checks", "io", "--probes", "gated").returncode == 0
-            y.until(lambda: "running" in y.text(tag + ".probes") and y.probes_running())
+            y.until(lambda: "main waits for the probes" in y.text(tag + "_lead.out") and y.probes_running())
             kill(int(y.spec(tag, "pid")), signal.SIGTERM)
             y.until(lambda: y.spec(tag, "result"))
             y.until(lambda: not y.probes_running(), 10)
-            if kill is os.kill:
-                y.until(lambda: y.text(tag + ".done"))
-                assert "SHIP: held, the train running the probes" in y.text(tag + "_lead.out"), y.logs()
+            y.until(lambda: y.text(tag + ".done"))
             assert y.spec(tag, "result") == "stopped: killed", y.logs()
+            assert y.text(tag + ".done").strip() == done, y.logs()
+            if done == "1":
+                assert "SHIP: held, the train running the probes" in y.text(tag + "_lead.out"), y.logs()
             y.unmoved()
 
         # Waiting: an INT, which a job in the background ignores, stops its

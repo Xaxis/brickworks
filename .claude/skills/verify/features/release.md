@@ -337,7 +337,10 @@ mid-merge is refused, and so is a probe with a FAIL line or a nonzero exit;
 it stops when the release before held, was killed, or died without a word,
 and at its deadline; stopped by hand, by its group, its pid alone or an INT,
 it says `stopped: killed`, its probes stop with it and nothing of it runs
-on, and killed outright by its pid its work takes no step after; and `status` reads `checks: 2 of 4 passed; failed: io; 1 to run`
+on; its ship, stopped with the group while it waits for the probes, writes
+143 to its `.done`, and left to run on holds, writing 1 (0 of 5400 stops of
+ship.sh so at load 32-74 went on; 4 of 1800 ran on before 2026-11-03),
+and killed outright by its pid its work takes no step after; and `status` reads `checks: 2 of 4 passed; failed: io; 1 to run`
 mid-ship, `failed: io (passed alone)` once ship.sh has run it alone, and `live: brickworks.diy serves it (SHA)` after,
 its first line `live: brickworks.diy serves SHA, TAG's, since HH:MMZ`, and
 a ship begun by hand is listed with its ETA (a median ship after it began)
