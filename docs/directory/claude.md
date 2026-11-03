@@ -29,7 +29,7 @@ lines that decide each row are quoted here.
 | Read and write in separate tools | yes | No tool takes a method; each does one thing (`look_at_model` reads, `edit_model` changes, `clear_model` clears). |
 | No prompt injection in descriptions | yes | Descriptions say what each tool does and when to call it. Nothing fetches instructions from elsewhere: `read_guide` serves the server's own guide. |
 | Frugal with tokens | yes, explained | See [How much a session hears](#how-much-a-session-hears). The instructions were cut from 31,405 tokens to 1,334; the tool list is a CAD's 70 tools and stays. |
-| Every tool answers with valid input | yes | See [Every tool, called once](#every-tool-called-once). |
+| Every tool answers with valid input | yes | All 70 called once through the live connector from a browser tab, and all 70 answered, none with an error: [Every tool, called once](#every-tool-called-once). One limit there: in a browser tab, `brickify`'s `url=` and `print_part`'s `picture_url=` reach only the sites the page's content policy names. |
 | Privacy policy | yes | https://brickworks.diy/privacy: what is collected (the address, last sign-in, the Claude apps connected, a day of network addresses), how it is used and stored (the relay deletes each message once answered; Claude's tokens are kept only as hashes), third parties, retention and deletion, and how to reach us. |
 | Terms | yes | https://brickworks.diy/terms |
 | Support contact | yes | https://brickworks.diy/feedback (a form, answered by email), and issues at https://github.com/Xaxis/brickworks-releases/issues. |
@@ -160,7 +160,8 @@ Password: <the password>
    instead, and this page is the only place it works.
 2. Press "Open the app". Brickworks opens at brickworks.diy/app, signed in,
    with its assistant switched on. Keep that tab open: Claude builds there.
-   File, Open lists the account's saved models, the examples below among them.
+   File, Open lists the account's saved models, a lighthouse and a winch
+   among them.
 3. In Claude, connect Brickworks. It sends you to Brickworks to allow it;
    you are signed in already, so press Allow.
 4. Ask, for example: "Open my lighthouse in Brickworks and tell me which
@@ -169,7 +170,9 @@ Password: <the password>
 
 Every tool works on the model in the open tab. With two Brickworks tabs open,
 Claude asks which one (tabs, select_tab). Files a tool makes (export_model,
-render_model) download in that tab.
+render_model) download in that tab. In a browser tab, brickify and print_part
+take a file the person picks; a link works only from a few sites there (the
+desktop app fetches any link).
 ```
 
 Then confirm you have run every tool: [Every tool, called once](#every-tool-called-once)
@@ -197,10 +200,10 @@ Each was run on 2026-11-03 as a reviewer would meet it: Claude Code
 (2.1.316, on a Claude subscription, no API key) connected to
 `https://brickworks.diy/api/mcp` with the review account's OAuth token, its
 only tools the connector's, and the review account's Brickworks tab open
-and answering. The tab was this commit's app, run headless on the build
+and answering. The tab was this branch's app, run headless on the build
 machine; a person's tab is a browser's. The prompts ran one after another
-in the same tab, as one person's afternoon would, the winch last. Pictures are the tab's
-own, taken after each run; the carousel shows the same models in Claude's
+in the same tab, as one person's afternoon would, the winch last. Pictures
+are the tab's own, taken after each run; the carousel shows the same models in Claude's
 3D card.
 
 ### 1. Design a model
@@ -261,14 +264,108 @@ gallery and the lantern, the roof), and its parts list: 313 pieces in 51
 lots, 633 g, by part and colour. It wrote the steps as an LDraw `.mpd` and the
 parts as a Rebrickable `.csv`. The printable booklet was refused, rightly:
 the tab here had no window to draw its pictures in, which a browser tab
-does (the every-tool pass below exports one). It also found a fault:
+has (in the every-tool pass below, a browser tab drew a render and an
+animation). It also found a fault:
 `edit_steps` moving parts "to step 1" put them elsewhere in the list, so it
 undid its own three step edits and said so.
 
-
 ## Every tool, called once
 
-<!-- TOOLS -->
+All 70 tools the connector lists, each called once on 2026-11-03 through
+`https://brickworks.diy/api/mcp` with the review account's OAuth token, as
+a client that shows MCP Apps pages, while the account's Brickworks tab was
+open in a browser (Chromium) at brickworks.diy/app. Each was given the
+example its page at https://brickworks.diy/docs/mcp-tools shows, apart from
+three: `open_model` opened the saved lighthouse, `select_tab` named the
+open tab, and `brickify` was given a real file. They ran one after another
+in one chat, on whatever the calls before had left in the tab, and a call
+that became a job was followed with `job` to its end, as a session does.
+
+All 70 answered and none with an error. Where an example did not fit the
+model in the tab (a minifigure with nothing under it, a section or a motion
+the model does not have, nothing selected), the answer says so and what to
+do instead, which is what a reviewer will meet too.
+
+One limit is worth knowing before review. `brickify` with `url=` fetches
+the file from the person's tab, and a browser tab may fetch only from the
+sites brickworks.diy's content policy names, so a link anywhere else (here
+raw.githubusercontent.com) fails as "Could not fetch ... (error 4)".
+`print_part`'s `picture_url=` has the same limit. `pick=true` (the
+person chooses the file) works in a browser, and any link works in the
+desktop app.
+
+| Tool | Time | What it answered |
+|---|---|---|
+| `submit_design` | 14.3 s | Built. 2 bricks on the baseplate, buildable, and what to do next. (The guidance a chat's first call carries came first, so these words are from the same call 20 minutes earlier.) |
+| `add_minifig` | 2.6 s | Not placed: nothing to stand on at x 4, z 2, y 14.25 — it would stand in the air. Give the height of a floor that is there, or leave y out to stand... |
+| `add_rooms` | 5.7 s | Laid 1 floor and furnished it, 17 parts, the floors held up on 2 columns. The inside is walled all round, so none of this shows: leave a side open (a... |
+| `animate_model` | 26.1 s | Started job 1: Rendering Hand Cranked Winch's animation… Then: Job 1 (animate_model) is done, after 25 s: 0 keys over 1.0 s, turning round once: 12 frames, 12 a second, drawn in 24 s: downloaded Hand... |
+| `attachment_points` | 1.3 s | brick 12 (3941) has 4 studs. Its footprint from above — x left to right, z top to bottom. # is a whole stud, a digit is tenths of one, . is nothing... |
+| `booklet_layout` | 1.7 s | 6 pages of steps and 0 of callouts, 12 steps; as many as fit a page; the parts each step adds outlined. Then the finished model and the parts list.... |
+| `break_out_section` | 0.9 s | Give section= a sub-assembly by name. There are: winch. |
+| `brickify` | 4.4 s | Started job 2: Brickifying pr2_head_pan.stl. Then: Could not fetch https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/stl/binary/pr2_head_pan.stl (error 4). See above. |
+| `check_design` | 1.0 s | overlap (2): - brick 0 (3001 at 0,0,0) overlaps a 3033 already on the baseplate - brick 1 (3001 at 2,3,0) overlaps a 3008 already on the baseplate... |
+| `colour_hidden_parts` | 65.4 s | Started job 3: Finding the hidden parts of Hand Cranked Winch… Then: Job 3 (colour_hidden_parts) is done, after 63 s: 2 of the 38 parts are hidden: seen from none of 64 sides, a pixel 1.0 LDU at most. 2 would... |
+| `define_motion` | 1.1 s | left door: no part or sub-assembly left door Nothing was kept. |
+| `edit_booklet` | 1.5 s | set how step 4 is printed; step 4 is now: turned 90°, zoom 1.5x |
+| `edit_model` | 2.4 s | Not applied — the model would not hold together. overlap (1): - brick 8 (3009 at 9,7,0) overlaps brick 6, which fills y=7 up to y=10 — so the course... |
+| `edit_selection` | 1.6 s | Nothing is selected in Brickworks. Ask the person to select the parts they mean (click one; shift-click or drag a box for more), then call selection... |
+| `edit_steps` | 2.3 s | 17 steps, the model's own. 1: #26 2: #28 3: #25 #27 #29 #34 4: #22 #35 #36 5: #24 #30 #32 #33 #37 6: #23 #31 #38 7: #1 8: #2 #3 #4 9: #5 #18 #19 10... |
+| `evaluate_section` | 1.1 s | Give section= a sub-assembly by name, or suggestion= a suggest_sections number. |
+| `export_model` | 10.8 s | Started job 4: Writing Hand Cranked Winch as a Studio file… Then: Job 4 (export_model) is done, after 9 s: Downloaded hand_cranked_winch.io. |
+| `find_parts_like` | 1.2 s | Parts that read as a curved car bonnet, best first: Technic Panel Curved n x n — reads as: curved technic panel, rounded fairing, car body panel... |
+| `find_reference` | 5.3 s | No pictures of "Fresnel lighthouse lantern room" came back — Wikimedia Commons answered 0. Build it from what you know of it, and look at what you... |
+| `find_techniques` | 15.4 s | How real sets built castle turret roof, best first: 1. 10182-1/second-floor-roof-tower-roof-element "second floor - roof tower roof element", from... |
+| `fresh_eyes` | 1.2 s | Nothing to answer: a new design's first save asks for this, once. |
+| `fresh_eyes_final` | 1.0 s | Nothing to answer: the first save after the creative pass asks for this, once. |
+| `gallery` | 2.4 s | The gallery at https://brickworks.diy ("lighthouse"), Top builds first (a build finished counts 3, a remix 2, the Tested mark 5), page 1: nothing... |
+| `how_real_sets_build_this` | 1.7 s | STATION — measured over 122 real sets of 11700 What they are built from, and how much more often than sets in general: 3963 x17.3 Brick 2 x 1 with... |
+| `in_view` | 1.1 s | What the person sees in the window: - The timeline is down: the whole model shows. - Nothing in their hand: the Select tool. - Selected: nothing. -... |
+| `job` | 3.0 s | Job 1 (animate_model) is done, after 25 s: 0 keys over 1.0 s, turning round once: 12 frames, 12 a second, drawn in 24 s: downloaded Hand Cranked... |
+| `lay_flex` | 0.8 s | #5 (3009) has nothing a pneumatic tube goes on: it takes pin hole, nozzle. |
+| `list_motions` | 1.6 s | The model has no motions of its own yet. Suggested from what moves, each tried for room (define_motion {"name": "Turn the gears", "suggested": true}... |
+| `look_at_model` | 1.4 s | 38 parts are on the baseplate. 2 of them are the parts you asked about. They span x 0..10, z 0..9.10 studs, and stand y 0..18.25 plates. Where they... |
+| `look_at_picture` | 2.9 s | No picture has been chosen. Draw one as make_art's svg: big simple shapes in flat colours, one stud a pixel. |
+| `make_art` | 3.5 s | The plan was not laid — 1 thing to fix: - there is no picture to work from: the person has not chosen one, so draw it and pass it as svg |
+| `make_part` | 3.8 s | Made part "bw-s2x3x3r1": Slope Brick 45 2 x 3. It is in the parts library now (Custom) — use "bw-s2x3x3r1" as the part in check_design, edit_model or... |
+| `make_sections` | 1.0 s | Nothing suggested: call suggest_sections first. |
+| `make_unique` | 2.6 s | #14 is in no sub-assembly with other copies. |
+| `measure` | 1.9 s | from= #4 (Brick 1 x 8) has no hinge; it has 7 bar, 8 hole, 7 post, 8 stud. |
+| `merge_parts` | 2.2 s | Nothing merged: no real part is made of these: nothing merged (nothing changed). |
+| `mirror_parts` | 2.6 s | Mirrored a copy of 3 parts left to right across x = 0: #39 to #41, beside them; the 3 stay as they were. The copy is in no sub-assembly (edit_model's... |
+| `move_part` | 1.8 s | No part or sub-assembly boom here. part= takes a part's number (look_at_model) or a sub-assembly's name. |
+| `parts_list` | 1.3 s | The person's collection is empty: they add their sets and parts in Build, My collection. |
+| `place_technique` | 8.6 s | "posed minifigure": 12 parts, as laid; each with attach goes where it names and follows it, and its names are the model's now, for a later edit to... |
+| `plan_scale` | 1.1 s | Fire engine is 10 metres along its longest side. At each scale builders use, the model would be: minifigure 20.80 studs long a minifigure fits inside... |
+| `play_motion` | 0.8 s | No motion "Open the doors": the model has none yet (list_motions suggests some). |
+| `pose_model` | 1.2 s | Nothing here turns: a joint is a sub-assembly on a hinge, a turntable or a clip on a bar. Name the part that turns as an assembly (edit_model's... |
+| `print_part` | 1.5 s | The +z side of #12 has no flat face open for a sticker (#11 is in the way). |
+| `read_guide` | 1.2 s | SAY THE SHAPE, DO NOT COUNT IT OUT Writing placements one at a time is the part of this you are worst at, and most of a model is repetition. The... |
+| `render_model` | 39.9 s | Started job 5: Rendering a picture of Hand Cranked Winch… Then: Job 5 (render_model) is done, after 38 s: downloaded hand_cranked_winch_render.png |
+| `render_motion` | 4.9 s | Started job 6: Rendering Hand Cranked Winch's motion "Open the doors"… Then: Job 6 (render_motion) is done, after 0 s: No motion "Open the doors": the model has none yet (list_motions suggests some). |
+| `render_queue` | 5.3 s | Queued 1: Hand Cranked Winch, 1920×1080, Best, drawing now. 512 frames averaged: soft shadows from an area light, smooth edges, shading under every... |
+| `restyle_model` | 2.9 s | Nothing to restyle: no plain brick one or two studs wide with an open face in that box. |
+| `review_model` | 2.2 s | No assembly called walls. No assemblies were named when it was submitted; name them in submit_design's assemblies to have each reviewed close up. |
+| `save_model` | 1.4 s | Written to red_house.ldr, with the app's models (/userfs/godot/app_userdata/Brickworks/models/red_house.ldr). |
+| `search_gear_ratio` | 1.2 s | Nearest 0.2 (output turns per input turn) in up to 2 meshes of spur gears on the stud grid: 1. 0.2 = 1/5, +0.0000%, 2 meshes, the same way round: an... |
+| `search_parts` | 8.1 s | 3039: Slope Brick 45 2 x 2, covers 2x2 studs, 3 plates, 2 studs on top, made in 41 colours, 74 prints and 8 stickered 3660c: Slope Brick 45 2 x 2... |
+| `select_tab` | 0.7 s | This chat's calls go to tab hp7c7 now, on “Hand Cranked Winch”. |
+| `selection` | 38.2 s | Nothing is selected in Brickworks. Ask the person to select the parts they mean (click one; shift-click or drag a box for more), then call selection... |
+| `set_floor` | 40.0 s | It stands on baseplate 32 × 32, green. |
+| `settle_feature` | 27.8 s | No feature called "eyes". The features listed: none (submit_design's features). |
+| `settle_surface` | 20.5 s | Nothing has been proposed yet: review_model {"surface": true} reads the model and lays the surface pass's pieces. |
+| `show_technique` | 19.7 s | Posed minifigure — a person at minifigure scale posed as the brief has them: an arm raised or reaching, a head turned, a tool held out. A minifigure... |
+| `simulate_mechanism` | 50.2 s | Started job 7: Recording Hand Cranked Winch's mechanism… Then: Job 7 (simulate_mechanism) is done, after 3 s: No part or sub-assembly crank here. driver= takes a part's number (look_at_model) or a... |
+| `split_parts` | 36.6 s | Nothing split: #21 (Technic Brick 1 x 8 with Holes) does not split. Plates, bricks and tiles split into 1 x 1s, a 1 x 1 brick into three plates... |
+| `suggest_sections` | 23.2 s | 3 sections, in the order they are built (shown in the person's model tree). Parts, joints to the rest, what each is built onto, the way it comes off... |
+| `tabs` | 0.5 s | One Brickworks tab is open: - hp7c7: “Hand Cranked Winch”, in view, used 9 min ago — this chat's This chat's calls go to hp7c7. |
+| `view_model` | 19.3 s | Measured, in studs: the whole model is 17 across, 9.10 deep and 18 plates tall, its near corner at x -7, z 0. Its massing, layer by layer — compare... |
+| `weakest_joints` | 17.9 s | As View, Stress weighs it: stands up · 69 g. 0 past working load · 0 near it (red past the studs' working load, amber within twice it). 6 joints each... |
+| `where_to_attach` | 11.5 s | Nothing is selected in Brickworks. Ask the person to select the parts they mean (click one; shift-click or drag a box for more), then call selection... |
+| `open_model` | 20.6 s | Opened lighthouse: 300 parts. look_at_model to see it. |
+| `choose_sketch` | 14.3 s | There are no sketches to choose from. submit_design with "sketch": true, three times, makes them. |
+| `undo` | 17.4 s | Undid opened “Lighthouse” in place of “Hand Cranked Winch”; opened “Hand Cranked Winch” in place of “Car”. Nothing more to undo. undo {"redo": true}... |
+| `clear_model` | 19.9 s | The baseplate is bare. undo puts it back. |
 
 ## How much a session hears
 
