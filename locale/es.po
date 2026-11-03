@@ -5435,8 +5435,8 @@ msgstr "Sin nada detrás del modelo, no se renderiza con trazado de rutas."
 msgid "Path tracing needs the desktop app: a browser cannot trace rays."
 msgstr "El trazado de rutas necesita la aplicación de escritorio: un navegador no puede trazar rayos."
 
-msgid "Path tracing needs the desktop app's full renderer."
-msgstr "El trazado de rutas necesita el renderizador completo de la aplicación de escritorio."
+msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
+msgstr "El trazado de rutas necesita el modo gráfico completo, y esta ventana dibuja en el más sencillo."
 
 msgid "Path tracing needs a graphics card that traces rays, and this one does not."
 msgstr "El trazado de rutas necesita una tarjeta gráfica que trace rayos, y esta no lo hace."
@@ -10281,3 +10281,42 @@ msgstr "Claude, con tu clave de Anthropic o tu plan de Claude"
 
 msgid "Your AI app (Claude, ChatGPT, Gemini and others) connects with Connect your AI in the assistant's column, whichever designs here."
 msgstr "Tu app de IA (Claude, ChatGPT, Gemini y otras) se conecta con Conectar tu IA en la columna del asistente, diseñe quien diseñe aquí."
+
+msgid "This Mac's graphics run Brickworks in its simpler mode."
+msgstr "Los gráficos de este Mac ejecutan Brickworks en su modo más sencillo."
+
+msgid "This computer's graphics run Brickworks in its simpler mode."
+msgstr "Los gráficos de este ordenador ejecutan Brickworks en su modo más sencillo."
+
+msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the full graphics mode."
+msgstr "Sombras suaves y bordes lisos, a partir de 8 fotogramas promediados. La luz que rebota entre las piezas necesita el modo gráfico completo."
+
+msgid "Graphics"
+msgstr "Gráficos"
+
+msgid "Automatic"
+msgstr "Automático"
+
+msgid "Full"
+msgstr "Completo"
+
+msgid "Simpler"
+msgstr "Más sencillo"
+
+msgid "Always the full mode. Graphics that cannot run it may close Brickworks as it starts."
+msgstr "Siempre el modo completo. Unos gráficos que no puedan con él pueden cerrar Brickworks al arrancar."
+
+msgid "Always the simpler mode: no path tracing, and no light bounced between the parts."
+msgstr "Siempre el modo más sencillo: sin trazado de rutas ni luz que rebote entre las piezas."
+
+msgid "Automatic: the full mode here. Graphics that cannot run it get the simpler one, without path tracing or light bounced between the parts."
+msgstr "Automático: aquí el modo completo. Unos gráficos que no puedan con él reciben el más sencillo, sin trazado de rutas ni luz que rebote entre las piezas."
+
+msgid "Automatic: the simpler mode, which these graphics need. No path tracing, and no light bounced between the parts."
+msgstr "Automático: el modo más sencillo, que necesitan estos gráficos. Sin trazado de rutas ni luz que rebote entre las piezas."
+
+msgid "Automatic: the simpler mode, which these graphics need (%s). No path tracing, and no light bounced between the parts."
+msgstr "Automático: el modo más sencillo, que necesitan estos gráficos (%s). Sin trazado de rutas ni luz que rebote entre las piezas."
+
+msgid "From the next start."
+msgstr "Desde el próximo arranque."

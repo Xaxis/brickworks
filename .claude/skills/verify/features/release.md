@@ -106,6 +106,33 @@ that offers each system its own build. The cycle and its cadence are
   alone and left out of the web's pack: the web's page covers its canvas
   with its own loading wall (`src/boot/shell.html`). `tests/test_boot_splash.py`
   reads the settings and the picture; the windowed smoke, the package.
+- `graphics mode` (`src/render/graphics_mode.gd`,
+  `tools/release/package/launcher.c`): the desktop draws in its full mode
+  (Forward+) or its simpler one (Compatibility, on OpenGL, as the web does).
+  A Mac starts through the launcher, the bundle's `CFBundleExecutable`
+  (`launch_through`, built with a pinned zig as one universal binary,
+  `build_launcher`), which asks Metal what the GPU is before Vulkan starts:
+  on an Intel slice with Apple's paravirtual GPU, no Metal GPU, or under
+  256 MB to work with, it starts the app with `--rendering-driver opengl3`
+  and says why in `BRICKWORKS_GRAPHICS`; then it becomes
+  `Contents/MacOS/Brickworks` (exec, the same process, so Launch Services'
+  open events still arrive). Not when the person chose (graphics.cfg names a
+  rendering method) or names a renderer on the command line. Godot's own
+  fallback cannot catch MoltenVK's abort (`display_server_macos.mm` falls
+  back only when `initialize()` returns an error). Windows and Linux fall
+  back in Godot itself (no Vulkan ICD: "switching to OpenGL 3"). Either way
+  the window says "This Mac's (This computer's) graphics run Brickworks in
+  its simpler mode." once, above the model (`ShellPrefs`
+  `said_simpler_graphics`), every start logs `graphics: <mode> mode (<why>),
+  <driver> on <adapter>`, and path tracing and Good's bounced light say
+  they need the full graphics mode. Settings, Graphics (on the keys' line):
+  Automatic, Full or Simpler, written to `user://graphics.cfg`, which Godot
+  reads at start (`application/config/project_settings_override`) and the
+  launcher reads too, so it outlives an update. `graphics_mode_probe`
+  (windowed; restarts itself on OpenGL as the launcher would) checks the
+  line once in this start and the next, Got it, the words of Best and Good,
+  and each choice's file and the renderer of the start after it. On a Mac:
+  the runner proof below.
 - `publish a release`: `tools/release.py publish --draft` creates a draft
   release on `Xaxis/brickworks-releases` (`REPO`), on that repository's
   `main`, with the packages and `SHA256SUMS`, then compares GitHub's own
@@ -129,9 +156,11 @@ that offers each system its own build. The cycle and its cadence are
   run artifact, and on Ubuntu `apt install` of the .deb (/ keeps its mode,
   the four types default to the app, `brickworks --about`) and `apt remove`
   leaving nothing. The Intel runner's only GPU is Apple's paravirtual one,
-  which MoltenVK aborts on, so the smoke prints its double-click as `--  not
-  run here` with the reason (`mac_cannot_draw`) instead of failing; a check
-  this machine cannot make neither passes nor fails. It builds nothing: the part library is not in
+  which MoltenVK aborts on, so the app's launcher starts it in the simpler
+  graphics mode; the Mac double-click checks each window's log says the
+  mode `mac_mode` expects there (simpler on an Intel Mac whose GPUs are all
+  paravirtual, full elsewhere) and that the simpler one was said once (see
+  `graphics mode`). It builds nothing: the part library is not in
   git. A change to it goes to that repository by hand.
 - `move the downloads to the releases repository`:
   `tools/release/releases_repo.sh [--go] [--dir=DIR]`. A dry run reads

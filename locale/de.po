@@ -5435,8 +5435,8 @@ msgstr "Ohne etwas hinter dem Modell wird es nicht mit Pathtracing gerendert."
 msgid "Path tracing needs the desktop app: a browser cannot trace rays."
 msgstr "Pathtracing braucht die Desktop-App: Ein Browser kann keine Strahlen verfolgen."
 
-msgid "Path tracing needs the desktop app's full renderer."
-msgstr "Pathtracing braucht den vollen Renderer der Desktop-App."
+msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
+msgstr "Pathtracing braucht den vollen Grafikmodus, und dieses Fenster zeichnet im einfacheren."
 
 msgid "Path tracing needs a graphics card that traces rays, and this one does not."
 msgstr "Pathtracing braucht eine Grafikkarte, die Strahlen verfolgt, und diese kann es nicht."
@@ -10281,3 +10281,42 @@ msgstr "Claude, mit deinem Anthropic-Schlüssel oder Claude-Abo"
 
 msgid "Your AI app (Claude, ChatGPT, Gemini and others) connects with Connect your AI in the assistant's column, whichever designs here."
 msgstr "Deine KI-App (Claude, ChatGPT, Gemini und andere) verbindest du mit „Deine KI verbinden“ in der Spalte des Assistenten, egal wer hier entwirft."
+
+msgid "This Mac's graphics run Brickworks in its simpler mode."
+msgstr "Die Grafik dieses Mac lässt Brickworks im einfacheren Modus laufen."
+
+msgid "This computer's graphics run Brickworks in its simpler mode."
+msgstr "Die Grafik dieses Computers lässt Brickworks im einfacheren Modus laufen."
+
+msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the full graphics mode."
+msgstr "Weiche Schatten und glatte Kanten aus 8 gemittelten Bildern. Licht, das zwischen den Teilen zurückgeworfen wird, braucht den vollen Grafikmodus."
+
+msgid "Graphics"
+msgstr "Grafik"
+
+msgid "Automatic"
+msgstr "Automatisch"
+
+msgid "Full"
+msgstr "Voll"
+
+msgid "Simpler"
+msgstr "Einfacher"
+
+msgid "Always the full mode. Graphics that cannot run it may close Brickworks as it starts."
+msgstr "Immer der volle Modus. Grafik, die ihn nicht schafft, kann Brickworks beim Start schließen."
+
+msgid "Always the simpler mode: no path tracing, and no light bounced between the parts."
+msgstr "Immer der einfachere Modus: kein Pathtracing und kein Licht, das zwischen den Teilen zurückgeworfen wird."
+
+msgid "Automatic: the full mode here. Graphics that cannot run it get the simpler one, without path tracing or light bounced between the parts."
+msgstr "Automatisch: hier der volle Modus. Grafik, die ihn nicht schafft, bekommt den einfacheren, ohne Pathtracing und ohne Licht, das zwischen den Teilen zurückgeworfen wird."
+
+msgid "Automatic: the simpler mode, which these graphics need. No path tracing, and no light bounced between the parts."
+msgstr "Automatisch: der einfachere Modus, den diese Grafik braucht. Kein Pathtracing und kein Licht, das zwischen den Teilen zurückgeworfen wird."
+
+msgid "Automatic: the simpler mode, which these graphics need (%s). No path tracing, and no light bounced between the parts."
+msgstr "Automatisch: der einfachere Modus, den diese Grafik braucht (%s). Kein Pathtracing und kein Licht, das zwischen den Teilen zurückgeworfen wird."
+
+msgid "From the next start."
+msgstr "Ab dem nächsten Start."

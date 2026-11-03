@@ -790,6 +790,8 @@ func _presets(column: VBoxContainer) -> void:
 	keys_row.add_theme_constant_override("separation", 8)
 	column.add_child(keys_row)
 	keys_choice_settings = _keys_like(keys_row)
+	if not OS.has_feature("web"):
+		_graphics(keys_row, column)
 
 
 ## Settings, Interface size and Reduce motion (ShellPrefs): for eyes that
@@ -941,6 +943,70 @@ func _show_assistant_choice() -> void:
 		+ "Brickworks bills nothing." if on
 		else "No assistant, no Claude and no AI anywhere in the window. "
 			+ "Claude connections are off while the assistant is off.")
+
+
+## Settings, Graphics (GraphicsMode), on the desktop: the full mode, the
+## simpler one, or whichever these graphics can run, from the next start.
+## On the keys' line, as Language is on Interface size's: a row of its own
+## cost the settings their fit at 100% (a11y_size). What each choice means
+## is its tooltip; the note under it shows only what a person must see: the
+## simpler mode in use, and why, or a choice that waits for the next start.
+var graphics_choice: OptionButton
+var _graphics_note: Label
+var _graphics_at_start: String = ""
+
+
+func _graphics(row: HBoxContainer, column: VBoxContainer) -> void:
+	var gap := Control.new()
+	gap.custom_minimum_size.x = 16.0
+	row.add_child(gap)
+	var words := Label.new()
+	words.text = "Graphics"
+	words.add_theme_font_size_override("font_size", 12)
+	row.add_child(words)
+	graphics_choice = OptionButton.new()
+	graphics_choice.focus_mode = Control.FOCUS_NONE
+	graphics_choice.accessibility_name = "Graphics"
+	graphics_choice.add_theme_font_size_override("font_size", 12)
+	for item: String in ["Automatic", "Full", "Simpler"]:
+		graphics_choice.add_item(item)
+	_graphics_at_start = GraphicsMode.chosen()
+	graphics_choice.select(GraphicsMode.CHOICES.find(_graphics_at_start))
+	row.add_child(graphics_choice)
+	_graphics_note = Label.new()
+	_graphics_note.add_theme_font_size_override("font_size", 11)
+	_graphics_note.add_theme_color_override("font_color", Color(0.55, 0.58, 0.65))
+	_graphics_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_graphics_note)
+	_say_graphics()
+	graphics_choice.item_selected.connect(func(index: int) -> void:
+		GraphicsMode.choose(GraphicsMode.CHOICES[index])
+		_say_graphics()
+		changed.emit())
+
+
+func _say_graphics() -> void:
+	var choice: String = GraphicsMode.chosen()
+	var text: String
+	if choice == "full":
+		text = "Always the full mode. Graphics that cannot run it may close Brickworks as it starts."
+	elif choice == "simpler":
+		text = "Always the simpler mode: no path tracing, and no light bounced between the parts."
+	elif not GraphicsMode.simpler():
+		text = ("Automatic: the full mode here. Graphics that cannot run it get the simpler one, "
+			+ "without path tracing or light bounced between the parts.")
+	elif GraphicsMode.why().is_empty():
+		text = ("Automatic: the simpler mode, which these graphics need. No path tracing, and no "
+			+ "light bounced between the parts.")
+	else:
+		text = ("Automatic: the simpler mode, which these graphics need (%s). No path tracing, "
+			+ "and no light bounced between the parts.") % GraphicsMode.why()
+	graphics_choice.tooltip_text = text
+	var waits: bool = choice != _graphics_at_start
+	if waits:
+		text += "\nFrom the next start."
+	_graphics_note.text = text
+	_graphics_note.visible = waits or GraphicsMode.simpler()
 
 
 ## Settings, AI: the page, and the link to it, which says who designs now.

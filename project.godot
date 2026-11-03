@@ -29,6 +29,11 @@ config/icon="res://assets/icon.png"
 boot_splash/image.pc="res://assets/splash.png"
 boot_splash/bg_color.pc=Color(0.1, 0.11, 0.13, 1)
 boot_splash/stretch_mode.pc=1
+; Settings, Graphics: the person's choice of the full or the simpler
+; graphics mode, read by Godot as it starts, before it draws, from the
+; app's own folder, which an update leaves alone (GraphicsMode). No file
+; there, as for anyone who has not chosen: the project's own settings.
+config/project_settings_override="user://graphics.cfg"
 
 [debug]
 

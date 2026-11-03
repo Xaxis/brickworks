@@ -53,6 +53,18 @@ Ubuntu. Every one of them opens its own documents by double-click.
   `.env`.
 - **Gap, fixed:** the disk image itself is signed and notarised whenever the
   app is (sign_dmg), as Apple asks of a downloaded image.
+- **Gap, fixed: a Mac whose GPU cannot run Vulkan closed the app at once.**
+  Apple's paravirtual GPU (any macOS VM on an Intel host; GitHub's
+  macos-15-intel) aborts MoltenVK inside vkCreateInstance, which Godot's own
+  fallback to OpenGL cannot catch. The app now starts through a small
+  launcher (tools/release/package/launcher.c, the bundle's
+  CFBundleExecutable) that asks Metal what the GPU is and, on one the full
+  mode cannot run on, starts the app in its simpler mode (OpenGL), which says
+  so once. Apple silicon draws through Metal and is left alone. Standard
+  apps run on whatever GPU they find, in a lesser mode if need be; Settings,
+  Graphics lets a person choose either, kept in the app's own folder across
+  updates (src/render/graphics_mode.gd). Windows and Linux already fell back
+  to OpenGL in Godot itself and now say so the same way.
 - **Owner's:** the Developer ID, below.
 
 ### Windows

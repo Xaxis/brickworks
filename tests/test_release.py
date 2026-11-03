@@ -450,22 +450,35 @@ def _mac_with(monkeypatch, arm64: str, gpus: str) -> str:
         out = arm64 if command[0] == "sysctl" else gpus
         return subprocess.CompletedProcess(command, 0, out, "")
     monkeypatch.setattr(release.subprocess, "run", run)
-    return release.mac_cannot_draw()
+    return release.mac_mode()
 
 
-def test_an_intel_mac_vm_says_why_it_cannot_draw(monkeypatch):
-    # GitHub's macos-15-intel: MoltenVK aborts on this GPU in vkCreateInstance.
+def test_an_intel_mac_vm_is_expected_in_the_simpler_mode(monkeypatch):
+    # GitHub's macos-15-intel: MoltenVK aborts on this GPU in vkCreateInstance,
+    # so the launcher starts it on OpenGL.
     vm = "    Apple Paravirtualized Graphics Device:\n      Chipset Model: Apple Paravirtualized Graphics Device\n"
-    assert "Apple Paravirtualized Graphics Device" in _mac_with(monkeypatch, "", vm)
-    assert _mac_with(monkeypatch, "0\n", vm) != ""
+    assert _mac_with(monkeypatch, "", vm) == "simpler"
+    assert _mac_with(monkeypatch, "0\n", vm) == "simpler"
 
 
-def test_apple_silicon_and_a_real_intel_gpu_are_double_clicked(monkeypatch):
+def test_apple_silicon_and_a_real_intel_gpu_are_expected_in_the_full_mode(monkeypatch):
     # macos-15 has the same paravirtual GPU and draws on it through Metal.
     vm = "      Chipset Model: Apple Paravirtualized Graphics Device\n"
-    assert _mac_with(monkeypatch, "1\n", vm) == ""
+    assert _mac_with(monkeypatch, "1\n", vm) == "full"
     assert _mac_with(monkeypatch, "", "      Chipset Model: AMD Radeon Pro 5500M\n"
-                                      "      Chipset Model: Intel UHD Graphics 630\n") == ""
+                                      "      Chipset Model: Intel UHD Graphics 630\n") == "full"
+
+
+def test_two_mach_o_slices_join_as_lipo_joins_them():
+    # The launcher is built per architecture and joined (build_launcher).
+    def thin(cpu: int, size: int) -> bytes:
+        return struct.pack("<Iii", 0xFEEDFACF, cpu, 3) + bytes(range(256)) * (size // 256)
+    intel, arm = thin(0x01000007, 5120), thin(0x0100000C, 20480)
+    fat = release.fat_binary([intel, arm])
+    assert release.macho_slices(fat) == [("x86_64", intel), ("arm64", arm)]
+    # Each slice on a 16 KB boundary, as Apple silicon maps them.
+    offsets = [struct.unpack(">I", fat[16 + at * 20:20 + at * 20])[0] for at in range(2)]
+    assert offsets == [16384, 16384 * 2]
 
 
 def test_the_smokes_session_keeps_its_tool_list_out_of_the_checkout(tmp_path, monkeypatch):
