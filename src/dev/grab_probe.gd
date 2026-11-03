@@ -14,13 +14,13 @@
 ## what Balance says of the model weighed afresh; and one undo puts every
 ## part back exactly. Then move_part over MCP: a read that changes nothing,
 ## and a move. Windowed, pictures before, mid-drag and after go to
-## bench/results/grab13-2026-10-19/, or the folder GRAB_PROBE_OUT names (a
+## shots/grab/, or the folder GRAB_PROBE_OUT names (a
 ## run of its own, not over another's); frame timings are printed and
 ## written there as timings.json.
 extends SceneTree
 
 var OUT: String = OS.get_environment("GRAB_PROBE_OUT") if OS.has_environment("GRAB_PROBE_OUT") \
-	else "/mnt/Projects/brickworks/bench/results/grab13-2026-10-19"
+	else ProjectSettings.globalize_path("res://shots/grab")
 ## The sets, each with the joint it drags: a kind of link, and what a part
 ## on its moving side must be (any when empty).
 const CASES: Array = [

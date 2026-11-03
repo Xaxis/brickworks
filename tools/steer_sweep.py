@@ -214,7 +214,7 @@ def _run_job(sets: list[str], label: str, job: int, timeout: float, shots: bool 
             cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, start_new_session=True,
             # A data folder of its own: user:// is otherwise the owner's app
             # data, and opening a real set saves the parts it carries there.
-            env=dict(os.environ, XDG_DATA_HOME=str(ROOT / ".scratch-data")))
+            env=dict(os.environ, XDG_DATA_HOME=str(ROOT / ".scratch-data"), GRAB_PROBE_OUT=str(OUT)))
         began_at = 0.0
         began = ""
         while process.poll() is None:

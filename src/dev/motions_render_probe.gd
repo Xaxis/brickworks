@@ -2,7 +2,7 @@
 ## as a person presses it: the motion chosen, the camera, Render animation.
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/motions_render_probe.gd
-##   ... -- OUT_DIR [pictures]   (bench/results/motions4-2026-10-20 when not given;
+##   ... -- OUT_DIR [pictures]   (shots/motions_render when not given;
 ##                                pictures: only the dialog's pictures, for PROBE_SIZE=1280x720)
 ##
 ##  1. 1484-1's doors: "Open the doors" kept, and "Close the first gate"
@@ -48,7 +48,7 @@ func _run() -> void:
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	var args: PackedStringArray = OS.get_cmdline_user_args()
-	_out = args[0] if not args.is_empty() else "/mnt/Projects/brickworks/bench/results/motions4-2026-10-20"
+	_out = args[0] if not args.is_empty() else ProjectSettings.globalize_path("res://shots/motions_render")
 	var pictures_only: bool = args.size() > 1 and args[1] == "pictures"
 	DirAccess.make_dir_recursive_absolute(_out)
 	_main = load("res://src/main.tscn").instantiate()
