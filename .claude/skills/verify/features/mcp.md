@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
 
 ## Sub-features
 
@@ -55,6 +55,17 @@ asking for an API key.
   `ClaudeCode.found()` looks on PATH, then where the installers put it
   (~/.local/bin, ~/.claude/local, Homebrew's, /usr/local/bin): an app started
   from a desktop icon has no shell PATH. `claude_code_probe`'s desktop-icon case.
+- `design on your own Copilot plan`: **My Copilot**, beside My Claude where
+  this machine has the GitHub Copilot CLI (`src/ai/copilot_cli.gd`, CopilotCli,
+  a ClaudeCode). The same, on the person's Copilot plan (every plan, Free
+  included); one box or the other is ticked, never both. Copilot has no
+  `--strict-mcp-config` or `--tools ""`: `--available-tools` (only the app's,
+  as `brickworks-NAME`), `--disable-mcp-server` for each of the person's own
+  servers (read off `copilot mcp list --json` on the reader's thread) and
+  `--disable-builtin-mcps` take away. GH_TOKEN and GITHUB_TOKEN are taken off
+  the child with env(1). `CopilotCli.found()` takes only a program whose
+  `--version` says "GitHub Copilot CLI" (AWS Copilot's is `copilot` too).
+  Not signed in, it says to run `copilot login`. Terms: docs/ANY_ASSISTANT.md G.
 - `the window's commands over mcp`: `src/net/app_tools.gd` (AppTools), what
   the person does from the menus besides designing, as tools a session has
   and the design loop does not: `set_floor` (View, Floor), `edit_steps`
@@ -596,6 +607,7 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
 ```sh
 godot --path .                     # then tick "My Claude" in the design panel
 godot --path . -- --ask-claude-code="a small post box"   # the same, from a script
+godot --path . -- --ask-copilot="a small post box"       # on a GitHub Copilot plan
 godot --path . -- --mcp            # the app, with the port open on 8787
 godot --path . -- --mcp=8790       # a second one, beside the first
 claude mcp add brickworks -- /mnt/Projects/brickworks/tools/brickworks_mcp.py
@@ -709,6 +721,31 @@ any shell that had sourced `.env`); the app keeps both afterwards. A plain
 `OS.execute_with_pipe` fails it. A real run spends somebody's subscription and
 is done by hand with `--ask-claude-code=`; it prints "on your subscription, 9
 tools, all of them this app's" when it connects.
+
+For the Copilot plan path (the CLI installed anywhere, no sign-in needed):
+
+```sh
+npm install --prefix "$SCRATCH/cli" @github/copilot
+tools/probe.sh copilot_cli_probe --copilot="$SCRATCH/cli/node_modules/.bin/copilot"
+```
+
+Proves it when: it ends on "a design on the person's Copilot plan reaches the
+bricks and nothing else". Read without running: `--available-tools` names
+exactly the app's tools, `--allow-tool brickworks`, `--deny-tool shell` and
+`write`, `--disable-mcp-server` for each of theirs, never `--allow-all-tools`
+or `--yolo`; the child sees no GH_TOKEN or GITHUB_TOKEN and keeps
+COPILOT_GITHUB_TOKEN; AWS's `copilot` is not found, GitHub's is, with no shell
+PATH; My Claude and My Copilot untick each other. With `--copilot`, the real
+CLI runs on Copilot's own BYOK against `tools/provider_stub.py --tool-prefix
+brickworks-`, in a COPILOT_HOME of its own whose "mail" server marks its
+start: unfenced it offers bash, web_fetch and mail-send_email and starts the
+mail server; the port answers an id of 1 with 1, not 1.0 (Copilot's rmcp
+client gave up on 1.0 with 0 tools); sent through the panel with My Copilot
+ticked, the six-brick tower
+stands, every request offers the app's tools and nothing else and carries HOW
+TO WORK, and the mail server never starts. Without `--copilot` the live part
+prints "----" and is not run. A real design on a plan is by hand:
+`copilot login`, then `--ask-copilot=`.
 
 And `mcp_probe` ends on "a session outside the app can use the app's own
 tools" — a client connects over real TCP, gets every tool (41 on 2026-10-13) carrying a schema,

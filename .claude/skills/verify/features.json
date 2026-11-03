@@ -4151,6 +4151,14 @@
       "tests": []
     },
     {
+      "id": "ui:design on your own Copilot plan",
+      "kind": "ui",
+      "entry": "src/ai/copilot_cli.gd",
+      "reach": "godot --path . -- --ask-copilot=\"a small post box\"   (SPENDS A GITHUB COPILOT PLAN; or tick My Copilot in the design panel)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "ui:design on your own subscription",
       "kind": "ui",
       "entry": "src/ai/claude_code.gd",

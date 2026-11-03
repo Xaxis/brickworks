@@ -362,6 +362,12 @@ func answer_rpc(request: Dictionary) -> Variant:
 	var params: Dictionary = request.get("params", {}) as Dictionary
 	if sent_id == null:
 		return null
+	# Sent back as it came. JSON.parse_string makes every number a float, and
+	# an id of 1 went back as 1.0, which a strict client (GitHub Copilot's CLI,
+	# Codex's: Rust's rmcp) cannot read as an answer to anything: it gave up
+	# on the port with "data did not match any variant of JsonRpcMessage".
+	if sent_id is float and float(sent_id) == floorf(sent_id):
+		sent_id = int(sent_id)
 
 	if method == "initialize":
 		var wanted: Variant = params.get("protocolVersion")
