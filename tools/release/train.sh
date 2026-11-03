@@ -10,9 +10,11 @@
 # stage writes TAG's spec in $RELEASE_OUT/TAG.train/, a file each (branch,
 # after, checks, probes, units, title), and starts the train detached
 # (setsid: a background job dies with the Claude session that began it). It
-# logs to $RELEASE_OUT/TAG_train.out. Each file is read only when its step
-# comes, so a unit merged into BRANCH meanwhile brings its checks by an edit
-# of TAG.train/checks, until the ship begins.
+# logs to $RELEASE_OUT/TAG_train.out. Its checks are those named and every
+# one flows_for.py finds for what BRANCH changed, and it says which it
+# added. Each file is read only when its step comes, so a unit merged into
+# BRANCH meanwhile brings its checks by an edit of TAG.train/checks, until
+# the ship begins.
 #
 # The train waits until PREV's ship says brickworks.diy serves it, never on
 # PREV's process: what ship.sh does after that touches only the live site.
@@ -116,6 +118,32 @@ stage() {
     done
   fi
   [ -z "$unknown" ] || { echo "train: $branch has no${unknown%,}"; exit 2; }
+  # And every check whose flow reaches what the branch changed (flows_for.py,
+  # the branch's own, on its own tree), since where it left main, or the
+  # merge of it PREV ships when that is later: PREV checks its own. The
+  # lead's list was the only one, and rel-m237 changed the words a session
+  # hears first without model_view, which pinned them (mcpview, 2026-11-02).
+  local base mb tree out code flows="" added="" told="flows_for.py"
+  base=$(git -C "$R" merge-base "$branch" main) || { echo "train: $branch shares nothing with main"; exit 2; }
+  if [ -n "$after" ] && mb=$(git -C "$R" merge-base "$branch" "$after" 2>/dev/null) \
+      && git -C "$R" merge-base --is-ancestor "$base" "$mb"; then base=$mb; fi
+  local -a files=()
+  mapfile -t files < <(git -C "$R" diff --name-only "$base...$branch")
+  git -C "$R" cat-file -e "$branch:tools/release/flows_for.py" 2>/dev/null || told="$branch has no flows_for.py:"
+  if [ ${#files[@]} -gt 0 ] && [ "$told" = flows_for.py ]; then
+    tree=$(mktemp -d) || exit 1
+    # shellcheck disable=SC2046  # the paths flows_for reads that the branch has
+    git -C "$R" archive "$branch" $(git -C "$R" ls-tree --name-only "$branch" -- web api src tools/web tools/release tools/deploy.sh) \
+      | tar -x -C "$tree"
+    out=$(cd "$tree" && python3 tools/release/flows_for.py "${files[@]}" 2>&1); code=$?
+    rm -rf "$tree"
+    [ "$code" = 0 ] || { echo "train: flows_for.py failed on $branch:"; echo "$out" | tail -3; exit 2; }
+    flows=$(sed -n 's/^checks: \([a-z_0-9 ]*\)$/\1/p' <<< "$out")
+  fi
+  for name in $flows; do case " $checks " in *" $name "*) ;; *) added+=" $name" ;; esac; done
+  local -a named=()
+  read -r -a named <<< "$checks$added"
+  checks="${named[*]}"
   if pid=$(runner "$tag"); then
     echo "train: $tag's train runs (pid $pid): edit $RO/$tag.train/, or stop it (kill -- -$pid) first"; exit 1
   fi
@@ -142,6 +170,7 @@ stage() {
   setsid -f nohup bash "$SPEC/train.sh" run "$tag" > "$RO/${tag}_train.out" 2>&1 < /dev/null
   echo "train: $tag staged: ${after:+waits for $after to serve, then }merges $branch and ships"
   echo "  spec $SPEC/ (editable until it ships), log $RO/${tag}_train.out"
+  echo "  $told since $(git -C "$R" rev-parse --short "$base"), ${added:+adds$added to the checks named}${added:-adds no check to those named}"
   [ -z "$accepts" ] || echo "  it may ship past $(cut -f1 <<< "${accepts%$'\n'}" | paste -sd' '), should each fail on $SITE too"
 }
 

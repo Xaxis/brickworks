@@ -20,11 +20,11 @@
 ## In a window (godot --path . --resolution 1400x900 --script
 ## src/dev/gear_mesh_probe.gd) it builds in the app itself, and pictures of
 ## each pair as built and turned go to the folder GEAR_MESH_OUT names
-## (bench/results/gears186 by default).
+## (shots/gear_mesh by default).
 extends SceneTree
 
 var OUT: String = OS.get_environment("GEAR_MESH_OUT") if OS.has_environment("GEAR_MESH_OUT") \
-	else "/mnt/Projects/brickworks/bench/results/gears186"
+	else ProjectSettings.globalize_path("res://shots/gear_mesh")
 
 ## The frames, as [part, Transform3D] each, put down and locked.
 const UP := 72.0

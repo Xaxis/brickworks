@@ -68,7 +68,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -135,7 +136,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -198,7 +200,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -580,6 +583,7 @@
         "tests/test_billing.py",
         "tests/test_brickbench.py",
         "tests/test_gallery_crons.py",
+        "tests/test_oauth_clients.py",
         "tests/test_update_parts.py"
       ]
     },
@@ -934,6 +938,14 @@
       "entry": "src/dev/empty_save_probe.gd",
       "reach": "godot --headless --path . --script src/dev/empty_save_probe.gd",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:every assistant's sign-in",
+      "kind": "cli",
+      "entry": "tools/web/clients_check.mjs",
+      "reach": "tools/release/live_db.sh you node tools/web/clients_check.mjs --url=<relay_server or deployment>   (with .env sourced; BW_BYPASS for a preview)",
+      "area": "account",
       "tests": []
     },
     {
@@ -2590,7 +2602,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -3380,7 +3393,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
@@ -4235,7 +4249,7 @@
       "id": "ui:gears put in mesh by hand",
       "kind": "ui",
       "entry": "src/assembly/gear_mesh.gd",
-      "reach": "tools/probe.sh gear_mesh_probe   (each pair pointed onto its axles, the second gear seated in mesh, turned by Grab at its teeth's ratio: spurs 8 to 40, bevels at right angles slid into mesh, a worm and a 24, a 24 in a crossblock; too far apart, square spurs and a bush in the way said; a 24 slid along its axle into mesh. Windowed, pictures in bench/results/gears186/. By hand: point a gear onto an axle beside another; the status line says what it meshes or why not)",
+      "reach": "tools/probe.sh gear_mesh_probe   (each pair pointed onto its axles, the second gear seated in mesh, turned by Grab at its teeth's ratio: spurs 8 to 40, bevels at right angles slid into mesh, a worm and a 24, a 24 in a crossblock; too far apart, square spurs and a bush in the way said; a 24 slid along its axle into mesh. Windowed, pictures in shots/gear_mesh/. By hand: point a gear onto an axle beside another; the status line says what it meshes or why not)",
       "area": "building",
       "tests": []
     },
@@ -4911,7 +4925,8 @@
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
-        "tests/test_model_page.py"
+        "tests/test_model_page.py",
+        "tests/test_oauth_clients.py"
       ]
     },
     {
