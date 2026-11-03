@@ -3986,7 +3986,7 @@
     },
     {
       "kind": "ui",
-      "label": "check for updates, reinstall and restart",
+      "label": "check for updates reinstall and restart",
       "entry": "src/ui/update_dialog.gd",
       "reach": "tools/probe.sh updater_probe   (Help, Check for updates…, Reinstall Brickworks…, Restart Brickworks: desktop only)",
       "area": "release"

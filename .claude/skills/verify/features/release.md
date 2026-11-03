@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
 
 ## Sub-features
 
@@ -193,6 +193,50 @@ that offers each system its own build. The cycle and its cadence are
   the docs page) or the exported .ldr's path in `Outside.opened`, it ends
   `outside probe: all checks passed`, and probe.sh prints no `asked the
   desktop to open` lines.
+- `the desktop app updates itself` (docs/UPDATES.md): `Updater`
+  (src/net/updater.gd) asks once a day, 8 s after the model is back, for
+  `releases/latest/download/latest.json` on Xaxis/brickworks-releases; in
+  Settings, Updates, Automatic (the default) downloads the newer version
+  beside the install (`.brickworks-update/<version>/`), checks its size and
+  SHA-256, unpacks it, and puts it in as the app quits; Ask first says it is
+  out; Off asks nothing until Help does. A test server takes GitHub's place
+  only by `BRICKWORKS_UPDATE_URL`, set by hand (plain HTTP only on
+  127.0.0.1). `--update=check|fetch|install|reinstall|restart` drives it from
+  a command line and prints `update: <mode>: <what it says>`.
+- `the signed update manifest`: `Updates` (src/net/updates.gd) believes
+  latest.json only under an RSA/SHA-256 signature by one of the two keys it
+  carries (their private halves only in `.env`: `UPDATE_SIGN_KEY`,
+  `UPDATE_SIGN_KEY_BACKUP`), then refuses a manifest not Brickworks', a
+  version not newer, a file with no size or SHA-256, plain HTTP, and any
+  address or redirect off github.com, objects.githubusercontent.com,
+  release-assets.githubusercontent.com and brickworks.diy.
+  `tools/release.py publish --draft` signs it with both keys and uploads it
+  with the packages; `tools/release.py latest --check FILE` reads one as the
+  app would.
+- `update notice`: "Brickworks 0.17.0 is out" (or "is ready") above the
+  model, in UpdateOffer's look: What's new (the release notes' first
+  paragraph), Update and restart, Later. Where the copy cannot write its
+  install, the button reads Download and opens brickworks.diy/download; a
+  Mac app run from Downloads or a disk image reads Move to Applications and
+  update.
+- `check for updates reinstall and restart`: Help, Check for updates…
+  ("You're up to date (0.16.0)" or what is new), Reinstall Brickworks…
+  (this same version downloaded again, checked the same way) and Restart
+  Brickworks, desktop only (src/ui/update_dialog.gd, Shell DESKTOP_ONLY).
+  Every restart writes the working model first and comes back in the same
+  session (`--session=`), on the same model.
+- `update helper`: `src/net/update_helper.sh` (Linux, macOS) and `.ps1`
+  (Windows), written to `user://updates/` and run as the app quits: waits
+  for it to end, swaps the folder or the AppImage by renames, asks the new
+  copy `--about`, starts it and waits for it to say its window is up, and
+  puts the old copy back (started with `--update-failed=`) when it cannot.
+- `updater probe`: `src/dev/updater_probe.gd` signs a release with a key of
+  its own, serves it with `tools/update_check.py serve`, and drives the real
+  scene through every refusal, the notice, the download and the hand-over.
+- `update check`: `tools/update_check.py` builds two versions with a small
+  library (`packages`), serves them, and drives real packages through every
+  refusal and a real install, restart, reinstall, install on quit and put
+  back; `lay` and `run --laid` do it on a runner that has no key.
 
 ## How to reach it
 
@@ -212,6 +256,11 @@ gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0
 tools/release/releases_repo.sh --dir=<scratch>      # a dry run: about 5 GB downloaded
 tools/release/release_links.sh                      # this checkout's web/releases.json
 tools/release/train.sh status                       # each release staged: its step, checks, what is live
+tools/probe.sh updater_probe                        # the updater on the real scene, against a local server
+python3 tools/minitest.py tests/test_updates.py     # signing, the helper's swaps and put-backs
+python3 tools/update_check.py packages --versions=0.90.0,0.91.0 --out=DIR linux   # ~small test packages
+python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.AppImage --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.AppImage
+python3 tools/release.py latest --check dist/<version>/latest.json
 ```
 
 ## How to check it
@@ -384,7 +433,46 @@ the Linux button, pressed, asks its public address and nothing of
 page offers each system its own build`. With a manifest
 that has no release it reads `no release yet` for all four.
 
+```sh
+tools/probe.sh updater_probe
+python3 tools/minitest.py tests/test_updates.py
+```
+
+Proves it when: the probe prints 37 `ok` lines and ends `the desktop app
+checks, refuses what it must, downloads, and hands over the restart with the
+model kept` (among them: the two release keys each load under their own id;
+Check for updates refuses a bad signature and `0.0.1, which is older`; in
+Automatic a download is refused for a wrong SHA-256, a short size and
+`refused an address off GitHub and brickworks.diy: https://example.com/...`;
+Update and restart hands `/bin/sh helper.sh install <pid> <install> <staged>
+... 99.0.0` with `--session=<id>`); and the tests print `12 passed`.
+Before 2026-11-03 (0.15.0) Help had only `keys` and `tour` and no release
+carried a latest.json.
+
+```sh
+python3 tools/update_check.py run --old OLD --new NEW --log=DIR/log.txt
+```
+
+Proves it when: every line is `ok` and it ends `<old> → <new>: every refusal
+held, and it updates, restarts, reinstalls and puts back`, for the AppImage
+and the tar.xz alike: six refusals with their words, `Check for updates:
+Brickworks B is out`, `Update and restart (by a redirect on the same host):
+report: running B; model “House”, N parts; session S` with the same model,
+parts and session as before the restart, the copy in place says B and
+nothing is left in `.brickworks-update/`, Restart and Reinstall come back
+the same, Automatic's next start says B, and a copy that cannot start is
+put back and A started again.
+
 ## Gotchas
+
+- **0.15.0 and older have no updater.** The first version with one, and its
+  latest.json, has to be downloaded by hand once; from then on it updates
+  itself. A release with no latest.json leaves `releases/latest/download/
+  latest.json` answering 404, said as `Couldn't check for updates: the
+  server answered 404`.
+- **GitHub sends release downloads to release-assets.githubusercontent.com**
+  (since 2025), not objects.githubusercontent.com: both are let in. A new
+  host there refuses every update until `Updates.HOSTS` names it.
 
 - **Public only by promoting a checked draft.** `publish` without `--draft`
   refuses to create a release: it only promotes a draft that exists, which is
