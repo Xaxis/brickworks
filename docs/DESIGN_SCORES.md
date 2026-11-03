@@ -4250,6 +4250,217 @@ build, when the design is still short, would reach the parts it names.
 Results: `bench/results/realset-2026-11-02-c10base/`,
 `realset-2026-11-02-c10lever/`; the smoke, `realset-2026-11-02-c10smoke/`.
 
+### Technique: an app-made panel faced as real sets face theirs, two smokes (2026-11-02, `9f756dcb` then `907248ac`, GO)
+
+design11's panels raised the side share, but the judge read each one as the
+brick it replaced. Each was a tile row stood on edge, 20 LDU tall, in running
+bond and the face's own colour. This round measures what real sets' panels
+are made of and lays the app's panels that way. design11's finding, holding,
+setting in and taking back are unchanged.
+
+**What real sets' panels are made of.** The 23 non-Technic proof sets that
+build 15% or more of their parts on their side were read with design12's
+`facades.py`. A panel is design10's patch: eight or more parts on their side,
+studs one way, boxes touching. Here it must also be square to the grid. 16 of
+the 23 sets have such panels: 75 in all, 1,832 parts. Of those, 50 panels
+(1,249 parts, 15 sets) have their studs facing out, so their tiles are seen.
+Read from the front, a 2 LDU square at a time, the part in front:
+
+| | real sets' 50 panels | design11's 10 panels (d11panel) |
+|---|---|---|
+| tiles | 30% | 100% |
+| grille tiles (1 x 2 grille, door rail) | 24% | 0% |
+| curved slopes / slopes | 17% / 12% | 0% |
+| plates, studs showing | 13% | 0% |
+| long parts running up / across / square | 51% / 38% / 11% | 0% / 94% / 6% |
+| lengths, 2 / 4 / 8 / 3 / 1 / 6 studs | 56 / 16 / 13 / 6 / 5 / 3% | 46% 2, 31% 4, 18% 3, 6% 1 |
+| joints the next row or column repeats (stack bond) | 80 of 90 | 1 of 22 |
+
+- The part most often in front is the 1 x 2 grille tile: 182 shown. The plain
+  1 x 2 tile is next with 66, then the 1 x 1 tile with 47.
+- 29 panels are one colour (a second under 10%). 21 have a second colour.
+  It covers 15% of all the panels' area. It falls in whole rows 35%,
+  scattered 26%, in whole columns 23% and on the border 16%. A band is one
+  tile row (17 of 20 bands), every three to seven studs: 21023 Flatiron's
+  at rows 2, 5, 12 and 14.
+- 32 panels are taller than wide, 14 wider, 4 square. The commonest sizes
+  are 3 x 4 (10) and 2 x 8 (4).
+- The edge: of the parts round a panel's outline, 60% stand behind its
+  front, 31% in front of it, 9% flush, a median 8 LDU behind. 71% of them are
+  another colour than the panel. design11's are set in 4 LDU, and that was
+  kept: 369b006's proud skins cost likeness.
+
+**The lever.** A face of one colour is laid by its size, in stack bond:
+
+- `ribbed`, 4 studs across or fewer: 1 x 2 grille tiles on end (21033
+  Chicago's 3 x 16 towers).
+- `smooth`, taller than wide: long tiles on end, with a grille band along the
+  top and bottom.
+- `banded`, as wide as tall or wider: long tiles across, with a grille band
+  every third row.
+
+The bands take the colour of the design's own that is most used and stands
+0.15 or more clear of the face in lightness. A face the design coloured
+itself keeps its colours, as `copied`: long tiles across in stack bond. The
+back plates are tied by tiles laid across with joints on odd columns, or each
+is held by a side stud. A pattern that leaves one loose falls back to
+`banded`, then `copied`, then design11's running bond. The answer names each
+panel's pattern beside its key, for example "P1 'app panel 1', facing -z, 3 x
+6 studs, ribbed: 1 x 2 grille tiles on end in stack bond, in Tan". FACES_AS_PANELS
+says the same before a session builds.
+
+**Proof.** `face_panels_probe` passes. Three cases come back over the
+connector, each face held, set in 4 LDU and one piece:
+- design11's banded box comes back `copied`, its colours where they stood.
+- The same box in tan on a white plinth comes back `banded` on all four faces
+  (10 x 6, 6 x 6).
+- A tan tower comes back `smooth` (8 x 12) on its wide faces and `ribbed`
+  (4 x 6) on its narrow ones.
+
+Each panel's front is read from the world square by square: covered once,
+the right part each way, the right colour, its joints in line.
+panels_probe, sections_probe, angled_probe, hinged_panels_probe,
+mcp_sync_probe, claude_undo_probe, surface_probe and undo_count_probe pass.
+
+**How it ran.** Two locked snapshots, each imported first: `snapd12base` at
+`53a249c1` (stage225, design code without the lever) and `snapd12panel` at
+`9f756dcb`. One job each on the owner's path, on five subjects where the app
+finds plain faces: 21033-1 Chicago, 9471-1 Uruk-hai Army, 21028-1 New York
+City, 21047-1 Las Vegas and 21052-1 Dubai. No login lapse, no limit.
+
+**What the app laid.** 22 panels, on all five:
+
+- Chicago: 7 `ribbed` (black on five towers, white, grey). The session took
+  one back.
+- New York City: 3 `ribbed` (tan 4 x 12, white and grey 4 x 6) and 3
+  `copied`. The session took the 3 copied ones back and wrote its own
+  facades as sections with a face, for the Chrysler and One World Trade
+  Center.
+- Las Vegas: 2 `banded` 12 x 6 on the Bellagio (tan, white bands) and 1
+  `ribbed` on the gold tower. The session took all three back.
+- Dubai: 4 `ribbed`. The session took three back and kept one at the side.
+- Uruk-hai: 2 `copied` on the wall, kept.
+
+**Why they came back.** review_model, right after the panels, found bricks
+off their studs on a side-stud brick in four of the five: Chicago 1, New York
+1, Las Vegas 4, Dubai 1. Cutting a face's outer row took away what a course
+above stood on. The edit's check asked only about the parts it placed, so it
+passed them. The sessions said so: "The app's panels on the Bellagio left
+four bricks off their studs, so I'm taking those panels back", and for Dubai
+"it left the top loose last time". Las Vegas's gold tower came back
+"in mismatched yellow": 2445 and 11211 were never made in Bright Light
+Orange, so its back plates and holders were laid in Yellow.
+
+**Share of parts on their side** (`tools/style.py`, sideways):
+
+| subject | d12base | d12panel | set |
+|---|---|---|---|
+| 21033-1 Chicago | 3.3% | 34.9% | 34.5% |
+| 9471-1 Uruk-hai | 0.6% | 15.1% | 14.2% |
+| 21028-1 New York City | 0.7% | 39.7% | 33.1% |
+| 21047-1 Las Vegas (all taken back) | 3.7% | 0.8% | 15.6% |
+| 21052-1 Dubai (one kept) | 1.6% | 8.6% | 22.3% |
+| median | 1.6% | 15.1% | 22.3% |
+
+**Verdicts won**, of 10 per dimension (5 subjects, both orders):
+
+| dimension | d12base | d12panel | the 3 that kept their panels, base / panel |
+|---|---|---|---|
+| likeness | 0 | 5 | 0 / 3 |
+| surface | 0 | 5 | 0 / 2 |
+| colour | 1 | 2 | 0 / 1 |
+| technique | 0 | 0 | 0 / 0 |
+| creativity | 3 | 3 | 2 / 1 |
+| overall | 0 | 2 | 0 / 0 |
+
+Dubai's 2 overall, 2 likeness and 2 surface, and Las Vegas's surface, came
+with the panels taken back: the sessions' own work, not the lever's.
+
+**What the judge said.** New York's ribbed towers won surface both ways:
+"smooth tiled faces, trans-clear glass strips" and "clean, flat facades of
+tiles and panels". Chicago's did not: "its towers show more blocky brick
+seams", and "its large flat black slabs ... look blocky". Its technique was
+"mostly stacks bricks and grille columns": the judge saw the grille. The
+Uruk-hai wall, `copied`, was still "plain stacked brick walls". So one-colour
+faces now read as tiles or grille, and a copied face still reads as brick.
+All ten front renders were looked at. New York's tan Empire State, ribbed
+4 x 12, reads as a ribbed facade. Chicago's two black towers read as flat
+black slabs, as the judge said: black grille on black hardly shows.
+
+**The fix.** A pass laying its own proposal (FacePanels, SurfacePass) now
+answers for the bricks that touched what it took up, as review_model does
+(`Assistant._beside_taken`). A panel that would leave one loose is refused as
+laid, and the face is tried again from its next top. `face_panels_probe`
+gained a tan box with a white parapet, one stud thick, over its -z face's
+outer row. On `9f756dcb` the panel took the row under the parapet and the
+whole-model check found 3 bricks not held. On `907248ac` the panel stops a
+course short and nothing is loose. Every model in the probe is now judged
+whole, as review_model judges it. `surface_probe` passes.
+
+**The second smoke.** `snapd12panel2` at `907248ac`, imported first, ran the
+same five against the same base arm. No login lapse. The fix refused 5 lays
+(Chicago 2, Uruk-hai 2, Las Vegas 1). After the lays, review_model found
+nothing a panel had left off its studs.
+
+- Chicago: 4 `ribbed` 3 x 6, two black and two tan (the Tribune), all kept.
+- New York City: 6 `ribbed` after a resubmit (tan and black 4 x 12, grey
+  4 x 6), all kept.
+- Las Vegas: 3 `banded`: the Bellagio tan with black grille bands, and two
+  faces of the gold tower. The session took one of those back to write its
+  own facades as sections.
+- Dubai: 2 `banded`, grey with white bands, taken back with nothing said.
+- Uruk-hai: 2 `ribbed` and 1 `copied`, taken back while the session rebuilt
+  the scene as a Helm's Deep wall of masonry bricks.
+
+| subject | d12base | d12panel2 | set |
+|---|---|---|---|
+| 21033-1 Chicago | 3.3% | 17.2% | 34.5% |
+| 9471-1 Uruk-hai (taken back) | 0.6% | 0.0% | 14.2% |
+| 21028-1 New York City | 0.7% | 29.2% | 33.1% |
+| 21047-1 Las Vegas | 3.7% | 31.4% | 15.6% |
+| 21052-1 Dubai (taken back) | 1.6% | 2.3% | 22.3% |
+| median | 1.6% | 17.2% | 22.3% |
+
+| dimension | d12base | d12panel2 | panels kept, both smokes: base / panel, of 12 |
+|---|---|---|---|
+| likeness | 0 | 3 | 0 / 5 |
+| surface | 0 | 3 | 0 / 4 |
+| colour | 1 | 2 | 1 / 3 |
+| technique | 0 | 1 | 0 / 1 |
+| creativity | 3 | 5 | 4 / 5 |
+| overall | 0 | 2 | 0 / 2 |
+
+The last column is the six subject-runs whose panels stayed (Chicago, New York
+and Uruk-hai in the first smoke; Chicago, New York and Las Vegas in the
+second), against the base arm on the same subjects.
+
+**What the judge said.** Chicago won likeness, surface, colour and overall
+both ways, and technique once: "grille-textured facades on the Tribune and
+Aon", "grille-textured tan Tribune walls", "textured grille bands on the
+Hancock". New York's towers: "A uses sideways grille tiles too, but on towers
+with no setbacks". Las Vegas's banded hotels did not: "flat tan and dark-gold
+blocks", "blocky stacked bricks on the hotel towers". Over both smokes the
+judge never called a `ribbed` panel brick: it is grille, texture, "smooth
+tiled faces". `banded` is proven on no subject: taken back in the first
+smoke, and "blocky" in the second. A `copied` face still reads as brick, and
+sessions took 4 of the 6 laid back.
+
+All five front renders were looked at. Chicago's tan Tribune, ribbed, reads
+as a ribbed facade. New York's tan Empire State and grey Chrysler, ribbed,
+read as facades. The Bellagio reads as a tan block with window rows.
+
+**GO for a paired 44 on `907248ac`.** Where panels stayed, surface rose from
+0 to 4 of 12 and technique from 0 to 1, with likeness up, not down (0 to 5).
+The judge no longer calls the panel most laid, `ribbed`, brick. The base arm
+won no likeness at all, and a smoke of one job is noisy, so the paired run
+decides it: realset proof, both halves, base `stage225` design code against
+`907248ac`. Three things to read in it: whether `banded` faces win anything,
+`copied` faces, which read as brick and were mostly taken back, and Bright
+Light Orange, whose 2445 and 11211 come in Yellow.
+
+Results: `bench/results/realset-2026-11-02-d12panel/` and
+`realset-2026-11-02-d12panel2/`, against `realset-2026-11-02-d12base/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
