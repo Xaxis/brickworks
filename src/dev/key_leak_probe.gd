@@ -126,9 +126,12 @@ func _files() -> void:
 	_check("saved", _store.save_as(_store.title.validate_filename()))
 	_store.write_now()
 	for format: String in ["ldraw", "bricklink", "rebrickable", "studio", "picture", "instructions"]:
+		# The longer ones run as a job, whose answer leads with it: "Job 1
+		# (export_model) is done, after 1 s:Wrote …".
 		var said: String = await _say("export_model", {"format": format})
-		_check("exported %s: %s" % [format, said.left(90).replace("\n", " ")],
-			said.begins_with("Wrote"))
+		var wrote: String = said.substr(maxi(said.find("Wrote "), 0))
+		_check("exported %s: %s" % [format, wrote.left(90).replace("\n", " ")],
+			said.begins_with("Wrote ") or said.contains(" is done, after ") and said.contains(":Wrote "))
 
 
 ## Everything the MCP says, as a session over the relay or the desktop's port
