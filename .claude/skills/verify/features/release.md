@@ -438,14 +438,14 @@ tools/probe.sh updater_probe
 python3 tools/minitest.py tests/test_updates.py
 ```
 
-Proves it when: the probe prints 37 `ok` lines and ends `the desktop app
+Proves it when: the probe prints 38 `ok` lines and ends `the desktop app
 checks, refuses what it must, downloads, and hands over the restart with the
 model kept` (among them: the two release keys each load under their own id;
 Check for updates refuses a bad signature and `0.0.1, which is older`; in
 Automatic a download is refused for a wrong SHA-256, a short size and
 `refused an address off GitHub and brickworks.diy: https://example.com/...`;
 Update and restart hands `/bin/sh helper.sh install <pid> <install> <staged>
-... 99.0.0` with `--session=<id>`); and the tests print `12 passed`.
+... 99.0.0` with `--session=<id>`); and the tests print `13 passed`.
 Before 2026-11-03 (0.15.0) Help had only `keys` and `tour` and no release
 carried a latest.json.
 
