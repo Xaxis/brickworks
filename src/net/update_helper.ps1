@@ -23,6 +23,15 @@ function Say($line) {
   Add-Content -LiteralPath $log -Value "$stamp helper: $line"
 }
 
+# An exported Godot app works in its own folder (main.cpp sets the working
+# directory to the executable's), and this helper starts in the app's. A
+# folder that is a process's working directory cannot be moved on Windows,
+# so the helper held the very folder it was to swap. The process's own
+# directory, not only PowerShell's location, is moved out.
+$here = Split-Path -Parent $log
+[Environment]::CurrentDirectory = $here
+Set-Location -LiteralPath $here
+
 # An argument as CreateProcess reads it back: quoted when it has a space.
 function Quoted($text) {
   if ($text -match '[\s"]') { return '"' + ($text -replace '"', '\"') + '"' }
@@ -41,15 +50,17 @@ function Start-Launch([string[]]$more) {
 # Moved, retried for a minute: another window of the app still running from
 # the folder holds it, and so, for a moment, does a virus scanner.
 function Move-Retried($from, $to) {
+  $why = ""
   for ($n = 0; $n -lt 60; $n++) {
     try {
       Move-Item -LiteralPath $from -Destination $to -ErrorAction Stop
       return $true
     } catch {
+      $why = $_.Exception.Message
       Start-Sleep -Seconds 1
     }
   }
-  Say "could not move $from to ${to}: $($_.Exception.Message)"
+  Say "could not move $from to ${to}: $why"
   return $false
 }
 
