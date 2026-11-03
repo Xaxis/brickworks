@@ -153,8 +153,14 @@ async function payOnStripe() {
   if (await emailField.isVisible().catch(() => false) && !(await emailField.inputValue())) await emailField.fill(email);
   const card = page.locator("input#cardNumber");
   if (!(await card.isVisible().catch(() => false))) {
-    const accordion = page.locator('[data-testid="card-accordion-item-button"], button:has-text("Card")').first();
-    if (await accordion.isVisible().catch(() => false)) await accordion.click();
+    // Card is one of Stripe's choices: press its row, which is drawn. The
+    // row's own button is not (a check for visible never pressed it, and a
+    // forced press found it outside the viewport), so it is sent a click.
+    const row = page.locator('[data-testid="card-accordion-item"]').first();
+    if (await row.isVisible().catch(() => false)) await row.click().catch(() => {});
+    if (!(await card.isVisible().catch(() => false))) {
+      await page.locator('[data-testid="card-accordion-item-button"]').first().dispatchEvent("click").catch(() => {});
+    }
   }
   await card.waitFor({ state: "visible", timeout: 30000 });
   await card.fill("4242424242424242");
