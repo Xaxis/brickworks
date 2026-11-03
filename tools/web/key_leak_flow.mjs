@@ -139,7 +139,9 @@ async function stored() {
   const kept = await page.evaluate(async () => {
     const text = [];
     const files = {};
-    const asBytes = (v) => (v instanceof Uint8Array ? v : v instanceof ArrayBuffer ? new Uint8Array(v) : null);
+    // The engine's file system keeps a file's bytes as an Int8Array.
+    const asBytes = (v) => (ArrayBuffer.isView(v) ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength)
+      : v instanceof ArrayBuffer ? new Uint8Array(v) : null);
     const latin1 = (bytes) => {
       let said = "";
       for (let at = 0; at < bytes.length; at += 8192) said += String.fromCharCode(...bytes.subarray(at, at + 8192));
@@ -197,8 +199,8 @@ let kept = await stored();
 const file = keyFile(kept.files);
 check(`the site's storage holds its file (${file || "none"}), encrypted (${file ? JSON.stringify(kept.files[file]) : "-"})`,
   Boolean(file) && kept.files[file] === "GDEC");
-check(`...and holds the key nowhere as written, in hex or in base64 (${kept.text.length} characters searched)`,
-  !holds(kept.text));
+check(`...and holds the key nowhere as written, in hex or in base64 (${Object.keys(kept.files).length} files, `
+  + `${kept.text.length} characters searched)`, !holds(kept.text) && Object.keys(kept.files).length >= 2);
 
 console.log("forgotten");
 await click("change_key");
