@@ -36,6 +36,14 @@ signal tested(said: Control)
 const LABEL_WIDE := 100.0
 const NOTE := Color(0.62, 0.65, 0.72)
 const WRONG := Color(1.0, 0.6, 0.5)
+## Under the address on a web page, for a server on the person's own computer
+## and for any other. The site's policy lets the app reach the providers
+## listed and this computer, and nowhere else (tools/deploy.sh): a key has
+## nowhere else to go.
+const ON_WEB_LOCAL := ("On a web page a server on your own computer answers only if it "
+	+ "allows this site (Ollama: OLLAMA_ORIGINS), and the browser asks you first.")
+const ON_WEB_OTHER := ("On a web page Brickworks reaches only the providers listed and "
+	+ "servers on your own computer; for any other server, use the desktop app.")
 
 var who_claude: CheckBox
 var who_key: CheckBox
@@ -293,9 +301,8 @@ func _show_provider(id: String, chosen_now: bool) -> void:
 	# server; a big host's is its own, and kept out of the way.
 	_base_row.visible = str(preset["base"]).is_empty() or not bool(preset["needs_key"]) \
 		or not base.is_empty()
-	_say(_base_note, "On a web page a server on your own computer answers only if it allows "
-		+ "this site (Ollama: OLLAMA_ORIGINS), and the browser asks you first."
-		if OS.has_feature("web") and not bool(preset["needs_key"]) and id != "custom" else "")
+	_say(_base_note, (ON_WEB_OTHER if id == "custom" else ON_WEB_LOCAL)
+		if OS.has_feature("web") and not bool(preset["needs_key"]) else "")
 	var params: Dictionary = kept["params"]
 	temperature_on.button_pressed = params.has("temperature")
 	temperature.editable = params.has("temperature")

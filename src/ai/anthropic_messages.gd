@@ -133,7 +133,7 @@ func read(code: int, body: PackedByteArray) -> Reply:
 	if code != 200 or str(answer.get("type", "")) == "error":
 		var said: Variant = answer.get("error", {})
 		reply.error = Provider.refusal(code, str((said as Dictionary).get("message", ""))
-			if said is Dictionary else str(said))
+			if said is Dictionary else str(said), key)
 		# 529 is Anthropic's "overloaded", which passes.
 		reply.again = Provider.transient(code)
 		return reply
@@ -182,7 +182,7 @@ func read_models(code: int, body: PackedByteArray) -> Dictionary:
 	if code != 200 or not (answer.get("data") is Array):
 		var said: Variant = answer.get("error", {})
 		return {"ok": false, "models": [], "error": Provider.refusal(code,
-			str((said as Dictionary).get("message", "")) if said is Dictionary else str(said))}
+			str((said as Dictionary).get("message", "")) if said is Dictionary else str(said), key)}
 	var models: Array = []
 	for raw: Variant in answer["data"]:
 		if raw is Dictionary and not str((raw as Dictionary).get("id", "")).is_empty():

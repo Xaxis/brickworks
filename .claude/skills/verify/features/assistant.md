@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas -->
 
 ## Sub-features
 
@@ -175,8 +175,10 @@ fixing what it got wrong.
   name, "tools ✓, pictures ✗: …", kept per model) and Design with it. The
   chat panel then sends the brief to `Main.design_with_provider` and follows
   `DesignerLoop` as it follows Claude Code (`ChatPanel.design_elsewhere`).
-  The key file is encrypted (`FileAccess.open_encrypted_with_pass`, this
-  computer's id and a salt); a plain one from before is read and encrypted.
+  The key is kept by `KeyStore` (below); where none answers, and in probes
+  (`BRICKWORKS_KEYCHAIN=off`), in a file encrypted to this computer
+  (`FileAccess.open_encrypted_with_pass`, its id and a salt). Where it is
+  kept is said beside it, in German, French and Spanish too.
   `ai_settings_probe` (in a window; `PROBE_SIZE=1024x768` or `400x860` for
   the pictures, in `shots/ai_settings/`) drives the page against
   `tools/provider_stub.py` on 9660: the list refused without the key, a key
@@ -188,6 +190,34 @@ fixing what it got wrong.
   temperature and max output in every request), and the key in none of the
   files the app wrote, its log included. The contrast and a11y names probes
   open the page too.
+- `a person's own keys kept in the system's keychain`: `src/ai/key_store.gd`
+  (`KeyStore`), for Settings, AI's keys (`ProviderSettings`) and the assistant
+  column's Anthropic key (`OwnKey`) alike (keysafe, 2026-11-03). On Linux the
+  Secret Service, by `secret-tool` or, where it is not installed, Python's
+  libsecret (the same item: application=brickworks, key=<file>, data=<this
+  data folder's hash>); on macOS the login Keychain by `security -i`, its
+  commands on the input with the key in hex; on Windows Credential Manager by
+  PowerShell's CredWrite, the script as `-EncodedCommand` and the key on its
+  input. A key never on a command line (another user can read those). A
+  keychain that does not answer in 30 s is not asked again that run, and the
+  file is used. `user://keys.cfg` notes where each key went, never the key.
+  Keys kept in files before (the Anthropic key was plain until keysafe) move
+  into the keychain once and their files go; Forget clears the keychain and
+  the file. Settings, AI says which (`KeyStore.said`). `keychain_probe`
+  (headless, inside `tools/keyring_session.sh`, a GNOME Keyring of its own,
+  never the person's; skips itself outside one): secret-tool and libsecret for
+  real, no keyring (the file, said so), `security` and PowerShell against
+  stand-ins that keep keys as they do (their protocol, not the tools
+  themselves: not on this computer), every program's arguments written down
+  and no key among them, no file holding one. `key_leak_probe` (in a window;
+  `-- --plant` is its red): made-up keys for the assistant's column, OpenAI
+  and a this-visit-only server, then a model saved and exported in every
+  format, the MCP's read-only tools' answers, a share's body and the link on
+  the clipboard, a feedback report with its log and picture, Build together's
+  messages, and the screen's words searched for each (in plain, hex and
+  base64), every file the app wrote too; Forget leaves no copy; This visit
+  only writes nothing. A refusal's words from a provider have the key
+  replaced by its fingerprint (`Provider.refusal`).
 - `designing on Anthropic's Messages or Gemini's own API`:
   `src/ai/anthropic_messages.gd` (tools as input_schema, pictures inside
   tool_result, the reply's blocks sent back untouched for thinking's

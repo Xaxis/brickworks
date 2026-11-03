@@ -295,6 +295,14 @@
       "tests": []
     },
     {
+      "id": "cli:a keyring of a run's own",
+      "kind": "cli",
+      "entry": "tools/keyring_session.sh",
+      "reach": "tools/keyring_session.sh CMD...   (CMD in a fresh, unlocked GNOME Keyring on a D-Bus session of its own, removed after; fetches libsecret-tools into ~/.cache/brickworks/secret-tool where secret-tool is not installed)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:about credits probe",
       "kind": "cli",
       "entry": "src/dev/about_credits_probe.gd",
@@ -1191,11 +1199,35 @@
       "tests": []
     },
     {
+      "id": "cli:key leak browser flow",
+      "kind": "cli",
+      "entry": "tools/web/key_leak_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/key_leak_flow.mjs --url=<preview>/app --out=DIR [--plant]   (preview_checks.sh keysafe: the policies in the headers, a made-up Anthropic key pasted against a stubbed api.anthropic.com, sent there alone, kept scrambled, Change key and This visit only, no policy refusing anything on /app, / and /gallery)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:key leak probe",
+      "kind": "cli",
+      "entry": "src/dev/key_leak_probe.gd",
+      "reach": "tools/probe.sh key_leak_probe   (made-up keys searched for in every file the app wrote, saves, exports, the share, the clipboard, MCP answers, feedback, Build together's messages and the screen; Forget, This visit only)   ... -- --plant   (the red: a key written into the model's name, which the search must find in the save, the exports and the share)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:keyboard browser flow",
       "kind": "cli",
       "entry": "tools/web/keyboard_flow.mjs",
       "reach": "node tools/web/keyboard_flow.mjs --out=shots/keyboard   (the site's journeys by Tab, Enter and Escape alone; no network: the stand-in answers the API; --url=<deployment> for a preview's pages and scripts)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:keychain probe",
+      "kind": "cli",
+      "entry": "src/dev/keychain_probe.gd",
+      "reach": "tools/keyring_session.sh tools/probe.sh keychain_probe   (headless, in a D-Bus session and GNOME Keyring of its own; skips itself outside one)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -2276,6 +2308,14 @@
       "tests": []
     },
     {
+      "id": "cli:the visit counter served from the site",
+      "kind": "cli",
+      "entry": "tools/web/overlook_copy.sh",
+      "reach": "tools/web/overlook_copy.sh   (Overlook's s.js and v.js copied into web/ov/, which every page loads as /ov/s.js with data-api=https://overlook.technology/e: no script from another origin on any page)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the weekly AI showcase",
       "kind": "cli",
       "entry": "tools/showcase.py",
@@ -2558,6 +2598,14 @@
       "entry": "src/assembly/topple.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=falling   (by hand: on no floor, swing a section out past the model's edge and let go; -- --only=tipping scans real sets headless)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "lib:a person's own keys kept in the system's keychain",
+      "kind": "lib",
+      "entry": "src/ai/key_store.gd",
+      "reach": "godot --path .  (a key given in Settings, AI or the assistant's column goes to the Secret Service by secret-tool or Python's libsecret, the macOS login Keychain by security -i, or Windows Credential Manager by PowerShell, each on the tool's input; the encrypted file where none answers, said so in Settings, AI; keys kept in files before move over once; BRICKWORKS_KEYCHAIN=off, as probe.sh and check.sh set it, keeps the file)   tools/keyring_session.sh tools/probe.sh keychain_probe",
+      "area": "assistant",
       "tests": []
     },
     {

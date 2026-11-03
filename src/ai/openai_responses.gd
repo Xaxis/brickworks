@@ -177,7 +177,7 @@ func read(code: int, body: PackedByteArray) -> Reply:
 	var failed: Variant = answer.get("error")
 	if code != 200 or failed is Dictionary or str(answer.get("status", "")) == "failed":
 		var said: Dictionary = failed if failed is Dictionary else {}
-		reply.error = Provider.refusal(code, str(said.get("message", "")))
+		reply.error = Provider.refusal(code, str(said.get("message", "")), key)
 		reply.again = Provider.transient(code) if code != 200 \
 			else str(said.get("code", "")) in ["server_error", "rate_limit_exceeded"]
 		return reply

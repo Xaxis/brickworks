@@ -98,7 +98,11 @@ for opener in xdg-open gio gvfs-open kde-open kde-open5 exo-open gnome-open; do
   printf '#!/bin/sh\necho "%s $*" >>"%s"\n' "$opener" "$asked" >"$stubs/$opener"
   chmod +x "$stubs/$opener"
 done
-held=(env -u WAYLAND_DISPLAY PATH="$stubs:$PATH" BRICKWORKS_OPEN_NOTHING=1)
+# Nor the person's keyring: a key a probe keeps goes to its data folder's
+# file (KeyStore), unless the run names a keyring (keychain_probe, inside
+# tools/keyring_session.sh, which is a keyring of its own).
+held=(env -u WAYLAND_DISPLAY PATH="$stubs:$PATH" BRICKWORKS_OPEN_NOTHING=1
+  BRICKWORKS_KEYCHAIN="${BRICKWORKS_KEYCHAIN:-off}")
 
 case " $block " in
   *" --headless "*)

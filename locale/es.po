@@ -2552,6 +2552,55 @@ msgstr "Se guarda para que no tengas que pegarla otra vez, donde otros programas
 msgid "Use this key"
 msgstr "Usar esta clave"
 
+# Settings, AI: where a key is kept, and where it may go from a web page (keysafe)
+msgid "Remember on this device"
+msgstr "Recordar en este dispositivo"
+
+msgid "Kept in this computer's keyring (the Secret Service, as GNOME Keyring or KWallet keeps it), locked with your login"
+msgstr "Guardada en el llavero de este ordenador (el Secret Service, como lo lleva GNOME Keyring o KWallet), protegido con tu inicio de sesión"
+
+msgid "Kept in your login Keychain on this Mac, locked with your login"
+msgstr "Guardada en tu llavero «Inicio de sesión» de este Mac, protegido con tu inicio de sesión"
+
+msgid "Kept in Windows Credential Manager on this computer, locked with your Windows sign-in"
+msgstr "Guardada en el Administrador de credenciales de Windows de este ordenador, protegida con tu inicio de sesión de Windows"
+
+msgid "Kept in this browser's storage for this site, scrambled but not secret: anyone using this browser could recover it, so untick Remember on a shared computer"
+msgstr "Guardada en el almacenamiento de este navegador para este sitio, ofuscada pero no secreta: cualquiera que use este navegador podría recuperarla, así que desmarca «Recordar en este dispositivo» en un ordenador compartido"
+
+msgid "No script but Brickworks' own may run on this site"
+msgstr "En este sitio no puede ejecutarse ningún script salvo los de Brickworks"
+
+msgid "Kept on this computer only, in a file of the app's own data encrypted to this computer, because no keyring answered here"
+msgstr "Guardada solo en este ordenador, en un archivo de los datos de la aplicación cifrado para este ordenador, porque aquí no respondió ningún llavero"
+
+msgid "Programs running as you could still ask for it, so a key with a spending limit is safest"
+msgstr "Los programas que se ejecutan con tu usuario aún podrían pedirla, así que lo más seguro es una clave con límite de gasto"
+
+msgid "Sent only to %s, never to Brickworks."
+msgstr "Se envía solo a %s, nunca a Brickworks."
+
+msgid "Sent only to the address above, never to Brickworks."
+msgstr "Se envía solo a la dirección de arriba, nunca a Brickworks."
+
+msgid "Kept for this visit only, nowhere on this device"
+msgstr "Guardada solo para esta visita, en ningún sitio de este dispositivo"
+
+msgid "Read from %s in the environment this app was started from"
+msgstr "Leída de %s en el entorno desde el que se inició esta aplicación"
+
+msgid "not kept by Brickworks"
+msgstr "Brickworks no la guarda"
+
+msgid "Paste a key to keep one here instead"
+msgstr "Pega una clave para guardar una aquí en su lugar"
+
+msgid "On a web page a server on your own computer answers only if it allows this site (Ollama: OLLAMA_ORIGINS), and the browser asks you first."
+msgstr "En una página web, un servidor de tu propio ordenador solo responde si permite este sitio (Ollama: OLLAMA_ORIGINS), y el navegador te pregunta antes."
+
+msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; for any other server, use the desktop app."
+msgstr "En una página web, Brickworks solo llega a los proveedores de la lista y a los servidores de tu propio ordenador; para cualquier otro servidor, usa la aplicación de escritorio."
+
 msgid "Sent only to Anthropic, never to us. Safest is a key just for this, in a Console workspace with a spend limit."
 msgstr "Se envía solo a Anthropic, nunca a nosotros. Lo más seguro es una clave solo para esto, en un espacio de trabajo de la Console con límite de gasto."
 

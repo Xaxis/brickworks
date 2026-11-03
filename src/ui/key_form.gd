@@ -114,7 +114,7 @@ func _line(text: String, size: int, alpha: float) -> Label:
 
 
 func controls_by_name() -> Dictionary:
-	return {"key_field": _field, "use_key": _use}
+	return {"key_field": _field, "use_key": _use, "remember_key": _remember}
 
 
 func focus_field() -> void:

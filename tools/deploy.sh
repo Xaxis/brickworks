@@ -506,16 +506,29 @@ echo "deploy: $docs documentation pages at /docs/"
 
 # What the pages may load and, above all, where they may send anything.
 #
-# The app holds a person's Anthropic key in the browser. The best defence
-# for that is a short list of places the page can talk to at all: itself,
-# Anthropic, Wikimedia (reference pictures), Rebrickable (a person's own
-# sets and parts lists, read with their own Rebrickable key: My collection),
+# The app holds a person's own AI keys in the browser, in the site's
+# storage, which any script running on any page of this site could read. So
+# no script runs here but the site's own: script-src is this origin and the
+# hashes of the app page's inline scripts, nothing else, on every page. The
+# visit counter is Overlook's script, served from here as web/ov/s.js
+# (tools/web/overlook_copy.sh), so a change on Overlook's server can never
+# run beside a key; its hits still go to Overlook, which connect-src allows.
+# No Trusted Types: Godot's JavaScript bridge evaluates every request as a
+# string (eval, ~90 places), so a policy would have to pass all of them, and
+# the booklet is written into its own tab with document.write, which that
+# tab would refuse.
+#
+# Then a short list of places a page can talk to at all, so even a script
+# that should never have run has nowhere to send a key: itself, the
+# counter, Wikimedia (reference pictures), Rebrickable (a person's own sets
+# and parts lists, read with their own Rebrickable key: My collection),
 # Brickognize (a photo the person chose, to find the part in it: the parts
-# bin's camera, src/net/brickognize.gd), the parts store and the sign-in service — so even a script that should
-# never have run has nowhere to send a key. The page's one inline script is allowed by its
-# hash, not by allowing inline scripts; 'unsafe-eval' stays because
-# Godot's JavaScript bridge evaluates what the app asks of the browser
-# (its size, its address, the clipboard).
+# bin's camera, src/net/brickognize.gd), the parts store and the sign-in
+# service; and for the app, the AI providers a person's own key goes to
+# (ProviderSettings' presets, read from the source so a new one is never
+# refused) and servers on the person's own computer (Ollama, LM Studio).
+# 'unsafe-eval' stays on the app alone, for Godot's JavaScript bridge (its
+# size, its address, the clipboard), and 'wasm-unsafe-eval' for the engine.
 #
 # The sign-in service is Supabase (SUPABASE_URL), where a code is
 # redeemed and a session renewed. Named on its own: it was reachable only
@@ -540,7 +553,22 @@ signin_origin=""
 [ -n "${SUPABASE_URL:-}" ] && signin_origin="$(origin_of "$SUPABASE_URL")"
 # Once each, even when they are the same place, as they are today.
 connect_extra="$(printf '%s\n' "$parts_origin" "$signin_origin" | awk 'NF && !seen[$0]++' | tr '\n' ' ')"
-csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes} https://overlook.technology; worker-src 'self' blob:; connect-src 'self' https://overlook.technology https://api.anthropic.com https://commons.wikimedia.org https://upload.wikimedia.org https://rebrickable.com https://api.brickognize.com ${connect_extra}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+providers="$(python3 - src/ai/provider_settings.gd <<'PY'
+import re, sys, urllib.parse as u
+seen = []
+for base in re.findall(r'"base": "(https://[^"]+)"', open(sys.argv[1], encoding="utf-8").read()):
+    origin = "https://" + u.urlparse(base).netloc
+    if origin not in seen:
+        seen.append(origin)
+print(" ".join(seen))
+PY
+)" || { echo "deploy FAILED: could not read the providers' addresses (src/ai/provider_settings.gd)"; exit 1; }
+case " $providers " in *" https://api.anthropic.com "*" https://api.openai.com "*|*" https://api.openai.com "*" https://api.anthropic.com "*) ;;
+  *) echo "deploy FAILED: the providers' addresses read as '$providers'"; exit 1;; esac
+reach="'self' https://overlook.technology https://commons.wikimedia.org https://upload.wikimedia.org https://rebrickable.com https://api.brickognize.com ${connect_extra}"
+closed="object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+site_csp="default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src ${reach}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
+csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src ${reach} ${providers} http://127.0.0.1:* http://localhost:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
 # Where Claude sends someone to sign in (web/authorize.html). Stricter than
 # the app's: no eval, and it talks only to itself and the sign-in service.
 # And none of the cross-origin isolation headers: the app's threaded build
@@ -656,7 +684,7 @@ $docs_moved
         "Cross-Origin-Resource-Policy": "same-origin",
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
-        "Content-Security-Policy": "$csp"
+        "Content-Security-Policy": "$site_csp"
       },
       "continue": true },
     { "src": "/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
@@ -664,7 +692,8 @@ $docs_moved
     { "src": "/($langs)/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
       "dest": "/api/people?op=challenge_page&lang=\$1" },
     { "src": "/(app|b/.*)",
-      "headers": { "Cross-Origin-Opener-Policy": "same-origin" },
+      "headers": { "Cross-Origin-Opener-Policy": "same-origin",
+        "Content-Security-Policy": "$csp" },
       "continue": true },
     { "src": "/b/([^/]+)/(.*)",
       "headers": { "Cache-Control": "public, max-age=31536000, immutable",

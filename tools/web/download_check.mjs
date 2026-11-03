@@ -67,11 +67,10 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 
-// The visit counter's script is the one thing from elsewhere the site lets
-// in (tools/deploy.sh); the browser answers it here (browser.mjs
-// quietCounter). Refused, every page logged it and this check failed on all
-// six views from the day it was added.
-const CSP = "default-src 'self'; script-src 'self' https://overlook.technology; "
+// The site's own policy (tools/deploy.sh): no script from elsewhere, the
+// visit counter being the site's own copy (web/ov/s.js), which reports to
+// Overlook, answered here (browser.mjs quietCounter).
+const CSP = "default-src 'self'; script-src 'self'; "
   + "connect-src 'self' https://overlook.technology; "
   + "style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'";

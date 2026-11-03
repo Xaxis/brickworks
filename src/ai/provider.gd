@@ -107,8 +107,10 @@ static func listed(id: String, name: String = "") -> Dictionary:
 
 
 ## What a person is told of a refusal, by HTTP status, when the provider's
-## own words say nothing better.
-static func refusal(code: int, said: String) -> String:
+## own words say nothing better. [param key], the request's, is never said
+## back: a server that echoes it would put it in the panel, a log and the
+## test kept in providers.cfg.
+static func refusal(code: int, said: String, key: String = "") -> String:
 	var words: String = {
 		0: "No answer came from the provider",
 		400: "The provider refused the request",
@@ -120,7 +122,10 @@ static func refusal(code: int, said: String) -> String:
 		429: "The provider says too many requests, or the account is out of credit",
 	}.get(code, "The provider answered %d" % code if code < 500
 		else "The provider had a fault of its own (%d)" % code)
-	return words + (": " + said.strip_edges().left(300) if not said.strip_edges().is_empty() else ".")
+	var told: String = said.strip_edges()
+	if key.length() >= 8:
+		told = told.replace(key, ProviderSettings.fingerprint(key))
+	return words + (": " + told.left(300) if not told.is_empty() else ".")
 
 
 ## Whether a refusal with [param code] may pass if asked again.
