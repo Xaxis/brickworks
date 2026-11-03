@@ -14,6 +14,15 @@
 ## fall. What really falls still does: a part in the air, a plate resting
 ## past the edge of the tile under it, and a tile lying on a slope's face
 ## with nothing joining it.
+##
+## A build parked on another, standing there by its foot alone, is a build
+## of its own, as one on the floor is, and no fault: the buggy on its plate.
+## Parked with its back wheels off the plate's edge, it falls off it. And
+## every piece said to stand against another names it, the fourth as the
+## first (Tested.NAMED names only three in full).
+##
+## Known, and left so: a loose part tilted inside what holds it is said to
+## fall, though that catches it, as one of 6043-1's boulders in its bucket.
 extends SceneTree
 
 const DEFENDER := "res://vendor/omr/files/6043-1.mpd"
@@ -70,19 +79,29 @@ func _run() -> void:
 	# joint, in the buggy standing on the studs of the plate under it.
 	var buggy: String = _section(EXPLORER, "928 - Space Buggy.ldr") \
 		+ _section(EXPLORER, "928 - White Minifig2.ldr")
-	# Its 23 parts rest on the plate, joined to it by nothing, and come away in
-	# the hand, as the set's own buggy does off its baseplate. (Its airtanks,
-	# on a jumper's stud through the hole a neck goes in, fall in the set too.)
+	# Its 23 parts stand on the plate's studs, joined to it by nothing, as the
+	# set's own buggy stands on its baseplate: a build of its own, parked. (Its
+	# airtanks, on a jumper's stud through the hole a neck goes in, are left
+	# off: they fall in the set too, a fault of their own.)
+	buggy = buggy.replace("1 7 0 -40 -50 -1 0 0 0 1 0 0 0 -1 3838.dat\r\n", "")
 	var parked: Dictionary = await _test(_model("parked", [["1 7 0 0 0 1 0 0 0 1 0 0 0 1 3958.dat"],
 		["1 16 0 -4 0 1 0 0 0 1 0 0 0 1 928 - Space Buggy.ldr"]], buggy))
 	print("  %s" % _said(parked))
-	var buggy_said: Array = (Tested.said_all.get("whole", []) as Array).filter(func(one: String) -> bool:
-		return one.contains(" and 22 parts with it "))
-	_ok(buggy_said.size() == 1 and str(buggy_said[0]).ends_with(" rests on Plate 6 x 6"),
-		"928-1's buggy, its driver's arm raised, rests on a plate's studs, and is not said to fall: %s"
-		% str(buggy_said))
+	_ok(_passes(parked, "whole") and _why(parked, "whole").begins_with("2 builds")
+		and _why(parked, "whole").ends_with(" and 22 parts with it rests on Plate 6 x 6"),
+		"928-1's buggy, its driver's arm raised, parked on a plate's studs, is a build of its own: %s"
+		% _why(parked, "whole"))
 
 	print("\nfalls, and is said to")
+	# The buggy 80 LDU along, its front wheels on the plate, its back ones and
+	# its middle past the plate's edge, 60 LDU along: it tips off.
+	var off_edge: Dictionary = await _test(_model("off_edge", [["1 7 0 0 0 1 0 0 0 1 0 0 0 1 3958.dat"],
+		["1 16 0 -4 80 1 0 0 0 1 0 0 0 1 928 - Space Buggy.ldr"]], buggy))
+	print("  %s" % _said(off_edge))
+	_ok((Tested.said_all.get("whole", []) as Array).size() == 1
+		and str(Tested.said_all["whole"][0]).ends_with(" and 22 parts with it falls off Plate 6 x 6")
+		and not Tested.said_all.has("parked"),
+		"the buggy parked with its back wheels off the plate's edge falls off it: %s" % _why(off_edge, "whole"))
 	var floating: Dictionary = await _test(_model("floating", [stack,
 		["1 4 -100 -90 0 1 0 0 0 1 0 0 0 1 3004.dat"]]))
 	print("  %s" % _said(floating))
@@ -106,6 +125,19 @@ func _run() -> void:
 	_ok(_falls(slope, "Tile 1 x 2") and (Tested.said_all.get("whole", []) as Array).size() == 1,
 		"a 1 x 2 tile lying on a slope's face, joined to nothing, falls, and nothing else is said: %s"
 		% _why(slope, "whole"))
+
+	print("\nstands against another, and names it")
+	# Four 1 x 1 bricks on the floor, each against a side of the stack: each
+	# stands against it, and says so, past the three named in full.
+	var ringed: Dictionary = await _test(_model("ringed", [stack,
+		["1 4 -50 -24 0 1 0 0 0 1 0 0 0 1 3005.dat", "1 4 -150 -24 0 1 0 0 0 1 0 0 0 1 3005.dat",
+		"1 4 -100 -24 30 1 0 0 0 1 0 0 0 1 3005.dat", "1 4 -100 -24 -30 1 0 0 0 1 0 0 0 1 3005.dat"]]))
+	print("  %s" % _said(ringed))
+	var against: Array = Tested.said_all.get("whole", [])
+	_ok(against.size() == 4 and against.all(func(one: String) -> bool:
+		return one == "Brick 1 x 1 stands against Brick 2 x 4"),
+		"four 1 x 1 bricks against a stack each stand against it, the fourth named as the first: %s"
+		% str(against))
 
 	print("%d FAILED" % _failures if _failures else
 		"a part is said to fall when it falls, and not when it stands")

@@ -470,6 +470,50 @@ func rests(members: Array) -> bool:
 	return true
 
 
+## What a piece of [param members] that [method rests] stands on by its foot
+## alone, as a car parked on a baseplate stands on its wheels: [its part, the
+## part of another piece it touches by the most points], or [] where any of
+## it touches another part higher than [constant FOOT] over its own lowest
+## point. A pane in its frame, hair on a head and a part beside a wall touch
+## so: wedged into, worn on, hanging from or against what holds them, they
+## are not parked on it. The parts in [param gone] (those of pieces that fall
+## or come away themselves) wedge and hold nothing, as in [method caught]:
+## 928-1's buggy touches its airtanks higher up, which fall off their jumper.
+## What it stands on it stands on whatever that does: 7641-1's lid on its
+## bin, on a baseplate said to stand against another, is that one fault.
+func rests_on(members: Array, gone: Dictionary = {}) -> Array:
+	var mine: Dictionary = {}
+	for i: Variant in members:
+		mine[int(i)] = true
+	var around: PackedInt32Array = _around(members)
+	var by: Dictionary = {}            ## part -> [how many points, the first of members on it]
+	var touching := PackedVector3Array()
+	for i: Variant in members:
+		var item: Exact.Item = items[int(i)]
+		if item == null:
+			return []
+		var foot: float = item.low().y + FOOT
+		for j: int in Exact._near(items, int(i), around, TOUCH + Exact.TAU):
+			if mine.has(j) or items[j] == null:
+				continue
+			touching.clear()
+			_touching(item, items[j], touching)
+			var beside: bool = false
+			for w: Vector3 in touching:
+				beside = beside or w.y > foot
+			if beside and not gone.has(j):
+				return []
+			if not beside and not touching.is_empty():
+				if not by.has(j):
+					by[j] = [0, int(i)]
+				by[j][0] = int(by[j][0]) + touching.size()
+	var best: int = -1
+	for j: int in by:
+		if best < 0 or int(by[j][0]) > int(by[best][0]):
+			best = j
+	return [] if best < 0 else [int(by[best][1]), best]
+
+
 ## The items whose boxes come within TOUCH of [param members]' box, its own
 ## among them: what any of them can touch, found in one pass over the model
 ## rather than one a member. A wall column of 225 parts was 2.1 million boxes
@@ -1179,6 +1223,10 @@ const DIAGONAL := 14.142
 const PITCH := 20.0
 ## A stud's height, LDU.
 const STUD_HIGH := 4.0
+## How high over a part's lowest point what it stands on may touch it, LDU
+## ([method rests_on]): the studs it stands among, and what is within TOUCH
+## of their tops.
+const FOOT := STUD_HIGH + TOUCH
 ## How tall a tile is at most, LDU: a plate's height (set_down).
 const TILE_HIGH := 8.5
 ## How far a part that only rests is looked to be seated, LDU: two studs.

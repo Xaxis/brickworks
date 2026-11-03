@@ -166,6 +166,8 @@ func _run() -> void:
 			if failed:
 				for one: Variant in (all.get(test, []) as Array):
 					print("    %s: %s" % [test, str(one)])
+		for one: Variant in (all.get("parked", []) as Array):
+			print("    parked: %s" % str(one))
 		var most: Array = MOST.get(n, [0, 0, 0, 0])
 		_ok(found.has("tests") and range(4).all(func(k: int) -> bool: return int(counts[k]) <= int(most[k])),
 			"%d %s fails no more than it did: %s of at most %s" % [n, entry["name"], str(counts), str(most)])

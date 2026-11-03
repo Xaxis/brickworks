@@ -66,7 +66,12 @@
 ##           (ExactCheck.comes_away). A piece on the floor that stands by
 ##           itself and touches no bigger piece is a build of its own (a
 ##           set's figures beside its car); one that leans, or stands
-##           against or inside a bigger one, is not held. A part with no
+##           against or inside a bigger one, is not held. One that stands by
+##           its foot alone on another build, its weight over what it stands
+##           on, is a build of its own too (a set's car parked on its
+##           baseplate, rests_on); wedged into, worn on, hanging from or
+##           against another, or on studs where it has no stud for them, it
+##           is not. A part with no
 ##           exact shape is held as the joints and what rests on what hold
 ##           it, as before.
 ##           models175 found the test before this held a part whenever it
@@ -1461,13 +1466,16 @@ const FETCH_WAIT_MS := 120000
 ## (it does not stand where it is), "away" (it stands, and comes away in the
 ## hand), "missed" (that, on another part's stud grid where it has no stud),
 ## "against" (on the floor, touching a bigger piece) or "leans" (on the
-## floor, and it does not stand by itself)}. Numbers are [param parts]'.
+## floor, and it does not stand by itself); "parked": [{part, on, size}, ...]
+## the builds that stand on another, the biggest first}. Numbers are [param parts]'.
 ##
 ## Two parts are joined by BrickNet's connections, by [param glued], and by
 ## [param joints] where either has no exact shape. The piece with the most
 ## parts on the floor is the model; another on the floor that stands by
 ## itself and touches no bigger piece is a build of its own, as a set's
-## figures beside its car are. Any other piece that stands where it is and is caught
+## figures beside its car are, and so is one that stands by its foot alone on
+## another, as its car parked on its baseplate is (ExactCheck.rests_on). Any
+## other piece that stands where it is and is caught
 ## there stays, as the orrery's planet rings do (connect166, models175:
 ## ExactCheck.comes_away), unless what catches it comes away itself; and so
 ## does one with a part of no exact shape that [param resting] holds, as the
@@ -1580,32 +1588,45 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 		if not stands[key]:
 			for n: int in members[key]:
 				gone[n] = true
+	# One that comes away, standing by its foot alone on another build, is
+	# parked there, a build of its own, as one on the floor is: 928-1's buggy on
+	# its baseplate, a train on its track, a lid on its bin. Wedged into, worn on,
+	# hanging from or against another (ExactCheck.rests_on), or on its studs
+	# where it has no stud to take them (it missed them), it is held by nothing.
 	var away: Dictionary = {}
+	var atop: Dictionary = {}          ## root -> [its part, the part it is parked on]
 	var more: bool = true
 	while more:
 		more = false
 		for key: int in stands:
-			if stands[key] and not away.has(key) and exact.comes_away(members[key], gone):
-				away[key] = true
-				more = true
-				for n: int in members[key]:
-					gone[n] = true
+			if not stands[key] or away.has(key) or atop.has(key) or not exact.comes_away(members[key], gone):
+				continue
+			var on: Array = exact.rests_on(members[key], gone)
+			if not on.is_empty() and exact.on_missing_stud(members[key]) < 0:
+				atop[key] = on
+				continue
+			away[key] = true
+			more = true
+			for n: int in members[key]:
+				gone[n] = true
+	var parked: Array = []
+	for key: int in atop:
+		parked.append({"part": atop[key][0], "on": atop[key][1], "size": (members[key] as Array).size()})
+	parked.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return int(x["size"]) > int(y["size"]))
 	var apart: Array = []
 	for key: int in stands:
 		if stands[key] and not away.has(key):
 			continue
 		var kind: String = "leans" if leans.has(key) else "against" if against.has(key) \
 			else "away" if away.has(key) else "falls"
-		apart.append({"kind": kind, "part": (members[key] as Array)[0], "on": -1,
+		apart.append({"kind": kind, "part": (members[key] as Array)[0], "on": against.get(key, -1),
 			"size": (members[key] as Array).size(), "key": key})
 	apart.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return int(x["size"]) > int(y["size"]))
 	# Those named, by the part that rests on something not of its piece, or
 	# the part of the piece it stands in that it stands under or by.
 	for one: Dictionary in apart.slice(0, NAMED):
 		var them: Array = members[one["key"]]
-		if one["kind"] == "against":
-			one["on"] = against[one["key"]]
-		else:
+		if one["kind"] != "against":
 			for n: int in them:
 				var under: int = exact.under(n)
 				if under >= 0 and not them.has(under):
@@ -1618,7 +1639,7 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 				one["kind"] = "missed"
 				one["on"] = missed
 		one.erase("key")
-	return {"into": into, "builds": 1 + builds.size(), "apart": apart}
+	return {"into": into, "builds": 1 + builds.size() + parked.size(), "apart": apart, "parked": parked}
 
 
 ## Where part [param n] of [param parts] really reaches: [lo, hi]. By its
@@ -1671,19 +1692,26 @@ static func _whole_said(whole: Dictionary, bricks: Array, library: PartLibrary) 
 	var name := func(n: int) -> String: return _named((bricks[n] as BrickWorld.Brick).part_id, library)
 	var into: Array = whole.get("into", [])
 	var apart: Array = whole.get("apart", [])
+	var with_it := func(one: Dictionary) -> String:
+		var rest: int = int(one["size"]) - 1
+		return name.call(int(one["part"])) + (" and %s with it" % _counted(rest, "part") if rest > 0 else "")
+	var parked: Array = (whole.get("parked", []) as Array).map(func(one: Dictionary) -> String:
+		return "%s rests on %s" % [with_it.call(one), name.call(int(one["on"]))])
+	if not parked.is_empty():
+		said_all["parked"] = parked
 	if into.is_empty() and apart.is_empty():
 		var builds: int = int(whole.get("builds", 1))
-		return {"ok": true, "why": ("One piece" if builds == 1 else "%d builds, each standing on its own"
-			% builds) + ": every part is held by a stud or a joint, or caught where it is, and none "
-			+ "passes into another"}
+		var why: String = ("One piece" if builds == 1 else "%d builds, each standing on its own"
+			% builds) + ": every part is held by a stud or a joint, or caught where it is, and none " \
+			+ "passes into another"
+		if not parked.is_empty():
+			why += "; " + _list_within(parked, parked.size(), "build", MOST_WHY - why.length() - 26)
+		return {"ok": true, "why": why}
 	var pairs: Array = into.map(func(one: Array) -> String:
 		return "%s into %s by %s LDU" % [name.call(int(one[0])), name.call(int(one[1])),
 			ExactCheck._n(snappedf(float(one[2]), 0.1))])
 	var pieces: Array = apart.map(func(one: Dictionary) -> String:
-		var who: String = name.call(int(one["part"]))
-		var rest: int = int(one["size"]) - 1
-		if rest > 0:
-			who += " and %s with it" % _counted(rest, "part")
+		var who: String = with_it.call(one)
 		var on: String = name.call(int(one["on"])) if int(one["on"]) >= 0 else ""
 		match str(one["kind"]):
 			"against":
