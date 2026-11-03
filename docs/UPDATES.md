@@ -83,6 +83,13 @@ one starts.
 A copy that cannot write where it is installed (a tar.xz under /opt) says so,
 and its button opens the download page.
 
+**On Windows the helper first leaves the app's folder.** An exported Godot
+app makes its own folder its working directory as it starts (`main.cpp`),
+and `OS.create_process` starts the helper there. Windows will not move a
+folder that is a process's working directory, so on the first runner proof
+every install said `could not move` and 0.90.0 stayed (2026-11-03). Linux
+and macOS rename it all the same.
+
 **A Windows installer** (per-user, Start menu, Uninstall in Settings ▸ Apps,
 as VS Code, Figma and Obsidian ship) is standard, and is the packaging
 unit's. A copy it installs is a folder in `%LOCALAPPDATA%\Programs`, which
@@ -95,6 +102,10 @@ releases (plain HTTP only on this machine's own address). Every signature,
 size and hash is still checked, so the test manifests are signed by the real
 keys. `tools/update_check.py` builds two versions, serves them, and drives
 `--update=check|fetch|install|reinstall|restart` through every refusal and
-through a real install that restarts with the model kept.
+through a real install that restarts with the model kept. A macOS or
+Windows runner has no signing key, so `update_check.py lay` signs every
+scenario here and `run --laid=DIR` drives them there, at the same port; the
+first proof ran them from a throwaway branch's workflow and a draft release,
+both deleted after.
 `src/dev/updater_probe.gd` checks the manifest, the versions and the
 addresses, and drives the notice, the Help menu and the setting.
