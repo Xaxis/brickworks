@@ -222,7 +222,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
 import { isCron } from "./_cron.js";
-import { db, dbConfigured } from "./_db.js";
+import { db, dbConfigured, reach } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
@@ -261,7 +261,7 @@ import { challengeLine, withWins } from "./_challenges.js";
 import { bases, basesOf, basesPut, setBased } from "./_bases.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, basedHtml, cardHtml, counted, langAt, marksOf, number, quietMarks, say, themeSaid } from "./_card.js";
+import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, quietMarks, say, themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -626,22 +626,22 @@ function storageHeaders(extra = {}) {
 }
 
 async function putFile(name, body, type) {
-  const answer = await fetch(`${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
+  const what = `storage POST ${name.split(".").pop()}`;
+  const answer = await reach(what, 20, `${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
     method: "POST",
     headers: storageHeaders({ "content-type": type, "x-upsert": "true", "cache-control": "no-store" }),
     body,
-    signal: AbortSignal.timeout(20000),
   });
-  if (!answer.ok) throw new Error(`storage POST ${name.split(".").pop()}: ${answer.status}`);
+  if (!answer.ok) throw new Error(`${what}: ${answer.status}`);
 }
 
 async function getFile(name) {
-  const answer = await fetch(`${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
+  const what = `storage GET ${name.split(".").pop()}`;
+  const answer = await reach(what, 20, `${project()}/storage/v1/object/${bucketOf(name)}/${name}`, {
     headers: storageHeaders(),
-    signal: AbortSignal.timeout(20000),
   });
   if (answer.status === 400 || answer.status === 404) return null;
-  if (!answer.ok) throw new Error(`storage GET ${name.split(".").pop()}: ${answer.status}`);
+  if (!answer.ok) throw new Error(`${what}: ${answer.status}`);
   return Buffer.from(await answer.arrayBuffer());
 }
 
@@ -649,13 +649,12 @@ async function deleteFiles(names) {
   for (const bucket of [BUCKET, THUMBS]) {
     const these = names.filter((name) => bucketOf(name) === bucket);
     if (these.length === 0) continue;
-    const answer = await fetch(`${project()}/storage/v1/object/${bucket}`, {
+    const answer = await reach(`storage DELETE ${bucket}`, 20, `${project()}/storage/v1/object/${bucket}`, {
       method: "DELETE",
       headers: storageHeaders({ "content-type": "application/json" }),
       body: JSON.stringify({ prefixes: these }),
-      signal: AbortSignal.timeout(20000),
     });
-    if (!answer.ok) throw new Error(`storage DELETE: ${answer.status}`);
+    if (!answer.ok) throw new Error(`storage DELETE ${bucket}: ${answer.status}`);
   }
 }
 
@@ -664,13 +663,12 @@ async function listFiles() {
   const files = [];
   for (const bucket of [BUCKET, THUMBS]) {
     for (let offset = 0; ; offset += 1000) {
-      const answer = await fetch(`${project()}/storage/v1/object/list/${bucket}`, {
+      const answer = await reach(`storage list ${bucket}`, 20, `${project()}/storage/v1/object/list/${bucket}`, {
         method: "POST",
         headers: storageHeaders({ "content-type": "application/json" }),
         body: JSON.stringify({ prefix: "", limit: 1000, offset, sortBy: { column: "name", order: "asc" } }),
-        signal: AbortSignal.timeout(20000),
       });
-      if (!answer.ok) throw new Error(`storage list: ${answer.status}`);
+      if (!answer.ok) throw new Error(`storage list ${bucket}: ${answer.status}`);
       const page = await answer.json();
       files.push(...page.filter((file) => file.id !== null));
       if (page.length < 1000) break;
@@ -1157,6 +1155,18 @@ function shareSheet(origin, id, model, url) {
     image: model.has_image || model.library ? link.image : "", embed: link.embed });
 }
 
+/// How [model] was made, as a fact of its page when it was made with the
+/// assistant or Brickify, and who says so on hover (web/card.js madeOf);
+/// "" for one built by hand.
+function madeFact(model) {
+  const made = madeOf(model);
+  if (made.way !== "assistant") return "";
+  const how = say(made.said === "app" ? "as the app said when it was published" : "as its designer tagged it");
+  return made.by === "brickify"
+    ? `<li class="pill made" title="${escapeHtml(say("Made from a 3D model with Brickify, {how}", { how }))}">Brickify</li>`
+    : `<li class="pill made" title="${escapeHtml(say("Designed with the assistant, {how}", { how }))}">${asText(say("With the assistant"))}</li>`;
+}
+
 /// /m/X: the model's own page. Its picture first, with the strip of its
 /// other pictures, and beside it on a laptop (under it on a phone) what it
 /// is, who made it, the way into the viewer and the app, and the action
@@ -1239,6 +1249,9 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
       ? asText(say("{steps}, laid out by its builder", { steps: stepsSaid(stepsCounted) })) : stepsSaid(stepsCounted)}</li>` : "",
     side ? `<li class="pill" data-side="${stepsCounted.side}">${side}</li>` : "",
     model.technic ? `<li class="pill">${asText(say("Technic or a mechanism"))}</li>` : "",
+    // How it was made, when not by hand: said here, never on its card
+    // (web/card.js).
+    madeFact(model),
     // What it does: its own motions' names, else what its app found moves.
     movesWords(model) ? `<li class="pill">${escapeHtml(`${say("Moves:")} ${movesWords(model)}`)}</li>` : "",
     Number(model.views) ? `<li class="pill"><span data-count="views">${counted(model.views, "view")}</span></li>` : "",
@@ -1290,7 +1303,8 @@ ${structured(origin, id, model)}
 ${header}
 <main id="main">
 <article class="wrap wide model-page">
-  <nav class="crumbs" aria-label="${asText(say("Where it is"))}">${set ? `<a href="${at}/library">${asText(say("LDraw library"))}</a>${set.theme
+  <nav class="crumbs" aria-label="${asText(say("Where it is"))}">${set ? `<a href="${at}/gallery">${asText(say("Gallery"))}</a>`
+    + ` <span aria-hidden="true">›</span> <a href="${at}/library">${asText(say("Sets"))}</a>${set.theme
     ? ` <span aria-hidden="true">›</span> <a href="${at}/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(themeSaid(set.theme))}</a>` : ""}`
     : `<a href="${at}/gallery">${asText(say("Gallery"))}</a>${model.kind
     ? ` <span aria-hidden="true">›</span> <a href="${at}/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}`}</nav>

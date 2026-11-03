@@ -274,13 +274,12 @@ try {
     await until(page, () => location.search.includes("made=assistant") && document.documentElement.dataset.gallery === "ready");
     const made = await page.evaluate(() => {
       const cards = [...document.querySelectorAll("#models .model")];
-      // Each made so, and none saying it: a mark every card carries tells none apart.
-      return { n: cards.length, all: cards.every((el) => el.dataset.made === "assistant" && el.querySelector(".marks .pill.made")),
-        shown: cards.filter((el) => el.querySelector(".marks .pill.made")?.getClientRects().length).length,
-        quiet: document.body.dataset.quiet || "", said: document.getElementById("filters-said").textContent };
+      // The list is the filter's; no card says how it was made (its own page does).
+      return { n: cards.length, saying: cards.filter((el) => el.dataset.made || el.querySelector(".marks .pill.made")).length,
+        said: document.getElementById("filters-said").textContent };
     });
-    check(made.n > 0 && made.all && (made.n < 4 || (made.shown === 0 && /made/.test(made.quiet))) && made.said === "1",
-      `Made: with the assistant: ${made.n} cards, each made so, its mark shown on ${made.shown} (data-quiet "${made.quiet}"); Filters says ${made.said} on`);
+    check(made.n > 0 && made.saying === 0 && made.said === "1",
+      `Made: with the assistant: ${made.n} cards, ${made.saying} saying how it was made on the card; Filters says ${made.said} on`);
     await shot(page, "2_made_assistant_1280.png");
     await context.close();
   }

@@ -9,6 +9,25 @@ export function dbConfigured() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY);
 }
 
+/// fetch, for one call to the project that names itself when it fails:
+/// [what] is its verb and its table or bucket ("storage POST png"), never a
+/// row or a file's name. Given up after [seconds], its answer's reading
+/// included, it throws "<what>: no answer in <seconds> s"; never reaching
+/// the project, "<what>: not reached". A bare abort says only "The
+/// operation was aborted due to timeout", which is all seven refused
+/// publishes left in the log on 2026-11-02, when Supabase's storage took
+/// up to 40 s a write (sharetime).
+export async function reach(what, seconds, url, init = {}) {
+  const deadline = new AbortController();
+  setTimeout(() => deadline.abort(new Error(`${what}: no answer in ${seconds} s`)), seconds * 1000).unref?.();
+  try {
+    return await fetch(url, { ...init, signal: deadline.signal });
+  } catch (trouble) {
+    if (deadline.signal.aborted) throw deadline.signal.reason;
+    throw new Error(`${what}: not reached (${trouble?.cause?.code || trouble?.message || trouble})`);
+  }
+}
+
 /// One PostgREST request. Throws on anything but a success, naming the
 /// table and the status and nothing else (no row ever ends up in a log).
 export async function db(path, { method = "GET", body, prefer } = {}) {
@@ -20,15 +39,13 @@ export async function db(path, { method = "GET", body, prefer } = {}) {
     "content-type": "application/json",
   };
   if (prefer) headers.prefer = prefer;
-  const answer = await fetch(`${base}/rest/v1/${path}`, {
+  const what = `database ${method} ${path.split("?")[0]}`;
+  const answer = await reach(what, 15, `${base}/rest/v1/${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(15000),
   });
-  if (!answer.ok) {
-    throw new Error(`database ${method} ${path.split("?")[0]}: ${answer.status}`);
-  }
+  if (!answer.ok) throw new Error(`${what}: ${answer.status}`);
   const text = await answer.text();
   return text ? JSON.parse(text) : null;
 }

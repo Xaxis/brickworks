@@ -458,7 +458,9 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
     await context.close();
     continue;
   }
-  await page.waitForFunction(() => document.documentElement.dataset.gallery, null, { timeout: 20000 }).catch(() => {});
+  // Drawn once it says ready (or broken), not while it says asking.
+  await page.waitForFunction(() => ["ready", "broken"].includes(document.documentElement.dataset.gallery), null, { timeout: 20000 })
+    .catch(() => {});
   const look = () => page.evaluate(() => ({
     state: document.documentElement.dataset.gallery || "",
     // A card's size and its designer, said as one line ("86 parts, by Builder 2").

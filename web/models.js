@@ -9,9 +9,9 @@
 // views), over all time, this month or this week; New; and, signed in,
 // Following, the models of the people you follow. The kinds are a row of
 // pills; the rest (the order, the size, instructions, Technic, Tested,
-// hand-built or with the assistant) is in Filters. The time windows,
-// Following and Made are offered only when the list says it can answer
-// them (supabase/gallery_tabs.sql applied).
+// hand-built or with the assistant, and on a phone Top's time) is in
+// Filters. The time windows, Following and Made are offered only when the
+// list says it can answer them (supabase/gallery_tabs.sql applied).
 //
 // The question lives in the address (/gallery?q=castle&kind=space&sort=newest),
 // so a search can be sent to somebody and a reload asks it again; gallery.js
@@ -193,6 +193,19 @@ export function modelsList(page) {
   /// Which of the models' tabs the question is.
   const tab = () => (following ? "following" : order() === "newest" ? "new" : "top");
 
+  /// Top's window: on a phone in Filters, so the tabs have their row to
+  /// themselves (beside it they showed two and a half); wider, at the
+  /// tabs' end.
+  const phone = matchMedia("(width < 600px)");
+  function placeWindow() {
+    const label = $("window-label");
+    if (phone.matches) $("filters").querySelector(".menu-list").insertBefore(label, size.closest("label"));
+    else document.querySelector(".gallery-bar").append(label);
+    label.querySelector("span").classList.toggle("visually-hidden", !phone.matches);
+  }
+  /// Whether Top's window is one of Filters' now.
+  const windowFiltered = () => phone.matches && !$("window-label").hidden && Boolean(chosen(windowed));
+
   /// The tabs' own: Following once signed in and the list can answer it,
   /// Top's window, Made, and the kinds as the question has them.
   function drawTabs() {
@@ -230,7 +243,7 @@ export function modelsList(page) {
   /// to let go of: the tag, an order other than the tabs', a size, how it
   /// was made and each box ticked; Clear all once there are two.
   function sayFilters() {
-    let on = [chosen(size), chosen(made), instructions.checked, technic.checked, tested.checked].filter(Boolean).length;
+    let on = [chosen(size), chosen(made), instructions.checked, technic.checked, tested.checked, windowFiltered()].filter(Boolean).length;
     if (!["top", "newest"].includes(order())) on += 1;
     const n = $("filters-said");
     n.textContent = on ? String(on) : "";
@@ -600,7 +613,13 @@ export function modelsList(page) {
     page.ask();
   });
   for (const control of [sort, size, made, windowed, instructions, technic, tested]) control.addEventListener("change", () => page.ask());
+  placeWindow();
+  phone.addEventListener("change", () => {
+    placeWindow();
+    sayFilters();
+  });
   $("filters-clear").addEventListener("click", () => {
+    if (windowFiltered()) windowed.value = "";
     for (const select of [size, made]) select.value = "";
     if (!["top", "newest"].includes(sort.value)) sort.value = "top";
     instructions.checked = technic.checked = tested.checked = false;

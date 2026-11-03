@@ -427,9 +427,10 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
     page.on("pageerror", (e) => said.push(String(e).slice(0, 160)));
     try {
       await page.goto(base + path, { waitUntil: "load", timeout: 60000 });
-      // The gallery draws its cards after load, from /api/share?op=list.
+      // The gallery's tabs draw their cards after load, from the API; the page
+      // says "asking" (data-browse) until the tab's answer comes.
       await page.waitForFunction(() => !document.getElementById("models")
-        || document.documentElement.dataset.gallery, null, { timeout: 20000 }).catch(() => {});
+        || ["ready", "broken"].includes(document.documentElement.dataset.browse), null, { timeout: 20000 }).catch(() => {});
       // Every lazy picture in, so the full-page shot shows the page as read.
       await allPictures(page);
       await page.waitForTimeout(400);

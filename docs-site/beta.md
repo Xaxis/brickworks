@@ -21,9 +21,9 @@ lib:the beta's spots and months
 30 days of Pro on your account:
 
 - **every model kept with your account**, without a limit (Free keeps 25);
-- **the desktop app** for Windows, macOS and Linux, with every part on disk. It works with your AI exactly as the web app does, and with Claude Code too.
+- **commercial use**: for the month, sell what you make with Brickworks (instructions, kits, renders or builds made to order) under Pro's terms.
 
-Your AI is your own on every plan: Claude or ChatGPT through the connector, Claude Code, or your own key. Brickworks never counts it.
+The desktop app is free to everyone, with Pro or without ([Plans](/docs/plans)). Your AI is your own on every plan: your Claude through the connector or Claude Code, or an Anthropic API key, in any browser; in the desktop app, your own key for OpenAI, Gemini and others too. Brickworks never counts it.
 
 The month starts the day you are approved, or the day Pro launches if that is later. You get an email when it starts, and another three days before it ends.
 

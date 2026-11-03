@@ -654,8 +654,9 @@ async function setSaid(tab, code, one, where) {
     tabs: [...document.querySelectorAll(".parts-bar [data-group]")].map((button) => button.textContent.trim()),
   }));
   const theme = code === "en" ? one.set.theme : THEMES[code][one.set.theme];
-  check(said.crumbs[0]?.[0] === script(code, "Library") && said.crumbs[0]?.[1] === `${at}/library`
-    && said.crumbs[1]?.[0] === theme, `${where}: its crumbs, ${said.crumbs.map(([text, to]) => `"${text}" ${to}`).join(", ")}`);
+  check(said.crumbs[0]?.[0] === script(code, "Gallery") && said.crumbs[0]?.[1] === `${at}/gallery`
+    && said.crumbs[1]?.[0] === script(code, "Sets") && said.crumbs[1]?.[1] === `${at}/library`
+    && said.crumbs[2]?.[0] === theme, `${where}: its crumbs, ${said.crumbs.map(([text, to]) => `"${text}" ${to}`).join(", ")}`);
   const want = { en: one.path, de: `/de${one.path}`, fr: `/fr${one.path}`, es: `/es${one.path}`, "x-default": one.path };
   check(JSON.stringify(said.alternates) === JSON.stringify(want) && said.canonical === own && said.url === own,
     `${where}: ${Object.keys(said.alternates).length} alternates, canonical and og:url ${said.canonical}`);
@@ -1106,7 +1107,9 @@ async function ldrawSaid(browser, code, width, id) {
       tabs: [...document.querySelectorAll("#page-tabs a")].map((a) => a.firstChild.textContent.trim()),
       sets: [...document.querySelectorAll("main a[href*='/library/set/']")].map((a) => new URL(a.href).pathname),
     }));
-    check(chrome.crumbs[0]?.[1] === `${lang}/library` && chrome.sets.length && chrome.sets.every((at) => at.startsWith(`${lang}/library/set/`)),
+    check(chrome.crumbs.slice(0, 2).map(([text, to]) => `${text} ${to}`).join(", ")
+      === `${script(code, "Gallery")} ${lang}/gallery, ${script(code, "Sets")} ${lang}/library`
+      && chrome.sets.length && chrome.sets.every((at) => at.startsWith(`${lang}/library/set/`)),
       `${where}: its crumbs ${chrome.crumbs.map(([text, to]) => `"${text}" ${to}`).join(", ")}; ${chrome.sets.length} links to the set's page`);
     const tabs = ["About", "Parts"].map((word) => script(code, word));
     check(tabs.every((word) => chrome.tabs.includes(word)), `${where}: its tabs ${chrome.tabs.join(" / ")}`);
