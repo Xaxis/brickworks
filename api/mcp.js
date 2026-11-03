@@ -433,8 +433,8 @@ function ownTools() {
     const url = new URL(where, import.meta.url);
     if (!existsSync(url)) continue;
     ownList = JSON.parse(readFileSync(url, "utf8")).map((one) => keptOrder({
-      name: one.name || "", description: one.description || "",
-      inputSchema: one.input_schema || {}, annotations: one.annotations || {},
+      name: one.name || "", title: String((one.annotations || {}).title ?? one.name ?? ""),
+      description: one.description || "", inputSchema: one.input_schema || {}, annotations: one.annotations || {},
     }));
     break;
   }
@@ -631,8 +631,10 @@ const RELAY_TOOLS = [
       "is working in it, and which one this chat's calls go to. Call it when the person has " +
       "more than one tab open, or when an answer names a tab or model you did not expect.",
     inputSchema: { type: "object", properties: {} },
-    // As the app's own tools carry theirs (CommandSocket.HINTS): neither of
-    // these changes any model, or anything but which tab this session uses.
+    // As the app's own tools carry theirs (CommandSocket.served_tools and
+    // HINTS): neither of these changes any model, or anything but which tab
+    // this session uses.
+    title: "List the open tabs",
     annotations: { title: "List the open tabs", readOnlyHint: true, openWorldHint: false },
   },
   {
@@ -646,6 +648,7 @@ const RELAY_TOOLS = [
       properties: { tab: { type: "string", description: "The tab's id, or its model's name." } },
       required: ["tab"],
     },
+    title: "Work in another tab",
     annotations: { title: "Work in another tab", readOnlyHint: true, openWorldHint: false },
   },
 ];

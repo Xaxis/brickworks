@@ -55,6 +55,14 @@ ui:design on your own subscription
 lib:best of two
 -->
 
+### On your GitHub Copilot plan, in the panel {#my-copilot}
+
+In the desktop app, with the GitHub Copilot CLI installed and signed in (`copilot login` in a terminal), **My Copilot** sits beside **My Claude**, and the panel designs on your Copilot plan with the model you chose in Copilot. Copilot is given this window's tools and nothing else: no shell, no files, none of your other MCP servers. A design is made once, and spends your plan's allowance as a prompt in Copilot does. From a terminal, `--ask-copilot="a small post box"` does the same at start-up.
+
+<!-- covers
+ui:design on your own Copilot plan
+-->
+
 ## Another AI on your own key {#other-ais}
 
 **Tools › Settings…**, then **AI…**, chooses who designs: **Claude**, as above, or **another AI on your own API key**. The other AI is given the same instructions and the same tools Claude is, builds in the window as Claude does, is held to the same checks, and answers the same [fresh look](/docs/fresh-eyes) at its first save.

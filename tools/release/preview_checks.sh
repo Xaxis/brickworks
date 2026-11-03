@@ -432,6 +432,11 @@ declare -A CMD=(
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
+  # An app directory's reviewer signing in (/review, docs/directory/
+  # claude.md): a throwaway review account's password, another address and
+  # a wrong password refused, the session kept where the app and Claude's
+  # sign-in read it, Sign out; at 1280 and 390. The account deleted after.
+  [review]="tools/web/review_flow.mjs --url=$P --out=$S/${TAG}_review"
   # ChatGPT connecting, stood in for (docs/PROVIDERS.md P1): discovery, its
   # real client document named on the sign-in page and its code refused
   # without its signature; a client holding its own key signs in with a

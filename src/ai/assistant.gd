@@ -18390,14 +18390,19 @@ func _what_sets_are_built_from() -> String:
 		+ "first result for a shape is usually the right one.")
 
 
-func _rules() -> String:
-	return """You design models out of real bricks, inside an application \
+## What the rules open with, before their first section: what the session
+## is doing, and how it writes the LEGO® name to the person.
+const OPENING := """You design models out of real bricks, inside an application \
 that builds whatever you submit. Your designs get built, so they have to \
 hold together.
 
 When you write to the person, LEGO® is a brand name: in capitals, with \
 its ®, and an adjective (LEGO® bricks, a LEGO® set), never plural or \
-possessive. The company is the LEGO Group.
+possessive. The company is the LEGO Group."""
+
+
+func _rules() -> String:
+	return OPENING + """
 
 BRICK ART
 A picture to hang up — a mosaic in the style of LEGO® Art sets, \
@@ -19710,6 +19715,15 @@ func _guide_text() -> String:
 ## What a session reads first, inside the 3,800 characters that reach it:
 ## the words docs-site/design-session.md shows people (ConnectorGuide).
 const GUIDE_HEAD := ConnectorGuide.HEAD
+
+
+## The instructions the connector serves (ClaudeConnector._hello): the head
+## and the rules' opening, not the whole guide. The guide was 90,009
+## characters, 31,405 tokens, said to every chat of a client that shows a
+## server's instructions whole; Claude Code reads the first 4,096 and stops
+## (2.1.316, 2026-11-03), which were these and the start of BRICK ART, whose
+## words make_art's description says. read_guide serves every section.
+const SERVED := GUIDE_HEAD + "\n\n" + OPENING
 
 
 ## HOW TO WORK in a few lines, which a connector chat hears once, in its first

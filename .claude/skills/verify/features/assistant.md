@@ -262,7 +262,9 @@ fixing what it got wrong.
   pieces near each other found through each shape's tree of its pieces' boxes,
   built as it is read, `Exact._tree_of`, and asked in the order every pair was
   before: MECHANISMS §23); a piece of the
-  design no connection holds is a fault unless it stands square (`rests`), and one
+  design no connection holds is a fault unless the parts it rests on another by
+  stand square (`rests`: a part of it turned on purpose and touching nothing else,
+  a driver's raised arm, is held by its own joint), and one
   that stands but comes away in the hand (`comes_away`: no tube of it stands
   between another part's studs, as a dish's does on a round plate, and the parts
   round it do not catch it every way it could slide out, `caught`, as the orrery's
@@ -3078,7 +3080,13 @@ on its axle, `ExactCheck.turned_on_axle`), the log pile's logs rest in their
 grooves. A part resting on nothing that joins it passes only square to gravity
 with its weight a LDU inside its support (`ExactCheck.rests`): held-out model-011's
 steering wheel on a brick's edge and model-017's leaning flower, both of which fell
-in verify.py, are refused. In a browser (`tools/web/freeze_check.mjs`, the shapes
+in verify.py, are refused. Square is asked of the parts a piece rests by, not of
+every part of it (a driver's raised arm is held by its joint), and where a part is
+lowest, how tall it is and what it stands on are its real shape's
+(`Exact.Item.low` and `high`), not its box turned with it (`tested_falls_probe`).
+Tested's whole test counts a build of two parts or more that stands by its foot
+alone on another (`ExactCheck.rests_on`), a set's car parked on its baseplate, a
+build of its own; the design check does not ask it. In a browser (`tools/web/freeze_check.mjs`, the shapes
 fetched, not packed) check_design's own longest frame stays under 500 ms on the
 Falcon: 7,530 ms before the shapes were asked for once a part, 313 ms after.
 

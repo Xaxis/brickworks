@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" width="640" height="400">
+  <!--
+    The macOS disk image's window: Brickworks.app on the left, the
+    Applications link on the right, an arrow from one to the other, as
+    people expect a Mac app to install. tools/web/make_icons.mjs draws it
+    at 1x and 2x and tools/release.py makes the two one TIFF, which Finder
+    shows sharp on either screen; the icons sit at (160, 176) and (480, 176),
+    128 points, and the window's size is this picture's (dmg_layout).
+
+    A mid slate, not white or the app's dark: Finder writes the names
+    under the icons in black in light mode and in white in dark mode,
+    over the picture, and this ground keeps either at about 4.5:1.
+  -->
+  <defs>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7c8492"/>
+      <stop offset="1" stop-color="#697180"/>
+    </linearGradient>
+    <radialGradient id="light" cx="0.5" cy="0.42" r="0.62">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="640" height="400" fill="url(#ground)"/>
+  <rect width="640" height="400" fill="url(#light)"/>
+  <!-- The arrow, from the app's right edge to the folder's left. -->
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.92" stroke-width="5"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M252 176 C 296 150, 344 150, 384 170"/>
+    <path d="M366 156 L 386 171 L 362 180"/>
+  </g>
+  <text x="320" y="330" text-anchor="middle" fill="#ffffff"
+        font-family="'Helvetica Neue', 'Noto Sans', Arial, sans-serif"
+        font-size="17" font-weight="600" letter-spacing="0.1">Drag Brickworks to Applications</text>
+  <text x="320" y="354" text-anchor="middle" fill="#ffffff" fill-opacity="0.82"
+        font-family="'Helvetica Neue', 'Noto Sans', Arial, sans-serif"
+        font-size="13">then open it from Applications or Launchpad</text>
+</svg>
