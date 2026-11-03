@@ -70,8 +70,12 @@ that offers each system its own build. The cycle and its cadence are
   bricks, save, read back); each of .ldr, .mpd, .io and .lxf is given to it
   as a bare path, as a double-click gives it (`opens_models`), from a folder
   with a space in its name, and must say `opened <path>: N parts` and write
-  back N; then the system's own double-click on two models, the second with
-  the first still open, each in a window of its own: gio with the .deb's
+  back N (a package cannot draw a part a Studio file builds from LDraw
+  subparts, which it has only as meshes: it says `could not build a part
+  the file carries` and writes that part back too, bay_2025.io's 5 + 1);
+  then the system's own double-click on two models, the second with
+  the first still open, each in a window of its own (a hold whose process
+  is not a running Brickworks is not one): gio with the .deb's
   entry and MIME types (and each window's WM_CLASS the entry's
   StartupWMClass), Launch Services' `open` on a Mac, `os.startfile` on
   Windows, where the Start menu entry, Settings ▸ Apps line, ProgIDs and
