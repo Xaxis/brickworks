@@ -2864,8 +2864,10 @@ async function newestMarks(ids) {
       for (const one of marks) {
         if (!out.has(one.model) && one.n === (newest.get(one.model) ?? 1)) out.set(one.model, one);
       }
-    } catch {
-      // Before tested.sql: nothing is tested.
+    } catch (trouble) {
+      // Before tested.sql: nothing is tested. Else these marks are unknown
+      // beside the models asked for, and said in the log by name.
+      if (!/: 404$/.test(String(trouble?.message || ""))) console.error(`share: ${String(trouble?.message || trouble).slice(0, 160)}`);
     }
   }
   return out;
