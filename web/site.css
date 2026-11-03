@@ -525,6 +525,7 @@ dialog h2 { margin: 0 0 6px; }
 dialog p { color: var(--ink-soft); margin: 0 0 14px; }
 dialog form label { margin-bottom: 14px; }
 dialog .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
+dialog .said.too-young { margin: 0 0 14px; }
 /* Sign in's other way, orangecheck, under the email and apart from it. */
 dialog .elsewhere { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 dialog .elsewhere .note { margin: 8px 0 0; }

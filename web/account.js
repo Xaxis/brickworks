@@ -583,7 +583,6 @@ function tooYoung() {
   words.textContent = say("Brickworks accounts are for 13 and over. Ask a parent or guardian to sign in "
     + "with their own email and build with you.");
   const parent = document.createElement("p");
-  parent.className = "note";
   parent.textContent = say("A parent or guardian new to Brickworks makes their account on their own phone or "
     + "computer first, then signs in here.");
   return [words, parent];
@@ -626,7 +625,6 @@ async function refuseAgain() {
 function showRefused(dialog, title, then) {
   title.textContent = say("Accounts are for 13 and over");
   const gone = document.createElement("p");
-  gone.className = "note";
   gone.textContent = say("The account is deleted, with your email address. The date was never kept.");
   const close = document.createElement("button");
   close.className = "cta";
@@ -646,7 +644,8 @@ function showRefused(dialog, title, then) {
   };
   close.addEventListener("click", end);
   dialog.addEventListener("cancel", end);
-  dialog.replaceChildren(title, ...tooYoung(), gone, row);
+  const [words, parent] = tooYoung();
+  dialog.replaceChildren(title, words, gone, parent, row);
   close.focus();
 }
 

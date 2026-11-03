@@ -1714,7 +1714,9 @@ async function seventhSaid(browser, code, width, one) {
       const said = await tab.evaluate(() => ({
         notes: [...document.querySelectorAll(".release-notes")].map((notes) => notes.getAttribute("lang") || ""),
         first: [...document.querySelectorAll(".release time[datetime]")].map((time) => [time.dateTime, time.textContent.trim()])[0],
-        download: [...document.querySelectorAll(".release .when a")].map((a) => [a.textContent.trim(), new URL(a.href).pathname])[0],
+        // A release's own links: "On the web now" (#web), drawn when
+        // CHANGELOG.md's Unreleased has notes, links the app instead.
+        download: [...document.querySelectorAll(".release:not(#web) .when a")].map((a) => [a.textContent.trim(), new URL(a.href).pathname])[0],
       }));
       const [iso, shown] = said.first || ["", ""];
       const [y, m, d] = iso.split("-").map(Number);
