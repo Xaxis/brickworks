@@ -12,8 +12,9 @@ refusal and through a real install that restarts with the model kept.
           Check for updates; Update and restart (the model kept); Restart;
           Reinstall; Automatic, put in as the app quits; and a new copy that
           cannot start, put back.
-    tools/update_check.py serve --dir=DIR [--port=N]
-        the test server alone (src/dev/updater_probe.gd starts it)
+    tools/update_check.py serve --dir=DIR [--port=N] [--seconds=N]
+        the test server alone (src/dev/updater_probe.gd starts it), for
+        --seconds or until stopped
     tools/update_check.py trim --out=DIR
         a small part library for test packages: the parts the shipped models
         use, with their meshes, and the rest of assets/generated's tables
@@ -450,11 +451,13 @@ def main(argv: list[str]) -> int:
         port = int(option(args, "port", "0")) or free_port()
         server = serve(folder, port)
         say("serving %s at http://127.0.0.1:%d/" % (folder, server.server_port))
+        # A probe's server ends by itself, whatever becomes of the probe.
+        seconds = float(option(args, "seconds", "0")) or float("inf")
         try:
-            while True:
-                time.sleep(3600)
+            time.sleep(min(seconds, 1e9))
         except KeyboardInterrupt:
-            return 0
+            pass
+        return 0
     if command == "run":
         old, new = Path(option(args, "old")).resolve(), Path(option(args, "new")).resolve()
         port = int(option(args, "port", "0")) or free_port()

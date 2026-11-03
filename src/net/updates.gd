@@ -179,7 +179,7 @@ static func _parsed(text: String) -> Array:
 ## signature over its exact words holds and every field is what it must be,
 ## or {"why": why not}. Nothing in it is believed before the signature is.
 static func read(bytes: PackedByteArray) -> Dictionary:
-	var outer: Variant = JSON.parse_string(bytes.get_string_from_utf8())
+	var outer: Variant = _parsed_json(bytes.get_string_from_utf8())
 	if not outer is Dictionary:
 		return {"why": "latest.json is not a manifest"}
 	var signed: Variant = (outer as Dictionary).get("signed")
@@ -188,13 +188,19 @@ static func read(bytes: PackedByteArray) -> Dictionary:
 		return {"why": "latest.json is not a manifest"}
 	if not verified((signed as String).to_utf8_buffer(), signatures as Array):
 		return {"why": "refused: the manifest's signature does not hold"}
-	var manifest: Variant = JSON.parse_string(signed as String)
+	var manifest: Variant = _parsed_json(signed as String)
 	if not manifest is Dictionary:
 		return {"why": "refused: the signed manifest does not parse"}
 	var why: String = refuse_manifest(manifest as Dictionary)
 	if not why.is_empty():
 		return {"why": why}
 	return {"manifest": manifest}
+
+
+## [param text] as JSON, or null: a server's error page is no engine error.
+static func _parsed_json(text: String) -> Variant:
+	var json := JSON.new()
+	return json.data if json.parse(text) == OK else null
 
 
 ## Whether one of [param signatures] ({key, rsa_sha256}) is a known key's
