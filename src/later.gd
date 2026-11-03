@@ -95,6 +95,34 @@ static func script(name: StringName) -> GDScript:
 		return load(path)
 	var started: int = Time.get_ticks_msec()
 	var loaded: GDScript = load(path)
+	_note(name, started)
+	return loaded
+
+
+## [method script], compiled on a worker while [param job]'s bar is up and
+## the frames go on (ResourceLoader's threaded load), for a first use whose
+## compile would hold a frame too long: in a browser BookletMaker held one
+## for 161 to 342 ms of its own work, and HeldSteps with the four scripts it
+## names 343 (the car's booklet on previews at load 6 to 26, bookletbar,
+## 2026-11-02). Where it cannot be, compiled here.
+static func script_in_background(name: StringName, job: Working.Job) -> GDScript:
+	var path: String = PATHS[name]
+	if ResourceLoader.has_cached(path):
+		return load(path)
+	var started: int = Time.get_ticks_msec()
+	if ResourceLoader.load_threaded_request(path, "GDScript") == OK:
+		while ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			await job.next()
+		var loaded: GDScript = ResourceLoader.load_threaded_get(path) as GDScript
+		if loaded != null:
+			_note(name, started)
+			return loaded
+	return script(name)
+
+
+## [param name] loaded since [param started]: kept in [member took], and
+## told to the page the first time.
+static func _note(name: StringName, started: int) -> void:
 	_lock.lock()
 	var first: bool = not took.has(name)
 	if first:
@@ -103,7 +131,6 @@ static func script(name: StringName) -> GDScript:
 	if first and OS.has_feature("web") and OS.get_thread_caller_id() == OS.get_main_thread_id():
 		JavaScriptBridge.eval("(window.brickworksLoaded = window.brickworksLoaded || {})[%s] = [performance.now() - %d, %d]"
 			% [JSON.stringify(String(name)), took[name], took[name]], true)
-	return loaded
 
 
 ## A new [param name], made with no arguments.
@@ -122,31 +149,3 @@ static func loaded(name: StringName) -> bool:
 static func is_a(thing: Object, name: StringName) -> bool:
 	return thing != null and loaded(name) and is_instance_of(thing, script(name))
 
-
-## What a class's first compile brings in beyond the first screen's, in an
-## order that compiles them one at a time: none names one after it. Read by
-## [method script_paced]; tests/test_later.py keeps each list whole.
-const PIECES: Dictionary[StringName, Array] = {
-	&"HeldSteps": ["res://src/parts/parts_only.gd", "res://src/ai/known_fits.gd",
-		"res://src/ai/exact_check.gd", "res://src/assembly/tested.gd"],
-}
-
-
-## [method script], for work whose bar ([param job]) is up while it loads:
-## its [constant PIECES] first, then its own, each in a slice of the job's
-## (Working.Job.due) and so a frame of its own when the one before took it.
-## Compiled at once, a browser spent 343 ms of one frame on HeldSteps and
-## the four scripts it names as the car's booklet was planned, and the
-## press 180 ms on BookletMaker before the bar was drawn (a preview at
-## load 6, bookletbar, 2026-11-02).
-static func script_paced(name: StringName, job: Working.Job) -> GDScript:
-	var paths: Array = (PIECES.get(name, []) as Array).duplicate()
-	paths.append(PATHS[name])
-	for path: String in paths:
-		if ResourceLoader.has_cached(path):
-			continue
-		if job.due():
-			await job.next()
-		if path != PATHS[name]:
-			load(path)
-	return script(name)

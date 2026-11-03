@@ -6152,9 +6152,9 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	# Busy from here (_booklet_busy): what draws it is made frames later.
 	_booklet_starting = true
 	await job.shown()
-	# What draws it, compiled a script a frame with the bar up the first time
-	# (Later.script_paced): in the press it held the bar back.
-	var maker: Node = (await Later.script_paced(&"BookletMaker", job)).new()
+	# What draws it, compiled on a worker with the bar up the first time
+	# (Later.script_in_background): in the press it held the bar back.
+	var maker: Node = (await Later.script_in_background(&"BookletMaker", job)).new()
 	maker.library = _library
 	maker.job = job
 	# The hidden parts' colours, shown where each group starts.
@@ -6167,7 +6167,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 	# the last booklet's pages, kept for its tab, go.
 	if is_instance_valid(_booklet_out):
 		_booklet_out.queue_free()
-	_booklet_out = (await Later.script_paced(&"BookletOut", job)).new()
+	_booklet_out = (await Later.script_in_background(&"BookletOut", job)).new()
 	add_child(_booklet_out)
 	var show: bool = not given and Later.script(&"BookletMaker").open_when_written
 	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)

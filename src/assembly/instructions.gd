@@ -884,9 +884,9 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 		steps = _expand(raw, world)
 	lap.call("expand")
 	# Each part on what holds it, by the Tested mark's rules (HeldSteps),
-	# compiled a script a frame the first time (Later.script_paced).
+	# compiled on a worker the first time (Later.script_in_background).
 	if not job.cancelled:
-		var held: GDScript = await Later.script_paced(&"HeldSteps", job)
+		var held: GDScript = await Later.script_in_background(&"HeldSteps", job)
 		await held.mend_into(steps, world, library, skip, job)
 	lap.call("held")
 	for made: Assembly in assemblies:

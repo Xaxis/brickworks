@@ -1330,13 +1330,15 @@ picture the assistant is shown.
   at a time; a page may only open a tab in answer to a click), or downloaded
   whole if the browser blocked the tab. The press opens the tab and begins
   the bar, and nothing else: the maker, `BookletOut` and the planner's
-  `HeldSteps` are compiled a script a frame after the bar is drawn
-  (`Later.script_paced`, `Later.PIECES`, kept whole by `tests/test_later.py`).
-  Compiling the maker in the press held the bar back 158 to 295 ms, over
-  `progress_check.mjs --only=booklet`'s 150 (bookletbar, 2026-11-02). `booklet_stream_probe` presses Instructions on
-  the castle and reads the HTTP stream as a browser does: the cover within
-  5 s, the first page of steps long before the last, what it read the file
-  written, the page opened again whole, no frame of the app's over 500 ms.
+  `HeldSteps` are compiled on a worker once the bar is drawn, the frames
+  going on (`Later.script_in_background`). Compiling the maker in the press
+  held the bar back 158 to 295 ms, over `progress_check.mjs
+  --only=booklet`'s 150, and `HeldSteps` in a frame of the plan held it 250
+  to 449 ms, over its 300 (bookletbar, 2026-11-02). `booklet_stream_probe`
+  presses Instructions on the castle and reads the HTTP stream as a browser
+  does: the cover within 5 s, the first page of steps long before the last,
+  what it read the file written, the page opened again whole, no frame of
+  the app's over 500 ms.
   The browser flows wait for the tab's document to close (`bookletWhole` in
   `booklet_flow.mjs`, `booklet_edit_flow.mjs`, `brickify_flow.mjs`), and
   `booklet_flow` says when the first page and the first page of steps came.
