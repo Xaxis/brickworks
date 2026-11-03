@@ -26,7 +26,8 @@ if [ "$pystatus" = 0 ]; then
   echo "ci gate: python ok, ${verdict:-no verdict line}"
 else
   echo "ci gate: python FAILED, ${verdict:-no verdict line}"
-  echo "$pyout" | grep -E 'FAIL|Error|error' | head -10 | sed 's/^/  /'
+  said=$(echo "$pyout" | awk -f tools/failures.awk)
+  if [ -n "$said" ]; then echo "$said"; else echo "$pyout" | grep -E 'FAIL|Error|error' | head -10 | sed 's/^/  /'; fi
   fail=1
 fi
 # -S warning: style opinions on a deploy script are noise, a quoting bug in

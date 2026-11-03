@@ -93,10 +93,14 @@ func _ready() -> void:
 func _build() -> void:
 	add_child(_words("Who designs", 12))
 	var who := ButtonGroup.new()
-	who_claude = _radio("Claude, on your Claude plan or Anthropic key", who)
-	_claude_note = _note("Connect Claude, My Claude, or a key in the assistant's column, as before.")
-	add_child(_claude_note)
+	who_claude = _radio("Claude, on your Anthropic key or Claude plan", who)
 	who_key = _radio("Another AI, on your own API key", who)
+	# The AI app a person connects is not chosen here: it builds whichever
+	# designs what is typed in the column, and choosing Another AI hid it
+	# until 2026-11-02 (docs/ANY_ASSISTANT.md, C).
+	_claude_note = _note("Your AI app (Claude, ChatGPT, Gemini and others) connects with "
+		+ "Connect your AI in the assistant's column, whichever designs here.")
+	add_child(_claude_note)
 	who_key.toggled.connect(func(on: bool) -> void:
 		_own.visible = on
 		if not _showing:

@@ -111,10 +111,13 @@ stage() {
     done
     # A probe tools/suite/out.txt keeps out of runs skips itself here, and a
     # skip fails: together, which wants the relay, held rel-m225 (2026-10-30).
+    # The list names a probe without its _probe, which a name may carry:
+    # connector_probe passed here and held rel-m252 (2026-11-03).
     out=$(git -C "$R" show "$branch:tools/suite/out.txt" 2>/dev/null)
     for name in $probes; do
-      why=$(awk -v n="$name" '$1 == n { sub(/^[^#]*# */, ""); print; exit }' <<< "$out")
-      [ -z "$why" ] || unknown+=" runnable probe $name ($why),"
+      why=$(awk -v n="$name" '$1 == n || $1 "_probe" == n { sub(/^[^#]*# */, ""); print; exit }' <<< "$out")
+      hint=""; case $why in *relay*) hint="; tools/relay_probe.sh runs it by hand" ;; esac
+      [ -z "$why" ] || unknown+=" runnable probe $name ($why$hint),"
     done
   fi
   [ -z "$unknown" ] || { echo "train: $branch has no${unknown%,}"; exit 2; }
@@ -370,8 +373,11 @@ again() {
 
 say() { echo "$(date -u +%H:%M:%SZ) $TAG: $*"; }
 
-# The step it is on, in TAG.train/step (status reads it), said once.
+# The step it is on, in TAG.train/step (status reads it), said once. The
+# work takes none once the shell that waits for it is gone (killed outright,
+# its pid alone): the train is not running, as status and a train behind say.
 step() {
+  kill -0 "$$" 2>/dev/null || exit 1
   [ "$(cut -d' ' -f2- "$SPEC/step" 2>/dev/null)" = "$*" ] && return
   echo "$(date -u +%H:%MZ) $*" > "$SPEC/step"; say "$*"
 }
@@ -381,10 +387,8 @@ past_deadline() { [ "$(date +%s)" -gt "$(cat "$SPEC/deadline" 2>/dev/null || ech
 # The end, in TAG.train/result. Before the ship begins, TAG.gave_up too, as
 # ship_after.sh writes: ship.sh writes TAG.done once it has begun.
 finish() {
-  # TAG.gave_up before the result, each written whole: prev_state reads
-  # gave_up first, and a train behind that looked between the two writes
-  # said "t-m7's train ended" where it says "never shipped" (a ci_gate at
-  # load 22, 2026-10-30).
+  # TAG.gave_up before the result, each written whole, and prev_state reads
+  # the result first.
   if ! [ -e "$SPEC/shipped" ] && [ "$1" != live ]; then
     echo "$1" > "$RO/$TAG.gave_up.$$" && mv "$RO/$TAG.gave_up.$$" "$RO/$TAG.gave_up"
   fi
@@ -396,15 +400,21 @@ finish() {
 stop() { finish "stopped: $*"; }
 
 # Where PREV stands: "live", "failed: why", or nothing while it is to come.
+# Its result is read first: ship.sh's TAG.done and the train's TAG.gave_up
+# are written before it, so a result read finds them too. Read after
+# gave_up, a train behind that looked at gave_up just before the two were
+# written took the result alone, "t-m7's train ended" where it says "never
+# shipped" (a ci_gate at load 22, 2026-10-30; 25 of 400 in a loop of the
+# two writes against the reads, 2026-11-03).
 prev_state() {
   local p=$1 code res
+  res=$(cat "$RO/$p.train/result" 2>/dev/null)
   grep -q '^SHIP: deploy: brickworks.diy serves' "$RO/${p}_lead.out" 2>/dev/null && { echo live; return; }
   code=$(cat "$RO/$p.done" 2>/dev/null)
   [ "$code" = 0 ] && { echo live; return; }
   [ -n "$code" ] && { echo "failed: $p's ship ended exit $code, and brickworks.diy never served it"; return; }
   [ -e "$RO/$p.gave_up" ] && { echo "failed: $p never shipped: $(cat "$RO/$p.gave_up")"; return; }
   [ -d "$RO/$p.train" ] || return
-  res=$(cat "$RO/$p.train/result" 2>/dev/null)
   [ -n "$res" ] && { echo "failed: $p's train ended: $res"; return; }
   # A train killed, or lost with the machine, writes no result.
   [ -e "$RO/$p.train/pid" ] && ! runner "$p" >/dev/null && [ ! -e "$RO/$p.train/result" ] \
@@ -516,7 +526,10 @@ probes() {
 run() {
   TAG=$1; SPEC=$RO/$TAG.train; W=$WT/$TAG
   cd "$R" || exit 1
-  echo $$ > "$SPEC/pid"
+  # Written whole: a train behind that read it half-written would find this
+  # one not running, and stop.
+  echo $$ > "$SPEC/pid.$$" && mv -f "$SPEC/pid.$$" "$SPEC/pid"
+  rm -f "$SPEC/probes.pid"
   # Until its battery on the preview is done no unit's battery begins a
   # check on the live database (preview_checks.sh): a unit's together run,
   # taken while the release merged and probed, held rel-m233's oauth 33
@@ -526,12 +539,31 @@ run() {
   # the file says nothing.
   LIVE_REL="$(git -C "$R" rev-parse --path-format=absolute --git-common-dir)/live-db.release"
   mkdir -p "$LIVE_REL" && : > "$LIVE_REL/$$"
+  # Killed (kill -- -PID ends its work too), it says so and stops the
+  # probes, which run in a group of their own: no result would leave the
+  # release staged after it waiting until its deadline. nohup has HUP
+  # ignored. The work runs in a subshell ($$ is this shell's there) while
+  # this one only waits: bash 5.2 runs a trap that has come due as it
+  # begins to parse a "$(...)" it expands, the trap's own parse fails
+  # there, and the shell dies of it with nothing written. t-m7's did so in
+  # a ci_gate at load 34, and a release staged behind said only that it
+  # "wrote no result" (2026-11-03).
+  work &
+  WORK=$!
+  trap killed TERM INT
+  wait "$WORK"
+}
+
+# Stopped by hand: its work ended first, so nothing of it writes after this.
+killed() {
+  local p
+  kill -TERM "$WORK" 2>/dev/null; wait "$WORK"
+  p=$(cat "$SPEC/probes.pid" 2>/dev/null) && kill -TERM -- "-$p" 2>/dev/null
+  stop "killed"
+}
+
+work() {
   local code out ship ended="" bad="" reshipping="" served made
-  # Killed (kill -- -PID stops what it runs too, and the probes, which run
-  # in a group of their own): no result would leave the release staged
-  # after it waiting until its deadline. nohup has HUP ignored.
-  PROBES=""
-  trap '[ -z "$PROBES" ] || kill -TERM -- "-$PROBES" 2>/dev/null; stop "killed"' TERM INT
   # The merge's import and gates at the release's priority, as its probes
   # and ship.sh are: rel-m231's merge waited behind an agent's solo checks
   # (2026-10-31).
@@ -563,6 +595,7 @@ run() {
   answer "running $$: $(cat "$SPEC/probes")"
   setsid bash "$SPEC/train.sh" probes "$TAG" &
   PROBES=$!
+  echo "$PROBES" > "$SPEC/probes.pid"
   step "ships $(cat "$SPEC/sha") with ${#checks[@]} checks named (and site, frames), its probes beside it"
   env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" SHIP_LIVE_MARK="$LIVE_REL/$$" \
     SHIP_STALE=1 SHIP_ACCEPT="$SPEC/accept" ${reshipping:+SHIP_REUSE=1} \
@@ -579,7 +612,7 @@ run() {
     kill -TERM -- "-$PROBES" 2>/dev/null; wait "$PROBES"
     grep -q '^running' "$RO/$TAG.probes" 2>/dev/null && answer "stopped: the ship ended first"
   fi
-  PROBES=""
+  rm -f "$SPEC/probes.pid"
   tail -n 4 "$RO/${TAG}_lead.out"
   # The build it serves: this commit's, or, reshipped on the preview made
   # before a check's fix, that preview's commit (ship.sh reused it).

@@ -42,8 +42,8 @@ the same reason: our own pictures draw no brick and knob.
 live registration of BRICKWORKS for software or toys:
 
 - USPTO 97709741, BRICKWORKS, Glen-Gery Corporation (a brick maker), filed
-  2022-12-08, abandoned. Its class 42 was interior design (corrected by the
-  register search of 2026-11-03, docs/PLANS.md 8.5).
+  2022-12-08, abandoned 2024. Its class 42 was interior design, not software
+  (corrected by the 2026-11-03 screen below).
   (https://gleanmark.com/owner/glengerycorp, https://trademarks.justia.com/977/09/brickworks-97709741.html)
 - USPTO reg. 4802624, BRICKWORKS, masonry contracting (class 37), live.
 - USPTO reg. 7435871, BRICKWORKS DESIGN STUDIO, interior design (class 42),
@@ -52,17 +52,36 @@ live registration of BRICKWORKS for software or toys:
   (class 36), filed 2026-08-20, pending.
   (https://trademarkregistration.app/Trademark/Details/50062315)
 - Brickworks Limited of Australia holds marks for building materials
-  (class 19), and class 42 design marks in Australia and New Zealand, with
-  BRICKWORKS pending in Australia in classes 9, 16, 41 and 42 (its class 9
-  is publications and media, not software). Glen-Gery is its US arm.
-- Found 2026-11-03: BRICKWORK (singular), Brickwork India, USPTO reg.
-  7376310, class 42 consultancy in IT and software development, the
-  nearest live mark (docs/PLANS.md 8.5).
+  (class 19), and class 42 design marks (building and product design in
+  Australia and New Zealand; interior design in the US through Glen-Gery,
+  which it bought in 2018), with a class 9 application for publications.
+  Nothing in class 28 and no software goods.
 - An LDraw model viewer called Brickworks was on the Mac App Store, last
   updated around 2017 (https://apps.apple.com/us/app/id1176177802). No
   registration for it was found. It is the closest in kind, and dormant.
 - EUIPO: its search is a script-only page that could not be read here; a
   web search found no BRICKWORKS EU trade mark.
+
+A fuller knock-out screen on 2026-11-03 (USPTO's own search backend, EUIPO,
+TMview, WIPO's Global Brand Database; the report, each register's queries
+and raw results in bench/results/research/trademark-2026-11-03/) found the
+same: no live BRICKWORKS mark for software or toys in the US, the EU or
+Madrid. What it added:
+- US reg. 7376310, BRICKWORK (singular), Brickwork India, class 42 IT and
+  software-development consultancy, live: an examiner could cite it against
+  BRICKWORKS for software services. A US filing would word its services
+  narrowly (an online 3D design tool for toy building-brick models).
+- Live software-services marks in this name in Chile and India, and Brickworks
+  Ltd's class 42 marks in Australia and New Zealand, would contest a filing
+  there.
+- Unregistered users of the name for software: Brickworks Games (Cyprus,
+  Grim Soul, over 25 million downloads) and the Mac viewer above, still on
+  sale at $2.99. Neither has a registration.
+- BRICKWORLD (the fan convention, class 41) and BRICKWAR (toy models) are the
+  nearest marks for the same audience; neither is the name.
+The decision stands: the name stays, nothing is filed now, and a filing, if
+one is made, is narrow and US first. It is a screen, not counsel's
+clearance.
 
 None of these is software or toys in a live registration, and the ones
 that are live sit in classes far from ours (9, 28, 42 for a CAD app). The
