@@ -11,12 +11,16 @@ is recorded, so "Admission was not asked" is read, not hoped:
   way to Pro, and not kept; a save over one it has, or the same model
   again, kept at the limit; a delete makes room at once;
 - Pro, a comp of Pro and the owner keep any number, the owner even before
-  they ever opened /plans (the save reports them to Admission first);
+  they ever opened /plans (the save reports them to Admission first), past
+  the 500 models and 64 MB everyone else keeps in all
+  (save_account_model_any, supabase/account_models_any.sql), and their list
+  names no such totals; a save past the hour's guard waits (429), and a
+  deployment without that file keeps theirs within the totals;
 - ?op=plan says the plan's limit and how many the account keeps now;
 - a plan not known (Admission down, nothing kept of the account) refuses
   nothing, and neither does a deployment without
   supabase/account_models_plan.sql;
-- the SQL file only adds, and only the server may call its function.
+- the SQL files only add, and only the server may call their functions.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SQL = (ROOT / "supabase/account_models_plan.sql").read_text()
+ANY_PATH = ROOT / "supabase/account_models_any.sql"
 WORDS = "Free keeps 25 models in your account. Delete one, or get Pro for unlimited."
 # What save_account_model has always been sent, in this order.
 SENT = ["p_owner", "p_name", "p_base", "p_model", "p_raw_bytes", "p_parts", "p_sum"]
@@ -137,6 +142,8 @@ return { refused: refused.status, deleted, now, next: next.status, kept: kept('u
 
 def test_pro_a_comp_and_the_owner_keep_any_number() -> None:
     got = run("""
+// Fewer than save_account_model's 500 in all, to be past them in a test.
+w.mostModels = 20;
 w.admission.subscribe('u-pro');
 w.admission.comp('u-school', 'pro', '2027-10-29T00:00:00.000Z');
 const out = {};
@@ -154,7 +161,60 @@ return { out, owners: [...w.admission.owners], fns: [...new Set(w.saves.map((s) 
     assert got["kept"] == [30, 30, 30]
     # The owner (MASTER_EMAIL) is reported to Admission, which gives them everything.
     assert got["owners"] == ["u-own"]
-    assert got["fns"] == ["save_account_model"]
+    # Past the totals of everyone else: the function that holds none.
+    assert got["fns"] == ["save_account_model_any"]
+
+
+def test_free_and_plans_off_stay_within_the_account_totals() -> None:
+    got = run("""
+w.mostModels = 20;
+const off = (await saveMany(await as('u-off'), 21)).map((s) => s.status);
+return { off, last: w.saves.at(-1).fn };
+""")
+    if got is None:
+        return
+    assert got["off"] == [200] * 20 + [413] and got["last"] == "save_account_model"
+
+
+def test_the_list_names_totals_only_for_an_account_that_has_them() -> None:
+    got = run("""
+w.admission.subscribe('u-pro');
+const pro = (await askModels({ headers: await as('u-pro') })).json.kept;
+const free = (await askModels({ headers: await as('u-free') })).json.kept;
+return { pro, free };
+""", billing="test")
+    if got is None:
+        return
+    assert got["pro"] == {"models": 0, "bytes": 0}, got["pro"]
+    assert got["free"] == {"models": 0, "bytes": 0, "most_models": 500, "most_bytes": 64 * 1024 * 1024}
+
+
+def test_a_pro_save_past_the_hours_guard_waits() -> None:
+    got = run("""
+w.admission.subscribe('u-pro');
+w.tooFast = true;
+return { past: await save(await as('u-pro'), 'Model 1'), kept: kept('u-pro').length };
+""", billing="test")
+    if got is None:
+        return
+    # 429, which the app takes as "away" and sends again later
+    # (src/account/cloud_models.gd _send).
+    assert got["past"]["status"] == 429 and got["past"]["json"]["full"] == "too fast", got["past"]
+    assert "an hour" in got["past"]["json"]["error"] and got["kept"] == 0
+
+
+def test_without_the_any_sql_file_pro_saves_within_the_totals() -> None:
+    got = run("""
+w.noAnySql = true;
+w.admission.subscribe('u-pro');
+const saves = await saveMany(await as('u-pro'), 2);
+return { statuses: saves.map((s) => s.status), fns: w.saves.map((s) => s.fn).slice(0, 2) };
+""", billing="test")
+    if got is None:
+        return
+    assert got["statuses"] == [200, 200]
+    assert got["fns"] == ["save_account_model_any", "save_account_model"]
+    assert "account_models_any.sql is not applied here" in got["log"]
 
 
 def test_the_owner_who_never_opened_plans_keeps_a_26th() -> None:
@@ -249,4 +309,22 @@ def test_the_sql_only_adds_and_only_the_server_calls_it() -> None:
     assert plain.count("security definer") == 1 and "set search_path = ''" in plain
     # Its refusal is the one api/models.js reads.
     assert "raise exception 'models: plan'" in plain
-    assert "too many|too big|plan" in (ROOT / "api/models.js").read_text()
+    assert "too many|too big|plan|too fast" in (ROOT / "api/models.js").read_text()
+
+
+def test_the_any_sql_only_adds_holds_no_totals_and_only_the_server_calls_it() -> None:
+    plain = code(ANY_PATH.read_text())
+    lowered = plain.lower()
+    for word in ("drop ", "truncate", "rename ", "alter ", "delete from"):
+        assert word not in lowered, f"account_models_any.sql says {word.strip()}"
+    made = re.findall(r"create or replace function public\.([a-z_]+)\(", plain)
+    assert made == ["save_account_model_any"]
+    signature = r"public\.save_account_model_any\(uuid, text, integer, text, integer, integer, text\)"
+    assert re.search(rf"revoke all on function {signature}\s+from public, anon, authenticated;", plain)
+    assert re.search(rf"grant execute on function {signature}\s+to service_role;", plain)
+    assert plain.count("security definer") == 1 and "set search_path = ''" in plain
+    # No account total; the hour's guard instead, the refusal api/models.js reads.
+    assert "most_models" not in plain and "most_bytes" not in plain
+    assert "raise exception 'models: too fast'" in plain and "raise exception 'models: too many'" in plain
+    # The same lock save_account_model takes, so the two never race on one account.
+    assert "pg_advisory_xact_lock(pg_catalog.hashtextextended('account_models ' || p_owner::text, 0))" in plain

@@ -158,33 +158,38 @@ TEST_MODE_PROOF
   or a copy of one (the library's real sets included), LDraw's CC BY credit
   kept on what is sold (the booklet prints it), and photo search outside
   the licence (8.4).
-- **Refunds: in full within 14 days of the first payment, once an account,
-  no reason needed; the same within 14 days of a yearly renewal.** A refund
-  ends Pro and its licence at once; nothing is deleted. Otherwise Atypic's
-  policy (no refund of an unused part of a term, with its fairness
-  exceptions) and Link's own. Why:
-  - Link refunds anyway. As merchant of record it "reserves the right to
-    issue refunds within 60 days of a Customer's purchase ... regardless of
-    any more restrictive refund policy", and honours the EU and UK 14-day
-    cooling-off period, all at the seller's cost
-    (https://stripe.com/legal/ssa-service-terms#stripe-managed-payments
-    §3.3; https://link.com/terms#sold-through-link-terms). A stricter
-    policy of ours saves almost nothing and reads worse.
-  - It stands in for the 30-day trial, which is not built (section 1).
-  - One rule for every country is simpler than a different one per law.
-  - The yearly renewal is the charge people forget and dispute: a refund
-    costs $80, a lost dispute $80 and a fee.
-  - A new product from a small studio sells on trust; at a handful of
-    payers the cost is small. "Once an account" stops buy-sell-refund loops,
-    and the licence ending with the refund stops selling on a refunded Pro.
-  Atypic's own page (atypic.ai/refunds) names Bookwright and onon only: the
-  atypicbw unit adds Brickworks Pro and this rule there.
+- **Refunds are Atypic's, the seller's** (atypic.ai/refunds): /terms,
+  /plans and /faq point to that policy and to Link's 60 days, and add no
+  rule of their own. Atypic's policy refunds no unused part of a term by
+  default, looks at every request (a charge twice or unexpected, a renewal
+  meant to be cancelled and not used since, a payment not made by the
+  holder, the app not working as described), and refunds the unused part
+  when Atypic takes away a material part of a paid plan, closes an account
+  that broke no term, or stops offering the app. golive first proposed a
+  14-day refund of our own; the lead and atypicbw decided against it
+  (2026-11-03): it would promise more than the seller's own page, and both
+  pages must say the same. Link refunds anyway within 60 days, "regardless
+  of any more restrictive refund policy", and honours the EU and UK 14-day
+  cooling-off period, at the seller's cost
+  (https://stripe.com/legal/ssa-service-terms#stripe-managed-payments §3.3).
+- **Only an adult buys Pro**, as atypic.ai/terms (#account) requires: 18 or
+  over, or a parent or guardian for their child. Nothing changes for
+  accounts under 18; under 13 is the owner's open question (agegate).
+- **Any number is any number.** Pro, a comp of Pro and the owner keep any
+  number of models with no total size (`save_account_model_any`,
+  `supabase/account_models_any.sql`, applied 2026-11-03); the 500 models
+  and 64 MB in all stay for Free and for plans off. What holds Pro is each
+  model's own size (4 MB as saved, about 30 MB of LDraw) and a guard
+  against scripts: at most 1,000 models or 256 MB saved in an hour, past
+  which a save is answered 429 and the app sends it again later. The terms
+  say both (#paid-plans); atypic.ai's facts say "Every model kept with your
+  account, with no limit on how many (each model up to 4 MB as saved)".
 - **Consent to renewal (M7)**: the step before Checkout (`web/plan.js`)
   says the price, how often, that it renews until cancelled, how to cancel
   and who sells it, beside a box nobody ticks but the person;
   `?op=checkout` refuses without it and keeps the agreement first
   (`supabase/plan_consents.sql`). Shown and kept in 8.1.
-- **Cancelling in two clicks**: `Cancel Pro` on the account page opens the
+- **Cancelling in two clicks**: `Cancel Pro` on /settings, under Plan, opens the
   portal's own cancel step (`?op=portal` flow `cancel`), and Stripe's
   confirm is the second. Manage billing stays for the card and invoices.
 - **Receipts come from Link**, never from us: "Stripe always sends

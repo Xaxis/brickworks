@@ -211,6 +211,14 @@ export function mostModels(e) {
   return e.savedModels.limit;
 }
 
+/// Whether Admission says [e]'s plan keeps any number of models: Pro's, a
+/// comp of Pro, the owner's. Such an account is not held to the 500 models
+/// and 64 MB that everyone else keeps in all (api/models.js); a plan not
+/// known, or plans off, is.
+export function keepsAny(e) {
+  return e.standing === "known" && e.savedModels !== null && e.savedModels.limit === null;
+}
+
 /// Tells Admission whether the signed-in [claims] are the owner's
 /// (MASTER_EMAIL), so the owner's account has every feature unlimited
 /// (Admission's ADR-0009). Admission is asked only when what the client

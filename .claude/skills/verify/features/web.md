@@ -5950,9 +5950,16 @@ Against Admission's real test mode and Stripe's sandbox (golive,
 and ADMISSION_TEST_WEBHOOK_SECRET from .env, for that deployment alone),
 then a real browser through the real Checkout with Stripe's test card
 4242 4242 4242 4242 (`tools/web/billing_real_test.mjs`, docs/PLANS.md 8.1).
-Admission's test webhook reaches a preview only with the protection bypass
-in its URL; `audit_log` and `webhook_deliveries` in test mode show the
-purchase and the cancel. Whom the switch comps (every account made before
+Admission's test webhook never reaches a preview: its bypass is never put
+in a URL Admission keeps. What it sends is sent instead, signed by
+Admission's own code, with `tools/web/webhook_replay.mjs` run under
+Admission's tsx (its header says how): the plan held for 30 s still
+stands, another secret's and a ten-minute-old signature refused with
+nothing forgotten, the signed one heard and the same again "again", and
+the next `?op=plan` the plan Admission now says, both ways (grant_override
+then end_override in test mode); it ends "webhook replay: all ok".
+Stripe's bot check stops a Checkout a script pays, so a person pays it
+(docs/PLANS.md 8.1). Whom the switch comps (every account made before
 2026-10-29 but the owner's) is `python3 tools/plan_comps.py`, and with
 `--mode=test` or `--mode=live` (the matching ADMISSION_*_KEY sourced) who
 has the comp already: "N given, M left".

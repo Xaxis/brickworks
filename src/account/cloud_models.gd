@@ -105,7 +105,8 @@ var state: String = ""
 var refused: Dictionary = {}
 ## How much the account keeps, as its list last said: {models, bytes,
 ## most_models, most_bytes}, bytes left out by a deployment without
-## account_models_delete.sql.
+## account_models_delete.sql, and both totals by a plan that keeps any
+## number (Pro, api/models.js).
 var room: Dictionary = {}
 ## The plan's words when it keeps no more models (Free keeps 25: the
 ## deployment's, api/models.js full "plan"), and where Pro is.
@@ -342,7 +343,8 @@ func _sync_once() -> void:
 func short_words() -> String:
 	if _plan_full():
 		return plan_words
-	if room.is_empty():
+	# No totals: a plan that keeps any number is never full.
+	if room.is_empty() or not room.has("most_models"):
 		return ""
 	var models: int = int(room.get("models", 0))
 	var most: int = int(room.get("most_models", 500))
