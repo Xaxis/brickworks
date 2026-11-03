@@ -111,10 +111,13 @@ stage() {
     done
     # A probe tools/suite/out.txt keeps out of runs skips itself here, and a
     # skip fails: together, which wants the relay, held rel-m225 (2026-10-30).
+    # The list names a probe without its _probe, which a name may carry:
+    # connector_probe passed here and held rel-m252 (2026-11-03).
     out=$(git -C "$R" show "$branch:tools/suite/out.txt" 2>/dev/null)
     for name in $probes; do
-      why=$(awk -v n="$name" '$1 == n { sub(/^[^#]*# */, ""); print; exit }' <<< "$out")
-      [ -z "$why" ] || unknown+=" runnable probe $name ($why),"
+      why=$(awk -v n="$name" '$1 == n || $1 "_probe" == n { sub(/^[^#]*# */, ""); print; exit }' <<< "$out")
+      hint=""; case $why in *relay*) hint="; tools/relay_probe.sh runs it by hand" ;; esac
+      [ -z "$why" ] || unknown+=" runnable probe $name ($why$hint),"
     done
   fi
   [ -z "$unknown" ] || { echo "train: $branch has no${unknown%,}"; exit 2; }

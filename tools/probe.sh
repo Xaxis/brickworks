@@ -44,6 +44,12 @@ file="src/dev/$name.gd"
 # probe.sh was handed those names twice in one night (2026-10-27).
 [ -f "$file" ] || [ ! -f "src/dev/${name}_probe.gd" ] || { name=${name}_probe; file="src/dev/$name.gd"; }
 [ -f "$file" ] || { echo "probe.sh: no $file" >&2; exit 2; }
+# The `--` before ARGS is this script's, and the verify recipes write one
+# too (probe.sh X -- --shots=DIR): passed on, it reached the probe as its
+# first argument, which a flag's probe never noticed and connector_probe
+# read as its relay's port, failing every check, read twice as the code's
+# (2026-11-03).
+[ "${1:-}" != -- ] || shift
 if [ -n "${PROBE_LISTED:-}" ] && [ $# -eq 0 ]; then
   listed=$(sed 's/#.*//' tools/suite/windowed.txt tools/suite/headless.txt 2>/dev/null \
     | awk -v n="${name%_probe}" '{ split($1, p, ":"); s = p[1]; sub(/_probe$/, "", s) } s == n && $1 ~ /:/ { print $1; exit }')
