@@ -15,7 +15,10 @@ description: Verify Brickworks — a Godot 4.7 LEGO CAD app (desktop and WebAsse
   `tools/release/flows_for.py --since <base>` and run the preview checks it
   names (three flows broke on Discovery's gallery that way and held m84). It
   also names the flows that quote a control a changed `src/` script names
-  (`page_canvas` for the page editor: rel-m226 held on booklet_edit so):
+  (`page_canvas` for the page editor: rel-m226 held on booklet_edit so),
+  and every flow that drives the relay for a change to what a session
+  hears through it (`RELAY_FROM`: the connector, the method, the guide;
+  model_view went unrun from rel-m237 to m250 so):
   `tools/release/unit_preview.sh <worktree>` deploys a preview of the
   branch and runs them there, for a change to `web/`, `api/` or `tools/web/`.
   Every feature it lists is in scope.

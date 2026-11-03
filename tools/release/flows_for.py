@@ -27,6 +27,10 @@ name the script gives ("page_canvas", or "page_picture_4" from
 "page_picture_%d"). booklet_edit_flow drives the page editor and was not
 named for a change to it, and rel-m226 held on it (2026-10-30). What a
 script reaches through other scripts is left to the feature map.
+
+What a session hears through the connector is made in the tab, and reaches
+it at /api/mcp: a script that shapes it (RELAY_FROM) is the relay's address
+too, so it names every flow that drives the relay, as api/mcp.js does.
 """
 
 from __future__ import annotations
@@ -41,6 +45,16 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 WEB, API, FLOWS = ROOT / "web", ROOT / "api", ROOT / "tools" / "web"
 DOCS_FROM = {"tools/docs_site.py", "web/docs.css", "web/docs.js", "tools/mcp_tools.json",
              "src/ui/controls_hint.gd", "CHANGELOG.md", ".claude/skills/verify/features.json"}
+# What a session hears through the connector: the tab's end of the relay (the
+# method said once, the sittings, every answer sent), the method's words and
+# the guide, the tools' answers and jobs, what a client that shows pages is
+# given, and the tool list the relay serves. connector_guide.gd named no flow,
+# and claude_connector.gd only those quoting a tool it happened to name; the
+# method's first words changed there in rel-m237, and model_view, which
+# pinned them, went unrun until rel-m250 (mcpview, 2026-11-02).
+RELAY_FROM = {"src/net/claude_connector.gd", "src/ai/connector_guide.gd", "src/ai/assistant.gd",
+              "src/net/command_socket.gd", "src/net/tool_jobs.gd", "src/net/model_views.gd",
+              "src/net/model_scene.gd", "src/net/viewer_tools.gd", "tools/mcp_tools.json"}
 
 
 def changed(since: str) -> list[str]:
@@ -93,11 +107,12 @@ def addresses(path: str, seen: set[str] | None = None) -> set[str]:
         return set()
     seen.add(path)
     p = Path(path)
+    relay = {"/api/mcp"} if path in RELAY_FROM else set()
     # The documentation is made, not copied (tools/docs_site.py): its words,
     # its maker, its own stylesheet and script, and what it is made from are
     # the address /docs.
     if p.parts[:1] == ("docs-site",) or path in DOCS_FROM:
-        return {"/docs"}
+        return relay | {"/docs"}
     if p.parts[:1] == ("web",):
         if p.suffix == ".html":
             return {page_address(p)}
@@ -114,7 +129,7 @@ def addresses(path: str, seen: set[str] | None = None) -> set[str]:
             if api.name != p.name and pattern.search(api.read_text(errors="ignore")):
                 found |= addresses(f"api/{api.name}", seen)
         return found
-    return set()
+    return relay
 
 
 # A control name: words joined by underscores ("page_add_arrow"), quoted.
