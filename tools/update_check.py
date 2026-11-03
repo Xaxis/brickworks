@@ -423,6 +423,11 @@ def packages(versions: list[str], platforms: list[str], out: Path) -> int:
             for name in ("node_modules", "vendor"):
                 if (ROOT / name).exists():
                     (tree / name).symlink_to((ROOT / name).resolve())
+            # A release says what changed, and the notice's What's new reads it.
+            changelog = tree / "CHANGELOG.md"
+            changelog.write_text(changelog.read_text().replace(
+                "## [Unreleased]\n", "## [Unreleased]\n\nTest version %s, built by "
+                "tools/update_check.py: the updater's What's new reads this.\n" % version, 1))
             subprocess.run([sys.executable, "tools/release.py", "version", "--set", version], cwd=tree,
                            check=True)
             subprocess.run(["git", "-c", "user.name=Xaxis", "-c", "user.email=william.neeley@gmail.com",
