@@ -2,10 +2,10 @@
 # train.sh : a release staged in one command, which ships when its turn comes.
 #
 #   train.sh stage TAG BRANCH [--after PREV] [--checks "..."] [--probes "..."]
-#                             [--units "..."] [--title "..."]
+#                             [--units "..."] [--title "..."] [--accept CHECK "REASON"]...
 #   train.sh status [TAG...]
 #   train.sh hold TAG [REASON]          train.sh release TAG
-#   train.sh reship TAG [--probes "..."] [CHECK...]
+#   train.sh reship TAG [--probes "..."] [--accept CHECK "REASON"]... [CHECK...]
 #
 # stage writes TAG's spec in $RELEASE_OUT/TAG.train/, a file each (branch,
 # after, checks, probes, units, title), and starts the train detached
@@ -36,9 +36,14 @@
 # shipped by hand, rel-m227 left its train's "stopped" for rel-m228 to stop
 # on (2026-10-31).
 #
-# Staged, the checks named also run at once on brickworks.diy as it is
-# (TAG_stale.out), and status says which already fail there: a check gone
-# stale since an earlier release holds the one that next names it.
+# A check that fails on the preview, beside others and then alone, runs on
+# brickworks.diy as it is (ship.sh, TAG_stale.out), and status says whether
+# it already fails there: a check gone stale since an earlier release holds
+# the one that next names it. --accept CHECK REASON ships past one that
+# fails there too, as the same script, never one that passes there; the
+# train's log, its status and the release's merge message name it, its two
+# failures and the reason. Given at reship, the merge's message is written
+# again (the trees as they were), so its preview is made afresh.
 #
 # This replaces the chain scripts the lead wrote by hand for each release,
 # rel-m214 to m218, and the promote job beside them that ship.sh now does.
@@ -56,14 +61,12 @@ POLL=${TRAIN_POLL:-15}
 usage() { sed -n '4,8p' "$HERE/train.sh"; exit 2; }
 
 # TAG's train if it is running, by the pid it wrote, and only while that pid
-# still runs this train: a pid is reused once its process ends. KIND stale:
-# its checks on brickworks.diy.
+# still runs this train: a pid is reused once its process ends.
 runner() {
-  local kind=${2:-run} file=pid pid
-  [ "$kind" = run ] || file=${kind}_pid
-  pid=$(cat "$RO/$1.train/$file" 2>/dev/null) || return 1
+  local pid
+  pid=$(cat "$RO/$1.train/pid" 2>/dev/null) || return 1
   case "$(tr '\0' ' ' 2>/dev/null < "/proc/$pid/cmdline")" in
-    *"train.sh $kind $1 ") echo "$pid" ;;
+    *"train.sh run $1 ") echo "$pid" ;;
     *) return 1 ;;
   esac
 }
@@ -76,7 +79,7 @@ words() { read -r -d '' -a "$1" < "$SPEC/$2" || true; }
 
 stage() {
   [ $# -ge 2 ] || usage
-  local tag=$1 branch=$2 after="" checks="" probes="" units="" title="" pid
+  local tag=$1 branch=$2 after="" checks="" probes="" units="" title="" accepts="" pid
   shift 2
   case "$tag" in ""|*[!A-Za-z0-9._-]*) echo "train: '$tag' is not a tag"; exit 2 ;; esac
   while [ $# -gt 0 ]; do
@@ -84,6 +87,8 @@ stage() {
     case "$1" in
       --after) after=$2 ;; --checks) checks=$2 ;; --probes) probes=$2 ;;
       --units) units=$2 ;; --title) title=$2 ;;
+      --accept) [ $# -ge 3 ] && [ -n "$3" ] || { echo "train: --accept wants a check and the reason"; exit 2; }
+        accepts+="$2"$'\t'"${3//[$'\t\n']/ }"$'\n'; shift ;;
       *) echo "train: no option $1"; exit 2 ;;
     esac
     shift 2
@@ -95,7 +100,7 @@ stage() {
   local known name unknown=""
   if known=$(git -C "$R" show "$branch:tools/release/preview_checks.sh" 2>/dev/null); then
     known=$(grep -oE '^[[:space:]]*\[[a-z_0-9]+\]=' <<< "$known" | tr -d '[]= \t')
-    for name in $checks; do grep -qx "$name" <<< "$known" || unknown+=" check $name,"; done
+    for name in $checks $(cut -f1 <<< "$accepts"); do grep -qx "$name" <<< "$known" || unknown+=" check $name,"; done
   fi
   if git -C "$R" cat-file -e "$branch:src/dev" 2>/dev/null; then
     for name in $probes; do
@@ -121,11 +126,13 @@ stage() {
   echo "$branch" > "$SPEC/branch"; echo "$after" > "$SPEC/after"
   echo "$checks" > "$SPEC/checks"; echo "$probes" > "$SPEC/probes"; echo "$units" > "$SPEC/units"
   echo "${title:-$branch}" > "$SPEC/title"
+  printf '%s' "$accepts" > "$SPEC/accept"
   echo $(( $(date +%s) + ${TRAIN_WAIT:-21600} )) > "$SPEC/deadline"
   # This is TAG's latest attempt: a result an attempt before left would tell
   # the release staged after it that this one had ended (m178 held on
-  # m177's, 2026-10-26).
-  rm -f "$RO/$tag.done" "$RO/$tag.gave_up"
+  # m177's, 2026-10-26). So would what it shipped past and how its failures
+  # fared on brickworks.diy.
+  rm -f "$RO/$tag.done" "$RO/$tag.gave_up" "$RO/${tag}_accepted" "$RO/${tag}"_stale.{out,asked,build,changed,failing}
   for log in lead train; do
     [ -e "$RO/${tag}_$log.out" ] && mv -f "$RO/${tag}_$log.out" "$RO/${tag}_$log.prev.out"
   done
@@ -135,17 +142,7 @@ stage() {
   setsid -f nohup bash "$SPEC/train.sh" run "$tag" > "$RO/${tag}_train.out" 2>&1 < /dev/null
   echo "train: $tag staged: ${after:+waits for $after to serve, then }merges $branch and ships"
   echo "  spec $SPEC/ (editable until it ships), log $RO/${tag}_train.out"
-  # Its checks on brickworks.diy as it is, now: one gone stale since an
-  # earlier release (people, which expected the profile's tabs from before
-  # achievements) held rel-m226 two hours on, at its ship (2026-10-30).
-  [ -n "$checks" ] || return 0
-  if pid=$(runner "$tag" stale); then
-    echo "  its checks on brickworks.diy, begun when it was staged before, go on (pid $pid)"
-  else
-    rm -f "$RO/${tag}"_stale.{out,asked,skipped,build,changed}
-    setsid -f nohup bash "$SPEC/train.sh" stale "$tag" > "$RO/${tag}_stale.log" 2>&1 < /dev/null
-    echo "  its checks run on $SITE meanwhile: status says which already fail there"
-  fi
+  [ -z "$accepts" ] || echo "  it may ship past $(cut -f1 <<< "${accepts%$'\n'}" | paste -sd' '), should each fail on $SITE too"
 }
 
 # An attempt before that stopped leaves its worktree, kept for the lead to
@@ -188,13 +185,15 @@ release() {
 
 reship() {
   [ $# -ge 1 ] || usage
-  local tag=$1 probes="" asked="" checks=() named=() pid res f n code fails
+  local tag=$1 probes="" asked="" checks=() named=() pid res f n code fails accepts="" why
   shift
   local SPEC=$RO/$tag.train
   while [ $# -gt 0 ]; do
     case "$1" in
       --probes) [ $# -ge 2 ] || { echo "train: --probes wants a value"; exit 2; }
         probes=$2; asked=1; shift 2 ;;
+      --accept) [ $# -ge 3 ] && [ -n "$3" ] || { echo "train: --accept wants a check and the reason"; exit 2; }
+        accepts+="$2"$'\t'"${3//[$'\t\n']/ }"$'\n'; shift 3 ;;
       -*) echo "train: no option $1"; exit 2 ;;
       *) checks+=("$1"); shift ;;
     esac
@@ -206,15 +205,49 @@ reship() {
   # Stopped before its ship, it has no build to reuse and maybe no merge.
   [ -e "$SPEC/shipped" ] && [ -d "$WT/$tag" ] \
     || { echo "train: $tag stopped before its ship (${res:-no result}): stage it again"; exit 1; }
+  # Shipped past only where it fails on brickworks.diy too, as the same
+  # script: one that passes there is this release's own to fix. progress
+  # failed on rel-m249's preview and worse on brickworks.diy, untouched by
+  # it, and the lead could ship past it only by naming another check
+  # (2026-11-02).
+  while IFS=$'\t' read -r n why; do
+    [ -n "$n" ] || continue
+    passed_here "$tag" "$n" && { echo "train: $n passed on $tag's preview: there is nothing to ship past"; exit 1; }
+    fails_there "$tag" "$n" && continue
+    f=$(grep -m1 "^$n exit=" "$RO/${tag}_stale.out" 2>/dev/null | cut -c1-140)
+    case "$f" in
+      *" exit=0 "*) echo "train: $n passes on $SITE ($f): its failure is $tag's, not one to ship past" ;;
+      "") echo "train: $n has no run on $SITE: it did not fail on $tag's preview, or its run there has not ended" ;;
+      *) if grep -qx "$n" "$RO/${tag}_stale.changed" 2>/dev/null; then
+           echo "train: $n's script changed since the build $SITE serves, so its failure there is not the same check's ($f)"
+         else echo "train: $n did not run on $SITE ($f)"; fi ;;
+    esac
+    exit 1
+  done <<< "$accepts"
+  if [ -n "$accepts" ]; then
+    W=$WT/$tag; TIP=$(cat "$SPEC/tip")
+    [ -z "$(git -C "$W" status --porcelain --untracked-files=no)" ] || { echo "train: $W has changes not committed"; exit 1; }
+    while IFS=$'\t' read -r n why; do
+      [ -n "$n" ] || continue
+      grep -v "^$n"$'\t' "$SPEC/accept" > "$SPEC/accept.$$" 2>/dev/null; mv -f "$SPEC/accept.$$" "$SPEC/accept"
+      printf '%s\t%s\n' "$n" "$why" >> "$SPEC/accept"
+      grep -q "^$n: " "$RO/${tag}_accepted" 2>/dev/null && continue
+      printf '%s: %s\n  here: %s\n  there: %s\n' "$n" "$why" "$(failed_here "$tag" "$n" | cut -c1-200)" \
+        "$(grep -m1 "^$n exit=" "$RO/${tag}_stale.out" | cut -c1-200)" >> "$RO/${tag}_accepted"
+    done <<< "$accepts"
+    remerge || { echo "train: could not write $W's merge message again"; exit 1; }
+    echo "train: $tag's merge now says: $(git -C "$W" log -1 --format=%B "$(merge_of)" | sed -n '3,$p' | paste -sd' ')"
+  fi
   # By default the checks that did not pass in the attempt before: each it
-  # asked for (a reship's, or as staged) with no pass in its battery. Named
-  # none, rel-m242's reship ran site and frames alone, and would have
-  # shipped past the check that held it (2026-11-01).
+  # asked for (a reship's, or as staged) with no pass in its battery or
+  # alone after it, and none it ships past. Named none, rel-m242's reship
+  # ran site and frames alone, and would have shipped past the check that
+  # held it (2026-11-01).
   if [ ${#checks[@]} -eq 0 ]; then
     f=checks; [ -s "$SPEC/reship" ] && f=reship
     words named "$f"
     for n in "${named[@]}"; do
-      grep -q "^$n exit=0 " "$RO/${tag}_pv.out" 2>/dev/null || checks+=("$n")
+      passed_here "$tag" "$n" || grep -q "^$n: " "$RO/${tag}_accepted" 2>/dev/null || checks+=("$n")
     done
   fi
   # And the probes that did not pass: each named whose answer is missing
@@ -242,6 +275,66 @@ reship() {
   setsid -f nohup bash "$SPEC/train.sh" run "$tag" > "$RO/${tag}_train.out" 2>&1 < /dev/null
   echo "train: $tag reships from $WT/$tag: ${checks[*]:-no checks} (and site, frames), probes: ${probes:- none}"
   echo "  log $RO/${tag}_train.out"
+}
+
+# Whether CHECK passed on TAG's preview, in its battery or alone after it.
+passed_here() {
+  grep -q "^$2 exit=0 " "$RO/${1}_pv.out" 2>/dev/null && return 0
+  [ "$RO/${1}_alone_$2.out" -nt "$RO/${1}_pv.out" ] && grep -q "^$2 exit=0 " "$RO/${1}_alone_$2.out"
+}
+
+# Whether CHECK ran on brickworks.diy after TAG's preview and failed there,
+# as the script live's build has (ship.sh's TAG_stale.failing). A train
+# staged before ran every check there at its staging: TAG_stale.out, read
+# by the same rule.
+fails_there() {
+  [ -e "$RO/${1}_stale.failing" ] && { grep -qx "$2" "$RO/${1}_stale.failing"; return; }
+  case "$(grep -m1 "^$2 exit=" "$RO/${1}_stale.out" 2>/dev/null)" in
+    ""|*" exit=0 "*|*" exit=75 "*|*" exit=125 "*|*" exit=127 "*) return 1 ;;
+  esac
+  ! grep -qx "$2" "$RO/${1}_stale.changed" 2>/dev/null
+}
+
+# CHECK's last line on TAG's preview: alone, or in its battery.
+failed_here() {
+  if [ "$RO/${1}_alone_$2.out" -nt "$RO/${1}_pv.out" ]; then grep -m1 "^$2 exit=" "$RO/${1}_alone_$2.out"
+  else grep -m1 "^$2 exit=" "$RO/${1}_pv.out"; fi
+}
+
+# The release's merge message: its title, and each check it ships past
+# where that fails on brickworks.diy too, with the lead's reason.
+merge_message() {
+  local n why
+  echo "Merge: $(cat "$SPEC/title")"
+  [ -s "$SPEC/accept" ] || return 0
+  echo
+  while IFS=$'\t' read -r n why; do echo "Ships past $n where it fails on brickworks.diy too: $why"; done < "$SPEC/accept"
+}
+
+# The commit in W that merged BRANCH's tip.
+merge_of() { git -C "$W" log --first-parent --format='%H %P' HEAD | awk -v t="$TIP" '$3 == t {print $1; exit}'; }
+
+# W's commits from its merge to HEAD made again, each with its tree,
+# author and other parents, the merge with merge_message's words. The trees
+# are the same, the commit is not: its preview is made afresh, as the build
+# brickworks.diy serves names the commit main is at.
+remerge() {
+  local merge c new
+  merge=$(merge_of); [ -n "$merge" ] || return 1
+  new=$(again "$merge" "$(merge_message)") || return 1
+  for c in $(git -C "$W" rev-list --reverse --first-parent "$merge..HEAD"); do
+    new=$(again "$c" "$(git -C "$W" log -1 --format=%B "$c")" "$new") || return 1
+  done
+  git -C "$W" reset -q --soft "$new"
+}
+
+# again COMMIT MESSAGE [PARENT]: COMMIT made again with MESSAGE, PARENT its first parent.
+again() {
+  local p first=${3:-} args=()
+  for p in $(git -C "$W" rev-parse "$1^@"); do args+=(-p "${first:-$p}"); first=""; done
+  GIT_AUTHOR_NAME=$(git -C "$W" log -1 --format=%an "$1") GIT_AUTHOR_EMAIL=$(git -C "$W" log -1 --format=%ae "$1") \
+    GIT_AUTHOR_DATE=$(git -C "$W" log -1 --format=%aD "$1") \
+    git -C "$W" -c user.name=Xaxis -c user.email=william.neeley@gmail.com commit-tree "$1^{tree}" "${args[@]}" -m "$2"
 }
 
 # --- the train itself (stage starts it as `run TAG`) ---
@@ -391,47 +484,17 @@ probes() {
   say "every probe passed"
 }
 
-# The checks named, on brickworks.diy as it is (stage starts them as `stale
-# TAG`), from the worktree BRANCH is checked out in: the checks it would
-# ship. The live database is the one previews share, so a check that makes
-# accounts or sends mail does so here as it does there, and waits its turn
-# at the same lock. Not the release's priority: it ships nothing. A check
-# whose script changed since the build brickworks.diy serves may fail there
-# for what this release adds (rel-m226's phone, its prints folded), so
-# those are named apart (TAG_stale.changed).
-stale() {
-  TAG=$1; SPEC=$RO/$TAG.train
-  local branch tree build n script
-  echo $$ > "$SPEC/stale_pid"
-  unset BOX_HEAVY_PRIORITY
-  # Its release's own: it takes the live database while its train runs,
-  # which every unit's battery leaves to the release (run).
-  export LIVE_DB_RELEASE=1
-  branch=$(cat "$SPEC/branch")
-  words checks checks
-  echo "${checks[*]}" > "$RO/${TAG}_stale.asked"
-  tree=$(git -C "$R" worktree list --porcelain \
-    | awk -v b="branch refs/heads/$branch" '/^worktree /{w = substr($0, 10)} $0 == b {print w; exit}')
-  [ -n "$tree" ] || { echo "no worktree has $branch checked out" > "$RO/${TAG}_stale.skipped"; return; }
-  build=$(serving); echo "$build" > "$RO/${TAG}_stale.build"
-  build=${build#/b/}; build=${build%/}
-  for n in "${checks[@]}"; do
-    script=$(sed -n "s/^[[:space:]]*\[$n\]=\"\([^ \"]*\).*/\1/p" "$tree/tools/release/preview_checks.sh" | head -1)
-    [ -n "$script" ] && [ -n "$build" ] && git -C "$tree" cat-file -e "$build^{commit}" 2>/dev/null \
-      && ! git -C "$tree" diff --quiet "$build" -- "$script" 2>/dev/null && echo "$n"
-  done > "$RO/${TAG}_stale.changed"
-  bash "$tree/tools/release/preview_checks.sh" "$SITE" "$tree" "${TAG}_stale" "${checks[@]}"
-}
-
 run() {
   TAG=$1; SPEC=$RO/$TAG.train; W=$WT/$TAG
   cd "$R" || exit 1
   echo $$ > "$SPEC/pid"
-  # While it runs no unit's battery begins a check on the live database
-  # (preview_checks.sh): a unit's together run, taken while the release
-  # merged and probed, held rel-m233's oauth 33 minutes, and a lock cannot
-  # be taken back from a run already in it (2026-10-31). A file named for
-  # its pid says so; once the pid is gone the file says nothing.
+  # Until its battery on the preview is done no unit's battery begins a
+  # check on the live database (preview_checks.sh): a unit's together run,
+  # taken while the release merged and probed, held rel-m233's oauth 33
+  # minutes, and a lock cannot be taken back from a run already in it
+  # (2026-10-31). A file named for its pid says so, which ship.sh takes
+  # away once that battery is done (SHIP_LIVE_MARK); once the pid is gone
+  # the file says nothing.
   LIVE_REL="$(git -C "$R" rev-parse --path-format=absolute --git-common-dir)/live-db.release"
   mkdir -p "$LIVE_REL" && : > "$LIVE_REL/$$"
   local code out ship ended="" bad="" reshipping="" served made
@@ -472,8 +535,9 @@ run() {
   setsid bash "$SPEC/train.sh" probes "$TAG" &
   PROBES=$!
   step "ships $(cat "$SPEC/sha") with ${#checks[@]} checks named (and site, frames), its probes beside it"
-  env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" \
-    ${reshipping:+SHIP_REUSE=1} bash "$W/tools/release/ship.sh" "$W" "$TAG" "${checks[@]}" > "$RO/${TAG}_lead.out" 2>&1 &
+  env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" SHIP_LIVE_MARK="$LIVE_REL/$$" \
+    SHIP_STALE=1 SHIP_ACCEPT="$SPEC/accept" ${reshipping:+SHIP_REUSE=1} \
+    bash "$W/tools/release/ship.sh" "$W" "$TAG" "${checks[@]}" > "$RO/${TAG}_lead.out" 2>&1 &
   ship=$!
   wait -n -p ended "$PROBES" "$ship"; code=$?
   if [ "$ended" = "$PROBES" ]; then
@@ -497,6 +561,9 @@ run() {
     bad=$(sed -n 's/^failed://p' "$RO/$TAG.probes" 2>/dev/null)
     [ -z "$bad" ] || finish "stopped: probes failed:$bad (${TAG}_probe_NAME.log)"
     finish "not live: ship.sh ended exit $code: $(grep '^SHIP:' "$RO/${TAG}_lead.out" | tail -1 | cut -c1-160)"
+  fi
+  if [ -s "$RO/${TAG}_accepted" ]; then
+    say "shipped past what fails on brickworks.diy too:"; sed 's/^/  /' "$RO/${TAG}_accepted"
   fi
   step "live; retiring"
   retire
@@ -539,7 +606,7 @@ merged() {
   TIP=$(git -C "$R" rev-parse -q --verify "$BRANCH^{commit}") || stop "no branch $BRANCH"
   echo "$TIP" > "$SPEC/tip"
   step "merges $BRANCH at ${TIP:0:8}"
-  if ! MERGE_GATES=ship bash "$HERE/merge_unit.sh" "$W" "$TIP" "Merge: $(cat "$SPEC/title")" \
+  if ! MERGE_GATES=ship bash "$HERE/merge_unit.sh" "$W" "$TIP" "$(merge_message)" \
       > "$RO/${TAG}_merge.log" 2>&1; then
     tail -5 "$RO/${TAG}_merge.log"
     git -C "$W" merge --abort 2>/dev/null; git -C "$W" reset -q --hard HEAD
@@ -610,21 +677,40 @@ probes_line() {
   echo "  probes: $passed of $total passed${failed:+; failed:$failed}$( [ "$ran" -lt "$total" ] && echo "; $(( total - ran )) to run")"
 }
 
-# The checks named, as they ran on brickworks.diy when TAG was staged:
-# those that fail there as live's own scripts, and those changed since.
+# What failed on TAG's preview, as it ran on brickworks.diy after (ship.sh):
+# which already fail there, which fail as a script changed since live's
+# build, which pass there, and which did not run there. Then what it may
+# ship past, and what it shipped past.
 stale_line() {
-  local t=$1 f=$RO/${1}_stale.out asked ran n stale="" changed="" build left
-  if [ -s "$RO/${t}_stale.skipped" ]; then
-    echo "  on $SITE: not checked: $(paste -sd' ' "$RO/${t}_stale.skipped")"; return
+  local t=$1 f=$RO/${1}_stale.out n line build parts=() fails="" changed="" passes="" other="" why
+  if [ -s "$RO/${t}_stale.asked" ]; then
+    build=$(cat "$RO/${t}_stale.build" 2>/dev/null); build=${build#/b/}; build=${build%/}
+    if [ -e "$RO/${t}_stale.failing" ] || grep -qx "done" "$f" 2>/dev/null; then
+      for n in $(cat "$RO/${t}_stale.asked"); do
+        line=$(grep -m1 "^$n exit=" "$f" 2>/dev/null)
+        if fails_there "$t" "$n"; then fails+=" $n"
+        elif [[ $line == *" exit=0 "* ]]; then passes+=" $n"
+        elif [ -n "$line" ] && grep -qx "$n" "$RO/${t}_stale.changed" 2>/dev/null; then changed+=" $n"
+        else other+=" $n"; fi
+      done
+      [ -n "$fails" ] && parts+=("already failing there:$fails")
+      [ -n "$changed" ] && parts+=("failing there, changed since:$changed")
+      [ -n "$passes" ] && parts+=("passing there:$passes")
+      [ -n "$other" ] && parts+=("not run there:$other")
+    else
+      parts+=("$(grep -c ' exit=' "$f" 2>/dev/null) of $(wc -w < "$RO/${t}_stale.asked") run there so far")
+    fi
+    echo "  on $SITE${build:+ (serving $build)}: $(printf '%s; ' "${parts[@]}" | sed 's/; $//') (${t}_stale_NAME.log)"
   fi
-  [ -e "$f" ] && [ -e "$RO/${t}_stale.asked" ] || return 0
-  asked=$(wc -w < "$RO/${t}_stale.asked"); ran=$(grep -c ' exit=' "$f")
-  for n in $(grep -E ' exit=[^0]' "$f" | awk '{print $1}'); do
-    if grep -qx "$n" "$RO/${t}_stale.changed" 2>/dev/null; then changed="$changed $n"; else stale="$stale $n"; fi
-  done
-  build=$(cat "$RO/${t}_stale.build" 2>/dev/null); build=${build#/b/}; build=${build%/}
-  left=""; grep -qx 'done' "$f" || [ "$ran" -ge "$asked" ] || left="; $(( asked - ran )) to run"
-  echo "  on $SITE${build:+ (serving $build)} as staged: $(grep -c ' exit=0 ' "$f") of $asked passed$left${stale:+; already failing there:$stale}${changed:+; failing there, changed since:$changed}$( [ -n "$stale$changed" ] && echo " (${t}_stale_NAME.log)")"
+  if [ -s "$RO/$t.train/accept" ]; then
+    while IFS=$'\t' read -r n why; do
+      grep -q "^$n: " "$RO/${t}_accepted" 2>/dev/null || echo "  may ship past $n should it fail on $SITE too: $why"
+    done < "$RO/$t.train/accept"
+  fi
+  if [ -s "$RO/${t}_accepted" ]; then
+    echo "  ships past what fails on $SITE too:"; sed 's/^/    /' "$RO/${t}_accepted"
+  fi
+  return 0
 }
 
 # A ship begun by hand, not by a train: what it last said, its checks so far,
@@ -738,6 +824,6 @@ case "$cmd" in
   hold) hold "$@" ;;
   release) release "$@" ;;
   reship) reship "$@" ;;
-  run|probes|stale) [ $# -eq 1 ] || usage; "$cmd" "$1" ;;
+  run|probes) [ $# -eq 1 ] || usage; "$cmd" "$1" ;;
   *) usage ;;
 esac
