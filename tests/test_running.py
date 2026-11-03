@@ -26,7 +26,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 import running  # noqa: E402
 
 
-MARK = "brickworks_test_marker_run"
+## Each run's own: units run the suite at once, and one run's stop(MARK)
+## ended another's sleeper, which then found nothing (ci_gate, 2026-11-03).
+MARK = "brickworks_test_marker_run_%d" % os.getpid()
 
 
 def _spawn(command: list[str]) -> subprocess.Popen:
