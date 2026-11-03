@@ -331,6 +331,13 @@
       "area": "mcp"
     },
     {
+      "kind": "ui",
+      "label": "design on your own Copilot plan",
+      "entry": "src/ai/copilot_cli.gd",
+      "reach": "godot --path . -- --ask-copilot=\"a small post box\"   (SPENDS A GITHUB COPILOT PLAN; or tick My Copilot in the design panel)",
+      "area": "mcp"
+    },
+    {
       "kind": "lib",
       "label": "the window's commands over mcp",
       "entry": "src/net/app_tools.gd",

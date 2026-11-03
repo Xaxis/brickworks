@@ -331,17 +331,36 @@ func _build_settings() -> void:
 			+ "this machine, on your own Claude subscription. No key, no "
 			+ "account, nothing billed here — and the session can reach "
 			+ "this app's bricks and nothing else on your computer.")
-		_use_claude_code.toggled.connect(func(_on: bool) -> void:
-			# The model and effort pickers belong to the loop inside the
-			# app; the Claude on this machine brings its own.
-			_show_settings()
-			_status.text = ("Your own Claude will design it."
-				if designing_locally() else "")
-			# With no key, ticked is what makes the button usable at all.
-			_send.disabled = _working or not (OwnKey.has_key() or designing_locally()))
+		_use_claude_code.toggled.connect(_on_local_toggled.bind(_use_claude_code))
 		_settings.add_child(_use_claude_code)
+	# The same on a GitHub Copilot plan, where this machine has its CLI
+	# (CopilotCli): one or the other designs, never both.
+	if copilot_here:
+		_use_copilot = CheckBox.new()
+		_use_copilot.text = "My Copilot"
+		_use_copilot.add_theme_font_size_override("font_size", 11)
+		_use_copilot.tooltip_text = ("Design with the GitHub Copilot CLI on "
+			+ "this machine, on your own Copilot plan. No key, no account, "
+			+ "nothing billed here — and the session can reach this app's "
+			+ "bricks and nothing else on your computer.")
+		_use_copilot.toggled.connect(_on_local_toggled.bind(_use_copilot))
+		_settings.add_child(_use_copilot)
 
 	_show_settings()
+
+
+## My Claude or My Copilot ticked or unticked.
+func _on_local_toggled(on: bool, box: CheckBox) -> void:
+	for other: CheckBox in [_use_claude_code, _use_copilot]:
+		if on and other != null and other != box:
+			other.button_pressed = false
+	# The model and effort pickers belong to the loop inside the
+	# app; the Claude or Copilot on this machine brings its own.
+	_show_settings()
+	_status.text = ("Your own Copilot will design it." if designing_with_copilot()
+		else "Your own Claude will design it." if designing_locally() else "")
+	# With no key, ticked is what makes the button usable at all.
+	_send.disabled = _working or not (OwnKey.has_key() or designing_locally())
 
 
 ## Put the row in step with what is saved. Called after a change as
@@ -354,7 +373,7 @@ func _show_settings() -> void:
 		_settings.visible = not designing_elsewhere()
 	# The model and effort belong to the loop inside the app. When the
 	# person's own Claude is doing the designing, it chooses its own.
-	if _which != null and _use_claude_code != null:
+	if _which != null and (_use_claude_code != null or _use_copilot != null):
 		var mine: bool = designing_locally()
 		_which.disabled = mine
 		_how_hard.disabled = mine
@@ -376,8 +395,16 @@ func _show_settings() -> void:
 ## panel shows the choice only then, because offering something that is
 ## not installed is worse than not offering it.
 var claude_code_here: bool = false
+## The same for the GitHub Copilot CLI (CopilotCli).
+var copilot_here: bool = false
 signal design_locally(brief: String)
 var _use_claude_code: CheckBox = null
+var _use_copilot: CheckBox = null
+
+
+## True when this machine has a CLI of the person's own to design with.
+func _local_here() -> bool:
+	return claude_code_here or copilot_here
 
 ## Designing with another AI on the person's own key, chosen in Settings, AI
 ## (ProviderSettings.who): the brief goes to Main's DesignerLoop, as a brief
@@ -424,9 +451,15 @@ func focus_brief() -> void:
 		_input.grab_focus.call_deferred()
 
 
-## True when the person has asked for their own Claude to do it.
+## True when the person has asked for their own Claude, or Copilot, to do it.
 func designing_locally() -> bool:
-	return _use_claude_code != null and _use_claude_code.button_pressed
+	return (_use_claude_code != null and _use_claude_code.button_pressed) \
+		or designing_with_copilot()
+
+
+## True when it is their own Copilot.
+func designing_with_copilot() -> bool:
+	return _use_copilot != null and _use_copilot.button_pressed
 
 
 ## A run that never started, said in the panel rather than swallowed.
@@ -499,11 +532,14 @@ func ask_about(selected: Array, words: String = "") -> void:
 	_input.placeholder_text = ABOUT_PLACEHOLDER.replace("Claude", ProviderSettings.designer_name())
 	if not words.is_empty():
 		_input.text = words
-	# With no key, the Claude on this machine is the way to ask that works.
-	if not OwnKey.has_key() and claude_code_here and _use_claude_code != null \
-			and not _use_claude_code.button_pressed:
-		_use_claude_code.button_pressed = true
-	if OwnKey.has_key() or claude_code_here:
+	# With no key, the Claude (or Copilot) on this machine is the way to ask
+	# that works.
+	if not OwnKey.has_key() and not designing_locally():
+		for box: CheckBox in [_use_claude_code, _use_copilot]:
+			if box != null:
+				box.button_pressed = true
+				break
+	if OwnKey.has_key() or _local_here():
 		_input.grab_focus()
 	elif _connector_form != null and _connector_form.is_on():
 		note("Ask Claude in your chat about the %d selected part%s. It sees what is "
@@ -856,7 +892,7 @@ func _show_for_key(has_key: bool) -> void:
 	has_key = has_key or elsewhere
 	# On a desktop with Claude Code the brief box stays: "My Claude" sits
 	# in it, and is a way to design that needs no key.
-	_composer.visible = has_key or claude_code_here
+	_composer.visible = has_key or _local_here()
 	_footer.visible = has_key
 	_show_sketch_first()
 	# While Claude is connected on the person's plan, the key's form is a
@@ -880,7 +916,7 @@ func _show_for_key(has_key: bool) -> void:
 	# a blank space two-thirds of its height. The card opens it when Claude
 	# first calls (_on_claude_called).
 	var talking: bool = assistant != null and assistant.has_conversation()
-	_scroll.visible = has_key or claude_code_here or talking or _logged() \
+	_scroll.visible = has_key or _local_here() or talking or _logged() \
 		or _claude_card()
 	# The openers only mean anything if pressing one would do something.
 	# They used to run a design for a visitor with no key, which spent

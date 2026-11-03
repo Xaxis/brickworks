@@ -1871,6 +1871,10 @@ func _ready() -> void:
 	var local: String = _argument("--ask-claude-code")
 	if not local.is_empty():
 		await _ask_claude_code(local)
+	# Or by the GitHub Copilot CLI on this machine, on the person's Copilot plan.
+	var copilot: String = _argument("--ask-copilot")
+	if not copilot.is_empty():
+		await _ask_claude_code(copilot, true)
 
 	# The same brief, designed by another provider's model on the person's
 	# own key (DesignerLoop): --provider, --provider-model, --provider-base.
@@ -2011,13 +2015,14 @@ func _ask(brief: String) -> void:
 	await get_tree().process_frame
 
 
-## Drive a local Claude Code session and print what it does.
+## Drive a local Claude Code session and print what it does: a Copilot one
+## with [param copilot] (CopilotCli), which prints the same.
 ##
 ## With --ask-about=x0,x1,y0,y1,z0,z1 (studs and plates, as view_model's
 ## where) the brief is about the parts of the open model (--model) inside
 ## that box, as Ask Claude about this… asks: they are selected, and the
 ## session changes them and nothing else.
-func _ask_claude_code(brief: String) -> void:
+func _ask_claude_code(brief: String, copilot: bool = false) -> void:
 	var about: String = _argument("--ask-about")
 	if about.is_empty():
 		_world.clear()
@@ -2042,8 +2047,8 @@ func _ask_claude_code(brief: String) -> void:
 	# Three massings first, the session choosing among them (Sketch first).
 	if about.is_empty() and _has_argument("--sketch-first"):
 		brief = Later.script(&"Assistant").sketch_brief(brief)
-	if not design_with_claude_code(brief):
-		print("claude code: could not start")
+	if not design_with_claude_code(brief, copilot):
+		print("%s: could not start" % ("copilot" if copilot else "claude code"))
 		_ask_went_well = false
 		return
 	var started: int = Time.get_ticks_msec()
@@ -2072,8 +2077,8 @@ func _ask_claude_code(brief: String) -> void:
 	if not best_of_two.second_of().is_empty():
 		best_of_two.say_how_it_went(bool(outcome[0]), str(outcome[1]),
 			_world.brick_count() - _store.scenery.size(), _store.title)
-	print("claude code ok=%s bricks=%d  (%.0fs)\n  %s" % [
-		outcome[0], _world.brick_count() - _store.scenery.size(),
+	print("%s ok=%s bricks=%d  (%.0fs)\n  %s" % [
+		"copilot" if copilot else "claude code", outcome[0], _world.brick_count() - _store.scenery.size(),
 		(Time.get_ticks_msec() - started) / 1000.0,
 		str(outcome[1]).substr(0, 600)])
 	print("  the session spent %s over %d replies" % [_tokens_said(session.spent()),
@@ -2297,25 +2302,31 @@ static func _has_argument(name: String) -> bool:
 	return OS.get_cmdline_user_args().has(name)
 
 
-## Design on the person's Claude subscription instead of ours.
+## Design on the person's Claude subscription instead of ours, or with
+## [param copilot] on their GitHub Copilot plan (CopilotCli).
 ##
 ## Opens the port if it is not already open, so this works from a plain
 ## double-click and not only from a command line that remembered --mcp.
 ## Returns false, having said why, when it cannot start.
-func design_with_claude_code(brief: String) -> bool:
-	if ClaudeCode.found().is_empty():
-		push_warning("claude code: not installed on this machine")
+func design_with_claude_code(brief: String, copilot: bool = false) -> bool:
+	if (CopilotCli.found() if copilot else ClaudeCode.found()).is_empty():
+		push_warning("%s: not installed on this machine" % ("copilot" if copilot else "claude code"))
 		return false
 	if _commands == null:
 		_open_commands(Later.script(&"CommandSocket").PORT)
 	if _commands == null:
 		push_warning("claude code: no port to talk to the app on")
 		return false
-	if _claude_code == null:
-		_claude_code = ClaudeCode.new()
-		add_child(_claude_code)
-	if _claude_code.busy():
+	if _claude_code != null and _claude_code.busy():
 		return false
+	# One session of the person's own at a time, of whichever kind they chose
+	# (My Claude, My Copilot): the other kind's goes.
+	if _claude_code != null and (_claude_code is CopilotCli) != copilot:
+		_claude_code.queue_free()
+		_claude_code = null
+	if _claude_code == null:
+		_claude_code = CopilotCli.new() if copilot else ClaudeCode.new()
+		add_child(_claude_code)
 	# What it was asked for, for the checks to read the subject by: a check
 	# carries no name, and a figure checked before its first submit was read
 	# as a subject of no kind. The fresh eyes judge by the words whole.
@@ -5587,6 +5598,7 @@ func _make_chat() -> void:
 	# Decided before the panel is built, because it decides whether the
 	# choice appears in the composer at all.
 	chat.claude_code_here = not ClaudeCode.found().is_empty()
+	chat.copilot_here = not CopilotCli.found().is_empty()
 	chat.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_chat_seat.add_child(chat)
 	chat.bind(_assistant)
@@ -5620,10 +5632,14 @@ func _make_chat() -> void:
 		# A new design of a whole model on a bare baseplate is made twice,
 		# side by side, and the better kept (BestOfTwo); a change to a model,
 		# a selection or a sketch is one session.
-		var twice: bool = brief == _fresh_brief and _world.brick_count() == _store.scenery.size()
+		# Twice is Claude Code's (BestOfTwo starts its second); on a Copilot
+		# plan, where each prompt is counted, a brief is designed once.
+		var copilot: bool = chat.designing_with_copilot()
+		var twice: bool = not copilot and brief == _fresh_brief \
+			and _world.brick_count() == _store.scenery.size()
 		_fresh_brief = ""
-		if not design_with_claude_code(brief):
-			chat.gave_up("Could not start Claude Code.")
+		if not design_with_claude_code(brief, copilot):
+			chat.gave_up("Could not start %s." % ("Copilot" if copilot else "Claude Code"))
 			return
 		var second: Node = _second_design(brief) if twice else null
 		chat.follow(claude_code(), second.finished if second != null else Signal()))
