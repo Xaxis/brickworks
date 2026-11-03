@@ -501,15 +501,19 @@ static func _result(sent_id: Variant, result: Dictionary) -> Dictionary:
 	return {"jsonrpc": "2.0", "id": sent_id, "result": result}
 
 
-## The tools, as tools/list gives them.
+## The tools, as tools/list gives them. The title twice, as MCP has it:
+## the tool's own (Tool.title, what Anthropic's quickstart sets and a
+## directory's scan may read) and its annotations' (2026-11-03, claudedir).
 func served_tools() -> Array:
 	var listed: Array = []
 	for one: Dictionary in catalogue():
+		var hints: Dictionary = one.get("annotations", {})
 		listed.append({
 			"name": one.get("name", ""),
+			"title": str(hints.get("title", one.get("name", ""))),
 			"description": one.get("description", ""),
 			"inputSchema": one.get("input_schema", {}),
-			"annotations": one.get("annotations", {}),
+			"annotations": hints,
 		})
 	return listed
 

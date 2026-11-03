@@ -668,6 +668,20 @@
     },
     {
       "kind": "ui",
+      "label": "review sign-in page",
+      "entry": "web/review.html",
+      "reach": "https://brickworks.diy/review   (an app directory's reviewer: the review account's address and password, from tools/web/relay_account.mjs review; tools/web/review_flow.mjs drives it)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "review sign-in flow",
+      "entry": "tools/web/review_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/review_flow.mjs --url=<deployment> --out=shots/review_flow",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
       "label": "copy paste and duplicate",
       "entry": "src/assembly/carry.gd",
       "reach": "godot --path .  (select, Ctrl-C then Ctrl-V, or Ctrl-D; click to put down, R turns, Esc puts away; after Ctrl-D or a Clone tool click another copy stays in hand until Esc or a right click)",

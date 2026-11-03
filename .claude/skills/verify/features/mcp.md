@@ -207,7 +207,11 @@ asking for an API key.
   `GUIDE_HEAD` reaches 3,500 characters, or the connector's note
   (`ClaudeConnector.CONNECTED_NOTE`) and the head together do (they were
   3,537 when this check was added, 2026-10-13: the note was cut to what a
-  session cannot learn from the answers), when a tool is named in neither the
+  session cannot learn from the answers), when what the connector's tab
+  serves as instructions (`CONNECTED_NOTE` and `Assistant.SERVED`, the head
+  and the rules' opening with the LEGO® notice) passes 4,096 characters, all
+  Claude Code reads (2.1.316, 2026-11-03: the whole guide had been 90,009
+  characters, 31,405 tokens; `read_guide` serves the rest), when a tool is named in neither the
   head nor a section `read_guide` serves (`make_part` and `clear_model` were
   in neither), and when one of the window's commands (Shell) is in neither
   `AppTools.COMMANDS` (the tool that does it) nor `AppTools.WINDOW_ONLY`

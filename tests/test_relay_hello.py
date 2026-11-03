@@ -29,7 +29,9 @@ RELAY = ["tabs", "select_tab"]
 def run(body: str) -> dict | None:
     """[body] (an async function's body that returns something JSON) run in
     a fresh node process, with `w` a world (the fixture) and `own` the
-    deployment's tools as a tab of its build serves them."""
+    deployment's tools as a tab of its build serves them
+    (CommandSocket.served_tools: the title on the tool and in its
+    annotations)."""
     if shutil.which("node") is None:
         return None
     script = (
@@ -37,7 +39,8 @@ def run(body: str) -> dict | None:
         "import { world } from './tests/fixtures/relay/world.mjs';"
         "const w = world();"
         "const own = JSON.parse(readFileSync('./tools/mcp_tools.json', 'utf8')).map((t) =>"
-        " ({ name: t.name, description: t.description, inputSchema: t.input_schema, annotations: t.annotations }));"
+        " ({ name: t.name, title: t.annotations.title, description: t.description, inputSchema: t.input_schema,"
+        " annotations: t.annotations }));"
         "const tool = (name) => ({ name, description: name, inputSchema: { type: 'object', properties: {} } });"
         "const names = (said) => ((said && said.result && said.result.tools) || []).map((t) => t.name);"
         f"const out = await (async () => {{ {body} }})();"
@@ -124,3 +127,25 @@ def test_a_tab_of_this_build_saying_hello_changes_nothing_a_conversation_was_giv
     before, this_build, another_build = out
     assert before and before == this_build
     assert another_build != before
+
+
+def test_every_tool_listed_has_its_title_on_it_and_in_its_annotations() -> None:
+    """Claude's Connectors Directory flags a tool with no title (2026-11-03).
+    MCP has two, the tool's own and its annotations', and Anthropic's
+    quickstart sets the tool's own: every tool carries both, the same, with
+    no tab open (the deployment's list), with the relay's own two, and with
+    the viewer's own for a client that shows pages."""
+    out = run("""
+      const { toolsWithTabs } = await import('./api/mcp.js');
+      const token = w.connect("person");
+      const listed = (await w.ask(token, "tools/list")).result.tools;
+      const shown = toolsWithTabs(own, true);
+      const untitled = (tools) => tools.filter((t) => !t.title || t.title !== (t.annotations || {}).title)
+        .map((t) => t.name);
+      return { listed: listed.length, shown: shown.length, bare: untitled(listed), bareShown: untitled(shown) };
+    """)
+    if out is None:
+        return
+    assert out["listed"] == len(OWN) + len(RELAY)
+    assert out["shown"] > out["listed"]
+    assert out["bare"] == [] and out["bareShown"] == []
