@@ -563,8 +563,10 @@ for base in re.findall(r'"base": "(https://[^"]+)"', open(sys.argv[1], encoding=
 print(" ".join(seen))
 PY
 )" || { echo "deploy FAILED: could not read the providers' addresses (src/ai/provider_settings.gd)"; exit 1; }
-case " $providers " in *" https://api.anthropic.com "*" https://api.openai.com "*|*" https://api.openai.com "*" https://api.anthropic.com "*) ;;
-  *) echo "deploy FAILED: the providers' addresses read as '$providers'"; exit 1;; esac
+for host in https://api.anthropic.com https://api.openai.com; do
+  case " $providers " in *" $host "*) ;;
+    *) echo "deploy FAILED: the providers' addresses read as '$providers', without $host"; exit 1;; esac
+done
 reach="'self' https://overlook.technology https://commons.wikimedia.org https://upload.wikimedia.org https://rebrickable.com https://api.brickognize.com ${connect_extra}"
 closed="object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 site_csp="default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src ${reach}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
