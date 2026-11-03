@@ -74,14 +74,15 @@ VIAddVersionKey /LANG=0 "LegalCopyright" "Copyright (c) 2026 ${APP}"
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
 
-; The site's languages. Windows' own language picks one; English otherwise.
+; The site's languages, in its voice (du, vous, tú). Windows' own language picks one;
+; English otherwise.
 !insertmacro MUI_LANGUAGE "English"
 !insertmacro MUI_LANGUAGE "German"
 !insertmacro MUI_LANGUAGE "French"
 !insertmacro MUI_LANGUAGE "Spanish"
 
 LangString WelcomeText ${LANG_ENGLISH} "This installs Brickworks ${VERSION} for you alone: no administrator is needed.$\r$\n$\r$\nThe whole part library comes with it, so building needs no network. Your models and settings are kept apart from the app, and an update or an uninstall leaves them as they are."
-LangString WelcomeText ${LANG_GERMAN} "Hiermit wird Brickworks ${VERSION} nur für Sie installiert: Administratorrechte sind nicht nötig.$\r$\n$\r$\nDie ganze Teilebibliothek ist dabei, zum Bauen braucht es also kein Netz. Ihre Modelle und Einstellungen liegen getrennt von der App; ein Update oder eine Deinstallation lässt sie unverändert."
+LangString WelcomeText ${LANG_GERMAN} "Hiermit wird Brickworks ${VERSION} nur für dich installiert: Administratorrechte sind nicht nötig.$\r$\n$\r$\nDie ganze Teilebibliothek ist dabei, zum Bauen braucht es also kein Netz. Deine Modelle und Einstellungen liegen getrennt von der App; ein Update oder eine Deinstallation lässt sie unverändert."
 LangString WelcomeText ${LANG_FRENCH} "Ceci installe Brickworks ${VERSION} pour vous seul : aucun administrateur n’est nécessaire.$\r$\n$\r$\nToute la bibliothèque de pièces est incluse : construire ne demande aucun réseau. Vos modèles et vos réglages sont conservés à part de l’application, et une mise à jour ou une désinstallation les laisse tels quels."
 LangString WelcomeText ${LANG_SPANISH} "Esto instala Brickworks ${VERSION} solo para ti: no hace falta un administrador.$\r$\n$\r$\nIncluye toda la biblioteca de piezas, así que construir no necesita red. Tus modelos y ajustes se guardan aparte de la aplicación, y una actualización o una desinstalación los deja como están."
 LangString OpenIt ${LANG_ENGLISH} "Open Brickworks"
@@ -93,11 +94,11 @@ LangString DesktopShortcut ${LANG_GERMAN} "Eine Verknüpfung auf dem Desktop"
 LangString DesktopShortcut ${LANG_FRENCH} "Un raccourci sur le bureau"
 LangString DesktopShortcut ${LANG_SPANISH} "Un acceso directo en el escritorio"
 LangString StillOpen ${LANG_ENGLISH} "Brickworks is open. Close it, then choose Retry."
-LangString StillOpen ${LANG_GERMAN} "Brickworks ist geöffnet. Schließen Sie es und wählen Sie dann Wiederholen."
+LangString StillOpen ${LANG_GERMAN} "Brickworks ist geöffnet. Schließe es und wähle dann Wiederholen."
 LangString StillOpen ${LANG_FRENCH} "Brickworks est ouvert. Fermez-le, puis choisissez Réessayer."
 LangString StillOpen ${LANG_SPANISH} "Brickworks está abierto. Ciérralo y elige Reintentar."
 LangString KeptText ${LANG_ENGLISH} "This removes Brickworks from this computer. Your models and settings stay where they are, in %APPDATA%\Godot\app_userdata\Brickworks."
-LangString KeptText ${LANG_GERMAN} "Hiermit wird Brickworks von diesem Computer entfernt. Ihre Modelle und Einstellungen bleiben, wo sie sind: in %APPDATA%\Godot\app_userdata\Brickworks."
+LangString KeptText ${LANG_GERMAN} "Hiermit wird Brickworks von diesem Computer entfernt. Deine Modelle und Einstellungen bleiben, wo sie sind: in %APPDATA%\Godot\app_userdata\Brickworks."
 LangString KeptText ${LANG_FRENCH} "Ceci retire Brickworks de cet ordinateur. Vos modèles et vos réglages restent où ils sont, dans %APPDATA%\Godot\app_userdata\Brickworks."
 LangString KeptText ${LANG_SPANISH} "Esto quita Brickworks de este equipo. Tus modelos y ajustes se quedan donde están, en %APPDATA%\Godot\app_userdata\Brickworks."
 LangString LdrName ${LANG_ENGLISH} "LDraw model"

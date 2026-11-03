@@ -513,10 +513,13 @@ def readme(platform: str, version: str, date: str, signed: dict[str, bool]) -> s
         lines += ["To start it:", "",
                   "  ./brickworks.x86_64", "",
                   "Or, from the AppImage: chmod +x the file and run it. AppImages mount",
-                  "themselves with FUSE; without it, run it with --appimage-extract-and-run.", ""]
+                  "themselves with FUSE; without it, run it with --appimage-extract-and-run.",
+                  "From the .deb, it is in your menu, and brickworks in a terminal;",
+                  "sudo apt remove brickworks uninstalls it.", ""]
         where = "~/.local/share/godot/app_userdata/Brickworks/"
     elif platform == "mac":
-        lines += ["To start it: move Brickworks.app to Applications and open it.", ""]
+        lines += ["To start it: move Brickworks.app to Applications and open it. To",
+                  "uninstall it, move it to the Trash.", ""]
         if not signed.get("notarized"):
             lines += ["This build is not yet notarised by Apple, so the first time macOS",
                       "will not open it. Open it once, choose Done, then open System",
@@ -528,9 +531,11 @@ def readme(platform: str, version: str, date: str, signed: dict[str, bool]) -> s
                       "  xattr -dr com.apple.quarantine /Applications/Brickworks.app", ""]
         where = "~/Library/Application Support/Godot/app_userdata/Brickworks/"
     else:
-        lines += ["To start it: extract the whole folder first, then run Brickworks.exe.",
-                  "Brickworks.pck must stay beside it. Brickworks.console.exe is the",
-                  "same app with a console window, for reading what it says.", ""]
+        lines += ["From the installer, Brickworks is in the Start menu, and Settings >",
+                  "Apps uninstalls it. From the zip: extract the whole folder first, then",
+                  "run Brickworks.exe. Brickworks.pck must stay beside it.",
+                  "Brickworks.console.exe is the same app with a console window, for",
+                  "reading what it says.", ""]
         if not signed.get("windows"):
             lines += ["This build is not yet signed, so Windows SmartScreen may say",
                       "\"Windows protected your PC\". Check the download's SHA-256 against",
@@ -1080,7 +1085,10 @@ def hfs_header(volume: Path) -> tuple[dt.datetime, int]:
     if header[:2] != b"H+":
         raise Failed("%s is not an HFS+ volume" % volume)
     # Seconds since 1904, in local time: the one HFS+ date that is not UTC.
-    created = dt.datetime(1904, 1, 1) + dt.timedelta(seconds=struct.unpack(">I", header[16:20])[0])
+    # Kept as the same count of seconds (mac_alias counts from a UTC 1904),
+    # which is what an alias to the volume must say to match it.
+    created = dt.datetime(1904, 1, 1, tzinfo=dt.timezone.utc) + dt.timedelta(
+        seconds=struct.unpack(">I", header[16:20])[0])
     return created, struct.unpack(">I", header[64:68])[0]
 
 
@@ -1643,9 +1651,10 @@ def inspect_deb(path: Path) -> dict[str, Any]:
             "licences": licences(beside.get)}
 
 
-def dmg_reader(path: Path, into: Path) -> Callable[[str], bytes | None]:
-    """A disk image's files by their path on the volume: hdiutil mounts it on
-    a Mac, libdmg-hfsplus reads it elsewhere."""
+def dmg_reader(path: Path, into: Path) -> tuple[Callable[[str], bytes | None], int]:
+    """A disk image's files by their path on the volume (a link's target for
+    a link), and how much its files take: hdiutil mounts it on a Mac,
+    libdmg-hfsplus reads it elsewhere."""
     if sys.platform == "darwin":
         mount = into / "volume"
         mount.mkdir()
@@ -1657,30 +1666,49 @@ def dmg_reader(path: Path, into: Path) -> Callable[[str], bytes | None]:
             if target.is_symlink():
                 return os.readlink(target).encode()
             return target.read_bytes() if target.is_file() else None
-        return read_mounted
+        used = sum(p.lstat().st_size for p in mount.rglob("*") if not p.is_dir())
+        return read_mounted, used
     tools = dmg_tools()
     volume = into / "volume.hfs"
     subprocess.run([str(tools["dmg"]), "extract", str(path), str(volume)], check=True,
                    capture_output=True)
 
+    def listing(folder: str) -> tuple[dict[str, tuple[str, int]], int]:
+        said = subprocess.run([str(tools["hfsplus"]), str(volume), "ls", folder],
+                              capture_output=True, text=True).stdout
+        entries = {}
+        for line in said.splitlines():
+            found = re.match(r"(\d{6})\s+\d+\s+\d+\s+(\d+)\s+\d+/\s*\d+/\d+\s+\d+:\d+\s(.+)$", line)
+            if found:
+                entries[found.group(3)] = (found.group(1), int(found.group(2)))
+        total = re.search(r"Total filesystem size: (\d+)", said)
+        return entries, int(total.group(1)) if total else 0
+
     def read_extracted(name: str) -> bytes | None:
+        folder, _, leaf = ("/" + name).rpartition("/")
+        mode, size = listing(folder or "/")[0].get(leaf, ("", 0))
+        if mode.startswith("12"):
+            # hfsplus follows a link and cannot read one that leaves the
+            # volume (/Applications): its length is all it gives here.
+            # write_dmg read the target back when it made the image.
+            return b"/Applications" if size == len(b"/Applications") else b"?"
         got = subprocess.run([str(tools["hfsplus"]), str(volume), "cat", "/" + name],
                              capture_output=True)
         return got.stdout if got.returncode == 0 and got.stdout else None
-    return read_extracted
+    return read_extracted, listing("/")[1]
 
 
 def inspect_dmg(path: Path) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="brickworks-dmg-", dir=WORK if WORK.exists()
                                      else None) as scratch:
-        read = dmg_reader(path, Path(scratch))
+        read, used = dmg_reader(path, Path(scratch))
         try:
             app = "Brickworks.app/Contents/"
             plist = plistlib.loads(read(app + "Info.plist") or b"")
             binary = read(app + "MacOS/" + plist.get("CFBundleExecutable", "Brickworks")) or b""
             facts = macho_facts(binary)
             facts.update({
-                "bundle": "Brickworks.app",
+                "bundle": "Brickworks.app", "unpacked": used,
                 "version": plist.get("CFBundleShortVersionString", ""),
                 "build": plist.get("CFBundleVersion", ""),
                 "identifier": plist.get("CFBundleIdentifier", ""),
@@ -1713,8 +1741,7 @@ def inspect_dmg(path: Path) -> dict[str, Any]:
 def inspect_installer(path: Path) -> dict[str, Any]:
     data = path.read_bytes()
     setup = pe_facts(data)
-    return {"exes": {path.name: setup}, "nsis": b"NullsoftInst" in data[-len(data) // 2:]
-            or b"NullsoftInst" in data}
+    return {"exes": {path.name: setup}, "nsis": b"NullsoftInst" in data}
 
 
 def inspect(out: Path) -> list[dict[str, Any]]:
@@ -2019,6 +2046,27 @@ def opened_line(text: str, model: Path) -> int:
     return int(found[-1]) if found else -1
 
 
+def ldraw_parts(text: str) -> int:
+    """The parts in an LDraw model, a sub-model's counted each time it is
+    placed, as the app counts them (ModelStore.count_in)."""
+    sections: dict[str, list[str]] = {}
+    order: list[str] = []
+    name = ""
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith("0 FILE "):
+            name = line[7:].strip().lower()
+        elif line.startswith("1 ") and len(line.split()) >= 15:
+            if name not in sections:
+                order.append(name)
+            sections.setdefault(name, []).append(line.split(None, 14)[-1].strip().lower())
+
+    def count(section: str, depth: int) -> int:
+        return sum(count(used, depth + 1) if used in sections and depth < 32 else 1
+                   for used in sections.get(section, []))
+    return count(order[0], 0) if order else 0
+
+
 def logs_say(folder: Path, model: Path, seconds: int) -> int:
     """[opened_line] from the app's own logs under [folder], waiting up to
     [seconds] for it: the app keeps running, so they are read as it goes."""
@@ -2077,8 +2125,7 @@ def opens_models(package: Path, base: list[str], env: dict[str, str],
         out = root / ("from-%s.ldr" % model.suffix[1:])
         code, output = run_app(base + ["--headless", str(model), "--", "--out=%s" % out], env)
         parts = opened_line(output, model)
-        written = len([line for line in out.read_text().splitlines() if line.startswith("1 ")]) \
-            if out.exists() else 0
+        written = ldraw_parts(out.read_text()) if out.exists() else 0
         said.append(("opens %s given as the system gives it: %d parts, %d written back"
                      % (model.name, parts, written), code == 0 and parts > 0 and written == parts,
                      output))
@@ -2129,14 +2176,17 @@ def double_click_linux(root: Path, env: dict[str, str],
     data = Path(env["HOME"]) / ".local" / "share" / "godot" / "app_userdata" / "Brickworks"
     script = root / "double_click.sh"
     # Each opened as a file manager opens it, and waited for in the app's own
-    # log; then the windows are counted while both are open.
+    # log; then the windows are counted while both are open, and the class
+    # each says it is (WM_CLASS), which ties it to the menu entry's icon.
     script.write_text('set -u\nlogs="%s/logs"\nfor model in "$@"; do\n'
                       '  gio open "$model" || exit 3\n  name=$(basename "$model")\n'
                       '  for _ in $(seq 1 300); do\n'
                       '    grep -qsF "$name: " "$logs"/*.log && break\n'
                       '    sleep 1\n  done\ndone\n'
                       'ls "%s"/sessions/*/held/pid 2>/dev/null | wc -l > "%s"\n'
-                      % (data, data, root / "windows.txt"))
+                      'for id in $(xwininfo -root -children | awk \'/^ +0x/ {print $1}\'); do\n'
+                      '  xprop -id "$id" WM_CLASS\ndone > "%s"\n'
+                      % (data, data, root / "windows.txt", root / "classes.txt"))
     code, output = run_app(windowed(["bash", str(script)] + [str(m) for m in models], desk), desk, 900)
     text = "".join(log.read_text(errors="replace") for log in (data / "logs").glob("*.log"))
     for at, model in enumerate(models):
@@ -2146,6 +2196,11 @@ def double_click_linux(root: Path, env: dict[str, str],
                      output + text[-2000:]))
     windows = (root / "windows.txt").read_text().strip() if (root / "windows.txt").exists() else "0"
     said.append(("...each in a window of its own: %s open" % windows, windows == "2", output))
+    classes = (root / "classes.txt").read_text() if (root / "classes.txt").exists() else ""
+    named = re.findall(r'WM_CLASS\(STRING\) = "([^"]*)", "([^"]*)"', classes)
+    said.append(("...whose class is the menu entry's StartupWMClass, %s: %s" % (
+        WINDOW_CLASS, ", ".join(sorted({c for _, c in named})) or "no window named one"),
+        len([c for _, c in named if c == WINDOW_CLASS]) == 2, classes))
     end_windows(data)
     return said
 
@@ -2651,12 +2706,25 @@ def release_notes(version: str, files: list[dict[str, Any]], tag: str) -> str:
                      "Done, then System Settings > Privacy & Security > **Open Anyway**.")
     if not win_signed:
         first.append("- **Windows** is not yet signed. SmartScreen may say \"Windows protected "
-                     "your PC\": check the SHA-256, then **More info** > **Run anyway**.")
+                     "your PC\" about the installer: check the SHA-256, then **More info** > "
+                     "**Run anyway**.")
+    kinds = {describe_file(str(f["name"]))["kind"] for f in files}
+    # The zips beside the disk image and the installer, for one release
+    # (docs/DISTRIBUTION.md).
+    kept = ["The macOS and Windows **zips** are still here for this release, so links "
+            "already shared keep working; the next one has only the disk image and the "
+            "installer.", ""] if {"zip", "dmg"} <= kinds else []
     return "\n".join([
         body, "", "## Downloads", "",
         "The right one for your system, with checksums and what each needs: "
         "https://brickworks.diy/download", "",
         "| System | File | Size |", "|---|---|---|", rows, "",
+        *(["On a Mac, open the **.dmg** and drag Brickworks onto Applications. On Windows, "
+           "run the **setup.exe**: it installs for you alone, with no administrator, and "
+           "Settings > Apps uninstalls it. On Debian or Ubuntu, `sudo apt install "
+           "./Brickworks-%s-linux-amd64.deb`; anywhere else, the AppImage." % version, ""]
+          if {"dmg", "installer", "deb"} <= kinds else []),
+        *kept,
         "Every file's SHA-256 is in `SHA256SUMS` (`sha256sum -c SHA256SUMS`).", "",
         *(["### The first launch", "", *first, ""] if first else []),
         "Released %s from %s." % (date, tag)])

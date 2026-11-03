@@ -138,7 +138,6 @@
   "If Windows says <b>Windows protected your PC</b>, choose <b>More info</b>, then <b>Run anyway</b>. It asks only the first time, because this build is not signed yet.": "Si Windows dice <b>Windows protegió tu PC</b>, elige <b>Más información</b> y luego <b>Ejecutar de todas formas</b>. Solo lo pregunta la primera vez, porque esta versión aún no está firmada.",
   "In your file manager, open the AppImage's <b>Properties</b> and allow it to run as a program. Then double-click it. Or in a terminal:": "En tu gestor de archivos, abre las <b>Propiedades</b> del AppImage y permite que se ejecute como programa. Luego haz doble clic en él. O en una terminal:",
   "Will not start? Your system may lack FUSE. Get the <a id=\"linux-tar\" href=\"https://github.com/Xaxis/brickworks-releases/releases/latest\">.tar.xz</a> instead, and run it from where it unpacks:": "¿No arranca? Puede que a tu sistema le falte FUSE. Descarga en su lugar el <a id=\"linux-tar\" href=\"https://github.com/Xaxis/brickworks-releases/releases/latest\">.tar.xz</a> y ejecútalo desde donde se descomprima:",
-  "Verify the download": "Verificar la descarga",
   "Every file's SHA-256 is in SHA256SUMS on <a id=\"release-link\" href=\"https://github.com/Xaxis/brickworks-releases/releases/latest\">the release on GitHub</a>.": "El SHA-256 de cada archivo está en SHA256SUMS, en <a id=\"release-link\" href=\"https://github.com/Xaxis/brickworks-releases/releases/latest\">la versión en GitHub</a>.",
   "This page picks your download with a little JavaScript. Without it, every file is on <a href=\"https://github.com/Xaxis/brickworks-releases/releases/latest\">GitHub</a>.": "Esta página elige tu descarga con un poco de JavaScript. Sin él, todos los archivos están en <a href=\"https://github.com/Xaxis/brickworks-releases/releases/latest\">GitHub</a>.",
   "What is new": "Qué hay de nuevo",
@@ -1066,7 +1065,16 @@
   "Which collections first": "Qué colecciones van primero",
   "Collections — the Brickworks gallery": "Colecciones — la galería de Brickworks",
   "Collections of models built in Brickworks, made by the people who build them: follow one to see what is put in it.": "Colecciones de modelos construidos en Brickworks, creadas por las personas que los construyen: sigue una para ver lo que se añade a ella.",
-  "No public collections yet. Anyone can make one: on a model's page, press Save to put it in a collection, then make the collection public on your profile. It is listed here once a model in it is in the gallery.": "Aún no hay colecciones públicas. Cualquiera puede crear una: en la página de un modelo, pulsa Guardar para añadirlo a una colección y luego haz pública la colección en tu perfil. Aparecerá aquí en cuanto uno de sus modelos esté en la galería."
+  "No public collections yet. Anyone can make one: on a model's page, press Save to put it in a collection, then make the collection public on your profile. It is listed here once a model in it is in the gallery.": "Aún no hay colecciones públicas. Cualquiera puede crear una: en la página de un modelo, pulsa Guardar para añadirlo a una colección y luego haz pública la colección en tu perfil. Aparecerá aquí en cuanto uno de sus modelos esté en la galería.",
+  "Open the disk image and drag <b>Brickworks</b> onto Applications.": "Abre la imagen de disco y arrastra <b>Brickworks</b> a Aplicaciones.",
+  "Open it from Applications. macOS says it cannot check it for malicious software: choose <b>Done</b>.": "Ábrelo desde Aplicaciones. macOS dice que no puede comprobar que no contenga software malicioso: elige <b>OK</b>.",
+  "To uninstall, move Brickworks from Applications to the Trash. Your models and settings stay.": "Para desinstalarla, mueve Brickworks de Aplicaciones a la Papelera. Tus modelos y ajustes se quedan.",
+  "Open the installer you downloaded. It installs for you alone, with no administrator, and puts Brickworks in the Start menu.": "Abre el instalador que descargaste. Instala solo para ti, sin administrador, y pone Brickworks en el menú Inicio.",
+  "If Windows says <b>Windows protected your PC</b>, choose <b>More info</b>, then <b>Run anyway</b>. It asks only for the installer, because this build is not signed yet.": "Si Windows dice <b>Windows protegió tu PC</b>, elige <b>Más información</b> y luego <b>Ejecutar de todas formas</b>. Solo lo pregunta para el instalador, porque esta versión aún no está firmada.",
+  "To uninstall, open <b>Settings</b>, then <b>Apps</b>, and choose <b>Uninstall</b> beside Brickworks. Your models and settings stay.": "Para desinstalarla, abre <b>Configuración</b>, luego <b>Aplicaciones</b>, y elige <b>Desinstalar</b> junto a Brickworks. Tus modelos y ajustes se quedan.",
+  "On Debian or Ubuntu, the <a id=\"linux-deb\" href=\"https://github.com/Xaxis/brickworks-releases/releases/latest\">.deb</a> puts Brickworks in your menu and opens models in it. Uninstall it with <code>sudo apt remove brickworks</code>.": "En Debian o Ubuntu, el paquete <a id=\"linux-deb\" href=\"https://github.com/Xaxis/brickworks-releases/releases/latest\">.deb</a> pone Brickworks en tu menú y abre los modelos en él. Desinstálalo con <code>sudo apt remove brickworks</code>.",
+  "To uninstall, delete the AppImage or the folder. Your models and settings stay.": "Para desinstalarla, borra el AppImage o la carpeta. Tus modelos y ajustes se quedan.",
+  "All files and checksums": "Todos los archivos y sumas de comprobación"
  },
  "scripts": {
   "Copy": "Copiar",
@@ -1078,8 +1086,6 @@
   "First launch: extract the zip, then allow it once.": "Primer inicio: extrae el zip y después permítela una vez.",
   "First launch: let the AppImage run as a program.": "Primer inicio: deja que el AppImage se ejecute como programa.",
   "In a terminal, this checks each file is the one published. It should print OK.": "En un terminal, esto comprueba que cada archivo es el publicado. Debería mostrar OK.",
-  "In Terminal, this checks the file is the one published. It should print OK.": "En Terminal, esto comprueba que el archivo es el publicado. Debería mostrar OK.",
-  "In PowerShell, this checks the file is the one published. It should print True.": "En PowerShell, esto comprueba que el archivo es el publicado. Debería mostrar True.",
   ", and {size} of disk": " y {size} de disco",
   "Needs 64-bit Linux on an x86 PC with glibc {glibc} or newer": "Necesita Linux de 64 bits en un PC x86 con glibc {glibc} o posterior",
   "Needs 64-bit Linux on an x86 PC": "Necesita Linux de 64 bits en un PC x86",
@@ -1091,7 +1097,6 @@
   "Version {version}": "Versión {version}",
   "Apple silicon and Intel": "Apple silicon e Intel",
   "Windows 10 and 11": "Windows 10 y 11",
-  "The {kind}:": "El archivo {kind}:",
   "Other systems: ": "Otros sistemas: ",
   "New in {version}": "Novedades de la {version}",
   "Released {date}": "Publicada el {date}",
@@ -2544,6 +2549,11 @@
   "Gallery · Models built in Brickworks": "Galería · Modelos construidos en Brickworks",
   "Search the gallery": "Buscar en la galería",
   "Search models, builders, tags": "Buscar modelos, constructores, etiquetas",
-  "Sets": "Sets"
+  "Sets": "Sets",
+  "First launch: drag it into Applications, then allow it once.": "Primer inicio: arrástrala a Aplicaciones y luego permítela una vez.",
+  "First launch: run the installer.": "Primer inicio: ejecuta el instalador.",
+  "First launch: run the installer, and allow it once.": "Primer inicio: ejecuta el instalador y permítelo una vez.",
+  "In Terminal, this checks each file is the one published. It should print OK.": "En Terminal, esto comprueba que cada archivo es el publicado. Debería mostrar OK.",
+  "In PowerShell, this checks each file is the one published. It should print True.": "En PowerShell, esto comprueba que cada archivo es el publicado. Debería mostrar True."
  }
 }

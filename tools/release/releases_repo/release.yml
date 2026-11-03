@@ -13,10 +13,16 @@
 # Windows. Linux is the machine that built it, and docs/RELEASING.md smokes
 # both Linux packages there before the upload.
 #
-# So this downloads what was uploaded to a release here and runs each
-# package the way a person would, unpacked into a clean home:
-# tools/release.py smoke asks it which build it is, opens the example model
-# and writes it back, and has a session place bricks in it over MCP. Those
+# So this downloads what was uploaded to a release here and installs each
+# package the way a person would, into a clean home: the disk image mounted
+# and its app copied to /Applications, the installer run silently, as the
+# updater runs it. tools/release.py smoke asks it which build it is, opens
+# the example model and writes it back, has a session place bricks in it
+# over MCP, opens a model of each kind given as a double-click gives it, and
+# double-clicks two (Launch Services on a Mac, the shell on Windows), the
+# second with the app open; on Windows it then uninstalls it. The zips the
+# disk image and the installer replaced are run too while a release has
+# them (docs/DISTRIBUTION.md). Those
 # tools are the source's, checked out from Xaxis/brickworks: once that is
 # private, with BRICKWORKS_SOURCE_TOKEN, a fine-grained token that reads
 # that one repository's contents and nothing else.
@@ -50,14 +56,14 @@ jobs:
   smoke:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { name: "macOS, Apple silicon", os: macos-15, pattern: "*-macos-universal.zip" }
-          - { name: "macOS, Intel", os: macos-15-intel, pattern: "*-macos-universal.zip" }
-          - { name: "Windows", os: windows-2022, pattern: "*-windows-x86_64.zip" }
+          - { name: "macOS, Apple silicon", os: macos-15, pattern: "*-macos-universal.*" }
+          - { name: "macOS, Intel", os: macos-15-intel, pattern: "*-macos-universal.*" }
+          - { name: "Windows", os: windows-2022, pattern: "*-windows-x86_64*" }
     env:
       TAG: ${{ inputs.tag }}
       GH_TOKEN: ${{ github.token }}
@@ -89,28 +95,58 @@ jobs:
       - name: It is what was built
         run: python tools/release.py inspect "dist/$VERSION"
 
-      - name: It starts, loads the library, opens a model and takes bricks
+      # The disk image and the installer first: the zip's run comes after,
+      # so the app in /Applications and the install folder are the zips'
+      # own clean ones by then.
+      - name: Installed as a person installs it, it starts, opens models and takes bricks
         run: |
-          package=$(ls dist/"$VERSION"/Brickworks-* | head -1)
-          python tools/release.py smoke "$package" --expect="$VERSION"
+          for package in $(ls dist/"$VERSION"/Brickworks-*.dmg dist/"$VERSION"/Brickworks-*-setup.exe \
+                              dist/"$VERSION"/Brickworks-*.zip 2>/dev/null); do
+            python tools/release.py smoke "$package" --expect="$VERSION"
+          done
 
       - name: macOS accepts its signature
         if: runner.os == 'macOS'
         run: |
-          ditto -x -k dist/"$VERSION"/*-macos-universal.zip "$RUNNER_TEMP/mac"
-          app=$(ls -d "$RUNNER_TEMP"/mac/*/Brickworks.app)
+          image=$(ls dist/"$VERSION"/*-macos-universal.dmg)
+          hdiutil verify "$image"
+          mkdir -p "$RUNNER_TEMP/mac"
+          hdiutil attach -readonly -nobrowse -mountpoint "$RUNNER_TEMP/mac" "$image"
+          app="$RUNNER_TEMP/mac/Brickworks.app"
           codesign --verify --deep --strict --verbose=2 "$app"
           lipo -archs "$app/Contents/MacOS/Brickworks"
           # Informational: an ad-hoc signature is rejected here by design,
           # and that is the Open Anyway the download page describes.
           spctl --assess --type execute --verbose=4 "$app" || true
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$image" || true
+          hdiutil detach "$RUNNER_TEMP/mac"
+
+      # What a person sees when they open the disk image: its window, laid
+      # out by its .DS_Store over the background, kept with the run.
+      - name: The disk image's window
+        if: runner.os == 'macOS'
+        run: |
+          image=$(ls dist/"$VERSION"/*-macos-universal.dmg)
+          open "$image"
+          for _ in $(seq 1 30); do [ -d /Volumes/Brickworks ] && break; sleep 1; done
+          sleep 5
+          osascript -e 'tell application "Finder" to get bounds of front window' || true
+          mkdir -p shots
+          screencapture -x "shots/dmg-window-${{ matrix.os }}.png" || true
+          hdiutil detach /Volumes/Brickworks || true
 
       - name: What Windows makes of its signature
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Expand-Archive -Path (Get-ChildItem "dist/$env:VERSION/*-windows-x86_64.zip") -DestinationPath "$env:RUNNER_TEMP/win"
-          Get-ChildItem "$env:RUNNER_TEMP/win" -Recurse -Filter *.exe | ForEach-Object {
+          Get-ChildItem "dist/$env:VERSION" -Filter *.exe | ForEach-Object {
             $s = Get-AuthenticodeSignature $_.FullName
-            "{0}: {1}" -f $_.Name, $s.Status
+            "{0}: {1}, version {2}" -f $_.Name, $s.Status, $_.VersionInfo.ProductVersion
           }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots-${{ matrix.os }}
+          path: shots/
+          if-no-files-found: ignore
