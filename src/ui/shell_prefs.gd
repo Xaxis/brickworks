@@ -104,6 +104,10 @@ const DEFAULTS: Dictionary = {
 	# Settings, Language (Language): "en", "de", "fr" or "es". English, as
 	# the app is written, until somebody chooses.
 	"language": "en",
+	# Settings, Updates (Updater), on the desktop: "auto" downloads a new
+	# version and puts it in as the app quits, "ask" says it is out, "off"
+	# asks nothing until Help, Check for updates….
+	"updates": "auto",
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

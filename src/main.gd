@@ -469,6 +469,11 @@ var _seat_offer: SeatOffer
 var _reload_offer: ReloadOffer
 ## "Brickworks has been updated", with Reload (NewerBuild).
 var _update_offer: UpdateOffer
+## The desktop app keeping itself up to date (Updater): the check, the
+## notice above the model, and Help's Check for updates… and Reinstall….
+var _updater: Updater
+var _update_notice: UpdateNotice
+var _update_dialog: UpdateDialog
 ## Once, where this browser may clear the person's models (StorageKeep).
 var _storage_offer: StorageOffer
 ## The person's models kept with their account too, signed in on the web.
@@ -1149,6 +1154,10 @@ func _page_controls() -> Dictionary:
 		named.merge(_reload_offer.controls_by_name())
 	if _update_offer != null:
 		named.merge(_update_offer.controls_by_name())
+	if _update_notice != null:
+		named.merge(_update_notice.controls_by_name())
+	if _update_dialog != null:
+		named.merge(_update_dialog.controls_by_name())
 	if _storage_offer != null:
 		named.merge(_storage_offer.controls_by_name())
 	if _saved_models_made != null:
@@ -1835,6 +1844,10 @@ func _ready() -> void:
 	# Open in Brickworks, from a shared model's viewer: once whatever was
 	# here is back, and once somebody is signed in (_on_account_changed).
 	_first_open_done = true
+	# The window is up and the model back: a copy just updated says so to the
+	# helper waiting on it, and the day's check is made (Updater).
+	if _updater != null:
+		_updater.begin()
 	_maybe_copy()
 	_maybe_open_library()
 	_maybe_fill_bin()
@@ -5290,6 +5303,21 @@ func _build_ui() -> void:
 	_update_offer.store = _store
 	_update_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_update_offer)
+	# The desktop app's own: a newer version out, said the same way, with
+	# Update and restart (src/net/updater.gd).
+	if Updater.on_desktop():
+		_updater = Updater.new()
+		_updater.name = "Updater"
+		_updater.store = _store
+		_updater.say = _bar.say
+		add_child(_updater)
+		_update_notice = UpdateNotice.new()
+		_update_notice.updater = _updater
+		_update_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_notices.get_child(0).add_child(_update_notice)
+		_update_dialog = UpdateDialog.new()
+		_update_dialog.updater = _updater
+		add_child(_update_dialog)
 
 	# Make, Reference picture…: a picture to build over, kept in the model's
 	# file and never in a picture of it (src/ui/reference_image.gd).
@@ -8073,6 +8101,28 @@ func _exit_tree() -> void:
 	if _store != null:
 		_store.write_now()
 	TabSession.release()
+	# In Updates, Automatic: an update downloaded goes in as the app quits.
+	if _updater != null:
+		_updater.on_quit()
+
+
+## Help, Check for updates….
+func check_updates() -> void:
+	if _update_dialog != null:
+		_update_dialog.check()
+
+
+## Help, Reinstall Brickworks….
+func ask_reinstall() -> void:
+	if _update_dialog != null:
+		_update_dialog.ask_reinstall()
+
+
+## Help, Restart Brickworks: the model on the baseplate written first, and
+## opened again by the window that comes back.
+func restart_app() -> void:
+	if _updater != null:
+		_updater.restart("restart")
 
 
 func _process(_delta: float) -> void:

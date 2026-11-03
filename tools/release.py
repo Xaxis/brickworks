@@ -19,6 +19,7 @@
                                              commit on origin, and write web/releases.json
           [--tag=TAG] [--target=REF] [--no-manifest]
     tools/release.py manifest --local [--out=FILE]   the page's manifest from dist/, to preview it
+    tools/release.py latest --check FILE      is FILE a latest.json the app would believe?
 
 docs/RELEASING.md is the cycle this is part of, and says when to run each.
 
@@ -36,6 +37,12 @@ and the download page says what that means for the first launch:
     APPLE_NOTARY_KEY, APPLE_NOTARY_KEY_ID, APPLE_NOTARY_ISSUER
                                                   App Store Connect API key, to notarise
     WINDOWS_SIGN_COMMAND                          signs one file in place; {file} is its path
+
+The desktop app's updater believes latest.json only under a signature by a
+key it knows (docs/UPDATES.md). Publishing signs it with both of these,
+from .env, and refuses a key whose public half src/net/updates.gd lacks:
+
+    UPDATE_SIGN_KEY, UPDATE_SIGN_KEY_BACKUP       RSA private keys, PEM, base64 on one line
 """
 
 from __future__ import annotations
@@ -99,7 +106,13 @@ TOOLS = {
 }
 
 SIGNING_NAMES = ("APPLE_SIGN_P12", "APPLE_SIGN_P12_PASSWORD", "APPLE_NOTARY_KEY",
-                 "APPLE_NOTARY_KEY_ID", "APPLE_NOTARY_ISSUER", "WINDOWS_SIGN_COMMAND")
+                 "APPLE_NOTARY_KEY_ID", "APPLE_NOTARY_ISSUER", "WINDOWS_SIGN_COMMAND",
+                 "UPDATE_SIGN_KEY", "UPDATE_SIGN_KEY_BACKUP")
+UPDATE_KEYS = ("UPDATE_SIGN_KEY", "UPDATE_SIGN_KEY_BACKUP")
+# What the app's manifest says it is for, and where it reads the keys it
+# believes (Updates.PRODUCT, Updates.KEYS).
+UPDATE_PRODUCT = "brickworks-desktop"
+UPDATES_GD = ROOT / "src" / "net" / "updates.gd"
 
 
 # The licence texts every package carries beside the app (extras), and what
@@ -1620,6 +1633,142 @@ def manifest_entry(version: str, tag: str, files: list[dict[str, Any]], date: st
             "summary": summary, "files": entries}
 
 
+# -- the updater's manifest -------------------------------------------------
+
+def update_manifest(version: str, tag: str, files: list[dict[str, Any]], date: str,
+                    urls: dict[str, str]) -> dict[str, Any]:
+    """What the desktop app reads to update itself (Updates.read): this
+    release's version, its first paragraph of notes, and every package with
+    the address it is fetched from, its size and its SHA-256."""
+    _, body = section(version)
+    notes = body.split("\n\n", 1)[0].replace("\n", " ").strip()
+    return {"product": UPDATE_PRODUCT, "version": version, "date": date, "tag": tag,
+            "page": "https://github.com/%s/releases/tag/%s" % (REPO, tag), "notes": notes,
+            "files": [{"os": f["os"], "kind": f["kind"], "name": f["name"],
+                       "url": urls[str(f["name"])], "size": int(f["size"]),
+                       "sha256": f["sha256"]} for f in files]}
+
+
+def _with_key(pem: bytes, command: list[str], data: bytes = b"") -> bytes:
+    """openssl run with a private key handed over a pipe, never a file:
+    KEY in [command] is its path. Only what openssl writes on stdout back."""
+    read, write = os.pipe()
+    try:
+        os.write(write, pem)
+        os.close(write)
+        write = -1
+        done = subprocess.run([part.replace("KEY", "/dev/fd/%d" % read) for part in command],
+                              input=data, capture_output=True, pass_fds=(read,))
+    finally:
+        os.close(read)
+        if write >= 0:
+            os.close(write)
+    if done.returncode != 0:
+        # Its first line only: openssl never echoes the key, but nothing of
+        # what it read is printed here either way.
+        raise Failed("openssl %s failed: %s" % (command[1], done.stderr.decode(
+            "utf-8", "replace").strip().splitlines()[:1]))
+    return done.stdout
+
+
+def update_key_id(public_der: bytes) -> str:
+    return hashlib.sha256(public_der).hexdigest()[:16]
+
+
+def app_update_keys(text: str | None = None) -> dict[str, str]:
+    """The public keys the app believes, by id, read from updates.gd."""
+    text = UPDATES_GD.read_text() if text is None else text
+    return dict(re.findall(r'"([0-9a-f]{16})": """(-----BEGIN PUBLIC KEY-----.*?-----END PUBLIC KEY-----\n)"""',
+                           text, re.S))
+
+
+def _public_der(pem: str) -> bytes:
+    with tempfile.NamedTemporaryFile("w", suffix=".pem", delete=False) as handle:
+        handle.write(pem)
+    try:
+        return subprocess.run(["openssl", "pkey", "-pubin", "-in", handle.name, "-outform", "DER"],
+                              check=True, capture_output=True).stdout
+    finally:
+        os.unlink(handle.name)
+
+
+def sign_update_manifest(manifest: dict[str, Any],
+                         keys: list[bytes] | None = None) -> dict[str, Any]:
+    """latest.json: the manifest's text and a signature by each key, RSA over
+    SHA-256 (what Godot's Crypto verifies). [keys] are private PEMs; by
+    default .env's UPDATE_SIGN_KEY and UPDATE_SIGN_KEY_BACKUP, each of which
+    must be one whose public half the app carries."""
+    text = json.dumps(manifest, indent=1, sort_keys=True, ensure_ascii=False)
+    known = app_update_keys()
+    if keys is None:
+        load_signing_env()
+        keys = []
+        for name in UPDATE_KEYS:
+            value = os.environ.get(name, "")
+            if not value:
+                raise Failed("no %s in .env: the updater's manifest cannot be signed "
+                             "(docs/UPDATES.md)" % name)
+            try:
+                keys.append(base64.b64decode(value, validate=True))
+            except ValueError:
+                raise Failed("%s is not base64" % name)
+        for pem in keys:
+            key_id = update_key_id(_with_key(pem, ["openssl", "pkey", "-in", "KEY", "-pubout",
+                                                   "-outform", "DER"]))
+            if key_id not in known:
+                raise Failed("a key in .env (%s) is not one src/net/updates.gd knows: the app "
+                             "would refuse everything it signs" % key_id)
+    signatures = []
+    for pem in keys:
+        key_id = update_key_id(_with_key(pem, ["openssl", "pkey", "-in", "KEY", "-pubout",
+                                               "-outform", "DER"]))
+        signature = _with_key(pem, ["openssl", "dgst", "-sha256", "-sign", "KEY"],
+                              text.encode("utf-8"))
+        signatures.append({"key": key_id, "rsa_sha256": base64.b64encode(signature).decode()})
+    return {"$comment": "Written by tools/release.py publish; read by the desktop app "
+                        "(src/net/updates.gd), which believes the manifest in 'signed' only "
+                        "under a signature by a key it carries.",
+            "signed": text, "signatures": signatures}
+
+
+def check_update_manifest(envelope: dict[str, Any],
+                          keys: dict[str, str] | None = None) -> list[str]:
+    """What the app would refuse in latest.json, as Updates.read does it: the
+    signatures, by the keys it carries, then every field. [] when none."""
+    keys = app_update_keys() if keys is None else keys
+    signed = envelope.get("signed")
+    if not isinstance(signed, str):
+        return ["no signed manifest in it"]
+    good = []
+    for each in envelope.get("signatures", []):
+        pem = keys.get(str(each.get("key", "")))
+        if pem is None:
+            continue
+        with tempfile.TemporaryDirectory() as private:
+            (Path(private) / "key.pem").write_text(pem)
+            (Path(private) / "sig").write_bytes(base64.b64decode(str(each.get("rsa_sha256", ""))))
+            done = subprocess.run(["openssl", "dgst", "-sha256", "-verify",
+                                   str(Path(private) / "key.pem"), "-signature",
+                                   str(Path(private) / "sig")], input=signed.encode("utf-8"),
+                                  capture_output=True)
+            if done.returncode == 0:
+                good.append(each["key"])
+    problems = [] if good else ["no signature by a key the app carries holds"]
+    manifest = json.loads(signed)
+    if manifest.get("product") != UPDATE_PRODUCT:
+        problems.append("its product is %r" % manifest.get("product"))
+    if not SEMVER.match(str(manifest.get("version", ""))):
+        problems.append("its version is %r" % manifest.get("version"))
+    for f in manifest.get("files", []):
+        if not str(f.get("url", "")).startswith("https://github.com/%s/releases/download/" % REPO):
+            problems.append("%s is not on the release: %s" % (f.get("name"), f.get("url")))
+        if not re.fullmatch(r"[0-9a-f]{64}", str(f.get("sha256", ""))) or int(f.get("size", 0)) < 1:
+            problems.append("%s has no SHA-256 or size" % f.get("name"))
+    if not manifest.get("files"):
+        problems.append("it lists no files")
+    return problems
+
+
 def write_manifest(entry: dict[str, Any], path: Path) -> None:
     current: dict[str, Any] = {"releases": []}
     if path.exists():
@@ -1678,7 +1827,7 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
         if not git("branch", "-r", "--contains", full):
             raise Failed("%s, which this was built from, is not pushed: push it first" % commit)
         commit = full
-    files = [out / f["name"] for f in facts["files"]] + [out / "SHA256SUMS"]
+    files = [out / f["name"] for f in facts["files"]] + [out / "SHA256SUMS", out / "latest.json"]
     existing = release_view(tag)
     # Public only by promoting a draft that was checked. Creating it public
     # in one step skipped the run on macOS and Windows, and one mistyped
@@ -1688,6 +1837,18 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
         raise Failed("there is no draft %s to publish: publish --draft first, check it "
                      "on all three systems (gh workflow run release.yml -R %s -f tag=%s), "
                      "then publish it" % (tag, REPO, tag))
+    if existing is None:
+        # The updater's manifest, signed here: each package at the address it
+        # has once the release is published, which is the only time any copy
+        # of the app reads it (releases/latest/download/ names no draft).
+        pinned = {f["name"]: "https://github.com/%s/releases/download/%s/%s" % (REPO, tag, f["name"])
+                  for f in facts["files"]}
+        latest = sign_update_manifest(update_manifest(version, tag, facts["files"], date, pinned))
+        problems = check_update_manifest(latest)
+        if problems:
+            raise Failed("latest.json would be refused by the app: " + "; ".join(problems))
+        (out / "latest.json").write_text(json.dumps(latest, indent=1) + "\n")
+        say("  latest.json signed by %d keys the app carries" % len(latest["signatures"]))
     if existing is None:
         # Uploaded once. A draft is how a release is checked on the
         # systems it is for before anyone can see it; publishing then
@@ -1799,6 +1960,7 @@ TAKES: dict[str, tuple[str, ...]] = {
     "best-reference": (),
     "publish": ("--draft", "--no-manifest", "--tag=", "--target="),
     "manifest": ("--local", "--out="),
+    "latest": ("--check",),
 }
 
 
@@ -1851,6 +2013,18 @@ def main(argv: list[str]) -> int:
     if command == "publish":
         return publish("--draft" in args, option(args, "tag"), option(args, "target"),
                        "--no-manifest" not in args)
+    if command == "latest":
+        if "--check" not in args or len([a for a in args if not a.startswith("--")]) != 1:
+            raise Failed("latest --check FILE")
+        path = Path(next(a for a in args if not a.startswith("--")))
+        problems = check_update_manifest(json.loads(path.read_text()))
+        for problem in problems:
+            say("  FAIL  " + problem)
+        if not problems:
+            manifest = json.loads(json.loads(path.read_text())["signed"])
+            say("  ok    %s: Brickworks %s, %d files, signed by a key the app carries"
+                % (path, manifest["version"], len(manifest["files"])))
+        return 1 if problems else 0
     if command == "manifest":
         if "--local" not in args:
             raise Failed("manifest --local: publish writes the real one")
