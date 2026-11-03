@@ -438,7 +438,7 @@ tools/probe.sh updater_probe
 python3 tools/minitest.py tests/test_updates.py
 ```
 
-Proves it when: the probe prints 38 `ok` lines and ends `the desktop app
+Proves it when: the probe prints 39 `ok` lines and ends `the desktop app
 checks, refuses what it must, downloads, and hands over the restart with the
 model kept` (among them: the two release keys each load under their own id;
 Check for updates refuses a bad signature and `0.0.1, which is older`; in
@@ -462,6 +462,12 @@ parts and session as before the restart, the copy in place says B and
 nothing is left in `.brickworks-update/`, Restart and Reinstall come back
 the same, Automatic's next start says B, and a copy that cannot start is
 put back and A started again.
+
+On macOS and Windows the same, from a runner: `update_check.py lay --old
+OLD --new NEW --port=8697 --out=DIR` here (the runner has no signing key),
+then `run --laid=DIR` there (docs/UPDATES.md). It proves it when it
+ends the same way. On Windows the log-judged steps start `Brickworks.exe`:
+the console wrapper keeps its own file in use until the new copy ends.
 
 ## Gotchas
 
