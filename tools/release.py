@@ -1450,7 +1450,7 @@ def pe_facts(data: bytes) -> dict[str, Any]:
         while data[end:end + 2] != b"\0\0":
             end += 2
         version = data[start:end].decode("utf-16-le", "replace")
-    return {"machine": {0x8664: "x86_64", 0xAA64: "arm64"}.get(machine, hex(machine)),
+    return {"machine": {0x8664: "x86_64", 0xAA64: "arm64", 0x14C: "x86"}.get(machine, hex(machine)),
             "subsystem": {2: "window", 3: "console"}.get(subsystem, str(subsystem)),
             "version": version, "signed": security_size > 0}
 

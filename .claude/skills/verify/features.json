@@ -47,6 +47,7 @@
         "tests/test_library_site.py",
         "tests/test_model_page.py",
         "tests/test_refresh_catalogue.py",
+        "tests/test_release.py",
         "tests/test_update_parts.py"
       ]
     },
@@ -123,7 +124,8 @@
       "tests": [
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
-        "tests/test_model_bases.py"
+        "tests/test_model_bases.py",
+        "tests/test_release.py"
       ]
     },
     {
@@ -217,6 +219,7 @@
         "tests/test_feedback.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_release.py",
         "tests/test_sets.py"
       ]
     },
@@ -3117,7 +3120,8 @@
       "area": "web",
       "tests": [
         "tests/test_library_site.py",
-        "tests/test_model_bases.py"
+        "tests/test_model_bases.py",
+        "tests/test_release.py"
       ]
     },
     {
@@ -4602,7 +4606,9 @@
       "entry": "src/assembly/pattern.gd",
       "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/test_release.py"
+      ]
     },
     {
       "id": "ui:photo-real render",
