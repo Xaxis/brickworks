@@ -17,7 +17,7 @@
 // About Brickworks; then Back to brickworks.diy, the last row, puts the
 // page at the site's own address, its header's mark showing. Pictures in
 // --out; it fails if a step does not happen or a script error is thrown.
-import { controlsWith, launch, START_MS } from "./browser.mjs";
+import { caughtUp, controlsWith, launch, START_MS } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -86,7 +86,9 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
     mark.w >= 44 && mark.h >= 44);
   // Its colours, read off a picture of its left end, where the mark is: the
   // page's own picture, as a person sees it (the canvas read back between
-  // frames can be blank, the app drawing only what changes).
+  // frames can be blank, the app drawing only what changes), of the frame
+  // that put it where the map says (caughtUp).
+  await caughtUp(page);
   const square = { x: Math.max(0, mark.x - mark.w / 2), y: Math.max(0, mark.y - mark.h / 2), width: mark.h, height: mark.h };
   const shot = (await page.screenshot({ clip: square })).toString("base64");
   const colours = await page.evaluate(async (png) => {
