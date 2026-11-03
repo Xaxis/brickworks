@@ -4461,6 +4461,100 @@ Light Orange, whose 2445 and 11211 come in Yellow.
 Results: `bench/results/realset-2026-11-02-d12panel/` and
 `realset-2026-11-02-d12panel2/`, against `realset-2026-11-02-d12base/`.
 
+### Technique: app-made panels on the 44 of proof (2026-11-03, `efb88a50`, NO-GO)
+
+**Two fixes first** (`efb88a50`). Every tile, band and sill of a panel is a
+part made in the face's colour, or that pattern is not used. The holders and
+back plates take the face's colour where made, else black, which is hidden
+behind the face. `copied` is gone: a face of several colours stays as the
+session built it. `face_panels_probe` gained a box coloured by course and
+Bright Light Orange and Pearl Gold towers. On `907248ac` it failed 11: four
+panels on the box, holders and back plates in Yellow behind Bright Light
+Orange, front tiles in Medium Nougat on Pearl Gold. On `efb88a50` every
+check passes; panels, hinged_panels and sections probes pass.
+
+**How it ran.** Two arms at once: the base on a locked snapshot of
+stage225 (`snapd12b44`, `d050c454`, no FacePanels), the lever on its own
+(`snapd12l44`, `efb88a50`), both imported first. Same 44, same path
+(`--via relay --no-claude-code`), one design a subject, 2 at a time each,
+ports 9870-9879 and 9880-9889, 2026-11-03 09:02Z to 17:41Z, audited after.
+No login lapse or limit. 42063-1, the motorcycle, hit the 45-minute timeout
+in the lever with a model saved. No tool result carried a held-out set:
+seven sessions searched the index for their own set and found nothing.
+Sessions took a median 18 minutes in both arms.
+
+| dimension | base (95%) | panels (95%) | lever minus base, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 27% (16-42) | 32% (20-47) | +5 (-5, +15) | 7 / 4 |
+| surface | 32% (20-47) | 33% (21-48) | +1 (-10, +14) | 6 / 6 |
+| colour | 35% (23-50) | 34% (22-49) | -1 (-7, +5) | 3 / 4 |
+| technique | 15% (7-28) | 15% (7-28) | +0 (-6, +7) | 2 / 3 |
+| creativity | 45% (32-60) | 50% (36-64) | +5 (-5, +14) | 11 / 7 |
+| overall | 22% (12-36) | 27% (16-42) | +6 (-1, +14) | 5 / 2 |
+
+None of that is the panels. On the 39 subjects the app laid no panel,
+overall is +8 (+0, +17), from The Cave, Jack Skellington and Sally, the
+Street Sweeper, the Trevi Fountain and the Flatiron. Two runs of one app
+differ by as much (colour10, above).
+
+**What the app laid.** Panels on 5 of the 44, all Architecture: 24 laid
+(23 `ribbed`, 1 `banded`), 4 refused as laid. Sessions took 13 back:
+
+- Big Ben: all 4 at once. The session then faced the shaft itself with
+  `restyle` (grille panels), saw horizontal stripes, and rebuilt it as
+  vertical ribbed tiles with dark tan string courses on all four faces.
+- Chicago: 8 of 10. The model was over its 550 pieces, and "the app put
+  grille panels on the back faces (−z), where nobody looks". A panel costs
+  more pieces than the bricks it replaces.
+- Burj Khalifa: 1 of 4.
+- Kept: New York 2 `ribbed` 4 x 12, Burj 2 `ribbed` and 1 `banded`,
+  Chicago 2 `ribbed`, Las Vegas 4 `ribbed`.
+
+Nothing a panel laid was left off its studs: the audit found no floating
+part in any panelled design. The only floating parts are The Cave's, in both
+arms (2 base, 1 lever).
+
+**Verdicts won**, of 2 per subject and dimension:
+
+| | likeness | surface | colour | technique | creativity | overall |
+|---|---|---|---|---|---|---|
+| the 4 that kept panels, base | 1 | 0 | 4 | 0 | 5 | 1 |
+| the 4 that kept panels, lever | 0 | 0 | 3 | 0 | 5 | 0 |
+| Big Ben (taken back), base | 2 | 1 | 2 | 2 | 2 | 2 |
+| Big Ben (taken back), lever | 2 | 2 | 2 | 2 | 2 | 2 |
+
+**Share of parts on their side** (`tools/style.py`): on the 5 panelled
+subjects a median 2.4% (base), 22.2% (lever), 33.1% (sets). Over all 44,
+5% and 7% against the sets' 27%.
+
+**What the judge said.** `ribbed` is no longer called brick: it is
+"grille textures", "grille tiles ... used as surface texture on what is
+basically a stacked rectangular tower" (Burj), "mostly stacks bricks and
+panels into straight columns" (New York), "mostly stacked bricks with some
+cylinders and panels" (Chicago). The one `banded` face drew no words.
+Surface was lost on exposed studs and massing: "exposed studs on many
+tops", "blocky square steps", while the sets won on setbacks, tapers and
+curved or angled sub-assemblies. Over all 44 lever designs, 54 of the 59
+surface verdicts lost name studs (29 subjects). Big Ben's own cladding won
+both ways: "clad in sideways ribbed tiles that give a smooth, vertical
+Gothic texture", "SNOT cladding across all four tower faces".
+
+The front renders of all five were looked at. New York's ribbed tan tower
+reads as tan stonework, its ribs too fine to see. Chicago's two black
+towers are flat black slabs. Las Vegas's Bellagio shows faint ribs in its
+upper middle. The Burj reads as a grey stepped spire with striped bands.
+
+**NO-GO.** Where panels stayed they won no surface and no technique (0 of
+8 each, as in the base), and likeness and overall each lost one. The app
+reaches 5 subjects in 44, so a panel this good cannot move the 44. Big Ben
+shows what does win: a whole tower clad on all four faces, in vertical ribs
+with string courses in a second colour, which the session chose and built
+itself. The judge's surface losses name exposed studs far more often than
+brick, and on Architecture subjects the sets win on massing.
+
+Results: `bench/results/realset-2026-11-03-d12b44/` against
+`realset-2026-11-03-d12l44/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
