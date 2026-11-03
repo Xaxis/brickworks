@@ -636,9 +636,12 @@ picture the assistant is shown.
   still the Paint tool's. `controls_probe` presses every advertised key, then
   runs itself again under each preset (one alone: `-- --preset=studio`). On the web,
   `tools/web/keys_flow.mjs` sets Shift-B and reloads the page (local build or
-  a preview, `preview_checks.sh … keys`). Not proven by a check: the account's
-  half before keymap.sql is applied (the API answers `ready: false` and the keys
-  stay on the device).
+  a preview, `preview_checks.sh … keys`), signed in to a throwaway account of
+  its own that a second browser must find the key on, deleted after: on the
+  shared test account two runs at once (rel-m249's live and preview
+  batteries) put each other's keys back and both failed (2026-11-02). Not
+  proven by a check: the account's half before keymap.sql is applied (the API
+  answers `ready: false` and the keys stay on the device).
   Every key a message, tooltip or name read out names is the keymap's now
   (`Keymap.filled`: "{show_all|shows everything}" is "alt-H shows everything",
   Ctrl-shift-L under Studio's; a command with no key is named by its menu row,
