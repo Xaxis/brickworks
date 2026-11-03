@@ -3,16 +3,21 @@
 // the site's owner what was reported.
 //
 // The age. Asked once of every account (api/account.js), as the month and
-// year of birth; worked out here into whether that is 13 or over, and only
-// that is kept, with when (answer_age). The date goes no further than the
-// request it came in: never to the database, never to a log.
+// year of birth; worked out here into whether that is 13 or over. The date
+// goes no further than the request it came in: never to the database,
+// never to a log. Brickworks accounts are for 13 and over (2026-11-03): 13
+// or over is kept, with when (answer_age); under 13, the account is
+// deleted there and then (api/account.js), and a younger builder uses a
+// parent's or guardian's account. US law (COPPA) asks a service that
+// knowingly keeps a child's email address for a parent's verifiable
+// consent first, and Brickworks keeps none instead.
 //
-// An account under 13 may build, keep its models and share them by link.
-// It may not have anything public: a model in the gallery, a profile, a
-// public collection, a name credited on a link. publicTrouble says so in
-// words, for api/share.js and api/people.js to refuse with before the
-// database refuses too (its triggers). Something new in public needs the
-// question answered 13 or over; an account not asked yet is asked first.
+// So no account says it is under 13. One whose row still does (one from
+// before 2026-11-03, the database's triggers kept for it) has nothing new,
+// in public or not: publicTrouble says so in the same words, for
+// api/share.js and api/people.js to refuse with, and the database refuses
+// anything public too. Something new in public needs the question answered
+// 13 or over; an account not asked yet is asked first.
 //
 // The reports. Each report is in an email to the owner within the hour, at
 // most one an hour (claim_report_digest keeps the count), to the address
@@ -81,10 +86,11 @@ export async function ageOf(account) {
   }
 }
 
-/// The answer, kept as 13 or over or not. An account already answered
-/// keeps the answer it gave: what comes back is that.
-export async function answerAge(account, atLeast13) {
-  const age = await db("rpc/answer_age", { method: "POST", body: { account, at_least_13: atLeast13 } });
+/// The answer 13 or over, kept: the only one that is (an answer under 13
+/// deletes the account instead, api/account.js). An account already
+/// answered keeps the answer it gave: what comes back is that.
+export async function answerAge(account) {
+  const age = await db("rpc/answer_age", { method: "POST", body: { account, at_least_13: true } });
   return { ready: true, ask: age?.ask === true,
     over_13: typeof age?.over_13 === "boolean" ? age.over_13 : null, asked_at: age?.asked_at ?? null };
 }
@@ -92,34 +98,29 @@ export async function answerAge(account, atLeast13) {
 const ASK_FIRST = "Brickworks asks everyone one question first. Sign in again, in the app or on "
   + "brickworks.diy, to answer it, then try this again.";
 
-// Said to an account under 13, politely, for each thing it may not have.
-const UNDER_13 = {
-  listing: "The gallery is for people 13 and over, so this model cannot be listed there. It is "
-    + "shared at its link all the same: publish it without listing it.",
-  credit: "A name is shown on a link only for people 13 and over: share it without one.",
-  profile: "Public profiles are for people 13 and over, so this account does not have one. "
-    + "Building, your models and sharing by link are all yours.",
-  collection: "Public collections are for people 13 and over. Keep this one private: it is still "
-    + "yours to fill and use.",
-  photo: "Photos of builds are shown in public, so they are for people 13 and over. The model, and "
-    + "building it, are yours all the same.",
-};
+/// What somebody under 13 is told, on the site and in the app, when their
+/// answer deletes the account just made, and by the API to an account whose
+/// row still says under 13.
+export const TOO_YOUNG = "Brickworks accounts are for 13 and over. Ask a parent or guardian to sign in "
+  + "with their own email and build with you.";
 
-/// Why [account] may not have the public things [wanted] names, or null
-/// when it may. Each of listing, profile, collection, photo and credit is true
-/// for one it is about to make public (that needs the question answered
-/// 13 or over), "kept" for one it already had and keeps (that needs only
-/// not being under 13), or false. A credit is always "kept": an account
-/// not asked yet may credit a link as before. As the database's triggers.
+/// Why [account] may not have the things [wanted] names, or null when it
+/// may. Each of listing, profile, collection, photo and credit is true for
+/// one it is about to make public (that needs the question answered 13 or
+/// over), "kept" for one it already had and keeps (that needs only not
+/// being under 13), or false. A credit is always "kept": an account not
+/// asked yet may credit a link as before. And account, "kept" for anything
+/// new it keeps on the server at all (a model shared by link, a private
+/// collection): never for an account whose row says under 13, which is
+/// told TOO_YOUNG whatever it asks. As the database's triggers.
 export async function publicTrouble(account, wanted) {
   const asked = Object.keys(wanted).filter((what) => wanted[what]);
   if (asked.length === 0) return null;
   const age = await ageOf(account);
   if (!age.ready) return null;
-  for (const what of ["listing", "profile", "collection", "photo", "credit"]) {
-    if (!asked.includes(what)) continue;
-    if (age.over_13 === false) return UNDER_13[what];
-    if (wanted[what] === true && what !== "credit" && age.over_13 !== true) return ASK_FIRST;
+  if (age.over_13 === false) return TOO_YOUNG;
+  for (const what of ["listing", "profile", "collection", "photo"]) {
+    if (asked.includes(what) && wanted[what] === true && age.over_13 !== true) return ASK_FIRST;
   }
   return null;
 }

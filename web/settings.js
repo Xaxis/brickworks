@@ -223,17 +223,17 @@ $("oc-code").addEventListener("submit", async (event) => {
   }
 });
 
-/// What the age answer changes: under 13, no public profile here (the
-/// server refuses one too), and what is kept of it said in Privacy.
+/// What the age answer changes, and what is kept of it said in Privacy.
+/// Accounts are for 13 and over: an answer under 13 deletes the account, so
+/// only a row from before that says so, and it has nothing public here (the
+/// server refuses it too).
 function drawAge(kept, handle) {
   const young = Boolean(kept && kept.over_13 === false);
   $("young").hidden = !young;
   document.documentElement.dataset.young = young ? "yes" : "no";
   $("age-said").textContent = kept && kept.over_13 === true
     ? say("You told Brickworks you are 13 or over. Only that is kept, never your date of birth.")
-    : kept && kept.over_13 === false
-      ? say("You told Brickworks you are under 13, so your profile and collections stay private. Only that is kept.")
-      : say("Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.");
+    : say("Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.");
   $("edit-profile").hidden = young;
   if (young && !handle) $("profile-line").textContent = say("A public profile is for people 13 and over.");
   $("follows-choice").hidden = !$("follows-choice").dataset.ready || young;
@@ -312,8 +312,16 @@ async function load() {
   $("loading").hidden = true;
   $("signed-out").hidden = true;
   $("signed-in").hidden = false;
-  // The age question, if this account has not answered it.
-  if (known && known.ask) drawAge(await askAgeIfAsked().catch(() => null) || known, handle);
+  // The age question, if this account has not answered it; answered under
+  // 13, the account is gone, and the page drawn again for nobody.
+  if (known && known.ask) {
+    const answered = await askAgeIfAsked().catch(() => null);
+    if (answered && answered.refused) {
+      showFeedCount().catch(() => null);
+      return load();
+    }
+    drawAge(answered || known, handle);
+  }
   // Back from Stripe to #plan, which was not on the page until now.
   if (plan && location.hash === "#plan") $("plan")?.scrollIntoView({ block: "start" });
   document.documentElement.dataset.settings = "ready";

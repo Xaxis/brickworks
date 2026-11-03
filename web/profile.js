@@ -812,14 +812,12 @@ async function load() {
   $("signed-out").hidden = true;
   $("signed-in").hidden = false;
   // The age question, if this account has not answered it; answered under
-  // 13, the page drawn again as it is for them.
+  // 13, the account is gone, and the page drawn again for nobody.
   if (known && known.ask) {
     const answered = await askAgeIfAsked().catch(() => null);
-    if (answered && answered.over_13 === false) {
-      young = true;
-      $("young").hidden = false;
-      document.documentElement.dataset.young = "yes";
-      await refresh();
+    if (answered && answered.refused) {
+      showFeedCount().catch(() => null);
+      return load();
     }
   }
   // From Settings' Edit profile.

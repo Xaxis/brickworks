@@ -25,11 +25,18 @@
 //
 // After a first sign-in, one question (2026-10-18, supabase/trust.sql), as
 // the app asks it: the month and year the person was born, with nothing
-// before the answer to say which answer opens what. The server keeps only
-// whether that is 13 or over (api/account.js). Under 13, the dialog says
-// afterwards what is and is not open to them. 13 or over, First steps
-// follow (web/first-steps.js, docs/SOCIAL.md U10): a profile, what they
-// build, and designers and models to start with, every one skippable.
+// before the answer to say which answer opens what. Brickworks accounts
+// are for 13 and over (2026-11-03). 13 or over, the server keeps only that
+// (api/account.js), and First steps follow (web/first-steps.js,
+// docs/SOCIAL.md U10): a profile, what they build, and designers and
+// models to start with, every one skippable. Under 13, the server deletes
+// the account just made, with its address, and the dialog says to ask a
+// parent or guardian to sign in with their own email and build with them;
+// this browser keeps that it was told (REFUSED, nothing about the person),
+// so the sign-in says so at once from then on, and a new account signed in
+// here is not asked again but deleted the same way. An account that
+// answered 13 or over, a parent's, signs in here as anywhere. orangecheck
+// Connect, ticked, is asked only once the answer is in: never for a child.
 //
 // Every word of these dialogs, and every error a person reads in them, the
 // server's too, is said in the visitor's language (2026-11-01): on a page
@@ -41,6 +48,9 @@
 
 const KEY = "brickworks.session";
 const ACCESS = "brickworks.access";
+// That this browser was told accounts are for 13 and over: "1", nothing
+// else, as the app keeps it (src/account/account.gd REFUSED_KEY).
+const REFUSED = "brickworks.age_refused";
 let project = null;
 
 // The visitor's language's words, on a page that has none of its own in it.
@@ -114,6 +124,15 @@ function keep(body, email) {
     }));
   } catch {
     // A browser that keeps nothing is signed in for this page only.
+  }
+}
+
+/// Whether this browser was told accounts are for 13 and over.
+export function refusedHere() {
+  try {
+    return localStorage.getItem(REFUSED) === "1";
+  } catch {
+    return false;
   }
 }
 
@@ -367,6 +386,8 @@ export async function askToSignIn(why) {
     // A page's reason, said by it or here: on a page with no copy, its
     // English is the key to the visitor's language.
     said.textContent = why ? say(why) : say("Sign in with your email address: we send you a code, no password.");
+    // Told here before: said at once, for whoever signs in next.
+    const refused = refusedHere() ? tooYoung() : [];
     const form = document.createElement("form");
     const label = document.createElement("label");
     label.textContent = say("Email");
@@ -452,8 +473,8 @@ export async function askToSignIn(why) {
             finished = true;
             dialog.close();
             dialog.remove();
-            await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
-            done(true);
+            const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
+            done(!asked?.refused);
           },
           say: (words) => {
             note.textContent = words;
@@ -474,7 +495,7 @@ export async function askToSignIn(why) {
       }
       await Promise.all(drawn);
     }).catch(() => null);
-    dialog.append(title, said, form, other, consent);
+    dialog.append(title, ...refused, said, form, other, consent);
     document.body.append(dialog);
     let address = "";
     let finished = false;
@@ -504,15 +525,16 @@ export async function askToSignIn(why) {
           field.focus();
         } else {
           const access = await redeem(address, field.value);
-          // Asked at the box's tick, never otherwise, and never waited on.
-          if (offer.connect && !consent.hidden && box.checked) connectOrangecheck(access);
           // Signed in: the age question next, if this account has not
           // answered it, before the page carries on.
           finished = true;
           dialog.close();
           dialog.remove();
-          await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
-          done(true);
+          const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
+          // Asked at the box's tick, never otherwise, never for an account
+          // under 13, and never waited on.
+          if (!asked?.refused && offer.connect && !consent.hidden && box.checked) connectOrangecheck(access);
+          done(!asked?.refused);
         }
       } catch (trouble) {
         note.textContent = trouble.message;
@@ -535,18 +557,97 @@ export async function age() {
 }
 
 /// The age question, if this account is to be asked it: resolves with
-/// {ask, over_13} as kept after, or null when there was nothing to ask or
-/// it was put off. Answered 13 or over, this was a first sign-in, and First
-/// steps are offered before the page carries on ([pending]: it has
-/// something to do once signed in, so they end back on the page).
+/// {ask, over_13} as kept after, {refused: true} when the account was
+/// deleted for an answer under 13 (signed out here, the page to carry on as
+/// it is for nobody), or null when there was nothing to ask or it was put
+/// off. Answered 13 or over, this was a first sign-in, and First steps are
+/// offered before the page carries on ([pending]: it has something to do
+/// once signed in, so they end back on the page). A browser told before is
+/// not asked: the new account goes as an answer under 13 does.
 export async function askAgeIfAsked({ pending = false } = {}) {
   const now = await age();
   if (!now || !now.ask) return now;
-  const kept = await askAge();
+  const kept = refusedHere() ? await refuseAgain() : await askAge();
   if (kept && kept.over_13 === true) {
     await import("/first-steps.js").then((steps) => steps.firstSteps({ pending })).catch(() => null);
   }
   return kept;
+}
+
+/// What somebody under 13 is told, as paragraphs: the server's words, and
+/// that nothing of them is kept.
+function tooYoung() {
+  const words = document.createElement("p");
+  words.className = "said too-young";
+  words.id = "age-refused";
+  words.textContent = say("Brickworks accounts are for 13 and over. Ask a parent or guardian to sign in "
+    + "with their own email and build with you.");
+  const parent = document.createElement("p");
+  parent.className = "note";
+  parent.textContent = say("A parent or guardian new to Brickworks makes their account on their own phone or "
+    + "computer first, then signs in here.");
+  return [words, parent];
+}
+
+/// An answer under 13 taken: the account is gone, so this browser forgets
+/// the sign-in and keeps that it was told.
+function refusedNow() {
+  try {
+    localStorage.setItem(REFUSED, "1");
+  } catch {
+    // A browser that keeps nothing is told again at the next answer.
+  }
+  signOut();
+}
+
+/// A new account signed in on a browser told before: deleted without the
+/// question, and said so in a dialog as after an answer under 13.
+async function refuseAgain() {
+  const answer = await call("/api/account?op=age", { method: "POST", body: { again: true } });
+  if (answer.body && answer.body.age) return answer.body.age;
+  if (!answer.body || answer.body.deleted !== true) return null;
+  refusedNow();
+  await learn();
+  return new Promise((done) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "sign-in age";
+    speaking(dialog);
+    const title = document.createElement("h2");
+    title.id = "age-title";
+    dialog.setAttribute("aria-labelledby", title.id);
+    document.body.append(dialog);
+    showRefused(dialog, title, () => done({ refused: true }));
+    dialog.showModal();
+  });
+}
+
+/// [dialog] made to say that accounts are for 13 and over, that the account
+/// is deleted, and a button to close it with; [then] once it is closed.
+function showRefused(dialog, title, then) {
+  title.textContent = say("Accounts are for 13 and over");
+  const gone = document.createElement("p");
+  gone.className = "note";
+  gone.textContent = say("The account is deleted, with your email address. The date was never kept.");
+  const close = document.createElement("button");
+  close.className = "cta";
+  close.type = "button";
+  close.id = "age-done";
+  close.textContent = say("Close");
+  const row = document.createElement("div");
+  row.className = "actions";
+  row.append(close);
+  let finished = false;
+  const end = () => {
+    if (finished) return;
+    finished = true;
+    dialog.close();
+    dialog.remove();
+    then();
+  };
+  close.addEventListener("click", end);
+  dialog.addEventListener("cancel", end);
+  dialog.replaceChildren(title, ...tooYoung(), gone, row);
+  close.focus();
 }
 
 /// The question itself, in a dialog over the page. Neutral: the same
@@ -636,30 +737,21 @@ async function askAge() {
       const answer = await call("/api/account?op=age", { method: "POST",
         body: { month: Number(month.value), year: Number(year.value) } });
       go.disabled = false;
+      if (answer.status === 403 && answer.body.deleted === true) {
+        // Under 13, said after the answer, never before it: the account is
+        // gone, and the dialog says so until it is closed.
+        refusedNow();
+        finished = true;
+        showRefused(dialog, title, () => done({ refused: true }));
+        return;
+      }
       if (answer.status !== 200 || !answer.body.age) {
         // The answer's own trouble (a month not come yet), else ours.
         note.textContent = answer.status === 422 && answer.body.error ? say(answer.body.error)
           : say("That did not go just now. Try again in a minute.");
         return;
       }
-      const kept = answer.body.age;
-      if (kept.over_13 !== false) {
-        end(kept);
-        return;
-      }
-      // Said after the answer, never before it.
-      title.textContent = say("Thank you");
-      said.textContent = say("You can build here, keep your models and share them by link with anyone you choose. "
-        + "The gallery, a public profile and a name shown on a link are for people 13 and over, so they are "
-        + "not open on this account.");
-      const carry = document.createElement("button");
-      carry.className = "cta";
-      carry.type = "button";
-      carry.id = "age-done";
-      carry.textContent = say("Carry on");
-      carry.addEventListener("click", () => end(kept));
-      form.replaceWith(carry);
-      carry.focus();
+      end(answer.body.age);
     });
     dialog.showModal();
     month.focus();

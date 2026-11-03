@@ -16,9 +16,16 @@
 //
 //   POST ?op=age, with a token and {month, year}: the answer to the age
 //   question (2026-10-18). Worked out here into whether that is 13 or over
-//   (api/_trust.js); only that is kept, with when, never the date. An
-//   account that has answered keeps its answer: a second try changes
-//   nothing, and what comes back is the answer it gave.
+//   (api/_trust.js). Brickworks accounts are for 13 and over (2026-11-03):
+//   13 or over, only that is kept, with when, never the date; under 13, the
+//   account is deleted there and then, as ?op=delete deletes one, with the
+//   sign-in codes' count of its address (otp_requests), so nothing of the
+//   child is kept, and the answer is 403 {error, deleted: true}: a younger
+//   builder uses a parent's or guardian's account. {again: true} instead of
+//   a date is a browser or computer told so before (web/account.js,
+//   src/account/account.gd), whose new account is not asked again but
+//   deleted the same way. An account that has answered keeps its answer: a
+//   second try changes nothing, and what comes back is the answer it gave.
 //
 //   GET ?op=theme, with a token: the theme this account chose for the
 //   site ({theme: system, light or dark, chosen, ready}), and POST ?op=theme
@@ -83,7 +90,7 @@ import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js"
 import { db, dbConfigured, reach } from "./_db.js";
 import { earlyFor } from "./_early.js";
 import { orangecheckOffer } from "./_oc_config.js";
-import { ageOf, answerAge, birthOf, thirteenOrOver } from "./_trust.js";
+import { ageOf, answerAge, birthOf, thirteenOrOver, TOO_YOUNG } from "./_trust.js";
 
 export default async function handler(request, response) {
   if (request.method === "OPTIONS") {
@@ -207,17 +214,37 @@ async function takeAge(request, response) {
       body = {};
     }
   }
-  const born = birthOf(body);
-  if (born.trouble) return response.status(422).json({ error: born.trouble });
+  const again = body?.again === true;
+  const born = again ? null : birthOf(body);
+  if (born?.trouble) return response.status(422).json({ error: born.trouble });
+  let kept;
   try {
-    const kept = await ageOf(claims.sub);
+    kept = await ageOf(claims.sub);
     if (!kept.ready) return response.status(503).json({ error: "Brickworks does not ask this here yet." });
-    const now = kept.ask ? await answerAge(claims.sub, thirteenOrOver(born.month, born.year)) : kept;
-    return response.status(200).json({ age: { ask: now.ask, over_13: now.over_13 } });
+    if (!kept.ask) return response.status(200).json({ age: { ask: kept.ask, over_13: kept.over_13 } });
+    if (!again && thirteenOrOver(born.month, born.year)) {
+      const now = await answerAge(claims.sub);
+      return response.status(200).json({ age: { ask: now.ask, over_13: now.over_13 } });
+    }
   } catch (trouble) {
     console.error(`account: the age was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not take that just now. Try again in a minute." });
   }
+  // Under 13: nothing is kept. The site owner's account holds the admin
+  // page and is never deleted from here; it is only told.
+  if (isMaster(claims)) return response.status(403).json({ error: TOO_YOUNG, deleted: false });
+  const gone = await erase(claims.sub);
+  if (gone.status !== 200) {
+    return response.status(gone.status).json({ error: "Brickworks could not take that just now. Try again in a minute." });
+  }
+  // The address's count of codes asked for (api/otp.js may_ask_for_code),
+  // the one row besides the account that holds it.
+  const address = String(claims.email || "").trim().toLowerCase();
+  if (address) {
+    await db(`otp_requests?email=eq.${encodeURIComponent(address)}`, { method: "DELETE" }).catch((trouble) =>
+      console.error(`account: the codes' count was not cleared: ${String(trouble?.message || trouble).slice(0, 120)}`));
+  }
+  return response.status(403).json({ error: TOO_YOUNG, deleted: true });
 }
 
 const THEMES = ["system", "light", "dark"];
@@ -382,6 +409,7 @@ const SUPPORT = "support@atypic.ai";
 // Admission did not erase the account: one that pays, and any other.
 const PLAN_NOT_ENDED = `We couldn't cancel your Pro plan, so nothing was deleted. Try again in a minute, or write to ${SUPPORT}.`;
 const PLAN_NOT_ERASED = `We couldn't close your plan with billing just now, so nothing was deleted. Try again in a minute, or write to ${SUPPORT}.`;
+const NOT_DELETED = "Brickworks could not delete the account just now. Try again in a minute.";
 
 /// The account deleted, at its own asking, with its address typed again.
 async function deleteAccount(request, response) {
@@ -418,7 +446,7 @@ async function deleteAccount(request, response) {
       whose = await db("rpc/oc_account_of", { method: "POST", body: { did: checked.session.did_oc } });
     } catch (trouble) {
       console.error(`account: whose orangecheck id: ${String(trouble?.message || trouble).slice(0, 120)}`);
-      return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+      return response.status(502).json({ error: NOT_DELETED });
     }
     if (whose !== claims.sub) {
       return response.status(403).json({ error: "That orangecheck sign-in is not this account's. Sign in with the one you use here." });
@@ -428,7 +456,7 @@ async function deleteAccount(request, response) {
         return response.status(409).json({ error: "That sign-in was used already. Sign in with orangecheck again." });
       }
     } catch {
-      return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+      return response.status(502).json({ error: NOT_DELETED });
     }
     await endToken(String(body.orangecheck).trim());
   } else {
@@ -447,7 +475,7 @@ async function deleteAccount(request, response) {
         asked = await codeOf(claims);
       } catch (trouble) {
         console.error(`account: whose sign-in: ${String(trouble?.message || trouble).slice(0, 120)}`);
-        return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+        return response.status(502).json({ error: NOT_DELETED });
       }
       if (asked.bound && !asked.fresh) {
         return response.status(403).json({ error: "Confirm it is you first, with a code we email you.", fresh: false });
@@ -457,7 +485,14 @@ async function deleteAccount(request, response) {
   if (isMaster(claims)) {
     return response.status(403).json({ error: "The site owner's account holds the admin page and is not deleted from here." });
   }
-  const account = claims.sub;
+  const gone = await erase(claims.sub);
+  return response.status(gone.status).json(gone.body);
+}
+
+/// [account] deleted, and everything of it: {status, body}, the answer
+/// ?op=delete gives. Asked by a deletion the person confirmed, and by an
+/// answer under 13 (takeAge).
+async function erase(account) {
   // Its plan before anything here, while billing is on: erased at Admission
   // (api/_billing.js eraseAccount), and a subscription it pays for ended
   // now, nothing charged again. Admission not doing it holds the whole
@@ -474,7 +509,7 @@ async function deleteAccount(request, response) {
     // What is held of the account says whether it pays, Admission or not.
     const paying = await entitlementOf(account)
       .then((e) => Boolean(e.subscription && e.subscription.status !== "canceled"), () => false);
-    return response.status(503).json({ error: paying ? PLAN_NOT_ENDED : PLAN_NOT_ERASED });
+    return { status: 503, body: { error: paying ? PLAN_NOT_ENDED : PLAN_NOT_ERASED } };
   }
   // The orangecheck account Connect made for it, at its own tick
   // (api/orangecheck.js ?op=connect), deleted first: until the person
@@ -503,12 +538,12 @@ async function deleteAccount(request, response) {
     connected = await db("rpc/oc_connect_leaving", { method: "POST", body: { account } });
   } catch (trouble) {
     console.error(`account: whether Connect made an account: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+    return { status: 502, body: { error: NOT_DELETED } };
   }
   if (connected) {
     const { unprovision } = await import("./_oc.js");
     const decided = await unprovision(account);
-    if (!decided.go) return response.status(decided.status).json({ error: decided.error });
+    if (!decided.go) return { status: decided.status, body: { error: decided.error } };
     kept = decided.kept || "";
   }
   try {
@@ -555,10 +590,10 @@ async function deleteAccount(request, response) {
     const gone = await reach("auth DELETE", 20, `${base}/auth/v1/admin/users/${account}`, {
       method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` } });
     if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
-    return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length, feedback,
-      ...(kept ? { orangecheck: { kept: true, said: kept } } : {}), ...(ended ? { plan: { ended } } : {}) });
+    return { status: 200, body: { deleted: true, photos: photos.length, avatars: avatars.length, feedback,
+      ...(kept ? { orangecheck: { kept: true, said: kept } } : {}), ...(ended ? { plan: { ended } } : {}) } };
   } catch (trouble) {
     console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
-    return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });
+    return { status: 502, body: { error: NOT_DELETED } };
   }
 }

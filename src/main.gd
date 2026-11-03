@@ -1065,6 +1065,10 @@ func _tell_page() -> void:
 			# and the answer as the deployment keeps it.
 			"age_ask": _account.age_ask,
 			"over_13": _account.over_13,
+			# Told accounts are for 13 and over (Account.refused), and the
+			# account deleted for it just now.
+			"refused": _account.refused,
+			"refused_now": _account.refused_now,
 			# The beta's early features this account has (Account.early_on).
 			"early": _account.early,
 		}), true)

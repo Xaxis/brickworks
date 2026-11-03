@@ -564,7 +564,7 @@ try {
     const t = document.querySelector(".build-form .said")?.textContent || "";
     return /13/.test(t) ? t : null;
   }, "the refusal", 60).catch(() => "");
-  check(`refused, in words: "${refused}"`, /Photos of builds are shown in public, so they are for people 13 and over/.test(refused));
+  check(`refused, in words: "${refused}"`, /Brickworks accounts are for 13 and over\. Ask a parent or guardian/.test(refused));
   check("...and nothing was sent to storage", (await stored("build-photo-uploads", `${youngSession.kept.user_id}/`)).length === 0);
   await shot(child, "6_under_13_refused.png");
   await youngContext.close();

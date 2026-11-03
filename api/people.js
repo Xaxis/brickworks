@@ -150,9 +150,10 @@
 // rules, api/_photo.js how a photo is made safe.
 //
 // The ground rules (2026-10-18, supabase/trust.sql): a profile and a public
-// collection need the age question answered 13 or over, and nothing of an
-// account under 13 is shown as a profile. Refused here in words, and by
-// the database again.
+// collection need the age question answered 13 or over. Accounts are for 13
+// and over (2026-11-03): an account whose row still says under 13 makes no
+// collection, public or not, and nothing of it is shown as a profile.
+// Refused here in words, and anything public by the database again.
 //
 // Since the directory's moderation (supabase/moderation.sql): names are
 // checked for abuse and for names somebody else owns (api/_names.js); each
@@ -742,8 +743,9 @@ async function saveList(request, response) {
   let id = body.id === undefined || body.id === null || body.id === "" ? "" : String(body.id);
   const was = id ? await ownList(id, account) : null;
   if (id && !was) throw new Refusal("there is no list of yours at that id", 404);
-  // Public, newly or still: the age rule (api/_trust.js).
-  const young = await publicTrouble(account, { collection: body.public === true
+  // Public, newly or still, and any at all for a row under 13: the age rule
+  // (api/_trust.js).
+  const young = await publicTrouble(account, { account: "kept", collection: body.public === true
     ? (was && was.public ? "kept" : true) : body.public === undefined && was?.public ? "kept" : false });
   if (young) throw new Refusal(young, 422);
   await counted(account, "collection");

@@ -25,6 +25,13 @@
 ## screen's pixels, and a 44 px target, in orangecheck.png. Not before the
 ## deployment offers the desktop's.
 ##
+## Then an answer under 13, as the deployment answers it (2026-11-03): the
+## account deleted, so signed out here, and the screen says accounts are
+## for 13 and over, to ask a parent or guardian, and that the account and
+## its address are gone, with the form still there for the parent. This
+## computer keeps that it was told, "1" in a file of its own, read back;
+## and a new account signed in after is not asked the question.
+##
 ## Pictures in shots/signin/. A window is needed: the screen is drawn.
 extends SceneTree
 
@@ -144,7 +151,58 @@ func _run() -> void:
 		_ok(oc.global_position.y > send.global_position.y and absf(oc.size.x - send.size.x) < 1.0,
 			"...under Email me a code, as wide")
 	_save("orangecheck.png")
+	await _under_13(account, gate)
 	_finish()
+
+
+func _under_13(account: Account, gate: SignInGate) -> void:
+	print("\nan answer under 13")
+	# Somewhere to sign in, so the way in is the form rather than "cannot reach".
+	account._url = "http://127.0.0.1:9"
+	account.email = "probe@example.com"
+	account._access = "probe.signed.in"
+	account._expires_at = Time.get_unix_time_from_system() + 3600.0
+	account.state = Account.State.SIGNED_IN
+	account.age_ask = true
+	account.changed.emit()
+	await _settle()
+	_ok(gate.visible and gate.controls_by_name().has("age_go"), "a new account is asked its age")
+	# What answer_age does with the deployment's 403 {deleted: true}.
+	account._refused_now()
+	await _settle()
+	var said: String = _text_on(gate)
+	_ok(account.state == Account.State.SIGNED_OUT and account.email.is_empty() and account.refused,
+		"the account is gone: signed out here, and told")
+	_ok(gate.visible and said.contains("Accounts are for 13 and over")
+		and said.contains("Brickworks accounts are for 13 and over. Ask a parent or guardian to sign in "
+			+ "with their own email and build with you."),
+		"the screen says accounts are for 13 and over, and to ask a parent or guardian")
+	_ok(said.contains("The account is deleted, with your email address."), "...that the account is deleted")
+	_ok(said.contains("makes their account on their own phone or computer first"),
+		"...and how a parent new to Brickworks signs in here")
+	_ok(gate.controls_by_name().has("signin_email") and not gate.controls_by_name().has("age_go"),
+		"the form is there for the parent; the question is not")
+	_save("under_13.png")
+	# This computer's note of it, as a desktop run keeps it (a probe's account
+	# keeps nothing of its own).
+	var was: String = Account.refused_where
+	Account.refused_where = "user://gate_probe_age_refused"
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Account.refused_where))
+	_ok(not Account._read_refused(), "a computer never told has no note")
+	Account._write_refused()
+	_ok(Account._read_refused() and FileAccess.get_file_as_string(Account.refused_where) == "1",
+		"told, it keeps \"1\" and nothing else, and reads it back")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(Account.refused_where))
+	Account.refused_where = was
+	# A retry: a new account signed in here is not asked, but waits while it goes.
+	account.email = "probe2@example.com"
+	account._access = "probe.signed.in"
+	account.state = Account.State.SIGNED_IN
+	account.age_ask = true
+	account.changed.emit()
+	await _settle()
+	_ok(gate.visible and not gate.controls_by_name().has("age_go") and _text_on(gate).contains("Signing you in"),
+		"a new account signed in after is not asked the question")
 
 
 func _live_sign_in(account: Account, gate: SignInGate, world: BrickWorld,
