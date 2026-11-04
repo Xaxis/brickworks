@@ -622,8 +622,7 @@ func _fit_grid() -> void:
 
 
 func _fit_grid_later() -> void:
-	await get_tree().process_frame
-	await get_tree().process_frame
+	await LaidOut.settled(self)
 	if is_instance_valid(_grid_scroll):
 		_fit_grid()
 
