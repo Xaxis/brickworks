@@ -102,8 +102,11 @@ battery, about two hours from the ship's start (rel-m256's, 14:56Z to
 `featuremap affected` reaches it would have caught three of the six: its
 GDScript graph follows `res://` paths alone, and a probe that uses a class
 by its `class_name` is never reached (a change to
-`src/assembly/instructions.gd` reaches none of the 32 probes that use
-`Instructions`).
+`src/assembly/instructions.gd` reached none of the 32 probes that use
+`Instructions`). Since claude-core e6df180 it follows class names and
+autoloads, and the verify config names `src/dev/*_probe.gd` as tests, so
+that change lists all eight. Trains still run the whole list: it costs
+nothing beside the battery.
 
 Its log is `<tag>_train.out`, its result `<tag>.train/result`,
 and a train that stops before the ship writes `<tag>.gave_up` as

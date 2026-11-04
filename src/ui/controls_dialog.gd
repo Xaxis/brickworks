@@ -714,7 +714,7 @@ func _choose_colour(n: int, beside: Control) -> void:
 	_chooser.popup(Rect2i(Vector2i(under), Vector2i.ZERO))
 	# Its colours wrap once it has its width: then kept inside the window,
 	# over the swatch where the window ends under it.
-	await get_tree().process_frame
+	await LaidOut.settled(self)
 	if _chooser == null or not _chooser.visible:
 		return
 	_chooser.reset_size()

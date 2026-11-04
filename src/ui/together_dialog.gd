@@ -165,12 +165,9 @@ func _hold_heights() -> void:
 	var chat: float = CHAT_TALL * line
 	if _chat_scroll.custom_minimum_size.y != chat:
 		_chat_scroll.custom_minimum_size.y = chat
-	_newest_line.call_deferred()
-
-
-func _newest_line() -> void:
-	if is_instance_valid(_chat_scroll):
-		_chat_scroll.scroll_vertical = int(_chat_scroll.get_v_scroll_bar().max_value)
+	# Deferred, it ran before the layout made room for the line just said,
+	# and the chat stopped a line short of it (together_chat_probe).
+	LaidOut.to_end(_chat_scroll)
 
 
 ## What it says and shows, for the session as it is now.

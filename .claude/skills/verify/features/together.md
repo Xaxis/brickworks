@@ -74,7 +74,10 @@ app, joined by a link (docs/TOGETHER.md).
   goes in the session's snapshot (`CadCamera.aim`), and whoever joins opens
   on it (`aim_at`), not framed on the parts alone. The panel keeps who is in
   it to 3 rows and the chat to 4 lines, each scrolled, so it does not grow
-  and Close does not move (`TogetherDialog._hold_heights`).
+  and Close does not move (`TogetherDialog._hold_heights`). The chat goes to
+  its newest line once that is laid out (`LaidOut.to_end`): a call deferred
+  from the line's arrival ran before the layout made room for it, and the
+  chat stopped a line short every time (`together_chat_probe`, headless).
 - Seeing each other (APP_UX B8): `op=point` carries `{at, sel, view}`
   (the selection by uid, at most 500; `CadCamera.aim`); the server re-reads
   people every 250 ms while a poll waits. Each other person's selection is

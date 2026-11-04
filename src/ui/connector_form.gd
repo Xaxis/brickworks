@@ -428,18 +428,14 @@ func _open_only(box: VBoxContainer) -> void:
 
 ## [param box] scrolled into the panel's view once it is laid out.
 func _into_view(box: Control) -> void:
-	# Two frames: a press is read before its frame's layout, and the first
-	# process_frame can come in that same frame, the box just shown still
-	# unsized. Read so, at 3,815 px tall, it scrolled the panel 16 px where
-	# it fitted, and Claude Code went from under the pointer that pressed
-	# it, so its tooltip came back (connect_form_probe, suitegrab).
-	await get_tree().process_frame
-	await get_tree().process_frame
+	# Read one frame on, the box just shown was 3,815 px tall, and the panel
+	# scrolled 16 px where it fitted: Claude Code went from under the pointer
+	# that pressed it, so its tooltip came back (connect_form_probe).
 	var up: Node = get_parent()
 	while up != null and not up is ScrollContainer:
 		up = up.get_parent()
-	if up != null and box.is_visible_in_tree():
-		(up as ScrollContainer).ensure_control_visible(box)
+	if up != null:
+		LaidOut.into_view(up as ScrollContainer, box)
 
 
 ## The state line for where things stand, when nothing newer has said it.
