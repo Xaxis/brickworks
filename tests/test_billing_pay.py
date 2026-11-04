@@ -105,6 +105,8 @@ return { month, year, asked: w.admission.checkouts, consents: w.consents, order 
     assert (year["p_interval"], year["p_amount"]) == ("year", 8000)
     assert "$8.00 USD a month" in month["p_terms"] and "renews automatically" in month["p_terms"]
     assert "$80.00 USD a year" in year["p_terms"] and "cancel any time" in year["p_terms"]
+    # The way to cancel as the step says it, so what was agreed names it.
+    assert "cancel any time in Settings, under Plan, with Cancel Pro, or at link.com" in month["p_terms"]
     # Each agreement kept before its Checkout was asked for.
     assert [c.rsplit("/", 1)[-1] for c in got["order"]] == ["plan_consent_note", "checkout"] * 2
 

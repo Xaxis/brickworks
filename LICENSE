@@ -1,0 +1,19 @@
+Copyright (c) 2026 Xaxis. All rights reserved.
+
+Brickworks is proprietary software: the source code in this repository, the
+web app and the desktop app built from it, and the website at brickworks.diy.
+No permission is granted to use, copy, modify, merge, publish, distribute,
+sublicense or sell copies of it, in whole or in part, except under a separate
+written agreement with the copyright holder.
+
+Using the website, the web app and the desktop builds published for download
+is governed by the terms of use at https://brickworks.diy/terms, not by this
+file. What you build with Brickworks is yours, as those terms say.
+
+Third-party components and data keep their own licences: the LDraw(TM) Parts
+Library (CC BY 2.0 and CC BY 4.0), Godot Engine (MIT), BrickNet's connector
+data (MIT), Liberation Sans (SIL Open Font License 1.1) and others. Each is
+named, with its terms, in docs/ATTRIBUTION.md and in the app under Help, About.
+
+LEGO(R) is a trademark of the LEGO Group of companies, which does not sponsor,
+authorize or endorse this software.

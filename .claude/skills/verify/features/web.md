@@ -3494,7 +3494,10 @@ plan with Claude as the client.
   is on: Checkout after the step before it (what Pro adds, monthly or
   yearly, the price, that it renews until cancelled, how to cancel, who
   sells it, a box nobody ticks but the person), the agreement kept first
-  (four years, the server's alone); the portal for an account that pays;
+  (four years, the server's alone); the portal for an account that pays,
+  and Cancel Pro, the portal's cancel step (Stripe asks why, no answer
+  needed, then confirms: three clicks; golive, 2026-11-03); Pro, paid or given, says what it includes, its
+  licence linked to `/terms#commercial-use`;
   Admission's signed webhook forgetting what is kept of the account. Back
   to this site's `/settings#plan` (live: brickworks.diy). Off, each POST is
   the interest form's 422, and /settings draws and asks nothing of plans.
@@ -6027,6 +6030,25 @@ And on a unit's preview with the stand-in in its functions (`tools/deploy.sh
 BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/billing_flow.mjs --url=<preview> --out=shots/billing
 ```
 
+Against Admission's real test mode and Stripe's sandbox (golive,
+2026-11-03): `tools/deploy.sh --unit --billing-test` (ADMISSION_TEST_KEY
+and ADMISSION_TEST_WEBHOOK_SECRET from .env, for that deployment alone),
+then a real browser through the real Checkout with Stripe's test card
+4242 4242 4242 4242 (`tools/web/billing_real_test.mjs`, docs/PLANS.md 8.1).
+Admission's test webhook never reaches a preview: its bypass is never put
+in a URL Admission keeps. What it sends is sent instead, signed by
+Admission's own code, with `tools/web/webhook_replay.mjs` run under
+Admission's tsx (its header says how): the plan held for 30 s still
+stands, another secret's and a ten-minute-old signature refused with
+nothing forgotten, the signed one heard and the same again "again", and
+the next `?op=plan` the plan Admission now says, both ways (grant_override
+then end_override in test mode); it ends "webhook replay: all ok".
+Stripe's bot check stops a Checkout a script pays, so a person pays it
+(docs/PLANS.md 8.1). Whom the switch comps (every account made before
+2026-10-29 but the owner's) is `python3 tools/plan_comps.py`, and with
+`--mode=test` or `--mode=live` (the matching ADMISSION_*_KEY sourced) who
+has the comp already: "N given, M left".
+
 It passes when it ends "billing: all ok". Plans off: GET /api/plans 405,
 op=me with no `billing`, each POST op the interest form's 422, /settings
 with no Plan row and no request for plans. Plans on: the API refusals and
@@ -6037,8 +6059,12 @@ Monthly ticked on to `checkout.stripe.test` (stubbed) for the month; back
 with `?billing=cancelled` still Free and said so; at 390 dark
 `?upgrade=year` opening on Yearly, nothing sideways, on to Checkout for the
 year. With `--stand-in` also: paid, the webhook heard, "Pro, $80.00 USD a
-year. Renews", Manage billing to `billing.stripe.test`, Checkout again sent
-to the portal, cancelled, "Pro until". The throwaway account is closed at
+year. Renews", "Included: any number of models kept with your account, and
+a licence for commercial use." linked to `/terms#commercial-use`, Manage
+billing and Cancel Pro offered, Manage billing to `billing.stripe.test`,
+Cancel Pro to it with the portal asked for flow `cancel`
+(`/__stand_in/portals`), Checkout again sent to the portal, cancelled, "Pro
+until". The throwaway account is closed at
 the end. Pictures: settings-plan and consent at 1280 light and 390 dark,
 settings-pro and settings-ending. With `--stand-in`, step 7 pays again and
 deletes the account from /settings: the delete form at 390 dark and 1280

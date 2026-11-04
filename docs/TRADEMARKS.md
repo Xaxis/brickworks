@@ -353,8 +353,11 @@ put, for whoever reviews them before anything paid.
    Mac App Store app called Brickworks, an LDraw model viewer by Matusalem
    Marques, last updated 2017 (https://apps.apple.com/us/app/id1176177802).
    Brickworks Limited is a large Australian maker of building materials. A
-   quick search found no BRICKWORKS mark for software or toys (classes 9
-   and 28), but that is not a search of the USPTO, EUIPO and WIPO records.
+   knock-out search of the USPTO, EUIPO (with TMview) and WIPO records on
+   2026-11-03 found no live BRICKWORKS mark for software or toys in classes
+   9, 28 or 42; class 42 carries a moderate risk from BRICKWORK (US) and the
+   Brickworks Ltd group (Australia, New Zealand) (docs/PLANS.md 8.5). It is
+   a screen, not a clearance.
 3. **Minifigure likeness** (decided: in the app, never our branding, Decision 3). The Minifigure is a LEGO Group trademark
    [BR p.14]. The app has a minifigure builder and draws minifigures from
    LDraw parts, and the site's pictures show them (the Orthanc's two

@@ -907,6 +907,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   tools/apply_sql.mjs supabase/account_models_plan.sql --dry
   --try=tools/account_models_plan_try.sql --table=account_models` (.env
   sourced; the lead applies it without --dry).
+- `any number is any number` (`supabase/account_models_any.sql`, golive,
+  2026-11-03, applied): the owner, Pro and a comp of Pro save through
+  `save_account_model_any`, past the 500 models and 64 MB everyone else
+  keeps in all, and their list (`GET /api/models` `kept`) names no
+  `most_models` or `most_bytes`, which the app reads as never full
+  (`CloudModels.short_words`). Each model stays at 4 MB as saved, and past
+  1,000 models or 256 MB saved in an hour a save is answered 429 `{full:
+  "too fast"}`, which the app sends again later. The same test file, then
+  `node tools/apply_sql.mjs supabase/account_models_any.sql --dry
+  --try=tools/account_models_any_try.sql --table=account_models`: 522
+  models kept for the shared test account, page keys unable to call it,
+  and the run ending with "models: too fast", rolled back.
 - `a returning person opens on their latest model` (`Main._open_theirs`,
   `CloudModels.looked` and `newest`, 2026-10-24, walk239's A16 and walk180's
   D2): a start with no working model on this device opens the model saved

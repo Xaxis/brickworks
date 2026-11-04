@@ -16,6 +16,13 @@
 ## So the bin says so before the first photo, and nothing is sent but a
 ## photo the person chose (PartsBin._ask_photo).
 ##
+## Those terms (read again 2026-11-03, golive) license only "personal,
+## non-commercial transitory viewing", and the API names them as its own
+## (openapi.json termsOfService). So photo search is never part of Pro's
+## licence for commercial use: the bin's first-photo words and the terms
+## (/terms#commercial-use) say so, and written permission from Brickognize
+## (piotr.rybak@brickognize.com) is condition 3 of docs/PLANS.md.
+##
 ## The endpoint is the one their API documents for parts (openapi.json,
 ## "search (legacy)"). Their own site has moved to another, internal one;
 ## should this one go, the failure is said plainly, as any other is.
