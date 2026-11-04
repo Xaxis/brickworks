@@ -22,8 +22,31 @@ LIVE_DB="$(git rev-parse --path-format=absolute --git-common-dir)/live-db"
 release_waits() {
   local f
   for f in "$LIVE_DB.release"/*; do
-    [ -e "$f" ] && kill -0 "${f##*/}" 2>/dev/null && return 0
+    [ -e "$f" ] && waiting "$f" "${f##*/}" && return 0
   done
+  return 1
+}
+# A mark or a ticket holds its process's start time. One whose process is
+# gone, or whose pid now names another process, is removed when seen: a run
+# killed whole never runs its trap, and its pid, reused, would be read as a
+# run still waiting, holding every later one until that stranger exits. 17
+# were left by units' killed runs by 2026-11-04. An empty one (train.sh's
+# mark, or one from before this) is judged by its pid alone.
+started() {
+  local stat
+  stat=$(cat "/proc/$1/stat" 2>/dev/null) || return 1
+  stat=${stat##*) }
+  # shellcheck disable=SC2086
+  set -- $stat
+  echo "${20}"
+}
+waiting() {
+  local was now
+  if now=$(started "$2"); then
+    was=$(cat "$1" 2>/dev/null) || return 1
+    { [ -z "$was" ] || [ "$was" = "$now" ]; } && return 0
+  fi
+  rm -f -- "$1"
   return 1
 }
 # The rest take it in the order they came. Each waits with a ticket in
@@ -35,16 +58,17 @@ older_waits() {
   local f
   for f in "$LIVE_DB.queue"/*; do
     [ -e "$f" ] || continue
-    [[ "${f##*/}" < "$1" ]] && kill -0 "${f##*.}" 2>/dev/null && return 0
+    [[ "${f##*/}" < "$1" ]] && waiting "$f" "${f##*.}" && return 0
   done
   return 1
 }
 take_live_db() {
   local lock="$1" until=$(( $(date +%s) + ${LIVE_WAIT:-3600} )) mine="" ticket="" left
   if [ "${BOX_HEAVY_PRIORITY:-}" = 1 ]; then
-    mkdir -p "$LIVE_DB.release"; mine="$BASHPID"; : > "$LIVE_DB.release/$mine"
+    mkdir -p "$LIVE_DB.release"; mine="$BASHPID"; started "$mine" > "$LIVE_DB.release/$mine"
   else
-    mkdir -p "$LIVE_DB.queue"; ticket="$(date +%s%N).$BASHPID"; : > "$LIVE_DB.queue/$ticket"
+    mkdir -p "$LIVE_DB.queue"; ticket="$(date +%s%N).$BASHPID"
+    started "$BASHPID" > "$LIVE_DB.queue/$ticket"
   fi
   while left=$(( until - $(date +%s) )); [ "$left" -gt 0 ] && flock -w "$left" "$lock"; do
     if [ -n "$mine" ] || { ! release_waits && ! older_waits "$ticket"; }; then
