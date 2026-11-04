@@ -156,12 +156,18 @@ parts** puts it in the bin under Custom.
   warns about.
 - **A carried part may draw on LDraw's own files.** Somebody else's file
   often carries parts drawn from the library's subparts and parts, which
-  the desktop reads from `vendor/ldraw` and no build ships (34,122 files,
-  495 MB). In a browser those a file names are fetched as it opens, from
-  `ldraw/parts/` beside the geometry (`tools/storage_ldraw.py` put them
-  there), and kept for the visit (`CustomParts.fetch_sources`). Of the
-  repository's 1,576 real sets' files, 190 need some: one file, 3 KB, for
-  42082-1; 26 files, 563 KB, at most (41075-1).
+  a checkout reads from `vendor/ldraw` and no build ships (34,122 files,
+  495 MB): a Studio Part Designer part made from 3001 names `3001.dat`. In
+  a browser and in a desktop download those a file names are fetched as it
+  opens, from `ldraw/parts/` beside the geometry (`tools/storage_ldraw.py`
+  put them there; `CustomParts.fetch_sources`): kept for the visit in a
+  browser, and for good on the desktop (`PartForge.kept_dir`), so a file
+  opened once opens offline after. Offline before that, the part is said
+  not drawn, with why, and kept in the file. Of the repository's 1,576 real
+  sets' files, 190 need some: one file, 3 KB, for 42082-1; 26 files,
+  563 KB, at most (41075-1). Shipping the library's text instead would add
+  about 100 MB to every package (parts/ zipped; 35 MB for parts/s/ alone,
+  which does not cover a part made from a whole part).
 - **The pipeline** can build just made parts in seconds:
   `tools/build_custom.py` takes `.dat` files or a model file, writes meshes
   and catalogue entries, merges them into a catalogue with `--into`, and

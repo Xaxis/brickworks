@@ -70,9 +70,16 @@ that offers each system its own build. The cycle and its cadence are
   bricks, save, read back); each of .ldr, .mpd, .io and .lxf is given to it
   as a bare path, as a double-click gives it (`opens_models`), from a folder
   with a space in its name, and must say `opened <path>: N parts` and write
-  back N (a package cannot draw a part a Studio file builds from LDraw
-  subparts, which it has only as meshes: it says `could not build a part
-  the file carries` and writes that part back too, bay_2025.io's 5 + 1);
+  back N: bay_2025.io all 6, its Part Designer part made from `3001.dat`,
+  which a package has only as a mesh (the file carries Studio's copy, drawn
+  from the library's `s/3001s01.dat`), what it lacks fetched as LDraw text
+  from the parts store as the web does (`carried parts fetched`; the
+  primitives come in the package, staged from `vendor/ldraw/p`). Then
+  `carried_offline`: what was fetched kept in the home (`…/ldraw/parts/`),
+  bay_2025.io opened again with no network (`BRICKWORKS_API` at a port
+  nobody listens on) and drawn whole from it, and in a home that never
+  fetched it 5 of 6 with `m1a2b3c4_2025408_163200 could not be drawn: … the
+  parts store could not be reached` on its `opened` line, the sixth written back;
   then the system's own double-click on two models, the second with
   the first still open, each in a window of its own (a hold whose process
   is not a running Brickworks is not one): gio with the .deb's

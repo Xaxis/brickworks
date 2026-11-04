@@ -7528,7 +7528,7 @@ func _open_given(path: String) -> int:
 	if not str(made["note"]).is_empty():
 		said += " — " + str(made["note"])
 	_bar.say(said)
-	printerr("opened %s: %d parts" % [path, int(result["placed"])])
+	printerr("opened %s: %s" % [path, said.trim_prefix("opened ")])
 	return int(result["placed"])
 
 

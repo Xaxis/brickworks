@@ -388,21 +388,36 @@ def _png(rows: list[bytes]) -> bytes:
             + chunk(b"IEND", b""))
 
 
-def _smoke_given(tmp_path, monkeypatch, capsys, picture, said) -> tuple[int, str]:
+def _smoke_given(tmp_path, monkeypatch, capsys, picture, said,
+                 own_part: bool = True) -> tuple[int, str]:
     """smoke --window on a package that does everything else right, the app
-    stood in for here, and its Best render answering picture and said."""
+    stood in for here, and its Best render answering picture and said.
+    Without [own_part] it is 0.15.0, which drew bay_2025.io's own part
+    nowhere: it had 3001.dat only as a mesh."""
     reference = release.BEST_REFERENCE.read_bytes()
 
     def run_app(command, env, seconds=420):
-        (Path(env["HOME"]) / ".local/share/godot/app_userdata/Brickworks").mkdir(
-            parents=True, exist_ok=True)
+        data = Path(env["HOME"]) / ".local/share/godot/app_userdata/Brickworks"
+        data.mkdir(parents=True, exist_ok=True)
         given = dict(arg.split("=", 1) for arg in command if arg.startswith("--") and "=" in arg)
         # A model handed over as a double-click hands it over: a bare path.
         model = next((arg for arg in command[1:] if not arg.startswith("-")), "")
         if "--out" in given:
             Path(given["--out"]).write_text("1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n" * 60)
-            return 0, ("opened %s: 60 parts\n" % model if model else "") \
-                + "wrote %s (60 parts)" % given["--out"]
+            parts, why = 60, ""
+            # bay_2025.io's own part is drawn from 3001.dat: fetched and kept
+            # online, from what was kept offline, and else not drawn.
+            kept = data / "ldraw" / "parts" / "s" / "3001s01.dat"
+            if model.endswith("bay_2025.io") and "BRICKWORKS_API" not in env and own_part:
+                kept.parent.mkdir(parents=True, exist_ok=True)
+                kept.write_text("0 ~Brick  2 x  4 without Front Face\n")
+            elif model.endswith("bay_2025.io") and not kept.exists():
+                parts, why = 59, (" — 1 not shown, kept in the file (m1a2b3c4_2025408_163200)"
+                                  " — m1a2b3c4_2025408_163200 could not be drawn: it uses parts"
+                                  " this build does not have: s/3001s01.dat (fetching"
+                                  " s/3001s01.dat: the parts store could not be reached)")
+            return 0, ("opened %s: %d parts%s\n" % (model, parts, why) if model else "") \
+                + "wrote %s (%d parts)" % (given["--out"], parts)
         if "--shot" in given:
             Path(given["--shot"]).write_bytes(reference)
             return 0, ""
@@ -419,6 +434,16 @@ def _smoke_given(tmp_path, monkeypatch, capsys, picture, said) -> tuple[int, str
     package.write_bytes(b"")
     code = release.smoke(package, True, "9.9.9")
     return code, capsys.readouterr().out
+
+
+def test_the_smoke_fails_a_package_that_leaves_a_studio_file_s_own_part_off(
+        tmp_path, monkeypatch, capsys):
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys,
+                              release.BEST_REFERENCE.read_bytes(), "Opened Car.\n" + TRACED,
+                              own_part=False)
+    assert code == 1, said
+    assert "FAIL  opens bay_2025.io given as the system gives it: 59 parts, 60 written back" in said
+    assert "FAIL  ...and kept the LDraw files its own part is drawn from: none" in said
 
 
 def test_the_smoke_holds_a_package_to_the_editors_best(tmp_path, monkeypatch, capsys):
