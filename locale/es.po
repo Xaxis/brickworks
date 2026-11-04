@@ -8293,6 +8293,9 @@ msgstr "Recarga la pestaña en su lugar"
 msgid "Updates"
 msgstr "Actualizaciones"
 
+# Automatic as the Updates choice (Settings), by context "updates" (controls_dialog.gd),
+# beside Automatic as the Graphics choice: plural in some languages, as updates are.
+msgctxt "updates"
 msgid "Automatic"
 msgstr "Automáticas"
 

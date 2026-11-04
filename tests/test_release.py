@@ -547,9 +547,14 @@ def test_a_double_click_on_a_mac_starts_the_app_with_updates_off(monkeypatch, tm
         return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(release.subprocess, "run", run)
-    monkeypatch.setattr(release, "mac_cannot_draw", lambda: "")
+    # Each window says its graphics mode in its log, as the launcher's choice.
+    monkeypatch.setattr(release, "mac_mode", lambda: "full")
+    monkeypatch.setattr(release.Path, "home", lambda: tmp_path)
+    logs = tmp_path / "Library" / "Application Support" / "Godot" / "app_userdata" / "Brickworks" / "logs"
+    logs.mkdir(parents=True)
+    (logs / "godot.log").write_text("graphics: full mode (automatic), Metal on Apple M1\n" * 2)
     said = release.double_click_mac(models)
-    assert [ok for _, ok, _ in said] == [True, True, True], said
+    assert [ok for _, ok, _ in said] == [True, True, True, True, True], said
     assert [c for c in ran if c[0] == "open"] == [
         ["open", "--env", "BRICKWORKS_UPDATES=off", str(model)] for model in models]
 

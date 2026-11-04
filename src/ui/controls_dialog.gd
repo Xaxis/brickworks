@@ -878,7 +878,8 @@ func _updates(row: HBoxContainer) -> void:
 	updates_choice.tooltip_text = ("Automatic downloads a new version and puts it in as Brickworks "
 		+ "quits. Ask first says it is out. Off asks nothing until Help, Check for updates.")
 	for chosen: String in Updater.MODES:
-		updates_choice.add_item(str(Updater.MODE_WORDS[chosen]))
+		# "Automatic" has an entry of its own here, beside the Graphics choice's.
+		updates_choice.add_item(tr(str(Updater.MODE_WORDS[chosen]), "updates"))
 	updates_choice.select(Updater.MODES.find(Updater.mode()))
 	row.add_child(updates_choice)
 	updates_choice.item_selected.connect(func(index: int) -> void:
