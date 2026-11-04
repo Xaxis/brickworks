@@ -545,23 +545,35 @@ the same, Automatic's next start says B, and a copy that cannot start is
 put back and A started again (16 `ok`).
 
 For the .deb pair (`Brickworks-A-linux-amd64.deb`) it proves it when it ends
-`the .deb's copy says the new version is out and offers the new .deb`: the
-copy in `usr/lib/brickworks` says A, Check for updates says B is out,
-`--update=fetch` and `--update=install` are each refused (`installed from
-its .deb`) with `Download is the new .deb: http://127.0.0.1:PORT/files/...deb`,
-`nothing dpkg put there was changed, and nothing was staged beside it`, and
-the copy is still A.
+`the .deb's copy downloads the new .deb, and apt installs it (refused and
+missing here; by sudo on a runner)`: the copy in `usr/lib/brickworks` says
+A, Check for updates says B is out, `Update and restart with pkexec refused:
+Couldn't install Brickworks B: the password was refused or not given, so
+nothing was installed; it offers .../.brickworks-update/B/...deb` and the
+same `with no pkexec` (`pkexec isn't on this system`), `...apt was asked for
+the checked .deb, as root: /usr/bin/apt-get install -y ...`, `nothing dpkg
+put there was changed`, and the copy is still A (7 `ok`). Nothing is
+installed on this machine; packages build HEAD, so commit app changes first
+(`packages` refuses otherwise).
 
-On macOS and Windows the same, from a runner, with the DMG and the
-installer: `update_check.py lay --old OLD --new NEW --port=8697 --out=DIR`
-here (the runner has no signing key), then `run --laid=DIR --system` there
-(docs/UPDATES.md), which installs the first copy from the DMG into
-/Applications, or by `setup.exe /VERYSILENT` into
-`%LOCALAPPDATA%\Programs\Brickworks`, and takes them away after. It proves
-it when it ends the same way, the updater's log says `put B in place at
-/Applications/Brickworks.app` (or `.../Programs/Brickworks`, staged as
-`...-setup.exe`), and on Windows `Settings, Apps lists B` after the update
-and `...lists what it did before: A-before` after the put back (18 `ok`).
+On macOS, Windows and Ubuntu the same, from a runner, with the DMG, the
+installer, the zip and the .deb: `update_check.py lay --old OLD --new NEW
+--port=8697 --out=DIR` here (the runner has no signing key), then `run
+--laid=DIR --system` there (docs/UPDATES.md), which installs the first copy
+from the DMG into /Applications, by `setup.exe /VERYSILENT` into
+`%LOCALAPPDATA%\Programs\Brickworks`, or by `sudo apt-get install` into
+/usr/lib, and takes them away after (a zip copy runs without `--system`).
+It proves it when it ends the same way, the updater's log says `put B in
+place at /Applications/Brickworks.app` (or `.../Programs/Brickworks`,
+staged as `...-setup.exe`): the DMG 16 `ok`, the zip 16; the installer 20,
+among them `Settings, Apps lists B`, `...with its Start menu entry and .ldr
+opening in it`, `Uninstall leaves nothing of it: no file, no Settings, Apps
+entry, no Start menu entry, no file type` and `...lists what it did before:
+A-before` after the put back; the .deb 10, among them `Update and restart,
+apt installing it by sudo in pkexec's place: report: running B; model
+“House”, N parts`, `dpkg lists brickworks B`, and `apt remove leaves
+nothing of it` (sudo stands in for pkexec, whose dialog a runner cannot
+answer).
 On Windows the log-judged steps start `Brickworks.exe`: the console wrapper
 keeps its own file in use until the new copy ends.
 
