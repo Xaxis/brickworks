@@ -25,6 +25,9 @@
 ##   and parameters from the settings file, the key from its own file,
 ##   which is encrypted: the key is in no file the app wrote in plain, the
 ##   log included. Remember unticked keeps it for the visit only.
+##   Where a key is kept, as the panel says it for each keychain, a file, a
+##   web page, this visit only and the environment, in German, French and
+##   Spanish: every word but names in the language, as the panel draws it.
 ##   Every control named for a screen reader, and Tab walking them in order.
 ##   Design with it: the assistant's brief, sent; the stub designs the tower
 ##   with the temperature and most-out chosen, the fresh look is answered, it
@@ -83,6 +86,7 @@ func _run() -> void:
 	await _the_models()
 	await _tests()
 	await _kept()
+	await _where_in_languages()
 	_names_and_keys()
 	await _design()
 	_no_key_anywhere()
@@ -245,8 +249,10 @@ func _kept() -> void:
 	var file: String = ProviderSettings.key_file("custom")
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(file)
 	_check("the key's file is encrypted: it does not hold the key",
-		bytes.size() > 16 and bytes.slice(0, 4).get_string_from_ascii() == ProviderSettings.ENCRYPTED
+		bytes.size() > 16 and bytes.slice(0, 4).get_string_from_ascii() == KeyStore.ENCRYPTED
 		and not _holds(bytes, _key))
+	# Nothing of this run's held: read as a new run reads it.
+	KeyStore._held.clear()
 	var fresh := AiSettings.new()
 	root.add_child(fresh)
 	await _frames(4)
@@ -273,6 +279,43 @@ func _kept() -> void:
 	_ai.remember.button_pressed = true
 	await _frames(2)
 	_check("ticked again: kept on the device", FileAccess.file_exists(file))
+
+
+## Where a key is kept, as the panel says it wherever the app runs (each
+## keychain, the encrypted file, a web page), for this visit only and from
+## the environment, and the address's notes on a web page: in German, French
+## and Spanish, every word but the names, and drawn so.
+func _where_in_languages() -> void:
+	print("\n── where a key is kept, in German, French and Spanish ──")
+	var said: Array[String] = []
+	var route: String = KeyStore._route
+	for where: String in [KeyStore.SECRET_TOOL, KeyStore.MAC, KeyStore.WINDOWS, KeyStore.FILE]:
+		KeyStore._route = where
+		said.append(ProviderSettings.custody("openai", "device"))
+	KeyStore._route = route
+	said.append(KeyStore.said(KeyStore.FILE, true) + " Sent only to OpenAI, never to Brickworks.")
+	said.append_array([ProviderSettings.custody("openai", "visit"),
+		ProviderSettings.custody("openai", "environment"), ProviderSettings.custody("custom", "visit"),
+		AiSettings.ON_WEB_LOCAL, AiSettings.ON_WEB_OTHER, _ai.remember.text])
+	var names: Array = ["OpenAI", "OPENAI_API_KEY"]
+	var note: Label = _ai.get("_key_note")
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		await _frames(2)
+		var left: Array = []
+		for text: String in said:
+			if Language.says(text).is_empty():
+				left.append(text)
+			for word: String in Language.left_in_english(text):
+				if not word in names:
+					left.append(word)
+		_check("%s: every way of saying where, in its words: \"%s\"%s" % [code,
+			Language.says(said[0]), "" if left.is_empty() else "; in English: %s" % [left]],
+			left.is_empty())
+		_check("%s: and the panel draws it so" % code, not note.text.is_empty()
+			and note.atr(note.text) == Language.says(note.text))
+	Language.apply("en")
+	await _frames(2)
 
 
 ## Every control named, and Tab through them in the order they are read.

@@ -97,6 +97,9 @@ fi
 # their Wayland screen when its X11 will not open.
 export BRICKWORKS_OPEN_NOTHING=1
 unset WAYLAND_DISPLAY
+# Nor their keyring: a key a check keeps goes to its data folder's file
+# (KeyStore), unless a check asks for a keyring of its own by name.
+export BRICKWORKS_KEYCHAIN=${BRICKWORKS_KEYCHAIN:-off}
 
 # In this machine's queue for heavy jobs, where it has one. Several
 # projects share the box, and the windowed probes starve above a load of
@@ -241,6 +244,11 @@ for spec in "${headless[@]}"; do
   [ "$spec" = "$name" ] || read -r -a args <<< "${spec#*:}"
   probe "$name" "${args[@]}"
 done
+# Keys kept in the system's keychain (KeyStore), made-up ones, in a keyring
+# of the run's own and never the person's: a D-Bus session with a GNOME
+# Keyring of its own, gone when it ends.
+run "keychain" tools/keyring_session.sh godot --headless --path . \
+  --script src/dev/keychain_probe.gd
 
 # Needs a real window: the previews are drawn by a SubViewport, and a
 # headless run has no rendering device to draw them with. It flashes a

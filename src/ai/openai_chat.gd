@@ -201,7 +201,7 @@ func read(code: int, body: PackedByteArray) -> Reply:
 	if code != 200 or answer.has("error"):
 		var said: Variant = answer.get("error", {})
 		reply.error = Provider.refusal(code, str((said as Dictionary).get("message", ""))
-			if said is Dictionary else str(said))
+			if said is Dictionary else str(said), key)
 		reply.again = Provider.transient(code)
 		return reply
 	var choices: Array = answer.get("choices", []) if answer.get("choices") is Array else []
@@ -261,7 +261,7 @@ func read_models(code: int, body: PackedByteArray) -> Dictionary:
 	if code != 200 or not (answer.get("data") is Array):
 		var said: Variant = answer.get("error", {})
 		return {"ok": false, "models": [], "error": Provider.refusal(code,
-			str((said as Dictionary).get("message", "")) if said is Dictionary else str(said))}
+			str((said as Dictionary).get("message", "")) if said is Dictionary else str(said), key)}
 	var models: Array = []
 	for raw: Variant in answer["data"]:
 		if not (raw is Dictionary) or str((raw as Dictionary).get("id", "")).is_empty():

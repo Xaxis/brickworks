@@ -8,18 +8,21 @@
 ##   path, nothing to log it, and no copy of it anywhere we control.
 ##
 ##   It is kept on this device so it does not have to be typed again —
-##   in the app's own data directory on the desktop, and in the
-##   browser's storage for this site on the web. Both are readable by
-##   anything else running as you, which is worth saying rather than
-##   implying: this is convenience, not a vault.
+##   on the desktop in the system's keychain where one answers, else in a
+##   file of the app's own data encrypted to this computer; on the web in
+##   the browser's storage for this site, scrambled (KeyStore says where,
+##   and why). Anything else running as you could still ask for it, which
+##   is worth saying rather than implying: this is convenience, not a vault.
 ##
-##   Forgetting it removes it. Nothing survives that.
+##   Forgetting it removes it, from the keychain and the file both.
+##   Nothing survives that.
 ##
 ## Anthropic's keys are worth spending, so the last of those matters as
 ## much as the first.
 class_name OwnKey
 extends RefCounted
 
+## Its file where no keychain answers, and its name in one (KeyStore).
 const WHERE := "user://anthropic.key"
 
 ## Keys look like this. Checked before the first request rather than
@@ -46,16 +49,12 @@ const SUBSCRIPTION_PREFIX := "sk-ant-oat"
 static func load_key() -> String:
 	if not _this_visit.is_empty():
 		return _this_visit
-	var file: FileAccess = FileAccess.open(WHERE, FileAccess.READ)
-	if file == null:
-		return ""
-	var key: String = file.get_as_text().strip_edges()
-	file.close()
-	return key
+	return KeyStore.read(WHERE)
 
 
+## Whether there is a key, without asking a keychain for it.
 static func has_key() -> bool:
-	return not load_key().is_empty()
+	return not _this_visit.is_empty() or KeyStore.kept(WHERE)
 
 
 ## What is wrong with a key as typed, or empty when it looks like one.
@@ -85,26 +84,17 @@ static func remember(key: String, on_device: bool = true) -> String:
 		# Not written anywhere, and nothing older left behind to be used
 		# in its place on the next visit.
 		_this_visit = tidy
-		if FileAccess.file_exists(WHERE):
-			DirAccess.remove_absolute(WHERE)
+		KeyStore.remove(WHERE)
 		return ""
 	_this_visit = ""
-
-	var file: FileAccess = FileAccess.open(WHERE, FileAccess.WRITE)
-	if file == null:
+	if KeyStore.write(WHERE, tidy).is_empty():
 		return "Could not save the key on this device."
-	file.store_string(tidy)
-	file.close()
 	return ""
 
 
 static func forget() -> void:
 	_this_visit = ""
-	if not FileAccess.file_exists(WHERE):
-		return
-	# On the web this path lives in the browser's storage rather than on
-	# a disk, and DirAccess handles both.
-	DirAccess.remove_absolute(WHERE)
+	KeyStore.remove(WHERE)
 
 
 ## Enough of the key to recognise it, and not enough to use it. Shown

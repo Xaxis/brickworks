@@ -156,7 +156,7 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     assert not re.search(r'(href|action|src)="[^"]*(checkout|pay|billing)', lowered)
     assert not re.search(r'autocomplete="cc-', lowered)
     assert re.findall(r'<script[^>]*src="([^"]+)"', PAGE) == [
-        "https://overlook.technology/s.js", "/theme.js", "/follow.js", "/plans.js"]
+        "/ov/s.js", "/theme.js", "/follow.js", "/plans.js"]
     # What stays free, and the promise to every account made before Pro.
     plain = re.sub(r"\s+", " ", PAGE)
     assert "What stays free" in plain and "It takes nothing out of Free" in plain

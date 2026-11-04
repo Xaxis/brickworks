@@ -87,16 +87,23 @@ The app then names the AI wherever it said Claude for the one designing: the too
 
 ### Where your key is kept {#key-custody}
 
-The panel says this beside the key, for where you are:
+<!-- covers
+lib:a person's own keys kept in the system's keychain
+-->
+
+The panel says this beside the key, for where you are. A key pasted in the assistant panel for Claude is kept the same way.
 
 | Where | How the key is kept |
 |---|---|
-| The desktop app | On this computer only, in a file encrypted to it, so a copy taken elsewhere cannot be read. Programs running as you could still reach it, so a key with a spending limit is safest. |
-| A browser | In this browser's storage for brickworks.diy, scrambled but not secret: anyone using this browser could recover it. Untick **Remember** on a shared computer. |
+| The desktop app on Linux | In your keyring (the Secret Service, as GNOME Keyring or KWallet keeps it), locked with your login. |
+| The desktop app on macOS | In your login Keychain, locked with your login. |
+| The desktop app on Windows | In Windows Credential Manager, locked with your Windows sign-in. |
+| The desktop app, where no keyring answers | On this computer only, in a file encrypted to it, so a copy taken elsewhere cannot be read. |
+| A browser | In this browser's storage for brickworks.diy, scrambled but not secret: anyone using this browser could recover it. Untick **Remember** on a shared computer. No script but Brickworks' own runs on the site, and the app can reach only the providers listed and your own computer. |
 | For this visit only | Nowhere on the device; gone when the tab or app closes. |
 | From the environment (desktop) | Read from the provider's environment variable the app was started with, and not kept by Brickworks. |
 
-Everywhere, the key is sent only to the provider you chose (or the address you gave), never to Brickworks, and never logged or saved with a model.
+On the desktop, programs running as you could still ask the keyring for it, so a key with a spending limit is safest. A key kept in a file by an earlier version moves into the keyring the first time it is read, and the file is deleted. Everywhere, the key is sent only to the provider you chose (or the address you gave), never to Brickworks, and never logged or saved with a model.
 
 > [!NOTE]
 > A model on your own computer (Ollama, LM Studio, vLLM) is for the desktop app: a browser asks before a website reaches your computer, and those servers refuse other sites unless told to allow them.

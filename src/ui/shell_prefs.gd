@@ -163,7 +163,10 @@ static func used_claude_here() -> bool:
 	# it at one (ClaudeConnector.where), which only a loaded connector can be.
 	var connector: String = Later.script(&"ClaudeConnector").where \
 		if Later.loaded(&"ClaudeConnector") else ""
-	for kept: String in [OwnKey.WHERE, connector, Brain.where]:
+	# A key kept in a keychain has no file here (KeyStore).
+	if OwnKey.has_key():
+		return true
+	for kept: String in [connector, Brain.where]:
 		if FileAccess.file_exists(kept):
 			return true
 	return false
