@@ -156,7 +156,7 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     assert not re.search(r'(href|action|src)="[^"]*(checkout|pay|billing)', lowered)
     assert not re.search(r'autocomplete="cc-', lowered)
     assert re.findall(r'<script[^>]*src="([^"]+)"', PAGE) == [
-        "https://overlook.technology/s.js", "/theme.js", "/follow.js", "/plans.js"]
+        "/ov/s.js", "/theme.js", "/follow.js", "/plans.js"]
     # What stays free, and the promise to every account made before Pro.
     plain = re.sub(r"\s+", " ", PAGE)
     assert "What stays free" in plain and "It takes nothing out of Free" in plain
@@ -174,10 +174,14 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
                      PAGE)
     assert "Claude build" not in PAGE and not re.search(r"AI build", PAGE, re.I)
     assert "AI without a limit" in plain
-    # Only Claude works on the web: no ChatGPT, and another AI's key is the
-    # desktop app's (tools/deploy.sh: the web's policy lets in api.anthropic.com alone).
-    assert "ChatGPT" not in PAGE
-    for sentence in re.split(r"(?<=[.:;])\s", re.sub(r"<[^>]+>", "", plain)):
+    # The plans name Claude and "another" AI app: which of ChatGPT's plans
+    # can connect is its own page's to say (assets/assistants.json), so no
+    # ChatGPT here but the footer's notice of whose mark it is. Another AI's
+    # key is the desktop app's (tools/deploy.sh: the web's policy lets in
+    # api.anthropic.com alone).
+    said = re.sub(r'<footer class="site-foot">.*?</footer>', "", plain)
+    assert "ChatGPT" not in said
+    for sentence in re.split(r"(?<=[.:;])\s", re.sub(r"<[^>]+>", "", said)):
         if re.search(r"OpenAI|Gemini|any provider|another AI", sentence):
             assert "desktop" in sentence, sentence
     # Free says the models its plan keeps with an account, as Admission's

@@ -107,7 +107,7 @@ def test_the_shortcuts_are_every_binding_the_app_lists() -> None:
 
 def test_the_pages_are_built_whole(tmp_path: Path) -> None:
     count = docs_site.build(tmp_path)
-    nav = json.loads((ROOT / "docs-site/_nav.json").read_text(encoding="utf-8"))
+    nav, _ = docs_site.load()  # _nav.json, "@assistants" a page for each row of assets/assistants.json
     assert count == sum(len(group["pages"]) for group in nav)
     pages = [tmp_path / "docs.html", *sorted((tmp_path / "docs").glob("*.html"))]
     assert len(pages) == count

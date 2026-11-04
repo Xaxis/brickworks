@@ -911,7 +911,7 @@ static func _took(key: String, result: int, code: int, headers: PackedStringArra
 static func _fetch_problem(result: int, code: int, headers: PackedStringArray,
 		body: PackedByteArray) -> String:
 	if result != HTTPRequest.RESULT_SUCCESS:
-		return "the network failed (%d)" % result
+		return FetchWords.of(result, "the parts store")
 	if code != 200:
 		return "not there (HTTP %d)" % code
 	for header: String in headers:

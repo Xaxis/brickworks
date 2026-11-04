@@ -49,6 +49,23 @@ ui:the boot splash
 ui:about and the licences
 -->
 
+### Updates {#updates}
+
+The desktop app keeps itself up to date. Once a day, a few seconds after it opens, it asks whether a newer version is out; **Help › Check for updates…** asks at once, and says *You're up to date* with the version you have, or what is new.
+
+- **Settings › Updates** chooses how: **Automatic** (the default) downloads a new version in the background and puts it in place when you quit, or at once with **Update and restart**; **Ask first** says it is out and downloads it when you press; **Off** asks nothing until you use Help.
+- A notice above the model says when a version is out or ready, with **What's new**, **Update and restart** and **Later**. Restarting saves the model first, and the window comes back with it as it was.
+- **Help › Restart Brickworks** quits and starts again the same way. **Help › Reinstall Brickworks…** downloads the version you have again and puts it in place, to repair a damaged install; your models and settings are kept.
+- Brickworks installs only what its own release signed, downloaded from GitHub over HTTPS and checked against that release's size and checksum. It never installs an older version than yours. The old copy is kept until the new one has started, and put back if it does not.
+- Installed where it may not write (a tar.xz unpacked under `/opt`, say), it says so and opens [the download page](/download) instead. A Mac app run from Downloads or a disk image moves itself to Applications as it updates.
+
+<!-- covers
+ui:update notice
+ui:check for updates reinstall and restart
+lib:the desktop app updates itself
+lib:the signed update manifest
+-->
+
 ### From the command line {#command-line}
 
 The desktop app also runs from a terminal. The program is `./brickworks.x86_64` on Linux, `Brickworks.app/Contents/MacOS/Brickworks` on a Mac and `Brickworks.console.exe` on Windows; what it is asked comes after `--`:

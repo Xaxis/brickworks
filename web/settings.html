@@ -3,7 +3,7 @@
   Your settings, at /settings: everything about the account that is not
   your profile itself (docs/SOCIAL.md U6, D9). Appearance (the theme),
   Email (what Brickworks sends you), Privacy (your age answer, whom your
-  profile shows you follow, whether it shows the models you liked), Claude (the apps that may work in your tabs),
+  profile shows you follow, whether it shows the models you liked), Assistants (the AI apps that may work in your tabs),
   Sign out and Delete account; and a way back to your profile, where
   Edit profile changes what it shows. These were the foot of the account
   page until 2026-10-22, the same rows and the same controls.
@@ -17,10 +17,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<script defer src="/ov/s.js" data-api="https://overlook.technology/e" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Settings · Brickworks</title>
-<meta name="description" content="Your Brickworks settings: the theme, the email you get, what your profile shows, the Claude connection, signing out and deleting the account.">
+<meta name="description" content="Your Brickworks settings: the theme, the email you get, what your profile shows, the AI apps connected, signing out and deleting the account.">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://brickworks.diy/settings">
 <link rel="alternate" hreflang="en" href="https://brickworks.diy/settings">
@@ -115,7 +115,7 @@
 				<li><a href="#theme-part">Appearance</a></li>
 				<li><a href="#email-part">Email</a></li>
 				<li><a href="#privacy-part">Privacy</a></li>
-				<li><a href="#claude-part">Claude</a></li>
+				<li><a href="#claude-part">Assistants</a></li>
 				<li><a href="#feedback">Feedback</a></li>
 				<li><a href="#sign-out-part">Sign out</a></li>
 				<li><a href="#delete-part">Delete account</a></li>
@@ -134,15 +134,14 @@
 			</div>
 
 			<section id="signed-out" hidden>
-				<p class="lede">Sign in to choose what Brickworks emails you, what your profile shows and which Claude
+				<p class="lede">Sign in to choose what Brickworks emails you, what your profile shows and which AI
 					apps can work in your tabs. We email you a code: no password.</p>
 				<div class="actions"><button class="cta big" id="sign-in" type="button">Sign in</button></div>
 			</section>
 
 			<div id="signed-in" hidden>
-				<p class="note" id="young" hidden>Public profiles and public collections are for people
-					13 and over, so this account keeps its collections and favourites to itself. Building,
-					your models and sharing them by link are all yours.</p>
+				<p class="note" id="young" hidden>Brickworks accounts are for 13 and over. This one said it
+					is under 13, so nothing of it is public, and nothing new is kept with it.</p>
 				<div class="settings">
 					<div class="setting" id="profile-part">
 						<div>
@@ -230,11 +229,11 @@
 
 					<div class="setting" id="claude-part">
 						<div>
-							<h2>Claude</h2>
-							<p id="claude-said">Whether your Claude can work in your Brickworks tabs.</p>
+							<h2>Assistants</h2>
+							<p id="claude-said">The AI apps that can work in your Brickworks tabs.</p>
 							<ul class="connections" id="connections"></ul>
 						</div>
-						<a class="cta ghost" href="/faq#claude" id="claude-how">How to connect</a>
+						<a class="cta ghost" href="/docs/connect" id="claude-how">How to connect</a>
 					</div>
 
 					<div class="setting" id="feedback">
@@ -260,7 +259,7 @@
 							<form class="delete-form" id="delete-form">
 								<p>Your models come out of the gallery and their links stop working; your
 									profile, favourites, collections, comments, follows, photos, the sets you own and your
-									Claude connections are deleted with the account. It cannot be undone.</p>
+									AI apps' connections are deleted with the account. It cannot be undone.</p>
 								<label>Type your email address to confirm
 									<input id="delete-confirm" type="email" autocomplete="off" required></label>
 								<label id="delete-code-part" hidden><span id="delete-code-said">The code we emailed you</span>
@@ -339,7 +338,7 @@
 			</nav>
 		</div>
 		<div class="legal">
-			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). Claude, ChatGPT, Gemini and the other AI apps named here are trademarks of their owners. <a href="/terms#notices">Notices</a></p>
 		</div>
 	</div>
 </footer>

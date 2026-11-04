@@ -424,6 +424,19 @@ func _brickify() -> void:
 	var capped: Dictionary = await tools._fetch(at + "/bunny.obj", 1000)
 	_check("the size is capped: %s" % str(capped.get("error", "")).left(60),
 		str(capped.get("error", "")).contains("larger than"))
+	# A link that fetches nothing says why in words: one came back "Could not
+	# fetch … (error 4)" (urlfetch, 2026-11-03).
+	var shut: Dictionary = await tools._fetch("http://127.0.0.1:9/bunny.obj", 1000)
+	_check("a site that will not connect says so: %s" % str(shut.get("error", "")).left(90),
+		str(shut.get("error", "")).contains("would not take a connection"))
+	var nowhere: Dictionary = await tools._fetch("http://no-such-site.invalid/bunny.obj", 1000)
+	_check("...and one that is not there: %s" % str(nowhere.get("error", "")).left(90),
+		str(nowhere.get("error", "")).contains("there is no site called no-such-site.invalid"))
+	var code := RegEx.create_from_string("error \\d|\\(\\d+\\)")
+	var coded: Array = range(1, 14).filter(func(result: int) -> bool:
+		return code.search(FetchWords.of(result, "example.com", 90.0)) != null)
+	_check("every way a request can end is said in words, never a code: %s"
+		% FetchWords.of(HTTPRequest.RESULT_TIMEOUT, "example.com", 90.0), coded.is_empty())
 	said = await _say("brickify", {})
 	_check("with nothing to lay it says what to give: %s" % said.left(50), said.begins_with("Give file="))
 	var before: int = _model_ids().size()

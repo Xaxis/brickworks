@@ -186,6 +186,6 @@ def test_the_route_and_the_page_go_together() -> None:
     deploy = (ROOT / "tools/deploy.sh").read_text()
     route = deploy.index('"dest": "/api/people?op=challenge_page"')
     # After the site's own headers (its security policy), before the files.
-    assert deploy.index('"Content-Security-Policy": "$csp"') < route < deploy.index('{ "handle": "filesystem" }')
+    assert deploy.index('"Content-Security-Policy": "$site_csp"') < route < deploy.index('{ "handle": "filesystem" }')
     assert 'cp web/challenge.html "$fn/_challenge.html"' in deploy
     assert 'if (op === "challenge_page") return await challengePage(request, response);' in (ROOT / "api/people.js").read_text()

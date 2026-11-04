@@ -58,7 +58,9 @@
       "entry": "api/oauth.js",
       "reach": "curl -s https://brickworks.diy/.well-known/oauth-authorization-server   (and /oauth/register, /oauth/token, /oauth/revoke, /api/oauth?op=connections)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_assistant_pages.py"
+      ]
     },
     {
       "id": "api:GET /api/account",
@@ -145,6 +147,14 @@
       ]
     },
     {
+      "id": "api:POST /api/account?op=fetch",
+      "kind": "api",
+      "entry": "api/_link.js",
+      "reach": "python3 tools/minitest.py tests/test_link_fetch.py   (a link fetched for the app in a browser, signed in: a picture or a 3D model sniffed from its bytes, at most 4 MB in 20 s; no private, loopback, link-local or metadata address at any hop, rebinding included; each refusal a sentence)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "api:POST /api/mcp",
       "kind": "api",
       "entry": "api/mcp.js",
@@ -153,6 +163,7 @@
       "tests": [
         "tests/fixtures/oauth/world.mjs",
         "tests/fixtures/relay/world.mjs",
+        "tests/test_assistant_pages.py",
         "tests/test_oauth_clients.py"
       ]
     },
@@ -297,6 +308,14 @@
       "entry": "tools/web/art_flow.mjs",
       "reach": "node tools/web/art_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/art_web",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:a keyring of a run's own",
+      "kind": "cli",
+      "entry": "tools/keyring_session.sh",
+      "reach": "tools/keyring_session.sh CMD...   (CMD in a fresh, unlocked GNOME Keyring on a D-Bus session of its own, removed after; fetches libsecret-tools into ~/.cache/brickworks/secret-tool where secret-tool is not installed)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -585,6 +604,7 @@
       "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js, the card, and web/viewer3d.js, a model page's 3D view, both from tools/viewer/view.js)",
       "area": "mcp",
       "tests": [
+        "tests/test_assistant_pages.py",
         "tests/test_billing.py",
         "tests/test_brickbench.py",
         "tests/test_gallery_crons.py",
@@ -1204,11 +1224,35 @@
       "tests": []
     },
     {
+      "id": "cli:key leak browser flow",
+      "kind": "cli",
+      "entry": "tools/web/key_leak_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/key_leak_flow.mjs --url=<preview>/app --out=DIR [--plant]   (preview_checks.sh keysafe: the policies in the headers, a made-up Anthropic key pasted against a stubbed api.anthropic.com, sent there alone, kept scrambled, Change key and This visit only, no policy refusing anything on /app, / and /gallery)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:key leak probe",
+      "kind": "cli",
+      "entry": "src/dev/key_leak_probe.gd",
+      "reach": "tools/probe.sh key_leak_probe   (made-up keys searched for in every file the app wrote, saves, exports, the share, the clipboard, MCP answers, feedback, Build together's messages and the screen; Forget, This visit only)   ... -- --plant   (the red: a key written into the model's name, which the search must find in the save, the exports and the share)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:keyboard browser flow",
       "kind": "cli",
       "entry": "tools/web/keyboard_flow.mjs",
       "reach": "node tools/web/keyboard_flow.mjs --out=shots/keyboard   (the site's journeys by Tab, Enter and Escape alone; no network: the stand-in answers the API; --url=<deployment> for a preview's pages and scripts)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:keychain probe",
+      "kind": "cli",
+      "entry": "src/dev/keychain_probe.gd",
+      "reach": "tools/keyring_session.sh tools/probe.sh keychain_probe   (headless, in a D-Bus session and GNOME Keyring of its own; skips itself outside one)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -1249,6 +1293,14 @@
       "entry": "tools/web/library_tab_flow.mjs",
       "reach": "python3 tools/web/serve.py build/web 8921 --parts-url \"$PARTS_URL\", then node tools/web/library_tab_flow.mjs --url=http://127.0.0.1:8921/index.html --out=shots/library_tab   (with .env sourced; ?library= over unsaved work asks, and the hotel's open timed)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:link browser flow",
+      "kind": "cli",
+      "entry": "tools/web/link_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/link_flow.mjs --url=<preview>/app --out=shots/link_web   (.env sourced; brickify url= and print_part picture_url= over the connector, from Wikimedia and from sites with no CORS; a 14 MB photograph refused in words)",
+      "area": "web",
       "tests": []
     },
     {
@@ -1808,6 +1860,7 @@
       "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy; --write writes what the docs make and commit: each tool's doc's copy of its words, src/ai/connector_guide.gd and src/ui/docs_pages.gd, and --check fails while any differs, a tool has no doc or its example breaks its schema)",
       "area": "web",
       "tests": [
+        "tests/test_assistant_pages.py",
         "tests/test_docs_site.py"
       ]
     },
@@ -2170,6 +2223,14 @@
       "tests": []
     },
     {
+      "id": "cli:steps_to probe",
+      "kind": "cli",
+      "entry": "src/dev/steps_to_probe.gd",
+      "reach": "tools/probe.sh steps_to_probe   (headless: parts of sub-models and of the model's own moved to step 1, a middle step and the last over MCP and by the steps panel's drop, read back off the plan and edit_steps's list)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:table race",
       "kind": "cli",
       "entry": "src/dev/table_race_probe.gd",
@@ -2298,6 +2359,14 @@
       "tests": []
     },
     {
+      "id": "cli:the visit counter served from the site",
+      "kind": "cli",
+      "entry": "tools/web/overlook_copy.sh",
+      "reach": "tools/web/overlook_copy.sh   (Overlook's s.js and v.js copied into web/ov/, which every page loads as /ov/s.js with data-api=https://overlook.technology/e: no script from another origin on any page)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the weekly AI showcase",
       "kind": "cli",
       "entry": "tools/showcase.py",
@@ -2418,6 +2487,22 @@
       "tests": []
     },
     {
+      "id": "cli:update check",
+      "kind": "cli",
+      "entry": "tools/update_check.py",
+      "reach": "python3 tools/update_check.py packages --versions=0.90.0,0.91.0 --out=DIR linux, then python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.AppImage --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.AppImage (and the two tar.xz)",
+      "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:update helper",
+      "kind": "cli",
+      "entry": "src/net/update_helper.sh",
+      "reach": "python3 tools/minitest.py tests/test_updates.py   (update_helper.ps1 is Windows': python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.zip --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.zip (and the two tar.xz) on a Windows runner)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:update probe",
       "kind": "cli",
       "entry": "src/dev/update_probe.gd",
@@ -2431,6 +2516,14 @@
       "entry": "tools/update_parts.py",
       "reach": "tools/update_parts.py --dry-run   (fetches LDraw's newer updates and the unofficial zip; without --dry-run builds the new and changed parts, minutes)",
       "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:updater probe",
+      "kind": "cli",
+      "entry": "src/dev/updater_probe.gd",
+      "reach": "tools/probe.sh updater_probe",
+      "area": "release",
       "tests": []
     },
     {
@@ -2580,6 +2673,14 @@
       "entry": "src/assembly/topple.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=falling   (by hand: on no floor, swing a section out past the model's edge and let go; -- --only=tipping scans real sets headless)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "lib:a person's own keys kept in the system's keychain",
+      "kind": "lib",
+      "entry": "src/ai/key_store.gd",
+      "reach": "godot --path .  (a key given in Settings, AI or the assistant's column goes to the Secret Service by secret-tool or Python's libsecret, the macOS login Keychain by security -i, or Windows Credential Manager by PowerShell, each on the tool's input; the encrypted file where none answers, said so in Settings, AI; keys kept in files before move over once; BRICKWORKS_KEYCHAIN=off, as probe.sh and check.sh set it, keeps the file)   tools/keyring_session.sh tools/probe.sh keychain_probe",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -3538,6 +3639,14 @@
       "tests": []
     },
     {
+      "id": "lib:the desktop app updates itself",
+      "kind": "lib",
+      "entry": "src/net/updater.gd",
+      "reach": "tools/probe.sh updater_probe; for real: python3 tools/update_check.py packages --versions=0.90.0,0.91.0 --out=DIR linux, then python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.AppImage --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.AppImage (and the two tar.xz)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "lib:the gallery over mcp",
       "kind": "lib",
       "entry": "src/net/gallery_tool.gd",
@@ -3589,6 +3698,14 @@
         "tests/test_challenge_year.py",
         "tests/test_challenges.py"
       ]
+    },
+    {
+      "id": "lib:the signed update manifest",
+      "kind": "lib",
+      "entry": "src/net/updates.gd",
+      "reach": "tools/probe.sh updater_probe; python3 tools/release.py latest --check dist/<version>/latest.json",
+      "area": "release",
+      "tests": []
     },
     {
       "id": "lib:the surface pass",
@@ -3682,6 +3799,14 @@
         "tests/test_modelled_by.py",
         "tests/test_sets.py"
       ]
+    },
+    {
+      "id": "lib:words for a failed request",
+      "kind": "lib",
+      "entry": "src/net/fetch_words.gd",
+      "reach": "tools/probe.sh app_tools_probe   (a site that will not connect, one that is not there, and every HTTPRequest result in words, never a code)",
+      "area": "mcp",
+      "tests": []
     },
     {
       "id": "lib:worked constructions",
@@ -4015,6 +4140,14 @@
       "tests": []
     },
     {
+      "id": "ui:check for updates reinstall and restart",
+      "kind": "ui",
+      "entry": "src/ui/update_dialog.gd",
+      "reach": "tools/probe.sh updater_probe   (Help, Check for updates\u2026, Reinstall Brickworks\u2026, Restart Brickworks: desktop only)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "ui:choose the AI that designs",
       "kind": "ui",
       "entry": "src/ui/ai_settings.gd",
@@ -4164,7 +4297,9 @@
       "entry": "src/ai/claude_code.gd",
       "reach": "godot --path . -- --ask-claude-code=\"a small post box\"   (SPENDS A CLAUDE SUBSCRIPTION)",
       "area": "mcp",
-      "tests": []
+      "tests": [
+        "tests/test_assistant_pages.py"
+      ]
     },
     {
       "id": "ui:design system",
@@ -4193,6 +4328,7 @@
       "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation, which opens the page of the panel in front, from the pages' panels: heads (src/ui/docs_pages.gd); /docs/llms.txt is the same for an assistant)",
       "area": "web",
       "tests": [
+        "tests/test_assistant_pages.py",
         "tests/test_docs_site.py",
         "tests/test_release.py",
         "tests/test_release_train.py"
@@ -5387,6 +5523,14 @@
       "tests": []
     },
     {
+      "id": "ui:update notice",
+      "kind": "ui",
+      "entry": "src/ui/update_notice.gd",
+      "reach": "tools/probe.sh updater_probe   (by hand: BRICKWORKS_UPDATE_URL=http://127.0.0.1:PORT/good/ against python3 tools/update_check.py serve, Settings, Updates, Ask first)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "ui:versions of a model",
       "kind": "ui",
       "entry": "src/ui/versions_dialog.gd",
@@ -5499,6 +5643,7 @@
       "area": "web",
       "tests": [
         "tests/test_account_erase.py",
+        "tests/test_assistant_pages.py",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_plans.py",

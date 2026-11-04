@@ -15,15 +15,15 @@
 ##   else. No server of ours is in the path; nothing of ours logs it, and it
 ##   is in no saved model and no share (the settings file holds no key).
 ##
-##   It is kept on this device, one file per provider in the app's own data
-##   (user://), encrypted with a password made of this computer's own id and
-##   a salt the app made once: a copy of the file taken elsewhere (a backup,
-##   a synced folder) cannot be read. Godot offers no operating system
-##   keychain, so this is the next best; anything running as the person here
-##   can still reach it, and the panel says so. In a browser user:// is the
-##   site's storage and a browser has no id of its own to give, so there the
-##   encryption only scrambles it, and the panel says that too. Or for this
-##   visit only, kept nowhere. Forgetting it removes the file.
+##   It is kept on this device (KeyStore): in the system's keychain where
+##   one answers (the login Keychain, Credential Manager, the Secret
+##   Service), else in a file per provider in the app's own data (user://),
+##   encrypted to this computer, so a copy taken elsewhere (a backup, a
+##   synced folder) cannot be read. Anything running as the person here can
+##   still ask for it, and the panel says so, and says which place it is. In
+##   a browser it is the site's storage, where the encryption only scrambles
+##   it, and the panel says that too. Or for this visit only, kept nowhere.
+##   Forgetting it removes it from wherever it was kept.
 ##
 ##   On a command line (--ask-provider) it may come from the provider's
 ##   usual environment variable (OPENAI_API_KEY, …) instead, never printed.
@@ -154,21 +154,15 @@ static func problem_with(id: String, key: String) -> String:
 ## Keys kept for this visit only, by provider: never written anywhere.
 static var _this_visit: Dictionary = {}
 
-## What every file FileAccess encrypts begins with, so a plain one (as the
-## first slice kept keys) is told from it without asking FileAccess to
-## decrypt it, which says a wrong guess in the console as an engine error.
-const ENCRYPTED := "GDEC"
-## The salt the key files' password is made with, made once on this device.
-const SALT := "user://provider-salt"
 
-
+## The key's file where no keychain answers, and its name in one (KeyStore).
 static func key_file(id: String) -> String:
 	return "user://provider-%s.key" % id.validate_filename()
 
 
 ## Whether a key for [param id] is kept on this device (not this visit's).
 static func kept_on_device(id: String) -> bool:
-	return FileAccess.file_exists(key_file(id))
+	return KeyStore.kept(key_file(id))
 
 
 ## The key for [param id]: this visit's, else the one kept on this device,
@@ -176,57 +170,11 @@ static func kept_on_device(id: String) -> bool:
 static func load_key(id: String) -> String:
 	if not str(_this_visit.get(id, "")).is_empty():
 		return str(_this_visit[id])
-	var kept: String = _read_kept(id)
+	var kept: String = KeyStore.read(key_file(id))
 	if not kept.is_empty():
 		return kept
 	var env: String = str(PRESETS.get(id, {}).get("env", ""))
 	return OS.get_environment(env).strip_edges() if not env.is_empty() else ""
-
-
-static func _read_kept(id: String) -> String:
-	var path: String = key_file(id)
-	if not FileAccess.file_exists(path):
-		return ""
-	var head: PackedByteArray = FileAccess.get_file_as_bytes(path).slice(0, 4)
-	if head.get_string_from_ascii() != ENCRYPTED:
-		# Kept plain by the first slice: read once, and kept again encrypted.
-		var plain: String = FileAccess.get_file_as_string(path).strip_edges()
-		if not plain.is_empty():
-			_write_kept(id, plain)
-		return plain
-	var file: FileAccess = FileAccess.open_encrypted_with_pass(path, FileAccess.READ, _password())
-	if file == null:
-		# Another computer's, or this one's id changed: as good as no key.
-		return ""
-	var key: String = file.get_as_text().strip_edges()
-	file.close()
-	return key
-
-
-static func _write_kept(id: String, key: String) -> bool:
-	var file: FileAccess = FileAccess.open_encrypted_with_pass(key_file(id), FileAccess.WRITE,
-		_password())
-	if file == null:
-		return false
-	file.store_string(key)
-	file.close()
-	return true
-
-
-## This computer's id and this device's salt, hashed: what the key files are
-## encrypted with. A browser has no id to give (asking prints an error).
-static func _password() -> String:
-	var salt: String = ""
-	if FileAccess.file_exists(SALT):
-		salt = FileAccess.get_file_as_string(SALT).strip_edges()
-	if salt.is_empty():
-		salt = Crypto.new().generate_random_bytes(32).hex_encode()
-		var file: FileAccess = FileAccess.open(SALT, FileAccess.WRITE)
-		if file != null:
-			file.store_string(salt)
-			file.close()
-	var machine: String = "" if OS.has_feature("web") else OS.get_unique_id()
-	return ("brickworks:%s:%s" % [machine, salt]).sha256_text()
 
 
 ## Keep [param key] for [param id], on this device or for this visit only.
@@ -238,27 +186,24 @@ static func remember(id: String, key: String, on_device: bool = true) -> String:
 	var tidy: String = key.strip_edges()
 	if not on_device:
 		_this_visit[id] = tidy
-		if FileAccess.file_exists(key_file(id)):
-			DirAccess.remove_absolute(key_file(id))
+		KeyStore.remove(key_file(id))
 		return ""
 	_this_visit.erase(id)
-	if not _write_kept(id, tidy):
+	if KeyStore.write(key_file(id), tidy).is_empty():
 		return "Could not save the key on this device."
 	return ""
 
 
 static func forget(id: String) -> void:
 	_this_visit.erase(id)
-	if FileAccess.file_exists(key_file(id)):
-		# On the web this path is the site's storage; DirAccess handles both.
-		DirAccess.remove_absolute(key_file(id))
+	KeyStore.remove(key_file(id))
 
 
 ## Where the key in use came from: "visit", "device", "environment" or "".
 static func key_source(id: String) -> String:
 	if not str(_this_visit.get(id, "")).is_empty():
 		return "visit"
-	if not _read_kept(id).is_empty():
+	if not KeyStore.read(key_file(id)).is_empty():
 		return "device"
 	return "environment" if not load_key(id).is_empty() else ""
 
@@ -274,12 +219,14 @@ static func custody(id: String, source: String = "device") -> String:
 	if source == "environment":
 		return ("Read from %s in the environment this app was started from; not kept by "
 			% str(PRESETS[id]["env"]) + "Brickworks. Paste a key to keep one here instead. " + sent)
+	# Where this one is, or where one given now would go.
+	var where: String = KeyStore.place(key_file(id))
+	if where.is_empty():
+		where = KeyStore.keychain()
 	if OS.has_feature("web"):
-		return ("Kept in this browser's storage for this site, scrambled but not secret: "
-			+ "anyone using this browser could recover it. Untick Remember on a shared "
-			+ "computer. " + sent)
-	return ("Kept on this computer only, in a file encrypted to it. Programs running as you "
-		+ "could still reach it, so a key with a spending limit is safest. " + sent)
+		return KeyStore.said(where, true) + " " + sent
+	return (KeyStore.said(where, false) + " Programs running as you could still ask for it, so a "
+		+ "key with a spending limit is safest. " + sent)
 
 
 ## Enough of a key to recognise, not enough to use: for logs and the panel.

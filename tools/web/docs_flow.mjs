@@ -103,7 +103,9 @@ const targets = new Map();
 for (const [page, body] of bodies) {
   for (const [, attr, raw] of body.matchAll(/\s(href|src)="([^"]+)"/g)) {
     const target = raw.replace(/&amp;/g, "&");
-    if (/^(https?:|mailto:)/.test(target) && !target.startsWith("https://brickworks.diy")) continue;
+    // Off the site: another site, an address to write to, or an app's own
+    // link (cursor:, vscode:, from assets/assistants.json) only that app opens.
+    if (/^[a-z][a-z0-9+.-]*:/i.test(target) && !target.startsWith("https://brickworks.diy")) continue;
     const local = target.replace("https://brickworks.diy", "");
     if (local.startsWith("https://")) continue;
     const [where, fragment] = local.split("#");

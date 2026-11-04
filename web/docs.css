@@ -185,6 +185,8 @@ kbd.keys, span.keys { display: inline-flex; flex-wrap: wrap; align-items: center
 	.docs-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .docs-cards li { margin: 0; }
+/* An AI app's card on /docs/connect: who may add it, under how. */
+.docs-cards .plan { display: block; margin-top: var(--s-2); color: var(--ink-faint); }
 .docs-cards a {
 	display: block; height: 100%; padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--radius);
 	background: var(--panel); box-shadow: var(--highlight); text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);

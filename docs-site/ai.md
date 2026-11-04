@@ -1,7 +1,7 @@
 ---
 tools: submit_design, choose_sketch, plan_scale, find_reference, how_real_sets_build_this, find_techniques, show_technique, place_technique, restyle_model, add_rooms
 panels: AiSettings#other-ais
-ai: How an AI designs in Brickworks: Claude or another AI on the person's own key, in the assistant panel, through the connector or Claude Code. It proposes parts and the app decides: every design is checked and sent back with what failed. A design starts with plan_scale, find_reference and how_real_sets_build_this, then submit_design.
+ai: How an AI designs in Brickworks: the person's own AI app (Claude, ChatGPT, Gemini and others) through the connector, or Claude or another AI on their own key in the assistant panel. It proposes parts and the app decides: every design is checked and sent back with what failed. A design starts with plan_scale, find_reference and how_real_sets_build_this, then submit_design.
 rules:
   - The app builds what is submitted, checks it holds together, and refuses what does not.
   - A sketch is under 150 parts; three sketches, then choose_sketch one.
@@ -9,18 +9,17 @@ rules:
   - A whole design is one undo step.
 title: Designing with AI
 nav: The assistant
-description: How an AI designs in Brickworks: Claude or another AI on your own key, the assistant panel, sketches, and asking about a selection.
+description: How an AI designs in Brickworks: your own AI app or your own key, the assistant panel, sketches, and asking about a selection.
 ---
 
-An AI can design a whole model from a sentence, change a part of one, or answer a question about it: Claude, or another AI on your own API key. It builds with the same real parts and the same checks you do: the app decides whether each part fits and holds, so what goes on the baseplate is buildable. There is no AI in the window until you turn the assistant on ([Connect Claude](/docs/connect-claude#assistant-on)).
+An AI can design a whole model from a sentence, change a part of one, or answer a question about it: the AI app you use, or a model on your own API key. It builds with the same real parts and the same checks you do: the app decides whether each part fits and holds, so what goes on the baseplate is buildable. There is no AI in the window until you turn the assistant on ([Connect your AI](/docs/connect#assistant-on)).
 
 ## Ways to bring an AI {#ways}
 
 | Way | You need | Where it runs |
 |---|---|---|
-| [The Claude connector](/docs/connector) | Any Claude plan (on the free one, its one custom connector) | claude.ai, the Claude desktop and mobile apps, building in your open Brickworks tab |
-| [ChatGPT](/docs/connector#chatgpt) | A ChatGPT plan that can add a custom MCP server | chatgpt.com, building in your open Brickworks tab |
-| [Claude Code](/docs/claude-code) | Claude Code, signed in to your plan | Your terminal, or started by the desktop app for you |
+| [Your AI app](/docs/connect), through [the connector](/docs/connector) | Claude, ChatGPT, Gemini, Claude Code, Cursor or another: each app's page says which of its plans can add it | The app itself, building in your open Brickworks tab |
+| [Claude Code, started for you](/docs/claude-code#started-for-you) | The desktop app, and Claude Code signed in to your plan | The assistant panel |
 | [Your API key](#api-key) | A key from the Anthropic Console | The assistant panel itself |
 | [Another AI on your own key](#other-ais) | A key from OpenAI, Google, OpenRouter or another provider, or a model on your own computer | The assistant panel, chosen in **Settings › AI** |
 
@@ -87,16 +86,23 @@ The app then names the AI wherever it said Claude for the one designing: the too
 
 ### Where your key is kept {#key-custody}
 
-The panel says this beside the key, for where you are:
+<!-- covers
+lib:a person's own keys kept in the system's keychain
+-->
+
+The panel says this beside the key, for where you are. A key pasted in the assistant panel for Claude is kept the same way.
 
 | Where | How the key is kept |
 |---|---|
-| The desktop app | On this computer only, in a file encrypted to it, so a copy taken elsewhere cannot be read. Programs running as you could still reach it, so a key with a spending limit is safest. |
-| A browser | In this browser's storage for brickworks.diy, scrambled but not secret: anyone using this browser could recover it. Untick **Remember** on a shared computer. |
+| The desktop app on Linux | In your keyring (the Secret Service, as GNOME Keyring or KWallet keeps it), locked with your login. |
+| The desktop app on macOS | In your login Keychain, locked with your login. |
+| The desktop app on Windows | In Windows Credential Manager, locked with your Windows sign-in. |
+| The desktop app, where no keyring answers | On this computer only, in a file encrypted to it, so a copy taken elsewhere cannot be read. |
+| A browser | In this browser's storage for brickworks.diy, scrambled but not secret: anyone using this browser could recover it. Untick **Remember** on a shared computer. No script but Brickworks' own runs on the site, and the app can reach only the providers listed and your own computer. |
 | For this visit only | Nowhere on the device; gone when the tab or app closes. |
 | From the environment (desktop) | Read from the provider's environment variable the app was started with, and not kept by Brickworks. |
 
-Everywhere, the key is sent only to the provider you chose (or the address you gave), never to Brickworks, and never logged or saved with a model.
+On the desktop, programs running as you could still ask the keyring for it, so a key with a spending limit is safest. A key kept in a file by an earlier version moves into the keyring the first time it is read, and the file is deleted. Everywhere, the key is sent only to the provider you chose (or the address you gave), never to Brickworks, and never logged or saved with a model.
 
 > [!NOTE]
 > A model on your own computer (Ollama, LM Studio, vLLM) is for the desktop app: a browser asks before a website reaches your computer, and those servers refuse other sites unless told to allow them.

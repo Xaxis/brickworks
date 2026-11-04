@@ -1,7 +1,7 @@
 // Your settings, /settings (settings.html): the theme, what Brickworks
 // emails you, orangecheck linked or not (api/orangecheck.js), your age
 // answer, whom your profile shows you follow and whether it shows the
-// models you liked (supabase/avatars.sql), the Claude apps that may work
+// models you liked (supabase/avatars.sql), the AI apps that may work
 // in your tabs, your feedback with where each report stands and our answers
 // (api/_feedback.js), signing out and deleting the account. Your profile itself (name, handle, words, links, pins) is
 // changed on /profile, with Edit profile (docs/SOCIAL.md U6, D9).
@@ -81,7 +81,7 @@ async function feedback() {
   list.hidden = reports.length === 0;
 }
 
-/// The Claude connection: which Claude apps may work in your tabs, and a
+/// Assistants: which AI apps may work in your tabs, and a
 /// way to end one. Ending it loses what that connector was allowed to do,
 /// so it asks first.
 async function claude() {
@@ -90,17 +90,17 @@ async function claude() {
   list.replaceChildren();
   const connections = answer && answer.status === 200 && Array.isArray(answer.body.connections) ? answer.body.connections : null;
   if (!connections) {
-    $("claude-said").textContent = say("Whether your Claude is connected could not be read just now.");
+    $("claude-said").textContent = say("Which AI apps are connected could not be read just now.");
     return;
   }
   $("claude-how").hidden = connections.length > 0;
   $("claude-said").textContent = connections.length
     ? say("These can work in your Brickworks tabs, as you, while a tab is open.")
-    : say("Not connected. With the assistant on, Connect Claude in the app, or add Brickworks to Claude yourself.");
+    : say("Not connected. With the assistant on, Connect your AI in the app, or add Brickworks to your AI app yourself.");
   for (const one of connections) {
     const since = when(one.since);
     const used = when(one.last_used);
-    const app = make("b", "", one.client ? String(one.client) : say("A Claude app"));
+    const app = make("b", "", one.client ? String(one.client) : say("An AI app"));
     const words = sayInto(make("span"), since && used ? say("{app} since {since}, last used {used}", { since, used })
       : since ? say("{app} since {since}", { since }) : used ? say("{app}, last used {used}", { used }) : "{app}", { app });
     const end = make("button", "link", say("Disconnect"));
@@ -108,8 +108,8 @@ async function claude() {
     end.addEventListener("click", async () => {
       // Claude forgets the tool permissions given to a connection when it is
       // disconnected, which is why nothing here suggests doing it (2026-10-20).
-      if (!confirm(say("Disconnect {app}? It can no longer work in your tabs. Claude also "
-        + "forgets the tool permissions you gave it, so connecting again asks for them all again.",
+      if (!confirm(say("Disconnect {app}? It can no longer work in your tabs, and it may "
+        + "forget the tool permissions you gave it, so connecting again asks for them all again.",
       { app: one.client ? String(one.client) : say("this app") }))) return;
       end.disabled = true;
       const gone = await call(`/api/oauth?op=disconnect&id=${encodeURIComponent(String(one.id))}`, { method: "POST" });
@@ -223,17 +223,17 @@ $("oc-code").addEventListener("submit", async (event) => {
   }
 });
 
-/// What the age answer changes: under 13, no public profile here (the
-/// server refuses one too), and what is kept of it said in Privacy.
+/// What the age answer changes, and what is kept of it said in Privacy.
+/// Accounts are for 13 and over: an answer under 13 deletes the account, so
+/// only a row from before that says so, and it has nothing public here (the
+/// server refuses it too).
 function drawAge(kept, handle) {
   const young = Boolean(kept && kept.over_13 === false);
   $("young").hidden = !young;
   document.documentElement.dataset.young = young ? "yes" : "no";
   $("age-said").textContent = kept && kept.over_13 === true
     ? say("You told Brickworks you are 13 or over. Only that is kept, never your date of birth.")
-    : kept && kept.over_13 === false
-      ? say("You told Brickworks you are under 13, so your profile and collections stay private. Only that is kept.")
-      : say("Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.");
+    : say("Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.");
   $("edit-profile").hidden = young;
   if (young && !handle) $("profile-line").textContent = say("A public profile is for people 13 and over.");
   $("follows-choice").hidden = !$("follows-choice").dataset.ready || young;
@@ -312,8 +312,16 @@ async function load() {
   $("loading").hidden = true;
   $("signed-out").hidden = true;
   $("signed-in").hidden = false;
-  // The age question, if this account has not answered it.
-  if (known && known.ask) drawAge(await askAgeIfAsked().catch(() => null) || known, handle);
+  // The age question, if this account has not answered it; answered under
+  // 13, the account is gone, and the page drawn again for nobody.
+  if (known && known.ask) {
+    const answered = await askAgeIfAsked().catch(() => null);
+    if (answered && answered.refused) {
+      showFeedCount().catch(() => null);
+      return load();
+    }
+    drawAge(answered || known, handle);
+  }
   // Back from Stripe to #plan, which was not on the page until now.
   if (plan && location.hash === "#plan") $("plan")?.scrollIntoView({ block: "start" });
   document.documentElement.dataset.settings = "ready";

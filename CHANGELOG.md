@@ -13,6 +13,14 @@ whole cycle.
 
 ## [Unreleased]
 
+### Changed
+
+- Brickworks accounts are for people 13 and over. Somebody who answers the
+  age question under 13 is told to ask a parent or guardian to sign in with
+  their own email and build with them, and the account just made is deleted
+  at once, with its email address. The computer keeps only that it was told,
+  so the next sign-in there says so at once.
+
 ## [0.15.0] - 2026-11-03
 
 The desktop app is free, as brickworks.diy now says, and nothing in it asks

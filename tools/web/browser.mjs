@@ -135,11 +135,61 @@ export async function controlsWith(page, names, ms = 10000, { any = false } = {}
 /// yet on a box drawing three browsers, and a word's letters a frame of over
 /// 2 s apart began the menu's search again (cloud_library, 2026-10-31): pick
 /// from a menu by its first letter.
-export async function framesDrawn(page, frames = 3) {
-  await page.evaluate((left) => new Promise((done) => {
+export async function framesDrawn(page, frames = 3, ms = 120000) {
+  await page.evaluate(([left, limit]) => new Promise((done) => {
     const next = () => (--left > 0 ? requestAnimationFrame(next) : done());
     requestAnimationFrame(next);
-  }), frames);
+    setTimeout(done, limit);
+  }), [frames, ms]);
+}
+
+/// A fence after everything the page has asked of WebGL so far, and when it
+/// passed. In a browser drawing in software, SwiftShader draws in Chromium's
+/// GPU process, behind the page: the page hands a frame over in the
+/// display's 17 ms, and a dozen of them can be queued before it has to wait,
+/// so what a frame cost is when the drawing is done, not when it was asked.
+export async function fenced(page, seconds = 600) {
+  await page.evaluate(() => {
+    const canvas = document.getElementById("canvas") || document.querySelector("canvas");
+    const gl = canvas.getContext("webgl2");
+    window.lookFence = { gl, sync: gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0), put: performance.now() };
+    gl.flush();
+  });
+  const end = Date.now() + seconds * 1000;
+  for (;;) {
+    const done = await page.evaluate(() => {
+      const f = window.lookFence;
+      if (f.gl.getSyncParameter(f.sync, f.gl.SYNC_STATUS) !== f.gl.SIGNALED) return null;
+      f.gl.deleteSync(f.sync);
+      return { put: f.put, passed: performance.now() };
+    });
+    if (done) return done;
+    if (Date.now() > end) throw new Error(`a fence: not passed within ${seconds} s`);
+    await page.waitForTimeout(25);
+  }
+}
+
+/// Before a picture judged by its pixels: the frame after what the flow
+/// waited for, drawn. The app's next [frames] frames run (framesDrawn), so
+/// the state waited for is in a frame handed over, and then a fence after
+/// them passes (fenced), so that frame is drawn. A fixed wait is not
+/// enough: SwiftShader draws behind the page, and 3 s after the app said
+/// the nine bricks were open, drawn_flow's picture was still a frame from
+/// before the open, its status bar saying the first visit's car's 61
+/// bricks (rel-m253, load 40 to 55). Never more than [seconds]: past them
+/// it says so, and a picture then may be of an older frame.
+export async function caughtUp(page, { frames = 2, seconds = 180 } = {}) {
+  const began = Date.now();
+  await framesDrawn(page, frames, seconds * 1000);
+  const left = Math.max(1, seconds - (Date.now() - began) / 1000);
+  try {
+    await fenced(page, left);
+    return Date.now() - began;
+  } catch (trouble) {
+    console.log(`        (the drawing had not caught up after ${Math.round((Date.now() - began) / 1000)} s:`
+      + ` ${trouble.message}; the picture may be of an older frame)`);
+    return -1;
+  }
 }
 
 /// [words] typed into the menu just opened, to find its row: without spaces

@@ -19,7 +19,7 @@
 // input, and counts the pixels in the selection's yellow round him against the
 // same picture before the click; then counts the frames drawn over --seconds
 // (5) standing still. Pictures in --out (shots/outline_web).
-import { launch } from "./browser.mjs";
+import { caughtUp, launch } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -206,6 +206,7 @@ try {
     };
     await page.mouse.move(at.x + 300, at.y + 200);
     await page.waitForTimeout(3000);
+    await caughtUp(page);
     const before = decodePng(await page.screenshot({ path: `${out}/${ratio}x_none.png`, timeout: 180000 }));
     await page.mouse.move(at.x, at.y, { steps: 4 });
     await page.waitForTimeout(1500);
@@ -219,11 +220,11 @@ try {
     // Off him, so the hover's own line is not in the picture.
     await page.mouse.move(at.x + 300, at.y + 200);
     // Then nothing from the person for --idle seconds, the selection looked
-    // at four times a second: nothing but input may take it away, and the
-    // picture after is of it, not of a frame from before the click. Over
-    // Orthanc the parts bin's read-backs held the drawing (GpuFence) for
-    // 30 s and more, and the picture 4 s after the click was still the one
-    // from before it (2026-10-14).
+    // at four times a second: nothing but input may take it away. The
+    // picture after is of the frame after them (caughtUp), not one from
+    // before the click: over Orthanc the parts bin's read-backs held the
+    // drawing (GpuFence) for 30 s and more, and the picture 4 s after the
+    // click was still the one from before it (2026-10-14).
     const held = [];
     for (let n = 0; n < idle * 4; n++) {
       await page.waitForTimeout(250);
@@ -232,6 +233,7 @@ try {
     const lost = held.filter((count) => count !== picked);
     ok(lost.length === 0, `${idle} s with no input: still ${picked} selected in ${held.length - lost.length} `
       + `of ${held.length} looks${lost.length ? ` (${[...new Set(lost)].join(", ")} in the others)` : ""}`);
+    await caughtUp(page);
     const after = decodePng(await page.screenshot({ path: `${out}/${ratio}x_selected.png`, timeout: 180000 }));
     ok(after.width === 1400 * ratio, `the picture is ${after.width} device pixels across`);
     const was = yellow(before, box);

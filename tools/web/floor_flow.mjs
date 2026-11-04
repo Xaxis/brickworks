@@ -145,8 +145,10 @@ ok(Boolean(await where("menu_view", 400)), "the app came up");
 await page.waitForTimeout(Number(args.load || 15000));
 await shot("0_first_visit.png");
 const opening = await state();
-ok(/^BASEPLATE /.test(opening.floor || "") && opening.scenery >= 1,
-  `a first visit stands on a baseplate, as before (${opening.floor}, ${opening.scenery} plate)`);
+// The first visit's car is LDraw's, and a file made elsewhere stands on the
+// grid: a car on a baseplate was a car parked on a lawn (setfloor).
+ok(opening.floor === "GRID" && opening.scenery === 0,
+  `a first visit's car stands on the grid, as a file made elsewhere does (${opening.floor}, ${opening.scenery} plates)`);
 
 // File > New: an empty model on the floor new models start on.
 const fresh = await menu("file", ["New"], (s) => s.bricks === 0);

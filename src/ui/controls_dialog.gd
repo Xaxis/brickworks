@@ -192,7 +192,16 @@ func _build() -> void:
 	_version.add_theme_font_size_override("font_size", 11)
 	_version.modulate = Color(1, 1, 1, 0.6)
 	_version.text = BuildInfo.describe()
-	lower.add_child(_version)
+	_version.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_version.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# And on the desktop, how it is kept up to date (Updater), on the same
+	# line: a line of its own cost the settings their fit (a11y_size).
+	var kept := HBoxContainer.new()
+	kept.add_theme_constant_override("separation", 8)
+	kept.add_child(_version)
+	if Updater.on_desktop():
+		_updates(kept)
+	lower.add_child(kept)
 	if OS.has_feature("web"):
 		_read_version.call_deferred()
 
@@ -851,6 +860,30 @@ func _interface(column: VBoxContainer) -> void:
 		func(on: bool) -> void: ShellPrefs.put("reduce_motion", on))
 
 
+## Settings, Updates: Automatic, Ask first or Off (Updater.MODES).
+var updates_choice: OptionButton
+
+
+func _updates(row: HBoxContainer) -> void:
+	var words := Label.new()
+	words.text = "Updates"
+	words.add_theme_font_size_override("font_size", 12)
+	row.add_child(words)
+	updates_choice = OptionButton.new()
+	updates_choice.focus_mode = Control.FOCUS_NONE
+	updates_choice.add_theme_font_size_override("font_size", 12)
+	updates_choice.accessibility_name = "Updates"
+	updates_choice.tooltip_text = ("Automatic downloads a new version and puts it in as Brickworks "
+		+ "quits. Ask first says it is out. Off asks nothing until Help, Check for updates.")
+	for chosen: String in Updater.MODES:
+		updates_choice.add_item(str(Updater.MODE_WORDS[chosen]))
+	updates_choice.select(Updater.MODES.find(Updater.mode()))
+	row.add_child(updates_choice)
+	updates_choice.item_selected.connect(func(index: int) -> void:
+		Updater.choose(Updater.MODES[index])
+		changed.emit())
+
+
 func _interface_index() -> int:
 	var at: float = ShellPrefs.interface_size()
 	var best: int = 0
@@ -861,8 +894,8 @@ func _interface_index() -> int:
 	return best
 
 
-## What a new model stands on (ModelFloor.preferred): New, and a file
-## opened that does not say. Each model's own floor is View, Floor.
+## What a new model stands on (ModelFloor.preferred): New, and a file of
+## Brickworks' own from before floors. Each model's own floor is View, Floor.
 var new_floor: FloorPicker
 
 
@@ -1078,6 +1111,8 @@ func open() -> void:
 		interface_choice.select(_interface_index())
 		reduce_motion.set_pressed_no_signal(ShellPrefs.reduce_motion())
 		language_choice.select(Language.codes().find(Language.current()))
+	if updates_choice != null:
+		updates_choice.select(Updater.MODES.find(Updater.mode()))
 	_show_face("settings")
 	_show_designer()
 	_fill()
@@ -1123,6 +1158,8 @@ func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"assistant_on": assistant_on, "assistant_off": assistant_off,
 		"interface_size": interface_choice, "reduce_motion": reduce_motion,
 		"language": language_choice, "settings_done": _done, "ai_settings": ai_open}
+	if updates_choice != null:
+		named["updates"] = updates_choice
 	if _ai_page.visible:
 		named.merge(ai.controls_by_name())
 		named["ai_back"] = _back

@@ -12,6 +12,8 @@ entry:tools/web/*  # browser flows and checks, run against a deployment by the r
 entry:tools/bench/*  # the design benches: the project's measures of Claude's designs
 entry:tools/release/*  # how a release is made, checked and published
 entry:tools/release.py  # building, smoking and publishing the desktop packages
+entry:tools/update_check.py  # how the desktop updater is proven with real packages
+entry:src/net/update_helper.*  # what the updater runs as the app quits (its words are in web-and-desktop.md#updates)
 entry:export_presets.cfg  # the desktop exports the release makes
 entry:tools/viewer/*  # building and checking the card Claude shows (the card itself is in connector.md)
 entry:tools/storage_ldraw.py  # an upload to the parts store, the project's own
@@ -60,3 +62,4 @@ ui:the beta's owner queue  # the owner's own page: the beta's applications, deci
 ui:the owner's feedback inbox  # the owner's own page: reports read, triaged and answered by hand (what a sender sees is in feedback.md)
 ui:review sign-in page  # an app directory's reviewer's, linked from nowhere: the review account's password sign-in (docs/directory/claude.md); everyone else signs in by a code
 cli:browse pages  # tools/browse_pages.py writes the gallery tabs' pages (/library, /builds, /collections) from web/gallery.html; a visitor meets the gallery, not it
+entry:tools/keyring_session.sh  # a keyring of its own for the keychain probe: how the app is tested

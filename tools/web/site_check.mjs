@@ -23,11 +23,15 @@
 //     and every #fragment is an id on its page;
 //   in a browser: no page logs an error, none scrolls sideways at 390 px,
 //     and /app boots with the address bar still saying /app and its Help
-//     panel's version.json found beside the build.
+//     panel's version.json found beside the build;
+//   /docs/connect and every AI app's page, one for each row of
+//     assets/assistants.json (docs/ANY_ASSISTANT.md U4), at 390 and 1280 px,
+//     light and dark: each answers with its five headings, drawn in the
+//     theme's colours, nothing sideways, no error logged.
 //
 // Screenshots of every page at phone and laptop size go to --out.
 import { launch, allPictures } from "./browser.mjs";
-import { mkdirSync, readdirSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -245,22 +249,38 @@ if (app.status !== 200) {
 
   // Visits counted by Overlook: on the public pages and the app, with the
   // per-person and secret paths left out, and never on admin or a model's
-  // page. The policy must let it load and report, or it counts nothing
-  // without a word.
-  const counter = /<script defer src="https:\/\/overlook\.technology\/s\.js" data-site="ws_3frcuzvdsh" data-exclude="\/m\/\*\*,\/u\/\*\*,\/c\/\*\*,\/oauth\/\*\*,\/admin"><\/script>/;
+  // page. Its script is the site's own copy (web/ov/s.js), its hits sent to
+  // Overlook: the policy must let them go, or it counts nothing without a
+  // word, and must run no script from anywhere else, where a person's own
+  // AI key is kept in the site's storage (tools/deploy.sh).
+  const counter = /<script defer src="\/ov\/s\.js" data-api="https:\/\/overlook\.technology\/e" data-site="ws_3frcuzvdsh" data-exclude="\/m\/\*\*,\/u\/\*\*,\/c\/\*\*,\/oauth\/\*\*,\/admin"><\/script>/;
   const counted = PAGES.filter((p) => !p.model && p.path !== "/admin").map((p) => p.path);
   for (const path of counted) {
     if (!counter.test(pageHtml[path] || "")) fail(`${path} does not count visits, or counts paths it must not`);
   }
   for (const path of PAGES.filter((p) => p.model || p.path === "/admin").map((p) => p.path)) {
-    if (/overlook\.technology/.test(pageHtml[path] || "")) fail(`${path} loads the visit counter`);
+    if (/\/ov\/s\.js|overlook\.technology/.test(pageHtml[path] || "")) fail(`${path} loads the visit counter`);
   }
   if (!counter.test(app.body || "")) fail("/app does not count visits");
-  if (!/script-src [^;]*https:\/\/overlook\.technology/.test(appCsp)
-      || !/connect-src [^;]*https:\/\/overlook\.technology/.test(appCsp)) {
-    fail("the policy does not let the visit counter load and report");
+  const home = await get("/");
+  const siteCsp = home.headers.get("content-security-policy") || "";
+  for (const [whose, policy] of [["the app's", appCsp], ["the site's", siteCsp]]) {
+    const scripts = (policy.match(/script-src ([^;]*)/) || [])[1] || "";
+    if (!scripts || /(^|\s)(https?:|\*|'unsafe-inline')/.test(scripts)) {
+      fail(`${whose} policy runs a script from elsewhere, or none: script-src ${scripts || "missing"}`);
+    }
+    if (!/connect-src [^;]*https:\/\/overlook\.technology/.test(policy)) {
+      fail(`${whose} policy does not let the visit counter report`);
+    }
   }
-  ok(`visits counted on ${counted.length} pages and the app, not on admin or a model's page`);
+  if (!/^default-src 'self'; script-src 'self';/.test(siteCsp)) fail(`the site's policy is not its own: ${siteCsp.slice(0, 120)}`);
+  // The providers a person's own key goes to, straight from the app.
+  for (const host of ["https://api.anthropic.com", "https://api.openai.com",
+      "https://generativelanguage.googleapis.com", "https://openrouter.ai", "https://api.mistral.ai"]) {
+    if (!new RegExp(`connect-src [^;]*${host.replace(/[.]/g, "[.]")}`).test(appCsp)) fail(`the app may not reach ${host}`);
+    if (siteCsp.includes(host)) fail(`the site's pages may reach ${host}, which only the app has a key for`);
+  }
+  ok(`visits counted on ${counted.length} pages and the app, not on admin or a model's page; no script from elsewhere`);
 
   const built = await get(`/b/${sha}/`);
   if (built.status !== 200 || built.headers.get("content-security-policy") !== appCsp) {
@@ -475,26 +495,79 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
   }
   ok(`${label}: ${SHOTS.length} pages, shots in ${out}/`);
 }
+
+// The AI apps' pages, made from the table the app's Connect your AI reads:
+// a person on a phone in dark mode reads the same steps as on a laptop.
+const ASSISTANTS = JSON.parse(readFileSync(new URL("../../assets/assistants.json", import.meta.url), "utf8")).assistants;
+const CONNECT = ["/docs/connect", ...ASSISTANTS.map((row) => `/docs/connect-${row.id.replaceAll("_", "-")}`)];
+const SHOWN = new Set(["/docs/connect", "/docs/connect-claude", "/docs/connect-chatgpt"]);
+for (const [width, height] of [[390, 844], [1280, 900]]) {
+  for (const theme of ["light", "dark"]) {
+    let drawn = 0;
+    for (const path of CONNECT) {
+      const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers,
+        colorScheme: theme, isMobile: width < 600, hasTouch: width < 600 });
+      const page = await context.newPage();
+      const said = [];
+      page.on("console", (m) => { if (m.type() === "error") said.push(m.text().slice(0, 160)); });
+      page.on("pageerror", (e) => said.push(String(e).slice(0, 160)));
+      try {
+        const answer = await page.goto(base + path, { waitUntil: "load", timeout: 60000 });
+        await page.waitForTimeout(300);
+        const seen = await page.evaluate(() => ({
+          scrollW: document.documentElement.scrollWidth, clientW: document.documentElement.clientWidth,
+          bg: getComputedStyle(document.body).backgroundColor,
+          heads: [...document.querySelectorAll(".docs-article h2")].map((h) => h.id),
+        }));
+        const want = theme === "dark" ? "rgb(11, 12, 14)" : "rgb(251, 251, 250)";
+        const five = path === "/docs/connect" || ["before", "add", "sign-in", "build", "trouble"].every((id) => seen.heads.includes(id));
+        if (answer?.status() !== 200) fail(`${path} at ${width} ${theme} answered ${answer?.status()}`);
+        else if (seen.scrollW > seen.clientW + 1) fail(`${path} at ${width} ${theme} scrolls sideways (${seen.scrollW}px in ${seen.clientW}px)`);
+        else if (seen.bg !== want) fail(`${path} at ${width} ${theme} is drawn in ${seen.bg}, not the theme's ${want}`);
+        else if (!five) fail(`${path} at ${width} ${theme} has not its five headings: ${seen.heads.join(", ")}`);
+        else if (said.length) fail(`${path} at ${width} ${theme} logged: ${said.slice(0, 2).join(" | ")}`);
+        else drawn += 1;
+        if (SHOWN.has(path)) {
+          await page.screenshot({ path: `${out}/${path.slice(6)}-${width}-${theme}.png`, fullPage: true, timeout: 30000 });
+        }
+      } catch (trouble) {
+        fail(`${path} at ${width} ${theme}: ${trouble.message.split("\n")[0]}`);
+      }
+      await context.close();
+    }
+    if (drawn === CONNECT.length) ok(`${width} px ${theme}: /docs/connect and ${ASSISTANTS.length} AI apps' pages drawn whole, nothing sideways`);
+  }
+}
 await browser.close();
 
-// The visit counter itself, loaded once from its own server as a visitor's
-// browser loads it: the pages above had it answered here (browser.mjs,
-// quietCounter), so a burst of checks never trips its server's limit.
-// Under the site's isolation it must come with its own resource policy, or
-// the browser blocks it and nothing is counted.
+// The visit counter itself, as a visitor's browser runs it: the site's own
+// copy loaded, and a page view sent to Overlook under the page's policy and
+// isolation. The view is answered here, never counted: a check is not a
+// visit. The counter counts nothing in a browser a program drives
+// (navigator.webdriver), so this page says it is not one.
 {
   const real = await launch({ signedOut: true, realCounter: true });
   const context = await real.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers });
+  await context.addInitScript(() => Object.defineProperty(Navigator.prototype, "webdriver", { get: () => false }));
+  const sent = [];
+  await context.route("https://overlook.technology/**", (route) => {
+    sent.push({ url: route.request().url(), body: route.request().postData() || "" });
+    return route.fulfill({ status: 202, body: "",
+      headers: { "cross-origin-resource-policy": "cross-origin", "access-control-allow-origin": "*" } });
+  });
   const page = await context.newPage();
   const errors = [];
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 160)); });
-  const counter = page.waitForResponse((r) => r.url() === "https://overlook.technology/s.js", { timeout: 30000 }).catch(() => null);
+  const counter = page.waitForResponse((r) => r.url() === base + "/ov/s.js", { timeout: 30000 }).catch(() => null);
   await page.goto(base + "/", { waitUntil: "load", timeout: 60000 }).catch(() => {});
   const answer = await counter;
-  if (!answer || answer.status() !== 200) fail(`the visit counter did not load: ${answer ? answer.status() : "no answer"}`);
-  else if (answer.headers()["cross-origin-resource-policy"] !== "cross-origin") fail("the visit counter has no Cross-Origin-Resource-Policy, so isolation blocks it");
-  else if (errors.length) fail(`the page with the real visit counter logged: ${errors[0]}`);
-  else ok("the visit counter loads from its own server, past the page's isolation");
+  await page.waitForTimeout(1500);
+  const view = sent.find((one) => one.url === "https://overlook.technology/e" && /"n":"pageview"/.test(one.body)
+    && /"s":"ws_3frcuzvdsh"/.test(one.body));
+  if (!answer || answer.status() !== 200) fail(`the visit counter did not load from the site: ${answer ? answer.status() : "no answer"}`);
+  else if (!view) fail(`the visit counter sent no page view to Overlook: ${sent.map((one) => one.url).join(", ") || "nothing"}`);
+  else if (errors.length) fail(`the page with the visit counter logged: ${errors[0]}`);
+  else ok("the visit counter runs from the site's own copy and reports to Overlook");
   await real.close();
 }
 

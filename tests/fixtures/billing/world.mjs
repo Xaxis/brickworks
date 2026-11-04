@@ -119,6 +119,9 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     deleted: [],
     /// Supabase's auth refusing to delete one, as an outage would.
     authDown: false,
+    /// supabase/trust.sql applied and every account not asked its age yet
+    /// (rpc/age_of); off, the function answers 404, as before trust.sql.
+    ageAsk: false,
     /// Every request, "METHOD url" without its query.
     calls: [],
     /// The models each account keeps, by owner, then by name.
@@ -192,6 +195,11 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
       const owner = /^eq\.(.+)$/.exec(url.searchParams.get("owner") || "")?.[1];
       return json(200, [...mine(owner)].map(([name, row]) => ({ name, ...row })));
     }
+    if (url.pathname === "/rest/v1/rpc/age_of" && self.ageAsk) {
+      return json(200, { over_13: null, asked_at: null, ask: true });
+    }
+    // The count of codes asked for (api/otp.js), cleared for an answer under 13.
+    if (url.pathname === "/rest/v1/otp_requests" && init.method === "DELETE") return json(200, []);
     // No orangecheck account made by Connect (supabase/orangecheck_connect_leaving.sql).
     if (url.pathname === "/rest/v1/rpc/oc_connect_leaving") return json(200, false);
     if (url.pathname === "/rest/v1/rpc/plan_consent_note" && !self.noConsents) {

@@ -189,10 +189,11 @@
 // request: a view is a beacon the page sends once a day (?op=seen), and
 // counted once per visitor per day, never for a robot.
 //
-// The ground rules (2026-10-18, supabase/trust.sql, api/_trust.js): an
-// account under 13 shares by link like anyone, but is refused a listing and
-// a credited name, in words, here and again by the database; and listing
-// anything new needs the age question answered.
+// The ground rules (2026-10-18, supabase/trust.sql, api/_trust.js): listing
+// anything new needs the age question answered 13 or over. Accounts are for
+// 13 and over (2026-11-03), so an account whose row still says under 13
+// shares nothing new, by link or in the gallery, refused in words here and
+// anything public again by the database.
 //
 // Real builds (2026-10-18, supabase/builds.sql, api/_builds.js): a model
 // built to its last step is counted once per device (?op=built), "12 built"
@@ -3015,9 +3016,10 @@ async function publish(request, response) {
   }
   // Into the gallery, as against staying in it: only that is counted.
   const newlyListed = listed && !(existing && existing.published && existing.listed);
-  // The age rule (api/_trust.js): a listing needs 13 or over, and a name
-  // shown on the link not being under 13. 422, never 403 (above).
-  const young = await publicTrouble(owner, { listing: newlyListed ? true : listed ? "kept" : false,
+  // The age rule (api/_trust.js): a listing needs 13 or over, and nothing is
+  // shared at all by an account whose row says under 13. 422, never 403
+  // (above).
+  const young = await publicTrouble(owner, { account: "kept", listing: newlyListed ? true : listed ? "kept" : false,
     credit: Boolean(author) && author !== (existing?.author ?? null) });
   if (young) throw new Refusal(young, 422);
 

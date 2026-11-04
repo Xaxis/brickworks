@@ -431,6 +431,11 @@ declare -A CMD=(
   [colour_keys]="tools/web/colour_keys_flow.mjs --url=$P/app $B --out=$S/${TAG}_colour_keys"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
+  # A person's own key on the web (keysafe): pasted, checked against a stub
+  # Anthropic, sent nowhere else, kept scrambled in the site's storage,
+  # forgotten whole, kept nowhere for a visit; the app's and the site's
+  # policies run no script from elsewhere and refuse nothing while it runs.
+  [keysafe]="tools/web/key_leak_flow.mjs --url=$P/app --out=$S/${TAG}_keysafe"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
   # An app directory's reviewer signing in (/review, docs/directory/
   # claude.md): a throwaway review account's password, another address and
@@ -516,6 +521,10 @@ declare -A CMD=(
   [carried]="tools/web/carried_flow.mjs --url=$P/app $B --label=preview --out=$S/${TAG}_carried_web $R/vendor/omr/files/21321-1.mpd"
   [brickify]="tools/web/brickify_flow.mjs --url=$P/app --out=$S/${TAG}_brickify_web"
   [brickify_fox]="tools/web/brickify_flow.mjs --url=$P/app --model=tests/fixtures/brickify/fox.obj --studs=24 --least=60 --says=on.a.stand --out=$S/${TAG}_brickify_fox_web"
+  # A link given over the connector, brickify url= and print_part
+  # picture_url=, from Wikimedia and from sites with no CORS, fetched by the
+  # site (api/_link.js); a 14 MB photograph refused in words (urlfetch).
+  [link]="tools/web/link_flow.mjs --url=$P/app $B --out=$S/${TAG}_link_web"
   # Every kind of file Brickify reads (PLY, 3MF, VOX, FBX, an OBJ with a
   # picture and no .mtl) through the page's chooser, read as the desktop reads it.
   [mesh_formats]="tools/web/mesh_formats_flow.mjs --url=$P/app --out=$S/${TAG}_mesh_formats_web"

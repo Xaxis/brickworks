@@ -442,12 +442,18 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 
 ## What a selection is, as items of the sections it is in: a part directly
 ## in the sub-assembly being edited ([param level]) is itself; one inside
-## an assembly within it is that assembly's copy, which a click on it
-## selects whole. section -> Array of items.
+## an assembly within it is that assembly's copy when the selection holds
+## all of the copy, as a click on it selects it whole (the outermost copy
+## held whole), and else itself, in its own sub-model's steps. A session
+## names parts by number, and the island's rocks, named with two parts of
+## the tower, stood for the island and the tower whole: "to" step 1 put
+## both on in step 1, built before the baseplates there, which went to
+## step 53 (stepsto). section -> Array of items.
 static func _selected(world: BrickWorld, ids: Array, level: String,
 		skip: Dictionary) -> Dictionary:
-	# Read only for a copy: a part of its own section needs none of it.
+	# Read only for a part below the level: one of its own section needs none of it.
 	var lowest: Dictionary = {}
+	var whole: Dictionary = {}
 	var read: bool = false
 	var out: Dictionary = {}
 	var seen: Dictionary = {}
@@ -456,18 +462,21 @@ static func _selected(world: BrickWorld, ids: Array, level: String,
 		if brick == null or skip.has(brick_id):
 			continue
 		var path: String = Assemblies.path_of(brick)
-		var item: Dictionary = {}
+		var item: Dictionary = {"brick": brick_id, "step": maxi(brick.step, 0)}
 		var section: String = path
 		if path != level and Assemblies.within(path, level):
-			var child: String = Assemblies.join(level,
-				Assemblies.segments(path)[Assemblies.segments(level).size()])
-			section = level
 			if not read:
 				lowest = lowest_under(world, skip)
+				whole = _whole_under(world, ids, skip)
 				read = true
-			item = {"unit": child, "step": maxi(unit_step(world, child, lowest), 0)}
-		else:
-			item = {"brick": brick_id, "step": maxi(brick.step, 0)}
+			var copy: String = level
+			for segment: String in Assemblies.segments(path).slice(Assemblies.segments(level).size()):
+				copy = Assemblies.join(copy, segment)
+				if whole.has(copy):
+					break
+			if whole.has(copy):
+				section = Assemblies.parent_of(copy)
+				item = {"unit": copy, "step": maxi(unit_step(world, copy, lowest), 0)}
 		var name: String = str(item.get("unit", item.get("brick")))
 		if seen.has(name):
 			continue
@@ -475,6 +484,26 @@ static func _selected(world: BrickWorld, ids: Array, level: String,
 		if not out.has(section):
 			out[section] = []
 		(out[section] as Array).append(item)
+	return out
+
+
+## The copies [param ids] hold whole: every path every part under which, at
+## any depth, is one of them.
+static func _whole_under(world: BrickWorld, ids: Array, skip: Dictionary) -> Dictionary:
+	var chosen: Dictionary = {}
+	for brick_id: Variant in ids:
+		chosen[int(brick_id)] = true
+	# 1 for a path all of whose own parts are chosen, 0 for one missing any.
+	var by_path: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if not skip.has(brick.id):
+			var path: String = Assemblies.path_of(brick)
+			by_path[path] = mini(int(by_path.get(path, 1)), int(chosen.has(brick.id)))
+	var out: Dictionary = {}
+	var up: Dictionary = _up_paths(by_path)
+	for path: String in up:
+		if int(up[path]) == 1:
+			out[path] = true
 	return out
 
 

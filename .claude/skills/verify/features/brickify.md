@@ -267,7 +267,12 @@ a path on this computer (desktop only, `AppTools._brickify_file`: an .obj,
 given as `url=` is taken as `file=`), or `url=`
 an http(s) link the app fetches (HTTPRequest, capped at `MeshFile.MAX_BYTES`;
 an OBJ's .mtl and a .gltf's .bin from beside it; never this
-computer or its network, and the refusal names `file=`), read by `BrickifyDialog.take` as a picked file is,
+computer or its network, and the refusal names `file=`; in a browser through
+the app's own site, `AppTools._fetch_through_site` and POST
+`/api/account?op=fetch` (`api/_link.js`, see web.md), since the page may fetch
+from few sites and most send no CORS headers: every one came back "Could not
+fetch … (error 4)" until urlfetch, 2026-11-03; a failure on either is said in
+words, `FetchWords.of`), read by `BrickifyDialog.take` as a picked file is,
 so the panel opens on it; `pick=true` opens the window's file dialog for the
 person and says so (refused in a browser, which opens its chooser only from a
 click); neither lays what the panel shows. The choices go through

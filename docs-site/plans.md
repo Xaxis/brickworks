@@ -50,7 +50,7 @@ The whole of Brickworks, for personal and educational use:
 
 ## AI is never limited {#ai}
 
-On every plan. You bring your own AI: your Claude through [the connector](/docs/connector) or [Claude Code](/docs/claude-code), or [your own Anthropic API key](/docs/ai#api-key); in the desktop app, a key for [another AI](/docs/ai#other-ais) too. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it. How it builds is in [How the AI works](/docs/how-ai-works).
+On every plan. You bring your own AI: [the AI app you use](/docs/connect), Claude, ChatGPT, Gemini or another, through the connector, or [your own Anthropic API key](/docs/ai#api-key); in the desktop app, a key for [another AI](/docs/ai#other-ais) too. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it. How it builds is in [How the AI works](/docs/how-ai-works).
 
 ## Have an account? {#existing-accounts}
 

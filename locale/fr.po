@@ -2552,6 +2552,55 @@ msgstr "Gardée pour ne pas avoir à la recoller, là où d'autres programmes la
 msgid "Use this key"
 msgstr "Utiliser cette clé"
 
+# Settings, AI: where a key is kept, and where it may go from a web page (keysafe)
+msgid "Remember on this device"
+msgstr "Mémoriser sur cet appareil"
+
+msgid "Kept in this computer's keyring (the Secret Service, as GNOME Keyring or KWallet keeps it), locked with your login"
+msgstr "Gardée dans le trousseau de cet ordinateur (le Secret Service, tel que GNOME Keyring ou KWallet le tient), verrouillé par votre session"
+
+msgid "Kept in your login Keychain on this Mac, locked with your login"
+msgstr "Gardée dans votre trousseau « session » sur ce Mac, verrouillé par votre session"
+
+msgid "Kept in Windows Credential Manager on this computer, locked with your Windows sign-in"
+msgstr "Gardée dans le Gestionnaire d'identification de Windows sur cet ordinateur, protégée par votre connexion Windows"
+
+msgid "Kept in this browser's storage for this site, scrambled but not secret: anyone using this browser could recover it, so untick Remember on a shared computer"
+msgstr "Gardée dans le stockage de ce navigateur pour ce site, brouillée mais pas secrète : quiconque utilise ce navigateur pourrait la retrouver, alors décochez « Mémoriser sur cet appareil » sur un ordinateur partagé"
+
+msgid "No script but Brickworks' own may run on this site"
+msgstr "Aucun script autre que ceux de Brickworks ne peut s'exécuter sur ce site"
+
+msgid "Kept on this computer only, in a file of the app's own data encrypted to this computer, because no keyring answered here"
+msgstr "Gardée sur cet ordinateur seulement, dans un fichier des données de l'application chiffré pour cet ordinateur, car aucun trousseau n'a répondu ici"
+
+msgid "Programs running as you could still ask for it, so a key with a spending limit is safest"
+msgstr "Des programmes lancés sous votre compte pourraient quand même la demander, donc le plus sûr est une clé avec une limite de dépenses"
+
+msgid "Sent only to %s, never to Brickworks."
+msgstr "Envoyée seulement à %s, jamais à Brickworks."
+
+msgid "Sent only to the address above, never to Brickworks."
+msgstr "Envoyée seulement à l'adresse ci-dessus, jamais à Brickworks."
+
+msgid "Kept for this visit only, nowhere on this device"
+msgstr "Gardée pour cette visite seulement, nulle part sur cet appareil"
+
+msgid "Read from %s in the environment this app was started from"
+msgstr "Lue dans %s, dans l'environnement d'où cette application a été lancée"
+
+msgid "not kept by Brickworks"
+msgstr "pas gardée par Brickworks"
+
+msgid "Paste a key to keep one here instead"
+msgstr "Collez une clé pour en garder une ici à la place"
+
+msgid "On a web page a server on your own computer answers only if it allows this site (Ollama: OLLAMA_ORIGINS), and the browser asks you first."
+msgstr "Sur une page web, un serveur de votre propre ordinateur ne répond que s'il autorise ce site (Ollama : OLLAMA_ORIGINS), et le navigateur vous le demande d'abord."
+
+msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; for any other server, use the desktop app."
+msgstr "Sur une page web, Brickworks n'atteint que les fournisseurs listés et les serveurs de votre propre ordinateur ; pour tout autre serveur, utilisez l'application de bureau."
+
 msgid "Sent only to Anthropic, never to us. Safest is a key just for this, in a Console workspace with a spend limit."
 msgstr "Envoyée seulement à Anthropic, jamais à nous. Le plus sûr est une clé rien que pour ça, dans un espace de travail de la Console avec une limite de dépenses."
 
@@ -6864,11 +6913,56 @@ msgstr "étape %d reculée"
 msgid "merged step %d with the next"
 msgstr "étape %d fusionnée avec la suivante"
 
-msgid "took out step %d; its parts are in the step before"
-msgstr "étape %d retirée ; ses pièces sont dans l'étape précédente"
+msgid "moved %s to steps %d to %d"
+msgstr "%s déplacé vers les étapes %d à %d"
 
-msgid "took out step %d; its parts are in the step after"
-msgstr "étape %d retirée ; ses pièces sont dans l'étape suivante"
+msgid "the %s is built in its own steps before step %d, which puts it on"
+msgstr "%s est construit en étapes propres avant l'étape %d, qui le pose"
+
+msgid "the %s are built in their own steps before step %d, which puts them on"
+msgstr "%s sont construits en étapes propres avant l'étape %d, qui les pose"
+
+msgid "now in step %d"
+msgstr "maintenant à l'étape %d"
+
+msgid "now in steps %d to %d"
+msgstr "maintenant aux étapes %d à %d"
+
+msgid "it is step %d now"
+msgstr "c'est maintenant l'étape %d"
+
+msgid "took out step %d; its parts are in step %d"
+msgstr "étape %d retirée ; ses pièces sont dans l'étape %d"
+
+msgid "step %d has no step of the model's own to put them in"
+msgstr "l'étape %d n'a pas d'étape propre au modèle où les mettre"
+
+msgid "step %d is one of the model's own steps"
+msgstr "l'étape %d est une des étapes propres au modèle"
+
+msgid "step %d is one of the %s's steps"
+msgstr "l'étape %d est une des étapes de %s"
+
+msgid "the %s whole, which goes in a step of the model's own"
+msgstr "%s entier, qui va dans une étape propre au modèle"
+
+msgid "the %s whole, which goes in a step of the %s"
+msgstr "%s entier, qui va dans une étape de %s"
+
+msgid "%s of the model's own, in step %d"
+msgstr "%s du modèle lui-même, à l'étape %d"
+
+msgid "%s of the model's own, in steps %d to %d"
+msgstr "%s du modèle lui-même, aux étapes %d à %d"
+
+msgid "%s of the %s, in step %d"
+msgstr "%s de %s, à l'étape %d"
+
+msgid "%s of the %s, in steps %d to %d"
+msgstr "%s de %s, aux étapes %d à %d"
+
+msgid "A step takes only the parts of its own sub-model, or a sub-model whole, all its parts given together"
+msgstr "Une étape ne prend que les pièces de son propre sous-modèle, ou un sous-modèle entier, toutes ses pièces données ensemble"
 
 msgid "the steps are as they were"
 msgstr "les étapes sont telles qu'elles étaient"
@@ -7962,9 +8056,6 @@ msgstr "Connectez-vous pour commencer à construire"
 msgid "One question first"
 msgstr "D'abord une question"
 
-msgid "Welcome to Brickworks"
-msgstr "Bienvenue sur Brickworks"
-
 msgid "Signing you in…"
 msgstr "Connexion en cours…"
 
@@ -8025,14 +8116,17 @@ msgstr "Choisissez le mois et saisissez l'année en quatre chiffres."
 msgid "Brickworks asks everyone this once. The date itself is not kept."
 msgstr "Brickworks pose cette question une fois à chacun. La date elle-même n'est pas conservée."
 
-msgid "Thank you. You can build here, keep your models and share them by link with anyone you choose."
-msgstr "Merci. Vous pouvez construire ici, garder vos modèles et les partager par lien avec qui vous voulez."
+msgid "Accounts are for 13 and over"
+msgstr "Les comptes sont réservés aux 13 ans et plus"
 
-msgid "The gallery, a public profile and a name shown on a link are for people 13 and over, so they are not open on this account."
-msgstr "La galerie, un profil public et un nom affiché sur un lien sont réservés aux personnes de 13 ans et plus ; ils ne sont donc pas ouverts sur ce compte."
+msgid "Brickworks accounts are for 13 and over. Ask a parent or guardian to sign in with their own email and build with you."
+msgstr "Les comptes Brickworks sont réservés aux personnes de 13 ans et plus. Demandez à un parent ou à un tuteur de se connecter avec sa propre adresse e-mail et de construire avec vous."
 
-msgid "Start building"
-msgstr "Commencer à construire"
+msgid "The account is deleted, with your email address. The date was never kept."
+msgstr "Le compte est supprimé, avec votre adresse e-mail. La date n'a jamais été conservée."
+
+msgid "A parent or guardian new to Brickworks makes their account on their own phone or computer first, then signs in here."
+msgstr "Un parent ou un tuteur qui découvre Brickworks crée d'abord son compte sur son propre téléphone ou ordinateur, puis se connecte ici."
 
 msgid "An account is your email address and nothing else. Your models are saved on this device, not with your account; Claude runs on your own plan or API key."
 msgstr "Un compte, c'est votre adresse e-mail et rien d'autre. Vos modèles sont enregistrés sur cet appareil, pas avec votre compte ; Claude fonctionne avec votre propre forfait ou clé d'API."
@@ -8165,6 +8259,309 @@ msgstr "Claude peut joindre cet onglet"
 
 msgid "No assistant, no Claude and no AI anywhere in the window. Claude connections are off while the assistant is off."
 msgstr "Pas d'assistant, pas de Claude et aucune IA dans la fenêtre. Les connexions à Claude sont coupées tant que l'assistant est désactivé."
+
+# Updates: the desktop app keeping itself up to date (Updater): its notice, Help's
+# Check for updates, Reinstall and Restart, and Settings, Updates
+
+msgid "Check for updates…"
+msgstr "Rechercher des mises à jour…"
+
+msgid "Reinstall Brickworks…"
+msgstr "Réinstaller Brickworks…"
+
+msgid "Restart Brickworks"
+msgstr "Redémarrer Brickworks"
+
+msgid "Whether a newer version of Brickworks is out, and what it changes"
+msgstr "Si une version plus récente de Brickworks est sortie, et ce qu'elle change"
+
+msgid "Download this version again and put it in place, to repair a damaged install"
+msgstr "Télécharger à nouveau cette version et la mettre en place, pour réparer une installation abîmée"
+
+msgid "Quit and start again. The model on the baseplate comes back as it is."
+msgstr "Quitter et redémarrer. Le modèle sur la plaque de base revient tel quel."
+
+msgid "In the desktop app only: the site updates itself"
+msgstr "Dans l'application de bureau seulement : le site se met à jour tout seul"
+
+msgid "In the desktop app only"
+msgstr "Dans l'application de bureau seulement"
+
+msgid "Reload the tab instead"
+msgstr "Rechargez plutôt l'onglet"
+
+msgid "Updates"
+msgstr "Mises à jour"
+
+msgid "Automatic"
+msgstr "Automatiques"
+
+msgid "Ask first"
+msgstr "Demander d'abord"
+
+msgid "Automatic downloads a new version and puts it in as Brickworks quits. Ask first says it is out. Off asks nothing until Help, Check for updates."
+msgstr "Automatiques télécharge une nouvelle version et l'installe quand Brickworks se ferme. Demander d'abord signale qu'elle est sortie. Désactivé ne demande rien avant Aide, Rechercher des mises à jour."
+
+msgid "What's new"
+msgstr "Nouveautés"
+
+msgid "What this version changes, from its release notes"
+msgstr "Ce que change cette version, d'après ses notes de version"
+
+msgid "Update and restart"
+msgstr "Mettre à jour et redémarrer"
+
+msgid "Not now. In Automatic, it goes in as Brickworks quits."
+msgstr "Pas maintenant. En mode Automatiques, elle s'installe quand Brickworks se ferme."
+
+msgid "Release notes"
+msgstr "Notes de version"
+
+msgid "Brickworks %s is ready"
+msgstr "Brickworks %s est prêt"
+
+msgid "Brickworks %s is out"
+msgstr "Brickworks %s est sorti"
+
+msgid "Download"
+msgstr "Télécharger"
+
+msgid "Move to Applications and update"
+msgstr "Placer dans Applications et mettre à jour"
+
+msgid "Brickworks is running from Downloads or a disk image, where it can't update itself: it goes to %s"
+msgstr "Brickworks s'exécute depuis Téléchargements ou une image disque, où il ne peut pas se mettre à jour : il va dans %s"
+
+msgid "Restart into Brickworks %s now. The model on the baseplate comes back as it is."
+msgstr "Redémarrer maintenant dans Brickworks %s. Le modèle sur la plaque de base revient tel quel."
+
+msgid "Downloading Brickworks %s… %d%"
+msgstr "Téléchargement de Brickworks %s… %d%"
+
+msgid "Downloading Brickworks %s…"
+msgstr "Téléchargement de Brickworks %s…"
+
+msgid "Checking Brickworks %s…"
+msgstr "Vérification de Brickworks %s…"
+
+msgid "Unpacking Brickworks %s…"
+msgstr "Décompression de Brickworks %s…"
+
+msgid "Check for updates"
+msgstr "Rechercher des mises à jour"
+
+msgid "Reinstall Brickworks"
+msgstr "Réinstaller Brickworks"
+
+msgid "Download Brickworks %s again and put it in place of this copy? This repairs a damaged install. Your models and settings are kept."
+msgstr "Télécharger à nouveau Brickworks %s et le mettre à la place de cette copie ? Cela répare une installation abîmée. Vos modèles et réglages sont conservés."
+
+msgid "Reinstall and restart"
+msgstr "Réinstaller et redémarrer"
+
+msgid "Brickworks %s is out. You have %s."
+msgstr "Brickworks %s est sorti. Vous avez la %s."
+
+msgid "Checking for updates…"
+msgstr "Recherche de mises à jour…"
+
+msgid "Couldn't check for updates: %s"
+msgstr "Impossible de rechercher des mises à jour : %s"
+
+msgid "You're up to date (%s)"
+msgstr "Vous êtes à jour (%s)"
+
+msgid "You're up to date (%s): refused %s, which is older"
+msgstr "Vous êtes à jour (%s) : %s refusée, elle est plus ancienne"
+
+msgid "Couldn't download Brickworks %s: %s"
+msgstr "Impossible de télécharger Brickworks %s : %s"
+
+msgid "refused the download: %d bytes, where the manifest says %d"
+msgstr "téléchargement refusé : %d octets, là où le manifeste en indique %d"
+
+msgid "refused the download: its SHA-256 is not the manifest's"
+msgstr "téléchargement refusé : son SHA-256 n'est pas celui du manifeste"
+
+msgid "Couldn't unpack Brickworks %s: %s"
+msgstr "Impossible de décompresser Brickworks %s : %s"
+
+msgid "The release has no %s for this system"
+msgstr "La version n'a pas de %s pour ce système"
+
+msgid "Finding Brickworks %s…"
+msgstr "Recherche de Brickworks %s…"
+
+msgid "Couldn't find Brickworks %s to reinstall: %s"
+msgstr "Impossible de trouver Brickworks %s à réinstaller : %s"
+
+msgid "refused: the manifest is for %s, not this version"
+msgstr "refusé : le manifeste est pour la %s, pas pour cette version"
+
+msgid "Restarting…"
+msgstr "Redémarrage…"
+
+msgid "Restarting into Brickworks %s…"
+msgstr "Redémarrage dans Brickworks %s…"
+
+msgid "Couldn't restart: no helper for this system"
+msgstr "Redémarrage impossible : pas d'assistant pour ce système"
+
+msgid "Couldn't start the updater's helper"
+msgstr "Impossible de lancer l'assistant de mise à jour"
+
+msgid "Brickworks %s didn't start, so %s was kept"
+msgstr "Brickworks %s n'a pas démarré : la %s a été gardée"
+
+msgid "Brickworks was updated to %s"
+msgstr "Brickworks a été mis à jour en %s"
+
+msgid "Brickworks %s was reinstalled"
+msgstr "Brickworks %s a été réinstallé"
+
+msgid "This copy can't update itself"
+msgstr "Cette copie ne peut pas se mettre à jour"
+
+msgid "refused: more bytes than the manifest says"
+msgstr "refusé : plus d'octets que n'en indique le manifeste"
+
+msgid "no connection"
+msgstr "pas de connexion"
+
+msgid "the connection failed"
+msgstr "la connexion a échoué"
+
+msgid "the server's certificate did not hold"
+msgstr "le certificat du serveur n'est pas valide"
+
+msgid "no answer in time"
+msgstr "pas de réponse à temps"
+
+msgid "nowhere to write the download"
+msgstr "nulle part où écrire le téléchargement"
+
+msgid "the disk would not take the download"
+msgstr "le disque n'a pas accepté le téléchargement"
+
+msgid "the connection failed (%d)"
+msgstr "la connexion a échoué (%d)"
+
+msgid "the server answered %d"
+msgstr "le serveur a répondu %d"
+
+msgid "too many redirects"
+msgstr "trop de redirections"
+
+msgid "a redirect to nowhere"
+msgstr "une redirection vers nulle part"
+
+msgid "could not ask %s"
+msgstr "impossible d'interroger %s"
+
+msgid "could not move it into place"
+msgstr "impossible de la mettre en place"
+
+msgid "no Brickworks.app in it"
+msgstr "pas de Brickworks.app dedans"
+
+msgid "refused: its code signature does not hold"
+msgstr "refusé : sa signature de code n'est pas valide"
+
+msgid "refused: it is signed by someone else"
+msgstr "refusé : elle est signée par quelqu'un d'autre"
+
+msgid "no %s in it"
+msgstr "pas de %s dedans"
+
+msgid "this system's packages are not known"
+msgstr "les paquets de ce système sont inconnus"
+
+msgid "tar: %s"
+msgstr "tar : %s"
+
+msgid "The web app is updated by the site"
+msgstr "L'application web est mise à jour par le site"
+
+msgid "This is a development build: updates come with the downloaded app"
+msgstr "Ceci est une version de développement : les mises à jour viennent avec l'application téléchargée"
+
+msgid "Brickworks is not in an app bundle here"
+msgstr "Brickworks n'est pas dans un paquet d'application ici"
+
+msgid "Brickworks cannot update itself on %s"
+msgstr "Brickworks ne peut pas se mettre à jour sous %s"
+
+msgid "Brickworks can't update itself in %s, where it is installed: download the new version from brickworks.diy/download"
+msgstr "Brickworks ne peut pas se mettre à jour dans %s, où il est installé : téléchargez la nouvelle version sur brickworks.diy/download"
+
+msgid "Installing Brickworks %s…"
+msgstr "Installation de Brickworks %s…"
+
+msgid "Couldn't install Brickworks %s: %s"
+msgstr "Impossible d’installer Brickworks %s : %s"
+
+msgid "pkexec isn't on this system, so Brickworks can't ask for the password to install it"
+msgstr "pkexec n’est pas sur ce système : Brickworks ne peut pas demander le mot de passe pour l’installer"
+
+msgid "the password was refused or not given, so nothing was installed"
+msgstr "le mot de passe a été refusé ou n’a pas été donné : rien n’a été installé"
+
+msgid "apt-get could not install it: %s"
+msgstr "apt-get n’a pas pu l’installer : %s"
+
+msgid "Show the file"
+msgstr "Afficher le fichier"
+
+msgid "The new .deb, checked, in its folder: install it with your software installer, or with sudo apt install"
+msgstr "Le nouveau .deb, vérifié, dans son dossier : installez-le avec votre gestionnaire de logiciels, ou avec sudo apt install"
+
+msgid "Install Brickworks %s with apt, which asks for your password, then restart into it. The model on the baseplate comes back as it is."
+msgstr "Installer Brickworks %s avec apt, qui demande votre mot de passe, puis redémarrer dessus. Le modèle sur la plaque revient tel quel."
+
+msgid "the zip would not unpack"
+msgstr "le ZIP n’a pas pu être décompressé"
+
+msgid "hdiutil: %s"
+msgstr "hdiutil : %s"
+
+msgid "not an address: %s"
+msgstr "pas une adresse : %s"
+
+msgid "refused plain HTTP: %s"
+msgstr "HTTP non chiffré refusé : %s"
+
+msgid "refused an address off GitHub and brickworks.diy: %s"
+msgstr "adresse hors de GitHub et de brickworks.diy refusée : %s"
+
+msgid "latest.json is not a manifest"
+msgstr "latest.json n'est pas un manifeste"
+
+msgid "refused: the manifest's signature does not hold"
+msgstr "refusé : la signature du manifeste n'est pas valide"
+
+msgid "refused: the signed manifest does not parse"
+msgstr "refusé : le manifeste signé est illisible"
+
+msgid "refused: the manifest is not Brickworks'"
+msgstr "refusé : le manifeste n'est pas celui de Brickworks"
+
+msgid "refused: the manifest's version is not a version"
+msgstr "refusé : la version du manifeste n'en est pas une"
+
+msgid "refused: the manifest lists no files"
+msgstr "refusé : le manifeste ne liste aucun fichier"
+
+msgid "refused: a file in the manifest is not described"
+msgstr "refusé : un fichier du manifeste n'est pas décrit"
+
+msgid "refused: %s has no size"
+msgstr "refusé : %s n'a pas de taille"
+
+msgid "refused: %s has no SHA-256"
+msgstr "refusé : %s n'a pas de SHA-256"
+
+msgid "refused: a file in the manifest is not Brickworks'"
+msgstr "refusé : un fichier du manifeste n'est pas de Brickworks"
 
 # A sub-assembly selected whole, and two parts selected (Meet on hinges), in
 # the properties

@@ -76,6 +76,13 @@ const ULTIMATE_N := 3.0
 ## cells: half a plate, so a tyre's rounded foot does and a chassis above it
 ## does not.
 const ON_FLOOR := 2
+## The ground's cell: the top of the floor where no baseplate is. On the grid
+## and on no floor parts rest on the ground at y = 0 (ModelFloor), and what
+## reaches under it is in it, as what is under a plate's top is in the
+## plate: on the grid 6043-1's halberd, whose turned box reaches 7.7 LDU
+## under its trebuchet, was the lowest course, and the status bar said the
+## Dragon Defender leaned (setfloor, 2026-11-04).
+const GROUND := 0
 ## What the advice leaves to spare, in studs: following it puts the centre
 ## of mass at least this far inside every edge.
 const SPARE := 0.5
@@ -114,12 +121,13 @@ var rigid: Dictionary = {}
 ## within ON_FLOOR of it stands on the floor, and the weighing goes on with
 ## no support polygon of its own (the caller has the whole build's).
 var floor_cell: int = 0x7FFFFFFF
-## The top cell of the floor the build stands on, when it stands on one: a
-## baseplate's, [member floor_ids]'s parts' unless the caller says. What is
-## below it is in it, so a part sunk into it or a string hanging through it
-## stands on it as the rest does: walk256's lighthouse was read as standing
-## on the lowest bead of a slack mooring rope, which hung through its
-## baseplate, and the status bar said it tipped 19 studs over.
+## The top cell of the floor the build stands on: a baseplate's, [member
+## floor_ids]'s parts' unless the caller says, and the ground's ([constant
+## GROUND]) with none. What is below it is in it, so a part sunk into it or
+## a string hanging through it stands on it as the rest does: walk256's
+## lighthouse was read as standing on the lowest bead of a slack mooring
+## rope, which hung through its baseplate, and the status bar said it
+## tipped 19 studs over.
 var floor_top: int = 0x7FFFFFFF
 ## Once [method prepare] has read the joints, the parts held to the floor two
 ## ways or more by what always holds them, id -> true: what a caller may weigh
@@ -534,7 +542,7 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 	if top == 0x7FFFFFFF and not floor_ids.is_empty():
 		top = top_of(bricks.filter(func(item: Variant) -> bool:
 			return floor_ids.has((item as BrickWorld.Brick).id)), contacts.get("boxes", {}))
-	_ground(boxes, top)
+	_ground(boxes, top if top != 0x7FFFFFFF else GROUND)
 	if (_hull.size() < 3 and floor_cell == 0x7FFFFFFF) or _stopping():
 		return false
 	var joints: Dictionary = Stability.stud_joints(graph, library, lattice)

@@ -66,7 +66,7 @@
 //
 // Red on a build without it: there is no Build together… in the File menu.
 // Pictures in --out. Exit 1 on any failure.
-import { askApp, clickStill, launch, typeInMenu } from "./browser.mjs";
+import { askApp, caughtUp, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -1155,12 +1155,13 @@ try {
   }
   // Each picture with the owner's pointer off the model, so its dot is in
   // neither, and the whole page counted: the Following frame, in the same
-  // colour, is in both.
+  // colour, is in both. Of the frame after the dot went (caughtUp), not a
+  // fixed time after, which can still be an older frame.
   const offModel = async () => {
     await owner.page.mouse.move(120, 400);
     await until(async () => (await together(guest.page)).pointers === 0, "the owner's dot gone", PRESENCE_S)
       .catch(() => null);
-    await wait(1500);
+    await caughtUp(guest.page);
   };
   const everywhere = (shot) => pixelsNear(shot, { x: shot.width / 2, y: shot.height / 2 }, Math.max(shot.width, shot.height),
     colour);

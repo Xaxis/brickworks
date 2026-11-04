@@ -389,6 +389,7 @@ func _keys() -> void:
 			ProviderSettings.key_file("openai")) and not FileAccess.get_file_as_string(
 			ProviderSettings.key_file("openai")).contains("k".repeat(20)))
 	ProviderSettings._this_visit.clear()
+	KeyStore._held.clear()
 	_check("...and read back from it", ProviderSettings.load_key("openai") == key)
 	ProviderSettings.forget("openai")
 	_check("forgotten: gone", not FileAccess.file_exists(ProviderSettings.key_file("openai"))

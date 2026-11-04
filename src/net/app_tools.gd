@@ -135,6 +135,9 @@ const WINDOW_ONLY: Dictionary = {
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
 	"beta_hub": "help for the person",
+	"check_updates": "the person's own copy of the app: a new version is theirs to take, and taking it restarts the app the session is driving",
+	"reinstall": "puts a fresh copy of the app in place and restarts it, ending the session's connection",
+	"restart": "closes and reopens the app the session is driving, ending the session's connection",
 	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; in_view shows a session the one laid, and a session is given its own pictures in the conversation",
 }
 
@@ -778,7 +781,7 @@ func definitions() -> Array:
 				+ "in slopes, curves and tiles, or plain bricks and plates, as one "
 				+ "sub-assembly named after the file, beside what is built. file= its path on "
 				+ "this computer (the desktop app), or url= an http(s) "
-				+ "link to the file, fetched by the app (96 MB at most; an OBJ's .mtl and a "
+				+ "link to the file, fetched by the app (96 MB at most, 4 MB in a browser; an OBJ's .mtl and a "
 				+ ".gltf's .bin come from beside it). pick=true opens the window's file "
 				+ "dialog for the person to choose one on their computer, and says so; once "
 				+ "they have, brickify with neither lays what the panel shows. Laying is a "
@@ -820,7 +823,7 @@ func definitions() -> Array:
 				+ "proportions; flat colours print best), picture_data= a picture's own bytes "
 				+ "as base64 or a data: URI (a PNG or JPEG the person gave you in the "
 				+ "conversation; at most 2 MB, smaller is quicker), or picture_url= an http(s) "
-				+ "link to a PNG, JPEG, WebP or SVG. Or the LEGO Group's own, as Make, Printed "
+				+ "link to a PNG, JPEG, WebP or SVG (4 MB at most in a browser). Or the LEGO Group's own, as Make, Printed "
 				+ "versions… does: version= one of the part's printed or stickered versions from "
 				+ "the library (versions=\"words\" lists them) swaps the part for it where it "
 				+ "stands; sticker_part= a sticker the library has (search_parts \"sticker\") "
@@ -1653,9 +1656,23 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 	said.append("%d step%s, %s." % [count, "" if count == 1 else "s",
 		"the model's own" if authored
 			else "worked out by the app (the first edit makes them the model's own)"])
+	# The steps of a sub-model built where it stands, not in a callout, are
+	# named as a callout's are: listed bare, the island's rocks read as the
+	# model's own parts, and a session moved them "to" the baseplates' step
+	# (stepsto).
+	var built: Dictionary = {}      ## sub-model's path -> how many steps it is built in
+	for step: Instructions.Step in steps:
+		if _built_in_place(step):
+			built[step.authored_in] = int(built.get(step.authored_in, 0)) + 1
+	if not built.is_empty():
+		said.append("A sub-model's steps take only its own parts, and a sub-model goes in a "
+			+ "step whole, built in its own steps before that step.")
+	var counted: Dictionary = {}
 	var shown: int = 0
 	var characters: int = 0
 	for step: Instructions.Step in steps:
+		if _built_in_place(step):
+			counted[step.authored_in] = int(counted.get(step.authored_in, 0)) + 1
 		if step.number < from:
 			continue
 		var ids: PackedInt64Array = step.brick_ids
@@ -1668,6 +1685,9 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 		if step.callout_step > 0:
 			where = " (in the %s, %d of %d)" % [step.assembly, step.callout_step,
 				step.callout_steps]
+		elif _built_in_place(step):
+			where = " (in the %s, %d of %d)" % [Instructions._name_of(step.authored_in),
+				int(counted[step.authored_in]), int(built[step.authored_in])]
 		elif not step.copies.is_empty():
 			where = " (puts on the %s%s)" % [step.assembly,
 				" x%d" % step.copies.size() if step.copies.size() > 1 else ""]
@@ -1681,6 +1701,12 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 	if shown == 0:
 		said.append("  none from step %d." % from)
 	return "\n".join(said)
+
+
+## Whether [param step] is one of a sub-model's own, built where it stands
+## rather than in a callout.
+static func _built_in_place(step: Instructions.Step) -> bool:
+	return step.callout == 0 and step.authored_step >= 0 and not step.authored_in.is_empty()
 
 
 ## A part by its look_at_model number, or null: the baseplate is not one.
@@ -3212,9 +3238,15 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 				% [url.left(100), MeshFile.NAMED, ", .".join(MeshFile.KINDS)])
 		var fetched: Dictionary = await _fetch(url, MeshFile.MAX_BYTES)
 		if fetched.has("error"):
+			var why: String = str(fetched["error"])
 			# Not "serve it on localhost": that is refused too.
-			return str(fetched["error"]) + (" A file on this computer goes in file=, by its path."
-				if str(fetched["error"]).contains("this computer") else "")
+			if why.contains("this computer"):
+				return why + " A file on this computer goes in file=, by its path."
+			# The site's words, in a browser: too large, or the site would not.
+			if why.contains("your computer"):
+				return why + (" The person brings it in with Make, Brickify a 3D model…; then brickify "
+					+ "with neither url nor pick lays it.")
+			return why
 		var bytes: PackedByteArray = fetched["bytes"]
 		# An OBJ's .mtl and its pictures, a .gltf's .bin: beside it, as the
 		# desktop's picker reads them (MeshFilePicker.open_path).
@@ -3304,11 +3336,19 @@ func _brickify_file(dialog: BrickifyDialog, path: String) -> String:
 	return ""
 
 
+## How long a link fetched on the desktop is given ([method _fetch]).
+const FETCH_SECONDS := 90.0
+## And in a browser: the site gives a link 20 s, and its own start and the
+## way back come on top ([method _fetch_through_site]).
+const SITE_FETCH_SECONDS := 45.0
+
+
 ## The bytes at [param url], fetched as the app fetches pictures of a
 ## subject (ReferenceFinder), no more than [param most] of them: {"bytes"},
 ## or {"error"} saying why not. Only http and https, and not this computer
 ## or the network it is on: a session drives the app, not the person's
-## other machines.
+## other machines. In a browser, through the app's own site
+## ([method _fetch_through_site]).
 func _fetch(url: String, most: int) -> Dictionary:
 	var lower: String = url.to_lower()
 	if not (lower.begins_with("https://") or lower.begins_with("http://")):
@@ -3322,9 +3362,11 @@ func _fetch(url: String, most: int) -> Dictionary:
 	if _near(host) and not fetch_near:
 		return {"error": "%s is this computer or its network, which a session may not fetch from."
 			% host}
+	if OS.has_feature("web"):
+		return await _fetch_through_site(url, host, most)
 	var request := HTTPRequest.new()
 	request.body_size_limit = most
-	request.timeout = 90.0
+	request.timeout = FETCH_SECONDS
 	app.add_child(request)
 	if request.request(url, ["User-Agent: " + ReferenceFinder.AGENT]) != OK:
 		request.queue_free()
@@ -3337,16 +3379,46 @@ func _fetch(url: String, most: int) -> Dictionary:
 		return {"error": "%s is larger than %s, more than can be brought in."
 			% [url.get_file().left(80), String.humanize_size(most)]}
 	if result != HTTPRequest.RESULT_SUCCESS:
-		return {"error": "Could not fetch %s (%s)." % [url.left(100), {
-			HTTPRequest.RESULT_CANT_RESOLVE: "no such host",
-			HTTPRequest.RESULT_CANT_CONNECT: "it would not connect",
-			HTTPRequest.RESULT_TLS_HANDSHAKE_ERROR: "its certificate was refused",
-			HTTPRequest.RESULT_TIMEOUT: "it took too long",
-			HTTPRequest.RESULT_REDIRECT_LIMIT_REACHED: "it redirected too many times",
-		}.get(result, "error %d" % result)]}
+		return {"error": "Could not fetch %s: %s." % [url.left(100), FetchWords.of(result, host,
+			FETCH_SECONDS)]}
 	if code != 200:
 		return {"error": "%s answered %d, not the file." % [host, code]}
 	return {"bytes": got[3] as PackedByteArray}
+
+
+## [method _fetch] in a browser. The page may fetch from a few sites alone
+## (its connect-src), and most sites send no CORS headers, so a link came
+## back "error 4" from almost anywhere. The app's own site fetches it for
+## whoever is signed in (api/_link.js: what it will fetch, from where, and
+## at most 4 MB), and says why not in words.
+func _fetch_through_site(url: String, host: String, most: int) -> Dictionary:
+	var account: Account = app.get("_account")
+	var token: String = await account.access_token() if account != null else ""
+	if token.is_empty():
+		return {"error": "Sign in to Brickworks to bring in a picture or a model from a link."}
+	var request := HTTPRequest.new()
+	request.body_size_limit = most
+	request.timeout = SITE_FETCH_SECONDS
+	app.add_child(request)
+	if request.request(Deployment.api_base() + "/api/account?op=fetch", ["authorization: Bearer " + token,
+			"content-type: application/json"], HTTPClient.METHOD_POST, JSON.stringify({"url": url})) != OK:
+		request.queue_free()
+		return {"error": "Could not ask Brickworks's site to fetch %s." % host}
+	var got: Array = await request.request_completed
+	request.queue_free()
+	var result: int = int(got[0])
+	if result != HTTPRequest.RESULT_SUCCESS:
+		return {"error": "Could not fetch %s: %s." % [url.left(100), FetchWords.of(result,
+			"Brickworks's site", SITE_FETCH_SECONDS)]}
+	var body: PackedByteArray = got[3]
+	if int(got[1]) == 200:
+		return {"bytes": body}
+	var json := JSON.new()
+	var said: Variant = json.data if json.parse(body.get_string_from_utf8()) == OK else null
+	if said is Dictionary and (said as Dictionary).get("error") is String:
+		return {"error": str(said["error"])}
+	return {"error": "Brickworks's site could not fetch %s just now (it answered %d). Try again in a minute."
+		% [host, int(got[1])]}
 
 
 ## Whether [param host] names this computer or a private network.
@@ -3424,7 +3496,8 @@ func _print_part(input: Dictionary) -> String:
 		var fetched: Dictionary = await _fetch(str(input["picture_url"]).strip_edges(),
 			PictureFile.MOST_BYTES)
 		if fetched.has("error"):
-			return str(fetched["error"])
+			return str(fetched["error"]) + (" The person brings it in with Make, Print on a part…."
+				if str(fetched["error"]).contains("your computer") else "")
 		picture = PictureFile.decode(fetched["bytes"])
 		if picture == null:
 			return _sentence(PictureFile.not_read(fetched["bytes"], "That link"))

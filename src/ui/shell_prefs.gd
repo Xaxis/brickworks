@@ -104,6 +104,10 @@ const DEFAULTS: Dictionary = {
 	# Settings, Language (Language): "en", "de", "fr" or "es". English, as
 	# the app is written, until somebody chooses.
 	"language": "en",
+	# Settings, Updates (Updater), on the desktop: "auto" downloads a new
+	# version and puts it in as the app quits, "ask" says it is out, "off"
+	# asks nothing until Help, Check for updates….
+	"updates": "auto",
 	# The AI app Connect your AI connects (Assistants' id), Claude until
 	# another is chosen.
 	"connect_with": "claude",
@@ -163,7 +167,10 @@ static func used_claude_here() -> bool:
 	# it at one (ClaudeConnector.where), which only a loaded connector can be.
 	var connector: String = Later.script(&"ClaudeConnector").where \
 		if Later.loaded(&"ClaudeConnector") else ""
-	for kept: String in [OwnKey.WHERE, connector, Brain.where]:
+	# A key kept in a keychain has no file here (KeyStore).
+	if OwnKey.has_key():
+		return true
+	for kept: String in [connector, Brain.where]:
 		if FileAccess.file_exists(kept):
 			return true
 	return false

@@ -177,6 +177,11 @@ can occupy the same millimetre.
   that `lay_flex` hung through the plate, and the status bar said "2 weak
   joints (tips)" beside every answer's "it stands"; a course starting below
   the top counts from the top (`_check_levels`), which was the "leaning".
+  With no plate (the grid, no floor) the ground is the floor's top
+  (`Balance.GROUND`, cell 0, where the store stands every model): 6043-1's
+  halberd, turned, has a box 7.7 LDU under the ground, and on the grid the
+  status bar said "1 weak joint (leaning)" where the baseplate said "stands
+  up" (`set_floor_probe`, section 9).
   `src/dev/mcp_agree_probe.gd` lays such a rope and holds the status bar,
   `check_design` and an edit's answer to one verdict. Masses
   count the tubes under a part; every one of seven bricks is within 6% of

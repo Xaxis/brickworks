@@ -18,19 +18,19 @@
 --                          asked yet (every account until it signs in)
 --   profiles.age_asked_at  when it was answered
 --
--- An account under 13 builds, keeps its models and shares them by link
--- like anyone. What is public it may not have: a model in the gallery, a
--- profile (a handle, a name, a bio), a public collection, a name credited
--- on a link, and later comments and photos. Each is refused here, by a
--- trigger on its table, whatever asks; api/share.js and api/people.js say
--- so first, politely, and the app and the site say it before anyone tries.
--- A new public thing needs a yes: an account not asked yet is asked before
--- it can list or make a profile, and what it listed before this stays as
--- it is until it answers. Answered under 13, what it had in public goes
--- private (answer_age), nothing deleted, and nothing of it is shown in
--- public again. A year after an under-13 answer the account is asked
--- again, so a builder who has turned 13 can say so; an answer of 13 or
--- over stands.
+-- Brickworks accounts are for 13 and over (2026-11-03): the server keeps
+-- only an answer of 13 or over. An answer under 13 deletes the account
+-- there and then (api/account.js), and a younger builder uses a parent's
+-- or guardian's account; answer_age is never asked under 13 again. Until
+-- then an account under 13 built and shared by link like anyone, and the
+-- refusals below are kept for a row that still says under 13: what is
+-- public it may not have (a model in the gallery, a profile, a public
+-- collection, a name credited on a link, comments and photos), each
+-- refused here by a trigger on its table, whatever asks, and anything new
+-- at all, refused by api/share.js and api/people.js. A new public thing
+-- needs a yes: an account not asked yet is asked before it can list or
+-- make a profile, and what it listed before this stays as it is until it
+-- answers. An answer of 13 or over stands.
 --
 -- Reports that reach the owner. A report (moderation.sql) waited on the
 -- admin page until the owner happened to look. Now each is in an email

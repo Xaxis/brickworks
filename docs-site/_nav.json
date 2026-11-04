@@ -1,5 +1,6 @@
 [
-  {"title": "Getting started", "pages": ["index", "web-and-desktop", "first-model", "connect-claude"]},
+  {"title": "Getting started", "pages": ["index", "web-and-desktop", "first-model"]},
+  {"title": "Connect your AI", "pages": ["connect", "@assistants"]},
   {"title": "Building", "pages": ["building", "selecting", "parts-bin", "the-view", "joints-and-mechanisms", "figures-and-prints", "art-and-brickify", "collection", "saving-and-files", "panels-and-settings", "menus"]},
   {"title": "Designing with AI", "pages": ["ai", "connector", "claude-code", "design-session", "fresh-eyes", "how-ai-works"]},
   {"title": "The website", "pages": ["gallery", "sharing", "model-pages", "profiles", "collections", "challenges", "build-together", "ldraw-library", "account"]},

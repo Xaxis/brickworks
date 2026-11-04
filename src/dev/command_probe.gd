@@ -50,6 +50,7 @@ const SKIP: Dictionary = {
 	"account": "network", "share": "network", "connector": "network",
 	"ask_claude": "network", "website": "opens a browser", "docs": "opens a browser", "quit": "leaves the app",
 	"full_screen": "the window, not the app", "new_window": "starts another window",
+	"check_updates": "network", "reinstall": "network", "restart": "leaves the app",
 }
 
 var _failures: int = 0

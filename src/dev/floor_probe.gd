@@ -144,10 +144,15 @@ func _each_floor_round_trip() -> void:
 	await _key(KEY_Z, true, true)
 	_check("...and Ctrl-Shift-Z takes it away again (%s)" % _store.model_floor.words(),
 		_store.model_floor.kind == ModelFloor.NONE and _store.scenery.is_empty())
-	# A file from elsewhere says nothing, and gets the floor new models get.
+	# A file from elsewhere says nothing, and stands on the grid, as a set
+	# comes with no plate; one of Brickworks' own from before floors gets the
+	# floor new models get (ModelFloor.unsaid).
 	var plain: String = "0 Plain\n1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
 	_store.open_text(plain, "plain.ldr")
-	_check("a file that says nothing stands on the floor new models start on (%s)"
+	_check("a file from elsewhere that says nothing stands on the grid (%s)"
+		% _store.model_floor.words(), _store.model_floor.kind == ModelFloor.GRID)
+	_store.open_text(plain.replace("0 Plain\n", "0 Plain\n0 Author: Brickworks\n"), "plain.ldr")
+	_check("...and one of Brickworks' own on the floor new models start on (%s)"
 		% _store.model_floor.words(), _store.model_floor.same_as(ModelFloor.preferred()))
 
 

@@ -146,7 +146,9 @@ var scenery: Dictionary = {}
 
 ## What the model stands on: a baseplate of a size and colour, a grid
 ## floor, or nothing (ModelFloor). Saved with it as a meta line and read
-## back; a file that says nothing gets the person's choice for new models.
+## back; a file that says nothing gets the grid when another program made
+## it, and the person's choice for new models when Brickworks did
+## (ModelFloor.unsaid).
 ## Laid by FloorLayer, which is the only thing that changes it.
 var model_floor: ModelFloor = ModelFloor.preferred()
 
@@ -1492,7 +1494,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		# drawing in software takes half a second a frame whatever the slice,
 		# so the slices are long from here.
 		var floor_said: ModelFloor = read["floor"]
-		model_floor = floor_said if floor_said != null else ModelFloor.preferred()
+		model_floor = floor_said if floor_said != null else ModelFloor.unsaid(foreign)
 		world.laying = true
 		world.rebuild_slice_us = SHOWN_SLICE_US
 		_let_go()
@@ -1587,7 +1589,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	credit = read["credit"]
 	made_with = read["made"]
 	var said: ModelFloor = read["floor"]
-	model_floor = said if said != null else ModelFloor.preferred()
+	model_floor = said if said != null else ModelFloor.unsaid(foreign)
 	from_set = read["set"]
 	hidden_scheme = read["hidden"]
 	pins = read["pins"]

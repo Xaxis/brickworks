@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow -->
 
 ## Sub-features
 
@@ -54,6 +54,24 @@ plan with Claude as the client.
   build of <sha>, not <sha>" and promotes nothing. The battery's timing
   checks (preview_checks.sh `SOLO`) run as `heavy --solo`; each one's line
   in `<tag>_calm.log` says the load it began at and beside what.
+  The policies (keysafe, 2026-11-03): `deploy.sh` writes two. The site's
+  pages: `script-src 'self'`, no inline script, `connect-src` the site, the
+  counter's `https://overlook.technology`, Wikimedia, Rebrickable and
+  Brickognize, and no AI provider. `/app` and `/b/*`: `script-src 'self'
+  'unsafe-eval' 'wasm-unsafe-eval'` and the hashes of the inline scripts it
+  ships, `connect-src` as the site's plus every preset's host in
+  `src/ai/provider_settings.gd` (read from it at deploy) and
+  `http://127.0.0.1:*`/`localhost:*` for servers on the person's computer.
+  Both `object-src 'none'; base-uri 'none'; form-action 'none';
+  frame-ancestors 'none'`. No script from another origin on any page: the
+  visit counter is Overlook's own s.js and v.js served from `/ov/`
+  (`tools/web/overlook_copy.sh` refreshes them), posting to
+  `https://overlook.technology/e`. No Trusted Types: the engine's
+  `JavaScriptBridge.eval` (about 90 places) and the booklet's
+  `document.write` into its own tab would need a pass-through policy, which
+  protects nothing. `tools/web/key_leak_flow.mjs` (preview_checks.sh
+  `keysafe`) reads both policies from the headers and runs the app, `/` and
+  `/gallery` with nothing refused.
 - `what a first visit waits for` (load250, 2026-10-24): a browser taking
   brotli is sent the build as `tools/export.sh` compressed it, brotli 11
   (`deploy.sh` routes `index.wasm`, `index.pck`, `index.js`,
@@ -214,6 +232,26 @@ plan with Claude as the client.
   and 0.3 (0.3-1.3) against 1.2 (0.7-1.6) warm, the later parts written
   0.1 s after the bin was first drawn in all ten, so no pick waited for
   them and none fetched 3039 alone.
+- `POST /api/account?op=fetch` (`api/_link.js`, urlfetch 2026-11-03) — a link
+  fetched for the app in a browser, signed in: brickify `url=` and
+  print_part `picture_url=` (`AppTools._fetch_through_site`). The page's
+  connect-src names few hosts and most sites send no CORS headers, so a link
+  came back "Could not fetch … (error 4)" from almost anywhere. http(s) on
+  ports 80/443/8080/8443, no name and password, nothing of the person's sent
+  on, a fixed User-Agent; every address of the host checked and the request
+  made to the address checked (rebinding never reaches its second answer),
+  each redirect (5 at most) checked again; no private, loopback, link-local,
+  metadata, CGNAT, multicast or reserved address. What came back sniffed
+  from its bytes: a picture or a 3D model Brickify reads, and an OBJ's .mtl
+  or a glTF's .bin. At most 4 MB in 20 s, 60 an hour and 300 a day an
+  account (may_act); every refusal a sentence ({error, why}). Served as
+  octet-stream, nosniff, an attachment, sandboxed, and to the app's own page
+  alone (no CORS). The log says the host, never the link.
+  `python3 tools/minitest.py tests/test_link_fetch.py` (46: each refusal,
+  a good picture, a rebinding name, the log); `[link]`
+  (`tools/web/link_flow.mjs`) on a preview: over the connector, brickify
+  from Wikimedia and from a site with no CORS, print_part from both, and a
+  14 MB photograph refused in words.
 - `POST /api/mcp` — the Claude connector relay: someone on a Claude plan adds
   Brickworks to Claude as a connector (claude.ai and the Claude apps, or
   `claude mcp add --transport http`), and asks Claude to build. **Two ways
@@ -1123,10 +1161,15 @@ plan with Claude as the client.
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
   `api/account.js` `?op=age`, `api/_trust.js`, `supabase/trust.sql`): asked
   once, after a first sign-in, on the site and in the app — "When were you
-  born?", month and year, nothing about 13 before the answer. Under 13 the
-  server refuses (422, in words) a listing, a credit, a profile and a public
-  collection, and the database's triggers refuse them again; an account not
-  asked yet is told to answer first before anything new goes public.
+  born?", month and year, nothing about 13 before the answer. Accounts are
+  for 13 and over (2026-11-03): under 13 the account is deleted at once,
+  with its address's code count, the dialog says so with a parent line, and
+  the browser keeps `brickworks.age_refused` ("1", nothing personal), so a
+  retry there is told at once and an account new there deleted unasked. A
+  row from before that says under 13 is refused (422, in words) a listing,
+  a credit, a profile and a public collection, and the database's triggers
+  refuse them again; an account not asked yet is told to answer first
+  before anything new goes public.
 - `age browser flow` (`tools/web/age_flow.mjs`) and `report digest browser
   flow` (`tools/web/digest_flow.mjs`): below.
 - `design system` (`web/site.css`, `docs/DESIGN_SYSTEM.md`, 2026-10-19;
@@ -3335,7 +3378,11 @@ plan with Claude as the client.
   links fail only when gone, 404 or 410); and in a browser, no page logging an error or scrolling
   sideways at 390 px, with a full-page shot of each at 390 and 1280 px in `--out`,
   and `/app` booting with the address bar still `/app` and its `version.json`
-  found. About four minutes on SwiftShader.
+  found; and `/docs/connect` with every AI app's page (one a row of
+  `assets/assistants.json`) at 390 and 1280 px, light and dark, each 200 with its
+  five headings, in the theme's colours, nothing sideways, no error, the hub,
+  Claude's and ChatGPT's shot whole in each (`connect-claude-390-dark.png`).
+  About four minutes on SwiftShader.
 - `compare page` (`web/compare.html`, `web/compare.js`, `img/compare-*`): the
   answer to "Studio exists, LDD exists… why?" (a builder on Reddit), linked from
   the home page's features ("How it compares") and the FAQ's first question
@@ -3415,8 +3462,8 @@ plan with Claude as the client.
   never counted on either; every account made before 29 October 2026 gets
   Pro with no end; education free; what stays free; six questions, one
   saying what changed and one whether you can sell what you make. No
-  sentence says ChatGPT, or another AI's key, works in a browser (the CSP
-  lets only api.anthropic.com through).
+  sentence says ChatGPT, or another AI's key, works in a browser (until
+  keysafe, 2026-11-03, the CSP let only api.anthropic.com through).
   Nothing takes money (BRICKWORKS_BILLING off). Pro's Tell me when it's
   ready opens the interest form (a `dialog`): email, monthly or yearly, a
   line; Pro is kept as 'plus' (`api/plans.js` `PLANS`: the table allows
@@ -4172,20 +4219,25 @@ put on a page at once, and five two frames after they were made, each
 naming theirs on `<body>`. It proves it when it ends
 `card check: 15 cards compared, 0 failed` (2026-10-26).
 
-`age_flow` proves it when it ends "the age question is asked neutrally, and
-what it answers holds on the site, in the app and on the server": every
-page's footer links `/terms` and `/guidelines`; each topic on
-`/guidelines`; the operator's and the agent's lines marked; the
-counter-notice form; nothing sideways at 390 and 1280; on `/profile`, "When
-were you born?" with no word of 13 before the answer; under 13, what that
-means said after, the profile form off, and the server refusing a profile, a
-public collection, a listing and a credit (422) while a private list and a
-link go, and a second answer changing nothing; 13 or over, a profile, a
-public list and a credited listing; in the app, the sign-in screen asking it
-(only its controls pressable), under 13 its words and Start building, Share
-with List it and Show who made it off and "Publishing means you agree to
-the guidelines" opening `/guidelines`; 13 or over, let straight in with the
-box to tick. `digest_flow` ends "a report reaches the owner as one email an
+`age_flow` proves it when it ends "the age question is asked neutrally;
+under 13 nothing is kept, and 13 or over holds on the site, in the app and
+on the server": every page's footer links `/terms` and `/guidelines`; each
+topic on `/guidelines`; the operator's and the agent's lines marked; the
+counter-notice form; `/terms`, `/privacy#children` and the FAQ's `#age`
+saying accounts are for 13 and over; nothing sideways at 390 and 1280; on
+`/profile`, "When were you born?" with no word of 13 before the answer;
+under 13, the dialog's `#age-refused` words, the account gone through the
+admin API (auth user 404, no profile row, no `otp_requests` row with its
+address), its token saving and sharing nothing and a second answer bringing
+nothing back, the browser holding the flag and no session; a retry there
+told at once in the sign-in dialog, and a new account there deleted
+unasked; 13 or over, a profile, a public list and a credited listing; in
+the app, the sign-in screen asking it (only its controls pressable), under
+13 the way in again with `refused` and `refused_now`, the account gone and
+the flag kept; reloaded, told at once, and a new account not asked but
+deleted; 13 or over, let straight in, Share with the box to tick and
+"Publishing means you agree to the guidelines" opening `/guidelines`.
+`digest_flow` ends "a report reaches the owner as one email an
 hour, and a test's is only ever a dry run": a report from a model's page
 makes a dry digest at once, recorded with its subject, its link to
 `/admin#report-<id>` and the note escaped; a second that hour makes none;
@@ -6072,9 +6124,23 @@ menus from `docs-site/generated/menus.json`, and the changelog from
 `tests/test_docs_site.py` fails when `src/ui/shell.gd`'s menus no longer
 match it.
 
+And every AI app's page, `/docs/connect-<id>` (Claude's at its old address,
+`/docs/connect-claude`), is made from one template, `docs-site/_connect.md`,
+and its row of `assets/assistants.json`, the table the app's Connect your AI
+reads (docs/ANY_ASSISTANT.md U4): `_nav.json` names them all as
+`"@assistants"`, under the hub `/docs/connect`, whose cards come from the same
+rows, as do the FAQ's (`web/faq.html` between its `<!-- assistants:` marks,
+written by `--write`). `--check` fails when any page of the site or the docs,
+in any language, gives a way of adding Brickworks that its row does not make
+(a command, an install link, or a link to an app's own page for adding a
+server; `tools/assistants.py` `ways`), or says Claude's connector needs a
+paid plan. `tests/test_assistant_pages.py` holds the pages to their rows and
+shows the check's red: Claude Code's row changed, `docs-site/claude-code.md`
+fails.
+
 ```sh
 python3 tools/docs_site.py --check
-python3 tools/minitest.py tests/test_docs_site.py
+python3 tools/minitest.py tests/test_docs_site.py tests/test_assistant_pages.py
 python3 tools/site.py /tmp/site && node tools/web/docs_flow.mjs --root=/tmp/site --out=shots/docs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/docs_flow.mjs --url=<preview> --out=shots/docs
 ```

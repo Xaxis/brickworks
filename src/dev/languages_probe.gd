@@ -607,7 +607,7 @@ func _gather_status() -> void:
 ## them: each opened with the part selected, the words it shows read, and
 ## closed again.
 const DIALOGS: Array[String] = ["sign_in", "sign_in_code", "sign_in_waiting",
-	"sign_in_unreachable", "sign_in_age", "sign_in_thanks", "open", "open_file", "library", "save_as", "versions",
+	"sign_in_unreachable", "sign_in_age", "sign_in_refused", "open", "open_file", "library", "save_as", "versions",
 	"compare", "export_3d", "render", "render_queue", "pose", "share", "together", "comments",
 	"account", "pattern", "select_find", "find_colour", "flex", "reference", "parts_list",
 	"collection", "collection_need", "collection_build", "make_submodel", "step_to", "timeline",
@@ -703,7 +703,7 @@ func _open_dialog(name: String) -> void:
 	var bar: ModelBar = _main.get("_bar")
 	match name:
 		"sign_in", "sign_in_code", "sign_in_waiting", "sign_in_unreachable", "sign_in_age", \
-				"sign_in_thanks":
+				"sign_in_refused":
 			await _open_sign_in(name)
 		"save_as":
 			# The web's own; the desktop's is the platform's Save dialog.
@@ -748,15 +748,19 @@ func _open_sign_in(name: String) -> void:
 	_gate = SignInGate.new()
 	_gate.setup(account)
 	_main.get_node("HUD").add_child(_gate)
-	var was: Array = [account.state, account.age_ask]
+	var was: Array = [account.state, account.age_ask, account.refused, account.refused_now]
 	account.state = {"sign_in_waiting": Account.State.CHECKING,
-		"sign_in_unreachable": Account.State.UNREACHABLE, "sign_in_age": Account.State.SIGNED_IN,
-		"sign_in_thanks": Account.State.SIGNED_IN}.get(name, Account.State.SIGNED_OUT)
+		"sign_in_unreachable": Account.State.UNREACHABLE,
+		"sign_in_age": Account.State.SIGNED_IN}.get(name, Account.State.SIGNED_OUT)
 	account.age_ask = name == "sign_in_age"
-	_gate.set("_thanking", name == "sign_in_thanks")
+	# Under 13: the account just deleted, said with the way in.
+	account.refused = name == "sign_in_refused"
+	account.refused_now = name == "sign_in_refused"
 	_gate.call("_follow")
 	account.state = was[0]
 	account.age_ask = was[1]
+	account.refused = was[2]
+	account.refused_now = was[3]
 	var form: SignInForm = _gate.get("_form")
 	# The form's own start, which shows orangecheck as the deployment says.
 	await _frames(2)

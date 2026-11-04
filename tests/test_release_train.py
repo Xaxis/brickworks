@@ -1226,3 +1226,35 @@ def test_units_on_the_live_site_take_it_in_the_order_they_came(tmp_path):
     assert all(unit.wait(timeout=60) == 0 for unit in units)
     assert order.read_text().split() == names
     assert not list((y.r / ".git" / "live-db.queue").iterdir()), "a ticket was left behind"
+
+
+def test_a_ticket_left_by_a_killed_run_holds_no_one(tmp_path):
+    """A run killed whole never runs its trap, so its ticket stays. One whose process is gone,
+    or whose pid now names another process, is removed when seen, not read as a run still
+    waiting (17 such were left by 2026-11-04); a living run's ticket still holds the line."""
+    y = Yard(tmp_path)
+    y.put("tools/release/live_db_lib.sh", (ROOT / "tools/release/live_db_lib.sh").read_text())
+    queue = y.r / ".git" / "live-db.queue"
+    queue.mkdir(parents=True, exist_ok=True)
+    gone = subprocess.Popen(["true"])
+    gone.wait()
+    stranger = subprocess.Popen(["sleep", "30"])
+    stat = Path(f"/proc/{stranger.pid}/stat").read_text()
+    began = stat.rsplit(") ", 1)[1].split()[19]
+
+    def older_waits(*tickets: tuple[str, str]) -> int:
+        for name, text in tickets:
+            (queue / name).write_text(text)
+        return subprocess.run(["bash", "-c", "source tools/release/live_db_lib.sh; older_waits 9"],
+                              cwd=y.r, env=y.env).returncode
+
+    try:
+        assert older_waits((f"1.{gone.pid}", "")) == 1, "a dead run's ticket held the line"
+        assert older_waits((f"2.{stranger.pid}", "1")) == 1, "a reused pid held the line"
+        assert not list(queue.iterdir()), "a dead or reused ticket was kept"
+        assert older_waits((f"3.{stranger.pid}", began)) == 0, "a living run's ticket was passed"
+        assert older_waits((f"4.{stranger.pid}", "")) == 0, "an unmarked living ticket was passed"
+        assert sorted(f.name for f in queue.iterdir()) == [f"3.{stranger.pid}", f"4.{stranger.pid}"]
+    finally:
+        stranger.kill()
+        stranger.wait()
