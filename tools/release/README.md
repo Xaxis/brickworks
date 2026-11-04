@@ -16,7 +16,8 @@ Or all of that in one command, queued behind the release before it:
 
 ```sh
 tools/release/train.sh stage rel-m219 stage219 --after rel-m218 \
-  --checks "io gallery" --probes "grab_probe" --units "unit1 unit2" --title "…"
+  --checks "io gallery" --units "unit1 unit2" --title "…"   # every headless probe
+#   --probes "grab fits" names exactly those; --probes none --why "…" runs none
 tools/release/train.sh status                  # what is live since when, what is in flight, ETAs
 tools/release/train.sh hold rel-m219 "why"     # train.sh release rel-m219 lifts it
 tools/release/train.sh reship rel-m219 io      # a stopped one again, from its worktree
@@ -82,7 +83,29 @@ comes: a unit merged into the branch meanwhile brings its checks by an edit
 of `checks`. Staging adds to the checks named every one `flows_for.py` (the
 branch's, on its own tree) finds for what the branch changed since it left
 main, or since the merge of it the release before ships, and says which it
-added: rel-m237's hand-picked list missed model_view (2026-11-02). Its log is `<tag>_train.out`, its result `<tag>.train/result`,
+added: rel-m237's hand-picked list missed model_view (2026-11-02).
+
+Named no `--probes`, it runs every probe `tools/suite/headless.txt` lists
+in the branch's own tree, as `check.sh` reads it; windowed.txt's are the
+suite's, and out.txt's skip themselves. Staging says how many (`probes: all
+209 headless (103 windowed left to the suite)`), `<tag>.train/probes` holds
+them and `probes.why` why, and the log and `status` say it again.
+`--probes "a b"` names exactly those; `--probes none --why "…"` runs none
+and says why, and `--probes ""` is refused. Staged with `--probes ""`
+every time, no release ran a probe from v0.15.0 to rel-m256, and eight went
+red on main unseen until desktop016's whole-suite run held desktop 0.16.0
+(2026-11-04). All 209 took 19m30s four at a time on this box at load 4 to
+8 (22m12s with each failure again alone), on rel-m256's merge, and failed
+the six headless ones of the eight. That is well under the preview's
+battery, about two hours from the ship's start (rel-m256's, 14:56Z to
+17:09Z), so the whole list costs the release no time. Picked by what
+`featuremap affected` reaches it would have caught three of the six: its
+GDScript graph follows `res://` paths alone, and a probe that uses a class
+by its `class_name` is never reached (a change to
+`src/assembly/instructions.gd` reaches none of the 32 probes that use
+`Instructions`).
+
+Its log is `<tag>_train.out`, its result `<tag>.train/result`,
 and a train that stops before the ship writes `<tag>.gave_up` as
 `ship_after.sh` does, so the release staged behind it stops too. It runs
 from a copy of itself: a release fast-forwards the main checkout, this
