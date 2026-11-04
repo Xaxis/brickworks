@@ -2223,6 +2223,14 @@
       "tests": []
     },
     {
+      "id": "cli:steps_kept probe",
+      "kind": "cli",
+      "entry": "src/dev/steps_kept_probe.gd",
+      "reach": "tools/probe.sh steps_kept_probe   (headless: the lighthouse and 7140-1 with no steps of their own listed over MCP, then a look set, a part moved by edit_steps and Shift-], a recolour, each undone, and a save opened again: every part not moved in the step it was listed in; STEPS_KEPT_ONLY=7140 for one)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:steps_to probe",
       "kind": "cli",
       "entry": "src/dev/steps_to_probe.gd",

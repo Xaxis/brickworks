@@ -1,0 +1,351 @@
+## The steps a person saw are the steps that are kept (stepsnum).
+##
+##   godot --headless --path . --script src/dev/steps_kept_probe.gd
+##
+## A model nobody gave steps is shown the steps Brickworks works out, and
+## its first step edit makes them the model's own (AuthorSteps.ensure). The
+## lighthouse a session made over the connector (claudedir, 2026-11-03) was
+## listed with its island in steps 5 to 44 and 46 and the keeper put on in
+## 45; one edit later the keeper was step 5 and the island 6 to 46. A person
+## who read step 5, changed it, and found their parts in step 6 can't trust
+## the numbers, and a session naming steps by number gets the wrong ones.
+##
+## Here the lighthouse (tests/fixtures/steps/lighthouse.ldr, as the session
+## had it) and a real set from the library with its steps taken out
+## (7140-1), each listed over MCP, then one edit at a time, each undone:
+## - a step's look set, over MCP (edit_booklet) and by the Booklet row
+##   (Shell.change_look): no part in another step;
+## - one part to the next step, over MCP (edit_steps next) and by the
+##   timeline's Shift-] (Shell.change_steps), and one to another step of
+##   its sub-model (edit_steps to): only that part in another step;
+## - a part recoloured (edit_model): no part in another step;
+## every other part in the step it was listed in, by the plan and by the
+## list, and the undo gives the worked-out steps back. Then the steps made
+## the model's own are saved and opened again: every part where it was.
+extends SceneTree
+
+const MODELS: Array = [
+	["the lighthouse", "res://tests/fixtures/steps/lighthouse.ldr"],
+	["7140-1, its steps taken out", "res://vendor/omr/files/7140-1.mpd"],
+]
+
+var _failures: int = 0
+var _main: Node
+var _world: BrickWorld
+var _builder: Builder
+var _store: ModelStore
+var _library: PartLibrary
+var _shell: Shell
+var _socket: CommandSocket
+var _rpc_id: int = 0
+
+## Every part's step as the model was listed, by id: "12", or "12.3" for
+## the third step of the callout step 12 puts on.
+var _listed: Dictionary = {}
+## The same off edit_steps's list.
+var _said: Dictionary = {}
+
+
+func _initialize() -> void:
+	_run()
+
+
+func _check(what: String, ok: bool) -> bool:
+	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
+	if not ok:
+		_failures += 1
+	return ok
+
+
+func _run() -> void:
+	await process_frame
+	_main = load("res://src/main.tscn").instantiate()
+	root.add_child(_main)
+	for _n: int in 120:
+		await process_frame
+	var playback: BuildPlayback = _main.get("_playback")
+	if playback != null:
+		playback.stop()
+	_world = _main.get("_world")
+	_builder = _main.get("_builder")
+	_store = _main.get("_store")
+	_store.keeps = false
+	_library = _main.get("_library")
+	_shell = _main.get("_shell")
+	_socket = (_main.get("_connector") as ClaudeConnector).rpc
+	var only: String = OS.get_environment("STEPS_KEPT_ONLY")
+	for model: Array in MODELS:
+		if only.is_empty() or str(model[1]).contains(only):
+			await _model(str(model[0]), str(model[1]))
+	if _failures == 0:
+		print("steps_kept probe: all checks passed")
+	else:
+		print("steps_kept probe: %d checks failed" % _failures)
+	_world.clear()
+	await _frames(4)
+	quit(1 if _failures > 0 else 0)
+
+
+func _model(name: String, path: String) -> void:
+	print("\n%s" % name)
+	var text: String = FileAccess.get_file_as_string(path)
+	if not _check("%s read (%d bytes)" % [path, text.length()], not text.is_empty()):
+		return
+	await _open(_without_steps(text), name)
+	if not _check("opened with no steps of its own, %d parts" % _listed.size(),
+			not AuthorSteps.any(_world, _store.scenery) and _listed.size() > 100):
+		return
+	var listed: String = await _say("edit_steps", {})
+	var unlike: Array = _said.keys().filter(func(id: int) -> bool:
+		return str(_said[id]) != str(_listed.get(id, "")).get_slice(".", 0))
+	_check("...listed as worked out (\"%s\"), %d parts, %d not where the plan has them" % [
+		listed.get_slice("\n", 0), _said.size(), unlike.size()],
+		listed.get_slice("\n", 0).contains("worked out by the app") and _said.size() > 50
+		and unlike.is_empty())
+	var at: Array = _chosen()
+	if not _check("a middle step of a sub-model's, with parts of its own after it: step %s, #%s"
+			% [str(at[0]), str(at[1])], int(at[0]) > 0):
+		return
+	var number: int = int(at[0])
+	var part: int = int(at[1])
+	var later: int = int(at[2])
+
+	print("  a step's look, set")
+	await _kept("edit_booklet turn= on step %d" % number, [], func() -> String:
+		return await _say("edit_booklet", {"step": number, "turn": 30}))
+	await _kept("the Booklet row's Zoom in on step %d" % number, [], func() -> String:
+		return _shell.change_look("set", _step_numbered(number), {"zoom": 1.5}))
+	print("  one part to another step")
+	await _kept("edit_steps next on #%d" % part, [part], func() -> String:
+		return await _say("edit_steps", {"op": "next", "bricks": [part]}))
+	await _kept("Shift-] on #%d" % part, [part], func() -> String:
+		return _shell.change_steps("next", [part], _step_numbered(number)))
+	await _kept("edit_steps to step %d with #%d" % [later, part], [part], func() -> String:
+		return await _say("edit_steps", {"op": "to", "step": later, "bricks": [part]}))
+	print("  a part recoloured")
+	var colour: int = 14 if _world.get_brick(part).color_code == 4 else 4
+	await _kept("edit_model recolor on #%d" % part, [], func() -> String:
+		return await _say("edit_model", {"recolor": [{"bricks": [part], "color": colour}]}))
+
+	print("  saved and opened again")
+	var depth: int = _builder.history_depth()
+	var said: String = await _say("edit_steps", {"op": "next", "bricks": [part]})
+	var edited: Array = _placed(_numbers())
+	var saved: String = _store.to_text(name, true)
+	await _open(saved, name)
+	var reopened: Array = _placed(_numbers())
+	var moved: Array = _unmatched(edited, reopened)
+	_check("after %s, saved and opened again: %d of %d parts in another step%s" % [said,
+		moved.size(), edited.size(), (": " + ", ".join(moved.slice(0, 3).map(
+			func(one: Array) -> String: return "%s at %s in %s" % [one[0], str(one[1]), one[2]])))
+			if not moved.is_empty() else ""],
+		AuthorSteps.any(_world, _store.scenery) and moved.is_empty()
+		and reopened.size() == edited.size())
+	await _back_to(depth)
+
+
+## The steps as listed, after [param edit] and after it is undone: no part
+## but [param moves] in another step, by the plan and by edit_steps's list,
+## and the worked-out steps back after the undo.
+func _kept(what: String, moves: Array, edit: Callable) -> void:
+	var depth: int = _builder.history_depth()
+	var said: String = str(await edit.call())
+	await _frames(2)
+	var now: Dictionary = _numbers()
+	var said_now: Dictionary = await _said_now()
+	var others: Array = _moved(_listed, now).filter(func(id: int) -> bool:
+		return not moves.has(id))
+	_check("%s (\"%s\"): %d other parts in another step%s" % [what, said.get_slice("\n", 0),
+		others.size(), _first(others, now)], others.is_empty())
+	var listed_others: Array = _moved(_said, said_now, true).filter(func(id: int) -> bool:
+		return not moves.has(id))
+	_check("...and in the list, %d%s" % [listed_others.size(), _first(listed_others, said_now)],
+		listed_others.is_empty())
+	if not moves.is_empty():
+		_check("...#%d moved, %s to %s" % [int(moves[0]), _listed.get(moves[0], "?"),
+			now.get(moves[0], "?")], now.get(moves[0]) != _listed.get(moves[0]))
+	await _back_to(depth)
+	var back: Array = _moved(_listed, _numbers())
+	_check("...undone: the worked-out steps again, %d parts in another step" % back.size(),
+		back.is_empty() and not AuthorSteps.any(_world, _store.scenery))
+
+
+## A step of an in-place sub-model's (the model's own when it has none) in
+## the middle of the build, of two parts or more, its section with a step
+## after it: [its number, its first part, the number of the next step of
+## its section past the one after it], or [0, 0, 0].
+func _chosen() -> Array:
+	var steps: Array[Instructions.Step] = _plan()
+	var section_of: Callable = func(step: Instructions.Step) -> String:
+		return Assemblies.path_of(_world.get_brick(step.brick_ids[0]))
+	for want_sub: bool in [true, false]:
+		for index: int in range(steps.size() / 3, steps.size()):
+			var step: Instructions.Step = steps[index]
+			if step.in_callout() or step.brick_ids.size() < 2:
+				continue
+			var section: String = section_of.call(step)
+			if want_sub == section.is_empty():
+				continue
+			if not Array(step.brick_ids).all(func(id: int) -> bool:
+					return Assemblies.path_of(_world.get_brick(id)) == section):
+				continue
+			var after: Array = []
+			for other: Instructions.Step in steps.slice(index + 1):
+				if not other.in_callout() and not other.brick_ids.is_empty() \
+						and section_of.call(other) == section:
+					after.append(other.number)
+			if after.size() >= 2:
+				return [step.number, step.brick_ids[0], after[1]]
+	return [0, 0, 0]
+
+
+func _open(text: String, name: String) -> void:
+	_main.call("clear_model")
+	await _frames(4)
+	var bar: ModelBar = _main.get("_bar")
+	var opened: Dictionary = await bar.open_text_with_progress(text, name)
+	bar.opened.emit(int(opened.get("placed", 0)))
+	await _frames(10)
+	if not AuthorSteps.any(_world, _store.scenery):
+		_listed = _numbers()
+		_said = await _said_now()
+
+
+## [param text] with no STEP or ROTSTEP lines: a model nobody gave steps.
+static func _without_steps(text: String) -> String:
+	var kept := PackedStringArray()
+	for line: String in text.split("\n"):
+		var words: String = line.strip_edges().to_upper()
+		if words == "0 STEP" or words.begins_with("0 ROTSTEP"):
+			continue
+		kept.append(line)
+	return "\n".join(kept)
+
+
+# -- reading the steps back ------------------------------------------------------
+
+
+func _plan() -> Array[Instructions.Step]:
+	return Instructions.plan(_world, _library, _store.scenery, {}, true)
+
+
+func _step_numbered(number: int) -> Instructions.Step:
+	var found: Instructions.Step = null
+	for step: Instructions.Step in _plan():
+		if step.number == number and (found == null or step.callout_step == 0):
+			found = step
+	return found
+
+
+## Every part's step in the booklet now, by id: "12", or "12.3" in the
+## callout step 12 puts on.
+func _numbers() -> Dictionary:
+	var out: Dictionary = {}
+	for step: Instructions.Step in _plan():
+		for brick_id: int in step.brick_ids:
+			out[brick_id] = ("%d.%d" % [step.number, step.callout_step]) if step.in_callout() \
+				else str(step.number)
+	return out
+
+
+## Each part's step off edit_steps's list, by id: the number its line
+## starts with (a line names twelve of a step's parts, and what its step is
+## part of, which the model's own steps name and worked-out ones do not).
+func _said_now() -> Dictionary:
+	var listed: String = await _say("edit_steps", {})
+	var out: Dictionary = {}
+	var page: int = 1
+	while true:
+		for line: String in listed.split("\n"):
+			if line.find(": #") < 0:
+				continue
+			var head: String = line.strip_edges().get_slice(":", 0).get_slice(" ", 0)
+			for word: String in line.substr(line.find(":") + 1).split(" ", false):
+				if word.begins_with("#") and word.substr(1).is_valid_int():
+					out[word.substr(1).to_int()] = head
+		# A long list goes on from=.
+		var more: RegExMatch = RegEx.create_from_string("from=(\\d+)").search(listed)
+		if more == null or page > 40:
+			break
+		page += 1
+		listed = await _say("edit_steps", {"from": more.get_string(1).to_int()})
+	return out
+
+
+## Each of [param numbers]'s parts as [its number and colour, where it
+## is, its step]: a file opened again gives its parts new ids.
+func _placed(numbers: Dictionary) -> Array:
+	var out: Array = []
+	for brick_id: int in numbers:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		out.append(["%s/%d" % [brick.part_id, brick.color_code], brick.transform.origin,
+			str(numbers[brick_id])])
+	return out
+
+
+## The parts of [param before] ([method _placed]) with none in [param after]
+## alike, where it was to a twentieth of an LDU, in the same step: two alike
+## in one place are either.
+static func _unmatched(before: Array, after: Array) -> Array:
+	var free: Array = after.duplicate()
+	var out: Array = []
+	for one: Array in before:
+		var found: int = -1
+		for index: int in free.size():
+			var other: Array = free[index]
+			if other[0] == one[0] and other[2] == one[2] \
+					and (other[1] as Vector3).distance_to(one[1]) < 0.05:
+				found = index
+				break
+		if found < 0:
+			out.append(one)
+		else:
+			free.remove_at(found)
+	return out
+
+
+## The parts of [param before] in another step in [param after], by id;
+## with [param both], of those in both.
+static func _moved(before: Dictionary, after: Dictionary, both: bool = false) -> Array:
+	var out: Array = []
+	for brick_id: Variant in before:
+		if both and not after.has(brick_id):
+			continue
+		if str(after.get(brick_id, "")) != str(before[brick_id]):
+			out.append(int(brick_id))
+	out.sort()
+	return out
+
+
+func _first(ids: Array, now: Dictionary) -> String:
+	if ids.is_empty():
+		return ""
+	var named := PackedStringArray()
+	for brick_id: int in ids.slice(0, 4):
+		named.append("#%d %s->%s" % [brick_id, str(_listed.get(brick_id, "?")),
+			str(now.get(brick_id, "?"))])
+	return ": " + ", ".join(named) + (" ..." if ids.size() > 4 else "")
+
+
+func _back_to(depth: int) -> void:
+	while _builder.history_depth() > depth:
+		_builder.undo()
+	await _frames(2)
+
+
+func _say(tool: String, arguments: Dictionary) -> String:
+	_rpc_id += 1
+	var answer: Variant = await _socket.answer_rpc({"jsonrpc": "2.0", "id": _rpc_id,
+		"method": "tools/call", "params": {"name": tool, "arguments": arguments}})
+	var text: String = ""
+	for block: Dictionary in ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []):
+		text += str(block.get("text", ""))
+	var lines: PackedStringArray = text.split("\n")
+	while lines.size() > 1 and (lines[0].begins_with("Tab ") or lines[0].begins_with("Careful")):
+		lines.remove_at(0)
+	return "\n".join(lines)
+
+
+func _frames(count: int) -> void:
+	for _n: int in count:
+		await process_frame
