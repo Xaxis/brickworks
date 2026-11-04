@@ -145,6 +145,14 @@
       ]
     },
     {
+      "id": "api:POST /api/account?op=fetch",
+      "kind": "api",
+      "entry": "api/_link.js",
+      "reach": "python3 tools/minitest.py tests/test_link_fetch.py   (a link fetched for the app in a browser, signed in: a picture or a 3D model sniffed from its bytes, at most 4 MB in 20 s; no private, loopback, link-local or metadata address at any hop, rebinding included; each refusal a sentence)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "api:POST /api/mcp",
       "kind": "api",
       "entry": "api/mcp.js",
@@ -1281,6 +1289,14 @@
       "entry": "tools/web/library_tab_flow.mjs",
       "reach": "python3 tools/web/serve.py build/web 8921 --parts-url \"$PARTS_URL\", then node tools/web/library_tab_flow.mjs --url=http://127.0.0.1:8921/index.html --out=shots/library_tab   (with .env sourced; ?library= over unsaved work asks, and the hotel's open timed)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:link browser flow",
+      "kind": "cli",
+      "entry": "tools/web/link_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/link_flow.mjs --url=<preview>/app --out=shots/link_web   (.env sourced; brickify url= and print_part picture_url= over the connector, from Wikimedia and from sites with no CORS; a 14 MB photograph refused in words)",
+      "area": "web",
       "tests": []
     },
     {
@@ -3778,6 +3794,14 @@
         "tests/test_modelled_by.py",
         "tests/test_sets.py"
       ]
+    },
+    {
+      "id": "lib:words for a failed request",
+      "kind": "lib",
+      "entry": "src/net/fetch_words.gd",
+      "reach": "tools/probe.sh app_tools_probe   (a site that will not connect, one that is not there, and every HTTPRequest result in words, never a code)",
+      "area": "mcp",
+      "tests": []
     },
     {
       "id": "lib:worked constructions",

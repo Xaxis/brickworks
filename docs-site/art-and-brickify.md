@@ -5,7 +5,7 @@ ai: A picture laid as a mosaic of plates and round tiles, as LEGO® Art sets are
 rules:
   - A mosaic panel is 16 x 16 studs; make_art takes 1 to 6 panels each way.
   - brickify's size is studs along the model's longest side, 6 to 64 (24 when not said).
-  - A file fetched by link is at most 96 MB.
+  - A file fetched by link is at most 96 MB on the desktop, and 4 MB in a browser, where Brickworks's own site fetches it.
 title: Mosaics and brickify
 nav: Mosaics and brickify
 description: Turn a picture into a wall of plates, as LEGO® Art sets are, and turn any 3D model into bricks.
@@ -39,4 +39,13 @@ lib:brickify
 lib:3d model files
 lib:brickify from a collection
 lib:brickify steps
+-->
+
+### From a link {#brickify-link}
+
+Claude, or any assistant you connect, can bring in a model or a picture from a link: give it the address of the file itself, an OBJ, STL or glTF, or a PNG or JPEG to print. On the desktop the app fetches it. In a browser, Brickworks's own site fetches it for you, since a browser may fetch from very few sites itself: you need to be signed in, a file can be up to 4 MB, and it has to be on the open web, not your own network. When a link brings nothing, Brickworks says why: the site did not answer, the file is too large, the link is to a web page and not the file. A larger file you save to your computer and bring in with **Make › Brickify a 3D model…** or **Make › Print on a part…**.
+
+<!-- covers
+api:POST /api/account?op=fetch
+lib:words for a failed request
 -->

@@ -45,6 +45,10 @@
 //   keymap.sql is applied, GET answers null, ready false, and POST keeps
 //   nothing (kept false): the app keeps them on the device all the same.
 //
+//   POST ?op=fetch, with a token and {url}: the picture or 3D model at a
+//   link, fetched for the app in a browser, which cannot fetch from most
+//   sites itself (api/_link.js says what it will fetch, and from where).
+//
 //   POST ?op=delete, with a token and {confirm: <the account's address>}:
 //   the account deleted, and everything of it (2026-10-20). The address
 //   typed again is the confirmation, so a stray click or a stolen page
@@ -89,6 +93,7 @@
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db, dbConfigured, reach } from "./_db.js";
 import { earlyFor } from "./_early.js";
+import { linkFetch } from "./_link.js";
 import { orangecheckOffer } from "./_oc_config.js";
 import { ageOf, answerAge, birthOf, thirteenOrOver, TOO_YOUNG } from "./_trust.js";
 
@@ -101,6 +106,9 @@ export default async function handler(request, response) {
       .setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
       .end();
   }
+
+  // The app's own page alone: no other site may read what it fetches.
+  if (String(request.query?.op || "") === "fetch") return linkFetch(request, response);
 
   response.setHeader("Access-Control-Allow-Origin", "*");
   response.setHeader("Vary", "Authorization");
@@ -118,7 +126,7 @@ export default async function handler(request, response) {
     return keys(request, response);
   }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=age, ?op=theme, ?op=keys or ?op=delete" });
+    return response.status(405).json({ error: "GET, or POST ?op=age, ?op=theme, ?op=keys, ?op=fetch or ?op=delete" });
   }
 
   const enabled = authConfigured();

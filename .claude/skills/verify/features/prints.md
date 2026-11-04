@@ -137,7 +137,8 @@ In the menus too (2026-10-13): Make, Print on a part… (`print_part`) and
 Put a sticker on… (`sticker`), the bin's Print… and the sheet's Draw a
 sticker. A session does both with the `print_part` tool
 (`src/net/app_tools.gd`): `brick=` a part, the picture as `svg=` or
-`picture_url=` (decoded by `PictureFile.decode`), and either `area=` for a
+`picture_url=` (decoded by `PictureFile.decode`; fetched by `AppTools._fetch`,
+in a browser through the site as brickify's `url=` is, brickify.md), and either `area=` for a
 print (`PrintStudio.print_on`: the designer opened on that part, the picture
 put on as a picture from a file is, `PrintEditor.draw_and_save`, and the
 printed part put where the part stood) or `sticker=true` with `side=` (up,
