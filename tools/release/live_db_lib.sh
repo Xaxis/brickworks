@@ -15,11 +15,11 @@
 # judges its own models by id, but for the few in preview_checks.sh's
 # ALONE_DB, which read what every account changes (the week's pick, the one
 # test challenge). Held one at a time, rel-m254's 53 held the lock for 3.1
-# hours, and four units waiting behind it gave up after three (2026-11-03). So LIVE_DB_SLOTS (3) hold it
-# at once, each with one of the files live-db.slot.N under a shared hold of
-# live-db.lock; a check that must run with no other holds live-db.lock
-# alone. A run of the scripts from before this holds live-db.lock alone
-# too, so the two never meet.
+# hours, and four units waiting behind it gave up after three (2026-11-03).
+# So LIVE_DB_SLOTS (3) hold it at once, each with one of the files
+# live-db.slot.N under a shared hold of live-db.lock; a check that must run
+# with no other holds live-db.lock alone. A run of the scripts from before
+# this holds live-db.lock alone too, so the two never meet.
 LIVE_DB="$(git rev-parse --path-format=absolute --git-common-dir)/live-db"
 LIVE_DB_SLOTS=${LIVE_DB_SLOTS:-3}
 [ "$LIVE_DB_SLOTS" -ge 1 ] 2>/dev/null || LIVE_DB_SLOTS=1

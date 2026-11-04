@@ -969,11 +969,9 @@ try {
   console.log(`        define_motion: ${motionSaid.split("\n")[0].slice(0, motionSaid.startsWith("Kept") ? 140 : 600)}`);
   await sameEverywhere("a motion kept by the second person");
   check("...and the owner's file has it", (await textOf(owner.page)).text.includes("Open the door"));
-  // No colour_hidden_parts here: on this car it found nothing hidden, so
-  // nothing went to the other side, in every run from rel-m249 to rel-m254
-  // (the same seq and bytes before and after), and it took 96 to 244 s of
-  // two software-drawn pages measuring every side (trainspeed, 2026-11-03).
-  // ~hidden goes as the other keys above do (Together._meta_now).
+  const hiddenSaid = await tool(owner.page, "colour_hidden_parts", { mode: "stages", stages: 2, apply: true, agreed: true });
+  console.log(`        colour_hidden_parts: ${hiddenSaid.split("\n")[0].slice(0, 160)}`);
+  await sameEverywhere("the hidden parts coloured by the owner");
 
   console.log("\n4. each undo is its own");
   const [placed] = await ask(owner.page, [{ op: "place", part: "3001", colour: 4, x: -1200, y: 96, z: -1200 }]);
@@ -995,7 +993,7 @@ try {
     `painted ${painted?.ok}, orange in the owner's file ${paintSeen(a2.text)}, the same file ${a2.hash === b2.hash}`);
 
   console.log("\n5. how long a change takes to reach the other browser, now");
-  await measure("again, with a motion, a print and steps", 20, true);
+  await measure("again, with a motion, a print, steps and the hidden colours", 20, true);
 
   console.log("\n5b. a reload, and a lost connection, go back in by themselves");
   await guest.page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });

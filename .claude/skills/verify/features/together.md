@@ -157,7 +157,7 @@ signed in as someone else.
   --out=DIR` (`--desktop=no` without the desktop's half). Expect
   `together_flow: all ok`: the edits made and the hash equal in both
   browsers and the desktop; then each kind of the model's own state (name
-  typed, floor, printed part, step, booklet look, motion)
+  typed, floor, printed part, step, booklet look, motion, hidden colours)
   byte-identical after each; Ctrl+Z; latency p50/p95; a reload and an
   offline spell rejoining; the owner's pointer drawn in the other view;
   chat heard by the desktop and refused to the under-13; the guest opening

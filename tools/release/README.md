@@ -296,7 +296,10 @@ What each one guards against, all learned the hard way on 2026-10-13:
   `.git/live-db.log` says who took it, after how long, which slot, and
   when they left. Two runs at once on 2026-10-22 got 429s in profile, and
   another run's model took discovery's pick; one at a time, rel-m254's 53
-  held the lock for 3.1 hours and four units gave up behind it. Each flow
+  held the lock for 3.1 hours and four units gave up behind it. Twelve of
+  the longest held it 12 minutes three at a time on rel-m254's preview,
+  and 44 one at a time, every one passing both ways and no sign-in
+  answering 429 (2026-11-04). Each flow
   makes accounts of its own and judges its own models by id; sign-ins are
   by password, from a bucket of 30 at once and one every 2 s, which a
   battery draws on about 180 times (`session.mjs`). The checks that read
@@ -315,8 +318,9 @@ What each one guards against, all learned the hard way on 2026-10-13:
   those that came after. flock serves no one in order, and a unit's A/B,
   taking the lock run after run, held rel-m232's arrival 24 minutes
   (2026-10-31). A train leaves a mark there, a file named for its pid
-  holding its start time, from its start until its battery on the preview, with the checks
-  run again alone, is done (`ship.sh` takes it away, `SHIP_LIVE_MARK`), so
+  holding its start time, from its start until its battery on the
+  preview, with the checks run again alone, is done (`ship.sh` takes it
+  away, `SHIP_LIVE_MARK`), so
   no unit begins a live check meanwhile: a run already in the lock cannot
   be taken back, and one begun while rel-m233 merged held its oauth 33
   minutes. Then units take it in their turn again, and the release's own
