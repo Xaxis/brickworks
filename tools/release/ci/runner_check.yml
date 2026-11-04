@@ -125,7 +125,7 @@ jobs:
   first-launch:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -150,20 +150,30 @@ jobs:
           xattr -w com.apple.quarantine "$mark" /Applications/Brickworks.app
           spctl --status || true
           spctl --assess --type execute --verbose=4 /Applications/Brickworks.app || true
+      # Each under a time limit of its own: anything waiting on a person (a
+      # dialog, a permission) would hold the job to its timeout, as `open` and
+      # osascript did in the first run of this.
       - name: macOS, what a person sees the first time they open it
         if: runner.os == 'macOS'
+        timeout-minutes: 5
         run: |
+          limit() { perl -e 'alarm shift; exec @ARGV' "$@"; }
           mkdir -p shots
-          open /Applications/Brickworks.app || true
-          sleep 12
-          screencapture -x shots/macos-first-open.png || true
-          osascript -e 'tell application "System Events" to get name of every process whose visible is true' || true
+          limit 20 open /Applications/Brickworks.app &
+          sleep 15
+          limit 20 screencapture -x shots/macos-first-open.png || echo "no picture of the first open"
           pgrep -l Brickworks || echo "Brickworks is not running"
-          open "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension" || true
-          sleep 10
-          screencapture -x shots/macos-privacy-security.png || true
+          # Where Open Anyway is offered once a person has answered Done (the
+          # dialog waits for a click, which nothing here may give).
+          limit 20 open "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Security" &
+          sleep 12
+          limit 20 screencapture -x shots/macos-privacy-security.png || echo "no picture of Privacy & Security"
+          ls -l shots
+      # The question a marked program gets comes before ShellExecute returns,
+      # so the double-click is cmd's `start`, in a process of its own.
       - name: Windows, the installer marked as Edge marks a download, opened as a double-click opens it
         if: runner.os == 'Windows'
+        timeout-minutes: 5
         shell: pwsh
         run: |
           gh release download "$env:TAG" --repo "$env:GITHUB_REPOSITORY" --pattern "*-windows-x86_64-setup.exe" --dir "$env:RUNNER_TEMP"
@@ -171,15 +181,18 @@ jobs:
           Set-Content -Path $setup.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3`r`nHostUrl=https://github.com/"
           Get-Content -Path $setup.FullName -Stream Zone.Identifier
           New-Item -ItemType Directory -Force shots | Out-Null
-          Start-Process -FilePath $setup.FullName
+          $opener = Start-Process -FilePath cmd.exe -ArgumentList '/c', 'start', '""', "`"$($setup.FullName)`"" -PassThru
           Start-Sleep -Seconds 15
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $picture = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
-          [System.Drawing.Graphics]::FromImage($picture).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-          $picture.Save("shots\windows-first-open.png")
-          Get-Process | Where-Object { $_.ProcessName -match 'setup|Brickworks|smartscreen' } | Format-Table ProcessName, Id, MainWindowTitle
+          try {
+            Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+            $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $picture = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+            [System.Drawing.Graphics]::FromImage($picture).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+            $picture.Save("shots\windows-first-open.png")
+          } catch { "no picture: $_" }
+          Get-Process | Where-Object { $_.MainWindowTitle } | Format-Table ProcessName, Id, MainWindowTitle -AutoSize
           Get-Process | Where-Object { $_.ProcessName -match 'setup|Brickworks' } | Stop-Process -Force -ErrorAction SilentlyContinue
+          Stop-Process -Id $opener.Id -Force -ErrorAction SilentlyContinue
       - uses: actions/upload-artifact@v4
         if: always()
         with:

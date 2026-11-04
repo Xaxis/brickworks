@@ -102,8 +102,10 @@ def held(said: dict, key: str) -> tuple[bool, str]:
     if os.name == "nt":
         target = "Brickworks/" + account
         listed = subprocess.run(["cmdkey", "/list:" + target], capture_output=True, text=True)
-        found = target in listed.stdout
-        return found, "cmdkey /list: %s" % ("Target " + target if found else "none")
+        # Its heading names the target whether it is there or not ("* NONE *").
+        found = next((line.strip() for line in listed.stdout.splitlines()
+                      if line.strip().startswith("Target:") and line.strip().endswith(target)), "")
+        return bool(found), "cmdkey /list: %s" % (found or "* NONE *")
     looked = subprocess.run(["secret-tool", "lookup", "application", "brickworks", "key", NAME,
                              "data", said["hash"]], capture_output=True, text=True)
     return looked.returncode == 0 and looked.stdout.strip() == key, \

@@ -19,13 +19,17 @@
 # repository holding the workflow alone (pushed over SSH: gh's token has no
 # workflow scope), and its runs. The tools are this checkout's HEAD, which
 # must be pushed: the workflow checks Xaxis/brickworks out at it.
+# WORKFLOW=FILE runs another workflow of the same form in its place (a part
+# of it, run again).
 set -u
 VERSION=$1 LAID=$2 OUT=$3
 REPO=Xaxis/brickworks-releases
 NAME=runner-check-$VERSION
 HERE=$(cd "$(dirname "$0")/../.." && pwd)
+WORKFLOW=${WORKFLOW:-$HERE/tools/release/ci/runner_check.yml}
 SOURCE=$(git -C "$HERE" rev-parse HEAD)
-gh() { env -u GITHUB_TOKEN command gh "$@"; }
+# env runs the program, never this function: GITHUB_TOKEN here is stale (docs/RELEASING.md).
+gh() { env -u GITHUB_TOKEN gh "$@"; }
 mkdir -p "$OUT"
 git -C "$HERE" fetch -q origin
 [ -n "$(git -C "$HERE" branch -r --contains "$SOURCE")" ] || {
@@ -64,7 +68,7 @@ gh release create "$NAME" --repo "$REPO" --draft --title "runner check of $VERSI
 git clone -q --depth 1 "git@github.com:$REPO.git" "$clone" || exit 1
 mkdir -p "$clone/.github/workflows"
 sed -e "s/@BRANCH@/$NAME/; s/@TAG@/v$VERSION/; s/@LAID@/$NAME/; s/@SOURCE@/$SOURCE/" \
-  "$HERE/tools/release/ci/runner_check.yml" > "$clone/.github/workflows/runner_check.yml"
+  "$WORKFLOW" > "$clone/.github/workflows/runner_check.yml"
 git -C "$clone" add .github/workflows/runner_check.yml
 git -C "$clone" -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
   commit -q -m "Temporary: $VERSION checked on macOS, Windows and Ubuntu runners."

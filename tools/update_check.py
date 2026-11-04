@@ -465,8 +465,9 @@ class Run:
 
 def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | None = None,
               system: bool = False) -> int:
-    """A copy installed from the .deb: dpkg's files are never swapped. The
-    new .deb is downloaded into the app's own data, checked, and installed
+    """A copy installed from the .deb: dpkg's files are never swapped. It
+    refuses what every copy refuses, and the new .deb is downloaded into
+    the app's own data, checked, and installed
     by apt as root. A stand-in for pkexec says no, then none is there: each
     is said, and the file offered. With [system] (a runner) apt installed
     the old copy itself, and the update goes in by apt for real, sudo
@@ -474,8 +475,8 @@ def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path
     with tempfile.TemporaryDirectory(prefix="brickworks-update-", ignore_cleanup_errors=True) as scratch:
         root = Path(scratch)
         serve_dir = laid if laid is not None else root / "serve"
-        if laid is None:
-            lay_out(serve_dir, old, new, port)
+        scenarios = lay_out(serve_dir, old, new, port) if laid is None \
+            else json.loads((laid / "laid.json").read_text())["scenarios"]
         server = serve(serve_dir, port)
         run = Run(old, new, port, root)
         say("── %s → %s, deb%s, served at http://127.0.0.1:%d/ ──" % (
@@ -502,6 +503,12 @@ def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path
             run.check("the old copy, in usr/lib/brickworks as dpkg puts it, says %s" % said,
                       said.startswith("Brickworks %s" % run.A))
             run.off_asks_nothing(program, server)
+            for name in ("badsig", "badhash", "badsize", "older", "plainhttp", "offhost"):
+                code, output = run.app(program, name, ["--update=fetch"])
+                verdict = next((line for line in output.splitlines()
+                                if line.startswith("update: fetch: ")), "(nothing said)")
+                run.check("refuses %s: %s" % (scenarios[name], verdict.removeprefix("update: fetch: ")),
+                          "refused" in verdict and not staged.exists(), output)
             before = tree(install)
             code, output = run.app(program, "good", ["--update=check"])
             verdict = next((line for line in output.splitlines() if line.startswith("update: check: ")), "")
