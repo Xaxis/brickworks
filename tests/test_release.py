@@ -193,19 +193,38 @@ def test_nothing_is_made_public_without_a_draft_first():
     assert refused
 
 
-def _publish_with_github_stubbed(draft: bool, existing: bool) -> list[list[str]]:
+# The update manifests publish signed, as it handed them over to be signed.
+SIGNED: list[dict] = []
+
+
+def _publish_with_github_stubbed(draft: bool, existing: bool,
+                                 latest_on_draft: bool = True) -> list[list[str]]:
     """Every command publish runs, with GitHub and git answered here: a
     one-file build, a draft already up or none, and GitHub's SHA-256 the
-    file's own."""
+    file's own. Signing, and the kinds latest.json must list, are
+    tests/test_updates.py's; here they are stubbed."""
     where = Path(tempfile.mkdtemp(prefix="brickworks-release-test-"))
     package = where / "Brickworks-9.9.9-linux-x86_64.tar.xz"
     package.write_bytes(b"a package")
     (where / "SHA256SUMS").write_text("%s  %s\n" % (release.sha256_of(package), package.name))
-    files = [package, where / "SHA256SUMS"]
-    held = {"url": "https://github.com/%s/releases/tag/v9.9.9" % release.REPO, "isDraft": True,
-            "databaseId": 1, "assets": [{"name": p.name, "size": p.stat().st_size} for p in files]}
-    views = [held if existing else None, {**held, "isDraft": draft}]
+    if existing and latest_on_draft:
+        # The draft's, written when it was made.
+        (where / "latest.json").write_text("{}")
+    # GitHub holds what is in the folder when it is asked: a new draft's
+    # latest.json is written by publish itself.
+    files = lambda: sorted(where.iterdir())  # noqa: E731
+    held = lambda drafted: {  # noqa: E731
+        "url": "https://github.com/%s/releases/tag/v9.9.9" % release.REPO, "isDraft": drafted,
+        "databaseId": 1, "assets": [{"name": p.name, "size": p.stat().st_size} for p in files()]}
+    asked: list[str] = []
     ran: list[list[str]] = []
+
+    def view(tag):
+        # First whether it is there; then, after the upload, what it holds.
+        asked.append(tag)
+        if len(asked) == 1:
+            return held(True) if existing else None
+        return held(draft)
 
     def run(command, **kwargs):
         ran.append(list(command))
@@ -213,21 +232,29 @@ def _publish_with_github_stubbed(draft: bool, existing: bool) -> list[list[str]]
         if command[:2] == ["gh", "api"]:
             out = json.dumps({"assets": [{"name": p.name, "digest": "sha256:" + release.sha256_of(p),
                                           "browser_download_url": "https://example/" + p.name}
-                                         for p in files]})
+                                         for p in files()]})
         elif command[:2] == ["git", "rev-parse"]:
             out = "f" * 40
         return subprocess.CompletedProcess(command, 0, stdout=out, stderr="")
 
-    kept = (release.release_view, release.check_version, release.built, release.subprocess.run)
-    release.release_view = lambda tag: views.pop(0)
+    kept = (release.release_view, release.check_version, release.built, release.subprocess.run,
+            release.sign_update_manifest, release.check_update_manifest, release.missing_update_kinds)
+    release.release_view = view
     release.check_version = lambda: []
     release.built = lambda version: (where, {"commit": "x", "files": [
-        {"name": package.name, "os": "linux", "size": package.stat().st_size, "facts": {}}]})
+        {"name": package.name, "os": "linux", "kind": "tar.xz", "size": package.stat().st_size,
+         "sha256": release.sha256_of(package), "facts": {}}]})
     release.subprocess.run = run
+    SIGNED.clear()
+    release.sign_update_manifest = lambda manifest: (SIGNED.append(manifest)
+                                                     or {"signed": json.dumps(manifest), "signatures": []})
+    release.check_update_manifest = lambda envelope: []
+    release.missing_update_kinds = lambda manifest: []
     try:
         release.publish(draft, "v9.9.9", "abc", False)
     finally:
-        release.release_view, release.check_version, release.built, release.subprocess.run = kept
+        (release.release_view, release.check_version, release.built, release.subprocess.run,
+         release.sign_update_manifest, release.check_update_manifest, release.missing_update_kinds) = kept
         shutil.rmtree(where, ignore_errors=True)
     return ran
 
@@ -242,6 +269,22 @@ def test_a_draft_goes_to_the_public_releases_repository():
     assert create[create.index("--target") + 1] == "main"
     assert "--draft" in create
     assert not any(c[:2] == ["git", "push"] for c in ran), "a draft tagged the source"
+    # With the packages goes the updater's manifest, each file at the address
+    # it has once published.
+    assert any(arg.endswith("/latest.json") for arg in create)
+    assert [f["url"] for f in SIGNED[0]["files"]] == [
+        "https://github.com/Xaxis/brickworks-releases/releases/download/v9.9.9/"
+        "Brickworks-9.9.9-linux-x86_64.tar.xz"]
+
+
+def test_a_draft_with_no_update_manifest_is_never_published():
+    # Every installed copy reads the newest release's latest.json.
+    try:
+        _publish_with_github_stubbed(draft=False, existing=True, latest_on_draft=False)
+    except release.Failed as failure:
+        assert "has no latest.json" in str(failure)
+    else:
+        raise AssertionError("a draft with no latest.json was published")
 
 
 def test_publishing_tags_the_built_commit_on_origin():

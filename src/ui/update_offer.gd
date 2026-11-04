@@ -70,12 +70,16 @@ func showing() -> bool:
 	return visible
 
 
-## Store the model on the baseplate, then reload.
+## Store the model on the baseplate, then reload: what is on screen, changed
+## or not. One a link opened (?model=) and not touched since had never been
+## written, so the reloaded tab opened its session's model before it.
 func reload() -> void:
 	if _reloading:
 		return
 	_reloading = true
 	_reload.disabled = true
+	if store != null:
+		store.touch()
 	var path: String = store.write_now() if store != null else ""
 	if not path.is_empty() and not ModelStore.stored(path):
 		_words.text = "Keeping this tab's model first…"

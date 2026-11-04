@@ -8260,6 +8260,309 @@ msgstr "Claude puede acceder a esta pestaña"
 msgid "No assistant, no Claude and no AI anywhere in the window. Claude connections are off while the assistant is off."
 msgstr "Sin asistente, sin Claude y sin IA en ninguna parte de la ventana. Las conexiones con Claude están desactivadas mientras el asistente lo esté."
 
+# Updates: the desktop app keeping itself up to date (Updater): its notice, Help's
+# Check for updates, Reinstall and Restart, and Settings, Updates
+
+msgid "Check for updates…"
+msgstr "Buscar actualizaciones…"
+
+msgid "Reinstall Brickworks…"
+msgstr "Reinstalar Brickworks…"
+
+msgid "Restart Brickworks"
+msgstr "Reiniciar Brickworks"
+
+msgid "Whether a newer version of Brickworks is out, and what it changes"
+msgstr "Si ha salido una versión más nueva de Brickworks y qué cambia"
+
+msgid "Download this version again and put it in place, to repair a damaged install"
+msgstr "Descargar de nuevo esta versión y ponerla en su lugar, para reparar una instalación dañada"
+
+msgid "Quit and start again. The model on the baseplate comes back as it is."
+msgstr "Salir y volver a empezar. El modelo de la placa base vuelve tal como está."
+
+msgid "In the desktop app only: the site updates itself"
+msgstr "Solo en la aplicación de escritorio: el sitio se actualiza solo"
+
+msgid "In the desktop app only"
+msgstr "Solo en la aplicación de escritorio"
+
+msgid "Reload the tab instead"
+msgstr "Recarga la pestaña en su lugar"
+
+msgid "Updates"
+msgstr "Actualizaciones"
+
+msgid "Automatic"
+msgstr "Automáticas"
+
+msgid "Ask first"
+msgstr "Preguntar antes"
+
+msgid "Automatic downloads a new version and puts it in as Brickworks quits. Ask first says it is out. Off asks nothing until Help, Check for updates."
+msgstr "Automáticas descarga una versión nueva y la instala al cerrar Brickworks. Preguntar antes avisa de que ha salido. Desactivado no pregunta nada hasta Ayuda, Buscar actualizaciones."
+
+msgid "What's new"
+msgstr "Novedades"
+
+msgid "What this version changes, from its release notes"
+msgstr "Qué cambia esta versión, según sus notas de la versión"
+
+msgid "Update and restart"
+msgstr "Actualizar y reiniciar"
+
+msgid "Not now. In Automatic, it goes in as Brickworks quits."
+msgstr "Ahora no. En Automáticas, se instala al cerrar Brickworks."
+
+msgid "Release notes"
+msgstr "Notas de la versión"
+
+msgid "Brickworks %s is ready"
+msgstr "Brickworks %s está listo"
+
+msgid "Brickworks %s is out"
+msgstr "Ha salido Brickworks %s"
+
+msgid "Download"
+msgstr "Descargar"
+
+msgid "Move to Applications and update"
+msgstr "Mover a Aplicaciones y actualizar"
+
+msgid "Brickworks is running from Downloads or a disk image, where it can't update itself: it goes to %s"
+msgstr "Brickworks se ejecuta desde Descargas o una imagen de disco, donde no puede actualizarse: va a %s"
+
+msgid "Restart into Brickworks %s now. The model on the baseplate comes back as it is."
+msgstr "Reiniciar ahora en Brickworks %s. El modelo de la placa base vuelve tal como está."
+
+msgid "Downloading Brickworks %s… %d%"
+msgstr "Descargando Brickworks %s… %d%"
+
+msgid "Downloading Brickworks %s…"
+msgstr "Descargando Brickworks %s…"
+
+msgid "Checking Brickworks %s…"
+msgstr "Comprobando Brickworks %s…"
+
+msgid "Unpacking Brickworks %s…"
+msgstr "Descomprimiendo Brickworks %s…"
+
+msgid "Check for updates"
+msgstr "Buscar actualizaciones"
+
+msgid "Reinstall Brickworks"
+msgstr "Reinstalar Brickworks"
+
+msgid "Download Brickworks %s again and put it in place of this copy? This repairs a damaged install. Your models and settings are kept."
+msgstr "¿Descargar de nuevo Brickworks %s y ponerlo en lugar de esta copia? Así se repara una instalación dañada. Tus modelos y ajustes se conservan."
+
+msgid "Reinstall and restart"
+msgstr "Reinstalar y reiniciar"
+
+msgid "Brickworks %s is out. You have %s."
+msgstr "Ha salido Brickworks %s. Tienes la %s."
+
+msgid "Checking for updates…"
+msgstr "Buscando actualizaciones…"
+
+msgid "Couldn't check for updates: %s"
+msgstr "No se pudo buscar actualizaciones: %s"
+
+msgid "You're up to date (%s)"
+msgstr "Estás al día (%s)"
+
+msgid "You're up to date (%s): refused %s, which is older"
+msgstr "Estás al día (%s): rechazada la %s, que es más antigua"
+
+msgid "Couldn't download Brickworks %s: %s"
+msgstr "No se pudo descargar Brickworks %s: %s"
+
+msgid "refused the download: %d bytes, where the manifest says %d"
+msgstr "descarga rechazada: %d bytes, donde el manifiesto dice %d"
+
+msgid "refused the download: its SHA-256 is not the manifest's"
+msgstr "descarga rechazada: su SHA-256 no es el del manifiesto"
+
+msgid "Couldn't unpack Brickworks %s: %s"
+msgstr "No se pudo descomprimir Brickworks %s: %s"
+
+msgid "The release has no %s for this system"
+msgstr "La versión no tiene %s para este sistema"
+
+msgid "Finding Brickworks %s…"
+msgstr "Buscando Brickworks %s…"
+
+msgid "Couldn't find Brickworks %s to reinstall: %s"
+msgstr "No se encontró Brickworks %s para reinstalar: %s"
+
+msgid "refused: the manifest is for %s, not this version"
+msgstr "rechazado: el manifiesto es de la %s, no de esta versión"
+
+msgid "Restarting…"
+msgstr "Reiniciando…"
+
+msgid "Restarting into Brickworks %s…"
+msgstr "Reiniciando en Brickworks %s…"
+
+msgid "Couldn't restart: no helper for this system"
+msgstr "No se pudo reiniciar: no hay ayudante para este sistema"
+
+msgid "Couldn't start the updater's helper"
+msgstr "No se pudo iniciar el ayudante del actualizador"
+
+msgid "Brickworks %s didn't start, so %s was kept"
+msgstr "Brickworks %s no arrancó, así que se mantuvo la %s"
+
+msgid "Brickworks was updated to %s"
+msgstr "Brickworks se actualizó a la %s"
+
+msgid "Brickworks %s was reinstalled"
+msgstr "Brickworks %s se reinstaló"
+
+msgid "This copy can't update itself"
+msgstr "Esta copia no puede actualizarse sola"
+
+msgid "refused: more bytes than the manifest says"
+msgstr "rechazado: más bytes de los que dice el manifiesto"
+
+msgid "no connection"
+msgstr "sin conexión"
+
+msgid "the connection failed"
+msgstr "la conexión falló"
+
+msgid "the server's certificate did not hold"
+msgstr "el certificado del servidor no era válido"
+
+msgid "no answer in time"
+msgstr "sin respuesta a tiempo"
+
+msgid "nowhere to write the download"
+msgstr "no hay dónde guardar la descarga"
+
+msgid "the disk would not take the download"
+msgstr "el disco no aceptó la descarga"
+
+msgid "the connection failed (%d)"
+msgstr "la conexión falló (%d)"
+
+msgid "the server answered %d"
+msgstr "el servidor respondió %d"
+
+msgid "too many redirects"
+msgstr "demasiadas redirecciones"
+
+msgid "a redirect to nowhere"
+msgstr "una redirección a ninguna parte"
+
+msgid "could not ask %s"
+msgstr "no se pudo consultar %s"
+
+msgid "could not move it into place"
+msgstr "no se pudo poner en su lugar"
+
+msgid "no Brickworks.app in it"
+msgstr "no contiene Brickworks.app"
+
+msgid "refused: its code signature does not hold"
+msgstr "rechazado: su firma de código no es válida"
+
+msgid "refused: it is signed by someone else"
+msgstr "rechazado: está firmada por otra persona"
+
+msgid "no %s in it"
+msgstr "no contiene %s"
+
+msgid "this system's packages are not known"
+msgstr "los paquetes de este sistema no se conocen"
+
+msgid "tar: %s"
+msgstr "tar: %s"
+
+msgid "The web app is updated by the site"
+msgstr "La aplicación web la actualiza el sitio"
+
+msgid "This is a development build: updates come with the downloaded app"
+msgstr "Esta es una versión de desarrollo: las actualizaciones llegan con la aplicación descargada"
+
+msgid "Brickworks is not in an app bundle here"
+msgstr "Brickworks no está en un paquete de aplicación aquí"
+
+msgid "Brickworks cannot update itself on %s"
+msgstr "Brickworks no puede actualizarse en %s"
+
+msgid "Brickworks can't update itself in %s, where it is installed: download the new version from brickworks.diy/download"
+msgstr "Brickworks no puede actualizarse en %s, donde está instalado: descarga la versión nueva en brickworks.diy/download"
+
+msgid "Installing Brickworks %s…"
+msgstr "Instalando Brickworks %s…"
+
+msgid "Couldn't install Brickworks %s: %s"
+msgstr "No se pudo instalar Brickworks %s: %s"
+
+msgid "pkexec isn't on this system, so Brickworks can't ask for the password to install it"
+msgstr "pkexec no está en este sistema, así que Brickworks no puede pedir la contraseña para instalarlo"
+
+msgid "the password was refused or not given, so nothing was installed"
+msgstr "la contraseña se rechazó o no se dio, así que no se instaló nada"
+
+msgid "apt-get could not install it: %s"
+msgstr "apt-get no pudo instalarlo: %s"
+
+msgid "Show the file"
+msgstr "Mostrar el archivo"
+
+msgid "The new .deb, checked, in its folder: install it with your software installer, or with sudo apt install"
+msgstr "El nuevo .deb, comprobado, en su carpeta: instálalo con tu instalador de software o con sudo apt install"
+
+msgid "Install Brickworks %s with apt, which asks for your password, then restart into it. The model on the baseplate comes back as it is."
+msgstr "Instalar Brickworks %s con apt, que pide tu contraseña, y reiniciar en él. El modelo de la placa vuelve tal como está."
+
+msgid "the zip would not unpack"
+msgstr "el ZIP no se pudo descomprimir"
+
+msgid "hdiutil: %s"
+msgstr "hdiutil: %s"
+
+msgid "not an address: %s"
+msgstr "no es una dirección: %s"
+
+msgid "refused plain HTTP: %s"
+msgstr "HTTP sin cifrar rechazado: %s"
+
+msgid "refused an address off GitHub and brickworks.diy: %s"
+msgstr "rechazada una dirección fuera de GitHub y brickworks.diy: %s"
+
+msgid "latest.json is not a manifest"
+msgstr "latest.json no es un manifiesto"
+
+msgid "refused: the manifest's signature does not hold"
+msgstr "rechazado: la firma del manifiesto no es válida"
+
+msgid "refused: the signed manifest does not parse"
+msgstr "rechazado: el manifiesto firmado no se puede leer"
+
+msgid "refused: the manifest is not Brickworks'"
+msgstr "rechazado: el manifiesto no es de Brickworks"
+
+msgid "refused: the manifest's version is not a version"
+msgstr "rechazado: la versión del manifiesto no es una versión"
+
+msgid "refused: the manifest lists no files"
+msgstr "rechazado: el manifiesto no enumera archivos"
+
+msgid "refused: a file in the manifest is not described"
+msgstr "rechazado: un archivo del manifiesto no está descrito"
+
+msgid "refused: %s has no size"
+msgstr "rechazado: %s no tiene tamaño"
+
+msgid "refused: %s has no SHA-256"
+msgstr "rechazado: %s no tiene SHA-256"
+
+msgid "refused: a file in the manifest is not Brickworks'"
+msgstr "rechazado: un archivo del manifiesto no es de Brickworks"
+
 # A sub-assembly selected whole, and two parts selected (Meet on hinges), in
 # the properties
 msgid "%s × %s studs, %s tall"

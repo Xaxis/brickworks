@@ -1343,6 +1343,27 @@
 					"words": "Take the tour",
 					"key": "",
 					"tip": "Build your first model, seven short steps done in the app"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "check_updates",
+					"words": "Check for updates…",
+					"key": "",
+					"tip": "Whether a newer version of Brickworks is out, and what it changes"
+				},
+				{
+					"name": "reinstall",
+					"words": "Reinstall Brickworks…",
+					"key": "",
+					"tip": "Download this version again and put it in place, to repair a damaged install"
+				},
+				{
+					"name": "restart",
+					"words": "Restart Brickworks",
+					"key": "",
+					"tip": "Quit and start again. The model on the baseplate comes back as it is."
 				}
 			]
 		}
@@ -1738,6 +1759,9 @@
 		"settings": ",",
 		"keys": "F1",
 		"tour": "",
+		"check_updates": "",
+		"reinstall": "",
+		"restart": "",
 		"palette": "Ctrl-/",
 		"docs": "",
 		"website": "",

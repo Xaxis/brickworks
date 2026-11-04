@@ -47,6 +47,9 @@ const HELD_FOR_S := 180
 ## What a window opened by New window is started with: a session of its
 ## own, not one another window left. The web's is ?new in the address.
 const NEW_WINDOW := "--new-session"
+## What a window started again by Restart, or by an update, is started with:
+## the session it had, so it opens the model it was showing (Updater).
+const SAME_SESSION := "--session="
 ## The model files the app opens when the system hands it one: those File,
 ## Open from a file reads (ModelFilePicker), which the packages register
 ## with each system (tools/release.py).
@@ -189,12 +192,21 @@ static func _claim() -> void:
 		# person's next window would have opened.
 		_id = "probe"
 	else:
-		_id = _claim_here(not opened_new())
+		var again: String = _again()
+		_id = again if not again.is_empty() and _hold(again) else _claim_here(not opened_new())
 		takes_legacy = not opened_new()
 	DirAccess.make_dir_recursive_absolute(ROOT + _id)
 	if takes_legacy:
 		_move(LEGACY_AUTOSAVE, autosave())
 		_move(LEGACY_CONNECTOR, path("claude_connector.json"))
+
+
+## The session a restarted window was given back (--session=), or "".
+static func _again() -> String:
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with(SAME_SESSION) and shaped(argument.substr(SAME_SESSION.length())):
+			return argument.substr(SAME_SESSION.length())
+	return ""
 
 
 ## The old file into this tab's folder, unless this tab has one already.

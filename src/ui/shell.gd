@@ -140,7 +140,7 @@ const MENUS: Array = [
 		"mode_connect", "mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "rotate_held",
 		"tip_held", "-", "measure", "stability", "simulate", "hidden_colours", "reseat", "-",
 		"ask_claude", "connector", "settings"]],
-	["Help", ["keys", "tour"]],
+	["Help", ["keys", "tour", "-", "check_updates", "reinstall", "restart"]],
 ]
 
 ## The app's own menu, opened from the mark at the far left of the menu
@@ -153,6 +153,10 @@ const APP_MENU: Array = ["about", "feedback", "-", "palette", "-", "website", "d
 
 ## Commands for a browser alone, in no menu elsewhere.
 const WEB_ONLY: Array[String] = ["back_to_site"]
+
+## Commands for the desktop app alone: a browser's tab is updated by the
+## site, and restarted by reloading it (Updater).
+const DESKTOP_ONLY: Array[String] = ["check_updates", "reinstall", "restart"]
 
 ## Submenu rows are numbered from here, clear of the commands.
 const SUBMENU_ID := 10000
@@ -855,6 +859,8 @@ const NEEDS: Dictionary = {
 	"reshape_flex": "Select a hose or chain",
 	"floor_part": "Stand the model on a baseplate first",
 	"back_to_site": "In a browser only",
+	"check_updates": "In the desktop app only: the site updates itself",
+	"reinstall": "In the desktop app only", "restart": "Reload the tab instead",
 }
 
 
@@ -1431,6 +1437,14 @@ func _define() -> void:
 		"What every button and key does")
 	_add("tour", "Take the tour", 0, func() -> void: first_build.start(), Callable(),
 		"Build your first model, seven short steps done in the app")
+	# src/net/updater.gd, src/ui/update_dialog.gd: the desktop app's own.
+	var desktop: Callable = func() -> bool: return not OS.has_feature("web")
+	_add("check_updates", "Check for updates…", 0, func() -> void: app.call("check_updates"),
+		desktop, "Whether a newer version of Brickworks is out, and what it changes")
+	_add("reinstall", "Reinstall Brickworks…", 0, func() -> void: app.call("ask_reinstall"),
+		desktop, "Download this version again and put it in place, to repair a damaged install")
+	_add("restart", "Restart Brickworks", 0, func() -> void: app.call("restart_app"), desktop,
+		"Quit and start again. The model on the baseplate comes back as it is.")
 	# src/ui/command_palette.gd: Figma's key for its Actions. Ctrl+Shift+P
 	# too on the desktop (handle_key); a browser keeps that one.
 	_add("palette", "Find a command…", CTRL | KEY_SLASH, func() -> void: palette.open(), Callable(),
@@ -1619,6 +1633,8 @@ func _shown(items: Array) -> Array:
 		if not assistant_shown and item in ASSISTANT_COMMANDS:
 			continue
 		if item in WEB_ONLY and not OS.has_feature("web"):
+			continue
+		if item in DESKTOP_ONLY and OS.has_feature("web"):
 			continue
 		if EARLY_COMMANDS.has(item) and not str(EARLY_COMMANDS[item]) in early:
 			continue

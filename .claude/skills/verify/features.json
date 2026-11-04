@@ -2466,6 +2466,22 @@
       "tests": []
     },
     {
+      "id": "cli:update check",
+      "kind": "cli",
+      "entry": "tools/update_check.py",
+      "reach": "python3 tools/update_check.py packages --versions=0.90.0,0.91.0 --out=DIR linux, then python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.AppImage --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.AppImage (and the two tar.xz)",
+      "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:update helper",
+      "kind": "cli",
+      "entry": "src/net/update_helper.sh",
+      "reach": "python3 tools/minitest.py tests/test_updates.py   (update_helper.ps1 is Windows': python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.zip --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.zip (and the two tar.xz) on a Windows runner)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:update probe",
       "kind": "cli",
       "entry": "src/dev/update_probe.gd",
@@ -2479,6 +2495,14 @@
       "entry": "tools/update_parts.py",
       "reach": "tools/update_parts.py --dry-run   (fetches LDraw's newer updates and the unofficial zip; without --dry-run builds the new and changed parts, minutes)",
       "area": "pipeline",
+      "tests": []
+    },
+    {
+      "id": "cli:updater probe",
+      "kind": "cli",
+      "entry": "src/dev/updater_probe.gd",
+      "reach": "tools/probe.sh updater_probe",
+      "area": "release",
       "tests": []
     },
     {
@@ -3594,6 +3618,14 @@
       "tests": []
     },
     {
+      "id": "lib:the desktop app updates itself",
+      "kind": "lib",
+      "entry": "src/net/updater.gd",
+      "reach": "tools/probe.sh updater_probe; for real: python3 tools/update_check.py packages --versions=0.90.0,0.91.0 --out=DIR linux, then python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.AppImage --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.AppImage (and the two tar.xz)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "lib:the gallery over mcp",
       "kind": "lib",
       "entry": "src/net/gallery_tool.gd",
@@ -3645,6 +3677,14 @@
         "tests/test_challenge_year.py",
         "tests/test_challenges.py"
       ]
+    },
+    {
+      "id": "lib:the signed update manifest",
+      "kind": "lib",
+      "entry": "src/net/updates.gd",
+      "reach": "tools/probe.sh updater_probe; python3 tools/release.py latest --check dist/<version>/latest.json",
+      "area": "release",
+      "tests": []
     },
     {
       "id": "lib:the surface pass",
@@ -4068,6 +4108,14 @@
       "entry": "web/changelog.html",
       "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:check for updates reinstall and restart",
+      "kind": "ui",
+      "entry": "src/ui/update_dialog.gd",
+      "reach": "tools/probe.sh updater_probe   (Help, Check for updates\u2026, Reinstall Brickworks\u2026, Restart Brickworks: desktop only)",
+      "area": "release",
       "tests": []
     },
     {
@@ -5440,6 +5488,14 @@
       "entry": "src/ui/toolbar.gd",
       "reach": "godot --path .  (History on the toolbar, or Edit, History)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:update notice",
+      "kind": "ui",
+      "entry": "src/ui/update_notice.gd",
+      "reach": "tools/probe.sh updater_probe   (by hand: BRICKWORKS_UPDATE_URL=http://127.0.0.1:PORT/good/ against python3 tools/update_check.py serve, Settings, Updates, Ask first)",
+      "area": "release",
       "tests": []
     },
     {

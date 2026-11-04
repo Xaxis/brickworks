@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
 
 ## Sub-features
 
@@ -252,6 +252,62 @@ that offers each system its own build. The cycle and its cadence are
   the docs page) or the exported .ldr's path in `Outside.opened`, it ends
   `outside probe: all checks passed`, and probe.sh prints no `asked the
   desktop to open` lines.
+- `the desktop app updates itself` (docs/UPDATES.md): `Updater`
+  (src/net/updater.gd) asks once a day, 8 s after the model is back, for
+  `releases/latest/download/latest.json` on Xaxis/brickworks-releases; in
+  Settings, Updates, Automatic (the default) downloads the newer version
+  beside the install (`.brickworks-update/<version>/`), checks its size and
+  SHA-256, makes it ready (the AppImage; the tar.xz and a Windows zip
+  copy's zip unpacked; the DMG's app copied out; the Windows installer as
+  it is; the .deb as it is, in the app's own data), and puts it in as the
+  app quits (a .deb's copy waits for Update and restart, since apt asks for
+  a password); Ask first says it is
+  out; Off asks nothing until Help does. A test server takes GitHub's place
+  only by `BRICKWORKS_UPDATE_URL`, set by hand (plain HTTP only on
+  127.0.0.1). `--update=check|fetch|install|reinstall|restart` drives it from
+  a command line and prints `update: <mode>: <what it says>`.
+- `the signed update manifest`: `Updates` (src/net/updates.gd) believes
+  latest.json only under an RSA/SHA-256 signature by one of the two keys it
+  carries (their private halves only in `.env`: `UPDATE_SIGN_KEY`,
+  `UPDATE_SIGN_KEY_BACKUP`), then refuses a manifest not Brickworks', a
+  version not newer, a file with no size or SHA-256, plain HTTP, and any
+  address or redirect off github.com, objects.githubusercontent.com,
+  release-assets.githubusercontent.com and brickworks.diy, matched whole
+  (`github.com.example.net`, `evilgithub.com` and `//host` redirects are
+  refused). `tools/release.py publish --draft` signs it with both keys and uploads it
+  with the packages, and refuses one that lacks a kind a copy updates from
+  (`missing_update_kinds`: AppImage, tar.xz, .deb, DMG, installer);
+  `tools/release.py latest --check FILE` reads one as the app would.
+- `update notice`: "Brickworks 0.17.0 is out" (or "is ready") above the
+  model, in UpdateOffer's look: What's new (the release notes' first
+  paragraph), Update and restart, Later. Where the copy cannot write its
+  install, the button reads Download and opens brickworks.diy/download; a
+  copy installed from the .deb (in /usr/lib/brickworks) is never swapped:
+  Update and restart runs `pkexec /usr/bin/apt-get install -y` on the
+  checked .deb, and with no pkexec or the password refused says which and
+  offers Show the file; a Mac app run from Downloads or a disk image reads
+  Move to Applications and update.
+- `check for updates reinstall and restart`: Help, Check for updates…
+  ("You're up to date (0.16.0)" or what is new), Reinstall Brickworks…
+  (this same version downloaded again, checked the same way) and Restart
+  Brickworks, desktop only (src/ui/update_dialog.gd, Shell DESKTOP_ONLY).
+  Every restart writes the working model first and comes back in the same
+  session (`--session=`), on the same model.
+- `update helper`: `src/net/update_helper.sh` (Linux, macOS) and `.ps1`
+  (Windows), written to `user://updates/` and run as the app quits: waits
+  for it to end, swaps the folder, .app or AppImage by renames (for a copy
+  with `Uninstall Brickworks.exe` beside it, moves the folder aside and runs
+  the new `setup.exe /VERYSILENT /D=<folder>`; for a .deb's copy, which apt
+  has already updated, only restarts), asks the new copy `--about`, starts
+  it and waits for it to say its window is up, and puts the old copy back
+  (started with `--update-failed=`) when it cannot.
+- `updater probe`: `src/dev/updater_probe.gd` signs a release with a key of
+  its own, serves it with `tools/update_check.py serve`, and drives the real
+  scene through every refusal, the notice, the download and the hand-over.
+- `update check`: `tools/update_check.py` builds two versions with a small
+  library (`packages`), serves them, and drives real packages through every
+  refusal and a real install, restart, reinstall, install on quit and put
+  back; `lay` and `run --laid` do it on a runner that has no key.
 
 ## How to reach it
 
@@ -271,6 +327,11 @@ gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0
 tools/release/releases_repo.sh --dir=<scratch>      # a dry run: about 5 GB downloaded
 tools/release/release_links.sh                      # this checkout's web/releases.json
 tools/release/train.sh status                       # each release staged: its step, checks, what is live
+tools/probe.sh updater_probe                        # the updater on the real scene, against a local server
+python3 tools/minitest.py tests/test_updates.py     # signing, the helper's swaps and put-backs
+python3 tools/update_check.py packages --versions=0.90.0,0.91.0 --out=DIR linux   # ~small test packages
+python3 tools/update_check.py run --old DIR/0.90.0/Brickworks-0.90.0-linux-x86_64.AppImage --new DIR/0.91.0/Brickworks-0.91.0-linux-x86_64.AppImage
+python3 tools/release.py latest --check dist/<version>/latest.json
 ```
 
 ## How to check it
@@ -443,7 +504,89 @@ the Linux button, pressed, asks its public address and nothing of
 page offers each system its own build`. With a manifest
 that has no release it reads `no release yet` for all four.
 
+```sh
+tools/probe.sh updater_probe
+python3 tools/minitest.py tests/test_updates.py
+```
+
+Proves it when: the probe prints 46 `ok` lines and ends `the desktop app
+checks, refuses what it must, downloads, and hands over the restart with the
+model kept` (among them: the two release keys each load under their own id;
+Check for updates refuses a bad signature and `0.0.1, which is older`; in
+Automatic a download is refused for a wrong SHA-256, a short size and
+`refused an address off GitHub and brickworks.diy: https://example.com/...`;
+`a redirect to any other host is refused, however like an allowed one it
+looks` (14 lookalikes, `//host` and plain HTTP among them); a copy in
+/usr/lib/brickworks is the .deb's, and in Automatic `a .deb's copy, in
+Automatic, downloads the new .deb into its own data, checked`; `...Update
+and restart asks apt to install it as root (/usr/bin/apt-get install -y
+.../data/.brickworks-update/99.0.0/Brickworks-99.0.0-linux-amd64.deb);
+refused: Couldn't install Brickworks 99.0.0: the password was refused or
+not given, so nothing was installed`, Show the file shows that .deb, and
+`...let, apt puts it in and the helper only starts the new copy, in the
+same session: restart <pid>`;
+Update and restart hands `/bin/sh helper.sh install <pid> <install> <staged>
+... 99.0.0` with `--session=<id>`); and the tests print `14 passed`.
+Before 2026-11-03 (0.15.0) Help had only `keys` and `tour` and no release
+carried a latest.json.
+
+```sh
+python3 tools/update_check.py run --old OLD --new NEW --log=DIR/log.txt
+```
+
+Proves it when: every line is `ok` and it ends `<old> → <new>: every refusal
+held, and it updates, restarts, reinstalls and puts back`, for the AppImage
+and the tar.xz alike: six refusals with their words, `Check for updates:
+Brickworks B is out`, `Update and restart (by a redirect on the same host):
+report: running B; model “House”, N parts; session S` with the same model,
+parts and session as before the restart, the copy in place says B and
+nothing is left in `.brickworks-update/`, Restart and Reinstall come back
+the same, Automatic's next start says B, and a copy that cannot start is
+put back and A started again (16 `ok`).
+
+For the .deb pair (`Brickworks-A-linux-amd64.deb`) it proves it when it ends
+`the .deb's copy downloads the new .deb, and apt installs it (refused and
+missing here; by sudo on a runner)`: the copy in `usr/lib/brickworks` says
+A, Check for updates says B is out, `Update and restart with pkexec refused:
+Couldn't install Brickworks B: the password was refused or not given, so
+nothing was installed; it offers .../.brickworks-update/B/...deb` and the
+same `with no pkexec` (`pkexec isn't on this system`), `...apt was asked for
+the checked .deb, as root: /usr/bin/apt-get install -y ...`, `nothing dpkg
+put there was changed`, and the copy is still A (7 `ok`). Nothing is
+installed on this machine; packages build HEAD, so commit app changes first
+(`packages` refuses otherwise).
+
+On macOS, Windows and Ubuntu the same, from a runner, with the DMG, the
+installer, the zip and the .deb: `update_check.py lay --old OLD --new NEW
+--port=8697 --out=DIR` here (the runner has no signing key), then `run
+--laid=DIR --system` there (docs/UPDATES.md), which installs the first copy
+from the DMG into /Applications, by `setup.exe /VERYSILENT` into
+`%LOCALAPPDATA%\Programs\Brickworks`, or by `sudo apt-get install` into
+/usr/lib, and takes them away after (a zip copy runs without `--system`).
+It proves it when it ends the same way, the updater's log says `put B in
+place at /Applications/Brickworks.app` (or `.../Programs/Brickworks`,
+staged as `...-setup.exe`): the DMG 16 `ok`, the zip 16; the installer 20,
+among them `Settings, Apps lists B`, `...with its Start menu entry and .ldr
+opening in it`, `Uninstall leaves nothing of it: no file, no Settings, Apps
+entry, no Start menu entry, no file type` and `...lists what it did before:
+A-before` after the put back; the .deb 10, among them `Update and restart,
+apt installing it by sudo in pkexec's place: report: running B; model
+“House”, N parts`, `dpkg lists brickworks B`, and `apt remove leaves
+nothing of it` (sudo stands in for pkexec, whose dialog a runner cannot
+answer).
+On Windows the log-judged steps start `Brickworks.exe`: the console wrapper
+keeps its own file in use until the new copy ends.
+
 ## Gotchas
+
+- **0.15.0 and older have no updater.** The first version with one, and its
+  latest.json, has to be downloaded by hand once; from then on it updates
+  itself. A release with no latest.json leaves `releases/latest/download/
+  latest.json` answering 404, said as `Couldn't check for updates: the
+  server answered 404`.
+- **GitHub sends release downloads to release-assets.githubusercontent.com**
+  (since 2025), not objects.githubusercontent.com: both are let in. A new
+  host there refuses every update until `Updates.HOSTS` names it.
 
 - **Public only by promoting a checked draft.** `publish` without `--draft`
   refuses to create a release: it only promotes a draft that exists, which is

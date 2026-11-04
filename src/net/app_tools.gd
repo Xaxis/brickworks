@@ -135,6 +135,9 @@ const WINDOW_ONLY: Dictionary = {
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
 	"beta_hub": "help for the person",
+	"check_updates": "the person's own copy of the app: a new version is theirs to take, and taking it restarts the app the session is driving",
+	"reinstall": "puts a fresh copy of the app in place and restarts it, ending the session's connection",
+	"restart": "closes and reopens the app the session is driving, ending the session's connection",
 	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; in_view shows a session the one laid, and a session is given its own pictures in the conversation",
 }
 
