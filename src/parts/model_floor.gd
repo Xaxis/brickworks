@@ -21,6 +21,10 @@
 ##   0 !BRICKWORKS FLOOR BASEPLATE 32 32 288
 ##   0 !BRICKWORKS FLOOR GRID
 ##   0 !BRICKWORKS FLOOR NONE
+##
+## A file that says none stands on the grid when another program made it,
+## a set's among them, and on the floor new models get when this one did
+## (unsaid).
 class_name ModelFloor
 extends RefCounted
 
@@ -162,6 +166,20 @@ static func colour_name(code: int) -> String:
 		if int(pair[0]) == code:
 			return str(pair[1])
 	return "colour %d" % code
+
+
+## What a model whose file says nothing of its floor stands on. One made in
+## another program ([param elsewhere]: a real set from the library, a model
+## the community shared, an .io, an .lxf) stands on the grid: a set has no
+## plate in its box, and one opened on the baseplate was a car parked on a
+## lawn (the owner, 2026-11-04). A set with a baseplate among its parts
+## stands on that (FloorLayer.own_plates). Brickworks writes its own files
+## as "0 Author: Brickworks" (ModelStore.to_text, since 2026-09-19), which
+## is how the store tells them apart; one of those with no floor line was
+## saved before models had floors (2026-10-12), when every model stood on
+## the baseplate new ones get, and it stands on the floor new ones get still.
+static func unsaid(elsewhere: bool) -> ModelFloor:
+	return ModelFloor.make(GRID) if elsewhere else preferred()
 
 
 ## The floor new models get: the person's setting (Settings), or the dark

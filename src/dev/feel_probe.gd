@@ -69,6 +69,10 @@ func _run() -> void:
 	_world.clear()
 	_builder.lattice.clear()
 	store.scenery.clear()
+	# On the baseplate new models get, as this was written on: the first
+	# visit's car it starts on is LDraw's, and stands on the grid now, as a
+	# file made elsewhere does (ModelFloor.unsaid).
+	store.model_floor = ModelFloor.make(ModelFloor.BASEPLATE)
 	for n: int in 6:
 		var at := Transform3D(Basis.IDENTITY, Vector3(n * 40.0, 24.0, 0.0))
 		var brick_id: int = _world.add_brick("3001", 4, at)

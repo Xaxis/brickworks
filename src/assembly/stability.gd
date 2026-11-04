@@ -321,15 +321,15 @@ func _check_tipping(bricks: Array, mass: Dictionary, boxes_of: Dictionary,
 	report.risks.append(risk)
 
 
-## The top cell of [member floor_ids]' parts, by [param boxes_of], or unset
-## for no floor (Balance.floor_top).
+## The top cell of [member floor_ids]' parts, by [param boxes_of], or the
+## ground's with none (Balance.floor_top).
 func _floor_top(boxes_of: Dictionary) -> int:
 	var top: int = 0x7FFFFFFF
 	for id: Variant in floor_ids:
 		var under: PackedInt32Array = boxes_of.get(id, PackedInt32Array())
 		for at: int in range(0, under.size(), 6):
 			top = under[at + 4] if top == 0x7FFFFFFF else maxi(top, under[at + 4])
-	return top
+	return top if top != 0x7FFFFFFF else Balance.GROUND
 
 
 ## Who rests on whom, as the lattice has it: {"above": id -> {id of each
@@ -967,8 +967,9 @@ func _check_levels(
 	if bricks.size() < 2:
 		return
 
-	# Group by the height each brick starts at, in whole cells: on a floor,
-	# no lower than its top, since what is below that is in it.
+	# Group by the height each brick starts at, in whole cells: no lower than
+	# the floor's top, a plate's or the ground's, since what is below that is
+	# in it.
 	var levels: Dictionary = {}        ## cell y -> Array[Brick]
 	## id -> the lowest cell it occupies, worked out once.
 	var stands_at: Dictionary = {}
@@ -980,7 +981,7 @@ func _check_levels(
 			continue
 		var corners: Array = BrickLattice.corners_in(boxes)
 		var floor_y: int = (corners[0] as Vector3i).y
-		if top != 0x7FFFFFFF and not floor_ids.has(brick.id):
+		if not floor_ids.has(brick.id):
 			floor_y = maxi(floor_y, top)
 		stands_at[brick.id] = floor_y
 		if not levels.has(floor_y):

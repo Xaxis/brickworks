@@ -1140,8 +1140,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   box, Fit, the cut-away and stability all work against the ground. Saved as
   `0 !BRICKWORKS FLOOR BASEPLATE 32 32 288` / `GRID` / `NONE` in the head of
   the model (`ModelFloor.written_into`), in the autosave, saves, LDraw and
-  Studio exports and shared links; a file that says nothing gets the floor new
-  models start on. Pictures are of the model: renders, Export picture, the
+  Studio exports and shared links. A file that says nothing stands on the grid
+  when another program made it — a set from the library (the Library, a set
+  page's Open in the app, `open_model library=`, File, Open, a double-click,
+  its autosave, Build together), a community .ldr (the first visit's car),
+  an .io, an .lxf — and on the floor new models start on when Brickworks did
+  (its `0 Author: Brickworks` line, saved before floors): `ModelFloor.unsaid`.
+  A set had a 32 x 32 green baseplate under it, a car on a lawn (the owner,
+  2026-11-04). `src/dev/set_floor_probe.gd` opens a set every way one opens,
+  files made elsewhere, Brickworks' own of each floor and from before floors,
+  6689-1 on its own plate, View, Floor's baseplate under a set (one undo,
+  saved with the copy), and holds the status bar's verdict on the grid to the
+  baseplate's (6043-1). Pictures are of the model: renders, Export picture, the
   share card, the Studio thumbnail, the booklet and the designer's own pictures
   show a baseplate only when it is part of the model (it is in the box), on the
   studio's clean floor otherwise, and never the grid or the shadow's ground;
