@@ -13,12 +13,15 @@ Admission and Supabase (tests/fixtures/billing/), through the real client
 - Admission down, or refusing our key: nothing deleted, and the person told
   plainly;
 - a deletion that stopped after Admission erased the account finishes when
-  asked again, ending nothing twice.
+  asked again, ending nothing twice;
+- an answer under 13 (?op=age) deletes the account by the very same steps,
+  Admission first, and with Admission down deletes nothing.
 """
 
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -29,6 +32,8 @@ PRO_NOT_ENDED = ("We couldn't cancel your Pro plan, so nothing was deleted. Try 
                  "support@atypic.ai.")
 NOT_ERASED = ("We couldn't close your plan with billing just now, so nothing was deleted. Try again in a minute, "
               "or write to support@atypic.ai.")
+TOO_YOUNG = ("Brickworks accounts are for 13 and over. Ask a parent or guardian to sign in with their own email "
+             "and build with you.")
 # What a deletion has always answered for an account with no photos and no avatar.
 DELETED = {"status": 200, "json": {"deleted": True, "photos": 0, "avatars": 0, "feedback": 0}}
 
@@ -177,3 +182,43 @@ return { first, between: between.subscription, again, deleted: w.deleted, erasur
         {"customerId": sub, "found": False, "canceled": []},
     ]
     assert got["deleted"] == [sub]
+
+
+def test_an_answer_under_13_is_deleted_by_the_same_steps() -> None:
+    got = run("""
+w.ageAsk = true;
+const BO = { sub: '7d6c1a2e-0000-4000-8000-0000000000b0', email: 'bo@example.com' };
+const young = async (claims) => askAccount({ method: 'POST', query: { op: 'age' },
+  headers: { authorization: `Bearer ${await w.signIn(claims)}` },
+  body: { month: 1, year: new Date().getUTCFullYear() - 9 } });
+w.admission.down = true;
+const down = await young(BO);
+const held = { deleted: [...w.deleted], erasures: [...w.admission.erasures],
+  touched: w.calls.filter((c) => /oc_connect_leaving|\\/storage\\/|admin\\/users|otp_requests/.test(c)) };
+w.admission.down = false;
+let from = w.calls.length;
+const said = await young(BO);
+const age = w.calls.slice(from);
+from = w.calls.length;
+await del(ADA);
+const asked = w.calls.slice(from);
+return { down, held, said, age, asked, deleted: w.deleted, erased: w.admission.erasures.map((e) => e.customerId) };
+""", billing="test")
+    if got is None:
+        return
+    bo, ada = "7d6c1a2e-0000-4000-8000-0000000000b0", "7d6c1a2e-0000-4000-8000-00000000ada0"
+    # Admission down: refused, and nothing of the account touched.
+    assert got["down"]["status"] == 503 and "deleted" not in got["down"]["json"]
+    assert got["held"] == {"deleted": [], "erasures": [], "touched": []}
+    # Up: told, and gone, erased at Admission first.
+    assert got["said"] == {"status": 403, "json": {"error": TOO_YOUNG, "deleted": True}}
+    assert got["erased"] == [bo, ada] and got["deleted"] == [bo, ada]
+    age = got["age"]
+    users = f"DELETE https://db.test/auth/v1/admin/users/{bo}"
+    assert age.index(erase_of(bo)) < age.index(users) < age.index("DELETE https://db.test/rest/v1/otp_requests")
+
+    # The same steps in the same order as the deletion a person asks for:
+    # only the question before them and the codes' count after differ.
+    def steps(calls: list[str], sub: str) -> list[str]:
+        return [c.replace(sub, "<id>") for c in calls if not re.search(r"jwks|rpc/age_of|otp_requests", c)]
+    assert steps(age, bo) == steps(got["asked"], ada) and erase_of("<id>") in steps(age, bo)
