@@ -226,7 +226,11 @@ that offers each system its own build. The cycle and its cadence are
   `--accept CHECK "REASON"` (at reship or stage) ships past a check that
   failed on brickworks.diy too as the same script, and is refused for one
   that passes there; the log, status and merge message name it with both
-  failure lines.
+  failure lines. With no `--probes` its probes are every one
+  `tools/suite/headless.txt` lists in the branch's tree, said with how many
+  in the stage output and `TAG.train/probes.why`; `--probes "a b"` names
+  exactly those; `--probes none --why "..."` runs none and the log and
+  status say why; `--probes ""` is refused.
   tools/release/README.md has the
   rest. `tests/test_release_train.py` runs it with stand-ins for the hour's
   work.
@@ -477,7 +481,7 @@ whose size is one byte off is `FAIL ... answered '200 <size>'`.
 python3 tools/minitest.py tests/test_release_train.py
 ```
 
-Proves it when: `22 passed`, in about 80 s, and 8 copies at once all pass
+Proves it when: `32 passed`, in about 85 s, and 8 copies at once all pass
 (about 56 s each); the killed-train test passes 1000 runs of 16 at once at
 load 33 (4 of 300 failed so before 2026-11-03). Each test makes a repository with an origin and unit
 worktrees; train.sh, ship.sh, preview_lib.sh and retire_wt.sh are the real
@@ -517,7 +521,20 @@ alone` and passes alone (`TRAIN_PROBES_AT_ONCE=1` stops on it). A commit to the 
 merges ships in the next release, not this one (`tip` in the spec is the one
 merged); a restage after a failed probe says `cleared TAG's attempt before
 (its merge alone)` and ships, and one over a fix staged or committed in the
-stopped release's worktree is refused, the fix kept.
+stopped release's worktree is refused, the fix kept. Named no probes, a
+branch listing four headless probes (one added on the branch, one with
+`:ARGS`, one after a comment) stages `probes: all 4 headless (1 windowed
+left to the suite)` and runs those four; a windowed probe, one out.txt
+keeps out, and names in headless.txt's comments never run; a branch with
+no headless.txt is refused; a list named is kept as it is (`named at
+staging`); `--probes none` without `--why`, and `--probes ""`, are refused,
+and with one the log says `runs no probe: none: REASON` and status
+`probes: none run, none: REASON`.
+A dry stage on the real repository (train.sh with its `setsid` lines taken
+out, RELEASE_OUT in scratch) of origin/main said `probes: all 209 headless
+(103 windowed left to the suite)`, its spec the 209 in headless.txt's order
+(2026-11-04). All 209 took 19m30s four at a time (22m12s with the six that
+failed again alone), beside a battery of about two hours.
 On a real release, `tools/release/train.sh status` while it waits says
 `step: HH:MMZ waits for PREV to serve (until HH:MMZ)`. Against the real
 release-out on 2026-10-30 with rel-m218 shipping by hand: `live:
