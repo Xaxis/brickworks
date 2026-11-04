@@ -41,7 +41,7 @@
 // Pictures in --out. Fails, exiting 1, on a count that is wrong, a step
 // that does not happen, or a script error in the console. No model is
 // called and nothing is signed in to.
-import { askApp, clickStill, controlsWith, launch, openColumnFor, openFromFile } from "./browser.mjs";
+import { askApp, caughtUp, clickStill, controlsWith, launch, openColumnFor, openFromFile } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -206,8 +206,11 @@ function press(page, name, ms = 1500) {
 
 // The bricks drawn in the model's part of the window, from a picture of it,
 // and the part of that left clear: all of it but the strip of notices over
-// its top, while one shows.
+// its top, while one shows. The picture is of the frame after the state the
+// flow waited for (caughtUp): 3 s after the app said the nine were open, a
+// picture was still of the first visit's car (rel-m253).
 async function drawn(page, name) {
+  const caught = await caughtUp(page);
   const png = await page.screenshot({ path: `${out}/${name}_${tag}.png`, timeout: 180000 });
   const layout = (await askApp(page, "Layout")) || {};
   const view = layout.view || [0, 0, width, height];
@@ -225,7 +228,8 @@ async function drawn(page, name) {
   }, [`data:image/png;base64,${png.toString("base64")}`, view, COUNT]);
   await reader.close();
   counted.clear = { top: Math.max(0, Math.round(below)), w: view[2], h: view[3] };
-  console.log(`        ${name}: ${counted.bricks} bricks (${counted.red} px red, ${counted.yellow} yellow), ${out}/${name}_${tag}.png`);
+  console.log(`        ${name}: ${counted.bricks} bricks (${counted.red} px red, ${counted.yellow} yellow),`
+    + ` the drawing ${caught < 0 ? "NOT caught up" : `caught up in ${caught} ms`}, ${out}/${name}_${tag}.png`);
   return counted;
 }
 
@@ -355,7 +359,6 @@ async function build(run, again, made = DESIGN) {
     const playing = states.filter((s) => s.playing);
     console.log(`        ${name}: ${states.length} states written, playing in ${playing.length}`
       + `${playing.length ? ` (${playing.map((s) => s.now).join(", ")} ms)` : ""}`);
-    await page.waitForTimeout(3000);
     const seen = await drawn(page, `${name}_after`);
     const how = again
       ? `asked again after the stream dropped, the design went up ${playing.length ? "as the build animation played" : "WITHOUT the build animation"}`
@@ -387,7 +390,6 @@ async function cutAndBooklet() {
     await openFromFile(page, nine, { shots: out });
     ok(Boolean(await until(page, (s) => s.bricks === 9 && s.awaited === 0, 240)),
       `the nine bricks open through Open… > From a file: ${(await state(page)).bricks} parts`);
-    await page.waitForTimeout(3000);
     const whole = await drawn(page, "cut_0_whole");
     ok(whole.bricks === 9, `all nine drawn before the cut: ${whole.bricks}`);
     if (only.has("cut")) {
@@ -406,7 +408,6 @@ async function cutAndBooklet() {
         await page.mouse.click(x, slider.y);
         const moved = await until(page, (s) => s.cut && Math.abs(s.cut.at - before) > 0.5, 30);
         const at = (moved || (await state(page))).cut.at;
-        await page.waitForTimeout(3000);
         const seen = await drawn(page, `cut_${n + 1}_at_${Math.round(at)}`);
         // Wholly below the plane, and the one it goes through, which may
         // show too little of itself to count.

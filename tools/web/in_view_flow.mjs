@@ -47,7 +47,7 @@
 // Pictures of the window in that state in --out, named by the size, and
 // in_view's text. No model is called; costs nothing. Fails, exiting 1, on any
 // check that does not hold or a script error in the console.
-import { askApp, clickStill, controlsWith, launch, openColumnFor, openFromFile, withJobs } from "./browser.mjs";
+import { askApp, caughtUp, clickStill, controlsWith, launch, openColumnFor, openFromFile, withJobs } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -182,8 +182,11 @@ async function stage(name) {
 }
 
 // The view as drawn, its pixels of the red of step 1's brick and the yellow
-// of step 3's counted (the window's picture decoded in a page of its own).
+// of step 3's counted (the window's picture decoded in a page of its own),
+// in the frame after the state waited for (caughtUp), not a fixed time
+// after it, which can still be an older frame.
 async function bricksDrawn(name) {
+  await caughtUp(page);
   const png = await page.screenshot({ path: `${out}/${name}`, timeout: 180000 });
   const view = ((await askApp(page, "Layout")) || {}).view || [0, 0, width, height];
   const reader = await browser.newPage();
@@ -343,7 +346,6 @@ async function run() {
   }
   ok(/^Step 4 of 9/.test(await caption()), `Next to step 4: "${await caption()}"`);
   await stage("3_step_4");
-  await page.waitForTimeout(1500);
   let seen = await bricksDrawn(`stage_3_step_4_drawn_${tag}.png`);
   ok(seen.drawn, `...and its bricks are drawn: ${seen.red} px of step 1's red, ${seen.yellow} of step 3's yellow`);
   const again = Number(args.again ?? 4);
@@ -359,7 +361,6 @@ async function run() {
       await until((s) => ((s.timeline || {}).caption || "") !== was, 20);
     }
     const at = await caption();
-    await page.waitForTimeout(3000);
     seen = await bricksDrawn(`stage_3_again_${n}_${tag}.png`);
     console.log(`        opened again ${n}: "${at}", ${seen.red} px red, ${seen.yellow} yellow`);
     if (/^Step 4 of 9/.test(at) && seen.drawn) drawnAgain++;

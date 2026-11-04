@@ -45,7 +45,7 @@
 //
 // Writes DIR/look_<mode>.json. Says the box's load beside every number:
 // a frame drawn in software on a shared box costs what the box lets it.
-import { launch, openColumnFor } from "./browser.mjs";
+import { fenced, launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { loadavg } from "node:os";
 import path from "node:path";
@@ -206,32 +206,6 @@ async function turn(page, size, moves = steps) {
   await page.mouse.move(at.x + span, at.y, { steps: Math.ceil(moves / 2) });
   await page.mouse.move(at.x, at.y, { steps: Math.floor(moves / 2) });
   await page.mouse.up({ button: "right" });
-}
-
-// A fence after everything the page has asked of WebGL so far, and when it
-// passed. In a browser drawing in software, SwiftShader draws in Chromium's
-// GPU process, behind the page: the page hands a frame over in the
-// display's 17 ms, and a dozen of them can be queued before it has to wait,
-// so what a frame cost is when the drawing is done, not when it was asked.
-async function fenced(page, seconds = 600) {
-  await page.evaluate(() => {
-    const canvas = document.getElementById("canvas") || document.querySelector("canvas");
-    const gl = canvas.getContext("webgl2");
-    window.lookFence = { gl, sync: gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0), put: performance.now() };
-    gl.flush();
-  });
-  const end = Date.now() + seconds * 1000;
-  for (;;) {
-    const done = await page.evaluate(() => {
-      const f = window.lookFence;
-      if (f.gl.getSyncParameter(f.sync, f.gl.SYNC_STATUS) !== f.gl.SIGNALED) return null;
-      f.gl.deleteSync(f.sync);
-      return { put: f.put, passed: performance.now() };
-    });
-    if (done) return done;
-    if (Date.now() > end) throw new Error(`a fence: not passed within ${seconds} s`);
-    await page.waitForTimeout(25);
-  }
 }
 
 // One cut measured: pinned (a build with FrameBudget), a frame drawn with
