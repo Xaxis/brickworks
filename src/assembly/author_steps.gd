@@ -174,8 +174,11 @@ static func _put(world: BrickWorld, item: Dictionary, to: int, undo: Array) -> v
 ## [param undo] with each part and each copy named once, by what it had
 ## first: the entries of an undo group are applied in the order they were
 ## kept, so a part moved and then renumbered was put back to its middle
-## step, not its first.
-static func squash(undo: Array) -> Array:
+## step, not its first. With [param world], without those that would give
+## a part or a copy back the step it has now: a part alone in its step made
+## a step of its own is renumbered and numbered back, and an edit that
+## moves nothing is none, with nothing to undo (Shell.change_steps).
+static func squash(undo: Array, world: BrickWorld = null) -> Array:
 	var out: Array = []
 	var seen: Dictionary = {}
 	for entry: Dictionary in undo:
@@ -185,8 +188,21 @@ static func squash(undo: Array) -> Array:
 		if seen.has(name):
 			continue
 		seen[name] = true
-		out.append(entry)
+		if world == null or _changes(world, entry):
+			out.append(entry)
 	return out
+
+
+## Whether [param entry], a step edit's undo, gives back what the model no
+## longer has.
+static func _changes(world: BrickWorld, entry: Dictionary) -> bool:
+	match str(entry.get("undo", "")):
+		"restep":
+			var brick: BrickWorld.Brick = world.get_brick(int(entry["brick"]))
+			return brick == null or brick.step != int(entry["step"])
+		"unitstep":
+			return int(world.unit_steps.get(str(entry["unit"]), -1)) != int(entry["step"])
+	return true
 
 
 ## Number a section's steps 0, 1, 2… in the order they were, with no gaps:

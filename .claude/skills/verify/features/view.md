@@ -1305,7 +1305,11 @@ picture the assistant is shown.
   step edit says where its parts are now and the timeline shows that step,
   both read back off the plan after it (`Shell.numbers_of`), as is Next
   step (E): worked out from the edit, the lighthouse's rocks were said to
-  be "in step 1" when the booklet had them in 1 to 52. A step of another
+  be "in step 1" when the booklet had them in 1 to 52. An edit that leaves
+  every number as it was, a part alone in its step made a step of its own,
+  says the steps are as they were and leaves nothing to undo
+  (`AuthorSteps.squash` given the world; suitesteps, 2026-11-04): it said
+  it had made a new step, and its undo did nothing. A step of another
   sub-model is refused naming whose steps it is and where the parts given
   are built (`Shell._not_in_step`), and `edit_steps`'s list names a
   sub-model built where it stands as it names a callout ("in the island,
