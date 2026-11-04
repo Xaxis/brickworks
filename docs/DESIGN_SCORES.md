@@ -4797,6 +4797,183 @@ Next, from what the lever did not reach:
   the open studs on the d12 losers, and Level Crossing here. A set that
   stands on a baseplate shows grass and roads there, not a bare field.
 
+### Surface: what d13l44 still loses on, and a bare ground cut back to what stands on it, a smoke (2026-11-04, design14, `a567612e`, NO-GO)
+
+**Why.** design13's lever is now the code. Before the next lever, count what
+its 44 (`realset-2026-11-03-d13l44`) still loses against the set, and why,
+in the judge's own words.
+
+**The losses.** 43 subjects paired (Emma's made no model), both orders: 86
+verdicts a dimension.
+
+| dimension | won | lost |
+|---|---|---|
+| likeness | 24 | 62 |
+| surface | 31 | 55 |
+| colour | 24 | 62 |
+| technique | 12 | 74 |
+| creativity | 40 | 46 |
+| overall | 21 | 65 |
+| all | 152 | 364 |
+
+**The judge's named causes**, each lost verdict's reason read for the kinds
+below (a verdict can name more than one; scratch `py/kinds.py`):
+
+| kind | likeness | surface | colour | technique | creativity | overall | all | subjects |
+|---|---|---|---|---|---|---|---|---|
+| stacked straight, no turned or angled part | 12 | 32 | 2 | 71 | 2 | 8 | 127 | 39 |
+| generic or boxy shape, the defining shape missed | 52 | 10 | 0 | 0 | 4 | 40 | 106 | 33 |
+| flat one-colour fields | 8 | 3 | 59 | 3 | 0 | 2 | 75 | 35 |
+| open studs | 3 | 41 | 5 | 2 | 0 | 11 | 62 | 27 |
+| stepped where the set curves | 9 | 29 | 1 | 9 | 5 | 3 | 56 | 24 |
+| few story or play details | 0 | 0 | 0 | 3 | 36 | 17 | 56 | 26 |
+| Technic brief built in System bricks | 6 | 2 | 0 | 15 | 0 | 16 | 39 | 9 |
+| the line's idiom missed (figures, faces, theme) | 10 | 1 | 4 | 4 | 1 | 12 | 32 | 7 |
+| a bare base or ground | 6 | 8 | 9 | 1 | 1 | 5 | 30 | 9 |
+
+One quote each:
+- stacked straight: "B's wall is straight stacked bricks on a flat base" (Great Wall, technique);
+- generic shape: "A is a generic low tan block with flat grey slab roofs" (Imperial Hotel, likeness);
+- flat one-colour fields: "B is mostly one broad expanse of light grey wall against a tan base" (Uruk-hai, colour);
+- open studs: "its huge baseplate is all exposed studs, apart from the tan tile paths" (Heartlake Stables, surface);
+- stepped: "B just stacks staggered" bricks where "A uses curved elements for the rounded prow" (Flatiron Building, technique);
+- few story details: "spread thinly over a flat base" (The Cave, creativity);
+- Technic in System: "B is built the way Technic sets are, with beams, pins, panels" (Record Breaker, technique);
+- the line's idiom: "B uses true BrickHeadz construction" (Steve & Creeper, technique);
+- a bare ground: "A covers a flat baseplate with exposed studs" (Dino Explorer, surface).
+
+**The most wins.** By count, stacked straight (127 verdicts, 71 of the 74
+technique losses) and the generic shape (106, 40 of the 65 overall losses)
+cost the most. Both have had their levers: technique fifteen since 10-16
+(the last, app-made panels, NO-GO on 11-03), the shape three (the defining
+shape first, the signature features, silhouettes), none ready. The bare
+ground has had none, and read strictly (the verdict faults our ground, not
+the set's, Architecture's plinths left out) it is 21 lost verdicts on 6
+subjects, in five dimensions: surface 6, colour 7, likeness 4, overall 3,
+creativity 1. On those 6 subjects it is 3.5 losses a subject, where stacked
+straight is 3.3 and the shape 3.2.
+
+**What sets do.** Every design and set of the 44 opened in the app and its
+ground read: the flat plates and baseplates within a plate of the model's
+bottom, what stands on them, and what is bare (scratch `ground_read.gd`).
+On the 15 scenes (not Architecture, whose plinth is its footprint):
+
+| | sets | d13l44 |
+|---|---|---|
+| ground over the footprint, pooled | 18% | 78% |
+| median a model | 15% | 93% |
+| bare ground studs | 1,154 | 5,795 |
+| largest bare fields, summed | 639 | 4,986 |
+| baseplates | 0 | 8 |
+
+Level Crossing: the set's largest bare field is 6 studs, ours 1,161. Rise of
+the Sphinx 28 against 951, Naida's Spa Secret 0 against 368, Dino Explorer 8
+against 208. Heartlake Stables is the set that keeps a ground: 395 against
+937. The library's 170 scenes (City, Town, Creator, Friends, Western, 1995
+to 2020) lay a ground over a median 4% of their footprint (quartiles 0%,
+4%, 23%), their median largest bare field 3 studs; 13 have a baseplate,
+mostly the older ones (City Airport, Skull Island). A set's base is the size
+of what stands on it: a brief's "fitting in about 30 x 49 studs" is where a
+scene spreads, and our sessions read it as a ground to cover.
+
+**The change** (`a567612e`), a proposal the session settles: the surface
+pass finds `ground` first. A plain plate or baseplate of 16 studs or more at
+the model's bottom whose studs carry nothing out to its edge is laid again
+as the smallest real one in its colour (a baseplate for a baseplate, its top
+where it was) holding what stands on it and a stud round, or taken off when
+nothing stands on it. No cut that leaves a hole in the ground, none in a
+kept zone. The answer says why (sets lay a base the size of what stands on
+it; a bare field round a building or a vehicle reads as a flat expanse of
+studs) and that "reject" or "keep" puts it back, for ground that is the
+play.
+
+**Proof in the app.** `ground_cut_probe`: a corner house on a 32 x 32
+baseplate gets a 16 x 8 baseplate, its top where it was, the model one piece,
+open studs 1,006 → 110; kept with a reason, the 32 x 32 is back and never
+proposed again; a hut on a 16 x 16 plate gets a 6 x 6; a tiled plinth is
+left; a bare 8 x 8 beside a house comes off; a cut in the ground's middle is
+never made. The first run found the 16 x 16 left alone: "Plate 16 x 16 with
+Underside Ribs" read as a side-stud part, so names are now read by word.
+`surface_probe` 98 ok (its offered ground moved to a 6 x 6 the cut leaves),
+`mcp_sync` ok with the tool list written, `docs_site --check` ok.
+
+**Smoke.** Two locked snapshots, each imported first: `snapd14base` at
+`aeba2fdf` (pre256) and `snapd14lev` at `a567612e`. One job each on the
+owner's path, on the five subjects with the largest bare grounds in d13l44:
+3189-1 Heartlake Stables (937 bare studs in one field), 7936-1 Level
+Crossing (1,161), 7326-1 Rise of the Sphinx (951), 41072-1 Naida's Spa
+Secret (368) and 5934-1 Dino Explorer (208). No login lapse. The holdout
+held in all ten: two base sessions searched for their own set (the library
+for "7326" and "41072", the web for "Naida's Spa Secret 41072") and every
+answer was "nothing matches".
+
+Verdicts won, of 10 per dimension (5 subjects, both orders):
+
+| dimension | d14base | d14lev |
+|---|---|---|
+| likeness | 3 | 4 |
+| surface | 5 | 4 |
+| colour | 3 | 3 |
+| technique | 0 | 0 |
+| creativity | 1 | 2 |
+| overall | 2 | 3 |
+| lost verdicts naming our ground | 8 | 7 |
+
+Where the lever acted, and where it did not:
+
+- **Level Crossing**: the base built no ground at all; the lever's session
+  built a full green lot of two layers. The pass cut four 8 x 8 plates of the
+  upper layer to 4 x 4s, and the session kept all four: "These 8x8 plates are
+  the upper ground layer that bonds the seams of the layer below; the brief
+  asks for a full 30x49 lot." Both arms won the same verdicts.
+- **Rise of the Sphinx**: seven tan plates of an upper ground layer cut
+  back or taken off; all kept, "The open tan sand is the dig site ...
+  Pharaoh's Quest sets leave their desert ground studded for figures."
+  Surface 1 → 2, from the design; a lost likeness verdict names "a flat
+  baseplate".
+- **Heartlake Stables**: no ground finding. Its paths, fences and trees run
+  to the edges of both baseplates, so what stands on them spans each whole.
+  The base's lost verdicts name "a large, mostly empty baseplate", "wide
+  areas of green baseplate studs exposed"; the lever's none (its paddock was
+  tiled by the session).
+- **Naida's Spa Secret**: no cut. design13's laying of the lawn was refused
+  ("it would leave the model in 3 pieces") and the session kept G1 as lawn.
+  Surface 2 → 0: "a large expanse of studded green baseplate", "a flat green
+  field of exposed studs". The base's pass laid 11 findings and its session
+  kept 10 (353 studs tiled): "its pool, its white rim and the tan paths are
+  neatly tiled". A different design, not the lever.
+- **Dino Explorer**: no ground finding in either. The base's ground was a
+  green plate the judge called "a studded green baseplate" twice; the
+  lever's session covered its ground.
+
+Front renders, each looked at: Heartlake, both a stable on two bare green
+baseplates; Level Crossing, the base's crossing on no ground and the lever's
+on a studded green lot to the brief's edges; the Sphinx, the lever's wider on
+a studded tan field, the base's on a narrower one; Naida, the lever's lawn
+bare green, the base's paths and pool tiled; the Dino, both small
+vignettes, the base's on bare green.
+
+**NO-GO.** Surface was won less (5 → 4) and the ground is named about as
+often (8 → 7). Likeness and creativity were no worse (+1 each), from other
+differences between the designs.
+
+Why the lever did not reach it:
+- **Grounds are built in two layers.** In both sessions where it laid
+  anything, the cut plates were the upper layer that bonds the lower one's
+  seams: taking them off shows the same studs a plate lower. The lower layer
+  is covered everywhere by the upper, so no one part's studs carry nothing
+  to an edge. A ground has to be read as a stack, cut through every layer.
+- **What stands on a ground spreads to its edges**: Heartlake's paths and
+  fences. Cut back to one rectangle, the plate stays whole.
+- **By the surface pass the ground is the structure.** Sessions keep it with
+  reasons the build gives them (the bond, the pieces) and with the brief's
+  footprint ("a full 30x49 lot"). The cause is the plan: the footprint is
+  read as a lot to cover before the first part. The next lever for it goes
+  where the ground is chosen, the design's first answer, and says what the
+  library says: a scene's base is the size of what stands on it.
+- The change is taken back out on this branch (`a567612e` holds it), so
+  nothing of it ships.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
