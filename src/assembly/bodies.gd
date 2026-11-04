@@ -567,9 +567,22 @@ func _read() -> void:
 	# out of it.
 	if scenery.is_empty():
 		var floor_y: float = _ground_under(entries)
+		var feet: Array = []   ## [part, where] of each socket on the floor
+		var box_of: Dictionary = {}   ## part with one -> its box
 		for entry: Array in entries:
-			if _socket_on(int(entry[0]), info_of.get(int(entry[0])), floor_y):
-				_on_ground[int(entry[0])] = true
+			for foot: Vector3 in _sockets_on(int(entry[0]), info_of.get(int(entry[0])), floor_y):
+				feet.append([int(entry[0]), foot])
+				box_of[int(entry[0])] = (entry[1] as Transform3D) * (entry[2] as Lbm.PartMesh).bounds
+		# Of the parts there, the one a plate's stud would be in (as
+		# [method _nearest_face] chooses): a turntable's base, not its top,
+		# whose sockets are read at its lowest point, its pin's foot down in
+		# the base. Read as standing too, flex_pose's turret would not turn.
+		for one: Array in feet:
+			var there: Array = [one[0]]
+			for other: int in box_of:
+				if other != int(one[0]) and (box_of[other] as AABB).grow(1.0).has_point(one[1]):
+					there.append(other)
+			_on_ground[_nearest_face(one[1], Vector3.UP, there)] = true
 	# Two parts turned askew to each other hold by studs only where they go
 	# into sockets or holes: one stud alone is a round joint, as any lone
 	# stud is, but more than one cannot all be in a part turned off their
@@ -2746,18 +2759,20 @@ func _ground_under(entries: Array) -> float:
 	return maxf(lowest, Balance.GROUND * BrickLattice.CELL)
 
 
-## Whether [param key]'s part stands on the floor at [param floor_y] as it
-## would on a baseplate's studs: upright, with a socket there, and not a
-## tyre, which rolls.
-func _socket_on(key: int, info: PartLibrary.PartInfo, floor_y: float) -> bool:
+## Where [param key]'s part has a socket on the floor at [param floor_y], as
+## it would stand on a baseplate's studs: upright, and not a tyre, which
+## rolls. [] where it has none.
+func _sockets_on(key: int, info: PartLibrary.PartInfo, floor_y: float) -> Array:
+	var out: Array = []
 	var brick: BrickWorld.Brick = world.get_brick(key)
 	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
 	if mesh == null or _is_tyre(info) or (brick.transform.basis * Vector3.UP).normalized().dot(Vector3.UP) < 0.95:
-		return false
+		return out
 	for socket: Vector2 in mesh.sockets:
-		if absf((brick.transform * Vector3(socket.x, mesh.bounds.position.y, socket.y)).y - floor_y) <= STANDS:
-			return true
-	return false
+		var at: Vector3 = brick.transform * Vector3(socket.x, mesh.bounds.position.y, socket.y)
+		if absf(at.y - floor_y) <= STANDS:
+			out.append(Vector3(at.x, floor_y, at.z))
+	return out
 
 
 ## Whether a stud at [param foot] pointing [param way] reaches into
