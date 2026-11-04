@@ -201,7 +201,8 @@ def _publish_with_github_stubbed(draft: bool, existing: bool,
                                  latest_on_draft: bool = True) -> list[list[str]]:
     """Every command publish runs, with GitHub and git answered here: a
     one-file build, a draft already up or none, and GitHub's SHA-256 the
-    file's own. Signing is tests/test_updates.py's; here it is stubbed."""
+    file's own. Signing, and the kinds latest.json must list, are
+    tests/test_updates.py's; here they are stubbed."""
     where = Path(tempfile.mkdtemp(prefix="brickworks-release-test-"))
     package = where / "Brickworks-9.9.9-linux-x86_64.tar.xz"
     package.write_bytes(b"a package")
@@ -237,7 +238,7 @@ def _publish_with_github_stubbed(draft: bool, existing: bool,
         return subprocess.CompletedProcess(command, 0, stdout=out, stderr="")
 
     kept = (release.release_view, release.check_version, release.built, release.subprocess.run,
-            release.sign_update_manifest, release.check_update_manifest)
+            release.sign_update_manifest, release.check_update_manifest, release.missing_update_kinds)
     release.release_view = view
     release.check_version = lambda: []
     release.built = lambda version: (where, {"commit": "x", "files": [
@@ -248,11 +249,12 @@ def _publish_with_github_stubbed(draft: bool, existing: bool,
     release.sign_update_manifest = lambda manifest: (SIGNED.append(manifest)
                                                      or {"signed": json.dumps(manifest), "signatures": []})
     release.check_update_manifest = lambda envelope: []
+    release.missing_update_kinds = lambda manifest: []
     try:
         release.publish(draft, "v9.9.9", "abc", False)
     finally:
         (release.release_view, release.check_version, release.built, release.subprocess.run,
-         release.sign_update_manifest, release.check_update_manifest) = kept
+         release.sign_update_manifest, release.check_update_manifest, release.missing_update_kinds) = kept
         shutil.rmtree(where, ignore_errors=True)
     return ran
 
