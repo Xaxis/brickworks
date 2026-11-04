@@ -23,11 +23,15 @@
 //     and every #fragment is an id on its page;
 //   in a browser: no page logs an error, none scrolls sideways at 390 px,
 //     and /app boots with the address bar still saying /app and its Help
-//     panel's version.json found beside the build.
+//     panel's version.json found beside the build;
+//   /docs/connect and every AI app's page, one for each row of
+//     assets/assistants.json (docs/ANY_ASSISTANT.md U4), at 390 and 1280 px,
+//     light and dark: each answers with its five headings, drawn in the
+//     theme's colours, nothing sideways, no error logged.
 //
 // Screenshots of every page at phone and laptop size go to --out.
 import { launch, allPictures } from "./browser.mjs";
-import { mkdirSync, readdirSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -490,6 +494,49 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
     await context.close();
   }
   ok(`${label}: ${SHOTS.length} pages, shots in ${out}/`);
+}
+
+// The AI apps' pages, made from the table the app's Connect your AI reads:
+// a person on a phone in dark mode reads the same steps as on a laptop.
+const ASSISTANTS = JSON.parse(readFileSync(new URL("../../assets/assistants.json", import.meta.url), "utf8")).assistants;
+const CONNECT = ["/docs/connect", ...ASSISTANTS.map((row) => `/docs/connect-${row.id.replaceAll("_", "-")}`)];
+const SHOWN = new Set(["/docs/connect", "/docs/connect-claude", "/docs/connect-chatgpt"]);
+for (const [width, height] of [[390, 844], [1280, 900]]) {
+  for (const theme of ["light", "dark"]) {
+    let drawn = 0;
+    for (const path of CONNECT) {
+      const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers,
+        colorScheme: theme, isMobile: width < 600, hasTouch: width < 600 });
+      const page = await context.newPage();
+      const said = [];
+      page.on("console", (m) => { if (m.type() === "error") said.push(m.text().slice(0, 160)); });
+      page.on("pageerror", (e) => said.push(String(e).slice(0, 160)));
+      try {
+        const answer = await page.goto(base + path, { waitUntil: "load", timeout: 60000 });
+        await page.waitForTimeout(300);
+        const seen = await page.evaluate(() => ({
+          scrollW: document.documentElement.scrollWidth, clientW: document.documentElement.clientWidth,
+          bg: getComputedStyle(document.body).backgroundColor,
+          heads: [...document.querySelectorAll(".docs-article h2")].map((h) => h.id),
+        }));
+        const want = theme === "dark" ? "rgb(11, 12, 14)" : "rgb(251, 251, 250)";
+        const five = path === "/docs/connect" || ["before", "add", "sign-in", "build", "trouble"].every((id) => seen.heads.includes(id));
+        if (answer?.status() !== 200) fail(`${path} at ${width} ${theme} answered ${answer?.status()}`);
+        else if (seen.scrollW > seen.clientW + 1) fail(`${path} at ${width} ${theme} scrolls sideways (${seen.scrollW}px in ${seen.clientW}px)`);
+        else if (seen.bg !== want) fail(`${path} at ${width} ${theme} is drawn in ${seen.bg}, not the theme's ${want}`);
+        else if (!five) fail(`${path} at ${width} ${theme} has not its five headings: ${seen.heads.join(", ")}`);
+        else if (said.length) fail(`${path} at ${width} ${theme} logged: ${said.slice(0, 2).join(" | ")}`);
+        else drawn += 1;
+        if (SHOWN.has(path)) {
+          await page.screenshot({ path: `${out}/${path.slice(6)}-${width}-${theme}.png`, fullPage: true, timeout: 30000 });
+        }
+      } catch (trouble) {
+        fail(`${path} at ${width} ${theme}: ${trouble.message.split("\n")[0]}`);
+      }
+      await context.close();
+    }
+    if (drawn === CONNECT.length) ok(`${width} px ${theme}: /docs/connect and ${ASSISTANTS.length} AI apps' pages drawn whole, nothing sideways`);
+  }
 }
 await browser.close();
 

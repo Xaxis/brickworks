@@ -8,7 +8,7 @@ nav: How the AI works
 description: What the AI works with, what the app checks before a part goes down, and how to ask for what you mean. AI is never limited, on any plan.
 ---
 
-Whichever AI designs, your Claude through the connector, Claude Code, or Claude or another AI on your own key, it builds the same way and is held to the same checks.
+Whichever AI designs, your own AI app through the connector, or Claude or another AI on your own key, it builds the same way and is held to the same checks.
 
 ## The same parts, the same checks {#same-checks}
 

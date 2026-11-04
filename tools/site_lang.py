@@ -213,8 +213,12 @@ CODE_WORDS = {"Bearer", "Brickworks", "Brickify", "Claude", "Rebrickable", "Data
               "Edge", "Opera", "Safari"}
 # And the keys a script listens for, each a literal of its own.
 KEY_NAMES = {'"Escape"', '"Enter"', '"Tab"'}
-# Runs that are names, the same in every language.
-NAMES = {"Brickworks", "brickworks.diy/app", "Claude", "Pro", "GitHub", "3D"}
+# Runs that are names, the same in every language: and each AI app's, as
+# the FAQ's cards head them (assets/assistants.json; a row that says what
+# a sentence calls it, Another app, is words, not a name).
+NAMES = {"Brickworks", "brickworks.diy/app", "Claude", "Pro", "GitHub", "3D"} | {
+    row["name"] for row in json.loads((ROOT / "assets/assistants.json").read_text(encoding="utf-8"))["assistants"]
+    if not row.get("called")}
 # The JSON-LD fields a reader is shown: a description anywhere, and an
 # FAQ's questions and answers, as search results show them.
 WORDED = {"Question": "name", "Answer": "text"}

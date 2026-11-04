@@ -47,4 +47,4 @@ Press [[Ctrl+S]]. The first save asks what to call the model. It is kept in this
 **File › Share…** publishes the model with a picture, a name and a kind. You get a link anyone can open in 3D, step through and build, with no account. See [Sharing a model](/docs/sharing).
 
 > [!TIP]
-> Want Claude to build the first draft? Turn on the assistant (**Tools › Settings…**, *Assistant (AI)*) and see [Connect Claude](/docs/connect-claude).
+> Want an AI to build the first draft? Turn on the assistant (**Tools › Settings…**, *Assistant (AI)*) and see [Connect your AI](/docs/connect).

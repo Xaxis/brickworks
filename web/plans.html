@@ -14,10 +14,11 @@
   before a lawyer has read them.
 
   AI is never limited, on any plan, because people bring their own, and
-  this page says only what works: on the web, Claude (the connector, Claude
-  Code, or an Anthropic key: the web's security policy lets a page call
-  api.anthropic.com and no other AI, tools/deploy.sh); in the desktop app,
-  a key for OpenAI, Gemini and the others in Settings, AI too. It leads
+  this page says only what works: any AI app through the connector (the
+  FAQ's cards, from assets/assistants.json), or an Anthropic key on the web
+  (the web's security policy lets a page call api.anthropic.com and no
+  other AI, tools/deploy.sh); in the desktop app, a key for OpenAI, Gemini
+  and the others in Settings, AI too. It leads
   with the CAD, not the AI (the owner, 2026-11-02).
 
   Built on the design system (site356, 2026-10-29): Monthly or Yearly
@@ -145,8 +146,8 @@ dialog .done .actions { margin-top: var(--s-4); }
 		<div class="wrap">
 			<p class="eyebrow"><span data-when="soon">Plans · Pro coming soon</span><span data-when="sale" hidden>Plans</span></p>
 			<h1 id="plans-h"><span data-when="soon">Free to build. Pro is coming.</span><span data-when="sale" hidden>Free to build. Pro to keep and sell.</span></h1>
-			<p class="lede" data-when="soon">Brickworks is free for personal and educational use: the web app and the desktop app, every part, physics, booklets and renders, AI on your own Claude with no limit on it, and 25 models kept with your account. Pro keeps every model you make and adds a licence to sell what you make. Nothing here takes money yet: say you would use Pro, and we will write once, when it opens.</p>
-			<p class="lede" data-when="sale" hidden>Brickworks is free for personal and educational use: the web app and the desktop app, every part, physics, booklets and renders, AI on your own Claude with no limit on it, and 25 models kept with your account. Pro keeps every model you make and adds a licence to sell what you make.</p>
+			<p class="lede" data-when="soon">Brickworks is free for personal and educational use: the web app and the desktop app, every part, physics, booklets and renders, your own AI with no limit on it, and 25 models kept with your account. Pro keeps every model you make and adds a licence to sell what you make. Nothing here takes money yet: say you would use Pro, and we will write once, when it opens.</p>
+			<p class="lede" data-when="sale" hidden>Brickworks is free for personal and educational use: the web app and the desktop app, every part, physics, booklets and renders, your own AI with no limit on it, and 25 models kept with your account. Pro keeps every model you make and adds a licence to sell what you make.</p>
 			<div class="segmented" role="group" aria-label="Billed">
 				<button type="button" data-billing="month" aria-pressed="false">Monthly</button>
 				<button type="button" data-billing="year" aria-pressed="true">Yearly <span class="badge accent">Two months free</span></button>
@@ -174,7 +175,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 					<li>Publish to the gallery, and challenges</li>
 					<li>Build together, live, by a link</li>
 					<li>Every version of a model you share</li>
-					<li><b>AI without a limit</b>, on your own Claude</li>
+					<li><b>AI without a limit</b>, on the AI you use</li>
 					<li><b>25 models kept with your account</b>; saving to your device and exporting without a limit</li>
 				</ul>
 			</article>
@@ -228,7 +229,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 						<tr><th scope="row">The whole LDraw parts library, and its models of real sets</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">Physics: whether it stands, and joints that move</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">Find a part from a photo</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
-						<tr><th scope="row">AI, on your own Claude</th><td>No limit</td><td>No limit</td></tr>
+						<tr><th scope="row">AI, on your own AI app or key</th><td>No limit</td><td>No limit</td></tr>
 						<tr><th scope="row">AI on your own key for OpenAI, Gemini and others (the desktop app)</th><td>No limit</td><td>No limit</td></tr>
 						<tr><th scope="row">Fresh eyes on every new AI design</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr class="group"><th scope="rowgroup" colspan="3">Making and sharing</th></tr>
@@ -266,7 +267,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 				<p class="what">Pro keeps every model with your account and adds a licence for commercial use. It takes nothing out of Free, which keeps all of this, for personal and educational use:</p>
 				<ul class="keep">
 					<li><b>The web app and the desktop app.</b> In any browser, on a computer, a tablet or a phone; and on Windows, macOS and Linux, offline. Every desktop version you download keeps working.</li>
-					<li><b>Building by hand, and AI, without a limit.</b> Bring your own AI: your Claude through the connector or Claude Code, or an Anthropic API key, in any browser; in the desktop app, your own key for OpenAI, Gemini and others too.</li>
+					<li><b>Building by hand, and AI, without a limit.</b> Bring your own AI: the AI app you use through the connector, Claude or another, or an Anthropic API key, in any browser; in the desktop app, your own key for OpenAI, Gemini and others too.</li>
 					<li><b>Everything else the app does today.</b> Saving to your device, 25 models kept with your account, Build together, booklets and PDFs, renders, exports, photo search, parts lists, publishing, the gallery and challenges.</li>
 					<li><b>Your models.</b> Nothing is ever deleted or locked: on any plan, or none, the app opens, edits and exports everything you made. With more than 25 kept with your account you keep every one; a new one goes there once you are under 25 again.</li>
 				</ul>
@@ -287,7 +288,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 			</details>
 			<details class="qa" id="ai">
 				<summary>Is AI limited on Free?</summary>
-				<div><p>No. AI has no limit on any plan, because you bring your own: your Claude through the connector or Claude Code, or your own Anthropic API key; in the desktop app, your own key for OpenAI, Gemini and others too. Brickworks never meters it or pays for its tokens.</p></div>
+				<div><p>No. AI has no limit on any plan, because you bring your own: the AI app you use through the connector, Claude or another, or your own Anthropic API key; in the desktop app, your own key for OpenAI, Gemini and others too. Brickworks never meters it or pays for its tokens.</p></div>
 			</details>
 			<details class="qa">
 				<summary>Why Pro at all?</summary>
@@ -408,7 +409,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 			</nav>
 		</div>
 		<div class="legal">
-			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). Claude, ChatGPT, Gemini and the other AI apps named here are trademarks of their owners. <a href="/terms#notices">Notices</a></p>
 		</div>
 	</div>
 </footer>

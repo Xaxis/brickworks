@@ -24,6 +24,15 @@ window by src/dev/docs_menus.gd; tests/test_docs_site.py fails when
 src/ui/shell.gd's menus no longer match it), and the changelog from
 CHANGELOG.md.
 
+And a page for each AI app Brickworks connects to, /docs/connect-<id>, made
+from one template (docs-site/_connect.md) for each row of
+assets/assistants.json, the table the app's Connect your AI reads; with
+the cards on /docs/connect and in the FAQ's Bring your own AI (web/faq.html,
+written by --write) from the same rows (tools/assistants.py). _nav.json
+names them all as "@assistants". --check fails when any page of the site
+or the docs gives a way of adding Brickworks to an assistant that its row
+does not make.
+
 --check fails when a feature in the feature map (.claude/skills/verify/
 features.json) is in no page and not named in docs-site/internal.txt as
 something a person never meets, when a page names a feature the map does
@@ -80,6 +89,7 @@ def _tool(name: str):
 
 
 site_shell = _tool("site_shell")  # the site's one header and footer
+assistants = _tool("assistants")  # every AI app Brickworks connects to, assets/assistants.json
 
 # -- Markdown -----------------------------------------------------------------
 # The few things these pages use, and no more: headings with ids, paragraphs,
@@ -529,6 +539,8 @@ def explained_in() -> dict[str, list[tuple[str, str]]]:
     found: dict[str, list[tuple[str, str]]] = {}
     for group in json.loads((SRC / "_nav.json").read_text(encoding="utf-8")):
         for name in group["pages"]:
+            if name == ASSISTANTS:  # the assistants' pages explain no tool
+                continue
             page = read_page(SRC / f"{name}.md")
             for tool in named_tools(page):
                 found.setdefault(tool, []).append((page.title, page.url))
@@ -882,7 +894,92 @@ def changelog() -> str:
     return "\n".join(out)
 
 
-GENERATED = {"mcp_tools": mcp_tools, "shortcuts": shortcuts, "menus": menus, "changelog": changelog}
+# -- the AI apps ----------------------------------------------------------------
+# One page an assistant, from docs-site/_connect.md: its words take {name},
+# {called} ({Called} at a sentence's start), {plan}, {checked}, {limits},
+# {steps}, {add} (the link, page or command its row makes, {add_href} for
+# an attribute, {add_shown} as a link reads), {address}, {way_words} and
+# {new_chat}; and a block between <!-- if KEY=A,B --> and <!-- end --> is
+# kept only for a row whose KEY is one of them (<!-- if limits --> for one
+# that says any).
+
+ASSISTANTS = "@assistants"
+TEMPLATE = SRC / "_connect.md"
+IF = re.compile(r"^<!-- if (\w+)(?:=([\w,]+))? -->\n(.*?)^<!-- end -->\n", re.S | re.M)
+GROUPS = {"chat": "Chat apps", "terminal": "In a terminal", "editor": "In a code editor", "other": "Any other app"}
+NEW_CHAT = {
+    "link": "opens {name} on a new chat with its first message, naming the tab, filled in: add what to build and send it",
+    "open": "opens {name} and copies the first message, naming the tab, to paste into a new chat there",
+    "command": "copies the command that starts {name} on a chat for that tab, to run in a terminal",
+    "copy": "copies the first message, naming the tab, to paste into a new chat in {called}",
+}
+
+
+def checked_day(iso: str) -> str:
+    """"2026-11-02" as "2 November 2026", as the changelog says a day."""
+    global _site
+    if _site is None:
+        _site = _tool("site")
+    return _site.day(iso)
+
+
+_site = None
+
+
+def assistant_words(row: dict) -> dict[str, str]:
+    add = assistants.adding(row)
+    name, called = row["name"], assistants.called(row)
+    chat = (row.get("new_chat") or {}).get("way", "copy")
+    return {
+        "name": name, "called": called, "Called": called[0].upper() + called[1:],
+        "plan": row["plan"], "limits": row.get("limits", ""),
+        "checked": checked_day(row["checked"]),
+        "steps": "\n".join(f"{n}. {step}" for n, step in enumerate(row["steps"], 1)),
+        "add": add, "add_href": html.escape(add, quote=True), "add_shown": re.sub(r"^https://", "", add).rstrip("/"),
+        "address": assistants.ADDRESS, "way_words": assistants.table()["ways"][row["way"]],
+        "new_chat": NEW_CHAT.get(chat, NEW_CHAT["copy"]).format(name=name, called=called),
+    }
+
+
+def assistant_page(row: dict) -> Page:
+    """[row]'s page, docs-site/_connect.md filled in with its words."""
+    words = assistant_words(row)
+    keys = {**{k: str(v) for k, v in row.items() if isinstance(v, str)},
+            "new_chat": (row.get("new_chat") or {}).get("way", "copy")}
+
+    def kept(match: re.Match) -> str:
+        key, wanted, block = match.group(1), match.group(2), match.group(3)
+        have = keys.get(key, "")
+        return block if (have in wanted.split(",") if wanted else have) else ""
+
+    text = IF.sub(kept, TEMPLATE.read_text(encoding="utf-8"))
+    if "<!-- if " in text or "<!-- end -->" in text:
+        raise SystemExit("docs: docs-site/_connect.md has an <!-- if --> with no <!-- end --> (or the other way)")
+    text = re.sub(r"\{(\w+)\}", lambda m: words.get(m.group(1), m.group(0)), text)
+    meta, body = front_matter(text)
+    return Page(assistants.page_name(row), meta, body)
+
+
+def assistant_cards() -> str:
+    """/docs/connect's cards: each app under its kind, with its way and who
+    may, linked to its page, in the table's order."""
+    out = []
+    for group, title in GROUPS.items():
+        members = [row for row in assistants.rows() if row.get("group") == group]
+        if not members:
+            continue
+        cards = "".join(f'<li><a href="/docs/{assistants.page_name(row)}"><strong>{html.escape(row["name"], quote=False)}</strong>'
+                        f'{html.escape(assistants.way_line(row), quote=False)}'
+                        f'<span class="plan">{html.escape(row["plan"], quote=False)}</span></a></li>'
+                        for row in members)
+        out.append(f"### {title}\n\n<ul class=\"docs-cards\">{cards}</ul>\n")
+    return "\n".join(out)
+
+
+GENERATED = {"mcp_tools": mcp_tools, "shortcuts": shortcuts, "menus": menus, "changelog": changelog,
+             "assistants": assistant_cards}
+# Where a page's generated words go: in place of this line, or at its end.
+HERE = "<!-- generated -->"
 
 
 # -- the site ------------------------------------------------------------------
@@ -893,24 +990,33 @@ def load() -> tuple[list[dict], list[Page]]:
     pages: list[Page] = []
     seen: set[str] = set()
     for group in nav:
+        named = []
         for name in group["pages"]:
+            named += [assistants.page_name(row) for row in assistants.rows()] if name == ASSISTANTS else [name]
+        group["pages"] = named
+        for name in named:
             if name in seen:
                 raise SystemExit(f"docs: {name} is twice in docs-site/_nav.json")
             seen.add(name)
+            row = next((r for r in assistants.rows() if assistants.page_name(r) == name), None)
             path = SRC / f"{name}.md"
-            if not path.exists():
+            if row and path.exists():
+                raise SystemExit(f"docs: docs-site/{name}.md is made from assets/assistants.json; edit _connect.md")
+            if not row and not path.exists():
                 raise SystemExit(f"docs: docs-site/_nav.json names {name}, and there is no docs-site/{name}.md")
-            page = read_page(path)
+            page = assistant_page(row) if row else read_page(path)
             page.section = group["title"]
             made = page.meta.get("generated")
             body = page.body
             if made:
                 if made not in GENERATED:
                     raise SystemExit(f"docs: {name}.md asks for generated: {made}, which is none of {sorted(GENERATED)}")
-                body = body.rstrip() + "\n\n" + GENERATED[made]() + "\n"
+                body = (body.replace(HERE, GENERATED[made]()) if HERE in body
+                        else body.rstrip() + "\n\n" + GENERATED[made]() + "\n")
             render(page, body)
             pages.append(page)
-    loose = sorted(p.stem for p in SRC.glob("*.md") if p.stem not in seen)
+    # A file whose name starts with _ is not a page: the assistants' template.
+    loose = sorted(p.stem for p in SRC.glob("*.md") if p.stem not in seen and not p.stem.startswith("_"))
     if loose:
         raise SystemExit(f"docs: docs-site/{loose[0]}.md is in no group of docs-site/_nav.json")
     for page in pages:
@@ -1191,7 +1297,9 @@ def docs_pages(pages: list[Page]) -> str:
 def made_files(pages: list[Page]) -> dict[Path, str]:
     """Every file the docs make that is committed, and what it must say."""
     tools = {t["name"]: t for t in all_tools()}
-    files = {GUIDE_GD: connector_guide(), PAGES_GD: docs_pages(pages)}
+    faq = WEB / "faq.html"
+    files = {GUIDE_GD: connector_guide(), PAGES_GD: docs_pages(pages),
+             faq: assistants.with_cards(faq.read_text(encoding="utf-8"))}
     for name, doc in tool_docs().items():
         if name in tools:
             files[doc.path] = with_said(doc, tools[name])
@@ -1316,7 +1424,7 @@ def check() -> list[str]:
     for page in pages:
         for attr, target in re.findall(r'(href|src)="([^"]+)"', page.html):
             target = html.unescape(target)
-            if target.startswith(("http://", "https://", "mailto:")):
+            if re.match(r"^[a-z][a-z0-9+.-]*:", target):  # another site, or an app's own link (cursor:, vscode:)
                 continue
             path, _, frag = target.partition("#")
             path = path.split("?")[0]
@@ -1334,6 +1442,32 @@ def check() -> list[str]:
                 problems.append(f"{page.name}.md links to {target}, which is no page of the site")
     problems += tool_problems(pages)
     problems += head_problems(pages)
+    problems += way_problems(pages)
+    return problems
+
+
+def said_pages(pages: list[Page]) -> dict[str, str]:
+    """Every page a person reads, by where it is: the site's (each language's
+    copy too), and the docs as built and as written (their heads included,
+    which /docs/llms.txt gives assistants)."""
+    found = {str(p.relative_to(ROOT)): p.read_text(encoding="utf-8")
+             for p in sorted(WEB.glob("*.html")) + sorted(WEB.glob("[a-z][a-z]/*.html")) if not p.name.startswith("_")}
+    for page in pages:
+        head = [v for v in page.meta.values() if isinstance(v, str)] + list(page.meta.get("rules") or [])
+        found[f"/docs/{page.name}"] = "\n".join([page.html, *head])
+    for path in sorted(SRC.glob("*.md")) + [WEB / "_shell.html"]:
+        found[str(path.relative_to(ROOT))] = path.read_text(encoding="utf-8")
+    return found
+
+
+def way_problems(pages: list[Page]) -> list[str]:
+    """A way of adding Brickworks to an assistant that its row in
+    assets/assistants.json does not make, or a Claude plan said to be needed
+    that the table says is not, on any page (tools/assistants.py)."""
+    problems = []
+    for where, text in said_pages(pages).items():
+        for way in assistants.ways(text) + assistants.plan_claims(text):
+            problems.append(f"{where} says {way}")
     return problems
 
 

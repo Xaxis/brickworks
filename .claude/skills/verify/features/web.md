@@ -3378,7 +3378,11 @@ plan with Claude as the client.
   links fail only when gone, 404 or 410); and in a browser, no page logging an error or scrolling
   sideways at 390 px, with a full-page shot of each at 390 and 1280 px in `--out`,
   and `/app` booting with the address bar still `/app` and its `version.json`
-  found. About four minutes on SwiftShader.
+  found; and `/docs/connect` with every AI app's page (one a row of
+  `assets/assistants.json`) at 390 and 1280 px, light and dark, each 200 with its
+  five headings, in the theme's colours, nothing sideways, no error, the hub,
+  Claude's and ChatGPT's shot whole in each (`connect-claude-390-dark.png`).
+  About four minutes on SwiftShader.
 - `compare page` (`web/compare.html`, `web/compare.js`, `img/compare-*`): the
   answer to "Studio exists, LDD exists… why?" (a builder on Reddit), linked from
   the home page's features ("How it compares") and the FAQ's first question
@@ -6120,9 +6124,23 @@ menus from `docs-site/generated/menus.json`, and the changelog from
 `tests/test_docs_site.py` fails when `src/ui/shell.gd`'s menus no longer
 match it.
 
+And every AI app's page, `/docs/connect-<id>` (Claude's at its old address,
+`/docs/connect-claude`), is made from one template, `docs-site/_connect.md`,
+and its row of `assets/assistants.json`, the table the app's Connect your AI
+reads (docs/ANY_ASSISTANT.md U4): `_nav.json` names them all as
+`"@assistants"`, under the hub `/docs/connect`, whose cards come from the same
+rows, as do the FAQ's (`web/faq.html` between its `<!-- assistants:` marks,
+written by `--write`). `--check` fails when any page of the site or the docs,
+in any language, gives a way of adding Brickworks that its row does not make
+(a command, an install link, or a link to an app's own page for adding a
+server; `tools/assistants.py` `ways`), or says Claude's connector needs a
+paid plan. `tests/test_assistant_pages.py` holds the pages to their rows and
+shows the check's red: Claude Code's row changed, `docs-site/claude-code.md`
+fails.
+
 ```sh
 python3 tools/docs_site.py --check
-python3 tools/minitest.py tests/test_docs_site.py
+python3 tools/minitest.py tests/test_docs_site.py tests/test_assistant_pages.py
 python3 tools/site.py /tmp/site && node tools/web/docs_flow.mjs --root=/tmp/site --out=shots/docs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/docs_flow.mjs --url=<preview> --out=shots/docs
 ```
