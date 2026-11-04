@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
 
 ## Sub-features
 

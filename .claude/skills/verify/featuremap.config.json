@@ -2501,6 +2501,27 @@
       "area": "account"
     },
     {
+      "kind": "api",
+      "label": "POST /api/account?op=fetch",
+      "entry": "api/_link.js",
+      "reach": "python3 tools/minitest.py tests/test_link_fetch.py   (a link fetched for the app in a browser, signed in: a picture or a 3D model sniffed from its bytes, at most 4 MB in 20 s; no private, loopback, link-local or metadata address at any hop, rebinding included; each refusal a sentence)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "link browser flow",
+      "entry": "tools/web/link_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/link_flow.mjs --url=<preview>/app --out=shots/link_web   (.env sourced; brickify url= and print_part picture_url= over the connector, from Wikimedia and from sites with no CORS; a 14 MB photograph refused in words)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "words for a failed request",
+      "entry": "src/net/fetch_words.gd",
+      "reach": "tools/probe.sh app_tools_probe   (a site that will not connect, one that is not there, and every HTTPRequest result in words, never a code)",
+      "area": "mcp"
+    },
+    {
       "kind": "cli",
       "label": "age browser flow",
       "entry": "tools/web/age_flow.mjs",
