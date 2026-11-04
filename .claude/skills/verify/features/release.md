@@ -257,7 +257,9 @@ that offers each system its own build. The cycle and its cadence are
   `releases/latest/download/latest.json` on Xaxis/brickworks-releases; in
   Settings, Updates, Automatic (the default) downloads the newer version
   beside the install (`.brickworks-update/<version>/`), checks its size and
-  SHA-256, unpacks it, and puts it in as the app quits; Ask first says it is
+  SHA-256, makes it ready (the AppImage; the tar.xz unpacked; the DMG's app
+  copied out; the Windows installer as it is), and puts it in as the app
+  quits; Ask first says it is
   out; Off asks nothing until Help does. A test server takes GitHub's place
   only by `BRICKWORKS_UPDATE_URL`, set by hand (plain HTTP only on
   127.0.0.1). `--update=check|fetch|install|reinstall|restart` drives it from
@@ -268,14 +270,17 @@ that offers each system its own build. The cycle and its cadence are
   `UPDATE_SIGN_KEY_BACKUP`), then refuses a manifest not Brickworks', a
   version not newer, a file with no size or SHA-256, plain HTTP, and any
   address or redirect off github.com, objects.githubusercontent.com,
-  release-assets.githubusercontent.com and brickworks.diy.
-  `tools/release.py publish --draft` signs it with both keys and uploads it
+  release-assets.githubusercontent.com and brickworks.diy, matched whole
+  (`github.com.example.net`, `evilgithub.com` and `//host` redirects are
+  refused). `tools/release.py publish --draft` signs it with both keys and uploads it
   with the packages; `tools/release.py latest --check FILE` reads one as the
   app would.
 - `update notice`: "Brickworks 0.17.0 is out" (or "is ready") above the
   model, in UpdateOffer's look: What's new (the release notes' first
   paragraph), Update and restart, Later. Where the copy cannot write its
   install, the button reads Download and opens brickworks.diy/download; a
+  copy installed from the .deb (in /usr/lib/brickworks) is never written
+  over, and its Download opens the new .deb; a
   Mac app run from Downloads or a disk image reads Move to Applications and
   update.
 - `check for updates reinstall and restart`: Help, Check for updates…
@@ -286,7 +291,8 @@ that offers each system its own build. The cycle and its cadence are
   session (`--session=`), on the same model.
 - `update helper`: `src/net/update_helper.sh` (Linux, macOS) and `.ps1`
   (Windows), written to `user://updates/` and run as the app quits: waits
-  for it to end, swaps the folder or the AppImage by renames, asks the new
+  for it to end, swaps the folder, .app or AppImage by renames (on Windows
+  moves the folder aside and runs the new `setup.exe /S /D=<folder>`), asks the new
   copy `--about`, starts it and waits for it to say its window is up, and
   puts the old copy back (started with `--update-failed=`) when it cannot.
 - `updater probe`: `src/dev/updater_probe.gd` signs a release with a key of
@@ -497,13 +503,17 @@ tools/probe.sh updater_probe
 python3 tools/minitest.py tests/test_updates.py
 ```
 
-Proves it when: the probe prints 39 `ok` lines and ends `the desktop app
+Proves it when: the probe prints 43 `ok` lines and ends `the desktop app
 checks, refuses what it must, downloads, and hands over the restart with the
 model kept` (among them: the two release keys each load under their own id;
 Check for updates refuses a bad signature and `0.0.1, which is older`; in
 Automatic a download is refused for a wrong SHA-256, a short size and
 `refused an address off GitHub and brickworks.diy: https://example.com/...`;
-Update and restart hands `/bin/sh helper.sh install <pid> <install> <staged>
+`a redirect to any other host is refused, however like an allowed one it
+looks` (14 lookalikes, `//host` and plain HTTP among them); a copy in
+/usr/lib/brickworks is the .deb's, and in Automatic `a .deb's copy ... is
+told 99.0.0 is out and downloads nothing; Download opens https://github.com/
+.../Brickworks-99.0.0-linux-amd64.deb`; Update and restart hands `/bin/sh helper.sh install <pid> <install> <staged>
 ... 99.0.0` with `--session=<id>`); and the tests print `13 passed`.
 Before 2026-11-03 (0.15.0) Help had only `keys` and `tour` and no release
 carried a latest.json.
@@ -520,13 +530,28 @@ report: running B; model “House”, N parts; session S` with the same model,
 parts and session as before the restart, the copy in place says B and
 nothing is left in `.brickworks-update/`, Restart and Reinstall come back
 the same, Automatic's next start says B, and a copy that cannot start is
-put back and A started again.
+put back and A started again (16 `ok`).
 
-On macOS and Windows the same, from a runner: `update_check.py lay --old
-OLD --new NEW --port=8697 --out=DIR` here (the runner has no signing key),
-then `run --laid=DIR` there (docs/UPDATES.md). It proves it when it
-ends the same way. On Windows the log-judged steps start `Brickworks.exe`:
-the console wrapper keeps its own file in use until the new copy ends.
+For the .deb pair (`Brickworks-A-linux-amd64.deb`) it proves it when it ends
+`the .deb's copy says the new version is out and offers the new .deb`: the
+copy in `usr/lib/brickworks` says A, Check for updates says B is out,
+`--update=fetch` and `--update=install` are each refused (`installed from
+its .deb`) with `Download is the new .deb: http://127.0.0.1:PORT/files/...deb`,
+`nothing dpkg put there was changed, and nothing was staged beside it`, and
+the copy is still A.
+
+On macOS and Windows the same, from a runner, with the DMG and the
+installer: `update_check.py lay --old OLD --new NEW --port=8697 --out=DIR`
+here (the runner has no signing key), then `run --laid=DIR --system` there
+(docs/UPDATES.md), which installs the first copy from the DMG into
+/Applications, or by `setup.exe /VERYSILENT` into
+`%LOCALAPPDATA%\Programs\Brickworks`, and takes them away after. It proves
+it when it ends the same way, the updater's log says `put B in place at
+/Applications/Brickworks.app` (or `.../Programs/Brickworks`, staged as
+`...-setup.exe`), and on Windows `Settings, Apps lists B` after the update
+and `...lists what it did before: A-before` after the put back (18 `ok`).
+On Windows the log-judged steps start `Brickworks.exe`: the console wrapper
+keeps its own file in use until the new copy ends.
 
 ## Gotchas
 

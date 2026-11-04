@@ -86,7 +86,9 @@ one starts.
 | Windows | installer | the NSIS `setup.exe` (tools/release/windows/brickworks.nsi) downloaded and checked; after the app exits the PowerShell helper moves the install folder aside, runs `setup.exe /S /D=<that folder>` (per person, no administrator), needs exit 0, and relaunches; put back, it also puts back the version Settings ▸ Apps lists |
 
 The zips beside the DMG and the installer stay for one release, for links
-already shared; the updater never takes them.
+already shared; the updater never takes them. A copy unpacked from one is
+updated from the DMG or by the installer all the same, in its own place: on
+Windows it is an installed copy from then on (Start menu, Settings ▸ Apps).
 
 A copy that cannot write where it is installed (a tar.xz under /opt) says so,
 and its button opens the download page.
