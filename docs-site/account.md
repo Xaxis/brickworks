@@ -2,7 +2,7 @@
 panels: AccountPanel#account-panel
 ai: Signing in (an email code or orangecheck, no password), the age question, what Brickworks keeps, and deleting the account. Account in the app shows the saved models, the Claude connection and the tabs.
 rules:
-  - Comments, the Build together chat and following are for people 13 and over.
+  - Brickworks accounts are for people 13 and over; a younger builder builds on a parent's or guardian's account.
   - Deleting the account ends Claude's connection too.
 title: Your account and privacy
 nav: Your account and privacy
@@ -23,7 +23,7 @@ api:GET /api/account
 
 ## The age question {#age}
 
-A new account is asked its month and year of birth, once. Some things are for people 13 and over: comments, the chat in Build together, and following.
+A new account is asked its month and year of birth, once, and the date itself is not kept. Brickworks accounts are for people 13 and over. An answer under 13 deletes the account just made, with its email address, and says to ask a parent or guardian to sign in with their own email and build with you. The browser or computer keeps only that it was told, so it says so at once the next time.
 
 <!-- covers
 ui:age question

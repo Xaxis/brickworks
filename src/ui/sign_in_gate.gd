@@ -20,11 +20,14 @@
 ##
 ## Then, once, the age question (2026-10-18, supabase/trust.sql): the month
 ## and year they were born, asked of everyone the same way, with nothing
-## before the answer to say which answer opens what. The deployment keeps
-## only whether that is 13 or over ([method Account.answer_age]). Under 13,
-## the screen says afterwards what is and is not open to them — building,
-## keeping models and sharing by link are; the gallery and anything public
-## are not — and lets them in. Not asked offline, nor by a deployment from
+## before the answer to say which answer opens what. Brickworks accounts are
+## for 13 and over (2026-11-03): 13 or over, the deployment keeps only that
+## ([method Account.answer_age]) and lets them in; under 13, it deletes the
+## account just made, and the screen goes back to the way in, saying that
+## accounts are for 13 and over and to ask a parent or guardian to sign in
+## with their own email and build with them. It says so at once on this
+## device from then on ([member Account.refused]), and a new account signed
+## in here is not asked again. Not asked offline, nor by a deployment from
 ## before the question.
 ##
 ## Not shown at all when nobody is in front of the window: a probe, a
@@ -55,10 +58,10 @@ var _months: Array[Button] = []
 var _year: LineEdit
 var _age_go: Button
 var _age_note: Label
-var _thanks: VBoxContainer
-var _thanks_go: Button
-## The answer was under 13 and the screen is saying what that means.
-var _thanking: bool = false
+## Accounts are for 13 and over, said to a device told so, and that the
+## account just made is gone, said just after.
+var _refused: VBoxContainer
+var _gone: Label
 var _answering: bool = false
 
 const MONTHS: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -129,6 +132,17 @@ func setup(with_account: Account) -> void:
 	_ended = _line("", 12, 1.0)
 	_ended.add_theme_color_override("font_color", Color(1.0, 0.72, 0.45))
 	column.add_child(_ended)
+
+	_refused = VBoxContainer.new()
+	_refused.add_theme_constant_override("separation", 8)
+	_refused.add_child(_line("Brickworks accounts are for 13 and over. Ask a parent or guardian "
+		+ "to sign in with their own email and build with you.", 14, 0.95))
+	_gone = _line("The account is deleted, with your email address. The date was never kept.",
+		12, 0.75)
+	_refused.add_child(_gone)
+	_refused.add_child(_line("A parent or guardian new to Brickworks makes their account on "
+		+ "their own phone or computer first, then signs in here.", 12, 0.75))
+	column.add_child(_refused)
 
 	_checking = _line("Signing you in…", 14, 0.8)
 	column.add_child(_checking)
@@ -206,29 +220,13 @@ func _build_age(column: VBoxContainer) -> void:
 	_age.add_child(_line("Brickworks asks everyone this once. The date itself is not kept.",
 		11, 0.6))
 
-	_thanks = VBoxContainer.new()
-	_thanks.add_theme_constant_override("separation", 10)
-	column.add_child(_thanks)
-	_thanks.add_child(_line("Thank you. You can build here, keep your models and share "
-		+ "them by link with anyone you choose.", 14, 0.9))
-	_thanks.add_child(_line("The gallery, a public profile and a name shown on a link "
-		+ "are for people 13 and over, so they are not open on this account.", 13, 0.75))
-	_thanks_go = Button.new()
-	_thanks_go.text = "Start building"
-	_thanks_go.custom_minimum_size = Vector2(0, 36)
-	_thanks_go.focus_mode = Control.FOCUS_NONE
-	_thanks_go.pressed.connect(func() -> void:
-		_thanking = false
-		_follow())
-	_thanks.add_child(_thanks_go)
+
+## Whether the age question was showing at the last _follow: the keys are
+## put on it once, as it shows.
+var _asked_shown: bool = false
 
 
 ## The month chosen, 1 to 12, or 0 for none.
-## Whether the age question, and the thanks after it, were showing at the
-## last _follow: the keys are put on them once, as each shows.
-var _asked_shown: bool = false
-var _thanks_shown: bool = false
-
 
 func _month() -> int:
 	for at: int in _months.size():
@@ -258,7 +256,6 @@ func _answer() -> void:
 		_age_note.text = problem
 		_age_note.visible = true
 		return
-	_thanking = account.over_13 == false
 	_follow()
 
 
@@ -271,8 +268,6 @@ func _ready() -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
-	if _thanks.visible:
-		return {"age_done": _thanks_go}
 	if _age.visible:
 		var asked: Dictionary = {"age_year": _year, "age_go": _age_go}
 		for at: int in _months.size():
@@ -323,15 +318,17 @@ func _fit() -> void:
 func _follow() -> void:
 	var state: int = account.state
 	var signed_in: bool = state == Account.State.SIGNED_IN
-	var asking_age: bool = signed_in and account.age_ask and not _thanking
-	var waiting: bool = signed_in and account.asking_who and not asking_age and not _thanking
-	if not signed_in:
-		_thanking = false
-	visible = not account.lets_in() or asking_age or waiting or _thanking
+	# A device told before is not asked: it waits while the new account goes.
+	var asking_age: bool = signed_in and account.age_ask and not account.refused
+	var waiting: bool = signed_in and (account.asking_who or (account.age_ask and account.refused)) \
+		and not asking_age
+	visible = not account.lets_in() or asking_age or waiting
+	var told: bool = account.refused and state == Account.State.SIGNED_OUT
 	_title.text = "One question first" if asking_age else (
-		"Welcome to Brickworks" if _thanking else "Sign in to start building")
+		"Accounts are for 13 and over" if told else "Sign in to start building")
 	_age.visible = asking_age
-	_thanks.visible = _thanking and signed_in
+	_refused.visible = told
+	_gone.visible = account.refused_now
 	_checking.visible = state == Account.State.CHECKING or waiting
 	_form.visible = state == Account.State.SIGNED_OUT
 	_unreachable.visible = state == Account.State.UNREACHABLE
@@ -348,10 +345,7 @@ func _follow() -> void:
 	# key moves it).
 	if asking_age and not _asked_shown:
 		_months[0].grab_focus.call_deferred(true)
-	if _thanks.visible and not _thanks_shown:
-		_thanks_go.grab_focus.call_deferred(true)
 	_asked_shown = asking_age
-	_thanks_shown = _thanks.visible
 
 
 ## Every click and key that reaches here while it is up stops here: they

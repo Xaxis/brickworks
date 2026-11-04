@@ -89,8 +89,12 @@ they have. A Claude connector belongs to the account that switched it on.
   yet), 503 before trust.sql; otherwise `{age}`. Turned into 13-or-over in
   `api/_trust.js` (a birthday this month counts as had) and let go: only
   `profiles.over_13` and `age_asked_at` are kept, never the date. An answer
-  stands — a second try returns the first — except that an under-13 answer
-  is asked again a year on. See [web](web.md) for what it refuses.
+  stands — a second try returns the first. Accounts are for 13 and over
+  (2026-11-03): an answer under 13, or `{again: true}` from a browser told
+  before, deletes the account at once (`erase`, as Delete account, then the
+  address's `otp_requests` rows) and answers 403 `{error: TOO_YOUNG,
+  deleted: true}`; the owner's account 403 `deleted: false`. See
+  [web](web.md) for the old rows' refusals.
 - `GET` and `POST /api/account?op=theme` (2026-10-22, Bearer): the site's
   theme on the account (`profiles.theme`, `supabase/theme.sql`). GET
   `{theme: system|light|dark, chosen, ready}`; POST `{theme}` answers
@@ -116,10 +120,17 @@ they have. A Claude connector belongs to the account that switched it on.
   (`age_month_1`…`12`), the year (`age_year`), Carry on (`age_go`), and "The
   date itself is not kept." The site's own dialog (web/account.js) asks it
   with two dropdowns side by side, Month by name and Year newest first,
-  drawn as its text boxes are. Under 13, the screen then says what is open and
-  what is for 13 and over, and Start building (`age_done`) lets them in.
-  `window.brickworksAccount` adds `age_ask` and `over_13`. Not asked offline
-  or by a deployment that does not say `ask`.
+  drawn as its text boxes are. Under 13 the account is gone: the screen is
+  back at the way in, titled "Accounts are for 13 and over", with the
+  server's words, "The account is deleted, with your email address. The
+  date was never kept." and the line for a parent; `user://age_refused`
+  (localStorage `brickworks.age_refused` on the web) holds "1", so it says
+  so at once from then on, and an account new there is not asked but
+  deleted (`Account.refused`, `refused_now`, `_refuse_again`).
+  `window.brickworksAccount` adds `age_ask`, `over_13`, `refused` and
+  `refused_now`. Not asked offline or by a deployment that does not say
+  `ask`. `gate_probe` drives the refusal offline; `age_flow.mjs` on a
+  deployment.
 - `GET /api/admin` (`api/admin.js`): MASTER_EMAIL only (404 for everyone
   else signed in, 401 signed out): accounts from Supabase's admin API with
   joined and last sign-in, connectors per owner from `relay_tabs`, whether

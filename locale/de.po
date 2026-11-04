@@ -8056,9 +8056,6 @@ msgstr "Melde dich an, um mit dem Bauen zu beginnen"
 msgid "One question first"
 msgstr "Zuerst eine Frage"
 
-msgid "Welcome to Brickworks"
-msgstr "Willkommen bei Brickworks"
-
 msgid "Signing you in…"
 msgstr "Du wirst angemeldet…"
 
@@ -8119,14 +8116,17 @@ msgstr "Wähle den Monat und gib das Jahr mit vier Ziffern ein."
 msgid "Brickworks asks everyone this once. The date itself is not kept."
 msgstr "Brickworks fragt das jeden einmal. Das Datum selbst wird nicht gespeichert."
 
-msgid "Thank you. You can build here, keep your models and share them by link with anyone you choose."
-msgstr "Danke. Du kannst hier bauen, deine Modelle behalten und sie per Link mit allen teilen, die du auswählst."
+msgid "Accounts are for 13 and over"
+msgstr "Konten gibt es ab 13"
 
-msgid "The gallery, a public profile and a name shown on a link are for people 13 and over, so they are not open on this account."
-msgstr "Die Galerie, ein öffentliches Profil und ein Name, der bei einem Link steht, sind für Menschen ab 13, daher sind sie mit diesem Konto nicht möglich."
+msgid "Brickworks accounts are for 13 and over. Ask a parent or guardian to sign in with their own email and build with you."
+msgstr "Brickworks-Konten sind für Menschen ab 13. Bitte einen Elternteil oder Erziehungsberechtigten, sich mit der eigenen E-Mail-Adresse anzumelden und mit dir zu bauen."
 
-msgid "Start building"
-msgstr "Mit dem Bauen beginnen"
+msgid "The account is deleted, with your email address. The date was never kept."
+msgstr "Das Konto ist gelöscht, mit deiner E-Mail-Adresse. Das Datum wurde nie gespeichert."
+
+msgid "A parent or guardian new to Brickworks makes their account on their own phone or computer first, then signs in here."
+msgstr "Ein Elternteil oder Erziehungsberechtigter, der neu bei Brickworks ist, erstellt sein Konto zuerst auf dem eigenen Telefon oder Computer und meldet sich dann hier an."
 
 msgid "An account is your email address and nothing else. Your models are saved on this device, not with your account; Claude runs on your own plan or API key."
 msgstr "Ein Konto ist deine E-Mail-Adresse und sonst nichts. Deine Modelle werden auf diesem Gerät gespeichert, nicht bei deinem Konto; Claude läuft mit deinem eigenen Abo oder API-Schlüssel."

@@ -347,7 +347,6 @@ try {
   who.ada = await mintSession(emails.ada);
   who.ed = await mintSession(emails.ed);
   who.cy = await mintSession(emails.cy, { age: false });
-  await answerAge(who.cy.kept.user_id, emails.cy, false);
   const profiles = [await api("/api/people?op=profile", { method: "POST", token: who.ada.access_token, body: { handle: ADA, name: "Ada Challenges" } }),
     await api("/api/people?op=profile", { method: "POST", token: who.bob.access_token, body: { handle: BOB, name: "Bob Challenges" } })];
   check(`profiles: /u/${ADA}, /u/${BOB} (${profiles.map((one) => one.status).join(", ")})`, profiles.every((one) => one.status === 200));
@@ -372,6 +371,9 @@ try {
       one.status === 201 && Boolean(one.body.id) && (!tested || one.body.tested?.passed === true));
     await new Promise((done) => setTimeout(done, 300));
   }
+  // Cy's row says under 13 once his model is shared, as an account's from
+  // before 2026-11-03 can: nothing new is shared by one now (api/_trust.js).
+  await answerAge(who.cy.kept.user_id, emails.cy, false);
 
   // --- 3. Entering ---------------------------------------------------------
   console.log("Ada enters the house from its page; the others are refused in words");

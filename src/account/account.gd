@@ -33,6 +33,14 @@
 ## ([OrangecheckSignIn]); the deployment trades it for a session like the
 ## site's own orangecheck sign-in gives, which is kept as a code's is.
 ##
+## Accounts are for 13 and over (2026-11-03): an answer under 13 to the age
+## question deletes the account just made, on the deployment (api/account.js),
+## and this device keeps that it was told, nothing about the person
+## ([member refused]), so the sign-in screen says so at once from then on and
+## a new account signed in here is not asked again but deleted the same way
+## ([method _refuse_again]). An account that answered 13 or over, a parent's,
+## signs in here as anywhere.
+##
 ## What the account is for, so far: the platform asks for one, and a Claude
 ## connector belongs to one (api/mcp.js records the owner when a signed-in
 ## tab switches it on). The assistant still runs on the person's own key or
@@ -45,6 +53,12 @@ extends Node
 ## the session this machine uses.
 static var where: String = "user://session.json"
 static var web_key: String = "brickworks.session"
+## Where this device keeps that it was told accounts are for 13 and over:
+## a file holding "1" on the desktop, and the site's own key in the
+## browser's storage (web/account.js REFUSED), so the site and the app say
+## it alike. A probe points these elsewhere too.
+static var refused_where: String = "user://age_refused"
+static var refused_key: String = "brickworks.age_refused"
 ## Whether Sign in with orangecheck opens the person's browser. Off in a
 ## probe, which opens [member orangecheck_link] in a browser of its own.
 static var opens_browser: bool = true
@@ -87,7 +101,8 @@ var renewing: bool = false
 var ended: String = ""
 ## The age question (2026-10-18, supabase/trust.sql), asked once: whether
 ## the deployment wants it answered, and the answer as it keeps it — true
-## for 13 or over, false for under 13, null when not said or not known.
+## for 13 or over, null when not said or not known (false only for a row
+## from before 2026-11-03: an answer under 13 now deletes the account).
 ## Only the deployment decides; the app asks and shows.
 var age_ask: bool = false
 var over_13: Variant = null
@@ -99,6 +114,11 @@ var over_13: Variant = null
 ## before it, asked once at its next visit): a returning visitor waits for
 ## nothing.
 var asking_who: bool = false
+## This device was told accounts are for 13 and over (kept where
+## [member refused_where] says), and the account it was told for deleted
+## just now, this run: the screen says the account is gone too.
+var refused: bool = false
+var refused_now: bool = false
 
 ## What the deployment said about itself: whether it has accounts, and
 ## where to sign in. Set before this is added to the tree.
@@ -136,6 +156,7 @@ signal _confirmed
 func _ready() -> void:
 	if keeps:
 		_load()
+		refused = _read_refused()
 	boot()
 
 
@@ -337,6 +358,7 @@ func _signed_in_with(body: Dictionary) -> void:
 	_stop_orangecheck()
 	_keep(body)
 	ended = ""
+	refused_now = false
 	offline = false
 	state = State.SIGNED_IN
 	changed.emit()
@@ -453,6 +475,12 @@ func _ask_who(hold: bool = false) -> void:
 		var said: Dictionary = body
 		master = bool(said.get("master", false))
 		_take_age(said.get("age"))
+		# Told here before: a new account is not asked, but goes as an
+		# answer under 13 does.
+		if age_ask and refused:
+			await _refuse_again()
+			if state != State.SIGNED_IN:
+				return
 		var beta: Variant = said.get("beta")
 		tester = beta is Dictionary and bool((beta as Dictionary).get("tester", false))
 		early.clear()
@@ -479,9 +507,10 @@ func _take_age(age: Variant) -> void:
 
 
 ## Answer the age question: the month (1 to 12) and the year of birth, sent
-## once to the deployment, which keeps only whether that is 13 or over
-## (api/account.js) and never the date. Empty when it took the answer, or
-## something to show.
+## once to the deployment, which keeps only that it is 13 or over
+## (api/account.js) and never the date; under 13 it deletes the account,
+## and this device is signed out and keeps that it was told ([member
+## refused]). Empty when it took the answer, or something to show.
 func answer_age(month: int, year: int) -> String:
 	var token: String = await access_token()
 	if token.is_empty():
@@ -495,11 +524,61 @@ func answer_age(month: int, year: int) -> String:
 		_take_age((body as Dictionary).get("age"))
 		changed.emit()
 		return ""
+	if code == 403 and body is Dictionary and (body as Dictionary).get("deleted") == true:
+		_refused_now()
+		return ""
 	if body is Dictionary and (body as Dictionary).has("error"):
 		return str((body as Dictionary)["error"])
 	if code == 0:
 		return "Could not reach Brickworks. Check your connection and try again."
 	return "Brickworks could not take that just now (%d). Try again in a minute." % code
+
+
+## A new account signed in on a device told before: deleted on the
+## deployment without the question, and signed out here, as after an answer
+## under 13. Anything else (the deployment out of reach) leaves it asked.
+func _refuse_again() -> void:
+	var reply: Dictionary = await _fetch(Deployment.api_base() + "/api/account?op=age",
+		PackedStringArray(["content-type: application/json", "authorization: Bearer " + _access]),
+		HTTPClient.METHOD_POST, JSON.stringify({"again": true}))
+	var body: Variant = reply.get("body")
+	if int(reply.get("code", 0)) == 200 and body is Dictionary:
+		_take_age((body as Dictionary).get("age"))
+	elif int(reply.get("code", 0)) == 403 and body is Dictionary and (body as Dictionary).get("deleted") == true:
+		_refused_now()
+		return
+	changed.emit()
+
+
+## The account is gone on the deployment, for an answer under 13: this
+## device keeps that it was told, and forgets the sign-in, which is over.
+func _refused_now() -> void:
+	refused = true
+	refused_now = true
+	if keeps:
+		_write_refused()
+	_forget("")
+	state = State.SIGNED_OUT if not _url.is_empty() else State.UNREACHABLE
+	changed.emit()
+
+
+static func _read_refused() -> bool:
+	if OS.has_feature("web"):
+		return str(JavaScriptBridge.eval(
+			"(function(){try{return localStorage.getItem(%s)||''}catch(e){return ''}})()"
+			% JSON.stringify(refused_key), true)) == "1"
+	return FileAccess.file_exists(refused_where)
+
+
+static func _write_refused() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("(function(){try{localStorage.setItem(%s,'1')}catch(e){}})()"
+			% JSON.stringify(refused_key), true)
+		return
+	var file: FileAccess = FileAccess.open(refused_where, FileAccess.WRITE)
+	if file != null:
+		file.store_string("1")
+		file.close()
 
 
 func _keep(body: Dictionary) -> void:

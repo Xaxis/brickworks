@@ -136,7 +136,7 @@ META = {"description", "og:title", "og:description", "og:image:alt", "twitter:ti
 # constants (an "id" is not one), and the plans form's fixed replies; and
 # orangecheck's code's, for its button and its box (web/account.js).
 API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES", "MINE_SORTS", "LDRAW_FROM"),
-             "api/_tested.js": ("SAID", "FAILED"), "api/_trust.js": ("UNDER_13",), "web/card.js": ("HOWS", "HOW_SET", "HOW_MODEL", "TRACKS"),
+             "api/_tested.js": ("SAID", "FAILED"), "api/_trust.js": ("TOO_YOUNG",), "web/card.js": ("HOWS", "HOW_SET", "HOW_MODEL", "TRACKS"),
              "api/_library.js": ("SET_SORTS",), "api/_sets.js": ("SETS_SORTS",), "api/plans.js": ("KEPT", "GONE"),
              "api/_feedback.js": ("THANKS",),
              "web/oc-button.mjs": ("SIGN_IN_BUSY_LABEL", "OUTCOME_COPY"),
