@@ -688,6 +688,12 @@ func copy_for_reading() -> BrickWorld:
 		var twin := Brick.new(brick.id, brick.part_id, brick.color_code,
 			brick.transform)
 		twin.group = brick.group
+		# And its sub-model's path (Assemblies.path_of), by which a hose's
+		# pieces are one hose: read on a worker without it, 42080-1's
+		# pneumatic tubes were one thing in pieces with the parts round them,
+		# glued to them, and neither cylinder raised its crane (grabfloor,
+		# 2026-11-04).
+		twin.unit = brick.unit
 		copy._bricks[brick_id] = twin
 	copy._next_id = _next_id
 	return copy

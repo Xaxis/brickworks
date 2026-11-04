@@ -34,7 +34,8 @@
 ## Each piece of the model that holds together by joints has an anchor: the
 ## part of it that stays when the rest is moved. A part the person locked
 ## (Lock parts) anchors its body; else the bodies on the baseplate's studs
-## (a stud in one of their sockets); else the biggest body, the one with the
+## (a stud in one of their sockets), or with no baseplate on the ground (a
+## socket on it); else the biggest body, the one with the
 ## most parts, unless a body standing on the floor (reaching down to where
 ## its piece is lowest, not by a tyre) is heavier. A car's chassis stays and
 ## its wheels turn;
@@ -150,7 +151,8 @@ var touching: Dictionary = {}
 ## Body -> true for each anchor.
 var anchors: Dictionary = {}
 ## Anchor body -> why it stays, [kind, a part]: "locked" (the part the person
-## locked), "studs" (the part on the baseplate's studs), "biggest" (the body
+## locked), "studs" (the part on the baseplate's studs), "ground" (the part
+## with a socket on the floor, where there is no baseplate), "biggest" (the body
 ## with the most parts), "floor" (a body standing on the floor, heavier than
 ## the biggest).
 var anchor_why: Dictionary = {}
@@ -194,6 +196,11 @@ var _line_rooms: Dictionary = {}   ## Link -> Vector2
 
 var _up: Dictionary = {}
 var _standing: Dictionary = {}   ## brick id -> true: on the baseplate's studs
+## Brick id -> true: with no baseplate, standing on the ground by a socket. It
+## stays as what is on a plate's studs does, but nothing holds it there: let
+## go past its edge the model falls (GrabDrag._fall_of reads [member
+## _standing] alone).
+var _on_ground: Dictionary = {}
 ## Pairs joined by studs the lattice did not see, from their resting.
 var _resting: Dictionary = {}
 
@@ -550,6 +557,19 @@ func _read() -> void:
 			per_pair[pair] = []
 			stud_of[pair] = a
 		(per_pair[pair] as Array).append([stud[2], stud[3]])
+	# With no baseplate (a set on the grid, a model on no floor) the ground is
+	# the floor, and a part with a socket on it stays as it would on a
+	# plate's studs, though nothing holds it there. Read by the plate's
+	# studs alone, a set on the grid stood on nothing (setfloor,
+	# 2026-11-04): 21019-1's deck, its biggest body, stayed, not its base,
+	# and its turntable came back 16 LDU from where it began; and a tower an
+	# arm was pressed into was lodged in the arm, so the arm would not come
+	# out of it.
+	if scenery.is_empty():
+		var floor_y: float = _ground_under(entries)
+		for entry: Array in entries:
+			if _socket_on(int(entry[0]), info_of.get(int(entry[0])), floor_y):
+				_on_ground[int(entry[0])] = true
 	# Two parts turned askew to each other hold by studs only where they go
 	# into sockets or holes: one stud alone is a round joint, as any lone
 	# stud is, but more than one cannot all be in a part turned off their
@@ -807,7 +827,7 @@ func _lodge(entries: Array, candidates: Array) -> void:
 		if not parts_of_piece.has(piece):
 			parts_of_piece[piece] = []
 		(parts_of_piece[piece] as Array).append(key)
-		if _standing.has(key) or locked.has(key):
+		if _standing.has(key) or _on_ground.has(key) or locked.has(key):
 			held[piece] = true
 	var biggest: int = -1
 	for piece: int in parts_of_piece:
@@ -1346,8 +1366,8 @@ func _anchor_and_grow() -> void:
 		if not _any_of(piece, anchor_why):
 			for body: int in piece:
 				for key: int in members[body]:
-					if _standing.has(key):
-						anchor_why[body] = ["studs", key]
+					if _standing.has(key) or _on_ground.has(key):
+						anchor_why[body] = ["studs" if _standing.has(key) else "ground", key]
 						break
 		if not _any_of(piece, anchor_why):
 			# The biggest body: the most parts, as the gear reading takes its
@@ -1589,6 +1609,8 @@ func stays_words(body: int) -> String:
 			return "%s is locked" % _part_named(at)
 		"studs":
 			return "%s stands on the baseplate's studs" % _part_named(at)
+		"ground":
+			return "%s stands on the floor" % _part_named(at)
 		"floor":
 			return "the body of %s stands on the floor" % named([body]).get_slice(",", 0)
 	return "the body of %s is the biggest of the model (%d parts)" % [named([body]).get_slice(",", 0),
@@ -2712,6 +2734,30 @@ func _in_a_socket(key: int, foot: Vector3) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(key)
 	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
 	return mesh != null and Joints.socket_at(brick.transform, mesh, foot)
+
+
+## Where the model stands with no baseplate, LDU up: on the ground
+## (Balance.GROUND), or on its lowest point where that is higher, as Balance
+## weighs it (Balance.support_of).
+func _ground_under(entries: Array) -> float:
+	var lowest: float = INF
+	for entry: Array in entries:
+		lowest = minf(lowest, ((entry[1] as Transform3D) * (entry[2] as Lbm.PartMesh).bounds).position.y)
+	return maxf(lowest, Balance.GROUND * BrickLattice.CELL)
+
+
+## Whether [param key]'s part stands on the floor at [param floor_y] as it
+## would on a baseplate's studs: upright, with a socket there, and not a
+## tyre, which rolls.
+func _socket_on(key: int, info: PartLibrary.PartInfo, floor_y: float) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(key)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+	if mesh == null or _is_tyre(info) or (brick.transform.basis * Vector3.UP).normalized().dot(Vector3.UP) < 0.95:
+		return false
+	for socket: Vector2 in mesh.sockets:
+		if absf((brick.transform * Vector3(socket.x, mesh.bounds.position.y, socket.y)).y - floor_y) <= STANDS:
+			return true
+	return false
 
 
 ## Whether a stud at [param foot] pointing [param way] reaches into
