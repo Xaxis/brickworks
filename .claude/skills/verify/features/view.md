@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
 
 ## Sub-features
 
@@ -1310,6 +1310,30 @@ picture the assistant is shown.
   parts of each and of the model's own to step 1, a middle step and the
   last over MCP and by the panel's drop, each read back off the plan and the
   list and undone.
+  Worked-out steps kept (stepsnum, 2026-11-03): a model of sub-models
+  nobody gave steps is shown its worked-out order as the steps it can keep
+  (`Instructions._kept`): the numbers the first step edit gives it
+  (`AuthorSteps.numbers_from_plan`, `adopted`) read as the model's own are,
+  so that edit changes only what it moves. The order worked out
+  (`Instructions.worked_out`) can build a sub-model where it stands round a
+  step of another, or put two sub-models' parts in one step, and a model's
+  steps hold neither: the lighthouse's keeper went on between the island's
+  last two steps, and given the step of its last part the island was built
+  after the keeper once the edit made the steps the lighthouse's own, every
+  step of it one on from where it was read. A copy built where it stands
+  now goes on in the step its first part does, one built on the side in
+  the step that puts it on, each section numbered 0, 1, 2… and every copy
+  stepped as its first; a save writes the same numbers. The booklet's
+  section marks and the steps that had to go in out of order are carried
+  over (`_carry`); a model of no sub-models is shown its order as worked
+  out. `steps_kept_probe` (headless; `STEPS_KEPT_ONLY=7140` for one) lists
+  the lighthouse (`tests/fixtures/steps/lighthouse.ldr`, as the session had
+  it) and 7140-1 with its steps taken out over MCP, sets a step's look by
+  `edit_booklet` and the Booklet row, moves one part by `edit_steps` next,
+  Shift-] and `to`, recolours one by `edit_model`, each undone to the
+  worked-out steps, and saves after one edit and opens it again: every part
+  not moved in the step and callout step it was listed in, by the plan and
+  by the list.
 - `the booklet as a PDF and as PNG pages`: **Save as PDF** and **Save pages as PNG** sit beside Print in the
   booklet's bar (pdf249, 2026-10-24), shown where they work: on the desktop
   while the app serves the booklet (`Booklet.SAVE_SCRIPT` asks the app with
