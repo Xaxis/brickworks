@@ -1762,7 +1762,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   read at its pin's foot, so flex_pose's turret turns; "ground", said
   "stands on the floor"; grabfloor:
   on the grid 21019-1's deck stayed, not its base, and a tower an arm was
-  pressed into was lodged in the arm). The ground holds nothing up: let go
+  pressed into was lodged in the arm). Of the bodies on the ground that
+  joints carry as one only the biggest stays, where every body on a
+  baseplate's studs does: the ground holds nothing (suitegrab: with each
+  kept still, hinge_align's ring of click hinges lying flat was eight
+  anchors, "not joined"). A hose carries nothing on, so a brick on the
+  floor only a tube joins stays as well (`Bodies._carried`; grab_probe's
+  hoses: the tube pulled to its length holds the arm). A part
+  of what stays that is not its anchor's own part says what joins it there
+  (`Bodies.held_words`: mcp_walk3's door at 90°, its studs gripping the wall
+  brick, said only that a brick of the wall stands on the floor). The ground holds nothing up: let go
   past its edge a model on it falls (`GrabDrag._fall_of` asks the plate's
   studs alone, `Bodies._standing`, not `_on_ground`). Else the body with the most
   parts, unless a body standing on the floor (within 2 LDU of the piece's
