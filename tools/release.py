@@ -422,6 +422,16 @@ def stage(assets: Path, version: str, date: str) -> dict[str, str]:
     if project_version((STAGE / "project.godot").read_text()) != version:
         raise Failed("the commit's project.godot does not say %s: commit the version first"
                      % version)
+    # LDraw's primitives, every one (PartForge.SHIPPED): what the parts a
+    # file carries and LDCad's flexible parts are drawn from. Git-ignored,
+    # and copied in by tools/export.sh for its builds, so from git alone no
+    # package had them: bay_2025.io's own part, made from 3001.dat, wanted
+    # box3u2p.dat once 3001.dat was fetched (2026-11-03).
+    primitives = ROOT / "vendor" / "ldraw" / "p"
+    if not (primitives / "stud.dat").exists():
+        raise Failed("no LDraw primitives at %s: tools/fetch_data.sh first" % primitives)
+    shutil.copytree(primitives, STAGE / "assets" / "ldraw" / "p")
+    shipped_primitives = list((STAGE / "assets" / "ldraw" / "p").rglob("*.dat"))
 
     generated = STAGE / "assets" / "generated"
     (generated / "parts").mkdir(parents=True)
@@ -447,9 +457,11 @@ def stage(assets: Path, version: str, date: str) -> dict[str, str]:
             link_or_copy(assets / "exact" / name, generated / "exact" / name)
     stamp = {"version": version, "commit": commit, "date": date}
     (STAGE / "release.json").write_text(json.dumps(stamp) + "\n")
-    say("  staged %s: %d parts' meshes, %s; %d exact shapes, %s" % (commit, len(meshes), human(
-        sum((generated / "parts" / (m + ".lbm")).stat().st_size for m in meshes)), len(exact),
-        human(sum((generated / "exact" / (m + ".bwx")).stat().st_size for m in exact))))
+    say("  staged %s: %d parts' meshes, %s; %d exact shapes, %s; %d LDraw primitives, %s"
+        % (commit, len(meshes), human(
+            sum((generated / "parts" / (m + ".lbm")).stat().st_size for m in meshes)), len(exact),
+           human(sum((generated / "exact" / (m + ".bwx")).stat().st_size for m in exact)),
+           len(shipped_primitives), human(sum(path.stat().st_size for path in shipped_primitives))))
 
     log = WORK / "import.log"
     with log.open("w") as out:
@@ -2174,15 +2186,10 @@ def opens_models(package: Path, base: list[str], env: dict[str, str],
         code, output = run_app(base + ["--headless", str(model), "--", "--out=%s" % out], env)
         parts = opened_line(output, model)
         written = ldraw_parts(out.read_text()) if out.exists() else 0
-        # A part a Studio file carries, built from LDraw files a package
-        # has only as meshes, is not drawn but is kept: bay_2025.io's own
-        # part draws in the editor, 6 parts, and in a package says why not
-        # and goes back out with the other 5.
-        kept = max(0, written - parts) if "could not build a part the file carries" in output else 0
-        said.append(("opens %s given as the system gives it: %d parts, %d written back%s"
-                     % (model.name, parts, written, ", %d it carries but cannot draw" % kept
-                        if kept else ""),
-                     code == 0 and parts > 0 and written == parts + kept, output))
+        said.append(("opens %s given as the system gives it: %d parts, %d written back"
+                     % (model.name, parts, written),
+                     code == 0 and parts > 0 and written == parts, output))
+    said += carried_offline(base, env, root, folder / "bay_2025.io")
 
     twice = [folder / "car one.ldr", folder / "car two.ldr"]
     for copy in twice:
@@ -2196,6 +2203,43 @@ def opens_models(package: Path, base: list[str], env: dict[str, str],
         said += double_click_windows(package, twice)
     elif name.endswith(".AppImage"):
         said += appimage_integration(base[0], root)
+    return said
+
+
+def carried_offline(base: list[str], env: dict[str, str], root: Path,
+                    bay: Path) -> list[tuple[str, bool, str]]:
+    """A Studio file's own part, drawn from an LDraw part that a package has
+    as a mesh and not as text: bay_2025.io's, made from 3001.dat, which the
+    file carries as Studio's copy, drawn from the library's s/3001s01.dat.
+    Opened above, the package fetched what it lacked from the parts store,
+    as the web does, and kept it (PartForge.kept_dir): opened again with
+    no network, it is drawn from those. In a home that never fetched them, it
+    opens with the part said not drawn, by name and why, and the part is kept
+    in the file. No network is a deployment that does not answer
+    (BRICKWORKS_API at a port nobody listens on): the app learns nowhere to
+    fetch from."""
+    said: list[tuple[str, bool, str]] = []
+    kept = [path for path in (root / "home").rglob("*.dat") if "ldraw" in path.parts]
+    said.append(("...and kept the LDraw files its own part is drawn from: %s"
+                 % (", ".join(str(path.relative_to(root)) for path in kept) or "none"),
+                 bool(kept), ""))
+    for home, wanted in ((root / "home", 0), (root / "home-offline", 1)):
+        offline = dict(clean_env(home), BRICKWORKS_API="http://127.0.0.1:%d" % free_port())
+        out = root / ("offline-%s.ldr" % home.name)
+        code, output = run_app(base + ["--headless", str(bay), "--", "--out=%s" % out], offline)
+        parts = opened_line(output, bay)
+        written = ldraw_parts(out.read_text()) if out.exists() else 0
+        line = next(iter(re.findall(r"opened [^\n]*%s: ([^\n]*)" % re.escape(bay.name), output)[-1:]), "")
+        if not wanted:
+            said.append(("opens it again with no network, drawn from what it kept: %d parts, %d "
+                         "written back" % (parts, written),
+                         code == 0 and parts > 0 and written == parts, output))
+        else:
+            told = "m1a2b3c4_2025408_163200 could not be drawn" in line \
+                and "could not be reached" in line
+            said.append(("opens it with no network in a home that never fetched it: %d of %d "
+                         "drawn, and says why: %s" % (parts, written, line),
+                         code == 0 and parts > 0 and written == parts + wanted and told, output))
     return said
 
 

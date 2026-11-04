@@ -29,15 +29,17 @@
 ## from res://vendor/ldraw/ when a checkout has the whole library — which
 ## is what lets a part embedded in somebody else's model file build here —
 ## or, in an exported build, from every primitive it ships ([constant
-## SHIPPED]).
+## SHIPPED]) and the parts and subparts such a part names, fetched
+## ([method fetched]).
 class_name PartForge
 extends RefCounted
 
 const BUNDLED := "res://assets/ldraw/"
 const LIBRARY := "res://vendor/ldraw/"
 ## LDraw's primitives, every one (p/ and its 8/ and 48/), which every export
-## ships (tools/export.sh copies them from vendor/ldraw/p): what LDCad draws a
-## flexible part's skin with and what most parts a model file carries are
+## ships (tools/export.sh copies them from vendor/ldraw/p, and tools/release.py
+## into the packages it stages, which until 0.16.0 had none): what LDCad draws
+## a flexible part's skin with and what most parts a model file carries are
 ## drawn from. A build has no vendor/, so without them the web and the
 ## desktop downloads could build neither, and showed a real set's hoses and
 ## its carried parts missing (docs/CADTASK.md).
@@ -194,7 +196,7 @@ func _source_for(name: String) -> Source:
 ## Where a reference resolves in a checkout's LDraw library, in the order
 ## tools/ldraw/library.py searches: parts and their subparts, then the
 ## primitives; in a build, which has no vendor/, the primitives it ships;
-## and then what was fetched this session ([method fetched]).
+## and then what was fetched ([method fetched]).
 static func _read_library(key: String) -> String:
 	var path: String = library_path(key)
 	return FileAccess.get_file_as_string(path) if not path.is_empty() else fetched(key)
@@ -219,6 +221,17 @@ static func library_path(key: String) -> String:
 ## build ships, and not its parts or subparts, which no build does. What a
 ## probe sets to see what the web can build (webcarry_probe).
 static var withheld: bool = false
+## Whether this is a checkout, with LDraw's whole library in vendor/ldraw.
+## A desktop download has the primitives it ships and not the parts and
+## subparts (601 MB), so it fetches those a file's own parts are drawn from,
+## as the web does (CustomParts.fetches). Read once, as the class loads:
+## workers read it.
+static var library_here: bool = DirAccess.dir_exists_absolute(LIBRARY + "parts")
+## Where a desktop download keeps the library's files it fetched, as LDraw
+## lays them out: a file opened once opens with no network after, as the
+## rest of the desktop does. Not on the web, which fetches them each visit.
+## A probe points this elsewhere, so a check never touches the person's own.
+static var kept_dir: String = "user://ldraw/parts/"
 ## The LDraw library's own files fetched this session, by normalised name:
 ## official subparts and parts that parts a file carries are drawn from,
 ## which no build ships (CustomParts.fetch_sources). Read on worker threads.
@@ -226,19 +239,39 @@ static var _fetched: Dictionary = {}
 static var _fetched_lock := Mutex.new()
 
 
-## The text of [param key] fetched this session, or "".
+## The text of [param key] fetched this session, or kept by a desktop
+## download that fetched it before, or "".
 static func fetched(key: String) -> String:
 	_fetched_lock.lock()
 	var text: String = str(_fetched.get(key, ""))
 	_fetched_lock.unlock()
+	if text.is_empty() and _keeps_fetched() and FileAccess.file_exists(kept_dir + key):
+		text = FileAccess.get_file_as_string(kept_dir + key)
 	return text
 
 
-## Keep [param text], fetched, as the library's [param key] for the session.
+## Keep [param text], fetched, as the library's [param key] for the session,
+## and on a desktop download for good ([member kept_dir]). Written whole
+## under another name and then renamed: a file cut short by a crash is not
+## read as a part next time.
 static func keep_fetched(key: String, text: String) -> void:
 	_fetched_lock.lock()
 	_fetched[key] = text
 	_fetched_lock.unlock()
+	if not _keeps_fetched():
+		return
+	var path: String = kept_dir + key
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var file: FileAccess = FileAccess.open(path + ".part", FileAccess.WRITE)
+	if file == null:
+		return
+	file.store_string(text)
+	file.close()
+	DirAccess.rename_absolute(path + ".part", path)
+
+
+static func _keeps_fetched() -> bool:
+	return not library_here and not OS.has_feature("web")
 
 
 ## Parse a file's text. Unreadable lines are skipped, as every renderer
