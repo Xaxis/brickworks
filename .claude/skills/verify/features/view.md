@@ -158,7 +158,11 @@ picture the assistant is shown.
   end), the colours, the assistant, the toolbar, an open menu, the controls
   panel, the minifigure builder, Make a part, the mosaic, the parts list and the
   timeline and checks the camera did not move; the browser check does the same
-  over the bin, the assistant and the controls panel by the view's pixels.
+  over the bin, the assistant and the controls panel by the view's pixels,
+  leaving out the cells a tooltip covers in either picture: the app tells
+  the page where one is drawn (`tooltip` in `window.brickworksControls`). A
+  bin tile's reached 125 px over the view, and with another tile scrolled
+  under the pointer read as the view moving on the grid's light floor (rel-m255).
 - `centred on the model's column` (`CadCamera.seen`, `Main._model_rect`): the
   3D draws across the whole window, behind the columns, and the view is
   centred on the model's part of it (`model_cover`'s "view": between the
