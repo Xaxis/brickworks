@@ -80,7 +80,7 @@ With several tabs open, start the chat from the one you want: **New chat for thi
 
 ## If something is wrong {#trouble}
 
-- **{Called} will not let you add it.** Which of its plans can is for {called} to say, and may have changed since we checked. Otherwise [another AI app](/docs/connect) or [your own API key](/docs/connect#api-key) designs on any Brickworks plan.
+- **{Called} will not let you add it.** Which of its plans can add it is for {called} to say, and may have changed since we checked. Otherwise [another AI app](/docs/connect) or [your own API key](/docs/connect#api-key) designs on any Brickworks plan.
 - **Added it before?** Connect the Brickworks already in {called} rather than adding it again: adding it again sets up a new one, with its tool permissions to choose again.
 - **A new Brickworks tool is missing.** Start a new chat. Still missing, connect Brickworks again in {called}.
 - **It built in the wrong tab.** Start each chat from its tab, as above: a chat stays in the tab it chose.
