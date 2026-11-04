@@ -25,8 +25,9 @@
 # probes went red on main unseen until desktop016 ran the suite. All 209
 # took 19m30s four at a time, beside a battery of about two hours, and
 # failed the six headless ones of the eight; those featuremap affected
-# reached would have caught three, as its graph follows res:// paths and
-# not a class used by its class_name (2026-11-04).
+# reached would have caught three, as its graph followed res:// paths and
+# not a class used by its class_name (2026-11-04; it does since claude-core
+# e6df180).
 #
 # The train waits until PREV's ship says brickworks.diy serves it, never on
 # PREV's process: what ship.sh does after that touches only the live site.
