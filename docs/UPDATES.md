@@ -105,6 +105,12 @@ app draws. `BRICKWORKS_UPDATE_ELEVATE` names a stand-in for pkexec, and is
 read only beside `BRICKWORKS_UPDATE_URL`, so only a test can set it. A
 `.deb` in an apt repository (Chrome's, VS Code's) would be updated by apt
 with the rest of the system, the next step if the releases ever have one.
+apt replaces the `.pck` while the old copy still runs, and Godot opens the
+pack again by its path for every file it reads, so after apt a read gets
+the new pack's bytes at the old one's places: the helper's script is read
+before apt runs (`_helper_text`). Read after, it was other bytes, and
+0.16.0's first build never came back on Ubuntu after apt put it in; the
+0.15.99 to 0.15.100 dry run passed only because both packs had one layout.
 
 **On Windows the helper first leaves the app's folder.** An exported Godot
 app makes its own folder its working directory as it starts (`main.cpp`),

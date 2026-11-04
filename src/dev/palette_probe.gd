@@ -20,7 +20,8 @@
 ## - Ctrl+Shift+P opens it too; the app's menu has Find a command… with its
 ##   key; Escape puts it away and the keys go back to the model.
 ## - No command is in two of the menus; Edit is at most 25 rows and fits in
-##   60% of the window; Help is Keys and the tour.
+##   60% of the window; Help is Keys and the tour, and on the desktop
+##   the updater's Check for updates…, Reinstall and Restart.
 ## - The menu on a part holds Duplicate, Replace, the same part and colour,
 ##   the moves a step earlier and later and the swing on a hinge, each with
 ##   its key, and each runs from there.
@@ -132,8 +133,11 @@ func _menus() -> void:
 	var help_rows: Array = []
 	for index: int in help.item_count:
 		help_rows.append(help.get_item_text(index))
-	_check("Help is Keys and the tour (%s)" % ", ".join(help_rows),
-		help_rows == ["Keys and controls", "Take the tour"])
+	var help_wanted: Array = ["Keys and controls", "Take the tour"]
+	if not OS.has_feature("web"):
+		help_wanted.append_array(["", "Check for updates…", "Reinstall Brickworks…", "Restart Brickworks"])
+	_check("Help is Keys and the tour, and the updater's own (%s)" % ", ".join(help_rows),
+		help_rows == help_wanted)
 	var mark: MenuButton = (_main.get("_bar") as ModelBar).mark
 	mark.show_popup()
 	await _frames(10)

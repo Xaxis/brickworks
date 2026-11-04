@@ -67,6 +67,8 @@ var _drop_later: String = ""
 ## latest.json as it came, kept beside the download it describes.
 var _signed: PackedByteArray = PackedByteArray()
 var _state: Dictionary = {}
+## The helpers' scripts by kind, as read from the package (_helper_text).
+var _helper_texts: Dictionary = {}
 ## --update=check, fetch, install, reinstall, restart or report: what a
 ## test run asked for (tools/update_check.py).
 var _asked: String = ""
@@ -273,6 +275,10 @@ func restart(how: String = "restart") -> void:
 	var deb: bool = how == "install" and str(install.get("kind", "")) == "deb"
 	if deb:
 		var version: String = str(_staged["version"])
+		# apt replaces the .pck this copy reads res:// from, and each read
+		# opens it again by its path: after apt, the new one's bytes at this
+		# one's places. The helper is read now, while it is still this one's.
+		_helper_text("sh")
 		shown_file = ""
 		_become(RESTARTING, "Installing Brickworks %s…" % version)
 		var why: String = str(await _off_thread(_install_deb.bind(str(_staged["item"]))))
@@ -383,10 +389,16 @@ func _launch(user: PackedStringArray) -> Array:
 	return launch + engine + ["--"] + Array(user)
 
 
+## The helper's script, read from the package once and kept (restart()).
+func _helper_text(kind: String) -> String:
+	if not _helper_texts.has(kind):
+		_helper_texts[kind] = FileAccess.get_file_as_string("res://src/net/update_helper.%s" % kind)
+	return _helper_texts[kind]
+
+
 ## The helper's script, written where it can run from.
 func _write_helper(kind: String) -> String:
-	var source: String = "res://src/net/update_helper.%s" % kind
-	var text: String = FileAccess.get_file_as_string(source)
+	var text: String = _helper_text(kind)
 	if text.is_empty():
 		return ""
 	DirAccess.make_dir_recursive_absolute(WHERE)
