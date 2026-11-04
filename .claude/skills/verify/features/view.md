@@ -1330,7 +1330,15 @@ picture the assistant is shown.
   stepped as its first; a save writes the same numbers. The booklet's
   section marks and the steps that had to go in out of order are carried
   over (`_carry`); a model of no sub-models is shown its order as worked
-  out. `steps_kept_probe` (headless; `STEPS_KEPT_ONLY=7140` for one) lists
+  out. And so is one whose steps that can be kept build worse than the
+  order worked out, by the steps test's rules (`_builds_as_well`, on what
+  the mend read, `HeldSteps.faults_of`; suitesteps, 2026-11-04): a
+  sub-model in a model's steps is built whole, and the castle's north-east
+  tower, built whole where its first plate went in, put a column of its
+  bricks down before the front curtain wall's bricks under it, 31 parts in
+  the air; the fox and the robot of `held_steps_probe` put two each. Such a
+  model's first edit still gives it the numbers that can be kept.
+  `steps_kept_probe` (headless; `STEPS_KEPT_ONLY=7140` for one) lists
   the lighthouse (`tests/fixtures/steps/lighthouse.ldr`, as the session had
   it) and 7140-1 with its steps taken out over MCP, sets a step's look by
   `edit_booklet` and the Booklet row, moves one part by `edit_steps` next,

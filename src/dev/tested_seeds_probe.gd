@@ -103,8 +103,10 @@ const FAULTS: Array = [
 	# 6066-1 opens its chest's lid about a line 8.5 LDU off the lid's hinge
 	# pins, which are in the chest's hinge holes only when it is closed.
 	[8, "whole", "Container Treasure Chest without Slots into Container Treasure Chest with Slots Lid by 2.1 LDU"],
-	# 7815-1 seats its two passengers after the carriage's roof is on.
-	[23, "steps", "Step 35: Minifig Leg Right (Obsolete) is hidden behind what is already built"],
+	# 7815-1 seats its two passengers after the carriage's roof is on. Each
+	# is a sub-model, built in the hand in the steps the model can keep and
+	# put on whole (stepsnum), named by its first part.
+	[23, "steps", "Step 36: Minifig Hair Male is hidden behind what is already built"],
 ]
 
 var _failures: int = 0
