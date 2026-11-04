@@ -409,8 +409,11 @@ app starts or offers them.
    connected, by name, from the relay's word.
 5. **The same first message.** "New chat for this tab" opens the
    assistant's new chat with "Use my Brickworks tab k7qd (“Castle”) for this
-   chat." filled in where it takes one (Claude documented; ChatGPT's `?q=`
-   only third-party word: checked in U4), and copies it for every assistant.
+   chat." filled in where it takes one (Claude documented), and copies it
+   for every assistant. Checked signed out in U4 (2026-11-03): ChatGPT's
+   `?q=` sends the message at once, `?prompt=` fills it in unsent; Gemini
+   fills nothing from `?q=`, `?prompt=` or `?text=`. The table opens both
+   plainly until `?prompt=` is seen signed in where the connector is.
 6. **The same status and history**, in the caller's name: "ChatGPT working ·
    tab k7qd", "ChatGPT's submit design (…)", "Stop ChatGPT in this tab", one
    undo per chat as now.

@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <!--
-  Questions about Brickworks, and how to design with Claude in it.
+  Questions about Brickworks, and how to design with your own AI in it.
 
   Moved off the home page on 2026-10-13, which now says what Brickworks is
-  and shows it; this is where the detail lives: the three ways to bring
-  your own AI, what each costs, and the questions people ask, in groups
+  and shows it; this is where the detail lives: how to bring your own AI
+  (a card for each AI app, written from assets/assistants.json by
+  tools/docs_site.py --write, as the app's Connect your AI lists them, and
+  your own key), what each costs, and the questions people ask, in groups
   with what is on the page beside them (site359). The answers are
   also FAQPage JSON-LD at the foot (data, not script).
 
@@ -13,9 +15,10 @@
   desktop app for personal and educational use, Pro every model kept with
   the account and a licence for commercial use. AI is never limited on any
   plan (the owner, 2026-10-29): people bring their own, and this page says
-  only what works and was seen to: on the web, Claude alone (tools/deploy.sh
-  lets a page call api.anthropic.com and no other AI); another AI's key in
-  the desktop app. A Brickworks .io has not been opened in Studio yet, and
+  only what works and was seen to: any AI app through the connector, each
+  as its row says (docs/ANY_ASSISTANT.md); a key on the web, Anthropic's
+  alone (tools/deploy.sh lets a page call api.anthropic.com and no other
+  AI); another AI's key in the desktop app. A Brickworks .io has not been opened in Studio yet, and
   the page says so. The CAD comes first, the AI after (the owner,
   2026-11-02): plans, files, your account and sharing, then your AI.
 -->
@@ -63,6 +66,15 @@
 .way b { color: var(--ink); font-weight: 620; }
 .way .for { font-size: var(--t-small); color: var(--ink-faint); margin: 2px 0 0; }
 .way .cost { margin-top: auto; padding-top: var(--s-3); border-top: 1px solid var(--line); font-size: var(--t-small); }
+/* The AI apps, one card each, as the app's Connect your AI lists them
+   (tools/assistants.py writes them from assets/assistants.json). */
+.lead-in { margin: 0 0 var(--s-4); color: var(--ink-soft); max-width: 66ch; }
+.assistants { display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+	margin: 0 0 var(--s-5); padding: 0; list-style: none; }
+.assistant { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-4); }
+.assistant h3 { margin: 0; font-size: var(--t-body); }
+.assistant .how { color: var(--ink); }
+.assistant .for { color: var(--ink-faint); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -130,7 +142,7 @@
 				</details>
 				<details class="qa" id="ai">
 					<summary>Is AI limited on any plan?</summary>
-					<div><p>No, never, on any plan. You bring your own AI: your Claude through the connector or Claude Code, or your own Anthropic API key; in the desktop app, your own key for OpenAI, Gemini and others too. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it. The desktop app can also start Claude Code for you.</p></div>
+					<div><p>No, never, on any plan. You bring your own AI: the AI app you use through the connector, Claude or another, or your own Anthropic API key; in the desktop app, your own key for OpenAI, Gemini and others too. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it. The desktop app can also start Claude Code for you.</p></div>
 				</details>
 				<details class="qa" id="had-account">
 					<summary>I made my account before 29 October 2026. What changes?</summary>
@@ -213,30 +225,73 @@
 			</section>
 			<section class="faq-part" id="claude" aria-labelledby="claude-h">
 				<h2 id="claude-h">Bring your own AI</h2>
-				<p class="sub">Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have an AI design, <a href="/app?assistant=on">open Brickworks with the assistant on</a> (or turn it on in <b>Settings, Assistant</b>), then bring your own, one of three ways. AI is never limited, on any plan: its maker bills your plan or key, never Brickworks.</p>
+				<p class="sub">Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have an AI design, <a href="/app?assistant=on">open Brickworks with the assistant on</a> (or turn it on in <b>Settings, Assistant</b>), then connect the AI app you use, or use your own API key. AI is never limited, on any plan: its maker bills your plan or key, never Brickworks.</p>
+				<p class="lead-in">Every AI app adds Brickworks at the same address, and you sign in to Brickworks and <b>Allow</b> it once. In the app, <b>Connect your AI</b> does each one’s way for you. Each app’s page says how, and who can add it:</p>
+				<!-- assistants: made from assets/assistants.json by tools/docs_site.py --write; edit the table, not this -->
+				<ul class="assistants" aria-label="AI apps">
+					<li class="card assistant">
+						<h3><a href="/docs/connect-claude">Claude</a></h3>
+						<p class="how">One link opens it with Brickworks filled in.</p>
+						<p class="for">Every Claude plan: Free adds one custom connector, and on Team and Enterprise an Owner adds it.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-chatgpt">ChatGPT</a></h3>
+						<p class="how">Copy the address and paste it in, on its own page.</p>
+						<p class="for">Business, Enterprise and Edu workspaces, where an admin or owner adds it; other plans may not offer it yet.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-gemini">Gemini</a></h3>
+						<p class="how">Copy the address and paste it in, on its own page.</p>
+						<p class="for">Personal Google accounts in the US, 18 or over, in English, with Keep Activity on.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-le-chat">Le Chat</a></h3>
+						<p class="how">Copy the address and paste it in, on its own page.</p>
+						<p class="for">The workspace's admin adds it; on Free, Pro and Student that is you.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-perplexity">Perplexity</a></h3>
+						<p class="how">Copy the address and paste it in, on its own page.</p>
+						<p class="for">Pro, Max and Enterprise, on the web; not on phones yet.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-grok">Grok</a></h3>
+						<p class="how">Copy the address and paste it in, on its own page.</p>
+						<p class="for">Every Grok plan; on Business and Enterprise an admin allows it first.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-claude-code">Claude Code</a></h3>
+						<p class="how">One command, to run in a terminal.</p>
+						<p class="for">Every Claude plan with Claude Code; signed in with the same Claude account as claude.ai, it has the connector from there too.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-codex">Codex</a></h3>
+						<p class="how">One command, to run in a terminal.</p>
+						<p class="for">Every ChatGPT plan; Enterprise admins may restrict it.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-gemini-cli">Gemini CLI</a></h3>
+						<p class="how">One command, to run in a terminal.</p>
+						<p class="for">Paid Gemini Code Assist plans.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-cursor">Cursor</a></h3>
+						<p class="how">One link opens it with Brickworks filled in.</p>
+						<p class="for">Every Cursor plan.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-vscode">VS Code</a></h3>
+						<p class="how">One link opens it with Brickworks filled in.</p>
+						<p class="for">VS Code with GitHub Copilot; on Business and Enterprise an admin turns MCP on.</p>
+					</li>
+					<li class="card assistant">
+						<h3><a href="/docs/connect-other">Another app</a></h3>
+						<p class="how">Copy the address wherever it takes a remote MCP server.</p>
+						<p class="for">Any app that takes a remote MCP server and signs in with OAuth.</p>
+					</li>
+				</ul>
+				<!-- /assistants -->
 				<div class="ways">
-					<div class="card way">
-						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#spark"/></svg></span>
-						<h3>Your Claude plan</h3>
-						<p class="for">Any Claude plan · no key, nothing to install</p>
-						<ol>
-							<li><a href="/app?assistant=on">Open the app with the assistant on</a> and press <b>Connect Claude</b>. claude.ai opens with Brickworks filled in: press <b>Add</b>, then <b>Connect</b>, and <b>Allow</b> when Brickworks asks. Once, for your account; the Claude desktop and mobile apps have it too.</li>
-							<li>With Brickworks open and its assistant on, ask Claude to “build a small red house in Brickworks”. It builds in your open tab, on any device, and every step shows as it goes.</li>
-						</ol>
-						<p class="for">Claude’s free plan has room for one custom connector, so there Brickworks takes it.</p>
-						<p class="cost">Counts against your plan’s usage, like any other chat with Claude.</p>
-					</div>
-					<div class="card way">
-						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#monitor"/></svg></span>
-						<h3>Claude Code</h3>
-						<p class="for">Claude Code, signed in to your plan</p>
-						<ol>
-							<li>Add Brickworks, then <b>/mcp</b> and Authenticate:
-								<code class="cmd">claude mcp add --transport http brickworks https://brickworks.diy/api/mcp</code></li>
-							<li>Or in the desktop app, the assistant panel starts Claude Code for you, so a design runs on your plan with no key.</li>
-						</ol>
-						<p class="cost">Counts against your plan’s usage, like any other Claude Code session.</p>
-					</div>
 					<div class="card way">
 						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#gear"/></svg></span>
 						<h3>Your own API key</h3>
@@ -249,13 +304,22 @@
 						</ol>
 						<p class="cost">Measured at the default setting: a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10. Medium effort costs about a third.</p>
 					</div>
+					<div class="card way">
+						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#monitor"/></svg></span>
+						<h3>Claude Code, started for you</h3>
+						<p class="for">The desktop app, with Claude Code signed in to your plan</p>
+						<ol>
+							<li>Or in the desktop app, the assistant panel starts Claude Code for you, so a design runs on your plan with no key.</li>
+						</ol>
+						<p class="cost">Counts against your plan’s usage, like any other Claude Code session.</p>
+					</div>
 				</div>
 			</section>
 			<section class="faq-part" id="ai-questions" aria-labelledby="ai-questions-h">
 				<h2 id="ai-questions-h">Your AI</h2>
 				<details class="qa">
 					<summary>Do I need a Claude subscription?</summary>
-					<div><p>No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or <a href="/app?assistant=on">open the app with it on</a>: build entirely by hand and there is no AI anywhere in the window. To bring Claude in, turn it on, then connect your Claude account, or paste an API key from the Anthropic Console.</p></div>
+					<div><p>No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or <a href="/app?assistant=on">open the app with it on</a>: build entirely by hand and there is no AI anywhere in the window. To bring an AI in, turn it on, then connect the AI app you use, Claude or another, or paste an API key from the Anthropic Console.</p></div>
 				</details>
 				<details class="qa">
 					<summary>Does Brickworks see my API key?</summary>
@@ -347,7 +411,7 @@
 			</nav>
 		</div>
 		<div class="legal">
-			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). Claude, ChatGPT, Gemini and the other AI apps named here are trademarks of their owners. <a href="/terms#notices">Notices</a></p>
 		</div>
 	</div>
 </footer>
@@ -359,11 +423,11 @@
 	"mainEntity": [
 		{ "@type": "Question", "name": "Why Brickworks, when BrickLink Studio exists?", "acceptedAnswer": { "@type": "Answer", "text": "Studio is the community's standard and does a lot well. Brickworks runs in any browser, a tablet's or a phone's too, with nothing to install; weighs balance and joint strength, and lists the weakest joints; turns gear trains at their real ratios; opens Studio .io; exports STL, OBJ and GLB; and builds one model with others, live. brickworks.diy/compare sets it beside Studio, Mecabricks, LeoCAD and LDCad, with where each of them still leads." } },
 		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, for personal and educational use: the web app and the desktop app, with building together, instructions, renders, exports and share links, AI never limited, and up to 25 models kept with your account. Saving to your device and exporting are never limited. Pro, coming soon at $8 a month or $80 a year, keeps any number of models with your account and adds a licence for commercial use. Nothing takes money yet." } },
-		{ "@type": "Question", "name": "Is AI limited on any plan?", "acceptedAnswer": { "@type": "Answer", "text": "No, never, on any plan. You bring your own AI: your Claude through the connector or Claude Code, or your own Anthropic API key; in the desktop app, your own key for OpenAI, Gemini and others too. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it." } },
+		{ "@type": "Question", "name": "Is AI limited on any plan?", "acceptedAnswer": { "@type": "Answer", "text": "No, never, on any plan. You bring your own AI: the AI app you use through the connector, Claude or another, or your own Anthropic API key; in the desktop app, your own key for OpenAI, Gemini and others too. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it." } },
 		{ "@type": "Question", "name": "I made my account before 29 October 2026. What changes?", "acceptedAnswer": { "@type": "Answer", "text": "Nothing you have is taken away. Every account made before 29 October 2026 keeps Pro, free and with no end date: any number of models kept with your account, and commercial use once its terms are out." } },
 		{ "@type": "Question", "name": "Can I sell what I make?", "acceptedAnswer": { "@type": "Answer", "text": "Free is for personal and educational use. Selling what you make with Brickworks, such as instructions, kits, renders or builds made to order, comes with Pro, under terms that come with it when Pro opens." } },
 		{ "@type": "Question", "name": "How do I sign in?", "acceptedAnswer": { "@type": "Answer", "text": "With a code we email you, or with orangecheck: its own window, with a Bitcoin wallet, email, Google or GitHub. Either way there is no password to keep. The desktop app signs in by the emailed code, and with orangecheck from 0.8.0." } },
-		{ "@type": "Question", "name": "Do I need a Claude subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or open brickworks.diy/app?assistant=on: build entirely by hand and there is no AI anywhere in the window. To bring Claude in, turn it on, then connect your Claude account, or paste an API key from the Anthropic Console." } },
+		{ "@type": "Question", "name": "Do I need a Claude subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or open brickworks.diy/app?assistant=on: build entirely by hand and there is no AI anywhere in the window. To bring an AI in, turn it on, then connect the AI app you use, Claude or another, or paste an API key from the Anthropic Console." } },
 		{ "@type": "Question", "name": "Does Brickworks see my API key?", "acceptedAnswer": { "@type": "Answer", "text": "No. It stays in your browser or on your computer, or only for the visit if you choose, and is sent only to the AI you chose: in a browser, Anthropic. The page's security policy refuses to send anything anywhere but its own short list." } },
 		{ "@type": "Question", "name": "Where are my models saved?", "acceptedAnswer": { "@type": "Answer", "text": "In your browser, or on your computer in the desktop app, and kept privately with your account too, so they open in File › Open wherever you sign in. Export them as LDraw .ldr. Nobody else sees a model until you share it." } },
 		{ "@type": "Question", "name": "Can I build a model with someone else?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, live. File › Build together… gives a link to your model, and whoever opens it, signed in, builds it with you at the same time in their browser (the desktop app from 0.8.0). Each of you sees the other's parts go down, move and change colour as it happens, and their pointer with their name; Undo takes back only your own changes, and there is a short chat for people 13 and over. You end the session, and the model stays yours." } },
