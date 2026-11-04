@@ -1216,6 +1216,14 @@ func _page_controls() -> Dictionary:
 	# ratio of two, where the panels take more of the page.
 	if _marquee != null:
 		named["view"] = _marquee.get_parent()
+	# And a tooltip that is up, by its panel, which fills its little window.
+	# It is the interface's, though it stands over the view: a tile's in the
+	# bin reached 125 px over the view's edge, and the browser check of the
+	# wheel read the list scrolling another tile's under the pointer as the
+	# view moving (tools/web/cursor_check.mjs, rel-m255).
+	for sub: Window in get_window().get_embedded_subwindows():
+		if sub.visible and Tooltips.is_tooltip(sub) and sub.get_child(0, true) is Control:
+			named["tooltip"] = sub.get_child(0, true)
 	# The view cube's arrows and buttons, and below its visible faces.
 	if _gizmo != null:
 		named.merge(_gizmo.controls_by_name())
