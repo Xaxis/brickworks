@@ -1168,8 +1168,7 @@ func _add(text: String, role: int) -> void:
 	if _run != null and is_instance_valid(_run) and role != _Role.PERSON:
 		_log.move_child(_run, _log.get_child_count() - 1)
 
-	await get_tree().process_frame
-	_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
+	LaidOut.to_end(_scroll)
 
 
 ## A line from the app rather than from either side of the conversation.
@@ -1471,8 +1470,7 @@ func _close_claude(how: String, summary: String) -> void:
 
 ## Keep the newest step in view as the card grows.
 func _follow_the_card() -> void:
-	await get_tree().process_frame
-	_scroll.scroll_vertical = int(_scroll.get_v_scroll_bar().max_value)
+	LaidOut.to_end(_scroll)
 
 
 func controls_by_name() -> Dictionary:

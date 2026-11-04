@@ -621,6 +621,12 @@ fixing what it got wrong.
   grey text and nothing on the baseplate for minutes. The expectations are
   measured (Opus 5.5, "a small red house": high 684 s and $2.42 for 260 parts,
   first check at 4 minutes; medium 249 s and $0.72 for 127). `chat_probe`.
+  The conversation goes to its newest line, and to the card's foot as it
+  grows, once that is laid out (`LaidOut.to_end`), from wherever the reader
+  had scrolled, as it always has. One frame on, the card Build it opened was
+  left 240 px below the view 19 clicks in 30, and Claude's card a line short
+  7 steps in 18: `chat_follow_probe` (windowed) clicks Build it ten times and
+  grows Claude's card six.
 - `a clear baseplate for a first design`: the example car of a first visit is
   taken off when a design starts on it untouched (`main._sample_untouched`,
   `ChatPanel.designing`), with a line saying so; anything placed, opened or
@@ -742,11 +748,13 @@ fixing what it got wrong.
   (this browser's own `?t=` address, the way before, with its switch, Copy,
   "Make a new address" and a field to paste one added before —
   `ClaudeConnector.adopt`). The box a link opens is scrolled into the
-  panel's view two frames on (`ConnectorForm._into_view`): a press is read
-  before its frame's layout, and one frame on, the box was at times still
-  unsized, scrolled the panel 16 px where it fitted, and took Claude Code
-  from under the pointer, so its tooltip came back (`connect_form_probe`
-  failed 7 of 13 runs so, suitegrab). The state line: waiting for Claude (amber),
+  panel's view once it is laid out (`ConnectorForm._into_view`,
+  `LaidOut.into_view`): a press is read before its frame's layout, and one
+  frame on, the box was at times still unsized, scrolled the panel 16 px
+  where it fitted, and took Claude Code from under the pointer, so its
+  tooltip came back (`connect_form_probe` failed 7 of 13 runs so,
+  suitegrab). Two frames on held only for a press read where the probe's
+  are; the wait is for the layout itself now (layoutwait). The state line: waiting for Claude (amber),
   "Connected to Claude [and Claude Code] — it builds in this tab" (green),
   building with a count and a clock ("Claude is building — 12 calls in 3:41",
   said as each call comes, never on a timer: a one-second tick drew the whole
