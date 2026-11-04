@@ -1338,6 +1338,18 @@ picture the assistant is shown.
   worked-out steps, and saves after one edit and opens it again: every part
   not moved in the step and callout step it was listed in, by the plan and
   by the list.
+  The section marks (the booklet's banners, a sub-model's or a stage's
+  start) are kept once the steps are the model's own (sectionmarks): the
+  first edit marks each on the step it starts on, a step look "section"
+  (`BookletLooks.mark_sections`, from `AuthorSteps.adopt_plan`), the
+  author's plan reads them back (`Instructions._sections_kept`,
+  `BookletLooks.sections_by`: in force to the next mark, in every copy of a
+  sub-model), a step edit keeps each start with the step that begins it
+  (`_starts_follow`), and the file says `0 !BRICKWORKS SECTION island` in
+  that step. The same probe checks every mark (step and name) through each
+  edit, each undo (no mark left) and the save opened again, a line in the
+  file for each mark, and none marked, in the plan or the file, on 7140-1
+  as its author stepped it or on a wall of no sub-models after an edit.
 - `the booklet as a PDF and as PNG pages`: **Save as PDF** and **Save pages as PNG** sit beside Print in the
   booklet's bar (pdf249, 2026-10-24), shown where they work: on the desktop
   while the app serves the booklet (`Booklet.SAVE_SCRIPT` asks the app with

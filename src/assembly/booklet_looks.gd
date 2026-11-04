@@ -72,9 +72,19 @@
 ## turns and fades; "... TURN_SIGN OFF" on a step whose turn sign was taken
 ## off; "... GUIDE X 120" in the model, a guide each.
 ##
+## A step's "section" is the booklet's chapter that starts on it: the name
+## its banner prints ("island", "part 2"), in force on every step after it
+## in the booklet's order until the next, "" for none. The worked-out plan
+## has its sections; once its steps are the model's own (AuthorSteps.
+## adopt_plan) these are where they are kept, on the steps the plan's
+## sections start on (mark_sections). In the file: "... SECTION island" in
+## the step, "... SECTION" alone for none. LDraw carries the sections
+## themselves as sub-models, and so does Studio; the line names which
+## sub-model's build or which stage each chapter of the booklet starts at.
+##
 ## Every change is one undo (Builder._apply "steplooks", the whole table
 ## as it was), and a step edit carries each step's look with the parts it
-## had (follow).
+## had (follow), and each section's start with the step that begins it.
 class_name BookletLooks
 extends RefCounted
 
@@ -82,7 +92,7 @@ const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
 	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE",
-	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW"]
+	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION"]
 ## How far a step's parts are pulled out by default, in studs (Studio's
 ## buffer exchange), and the most.
 const PULL_STUDS := 2.0
@@ -246,6 +256,92 @@ static func _vector(raw: Variant) -> Vector3:
 	if raw is Array and (raw as Array).size() >= 3:
 		return Vector3(float(raw[0]), float(raw[1]), float(raw[2]))
 	return Vector3.ZERO
+
+
+# -- the booklet's sections ---------------------------------------------------
+
+
+## The section marks on the steps: definition -> {step: the section it
+## starts}. Empty for a model none was kept on.
+static func marks_of(world: BrickWorld) -> Dictionary:
+	var out: Dictionary = {}
+	for name: String in world.step_looks:
+		var look: Variant = world.step_looks[name]
+		var tail: String = name.get_slice("|", 1)
+		if not (look is Dictionary) or not (look as Dictionary).has("section") \
+				or not tail.is_valid_int():
+			continue
+		var definition: String = name.get_slice("|", 0)
+		if not out.has(definition):
+			out[definition] = {}
+		(out[definition] as Dictionary)[tail.to_int()] = str(look["section"])
+	return out
+
+
+## The section each of [param steps] (a plan of the model's own steps, in
+## the booklet's order) is in by [param marks] ([method marks_of]): a mark is
+## in force from its step, in every copy of its sub-model, to the next one,
+## and one on a step that has nothing in it now from the next step of its
+## sub-model. A callout's steps are in the section of the step that puts it
+## on. With [param want], the section each step is to be in: a mark is made
+## (into [param marks]) on each step where the one in force is not it, but
+## on a step another copy of its sub-model was in first, which a mark would
+## change for that one too. Returns the sections, one a step.
+static func sections_by(steps: Array, marks: Dictionary, want: Array = []) -> PackedStringArray:
+	var out := PackedStringArray()
+	out.resize(steps.size())
+	var section: String = ""
+	var last: Dictionary = {}       ## a copy's path -> the last of its steps seen
+	var seen: Dictionary = {}       ## the steps any copy has been in, by key
+	for index: int in steps.size():
+		var step: Instructions.Step = steps[index]
+		if step.in_callout():
+			continue
+		if step.authored_step >= 0:
+			var definition: String = definition_of(step.authored_in)
+			var own: Dictionary = marks.get(definition, {})
+			var from: int = int(last.get(step.authored_in, -1))
+			var at: int = -1
+			for marked: int in own:
+				if marked > from and marked <= step.authored_step and marked > at:
+					at = marked
+			if at >= 0:
+				section = str(own[at])
+			last[step.authored_in] = maxi(from, step.authored_step)
+			var name: String = key(definition, step.authored_step)
+			if not want.is_empty() and str(want[index]) != section and not seen.has(name):
+				own[step.authored_step] = str(want[index])
+				marks[definition] = own
+				section = str(want[index])
+			seen[name] = true
+		out[index] = section
+	var after: String = ""
+	for index: int in range(steps.size() - 1, -1, -1):
+		if (steps[index] as Instructions.Step).in_callout():
+			out[index] = after
+		else:
+			after = out[index]
+	return out
+
+
+## The sections [param steps] are shown in kept on the steps they start
+## on, as marks ([method sections_by]): the plan's sections, once its steps
+## are the model's own (AuthorSteps.adopt_plan). None when it has none.
+## Returns the undo.
+static func mark_sections(world: BrickWorld, steps: Array) -> Array:
+	var want: Array = steps.map(func(step: Instructions.Step) -> String: return step.section)
+	var marks: Dictionary = {}
+	sections_by(steps, marks, want)
+	if marks.is_empty():
+		return []
+	var was: Dictionary = world.step_looks.duplicate(true)
+	for definition: String in marks:
+		for step: int in marks[definition]:
+			var name: String = key(definition, step)
+			var look: Dictionary = (world.step_looks.get(name, {}) as Dictionary).duplicate(true)
+			look["section"] = marks[definition][step]
+			world.step_looks[name] = look
+	return [{"undo": "steplooks", "looks": was}]
 
 
 # -- changing them -------------------------------------------------------------
@@ -426,7 +522,9 @@ static func item_name(item: Dictionary) -> String:
 ## kept, and goes with the taken ones only when none are left. A look on a
 ## step that had no parts when [param before] was read is a step that is
 ## gone (its parts taken off the model): it is dropped, not left on
-## whatever step now has its number. Returns the undo.
+## whatever step now has its number. A section starts where it did: on the
+## step that now holds the first of what came from its step on, but for
+## what the edit took ([method _starts_follow]). Returns the undo.
 static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
 		taken: Dictionary = {}) -> Array:
 	if not any_step_look(world):
@@ -434,6 +532,7 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
 	var after: Dictionary = items_by_step(world, skip)
 	var was: Dictionary = world.step_looks.duplicate(true)
 	var moved: Dictionary = {}
+	var starts: Dictionary = marks_of(world)
 	var names: Array = world.step_looks.keys()
 	# Earlier steps first, so on a merge the first step's choices win.
 	names.sort_custom(func(a: String, b: String) -> bool:
@@ -447,6 +546,10 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
 			continue
 		var definition: String = name.get_slice("|", 0)
 		var step: int = tail.to_int()
+		var look: Dictionary = (world.step_looks[name] as Dictionary).duplicate(true)
+		look.erase("section")
+		if look.is_empty():
+			continue
 		var then: Dictionary = before.get(definition, {})
 		var now: Dictionary = after.get(definition, {})
 		var votes: Dictionary = {}
@@ -468,7 +571,6 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
 					or int(votes[to]) == int(votes[best]) and to < best:
 				best = to
 		var target: String = key(definition, best)
-		var look: Dictionary = (world.step_looks[name] as Dictionary).duplicate(true)
 		if moved.has(target):
 			var kept: Dictionary = moved[target]
 			# The words, pictures and arrows of both steps' pages kept, the
@@ -483,10 +585,43 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
 		else:
 			moved[target] = look
 	_turns_follow(moved, before, after, taken)
+	_starts_follow(moved, starts, before, after, taken)
 	if moved == was:
 		return []
 	world.step_looks = moved
 	return [{"undo": "steplooks", "looks": was}]
+
+
+## Each section's start ([param starts], marks_of) after a step edit, into
+## [param looks]: on the step that holds the earliest of what was in its
+## step or after it, but for what the edit took, when any of that is left.
+## A start is a place in the build, not the parts it began with: the
+## island's first step changed places with its second, or its parts all
+## moved on, and the island still starts with its first step; what comes
+## into a section's first step from before it is in the section. Two on one
+## step, the later is in force. One with nothing after it is dropped.
+static func _starts_follow(looks: Dictionary, starts: Dictionary, before: Dictionary,
+		after: Dictionary, taken: Dictionary) -> void:
+	for definition: String in starts:
+		var then: Dictionary = before.get(definition, {})
+		var now: Dictionary = after.get(definition, {})
+		var marked: Array = (starts[definition] as Dictionary).keys()
+		marked.sort()
+		for step: int in marked:
+			var to: int = -1
+			for left: bool in [true, false]:
+				for item: String in then:
+					if int(then[item]) >= step and now.has(item) \
+							and (not left or not taken.has(item)) and (to < 0 or int(now[item]) < to):
+						to = int(now[item])
+				if to >= 0:
+					break
+			if to < 0:
+				continue
+			var name: String = key(definition, to)
+			var look: Dictionary = looks.get(name, {})
+			look["section"] = starts[definition][step]
+			looks[name] = look
 
 
 ## Each step's turn after a step edit is the one its parts were seen from
@@ -606,6 +741,7 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	if gapped.is_empty():
 		return looks
 	var out: Dictionary = {}
+	var starts: Dictionary = {}     ## where a section on a gone step starts now
 	for name: String in looks:
 		var definition: String = name.get_slice("|", 0)
 		var tail: String = name.get_slice("|", 1)
@@ -614,12 +750,23 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 			continue
 		var at: int = (gapped[definition][1] as Array).find(tail.to_int())
 		if at < 0:
+			# A section that started on a step that is gone starts on the
+			# next one there is.
+			if (looks[name] as Dictionary).has("section"):
+				at = (gapped[definition][1] as Array).bsearch(tail.to_int())
+				if at < (gapped[definition][1] as Array).size():
+					starts[key(definition, at)] = looks[name]["section"]
 			continue
 		var look: Dictionary = (looks[name] as Dictionary).duplicate(true)
 		for field: String in ["turn", "how", "line"]:
 			look.erase(field)
 		if not look.is_empty():
 			out[key(definition, at)] = look
+	for name: String in starts:
+		var look: Dictionary = out.get(name, {})
+		if not look.has("section"):
+			look["section"] = starts[name]
+			out[name] = look
 	for definition: String in gapped:
 		var section: String = gapped[definition][0]
 		var steps: Array = gapped[definition][1]
@@ -775,6 +922,8 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 			"PREVIEW":
 				if value == "OFF":
 					_put_in(out, key(definition, step), "preview", false)
+			"SECTION":
+				_put_in(out, key(definition, step), "section", _rest_after(line, 3))
 			"NOTE":
 				# The words or picture just before it, turned and faded.
 				var notes: Array = (out.get(key(definition, step), {}) as Dictionary).get("notes", [])
@@ -1040,6 +1189,8 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 	if look.is_empty():
 		return
 	wrote[key(definition, step)] = true
+	if look.has("section"):
+		out.append((META + "SECTION " + str(look["section"])).strip_edges() + eol)
 	if look.has("page"):
 		out.append(META + "PAGE " + str(look["page"]).to_upper() + eol)
 	if look.has("zoom"):

@@ -1558,6 +1558,19 @@ rest are lines of the app's own inside the step, which other programs pass
 over: `0 !BRICKWORKS PAGE NEW`, `PAGE ALONE`, `ZOOM 1.25`, `SIZE 1.25`,
 `PARTS OFF`, `CALLOUT OFF` in a sub-model, `PER_PAGE 2` in the model.
 
+The booklet's sections, its banners, are the worked-out plan's: a
+sub-model's build or a stage of a big model ("part 2"). The first edit
+makes the plan's steps the model's own, and the model's steps say nothing
+of sections, so every banner went with it (sectionmarks). Now that edit
+marks each section on the step it starts on, `0 !BRICKWORKS SECTION
+island` in the file (`SECTION` alone where the steps after it have none),
+in force to the next mark in the booklet's order and in every copy of its
+sub-model; a step edit keeps each start with the step that begins it. LDraw
+and Studio carry a model's sections as its sub-models, which the file has
+as ever; the line says which sub-model's build or which stage each chapter
+starts at, and another program passes over it. A model with steps of its
+own, or with no section in its plan, is given no mark.
+
 Someone else's file is written back with only what changed. A merge took
 every part after it out of its line and put it back one step early, and
 left an empty step at the end; now the sub-model is written again a step at

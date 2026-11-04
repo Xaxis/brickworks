@@ -2421,9 +2421,13 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	# ensure, which numbers the steps again when it gives a part put on since
 	# a step, and a step whose parts were all taken off is a number with
 	# nothing in it until then. Read after, the next step's parts had that
-	# step's look (mcpwalk t2).
+	# step's look (mcpwalk t2). A model given the plan's steps just now has
+	# no look from before, and the plan's sections marked on its new steps
+	# (AuthorSteps.adopt_plan): those are read after.
 	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
+	if looked.is_empty():
+		looked = BookletLooks.items_by_step(world, skip)
 	var where: Array = _step_at(at)
 	if op in ["earlier", "later"] and int(where[1]) >= 0:
 		var blocked: String = AuthorSteps.blocked_swap(world, str(where[0]), int(where[1]),
@@ -2689,9 +2693,12 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 	var skip: Dictionary = store.scenery
 	# Giving the model's new parts their steps may number the steps again:
 	# every step's look goes with its parts first, as a step edit's does.
+	# With none from before, there is none to carry: the plan's sections,
+	# marked as its steps are given (AuthorSteps.adopt_plan), are where
+	# they go already.
 	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
-	if not undo.is_empty():
+	if not undo.is_empty() and not looked.is_empty():
 		undo.append_array(BookletLooks.follow(world, looked, skip))
 	var where: Array = _step_at(at)
 	var section: String = str(where[0])
