@@ -253,8 +253,8 @@ async function visitorSees(ids) {
 
 async function main() {
   console.log(`sharing a model by link, against ${base}`);
-  const a = await mintSession(emailA);
-  const b = await mintSession(emailB);
+  const a = await mint(emailA);
+  const b = await mint(emailB);
   const tokenA = a.access_token;
   const tokenB = b.access_token;
 
@@ -446,7 +446,7 @@ async function main() {
   check(r.status === 401, `the sweep with no secret: 401 (${r.status}) "${r.json?.error}"`);
   r = await call("/api/share/sweep", { token: "not-the-cron" });
   check(r.status === 401, `with the wrong one: 401 (${r.status})`);
-  const c = await mintSession(emailC);
+  const c = await mint(emailC);
   r = await call("/api/share", { method: "POST", token: c.access_token,
     body: { name: "Left Behind", model: MODEL, image: PICTURE } });
   const idC = r.json?.id || "";
@@ -497,7 +497,7 @@ async function theGallery(tokenA, tokenB, unlistedId) {
   console.log("the gallery");
   const list = () => call("/api/share?op=list&page=1&tests=1");
   const inList = (l, id) => (l.json?.models || []).some((m) => m.id === id);
-  const d = await mintSession(emailD);
+  const d = await mint(emailD);
   const tokenD = d.access_token;
 
   const listing = Date.now();
@@ -656,7 +656,7 @@ async function theGallery(tokenA, tokenB, unlistedId) {
   }
 
   // Listing, counted.
-  const e = await mintSession(emailE);
+  const e = await mint(emailE);
   let allowed = 0;
   let refused = null;
   let firstOfE = "";
@@ -683,7 +683,7 @@ async function theGallery(tokenA, tokenB, unlistedId) {
 /// robot.
 async function theDirectory(tokenA) {
   console.log("the directory");
-  const f = await mintSession(emailF);
+  const f = await mint(emailF);
   const tokenF = f.access_token;
   const word = `zebrafinch${rand}`;
   // A file of its own: the gallery's part, as the site's owner, took the
@@ -972,7 +972,7 @@ async function theDirectory(tokenA) {
 /// alone; public lists with pages of their own.
 async function thePeople(tokenA, tokenB) {
   console.log("people: profiles, likes, favourites and collections");
-  const g = await mintSession(emailG);
+  const g = await mint(emailG);
   const tokenG = g.access_token;
   const handle = `probe-${rand}`;
   const NAME = `<b>Probe</b> & "Maker"`;
@@ -1176,9 +1176,9 @@ async function thePeople(tokenA, tokenB) {
 /// often a person may do each thing, and the sitemap.
 async function theModeration(tokenA) {
   console.log("moderation: names, reports, taking out, limits, the sitemap");
-  const h = await mintSession(emailH);
+  const h = await mint(emailH);
   const tokenH = h.access_token;
-  const i = await mintSession(emailI);
+  const i = await mint(emailI);
   const tokenI = i.access_token;
   const publish = async (token, body) => {
     const reply = await call("/api/share", { method: "POST", token, body: { model: SMALL, ...body } });
@@ -1361,7 +1361,7 @@ async function theModeration(tokenA) {
 /// own 346-2 beside it.
 async function theLibrary() {
   console.log("the library's models");
-  const { access_token: token } = await mintSession(emailJ);
+  const { access_token: token } = await mint(emailJ);
   const house = readFileSync(new URL("../../tests/fixtures/omr_credit/346-2.published.ldr", import.meta.url), "utf8");
   const credit = house.split("\n").find((line) => line.startsWith("0 !BRICKWORKS CREDIT "));
   const share = async (name, model, licence) => {
@@ -1410,7 +1410,7 @@ async function theLibrary() {
 /// gallery, the publish's answer and its page all say 2,458.
 async function countedAsItsPage() {
   console.log("a card counts as its page does");
-  const { access_token: token } = await mintSession(emailK);
+  const { access_token: token } = await mint(emailK);
   const model = readFileSync(new URL("../../vendor/omr/files/10243-1.mpd", import.meta.url), "utf8");
   let r = await call("/api/share", { method: "POST", token,
     body: { name: "Probe Parisian Restaurant", model, image: PICTURE, listed: true } });
@@ -1422,6 +1422,14 @@ async function countedAsItsPage() {
   r = await call(`/m/${id}`);
   const page = /<li class="pill">([\d,]+) parts<\/li>/.exec(r.text)?.[1] || "";
   check(card.parts === 2458 && page === "2,458", `its card says ${card.parts}, its page ${page}`);
+}
+
+// Each throwaway's session as this run signed it in, for the clean-up.
+const sessionOf = new Map();
+async function mint(email) {
+  const one = await mintSession(email);
+  sessionOf.set(email, one);
+  return one;
 }
 
 async function cleanUp() {
@@ -1438,10 +1446,17 @@ async function cleanUp() {
   await fetch(`${SUPABASE}/rest/v1/reports?handle=in.(probe-${rand},bad-actor-${rand})`,
     { method: "DELETE", headers: secret }).catch(() => {});
   // Every model published here is taken down (the files go with that),
-  // then every account, which takes their rows with them.
+  // then every account, which takes their rows with them. Each by the
+  // session this run signed it in with, if it still answers: ten more at
+  // once came from a bucket of 30 the other runs beside this one sign in
+  // from, three live checks at a time (session.mjs, preview_checks.sh).
   const sessions = [];
   for (const email of [emailA, emailB, emailD, emailE, emailF, emailG, emailH, emailI, emailJ, emailK]) {
-    sessions.push(await mintSession(email).catch(() => null));
+    let one = sessionOf.get(email) || null;
+    if (one && (await call("/api/share?op=mine", { token: one.access_token }).catch(() => ({ status: 0 }))).status !== 200) {
+      one = await mintSession(email).catch(() => null);
+    }
+    sessions.push(one);
   }
   const accounts = sessions.filter(Boolean).map((one) => one.kept.user_id).filter(Boolean);
   if (accounts.length) {

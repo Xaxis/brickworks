@@ -356,7 +356,9 @@
       "entry": "tools/web/age_flow.mjs",
       "reach": "BW_STAND_IN=http://127.0.0.1:8742 node tools/web/age_flow.mjs --url=http://127.0.0.1:8742 --out=shots/age   (.env sourced; relay_server.mjs --static=build/web --trust-stand-in)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "cli:ai settings probe",
@@ -698,7 +700,9 @@
       "entry": "tools/web/challenges_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/challenges_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL; or a local relay_server.mjs --hold=challenges until challenges.sql is applied)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "cli:check a release on three systems",
@@ -772,7 +776,9 @@
       "entry": "tools/web/comments_flow.mjs",
       "reach": "node --env-file=.env tools/web/relay_server.mjs 8830 --static=build/web --hold=replies & node --env-file=.env tools/web/comments_flow.mjs --url=http://127.0.0.1:8830 --out=DIR   (MASTER_EMAIL; --site leaves the app out; --hold=replies until supabase/replies.sql is applied)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "cli:compare media",
@@ -2099,7 +2105,9 @@
       "entry": "tools/web/share_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/share_flow.mjs --url=<deployment>/app --out=shots/share_web   (with .env sourced)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "cli:share pages probe",
@@ -2300,7 +2308,9 @@
       "entry": "tools/web/tested_flow.mjs",
       "reach": "node --env-file=.env tools/web/relay_server.mjs 8923 --static=build/web --hold=share_tests & node --env-file=.env tools/web/tested_flow.mjs --url=http://127.0.0.1:8923 --out=DIR   (or --url=<preview> with BW_BYPASS once supabase/tested.sql is applied)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "cli:tested probe",
@@ -2548,7 +2558,9 @@
       "entry": "tools/web/versions_flow.mjs",
       "reach": "node tools/web/relay_server.mjs 8852 --static=build/web --hold=share_versions & node tools/web/versions_flow.mjs --url=http://127.0.0.1:8852 --out=DIR   (.env sourced; or --url=<preview> with BW_BYPASS once supabase/versions.sql is applied)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "cli:versions probe",
@@ -3619,6 +3631,7 @@
         "tests/test_achievements.py",
         "tests/test_discovery.py",
         "tests/test_gallery_crons.py",
+        "tests/test_release_train.py",
         "tests/test_share_unknowns.py"
       ]
     },
@@ -3704,7 +3717,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_year.py",
-        "tests/test_challenges.py"
+        "tests/test_challenges.py",
+        "tests/test_release_train.py"
       ]
     },
     {

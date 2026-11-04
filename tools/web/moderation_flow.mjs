@@ -71,7 +71,7 @@ const shot = (page, name, full = true) => page.screenshot({ path: path.join(out,
   .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
 let asked = 0;
 async function api(pathname, { method = "GET", token, body } = {}) {
-  const sent = { ...headers };
+  const sent = { ...headers, "user-agent": PERSON };
   if (token) sent.authorization = `Bearer ${token}`;
   if (body !== undefined) sent["content-type"] = "application/json";
   // Reads past the CDN, which keeps pages and the list for up to a minute.

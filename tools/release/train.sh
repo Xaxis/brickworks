@@ -535,10 +535,11 @@ run() {
   # taken while the release merged and probed, held rel-m233's oauth 33
   # minutes, and a lock cannot be taken back from a run already in it
   # (2026-10-31). A file named for its pid says so, which ship.sh takes
-  # away once that battery is done (SHIP_LIVE_MARK); once the pid is gone
-  # the file says nothing.
+  # away once that battery is done (SHIP_LIVE_MARK); once the pid is gone,
+  # or names another process (the start time it holds, live_db_lib.sh), the
+  # file says nothing.
   LIVE_REL="$(git -C "$R" rev-parse --path-format=absolute --git-common-dir)/live-db.release"
-  mkdir -p "$LIVE_REL" && : > "$LIVE_REL/$$"
+  mkdir -p "$LIVE_REL" && awk '{ sub(/.*\) /, ""); print $20 }' "/proc/$$/stat" > "$LIVE_REL/$$"
   # Killed (kill -- -PID ends its work too), it says so and stops the
   # probes, which run in a group of their own: no result would leave the
   # release staged after it waiting until its deadline. nohup has HUP

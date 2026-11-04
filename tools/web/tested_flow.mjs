@@ -77,7 +77,11 @@ function stack(name, air) {
 }
 const models = path.join(out, "models");
 mkdirSync(models, { recursive: true });
-const NAMES = { passed: "Tested Flow Stack", failed: "Tested Flow Overhang", none: "Tested Flow Untested" };
+// Each named for this run, which the gallery below is searched by: the
+// newest first of every test model held its three on its first page only
+// while no other run listed 22 more (three live checks at once,
+// preview_checks.sh).
+const NAMES = { passed: `Tested Flow Stack ${rand}`, failed: `Tested Flow Overhang ${rand}`, none: `Tested Flow Untested ${rand}` };
 const files = [];
 for (const [key, air] of [["passed", false], ["failed", true], ["none", false]]) {
   writeFileSync(path.join(models, `${key}_bare.ldr`), stack(NAMES[key], air));
@@ -215,7 +219,7 @@ try {
       !seen.mark && !seen.note && !/Not marked Tested|put down in the air/.test(seen.text));
   }
 
-  await visitor.goto(`${site}/gallery?tests=1&sort=newest`, { waitUntil: "load" });
+  await visitor.goto(`${site}/gallery?tests=1&sort=newest&q=${rand}`, { waitUntil: "load" });
   await until(visitor, () => document.documentElement.dataset.gallery === "ready", "the gallery", 60);
   // The list's own cards: the front's shelves (the pick, small builds)
   // hide under a filter but stay in the page, holding copies of the cards.

@@ -142,6 +142,12 @@ async function picturesDrawn(page, where) {
       .map((img) => img.getAttribute("src")) }), where);
 }
 
+/// What the page was answered by /api/people?op=latest, its Latest.
+const answerOf = (page) => page.waitForResponse((reply) => reply.url().includes("op=latest"), { timeout: 60000 })
+  .then((reply) => reply.json()).catch(() => ({ models: [], designers: [] }));
+// How many times Ada's tower is built.
+const BUILDS = 4;
+
 /// The feed as drawn: its posts, the suggestions, and which parts show.
 const feedDrawn = (page) => page.evaluate(() => ({
   state: document.documentElement.dataset.feed || "",
@@ -175,9 +181,16 @@ try {
   const id = tower.body.id;
   made.push([id, ada]);
   check(`her tower in the gallery: ${tower.status} /m/${id}`, tower.status === 201 && Boolean(id));
-  const built = await api(`/api/share?op=built&id=${id}`, { method: "POST", body: { device: randomBytes(16).toString("hex") },
-    extra: { "user-agent": PERSON, "sec-fetch-site": "same-origin" } });
-  check(`a build of it finished: ${JSON.stringify(built.body)}`, built.body.counted === true);
+  // Built four times, so she is among designers to follow by Top builds
+  // (eight, over every test model) beside the other runs' designers,
+  // three live checks at once (preview_checks.sh): with one build she
+  // scored 3, and those of builds, designers and profile score 6 to 30.
+  let built = null;
+  for (let n = 0; n < BUILDS; n += 1) {
+    built = await api(`/api/share?op=built&id=${id}`, { method: "POST", body: { device: randomBytes(16).toString("hex") },
+      extra: { "user-agent": PERSON, "sec-fetch-site": "same-origin" } });
+  }
+  check(`${BUILDS} builds of it finished: ${JSON.stringify(built.body)}`, built.body.counted === true && built.body.builds === BUILDS);
   await new Promise((done) => setTimeout(done, 1200));
   const jpeg = photo();
   const start = await api("/api/people?op=photo_start", { method: "POST", token: ada.access_token,
@@ -191,6 +204,20 @@ try {
     body: { id, name: TOWER, author: "Ada Feed", note: "A taller roof", model: model(TOWER, "1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n"),
       image: picture, listed: true } });
   check(`its version ${two.body.version}: ${two.status}`, two.body.version === 2);
+  const found = await api(`/api/share?op=list&page=1&tests=1&q=${encodeURIComponent(rand)}`);
+  const listedAt = Date.parse((found.body.models || []).find((one) => one.id === id)?.listed_at || "");
+  check(`listed at ${new Date(listedAt).toISOString?.() || listedAt}`, Number.isFinite(listedAt));
+  // Latest is the newest eight test models of everybody's, so another
+  // run's, listed after hers, may put her tower out of it: in it, or out
+  // only as eight each listed after it put it (gallery_order.mjs judges a
+  // gallery's page so). The same for her among the designers to follow:
+  // or eight shown that earned as much.
+  const latestHas = (models = []) => models.some((one) => one.id === id)
+    || (models.length >= 8 && models.every((one) => Date.parse(one.listed_at) > listedAt));
+  // Her tower drawn in Latest whenever the page's answer had it.
+  const drawnAs = (cards, models) => latestHas(models) && (cards.includes(id) || !models.some((one) => one.id === id));
+  const suggests = (designers = []) => designers.some((one) => one.handle === ADA)
+    || (designers.length >= 8 && designers.every((one) => one.score >= BUILDS * 3));
 
   // --- 1. a visitor --------------------------------------------------------
   console.log("a visitor");
@@ -198,14 +225,16 @@ try {
     const visitor = await context({ width, height, theme });
     const page = await visitor.newPage();
     listen(page, `visitor ${width}`);
+    const answered = answerOf(page);
     await page.goto(`${site}/feed?tests=1`, { waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.feed === "signed-out", "the signed-out feed");
     const drawn = await feedDrawn(page);
+    const answer = await answered;
     const pictures = await picturesDrawn(page, "#latest-models");
     check(`signed out at ${width} ${theme}: the ask ${drawn.ask}, Latest ${drawn.latest.length} cards with her tower `
       + `${drawn.latest.includes(id)}, ${pictures.count} pictures, not drawn ${pictures.missing.length}`,
-    drawn.ask && drawn.latestShown && drawn.latest.length >= 1 && drawn.latest.includes(id) && pictures.count >= 1
-      && pictures.missing.length === 0);
+    drawn.ask && drawn.latestShown && drawn.latest.length >= 1 && drawnAs(drawn.latest, answer.models)
+      && pictures.count >= 1 && pictures.missing.length === 0);
     check(`...designers to follow: ${drawn.designers.slice(0, 5).join(", ")}; nothing sideways`,
       drawn.designersShown && drawn.designers.includes(ADA) && !(await sideways(page)));
     await shot(page, `1_signed_out-${width}-${theme}.png`);
@@ -217,14 +246,16 @@ try {
   const bobSite = await context({ as: bob, width: 390, height: 844, theme: "dark" });
   const bobPage = await bobSite.newPage();
   listen(bobPage, "Bob");
+  const bobAnswered = answerOf(bobPage);
   await bobPage.goto(`${site}/feed?tests=1`, { waitUntil: "load" });
   await until(bobPage, () => document.documentElement.dataset.feed === "ready", "Bob's feed");
   await until(bobPage, () => !document.getElementById("designers").hidden, "the designers to follow");
   let drawn = await feedDrawn(bobPage);
+  const bobAnswer = await bobAnswered;
   const bobPictures = await picturesDrawn(bobPage, "#latest-models");
   check(`"You follow nobody yet" ${drawn.nobody}, no posts (${drawn.rows.length}), Latest ${drawn.latest.length} cards, `
     + `${bobPictures.missing.length} pictures not drawn`, drawn.nobody && !drawn.quiet && drawn.rows.length === 0 && drawn.latestShown
-    && drawn.latest.includes(id) && bobPictures.missing.length === 0);
+    && drawnAs(drawn.latest, bobAnswer.models) && bobPictures.missing.length === 0);
   check(`Ada to follow, not Bob himself: ${drawn.designers.join(", ")}`, drawn.designers.includes(ADA) && !drawn.designers.includes(BOB));
   await shot(bobPage, "2_nobody-390-dark.png");
   const wide = await context({ as: bob, width: 1280, height: 900, theme: "light" });
@@ -306,10 +337,11 @@ try {
   check(`latest: ${open.status} kept by the CDN ("${open.cache}"${local ? "" : `; asked again: ${again.cdn || "none"}`}); with tests=1 never ("${asked.cache}"), her tower in it `
     + `${(asked.body.models || []).some((one) => one.id === id)} and not without (${(open.body.models || []).some((one) => one.id === id)})`,
   open.status === 200 && (local ? /s-maxage=30/.test(open.cache) : /HIT|STALE/.test(again.cdn)) && /no-store/.test(asked.cache)
-    && (asked.body.models || []).some((one) => one.id === id) && !(open.body.models || []).some((one) => one.id === id)
+    && latestHas(asked.body.models) && !(open.body.models || []).some((one) => one.id === id)
     && Array.isArray(open.body.designers) && Array.isArray(open.body.photos));
   const theirs = (asked.body.designers || []).find((one) => one.handle === ADA);
-  check(`Ada among the designers by Top builds: ${JSON.stringify(theirs)}`, theirs?.score >= 3 && theirs.models?.[0]?.id === id);
+  check(`Ada among the designers by Top builds: ${JSON.stringify(theirs)}`, theirs ? theirs.score >= BUILDS * 3
+    && theirs.models?.[0]?.id === id : suggests(asked.body.designers));
   const signedOutFeed = await api("/api/people?op=feed");
   check(`the feed itself signed out: ${signedOutFeed.status}`, signedOutFeed.status === 401);
 } catch (trouble) {

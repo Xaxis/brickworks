@@ -580,24 +580,47 @@ NAMES="${*:-$ORDER}"
 # The checks that write the live database, which every preview and the
 # relay share with production: each flow that makes a throwaway account and
 # deletes it after (session.mjs's deleteAccount, or the admin API's users).
-# Each takes the live database's one lock (live_db_lib.sh), a release first.
+# Each takes a slot of the live database's lock (live_db_lib.sh), a release
+# first, LIVE_DB_SLOTS (3) at once across the machine.
 live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/null; }
 . "$RELEASE_HERE/live_db_lib.sh"
+# Those that hold all of it, as each reads what any run's accounts change
+# (trainspeed, 2026-11-03):
+# - discovery: the week's pick is one for the whole site. Its own Tower
+#   ties another discovery's at 11 for the pick worked out, and the one it
+#   chooses on /admin is every run's pick for as long as it holds.
+# - first_steps: a first visit meets the three to five top designers by
+#   Top builds over every test model, and its own Ada, with one build, must
+#   be among them; a model built beside it (builds, designers, profile,
+#   account_page, another first_steps) puts her out of them.
+# - challenges: the test side keeps one open challenge and one year of
+#   themes; it ends any other open test challenge first, and another's
+#   overlapping it is refused.
+# - beta, on a deployment with the beta open (a unit's --beta-open): one
+#   test pool of 100 spots, judged by its absolute numbers. Off, as on every
+#   release's preview, it writes nothing another run reads.
+ALONE_DB=" discovery first_steps challenges "
+case " $NAMES " in
+  *" beta "*)
+    curl -s --max-time 20 -H "x-vercel-protection-bypass: $VERCEL_BYPASS" "$P/api/plans?op=beta" \
+      | grep -q '"beta":"off"' || ALONE_DB="${ALONE_DB}beta " ;;
+esac
+alone() { case "$ALONE_DB" in *" $1 "*) return 0 ;; esac; return 1; }
 run() {
-  local name="$1" solo="${2:-}" t0 lock
+  local name="$1" solo="${2:-}" t0 how=""
   t0=$(date +%s)
   # A name not in the map ran bare node, which exits 0 at once: technic
   # "passed" in 0 s without running (2026-10-13).
   if [ -z "${CMD[$name]:-}" ]; then echo "$name exit=127 fails=1 0s :: FAIL no such check" >> "$S/$TAG.out"; return; fi
   # Held for the check's run only, and never by what it starts: a browser
   # left behind would hold the database from every other run.
-  exec {lock}>>"$LIVE_DB.lock"
   if live "$name"; then
-    if ! take_live_db "$lock"; then
+    alone "$name" && how=alone
+    if ! take_live_db "$how"; then
       echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (LIVE_WAIT, an hour): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
-      exec {lock}>&-; return
+      return
     fi
-    echo "$(date '+%F %T') took $TAG $name after $(( $(date +%s) - t0 ))s" >> "$LIVE_DB.log"
+    echo "$(date '+%F %T') took $TAG $name after $(( $(date +%s) - t0 ))s ($LIVE_DB_HOW)" >> "$LIVE_DB.log"
   fi
   # The limit is on the check, inside heavy: around heavy it counted the wait
   # for a slot, and at load 50 tabs and keep ran out queued, never run.
@@ -613,13 +636,13 @@ run() {
   # checks run back to back while the box is calm.
   local gap=""
   [ -n "$solo" ] && [ "${BOX_HEAVY_PRIORITY:-}" != 1 ] && gap="BOX_HEAVY_SOLO_GAP=0"
-  env $gap "$H" $solo timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
+  without_live_db env $gap "$H" $solo timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1
   local code=$?
+  leave_live_db
   # heavy --solo says the load it began at, after how long, and beside what.
   local began; began=$(sed -n 's/^heavy: solo //p' "$S/${TAG}_$name.log" | head -1)
   [ -n "$solo" ] && echo "$name began ${began:-with no word from heavy}" >> "$S/${TAG}_calm.log"
   live "$name" && echo "$(date '+%F %T') left $TAG $name exit=$code" >> "$LIVE_DB.log"
-  exec {lock}>&-
   echo "$name exit=$code fails=$(grep -c 'FAIL' "$S/${TAG}_$name.log") $(( $(date +%s) - t0 ))s :: $(grep -vE '^\s*$' "$S/${TAG}_$name.log" | tail -1 | cut -c1-200)" >> "$S/$TAG.out"
 }
 : > "$S/$TAG.out"
@@ -644,16 +667,15 @@ SOLO=" idle arrival progress cursor render_open render product_render grab share
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is
-# free. Two live checks side by side would take turns at the lock while
-# another slot sat idle, so a slot takes a live one only when no other is
-# running one, or nothing else is left. The live checks, one after
-# another, then set the phase's length. On the times m146's checks took:
-# 31 minutes, against the 37 its pairs took, each waiting for its longer
-# half; on m144's, which had more live ones, 44 against 38. Three: eight
-# checks on brickworks.diy did 1.8 checks' work at a time 2 at once, 2.2
-# to 2.3 at 3 and 2.7 at 4, where the load reached 41 on 24 cores and each
-# check took 1.2 times as long; placing, a timing check run paired, passed
-# 3 at once at load 33 (2026-10-30).
+# free. Three: eight checks on brickworks.diy did 1.8 checks' work at a
+# time 2 at once, 2.2 to 2.3 at 3 and 2.7 at 4, where the load reached 41
+# on 24 cores and each check took 1.2 times as long; placing, a timing
+# check run paired, passed 3 at once at load 33 (2026-10-30). A slot takes
+# a live check first, while fewer of this battery's than the lock's
+# LIVE_DB_SLOTS are running one, and one that holds the database alone
+# (ALONE_DB) only when none is, and none beside it: past that each would
+# wait at the lock while a slot sat idle. One at a time, the live checks
+# set the phase's length: m146's 31 minutes, m144's 44 (2026-10-19).
 at_once=${PC_AT_ONCE:-3}
 # A train runs the release's probes beside its ship and names their file
 # in SHIP_PROBES (ship.sh). Once it says they failed the release will not
@@ -666,10 +688,21 @@ for n in $PAIRED; do if live "$n"; then wet+=("$n"); else dry+=("$n"); fi; done
 while :; do
   if probes_failed; then not_run "${wet[@]}" "${dry[@]}"; wet=(); dry=(); fi
   while [ ${#slot[@]} -lt "$at_once" ]; do
-    busy=""; for p in "${!slot[@]}"; do live "${slot[$p]}" && busy=1; done
-    if [ ${#wet[@]} -gt 0 ] && { [ -z "$busy" ] || [ ${#dry[@]} -eq 0 ]; }; then n=${wet[0]}; wet=("${wet[@]:1}")
-    elif [ ${#dry[@]} -gt 0 ]; then n=${dry[0]}; dry=("${dry[@]:1}")
-    else break; fi
+    wets=0; whole=""
+    for p in "${!slot[@]}"; do
+      live "${slot[$p]}" && wets=$(( wets + 1 ))
+      alone "${slot[$p]}" && whole=1
+    done
+    n=""
+    if [ -z "$whole" ]; then
+      for i in "${!wet[@]}"; do
+        if alone "${wet[$i]}"; then [ "$wets" -eq 0 ] || continue
+        else [ "$wets" -lt "$LIVE_DB_SLOTS" ] || continue; fi
+        n=${wet[$i]}; unset "wet[$i]"; wet=("${wet[@]}"); break
+      done
+    fi
+    if [ -z "$n" ] && [ ${#dry[@]} -gt 0 ]; then n=${dry[0]}; dry=("${dry[@]:1}"); fi
+    [ -n "$n" ] || break
     run "$n" & slot[$!]=$n
   done
   [ ${#slot[@]} -gt 0 ] || break

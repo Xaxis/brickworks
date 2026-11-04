@@ -2,7 +2,7 @@
 //
 //   set -a; . ./.env; set +a
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app \
-//     --host=<basic-host dir> --out=shots/app_host [--port=18680]
+//     --host=<basic-host dir> --out=shots/app_host [--port=N]
 //
 // The host is the MCP Apps reference host, ext-apps' examples/basic-host
 // (github.com/modelcontextprotocol/ext-apps), built in a directory of its
@@ -38,6 +38,7 @@ import { spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import http from "node:http";
+import net from "node:net";
 import { join } from "node:path";
 
 const email = `delivered+bwapphost${Date.now().toString(36)}@resend.dev`;
@@ -53,7 +54,25 @@ const url = withAssistant(args.url || "https://brickworks.diy/app");
 const site = new URL(url).origin;
 const hostDir = String(args.host || "");
 const out = args.out || "shots/app_host";
-const port = Number(args.port || 18680);
+/// The first of [count] ports in a row free on this machine, from one this
+/// run's pid picks: the host, its sandbox and the three connections. Each
+/// run had 18680 to 18684, and two batteries' at once, three live checks
+/// at a time (preview_checks.sh), would meet on them, the second's page on
+/// the first's host.
+async function freePorts(count) {
+  const free = (one) => new Promise((done) => {
+    const probe = net.createServer().once("error", () => done(false));
+    probe.listen(one, "127.0.0.1", () => probe.close(() => done(true)));
+  });
+  for (let base = 20000 + count * (process.pid % 7000), tries = 0; tries < 200; base += count, tries += 1) {
+    if (base + count > 65535) base = 20000;
+    let all = true;
+    for (let k = 0; k < count && all; k += 1) all = await free(base + k);
+    if (all) return base;
+  }
+  throw new Error(`no ${count} ports in a row free`);
+}
+const port = args.port ? Number(args.port) : await freePorts(5);
 mkdirSync(out, { recursive: true });
 const bypass = process.env.BW_BYPASS || "";
 const extra = bypass ? { "x-vercel-protection-bypass": bypass } : {};
