@@ -130,11 +130,16 @@ releases (plain HTTP only on this machine's own address). Every signature,
 size and hash is still checked, so the test manifests are signed by the real
 keys. `tools/update_check.py` builds two versions, serves them, and drives
 `--update=check|fetch|install|reinstall|restart` through every refusal and
-through a real install that restarts with the model kept. A macOS or
+through a real install that restarts with the model kept. First it starts
+the copy as a person does, set to Off, and holds that nothing at all is
+asked of the server in 90 s, where the same start in Automatic asks (the
+day's check). A macOS or
 Windows runner has no signing key, so `update_check.py lay` signs every
 scenario here and `run --laid=DIR` drives them there, at the same port; the
 proofs run them from a throwaway branch's workflow and a draft release,
-both deleted after, with the runs. `run --system` installs the first copy
+both deleted after, with the runs: `tools/release/runner_check.sh`, at each
+release (docs/RELEASING.md, step 5), with the release's own packages as the
+new copies. `run --system` installs the first copy
 where its installer puts it (/Applications, `%LOCALAPPDATA%\Programs`, or
 `/usr/lib` by `sudo apt-get install`) on a runner's throwaway machine; there
 an installer copy also proves its Start menu entry, its file types and that

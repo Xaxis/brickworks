@@ -85,6 +85,18 @@ tools/release.py latest --check dist/0.2.0/latest.json
 #    The workflow lives in the releases repository, where Actions are free.
 gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.2.0
 gh run watch -R Xaxis/brickworks-releases "$(gh run list -R Xaxis/brickworks-releases --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')"
+#    And what else only a runner proves: each installed copy updates itself
+#    to this release's own packages (old copies are a throwaway X-pre of the
+#    commit, small library), refuses what it must and asks nothing when Off;
+#    a key kept in the real login Keychain and Credential Manager across
+#    restarts; and what an unsigned first launch shows (pictures). The
+#    scenarios are signed here, the run is a throwaway branch's, and the
+#    branch, its draft and its runs are deleted after.
+tools/update_check.py packages --versions=0.2.0-pre --out=PRE linux mac windows
+tools/update_check.py lay --old PRE/0.2.0-pre/Brickworks-0.2.0-pre-macos-universal.dmg \
+  --new dist/0.2.0/Brickworks-0.2.0-macos-universal.dmg --port=8697 --out=LAID/laid-macos
+#    ... and laid-windows (setup.exe), laid-windows-zip, laid-ubuntu (.deb), then:
+tools/release/runner_check.sh 0.2.0 LAID OUT
 
 # 6. Publish the draft that was checked, then put it on the download page,
 #    with four short lines on what is new in it: web/download.html's

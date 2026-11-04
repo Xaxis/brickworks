@@ -1,0 +1,188 @@
+# What only a Mac, Windows and a stock Ubuntu can prove of a release before it
+# is published, beside release.yml's smoke: that each installed copy updates
+# itself to the release's own package, refuses what it must and asks nothing
+# when Off; that a key is kept in the system's real keychain across
+# restarts; and what the first launch of an unsigned build shows a person.
+#
+# Not a workflow of Xaxis/brickworks-releases' main. tools/release/runner_check.sh
+# fills in the @...@ names, pushes it alone on a throwaway branch there (a
+# push to that branch is what runs it), with the signed scenarios in a
+# throwaway draft beside the release's own draft, and deletes the branch, the
+# draft and the runs once their logs are kept. docs/RELEASING.md, step 5.
+name: runner check
+
+on:
+  push:
+    branches: ["@BRANCH@"]
+
+# Write, though nothing here writes: GitHub lists a draft release only to a
+# token that could push.
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TAG: "@TAG@"
+  LAID: "@LAID@"
+  GH_TOKEN: ${{ github.token }}
+  # Windows pipes Python's output as cp1252 otherwise.
+  PYTHONUTF8: "1"
+
+jobs:
+  update:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "updates: macOS, from the DMG in /Applications", os: macos-15, args: "--system", laid: laid-macos }
+          - { name: "updates: Windows, installed by setup.exe", os: windows-2022, args: "--system", laid: laid-windows }
+          - { name: "updates: Windows, unpacked from the zip", os: windows-2022, args: "", laid: laid-windows-zip }
+          - { name: "updates: Ubuntu, the .deb by apt", os: ubuntu-24.04, args: "--system", laid: laid-ubuntu }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Xaxis/brickworks
+          ref: "@SOURCE@"
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # The scenarios were laid with the release's package as the new copy;
+      # it comes from the release's draft, not a second upload of it.
+      - name: The scenarios signed for them, and the release's own package as the update
+        run: |
+          gh release download "$LAID" --repo "$GITHUB_REPOSITORY" --pattern "${{ matrix.laid }}.tar" --dir "$RUNNER_TEMP"
+          # Python's tar, not Git for Windows' GNU tar, which reads D:\a\... as a host named D.
+          python -m tarfile -e "$RUNNER_TEMP/${{ matrix.laid }}.tar" "$RUNNER_TEMP/laid"
+          new=$(python -c "import json, sys; print(json.load(open(sys.argv[1]))['new'])" "$RUNNER_TEMP/laid/laid.json")
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$new" --dir "$RUNNER_TEMP/laid/files"
+          # Not piped into head: under pipefail ls's broken pipe fails the step.
+          ls -lR "$RUNNER_TEMP/laid" > "$RUNNER_TEMP/laid.txt"
+          head -40 "$RUNNER_TEMP/laid.txt"
+      - name: apt's lists, for what the .deb depends on
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q
+      - name: Off asks nothing, every refusal is said, and it updates the way it was installed
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          # --system: the first copy where a person's goes, from the DMG into
+          # /Applications, by setup.exe /VERYSILENT into %LOCALAPPDATA%\Programs,
+          # or by sudo apt-get install into /usr/lib (sudo standing in for
+          # pkexec's password dialog, which a runner cannot answer).
+          python tools/update_check.py run --laid="$RUNNER_TEMP/laid" ${{ matrix.args }} --log="$RUNNER_TEMP/out/updates-log.txt" 2>&1 | tee "$RUNNER_TEMP/out/run.txt"
+      - name: The updater's own log
+        if: always()
+        run: cat "$RUNNER_TEMP/out/updates-log.txt" || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: update-${{ matrix.laid }}
+          path: ${{ runner.temp }}/out
+
+  keychain:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "keychain: macOS's login Keychain", os: macos-15, godot: Godot_v4.7.2-stable_macos.universal.zip }
+          - { name: "keychain: Windows' Credential Manager", os: windows-2022, godot: Godot_v4.7.2-stable_win64.exe.zip }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Xaxis/brickworks
+          ref: "@SOURCE@"
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # The engine the release is built with. A package cannot run a script
+      # of its own (an export template ignores --script), so the release's
+      # key_store.gd runs in this, a restart being a new run of it.
+      - name: Godot 4.7.2
+        run: |
+          gh release download 4.7.2-stable --repo godotengine/godot-builds --pattern "${{ matrix.godot }}" --dir "$RUNNER_TEMP/godot"
+          cd "$RUNNER_TEMP/godot"
+          if [ "$RUNNER_OS" = macOS ]; then
+            # ditto keeps the bundle's links and executable bits; Python's zip does not.
+            ditto -x -k "${{ matrix.godot }}" .
+            echo "GODOT=$RUNNER_TEMP/godot/Godot.app/Contents/MacOS/Godot" >> "$GITHUB_ENV"
+          else
+            python -m zipfile -e "${{ matrix.godot }}" .
+            echo "GODOT=$(cygpath -w "$RUNNER_TEMP/godot/Godot_v4.7.2-stable_win64_console.exe")" >> "$GITHUB_ENV"
+          fi
+      - name: A key kept in the real keychain, read back after a restart, and removed
+        run: python tools/keychain_check.py "$GODOT"
+
+  first-launch:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "first launch: macOS Gatekeeper", os: macos-15 }
+          - { name: "first launch: Windows SmartScreen", os: windows-2022 }
+    steps:
+      # gh and curl mark nothing they download; a browser does, and that mark
+      # is what the first launch's question comes from. So it is put on by
+      # hand, as Safari and Edge put it.
+      - name: macOS, the disk image's app in /Applications, marked as a browser marks a download
+        if: runner.os == 'macOS'
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*-macos-universal.dmg" --dir "$RUNNER_TEMP"
+          image=$(ls "$RUNNER_TEMP"/*-macos-universal.dmg)
+          mark="0083;$(printf %x "$(date +%s)");Safari;$(uuidgen)"
+          xattr -w com.apple.quarantine "$mark" "$image"
+          mkdir -p "$RUNNER_TEMP/mac"
+          hdiutil attach -readonly -nobrowse -mountpoint "$RUNNER_TEMP/mac" "$image"
+          ditto "$RUNNER_TEMP/mac/Brickworks.app" /Applications/Brickworks.app
+          hdiutil detach "$RUNNER_TEMP/mac"
+          xattr -w com.apple.quarantine "$mark" /Applications/Brickworks.app
+          spctl --status || true
+          spctl --assess --type execute --verbose=4 /Applications/Brickworks.app || true
+      - name: macOS, what a person sees the first time they open it
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p shots
+          open /Applications/Brickworks.app || true
+          sleep 12
+          screencapture -x shots/macos-first-open.png || true
+          osascript -e 'tell application "System Events" to get name of every process whose visible is true' || true
+          pgrep -l Brickworks || echo "Brickworks is not running"
+          open "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension" || true
+          sleep 10
+          screencapture -x shots/macos-privacy-security.png || true
+      - name: Windows, the installer marked as Edge marks a download, opened as a double-click opens it
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          gh release download "$env:TAG" --repo "$env:GITHUB_REPOSITORY" --pattern "*-windows-x86_64-setup.exe" --dir "$env:RUNNER_TEMP"
+          $setup = Get-ChildItem "$env:RUNNER_TEMP" -Filter *-setup.exe | Select-Object -First 1
+          Set-Content -Path $setup.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3`r`nHostUrl=https://github.com/"
+          Get-Content -Path $setup.FullName -Stream Zone.Identifier
+          New-Item -ItemType Directory -Force shots | Out-Null
+          Start-Process -FilePath $setup.FullName
+          Start-Sleep -Seconds 15
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+          $picture = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          [System.Drawing.Graphics]::FromImage($picture).CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $picture.Save("shots\windows-first-open.png")
+          Get-Process | Where-Object { $_.ProcessName -match 'setup|Brickworks|smartscreen' } | Format-Table ProcessName, Id, MainWindowTitle
+          Get-Process | Where-Object { $_.ProcessName -match 'setup|Brickworks' } | Stop-Process -Force -ErrorAction SilentlyContinue
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: first-launch-${{ matrix.os }}
+          path: shots/
+          if-no-files-found: ignore
