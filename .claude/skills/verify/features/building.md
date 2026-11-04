@@ -1757,7 +1757,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   baseplate (a stud in a socket; never a tyre), or with no baseplate (a set
   on the grid, setfloor) what stands on the ground (an upright part's socket
   within 2 LDU of it, or of the model's lowest point where that is higher,
-  as Balance weighs it; "ground", said "stands on the floor"; grabfloor:
+  as Balance weighs it; of parts there, the one a plate's stud would be in,
+  `Bodies._nearest_face`: a turntable's base, not its top, whose sockets are
+  read at its pin's foot, so flex_pose's turret turns; "ground", said
+  "stands on the floor"; grabfloor:
   on the grid 21019-1's deck stayed, not its base, and a tower an arm was
   pressed into was lodged in the arm). The ground holds nothing up: let go
   past its edge a model on it falls (`GrabDrag._fall_of` asks the plate's
