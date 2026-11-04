@@ -503,12 +503,12 @@ func _run() -> void:
 			_count(_bricks(), ["98283", "15533"]), _count(_bricks(), ["87087"])])
 
 	print("\nthe ground is offered, laid only when told")
-	await _build("ground", _small_ground())
-	var base: int = _brick_of("3958")
+	await _build("ground", _ground())
+	var base: int = _brick_of("41539")
 	said = _text_of(await assistant.surface_review())
 	var ground: SurfacePass.Finding = _finding("studs")
 	_ok(ground != null and ground.offered and ground.key.begins_with("G")
-		and _open_on(base) == 32, "the base is offered as %s, nothing laid on it"
+		and _open_on(base) == 60, "the base is offered as %s, nothing laid on it"
 		% (ground.key if ground != null else "nothing"))
 	var tiled: String = await assistant.use_tool("settle_surface", {"finding": "G1",
 		"verdict": "tile"})
@@ -732,15 +732,6 @@ func _ground() -> Array:
 	var out: Array = [{"part": "41539", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0}]
 	for course: int in 3:
 		out.append({"part": "3003", "color": 15, "x": 6, "y": 1 + course * 3, "z": 6, "rot": 0})
-	return out
-
-
-## The same on a 6 x 6: too little ground round the tower to cut back (bare,
-## the 8 x 8 is cut back to it; ground_cut_probe), so the ground is offered.
-func _small_ground() -> Array:
-	var out: Array = [{"part": "3958", "color": 72, "x": 0, "y": 0, "z": 0, "rot": 0}]
-	for course: int in 3:
-		out.append({"part": "3003", "color": 15, "x": 4, "y": 1 + course * 3, "z": 4, "rot": 0})
 	return out
 
 
