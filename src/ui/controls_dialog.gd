@@ -894,8 +894,8 @@ func _interface_index() -> int:
 	return best
 
 
-## What a new model stands on (ModelFloor.preferred): New, and a file
-## opened that does not say. Each model's own floor is View, Floor.
+## What a new model stands on (ModelFloor.preferred): New, and a file of
+## Brickworks' own from before floors. Each model's own floor is View, Floor.
 var new_floor: FloorPicker
 
 
