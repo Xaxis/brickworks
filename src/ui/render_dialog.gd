@@ -848,11 +848,15 @@ func _describe() -> void:
 		RenderSettings.Quality.QUICK:
 			_quality_note.text = "The window's own look, at the size you ask for. A moment."
 		RenderSettings.Quality.GOOD:
-			_quality_note.text = ("Light bounced off the backdrop and between the parts, "
-				+ "shading in every corner, and a soft shadow that widens with distance."
-				if full else
-				"Soft shadows and smooth edges, from 8 frames averaged. Light bouncing "
-				+ "between the parts needs the desktop app.")
+			if full:
+				_quality_note.text = ("Light bounced off the backdrop and between the parts, "
+					+ "shading in every corner, and a soft shadow that widens with distance.")
+			elif GraphicsMode.simpler():
+				_quality_note.text = ("Soft shadows and smooth edges, from 8 frames averaged. "
+					+ "Light bouncing between the parts needs the full graphics mode.")
+			else:
+				_quality_note.text = ("Soft shadows and smooth edges, from 8 frames averaged. "
+					+ "Light bouncing between the parts needs the desktop app.")
 		_:
 			_quality_note.text = settings.best_words()
 	_look_note.text = ("Glossy plastic with rounded edges, clear parts that bend the light, "

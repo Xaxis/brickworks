@@ -5,9 +5,14 @@
 ## over it, so a model none of whose parts this build had went for good, and
 ## nothing said so. It is kept now, and this says where, until the person
 ## has read it.
+##
+## The same notice says, once, that this computer runs Brickworks in its
+## simpler graphics mode (GraphicsMode.to_say), under its own [member key].
 class_name RestoreNotice
 extends PanelContainer
 
+## Its button's name for a probe (controls_by_name).
+var key: String = "restore_got_it"
 var _words: Label
 var _close: Button
 
@@ -57,4 +62,4 @@ func words() -> String:
 
 
 func controls_by_name() -> Dictionary:
-	return {"restore_got_it": _close} if visible else {}
+	return {key: _close} if visible else {}

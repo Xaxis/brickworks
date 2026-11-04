@@ -162,10 +162,33 @@ func setup(viewport: Viewport, environment: Environment, sun: DirectionalLight3D
 
 
 ## As the app runs: on, but not in a probe that did not turn it on itself.
+## Where frames are known slow before one is drawn, all of the ladder at once.
 func for_the_app() -> void:
 	if OS.get_cmdline_args().has("--script") or DisplayServer.get_name() == "headless":
 		return
 	watch()
+	if known_slow(RenderingServer.get_video_adapter_name()):
+		cut_all()
+
+
+## Whether frames on [adapter] are slow before one is timed: Apple's
+## software renderer, the OpenGL of a Mac whose GPU has none of its own (the
+## paravirtual one of a macOS VM on an Intel host, where the launcher starts
+## the simpler mode, GraphicsMode). It interprets every shader on the CPU:
+## the car had not been drawn after 420 s, and with the 3D at half scale, one
+## sample deep and a small shadow atlas it was in 288 s. A look would find
+## the same cuts only after ten such frames. Not llvmpipe, which compiles its
+## shaders and is judged by its frames as a browser's SwiftShader is.
+static func known_slow(adapter: String) -> bool:
+	return adapter.contains("Apple Software Renderer")
+
+
+## All of the ladder cut, and no look taken: it could cut nothing more.
+func cut_all() -> void:
+	var all: Array[String] = _ladder.duplicate()
+	judged.append([Time.get_ticks_msec(), -1.0, all])
+	_apply(all)
+	_first_look_at = 0
 
 
 ## Time the frames, and cut when they are slow.

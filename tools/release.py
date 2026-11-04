@@ -103,6 +103,13 @@ TOOLS = {
         "url": "https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign/0.29.0/apple-codesign-0.29.0-x86_64-unknown-linux-musl.tar.gz",
         "sha256": "dbe85cedd8ee4217b64e9a0e4c2aef92ab8bcaaa41f20bde99781ff02e600002",
     },
+    # The C compiler that builds the macOS launcher on Linux
+    # (tools/release/package/launcher.c, build_launcher): zig carries
+    # macOS's libSystem, so no Apple SDK is needed. Unpacked once (zig()).
+    "zig": {
+        "url": "https://ziglang.org/download/0.17.1/zig-x86_64-linux-0.17.1.tar.xz",
+        "sha256": "3581863e3cbcfd0fce0efc682ce7e9e93da96668a977791d356a26d2a7e9b17a",
+    },
     # The macOS disk image, made on Linux as Mozilla makes Firefox's (hdiutil
     # is macOS's own): mkfs.hfsplus from Ubuntu 24.04's hfsprogs makes an
     # empty HFS+ volume, and libdmg-hfsplus (Mozilla's fork, at a commit with
@@ -730,6 +737,79 @@ def makensis() -> tuple[Path, dict[str, str]]:
     return program, {"NSISDIR": str(home / "usr" / "share" / "nsis")}
 
 
+def zig() -> Path:
+    """zig, unpacked once."""
+    home = tool_home(("zig",))
+    program = home / "zig"
+    if not program.exists():
+        work = home.with_name(home.name + ".partial")
+        shutil.rmtree(work, ignore_errors=True)
+        work.mkdir(parents=True)
+        with tarfile.open(fetch("zig")) as archive:
+            archive.extractall(work, filter="data")
+        shutil.rmtree(home, ignore_errors=True)
+        next(work.iterdir()).rename(home)
+        shutil.rmtree(work)
+    return program
+
+
+# The program a Mac starts (CFBundleExecutable): it judges the GPU before
+# Vulkan can abort on it, then becomes the app, Contents/MacOS/Brickworks
+# (tools/release/package/launcher.c).
+LAUNCHER = "launcher"
+
+
+def build_launcher(target: Path) -> None:
+    """The launcher as one universal binary, each slice for the oldest macOS
+    the macOS preset's own slice runs on."""
+    presets = (ROOT / "export_presets.cfg").read_text()
+    oldest = dict(re.findall(r'application/min_macos_version_(x86_64|arm64)="([\d.]+)"', presets))
+    compiler = zig()
+    slices = []
+    with tempfile.TemporaryDirectory() as scratch:
+        cache = str(Path(scratch) / "cache")
+        for arch, target_arch in (("x86_64", "x86_64"), ("arm64", "aarch64")):
+            out = Path(scratch) / arch
+            done = subprocess.run(
+                [str(compiler), "cc", "-target", "%s-macos.%s" % (target_arch, oldest[arch]),
+                 "-Os", "-Wall", "-Wextra", "-Werror", "-o", str(out),
+                 str(ROOT / "tools" / "release" / "package" / "launcher.c")],
+                capture_output=True, text=True,
+                env=dict(os.environ, ZIG_GLOBAL_CACHE_DIR=cache, ZIG_LOCAL_CACHE_DIR=cache))
+            if done.returncode != 0:
+                raise Failed("building the launcher for %s:\n%s" % (arch, done.stderr[-2000:]))
+            slices.append(out.read_bytes())
+    target.write_bytes(fat_binary(slices))
+    target.chmod(0o755)
+
+
+def fat_binary(slices: list[bytes]) -> bytes:
+    """Mach-O slices as one universal binary, as lipo joins them: each on a
+    16 KB boundary, the page Apple silicon maps by."""
+    align = 14
+    out = bytearray(struct.pack(">II", 0xCAFEBABE, len(slices)))
+    at = 1 << align
+    placed = []
+    for data in slices:
+        cpu, subtype = struct.unpack("<ii", data[4:12])
+        out += struct.pack(">iiIII", cpu, subtype, at, len(data), align)
+        placed.append((at, data))
+        at = (at + len(data) + (1 << align) - 1) & ~((1 << align) - 1)
+    for offset, data in placed:
+        out += b"\0" * (offset - len(out)) + data
+    return bytes(out)
+
+
+def launch_through(app: Path) -> None:
+    """The launcher in, as the program a Mac starts. Before it is signed:
+    the signature seals the Info.plist."""
+    build_launcher(app / "Contents" / "MacOS" / LAUNCHER)
+    path = app / "Contents" / "Info.plist"
+    plist = plistlib.loads(path.read_bytes())
+    plist["CFBundleExecutable"] = LAUNCHER
+    path.write_bytes(plistlib.dumps(plist))
+
+
 # -- each platform ----------------------------------------------------------
 
 def build_linux(version: str, stamp: dict[str, str], out: Path, epoch: int) -> None:
@@ -926,9 +1006,20 @@ def sign_mac(app: Path) -> dict[str, bool]:
         # library signed by someone else will not load without it.
         entitlements.write_bytes(plistlib.dumps(
             {"com.apple.security.cs.disable-library-validation": True}))
+        # The launcher (launch_through) is what macOS starts, under the
+        # hardened runtime and needing nothing more. The app it becomes keeps
+        # what it had as the bundle's own program: that entitlement, the
+        # runtime and the bundle's identifier, so its identity to macOS is
+        # what 0.15.0's was.
+        engine = "Contents/MacOS/Brickworks"
+        identifier = plistlib.loads((app / "Contents" / "Info.plist").read_bytes())[
+            "CFBundleIdentifier"]
+        settings = ["--code-signature-flags", "runtime",
+                    "--code-signature-flags", "%s:runtime" % engine,
+                    "--entitlements-xml-file", "%s:%s" % (engine, entitlements),
+                    "--binary-identifier", "%s:%s" % (engine, identifier)]
         if not p12:
-            subprocess.run([str(rcodesign), "sign", "--code-signature-flags", "runtime",
-                            "--entitlements-xml-file", str(entitlements), str(app)],
+            subprocess.run([str(rcodesign), "sign", *settings, str(app)],
                            check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             say("  macOS: ad-hoc signed (no APPLE_SIGN_P12): first launch needs Open Anyway")
             return {"developer_id": False, "notarized": False}
@@ -937,8 +1028,7 @@ def sign_mac(app: Path) -> dict[str, bool]:
         # --for-notarization turns on the hardened runtime and a secure
         # timestamp, and checks for what Apple's notary would refuse.
         subprocess.run([str(rcodesign), "sign", "--p12-file", p12, "--p12-password-file",
-                        str(password), "--for-notarization", "--code-signature-flags", "runtime",
-                        "--entitlements-xml-file", str(entitlements), str(app)], check=True)
+                        str(password), "--for-notarization", *settings, str(app)], check=True)
         say("  macOS: signed with the Developer ID")
         names = ("APPLE_NOTARY_KEY", "APPLE_NOTARY_KEY_ID", "APPLE_NOTARY_ISSUER")
         if not all(os.environ.get(name) for name in names):
@@ -1212,6 +1302,7 @@ def build_mac(version: str, stamp: dict[str, str], out: Path, epoch: int) -> dic
     shutil.copy2(STAGE / "docs" / "ATTRIBUTION.md", resources / "ATTRIBUTION.md")
     shutil.copy2(WORK / "THIRD-PARTY-NOTICES.txt", resources / "THIRD-PARTY-NOTICES.txt")
     declare_types(folder / "Brickworks.app")
+    launch_through(folder / "Brickworks.app")
     signed = sign_mac(folder / "Brickworks.app")
     image = out / ("Brickworks-%s-macos-universal.dmg" % version)
     write_dmg(folder / "Brickworks.app", image)
@@ -1537,9 +1628,11 @@ def inspect_mac(path: Path) -> dict[str, Any]:
         texts = licences(lambda name: archive.read(beside + name)
                          if beside + name in names else None)
         plist = plistlib.loads(archive.read(prefix + "Contents/Info.plist"))
-        binary_name = plist.get("CFBundleExecutable", "Brickworks")
-        binary = prefix + "Contents/MacOS/" + binary_name
+        binary = prefix + "Contents/MacOS/Brickworks"
         facts = macho_facts(archive.read(binary))
+        starts = prefix + "Contents/MacOS/" + plist.get("CFBundleExecutable", "")
+        facts["launcher"] = macho_facts(archive.read(starts)) \
+            if starts != binary and starts in names else {}
         mode = archive.getinfo(binary).external_attr >> 16
         unpacked = sum(info.file_size for info in archive.infolist())
     facts.update({
@@ -1723,8 +1816,10 @@ def inspect_dmg(path: Path) -> dict[str, Any]:
         try:
             app = "Brickworks.app/Contents/"
             plist = plistlib.loads(read(app + "Info.plist") or b"")
-            binary = read(app + "MacOS/" + plist.get("CFBundleExecutable", "Brickworks")) or b""
-            facts = macho_facts(binary)
+            facts = macho_facts(read(app + "MacOS/Brickworks") or b"")
+            starts = plist.get("CFBundleExecutable", "Brickworks")
+            launcher = read(app + "MacOS/" + starts) if starts != "Brickworks" else None
+            facts["launcher"] = macho_facts(launcher) if launcher else {}
             facts.update({
                 "bundle": "Brickworks.app", "unpacked": used,
                 "version": plist.get("CFBundleShortVersionString", ""),
@@ -1760,6 +1855,22 @@ def inspect_installer(path: Path) -> dict[str, Any]:
     data = path.read_bytes()
     setup = pe_facts(data)
     return {"exes": {path.name: setup}, "nsis": b"NullsoftInst" in data}
+
+
+def say_launcher(name: str, facts: dict[str, Any]) -> None:
+    """The launcher a Mac starts, read back: there, universal and signed, or
+    the package fails. Without it an Intel Mac whose GPU MoltenVK cannot
+    use closes the app at once (launch_through)."""
+    launcher = facts.get("launcher") or {}
+    if not launcher:
+        raise Failed("%s starts the app itself, not through its launcher" % name)
+    say("      launcher: architectures %s; oldest macOS %s; signature %s" % (
+        " + ".join(launcher["architectures"]), launcher["min_macos"], launcher["signature"]))
+    if sorted(launcher["architectures"]) != ["arm64", "x86_64"]:
+        raise Failed("%s: the launcher is not universal: %s" % (name, launcher["architectures"]))
+    unsigned = [s for s in launcher["signature"].values() if s == "none" or s.startswith("invalid")]
+    if unsigned:
+        raise Failed("%s: the launcher is not validly signed (%s)" % (name, unsigned[0]))
 
 
 def inspect(out: Path) -> list[dict[str, Any]]:
@@ -1823,6 +1934,7 @@ def inspect(out: Path) -> list[dict[str, Any]]:
             say("      Applications -> %s; volume icon %s; window laid out %s; opens %s" % (
                 facts["applications"], facts["volume_icon"], facts["layout"],
                 ", ".join(facts["opens"]) or "nothing"))
+            say_launcher(path.name, facts)
             say_licences(path.name, facts["licences"])
             if facts["version"] != version:
                 raise Failed("%s says it is %s" % (path.name, facts["version"]))
@@ -1851,6 +1963,7 @@ def inspect(out: Path) -> list[dict[str, Any]]:
             say("      signature %s; sealed %s; notarisation ticket %s; executable %s; "
                 "pck inside %s" % (facts["signature"], facts["sealed"], facts["stapled"],
                                    facts["executable"], facts["pck"]))
+            say_launcher(path.name, facts)
             say_licences(path.name, facts["licences"])
             if not facts["executable"]:
                 raise Failed("%s: the app's binary lost its executable bit" % path.name)
@@ -2274,14 +2387,13 @@ def double_click_linux(root: Path, env: dict[str, str],
 def double_click_mac(models: list[Path]) -> list[tuple[str, bool | None, str]]:
     """The app in /Applications (unpack put it there), registered with
     Launch Services as Finder registers a new app, then each model opened
-    with open(1), which is a double-click in Finder."""
+    with open(1), which is a double-click in Finder. Through the launcher,
+    so in the graphics mode it chooses for this Mac (mac_mode), said in
+    each window's log and the simpler one said to the person once."""
     said: list[tuple[str, bool | None, str]] = []
     app = Path("/Applications/Brickworks.app")
     subprocess.run(["/System/Library/Frameworks/CoreServices.framework/Frameworks/"
                     "LaunchServices.framework/Support/lsregister", "-f", str(app)], check=True)
-    why = mac_cannot_draw()
-    if why:
-        return [("a double-click on a model, not run here: %s" % why, None, "")]
     # Launch Services starts it as the person, in their own home.
     data = Path.home() / "Library" / "Application Support" / "Godot" / "app_userdata" / "Brickworks"
     try:
@@ -2297,31 +2409,37 @@ def double_click_mac(models: list[Path]) -> list[tuple[str, bool | None, str]]:
                          done.stderr + ("" if parts > 0 else mac_state(data))))
         windows = held_windows(data)
         said.append(("...each in a window of its own: %d open" % len(windows), len(windows) == 2, ""))
+        logs = "".join(log.read_text(errors="replace") for log in (data / "logs").glob("*.log"))
+        mode = mac_mode()
+        modes = re.findall(r"^graphics: (\w+) mode \((.*)\), (\S+) on (.*)$", logs, re.M)
+        said.append(("...each in the %s graphics mode: %s" % (mode, "; ".join(
+            "%s (%s), %s on %s" % found for found in modes) or "no window said"),
+            len(modes) >= 2 and all(found[0] == mode for found in modes), logs[-1500:]))
+        told = logs.count("graphics run Brickworks in its simpler mode.")
+        said.append(("...and said so to the person %s" % ("once" if told == 1 else "%d times" % told),
+                     told == (1 if mode == "simpler" else 0), ""))
     finally:
         end_windows(data)
     return said
 
 
-def mac_cannot_draw() -> str:
-    """Why this Mac cannot open the app's window at all, or "" if it can.
+def mac_mode() -> str:
+    """The graphics mode the launcher should start this Mac in.
 
     An Intel Mac draws through Vulkan on MoltenVK; Apple silicon through
     Metal. The only GPU a macOS VM on an Intel host has is Apple's
     paravirtual one, 64 MB and Metal 2, and MoltenVK aborts on it in
     vkCreateInstance (an argument encoder it cannot make), or with argument
-    buffers off runs out of device memory. GitHub's macos-15-intel is such a
-    VM: its double-clicks crashed every time, while on OpenGL the same app
-    started with the model's name on its window. A real Intel Mac has a
-    real GPU."""
+    buffers off runs out of device memory: GitHub's macos-15-intel is such a
+    VM. The launcher starts the simpler mode there (OpenGL), and the full
+    one on Apple silicon, paravirtual or not, and on a real Intel GPU."""
     arm = subprocess.run(["sysctl", "-n", "hw.optional.arm64"], capture_output=True, text=True)
     if arm.stdout.strip() == "1":
-        return ""
+        return "full"
     gpus = subprocess.run(["system_profiler", "SPDisplaysDataType"], capture_output=True,
                           text=True).stdout
     chips = re.findall(r"Chipset Model: (.+)", gpus)
-    if chips and all("Paravirtual" in chip for chip in chips):
-        return "an Intel Mac whose only GPU is %s, which MoltenVK cannot draw on" % chips[0].strip()
-    return ""
+    return "simpler" if chips and all("Paravirtual" in chip for chip in chips) else "full"
 
 
 def mac_state(data: Path) -> str:

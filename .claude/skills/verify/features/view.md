@@ -453,7 +453,11 @@ picture the assistant is shown.
   frames, not twelve, and no frame at full cost is left queued ahead of
   the cut. Holds (the parts bin's read-backs) cannot fool a frame timed
   by its own fence. So the empty editor is cut on its own while it loads,
-  not at the first turn of the view. It never raises the look again. A probe leaves it off unless it calls `watch()`. The page
+  not at the first turn of the view. It never raises the look again. On
+  Apple's software renderer (a Mac whose GPU has no OpenGL of its own, the
+  Intel VM's paravirtual one) the whole ladder is cut before the first frame
+  and no look is taken (`known_slow`, `cut_all`): its frames are tens of
+  seconds. A probe leaves it off unless it calls `watch()`. The page
   reads `brickworksState.look`, and a check pins cuts with
   `window.brickworksLookAsk = {cuts: [...] | null, look: N}`.
   `tools/probe.sh look_probe` checks the judgment on a budget of its own,
