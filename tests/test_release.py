@@ -511,6 +511,69 @@ def test_apple_silicon_and_a_real_intel_gpu_are_double_clicked(monkeypatch):
                                       "      Chipset Model: Intel UHD Graphics 630\n") == ""
 
 
+def _double_clicks_stubbed(monkeypatch, tmp_path) -> list[Path]:
+    """Opening models answered here: each opened with 3 parts, in a window
+    of its own."""
+    monkeypatch.setattr(release, "logs_say", lambda folder, model, seconds: 3)
+    monkeypatch.setattr(release, "held_windows", lambda data: [1, 2])
+    monkeypatch.setattr(release, "end_windows", lambda data: None)
+    models = [tmp_path / "car one.ldr", tmp_path / "car two.ldr"]
+    for model in models:
+        model.write_text("0 car\n")
+    return models
+
+
+def test_a_double_click_on_a_mac_starts_the_app_with_updates_off(monkeypatch, tmp_path):
+    # open(1) starts it through Launch Services, in the person's environment,
+    # not clean_env's: an older release under check could update itself.
+    models = _double_clicks_stubbed(monkeypatch, tmp_path)
+    ran: list[list[str]] = []
+
+    def run(command, **kwargs):
+        ran.append(list(command))
+        return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(release.subprocess, "run", run)
+    monkeypatch.setattr(release, "mac_cannot_draw", lambda: "")
+    said = release.double_click_mac(models)
+    assert [ok for _, ok, _ in said] == [True, True, True], said
+    assert [c for c in ran if c[0] == "open"] == [
+        ["open", "--env", "BRICKWORKS_UPDATES=off", str(model)] for model in models]
+
+
+def test_a_double_click_on_windows_starts_the_app_with_updates_off(monkeypatch, tmp_path):
+    # os.startfile's app inherits this process's environment: off while the
+    # models open, and this process's own setting back after.
+    models = _double_clicks_stubbed(monkeypatch, tmp_path)
+    heard: list[tuple[str, str | None]] = []
+    environ = {"APPDATA": str(tmp_path / "AppData"), "BRICKWORKS_UPDATES": "ask"}
+    windows = type(sys)("os")
+    windows.environ = environ
+    windows.startfile = lambda path: heard.append((path, environ.get("BRICKWORKS_UPDATES")))
+    monkeypatch.setattr(release, "os", windows)
+    monkeypatch.setattr(release, "WINDOWS_INSTALLED", tmp_path / "Programs" / "Brickworks")
+    monkeypatch.setattr(release.subprocess, "run", lambda command, **kwargs: None)
+    monkeypatch.setattr(release.time, "sleep", lambda seconds: None)
+    # A registry with nothing in it: what the installer wrote is not asked here.
+    registry = type(sys)("winreg")
+    registry.HKEY_CURRENT_USER, registry.HKEY_CLASSES_ROOT = 1, 2
+
+    def no_key(key, path):
+        raise OSError(path)
+
+    registry.OpenKey = no_key
+    sys.modules["winreg"] = registry
+    try:
+        said = release.double_click_windows(tmp_path / "Brickworks-9.9.9-windows-x86_64-setup.exe", models)
+    finally:
+        del sys.modules["winreg"]
+    assert heard == [(str(model), "off") for model in models]
+    assert environ["BRICKWORKS_UPDATES"] == "ask"
+    assert [what for what, ok, _ in said if ok and "double-click" in what] == [
+        "a double-click on car one.ldr opens it in Brickworks: 3 parts",
+        "a double-click on car two.ldr opens it in Brickworks, the app already open: 3 parts"]
+
+
 def test_the_smokes_session_keeps_its_tool_list_out_of_the_checkout(tmp_path, monkeypatch):
     # The relay keeps the last tools/list it heard in tools/mcp_tools.json.
     # A package from another commit serves another list, and smoking 0.13.0
