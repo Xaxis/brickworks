@@ -683,10 +683,16 @@ def trim(out: Path) -> int:
 
 def packages(versions: list[str], platforms: list[str], out: Path) -> int:
     """This commit built as each version, in a throwaway worktree."""
+    commit = release.git("rev-parse", "HEAD")
+    # Only what is committed is built: changes left in the app would be
+    # proven by packages that do not have them.
+    changed = release.git("status", "--porcelain", "--", "src", "project.godot", "export_presets.cfg")
+    if changed:
+        raise release.Failed("packages build HEAD (%s), and these changes are not in it: commit "
+                             "them first\n%s" % (commit[:8], changed))
     small = out / "assets"
     if not (small / "catalogue.json").exists():
         trim(small)
-    commit = release.git("rev-parse", "HEAD")
     for version in versions:
         tree = out / ("tree-" + version)
         subprocess.run(["git", "worktree", "add", "--detach", "-f", str(tree), commit], cwd=ROOT,
