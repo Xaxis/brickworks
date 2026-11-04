@@ -164,8 +164,9 @@ try {
       check(`${at}: what stays free: both apps, by hand and AI, everything else, nothing taken out`,
         /What stays free/.test(body) && /It takes nothing out of Free/.test(body) && /The web app and the desktop app\./.test(body)
         && /Building by hand, and AI, without a limit\./.test(body) && /Everything else the app does today\./.test(body));
-      check(`${at}: no Claude builds, and the commercial terms come with Pro`,
-        !/Claude build/i.test(body) && /Its terms come with Pro\./.test(body));
+      // Pro's licence has its terms now (golive: /terms#commercial-use), linked from Pro.
+      check(`${at}: no Claude builds, and Pro's commercial use links its terms`,
+        !/Claude build/i.test(body) && Boolean(await page.$('a[href$="/terms#commercial-use"]')));
       check(`${at}: nothing on the page takes money (no checkout, no card form)`,
         !(await page.$('input[autocomplete^="cc-"], [href*="checkout"], [href*="stripe"]')));
       const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
