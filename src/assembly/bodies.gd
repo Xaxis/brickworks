@@ -34,8 +34,8 @@
 ## Each piece of the model that holds together by joints has an anchor: the
 ## part of it that stays when the rest is moved. A part the person locked
 ## (Lock parts) anchors its body; else the bodies on the baseplate's studs
-## (a stud in one of their sockets), or with no baseplate on the ground (a
-## socket on it); else the biggest body, the one with the
+## (a stud in one of their sockets), or with no baseplate the biggest of
+## those on the ground (a socket on it); else the biggest body, the one with the
 ## most parts, unless a body standing on the floor (reaching down to where
 ## its piece is lowest, not by a tyre) is heavier. A car's chassis stays and
 ## its wheels turn;
@@ -1352,6 +1352,21 @@ func _anchor_and_grow() -> void:
 	parent_of.clear()
 	children.clear()
 	closing.clear()
+	# A flexible tube, a hose, a chain is drawn as rigid pieces but bends:
+	# held at both ends it closes no loop, and carries nothing on from where
+	# it hangs. A pneumatic cylinder's tubes, each joined to its ports and to
+	# a valve, locked its loop, and what the tubes reached at their far end
+	# hung from them and stayed when the arm it is on was raised.
+	flexible.clear()
+	for body: int in members:
+		var strung: bool = true
+		for key: int in members[body]:
+			var brick: BrickWorld.Brick = world.get_brick(key)
+			if brick == null or Flex.strung(library, brick.part_id).is_empty():
+				strung = false
+				break
+		if strung:
+			flexible[body] = true
 	var seen: Dictionary = {}
 	var pieces: Array = []
 	for body: int in members:
@@ -1379,9 +1394,30 @@ func _anchor_and_grow() -> void:
 		if not _any_of(piece, anchor_why):
 			for body: int in piece:
 				for key: int in members[body]:
-					if _standing.has(key) or _on_ground.has(key):
-						anchor_why[body] = ["studs" if _standing.has(key) else "ground", key]
+					if _standing.has(key):
+						anchor_why[body] = ["studs", key]
 						break
+		if not _any_of(piece, anchor_why):
+			# On the ground one body stays of what joints carry as one, the
+			# biggest standing there: the ground holds nothing as a plate's
+			# studs do. Each body on it kept still, a ring of click hinges
+			# lying flat was eight anchors, and Meet could not close it
+			# (suitegrab, 2026-11-04). A hose carries nothing on, so a brick
+			# on the floor that only a tube joins stays on its own, and the
+			# tube holds the arm at its other end.
+			for carried: Array in _carried(piece):
+				var ground: int = -1
+				var at: int = 0
+				for body: int in carried:
+					for key: int in members[body]:
+						if _on_ground.has(key):
+							if ground < 0 or Bodies._bigger(_size_of(body), float(grams.get(body, 0.0)), body,
+									_size_of(ground), float(grams.get(ground, 0.0)), ground):
+								ground = body
+								at = key
+							break
+				if ground >= 0:
+					anchor_why[ground] = ["ground", at]
 		if not _any_of(piece, anchor_why):
 			# The biggest body: the most parts, as the gear reading takes its
 			# ground (Mechanism._largest); between two of a size, the heavier.
@@ -1427,21 +1463,6 @@ func _anchor_and_grow() -> void:
 		reached[body] = true
 		queue.append(body)
 	var used: Dictionary = {}
-	# A flexible tube, a hose, a chain is drawn as rigid pieces but bends:
-	# held at both ends it closes no loop, and carries nothing on from where
-	# it hangs. A pneumatic cylinder's tubes, each joined to its ports and to
-	# a valve, locked its loop, and what the tubes reached at their far end
-	# hung from them and stayed when the arm it is on was raised.
-	flexible.clear()
-	for body: int in members:
-		var strung: bool = true
-		for key: int in members[body]:
-			var brick: BrickWorld.Brick = world.get_brick(key)
-			if brick == null or Flex.strung(library, brick.part_id).is_empty():
-				strung = false
-				break
-		if strung:
-			flexible[body] = true
 	var head: int = 0
 	while head < queue.size():
 		var at: int = queue[head]
@@ -1488,6 +1509,29 @@ func _anchor_and_grow() -> void:
 		(children[parent] as Array).append(child)
 
 
+## [param piece]'s bodies in groups joints carry as one, through no hose,
+## string or chain ([member flexible]), which are in none.
+func _carried(piece: Array) -> Array:
+	var seen: Dictionary = {}
+	var out: Array = []
+	for body: int in piece:
+		if seen.has(body) or flexible.has(body):
+			continue
+		var group: Array = []
+		var frontier: Array = [body]
+		seen[body] = true
+		while not frontier.is_empty():
+			var at: int = frontier.pop_back()
+			group.append(at)
+			for link: Link in touching.get(at, []):
+				var next: int = link.other(at)
+				if not seen.has(next) and not flexible.has(next):
+					seen[next] = true
+					frontier.append(next)
+		out.append(group)
+	return out
+
+
 func _size_of(body: int) -> int:
 	return (members.get(body, PackedInt64Array()) as PackedInt64Array).size()
 
@@ -1532,21 +1576,23 @@ func held_words(part: int) -> String:
 		return ""
 	stays = "%s is part of what stays: %s" % [_part_named(part), stays]
 	var at: int = int((anchor_why[body] as Array)[1])
-	if at == 0:
-		# The biggest body, held by no part in particular: what joins this
-		# part to it. A door opened to 90° was "part of what stays", with
-		# its top stud read into the wall brick over it.
-		var own := PackedStringArray()
-		for edge: Array in (joined_by.get(part, []) as Array).slice(0, 2):
-			own.append(_join_words(part, int(edge[0]), str(edge[1])))
-		return stays if own.is_empty() else "%s, and %s" % [stays, Bodies._and(own)]
-	var path: Array = _path(part, at) if at != part else []
-	if path.is_empty() or path.size() > 3:
+	if at == part:
 		return stays
-	var steps := PackedStringArray()
-	for step: Array in path:
-		steps.append(_join_words(int(step[0]), int(step[1]), str(step[2])))
-	return "%s, and %s" % [stays, Bodies._and(steps)]
+	var path: Array = _path(part, at) if at != 0 else []
+	if not path.is_empty() and path.size() <= 3:
+		var steps := PackedStringArray()
+		for step: Array in path:
+			steps.append(_join_words(int(step[0]), int(step[1]), str(step[2])))
+		return "%s, and %s" % [stays, Bodies._and(steps)]
+	# The biggest body, held by no part in particular, or a part too far
+	# from the one that holds its body to name the way: what joins this part
+	# to it. A door opened to 90° was "part of what stays", with its top
+	# stud read into the wall brick over it; on the grid, where a brick of
+	# its wall stands on the floor, it said only that (suitegrab).
+	var own := PackedStringArray()
+	for edge: Array in (joined_by.get(part, []) as Array).slice(0, 2):
+		own.append(_join_words(part, int(edge[0]), str(edge[1])))
+	return stays if own.is_empty() else "%s, and %s" % [stays, Bodies._and(own)]
 
 
 ## The joint nearest [param part] that its body holds still, and what holds
