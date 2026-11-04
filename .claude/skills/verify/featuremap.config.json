@@ -1,4 +1,7 @@
 {
+  "tests": [
+    "src/dev/*_probe.gd"
+  ],
   "ignore": [
     "vendor/**",
     "assets/**",
