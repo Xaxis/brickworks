@@ -2602,6 +2602,24 @@ fixing what it got wrong.
   to 2,000 parts. Probe: `colours_seen_probe` (a bench design of 7992-1 and the
   judge's picture of it: the Python read's six colours, City's 258 sets with
   7992-1 left out, both tools' words).
+- **Massing, against real sets of its theme** (`Massing`,
+  `Assistant._massing_finding`, design15, 2026-11-04). How much of its box a
+  model fills, read off the lattice (each part's real cover) in voxels half a
+  stud across and a plate tall, the ground left out (flat bottom layers wider
+  than what stands on them): every column filled from its top down, against the
+  box. A session's first build of a design (the answer to submit_design) and
+  review_model of the whole say so when the model fills more than three in four
+  real sets of the theme it was asked in, else its kind, within 1.6x of its
+  part count, none held out ("fills 59% of its box. City sets of 135 to 326
+  parts fill 15% to 28%, most often 21% ..."), with what sets do instead and "keep it and say
+  why" for a subject that is a block. Not said again for the same massing; a
+  new submit_design is a new design. Nothing is changed. The sets are the
+  library's 1,234 set models (`assets/knowledge/set_massing.json`, written by
+  `src/dev/set_massing.gd` from vendor/omr, `SetKnowledge.massing()` holding out
+  the sets under test; beside the web build in `knowledge/`). Probe:
+  `massing_probe` (a block and two towers measured, a bench design of 7746-1
+  at 59% against City's sets with 7746-1 left out, review_model's and the first
+  build's words, an open yard told nothing).
 
 ## How to reach it
 

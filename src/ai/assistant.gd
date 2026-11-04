@@ -4809,12 +4809,24 @@ func _colours_finding(fresh: bool = true) -> String:
 ## the person's words, and a bench session's subject alone ("street sweeper")
 ## measured 7242-1 against street sets, not City's. Kept until that changes.
 func _colours_reference(standing: int) -> Dictionary:
-	var said: String = " ".join(PackedStringArray([_brief, _words_passed, _heard, _named_as]))
+	var said: String = _subject_said()
 	var parts: int = ColoursSeen.parts_in(said, _parts_asked, standing)
 	var key: String = "%s|%d|%s" % [said, parts, ",".join(DesignMemory.held_out())]
 	if key == _colours_ref_for:
 		return _colours_ref
 	_colours_ref_for = key
+	_colours_ref = ColoursSeen.sets_like(said, _kinds_said(said), parts, library)
+	return _colours_ref
+
+
+## All the app hears of the subject: the brief a session passes
+## submit_design first, its calls' subjects, the design's name.
+func _subject_said() -> String:
+	return " ".join(PackedStringArray([_brief, _words_passed, _heard, _named_as]))
+
+
+## The kinds of real set [param said] is, as how_real_sets_build_this reads them.
+func _kinds_said(said: String) -> PackedStringArray:
 	var found: Array = library.kinds_for(said)
 	if found.is_empty():
 		var plainer: String = _kind_words(said)
@@ -4822,8 +4834,41 @@ func _colours_reference(standing: int) -> Dictionary:
 	var kinds := PackedStringArray()
 	for kind: Variant in found:
 		kinds.append(str((kind as Dictionary).get("kind", "")))
-	_colours_ref = ColoursSeen.sets_like(said, kinds, parts, library)
-	return _colours_ref
+	return kinds
+
+
+## What the massing finding last said, so a massing left as it was is not
+## told again.
+var _massing_told: String = ""
+
+
+## How much of its box the model fills against real sets of its theme or
+## kind and part count, when it fills more than three in four of them
+## (Massing.said): "" when it does not, when nothing is known to measure it
+## by, or when it was said of the massing as it stands.
+func _massing_finding() -> String:
+	if world == null or library == null or builder == null:
+		return ""
+	await SetKnowledge.ensure(self)
+	var bricks: Array[BrickWorld.Brick] = _bricks_inside({})
+	if bricks.size() < Massing.FEWEST_PARTS:
+		return ""
+	var said: String = _subject_said()
+	var ref: Dictionary = Massing.sets_like(said, _kinds_said(said),
+		ColoursSeen.parts_in(said, _parts_asked, bricks.size()))
+	if ref.is_empty():
+		return ""
+	var ids: Array = []
+	for brick: BrickWorld.Brick in bricks:
+		ids.append(brick.id)
+	var boxes: Array = Massing.boxes_of(builder.lattice, ids)
+	var found: Variant = await WorkerTasks.awaited(func() -> Variant:
+		return Massing.measure(boxes), "measure how much of its box the model fills")
+	var finding: String = Massing.said(found if found is Dictionary else {}, ref)
+	if finding == _massing_told:
+		return ""
+	_massing_told = finding
+	return finding
 
 
 ## look_at_model of the whole model: the colour finding, when the model is
@@ -20940,9 +20985,12 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_unsaved = true
 		_outside_creative_handed = false
 		_outside_creative = {}
+		_massing_told = ""
 		surface_pass().reset()
 		fresh_eyes().designed(bare)
-	return _built_from_outside(design, report) if designing else _placed_said(design, report)
+	if not designing:
+		return _placed_said(design, report)
+	return _built_from_outside(design, report, await _massing_finding())
 
 
 ## A design built from outside — Claude over the connector, or a session
@@ -20992,7 +21040,7 @@ nod only someone who knows it would catch — and the best one or two added, \
 small and joined, where they are seen."""
 
 
-func _built_from_outside(design: Model, report: Dictionary) -> String:
+func _built_from_outside(design: Model, report: Dictionary, massing: String = "") -> String:
 	var said := PackedStringArray()
 	said.append("Built. %d bricks on the baseplate. %s" % [
 		design.placements.size(), report["summary"]])
@@ -21007,6 +21055,10 @@ func _built_from_outside(design: Model, report: Dictionary) -> String:
 	if not measured.is_empty():
 		said.append("What the check measured about it:\n"
 			+ "\n".join(PackedStringArray(measured)))
+	# Its massing, while the massing is all there is: the detail after it is
+	# laid inside what this chose (design14).
+	if not massing.is_empty():
+		said.append(massing)
 	var names := PackedStringArray()
 	for one: Dictionary in design.assemblies:
 		names.append(str(one.get("name", "")))
@@ -21298,6 +21350,9 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		var colour: String = await _colours_finding()
 		if not colour.is_empty():
 			said.append(colour)
+		var massing: String = await _massing_finding()
+		if not massing.is_empty():
+			said.append(massing)
 		said.append(CRITIQUE)
 		said.append(_features_to_review())
 		said.append(_assemblies_to_review())
