@@ -1,7 +1,103 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.15.0",
+ "latest": "0.16.0",
  "releases": [
+  {
+   "version": "0.16.0",
+   "tag": "v0.16.0",
+   "date": "2026-11-04",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.16.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.16.0",
+   "summary": "Brickworks now installs the way your system's own apps do, and keeps itself up to date. On a Mac it comes as a disk image to drag onto Applications; on Windows an installer puts it in the Start menu and in Settings \u25b8 Apps, where it can be uninstalled; on Debian and Ubuntu apt installs it from a .deb. On each, a model double-clicked opens in it. From now on it looks for a newer version once a day, takes only one signed by us, and puts it in as you quit or when you choose Update and restart; Settings \u25b8 Updates has Automatic, Ask first and Off. 0.15.0 has no updater, so download 0.16.0 by hand this once. Your AI keys are kept in the system's own keychain, and a Mac whose graphics cannot run the full mode, as a Mac in a virtual machine, starts in a simpler one where it used to close. A set opens on the grid as it comes in the box, a Studio file's own parts are drawn, a booklet's steps keep their numbers as you edit, and on a GitHub Copilot plan you can design from the assistant's panel.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "deb",
+     "name": "Brickworks-0.16.0-linux-amd64.deb",
+     "size": 453423956,
+     "sha256": "4973f214c2ff5102a24c19b26dd4309f05d72729279f04d8786aa457051b8efd",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.16.0/Brickworks-0.16.0-linux-amd64.deb",
+     "unpacked": 1541464064,
+     "glibc": "2.28"
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.16.0-linux-x86_64.AppImage",
+     "size": 605284856,
+     "sha256": "bfaab1a37109d8a817a1ba8696848d45bcc87f2cc17ff98dfd5451198f689ba2",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.16.0/Brickworks-0.16.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.16.0-linux-x86_64.tar.xz",
+     "size": 453328920,
+     "sha256": "e8855a6ad7566746983f4da550bcd3cc7a0c82fd8da29f414b0f12a20e2aaf10",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.16.0/Brickworks-0.16.0-linux-x86_64.tar.xz",
+     "unpacked": 1541449326,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "dmg",
+     "name": "Brickworks-0.16.0-macos-universal.dmg",
+     "size": 764686395,
+     "sha256": "0e76b74ef7aaa81acc4513c3fa742f5009d70390f37dc513bbc30280bed61c3f",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.16.0/Brickworks-0.16.0-macos-universal.dmg",
+     "unpacked": 1651376128,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.16.0-macos-universal.zip",
+     "size": 787236253,
+     "sha256": "76c73bb1be70eae6fb1b8bc69c6994d1ef078342af185d953115da10e59162ca",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.16.0/Brickworks-0.16.0-macos-universal.zip",
+     "unpacked": 1638434281,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "installer",
+     "name": "Brickworks-0.16.0-windows-x86_64-setup.exe",
+     "size": 405939920,
+     "sha256": "52918b00a7a6abce6518fa84cd4555868f2edd29b06f1064281d41cc8c97adde",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.16.0/Brickworks-0.16.0-windows-x86_64-setup.exe",
+     "unpacked": null,
+     "signed": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.16.0-windows-x86_64.zip",
+     "size": 765551003,
+     "sha256": "865335495b10524ee715ac08f43639a7467827b3015ecf4aba9f0c2ae15a2229",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.16.0/Brickworks-0.16.0-windows-x86_64.zip",
+     "unpacked": 1577147029,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.15.0",
    "tag": "v0.15.0",
