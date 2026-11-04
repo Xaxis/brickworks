@@ -1724,8 +1724,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   first thing it is in.
   tyre is one with its wheel; a lone pin is part of the first thing it is in
   (which pins are alone is read before any is joined). A piece nothing holds
-  where it is (no part on the baseplate's studs, none locked; not the
-  biggest, at most 300 parts) lodged in another is held by what it is lodged
+  where it is (no part on the baseplate's studs, or with no baseplate on the
+  ground; none locked; not the biggest, at most 300 parts) lodged in another
+  is held by what it is lodged
   in (`Bodies._lodge`, MECHANISMS §16): an axle in a pin's stop bush or a
   joiner, a gear a file carries as a part of its own, a log in a gripper.
   A lone part sharing no cell with anything, where it or what it is in has
@@ -1753,7 +1754,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   hinge between the two (`Bodies._labelled_hinge`, `Exact.hinge_between`,
   `Bodies._stays`; door184 added shutters and panes, which were lodged).
   Each piece's anchor: a locked part's body, else what stands on the
-  baseplate (a stud in a socket; never a tyre), else the body with the most
+  baseplate (a stud in a socket; never a tyre), or with no baseplate (a set
+  on the grid, setfloor) what stands on the ground (an upright part's socket
+  within 2 LDU of it, or of the model's lowest point where that is higher,
+  as Balance weighs it; "ground", said "stands on the floor"; grabfloor:
+  on the grid 21019-1's deck stayed, not its base, and a tower an arm was
+  pressed into was lodged in the arm). The ground holds nothing up: let go
+  past its edge a model on it falls (`GrabDrag._fall_of` asks the plate's
+  studs alone, `Bodies._standing`, not `_on_ground`). Else the body with the most
   parts, unless a body standing on the floor (within 2 LDU of the piece's
   lowest point, not by a tyre) is heavier (`Bodies.anchor_why`; not the
   heaviest outright, which a shell's box fools; MECHANISMS §18). Studs pressed on a part with no socket hold only in
@@ -1770,7 +1778,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   but where that one has no socket, in the one the lattice found with a
   BrickNet hole for it (`Bodies._sits_on`); why parts are one body is kept
   (`Bodies.joined_by`) for the words of what holds one (`held_words`). Read ahead once a
-  revision, on a worker wherever there are threads (`GrabDrag._ready_ahead`;
+  revision, on a worker wherever there are threads, from a copy of the model
+  that keeps each part's sub-model path (`BrickWorld.copy_for_reading`: one
+  without it read 42080-1's pneumatic tubes as one thing glued to the parts
+  round them, its cylinders in no triangle; grab_probe missed it while every
+  set opened on a baseplate, whose laying left the worker's reading stale,
+  and the probe read the model again on the main thread) (`GrabDrag._ready_ahead`;
   from 300 parts until 2026-10-21), the parts' exact shapes read first on the
   main thread; a press before it is done waits for the rest below 300 parts
   (`GrabDrag._ready_now`) and says so from 300. The status bar's weighing

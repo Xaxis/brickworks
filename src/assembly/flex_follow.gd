@@ -303,7 +303,8 @@ func _in_its_connector(kind: String, port: Flex.Port, holder: int, n: int) -> Fl
 
 
 ## A piece of the model this small, held by nothing (no part on the
-## baseplate's studs, none locked), hangs on its hoses.
+## baseplate's studs or, with none, on the ground; none locked), hangs on
+## its hoses.
 const HANGS_MOST := 12
 
 
