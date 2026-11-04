@@ -4716,10 +4716,86 @@ the figures' studs round them; Uruk-hai's front strip still shows tan studs
 (the kept battlefield); the Roller's yellow deck studs show; the Dino's tan
 ground shows studs at the front; Chicago's two are different skylines.
 
-**GO for the paired 44** on all three of the brief's terms: surface won more
-often (2 → 5), likeness no worse (2 → 4; creativity 5 → 4), and the judge
-names our studs less (7 → 4). Running: `realset-2026-11-03-d13b44` against
-`-d13l44`, 2 jobs an arm.
+**GO for the paired 44**, on all three of the brief's terms: surface won
+more often (2 → 5), likeness no worse (2 → 4; creativity 5 → 4), and the
+judge named our studs less (7 → 4).
+
+Open upward studs in the smoke, as the surface pass reads them (share of the
+model's upward studs):
+
+| subject | set | d12b44 | d13base | d13lev |
+|---|---|---|---|---|
+| 21033-1 Chicago | 3 (0.4%) | 27 (2.4%) | 10 (0.7%) | 25 (2.0%) |
+| 7746-1 Single-Drum Roller | 57 (10.8%) | 11 (1.6%) | 52 (9.1%) | 51 (6.2%) |
+| 5934-1 Dino Explorer | 41 (11.2%) | 239 (40.7%) | 193 (32.8%) | 176 (36.6%) |
+| 9471-1 Uruk-hai Army | 109 (18.3%) | 447 (24.3%) | 378 (24.1%) | 336 (27.7%) |
+| 41072-1 Naida's Spa Secret | 119 (17.0%) | 478 (23.7%) | 372 (24.6%) | 256 (16.8%) |
+| all five | 329 (11.5%) | | 1,005 (17.9%) | 844 (16.0%) |
+
+**The paired 44.** `realset-2026-11-03-d13b44` (b1ae9277) against
+`-d13l44` (db9fa31d), on the smoke's two snapshots, 2 jobs an arm, both
+audited. Two base subjects, Sungnyemun and Bricktober Hotel, never got their
+tab's connector on and were run again on the same snapshot. Emma's Fashion
+Design Studio made no model in either arm. The base's Trevi Fountain made
+none, and counts 0, as realset counts it. The holdout held: eight sessions
+searched the library or the web for their own set's number, and every answer
+was "nothing matches".
+
+| dimension | d13b44 (95%) | d13l44 (95%) | lever minus base, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 23% (13-38) | 28% (17-43) | +5 (-3, +13) | 7 / 4 |
+| surface | 27% (16-41) | 36% (23-51) | +9 (-2, +22) | 11 / 5 |
+| colour | 29% (18-44) | 28% (17-43) | -1 (-10, +9) | 7 / 8 |
+| technique | 10% (4-23) | 14% (7-27) | +3 (-1, +9) | 4 / 1 |
+| creativity | 44% (30-59) | 47% (33-61) | +2 (-9, +14) | 9 / 8 |
+| overall | 21% (11-35) | 24% (14-39) | +3 (-3, +10) | 6 / 3 |
+
+(43 subjects paired. d12's two arms on the same 44 had surface at 32% and
+33%, so one run of the same code moves about five points.)
+
+- **The judge's words.** Lost surface verdicts that name our studs: 45 of
+  84 verdicts in the base (61 lost), 40 of 86 in the lever (55 lost).
+- **What the pass did** (each session's last settle):
+  - accepted findings: 350 → 415;
+  - studs tiled: 2,955 → 4,682;
+  - yards: laid round their figures in 6 sessions; the base left whole
+    fields as yards in 12 sessions, the lever in 4;
+  - edges settled "flat": 8;
+  - the note about building since the pass: said in 3 sessions.
+- **The finished models are not barer of studs in sum.** On the 40 subjects
+  with a model in both arms:
+  - open upward studs: the sets 2,066 (7.9% of upward), the base 7,045
+    (9.1%), the lever 6,818 (8.6%);
+  - medians a model: 18, 46 and 42;
+  - with baseplates left out: 2,066, 4,310 and 4,510.
+- **On the 23 non-Technic sets** the lever shows more:
+  - sets 995 (5.0%), base 2,538 (6.5%), lever 3,318 (8.1%), almost all of
+    it at the base. Level Crossing's lever session laid its crossing on a
+    1,182-stud baseplate, where the base's laid none.
+  - With baseplates left out: 995, 2,310 and 2,136; medians 35, 35 and 24.
+  - The tiles the pass laid were won back by what sessions built after it,
+    and by the baseplates they chose.
+- **Renders looked at**: every smoke front, and the eight fronts of the 44
+  where surface moved most.
+  - Louvre (0 → 2), Street Sweeper (0 → 2), The Cave and Air Mail gained.
+  - Dune Hopper (2 → 0), Level Crossing, Jack Skellington and Gandalf lost.
+  - In all eight the two designs differ more than any tile does. The lever
+    shows in Naida's pool and base. In Level Crossing, the baseplate the
+    lever's session chose is what the judge names.
+
+**GO, on the 44's own terms.** Surface was won more often (27% → 36%, 11
+subjects better to 5 worse). Likeness and creativity are no worse (+5, +2).
+The judge's stud-naming losses fell (45 → 40). No dimension fell past a
+point. The paired surface interval still crosses zero (-2, +22). It is a
+proposal-only change, so the session still decides every tile.
+
+Next, from what the lever did not reach:
+- The note about building since the pass comes in the same answer as the
+  creative pass's last look. The Roller's session answered the look and
+  never laid it. Say it again at the save after the last look.
+- Baseplates a session picks for a vehicle or a crossing stay bare: 46% of
+  the open studs on the d12 losers, and Level Crossing here. A set that
+  stands on a baseplate shows grass and roads there, not a bare field.
 
 ## Against an outside ruler: BrickBench (2026-10-14)
 
