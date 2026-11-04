@@ -21,6 +21,16 @@ whole cycle.
   at once, with its email address. The computer keeps only that it was told,
   so the next sign-in there says so at once.
 
+### Fixed
+
+- A BrickLink Studio file's own part, made in Studio's Part Designer from
+  an LDraw part, is drawn. The desktop app has every part as geometry but
+  not as LDraw text, so 0.15.0 opened bay_2025.io with 5 of its 6 parts and
+  left the sixth off. The app now fetches the few LDraw files such a part
+  is drawn from, as the web app does, and keeps them, so the file opens
+  offline after that. Opened offline before then, the app says which part
+  could not be drawn and why, and keeps it in the file.
+
 ## [0.15.0] - 2026-11-03
 
 The desktop app is free, as brickworks.diy now says, and nothing in it asks

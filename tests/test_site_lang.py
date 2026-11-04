@@ -54,7 +54,7 @@ def test_a_run_with_no_words_stops_the_copy() -> None:
     words = site_lang.table("de")
     key = next(k for k in words["pages"] if '<a href="/plans#had">' in k)
     words["pages"][key] = re.sub(r"<[^>]+>", "", words["pages"][key])
-    _, _, broken = site_lang.translated("index.html", "de", words)
+    _, _, broken = site_lang.translated("beta.html", "de", words)
     assert broken == [key]
 
 
@@ -159,7 +159,8 @@ def test_the_faq_search_shows_is_in_the_language_too() -> None:
     for code in site_lang.LANGUAGES:
         copy = json.loads(re.search(ld, (ROOT / "web" / code / "faq.html").read_text(encoding="utf-8"), re.S).group(1))
         pairs = list(zip(english["mainEntity"], copy["mainEntity"]))
-        assert len(pairs) == 19 and all(one["name"] != other["name"] and one["acceptedAnswer"]["text"]
+        # Every question in every copy, however many the FAQ has.
+        assert len(english["mainEntity"]) == len(copy["mainEntity"]) > 10 and all(one["name"] != other["name"] and one["acceptedAnswer"]["text"]
                                         != other["acceptedAnswer"]["text"] for one, other in pairs), code
 
 

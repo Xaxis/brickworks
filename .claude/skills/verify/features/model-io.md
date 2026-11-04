@@ -163,8 +163,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   "Trying to assign value of type 'Nil'" (race244).
 - `carried parts fetched` (`CustomParts.fetch_sources`, `unreached_by`,
   `PartForge.keep_fetched`): a part a file carries, or a skin, may be drawn
-  from LDraw's own subparts and parts, which the desktop reads from
-  `vendor/ldraw` and no build ships. On the web every open of a file
+  from LDraw's own subparts and parts, which a checkout reads from
+  `vendor/ldraw` and no build ships. On the web and in a desktop download
+  (`PartForge.library_here` false: a package has the primitives and every
+  part's mesh, not the parts' LDraw text; `CustomParts.fetches`) every open of a file
   (`ModelStore.open_text_fetched`, `open_fetched`, `restore_fetched`,
   `open_version`; the file picker, a saved model, an example, the start-up
   restore, a shared model, MCP's open) first asks `PartForge.unreached` what
@@ -173,13 +175,20 @@ Whether what you built is still there tomorrow, and still means the same thing.
   names as it arrives (`_fetch_each`: every answer heard by a callable of
   its own, in any order; no time limit, as a mesh fetch has none, since a
   request is polled once a frame), the status bar's Working line saying
-  "Fetching N LDraw files…". Kept for the session; a file not there
+  "Fetching N LDraw files…". Kept for the session, and by a desktop
+  download for good in `user://ldraw/parts/` (`PartForge.kept_dir`, written
+  whole then renamed), so a file opened once opens offline after; a file not there
   (Supabase answers 400, a server 404) or a web page is not taken, and the
   part is said not shown with why (`CustomParts._with_why`; the flow prints
   the console's "could not fetch" lines). A carried print gets the file's
   subparts too (`PartPrints.build`'s others). A carried part the web kept
   (`CustomParts.dir`) that needs such files is built at start-up once they
-  come (`load_all` defers it to `_load_later`). The desktop, and a file that
+  come (`load_all` defers it to `_load_later`). With nowhere to fetch from
+  (offline: the deployment's question over, `Deployment.over`, with no parts
+  URL) nothing is waited for, and the part is said "could not be drawn" by
+  name with why, "the parts store could not be reached"
+  (`ModelStore.unbuilt_words`, the open's `unbuilt`, in
+  `ModelBar.left_out_words`). A checkout, and a file that
   carries nothing, wait for no frame. `tools/storage_ldraw.py` put the library's parts/
   (34,122 files, 495 MB) in the bucket, additive only; run it after
   `tools/fetch_data.sh` brings a newer library. `carried_fetch_probe`
@@ -187,7 +196,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   python's http.server on 8841: each file's carried parts as the desktop
   builds them, answers heard in any order, two files in one session,
   the start-up restore, a kept part at start-up, nothing fetched twice, 404
-  and HTML refused;
+  and HTML refused, and a desktop download (`library_here` off, a kept
+  folder of its own): bay_2025.io's own part fetched from `remote_parts`
+  and kept, opened again offline from what was kept, and offline in a home
+  that never fetched it 5 of 6 at once with the words;
   `-- --timing FILE` says what looking costs a file that needs nothing; `-- --census
   OUT.json` counts what every file in vendor/omr needs.
   `tools/web/carried_flow.mjs` opens files in a browser from a local export
@@ -623,8 +635,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   opens whole into a library that has never seen them (`io_probe`, and
   `io_flow.mjs`'s last step in a browser, `4_whole.png`). `bay_2025.io`'s Part
   Designer part (a `1 16 … 3001.dat` in `CustomParts/parts/`) is built where the
-  checkout has the LDraw library and named as left out where it has not (the
-  web build): `io_probe` and `handbuild_probe` expect whichever this checkout can do.
+  checkout has the LDraw library, and on the web and in a desktop download
+  from `3001.dat` fetched (`carried parts fetched`; `io_flow.mjs` in a browser,
+  the package smoke's `carried_offline`); named as left out with why where it
+  cannot be had: `io_probe` and `handbuild_probe` expect whichever this checkout can do.
   `tests/fixtures/studio/make_fixtures.py` makes `bay_2025.io` and
   `bay_2021.io` (locked by the system's `zip -P`) in those two shapes, and
   `bay_aes.io`, with `model2.ldr` in BrickLink's numbers so reading the wrong
@@ -907,6 +921,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   tools/apply_sql.mjs supabase/account_models_plan.sql --dry
   --try=tools/account_models_plan_try.sql --table=account_models` (.env
   sourced; the lead applies it without --dry).
+- `any number is any number` (`supabase/account_models_any.sql`, golive,
+  2026-11-03, applied): the owner, Pro and a comp of Pro save through
+  `save_account_model_any`, past the 500 models and 64 MB everyone else
+  keeps in all, and their list (`GET /api/models` `kept`) names no
+  `most_models` or `most_bytes`, which the app reads as never full
+  (`CloudModels.short_words`). Each model stays at 4 MB as saved, and past
+  1,000 models or 256 MB saved in an hour a save is answered 429 `{full:
+  "too fast"}`, which the app sends again later. The same test file, then
+  `node tools/apply_sql.mjs supabase/account_models_any.sql --dry
+  --try=tools/account_models_any_try.sql --table=account_models`: 522
+  models kept for the shared test account, page keys unable to call it,
+  and the run ending with "models: too fast", rolled back.
 - `a returning person opens on their latest model` (`Main._open_theirs`,
   `CloudModels.looked` and `newest`, 2026-10-24, walk239's A16 and walk180's
   D2): a start with no working model on this device opens the model saved

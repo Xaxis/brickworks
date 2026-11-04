@@ -726,11 +726,24 @@ class Assembly extends RefCounted:
 ##
 ## [param authored] follows the steps the model's author gave it, when it
 ## has any (AuthorSteps): see [method _authored_plan].
+##
+## A model of sub-models nobody gave steps is shown its worked-out order as
+## the steps it can keep ([method _kept]).
 static func plan(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}, regions: Dictionary = {},
 		authored: bool = false) -> Array[Step]:
 	if authored and AuthorSteps.any(world, skip):
 		return _authored_plan(world, library, skip)
+	var steps: Array[Step] = worked_out(world, library, skip, regions)
+	return _kept(world, library, skip, steps) if regions.is_empty() else steps
+
+
+## The order worked out from what holds what, before it is made one the
+## model's steps can hold ([method _kept]): what a model nobody gave steps
+## is given (AuthorSteps.numbers_from_plan).
+static func worked_out(world: BrickWorld, library: PartLibrary,
+		skip: Dictionary = {}, regions: Dictionary = {}) -> Array[Step]:
+	var shape: Array = _shape_of(world, library, skip)
 	var nodes: Array[Node2] = _survey(world, library, skip)
 	if nodes.is_empty():
 		return []
@@ -738,6 +751,7 @@ static func plan(world: BrickWorld, library: PartLibrary,
 	_find_joints(nodes, world, library)
 	_tidy_needs(nodes)
 	_find_hangers(nodes)
+	_keep_read(shape, nodes)
 	var assemblies: Array[Assembly] = _find_assemblies(nodes, world, library)
 	_find_bundles(nodes, world, library, assemblies)
 	_frame_turned(assemblies, world, library, null)
@@ -820,6 +834,7 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 		var now: int = Time.get_ticks_msec()
 		laps.append([what, now - clock[0]])
 		clock[0] = now
+	var shape: Array = _shape_of(world, library, skip)
 	var nodes: Array[Node2] = []
 	await _survey_into(nodes, world, library, skip, job)
 	lap.call("survey")
@@ -849,6 +864,9 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	await job.next()
 	if job.cancelled:
 		return []
+	# Kept only when nothing moved while it was read, a slice a frame.
+	if _shape_of(world, library, skip) == shape:
+		_keep_read(shape, nodes)
 	job.say("Finding what is built on the side…")
 	var assemblies: Array[Assembly] = []
 	await _find_assemblies_into(assemblies, nodes, world, library, job)
@@ -891,6 +909,9 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	lap.call("held")
 	for made: Assembly in assemblies:
 		made.node = null
+	if not job.cancelled and regions.is_empty():
+		steps = await _kept_paced(world, library, skip, steps, job)
+		lap.call("kept")
 	return steps
 
 
@@ -3600,10 +3621,14 @@ static func _within(needs: PackedInt64Array, own: Dictionary, bundle_of: Diction
 ## the limit on parts a step are the worked-out plan's, not the author's,
 ## and are left out. Parts with no step — added since, by hand or by a
 ## design — come after the author's steps, in steps worked out for them.
+## With [param numbers] (AuthorSteps.numbers_from_plan's), the steps they
+## give, read as the model's own would be once they are ([method _kept]).
 static func _authored_plan(world: BrickWorld, library: PartLibrary,
-		skip: Dictionary) -> Array[Step]:
+		skip: Dictionary, numbers: Dictionary = {}) -> Array[Step]:
 	var steps := PackedInt32Array()
 	var shape: Array = _shape_of(world, library, skip, steps)
+	if not numbers.is_empty():
+		steps = _steps_in(shape, numbers)
 	var kept: Dictionary = _shaped_as_before(shape)
 	var nodes: Array[Node2] = []
 	var paths := PackedStringArray()
@@ -3625,7 +3650,86 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 	if found.is_empty():
 		found = _find_assemblies(_given_a_step(nodes, given), world, library)
 		_keep_assemblies(shape, given, found)
-	return _authored_from(nodes, found, world, library, skip, steps, paths)
+	return _authored_from(nodes, found, world, library, skip, steps, paths, numbers.get("units"))
+
+
+## [param steps], worked out, as the steps the model can keep: the numbers
+## a step edit gives a model nobody gave steps (AuthorSteps.adopted), read
+## as its own are. The order worked out can build a sub-model where it
+## stands round a step of another, or a step of two sub-models' parts, and
+## the model's steps cannot hold either: the lighthouse's keeper went on
+## between the island's last two steps, and once the first edit made the
+## steps the lighthouse's own, the keeper was step 5 and the island 6 to 46,
+## every step of it one on from where the person had read it (stepsnum).
+## Shown as they will be kept, an edit changes only what it moves. A model
+## of no sub-models keeps any order, and is shown it as worked out.
+static func _kept(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		steps: Array[Step]) -> Array[Step]:
+	if steps.is_empty() or not _of_sub_models(world, skip):
+		return steps
+	var kept: Array[Step] = _authored_plan(world, library, skip,
+		AuthorSteps.adopted(world, steps, skip))
+	_carry(steps, kept)
+	return kept
+
+
+## [method _kept] a slice at a time with a [param job], for [method
+## plan_paced]: [param steps] as they were when the model changed while it
+## was read.
+static func _kept_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		steps: Array[Step], job: Working.Job) -> Array[Step]:
+	if steps.is_empty() or not _of_sub_models(world, skip):
+		return steps
+	var kept: Array[Step] = await _authored_plan_paced(world, library, skip, job,
+		AuthorSteps.adopted(world, steps, skip))
+	if job.cancelled:
+		return []
+	if kept.is_empty():
+		return steps
+	_carry(steps, kept)
+	return kept
+
+
+## Whether any part of the model is in a sub-model, or a group of its own.
+static func _of_sub_models(world: BrickWorld, skip: Dictionary) -> bool:
+	for brick: BrickWorld.Brick in world.bricks():
+		if not skip.has(brick.id) and not Assemblies.path_of(brick).is_empty():
+			return true
+	return false
+
+
+## What the worked-out [param steps] say of their parts that the model's
+## own do not, onto [param kept]: which had to go in before what holds
+## them, and the part of the model each builds, for the booklet's marks.
+static func _carry(steps: Array[Step], kept: Array[Step]) -> void:
+	var of: Dictionary = {}
+	for step: Step in steps:
+		for brick_id: int in step.brick_ids:
+			of[brick_id] = step
+		if step.brick_ids.is_empty() and not step.copies.is_empty() \
+				and not step.copies[0].is_empty():
+			of[-step.copies[0][0]] = step
+	for step: Step in kept:
+		var named: Array = Array(step.brick_ids)
+		if named.is_empty() and not step.copies.is_empty() and not step.copies[0].is_empty():
+			named = [-step.copies[0][0]]
+		for brick_id: int in named:
+			var was: Step = of.get(brick_id)
+			if was == null:
+				continue
+			step.unsupported = step.unsupported or was.unsupported
+			if step.section.is_empty():
+				step.section = was.section
+
+
+## Each of [param shape]'s parts' step in [param numbers], in the order
+## _shape_of reads them off the parts.
+static func _steps_in(shape: Array, numbers: Dictionary) -> PackedInt32Array:
+	var bricks: Dictionary = numbers["bricks"]
+	var out := PackedInt32Array()
+	for brick_id: int in shape[0]:
+		out.append(int(bricks.get(brick_id, -1)))
+	return out
 
 
 ## What [method plan] reads of a model before it orders anything: each part
@@ -3757,6 +3861,31 @@ static func _keep_shaped(shape: Array, nodes: Array[Node2], paths: PackedStringA
 	_shaped_lock.unlock()
 
 
+## What the worked-out order read of [param shape], kept as the author's
+## plan keeps its own, for the steps it is shown in to read again
+## ([method _kept]): copies, as the order goes on to change its nodes.
+## Only for a model of sub-models, and not again for the same shape.
+static func _keep_read(shape: Array, nodes: Array[Node2]) -> void:
+	if not _any_named(shape[2]) and not _any_named(shape[3]):
+		return
+	if not _shaped_as_before(shape).is_empty():
+		return
+	var copies: Array[Node2] = []
+	copies.resize(nodes.size())
+	for index: int in nodes.size():
+		var own := Node2.new()
+		own.take(nodes[index])
+		copies[index] = own
+	_keep_shaped(shape, copies, _paths_of(nodes))
+
+
+static func _any_named(names: PackedStringArray) -> bool:
+	for name: String in names:
+		if not name.is_empty():
+			return true
+	return false
+
+
 ## The sub-assemblies found among the parts of [param shape] that have a
 ## step ([param given], _given_of) when they were found last of the same;
 ## else none. Read them; never change one: a step edit moves a part between
@@ -3781,14 +3910,18 @@ static func _keep_assemblies(shape: Array, given: PackedByteArray, found: Array[
 ## [method _authored_plan] a slice at a time with a [param job], as the
 ## worked-out plan is read (plan_paced). Read in one go, the Wizard's
 ## Tower's own steps held Timeline's frame for 1.7 s (orthsteps212).
+## With [param numbers], as [method _authored_plan] reads them; [] when the
+## model changed while it was read.
 static func _authored_plan_paced(world: BrickWorld, library: PartLibrary,
-		skip: Dictionary, job: Working.Job) -> Array[Step]:
+		skip: Dictionary, job: Working.Job, numbers: Dictionary = {}) -> Array[Step]:
 	var steps := PackedInt32Array()
 	var shape: Array = _shape_of(world, library, skip, steps)
+	if not numbers.is_empty():
+		steps = _steps_in(shape, numbers)
 	var kept: Dictionary = _shaped_as_before(shape)
 	if not kept.is_empty():
 		return await _authored_paced_from(shape, steps, kept["nodes"], kept["paths"], world,
-			library, skip, job)
+			library, skip, job, numbers)
 	var nodes: Array[Node2] = []
 	await _survey_into(nodes, world, library, skip, job)
 	if nodes.is_empty() or job.cancelled:
@@ -3816,12 +3949,15 @@ static func _authored_plan_paced(world: BrickWorld, library: PartLibrary,
 		return []
 	# Kept only when nothing moved while it was read, a slice a frame.
 	var now := PackedInt32Array()
-	if _shape_of(world, library, skip, now) != shape or now != steps:
+	if _shape_of(world, library, skip, now) != shape or (numbers.is_empty() and now != steps):
+		if not numbers.is_empty():
+			return []
 		return await _authored_paced_from([], steps, nodes, PackedStringArray(), world, library,
 			skip, job)
 	var paths: PackedStringArray = _paths_of(nodes)
 	_keep_shaped(shape, nodes, paths)
-	return await _authored_paced_from(shape, steps, nodes, paths, world, library, skip, job)
+	return await _authored_paced_from(shape, steps, nodes, paths, world, library, skip, job,
+		numbers)
 
 
 ## The rest of [method _authored_plan_paced], from [param nodes] read of
@@ -3829,7 +3965,7 @@ static func _authored_plan_paced(world: BrickWorld, library: PartLibrary,
 ## with each one's step and path ([param steps], [param paths]) as it began.
 static func _authored_paced_from(shape: Array, steps: PackedInt32Array, nodes: Array[Node2],
 		paths: PackedStringArray, world: BrickWorld, library: PartLibrary, skip: Dictionary,
-		job: Working.Job) -> Array[Step]:
+		job: Working.Job, numbers: Dictionary = {}) -> Array[Step]:
 	var given: PackedByteArray = _given_of(steps)
 	# Not `[] if … else …`: that [] is untyped, and assigning it here stopped
 	# the plan with a script error whenever shape came back empty (2026-10-30).
@@ -3837,9 +3973,11 @@ static func _authored_paced_from(shape: Array, steps: PackedInt32Array, nodes: A
 	if not shape.is_empty():
 		found = _assemblies_as_before(shape, given)
 	if not found.is_empty():
-		return _authored_from(nodes, found, world, library, skip, steps, paths)
+		return _authored_from(nodes, found, world, library, skip, steps, paths,
+			numbers.get("units"))
 	job.say("Finding what is built on the side…")
-	await _find_assemblies_into(found, _stepped(nodes, world), world, library, job)
+	await _find_assemblies_into(found, _stepped(nodes, world) if numbers.is_empty()
+		else _given_a_step(nodes, given), world, library, job)
 	await job.next()
 	if job.cancelled:
 		for made: Assembly in found:
@@ -3847,10 +3985,13 @@ static func _authored_paced_from(shape: Array, steps: PackedInt32Array, nodes: A
 		return []
 	# Read again after the frames it took: its steps as they are now.
 	var now := PackedInt32Array()
-	if not shape.is_empty() and _shape_of(world, library, skip, now) == shape \
-			and _given_of(now) == given:
+	var same: bool = not shape.is_empty() and _shape_of(world, library, skip, now) == shape
+	if same and (not numbers.is_empty() or _given_of(now) == given):
 		_keep_assemblies(shape, given, found)
-	return _authored_from(nodes, found, world, library, skip)
+	if numbers.is_empty():
+		return _authored_from(nodes, found, world, library, skip)
+	return _authored_from(nodes, found, world, library, skip, steps, paths,
+		numbers["units"]) if same else []
 
 
 ## The parts of [param nodes] the author gave a step.
@@ -3868,8 +4009,8 @@ static func _stepped(nodes: Array[Node2], world: BrickWorld) -> Array[Node2]:
 ## (_authored_plan); else each is asked of the world.
 static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: BrickWorld,
 		library: PartLibrary, skip: Dictionary, steps: PackedInt32Array = PackedInt32Array(),
-		paths: PackedStringArray = PackedStringArray()) -> Array[Step]:
-	var lowest: Dictionary = AuthorSteps.lowest_under(world, skip)
+		paths: PackedStringArray = PackedStringArray(), units: Variant = null) -> Array[Step]:
+	var lowest: Dictionary = AuthorSteps.lowest_under(world, skip) if units == null else {}
 	var first: Dictionary = AuthorSteps.first_under(world, skip)
 	var stepped: Array[Node2] = []
 	var unstepped: Array[Node2] = []
@@ -3905,7 +4046,7 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 		var id: String = "%s|%d" % [section, step]
 		if not entries.has(id):
 			entries[id] = {"section": section, "step": step, "nodes": [], "callouts": [],
-				"key": AuthorSteps.key_of(world, section, step, lowest, first)}
+				"key": AuthorSteps.key_of(world, section, step, lowest, first, units)}
 		return entries[id]
 	for node: Node2 in stepped:
 		if not in_callout.has(node.id):
@@ -3913,7 +4054,7 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 				.append(node)
 	for made: Assembly in callouts:
 		var path: String = _path_of_key(made.key)
-		var at: int = maxi(AuthorSteps.unit_step(world, path, lowest), 0)
+		var at: int = maxi(AuthorSteps.unit_step(world, path, lowest, units), 0)
 		(entry_for.call(Assemblies.parent_of(path), at)["callouts"] as Array).append(made)
 	var ordered: Array = entries.values()
 	ordered.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
@@ -3938,7 +4079,7 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 		for kind: String in kinds:
 			boxes += 1
 			last_attach = _authored_callout(kinds[kind], number, boxes, world, lowest, first,
-				path_of, step_of, out)
+				path_of, step_of, out, units)
 			last_attach.authored_in = str(entry["section"])
 			last_attach.authored_step = int(entry["step"])
 		var loose: Array = entry["nodes"]
@@ -3994,7 +4135,7 @@ static func _path_of_key(key: String) -> String:
 ## [param out]. Returns that last one.
 static func _authored_callout(copies: Array, number: int, box: int, world: BrickWorld,
 		lowest: Dictionary, first_of: Dictionary, path_of: Dictionary, step_of: Dictionary,
-		out: Array[Step]) -> Step:
+		out: Array[Step], units: Variant = null) -> Step:
 	# Each copy's parts by their step within it, in order.
 	var plans: Array = []
 	for made: Assembly in copies:
@@ -4003,7 +4144,7 @@ static func _authored_callout(copies: Array, number: int, box: int, world: Brick
 		var keys: Array = []
 		for member: Node2 in made.members:
 			var full: Array = AuthorSteps.key_of(world, str(path_of[member.id]),
-				int(step_of[member.id]), lowest, first_of)
+				int(step_of[member.id]), lowest, first_of, units)
 			# Two numbers a level: the step it goes on in, and where.
 			var inner: Array = full.slice(2 * depth)
 			var id: String = str(inner)

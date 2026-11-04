@@ -79,7 +79,8 @@ tools/release.py latest --check dist/0.2.0/latest.json
 #    installer run silently, the .deb by apt) and run in a clean home,
 #    models double-clicked into it, and on Windows and Ubuntu removed again
 #    (the AppImage and the tar.xz were step 3). The Intel runner is a VM
-#    whose GPU MoltenVK cannot draw on: its double-clicks say "not run here".
+#    whose GPU MoltenVK cannot draw on: its double-clicks open the models in
+#    the simpler graphics mode, which the launcher chose, and say so once.
 #    Wait for green. It runs once, here: publishing does not run it again.
 #    The workflow lives in the releases repository, where Actions are free.
 gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.2.0

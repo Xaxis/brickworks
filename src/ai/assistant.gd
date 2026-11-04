@@ -19538,11 +19538,13 @@ body's hard top edge, flush with its top; on a body's flank of plain \
 bricks, a skin on its side (studs turned out of a course, plates and tiles \
 on them, curved slopes at its ends); masonry in a building's long plain \
 wall. Every finding is laid at once. Settle each with \
-settle_surface: accept it (adjusted: "plain", "recolor"); reject it with a \
-reason, to finish it your own way; or keep the studs with a reason where \
-they are the point — a yard figures stand on, a mosaic, a studded texture, \
-where a touch will stand. The ground is offered, never laid unless you say \
-"tile".
+settle_surface: accept it (adjusted: "plain", "recolor"; an edge "flat", \
+its top tiled flat and its edge square); reject it with a reason, to \
+finish it your own way; or keep the studs with a reason where they are the \
+point — a mosaic, a studded texture, where a touch will stand. A field \
+figures, animals or plants stand on is tiled round them, the studs they \
+stand on and beside left open. Bare ground is offered, never laid unless \
+you say "tile".
 
 THE CREATIVE PASS
 A designer adds things nobody asked for, and they are what a person \
@@ -21460,7 +21462,14 @@ func next_review() -> Variant:
 		var first_time: String = _surface_first_reminder()
 		if not first_time.is_empty():
 			return _first(_creative_passed(), first_time)
-		return _first(surface_pass().reminder() if _outside_designed else "", _creative_next())
+		var then: String = _creative_next()
+		# Once the creative pass is handed, what was built since the surface
+		# pass: said once, never refused.
+		var since: String = surface_pass().built_since() if _outside_designed \
+			and _outside_creative_handed else ""
+		if not since.is_empty():
+			then = since if then.is_empty() else "%s\n\n%s" % [then, since]
+		return _first(surface_pass().reminder() if _outside_designed else "", then)
 	var name: String = left[0]
 	var passed_too: String = _creative_passed()
 	return _joined(_first(passed_too, "Before it is finished: %d of its %d assemblies %s not had "
@@ -24028,7 +24037,8 @@ func _tools() -> Array:
 				+ "finding, adjusted if need be; reject it with a reason, which "
 				+ "takes the app's pieces off and puts back what they replaced; or "
 				+ "keep the studs there for good with a reason — a yard, a mosaic, "
-				+ "a studded texture, where a touch will stand. \"tile\" lays "
+				+ "a studded texture, where a touch will stand. \"flat\" takes an "
+				+ "edge's curved slopes off and tiles its top flat. \"tile\" lays "
 				+ "ground the pass only offered."),
 			"input_schema": {
 				"type": "object",
@@ -24036,7 +24046,7 @@ func _tools() -> Array:
 					"finding": {"type": "string", "description":
 						"its key, S1 or G1, several as \"S1, S3\", or \"all\""},
 					"verdict": {"type": "string",
-						"enum": ["accept", "reject", "keep", "tile"]},
+						"enum": ["accept", "reject", "keep", "flat", "tile"]},
 					"reason": {"type": "string", "description":
 						"why, in a sentence: required to reject or keep"},
 					"plain": {"type": "boolean", "description":

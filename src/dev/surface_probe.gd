@@ -15,14 +15,18 @@
 ##   turned out; one course of bricks under plates (a car's side) gets one;
 ##   open studs on a part's side get tiles on their side;
 ##   sixteen small tops are all laid in one review;
-##   a yard a minifigure stands on keeps its studs;
+##   a yard keeps the studs a minifigure stands on and beside, and the rest
+##   of it is tiled round them, the ground too; a baseplate's play area keeps
+##   its studs;
+##   an edge settled "flat" loses its curved slopes and has its top tiled;
 ##   a building's long plain wall is laid again with masonry, no stud
 ##   turned out;
 ##
 ## then that settling works (reject with a reason puts the studs back and is
 ## never proposed again, keep remembers, accept adjusts), that the app's own
-## loop hands the pass before the creative pass, and that saving from outside
-## reminds a session that never ran it, without refusing.
+## loop hands the pass before the creative pass, that saving from outside
+## reminds a session that never ran it, without refusing, and says once
+## after the creative pass what open studs were built since the pass.
 ##
 ##   godot --headless --path . --script src/dev/surface_probe.gd
 ##
@@ -417,7 +421,7 @@ func _run() -> void:
 	_ok(_open_on(wing_plate) == 0 and tilted != null and not tilted.ids.is_empty(),
 		"...and tiled in it: %d left open" % _open_on(wing_plate))
 
-	print("\na yard a minifigure stands on keeps its studs")
+	print("\na yard keeps the studs a figure stands on and beside; the rest is tiled round it")
 	await _build("yard", _yard())
 	var yard: int = _brick_of("41539")
 	await assistant.use_tool("add_minifig", {"name": "gardener", "x": 3, "z": 3})
@@ -430,8 +434,63 @@ func _run() -> void:
 	_ok(figure >= 4, "a figure of %d parts stands on the yard" % figure)
 	said = _text_of(await assistant.surface_review())
 	print("    " + said.substr(0, 600).replace("\n", "\n    "))
-	_ok(_open_on(yard) == before, "...and its studs are left as they were (%d)" % _open_on(yard))
-	_ok(said.contains("a yard"), "...said: a yard")
+	var round_it: SurfacePass.Finding = _finding("studs")
+	var standing: int = _open_on(yard)
+	_ok(round_it != null and not round_it.offered and not round_it.ids.is_empty()
+		and said.contains("a yard"), "the yard is laid round the figure, said as a yard")
+	_ok(standing >= 4 and standing <= 16 and standing < before,
+		"...its standing place left open: %d of the %d studs" % [standing, before])
+	_ok(_open_beside_figures(yard) == standing,
+		"...every stud left open is under or beside the figure (%d of %d)"
+		% [_open_beside_figures(yard), standing])
+	report = await assistant._check(assistant._model_from_world())
+	_ok(bool(report["ok"]) and int(report.get("pieces", 0)) == 1,
+		"...and the yard holds as one, nothing floating: %s" % report["summary"])
+
+	print("\nground a figure stands on is laid round it, not only offered")
+	await _build("ground", _ground())
+	var floor_plate: int = _brick_of("41539")
+	await assistant.use_tool("add_minifig", {"name": "visitor", "x": 1, "z": 1})
+	var floor_before: int = _open_on(floor_plate)
+	said = _text_of(await assistant.surface_review())
+	var floor: SurfacePass.Finding = _finding("studs")
+	_ok(floor != null and not floor.offered and not floor.ids.is_empty(),
+		"the ground round the figure is laid as %s" % (floor.key if floor != null else "nothing"))
+	_ok(_open_on(floor_plate) < floor_before and _open_on(floor_plate) == _open_beside_figures(
+		floor_plate), "...its studs left open only where the figure stands: %d of %d"
+		% [_open_on(floor_plate), floor_before])
+
+	print("\na baseplate's play area keeps its studs")
+	await _build("play area", _on_baseplate())
+	var baseplate: int = _brick_of("3865")
+	await assistant.use_tool("add_minifig", {"name": "child", "x": 6, "z": 3})
+	var play: int = _open_on(baseplate)
+	said = _text_of(await assistant.surface_review())
+	_ok(play > 60 and _open_on(baseplate) == play,
+		"the baseplate's %d open studs are left as they were (%d)" % [play, _open_on(baseplate)])
+
+	print("\nan edge settled flat: its curved slopes off and its top tiled flat")
+	await _build("block", _block())
+	var block_top: float = assistant._bounds_of(_bricks()).end.y
+	await assistant.surface_review()
+	var edge: SurfacePass.Finding = _finding("edge")
+	_ok(edge != null and not edge.ids.is_empty(), "an edge is laid on the block's top")
+	var flat: String = await assistant.use_tool("settle_surface", {"finding": edge.key if edge != null
+		else "S1", "verdict": "flat"})
+	print("    " + flat.replace("\n", "\n    "))
+	var flat_pass: SurfacePass = assistant.surface_pass()
+	flat_pass._read = OpenPoints.read(assistant)
+	_ok(edge != null and edge.verdict == "adjusted" and _count(_bricks(), ["15068", "11477"]) == 0,
+		"...no curved slope left (%d)" % _count(_bricks(), ["15068", "11477"]))
+	# A tile is a plate high where a stud stood 4 LDU over the plate.
+	_ok(flat_pass.open_tops().is_empty() and absf(assistant._bounds_of(_bricks()).end.y
+		- block_top - 4.0) < 1.0, "...its top tiled flat, a tile high, no stud open (%d, %.0f LDU up)"
+		% [flat_pass.open_tops().size(), assistant._bounds_of(_bricks()).end.y - block_top])
+	report = await assistant._check(assistant._model_from_world())
+	_ok(bool(report["ok"]) and int(report.get("pieces", 0)) == 1,
+		"...and it holds as one: %s" % report["summary"])
+	_ok(flat_pass.record().contains("studs tiled"), "the record counts it tiled: %s"
+		% flat_pass.record())
 
 	print("\na building's long plain wall is laid again with masonry in it, no stud turned out")
 	await _build("house wall", _wall())
@@ -466,6 +525,25 @@ func _run() -> void:
 	await assistant.surface_review()
 	var unsettled: String = await assistant.next_review()
 	_ok(unsettled.contains("S1 not settled"), "with the pass laid and not settled, saving says which")
+
+	print("\nsaving after the creative pass says, once, what was built since the pass")
+	await _build("house", _roof())
+	await assistant.surface_review()
+	await assistant.use_tool("settle_surface", {"finding": "all", "verdict": "accept"})
+	assistant._outside_creative_handed = true
+	var quiet: String = await assistant.next_review()
+	_ok(not quiet.contains("Since the surface pass"), "nothing built since: nothing said")
+	await assistant.use_tool("edit_model", {"add": [{"part": "3001", "color": 1, "x": 8,
+		"y": 0, "z": 0, "rot": 0}]})
+	var since: String = await assistant.next_review()
+	print("    " + since.substr(0, 400).replace("\n", "\n    "))
+	_ok(since.contains("Since the surface pass, 8 open studs were built"),
+		"a 2 x 4 brick put on since: its 8 studs said")
+	var again_said: String = await assistant.next_review()
+	_ok(not again_said.contains("Since the surface pass"), "...said once, not again")
+	said = _text_of(await assistant.surface_review())
+	_ok(said.contains("8 open studs"), "the pass run again lays them")
+	assistant._outside_creative_handed = false
 
 	print("\nin the app's own loop the pass comes before the creative pass")
 	assistant._busy = false
@@ -526,6 +604,15 @@ func _yard() -> Array:
 		for z: int in [0, 2, 4, 6]:
 			out.append({"part": "3003", "color": 70, "x": x, "y": 0, "z": z, "rot": 0})
 	out.append({"part": "41539", "color": 2, "x": 0, "y": 3, "z": 0, "rot": 0})
+	return out
+
+
+## A small house on an 8 x 16 baseplate: a column of 2 x 2 bricks and a plate.
+func _on_baseplate() -> Array:
+	var out: Array = [{"part": "3865", "color": 2, "x": 0, "y": 0, "z": 0, "rot": 0}]
+	for course: int in 3:
+		out.append({"part": "3003", "color": 15, "x": 12, "y": 0.5 + course * 3, "z": 2,
+			"rot": 0})
 	return out
 
 
@@ -658,6 +745,11 @@ func _tiled_steps() -> Array:
 		{"part": "87079", "color": 72, "x": 0, "y": 9, "z": 2, "rot": 0}]
 
 
+## A block: 2 x 2 bricks under a 6 x 6 plate, its top studs.
+func _block() -> Array:
+	return _head().slice(0, 10)
+
+
 ## A tan head: 2 x 2 bricks under a 6 x 6 plate, its top tiled.
 func _head() -> Array:
 	var out: Array = []
@@ -715,6 +807,19 @@ func _brick_at(part: String, plates: int) -> int:
 				and absf((brick.transform * mesh.bounds).abs().position.y - plates * 8.0) < 1.0:
 			return brick.id
 	return 0
+
+
+## Open studs of [param brick] under or beside a figure: within a stud of
+## its footprint, as SurfacePass leaves a standing place.
+func _open_beside_figures(brick: int) -> int:
+	var figures: Array = assistant.surface_pass()._living_boxes()
+	var n: int = 0
+	for point: Variant in _open_points():
+		var at: Vector3 = (point as OpenPoints.Point).at
+		if (point as OpenPoints.Point).brick == brick \
+				and SurfacePass._standing_place(at, figures):
+			n += 1
+	return n
 
 
 func _open_points() -> Array:

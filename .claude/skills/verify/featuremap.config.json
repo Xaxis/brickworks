@@ -3631,7 +3631,7 @@
       "kind": "ui",
       "label": "your plan on settings",
       "entry": "web/plan.js",
-      "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
+      "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing and Cancel Pro, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
       "area": "web"
     },
     {
@@ -4472,6 +4472,13 @@
       "label": "steps_to probe",
       "entry": "src/dev/steps_to_probe.gd",
       "reach": "tools/probe.sh steps_to_probe   (headless: parts of sub-models and of the model's own moved to step 1, a middle step and the last over MCP and by the steps panel's drop, read back off the plan and edit_steps's list)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "steps_kept probe",
+      "entry": "src/dev/steps_kept_probe.gd",
+      "reach": "tools/probe.sh steps_kept_probe   (headless: the lighthouse and 7140-1 with no steps of their own listed over MCP, then a look set, a part moved by edit_steps and Shift-], a recolour, each undone, and a save opened again: every part not moved in the step it was listed in; STEPS_KEPT_ONLY=7140 for one)",
       "area": "view"
     },
     {

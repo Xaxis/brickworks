@@ -1,76 +1,152 @@
-// The landing page's two live strips (index.html #community): the
-// gallery's Top builds (#made), as the gallery orders them, and the LDraw
-// library's biggest sets (#sets, as /library orders them by Most parts),
-// each drawn as web/card.js draws every card.
+// What the landing page (index.html) fills from the site's own answers as
+// each part nears the screen, a screen and a half ahead, so it is in by
+// the time it is read, and a visitor who never scrolls fetches none of it:
 //
-// Neither may show a dead card. So a card is put in only once its picture
-// has arrived and decoded, a model with no picture is left out, and a
-// strip's cards go in only once three are ready; until then its row holds
-// skeletons at a card's size (site.css .skeleton), so the page under it
-// stays where it is, and an answer that does not come takes that strip
-// away (and the section with it, when both go). Asked as they near the
-// screen (a screen and a half before #also, the line under the features
-// above them), so they are in by the time they are read, and a visitor who
-// never scrolls fetches none of it.
-import { modelCard, pictureOf } from "/card.js";
+// - #made, its first model in 3D in its picture's place (web/start3d.js,
+//   its looks in web/view3d.css), both asked for as the section nears;
+// - #sets, four of the LDraw library's biggest sets with a 3D model, as
+//   /library orders them by Most parts, each a link to its page;
+// - #challenge, this month's challenge, or the next one told;
+// - #top, the gallery's Top builds as the gallery orders them, then its
+//   collections, each drawn as web/card.js draws every card.
+//
+// None may show a dead picture. So a card or a set goes in only once its
+// picture has arrived and decoded, and the row only once three have (the
+// sets: four); until then the row holds skeletons at a card's size
+// (site.css .skeleton) and the sets their ground, so the page under them
+// stays where it is. An answer that does not come takes #top away and
+// leaves the sets' tile and the challenge's with their own words. Each says
+// how it ended on <html> (data-strip, data-sets, data-challenge), which
+// tools/web/landing_check.mjs waits on.
+import { collectionCard, counted, escapeHtml, langAt, modelCard, pictureOf, say } from "/card.js";
 
 const GALLERY = /^[A-Za-z0-9]{10}$/;
 const SET = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
+const LIST = /^[A-Za-z0-9]{10}$/;
 const MOST = 8;
 const LEAST = 3;
-const section = document.getElementById("community");
-const near = document.getElementById("also");
-// Each strip: where it is, its row, what to ask, which ids are cards, and
-// the attribute on <html> that says how it ended (tools/web/landing_check.mjs
-// waits on data-strip).
-const STRIPS = [
-  { strip: "made", row: "made-models", ask: "/api/share?op=list&page=1&sort=top", id: GALLERY, said: "strip" },
-  // Only sets LDraw has a 3D model of: "ready to open" is a set that opens
-  // whole in the builder. Asked by size alone, 7 of the 8 had no model, only
-  // their parts (the owner, 2026-11-01).
-  { strip: "sets", row: "sets-models", ask: "/api/share?op=library&page=1&sort=largest&model=3d", id: SET, said: "sets" },
-];
+const SETS = 4;
+const html = document.documentElement;
 
-/// [model]'s card once its picture is in, or null.
-async function ready(model) {
-  const card = modelCard(model);
-  const img = card.querySelector("img");
-  if (!img) return null;
+/// What [path] answers as JSON, or null: a refusal is read too, since an
+/// answer never read keeps the page busy.
+async function ask(path) {
+  try {
+    const reply = await fetch(path, { headers: { accept: "application/json" } });
+    const body = await reply.json().catch(() => null);
+    return reply.ok ? body : null;
+  } catch {
+    return null;
+  }
+}
+
+/// Whether [img] has arrived and decoded.
+async function drawn(img) {
+  if (!img) return false;
   img.loading = "eager";
   try {
     await img.decode();
   } catch {
-    return null;
-  }
-  return img.naturalWidth > 0 ? card : null;
-}
-
-/// One strip filled, or taken away: whether it is shown.
-async function fill({ strip, row, ask, id, said }) {
-  const where = document.getElementById(strip);
-  const cards = document.getElementById(row);
-  if (!where || !cards) return false;
-  let models = [];
-  try {
-    const reply = await fetch(ask, { headers: { accept: "application/json" } });
-    // Read even a refusal: an answer never read keeps the page busy.
-    const body = await reply.json().catch(() => null);
-    if (reply.ok) models = body?.models || [];
-  } catch { /* no strip */ }
-  const listed = models.filter((m) => m && id.test(String(m.id)) && pictureOf(m)).slice(0, MOST);
-  const drawn = (await Promise.all(listed.map((m) => ready(m).catch(() => null)))).filter(Boolean);
-  document.documentElement.dataset[said] = drawn.length >= LEAST ? String(drawn.length) : "none";
-  if (drawn.length < LEAST) {
-    where.hidden = true;
     return false;
   }
-  cards.replaceChildren(...drawn);
-  return true;
+  return img.naturalWidth > 0;
 }
 
-async function fillAll() {
-  const shown = await Promise.all(STRIPS.map(fill));
-  if (section && !shown.some(Boolean)) section.hidden = true;
+/// [card] once its picture is in, or null.
+const ready = async (card) => ((await drawn(card.querySelector("img"))) ? card : null);
+
+/// The gallery's Top, less the models #made already shows, then its
+/// collections: shown once three cards have their pictures, else taken away.
+async function top() {
+  const where = document.getElementById("top");
+  const row = document.getElementById("top-models");
+  if (!where || !row) return;
+  const shown = new Set([...document.querySelectorAll("#made a[href]")]
+    .map((a) => (/\/m\/([A-Za-z0-9]{10})$/.exec(a.getAttribute("href")) || [])[1]).filter(Boolean));
+  const [listed, lists] = await Promise.all([ask("/api/share?op=list&page=1&sort=top"), ask("/api/people?op=collections")]);
+  const models = (listed?.models || []).filter((m) => m && GALLERY.test(String(m.id)) && !shown.has(String(m.id)) && pictureOf(m))
+    .slice(0, MOST);
+  const collections = (lists?.collections || []).filter((c) => c && LIST.test(String(c.id)) && Array.isArray(c.covers) && c.covers.length)
+    .slice(0, 2);
+  const cards = [...models.map((m) => modelCard(m)), ...collections.map((c) => collectionCard(c))];
+  const done = (await Promise.all(cards.map((card) => ready(card).catch(() => null)))).filter(Boolean);
+  html.dataset.strip = done.length >= LEAST ? String(done.length) : "none";
+  if (done.length < LEAST) {
+    where.hidden = true;
+    return;
+  }
+  row.replaceChildren(...done);
+}
+
+/// Four real sets, each its picture and a link to its page; the tile's
+/// glyph and words stay when they do not all come.
+async function sets() {
+  const row = document.getElementById("sets-models");
+  if (!row) return;
+  const listed = await ask("/api/share?op=library&page=1&sort=largest&model=3d");
+  const models = (listed?.models || []).filter((m) => m && SET.test(String(m.id)) && m.library?.model3d && pictureOf(m));
+  const links = models.slice(0, SETS).map((m) => {
+    const link = document.createElement("a");
+    const page = /^\/library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/.test(String(m.library.page || ""))
+      ? `${langAt()}${m.library.page}` : `/library/${m.id}`;
+    link.href = page;
+    link.dataset.model3d = "yes";
+    link.innerHTML = `<img src="${escapeHtml(pictureOf(m))}" alt="${escapeHtml(m.name)}" width="400" height="300" decoding="async">`;
+    return link;
+  });
+  const done = (await Promise.all(links.map(async (link) => ((await drawn(link.querySelector("img"))) ? link : null))))
+    .filter(Boolean);
+  html.dataset.sets = done.length === SETS ? String(SETS) : "none";
+  if (done.length === SETS) row.replaceChildren(...done);
+}
+
+/// "1–30 November" in the page's language.
+function days(from, to) {
+  const at = (day) => new Date(`${day}T12:00:00Z`);
+  const locale = globalThis.brickworksLang?.locale || "en-GB";
+  try {
+    return new Intl.DateTimeFormat(locale === "en-US" ? "en-GB" : locale, { day: "numeric", month: "long", timeZone: "UTC" })
+      .formatRange(at(from), at(to));
+  } catch {
+    return "";
+  }
+}
+
+/// This month's challenge (GET /api/people?op=challenge): its name, brief,
+/// days and entries, and Enter; between challenges the next one told.
+/// Its name and brief are Brickworks' own words, in English as written.
+async function challenge() {
+  const tile = document.getElementById("challenge");
+  if (!tile) return;
+  const answer = await ask("/api/people?op=challenge");
+  const now = answer?.challenge && answer.challenge.state === "open" && !answer.challenge.test ? answer.challenge : null;
+  const next = !now && answer?.next && !answer.next.test ? answer.next : null;
+  const shown = now || next;
+  html.dataset.challenge = now ? "open" : next ? "next" : "none";
+  if (!shown) return;
+  const entries = now ? (now.groups || []).reduce((n, group) => n + (group.entries || []).length, 0) : 0;
+  const line = [days(shown.starts_on, shown.ends_on), entries ? counted(entries, "entry", "entries") : ""].filter(Boolean).join(" · ");
+  document.getElementById("challenge-when").textContent = say(now ? "This month" : "Coming next");
+  const name = document.getElementById("challenge-h");
+  name.textContent = String(shown.title || "");
+  name.lang = "en";
+  const brief = document.getElementById("challenge-brief");
+  brief.textContent = String(shown.brief || "");
+  brief.lang = "en";
+  const when = document.getElementById("challenge-days");
+  when.textContent = line;
+  when.hidden = !line;
+  if (now) document.getElementById("challenge-go").textContent = say("Enter the challenge");
+}
+
+/// The first model in 3D in its picture's place, its code and looks asked
+/// for only now.
+function view3d() {
+  const picture = document.querySelector("#made .picture[data-scene]");
+  if (!picture) return;
+  const looks = Object.assign(document.createElement("link"), { rel: "stylesheet", href: "/view3d.css" });
+  document.head.append(looks);
+  import("/start3d.js").then(({ start3d }) => start3d(picture)).catch(() => { /* the picture stays the app's link */ });
 }
 
 // The beta's line under the last offer, only while it is open
@@ -78,23 +154,32 @@ async function fillAll() {
 async function beta() {
   const line = document.getElementById("beta");
   if (!line) return;
-  try {
-    const reply = await fetch("/api/plans?op=beta_spots", { headers: { accept: "application/json" } });
-    const body = await reply.json().catch(() => null);
-    if (reply.ok && body?.beta === "open") line.hidden = false;
-  } catch { /* no line */ }
+  const body = await ask("/api/plans?op=beta_spots");
+  if (body?.beta === "open") line.hidden = false;
 }
 beta();
 
-if (section) {
-  if (near && "IntersectionObserver" in window) {
-    const watch = new IntersectionObserver((seen) => {
-      if (!seen.some((one) => one.isIntersecting)) return;
-      watch.disconnect();
-      fillAll();
-    }, { rootMargin: "150% 0px" });
-    watch.observe(near);
-  } else {
-    fillAll();
+/// [work] once [id] is [margin] from the window: a screen and a half, or in it.
+function near(id, work, margin = "150% 0px") {
+  const where = document.getElementById(id);
+  if (!where) return;
+  if (!("IntersectionObserver" in window)) {
+    work();
+    return;
   }
+  const watch = new IntersectionObserver((seen) => {
+    if (!seen.some((one) => one.isIntersecting)) return;
+    watch.disconnect();
+    work();
+  }, { rootMargin: margin });
+  watch.observe(where);
 }
+
+// The 3D view's code once its picture is in the window: an opening
+// screen that reaches the section does not ask for it.
+near("made-lead", view3d, "0px");
+near("why", sets);
+near("community", () => {
+  challenge();
+  top();
+});

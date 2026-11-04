@@ -263,6 +263,15 @@ is on the page, `hidden`, for the script to show.
   accent), `.ticks` (a list, each with a green tick), `.table.matrix`
   (what each plan has: `tr.group` rows, `.has` and `.hasnt` marks, each
   with its word for a screen reader) and `.closing` (the last offer).
+  And `.tile` (landing, 2026-11-03; docs/HOME.md): a panel of a
+  picture (`.pic`, across its top on a model's ground, its shape the
+  page's) and its words under it (`.words`: an `h3` or a name, a line,
+  then its way on, a `.more` link or a `.go-on` button at its foot); one
+  link round it all (`a.open`) lifts it under a mouse as a card; `.flat`
+  has a `.glyph` where the picture would be; `.challenge` is lit in the
+  accent as the plan to choose is; `.pic.sets`, four sets' pictures, each a
+  link, two by two, the library's glyph until they come. The home's
+  models, benefits and community are tiles.
 - **Table**: `.table`, a `<table>` of facts in a box, a Scroller (below)
   where the table is wider than the page: a named region the keyboard
   reaches and scrolls (`role="region"`, its `aria-label` or

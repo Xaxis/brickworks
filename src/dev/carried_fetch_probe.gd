@@ -23,7 +23,12 @@
 ## - a file that carries nothing, or the desktop with its library, waits for
 ##   no frame and fetches nothing;
 ## - a file the server has not got is said not shown, with why (HTTP 404),
-##   and a web page that comes back is not taken for LDraw.
+##   and a web page that comes back is not taken for LDraw;
+## - a desktop download (PartForge.library_here off: primitives, no parts)
+##   fetches what bay_2025.io's own part is drawn from where the deployment
+##   says, keeps it, and opens the file again offline from what it kept; in a
+##   home that never fetched it, offline, it opens at once and says the part
+##   could not be drawn, and why.
 ##
 ## --timing opens each FILE five times each way, alternately, from a fresh
 ## session each time and the library withheld: as the web opens it (what it
@@ -40,6 +45,8 @@ extends SceneTree
 const PORT := 8841
 const LIBRARY_DIR := "res://vendor/"
 const SET := "res://vendor/omr/files/42082-1.mpd"
+## A Studio file whose own part is made from 3001.dat (tests/fixtures/studio).
+const BAY := "res://tests/fixtures/studio/bay_2025.io"
 
 var _failures: int = 0
 var _library: PartLibrary
@@ -100,6 +107,7 @@ func _run() -> void:
 	await _kept()
 	await _kept_own()
 	await _not_there()
+	await _desktop_download()
 	_web_page()
 	OS.kill(_server)
 	print("carriedfetch: %s (%d failures)" % ["PASS" if _failures == 0 else "FAIL", _failures])
@@ -471,6 +479,80 @@ func _not_there() -> void:
 		"from where it is: both parts, nothing said not shown")
 	PartForge.withheld = false
 	CustomParts.sources_from = ""
+
+
+## A desktop download: LDraw's primitives and not its parts or subparts.
+## bay_2025.io's own part, made in Studio's Part Designer, is drawn from
+## 3001.dat, which the package has only as a mesh: Studio's copy of it from
+## model2.ldr, and the library's subpart that draws on. Fetched from where the
+## deployment says geometry lives (remote_parts), as the web fetches it, and
+## kept (PartForge.kept_dir): opened again with no network, drawn from what
+## was kept. In a home that never fetched it, offline, the file opens without
+## waiting and says which part could not be drawn and why.
+func _desktop_download() -> void:
+	print("carriedfetch: a desktop download, bay_2025.io's own part")
+	var kept_was: String = PartForge.kept_dir
+	PartForge.kept_dir = OS.get_user_data_dir().path_join("carried_fetch_probe_ldraw") + "/"
+	var own: String = "m1a2b3c4_2025408_163200"
+	_forget_kept()
+	_fresh()
+	PartForge.withheld = true
+	PartForge.library_here = false
+	CustomParts.sources_from = ""
+	_library.remote_parts = _root()
+	Deployment.over = true
+	# Read as a package reads it: Studio's own copy of 3001.dat, from
+	# model2.ldr, carried where the forge cannot read the library's
+	# (StudioDecor._forge_reads), and what that draws on fetched.
+	var made: Dictionary = ModelFilePicker.read(FileAccess.get_file_as_bytes(BAY), BAY.get_file(),
+		_library)
+	var text: String = made["text"]
+	var opened: Dictionary = await _open(text, "bay_2025")
+	var fetched: Array = PartForge._fetched.keys()
+	var kept: Array = fetched.filter(func(key: String) -> bool:
+		return FileAccess.file_exists(PartForge.kept_dir + key))
+	_expect(int(opened["placed"]) == 6 and (opened.get("unbuilt", {}) as Dictionary).is_empty()
+		and not fetched.is_empty() and kept == fetched,
+		"fetched from where the deployment says, as the web does: %d parts drawn, kept %s"
+			% [int(opened["placed"]), kept])
+	# No network: the deployment said nothing.
+	_fresh()
+	_library.remote_parts = ""
+	opened = await _open(text, "bay_2025")
+	_expect(int(opened["placed"]) == 6 and (opened.get("unbuilt", {}) as Dictionary).is_empty(),
+		"opened again with no network, drawn from what it kept: %d parts" % int(opened["placed"]))
+	# No network, and nothing kept.
+	_forget_kept()
+	_fresh()
+	var began: int = Time.get_ticks_msec()
+	opened = await _open(text, "bay_2025")
+	var took: int = Time.get_ticks_msec() - began
+	var said: String = ModelBar.left_out_words(opened)
+	_expect(int(opened["placed"]) == 5 and (opened.get("unshown", {}) as Dictionary).has(own)
+		and said.contains("%s could not be drawn" % own) and said.contains(str(kept[0]))
+		and said.contains("could not be reached"),
+		"offline in a home that never fetched it: %d drawn, and says why:%s"
+			% [int(opened["placed"]), said])
+	_expect(took < CustomParts.DEPLOYMENT_WAIT_MS / 2,
+		"...at once, the deployment's answer over: %d ms" % took)
+	_forget_kept()
+	DirAccess.remove_absolute(PartForge.kept_dir + "s")
+	DirAccess.remove_absolute(PartForge.kept_dir)
+	PartForge.kept_dir = kept_was
+	PartForge.withheld = false
+	PartForge.library_here = true
+	_library.remote_parts = ""
+	Deployment.over = false
+	_fresh()
+
+
+## What [method _desktop_download] kept, gone.
+func _forget_kept() -> void:
+	for folder: String in [PartForge.kept_dir, PartForge.kept_dir + "s/"]:
+		if not DirAccess.dir_exists_absolute(folder):
+			continue
+		for name: String in DirAccess.get_files_at(folder):
+			DirAccess.remove_absolute(folder + name)
 
 
 func _web_page() -> void:

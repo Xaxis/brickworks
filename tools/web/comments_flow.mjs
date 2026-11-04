@@ -138,8 +138,8 @@ if (!v1.includes("0 !BRICKWORKS PAGES ") || !v2.includes("0 !BRICKWORKS PAGES ")
 
 const browser = await launch({ signedOut: true });
 
-async function context({ as = null, width = 1280, height = 900, phone = false } = {}) {
-  const made = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers,
+async function context({ as = null, width = 1280, height = 900, phone = false, agent = undefined } = {}) {
+  const made = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers, userAgent: agent,
     ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
   if (as) {
     await made.addInitScript(([name, value]) => {
@@ -409,7 +409,10 @@ try {
 
   // --- 6. a report, and the site's owner ----------------------------------
   console.log("a report on a comment, and the admin page");
-  const reporting = await context();
+  // A signed-out report is counted by the browser and the address, six an
+  // hour: a browser of this run's own, or every run on this machine spends
+  // one count (moderation_flow.mjs, digest_flow.mjs).
+  const reporting = await context({ agent: `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 flow/${rand}` });
   page = await reporting.newPage();
   listen(page, "reporter");
   await page.goto(`${site}/m/${id}`, { waitUntil: "load" });

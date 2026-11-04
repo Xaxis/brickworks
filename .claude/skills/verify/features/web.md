@@ -3261,30 +3261,37 @@ plan with Claude as the client.
   landing page linked neither `/challenge` nor `/challenges`. `site_check`
   asks that `/` links it there, and the three `/challenges` redirects (red
   on m166).
-- `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`, the
-  pictures in `web/img/`): rebuilt again by site356 (2026-10-29, the owner:
-  "next level UI/UX", the way Linear, Vercel or Stripe sell theirs), on the
-  design system's landing kit, and turned round to lead with the CAD by
-  narrative (2026-11-02, the owner: many people react badly to AI; no
-  title, h1 or first screen calls it AI), in the order a visitor asks: the
-  opening (`.halo`: a badge to /compare, `h1.display` "A CAD for LEGO®
-  models, in your browser", a line of proof (every LDraw part at true
-  size, joined as the real ones are and at any angle; stands, gears,
-  booklet), Open the app and Download for desktop, the app's picture),
-  `#how` (three `.steps` by hand: find the part, put it where it goes,
-  check it and build it), `#features` (three pictures from the app over
-  six `.feature`s with their icons, then `#also`, one line of the rest,
-  where the strips are asked), `#community` (two live strips: `#made`, the
-  gallery's Top, and `#sets`, the LDraw library's biggest sets with a 3D
-  model, `/api/share?op=library&sort=largest&model=3d`; `data-strip` and
-  `data-sets` on `<html>` say how many, `none` when that strip is hidden,
-  and the section goes when both do), `#assistant` (Optional, "Bring your
-  own assistant": your own Claude, off until you turn it on, held to the
-  same checks, a design one Undo, never limited; `.split` of words and
-  `.ticks`, no pictures), `#platforms` (the web and the desktop), `#plans`
-  (Free and Pro, as /plans has them) and `#start` (`.closing`). The
-  chameleon before and after (`img/fresh-*`) left the page with fresh eyes
-  as its headline; /docs/fresh-eyes tells it.
+- `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`'s
+  landing kit and `.tile`, the pictures in `web/img/`; docs/HOME.md): made
+  to show the product, its community and why to use it at a glance by
+  landing (2026-11-03, the owner: "cleaner and more modern and elegant
+  exemplifying our amazing product but also the social features and
+  benefits"), after site356's rebuild (2026-10-29) and narrative's turn to
+  lead with the CAD (2026-11-02: no title, h1 or first screen calls it AI).
+  In order: the opening (`.halo`: a badge to /compare, `h1.display` "A CAD
+  for LEGO® models, in your browser", one line, **Start building** and
+  **Explore the gallery**, free and on the desktop in a note, the app's
+  picture); `#made` (Made in Brickworks: five gallery models path traced
+  in Brickworks, `img/show-*`, each a `.tile` linking to its page; the
+  first, `#made-lead`, turns in 3D in its picture's place when pressed,
+  `web/start3d.js` and `/view3d.css` asked for only once it is in the
+  window); `#why` (Everything a build needs: stability and the booklet as
+  pictures, four real sets of the LDraw library live in `#sets-models`
+  with the library's glyph until they come, `data-sets` on `<html>` 4 or
+  `none`; free on the web and the desktop; your own AI, named once);
+  `#community` (`#challenge`, the month's challenge from
+  `/api/people?op=challenge` or the next told, its own words until then,
+  `data-challenge` open, next or none; Build together's picture; four
+  things a builder does; `#top`, the gallery's Top less the five above,
+  then its collections, `data-strip` the count or `none`); and `#start`
+  (`.closing`, the plans in a line). `tools/web/landing_check.mjs` checks
+  each at 390 and 1280: the strip in both themes, the sets, the
+  challenge, and the five pictures with the 3D view opened.
+  Before that, site356's page: How it works, six features, the strips,
+  the assistant's section, the web and desktop's panels and the plans'
+  cards (docs/HOME.md "What was wrong with ours"). The chameleon before
+  and after (`img/fresh-*`) left the page with fresh eyes as its headline;
+  /docs/fresh-eyes tells it.
   Before that, rebuilt 2026-10-20 (the owner: "complete garbage";
   before that, 2026-10-13, "overly wordy and verbose and none elegant ...
   brickworks is much more than an ai tool, its also a fully advanced expert cad
@@ -3494,7 +3501,10 @@ plan with Claude as the client.
   is on: Checkout after the step before it (what Pro adds, monthly or
   yearly, the price, that it renews until cancelled, how to cancel, who
   sells it, a box nobody ticks but the person), the agreement kept first
-  (four years, the server's alone); the portal for an account that pays;
+  (four years, the server's alone); the portal for an account that pays,
+  and Cancel Pro, the portal's cancel step (Stripe asks why, no answer
+  needed, then confirms: three clicks; golive, 2026-11-03); Pro, paid or given, says what it includes, its
+  licence linked to `/terms#commercial-use`;
   Admission's signed webhook forgetting what is kept of the account. Back
   to this site's `/settings#plan` (live: brickworks.diy). Off, each POST is
   the interest form's 422, and /settings draws and asks nothing of plans.
@@ -6027,6 +6037,25 @@ And on a unit's preview with the stand-in in its functions (`tools/deploy.sh
 BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/billing_flow.mjs --url=<preview> --out=shots/billing
 ```
 
+Against Admission's real test mode and Stripe's sandbox (golive,
+2026-11-03): `tools/deploy.sh --unit --billing-test` (ADMISSION_TEST_KEY
+and ADMISSION_TEST_WEBHOOK_SECRET from .env, for that deployment alone),
+then a real browser through the real Checkout with Stripe's test card
+4242 4242 4242 4242 (`tools/web/billing_real_test.mjs`, docs/PLANS.md 8.1).
+Admission's test webhook never reaches a preview: its bypass is never put
+in a URL Admission keeps. What it sends is sent instead, signed by
+Admission's own code, with `tools/web/webhook_replay.mjs` run under
+Admission's tsx (its header says how): the plan held for 30 s still
+stands, another secret's and a ten-minute-old signature refused with
+nothing forgotten, the signed one heard and the same again "again", and
+the next `?op=plan` the plan Admission now says, both ways (grant_override
+then end_override in test mode); it ends "webhook replay: all ok".
+Stripe's bot check stops a Checkout a script pays, so a person pays it
+(docs/PLANS.md 8.1). Whom the switch comps (every account made before
+2026-10-29 but the owner's) is `python3 tools/plan_comps.py`, and with
+`--mode=test` or `--mode=live` (the matching ADMISSION_*_KEY sourced) who
+has the comp already: "N given, M left".
+
 It passes when it ends "billing: all ok". Plans off: GET /api/plans 405,
 op=me with no `billing`, each POST op the interest form's 422, /settings
 with no Plan row and no request for plans. Plans on: the API refusals and
@@ -6037,8 +6066,12 @@ Monthly ticked on to `checkout.stripe.test` (stubbed) for the month; back
 with `?billing=cancelled` still Free and said so; at 390 dark
 `?upgrade=year` opening on Yearly, nothing sideways, on to Checkout for the
 year. With `--stand-in` also: paid, the webhook heard, "Pro, $80.00 USD a
-year. Renews", Manage billing to `billing.stripe.test`, Checkout again sent
-to the portal, cancelled, "Pro until". The throwaway account is closed at
+year. Renews", "Included: any number of models kept with your account, and
+a licence for commercial use." linked to `/terms#commercial-use`, Manage
+billing and Cancel Pro offered, Manage billing to `billing.stripe.test`,
+Cancel Pro to it with the portal asked for flow `cancel`
+(`/__stand_in/portals`), Checkout again sent to the portal, cancelled, "Pro
+until". The throwaway account is closed at
 the end. Pictures: settings-plan and consent at 1280 light and 390 dark,
 settings-pro and settings-ending. With `--stand-in`, step 7 pays again and
 deletes the account from /settings: the delete form at 390 dark and 1280

@@ -74,10 +74,12 @@ export async function askModels({ method = "GET", query = {}, headers = {}, body
   return { status, json };
 }
 
-/// save_account_model and save_account_model_within on [mine] (an
-/// account's models, by name): what they answer, and whether it is a
-/// refusal. The 500 and 64 MB are not held here.
-function saveModel(mine, a, most) {
+/// save_account_model, save_account_model_within and save_account_model_any
+/// on [mine] (an account's models, by name): what they answer, and whether
+/// it is a refusal. [totals] is how many models the account may keep in
+/// all, the 500 of save_account_model (a test sets fewer), or null for
+/// save_account_model_any's none; the 64 MB is not held here.
+function saveModel(mine, a, most, totals) {
   const there = mine.get(a.p_name);
   if (there && there.sum === a.p_sum) return { name: a.p_name, version: there.version, same: true };
   const row = { version: 1, sum: a.p_sum, model: a.p_model, parts: a.p_parts, raw_bytes: a.p_raw_bytes,
@@ -88,6 +90,7 @@ function saveModel(mine, a, most) {
   }
   let free = a.p_name;
   for (let n = 2; mine.has(free); n += 1) free = `${a.p_name} ${n}`;
+  if (totals !== null && mine.size + 1 > totals) return { refused: "models: too many" };
   if (most !== null && mine.size + 1 > most) return { refused: "models: plan" };
   mine.set(free, row);
   return { name: free, version: 1, ...(there ? { conflict: free } : {}) };
@@ -130,6 +133,12 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     saves: [],
     /// supabase/account_models_plan.sql not applied.
     noPlanSql: false,
+    /// supabase/account_models_any.sql not applied.
+    noAnySql: false,
+    /// How many models save_account_model keeps in all (its 500).
+    mostModels: 500,
+    /// save_account_model_any refusing a save: the hour's most saved (too fast).
+    tooFast: false,
     /// The snapshot store unreachable, as a database outage.
     storeDown: false,
     /// Every kept snapshot made [ms] older, as time passing would.
@@ -174,11 +183,14 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
       if (!self.models.has(owner)) self.models.set(owner, new Map());
       return self.models.get(owner);
     };
-    const save = /^\/rest\/v1\/rpc\/(save_account_model(_within)?)$/.exec(url.pathname);
+    const save = /^\/rest\/v1\/rpc\/(save_account_model(_within|_any)?)$/.exec(url.pathname);
     if (save) {
       self.saves.push({ fn: save[1], body: String(init.body) });
-      if (save[2] && self.noPlanSql) return json(404, { code: "PGRST202", message: "Could not find the function" });
-      const kept = saveModel(mine(asked.p_owner), asked, save[2] ? asked.p_most : null);
+      const gone = save[2] === "_within" ? self.noPlanSql : save[2] === "_any" ? self.noAnySql : false;
+      if (gone) return json(404, { code: "PGRST202", message: "Could not find the function" });
+      if (save[2] === "_any" && self.tooFast) return json(400, { code: "P0001", message: "models: too fast" });
+      const kept = saveModel(mine(asked.p_owner), asked, save[2] === "_within" ? asked.p_most : null,
+        save[2] === "_any" ? null : self.mostModels);
       return kept.refused ? json(400, { code: "P0001", message: kept.refused }) : json(200, kept);
     }
     if (url.pathname === "/rest/v1/rpc/delete_account_model") {

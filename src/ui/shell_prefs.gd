@@ -111,6 +111,9 @@ const DEFAULTS: Dictionary = {
 	# The AI app Connect your AI connects (Assistants' id), Claude until
 	# another is chosen.
 	"connect_with": "claude",
+	# Whether this computer was told it runs the simpler graphics mode
+	# (GraphicsMode.to_say): once, not at every start.
+	"said_simpler_graphics": false,
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

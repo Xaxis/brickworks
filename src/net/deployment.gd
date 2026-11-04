@@ -26,6 +26,10 @@ var answered: bool = false
 ## True once the question is over, answered or not. [signal settled] is
 ## emitted once; anyone arriving later reads this instead of waiting.
 var finished: bool = false
+## [member finished], for what has no deployment to hand: a file that waits
+## to learn where to fetch what its own parts are drawn from stops waiting
+## then (CustomParts._fetch_until).
+static var over: bool = false
 ## Whether this deployment has accounts, so everyone signs in. A
 ## deployment without them (a local server, somebody's own copy) has
 ## nothing to sign in to.
@@ -142,4 +146,5 @@ static func _native_of(said: Variant) -> Dictionary:
 
 func _finish() -> void:
 	finished = true
+	over = true
 	settled.emit()

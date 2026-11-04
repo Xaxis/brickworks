@@ -70,9 +70,16 @@ that offers each system its own build. The cycle and its cadence are
   bricks, save, read back); each of .ldr, .mpd, .io and .lxf is given to it
   as a bare path, as a double-click gives it (`opens_models`), from a folder
   with a space in its name, and must say `opened <path>: N parts` and write
-  back N (a package cannot draw a part a Studio file builds from LDraw
-  subparts, which it has only as meshes: it says `could not build a part
-  the file carries` and writes that part back too, bay_2025.io's 5 + 1);
+  back N: bay_2025.io all 6, its Part Designer part made from `3001.dat`,
+  which a package has only as a mesh (the file carries Studio's copy, drawn
+  from the library's `s/3001s01.dat`), what it lacks fetched as LDraw text
+  from the parts store as the web does (`carried parts fetched`; the
+  primitives come in the package, staged from `vendor/ldraw/p`). Then
+  `carried_offline`: what was fetched kept in the home (`…/ldraw/parts/`),
+  bay_2025.io opened again with no network (`BRICKWORKS_API` at a port
+  nobody listens on) and drawn whole from it, and in a home that never
+  fetched it 5 of 6 with `m1a2b3c4_2025408_163200 could not be drawn: … the
+  parts store could not be reached` on its `opened` line, the sixth written back;
   then the system's own double-click on two models, the second with
   the first still open, each in a window of its own (a hold whose process
   is not a running Brickworks is not one): gio with the .deb's
@@ -106,6 +113,44 @@ that offers each system its own build. The cycle and its cadence are
   alone and left out of the web's pack: the web's page covers its canvas
   with its own loading wall (`src/boot/shell.html`). `tests/test_boot_splash.py`
   reads the settings and the picture; the windowed smoke, the package.
+- `graphics mode` (`src/render/graphics_mode.gd`,
+  `tools/release/package/launcher.c`): the desktop draws in its full mode
+  (Forward+) or its simpler one (Compatibility, on OpenGL, as the web does).
+  A Mac starts through the launcher, the bundle's `CFBundleExecutable`
+  (`launch_through`, built with a pinned zig as one universal binary,
+  `build_launcher`), which asks Metal what the GPU is before Vulkan starts:
+  on an Intel slice with Apple's paravirtual GPU, no Metal GPU, or under
+  256 MB to work with, it writes the simpler mode into `graphics.cfg`,
+  marked as its own (`[brickworks] graphics/automatic=true`, which
+  `GraphicsMode.chosen` reads as Automatic, and which it removes again on a
+  GPU the full mode runs on), and says why in `BRICKWORKS_GRAPHICS`; then it
+  becomes `Contents/MacOS/Brickworks` (exec, the same process, so Launch
+  Services' open events still arrive). Never on the command line: Godot
+  keeps the files a Mac opens a new app with only when it was started with
+  no arguments (`godot_application_delegate.mm`, `get_cmd_argc() == 0`), and
+  `--rendering-driver opengl3` made `open car.ldr` on the Intel VM open
+  nothing. Not when the person chose (graphics.cfg names a rendering method,
+  unmarked) or names a renderer on the command line. Godot's own
+  fallback cannot catch MoltenVK's abort (`display_server_macos.mm` falls
+  back only when `initialize()` returns an error). Windows and Linux fall
+  back in Godot itself (Windows to Direct3D 12, on a basic display adapter
+  the Microsoft Basic Render Driver; Linux with no Vulkan ICD: "switching to
+  OpenGL 3"). On the Intel VM OpenGL is Apple's software renderer, minutes
+  to a first picture, and FrameBudget cuts its whole ladder before the
+  first frame there (`known_slow`, checked in `look_probe`). Either way
+  the window says "This Mac's (This computer's) graphics run Brickworks in
+  its simpler mode." once, above the model (`ShellPrefs`
+  `said_simpler_graphics`), every start logs `graphics: <mode> mode (<why>),
+  <driver> on <adapter>`, and path tracing and Good's bounced light say
+  they need the full graphics mode. Settings, Graphics (on the keys' line):
+  Automatic, Full or Simpler, written to `user://graphics.cfg`, which Godot
+  reads at start (`application/config/project_settings_override`) and the
+  launcher reads too, so it outlives an update. `graphics_mode_probe`
+  (windowed; restarts itself with the launcher's graphics.cfg, no renderer
+  named, as the launcher would) checks the
+  line once in this start and the next, Got it, the words of Best and Good,
+  and each choice's file and the renderer of the start after it. On a Mac:
+  the runner proof below.
 - `publish a release`: `tools/release.py publish --draft` creates a draft
   release on `Xaxis/brickworks-releases` (`REPO`), on that repository's
   `main`, with the packages and `SHA256SUMS`, then compares GitHub's own
@@ -129,9 +174,11 @@ that offers each system its own build. The cycle and its cadence are
   run artifact, and on Ubuntu `apt install` of the .deb (/ keeps its mode,
   the four types default to the app, `brickworks --about`) and `apt remove`
   leaving nothing. The Intel runner's only GPU is Apple's paravirtual one,
-  which MoltenVK aborts on, so the smoke prints its double-click as `--  not
-  run here` with the reason (`mac_cannot_draw`) instead of failing; a check
-  this machine cannot make neither passes nor fails. It builds nothing: the part library is not in
+  which MoltenVK aborts on, so the app's launcher starts it in the simpler
+  graphics mode; the Mac double-click checks each window's log says the
+  mode `mac_mode` expects there (simpler on an Intel Mac whose GPUs are all
+  paravirtual, full elsewhere) and that the simpler one was said once (see
+  `graphics mode`). It builds nothing: the part library is not in
   git. A change to it goes to that repository by hand.
 - `move the downloads to the releases repository`:
   `tools/release/releases_repo.sh [--go] [--dir=DIR]`. A dry run reads

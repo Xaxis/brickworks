@@ -23,9 +23,9 @@
 # double-clicks two (Launch Services on a Mac, the shell on Windows, GIO on
 # Ubuntu), the second with the app open; on Windows it then uninstalls it.
 # On Ubuntu apt installs the .deb too, and removes it. macos-15-intel is a
-# VM whose only GPU MoltenVK cannot draw on, so its double-clicks say "not
-# run here" and why; Apple silicon's run the same app's Launch Services
-# path. The zips the
+# VM whose only GPU MoltenVK cannot draw on, so the app's launcher starts it
+# in the simpler graphics mode there, which its double-clicks check, with
+# the line said once; Apple silicon's stay in the full mode. The zips the
 # disk image and the installer replaced are run too while a release has
 # them (docs/DISTRIBUTION.md). Those
 # tools are the source's, checked out from Xaxis/brickworks: once that is

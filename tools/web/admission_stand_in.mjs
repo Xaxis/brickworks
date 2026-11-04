@@ -10,6 +10,8 @@
 //
 //   POST /__stand_in/pay     {customerId, interval}  Pro, renewing
 //   POST /__stand_in/cancel  {customerId}            Pro until the period's end
+//   POST /__stand_in/portals {customerId}            {portals}: what each portal
+//                                                    was asked, its flow
 //   POST /__stand_in/erased  {customerId}            {erasures}: each time the
 //                                                     site erased them
 //
@@ -54,6 +56,9 @@ http.createServer(async (incoming, outgoing) => {
     if (url.pathname === "/__stand_in/pay") {
       admission.subscribe(customerId, { interval: asked.interval === "year" ? "year" : "month" });
       return reply(200, { heard: await tell(customerId, "subscription.created") });
+    }
+    if (url.pathname === "/__stand_in/portals") {
+      return reply(200, { portals: admission.portals.filter((one) => one.customerId === customerId) });
     }
     if (url.pathname === "/__stand_in/erased") {
       return reply(200, { erasures: admission.erasures.filter((e) => e.customerId === customerId) });

@@ -388,21 +388,36 @@ def _png(rows: list[bytes]) -> bytes:
             + chunk(b"IEND", b""))
 
 
-def _smoke_given(tmp_path, monkeypatch, capsys, picture, said) -> tuple[int, str]:
+def _smoke_given(tmp_path, monkeypatch, capsys, picture, said,
+                 own_part: bool = True) -> tuple[int, str]:
     """smoke --window on a package that does everything else right, the app
-    stood in for here, and its Best render answering picture and said."""
+    stood in for here, and its Best render answering picture and said.
+    Without [own_part] it is 0.15.0, which drew bay_2025.io's own part
+    nowhere: it had 3001.dat only as a mesh."""
     reference = release.BEST_REFERENCE.read_bytes()
 
     def run_app(command, env, seconds=420):
-        (Path(env["HOME"]) / ".local/share/godot/app_userdata/Brickworks").mkdir(
-            parents=True, exist_ok=True)
+        data = Path(env["HOME"]) / ".local/share/godot/app_userdata/Brickworks"
+        data.mkdir(parents=True, exist_ok=True)
         given = dict(arg.split("=", 1) for arg in command if arg.startswith("--") and "=" in arg)
         # A model handed over as a double-click hands it over: a bare path.
         model = next((arg for arg in command[1:] if not arg.startswith("-")), "")
         if "--out" in given:
             Path(given["--out"]).write_text("1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n" * 60)
-            return 0, ("opened %s: 60 parts\n" % model if model else "") \
-                + "wrote %s (60 parts)" % given["--out"]
+            parts, why = 60, ""
+            # bay_2025.io's own part is drawn from 3001.dat: fetched and kept
+            # online, from what was kept offline, and else not drawn.
+            kept = data / "ldraw" / "parts" / "s" / "3001s01.dat"
+            if model.endswith("bay_2025.io") and "BRICKWORKS_API" not in env and own_part:
+                kept.parent.mkdir(parents=True, exist_ok=True)
+                kept.write_text("0 ~Brick  2 x  4 without Front Face\n")
+            elif model.endswith("bay_2025.io") and not kept.exists():
+                parts, why = 59, (" — 1 not shown, kept in the file (m1a2b3c4_2025408_163200)"
+                                  " — m1a2b3c4_2025408_163200 could not be drawn: it uses parts"
+                                  " this build does not have: s/3001s01.dat (fetching"
+                                  " s/3001s01.dat: the parts store could not be reached)")
+            return 0, ("opened %s: %d parts%s\n" % (model, parts, why) if model else "") \
+                + "wrote %s (%d parts)" % (given["--out"], parts)
         if "--shot" in given:
             Path(given["--shot"]).write_bytes(reference)
             return 0, ""
@@ -419,6 +434,16 @@ def _smoke_given(tmp_path, monkeypatch, capsys, picture, said) -> tuple[int, str
     package.write_bytes(b"")
     code = release.smoke(package, True, "9.9.9")
     return code, capsys.readouterr().out
+
+
+def test_the_smoke_fails_a_package_that_leaves_a_studio_file_s_own_part_off(
+        tmp_path, monkeypatch, capsys):
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys,
+                              release.BEST_REFERENCE.read_bytes(), "Opened Car.\n" + TRACED,
+                              own_part=False)
+    assert code == 1, said
+    assert "FAIL  opens bay_2025.io given as the system gives it: 59 parts, 60 written back" in said
+    assert "FAIL  ...and kept the LDraw files its own part is drawn from: none" in said
 
 
 def test_the_smoke_holds_a_package_to_the_editors_best(tmp_path, monkeypatch, capsys):
@@ -493,22 +518,35 @@ def _mac_with(monkeypatch, arm64: str, gpus: str) -> str:
         out = arm64 if command[0] == "sysctl" else gpus
         return subprocess.CompletedProcess(command, 0, out, "")
     monkeypatch.setattr(release.subprocess, "run", run)
-    return release.mac_cannot_draw()
+    return release.mac_mode()
 
 
-def test_an_intel_mac_vm_says_why_it_cannot_draw(monkeypatch):
-    # GitHub's macos-15-intel: MoltenVK aborts on this GPU in vkCreateInstance.
+def test_an_intel_mac_vm_is_expected_in_the_simpler_mode(monkeypatch):
+    # GitHub's macos-15-intel: MoltenVK aborts on this GPU in vkCreateInstance,
+    # so the launcher starts it on OpenGL.
     vm = "    Apple Paravirtualized Graphics Device:\n      Chipset Model: Apple Paravirtualized Graphics Device\n"
-    assert "Apple Paravirtualized Graphics Device" in _mac_with(monkeypatch, "", vm)
-    assert _mac_with(monkeypatch, "0\n", vm) != ""
+    assert _mac_with(monkeypatch, "", vm) == "simpler"
+    assert _mac_with(monkeypatch, "0\n", vm) == "simpler"
 
 
-def test_apple_silicon_and_a_real_intel_gpu_are_double_clicked(monkeypatch):
+def test_apple_silicon_and_a_real_intel_gpu_are_expected_in_the_full_mode(monkeypatch):
     # macos-15 has the same paravirtual GPU and draws on it through Metal.
     vm = "      Chipset Model: Apple Paravirtualized Graphics Device\n"
-    assert _mac_with(monkeypatch, "1\n", vm) == ""
+    assert _mac_with(monkeypatch, "1\n", vm) == "full"
     assert _mac_with(monkeypatch, "", "      Chipset Model: AMD Radeon Pro 5500M\n"
-                                      "      Chipset Model: Intel UHD Graphics 630\n") == ""
+                                      "      Chipset Model: Intel UHD Graphics 630\n") == "full"
+
+
+def test_two_mach_o_slices_join_as_lipo_joins_them():
+    # The launcher is built per architecture and joined (build_launcher).
+    def thin(cpu: int, size: int) -> bytes:
+        return struct.pack("<Iii", 0xFEEDFACF, cpu, 3) + bytes(range(256)) * (size // 256)
+    intel, arm = thin(0x01000007, 5120), thin(0x0100000C, 20480)
+    fat = release.fat_binary([intel, arm])
+    assert release.macho_slices(fat) == [("x86_64", intel), ("arm64", arm)]
+    # Each slice on a 16 KB boundary, as Apple silicon maps them.
+    offsets = [struct.unpack(">I", fat[16 + at * 20:20 + at * 20])[0] for at in range(2)]
+    assert offsets == [16384, 16384 * 2]
 
 
 def _double_clicks_stubbed(monkeypatch, tmp_path) -> list[Path]:
@@ -534,9 +572,14 @@ def test_a_double_click_on_a_mac_starts_the_app_with_updates_off(monkeypatch, tm
         return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
     monkeypatch.setattr(release.subprocess, "run", run)
-    monkeypatch.setattr(release, "mac_cannot_draw", lambda: "")
+    # Each window says its graphics mode in its log, as the launcher's choice.
+    monkeypatch.setattr(release, "mac_mode", lambda: "full")
+    monkeypatch.setattr(release.Path, "home", lambda: tmp_path)
+    logs = tmp_path / "Library" / "Application Support" / "Godot" / "app_userdata" / "Brickworks" / "logs"
+    logs.mkdir(parents=True)
+    (logs / "godot.log").write_text("graphics: full mode (automatic), Metal on Apple M1\n" * 2)
     said = release.double_click_mac(models)
-    assert [ok for _, ok, _ in said] == [True, True, True], said
+    assert [ok for _, ok, _ in said] == [True, True, True, True, True], said
     assert [c for c in ran if c[0] == "open"] == [
         ["open", "--env", "BRICKWORKS_UPDATES=off", str(model)] for model in models]
 

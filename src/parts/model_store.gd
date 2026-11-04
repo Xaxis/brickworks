@@ -1359,11 +1359,17 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			known.append(placement)
 
 	_phase("known")
+	# Why each part the file carries that is not here could not be drawn.
+	var unbuilt: Dictionary = {}
+	for id: String in carried["unbuilt"]:
+		if missing.has(id):
+			unbuilt[id] = carried["unbuilt"][id]
 	if known.is_empty() and not flattened.is_empty():
 		out.append({"placed": 0, "missing": missing.size(), "waiting": 0,
-			"missing_ids": missing,
-			"error": "none of the %d parts in that file are in the library (%s)"
-				% [missing.size(), named_counts(missing)]})
+			"missing_ids": missing, "unbuilt": unbuilt,
+			"error": "none of the %d parts in that file are in the library (%s)%s"
+				% [missing.size(), named_counts(missing),
+					"" if unbuilt.is_empty() else ": " + unbuilt_words(unbuilt)]})
 		return
 
 	var paced: bool = job != null and known.size() >= LAID_IN_SLICES_FROM
@@ -1607,9 +1613,14 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_phase("meta")
 	loaded.emit(title, placed)
 	_phase("loaded")
+	# Still arriving: those asked for now, not every part whose geometry was
+	# not read yet. A desktop reads it from disk as each is put down, and a
+	# Studio file opened there said "4 are still arriving" of parts it had
+	# drawn.
 	out.append({"placed": placed, "missing": missing.size(),
-		"waiting": waiting.size(), "missing_ids": missing, "error": "",
-		"unshown": unshown, "kept": source != null or not _absent.is_empty()})
+		"waiting": asked_for.size(), "missing_ids": missing, "error": "",
+		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
+		"unbuilt": unbuilt})
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
@@ -1717,9 +1728,9 @@ func register_later() -> void:
 
 ## [method open_text], once the LDraw library's own files the parts the file
 ## carries are drawn from, which this build has not got, have been fetched
-## (CustomParts.fetch_sources): on the web, the subparts and parts no build
-## ships. At once, with nothing fetched or waited for, on the desktop and for
-## a file that needs nothing.
+## (CustomParts.fetch_sources): on the web and in a desktop download, the
+## subparts and parts no build ships. At once, with nothing fetched or
+## waited for, in a checkout and for a file that needs nothing.
 ## [param parsed] is [param text] already read (ModelBar.read_off_frame).
 ## With [param job], the work the status bar shows (File, Open, the
 ## library, a version), over frames: a big file read on a worker, its
@@ -1844,6 +1855,17 @@ static func named_counts(counts: Dictionary, most: int = 6) -> String:
 	for id: String in counts:
 		named.append(id if int(counts[id]) == 1 else "%s ×%d" % [id, int(counts[id])])
 	return ", ".join(named.slice(0, most)) + (", …" if named.size() > most else "")
+
+
+## Why each part a file carries could not be drawn ([param unbuilt], id ->
+## why, from CustomParts.take_into), as an open says it: "m1a2b3c4 could not
+## be drawn: it uses files this build does not have: 3001.dat (fetching
+## 3001.dat: the parts store could not be reached)". At most [param most].
+static func unbuilt_words(unbuilt: Dictionary, most: int = 2) -> String:
+	var said := PackedStringArray()
+	for id: String in unbuilt:
+		said.append("%s could not be drawn: %s" % [id, unbuilt[id]])
+	return "; ".join(said.slice(0, most)) + ("; …" if said.size() > most else "")
 
 
 ## [param placements] not on the baseplate, by number, as an open says them

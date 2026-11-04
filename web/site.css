@@ -1372,6 +1372,43 @@ a.badge.accent:hover { border-color: var(--accent-edge); background: var(--panel
 /* The opening of a landing page, lit the same way. */
 .halo { background-image: var(--glow), var(--studs); background-size: auto, 24px 24px; background-repeat: no-repeat, repeat; }
 
+/* A tile: a landing page's panel of a picture and its words under it (the
+   home's models, its benefits and its community; landing, 2026-11-03).
+   The picture (.pic) fills the tile's width on a model's ground, its shape
+   the page's to give; .flat has a glyph in its place. A tile that is one
+   link (a.open around it all) lifts under a mouse as a card does. */
+.tile {
+	position: relative; display: flex; flex-direction: column; min-width: 0; overflow: hidden;
+	border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
+}
+.tile > a.open { display: flex; flex-direction: column; flex: 1; color: inherit; text-decoration: none; }
+.tile .pic { position: relative; display: block; overflow: hidden; background: var(--picture-ground); border-bottom: 1px solid var(--line); }
+.tile .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.tile .words { display: flex; flex-direction: column; flex: 1; gap: var(--s-1); margin: 0; padding: var(--s-4) var(--s-5) var(--s-5); }
+.tile h3 { margin: 0; }
+.tile .words p, .tile .words > span { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+.tile .words b, .tile .words .name { color: var(--ink); font-size: var(--t-body); font-weight: 650; }
+.tile .words .name { align-self: flex-start; text-decoration: none; padding-block: 4px; margin-block: -4px; }
+.tile .words .name:hover { text-decoration: underline; }
+/* Its way on, at its foot: a link (.more), or a button in a .go-on. */
+.tile .more { align-self: flex-start; margin-top: auto; padding: var(--s-3) 0 0; font-size: var(--t-small); font-weight: 600; }
+.tile .words .go-on { margin: auto 0 0; padding-top: var(--s-4); }
+.tile.flat { flex-direction: row; align-items: flex-start; gap: var(--s-4); padding: var(--s-5); }
+.tile.flat .words { padding: 0; }
+/* The month's challenge: lit from above in the accent, as the plan to choose is. */
+.tile.challenge { border-color: var(--accent-edge); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px; }
+.tile.challenge .words { padding: var(--s-6) var(--s-5); gap: var(--s-2); }
+/* A row of four pictures of real sets, each a link to its page (the home). */
+.pic.sets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 2px; }
+.pic.sets a { display: block; min-height: 0; background: var(--picture-ground); }
+.pic.sets a:focus-visible { outline-offset: -3px; }
+.pic.sets img { object-fit: contain; padding: 6%; }
+/* Until they come, and if they do not, the library's glyph across both rows. */
+.pic.sets > .glyph { grid-area: 1 / 1 / -1 / -1; place-self: center; width: 64px; height: 64px; }
+.pic.sets > .glyph .icon { width: 32px; height: 32px; }
+/* View in 3D on a tile's picture: web/view3d.css's (.showcase), loaded as the tile nears. */
+.showcase .picture { cursor: pointer; }
+
 /* -- motion ---------------------------------------------------------
    Every control and card answers the pointer in --motion (150 ms): its
    colour, ground, edge and shadow ease rather than snap, a press sinks it
@@ -1380,7 +1417,7 @@ a.badge.accent:hover { border-color: var(--accent-edge); background: var(--panel
    moves under reduced motion, as the toast did not (site273: two
    transitions on the whole site, both the toast's). */
 .cta, :where(button), .icon-btn, .pill, .tabs a, .tabs button, .segmented button, .nav a, .menu summary,
-.menu-list a, .menu-list > button, .foot-links a, .model, .list-card, details.qa, .media-strip .thumb, .feature, .tier,
+.menu-list a, .menu-list > button, .foot-links a, .model, .list-card, details.qa, .media-strip .thumb, .feature, .tier, .tile,
 :where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea) {
 	transition: color var(--motion) var(--ease), background-color var(--motion) var(--ease),
 		border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease),
@@ -1391,9 +1428,10 @@ summary.pill:active, .segmented button:active, .menu summary:active { transform:
 .cta:active { filter: brightness(0.95); }
 .tabs a:active, .tabs button:active { color: var(--ink); background: var(--panel); }
 .nav a:active, .menu-list a:active, .menu-list > button:active { background: var(--panel-hi); }
-.model:active, .list-card:active { transform: scale(0.99); }
+.model:active, .list-card:active, .tile:has(> a.open):active { transform: scale(0.99); }
 @media (hover: hover) {
-	.model:hover, .list-card:hover { transform: translateY(-2px); }
+	.model:hover, .list-card:hover, .tile:has(> a.open):hover { transform: translateY(-2px); }
+	.tile:has(> a.open):hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 	.feature:hover { border-color: var(--line-strong); }
 	.model:active, .list-card:active { transform: translateY(-1px) scale(0.99); }
 }
@@ -1408,7 +1446,7 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 		transition-duration: 0s !important; animation-duration: 0s !important; animation-iteration-count: 1 !important;
 	}
 	.cta:active, :where(button):active, .icon-btn:active, .pill:active, .segmented button:active, .menu summary:active,
-	.model:hover, .model:active, .list-card:hover, .list-card:active { transform: none; }
+	.model:hover, .model:active, .list-card:hover, .list-card:active, .tile:hover, .tile:active { transform: none; }
 }
 
 /* Read aloud, not shown. */

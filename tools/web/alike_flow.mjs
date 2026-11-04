@@ -159,8 +159,11 @@ try {
     const page = await made.newPage();
     listen(page, "alone");
     const seen = await alikeOn(page);
-    check(`with nobody close, More like is hidden (${seen.state}, ${seen.rows.length} rows)`,
-      seen.state === "none" && !seen.shown && seen.rows.length === 0);
+    // Another run's designers, of the same parts, may be close to her: none
+    // of this run's is, and with nobody at all More like is hidden.
+    const ours = seen.rows.filter((one) => Object.values(handles).includes(one.handle));
+    check(`with nobody close, More like is hidden (${seen.state}, ${seen.rows.length} rows, ${ours.length} of this run's)`,
+      ours.length === 0 && (seen.rows.length > 0 || (seen.state === "none" && !seen.shown)));
     await made.close();
   }
 

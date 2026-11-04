@@ -50,6 +50,13 @@
 // the browser or on the computer as before. Plans off, Admission is not
 // asked and the save is as it always was; a plan not known refuses nothing.
 //
+// Any number is any number: a plan that keeps any number (Pro, a comp of
+// it, the owner) is not held to the 500 and 64 MB either
+// (save_account_model_any, supabase/account_models_any.sql), and its list
+// names no totals. What holds it is each model's own size and a guard
+// against scripts, 1,000 models or 256 MB saved in an hour, past which the
+// save is answered 429 {full: "too fast"} and the app sends it again later.
+//
 // The database is reached as the server alone (api/_db.js): no key a page
 // holds can read or write the table. Until account_models.sql is applied
 // the list says off and the rest 503, and the app keeps its models in the
@@ -69,7 +76,7 @@ const SHARED_TEST = "delivered+brickworks-tests@resend.dev";
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
-import { entitlementOf, mostModels, reportOwner } from "./_billing.js";
+import { entitlementOf, keepsAny, mostModels, reportOwner } from "./_billing.js";
 import { db, dbConfigured, reach } from "./_db.js";
 
 // As supabase/account_models.sql holds them.
@@ -226,16 +233,17 @@ export default async function handler(request, response) {
       }
     }
     try {
-      const [rows, kept] = await Promise.all([
+      const [rows, kept, plan] = await Promise.all([
         db(`account_models?owner=eq.${owner}&select=name,version,parts,raw_bytes,sum,saved_at`
           + "&order=saved_at.desc"),
         keptBy(owner),
+        entitlementOf(owner),
       ]);
       return response.status(200).json({
         models: (rows || []).map((one) => ({ name: one.name, version: one.version, parts: one.parts,
           bytes: one.raw_bytes, sum: one.sum, saved_at: one.saved_at })),
         kept: { models: (rows || []).length, ...(kept ? { bytes: kept.bytes } : {}),
-          most_models: MOST_MODELS, most_bytes: MOST_BYTES },
+          ...(keepsAny(plan) ? {} : { most_models: MOST_MODELS, most_bytes: MOST_BYTES }) },
       });
     } catch (trouble) {
       return unreached(trouble, "not listed");
@@ -273,7 +281,7 @@ export default async function handler(request, response) {
     kept = await saved({
       p_owner: owner, p_name: name, p_base: base, p_model: body.model, p_raw_bytes: model.raw.length,
       p_parts: partsIn(model.text), p_sum: createHash("sha256").update(model.raw).digest("hex"),
-    }, most);
+    }, most, keepsAny(plan));
   } catch (trouble) {
     return unreached(trouble, "not saved");
   }
@@ -289,6 +297,10 @@ export default async function handler(request, response) {
   if (kept.full === "too big") {
     return response.status(413).json({ full: "too big",
       error: "Your account keeps 64 MB of models at most, and this one would go past it. It is kept in this browser." });
+  }
+  if (kept.full === "too fast") {
+    return response.status(429).json({ full: "too fast",
+      error: "That is a lot of models saved in an hour. This one is kept in this browser, and sent again later." });
   }
   return response.status(200).json(kept);
 }
@@ -308,13 +320,14 @@ export function keepsAtMost(plan, most) {
   return `${plan} keeps ${most} models in your account. Delete one, or get Pro for unlimited.`;
 }
 
-/// save_account_model, as the server, or save_account_model_within for a
-/// plan that keeps at most [most]: what it kept, or {full} with its refusal
-/// ("too many", "too big", "plan"), which PostgREST answers 400 with the
-/// words that api/_db.js does not pass on.
-async function saved(args, most = null) {
+/// save_account_model, as the server, save_account_model_within for a
+/// plan that keeps at most [most], or save_account_model_any for one that
+/// keeps any number ([any]): what it kept, or {full} with its refusal
+/// ("too many", "too big", "plan", "too fast"), which PostgREST answers 400
+/// with the words that api/_db.js does not pass on.
+async function saved(args, most = null, any = false) {
   const within = most !== null;
-  const name = within ? "save_account_model_within" : "save_account_model";
+  const name = any ? "save_account_model_any" : within ? "save_account_model_within" : "save_account_model";
   const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
   const key = process.env.SUPABASE_SECRET_KEY;
   const answer = await reach(`database POST rpc/${name}`, 20, `${base}/rest/v1/rpc/${name}`, {
@@ -324,10 +337,15 @@ async function saved(args, most = null) {
   });
   if (answer.ok) return answer.json();
   const said = await answer.json().catch(() => ({}));
-  const full = /^models: (too many|too big|plan)$/.exec(String(said?.message || ""));
+  const full = /^models: (too many|too big|plan|too fast)$/.exec(String(said?.message || ""));
   if (answer.status === 400 && full) return { full: full[1] };
   // A mistake of ours is never the person's to pay for: kept without the
-  // plan's limit until the file is applied.
+  // plan's limit until the file is applied, and within the totals until
+  // the other is.
+  if (any && answer.status === 404) {
+    console.error("models: supabase/account_models_any.sql is not applied here; saved within the account's totals");
+    return saved(args);
+  }
   if (within && answer.status === 404) {
     console.error("models: supabase/account_models_plan.sql is not applied here; saved without the plan's limit");
     return saved(args);

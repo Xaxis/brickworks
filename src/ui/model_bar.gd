@@ -787,7 +787,8 @@ static func read_off_frame(text: String, name: String) -> LdrModel:
 
 
 ## What an open left out or is still waiting for, as File, Open from a file
-## says it: " — 3 not in the library, left out (3001pr1, …)"; "" for nothing.
+## says it: " — 3 not in the library, left out (3001pr1, …)", and why a part
+## the file carries could not be drawn; "" for nothing.
 ## Parts still on their way are put down as each arrives: [param again]
 ## says so as the file picker always has, asking for the file again; the
 ## library's open says nothing of them.
@@ -806,6 +807,11 @@ static func left_out_words(result: Dictionary, again: bool = true) -> String:
 		note += (" — %d not shown, kept in the file (%s)" if bool(result.get("kept"))
 			else " — %d not in the library, left out (%s)") % [count,
 			ModelStore.named_counts(missing)]
+		# And why, for a part the file carries: a Studio file's own part
+		# drawn from an LDraw part that could not be fetched, offline.
+		var unbuilt: Dictionary = result.get("unbuilt", {})
+		if not unbuilt.is_empty():
+			note += " — " + ModelStore.unbuilt_words(unbuilt)
 	if again and int(result.get("waiting", 0)) > 0:
 		note += " — %d are still arriving, open it again in a moment" % int(result["waiting"])
 	return note

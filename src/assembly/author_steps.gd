@@ -69,8 +69,12 @@ static func first_under(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 
 
 ## The step the copy at [param path] goes on in, within its parent: as
-## set, else as its parts suggest, else -1, none.
-static func unit_step(world: BrickWorld, path: String, lowest: Dictionary) -> int:
+## set, else as its parts suggest, else -1, none. With [param units], as
+## those say (numbers_from_plan's, before they are the model's).
+static func unit_step(world: BrickWorld, path: String, lowest: Dictionary,
+		units: Variant = null) -> int:
+	if units != null:
+		return int((units as Dictionary).get(path, -1))
 	if world.unit_steps.has(path):
 		return int(world.unit_steps[path])
 	return int(lowest.get(path, -1))
@@ -84,12 +88,12 @@ static func unit_step(world: BrickWorld, path: String, lowest: Dictionary) -> in
 ## next. With the step alone, five buildings one step places went up a step
 ## of each in turn: the first course of every one, then the second.
 static func key_of(world: BrickWorld, section: String, step: int,
-		lowest: Dictionary, first: Dictionary = {}) -> Array:
+		lowest: Dictionary, first: Dictionary = {}, units: Variant = null) -> Array:
 	var key: Array = []
 	var path: String = ""
 	for segment: String in Assemblies.segments(section):
 		path = Assemblies.join(path, segment)
-		key.append(2 * maxi(unit_step(world, path, lowest), 0))
+		key.append(2 * maxi(unit_step(world, path, lowest, units), 0))
 		key.append(int(first.get(path, 0)))
 	key.append(2 * step + 1)
 	return key
@@ -266,11 +270,11 @@ static func _all_given(world: BrickWorld, skip: Dictionary) -> bool:
 	return true
 
 
-## The worked-out order made the author's: every part given the step the
-## plan puts it in, and every sub-assembly the step its last part goes in,
+## The worked-out order made the author's: every part and every copy of a
+## sub-model given the numbers the plan was shown in (numbers_from_plan),
 ## so the first step edit on a model nobody gave steps starts from what the
-## timeline showed. Returns the undo for it; nothing when the model already
-## has steps.
+## timeline showed, every step it does not change where it was. Returns the
+## undo for it; nothing when the model already has steps.
 static func adopt_plan(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}) -> Array:
 	var undo: Array = []
@@ -287,23 +291,135 @@ static func adopt_plan(world: BrickWorld, library: PartLibrary,
 		undo.append({"undo": "unitstep", "unit": path,
 			"step": int(world.unit_steps.get(path, -1))})
 		world.unit_steps[path] = int(units[path])
-	var sections: Dictionary = paths_in(world, skip)
-	sections[""] = true
-	for section: String in sections:
-		_tidy(world, section, skip, undo)
-	_copies_alike(world, skip, undo)
 	return squash(undo)
 
 
-## Every copy of a sub-model stepped as its first copy is, part for part:
-## a file writes a sub-model once, from its first copy (LdrModel.write_tree),
-## so a second copy the plan built in an order of its own was built as the
-## first once saved and opened again (10016-1's second pair of wheels).
-## A copy whose parts are not the first's, part for part, keeps its own.
-static func _copies_alike(world: BrickWorld, skip: Dictionary, undo: Array) -> void:
+## The worked-out order as numbers the model can keep, and a file can
+## hold: {"bricks": id -> its step in its own sub-model, "units": path ->
+## the step its copy goes on in, in the one that places it}. The plan shows
+## a model nobody gave steps in these (Instructions._kept), the first step
+## edit gives them to it (adopt_plan), and a save writes them: what the
+## person saw is what is kept.
+static func numbers_from_plan(world: BrickWorld, library: PartLibrary,
+		skip: Dictionary = {}) -> Dictionary:
+	return adopted(world, Instructions.worked_out(world, library, skip), skip)
+
+
+## [param steps], a plan, as numbers the model can keep ([method
+## numbers_of]), each section numbered 0, 1, 2… and every copy of a
+## sub-model stepped as its first copy is.
+static func adopted(world: BrickWorld, steps: Array[Instructions.Step],
+		skip: Dictionary = {}) -> Dictionary:
+	var numbers: Dictionary = numbers_of(world, steps, skip)
+	_tidy_numbers(world, numbers, skip)
+	_copies_alike(world, numbers, skip)
+	return numbers
+
+
+## The numbers of [param steps], a plan: each part the step it is in, and
+## each copy of a sub-model the step it goes on in. One built on the side
+## goes on in the step that puts it on; one built where it stands, in the
+## step its first part goes in, and is built whole there, in its own steps.
+## The plan may build a sub-model where it stands round another step: the
+## lighthouse's keeper was put on in step 45, between the island's last two.
+## The model's steps cannot hold that, and given the step of its last part
+## the island was built after the keeper, every step of it one later than
+## the person had read it (stepsnum).
+static func numbers_of(world: BrickWorld, steps: Array[Instructions.Step],
+		skip: Dictionary = {}) -> Dictionary:
+	var bricks: Dictionary = {}
+	var aside: Dictionary = {}      ## a copy built on the side -> the step that puts it on
+	for index: int in steps.size():
+		var step: Instructions.Step = steps[index]
+		for brick_id: int in step.brick_ids:
+			bricks[brick_id] = index
+		if step.callout > 0 and step.callout_step == 0:
+			for ids: PackedInt64Array in step.copies:
+				var copy: String = _copy_made_of(world, ids)
+				if not copy.is_empty():
+					aside[copy] = index
+	var first: Dictionary = {}
+	for brick_id: int in bricks:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null or skip.has(brick_id):
+			continue
+		var path: String = Assemblies.path_of(brick)
+		first[path] = mini(int(first.get(path, bricks[brick_id])), int(bricks[brick_id]))
+	var units: Dictionary = _up_paths(first)
+	units.erase("")
+	units.merge(aside, true)
+	return {"bricks": bricks, "units": units}
+
+
+## The copy of a sub-model [param ids] make: the path every one of them is
+## under.
+static func _copy_made_of(world: BrickWorld, ids: PackedInt64Array) -> String:
+	var shared: PackedStringArray = PackedStringArray()
+	var started: bool = false
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var segments: PackedStringArray = Assemblies.segments(Assemblies.path_of(brick))
+		if not started:
+			shared = segments
+			started = true
+			continue
+		var same: int = 0
+		while same < mini(shared.size(), segments.size()) and shared[same] == segments[same]:
+			same += 1
+		shared = shared.slice(0, same)
+	return "/".join(shared)
+
+
+## [param numbers] ([method numbers_of]) with each section's steps
+## numbered 0, 1, 2… in the order they were, as [method _tidy] numbers a
+## model's.
+static func _tidy_numbers(world: BrickWorld, numbers: Dictionary, skip: Dictionary) -> void:
+	var bricks: Dictionary = numbers["bricks"]
+	var units: Dictionary = numbers["units"]
+	var used: Dictionary = {}       ## section -> {number: true}
+	var own: Dictionary = {}        ## part id -> its section
+	for brick_id: int in bricks:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null or skip.has(brick_id):
+			continue
+		var section: String = Assemblies.path_of(brick)
+		own[brick_id] = section
+		if not used.has(section):
+			used[section] = {}
+		(used[section] as Dictionary)[int(bricks[brick_id])] = true
+	for path: String in units:
+		var parent: String = Assemblies.parent_of(path)
+		if not used.has(parent):
+			used[parent] = {}
+		(used[parent] as Dictionary)[int(units[path])] = true
+	var place: Dictionary = {}      ## section -> {number: its place}
+	for section: String in used:
+		var order: Array = (used[section] as Dictionary).keys()
+		order.sort()
+		var at: Dictionary = {}
+		for index: int in order.size():
+			at[order[index]] = index
+		place[section] = at
+	for brick_id: int in own:
+		bricks[brick_id] = int(place[own[brick_id]][int(bricks[brick_id])])
+	for path: String in units:
+		units[path] = int(place[Assemblies.parent_of(path)][int(units[path])])
+
+
+## Every copy of a sub-model in [param numbers] stepped as its first copy
+## is, part for part: a file writes a sub-model once, from its first copy
+## (LdrModel.write_tree), so a second copy the plan built in an order of its
+## own was built as the first once saved and opened again (10016-1's second
+## pair of wheels). A copy whose parts are not the first's, part for part,
+## keeps its own.
+static func _copies_alike(world: BrickWorld, numbers: Dictionary, skip: Dictionary) -> void:
+	var bricks: Dictionary = numbers["bricks"]
+	var units: Dictionary = numbers["units"]
 	var own: Dictionary = {}       ## path -> its own bricks, by id
 	for brick: BrickWorld.Brick in world.bricks():
-		if skip.has(brick.id):
+		if skip.has(brick.id) or not bricks.has(brick.id):
 			continue
 		var path: String = Assemblies.path_of(brick)
 		if path.is_empty():
@@ -330,64 +446,25 @@ static func _copies_alike(world: BrickWorld, skip: Dictionary, undo: Array) -> v
 		var model: Array = own.get(first, [])
 		model.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool: return a.id < b.id)
 		for copy: String in copies.slice(1):
-			var bricks: Array = own.get(copy, [])
-			bricks.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool: return a.id < b.id)
-			if bricks.size() != model.size():
+			var copied: Array = own.get(copy, [])
+			copied.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool: return a.id < b.id)
+			if copied.size() != model.size():
 				continue
 			var alike: bool = true
-			for n: int in bricks.size():
-				if (bricks[n] as BrickWorld.Brick).part_id != (model[n] as BrickWorld.Brick).part_id:
+			for n: int in copied.size():
+				if (copied[n] as BrickWorld.Brick).part_id != (model[n] as BrickWorld.Brick).part_id:
 					alike = false
 					break
 			if not alike:
 				continue
-			for n: int in bricks.size():
-				var brick: BrickWorld.Brick = bricks[n]
-				var step: int = (model[n] as BrickWorld.Brick).step
-				if brick.step != step:
-					undo.append({"undo": "restep", "brick": brick.id, "step": brick.step})
-					brick.step = step
-			for path: String in world.unit_steps.keys():
+			for n: int in copied.size():
+				bricks[(copied[n] as BrickWorld.Brick).id] = bricks[(model[n] as BrickWorld.Brick).id]
+			for path: String in units.keys():
 				if Assemblies.parent_of(path) != first:
 					continue
 				var twin: String = Assemblies.join(copy, Assemblies.leaf(path))
-				if world.unit_steps.has(twin) \
-						and int(world.unit_steps[twin]) != int(world.unit_steps[path]):
-					undo.append({"undo": "unitstep", "unit": twin,
-						"step": int(world.unit_steps[twin])})
-					world.unit_steps[twin] = int(world.unit_steps[path])
-
-
-## The worked-out order as numbers a file can hold: {"bricks": id -> the
-## step it is in, "units": path -> the step its copy goes on in}. Each a
-## step of the whole plan, so they are in order within any one section; a
-## copy goes on with its last part, after it is built.
-static func numbers_from_plan(world: BrickWorld, library: PartLibrary,
-		skip: Dictionary = {}) -> Dictionary:
-	return numbers_of(world, Instructions.plan(world, library, skip), skip)
-
-
-## The same numbers, from steps already worked out (Instructions.plan_paced).
-static func numbers_of(world: BrickWorld, steps: Array[Instructions.Step],
-		skip: Dictionary = {}) -> Dictionary:
-	var bricks: Dictionary = {}
-	for index: int in steps.size():
-		for brick_id: int in steps[index].brick_ids:
-			bricks[brick_id] = index
-	return {"bricks": bricks, "units": _units_after(world, bricks, skip)}
-
-
-static func _units_after(world: BrickWorld, bricks: Dictionary, skip: Dictionary) -> Dictionary:
-	var units: Dictionary = {}
-	for brick_id: int in bricks:
-		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		if brick == null or skip.has(brick_id):
-			continue
-		var path: String = ""
-		for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
-			path = Assemblies.join(path, segment)
-			units[path] = maxi(int(units.get(path, 0)), int(bricks[brick_id]))
-	return units
+				if units.has(twin):
+					units[twin] = units[path]
 
 
 ## The numbers to write into a file for a model that has the author's

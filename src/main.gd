@@ -488,6 +488,8 @@ var _saved_models_made: AcceptDialog = null
 var _full_offer: AccountFullOffer
 ## The working model could not be opened at start-up: where it is kept.
 var _restore_notice: RestoreNotice
+## This computer runs the simpler graphics mode, said once (GraphicsMode).
+var _graphics_notice: RestoreNotice
 ## When the files other tabs and windows share with this one were last
 ## looked at (_watch_other_tabs), in ticks.
 var _tabs_looked: int = 0
@@ -1170,6 +1172,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_full_offer.controls_by_name())
 	if _restore_notice != null:
 		named.merge(_restore_notice.controls_by_name())
+	if _graphics_notice != null:
+		named.merge(_graphics_notice.controls_by_name())
 	if _brickify_made != null:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
@@ -1697,6 +1701,10 @@ func _ready() -> void:
 	_log = RecentLog.new()
 	OS.add_logger(_log)
 	_boot_mark("ready")
+	# Which graphics mode this window draws in, and why, in every log
+	# (GraphicsMode): a report from a Mac that started simpler says so.
+	if not OS.has_feature("web") and DisplayServer.get_name() != "headless":
+		print(GraphicsMode.describe())
 	# Before any window or button is made, so every dialog, menu and button
 	# is made in the app's look, the engine's own among them (Look.dialogs,
 	# Look.buttons).
@@ -5323,6 +5331,16 @@ func _build_ui() -> void:
 	_restore_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_restore_notice)
 	_store.not_restored.connect(_restore_notice.tell)
+	# Graphics that cannot run the full mode started the simpler one by
+	# themselves: said once, above the model (GraphicsMode).
+	var graphics: String = GraphicsMode.to_say()
+	if not graphics.is_empty():
+		_graphics_notice = RestoreNotice.new()
+		_graphics_notice.key = "graphics_got_it"
+		_graphics_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_notices.get_child(0).add_child(_graphics_notice)
+		_graphics_notice.tell(graphics)
+		print(graphics)
 	# A newer build is live: said above the model, with Reload, which keeps
 	# the model on the baseplate first (_watch_other_tabs asks).
 	_update_offer = UpdateOffer.new()
@@ -7518,7 +7536,7 @@ func _open_given(path: String) -> int:
 	if not str(made["note"]).is_empty():
 		said += " — " + str(made["note"])
 	_bar.say(said)
-	printerr("opened %s: %d parts" % [path, int(result["placed"])])
+	printerr("opened %s: %s" % [path, said.trim_prefix("opened ")])
 	return int(result["placed"])
 
 

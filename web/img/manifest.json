@@ -16,8 +16,6 @@
  {
   "slug": "technic",
   "files": {
-   "1200": "technic-1200.webp",
-   "400": "technic-400.webp",
    "720": "technic-720.webp"
   },
   "width": 1200,
@@ -142,7 +140,6 @@
   "slug": "simulate",
   "files": {
    "1200": "compare-simulate.webp",
-   "400": "simulate-400.webp",
    "720": "simulate-720.webp"
   },
   "width": 1200,
@@ -215,5 +212,83 @@
   "subject": "an AI's design with fresh eyes (the landing page's after)",
   "alt": "The same brief built with fresh eyes: a slimmer chameleon with turret eyes and a crest along its back, its tail curled in a round spiral and its tongue out to a fly, on a twisting branch over a grey-edged stand with plants, rocks and a nameplate.",
   "caption": "With fresh eyes."
+ },
+ {
+  "slug": "show-castle",
+  "files": {
+   "800": "show-castle-800.webp",
+   "1200": "show-castle-1200.webp"
+  },
+  "width": 1200,
+  "height": 630,
+  "source": "tools/probe.sh render_probe --model=<the gallery model's .mpd, from /m/XqW6brmPQs> --quality=best --size=1680x882 --lighting=softbox --view=hero --look=product --backdrop=#101215 --gradient=1 (PROBE_SIZE=1400x900, on the GPU, 256 samples, 2026-11-03), cropped to 100,162 1314 x 690, for the home's Made in Brickworks (landing)",
+  "subject": "6080 King’s Castle, modelled by Stefan Frenz for LDraw's Official Model Repository",
+  "alt": "6080 King’s Castle: grey stone walls and towers flying red and yellow flags, with its knights and horses lined up beside it.",
+  "caption": "6080 King’s Castle, modelled by Stefan Frenz for LDraw's Official Model Repository"
+ },
+ {
+  "slug": "show-fox",
+  "files": {
+   "400": "show-fox-400.webp",
+   "720": "show-fox-720.webp"
+  },
+  "width": 720,
+  "height": 774,
+  "source": "tools/probe.sh render_probe --model=<the gallery model's .mpd, from /m/j7WaRpWsuL> --quality=best --size=800x860 --lighting=softbox --view=hero --look=product --backdrop=#101215 --gradient=1 (PROBE_SIZE=1400x900, on the GPU, 256 samples, 2026-11-03), cropped to 20,68 720 x 774, for the home's Made in Brickworks (landing)",
+  "subject": "A red fox on a mossy log",
+  "alt": "An orange and white fox sitting up on a mossy log, red toadstools at its foot.",
+  "caption": "A red fox on a mossy log"
+ },
+ {
+  "slug": "show-windmill",
+  "files": {
+   "400": "show-windmill-400.webp",
+   "720": "show-windmill-720.webp"
+  },
+  "width": 720,
+  "height": 774,
+  "source": "tools/probe.sh render_probe --model=<the gallery model's .mpd, from /m/ruNnGL5CWX> --quality=best --size=800x860 --lighting=softbox --view=hero --look=product --backdrop=#101215 --gradient=1 (PROBE_SIZE=1400x900, on the GPU, 256 samples, 2026-11-03), cropped to 48,99 704 x 757, for the home's Made in Brickworks (landing)",
+  "subject": "A working windmill",
+  "alt": "A windmill with four brown sails on a white tower, a miller and a cart beside it on the grass.",
+  "caption": "A working windmill"
+ },
+ {
+  "slug": "show-treehouse",
+  "files": {
+   "400": "show-treehouse-400.webp",
+   "720": "show-treehouse-720.webp"
+  },
+  "width": 720,
+  "height": 774,
+  "source": "tools/probe.sh render_probe --model=<the gallery model's .mpd, from /m/r2UCzQ7Pz3> --quality=best --size=800x860 --lighting=softbox --view=hero --look=product --backdrop=#101215 --gradient=1 (PROBE_SIZE=1400x900, on the GPU, 256 samples, 2026-11-03), cropped to 55,80 702 x 755, for the home's Made in Brickworks (landing)",
+  "subject": "A treehouse in an old oak",
+  "alt": "A treehouse in an old oak: decks on brown posts, a yellow slide, a swing and minifigures at play.",
+  "caption": "A treehouse in an old oak"
+ },
+ {
+  "slug": "show-dragon",
+  "files": {
+   "400": "show-dragon-400.webp",
+   "720": "show-dragon-720.webp"
+  },
+  "width": 720,
+  "height": 774,
+  "source": "tools/probe.sh render_probe --model=<the gallery model's .mpd, from /m/rEBYGwnXdu> --quality=best --size=800x860 --lighting=softbox --view=hero --look=product --backdrop=#101215 --gradient=1 (PROBE_SIZE=1400x900, on the GPU, 256 samples, 2026-11-03), cropped to 23,43 760 x 817, for the home's Made in Brickworks (landing)",
+  "subject": "A little dragon asleep on its hoard",
+  "alt": "A green dragon asleep on its hoard of gold, a treasure chest and a goblet beside it.",
+  "caption": "A little dragon asleep on its hoard"
+ },
+ {
+  "slug": "together",
+  "files": {
+   "720": "together-720.webp",
+   "930": "together-930.webp"
+  },
+  "width": 930,
+  "height": 488,
+  "source": "tools/probe.sh together_pins_probe --shots=DIR (PROBE_SIZE=1400x900, on the GPU, 2026-11-03), 1400x900_07_panel_follow.png cropped to 470,195 930 x 488, for the home's Build together tile (landing)",
+  "subject": "Build together, the panel and another builder's pointer",
+  "alt": "Build together in the app: its panel lists You and Ann, both here, with Follow and Remove beside Ann and a link to copy; on the red car beside it, Ann’s pointer and the part they have selected, outlined in their blue.",
+  "caption": "Build together, live"
  }
 ]

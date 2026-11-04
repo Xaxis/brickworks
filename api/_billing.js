@@ -211,6 +211,14 @@ export function mostModels(e) {
   return e.savedModels.limit;
 }
 
+/// Whether Admission says [e]'s plan keeps any number of models: Pro's, a
+/// comp of Pro, the owner's. Such an account is not held to the 500 models
+/// and 64 MB that everyone else keeps in all (api/models.js); a plan not
+/// known, or plans off, is.
+export function keepsAny(e) {
+  return e.standing === "known" && e.savedModels !== null && e.savedModels.limit === null;
+}
+
 /// Tells Admission whether the signed-in [claims] are the owner's
 /// (MASTER_EMAIL), so the owner's account has every feature unlimited
 /// (Admission's ADR-0009). Admission is asked only when what the client
@@ -290,8 +298,8 @@ export function charge(amount, currency, interval) {
 /// Checkout says beside its box (web/plan.js), in a line.
 export function renewalTerms(amount, currency, interval) {
   return `Pro at ${charge(amount, currency, interval)}, plus any tax; charged today, then renews automatically at `
-    + "that price until cancelled; cancel any time in Settings, Manage billing, or at link.com, and Pro stays on "
-    + `to the end of the ${interval} paid for; sold through Link, the merchant of record.`;
+    + "that price until cancelled; cancel any time in Settings, under Plan, with Cancel Pro, or at link.com, and Pro "
+    + `stays on to the end of the ${interval} paid for; sold through Link, the merchant of record.`;
 }
 
 /// The account [userId] erased at Admission as it is deleted (Bookwright's

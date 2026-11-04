@@ -26,7 +26,7 @@ lib:mesh fetch
 
 ### Find a part from a photo {#photo}
 
-The camera in the search field takes a photo of a real part and finds it. The photo goes to Brickognize, a service that recognises parts, and the bin says so before the first one is sent.
+The camera in the search field takes a photo of a real part and finds it. The photo goes to Brickognize, a service that recognises parts, and the bin says so before the first one is sent. Brickognize's terms allow personal, non-commercial use, so photo search is not part of Pro's licence for commercial use.
 
 <!-- covers
 ui:find a part from a photo
