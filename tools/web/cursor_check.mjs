@@ -531,6 +531,26 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
     }, { x, y, w, h });
   }
   const differ = (a, b) => a.reduce((t, v, i) => t + Math.abs(v - b[i]), 0) / a.length;
+  // The tooltip up, where the app says it is drawn (Main._page_controls).
+  // It is the interface's, though it stands over the view, so the cells of
+  // a print it covers in either picture are left out. The pointer rests on
+  // a tile of the bin, whose tooltip reached 125 px over the view's edge,
+  // and the wheel scrolls another tile under it, with a tooltip of its own:
+  // on the green baseplate the two read 0.31, and on the grid's light floor
+  // (rel-m255) 1.37, a fail, with every other pixel of the view the same.
+  const tooltip = () => page.evaluate(() => (window.brickworksControls || {}).tooltip || null);
+  function under(region, tips) {
+    const [x, y, w, h] = region;
+    const out = new Set();
+    for (let n = 0; n < 576; n += 1) {
+      const left = x + ((n % 24) * w) / 24;
+      const top = y + (Math.floor(n / 24) * h) / 24;
+      // A few pixels round it, for its edge as the print is drawn smaller.
+      if (tips.some((t) => left < t.x + t.w / 2 + 4 && left + w / 24 > t.x - t.w / 2 - 4
+        && top < t.y + t.h / 2 + 4 && top + h / 24 > t.y - t.h / 2 - 4)) out.add(n);
+    }
+    return out;
+  }
   async function scrolled(what, point, regions, shouldMove, around = null) {
     await page.mouse.move(point.x, point.y);
     // As long before as after: the ghost goes when the pointer leaves the
@@ -540,6 +560,7 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
     await page.waitForTimeout(8000 * slow);
     const before = [];
     for (const r of regions) before.push(await viewPrint(...r));
+    const tips = [await tooltip()];
     if (around) await around.open();
     for (let n = 0; n < 4; n += 1) { await page.mouse.wheel(0, 240); await page.waitForTimeout(400); }
     for (let n = 0; n < 8; n += 1) { await page.mouse.wheel(0, -240); await page.waitForTimeout(400); }
@@ -551,15 +572,24 @@ async function wheelOverTheInterface(page, at, slow, where, overPart, scale) {
     let moved = 0;
     let cells = 0;
     let total = 0;
+    let hidden = 0;
+    const afters = [];
+    for (const r of regions) afters.push(await viewPrint(...r));
+    tips.push(await tooltip());
     for (let i = 0; i < regions.length; i += 1) {
-      const after = await viewPrint(...regions[i]);
-      moved = Math.max(moved, differ(before[i], after));
-      cells += after.filter((v, n) => Math.abs(v - before[i][n]) > 8).length;
-      total += after.length;
+      const off = under(regions[i], tips.filter(Boolean));
+      const seen = (_, n) => !off.has(n);
+      const a = afters[i].filter(seen);
+      const b = before[i].filter(seen);
+      if (a.length) moved = Math.max(moved, differ(b, a));
+      cells += a.filter((v, n) => Math.abs(v - b[n]) > 8).length;
+      total += a.length;
+      hidden += off.size;
     }
-    const share = `${Math.round((100 * cells) / total)}% of it`;
+    const share = `${Math.round((100 * cells) / Math.max(total, 1))}% of it`;
     const ok = shouldMove ? moved > 2.0 : moved < 1.0;
-    console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}: the view ${moved > 1.0 ? "moved" : "stayed"} (${moved.toFixed(2)}, ${share})`);
+    const tipped = hidden ? `; ${hidden} cells under a tooltip left out` : "";
+    console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}: the view ${moved > 1.0 ? "moved" : "stayed"} (${moved.toFixed(2)}, ${share}${tipped})`);
     if (!ok) failures.push(`${scale}x wheel ${what}`);
   }
   await page.keyboard.press("Escape");
