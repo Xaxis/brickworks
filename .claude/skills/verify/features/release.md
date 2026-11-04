@@ -596,15 +596,20 @@ put back and A started again (17 `ok`).
 
 For the .deb pair (`Brickworks-A-linux-amd64.deb`) it proves it when it ends
 `the .deb's copy downloads the new .deb, and apt installs it (refused and
-missing here; by sudo on a runner)`: the copy in `usr/lib/brickworks` says
+missing here, then put in the dpkg way)`: the copy in `usr/lib/brickworks` says
 A, Off asks nothing, the same six refusals, Check for updates says B is
 out, `Update and restart with pkexec refused:
 Couldn't install Brickworks B: the password was refused or not given, so
 nothing was installed; it offers .../.brickworks-update/B/...deb` and the
 same `with no pkexec` (`pkexec isn't on this system`), `...apt was asked for
 the checked .deb, as root: /usr/bin/apt-get install -y ...`, `nothing dpkg
-put there was changed`, and the copy is still A (14 `ok`). Nothing is
-installed on this machine; packages build HEAD, so commit app changes first
+put there was changed`, the copy is still A, then `Update and restart, its
+files renamed in as dpkg does while the old copy runs: report: running B;
+model “House”, N parts; session S`, the copy says B and the downloaded .deb
+is gone (17 `ok`). The stand-in renames each file in as dpkg does, under the
+running copy: an updater that reads its package after apt fails it, as
+0.16.0's first build did on Ubuntu (docs/UPDATES.md). Nothing is installed
+on this machine; packages build HEAD, so commit app changes first
 (`packages` refuses otherwise).
 
 On macOS, Windows and Ubuntu the same, from a runner, with the DMG, the

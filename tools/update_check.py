@@ -469,9 +469,12 @@ def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path
     refuses what every copy refuses, and the new .deb is downloaded into
     the app's own data, checked, and installed
     by apt as root. A stand-in for pkexec says no, then none is there: each
-    is said, and the file offered. With [system] (a runner) apt installed
-    the old copy itself, and the update goes in by apt for real, sudo
-    standing in for pkexec's password dialog; then apt removes it."""
+    is said, and the file offered. Then it goes in as dpkg puts it, each
+    file renamed over the old one's while the old copy runs (a stand-in for
+    apt here), and the copy comes back as the new version with the model
+    kept. With [system] (a runner) apt installed the old copy itself, and
+    the update goes in by apt for real, sudo standing in for pkexec's
+    password dialog; then apt removes it."""
     with tempfile.TemporaryDirectory(prefix="brickworks-update-", ignore_cleanup_errors=True) as scratch:
         root = Path(scratch)
         serve_dir = laid if laid is not None else root / "serve"
@@ -485,6 +488,15 @@ def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path
         refuse = root / "refuse.sh"
         refuse.write_text('#!/bin/sh\necho "$*" > "%s"\nexit 126\n' % asked)
         refuse.chmod(0o755)
+        # dpkg's way, without root: unpacked aside, then each file renamed
+        # into place, a new file under the old name, as the old copy runs.
+        dpkg = root / "dpkg.sh"
+        dpkg.write_text('#!/bin/sh\n# $1 /usr/bin/apt-get, $2 install, $3 -y, $4 the .deb\nset -e\n'
+                        'aside="%s"; into="%s"\nrm -rf "$aside"; dpkg-deb -x "$4" "$aside"\n'
+                        'cd "$aside"\nfind . -type f | while read -r f; do\n'
+                        '  mkdir -p "$into/$(dirname "$f")"; mv -f "$f" "$into/$f"\ndone\n'
+                        % (root / "aside", root / "install" / "root"))
+        dpkg.chmod(0o755)
         staged = user_dir(run.home) / ".brickworks-update" / run.B / new.name
         try:
             if system:
@@ -535,26 +547,31 @@ def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path
             if not system:
                 said = run.about(program)
                 run.check("the copy is still %s" % run.A, said.startswith("Brickworks %s" % run.A))
-            else:
-                mark = run.mark()
-                code, output = run.app(program, "good", ["--model=res://models/house.ldr", "--update=install"],
-                                       more={"BRICKWORKS_UPDATE_ELEVATE": "sudo"})
-                text = run.log_after(mark, "report:")
-                before_ = re.search(r"restart: model “([^”]*)”, (\d+) parts; session (\w+)", text)
-                after_ = re.search(r"report: running (\S+); model “([^”]*)”, (\d+) parts; session (\w+)", text)
-                run.check("Update and restart, apt installing it by sudo in pkexec's place: %s"
-                          % (after_.group(0) if after_ else "no report"),
-                          bool(before_ and after_) and after_.group(1) == run.B
-                          and after_.groups()[1:] == before_.groups() and int(after_.group(3)) > 0,
-                          output + "\n" + text)
+            mark = run.mark()
+            code, output = run.app(program, "good", ["--model=res://models/house.ldr", "--update=install"],
+                                   more={"BRICKWORKS_UPDATE_ELEVATE": "sudo" if system else str(dpkg)})
+            text = run.log_after(mark, "report:")
+            before_ = re.search(r"restart: model “([^”]*)”, (\d+) parts; session (\w+)", text)
+            after_ = re.search(r"report: running (\S+); model “([^”]*)”, (\d+) parts; session (\w+)", text)
+            run.check("Update and restart, %s: %s" % (
+                "apt installing it by sudo in pkexec's place" if system
+                else "its files renamed in as dpkg does while the old copy runs",
+                after_.group(0) if after_ else "no report"),
+                bool(before_ and after_) and after_.group(1) == run.B
+                and after_.groups()[1:] == before_.groups() and int(after_.group(3)) > 0,
+                output + "\n" + text)
+            said = run.about(program)
+            if system:
                 listed_ = subprocess.run(["dpkg-query", "-W", "-f", "${Version}", "brickworks"],
                                          capture_output=True, text=True).stdout.strip()
-                said = run.about(program)
                 run.check("dpkg lists brickworks %s, and the copy says %s" % (listed_, said),
                           listed_ == run.B and said.startswith("Brickworks %s" % run.B))
-                time.sleep(2)
-                run.check("the downloaded .deb is gone once the new copy started",
-                          not staged.parent.exists())
+            else:
+                run.check("the copy says %s" % said, said.startswith("Brickworks %s" % run.B))
+            time.sleep(2)
+            run.check("the downloaded .deb is gone once the new copy started",
+                      not staged.parent.exists())
+            if system:
                 done = apt("remove", "-y", "brickworks")
                 left = [str(path) for path in (Path("/usr/lib/brickworks"), Path("/usr/bin/brickworks"))
                         if path.exists() or path.is_symlink()]
@@ -572,7 +589,7 @@ def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path
         say("%d check(s) failed: the .deb's copy does not update by apt" % run.failures)
         return 1
     say("%s → %s: the .deb's copy downloads the new .deb, and apt installs it%s" % (
-        old.name, new.name, "" if system else " (refused and missing here; by sudo on a runner)"))
+        old.name, new.name, " by sudo" if system else " (refused and missing here, then put in the dpkg way)"))
     return 0
 
 
