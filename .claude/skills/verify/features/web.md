@@ -3261,30 +3261,37 @@ plan with Claude as the client.
   landing page linked neither `/challenge` nor `/challenges`. `site_check`
   asks that `/` links it there, and the three `/challenges` redirects (red
   on m166).
-- `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`, the
-  pictures in `web/img/`): rebuilt again by site356 (2026-10-29, the owner:
-  "next level UI/UX", the way Linear, Vercel or Stripe sell theirs), on the
-  design system's landing kit, and turned round to lead with the CAD by
-  narrative (2026-11-02, the owner: many people react badly to AI; no
-  title, h1 or first screen calls it AI), in the order a visitor asks: the
-  opening (`.halo`: a badge to /compare, `h1.display` "A CAD for LEGO®
-  models, in your browser", a line of proof (every LDraw part at true
-  size, joined as the real ones are and at any angle; stands, gears,
-  booklet), Open the app and Download for desktop, the app's picture),
-  `#how` (three `.steps` by hand: find the part, put it where it goes,
-  check it and build it), `#features` (three pictures from the app over
-  six `.feature`s with their icons, then `#also`, one line of the rest,
-  where the strips are asked), `#community` (two live strips: `#made`, the
-  gallery's Top, and `#sets`, the LDraw library's biggest sets with a 3D
-  model, `/api/share?op=library&sort=largest&model=3d`; `data-strip` and
-  `data-sets` on `<html>` say how many, `none` when that strip is hidden,
-  and the section goes when both do), `#assistant` (Optional, "Bring your
-  own assistant": your own Claude, off until you turn it on, held to the
-  same checks, a design one Undo, never limited; `.split` of words and
-  `.ticks`, no pictures), `#platforms` (the web and the desktop), `#plans`
-  (Free and Pro, as /plans has them) and `#start` (`.closing`). The
-  chameleon before and after (`img/fresh-*`) left the page with fresh eyes
-  as its headline; /docs/fresh-eyes tells it.
+- `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`'s
+  landing kit and `.tile`, the pictures in `web/img/`; docs/HOME.md): made
+  to show the product, its community and why to use it at a glance by
+  landing (2026-11-03, the owner: "cleaner and more modern and elegant
+  exemplifying our amazing product but also the social features and
+  benefits"), after site356's rebuild (2026-10-29) and narrative's turn to
+  lead with the CAD (2026-11-02: no title, h1 or first screen calls it AI).
+  In order: the opening (`.halo`: a badge to /compare, `h1.display` "A CAD
+  for LEGO® models, in your browser", one line, **Start building** and
+  **Explore the gallery**, free and on the desktop in a note, the app's
+  picture); `#made` (Made in Brickworks: five gallery models path traced
+  in Brickworks, `img/show-*`, each a `.tile` linking to its page; the
+  first, `#made-lead`, turns in 3D in its picture's place when pressed,
+  `web/start3d.js` and `/view3d.css` asked for only once it is in the
+  window); `#why` (Everything a build needs: stability and the booklet as
+  pictures, four real sets of the LDraw library live in `#sets-models`
+  with the library's glyph until they come, `data-sets` on `<html>` 4 or
+  `none`; free on the web and the desktop; your own AI, named once);
+  `#community` (`#challenge`, the month's challenge from
+  `/api/people?op=challenge` or the next told, its own words until then,
+  `data-challenge` open, next or none; Build together's picture; four
+  things a builder does; `#top`, the gallery's Top less the five above,
+  then its collections, `data-strip` the count or `none`); and `#start`
+  (`.closing`, the plans in a line). `tools/web/landing_check.mjs` checks
+  each at 390 and 1280: the strip in both themes, the sets, the
+  challenge, and the five pictures with the 3D view opened.
+  Before that, site356's page: How it works, six features, the strips,
+  the assistant's section, the web and desktop's panels and the plans'
+  cards (docs/HOME.md "What was wrong with ours"). The chameleon before
+  and after (`img/fresh-*`) left the page with fresh eyes as its headline;
+  /docs/fresh-eyes tells it.
   Before that, rebuilt 2026-10-20 (the owner: "complete garbage";
   before that, 2026-10-13, "overly wordy and verbose and none elegant ...
   brickworks is much more than an ai tool, its also a fully advanced expert cad
