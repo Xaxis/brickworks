@@ -32,7 +32,7 @@
 // counted, no photo is shown, and asking to add one says so.
 
 import { createHmac, randomBytes } from "node:crypto";
-import { db, reach } from "./_db.js";
+import { db, orUnknown, reach } from "./_db.js";
 import { cleanPhoto, MAX_PHOTO_BYTES, PhotoTrouble, TYPES } from "./_photo.js";
 
 export const UPLOADS = "build-photo-uploads";
@@ -96,6 +96,8 @@ export async function buildsOf(model) {
 
 /// A finish, counted once per device: {counted, builds}. [person] says
 /// whether the request looks like one (api/_directory.js looksLikePerson).
+/// builds is null when the count, read after it was kept, could not be:
+/// the finish was counted all the same.
 export async function countBuild(model, device, person) {
   if (!ID.test(model || "")) throw new BuildRefusal("name a link: ?id=<ten characters>");
   if (!DEVICE.test(device || "")) throw new BuildRefusal("device is the 32 hex digits this device keeps");
@@ -108,7 +110,7 @@ export async function countBuild(model, device, person) {
       if (!notYet(trouble)) throw trouble;
     }
   }
-  return { counted, builds: await buildsOf(model) };
+  return { counted, builds: await orUnknown("builds", buildsOf(model)) };
 }
 
 // ---------------------------------------------------------------------------

@@ -28,6 +28,19 @@ export async function reach(what, seconds, url, init = {}) {
   }
 }
 
+/// [read], a lookup beside what was asked for (a count, a mark, a credit,
+/// what a model is based on), or null when it fails: the answer it is part
+/// of still goes out with that field unknown, and the failure is logged by
+/// the name db() gives it ("share: database GET model_stats: 555"). One
+/// read of a build count failing took a whole shared model down with it
+/// (rel-m251, 2026-11-03). Never for what was asked for itself: that fails.
+export function orUnknown(where, read) {
+  return Promise.resolve(read).catch((trouble) => {
+    console.error(`${where}: ${String(trouble?.message || trouble).slice(0, 160)}`);
+    return null;
+  });
+}
+
 /// One PostgREST request. Throws on anything but a success, naming the
 /// table and the status and nothing else (no row ever ends up in a log).
 export async function db(path, { method = "GET", body, prefer } = {}) {

@@ -11,8 +11,21 @@
 // leaves one (tabwalk_flow.mjs). The address is a Resend test one, which
 // no one receives mail at. close deletes the account; Supabase is
 // production, so every open is closed.
-import { mintSession } from "./session.mjs";
+//
+//   node --env-file=.env tools/web/relay_account.mjs review [--origin=https://brickworks.diy]
+//
+// review is the one account that is kept: the one an app directory's
+// reviewers sign in as (docs/directory/claude.md), on /review with its
+// password, a Resend test address's (api/_auth.js isTestAccount). The
+// password is .env's BW_REVIEW_PASSWORD, made and written there the first
+// time and never printed; the account is made, or given that password
+// again, and its age answered. It prints what open prints, the token only
+// with --origin.
+import { answerAge, mintSession } from "./session.mjs";
 import { createHash, randomBytes } from "node:crypto";
+import { appendFileSync, readFileSync } from "node:fs";
+
+const REVIEW_EMAIL = "delivered+claude-review@resend.dev";
 
 const [what, ...rest] = process.argv.slice(2);
 const args = Object.fromEntries(rest.map((a) => {
@@ -53,7 +66,55 @@ async function close(user) {
   }).catch(() => ({ ok: false }))).ok;
 }
 
-if (what === "open") {
+/// The review account signed in by its password, made first if it is new,
+/// and the password set again if it is not the one .env holds.
+async function review() {
+  const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const secret = process.env.SUPABASE_SECRET_KEY || "";
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || "";
+  if (!base || !secret || !key) throw new Error("no SUPABASE_URL / SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY: --env-file=.env");
+  let password = process.env.BW_REVIEW_PASSWORD || "";
+  if (!password) {
+    password = `${randomBytes(18).toString("base64url")}-Aa1`;
+    const env = new URL("../../.env", import.meta.url);
+    const was = readFileSync(env, "utf8");
+    appendFileSync(env, `${was.endsWith("\n") ? "" : "\n"}BW_REVIEW_PASSWORD=${password}\n`);
+    console.error("  (a password made for the review account: .env BW_REVIEW_PASSWORD)");
+  }
+  const admin = { apikey: secret, authorization: `Bearer ${secret}`, "content-type": "application/json" };
+  const made = await fetch(`${base}/auth/v1/admin/users`, {
+    method: "POST", headers: admin, body: JSON.stringify({ email: REVIEW_EMAIL, password, email_confirm: true }),
+  });
+  if (!made.ok && made.status !== 422) throw new Error(`the review account was not made: ${made.status}`);
+  const grant = () => fetch(`${base}/auth/v1/token?grant_type=password`, {
+    method: "POST", headers: { apikey: key, "content-type": "application/json" },
+    body: JSON.stringify({ email: REVIEW_EMAIL, password }),
+  });
+  let reply = await grant();
+  if (reply.status === 400 && !made.ok) {
+    const listed = await (await fetch(`${base}/auth/v1/admin/users?page=1&per_page=50&filter=${encodeURIComponent(REVIEW_EMAIL)}`,
+      { headers: admin })).json();
+    const account = (listed.users || []).find((u) => (u.email || "").toLowerCase() === REVIEW_EMAIL);
+    if (!account) throw new Error("the review account is there and is not");
+    // Signs out its sessions, a reviewer's too: only when .env's changed.
+    await fetch(`${base}/auth/v1/admin/users/${account.id}`, { method: "PUT", headers: admin, body: JSON.stringify({ password }) });
+    reply = await grant();
+  }
+  const body = await reply.json().catch(() => ({}));
+  if (!body.refresh_token) throw new Error(`the review account would not sign in: ${reply.status}`);
+  await answerAge(body.user?.id, REVIEW_EMAIL);
+  return {
+    access_token: body.access_token,
+    kept: { refresh_token: body.refresh_token, email: REVIEW_EMAIL, user_id: body.user?.id || "", url: base, key },
+  };
+}
+
+if (what === "review") {
+  const origin = String(args.origin || "").replace(/\/+$/, "");
+  const signed = await review();
+  const token = origin ? await claudeCodeToken(origin, signed.access_token) : undefined;
+  console.log(JSON.stringify({ user: signed.kept.user_id, email: REVIEW_EMAIL, kept: signed.kept, token }));
+} else if (what === "open") {
   const origin = String(args.origin || "").replace(/\/+$/, "");
   if (!origin) throw new Error("--origin=http://127.0.0.1:PORT, the relay");
   const minted = await mintSession(`delivered+bwrealset${randomBytes(4).toString("hex")}@resend.dev`);
@@ -69,6 +130,6 @@ if (what === "open") {
   console.log(gone ? "deleted" : "NOT deleted");
   process.exit(gone ? 0 : 1);
 } else {
-  console.error("usage: relay_account.mjs open --origin=URL | close --user=ID");
+  console.error("usage: relay_account.mjs open --origin=URL | close --user=ID | review [--origin=URL]");
   process.exit(2);
 }

@@ -23,7 +23,11 @@
   const say = LANG.say;
 
   const NAMES = { linux: "Linux", macos: "macOS", windows: "Windows" };
-  const PRIMARY = { linux: "AppImage", macos: "zip", windows: "zip" };
+  // Each system's packages, the one offered first first: what its own apps
+  // come as (docs/DISTRIBUTION.md). The zips are the packages from before the
+  // disk image and the installer, kept for one release, and offered first
+  // only by a release from before them.
+  const PREFER = { linux: ["AppImage", "deb", "tar.xz"], macos: ["dmg", "zip"], windows: ["installer", "zip"] };
   const FOR = { linux: "AppImage", macos: "Apple silicon and Intel", windows: "Windows 10 and 11" };
 
   // What this device is: a system there is a build for, "mobile" (a phone or
@@ -95,6 +99,14 @@
     return say(firstLineIn(os, file));
   }
   function firstLineIn(os, file) {
+    if (file.kind === "dmg") {
+      return file.notarized ? "First launch: drag it into Applications."
+        : "First launch: drag it into Applications, then allow it once.";
+    }
+    if (file.kind === "installer") {
+      return file.signed === true ? "First launch: run the installer."
+        : "First launch: run the installer, and allow it once.";
+    }
     if (os === "macos") {
       return file.notarized ? "First launch: drag it into Applications."
         : "First launch: macOS asks you to allow it once.";
@@ -116,14 +128,14 @@
   }
   const CHECK_IN = {
     linux: "In a terminal, this checks each file is the one published. It should print OK.",
-    macos: "In Terminal, this checks the file is the one published. It should print OK.",
-    windows: "In PowerShell, this checks the file is the one published. It should print True.",
+    macos: "In Terminal, this checks each file is the one published. It should print OK.",
+    windows: "In PowerShell, this checks each file is the one published. It should print True.",
   };
 
   function render(release, device) {
     const files = release.files || [];
-    const byOs = (os) => files.filter((f) => f.os === os)
-      .sort((a, b) => (a.kind === PRIMARY[os] ? -1 : 0) - (b.kind === PRIMARY[os] ? -1 : 0));
+    const rank = (os, file) => (PREFER[os].indexOf(file.kind) + 1 || 99);
+    const byOs = (os) => files.filter((f) => f.os === os).sort((a, b) => rank(os, a) - rank(os, b));
     const button = document.getElementById("offer-button");
     const meta = document.getElementById("offer-meta");
     const others = document.getElementById("others");
@@ -133,6 +145,8 @@
     // tar.xz is read for Linux: it is the same program as the AppImage, and
     // a tarball can be measured without mounting anything.
     const linuxFacts = files.find((f) => f.os === "linux" && f.glibc) || byOs("linux")[0];
+    // An installer does not say what it unpacks to: the zip beside it does.
+    const unpacked = (os) => byOs(os).find((f) => f.unpacked);
     const disk = (file) => (file && file.unpacked ? say(", and {size} of disk", { size: megabytes(file.unpacked) }) : "");
     const mac = byOs("macos")[0];
     const oldest = (mac && mac.min_macos) || {};
@@ -143,9 +157,9 @@
         + say(", a graphics driver with Vulkan or OpenGL 3.3") + disk(linuxFacts) + ".",
       macos: (oldest.arm64 && oldest.x86_64
         ? say("Needs macOS {arm} or later on Apple silicon, {intel} or later on Intel", { arm: oldest.arm64, intel: oldest.x86_64 })
-        : say("Needs macOS on Apple silicon or Intel")) + disk(mac) + ".",
+        : say("Needs macOS on Apple silicon or Intel")) + disk(unpacked("macos")) + ".",
       windows: say("Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3")
-        + disk(byOs("windows")[0]) + ".",
+        + disk(unpacked("windows")) + ".",
     };
     for (const [os, text] of Object.entries(needs)) {
       document.querySelector('[data-need="' + os + '"]').textContent = text;
@@ -154,6 +168,16 @@
     // Commands with the real file names in them.
     const appImage = byOs("linux").find((f) => f.kind === "AppImage");
     const tar = byOs("linux").find((f) => f.kind === "tar.xz");
+    const deb = byOs("linux").find((f) => f.kind === "deb");
+    for (const part of document.querySelectorAll("[data-has]")) {
+      part.hidden = !files.some((f) => f.kind === part.dataset.has);
+    }
+    if (deb) {
+      document.querySelector('[data-cmd="linux-deb"]').textContent = "cd ~/Downloads && sudo apt install ./" + deb.name;
+      const link = document.getElementById("linux-deb");
+      link.href = deb.url;
+      link.textContent = ".deb (" + megabytes(deb.size) + ")";
+    }
     if (appImage) {
       document.querySelector('[data-cmd="linux-appimage"]').textContent =
         "chmod +x " + appImage.name + " && ./" + appImage.name;
@@ -183,17 +207,20 @@
 
         document.getElementById("steps-line").textContent = firstLine(os, pick);
         for (const steps of document.querySelectorAll("[data-steps]")) steps.hidden = steps.dataset.steps !== os;
+        for (const part of document.querySelectorAll('[data-steps="' + os + '"] [data-kind]')) {
+          part.hidden = part.dataset.kind !== pick.kind;
+        }
         const unsigned = os === "macos" ? !pick.notarized : os === "windows" ? pick.signed !== true : false;
         for (const step of document.querySelectorAll('[data-steps="' + os + '"] [data-unsigned]')) {
           step.hidden = !unsigned;
         }
 
         document.getElementById("verify-how").textContent = say(CHECK_IN[os]);
-        const sums = byOs(os);
-        document.getElementById("sums").replaceChildren(...sums.flatMap((file) => [
-          sums.length > 1 ? el("p", { class: "note", text: say("The {kind}:", { kind: file.kind }) }) : null,
+        // Every file for this system, its size, and the command that checks it.
+        document.getElementById("sums").replaceChildren(...byOs(os).flatMap((file) => [
+          el("p", { class: "note file" }, el("a", { href: file.url, text: file.name }), " · " + megabytes(file.size)),
           copyRow(checkCommand(os, file)),
-        ].filter(Boolean)));
+        ]));
       }
 
       const rest = Object.keys(NAMES).filter((o) => o !== os && byOs(o).length);

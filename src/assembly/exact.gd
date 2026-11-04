@@ -148,6 +148,7 @@ class Item extends RefCounted:
 	## the way it points, frame basis] each.
 	var _world: Array = []
 	var _worked: bool = false
+	var _extent: Array = []
 
 	func _init(of: Shape, where: Transform3D) -> void:
 		shape = of
@@ -155,6 +156,26 @@ class Item extends RefCounted:
 		var box: Array = Exact.box_in(of.lo, of.hi, where)
 		lo = box[0]
 		hi = box[1]
+
+	## Where it really reaches, its lowest corner and its highest: of its
+	## pieces' corners where it stands. [member lo] and [member hi] are its
+	## shape's box turned with it, which finds what is near it; turned off
+	## the axes the box's corners stand past the part, and a halberd held at
+	## an angle reached 7.7 LDU under the ground its trebuchet stood on, so
+	## the trebuchet stood 7.7 over it (6043-1). Where a part is lowest, how
+	## tall it is and what it stands on are read from these. Worked out once,
+	## when first asked.
+	func low() -> Vector3:
+		return _reach()[0]
+
+	func high() -> Vector3:
+		return _reach()[1]
+
+	func _reach() -> Array:
+		if _extent.is_empty():
+			_extent = [lo, hi] if Exact.square(at.basis) or not shape.has_pieces() \
+				else Exact.reach_of(shape, at)
+		return _extent
 
 	func world() -> Array:
 		if not _worked:
@@ -480,6 +501,41 @@ static func box_in(lo: Vector3, hi: Vector3, at: Transform3D) -> Array:
 	var b: Basis = at.basis
 	var reach: Vector3 = b.x.abs() * half.x + b.y.abs() * half.y + b.z.abs() * half.z
 	return [middle - reach, middle + reach]
+
+
+## Whether [param basis] turns a box onto the axes, a quarter turn at a time
+## or none, so the box carried by it is still the box of what it holds.
+static func square(basis: Basis) -> bool:
+	for axis: Vector3 in [basis.x, basis.y, basis.z]:
+		var size: float = axis.length()
+		if size > 0.0 and absf(axis[axis.abs().max_axis_index()]) < size * SQUARE_TO:
+			return false
+	return true
+
+
+## How near a column of a basis lies to an axis to count as on it, by its
+## cosine: within a fortieth of a degree.
+const SQUARE_TO := 0.9999999
+
+
+## Where [param shape]'s pieces reach carried by [param at]: [lo, hi] of
+## their corners. A piece whose own box, carried, lies inside what is found so
+## far cannot reach past it, so only the others' corners are read.
+static func reach_of(shape: Shape, at: Transform3D) -> Array:
+	var lo := Vector3.INF
+	var hi := -Vector3.INF
+	for p: Piece in shape.pieces:
+		var box: Array = box_in(p.lo, p.hi, at)
+		var box_lo: Vector3 = box[0]
+		var box_hi: Vector3 = box[1]
+		if box_lo.x >= lo.x and box_lo.y >= lo.y and box_lo.z >= lo.z \
+				and box_hi.x <= hi.x and box_hi.y <= hi.y and box_hi.z <= hi.z:
+			continue
+		for v: Vector3 in p.verts:
+			var w: Vector3 = at * v
+			lo = lo.min(w)
+			hi = hi.max(w)
+	return [lo, hi]
 
 
 # -- collisions ------------------------------------------------------------

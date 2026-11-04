@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<!--
+  Where an app directory's reviewer signs in: /review (claudedir,
+  2026-11-03). Claude's Connectors Directory asks for a test account a
+  reviewer can sign in to, and everyone else signs in with a code we
+  email, which a reviewer could not receive for an account of ours. So the
+  review account (tools/web/relay_account.mjs review) is at a Resend test
+  address, which no one receives mail at, with a password: the only kind
+  of account a password signs in to (api/_auth.js isTestAccount). This
+  page signs in such an account and no other, and keeps the session where
+  the app and the connector's sign-in find it (web/account.js), so the
+  reviewer goes on to /app and to Claude signed in. Linked from nowhere;
+  its steps are in the directory submission (docs/directory/claude.md).
+  English only, as the docs are. The script is review.js, not inline.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Review sign-in · Brickworks</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+/* The site's colours, type and controls (site.css); here only this
+   page's layout, the connector sign-in's (authorize.html): one card. */
+html, body { min-height: 100%; }
+body {
+	line-height: 1.6;
+	display: grid;
+	place-items: start center;
+	padding: clamp(28px, 8vh, 90px) 16px 40px;
+	background-image: var(--glow), var(--studs); background-size: auto, 24px 24px; background-repeat: no-repeat, repeat;
+}
+main { width: min(100%, 440px); }
+.mark {
+	display: flex; align-items: center; justify-content: center; gap: 9px;
+	font-weight: 640; letter-spacing: -0.02em; font-size: var(--t-body);
+	margin: 0 auto 22px; width: fit-content; min-height: var(--control-h); color: inherit; text-decoration: none;
+}
+.card {
+	padding: 32px 28px 26px; border-radius: var(--r-4);
+	box-shadow: var(--highlight), var(--shadow);
+}
+@media (width < 600px) { .card { padding: 26px 20px 20px; } }
+h1 { margin: 0 0 6px; font-size: var(--t-h2); letter-spacing: -0.02em; font-weight: 690; line-height: 1.25; }
+.card p { margin: 0 0 14px; }
+.card .soft { color: var(--ink-soft); font-size: var(--t-small); }
+form label { display: block; font-size: var(--t-small); font-weight: 600; margin: 10px 0 6px; }
+input { width: 100%; }
+.cta { width: 100%; margin-top: 14px; }
+.who { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; font-size: var(--t-small); color: var(--ink-soft); }
+.who b { color: var(--ink); font-weight: 620; overflow-wrap: anywhere; }
+.who .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); flex: none; }
+ol { margin: 0 0 6px; padding-left: 1.3em; font-size: var(--t-small); }
+ol li { margin: 0 0 8px; }
+button.link { margin: 12px 0 0; font-size: var(--t-small); }
+.card .say { min-height: 1.4em; margin: 12px 0 0; font-size: var(--t-small); color: var(--ink-soft); }
+.card .say.bad { color: var(--bad); }
+.hide { display: none; }
+footer { margin-top: 18px; text-align: center; }
+footer a { color: var(--ink-faint); font-size: var(--t-tiny); padding-block: 6px; }
+footer a:hover { color: var(--ink-soft); }
+footer p { margin: 8px 0 0; color: var(--ink-faint); font-size: var(--t-micro); }
+</style>
+
+<main>
+	<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+
+	<div class="card">
+		<section id="sign-in-step">
+			<h1>Sign in to review Brickworks</h1>
+			<p class="soft">For reviewers of Brickworks in an app directory, with the review
+				account’s address and password you were given. Everyone else signs in with a
+				code we email: there is no password. <a href="/profile">Sign in that way</a></p>
+			<form id="sign-in-form" novalidate>
+				<label for="email">Address</label>
+				<input id="email" type="email" autocomplete="username" inputmode="email" required>
+				<label for="password">Password</label>
+				<input id="password" type="password" autocomplete="current-password" required>
+				<button class="cta" id="go" type="submit">Sign in</button>
+			</form>
+		</section>
+
+		<section id="done-step" class="hide">
+			<div class="who"><span class="dot" aria-hidden="true"></span>
+				<span>Signed in as <b id="signed-in-as"></b></span></div>
+			<h1>Next</h1>
+			<ol>
+				<li><a id="open-app" href="/app?assistant=on" target="_blank" rel="noopener">Open the app</a>
+					in this browser, its assistant switched on, and keep its tab open: that tab is where
+					the assistant builds.</li>
+				<li>In the assistant you are reviewing, connect Brickworks (its address is
+					<b>https://brickworks.diy/api/mcp</b>). It asks you to allow it here, signed in
+					already.</li>
+				<li>Ask it to build something, and watch the app’s tab.</li>
+			</ol>
+			<button class="link" id="sign-out" type="button">Sign out</button>
+		</section>
+
+		<p class="say" id="say" role="status" aria-live="polite"></p>
+	</div>
+
+	<footer><a href="/">brickworks.diy</a> · <a href="/privacy">What Brickworks keeps</a> · <a href="/terms">Terms of use</a>
+		<p>LEGO® is a trademark of the LEGO Group of companies which does not
+		sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure
+		and the Brick and Knob configurations are also trademarks of the LEGO Group.</p></footer>
+</main>
+
+<script type="module" src="/review.js"></script>
+</html>

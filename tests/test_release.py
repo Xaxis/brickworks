@@ -138,10 +138,17 @@ def test_every_package_name_says_its_system():
              for names in release.artifacts("1.2.3").values() for name in names}
     assert named == {
         "Brickworks-1.2.3-linux-x86_64.AppImage": {"os": "linux", "arch": "x86_64", "kind": "AppImage"},
+        "Brickworks-1.2.3-linux-amd64.deb": {"os": "linux", "arch": "x86_64", "kind": "deb"},
         "Brickworks-1.2.3-linux-x86_64.tar.xz": {"os": "linux", "arch": "x86_64", "kind": "tar.xz"},
+        "Brickworks-1.2.3-macos-universal.dmg": {"os": "macos", "arch": "universal", "kind": "dmg"},
         "Brickworks-1.2.3-macos-universal.zip": {"os": "macos", "arch": "universal", "kind": "zip"},
+        "Brickworks-1.2.3-windows-x86_64-setup.exe": {"os": "windows", "arch": "x86_64",
+                                                      "kind": "installer"},
         "Brickworks-1.2.3-windows-x86_64.zip": {"os": "windows", "arch": "x86_64", "kind": "zip"},
     }
+    # The one the download page offers first, first (web/download.js PREFER).
+    assert [names[0].rsplit("-", 2)[-1] for names in release.artifacts("1.2.3").values()] == [
+        "x86_64.AppImage", "universal.dmg", "setup.exe"]
 
 
 def test_help_after_a_command_is_help_and_does_nothing():
@@ -347,9 +354,12 @@ def _smoke_given(tmp_path, monkeypatch, capsys, picture, said) -> tuple[int, str
         (Path(env["HOME"]) / ".local/share/godot/app_userdata/Brickworks").mkdir(
             parents=True, exist_ok=True)
         given = dict(arg.split("=", 1) for arg in command if arg.startswith("--") and "=" in arg)
+        # A model handed over as a double-click hands it over: a bare path.
+        model = next((arg for arg in command[1:] if not arg.startswith("-")), "")
         if "--out" in given:
             Path(given["--out"]).write_text("1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n" * 60)
-            return 0, "wrote %s (60 parts)" % given["--out"]
+            return 0, ("opened %s: 60 parts\n" % model if model else "") \
+                + "wrote %s (60 parts)" % given["--out"]
         if "--shot" in given:
             Path(given["--shot"]).write_bytes(reference)
             return 0, ""
@@ -425,6 +435,39 @@ def test_a_best_with_shapes_refused_fails_the_smoke(tmp_path, monkeypatch, capsy
     assert "ok    ...and the editor's own picture of it" in said
 
 
+def test_a_check_this_machine_cannot_make_is_said_and_neither_passes_nor_fails(
+        tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(release, "opens_models", lambda package, base, env, root: [
+        ("a double-click on a model, not run here: no GPU", None, "")])
+    code, said = _smoke_given(tmp_path, monkeypatch, capsys,
+                              release.BEST_REFERENCE.read_bytes(), "Opened Car.\n" + TRACED)
+    assert code == 0, said
+    assert "  --    a double-click on a model, not run here: no GPU" in said
+
+
+def _mac_with(monkeypatch, arm64: str, gpus: str) -> str:
+    def run(command, **_):
+        out = arm64 if command[0] == "sysctl" else gpus
+        return subprocess.CompletedProcess(command, 0, out, "")
+    monkeypatch.setattr(release.subprocess, "run", run)
+    return release.mac_cannot_draw()
+
+
+def test_an_intel_mac_vm_says_why_it_cannot_draw(monkeypatch):
+    # GitHub's macos-15-intel: MoltenVK aborts on this GPU in vkCreateInstance.
+    vm = "    Apple Paravirtualized Graphics Device:\n      Chipset Model: Apple Paravirtualized Graphics Device\n"
+    assert "Apple Paravirtualized Graphics Device" in _mac_with(monkeypatch, "", vm)
+    assert _mac_with(monkeypatch, "0\n", vm) != ""
+
+
+def test_apple_silicon_and_a_real_intel_gpu_are_double_clicked(monkeypatch):
+    # macos-15 has the same paravirtual GPU and draws on it through Metal.
+    vm = "      Chipset Model: Apple Paravirtualized Graphics Device\n"
+    assert _mac_with(monkeypatch, "1\n", vm) == ""
+    assert _mac_with(monkeypatch, "", "      Chipset Model: AMD Radeon Pro 5500M\n"
+                                      "      Chipset Model: Intel UHD Graphics 630\n") == ""
+
+
 def test_the_smokes_session_keeps_its_tool_list_out_of_the_checkout(tmp_path, monkeypatch):
     # The relay keeps the last tools/list it heard in tools/mcp_tools.json.
     # A package from another commit serves another list, and smoking 0.13.0
@@ -453,3 +496,119 @@ def test_the_smokes_session_keeps_its_tool_list_out_of_the_checkout(tmp_path, mo
     assert [ok for _, ok, _ in said] == [True, True], said
     assert (checkout / "tools" / "mcp_tools.json").read_text() == ours
     assert "from_another_commit" in (smoke / "mcp_tools.json").read_text()
+
+
+# -- what a desktop needs to open a model in the app -------------------------
+
+def test_the_menu_entry_opens_each_model_type_and_is_valid(tmp_path):
+    entry = release.desktop_entry("brickworks", release.APP_ID, "9.9.9")
+    fields = dict(line.split("=", 1) for line in entry.splitlines() if "=" in line)
+    # %f: a double-click hands over the file, one window each.
+    assert fields["Exec"] == "brickworks %f"
+    assert fields["MimeType"].rstrip(";").split(";") == [kind["mime"] for kind in release.MODEL_TYPES]
+    assert fields["StartupWMClass"] == release.WINDOW_CLASS
+    if shutil.which("desktop-file-validate"):
+        path = tmp_path / (release.APP_ID + ".desktop")
+        path.write_text(entry)
+        checked = subprocess.run(["desktop-file-validate", str(path)], capture_output=True, text=True)
+        assert (checked.returncode, checked.stdout) == (0, "")
+
+
+def test_each_model_extension_is_its_own_mime_type(tmp_path):
+    import xml.etree.ElementTree as ElementTree
+    space = "{http://www.freedesktop.org/standards/shared-mime-info}"
+    root = ElementTree.fromstring(release.mime_types())
+    globs = {kind.get("type"): [g.get("pattern") for g in kind.iter(space + "glob")]
+             for kind in root.iter(space + "mime-type")}
+    assert globs == {kind["mime"]: ["*." + kind["ext"]] for kind in release.MODEL_TYPES}
+    if shutil.which("update-mime-database") and shutil.which("gio"):
+        share = tmp_path / "share"
+        release.desktop_files(share, "brickworks")
+        subprocess.run(["update-mime-database", str(share / "mime")], capture_output=True, check=True)
+        env = {"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "XDG_DATA_DIRS": str(share)}
+        for kind in release.MODEL_TYPES:
+            model = tmp_path / ("model." + kind["ext"])
+            model.write_bytes(b"0 a model\n" if kind["text"] else b"PK\x03\x04")
+            assert release.content_type(model, env) == kind["mime"], kind["ext"]
+
+
+def test_a_model_s_parts_count_its_sub_models_where_they_are_placed():
+    text = (ROOT / "src" / "dev" / "fixtures" / "telescope.mpd").read_text()
+    assert release.ldraw_parts(text) == 48
+    assert release.ldraw_parts((ROOT / "models" / "car.ldr").read_text()) == 61
+    assert release.ldraw_parts("0 FILE a.ldr\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 b.ldr\n"
+                               "1 4 0 0 0 1 0 0 0 1 0 0 0 1 b.ldr\n0 FILE b.ldr\n"
+                               "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+                               "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3002.dat\n") == 4
+    # A part carried in the file, as a Studio .io carries its own, is one
+    # part however many lines draw it: the app wrote 5 for bay_2025.io and
+    # this counted 6 until it read the headers as the app does.
+    assert release.ldraw_parts("0 FILE a.ldr\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+                               "1 4 0 0 0 1 0 0 0 1 0 0 0 1 custom.dat\n0 FILE custom.dat\n"
+                               "0 !LDRAW_ORG Unofficial_Part\n"
+                               "1 16 0 0 0 1 0 0 0 1 0 0 0 1 s/custom01.dat\n"
+                               "1 16 0 0 0 1 0 0 0 1 0 0 0 1 stud.dat\n") == 2
+
+
+def test_the_deb_installs_the_app_its_entry_icons_and_types(tmp_path):
+    if not shutil.which("dpkg-deb"):
+        return
+    folder = tmp_path / "Brickworks-9.9.9-linux-x86_64"
+    folder.mkdir()
+    (folder / "brickworks.x86_64").write_bytes(b"\x7fELF GLIBC_2.31\0")
+    (folder / "brickworks.pck").write_bytes(b"GDPC")
+    for name in ("README.txt", "ATTRIBUTION.md"):
+        (folder / name).write_text("words")
+    (folder / "THIRD-PARTY-NOTICES.txt").write_text(WHOLE_NOTICES)
+    shutil.copy2(ROOT / "docs" / "ATTRIBUTION.md", folder / "ATTRIBUTION.md")
+    kept = release.WORK
+    release.WORK = tmp_path / "work"
+    try:
+        target = tmp_path / "Brickworks-9.9.9-linux-amd64.deb"
+        release.write_deb(folder, target, "9.9.9", 1761696000)
+    finally:
+        release.WORK = kept
+    facts = release.inspect_deb(target)
+    assert (facts["package"], facts["version"], facts["architecture"]) == ("brickworks", "9.9.9", "amd64")
+    assert facts["depends"] == "libc6 (>= 2.31)" and facts["glibc"] == "2.31"
+    assert facts["executable"] and facts["command"] == "../lib/brickworks/brickworks.x86_64"
+    assert facts["opens"] == [kind["ext"] for kind in release.MODEL_TYPES]
+    assert sorted(facts["icons"], key=lambda size: int(size.split("x")[0])) == [
+        "%dx%d" % (n, n) for n in (16, 22, 24, 32, 48, 64, 128, 256, 512)]
+    assert "usr/share/icons/hicolor/scalable/apps/%s.svg" % release.APP_ID in facts["contents"]
+    assert facts["loose"] == []
+    assert facts["licences"]["lacking"] == []
+
+
+def test_the_disk_image_background_is_one_tiff_with_a_page_at_each_resolution(tmp_path):
+    pictures = [((release.PACKAGE_ART / name).read_bytes(), dpi)
+                for name, dpi in (("dmg-background.png", 72), ("dmg-background@2x.png", 144))]
+    target = tmp_path / "background.tiff"
+    release.write_tiff(pictures, target)
+    data = target.read_bytes()
+    assert data[:4] == b"II*\0"
+    pages, at = [], struct.unpack("<I", data[4:8])[0]
+    while at:
+        count = struct.unpack("<H", data[at:at + 2])[0]
+        tags = {}
+        for n in range(count):
+            tag, kind, _, value = struct.unpack("<HHII", data[at + 2 + 12 * n:at + 14 + 12 * n])
+            tags[tag] = value & 0xFFFF if kind == 3 else value
+        strip = data[tags[273]:tags[273] + tags[279]]
+        dpi = struct.unpack("<I", data[tags[282]:tags[282] + 4])[0]
+        pages.append((tags[256], tags[257], dpi, len(zlib.decompress(strip))))
+        at = struct.unpack("<I", data[at + 2 + 12 * count:at + 6 + 12 * count])[0]
+    width, height = release.DMG_WINDOW
+    assert pages == [(width, height, 72, width * height * 3),
+                     (width * 2, height * 2, 144, width * height * 12)]
+
+
+def test_the_notes_say_the_zips_stay_for_one_release(tmp_path):
+    files = [{"os": describe["os"], "kind": describe["kind"], "name": name, "size": 1,
+              "facts": {"exes": {name: {"signed": False}}} if describe["os"] == "windows" else {}}
+             for names in release.artifacts("0.1.0").values() for name in names
+             for describe in [release.describe_file(name)]]
+    notes = _in(_copy_of_the_three(), lambda: release.release_notes("0.1.0", files, "v0.1.0"))
+    assert "zips** are still here for this release" in notes
+    assert "drag Brickworks onto Applications" in notes and "setup.exe" in notes
+    assert "sudo apt install ./Brickworks-0.1.0-linux-amd64.deb" in notes

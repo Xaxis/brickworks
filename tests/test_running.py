@@ -26,8 +26,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 import running  # noqa: E402
 
 
-## Each run's own: units run the suite at once, and one run's stop(MARK)
-## ended another's sleeper, which then found nothing (ci_gate, 2026-11-03).
+# This run's own: units' gates run the suite at once on one machine, and with
+# one name for all, another run's stop() ended this run's sleeper (it was
+# found as two strangers, its own already gone with -SIGTERM).
 MARK = "brickworks_test_marker_run_%d" % os.getpid()
 
 

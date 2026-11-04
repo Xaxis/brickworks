@@ -47,6 +47,10 @@ const HELD_FOR_S := 180
 ## What a window opened by New window is started with: a session of its
 ## own, not one another window left. The web's is ?new in the address.
 const NEW_WINDOW := "--new-session"
+## The model files the app opens when the system hands it one: those File,
+## Open from a file reads (ModelFilePicker), which the packages register
+## with each system (tools/release.py).
+const MODEL_FILES := ["ldr", "mpd", "io", "lxf", "lxfml"]
 
 static var _id: String = ""
 ## A run driven from the command line (a design, a render, a benchmark) is
@@ -73,7 +77,25 @@ static func use(given: String) -> void:
 static func opened_new() -> bool:
 	if OS.has_feature("web"):
 		return bool(JavaScriptBridge.eval("window.brickworksTabNew === true", true))
-	return OS.get_cmdline_user_args().has(NEW_WINDOW)
+	return OS.get_cmdline_user_args().has(NEW_WINDOW) or not given_file().is_empty()
+
+
+## The model the system asked this window to open, or "": a model
+## double-clicked, or dropped on the app's icon. It comes as a bare path on
+## the command line: the file associations the Windows installer and the
+## Linux packages make run the app with it, and on macOS Godot adds the file
+## Finder opened the same way, or starts another copy of the app with it
+## when one is running already. So a model opened while the app is open
+## comes up in a window of its own, as New window does, laid over nobody's
+## working model.
+static func given_file() -> String:
+	if OS.has_feature("web"):
+		return ""
+	for argument: String in OS.get_cmdline_args():
+		if not argument.begins_with("-") and argument.get_extension().to_lower() in MODEL_FILES \
+				and FileAccess.file_exists(argument):
+			return argument
+	return ""
 
 
 ## File, New tab: the app again in a tab of its own, on a new model, this

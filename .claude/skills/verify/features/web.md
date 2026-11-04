@@ -5247,6 +5247,33 @@ to the floor two ways or more is weighed as the floor, a piece hanging off
 it again only when a part joins it), where every step's build was weighed
 afresh and its 1,420 steps took ten minutes.
 
+A part falls in the whole test only when it does (stability, 2026-11-03):
+the floor and what stands on it are read from the parts' real shapes where
+they are (`Exact.Item.low` and `high`), not from their boxes turned with them,
+and a piece resting on another is judged square by the parts it rests by
+(`ExactCheck.rests`), not by every part it is built of. A build of two parts
+or more parked on another, standing by its foot alone with its weight over
+what it stands on (`ExactCheck.rests_on`), is a build of its own, as one on
+the floor is, and no fault: the whole test's reason ends "...; <it> rests on
+<part>". Wedged into, worn on, hanging from or against another, or on studs
+where it has no stud, it is still held by nothing, and so is one part alone
+resting on another (`tested_models_probe`'s brick on a tile):
+
+```sh
+tools/probe.sh tested_falls_probe
+```
+
+Proves it when it ends "a part is said to fall when it falls, and not when it
+stands": a stack beside 6043-1's halberdier, whose halberd's turned box reaches
+under the floor, is "2 builds"; 928-1's buggy, its driver's arm raised, parked
+on a 6 x 6 plate's studs, passes as "2 builds" ending "...Tread and 22 parts
+with it rests on Plate 6 x 6", a tyre of it named; the same buggy with its back
+wheels off the plate's edge "falls off Plate 6 x 6"; a 1 x 2 brick in the air, a 1 x 6 plate
+past the edge of the tile under it, and a 1 x 2 tile lying on a slope's face,
+each joined to nothing, fall; and four 1 x 1 bricks against a stack each "stand
+against Brick 2 x 4", the fourth named as the first. `tested_seeds_probe` prints
+each seed's parked builds as "parked:" lines, never counted as failures.
+
 The SQL, dry (never applied by an agent):
 
 ```sh
