@@ -89,6 +89,8 @@ func read_all(from: Variant, each: Callable, pace: int = 0) -> int:
 				each.call(page)
 				count += 1
 		return count if count > 0 else -1
+	if pace <= 0:
+		return read_file(str(from), each)
 	var file: FileAccess = FileAccess.open(str(from), FileAccess.READ)
 	if file == null:
 		return -1
@@ -97,8 +99,23 @@ func read_all(from: Variant, each: Callable, pace: int = 0) -> int:
 		for page: Page in feed(file.get_line() + "\n"):
 			each.call(page)
 			count += 1
-			if pace > 0 and count % pace == 0:
+			if count % pace == 0:
 				await tree.process_frame
+	return count if count > 0 else -1
+
+
+## [method read_all] of the file at [param path], with no frame between
+## pages: for a worker (Main._pdf_file), the window's frames going on beside
+## it.
+func read_file(path: String, each: Callable) -> int:
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return -1
+	var count: int = 0
+	while not file.eof_reached():
+		for page: Page in feed(file.get_line() + "\n"):
+			each.call(page)
+			count += 1
 	return count if count > 0 else -1
 
 

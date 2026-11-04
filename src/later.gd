@@ -104,7 +104,8 @@ static func script(name: StringName) -> GDScript:
 ## compile would hold a frame too long: in a browser BookletMaker held one
 ## for 161 to 342 ms of its own work, and HeldSteps with the four scripts it
 ## names 343 (the car's booklet on previews at load 6 to 26, bookletbar,
-## 2026-11-02). Where it cannot be, compiled here.
+## 2026-11-02). Where it cannot be, compiled here. With no job, a frame at a
+## time.
 static func script_in_background(name: StringName, job: Working.Job) -> GDScript:
 	var path: String = PATHS[name]
 	if ResourceLoader.has_cached(path):
@@ -112,7 +113,10 @@ static func script_in_background(name: StringName, job: Working.Job) -> GDScript
 	var started: int = Time.get_ticks_msec()
 	if ResourceLoader.load_threaded_request(path, "GDScript") == OK:
 		while ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
-			await job.next()
+			if job != null:
+				await job.next()
+			else:
+				await (Engine.get_main_loop() as SceneTree).process_frame
 		var loaded: GDScript = ResourceLoader.load_threaded_get(path) as GDScript
 		if loaded != null:
 			_note(name, started)
