@@ -620,8 +620,10 @@ func place_step(path: String) -> int:
 ## The steps worked out again after the model or its steps changed, in the
 ## author's steps when it now has them, showing the end of the main step
 ## numbered [param number] (the one showing, when -1), or of its callout's
-## step [param inside].
-func refresh(number: int = -1, inside: int = 0) -> void:
+## step [param inside]. [param planned] is the author's steps planned
+## already, as a step edit plans them to say where its parts went.
+func refresh(number: int = -1, inside: int = 0,
+		planned: Array[Instructions.Step] = []) -> void:
 	if not visible:
 		return
 	var at: Instructions.Step = current_step()
@@ -630,7 +632,7 @@ func refresh(number: int = -1, inside: int = 0) -> void:
 	_authored = AuthorSteps.any(_world, _scenery)
 	if _authored and _mode == 0:
 		_set_mode_quietly(AUTHORS)
-	_steps = _plan()
+	_steps = planned if not planned.is_empty() and _mode == AUTHORS else _plan()
 	if _steps.is_empty():
 		stop()
 		return

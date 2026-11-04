@@ -4466,6 +4466,13 @@
       "entry": "src/ai/copilot_cli.gd",
       "reach": "godot --path . -- --ask-copilot=\"a small post box\"   (SPENDS A GITHUB COPILOT PLAN; or tick My Copilot in the design panel)",
       "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "steps_to probe",
+      "entry": "src/dev/steps_to_probe.gd",
+      "reach": "tools/probe.sh steps_to_probe   (headless: parts of sub-models and of the model's own moved to step 1, a middle step and the last over MCP and by the steps panel's drop, read back off the plan and edit_steps's list)",
+      "area": "view"
     }
   ]
 }

@@ -6864,11 +6864,56 @@ msgstr "Schritt %d nach hinten gesetzt"
 msgid "merged step %d with the next"
 msgstr "Schritt %d mit dem nächsten zusammengeführt"
 
-msgid "took out step %d; its parts are in the step before"
-msgstr "Schritt %d herausgenommen; seine Teile sind im Schritt davor"
+msgid "moved %s to steps %d to %d"
+msgstr "%s in die Schritte %d bis %d verschoben"
 
-msgid "took out step %d; its parts are in the step after"
-msgstr "Schritt %d herausgenommen; seine Teile sind im Schritt danach"
+msgid "the %s is built in its own steps before step %d, which puts it on"
+msgstr "%s wird in eigenen Schritten vor Schritt %d gebaut, der es anbringt"
+
+msgid "the %s are built in their own steps before step %d, which puts them on"
+msgstr "%s werden in eigenen Schritten vor Schritt %d gebaut, der sie anbringt"
+
+msgid "now in step %d"
+msgstr "jetzt in Schritt %d"
+
+msgid "now in steps %d to %d"
+msgstr "jetzt in den Schritten %d bis %d"
+
+msgid "it is step %d now"
+msgstr "jetzt ist es Schritt %d"
+
+msgid "took out step %d; its parts are in step %d"
+msgstr "Schritt %d herausgenommen; seine Teile sind in Schritt %d"
+
+msgid "step %d has no step of the model's own to put them in"
+msgstr "Schritt %d hat keinen eigenen Schritt des Modells, in den sie kommen könnten"
+
+msgid "step %d is one of the model's own steps"
+msgstr "Schritt %d ist einer der eigenen Schritte des Modells"
+
+msgid "step %d is one of the %s's steps"
+msgstr "Schritt %d ist einer der Schritte von %s"
+
+msgid "the %s whole, which goes in a step of the model's own"
+msgstr "%s als Ganzes, das in einen eigenen Schritt des Modells gehört"
+
+msgid "the %s whole, which goes in a step of the %s"
+msgstr "%s als Ganzes, das in einen Schritt von %s gehört"
+
+msgid "%s of the model's own, in step %d"
+msgstr "%s des Modells selbst, in Schritt %d"
+
+msgid "%s of the model's own, in steps %d to %d"
+msgstr "%s des Modells selbst, in den Schritten %d bis %d"
+
+msgid "%s of the %s, in step %d"
+msgstr "%s von %s, in Schritt %d"
+
+msgid "%s of the %s, in steps %d to %d"
+msgstr "%s von %s, in den Schritten %d bis %d"
+
+msgid "A step takes only the parts of its own sub-model, or a sub-model whole, all its parts given together"
+msgstr "Ein Schritt nimmt nur die Teile seines eigenen Untermodells, oder ein Untermodell als Ganzes, mit allen seinen Teilen zusammen angegeben"
 
 msgid "the steps are as they were"
 msgstr "die Schritte sind, wie sie waren"

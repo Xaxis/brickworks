@@ -2170,6 +2170,14 @@
       "tests": []
     },
     {
+      "id": "cli:steps_to probe",
+      "kind": "cli",
+      "entry": "src/dev/steps_to_probe.gd",
+      "reach": "tools/probe.sh steps_to_probe   (headless: parts of sub-models and of the model's own moved to step 1, a middle step and the last over MCP and by the steps panel's drop, read back off the plan and edit_steps's list)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:table race",
       "kind": "cli",
       "entry": "src/dev/table_race_probe.gd",
