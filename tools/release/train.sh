@@ -1,7 +1,7 @@
 #!/bin/bash
 # train.sh : a release staged in one command, which ships when its turn comes.
 #
-#   train.sh stage TAG BRANCH [--after PREV] [--checks "..."] [--probes "..."]
+#   train.sh stage TAG BRANCH [--after PREV] [--checks "..."] [--probes "..." | --probes none --why "..."]
 #                             [--units "..."] [--title "..."] [--accept CHECK "REASON"]...
 #   train.sh status [TAG...]
 #   train.sh hold TAG [REASON]          train.sh release TAG
@@ -15,6 +15,18 @@
 # added. Each file is read only when its step comes, so a unit merged into
 # BRANCH meanwhile brings its checks by an edit of TAG.train/checks, until
 # the ship begins.
+#
+# Its probes, with no --probes, are every one tools/suite/headless.txt
+# lists in BRANCH's tree (never windowed.txt's or out.txt's), and it says
+# how many, and why in TAG.train/probes.why. --probes "a b" names exactly
+# those. --probes none runs none, and wants --why "the reason", which the
+# log and status say; --probes "" is refused. Staged with --probes "" every
+# time, rel-m25x ran no probe, and between v0.15.0 and rel-m256 eight suite
+# probes went red on main unseen until desktop016 ran the suite. All 209
+# took 19m30s four at a time, beside a battery of about two hours, and
+# failed the six headless ones of the eight; those featuremap affected
+# reached would have caught three, as its graph follows res:// paths and
+# not a class used by its class_name (2026-11-04).
 #
 # The train waits until PREV's ship says brickworks.diy serves it, never on
 # PREV's process: what ship.sh does after that touches only the live site.
@@ -79,22 +91,39 @@ serving() { curl -s --max-time 20 "$LIVE" 2>/dev/null | grep -o '/b/[^/"]*/' | h
 # A spec file's words, into the array named.
 words() { read -r -d '' -a "$1" < "$SPEC/$2" || true; }
 
+# The probes a tools/suite list names, one a line, as check.sh reads it:
+# NAME or NAME:ARGS, and from a # to the line's end a comment.
+suite_names() { sed -E 's/(^|[[:space:]])#.*//' | awk 'NF { split($1, p, ":"); print p[1] }'; }
+
 stage() {
   [ $# -ge 2 ] || usage
-  local tag=$1 branch=$2 after="" checks="" probes="" units="" title="" accepts="" pid
+  local tag=$1 branch=$2 after="" checks="" probes="" named_probes="" said="" units="" title="" accepts="" pid
   shift 2
   case "$tag" in ""|*[!A-Za-z0-9._-]*) echo "train: '$tag' is not a tag"; exit 2 ;; esac
   while [ $# -gt 0 ]; do
     [ $# -ge 2 ] || { echo "train: $1 wants a value"; exit 2; }
     case "$1" in
-      --after) after=$2 ;; --checks) checks=$2 ;; --probes) probes=$2 ;;
-      --units) units=$2 ;; --title) title=$2 ;;
+      --after) after=$2 ;; --checks) checks=$2 ;; --probes) probes=$2; named_probes=1 ;;
+      --why) said=${2//[$'\t\n']/ } ;; --units) units=$2 ;; --title) title=$2 ;;
       --accept) [ $# -ge 3 ] && [ -n "$3" ] || { echo "train: --accept wants a check and the reason"; exit 2; }
         accepts+="$2"$'\t'"${3//[$'\t\n']/ }"$'\n'; shift ;;
       *) echo "train: no option $1"; exit 2 ;;
     esac
     shift 2
   done
+  # No probe runs only when the lead says so, and why: --probes "" said
+  # nothing, and every release from v0.15.0 to rel-m256 ran none.
+  if [ -n "$named_probes" ] && [ -z "${probes//[[:space:]]/}" ]; then
+    echo "train: --probes \"\" names no probe: leave --probes out for every headless one $branch lists, or say --probes none --why \"the reason\""; exit 2
+  fi
+  if [ "$probes" = none ]; then
+    [ -n "${said//[[:space:]]/}" ] || { echo "train: --probes none wants --why \"the reason\", which its log says"; exit 2; }
+    probes=""; said="none: $said"
+  elif [ -n "$said" ]; then
+    echo "train: --why is the reason for --probes none"; exit 2
+  elif [ -n "$named_probes" ]; then
+    said="named at staging"
+  fi
   git -C "$R" rev-parse -q --verify "$branch^{commit}" >/dev/null || { echo "train: no branch $branch"; exit 2; }
   # A name the branch has no check or probe for fails the release an hour
   # on, "no such check": share, build and sets held rel-m222, as one held
@@ -143,6 +172,20 @@ stage() {
     [ "$code" = 0 ] || { echo "train: flows_for.py failed on $branch:"; echo "$out" | tail -3; exit 2; }
     flows=$(sed -n 's/^checks: \([a-z_0-9 ]*\)$/\1/p' <<< "$out")
   fi
+  # With no --probes, every headless probe the branch lists, as check.sh
+  # reads the list: picked by what featuremap affected reaches, three of the
+  # six that went red would have run, and all 209 take about 20 minutes
+  # beside a battery of two hours (2026-11-04).
+  if [ -z "$named_probes" ]; then
+    local list n windowed
+    list=$(git -C "$R" show "$branch:tools/suite/headless.txt" 2>/dev/null) \
+      || { echo "train: $branch has no tools/suite/headless.txt: name the probes (--probes \"a b\"), or say --probes none --why \"the reason\""; exit 2; }
+    probes=$(suite_names <<< "$list" | paste -sd' ')
+    n=$(wc -w <<< "$probes")
+    windowed=$(git -C "$R" show "$branch:tools/suite/windowed.txt" 2>/dev/null | suite_names | wc -l)
+    said="all $n headless"
+    [ "$windowed" = 0 ] || said+=" ($windowed windowed left to the suite)"
+  fi
   for name in $flows; do case " $checks " in *" $name "*) ;; *) added+=" $name" ;; esac; done
   local -a named=()
   read -r -a named <<< "$checks$added"
@@ -153,9 +196,10 @@ stage() {
   clear_attempt "$tag" "$branch" || exit 1
   SPEC=$RO/$tag.train
   mkdir -p "$SPEC" || exit 1
-  rm -f "$SPEC"/{pid,step,result,sha,tip,shipped,reship} "$RO/$tag.probes"
+  rm -f "$SPEC"/{pid,step,result,sha,tip,shipped,reship,probes.staged} "$RO/$tag.probes"
   echo "$branch" > "$SPEC/branch"; echo "$after" > "$SPEC/after"
   echo "$checks" > "$SPEC/checks"; echo "$probes" > "$SPEC/probes"; echo "$units" > "$SPEC/units"
+  echo "$said" > "$SPEC/probes.why"
   echo "${title:-$branch}" > "$SPEC/title"
   printf '%s' "$accepts" > "$SPEC/accept"
   echo $(( $(date +%s) + ${TRAIN_WAIT:-21600} )) > "$SPEC/deadline"
@@ -173,7 +217,11 @@ stage() {
   setsid -f nohup bash "$SPEC/train.sh" run "$tag" > "$RO/${tag}_train.out" 2>&1 < /dev/null
   echo "train: $tag staged: ${after:+waits for $after to serve, then }merges $branch and ships"
   echo "  spec $SPEC/ (editable until it ships), log $RO/${tag}_train.out"
-  echo "  $told since $(git -C "$R" rev-parse --short "$base"), ${added:+adds$added to the checks named}${added:-adds no check to those named}"
+  # Each said alone: ${x:-...} is x itself once x is set, which put the
+  # checks added after the line that added them (2026-11-04).
+  if [ -n "$added" ]; then added="adds$added to the checks named"; else added="adds no check to those named"; fi
+  echo "  $told since $(git -C "$R" rev-parse --short "$base"), $added"
+  if [ -n "$named_probes" ] && [ -n "$probes" ]; then echo "  probes: $said: $probes"; else echo "  probes: $said"; fi
   [ -z "$accepts" ] || echo "  it may ship past $(cut -f1 <<< "${accepts%$'\n'}" | paste -sd' '), should each fail on $SITE too"
 }
 
@@ -298,6 +346,11 @@ reship() {
   echo "${checks[*]}" > "$SPEC/reship"
   [ -e "$SPEC/probes.staged" ] || cp "$SPEC/probes" "$SPEC/probes.staged"
   echo "$probes" > "$SPEC/probes"
+  # Why these, as the log and status say: not why those staged were.
+  if [ -n "$asked" ] && [ -n "$probes" ]; then echo "named at reship" > "$SPEC/probes.why"
+  elif [ -n "$asked" ]; then echo "none named at reship" > "$SPEC/probes.why"
+  elif [ -n "$probes" ]; then echo "those that did not pass before" > "$SPEC/probes.why"
+  elif [ ${#named[@]} -gt 0 ]; then echo "each passed before" > "$SPEC/probes.why"; fi
   # No pid and no result, as staged: a release staged after it waits.
   rm -f "$SPEC"/{pid,step,result} "$RO/$tag.done" "$RO/$tag.gave_up" "$RO/$tag.probes"
   for f in lead train; do
@@ -497,11 +550,15 @@ answer() { echo "$1" > "$RO/$TAG.probes.$$" && mv -f "$RO/$TAG.probes.$$" "$RO/$
 # are modelled at 19.2 minutes 2 at a time, 17.4 at 3 and 16.8 at 4 or more.
 probes() {
   TAG=$1; SPEC=$RO/$TAG.train; W=$WT/$TAG
-  local probe code fails at_once bad=""
+  local probe code fails at_once bad="" why
   export BOX_HEAVY_PRIORITY=1
   words probes probes
   at_once=${TRAIN_PROBES_AT_ONCE:-4}
-  say "probes, $at_once at a time: ${probes[*]}"
+  why=$(cat "$SPEC/probes.why" 2>/dev/null)
+  if [ ${#probes[@]} -eq 0 ]; then
+    say "runs no probe: ${why:-none named}"; rm -f "$RO/$TAG.probes"; return
+  fi
+  say "probes, $at_once at a time${why:+ ($why)}: ${probes[*]}"
   for probe in "${probes[@]}"; do
     while [ "$(jobs -rp | wc -l)" -ge "$at_once" ]; do wait -n; done
     probe_one "$probe" &
@@ -730,7 +787,7 @@ checks_line() {
 probes_line() {
   local t=$1 d=$RO/$1.train f n code fails passed=0 failed="" ran=0 total
   total=$(wc -w < "$d/probes")
-  [ "$total" -gt 0 ] || return 0
+  [ "$total" -gt 0 ] || { echo "  probes: none run, $(cat "$d/probes.why" 2>/dev/null || echo "none named")"; return 0; }
   for f in "$RO/${t}"_probe_*.exit; do
     [ -e "$f" ] && [ "$f" -nt "$d/shipped" ] || continue
     n=${f#"$RO/${t}_probe_"}; n=${n%.exit}

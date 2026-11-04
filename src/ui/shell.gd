@@ -2473,7 +2473,7 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 			if int(where[1]) >= 0:
 				undo.append_array(AuthorSteps.remove(world, str(where[0]), int(where[1]), skip))
 	undo.append_array(BookletLooks.follow(world, looked, skip, taken))
-	undo = AuthorSteps.squash(undo)
+	undo = AuthorSteps.squash(undo, world)
 	if undo.is_empty():
 		return "the steps are as they were"
 	# Where they are now, read off the booklet's plan, as the timeline and

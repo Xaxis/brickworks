@@ -735,7 +735,8 @@
       "area": "pipeline",
       "tests": [
         "tests/test_gears.py",
-        "tests/test_pck_split.py"
+        "tests/test_pck_split.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -3164,7 +3165,8 @@
       "area": "building",
       "tests": [
         "tests/test_gears.py",
-        "tests/test_pck_split.py"
+        "tests/test_pck_split.py",
+        "tests/test_release_train.py"
       ]
     },
     {

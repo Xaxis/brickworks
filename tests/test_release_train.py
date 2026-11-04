@@ -30,7 +30,10 @@ train's mark on the live database gone; status says which already fail
 there. It ships past such a check with --accept only where the live site
 fails it too, naming it in the merge message, the log and status. Staging
 adds to the checks named those flows_for.py finds for what the branch changed,
-and says which.
+and says which. Named no probes, it runs every headless one the branch's
+tools/suite/headless.txt lists, never a windowed one or one out.txt keeps
+out; a list named is kept as it is, none is run only when named none with a
+reason, which the log and status say, and --probes "" is refused.
 """
 
 from __future__ import annotations
@@ -216,6 +219,10 @@ class Yard:
             self.put("tools/release/" + name, (ROOT / "tools" / "release" / name).read_text())
         for name, text in STUBS.items():
             self.put(name, text)
+        # The suite's lists, empty: a train named no probes runs every
+        # headless one, here none.
+        for name in ("headless", "windowed", "out"):
+            self.put("tools/suite/%s.txt" % name, "# the yard's %s probes, one a line\n" % name)
         self.put(".gitignore", "bench/results/\n.claude/worktrees/\n.env\n")
         self.put("README", "a release yard\n")
         self.git(self.r, "add", "-A")
@@ -705,6 +712,7 @@ def test_a_stopped_release_reships_with_its_fix_and_the_one_staged_after_waits_f
         out = y.train("reship", "t-m2", "--probes", "fine", "io")
         assert out.returncode == 0, out.stdout + out.stderr
         assert "t-m2 reships from" in out.stdout and "io (and site, frames), probes: fine" in out.stdout, out.stdout
+        assert y.spec("t-m2", "probes.why") == "named at reship"
         # Staged after it while it reships: it waits, never stops on the stop before.
         assert y.train("stage", "t-m3", "stage2", "--after", "t-m2").returncode == 0
         y.until(lambda: y.spec("t-m2", "result"))
@@ -739,6 +747,8 @@ def test_a_stopped_release_reships_with_its_fix_and_the_one_staged_after_waits_f
         assert y.spec("t-m5", "result").startswith("stopped: probes failed: fails"), y.logs()
         assert set(y.text("probes_run").split()[len(ran_before):]) == {"fails"}
         assert y.spec("t-m5", "probes.staged") == "fine fails"
+        # The log says why these: not the reason those staged were.
+        assert "probes, 4 at a time (those that did not pass before): fails" in y.text("t-m5_train.out"), y.logs()
 
         # And the checks that did not pass: named none, rel-m242's reship ran
         # site and frames alone, past the check that held it (2026-11-01).
@@ -806,7 +816,7 @@ def test_staging_adds_the_checks_whose_flows_reach_what_the_branch_changed(tmp_p
         y.git(y.r, "checkout", "-q", "main")
         staged = y.train("stage", "t-m2", "stage2", "--checks", "site")
         assert staged.returncode == 0, staged.stdout + staged.stderr
-        assert "flows_for.py since %s, adds model_view to the checks named" % y.git(y.r, "rev-parse", "--short", "main") \
+        assert "flows_for.py since %s, adds model_view to the checks named\n" % y.git(y.r, "rev-parse", "--short", "main") \
             in staged.stdout, staged.stdout
         assert y.spec("t-m2", "checks") == "site model_view"
         y.until(lambda: y.spec("t-m2", "result"))
@@ -816,6 +826,125 @@ def test_staging_adds_the_checks_whose_flows_reach_what_the_branch_changed(tmp_p
         again = y.train("stage", "t-m3", "unitB", "--checks", "io")
         assert again.returncode == 0, again.stdout + again.stderr
         assert "adds no check to those named" in again.stdout and y.spec("t-m3", "checks") == "io", again.stdout
+    finally:
+        y.stop()
+
+
+def _lists_on_stage2(y: Yard, headless: str) -> None:
+    """stage2's own probes and lists, as the app's are: HEADLESS, window
+    windowed, and spend kept out."""
+    y.git(y.r, "checkout", "-q", "stage2")
+    for name in ("beams", "plates", "hinge", "gears", "window", "spend"):
+        y.put("src/dev/%s_probe.gd" % name,
+              "## godot --headless --path . --script src/dev/%s_probe.gd\nextends SceneTree\n" % name)
+    y.put("tools/suite/headless.txt", headless)
+    y.put("tools/suite/windowed.txt", "window\n")
+    y.put("tools/suite/out.txt", "spend   # spends money: a design on the API key\n")
+    y.git(y.r, "add", "-A")
+    y.git(y.r, "commit", "-q", "-m", "the branch's probes and lists")
+    y.git(y.r, "checkout", "-q", "main")
+
+
+def test_named_no_probes_a_train_runs_every_headless_one_its_branch_lists(tmp_path):
+    """Staged with --probes "" every time, no release ran a probe, and eight
+    went red on main unseen between v0.15.0 and rel-m256 (desktop016,
+    2026-11-04). Picked by what featuremap affected reaches, three of the six
+    headless ones would have run; all 209 take about 20 minutes, beside a
+    battery of two hours. So named none, a train runs every probe the
+    branch's own headless.txt lists, one it adds among them."""
+    y = Yard(tmp_path)
+    try:
+        _lists_on_stage2(y, "# run headless\nbeams\nplates   # a comment\nhinge:--quick\ngears\n")
+        staged = y.train("stage", "t-m2", "stage2", "--checks", "io")
+        assert staged.returncode == 0, staged.stdout + staged.stderr
+        said = "all 4 headless (1 windowed left to the suite)"
+        assert "  probes: %s\n" % said in staged.stdout, staged.stdout
+        assert y.spec("t-m2", "probes") == "beams plates hinge gears" and y.spec("t-m2", "probes.why") == said
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert sorted(y.text("probes_run").split()) == ["beams", "gears", "hinge", "plates"], y.logs()
+        assert "probes, 4 at a time (%s): beams plates hinge gears" % said in y.text("t-m2_train.out"), y.logs()
+        assert "probes: 4 of 4 passed" in y.train("status", "t-m2").stdout
+        # A branch with no list to take them from is refused, not run with none.
+        y.git(y.r, "checkout", "-q", "-b", "bare", "main")
+        y.git(y.r, "rm", "-q", "tools/suite/headless.txt")
+        y.git(y.r, "commit", "-q", "-m", "no list")
+        y.git(y.r, "checkout", "-q", "main")
+        bare = y.train("stage", "t-m3", "bare")
+        assert bare.returncode == 2, bare.stdout + bare.stderr
+        assert "train: bare has no tools/suite/headless.txt: name the probes" in bare.stdout, bare.stdout
+        assert not (y.ro / "t-m3.train").exists()
+    finally:
+        y.stop()
+
+
+def test_no_probes_run_only_when_named_none_with_the_reason(tmp_path):
+    """None is said, and why, in the stage's output, the log and status."""
+    y = Yard(tmp_path)
+    try:
+        for args, said in ((("--probes", "none"), 'train: --probes none wants --why "the reason", which its log says'),
+                           (("--probes", "none", "--why", " "), 'train: --probes none wants --why "the reason"'),
+                           (("--why", "docs alone"), "train: --why is the reason for --probes none"),
+                           (("--probes", "fine", "--why", "docs alone"), "train: --why is the reason for --probes none")):
+            refused = y.train("stage", "t-m2", "stage2", *args)
+            assert refused.returncode == 2 and said in refused.stdout, (args, refused.stdout)
+        assert not (y.ro / "t-m2.train").exists()
+        staged = y.train("stage", "t-m2", "stage2", "--checks", "io", "--probes", "none", "--why", "the docs alone changed")
+        assert staged.returncode == 0, staged.stdout + staged.stderr
+        assert "  probes: none: the docs alone changed\n" in staged.stdout, staged.stdout
+        assert y.spec("t-m2", "probes") == "" and y.spec("t-m2", "probes.why") == "none: the docs alone changed"
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert not (y.ro / "probes_run").exists(), y.text("probes_run")
+        assert "t-m2: runs no probe: none: the docs alone changed" in y.text("t-m2_train.out"), y.logs()
+        assert "probes: none run, none: the docs alone changed" in y.train("status", "t-m2").stdout
+    finally:
+        y.stop()
+
+
+def test_an_empty_probes_list_is_refused(tmp_path):
+    y = Yard(tmp_path)
+    try:
+        for empty in ("", "  "):
+            refused = y.train("stage", "t-m2", "stage2", "--probes", empty)
+            assert refused.returncode == 2, refused.stdout + refused.stderr
+            assert 'train: --probes "" names no probe: leave --probes out for every headless one stage2 lists, ' \
+                   'or say --probes none --why "the reason"' in refused.stdout, refused.stdout
+        assert not (y.ro / "t-m2.train").exists()
+    finally:
+        y.stop()
+
+
+def test_a_named_list_of_probes_is_kept_as_it_is(tmp_path):
+    """Neither the rest of headless.txt added, nor a windowed one named taken out."""
+    y = Yard(tmp_path)
+    try:
+        _lists_on_stage2(y, "beams\nplates\nhinge\n")
+        staged = y.train("stage", "t-m2", "stage2", "--checks", "io", "--probes", "window beams")
+        assert staged.returncode == 0, staged.stdout + staged.stderr
+        assert "  probes: named at staging: window beams\n" in staged.stdout, staged.stdout
+        assert y.spec("t-m2", "probes") == "window beams" and y.spec("t-m2", "probes.why") == "named at staging"
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert sorted(y.text("probes_run").split()) == ["beams", "window"], y.logs()
+    finally:
+        y.stop()
+
+
+def test_out_and_windowed_probes_are_never_run_unnamed(tmp_path):
+    """out.txt's skip themselves, and a skip fails (together held rel-m225),
+    and windowed ones are the suite's: named none, neither runs, nor a name
+    in headless.txt's comments."""
+    y = Yard(tmp_path)
+    try:
+        _lists_on_stage2(y, "beams   # not spend, nor window\n# window\n#spend\n")
+        staged = y.train("stage", "t-m2", "stage2", "--checks", "io")
+        assert staged.returncode == 0, staged.stdout + staged.stderr
+        assert "  probes: all 1 headless (1 windowed left to the suite)\n" in staged.stdout, staged.stdout
+        assert y.spec("t-m2", "probes") == "beams"
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert y.text("probes_run").split() == ["beams"], y.logs()
     finally:
         y.stop()
 

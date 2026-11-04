@@ -14,8 +14,15 @@
 ## less what the main thread waited for a CPU; three times as long at a load
 ## past the box's cores, where the work itself slows), the
 ## timeline's plan after it the same as one read afresh, and the undo giving
-## back the file to the byte. With --into, each edit's saved file is written
-## there (tower_next.ldr, ...), to hold against another checkout's.
+## back the file to the byte. Each edit is of a part of the same step, the
+## middle one or the next with more in it than the part, which the probe
+## goes back to: the timeline goes with the part an edit moves, and stays
+## there when it is undone (stepsto), and the gatehouse's third edit was
+## made of a part alone in its step, which "made a new step" of it and
+## recorded an undo, the file unchanged (suitesteps). Such an edit says the
+## steps are as they were, with nothing to undo. With --into, each edit's
+## saved file is written there (tower_next.ldr, ...), to hold against
+## another checkout's.
 extends SceneTree
 
 const BAR_MS := 300.0
@@ -96,8 +103,13 @@ func _model(name: String, path: String, judged: bool) -> void:
 		_steps.steps().size()], own and middle.size() >= 3)
 	if middle.size() < 3:
 		return
-	_steps.refresh(middle[middle.size() / 2].number)
+	var number: int = middle[-1].number
+	for step: Instructions.Step in middle.slice(middle.size() / 2):
+		if step.brick_ids.size() > 1 or not step.copies.is_empty():
+			number = step.number
+			break
 	for op: String in ["next", "prev", "new"]:
+		_steps.refresh(number)
 		var at: Instructions.Step = _steps.current_step()
 		var before: String = _store.to_text("probe", true)
 		var depth: int = _builder.history_depth()
@@ -109,7 +121,6 @@ func _model(name: String, path: String, judged: bool) -> void:
 		var busy: float = 0.0
 		var said: String = ""
 		var part: int = at.brick_ids[0]
-		var number: int = at.number
 		for attempt: int in TRIES:
 			if attempt > 0:
 				_builder.undo()
@@ -163,6 +174,17 @@ func _model(name: String, path: String, judged: bool) -> void:
 		await _frames(3)
 		_check("  undone, the file is the file before it, to the byte",
 			_store.to_text("probe", true) == before)
+	for step: Instructions.Step in middle:
+		if step.brick_ids.size() != 1 or not step.copies.is_empty():
+			continue
+		_steps.refresh(step.number)
+		var before: String = _store.to_text("probe", true)
+		var depth: int = _builder.history_depth()
+		var said: String = _shell.change_steps("new", [step.brick_ids[0]], _steps.current_step())
+		_check("new, the part alone in step %d: \"%s\", nothing to undo, the file as it was"
+			% [step.number, said], said == "the steps are as they were"
+			and _builder.history_depth() == depth and _store.to_text("probe", true) == before)
+		break
 
 
 ## What the world draws of the timeline's step: each batch's parts in their

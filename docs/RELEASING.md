@@ -20,6 +20,11 @@ Everything below is `tools/release.py`; `--help` lists its commands.
 - **Only from a commit that is on `main`, pushed, and already deployed to the
   web**, so the desktop never ships something the site has not run. The
   build refuses a commit that is not pushed.
+- **The whole suite first.** A web release train runs every headless probe
+  (`tools/release/train.sh`, with no `--probes`; `tools/release/README.md`),
+  never a windowed one. Every train from v0.15.0 to rel-m256 was staged
+  with none, eight probes went red on main unseen, and desktop016's run of
+  the whole suite held 0.16.0 on them (2026-11-04).
 - **New parts once a month**, before that month's release, in the main
   checkout with nothing else building or measuring (every worktree reads
   its library and catalogue): `heavy tools/update_parts.py`. It fetches
@@ -116,7 +121,8 @@ git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
   commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html web/_lang web/de web/fr web/es
 # Not pushed to main and not deployed by hand: the page is a web change,
 # and it ships on the next release train with its checks (download, site,
-# site_lang and what flows_for names). Send the lead `ready: <sha>`.
+# site_lang and what flows_for names) and every headless probe.
+# Send the lead `ready: <sha>`.
 # tools/deploy.sh refuses --prod outside ship.sh: 0.15.0's page went live
 # by this step's old `git push && tools/deploy.sh --prod` with no check run
 # (2026-11-03).

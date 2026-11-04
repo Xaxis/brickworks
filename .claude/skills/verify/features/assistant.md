@@ -741,7 +741,12 @@ fixing what it got wrong.
   Connectors, Add custom connector, and the address) and **Private address**
   (this browser's own `?t=` address, the way before, with its switch, Copy,
   "Make a new address" and a field to paste one added before —
-  `ClaudeConnector.adopt`). The state line: waiting for Claude (amber),
+  `ClaudeConnector.adopt`). The box a link opens is scrolled into the
+  panel's view two frames on (`ConnectorForm._into_view`): a press is read
+  before its frame's layout, and one frame on, the box was at times still
+  unsized, scrolled the panel 16 px where it fitted, and took Claude Code
+  from under the pointer, so its tooltip came back (`connect_form_probe`
+  failed 7 of 13 runs so, suitegrab). The state line: waiting for Claude (amber),
   "Connected to Claude [and Claude Code] — it builds in this tab" (green),
   building with a count and a clock ("Claude is building — 12 calls in 3:41",
   said as each call comes, never on a timer: a one-second tick drew the whole
