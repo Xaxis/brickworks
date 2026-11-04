@@ -216,6 +216,24 @@ export async function redeem(address, code) {
   return body.access_token;
 }
 
+/// Sign a review account in with its password (web/review.html), kept as a
+/// code's sign-in is: an app directory's reviewer, at a Resend test address,
+/// where no code can be read (api/_auth.js isTestAccount). Supabase's
+/// status, and the page says why in its own words.
+export async function signInWithPassword(address, password) {
+  await where();
+  const reply = await fetch(`${project.url}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: project.key, "content-type": "application/json" },
+    body: JSON.stringify({ email: address, password }),
+  });
+  const body = await json(reply);
+  if (!reply.ok || !body.access_token) return { ok: false, status: reply.status };
+  keep(body, address);
+  dispatchEvent(new Event("brickworks:signed-in"));
+  return { ok: true, status: reply.status };
+}
+
 // orangecheck's button code and its stylesheet, fetched once a page offers
 // it, so that the button is drawn as it will be and its click opens the
 // window at once: a window opened long after the click is blocked.

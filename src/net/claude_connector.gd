@@ -1124,9 +1124,12 @@ func _hello() -> int:
 		"method": "initialize", "params": {}})
 	var listed: Variant = await rpc.answer_rpc({"jsonrpc": "2.0", "id": 2,
 		"method": "tools/list", "params": {}})
+	# The head and the rules' opening (Assistant.SERVED), where the app has
+	# guidance to give: read_guide serves the rest, a section at a time.
+	var guided: bool = not str(((greeted as Dictionary).get("result", {}) as Dictionary)
+		.get("instructions", "")).is_empty()
 	var body: Dictionary = {
-		"instructions": CONNECTED_NOTE + str(((greeted as Dictionary)
-			.get("result", {}) as Dictionary).get("instructions", "")),
+		"instructions": CONNECTED_NOTE + (str(Later.script(&"Assistant").SERVED) if guided else ""),
 		"tools": ((listed as Dictionary).get("result", {}) as Dictionary).get("tools", []),
 	}
 	body["model"] = _model()

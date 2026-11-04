@@ -325,7 +325,7 @@ func replies() -> int:
 ## A tool name as a person would say it. A review says which, so a run's
 ## log shows the feature, the assembly or the creative pass it is on.
 func _in_words(name: String, input: Dictionary = {}) -> String:
-	var plain: String = name.trim_prefix("mcp__%s__" % SERVER)
+	var plain: String = name.trim_prefix(_prefix())
 	if plain == "review_model":
 		if bool(input.get("creative", false)):
 			return "the creative pass"
@@ -371,8 +371,17 @@ func _ended() -> void:
 		# The pipe closed without a result line, which is what a crash
 		# or a kill looks like from here.
 		_running = false
-		finished.emit(false, "Claude Code stopped after %d turn%s."
-			% [_turns, "" if _turns == 1 else "s"])
+		finished.emit(false, _stopped())
+
+
+## What the panel says of a session that ended without a result.
+func _stopped() -> String:
+	return "Claude Code stopped after %d turn%s." % [_turns, "" if _turns == 1 else "s"]
+
+
+## What the CLI puts before the app's tool names.
+func _prefix() -> String:
+	return "mcp__%s__" % SERVER
 
 
 ## How long one tool call may take, in milliseconds. Claude Code gives

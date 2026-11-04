@@ -42,7 +42,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { bearer, isTestAccount, verify } from "./_auth.js";
 import { COLOUR_NAMES } from "./_colours.js";
-import { db } from "./_db.js";
+import { db, orUnknown } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { SITE_LANGS, TESTS_CACHE, Unacceptable, cardOf, escapeHtml, inLanguage, siteWords, summary, testsAsked } from "./_directory.js";
 import { brokenSaid as brokenWords, rulesSaid, say } from "./_card.js";
@@ -321,7 +321,7 @@ export async function winsBy(account, tests = false) {
 
 /// Cards with what each won (card.won: [{title, way, ...}]), for a list.
 export async function withWins(cards, tests = false) {
-  const wins = await winsOf(cards.map((card) => card.id), tests).catch(() => new Map());
+  const wins = (await orUnknown("challenges", winsOf(cards.map((card) => card.id), tests))) || new Map();
   return cards.map((card) => (wins.has(card.id) ? { ...card, won: wins.get(card.id) } : card));
 }
 
@@ -353,20 +353,25 @@ export async function challenge(request, response, { origin }) {
   if (!ready) return response.status(200).json({ ready: false, challenge: null });
   if (asked && !page) return response.status(404).json({ error: "There is no challenge at that number to show." });
   // The hub says what ran before and what comes next; a challenge's own page
-  // is that challenge alone.
-  const between = asked ? {} : await betweenOf(origin, tests, page ? n(page.id) : null);
+  // is that challenge alone. What is beside the challenge asked for (what
+  // ran before, what each entry won, your own vote) is left unsaid when it
+  // cannot be read (orUnknown), and the challenge still goes out.
+  const between = asked ? {} : await orUnknown("challenges", betweenOf(origin, tests, page ? n(page.id) : null));
   if (!page) {
     return response.status(200).json(await withFaces({ ready: true, challenge: null, ...between,
       ...(who ? { you: { signed_in: true } } : {}) }));
   }
-  const wins = await winsOf((page.entries || []).map((one) => one.model), tests);
+  const wins = (await orUnknown("challenges", winsOf((page.entries || []).map((one) => one.model), tests))) || new Map();
   const shown = challengeOf(origin, page, wins);
   let you = null;
   if (who) {
-    const mine = await db("rpc/challenge_mine", { method: "POST", body: { account: who.account, challenge_id: shown.id } });
+    const mine = await orUnknown("challenges", db("rpc/challenge_mine", { method: "POST",
+      body: { account: who.account, challenge_id: shown.id } }).then((said) => said || {}));
     const open = shown.state === "open";
     const kind = shown.test === who.test;
-    you = { signed_in: true, voted: { hand: mine?.voted?.hand ?? null, assistant: mine?.voted?.assistant ?? null },
+    // Not read: signed in, and nothing said of your vote, not "you may not".
+    you = mine === null ? { signed_in: true } : { signed_in: true,
+      voted: { hand: mine?.voted?.hand ?? null, assistant: mine?.voted?.assistant ?? null },
       entries: mine?.entries || [], may_vote: open && kind && mine?.may_vote === true,
       why_not: !open ? (shown.state === "upcoming" ? "Voting opens with the challenge." : "Voting has closed.")
         : !kind ? "A test account votes only in a test challenge."

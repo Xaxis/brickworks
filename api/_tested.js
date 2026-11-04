@@ -134,13 +134,16 @@ export function ownerMark(row) {
 
 /// A version's mark as kept, or null: read with the secret key, so only for
 /// a row already read as published, or for its owner. Null too while the
-/// table is not there yet, so pages go on working before tested.sql.
+/// table is not there yet, so pages go on working before tested.sql. A read
+/// that fails throws: the owner asked for it (?op=tested), and a page or
+/// the viewer, beside whose model it is, takes it as unknown (orUnknown).
 export async function markOf(db, id, n) {
   try {
     const rows = await db(`share_tests?model=eq.${id}&n=eq.${n}&select=n,at,app,parts,steps,tests,passed,`
       + "cleared_at,cleared_why");
     return rows[0] || null;
-  } catch {
-    return null;
+  } catch (trouble) {
+    if (/: 404$/.test(String(trouble?.message || ""))) return null;
+    throw trouble;
   }
 }

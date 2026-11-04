@@ -96,6 +96,49 @@ TOOLS = {
         "url": "https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign/0.29.0/apple-codesign-0.29.0-x86_64-unknown-linux-musl.tar.gz",
         "sha256": "dbe85cedd8ee4217b64e9a0e4c2aef92ab8bcaaa41f20bde99781ff02e600002",
     },
+    # The macOS disk image, made on Linux as Mozilla makes Firefox's (hdiutil
+    # is macOS's own): mkfs.hfsplus from Ubuntu 24.04's hfsprogs makes an
+    # empty HFS+ volume, and libdmg-hfsplus (Mozilla's fork, at a commit with
+    # addall's --symlinks and --special-modes) fills it and compresses it
+    # into a UDIF image. Built once from source, zlib and bzip2 linked in
+    # (dmg_tools). The same pins as Reelwright's.
+    "hfsprogs": {
+        "url": "http://archive.ubuntu.com/ubuntu/pool/universe/h/hfsprogs/hfsprogs_540.1.linux3-5build3_amd64.deb",
+        "sha256": "21aab68916cdba913b8571f1d83285f958878d2378255ee87a225575b917b77f",
+    },
+    "libdmg-hfsplus": {
+        "url": "https://github.com/mozilla/libdmg-hfsplus/archive/ec239599c1f234a4e01ae3fe51214d0c77e5baa3.tar.gz",
+        "sha256": "190e29e4e0bd53e31af1f617b62dcd46b300ffbb0b7cd9e1bf49adb218872763",
+    },
+    "zlib": {
+        "url": "https://zlib.net/fossils/zlib-1.3.1.tar.gz",
+        "sha256": "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+    },
+    "bzip2": {
+        "url": "https://sourceware.org/pub/bzip2/bzip2-1.0.8.tar.gz",
+        "sha256": "ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
+    },
+    # The .DS_Store that lays out the image's window, and the alias in it
+    # that names its background: pure Python (MIT), what dmgbuild uses,
+    # imported from the wheels themselves.
+    "ds_store": {
+        "url": "https://files.pythonhosted.org/packages/66/c0/718a4132306ff8ff052f2c40595f45595993b480409400d55b07f3842d45/ds_store-1.3.3-py3-none-any.whl",
+        "sha256": "b92a371efbf1b4ccce2a04d1ed13fceacc4736c81ba09cf5aefb74c088160a35",
+    },
+    "mac_alias": {
+        "url": "https://files.pythonhosted.org/packages/13/20/103f4e4a6e8a524ea92eee7d938c6133d0b129aa999a50f8648ad126c728/mac_alias-2.2.3-py3-none-any.whl",
+        "sha256": "7362b521d2132ef92f606a37abfed5fcd849ceb2f28b6f9743e014b02af92f0d",
+    },
+    # The Windows installer, made on Linux: makensis from Ubuntu 24.04's
+    # NSIS, unpacked with NSISDIR naming its data (makensis).
+    "nsis": {
+        "url": "http://archive.ubuntu.com/ubuntu/pool/universe/n/nsis/nsis_3.09-4ubuntu1_amd64.deb",
+        "sha256": "9e061bef1a8b611aeb2ea76d9a3bd7722b960ca1a9dff8e38d2ab51e5a8f5e5b",
+    },
+    "nsis-common": {
+        "url": "http://archive.ubuntu.com/ubuntu/pool/universe/n/nsis/nsis-common_3.09-4ubuntu1_all.deb",
+        "sha256": "49471b9debdee4751ebb4caf6b705cc4c678eebfaecefbe56362258893f85859",
+    },
 }
 
 SIGNING_NAMES = ("APPLE_SIGN_P12", "APPLE_SIGN_P12_PASSWORD", "APPLE_NOTARY_KEY",
@@ -115,6 +158,29 @@ NOTICES_SAY = {
     "LDraw's notice": "the LDraw community, licensed under CC BY 2.0 and CC BY 4.0",
     "Rebrickable's credit": "Catalog data: Rebrickable",
 }
+
+
+# The model files each package tells its system Brickworks opens: what
+# File, Open from a file reads, and what the app opens when the system hands
+# it one (TabSession.given_file). LDraw's it claims; Studio's and LDD's it
+# only offers to open, so a person with Studio or LDD keeps them opening
+# there. The MIME types are LeoCAD's, so the two share them on Linux.
+MODEL_TYPES = (
+    {"ext": "ldr", "name": "LDraw model", "uti": "org.ldraw.ldr",
+     "mime": "application/x-ldraw", "text": True, "claims": True},
+    {"ext": "mpd", "name": "LDraw multi-part model", "uti": "org.ldraw.mpd",
+     "mime": "application/x-multi-part-ldraw", "text": True, "claims": True},
+    {"ext": "io", "name": "BrickLink Studio model", "uti": "dev.brickworks.studio-io",
+     "mime": "application/x-bricklink-studio", "text": False, "claims": False},
+    {"ext": "lxf", "name": "LDD model", "uti": "dev.brickworks.ldd-lxf",
+     "mime": "application/x-lxf", "text": False, "claims": False},
+)
+# Art the packages carry, drawn by tools/web/make_icons.mjs: the icon at the
+# sizes each system asks for, and the disk image's background.
+PACKAGE_ART = ROOT / "tools" / "release" / "package"
+# The Linux packages' name for the app: the .desktop file, the icon, the
+# MIME types and the metainfo are all called this (the macOS bundle's id).
+APP_ID = "dev.brickworks.app"
 
 
 class Failed(Exception):
@@ -264,23 +330,30 @@ def set_version(new: str, today: str) -> None:
 # -- names ------------------------------------------------------------------
 
 def artifacts(version: str) -> dict[str, list[str]]:
+    """Each system's packages, the one the download page offers first first.
+    The zips are the packages from before the disk image and the installer,
+    kept for one release so links already shared keep working
+    (docs/DISTRIBUTION.md)."""
     base = "Brickworks-%s" % version
     return {
-        "linux": [base + "-linux-x86_64.AppImage", base + "-linux-x86_64.tar.xz"],
-        "mac": [base + "-macos-universal.zip"],
-        "windows": [base + "-windows-x86_64.zip"],
+        "linux": [base + "-linux-x86_64.AppImage", base + "-linux-amd64.deb",
+                  base + "-linux-x86_64.tar.xz"],
+        "mac": [base + "-macos-universal.dmg", base + "-macos-universal.zip"],
+        "windows": [base + "-windows-x86_64-setup.exe", base + "-windows-x86_64.zip"],
     }
 
 
 def describe_file(name: str) -> dict[str, str]:
     """Which system and what kind of package a file name is."""
     if "-linux-" in name:
-        kind = "AppImage" if name.endswith(".AppImage") else "tar.xz"
+        kind = ("AppImage" if name.endswith(".AppImage") else "deb" if name.endswith(".deb")
+                else "tar.xz")
         return {"os": "linux", "arch": "x86_64", "kind": kind}
     if "-macos-" in name:
-        return {"os": "macos", "arch": "universal", "kind": "zip"}
+        return {"os": "macos", "arch": "universal", "kind": "dmg" if name.endswith(".dmg") else "zip"}
     if "-windows-" in name:
-        return {"os": "windows", "arch": "x86_64", "kind": "zip"}
+        return {"os": "windows", "arch": "x86_64",
+                "kind": "installer" if name.endswith("-setup.exe") else "zip"}
     return {"os": "", "arch": "", "kind": ""}
 
 
@@ -440,10 +513,13 @@ def readme(platform: str, version: str, date: str, signed: dict[str, bool]) -> s
         lines += ["To start it:", "",
                   "  ./brickworks.x86_64", "",
                   "Or, from the AppImage: chmod +x the file and run it. AppImages mount",
-                  "themselves with FUSE; without it, run it with --appimage-extract-and-run.", ""]
+                  "themselves with FUSE; without it, run it with --appimage-extract-and-run.",
+                  "From the .deb, it is in your menu, and brickworks in a terminal;",
+                  "sudo apt remove brickworks uninstalls it.", ""]
         where = "~/.local/share/godot/app_userdata/Brickworks/"
     elif platform == "mac":
-        lines += ["To start it: move Brickworks.app to Applications and open it.", ""]
+        lines += ["To start it: move Brickworks.app to Applications and open it. To",
+                  "uninstall it, move it to the Trash.", ""]
         if not signed.get("notarized"):
             lines += ["This build is not yet notarised by Apple, so the first time macOS",
                       "will not open it. Open it once, choose Done, then open System",
@@ -455,9 +531,11 @@ def readme(platform: str, version: str, date: str, signed: dict[str, bool]) -> s
                       "  xattr -dr com.apple.quarantine /Applications/Brickworks.app", ""]
         where = "~/Library/Application Support/Godot/app_userdata/Brickworks/"
     else:
-        lines += ["To start it: extract the whole folder first, then run Brickworks.exe.",
-                  "Brickworks.pck must stay beside it. Brickworks.console.exe is the",
-                  "same app with a console window, for reading what it says.", ""]
+        lines += ["From the installer, Brickworks is in the Start menu, and Settings >",
+                  "Apps uninstalls it. From the zip: extract the whole folder first, then",
+                  "run Brickworks.exe. Brickworks.pck must stay beside it.",
+                  "Brickworks.console.exe is the same app with a console window, for",
+                  "reading what it says.", ""]
         if not signed.get("windows"):
             lines += ["This build is not yet signed, so Windows SmartScreen may say",
                       "\"Windows protected your PC\". Check the download's SHA-256 against",
@@ -551,6 +629,94 @@ def fetch(tool: str) -> Path:
     return path
 
 
+def tool_home(names: tuple[str, ...]) -> Path:
+    """Where tools built or unpacked from [names] are kept: named by their
+    pins, so a new pin builds afresh rather than using the last one's."""
+    key = hashlib.sha256(json.dumps([TOOLS[name] for name in names]).encode()).hexdigest()
+    return CACHE / ("%s-%s" % (key[:16], names[0]))
+
+
+def dmg_tools() -> dict[str, Path]:
+    """mkfs.hfsplus and fsck.hfsplus from hfsprogs, and libdmg-hfsplus's
+    hfsplus and dmg, built once (about a minute) with zlib and bzip2 inside,
+    so nothing of this machine's libraries is needed but the C library."""
+    home = tool_home(("libdmg-hfsplus", "hfsprogs", "zlib", "bzip2"))
+    tools = {"mkfs": home / "hfsprogs" / "sbin" / "mkfs.hfsplus",
+             "fsck": home / "hfsprogs" / "sbin" / "fsck.hfsplus",
+             "hfsplus": home / "bin" / "hfsplus", "dmg": home / "bin" / "dmg"}
+    if all(path.exists() for path in tools.values()):
+        return tools
+    say("  building libdmg-hfsplus (once)")
+    work = home.with_name(home.name + ".partial")
+    shutil.rmtree(work, ignore_errors=True)
+    (work / "bin").mkdir(parents=True)
+    prefix = work / "prefix"
+    (prefix / "include").mkdir(parents=True)
+    (prefix / "lib").mkdir()
+    subprocess.run(["dpkg-deb", "-x", str(fetch("hfsprogs")), str(work / "hfsprogs")], check=True)
+    # Ubuntu 24.04 keeps them in usr/sbin; the paths above are what is run.
+    for name in ("mkfs.hfsplus", "fsck.hfsplus"):
+        found = next((work / "hfsprogs").rglob(name))
+        (work / "hfsprogs" / "sbin").mkdir(exist_ok=True)
+        if found.parent != work / "hfsprogs" / "sbin":
+            shutil.copy2(found, work / "hfsprogs" / "sbin" / name)
+    sources = work / "src"
+    sources.mkdir()
+    for name in ("zlib", "bzip2", "libdmg-hfsplus"):
+        with tarfile.open(fetch(name)) as archive:
+            archive.extractall(sources, filter="data")
+    jobs = str(max(1, (os.cpu_count() or 2) // 4))
+
+    def run(where: Path, *command: str, **env: str) -> None:
+        done = subprocess.run(command, cwd=where, capture_output=True, text=True,
+                              env=dict(os.environ, LC_ALL="C", **env))
+        if done.returncode != 0:
+            raise Failed("building the disk image tools: %s failed:\n%s"
+                         % (" ".join(command[:3]), done.stderr[-2000:]))
+
+    zlib = next(sources.glob("zlib-*"))
+    run(zlib, "./configure", "--static", "--prefix=%s" % prefix, CFLAGS="-O2")
+    run(zlib, "make", "-j", jobs, "libz.a")
+    run(zlib, "make", "install")
+    bzip2 = next(sources.glob("bzip2-*"))
+    run(bzip2, "make", "-j", jobs, "libbz2.a", "CFLAGS=-O2 -D_FILE_OFFSET_BITS=64")
+    shutil.copy2(bzip2 / "libbz2.a", prefix / "lib")
+    shutil.copy2(bzip2 / "bzlib.h", prefix / "include")
+    lib = next(sources.glob("libdmg-hfsplus-*"))
+    flags = ["-O2", "-fno-strict-aliasing", "-I%s" % (lib / "includes"), "-I%s" % (prefix / "include")]
+    hfs = [str(lib / "hfs" / (name + ".c")) for name in (
+        "btree", "catalog", "extents", "xattr", "fastunicodecompare", "flatfile", "hfslib",
+        "rawfile", "utility", "volume", "hfscompress")]
+    common = [str(lib / "common" / (name + ".c")) for name in ("abstractfile", "base64")]
+    dmg = [str(lib / "dmg" / (name + ".c")) for name in (
+        "dmg", "adc", "attribution", "checksum", "compress", "dmgfile", "dmglib", "filevault",
+        "io", "partition", "resources", "udif")]
+    run(lib, "gcc", *flags, "-o", str(work / "bin" / "hfsplus"), str(lib / "hfs" / "hfs.c"),
+        *hfs, *common, str(prefix / "lib" / "libz.a"))
+    run(lib, "gcc", *flags, "-o", str(work / "bin" / "dmg"), *dmg, *hfs, *common,
+        str(prefix / "lib" / "libz.a"), str(prefix / "lib" / "libbz2.a"), "-lpthread")
+    shutil.rmtree(sources)
+    shutil.rmtree(prefix)
+    shutil.rmtree(home, ignore_errors=True)
+    work.rename(home)
+    return tools
+
+
+def makensis() -> tuple[Path, dict[str, str]]:
+    """makensis and the environment it runs in: Ubuntu's NSIS packages
+    unpacked once, NSISDIR naming the data they keep in /usr/share/nsis."""
+    home = tool_home(("nsis", "nsis-common"))
+    program = home / "usr" / "bin" / "makensis"
+    if not program.exists():
+        work = home.with_name(home.name + ".partial")
+        shutil.rmtree(work, ignore_errors=True)
+        work.mkdir(parents=True)
+        for name in ("nsis", "nsis-common"):
+            subprocess.run(["dpkg-deb", "-x", str(fetch(name)), str(work)], check=True)
+        work.rename(home)
+    return program, {"NSISDIR": str(home / "usr" / "share" / "nsis")}
+
+
 # -- each platform ----------------------------------------------------------
 
 def build_linux(version: str, stamp: dict[str, str], out: Path, epoch: int) -> None:
@@ -560,14 +726,18 @@ def build_linux(version: str, stamp: dict[str, str], out: Path, epoch: int) -> N
     folder = work / folder_name
     export("Linux", folder / "brickworks.x86_64")
     (folder / "brickworks.x86_64").chmod(0o755)
-    shutil.copy2(STAGE / "web" / "favicon-512.png", folder / "brickworks.png")
-    (folder / "brickworks.desktop").write_text(desktop_entry())
+    shutil.copy2(PACKAGE_ART / "icons" / "512.png", folder / "brickworks.png")
+    # For whoever installs the folder by hand: the icon beside it by name.
+    (folder / "brickworks.desktop").write_text(desktop_entry("brickworks"))
     extras(folder, "linux", version, stamp["date"], {})
     tarball = out / (folder_name + ".tar.xz")
     write_tar_xz(folder, tarball, epoch)
     say("  %s, %s" % (tarball.name, human(tarball.stat().st_size)))
 
-    # The AppImage: the same files, laid out the way appimagetool wants.
+    # The AppImage: the same files, laid out the way appimagetool wants,
+    # with the desktop entry, icons and MIME types a desktop takes it into
+    # its menu and its file associations with (AppImageLauncher, Gear Lever,
+    # appimaged read them from inside the image).
     appdir = work / "Brickworks.AppDir"
     (appdir / "usr" / "bin").mkdir(parents=True)
     (appdir / "usr" / "share" / "doc" / "brickworks").mkdir(parents=True)
@@ -575,9 +745,11 @@ def build_linux(version: str, stamp: dict[str, str], out: Path, epoch: int) -> N
         os.link(folder / name, appdir / "usr" / "bin" / name)
     for name in ("README.txt", "ATTRIBUTION.md", "THIRD-PARTY-NOTICES.txt"):
         shutil.copy2(folder / name, appdir / "usr" / "share" / "doc" / "brickworks" / name)
-    shutil.copy2(folder / "brickworks.png", appdir / "brickworks.png")
-    (appdir / ".DirIcon").symlink_to("brickworks.png")
-    shutil.copy2(folder / "brickworks.desktop", appdir / "brickworks.desktop")
+    desktop_files(appdir / "usr" / "share", "brickworks", version)
+    shutil.copy2(PACKAGE_ART / "icons" / "256.png", appdir / (APP_ID + ".png"))
+    (appdir / ".DirIcon").symlink_to(APP_ID + ".png")
+    shutil.copy2(appdir / "usr" / "share" / "applications" / (APP_ID + ".desktop"),
+                 appdir / (APP_ID + ".desktop"))
     run = appdir / "AppRun"
     run.write_text('#!/bin/sh\n# Brickworks, from inside its AppImage.\n'
                    'here="$(dirname "$(readlink -f "$0")")"\n'
@@ -605,12 +777,116 @@ def build_linux(version: str, stamp: dict[str, str], out: Path, epoch: int) -> N
     image.chmod(0o755)
     say("  %s, %s" % (image.name, human(image.stat().st_size)))
 
+    package = out / ("Brickworks-%s-linux-amd64.deb" % version)
+    write_deb(folder, package, version, epoch)
+    say("  %s, %s" % (package.name, human(package.stat().st_size)))
 
-def desktop_entry() -> str:
-    return ("[Desktop Entry]\nType=Application\nName=Brickworks\n"
+
+def desktop_entry(command: str = "brickworks", icon: str = "brickworks", version: str = "") -> str:
+    """The menu entry: the app, the model files it opens (one window each,
+    %f), and the window class that ties its windows to the entry."""
+    return ("[Desktop Entry]\nType=Application\nName=Brickworks\nGenericName=Brick CAD\n"
             "Comment=A dimensionally exact brick construction system\n"
-            "Exec=brickworks\nIcon=brickworks\nTerminal=false\n"
-            "Categories=Graphics;3DGraphics;\n")
+            "Exec=%s %%f\nIcon=%s\nTerminal=false\n"
+            "Categories=Graphics;3DGraphics;Engineering;\n"
+            "Keywords=CAD;LDraw;bricks;model;instructions;\n"
+            "MimeType=%s;\nStartupWMClass=%s\n%s"
+            % (command, icon, ";".join(kind["mime"] for kind in MODEL_TYPES), WINDOW_CLASS,
+               "X-AppImage-Version=%s\n" % version if version else ""))
+
+
+# The X11 window class Godot gives the app's windows, which StartupWMClass
+# names so a dock groups them under the menu entry (measured under Xvfb).
+WINDOW_CLASS = "Brickworks"
+
+
+def mime_types() -> str:
+    """The model files' MIME types, by their extensions. LDraw's are text and
+    Studio's and LDD's are zips; a glob that names a subclass of what the
+    content says wins over it, so a .ldr is a model and not plain text."""
+    entries = []
+    for kind in MODEL_TYPES:
+        entries.append(
+            '  <mime-type type="%s">\n    <comment>%s</comment>\n'
+            '    <sub-class-of type="%s"/>\n    <generic-icon name="%s"/>\n'
+            '    <glob pattern="*.%s"/>\n  </mime-type>\n'
+            % (kind["mime"], kind["name"], "text/plain" if kind["text"] else "application/zip",
+               APP_ID, kind["ext"]))
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">\n'
+            + "".join(entries) + "</mime-info>\n")
+
+
+def desktop_files(share: Path, command: str, version: str = "") -> None:
+    """What a desktop needs under share/ to put the app in its menu and open
+    models in it: the entry, the icon at each size the theme has, and the
+    MIME types. The .deb installs them; the AppImage carries them."""
+    (share / "applications").mkdir(parents=True, exist_ok=True)
+    (share / "applications" / (APP_ID + ".desktop")).write_text(
+        desktop_entry(command, APP_ID, version))
+    for png in sorted((PACKAGE_ART / "icons").glob("*.png")):
+        size = int(png.stem)
+        target = share / "icons" / "hicolor" / ("%dx%d" % (size, size)) / "apps" / (APP_ID + ".png")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(png, target)
+    scalable = share / "icons" / "hicolor" / "scalable" / "apps" / (APP_ID + ".svg")
+    scalable.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(PACKAGE_ART / "icons" / "brickworks.svg", scalable)
+    (share / "mime" / "packages").mkdir(parents=True, exist_ok=True)
+    (share / "mime" / "packages" / (APP_ID + ".xml")).write_text(mime_types())
+
+
+def write_deb(folder: Path, target: Path, version: str, epoch: int) -> None:
+    """A .deb for Debian and Ubuntu: the app in /usr/lib/brickworks, run as
+    brickworks, in the menu and opening models. No maintainer scripts:
+    dpkg's triggers bring the menu, the icon cache and the MIME database
+    up to date when it installs and when it is removed."""
+    root = WORK / "deb"
+    shutil.rmtree(root, ignore_errors=True)
+    lib = root / "usr" / "lib" / "brickworks"
+    lib.mkdir(parents=True)
+    for name in ("brickworks.x86_64", "brickworks.pck"):
+        os.link(folder / name, lib / name)
+    (root / "usr" / "bin").mkdir()
+    # Godot finds its .pck beside the program's real path, through the link.
+    (root / "usr" / "bin" / "brickworks").symlink_to("../lib/brickworks/brickworks.x86_64")
+    share = root / "usr" / "share"
+    desktop_files(share, "brickworks")
+    docs = share / "doc" / "brickworks"
+    docs.mkdir(parents=True)
+    for name in ("README.txt", "ATTRIBUTION.md", "THIRD-PARTY-NOTICES.txt"):
+        shutil.copy2(folder / name, docs / name)
+    (docs / "copyright").write_text(
+        "Brickworks %s, https://brickworks.diy\n\nATTRIBUTION.md and THIRD-PARTY-NOTICES.txt "
+        "beside this file name everyone whose work it is made with, and carry their "
+        "licences in full.\n" % version)
+    # The root too: its mode is the "./" entry, which dpkg has been known to
+    # give the system's / (a group-writable / breaks sshd and sudo).
+    for path in [root, *root.rglob("*")]:
+        if not path.is_symlink():
+            path.chmod(0o755 if path.is_dir() or path.name == "brickworks.x86_64" else 0o644)
+    glibc = glibc_needed((folder / "brickworks.x86_64").read_bytes()) or "2.28"
+    installed = sum(path.stat().st_size for path in root.rglob("*")
+                    if path.is_file() and not path.is_symlink()) // 1024
+    (root / "DEBIAN").mkdir()
+    (root / "DEBIAN" / "control").write_text("\n".join([
+        "Package: brickworks", "Version: %s" % version, "Architecture: amd64",
+        "Maintainer: Brickworks <noreply@brickworks.diy>", "Installed-Size: %d" % installed,
+        # The program needs the C library only: Godot opens the display,
+        # sound and graphics libraries itself, whichever the desktop has.
+        "Depends: libc6 (>= %s)" % glibc, "Recommends: libvulkan1 | libgl1",
+        "Section: graphics", "Priority: optional", "Homepage: https://brickworks.diy",
+        "Description: A dimensionally exact brick construction system",
+        " Every part in the LDraw library at true size, building by hand or with",
+        " Claude, and instructions and a parts list at the end. The whole part",
+        " library is inside, so building needs no network.", ""]))
+    target.unlink(missing_ok=True)
+    env = dict(os.environ, SOURCE_DATE_EPOCH=str(epoch))
+    done = subprocess.run(["dpkg-deb", "--root-owner-group", "-Zxz", "-z6", "--build", str(root),
+                           str(target)], env=env, capture_output=True, text=True)
+    if done.returncode != 0 or not target.exists():
+        raise Failed("dpkg-deb failed: %s" % done.stderr.strip()[-600:])
+    shutil.rmtree(root)
 
 
 def sign_mac(app: Path) -> dict[str, bool]:
@@ -667,13 +943,269 @@ def sign_mac(app: Path) -> dict[str, bool]:
         return {"developer_id": True, "notarized": True}
 
 
+def sign_dmg(image: Path, signed: dict[str, bool]) -> None:
+    """The disk image signed with the Developer ID and notarised, when the app
+    in it was: Gatekeeper then opens it, and the app copied out of it, with
+    no warning. Without one it goes out unsigned, which costs nothing: an
+    ad-hoc signature on an image means nothing to Gatekeeper, and the app
+    inside carries its own."""
+    if not signed.get("developer_id"):
+        return
+    rcodesign = fetch("rcodesign")
+    with tempfile.TemporaryDirectory() as private:
+        password = Path(private) / "p12-password"
+        password.write_text(os.environ.get("APPLE_SIGN_P12_PASSWORD", ""))
+        subprocess.run([str(rcodesign), "sign", "--p12-file", os.environ["APPLE_SIGN_P12"],
+                        "--p12-password-file", str(password), str(image)], check=True)
+        say("  macOS: the disk image signed with the Developer ID")
+        if not signed.get("notarized"):
+            return
+        key = Path(private) / "notary-key.json"
+        subprocess.run([str(rcodesign), "encode-app-store-connect-api-key", "--output-path", str(key),
+                        os.environ["APPLE_NOTARY_ISSUER"], os.environ["APPLE_NOTARY_KEY_ID"],
+                        os.environ["APPLE_NOTARY_KEY"]], check=True)
+        subprocess.run([str(rcodesign), "notary-submit", "--api-key-file", str(key), "--staple",
+                        str(image)], check=True)
+        say("  macOS: the disk image notarised and stapled")
+
+
+def declare_types(app: Path) -> None:
+    """The model files the app opens, in its Info.plist, so Finder offers it
+    for them and opens a double-clicked one in it; and its category. Before
+    it is signed: the signature seals the Info.plist."""
+    path = app / "Contents" / "Info.plist"
+    plist = plistlib.loads(path.read_bytes())
+    # Godot's preset says Developer Tools; it is a CAD.
+    plist["LSApplicationCategoryType"] = "public.app-category.graphics-design"
+    plist["CFBundleDocumentTypes"] = [{
+        "CFBundleTypeName": kind["name"],
+        "CFBundleTypeRole": "Editor" if kind["claims"] else "Viewer",
+        "LSHandlerRank": "Default" if kind["claims"] else "Alternate",
+        "LSItemContentTypes": [kind["uti"]]} for kind in MODEL_TYPES]
+    # Imported, not exported: these are LDraw's, Studio's and LDD's formats.
+    plist["UTImportedTypeDeclarations"] = [{
+        "UTTypeIdentifier": kind["uti"], "UTTypeDescription": kind["name"],
+        "UTTypeConformsTo": ["public.plain-text"] if kind["text"] else ["public.data"],
+        "UTTypeTagSpecification": {"public.filename-extension": [kind["ext"]],
+                                   "public.mime-type": [kind["mime"]]}} for kind in MODEL_TYPES]
+    path.write_bytes(plistlib.dumps(plist))
+
+
+def write_tiff(pictures: list[tuple[bytes, int]], target: Path) -> None:
+    """RGB PNGs as one TIFF, a page each at its resolution: what Finder wants
+    for a window's background, the 2x page for a Retina screen (what
+    tiffutil -cathidpicheck makes on a Mac)."""
+    pages = []
+    for data, dpi in pictures:
+        channels, rows = png_rows(data)
+        if channels not in (3, 4) or not rows:
+            raise Failed("a disk image background must be an 8-bit RGB PNG")
+        width = len(rows[0]) // channels
+        pixels = b"".join(bytes(row) if channels == 3 else
+                          bytes(b for at in range(0, len(row), 4) for b in row[at:at + 3])
+                          for row in rows)
+        pages.append((width, len(rows), zlib.compress(pixels, 9), dpi))
+    out = bytearray(b"II*\0\0\0\0\0")
+    link = 4
+    for width, height, strip, dpi in pages:
+        strip_at = len(out)
+        out += strip + b"\0" * (len(strip) % 2)
+        extra = len(out)
+        out += struct.pack("<HHH", 8, 8, 8) + struct.pack("<IIII", dpi, 1, dpi, 1)
+        tags = [(256, 4, 1, width), (257, 4, 1, height), (258, 3, 3, extra),
+                (259, 3, 1, 8), (262, 3, 1, 2), (273, 4, 1, strip_at), (277, 3, 1, 3),
+                (278, 4, 1, height), (279, 4, 1, len(strip)), (282, 5, 1, extra + 6),
+                (283, 5, 1, extra + 14), (284, 3, 1, 1), (296, 3, 1, 2)]
+        struct.pack_into("<I", out, link, len(out))
+        out += struct.pack("<H", len(tags))
+        for tag, kind, count, value in tags:
+            out += struct.pack("<HHI", tag, kind, count)
+            out += struct.pack("<HH", value, 0) if kind == 3 and count == 1 else struct.pack("<I", value)
+        link = len(out)
+        out += b"\0\0\0\0"
+    target.write_bytes(bytes(out))
+
+
+# The disk image's window (tools/release/package/dmg-background.svg): its
+# size in points, and where each icon's middle is.
+DMG_WINDOW = (640, 400)
+DMG_ICONS = {"Brickworks.app": (160, 176), "Applications": (480, 176)}
+
+
+def dmg_layout(target: Path, volume: str, created: dt.datetime, folder_cnid: int,
+               cnid: int) -> None:
+    """The .DS_Store that makes the image's window what people expect: the
+    app and Applications side by side at 128 points over the background
+    picture, no toolbar or sidebar, the window the picture's size. Finder
+    finds the picture by an alias, written here as a Mac would write it
+    for /Volumes/<volume>/.background/background.tiff (Alias.for_file is
+    macOS's only)."""
+    for wheel in ("mac_alias", "ds_store"):
+        path = str(fetch(wheel))
+        if path not in sys.path:
+            sys.path.insert(0, path)
+    from ds_store import DSStore  # type: ignore[import-not-found]
+    from mac_alias import (ALIAS_FIXED_DISK, ALIAS_KIND_FILE, Alias,  # type: ignore[import-not-found]
+                           TargetInfo, VolumeInfo)
+    alias = Alias()
+    alias.volume = VolumeInfo(volume.encode(), created, b"H+", ALIAS_FIXED_DISK, 0, b"\0\0")
+    alias.volume.posix_path = ("/Volumes/" + volume).encode()
+    alias.target = TargetInfo(ALIAS_KIND_FILE, b"background.tiff", folder_cnid, cnid, created,
+                              b"\0\0\0\0", b"\0\0\0\0")
+    alias.target.folder_name = b".background"
+    alias.target.cnid_path = [folder_cnid]
+    alias.target.carbon_path = ("%s:.background:\0background.tiff" % volume).encode()
+    alias.target.posix_path = b"/.background/background.tiff"
+    width, height = DMG_WINDOW
+    target.unlink(missing_ok=True)
+    with DSStore.open(str(target), "w+") as store:
+        # The window's frame: the picture, and the title bar above it.
+        store["."]["bwsp"] = {
+            "WindowBounds": "{{200, 120}, {%d, %d}}" % (width, height + 28),
+            "ShowToolbar": False, "ShowSidebar": False, "ContainerShowSidebar": False,
+            "ShowStatusBar": False, "ShowPathbar": False, "ShowTabView": False,
+            "PreviewPaneVisibility": False, "SidebarWidth": 0}
+        store["."]["icvp"] = {
+            "viewOptionsVersion": 1, "backgroundType": 2,
+            "backgroundImageAlias": alias.to_bytes(),
+            "backgroundColorRed": 1.0, "backgroundColorGreen": 1.0, "backgroundColorBlue": 1.0,
+            "iconSize": 128.0, "textSize": 13.0, "labelOnBottom": True, "arrangeBy": "none",
+            "gridSpacing": 100.0, "gridOffsetX": 0.0, "gridOffsetY": 0.0,
+            "showIconPreview": False, "showItemInfo": False,
+            "scrollPositionX": 0.0, "scrollPositionY": 0.0}
+        store["."]["vSrn"] = ("long", 1)
+        store["."]["icvl"] = ("type", b"icnv")
+        for name, (x, y) in DMG_ICONS.items():
+            store[name]["Iloc"] = (x, y)
+
+
+def hfs_header(volume: Path) -> tuple[dt.datetime, int]:
+    """An HFS+ volume's creation date and the next catalog node id it gives."""
+    with volume.open("rb") as handle:
+        handle.seek(1024)
+        header = handle.read(128)
+    if header[:2] != b"H+":
+        raise Failed("%s is not an HFS+ volume" % volume)
+    # Seconds since 1904, in local time: the one HFS+ date that is not UTC.
+    # Kept as the same count of seconds (mac_alias counts from a UTC 1904),
+    # which is what an alias to the volume must say to match it.
+    created = dt.datetime(1904, 1, 1, tzinfo=dt.timezone.utc) + dt.timedelta(
+        seconds=struct.unpack(">I", header[16:20])[0])
+    return created, struct.unpack(">I", header[64:68])[0]
+
+
+def write_dmg(app: Path, target: Path, volume: str = "Brickworks") -> None:
+    """The app and an Applications link in a compressed disk image, laid out
+    for dragging one onto the other: the background with its arrow, the
+    app's icon on the volume, the window its size. Read back before it is
+    kept: the volume byte for byte, fsck.hfsplus's word on it, and every
+    file, mode and link the app has."""
+    tools = dmg_tools()
+    work = WORK / "dmg"
+    shutil.rmtree(work, ignore_errors=True)
+    stage = work / "stage"
+    stage.mkdir(parents=True)
+    shutil.copytree(app, stage / app.name, symlinks=True, copy_function=link_or_copy)
+    want = tree_of(stage)
+    shutil.copy2(app / "Contents" / "Resources" / "icon.icns", stage / ".VolumeIcon.icns")
+    background = work / "background.tiff"
+    write_tiff([((PACKAGE_ART / "dmg-background.png").read_bytes(), 72),
+                ((PACKAGE_ART / "dmg-background@2x.png").read_bytes(), 144)], background)
+
+    size = sum(path.stat().st_size + 4096 for path in stage.rglob("*") if path.is_file())
+    hfs = work / "volume.hfs"
+    with hfs.open("wb") as handle:
+        handle.truncate((int(size * 1.02) // (1 << 20) + 16) << 20)
+
+    def run(*command: str) -> str:
+        done = subprocess.run([str(c) for c in command], capture_output=True, text=True)
+        if done.returncode != 0:
+            raise Failed("%s %s failed: %s" % (Path(command[0]).name, command[2] if len(command) > 2
+                                               else "", (done.stderr or done.stdout).strip()[-800:]))
+        return done.stdout
+
+    run(tools["mkfs"], "-v", volume, hfs)
+    created, next_id = hfs_header(hfs)
+    # The background first, so its folder and file take the next two ids,
+    # which the layout's alias names.
+    run(tools["hfsplus"], hfs, "mkdir", "/.background")
+    run(tools["hfsplus"], hfs, "add", background, "/.background/background.tiff")
+    dmg_layout(stage / ".DS_Store", volume, created, next_id, next_id + 1)
+    # Links stay links, and no mode is changed: the app's seal covers both.
+    run(tools["hfsplus"], hfs, "addall", stage, "--symlinks=clone_link", "--special-modes=no")
+    run(tools["hfsplus"], hfs, "symlink", "/Applications", "/Applications")
+    # The volume shows the app's icon (.VolumeIcon.icns), not a blank disk.
+    run(tools["hfsplus"], hfs, "attr", "/", "C")
+    target.unlink(missing_ok=True)
+    # bzip2, not lzma: an image in lzma does not open before macOS 10.15, and
+    # the app runs from 10.13 on an Intel Mac.
+    run(tools["dmg"], "build", hfs, target, "--compression", "bzip2", "--level", "9",
+        "--run-sectors", "2048")
+
+    # dmg can exit 0 and leave no image.
+    with target.open("rb") as handle:
+        handle.seek(-512, os.SEEK_END)
+        if handle.read(4) != b"koly":
+            raise Failed("%s has no UDIF trailer: dmg build failed" % target.name)
+    back = work / "back.hfs"
+    run(tools["dmg"], "extract", target, back)
+    if sha256_of(back) != sha256_of(hfs):
+        raise Failed("%s does not hold the volume it was made from" % target.name)
+    hfs.unlink()
+    checked = run(tools["fsck"], "-f", "-n", back)
+    if "appears to be OK" not in checked:
+        raise Failed("fsck.hfsplus on %s: %s" % (target.name, checked.strip()[-400:]))
+    out = work / "out"
+    out.mkdir()
+    run(tools["hfsplus"], back, "extractall", "/", out)
+    got = tree_of(out)
+    link = got.pop("Applications", None)
+    for hidden in (".DS_Store", ".VolumeIcon.icns", ".background", ".background/background.tiff"):
+        if hidden not in got:
+            raise Failed("%s has no %s" % (target.name, hidden))
+        del got[hidden]
+    differ = [path for path in sorted(set(want) | set(got)) if want.get(path) != got.get(path)]
+    if link != ("link", "/Applications"):
+        differ.append("Applications is not a link to /Applications")
+    if differ:
+        raise Failed("%s is not the app: %s" % (target.name, ", ".join(differ[:8])))
+    shutil.rmtree(work)
+
+
+def tree_of(folder: Path) -> dict[str, tuple[str, str]]:
+    """Every file, folder and link under [folder]: its kind and its mode, its
+    target or its SHA-256."""
+    found: dict[str, tuple[str, str]] = {}
+    for path in sorted(folder.rglob("*")):
+        name = path.relative_to(folder).as_posix()
+        if path.is_symlink():
+            found[name] = ("link", os.readlink(path))
+        elif path.is_dir():
+            found[name] = ("dir", oct(path.stat().st_mode & 0o7777))
+        else:
+            found[name] = ("file", "%s %s" % (oct(path.stat().st_mode & 0o7777), sha256_of(path)))
+    return found
+
+
 def build_mac(version: str, stamp: dict[str, str], out: Path, epoch: int) -> dict[str, bool]:
     folder_name = "Brickworks-%s-macos" % version
     work = WORK / "mac"
     shutil.rmtree(work, ignore_errors=True)
     folder = work / folder_name
     export("macOS", folder / "Brickworks.app")
+    # The licences inside the app, where they go with it to Applications: the
+    # disk image holds the app and nothing beside it.
+    resources = folder / "Brickworks.app" / "Contents" / "Resources"
+    shutil.copy2(STAGE / "docs" / "ATTRIBUTION.md", resources / "ATTRIBUTION.md")
+    shutil.copy2(WORK / "THIRD-PARTY-NOTICES.txt", resources / "THIRD-PARTY-NOTICES.txt")
+    declare_types(folder / "Brickworks.app")
     signed = sign_mac(folder / "Brickworks.app")
+    image = out / ("Brickworks-%s-macos-universal.dmg" % version)
+    write_dmg(folder / "Brickworks.app", image)
+    sign_dmg(image, signed)
+    say("  %s, %s" % (image.name, human(image.stat().st_size)))
+    # The zip people had before the image, kept for one release so links
+    # already shared keep working (docs/DISTRIBUTION.md).
     extras(folder, "mac", version, stamp["date"], signed)
     package = out / ("Brickworks-%s-macos-universal.zip" % version)
     write_zip(folder, package, epoch)
@@ -701,10 +1233,69 @@ def build_windows(version: str, stamp: dict[str, str], out: Path, epoch: int) ->
     else:
         say("  Windows: unsigned (no WINDOWS_SIGN_COMMAND): SmartScreen will ask once")
     extras(folder, "windows", version, stamp["date"], {"windows": signed})
+    installer = out / (folder_name + "-setup.exe")
+    write_installer(folder, installer, version, command)
+    say("  %s, %s" % (installer.name, human(installer.stat().st_size)))
+    # The zip people had before the installer, kept for one release so links
+    # already shared keep working (docs/DISTRIBUTION.md).
     package = out / (folder_name + ".zip")
     write_zip(folder, package, epoch)
     say("  %s, %s" % (package.name, human(package.stat().st_size)))
     return signed
+
+
+def write_ico(target: Path, sizes: tuple[int, ...] = (16, 24, 32, 48, 64, 256)) -> None:
+    """The icon's PNGs in one .ico, each kept as a PNG, which Windows has
+    read at every size since Vista."""
+    pictures = [(size, (PACKAGE_ART / "icons" / ("%d.png" % size)).read_bytes()) for size in sizes]
+    head = struct.pack("<HHH", 0, 1, len(pictures))
+    at = 6 + 16 * len(pictures)
+    for size, data in pictures:
+        head += struct.pack("<BBBBHHII", size % 256, size % 256, 0, 0, 1, 32, len(data), at)
+        at += len(data)
+    target.write_bytes(head + b"".join(data for _, data in pictures))
+
+
+def write_installer(folder: Path, target: Path, version: str, sign: str) -> None:
+    """The per-user installer (tools/release/windows/brickworks.nsi), made by
+    makensis here. [sign] is WINDOWS_SIGN_COMMAND, which signs the
+    uninstaller as it is written and the installer once it is made."""
+    program, env = makensis()
+    work = WORK / "nsis"
+    shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True)
+    write_ico(work / "brickworks.ico")
+    # What an update deletes before it copies, and an uninstall after: the
+    # release folder's files by name, so neither touches anything else in a
+    # folder the person chose.
+    files = sorted(path.relative_to(folder) for path in folder.rglob("*") if path.is_file())
+    folders = sorted({p for path in files for p in path.parents if p != Path(".")},
+                     key=lambda p: -len(p.parts))
+    (work / "installed.nsh").write_text("".join(
+        ['Delete "$INSTDIR\\%s"\n' % str(path).replace("/", "\\") for path in files]
+        + ['RMDir "$INSTDIR\\%s"\n' % str(path).replace("/", "\\") for path in folders]))
+    numbers = re.match(r"(\d+)\.(\d+)\.(\d+)", version)
+    if numbers is None:
+        raise Failed("%s has no X.Y.Z for the installer's version" % version)
+    command = [str(program), "-INPUTCHARSET", "UTF8", "-V2",
+               "-DVERSION=%s" % version, "-DVERSION4=%s.0" % ".".join(numbers.groups()),
+               "-DSOURCE=%s" % folder, "-DOUTFILE=%s" % target,
+               "-DICON=%s" % (work / "brickworks.ico"), "-DINSTALLED=%s" % (work / "installed.nsh")]
+    if sign:
+        command.append("-DSIGN=%s" % sign.replace("{file}", '"%1"'))
+    command.append(str(ROOT / "tools" / "release" / "windows" / "brickworks.nsi"))
+    target.unlink(missing_ok=True)
+    log = WORK / "makensis.log"
+    started = time.time()
+    with log.open("w") as handle:
+        code = subprocess.run(command, env=dict(os.environ, **env), stdout=handle,
+                              stderr=subprocess.STDOUT).returncode
+    if code != 0 or not target.exists():
+        tail = log.read_text(errors="replace").strip().splitlines()[-12:]
+        raise Failed("makensis failed (exit %d), see %s:\n  %s" % (code, log, "\n  ".join(tail)))
+    if sign and not pe_facts(target.read_bytes())["signed"]:
+        raise Failed("WINDOWS_SIGN_COMMAND ran but %s carries no signature" % target.name)
+    say("  made the installer in %.0f s" % (time.time() - started))
 
 
 def write_sums(out: Path) -> None:
@@ -861,7 +1452,7 @@ def pe_facts(data: bytes) -> dict[str, Any]:
         while data[end:end + 2] != b"\0\0":
             end += 2
         version = data[start:end].decode("utf-16-le", "replace")
-    return {"machine": {0x8664: "x86_64", 0xAA64: "arm64"}.get(machine, hex(machine)),
+    return {"machine": {0x8664: "x86_64", 0xAA64: "arm64", 0x14C: "x86"}.get(machine, hex(machine)),
             "subsystem": {2: "window", 3: "console"}.get(subsystem, str(subsystem)),
             "version": version, "signed": security_size > 0}
 
@@ -972,6 +1563,192 @@ def inspect_windows(path: Path) -> dict[str, Any]:
             "exes": exes, "unpacked": unpacked, "licences": texts}
 
 
+def ar_members(path: Path) -> dict[str, tuple[int, int]]:
+    """A .deb's members (an ar archive): where each starts and its size."""
+    found = {}
+    with path.open("rb") as handle:
+        if handle.read(8) != b"!<arch>\n":
+            raise Failed("%s is not a .deb (no ar header)" % path.name)
+        while True:
+            head = handle.read(60)
+            if len(head) < 60:
+                return found
+            name, size = head[:16].decode().strip().rstrip("/"), int(head[48:58])
+            found[name] = (handle.tell(), size)
+            handle.seek(size + size % 2, os.SEEK_CUR)
+
+
+class Slice:
+    """Part of a file, read as a file: a .deb member, streamed into tarfile."""
+
+    def __init__(self, path: Path, start: int, size: int) -> None:
+        self.handle = path.open("rb")
+        self.handle.seek(start)
+        self.left = size
+
+    def read(self, size: int = -1) -> bytes:
+        size = self.left if size < 0 else min(size, self.left)
+        data = self.handle.read(size)
+        self.left -= len(data)
+        return data
+
+    def close(self) -> None:
+        self.handle.close()
+
+
+def inspect_deb(path: Path) -> dict[str, Any]:
+    members = ar_members(path)
+    control_name = next(name for name in members if name.startswith("control.tar"))
+    data_name = next(name for name in members if name.startswith("data.tar"))
+    control = Slice(path, *members[control_name])
+    with tarfile.open(fileobj=control, mode="r|*") as archive:  # type: ignore[call-overload]
+        fields = {}
+        for member in archive:
+            if member.name.lstrip("./") == "control":
+                handle = archive.extractfile(member)
+                text = handle.read().decode() if handle else ""
+                fields = dict(line.split(": ", 1) for line in text.splitlines()
+                              if ": " in line and not line.startswith(" "))
+    control.close()
+    contents, links, beside, loose = [], {}, {}, []
+    binary, data = None, b""
+    wanted = {"usr/lib/brickworks/brickworks.x86_64",
+              "usr/share/applications/%s.desktop" % APP_ID,
+              "usr/share/mime/packages/%s.xml" % APP_ID}
+    stream = Slice(path, *members[data_name])
+    # One pass, each file read as it is reached (inspect_tar).
+    with tarfile.open(fileobj=stream, mode="r|*") as archive:  # type: ignore[call-overload]
+        for member in archive:
+            name = member.name.lstrip("./")
+            contents.append(name)
+            # dpkg gives these to the system's own folders, "./" to / itself.
+            if (member.isdir() and member.mode & 0o7777 != 0o755) or (member.uid, member.gid) != (0, 0):
+                loose.append("%s %o %d:%d" % (name or "/", member.mode, member.uid, member.gid))
+            if member.issym():
+                links[name] = member.linkname
+            leaf = name.rsplit("/", 1)[-1]
+            if name in wanted or (name.startswith("usr/share/doc/brickworks/")
+                                  and leaf in LICENCE_FILES):
+                handle = archive.extractfile(member)
+                read = handle.read() if handle else b""
+                if leaf in LICENCE_FILES:
+                    beside[leaf] = read
+                elif name.endswith(".x86_64"):
+                    binary, data = member, read
+                else:
+                    beside[name] = read
+    stream.close()
+    if binary is None:
+        raise Failed("%s has no usr/lib/brickworks/brickworks.x86_64" % path.name)
+    entry = beside.get("usr/share/applications/%s.desktop" % APP_ID, b"").decode()
+    return {"package": fields.get("Package", ""), "version": fields.get("Version", ""),
+            "architecture": fields.get("Architecture", ""), "depends": fields.get("Depends", ""),
+            "unpacked": int(fields.get("Installed-Size", "0")) * 1024,
+            "executable": bool(binary.mode & 0o111), "glibc": glibc_needed(data),
+            "command": links.get("usr/bin/brickworks", ""),
+            "opens": [kind["ext"] for kind in MODEL_TYPES if kind["mime"] in entry
+                      and ('"*.%s"' % kind["ext"]) in beside.get(
+                          "usr/share/mime/packages/%s.xml" % APP_ID, b"").decode()],
+            "icons": sorted(name.split("/")[4] for name in contents
+                            if name.startswith("usr/share/icons/hicolor/")
+                            and name.endswith("/apps/%s.png" % APP_ID)),
+            "contents": [name for name in contents if not name.endswith("/")],
+            "loose": loose, "licences": licences(beside.get)}
+
+
+def dmg_reader(path: Path, into: Path) -> tuple[Callable[[str], bytes | None], int]:
+    """A disk image's files by their path on the volume (a link's target for
+    a link), and how much its files take: hdiutil mounts it on a Mac,
+    libdmg-hfsplus reads it elsewhere."""
+    if sys.platform == "darwin":
+        mount = into / "volume"
+        mount.mkdir()
+        subprocess.run(["hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount),
+                        str(path)], check=True, capture_output=True)
+
+        def read_mounted(name: str) -> bytes | None:
+            target = mount / name
+            if target.is_symlink():
+                return os.readlink(target).encode()
+            return target.read_bytes() if target.is_file() else None
+        used = sum(p.lstat().st_size for p in mount.rglob("*") if not p.is_dir())
+        return read_mounted, used
+    tools = dmg_tools()
+    volume = into / "volume.hfs"
+    subprocess.run([str(tools["dmg"]), "extract", str(path), str(volume)], check=True,
+                   capture_output=True)
+
+    def listing(folder: str) -> tuple[dict[str, tuple[str, int]], int]:
+        said = subprocess.run([str(tools["hfsplus"]), str(volume), "ls", folder],
+                              capture_output=True, text=True).stdout
+        entries = {}
+        for line in said.splitlines():
+            found = re.match(r"(\d{6})\s+\d+\s+\d+\s+(\d+)\s+\d+/\s*\d+/\d+\s+\d+:\d+\s(.+)$", line)
+            if found:
+                entries[found.group(3)] = (found.group(1), int(found.group(2)))
+        total = re.search(r"Total filesystem size: (\d+)", said)
+        return entries, int(total.group(1)) if total else 0
+
+    def read_extracted(name: str) -> bytes | None:
+        folder, _, leaf = ("/" + name).rpartition("/")
+        mode, size = listing(folder or "/")[0].get(leaf, ("", 0))
+        if mode.startswith("12"):
+            # hfsplus follows a link and cannot read one that leaves the
+            # volume (/Applications): its length is all it gives here.
+            # write_dmg read the target back when it made the image.
+            return b"/Applications" if size == len(b"/Applications") else b"?"
+        got = subprocess.run([str(tools["hfsplus"]), str(volume), "cat", "/" + name],
+                             capture_output=True)
+        return got.stdout if got.returncode == 0 and got.stdout else None
+    return read_extracted, listing("/")[1]
+
+
+def inspect_dmg(path: Path) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(prefix="brickworks-dmg-", dir=WORK if WORK.exists()
+                                     else None) as scratch:
+        read, used = dmg_reader(path, Path(scratch))
+        try:
+            app = "Brickworks.app/Contents/"
+            plist = plistlib.loads(read(app + "Info.plist") or b"")
+            binary = read(app + "MacOS/" + plist.get("CFBundleExecutable", "Brickworks")) or b""
+            facts = macho_facts(binary)
+            facts.update({
+                "bundle": "Brickworks.app", "unpacked": used,
+                "version": plist.get("CFBundleShortVersionString", ""),
+                "build": plist.get("CFBundleVersion", ""),
+                "identifier": plist.get("CFBundleIdentifier", ""),
+                "opens": [ext for t in plist.get("CFBundleDocumentTypes", [])
+                          for d in plist.get("UTImportedTypeDeclarations", [])
+                          if d["UTTypeIdentifier"] in t.get("LSItemContentTypes", [])
+                          for ext in d["UTTypeTagSpecification"]["public.filename-extension"]],
+                "sealed": read(app + "_CodeSignature/CodeResources") is not None,
+                "stapled": read(app + "CodeResources") is not None,
+                "pck": read(app + "Resources/Brickworks.pck") is not None,
+                "applications": (read("Applications") or b"").decode(errors="replace"),
+                "volume_icon": read(".VolumeIcon.icns") is not None,
+                "layout": read(".DS_Store") is not None
+                and read(".background/background.tiff") is not None,
+                "licences": licences(lambda name: read(app + "Resources/" + name)),
+            })
+        finally:
+            if sys.platform == "darwin":
+                subprocess.run(["hdiutil", "detach", str(Path(scratch) / "volume")],
+                               capture_output=True)
+    with path.open("rb") as handle:
+        handle.seek(-512, os.SEEK_END)
+        koly = handle.read(512)
+    # The trailer's code signature (its offset and size at 0x128 and 0x130),
+    # where rcodesign puts the image's own.
+    facts["image_signed"] = koly[:4] == b"koly" and struct.unpack(">Q", koly[0x130:0x138])[0] > 0
+    return facts
+
+
+def inspect_installer(path: Path) -> dict[str, Any]:
+    data = path.read_bytes()
+    setup = pe_facts(data)
+    return {"exes": {path.name: setup}, "nsis": b"NullsoftInst" in data}
+
+
 def inspect(out: Path) -> list[dict[str, Any]]:
     """Every package in a dist folder, read back and described."""
     version = out.name
@@ -1004,6 +1781,53 @@ def inspect(out: Path) -> list[dict[str, Any]]:
             if facts.get("contents"):
                 say("      " + ", ".join(facts["contents"]))
                 say_licences(path.name, facts["licences"])
+        elif path.name.endswith(".deb"):
+            facts = inspect_deb(path)
+            say("  %s  %s, %s %s %s, installs %s; executable %s; glibc %s or newer" % (
+                path.name, human(entry["size"]), facts["package"], facts["version"],
+                facts["architecture"], human(facts["unpacked"]),
+                "yes" if facts["executable"] else "NO", facts["glibc"]))
+            say("      brickworks -> %s; opens %s; icons %s" % (
+                facts["command"], ", ".join(facts["opens"]) or "nothing", " ".join(facts["icons"])))
+            say_licences(path.name, facts["licences"])
+            if facts["version"] != version or not facts["executable"] or not facts["command"]:
+                raise Failed("%s: version %s, executable %s, command %r" % (
+                    path.name, facts["version"], facts["executable"], facts["command"]))
+            if sorted(facts["opens"]) != sorted(kind["ext"] for kind in MODEL_TYPES):
+                raise Failed("%s opens only %s" % (path.name, facts["opens"]))
+            if facts["loose"]:
+                raise Failed("%s would install these other than 0755 root: %s" % (
+                    path.name, ", ".join(facts["loose"][:5])))
+        elif path.name.endswith(".dmg"):
+            facts = inspect_dmg(path)
+            say("  %s  %s; %s %s (build %s), %s; architectures %s; oldest macOS %s" % (
+                path.name, human(entry["size"]), facts["bundle"], facts["version"],
+                facts["build"], facts["identifier"], " + ".join(facts["architectures"]),
+                facts["min_macos"]))
+            say("      signature %s; sealed %s; notarisation ticket %s; pck inside %s; image "
+                "signed %s" % (facts["signature"], facts["sealed"], facts["stapled"], facts["pck"],
+                               facts["image_signed"]))
+            say("      Applications -> %s; volume icon %s; window laid out %s; opens %s" % (
+                facts["applications"], facts["volume_icon"], facts["layout"],
+                ", ".join(facts["opens"]) or "nothing"))
+            say_licences(path.name, facts["licences"])
+            if facts["version"] != version:
+                raise Failed("%s says it is %s" % (path.name, facts["version"]))
+            if sorted(facts["architectures"]) != ["arm64", "x86_64"]:
+                raise Failed("%s is not universal: %s" % (path.name, facts["architectures"]))
+            if facts["applications"] != "/Applications" or not facts["pck"]:
+                raise Failed("%s: no Applications link or no pck" % path.name)
+            if sorted(facts["opens"]) != sorted(kind["ext"] for kind in MODEL_TYPES):
+                raise Failed("%s opens only %s" % (path.name, facts["opens"]))
+        elif path.name.endswith("-setup.exe"):
+            facts = inspect_installer(path)
+            setup = facts["exes"][path.name]
+            say("  %s  %s; %s, %s, version %s, %s; NSIS %s" % (
+                path.name, human(entry["size"]), setup["machine"], setup["subsystem"],
+                setup["version"], "signed" if setup["signed"] else "unsigned", facts["nsis"]))
+            if setup["version"] != version or not facts["nsis"]:
+                raise Failed("%s says version %r, NSIS %s" % (path.name, setup["version"],
+                                                              facts["nsis"]))
         elif "-macos-" in path.name:
             facts = inspect_mac(path)
             say("  %s  %s, unpacks to %s" % (path.name, human(entry["size"]),
@@ -1050,8 +1874,13 @@ def inspect(out: Path) -> list[dict[str, Any]]:
 
 # -- running a package ------------------------------------------------------
 
+# Where the Windows installer puts the app, for the person running it.
+WINDOWS_INSTALLED = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Brickworks"
+
+
 def unpack(package: Path, into: Path) -> Path:
-    """Unpacked the way a person's system would, and the program to run."""
+    """Unpacked or installed the way a person's system would, and the program
+    to run."""
     name = package.name
     if name.endswith(".AppImage"):
         target = into / name
@@ -1061,6 +1890,34 @@ def unpack(package: Path, into: Path) -> Path:
     if name.endswith(".tar.xz"):
         subprocess.run(["tar", "-xf", str(package), "-C", str(into)], check=True)
         return next(into.glob("*/brickworks.x86_64"))
+    if name.endswith(".deb"):
+        # The files dpkg installs, under a folder of their own rather than
+        # /, which needs no root; opens_models tells a desktop about them as
+        # dpkg's triggers do.
+        subprocess.run(["dpkg-deb", "-x", str(package), str(into / "root")], check=True)
+        return into / "root" / "usr" / "bin" / "brickworks"
+    if name.endswith(".dmg"):
+        if sys.platform != "darwin":
+            raise Failed("a disk image runs on a Mac: tools/release.py inspect reads one here")
+        mount = into / "volume"
+        mount.mkdir()
+        subprocess.run(["hdiutil", "attach", "-readonly", "-nobrowse", "-mountpoint", str(mount),
+                        str(package)], check=True, capture_output=True)
+        # Dragged onto Applications, as its window says: Finder copies the
+        # bundle as ditto does.
+        target = Path("/Applications/Brickworks.app")
+        shutil.rmtree(target, ignore_errors=True)
+        subprocess.run(["ditto", str(mount / "Brickworks.app"), str(target)], check=True)
+        subprocess.run(["hdiutil", "detach", str(mount)], check=True, capture_output=True)
+        return target / "Contents" / "MacOS" / "Brickworks"
+    if name.endswith("-setup.exe"):
+        if os.name != "nt":
+            raise Failed("an installer runs on Windows: tools/release.py inspect reads one here")
+        # As the updater runs it: silently, for this person, no administrator.
+        done = subprocess.run([str(package), "/VERYSILENT"], timeout=1200)
+        if done.returncode != 0:
+            raise Failed("%s /VERYSILENT exited %d" % (name, done.returncode))
+        return WINDOWS_INSTALLED / "Brickworks.console.exe"
     if sys.platform == "darwin":
         # ditto is what Finder's Archive Utility is, and keeps the seal.
         subprocess.run(["ditto", "-x", "-k", str(package), str(into)], check=True)
@@ -1179,6 +2036,364 @@ def takes_bricks(base: list[str], env: dict[str, str], root: Path) -> list[tuple
                          drive.returncode == 0, drive.stdout + drive.stderr))
     finally:
         stop(app)
+    return said
+
+
+# A model of each kind the packages open, from the checkout: LDraw, a
+# multi-part LDraw, BrickLink Studio and LDD.
+MODEL_FIXTURES = (ROOT / "models" / "car.ldr", ROOT / "src" / "dev" / "fixtures" / "telescope.mpd",
+                  ROOT / "tests" / "fixtures" / "studio" / "bay_2025.io",
+                  ROOT / "src" / "dev" / "fixtures" / "49311_test.lxf")
+
+
+def opened_line(text: str, model: Path) -> int:
+    """The parts the app said it opened [model] with (Main._open_given), or
+    -1. By the file's name: a system can hand over another spelling of its
+    folder (/private/var for /var on a Mac)."""
+    found = re.findall(r"opened [^\n]*%s: (\d+) parts" % re.escape(model.name), text)
+    return int(found[-1]) if found else -1
+
+
+def ldraw_parts(text: str) -> int:
+    """The parts in an LDraw model, a sub-model's counted each time it is
+    placed, as the app counts them (ModelStore.count_in): a section whose
+    header says it is a part, as a Studio file's own parts do, is one part."""
+    def key(named: str) -> str:
+        leaf = named.replace("\\", "/").strip().lower().rsplit("/", 1)[-1]
+        return next((leaf[:-4] for suffix in (".ldr", ".dat", ".mpd") if leaf.endswith(suffix)), leaf)
+    refs: dict[str, list[str]] = {}
+    is_part: dict[str, bool] = {}
+    order: list[str] = []
+    name, lines, head = "", [], []  # type: str, list[str], list[str]
+    for raw in (text + "\n0 NOFILE").split("\n"):
+        line = raw.strip()
+        if line.startswith("0 FILE ") or line.startswith("0 NOFILE"):
+            if lines and name not in refs:
+                refs[name] = lines
+                is_part[name] = any(said.startswith("0 !LDRAW_ORG") and "part" in said.lower()
+                                    for said in head)
+                order.append(name)
+            name = key(line[7:]) if line.startswith("0 FILE ") else ""
+            lines, head = [], []
+            continue
+        if len(head) < 16:
+            head.append(line)
+        fields = line.split()
+        if line.startswith("1 ") and len(fields) >= 15:
+            lines.append(key(" ".join(fields[14:])))
+
+    def count(section: str, depth: int) -> int:
+        return sum(count(used, depth + 1) if depth < 32 and used in refs and used != section
+                   and not is_part[used] else 1 for used in refs[section])
+    return count(order[0], 0) if order else 0
+
+
+def logs_say(folder: Path, model: Path, seconds: int) -> int:
+    """[opened_line] from the app's own logs under [folder], waiting up to
+    [seconds] for it: the app keeps running, so they are read as it goes."""
+    end = time.time() + seconds
+    while True:
+        text = "".join(log.read_text(errors="replace") for log in folder.glob("*.log"))
+        parts = opened_line(text, model)
+        if parts >= 0 or time.time() > end:
+            return parts
+        time.sleep(1)
+
+
+def held_windows(data: Path) -> list[int]:
+    """The process of each window open on [data] (an app_userdata folder):
+    a window holds its session with its process id (TabSession._hold). A
+    run that quit without letting go leaves its hold behind, so only those
+    still running a Brickworks count: the smoke counted three windows for
+    two, and end_windows would have killed whatever had the old id since."""
+    found = []
+    for pid in data.glob("sessions/*/held/pid"):
+        text = pid.read_text().strip()
+        if text.isdigit() and app_running(int(text)):
+            found.append(int(text))
+    return found
+
+
+def app_running(pid: int) -> bool:
+    if os.name == "nt":
+        listed = subprocess.run(["tasklist", "/FI", "PID eq %d" % pid, "/FO", "CSV", "/NH"],
+                                capture_output=True, text=True).stdout
+    else:
+        listed = subprocess.run(["ps", "-p", str(pid), "-o", "comm="],
+                                capture_output=True, text=True).stdout
+    return "brickworks" in listed.lower()
+
+
+def end_windows(data: Path) -> None:
+    for pid in held_windows(data):
+        if os.name == "nt":
+            end_tree(pid)
+        else:
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+
+
+def opens_models(package: Path, base: list[str], env: dict[str, str],
+                 root: Path) -> list[tuple[str, bool | None, str]]:
+    """The model files a person opens, opened as their system hands them over.
+
+    Every package: each kind given to the program as a bare path, as a file
+    association runs it, in a folder with a space in its name, and written
+    back out. Then each system's own double-click, where the package
+    registers one: the .deb's menu entry and MIME types through gio, which
+    is what a file manager does; the disk image's app through Launch
+    Services, as Finder does; the installer's types through the shell, as
+    Explorer does, then its uninstaller. Each twice, the second with the
+    app already open: it comes up in a window of its own.
+    """
+    said: list[tuple[str, bool | None, str]] = []
+    folder = root / "my models"
+    folder.mkdir(exist_ok=True)
+    models = []
+    for fixture in MODEL_FIXTURES:
+        models.append(folder / fixture.name)
+        shutil.copy2(fixture, models[-1])
+    for model in models:
+        out = root / ("from-%s.ldr" % model.suffix[1:])
+        code, output = run_app(base + ["--headless", str(model), "--", "--out=%s" % out], env)
+        parts = opened_line(output, model)
+        written = ldraw_parts(out.read_text()) if out.exists() else 0
+        # A part a Studio file carries, built from LDraw files a package
+        # has only as meshes, is not drawn but is kept: bay_2025.io's own
+        # part draws in the editor, 6 parts, and in a package says why not
+        # and goes back out with the other 5.
+        kept = max(0, written - parts) if "could not build a part the file carries" in output else 0
+        said.append(("opens %s given as the system gives it: %d parts, %d written back%s"
+                     % (model.name, parts, written, ", %d it carries but cannot draw" % kept
+                        if kept else ""),
+                     code == 0 and parts > 0 and written == parts + kept, output))
+
+    twice = [folder / "car one.ldr", folder / "car two.ldr"]
+    for copy in twice:
+        shutil.copy2(models[0], copy)
+    name = package.name
+    if name.endswith(".deb"):
+        said += double_click_linux(root / "unpacked", env, twice)
+    elif name.endswith(".dmg"):
+        said += double_click_mac(twice)
+    elif name.endswith("-setup.exe"):
+        said += double_click_windows(package, twice)
+    elif name.endswith(".AppImage"):
+        said += appimage_integration(base[0], root)
+    return said
+
+
+def content_type(path: Path, env: dict[str, str]) -> str:
+    """The type a file manager gives [path]: GIO's, from the shared MIME
+    database, as Files, Nemo and Thunar read it. Not xdg-mime's: outside a
+    desktop it asks file(1), which knows no LDraw, and a runner with no
+    desktop said every .ldr was text/plain while gio opened it with us."""
+    said = subprocess.run(["gio", "info", "--attributes=standard::content-type", str(path)],
+                          env=env, capture_output=True, text=True).stdout
+    found = re.search(r"standard::content-type: (\S+)", said)
+    return found.group(1) if found else ""
+
+
+def double_click_linux(root: Path, env: dict[str, str],
+                       models: list[Path]) -> list[tuple[str, bool, str]]:
+    """The .deb's files, told to a desktop as dpkg's triggers tell it, then
+    each model opened with gio, as a file manager opens a double-click."""
+    said: list[tuple[str, bool, str]] = []
+    share = root / "root" / "usr" / "share"
+    for tool, where in (("update-mime-database", "mime"), ("update-desktop-database", "applications")):
+        if shutil.which(tool):
+            subprocess.run([tool, str(share / where)], capture_output=True)
+    desk = dict(env, XDG_DATA_DIRS="%s:/usr/share" % share,
+                PATH="%s:%s" % (root / "root" / "usr" / "bin", env.get("PATH", "")))
+    entry = share / "applications" / (APP_ID + ".desktop")
+    if shutil.which("desktop-file-validate"):
+        checked = subprocess.run(["desktop-file-validate", str(entry)], capture_output=True, text=True)
+        said.append(("its menu entry is valid", checked.returncode == 0 and not checked.stdout.strip(),
+                     checked.stdout + checked.stderr))
+    if not shutil.which("xdg-mime") or not shutil.which("gio"):
+        said.append(("xdg-mime and gio are here to open a model with", False, ""))
+        return said
+    for model in MODEL_FIXTURES:
+        kind = next(k for k in MODEL_TYPES if k["ext"] == model.suffix[1:])
+        typed = content_type(model, desk)
+        handler = subprocess.run(["xdg-mime", "query", "default", kind["mime"]], env=desk,
+                                 capture_output=True, text=True).stdout.strip()
+        said.append(("a .%s is %s, which opens in %s" % (kind["ext"], typed or "nothing", handler or
+                                                        "nothing"),
+                     typed == kind["mime"] and handler == APP_ID + ".desktop", ""))
+    data = Path(env["HOME"]) / ".local" / "share" / "godot" / "app_userdata" / "Brickworks"
+    script = root / "double_click.sh"
+    # Each opened as a file manager opens it, and waited for in the app's own
+    # log; then the windows are counted while both are open, and the class
+    # each says it is (WM_CLASS), which ties it to the menu entry's icon.
+    script.write_text('set -u\nlogs="%s/logs"\nfor model in "$@"; do\n'
+                      '  gio open "$model" || exit 3\n  name=$(basename "$model")\n'
+                      '  for _ in $(seq 1 300); do\n'
+                      '    grep -qsF "$name: " "$logs"/*.log && break\n'
+                      '    sleep 1\n  done\ndone\n'
+                      'n=0\nfor held in "%s"/sessions/*/held/pid; do\n'
+                      '  ps -p "$(cat "$held" 2>/dev/null)" -o comm= 2>/dev/null | grep -qi brickworks'
+                      ' && n=$((n + 1))\ndone\necho "$n" > "%s"\n'
+                      'for id in $(xwininfo -root -children | awk \'/^ +0x/ {print $1}\'); do\n'
+                      '  xprop -id "$id" WM_CLASS\ndone > "%s"\n'
+                      % (data, data, root / "windows.txt", root / "classes.txt"))
+    code, output = run_app(windowed(["bash", str(script)] + [str(m) for m in models], desk), desk, 900)
+    text = "".join(log.read_text(errors="replace") for log in (data / "logs").glob("*.log"))
+    for at, model in enumerate(models):
+        parts = opened_line(text, model)
+        said.append(("a double-click on %s opens it in Brickworks%s: %d parts"
+                     % (model.name, ", the app already open" if at else "", parts), parts > 0,
+                     output + text[-2000:]))
+    windows = (root / "windows.txt").read_text().strip() if (root / "windows.txt").exists() else "0"
+    said.append(("...each in a window of its own: %s open" % windows, windows == "2", output))
+    classes = (root / "classes.txt").read_text() if (root / "classes.txt").exists() else ""
+    named = re.findall(r'WM_CLASS\(STRING\) = "([^"]*)", "([^"]*)"', classes)
+    said.append(("...whose class is the menu entry's StartupWMClass, %s: %s" % (
+        WINDOW_CLASS, ", ".join(sorted({c for _, c in named})) or "no window named one"),
+        len([c for _, c in named if c == WINDOW_CLASS]) == 2, classes))
+    end_windows(data)
+    return said
+
+
+def double_click_mac(models: list[Path]) -> list[tuple[str, bool | None, str]]:
+    """The app in /Applications (unpack put it there), registered with
+    Launch Services as Finder registers a new app, then each model opened
+    with open(1), which is a double-click in Finder."""
+    said: list[tuple[str, bool | None, str]] = []
+    app = Path("/Applications/Brickworks.app")
+    subprocess.run(["/System/Library/Frameworks/CoreServices.framework/Frameworks/"
+                    "LaunchServices.framework/Support/lsregister", "-f", str(app)], check=True)
+    why = mac_cannot_draw()
+    if why:
+        return [("a double-click on a model, not run here: %s" % why, None, "")]
+    # Launch Services starts it as the person, in their own home.
+    data = Path.home() / "Library" / "Application Support" / "Godot" / "app_userdata" / "Brickworks"
+    try:
+        for at, model in enumerate(models):
+            done = subprocess.run(["open", str(model)], capture_output=True, text=True)
+            parts = logs_say(data / "logs", model, 300) if done.returncode == 0 else -1
+            said.append(("a double-click on %s opens it in Brickworks%s: %d parts"
+                         % (model.name, ", the app already open" if at else "", parts), parts > 0,
+                         done.stderr + ("" if parts > 0 else mac_state(data))))
+        windows = held_windows(data)
+        said.append(("...each in a window of its own: %d open" % len(windows), len(windows) == 2, ""))
+    finally:
+        end_windows(data)
+    return said
+
+
+def mac_cannot_draw() -> str:
+    """Why this Mac cannot open the app's window at all, or "" if it can.
+
+    An Intel Mac draws through Vulkan on MoltenVK; Apple silicon through
+    Metal. The only GPU a macOS VM on an Intel host has is Apple's
+    paravirtual one, 64 MB and Metal 2, and MoltenVK aborts on it in
+    vkCreateInstance (an argument encoder it cannot make), or with argument
+    buffers off runs out of device memory. GitHub's macos-15-intel is such a
+    VM: its double-clicks crashed every time, while on OpenGL the same app
+    started with the model's name on its window. A real Intel Mac has a
+    real GPU."""
+    arm = subprocess.run(["sysctl", "-n", "hw.optional.arm64"], capture_output=True, text=True)
+    if arm.stdout.strip() == "1":
+        return ""
+    gpus = subprocess.run(["system_profiler", "SPDisplaysDataType"], capture_output=True,
+                          text=True).stdout
+    chips = re.findall(r"Chipset Model: (.+)", gpus)
+    if chips and all("Paravirtual" in chip for chip in chips):
+        return "an Intel Mac whose only GPU is %s, which MoltenVK cannot draw on" % chips[0].strip()
+    return ""
+
+
+def mac_state(data: Path) -> str:
+    """What a Mac shows of an app that did not say it opened a model: its
+    processes, the end of its newest log, and any crash report."""
+    listed = subprocess.run(["ps", "-axo", "pid,etime,comm"], capture_output=True, text=True).stdout
+    running = [line for line in listed.splitlines() if "Brickworks" in line]
+    logs = sorted((data / "logs").glob("*.log"), key=lambda log: log.stat().st_mtime)
+    tail = logs[-1].read_text(errors="replace")[-1500:] if logs else "no log in %s" % (data / "logs")
+    reports = sorted((Path.home() / "Library" / "Logs" / "DiagnosticReports").glob("Brickworks*"))
+    # The log first: a check prints only the last lines it is given.
+    return tail + "\n" + "\n".join(running or ["no Brickworks running"]) + "\n" + (
+        "crash reports: " + ", ".join(r.name for r in reports) if reports else "no crash report")
+
+
+def double_click_windows(package: Path, models: list[Path]) -> list[tuple[str, bool, str]]:
+    """What the installer left: the app, its Start menu entry, its line in
+    Settings, Apps and its model types; each model opened as Explorer opens a
+    double-click; then its uninstaller, which leaves the person's models."""
+    import winreg  # type: ignore[import-not-found]
+
+    def value(key: int, path: str, name: str = "") -> str:
+        try:
+            with winreg.OpenKey(key, path) as opened:
+                return str(winreg.QueryValueEx(opened, name)[0])
+        except OSError:
+            return ""
+
+    said: list[tuple[str, bool, str]] = []
+    uninstall = r"Software\Microsoft\Windows\CurrentVersion\Uninstall\Brickworks"
+    start_menu = Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" \
+        / "Brickworks.lnk"
+    version = package.name.split("-")[1]
+    said.append(("installed for this person: %s" % WINDOWS_INSTALLED,
+                 (WINDOWS_INSTALLED / "Brickworks.exe").exists(), ""))
+    said.append(("in Settings, Apps as Brickworks %s" % value(winreg.HKEY_CURRENT_USER, uninstall,
+                                                             "DisplayVersion"),
+                 value(winreg.HKEY_CURRENT_USER, uninstall, "DisplayVersion") == version, ""))
+    said.append(("in the Start menu", start_menu.exists(), str(start_menu)))
+    for kind in MODEL_TYPES:
+        progid = value(winreg.HKEY_CLASSES_ROOT, "." + kind["ext"])
+        command = value(winreg.HKEY_CLASSES_ROOT, progid + r"\shell\open\command") if progid else ""
+        said.append((".%s opens with %s" % (kind["ext"], command or "nothing"),
+                     progid == "Brickworks." + kind["ext"] and "Brickworks.exe" in command, ""))
+    data = Path(os.environ["APPDATA"]) / "Godot" / "app_userdata" / "Brickworks"
+    try:
+        for at, model in enumerate(models):
+            os.startfile(str(model))  # type: ignore[attr-defined]
+            parts = logs_say(data / "logs", model, 300)
+            said.append(("a double-click on %s opens it in Brickworks%s: %d parts"
+                         % (model.name, ", the app already open" if at else "", parts), parts > 0, ""))
+        windows = held_windows(data)
+        said.append(("...each in a window of its own: %d open" % len(windows), len(windows) == 2, ""))
+    finally:
+        end_windows(data)
+        time.sleep(2)
+    subprocess.run([str(WINDOWS_INSTALLED / "Uninstall Brickworks.exe"), "/S"], timeout=600)
+    # The uninstaller runs from a copy of itself, so its own exit says
+    # nothing: the folder going says it is done.
+    end = time.time() + 300
+    while (WINDOWS_INSTALLED / "Brickworks.exe").exists() and time.time() < end:
+        time.sleep(2)
+    left = sorted(p.name for p in WINDOWS_INSTALLED.glob("*")) if WINDOWS_INSTALLED.exists() else []
+    said.append(("Uninstall removes it: %s" % (", ".join(left) or "nothing left"),
+                 not left and not value(winreg.HKEY_CURRENT_USER, uninstall, "DisplayVersion")
+                 and not start_menu.exists()
+                 and not value(winreg.HKEY_CURRENT_USER, r"Software\Classes\.ldr"), ""))
+    said.append(("...and keeps the person's models and settings", data.exists(), str(data)))
+    return said
+
+
+def appimage_integration(image: str, root: Path) -> list[tuple[str, bool, str]]:
+    """What a desktop's AppImage integration (AppImageLauncher, Gear Lever,
+    appimaged) takes from inside the image: its entry, icons and types."""
+    subprocess.run([image, "--appimage-extract"], cwd=root, capture_output=True)
+    inside = root / "squashfs-root"
+    share = inside / "usr" / "share"
+    entry = share / "applications" / (APP_ID + ".desktop")
+    have = [entry, share / "mime" / "packages" / (APP_ID + ".xml"),
+            share / "icons" / "hicolor" / "256x256" / "apps" / (APP_ID + ".png"),
+            share / "icons" / "hicolor" / "scalable" / "apps" / (APP_ID + ".svg"),
+            inside / (APP_ID + ".desktop")]
+    missing = [str(path.relative_to(inside)) for path in have if not path.exists()]
+    said = [("carries its menu entry, icons and model types: %s" % (
+        "all there" if not missing else "lacks " + ", ".join(missing)), not missing, "")]
+    if entry.exists() and shutil.which("desktop-file-validate"):
+        checked = subprocess.run(["desktop-file-validate", str(entry)], capture_output=True, text=True)
+        said.append(("...and the entry is valid", checked.returncode == 0 and not checked.stdout.strip(),
+                     checked.stdout + checked.stderr))
+    shutil.rmtree(inside, ignore_errors=True)
     return said
 
 
@@ -1345,10 +2560,12 @@ def smoke(package: Path, window: bool, expect: str) -> int:
     """Unpack a package and run it in a clean home. Exit 0 only if every check held."""
     failures = 0
 
-    def check(what: str, ok: bool, detail: str = "") -> None:
+    # ok is None for a check this machine cannot make: said, and why, and
+    # neither passed nor failed.
+    def check(what: str, ok: bool | None, detail: str = "") -> None:
         nonlocal failures
-        say("  %s  %s" % ("ok  " if ok else "FAIL", what))
-        if not ok:
+        say("  %s  %s" % ("ok  " if ok else "--  " if ok is None else "FAIL", what))
+        if ok is False:
             failures += 1
             for line in detail.strip().splitlines()[-12:]:
                 say("        " + line)
@@ -1365,7 +2582,9 @@ def smoke(package: Path, window: bool, expect: str) -> int:
         program = unpack(package.resolve(), root / "unpacked")
         env = clean_env(root / "home")
         say("── %s, unpacked in a clean home ──" % package.name)
-        say("  %s" % program.relative_to(root))
+        # Where it went: inside the scratch for most, /Applications or
+        # %LOCALAPPDATA%\Programs for the disk image and the installer.
+        say("  %s" % (program.relative_to(root) if program.is_relative_to(root) else program))
         base = [str(program)]
 
         code, output = run_app(base + ["--headless", "--", "--about"], env, 180)
@@ -1393,6 +2612,8 @@ def smoke(package: Path, window: bool, expect: str) -> int:
               and int(said.group(1)) == len(bricks) > 50, output)
 
         for what, ok, detail in takes_bricks(base, env, root):
+            check(what, ok, detail)
+        for what, ok, detail in opens_models(package, base, env, root):
             check(what, ok, detail)
         check("the app kept its state in the clean home", any((root / "home").rglob("Brickworks")))
 
@@ -1579,12 +2800,25 @@ def release_notes(version: str, files: list[dict[str, Any]], tag: str) -> str:
                      "Done, then System Settings > Privacy & Security > **Open Anyway**.")
     if not win_signed:
         first.append("- **Windows** is not yet signed. SmartScreen may say \"Windows protected "
-                     "your PC\": check the SHA-256, then **More info** > **Run anyway**.")
+                     "your PC\" about the installer: check the SHA-256, then **More info** > "
+                     "**Run anyway**.")
+    kinds = {describe_file(str(f["name"]))["kind"] for f in files}
+    # The zips beside the disk image and the installer, for one release
+    # (docs/DISTRIBUTION.md).
+    kept = ["The macOS and Windows **zips** are still here for this release, so links "
+            "already shared keep working; the next one has only the disk image and the "
+            "installer.", ""] if {"zip", "dmg"} <= kinds else []
     return "\n".join([
         body, "", "## Downloads", "",
         "The right one for your system, with checksums and what each needs: "
         "https://brickworks.diy/download", "",
         "| System | File | Size |", "|---|---|---|", rows, "",
+        *(["On a Mac, open the **.dmg** and drag Brickworks onto Applications. On Windows, "
+           "run the **setup.exe**: it installs for you alone, with no administrator, and "
+           "Settings > Apps uninstalls it. On Debian or Ubuntu, `sudo apt install "
+           "./Brickworks-%s-linux-amd64.deb`; anywhere else, the AppImage." % version, ""]
+          if {"dmg", "installer", "deb"} <= kinds else []),
+        *kept,
         "Every file's SHA-256 is in `SHA256SUMS` (`sha256sum -c SHA256SUMS`).", "",
         *(["### The first launch", "", *first, ""] if first else []),
         "Released %s from %s." % (date, tag)])

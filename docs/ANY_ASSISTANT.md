@@ -9,7 +9,8 @@ the apps, but I think its very important."
 
 This is what a person meets today (A), what each assistant allows (B), where
 Brickworks assumes Claude (C), one workflow for all of them (D), the risks
-(E) and the units, in order (F). Outside facts carry their address and the
+(E), the units, in order (F), and the app's own panel on a plan the person
+already pays for (G). Outside facts carry their address and the
 day read; "TP" marks a third party's word where the maker's own page could
 not be read. Claims about this repo name a file and line, or a command and
 what it printed. docs/PROVIDERS.md (the own-key designer) and
@@ -439,8 +440,12 @@ app starts or offers them.
   Le Chat does not support it. So a tool's schema must keep taking what an
   older list sent.
 - **The tool permission switches** are each assistant's own, and differ.
-- **"My Claude"** stays Claude Code's: no other CLI takes the same flags.
-  Codex and Gemini CLI get the command to copy, not a launcher.
+- **"My Claude"** stays Claude Code's flags, and is no longer alone: the
+  GitHub Copilot CLI can be fenced as tightly by other flags, and its maker
+  invites apps to run it, so **"My Copilot"** sits beside it (section G).
+  Codex and Gemini CLI still get the command to copy, not a launcher: OpenAI
+  sends commercial apps to Sign in with ChatGPT instead, and Gemini CLI no
+  longer takes a Google plan at all (G.1).
 
 ## E. Critique, and recommendations
 
@@ -629,3 +634,147 @@ and U4 together, the change people see. U5 before any directory, because a
 ChatGPT listing whose designs are blind would be the first impression for
 the largest audience. U6 as soon as U1 and U2 are on a preview, in
 parallel. U8 last.
+
+## G. The app's own panel, on a plan the person already pays for
+
+mysub, 2026-11-03. The owner: "is there a way such that say a user has
+connected with their mcp subscription account.. that they can send messages
+through the app assistant and it calls on their subscription". Every page
+below was read today; quotes are the page's own words.
+
+### G.1 Every route, and whether it is allowed
+
+| Route | Where | Allowed? | Their words | Source |
+|---|---|---|---|---|
+| **My Claude**: start the person's own `claude -p`, signed in to Pro or Max | desktop | **Yes**, as built | "Nor does it prevent an end user from signing in to the unmodified Claude Code binary with their own Claude subscription" | code.claude.com/docs/en/legal-and-compliance |
+| Claude.ai login in our app, or our requests on their Pro/Max credentials | any | **No** | "Anthropic does not permit third-party developers to offer Claude.ai login into their own applications, or to route requests through Free, Pro, Max, or Ultra plan credentials on behalf of their users." | same page |
+| **My Copilot**: start the person's own GitHub Copilot CLI, signed in to their Copilot plan | desktop | **Yes**, built here | "Copilot requests are made on behalf of each authenticated user, using their Copilot subscription"; "Best for: … SaaS products"; the CLI's licence lets an app "redistribute unmodified copies of the Software as part of an application or service" | github.com/github/copilot-sdk docs/setup/github-oauth.md; the CLI's LICENSE.md (npm @github/copilot 1.0.105) |
+| Copilot on every plan, Free included | — | — | "All plans include Copilot CLI and the Copilot app." | docs.github.com/en/copilot/get-started/plans |
+| "Sign in with GitHub" in the web app, Copilot on our server (Copilot SDK, multi-user) | web | **Yes**, not built | the same SDK page: "Each user authenticates with their own GitHub account", "Copilot usage is billed to each user's subscription" | as above |
+| Start the person's own `codex exec`, signed in to ChatGPT | desktop | **Not for a commercial app** | "If you've built a local or open-source application using Codex app-server authentication, you can continue using it … App-server authentication has never been permitted for commercial or hosted services. We launched Sign in with ChatGPT to support these use cases" | learn.chatgpt.com/docs/app-server.md |
+| Sign in with ChatGPT, "use your ChatGPT plan", in a desktop app | desktop | **After OpenAI says yes** | "These docs explain ChatGPT plan usage for open-source and locally hosted apps." "If you're interested in offering it in a paid or remotely hosted app, complete the interest form." | developers.openai.com/siwc/token-sharing-open-source.md |
+| Sign in with ChatGPT on a website | web | **Waitlist** | "Sign in with ChatGPT is currently offered to a select group of commercial partners." | developers.openai.com/siwc/request-client-id.md |
+| Start `gemini -p` on a Google sign-in (free, AI Pro, AI Ultra) | desktop | **Gone** since 2026-06-18 | "you can no longer use the Login with Google option to access the IDE extensions or Gemini CLI" | developers.google.com/gemini-code-assist/docs/deprecations/code-assist-individuals |
+| Start `agy -p` (Antigravity CLI, Gemini CLI's successor) | desktop | **No** | "You must not abuse, harm, interfere with, or disrupt the Service. This includes, but is not limited to, using the Service in connection with products not provided by us." | antigravity.google/terms |
+| Gemini CLI's or Antigravity's sign-in used by other software | any | **No** | "Using third-party software, tools, or services to harvest or piggyback on Gemini CLI's OAuth authentication to access our backend services is a direct violation" | gemini-cli docs/resources/faq.md |
+| MCP sampling: the connected client runs its model for our server | web | **No client of ours has it**, and it is deprecated | Claude: "Claude doesn't yet support these MCP features, so don't build a feature that depends on them: … Sampling". The spec: "The Sampling feature is deprecated as of protocol version 2026-07-28 … New implementations SHOULD NOT adopt it" | claude.com/docs/connectors/building; modelcontextprotocol.io/specification/2026-07-28/client/sampling |
+| OpenRouter OAuth (PKCE) | web | Yes, but it spends credits, not a plan | "Their requests are billed to their own OpenRouter credits" | openrouter.ai/docs/guides/overview/auth/oauth |
+| GitHub Models on the person's token | — | **Retired** | "As of July 30, 2026, GitHub Models is now retired." | github.blog/changelog/2026-07-30-github-models-is-now-retired |
+
+MCP sampling, client by client: claude.ai, Claude Desktop and Claude Code do
+not support it (above). ChatGPT's developer docs never mention it, and the
+last MCP clients list (repo commit 87993a68, 2026-05-26, before the list was
+deleted) gave ChatGPT "Tools, Apps, DCR, CIMD, Instructions" and Gemini CLI
+"Prompts, Tools, Instructions, DCR". Gemini CLI's MCP client answers only
+`roots/list`. Only VS Code's Copilot has it, experimental: "The first time an
+MCP server performs a sampling request, the user is prompted to authorize
+the server to access their models" (code.visualstudio.com/api/extension-guides/ai/mcp).
+A web panel message running on the person's plan through their connected
+assistant is therefore not possible today for anyone who uses Claude, ChatGPT
+or Gemini, and the spec has told new servers not to build on it.
+
+### G.2 What is not allowed, plainly
+
+- Borrowing a plan's credentials: reading `~/.claude`, `~/.codex/auth.json` or
+  Copilot's keychain entry, or asking a person to paste a plan token.
+  Anthropic: "developers may not collect, store, or intermediate Claude.ai
+  credentials or session tokens"; OpenAI: "You may not share your account
+  credentials or make your account available to anyone else"; OpenAI's Codex
+  docs on auth.json: "Don't commit it, paste it into tickets, or share it in
+  chat." `src/ai/own_key.gd` refuses a pasted Claude plan token already.
+- Proxies that turn a plan into an API (claude-code-proxy and its kind): they
+  intermediate the credentials, and Anthropic's support page names "tools that
+  … attempt to route third-party traffic against subscription limits" as
+  prohibited.
+- Driving a plan's sign-in ourselves: a person signs in with the maker's own
+  flow, in the maker's own program (`claude`, `copilot login`). The app never
+  shows a device code, never stores a token, and never starts a login.
+- Gemini's and Antigravity's sign-ins from any program but Google's.
+
+### G.3 The routes, and what each needs
+
+1. **My Claude** (desktop, built). `--strict-mcp-config`, `--tools ""`,
+   `--restricted`; `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` hidden.
+   One condition to keep: the legal page says "you can't use the Claude Code
+   or Anthropic names or logos as part of your own product, feature, or
+   company name". "My Claude" names the person's Claude, not our feature, and
+   the tooltip says it runs "the Claude Code on this machine", which the page
+   allows ("You can accurately say, in plain text, that your product … runs
+   Claude Code"). Decided: the box names whose Claude, as "My Copilot" names
+   whose Copilot (GitHub's licence allows its marks "as necessary to identify
+   the Software"); neither is ever a feature's or the product's own name.
+2. **My Copilot** (desktop, built in this unit, `src/ai/copilot_cli.gd`).
+   Copilot has neither of Claude Code's taking-away flags, so these do it,
+   each measured against a stand-in model that wrote down what it was offered
+   (Copilot CLI 1.0.105, BYOK, no sign-in):
+
+   | Flag | What it takes away | Measured |
+   |---|---|---|
+   | `--available-tools brickworks-NAME …` | every tool it does not name, built-in or a server's | unfenced: 24 tools, `bash`, `web_fetch`, `mail-send_email` among them; fenced: only ours |
+   | `--disable-mcp-server NAME`, each of `copilot mcp list --json` but ours | the person's servers are not started | the stand-in mail server wrote its mark unfenced, never fenced |
+   | `--disable-builtin-mcps` | GitHub's own servers, which would be handed the sign-in | listed "disabled" |
+   | `--additional-mcp-config @FILE` | ours, which wins over a server of theirs also called brickworks | theirs' tool never offered |
+   | `--allow-tool brickworks`, `--deny-tool shell`, `--deny-tool write` | ours run without asking; a shell or writer is refused if one ever shows | ran headless with no `--allow-all-tools` |
+   | `--no-custom-instructions --no-ask-user --disallow-temp-dir -C DIR` | no AGENTS.md, no questions, the app's own empty folder | — |
+   | `--allow-all-mcp-server-instructions`, only when theirs were listed | our instructions reach the model (Copilot shows only some servers') | without it HOW TO WORK never reached the model; with theirs left off, only ours did |
+
+   `GH_TOKEN` and `GITHUB_TOKEN` are taken off the child with env(1), so a
+   shell's token never stands in for the person's sign-in (COPILOT_GITHUB_TOKEN
+   is Copilot's own and kept). Every prompt spends the plan's allowance (AI
+   credits, or premium requests on the old billing), so a brief is designed
+   once, not twice (BestOfTwo stays Claude Code's). Copilot's default model is
+   the person's own choice in Copilot; Claude Opus and Sonnet 5.5 are among its
+   models on plans that have them. `src/dev/copilot_cli_probe.gd` is the proof.
+   It found one fault in the app's port, not Copilot's: an id of 1 went back
+   as 1.0 (Godot reads every JSON number as a float), and Copilot's client,
+   Rust's rmcp, which Codex uses too, read that as an answer to nothing and
+   gave up with 0 tools. The port sends a whole-number id back whole now.
+   Not yet known: whether Copilot shows the model view_model's picture. On the
+   stand-in, the request after it carried none in a message of its own.
+3. **Sign in with GitHub on the web, Copilot on our server** (allowed, not
+   built). The Copilot SDK's multi-user mode: a GitHub OAuth app, the person's
+   token per session, the Copilot runtime on a server of ours (Vercel cannot
+   keep a CLI running; it needs a small always-on host). It would let the web
+   panel run on the person's Copilot plan. Its own unit, after My Copilot is
+   used: the hosting is new and holding people's GitHub tokens needs its own
+   review (keysafe).
+4. **My ChatGPT** (desktop, not built). The flags exist (`codex exec
+   --ignore-user-config -c mcp_servers.brickworks.url=… --disable shell_tool
+   --disable apps --disable plugins --sandbox read-only --ignore-rules
+   --ephemeral --skip-git-repo-check -C DIR --json`, read off `codex exec
+   --help` 0.166.0, not run), but OpenAI's words send commercial apps to Sign
+   in with ChatGPT, and for a paid app through its interest form. Brickworks
+   sells Pro, so it is commercial. Until OpenAI says yes, Codex users get the
+   command to copy, which is their own use of Codex.
+5. **My Gemini** (none). Gemini CLI takes only API keys now, which is the
+   own-key designer (docs/PROVIDERS.md), and Antigravity's terms forbid use
+   "in connection with products not provided by us".
+6. **MCP sampling** (none): see G.1.
+
+### G.4 What the panel says
+
+Beside **My Claude**, in the same row, where the CLI is found:
+
+- **My Copilot**, its tooltip: "Design with the GitHub Copilot CLI on this
+  machine, on your own Copilot plan. No key, no account, nothing billed here —
+  and the session can reach this app's bricks and nothing else on your
+  computer." Ticking it unticks My Claude, and the other way round.
+- Ticked: "Your own Copilot will design it."
+- Connected: "connected (MODEL) on your Copilot plan, N tools, all of them
+  this app's" ("on your own model provider" when the person has set
+  Copilot's BYOK; "and NAME outside this app" if a server of theirs ever
+  connected, which is a bug).
+- Not signed in: "Copilot is not signed in on this machine. Run `copilot
+  login` in a terminal, then build it again."
+- Not installed: no box, as with My Claude.
+
+### G.5 What needs the owner
+
+1. To try My Copilot on a real plan: install the CLI (`npm install -g
+   @github/copilot`, or `curl -fsSL https://gh.io/copilot-install | bash`),
+   run `copilot login` once, then tick My Copilot, or
+   `godot --path . -- --ask-copilot="a small red post box"`.
+2. Whether to send OpenAI's Sign in with ChatGPT interest form
+   (openai.com/form/sign-in-with-chatgpt-interest/): it is under the owner's
+   name and starts a commercial conversation.
+3. Nothing else: route 3 is a unit of its own when wanted.

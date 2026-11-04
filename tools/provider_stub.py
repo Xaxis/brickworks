@@ -2,7 +2,7 @@
 """An OpenAI-compatible model that scripts a design, for proving the designer loop.
 
     python3 -I tools/provider_stub.py --port 9621 --log OUT.jsonl [--fail-first N]
-        [--pace S] [--cut-stream N]
+        [--pace S] [--cut-stream N] [--tool-prefix P]
 
 POST /v1/chat/completions answers as Chat Completions does, with tool calls a
 real model would make: clear the baseplate and look a part up (two calls in one
@@ -20,7 +20,9 @@ serves it). Anything else is a 400 with OpenAI's kind of words. Each request is
 written to --log as one line: what it carried, never the key itself (only
 whether it was the one STUB_KEY names). --fail-first N answers the first N
 requests 429, as a rate limit would; --delay S waits S seconds before each
-answer, as a model thinking does.
+answer, as a model thinking does. --tool-prefix P calls each tool by P and its
+name, as a client that prefixes the app's tools names them (GitHub Copilot's
+CLI: "brickworks-").
 
 For Settings, AI (src/ui/ai_settings.gd) it is also a provider's list and the
 model Test asks: GET /v1/models lists MODELS (and refuses a key that is not
@@ -266,10 +268,13 @@ def scripted(replies, said):
         [("save_model", {"name": "stub-tower.ldr"})],
     ]
     if replies < len(script):
-        return script[replies], ""
+        return [(PREFIX + name, args) for name, args in script[replies]], ""
     return [], "I built a red tower of six 2 x 2 bricks and saved it as stub-tower.ldr."
 
 
+# What a client puts before the app's tool names: GitHub Copilot's CLI calls
+# the app's search_parts "brickworks-search_parts" (--tool-prefix).
+PREFIX = ""
 THOUGHT = "Planning reply %d."
 SIGNATURE = "stub-signature-%d"
 GEMINI_SIGNATURE = "stub-thought-%d"
@@ -918,7 +923,10 @@ def main():
     parser.add_argument("--delay", type=float, default=0.0)
     parser.add_argument("--pace", type=float, default=0.03)
     parser.add_argument("--cut-stream", type=int, default=-1)
+    parser.add_argument("--tool-prefix", default="")
     args = parser.parse_args()
+    global PREFIX
+    PREFIX = args.tool_prefix
     Stub.log_path = args.log
     Stub.fail_first = args.fail_first
     Stub.delay = args.delay
