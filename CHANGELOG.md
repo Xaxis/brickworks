@@ -13,8 +13,95 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-04
+
+Brickworks now installs the way your system's own apps do, and keeps itself
+up to date. On a Mac it comes as a disk image to drag onto Applications; on
+Windows an installer puts it in the Start menu and in Settings ▸ Apps, where
+it can be uninstalled; on Debian and Ubuntu apt installs it from a .deb. On
+each, a model double-clicked opens in it. From now on it looks for a newer
+version once a day, takes only one signed by us, and puts it in as you quit
+or when you choose Update and restart; Settings ▸ Updates has Automatic, Ask
+first and Off. 0.15.0 has no updater, so download 0.16.0 by hand this once.
+Your AI keys are kept in the system's own keychain, and a Mac whose graphics
+cannot run the full mode, as a Mac in a virtual machine, starts in a simpler
+one where it used to close. A set opens on the grid as it comes in the box,
+a Studio file's own parts are drawn, a booklet's steps keep their numbers as
+you edit, and on a GitHub Copilot plan you can design from the assistant's
+panel.
+
+### Added
+
+- A disk image for macOS, laid out to drag Brickworks onto Applications.
+  The app in it runs on Apple silicon and Intel alike.
+- An installer for Windows, for you alone and with no administrator: it puts
+  Brickworks in the Start menu and in Settings ▸ Apps, where Uninstall takes
+  it all away again, and opens .ldr, .mpd, .io and .lxf files in it (where
+  Studio or LDD already opens .io or .lxf, they keep them).
+- A .deb for Debian and Ubuntu: `sudo apt install
+  ./Brickworks-0.16.0-linux-amd64.deb` puts it in the menu and on the PATH,
+  opening models, and `sudo apt remove brickworks` takes it away. The
+  AppImage and the tar.xz are as they were. The macOS and Windows zips are
+  still offered for this one release, for links already shared.
+- The app updates itself. Once a day, a little after it opens, it asks for
+  the newest release, believes it only when it is signed by our key, and
+  checks the download's size and SHA-256 before using it. In Automatic, the
+  default, it downloads in the background and puts the new version in as you
+  quit, or at once with Update and restart, which opens your model again as
+  it was; Ask first tells you and waits; Off asks nothing. Help has Check for
+  updates…, Restart Brickworks and Reinstall Brickworks…. The old copy is kept
+  until the new one has started, and put back if it cannot start. A .deb's
+  copy is put in by apt, which asks for your password in the system's own
+  dialog.
+- My Copilot: on a GitHub Copilot plan, Free included, design from the
+  assistant's panel through the Copilot CLI on your computer, as My Claude
+  does through Claude Code. The session reaches the app's bricks and nothing
+  else on your computer.
+- Connect your AI starts with a chooser, Claude first, and adds each the
+  shortest way it allows: Claude's form filled in; Cursor and VS Code by
+  their install links; Claude Code, Codex and Gemini CLI by a command copied
+  for you; ChatGPT, Gemini, Le Chat, Perplexity and Grok with the address
+  copied and their own page opened. What a connected AI does in the app is
+  named as that AI's.
+- Settings ▸ Graphics: Automatic, Full or Simpler. The choice outlives an
+  update.
+
 ### Changed
 
+- Your AI keys are kept in the system's keychain: the login Keychain on a
+  Mac, Credential Manager on Windows, the Secret Service (GNOME Keyring,
+  KWallet) on Linux. A key goes to the keychain's own tool on its input,
+  never on a command line another user could read. Where no keychain
+  answers, it stays in a file encrypted to this computer, and Settings ▸ AI
+  says which. Keys kept in files before move over the first time they are
+  read, and the files go.
+- A Mac whose graphics cannot run Vulkan, as every Mac in a virtual machine
+  on an Intel computer, starts Brickworks in its simpler mode and says so
+  once, where 0.15.0 closed at once with nothing said. Path tracing and
+  bounced light, which need the full mode, say so. Windows and Linux, which
+  already fell back by themselves, now say so the same way.
+- A set, and any model made in another program (a Studio or LDD file, an
+  LDraw file from elsewhere), opens on the grid, as Studio's floor and as it
+  comes in the box, where 0.15.0 laid a 32 x 32 green baseplate under it. A
+  set with a baseplate among its parts stands on that, Brickworks' own files
+  keep the floor they were saved with, and View ▸ Floor still lays a
+  baseplate under a set, in one undo.
+- On the grid, what stands on the floor stays put when you grab what is on
+  it, as on a baseplate: a set's base, a turntable's base under its top. A
+  grab that will not move such a part says it stands on the floor.
+- A model of sub-models whose steps the app worked out keeps those numbers
+  when you first edit it, where the first edit could move a whole sub-model
+  one step on. Parts moved to a step are in that step, and the edit says
+  the number the booklet now gives them; a step of another sub-model is
+  refused, naming whose it is.
+- Claude's last pass over a design tiles the studs a set would cover,
+  keeping open only those a figure, an animal or a plant stands on, and can
+  lay an edge flat. Baseplates and play areas stay open.
+- Tested calls a part falling only when it falls. A part turned off the axes
+  was weighed by a box that reached past it, so a held halberd put the floor
+  7.7 LDU too low and the trebuchet beside it was called falling. A build
+  parked on another, as a car on a baseplate or a lid on a bin, counts as a
+  build of its own.
 - Brickworks accounts are for people 13 and over. Somebody who answers the
   age question under 13 is told to ask a parent or guardian to sign in with
   their own email and build with them, and the account just made is deleted
@@ -30,6 +117,11 @@ whole cycle.
   is drawn from, as the web app does, and keeps them, so the file opens
   offline after that. Opened offline before then, the app says which part
   could not be drawn and why, and keeps it in the file.
+- A pneumatic set's tubes are hoses again when you pose it: 42080-1's were
+  read as one piece glued to the parts round them, and neither of its
+  cylinders could raise its crane.
+- A link to a picture or a model that cannot be fetched says why in words,
+  never a bare error number.
 
 ## [0.15.0] - 2026-11-03
 

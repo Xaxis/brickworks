@@ -583,23 +583,27 @@ python3 tools/update_check.py run --old OLD --new NEW --log=DIR/log.txt
 
 Proves it when: every line is `ok` and it ends `<old> → <new>: every refusal
 held, and it updates, restarts, reinstalls and puts back`, for the AppImage
-and the tar.xz alike: six refusals with their words, `Check for updates:
+and the tar.xz alike: `Off asks nothing: no request in 90 s, where
+Automatic's same start asked /older/latest/download/latest.json N s in` (a
+person's start, set to Off, then the same start in Automatic, both on one
+feed), six refusals with their words, `Check for updates:
 Brickworks B is out`, `Update and restart (by a redirect on the same host):
 report: running B; model “House”, N parts; session S` with the same model,
 parts and session as before the restart, the copy in place says B and
 nothing is left in `.brickworks-update/`, Restart and Reinstall come back
 the same, Automatic's next start says B, and a copy that cannot start is
-put back and A started again (16 `ok`).
+put back and A started again (17 `ok`).
 
 For the .deb pair (`Brickworks-A-linux-amd64.deb`) it proves it when it ends
 `the .deb's copy downloads the new .deb, and apt installs it (refused and
 missing here; by sudo on a runner)`: the copy in `usr/lib/brickworks` says
-A, Check for updates says B is out, `Update and restart with pkexec refused:
+A, Off asks nothing, the same six refusals, Check for updates says B is
+out, `Update and restart with pkexec refused:
 Couldn't install Brickworks B: the password was refused or not given, so
 nothing was installed; it offers .../.brickworks-update/B/...deb` and the
 same `with no pkexec` (`pkexec isn't on this system`), `...apt was asked for
 the checked .deb, as root: /usr/bin/apt-get install -y ...`, `nothing dpkg
-put there was changed`, and the copy is still A (7 `ok`). Nothing is
+put there was changed`, and the copy is still A (14 `ok`). Nothing is
 installed on this machine; packages build HEAD, so commit app changes first
 (`packages` refuses otherwise).
 
@@ -612,17 +616,31 @@ from the DMG into /Applications, by `setup.exe /VERYSILENT` into
 /usr/lib, and takes them away after (a zip copy runs without `--system`).
 It proves it when it ends the same way, the updater's log says `put B in
 place at /Applications/Brickworks.app` (or `.../Programs/Brickworks`,
-staged as `...-setup.exe`): the DMG 16 `ok`, the zip 16; the installer 20,
+staged as `...-setup.exe`): the DMG 17 `ok`, the zip 17; the installer 21,
 among them `Settings, Apps lists B`, `...with its Start menu entry and .ldr
 opening in it`, `Uninstall leaves nothing of it: no file, no Settings, Apps
 entry, no Start menu entry, no file type` and `...lists what it did before:
-A-before` after the put back; the .deb 10, among them `Update and restart,
+A-before` after the put back; the .deb 17, among them `Update and restart,
 apt installing it by sudo in pkexec's place: report: running B; model
 “House”, N parts`, `dpkg lists brickworks B`, and `apt remove leaves
 nothing of it` (sudo stands in for pkexec, whose dialog a runner cannot
 answer).
 On Windows the log-judged steps start `Brickworks.exe`: the console wrapper
 keeps its own file in use until the new copy ends.
+
+At a release all of that runs as `tools/release/runner_check.sh VERSION LAID
+OUT` (docs/RELEASING.md, step 5), with old copies from `update_check.py
+packages` (a throwaway version: a Mac bundle's version is numbers only, so
+0.15.99 for 0.16.0, never 0.16.0-pre, which the disk image reads as 1.0.0)
+and the release's own packages as the new, taken from its draft. The same
+run keeps a key in macOS's and Windows' real keychains (`keychain_check.py`)
+and pictures an unsigned first launch on a Mac: `"Brickworks" Not Opened.
+Apple could not verify "Brickworks" is free of malware that may harm your
+Mac or compromise your privacy.` with Done and Move to Trash (macos-15).
+windows-2022 has no SmartScreen: a marked installer opens straight to its
+welcome page there, so what a Windows 10 or 11 person sees is not pictured.
+It proves it when every job is green and `-- what is left --` reads 0 four
+times.
 
 ## Gotchas
 

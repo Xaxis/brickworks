@@ -209,7 +209,17 @@ fixing what it got wrong.
   real, no keyring (the file, said so), `security` and PowerShell against
   stand-ins that keep keys as they do (their protocol, not the tools
   themselves: not on this computer), every program's arguments written down
-  and no key among them, no file holding one. `key_leak_probe` (in a window;
+  and no key among them, no file holding one. The real `security` and
+  Credential Manager are `tools/keychain_check.py GODOT` on a release's
+  macOS and Windows runners (tools/release/runner_check.sh; on Linux inside
+  `tools/keyring_session.sh`, refused anywhere else): this checkout's
+  key_store.gd in a project of its own, each step a new run of GODOT, a
+  made-up key kept in the keychain and no file, read back after a restart,
+  found by the system's own tool (`security find-generic-password`,
+  `cmdkey /list:`, `secret-tool lookup`), removed, and found by neither; it
+  ends `a key kept in keychain|credential-manager|secret-tool, read back
+  after a restart, and removed` (6 `ok`; `BRICKWORKS_KEYCHAIN=off` is its
+  red, 3 FAIL). `key_leak_probe` (in a window;
   `-- --plant` is its red): made-up keys for the assistant's column, OpenAI
   and a this-visit-only server, then a model saved and exported in every
   format, the MCP's read-only tools' answers, a share's body and the link on

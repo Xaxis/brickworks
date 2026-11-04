@@ -10,6 +10,7 @@ refusal and through a real install that restarts with the model kept.
         (--update=...) through:
           refused: a bad signature, a wrong SHA-256, a wrong size, an older
           version, a plain-HTTP address, a redirect off the allowed hosts;
+          Off, which asks nothing at a person's start where Automatic asks;
           Check for updates; Update and restart (the model kept); Restart;
           Reinstall; Automatic, put in as the app quits; and a new copy that
           cannot start (on a Mac and Windows, says the wrong version), put
@@ -50,6 +51,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -80,9 +82,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     """Files from the folder, and four kinds of redirect:
     /redirect/X to /X on this host; /redirect-off/X to https://example.com/X;
     /redirect-localhost/X to http://localhost:PORT/X (another host, plain HTTP);
-    /redirect-to?LOCATION to LOCATION as it is, %-escaped in the address."""
+    /redirect-to?LOCATION to LOCATION as it is, %-escaped in the address.
+    Every address asked is kept in the server's `asked`."""
 
     def do_GET(self) -> None:  # noqa: N802
+        self.server.asked.append(self.path)
         if self.path.startswith("/redirect-to?"):
             self.send_response(302)
             self.send_header("Location", urllib.parse.unquote(self.path[len("/redirect-to?"):]))
@@ -106,15 +110,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 class Server(http.server.ThreadingHTTPServer):
+    asked: list[str]
+
     def handle_error(self, request: Any, client_address: Any) -> None:
         # The app hanging up on a download it refused is the point, not an error.
         if not isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError)):
             super().handle_error(request, client_address)
 
 
-def serve(folder: Path, port: int) -> http.server.ThreadingHTTPServer:
+def serve(folder: Path, port: int) -> Server:
     handler = lambda *a, **k: Handler(*a, directory=str(folder), **k)  # noqa: E731
     server = Server(("127.0.0.1", port), handler)
+    server.asked = []
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
 
@@ -341,6 +348,11 @@ def user_dir(home: Path) -> Path:
     return home / ".local" / "share" / "godot" / "app_userdata" / "Brickworks"
 
 
+# How long a person's start is watched for the day's check: the window up
+# (Main) and Updater.AFTER_START_S, 8 s, after it, on a runner's slowest start.
+QUIET_S = 90
+
+
 class Run:
     def __init__(self, old: Path, new: Path, port: int, root: Path) -> None:
         self.old, self.new, self.port, self.root = old, new, port, root
@@ -377,6 +389,55 @@ class Run:
             program = program.with_name("Brickworks.exe")
         return release.run_app([str(program), "--headless", "--", *user], env, seconds)
 
+    def started_asks(self, program: Path, base: str, server: Server,
+                     stop_when_asked: bool) -> tuple[float, list[str], str]:
+        """Started as a person starts it, with nothing asked of the updater,
+        for QUIET_S at most (to its first request with [stop_when_asked]):
+        when it first asked the server, in seconds from its start (-1 for
+        never), every address it asked, and what it said."""
+        env = dict(self.env, BRICKWORKS_UPDATE_URL="http://127.0.0.1:%d/%s/" % (self.port, base))
+        if program.name == "Brickworks.console.exe":
+            program = program.with_name("Brickworks.exe")
+        server.asked.clear()
+        began, when = time.time(), -1.0
+        with tempfile.TemporaryFile("w+", errors="replace") as log:
+            process = subprocess.Popen([str(program), "--headless"], env=env, stdout=log,
+                                       stderr=subprocess.STDOUT, start_new_session=os.name != "nt")
+            try:
+                while time.time() - began < QUIET_S and process.poll() is None:
+                    if server.asked and when < 0:
+                        when = time.time() - began
+                        if stop_when_asked:
+                            break
+                    time.sleep(0.5)
+            finally:
+                if process.poll() is None:
+                    if os.name != "nt":
+                        os.killpg(process.pid, signal.SIGKILL)
+                    else:
+                        release.end_tree(process.pid)
+                    process.wait()
+            log.seek(0)
+            output = log.read()
+        return when, list(server.asked), output
+
+    def off_asks_nothing(self, program: Path, server: Server) -> None:
+        """Settings, Updates, Off: a person's start asks nothing in the time
+        the same start in Automatic asks (the day's check, Updater's
+        AFTER_START_S after the window is up), so the quiet is the setting's
+        and not a slow start. Off first: Automatic's check is the day's, and
+        a start after it would not ask again. Both on the same feed."""
+        prefs = user_dir(self.home) / "shell.cfg"
+        prefs.parent.mkdir(parents=True, exist_ok=True)
+        prefs.write_text('[shell]\n\nupdates="off"\n')
+        _, off, said_off = self.started_asks(program, "older", server, False)
+        prefs.write_text('[shell]\n\nupdates="auto"\n')
+        when, auto, said_auto = self.started_asks(program, "older", server, True)
+        prefs.unlink(missing_ok=True)
+        self.check("Off asks nothing: %s in %d s, where Automatic's same start asked %s %.0f s in"
+                   % (", ".join(off) or "no request", QUIET_S, ", ".join(auto) or "nothing", when),
+                   not off and when >= 0, said_off + "\n" + said_auto)
+
     def about(self, program: Path) -> str:
         code, output = release.run_app([str(program), "--headless", "--", "--about"], self.env, 180)
         return next((line for line in output.splitlines() if line.startswith("Brickworks ")), "")
@@ -404,8 +465,9 @@ class Run:
 
 def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | None = None,
               system: bool = False) -> int:
-    """A copy installed from the .deb: dpkg's files are never swapped. The
-    new .deb is downloaded into the app's own data, checked, and installed
+    """A copy installed from the .deb: dpkg's files are never swapped. It
+    refuses what every copy refuses, and the new .deb is downloaded into
+    the app's own data, checked, and installed
     by apt as root. A stand-in for pkexec says no, then none is there: each
     is said, and the file offered. With [system] (a runner) apt installed
     the old copy itself, and the update goes in by apt for real, sudo
@@ -413,8 +475,8 @@ def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path
     with tempfile.TemporaryDirectory(prefix="brickworks-update-", ignore_cleanup_errors=True) as scratch:
         root = Path(scratch)
         serve_dir = laid if laid is not None else root / "serve"
-        if laid is None:
-            lay_out(serve_dir, old, new, port)
+        scenarios = lay_out(serve_dir, old, new, port) if laid is None \
+            else json.loads((laid / "laid.json").read_text())["scenarios"]
         server = serve(serve_dir, port)
         run = Run(old, new, port, root)
         say("── %s → %s, deb%s, served at http://127.0.0.1:%d/ ──" % (
@@ -440,6 +502,13 @@ def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path
             said = run.about(program)
             run.check("the old copy, in usr/lib/brickworks as dpkg puts it, says %s" % said,
                       said.startswith("Brickworks %s" % run.A))
+            run.off_asks_nothing(program, server)
+            for name in ("badsig", "badhash", "badsize", "older", "plainhttp", "offhost"):
+                code, output = run.app(program, name, ["--update=fetch"])
+                verdict = next((line for line in output.splitlines()
+                                if line.startswith("update: fetch: ")), "(nothing said)")
+                run.check("refuses %s: %s" % (scenarios[name], verdict.removeprefix("update: fetch: ")),
+                          "refused" in verdict and not staged.exists(), output)
             before = tree(install)
             code, output = run.app(program, "good", ["--update=check"])
             verdict = next((line for line in output.splitlines() if line.startswith("update: check: ")), "")
@@ -533,6 +602,7 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
                 install = program.parents[3] if sys.platform == "darwin" else program.parents[1]
             said = run.about(program)
             run.check("the old copy says %s" % said, said.startswith("Brickworks %s" % run.A))
+            run.off_asks_nothing(program, server)
 
             for name in ("badsig", "badhash", "badsize", "older", "plainhttp", "offhost"):
                 code, output = run.app(program, name, ["--update=fetch"])

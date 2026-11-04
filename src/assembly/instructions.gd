@@ -728,21 +728,23 @@ class Assembly extends RefCounted:
 ## has any (AuthorSteps): see [method _authored_plan].
 ##
 ## A model of sub-models nobody gave steps is shown its worked-out order as
-## the steps it can keep ([method _kept]).
+## the steps it can keep ([method _kept]), where they build as well.
 static func plan(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}, regions: Dictionary = {},
 		authored: bool = false) -> Array[Step]:
 	if authored and AuthorSteps.any(world, skip):
 		return _authored_plan(world, library, skip)
-	var steps: Array[Step] = worked_out(world, library, skip, regions)
-	return _kept(world, library, skip, steps) if regions.is_empty() else steps
+	var read: Dictionary = {}
+	var steps: Array[Step] = worked_out(world, library, skip, regions, read)
+	return _kept(world, library, skip, steps, read) if regions.is_empty() else steps
 
 
 ## The order worked out from what holds what, before it is made one the
 ## model's steps can hold ([method _kept]): what a model nobody gave steps
-## is given (AuthorSteps.numbers_from_plan).
+## is given (AuthorSteps.numbers_from_plan). Into [param read], what the
+## mend read of the model (HeldSteps.mend_into).
 static func worked_out(world: BrickWorld, library: PartLibrary,
-		skip: Dictionary = {}, regions: Dictionary = {}) -> Array[Step]:
+		skip: Dictionary = {}, regions: Dictionary = {}, read: Dictionary = {}) -> Array[Step]:
 	var shape: Array = _shape_of(world, library, skip)
 	var nodes: Array[Node2] = _survey(world, library, skip)
 	if nodes.is_empty():
@@ -762,7 +764,7 @@ static func worked_out(world: BrickWorld, library: PartLibrary,
 	# Each part on what holds it, by the Tested mark's rules (HeldSteps,
 	# reached through Later: the Tested mark's checks are not the first
 	# screen's).
-	Later.script(&"HeldSteps").mend_into(steps, world, library, skip)
+	read.merge(Later.script(&"HeldSteps").mend_into(steps, world, library, skip))
 	# A node and its assembly point at each other, and two RefCounted
 	# objects that do are never freed.
 	for made: Assembly in assemblies:
@@ -903,14 +905,15 @@ static func plan_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary
 	lap.call("expand")
 	# Each part on what holds it, by the Tested mark's rules (HeldSteps),
 	# compiled on a worker the first time (Later.script_in_background).
+	var read: Dictionary = {}
 	if not job.cancelled:
 		var held: GDScript = await Later.script_in_background(&"HeldSteps", job)
-		await held.mend_into(steps, world, library, skip, job)
+		read = await held.mend_into(steps, world, library, skip, job)
 	lap.call("held")
 	for made: Assembly in assemblies:
 		made.node = null
 	if not job.cancelled and regions.is_empty():
-		steps = await _kept_paced(world, library, skip, steps, job)
+		steps = await _kept_paced(world, library, skip, steps, job, read)
 		lap.call("kept")
 	return steps
 
@@ -3663,12 +3666,23 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 ## every step of it one on from where the person had read it (stepsnum).
 ## Shown as they will be kept, an edit changes only what it moves. A model
 ## of no sub-models keeps any order, and is shown it as worked out.
+##
+## But a sub-model in the model's steps is built whole, and the order worked
+## out may build one round what holds it: the castle's north-east tower went
+## up whole where its first plate went in, a column of its bricks before
+## the front curtain wall's bricks under it, and 31 parts were put down in
+## the air (suitesteps). A person following the booklet is never
+## asked to, so where the steps that can be kept build worse than the order
+## worked out, by the steps test's rules ([param read], the mend's), the
+## order worked out is shown.
 static func _kept(world: BrickWorld, library: PartLibrary, skip: Dictionary,
-		steps: Array[Step]) -> Array[Step]:
+		steps: Array[Step], read: Dictionary = {}) -> Array[Step]:
 	if steps.is_empty() or not _of_sub_models(world, skip):
 		return steps
 	var kept: Array[Step] = _authored_plan(world, library, skip,
 		AuthorSteps.adopted(world, steps, skip))
+	if not _builds_as_well(kept, read, library, Later.script(&"HeldSteps")):
+		return steps
 	_carry(steps, kept)
 	return kept
 
@@ -3677,7 +3691,7 @@ static func _kept(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 ## plan_paced]: [param steps] as they were when the model changed while it
 ## was read.
 static func _kept_paced(world: BrickWorld, library: PartLibrary, skip: Dictionary,
-		steps: Array[Step], job: Working.Job) -> Array[Step]:
+		steps: Array[Step], job: Working.Job, read: Dictionary = {}) -> Array[Step]:
 	if steps.is_empty() or not _of_sub_models(world, skip):
 		return steps
 	var kept: Array[Step] = await _authored_plan_paced(world, library, skip, job,
@@ -3686,8 +3700,29 @@ static func _kept_paced(world: BrickWorld, library: PartLibrary, skip: Dictionar
 		return []
 	if kept.is_empty():
 		return steps
+	var held: GDScript = Later.script(&"HeldSteps")
+	var well: Variant = await WorkerTasks.awaited(func() -> bool:
+		return _builds_as_well(kept, read, library, held), "judge the steps a model can keep", library)
+	if job.cancelled:
+		return []
+	if not bool(well):
+		return steps
 	_carry(steps, kept)
 	return kept
+
+
+## Whether [param kept] puts no more parts down in the air than the order
+## worked out it was made from, and hides no more behind what is already
+## built, judged by the steps test's rules of the model as [param read],
+## the mend's, has it ([param held], HeldSteps, faults_of). Unjudged, with
+## nothing read: the mend was off.
+static func _builds_as_well(kept: Array[Step], read: Dictionary, library: PartLibrary,
+		held: GDScript) -> bool:
+	if read.is_empty():
+		return true
+	var was: Array[int] = read["faults"]
+	var now: Array[int] = held.faults_of(kept, read, library, was)
+	return now[0] <= was[0] and now[1] <= was[1]
 
 
 ## The model's own steps as the plan shows them once [param worked], its
@@ -3732,9 +3767,10 @@ static func _carry(steps: Array[Step], kept: Array[Step]) -> void:
 			if step.section.is_empty():
 				step.section = was.section
 		# A step that puts a sub-assembly on, and nothing beside it, is in the
-		# section its copies were built in: read off its first part alone, a
-		# part built first elsewhere, 7140's figures went on in no section,
-		# and the banner they had come between came again after them.
+		# section its copies were built in. Found by its first copy's first
+		# part only as the worked-out step that puts it on listed them, the
+		# kept one listing them in another order, 7140's figures went on in
+		# no section, and the banner before them came again after.
 		for ids: PackedInt64Array in step.copies:
 			for brick_id: int in ids:
 				if not step.section.is_empty():

@@ -37,12 +37,15 @@ static var said: Dictionary = {}
 
 ## [param steps], worked out for [param world]'s parts but [param skip], put
 ## right where they are. A slice at a time with a [param job], and the steps
-## read on a worker; at once without one.
+## read on a worker; at once without one. Returns what it read of the model,
+## for [method faults_of] to judge other steps of it by, and "faults", what
+## the steps it mended still put down in the air and hide, as faults_of
+## counts them: {} when it mended nothing.
 static func mend_into(steps: Array[Instructions.Step], world: BrickWorld, library: PartLibrary,
-		skip: Dictionary = {}, job: Working.Job = null) -> void:
+		skip: Dictionary = {}, job: Working.Job = null) -> Dictionary:
 	said = {}
 	if not mends:
-		return
+		return {}
 	var began: int = Time.get_ticks_msec()
 	var bricks: Array = []
 	var by_id: Dictionary = {}
@@ -51,7 +54,7 @@ static func mend_into(steps: Array[Instructions.Step], world: BrickWorld, librar
 			bricks.append(brick)
 			by_id[brick.id] = brick
 	if bricks.size() < 2 or steps.is_empty():
-		return
+		return {}
 	# The parts' covers in a lattice of their own, as a share's test has them
 	# (SharedPages.pages_for).
 	var covers := Builder.new()
@@ -62,13 +65,13 @@ static func mend_into(steps: Array[Instructions.Step], world: BrickWorld, librar
 			await job.next()
 			if job.cancelled:
 				covers.free()
-				return
+				return {}
 		lattice.occupy_boxes(brick.id, covers.boxes_for(library.mesh_for(brick.part_id), brick.transform))
 	covers.free()
 	var holding: Dictionary = {}
 	await Tested.holds_into(holding, bricks, lattice, library, job)
 	if holding.is_empty() or job != null and job.cancelled:
-		return
+		return {}
 	# Each part's box where it stands, made here: nothing on the worker reads
 	# the library.
 	var nodes: Dictionary = {}
@@ -81,7 +84,7 @@ static func mend_into(steps: Array[Instructions.Step], world: BrickWorld, librar
 			return _mended(slots, holding, by_id, nodes, library), "put a model's steps on what holds them",
 			library)
 		if job.cancelled or not got is Dictionary:
-			return
+			return {}
 	else:
 		got = _mended(slots, holding, by_id, nodes, library)
 	var mended: Dictionary = got
@@ -90,6 +93,28 @@ static func mend_into(steps: Array[Instructions.Step], world: BrickWorld, librar
 	steps.append_array(out)
 	said = mended["said"]
 	said["ms"] = Time.get_ticks_msec() - began
+	return {"holding": holding, "by_id": by_id, "nodes": nodes,
+		"faults": [int(said["floating"]), int(said["hidden"])] as Array[int]}
+
+
+## How many parts [param steps] put down in the air, and how many behind
+## what is already built, by the steps test's own rules (Tested.check), of
+## the model as [param read] ([method mend_into]'s) has it: [in the air,
+## hidden]. With [param most], it stops once either is past most's: they
+## only grow. Reads nothing but what it is given, so it runs on a worker.
+static func faults_of(steps: Array[Instructions.Step], read: Dictionary, library: PartLibrary,
+		most: Array[int] = []) -> Array[int]:
+	var test := Tested.Steps.new(read["by_id"], read["holding"], library)
+	test.nodes = read["nodes"]
+	for step: Instructions.Step in steps:
+		var things: Array = test.things_of(step)
+		if things.is_empty():
+			continue
+		test.take(step, things)
+		if not most.is_empty() and (test.floating.size() > most[0] or test.hidden.size() > most[1]):
+			return [test.floating.size(), test.hidden.size()]
+	test.finish()
+	return [test.floating.size(), test.hidden.size()]
 
 
 ## The main build's steps, each a slot: {"step", "ids": the parts it puts in
