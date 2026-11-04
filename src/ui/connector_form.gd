@@ -428,6 +428,12 @@ func _open_only(box: VBoxContainer) -> void:
 
 ## [param box] scrolled into the panel's view once it is laid out.
 func _into_view(box: Control) -> void:
+	# Two frames: a press is read before its frame's layout, and the first
+	# process_frame can come in that same frame, the box just shown still
+	# unsized. Read so, at 3,815 px tall, it scrolled the panel 16 px where
+	# it fitted, and Claude Code went from under the pointer that pressed
+	# it, so its tooltip came back (connect_form_probe, suitegrab).
+	await get_tree().process_frame
 	await get_tree().process_frame
 	var up: Node = get_parent()
 	while up != null and not up is ScrollContainer:
