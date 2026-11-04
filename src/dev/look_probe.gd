@@ -17,7 +17,8 @@
 ##    frames cut nothing; slow ones the ladder's first cut, much slower ones
 ##    more at once; each cut is what the frame stops drawing (glow off,
 ##    multisampling off, the sun casting no shadow and lit to match), and
-##    letting a check's cuts go puts every one back.
+##    letting a check's cuts go puts every one back. On Apple's software
+##    renderer all of the ladder is cut before a frame, and no look taken.
 ## 2. This machine: Main up as the app runs, drawing only what changed and
 ##    its budget watching, the house opened. After the first look (frames
 ##    drawn on purpose and timed), on a graphics card the frames are judged
@@ -333,6 +334,24 @@ func _judgment(budget_script: Script) -> void:
 	_check("pinned to nothing, every one is back (glow, four samples, the sun's shadow at 0.1)",
 		environment.glow_enabled and view.msaa_3d == Viewport.MSAA_4X and sun.shadow_enabled
 		and is_equal_approx(sun.light_energy, 0.1) and environment.ssao_enabled)
+	# Apple's software renderer (an Intel Mac's VM): cut before a frame.
+	if budget_script.has_method("known_slow"):
+		_check("Apple's software renderer is known slow; llvmpipe and a card are judged by their frames",
+			bool(budget_script.call("known_slow", "Apple Software Renderer"))
+			and not bool(budget_script.call("known_slow", "llvmpipe (LLVM 19.1.7, 256 bits)"))
+			and not bool(budget_script.call("known_slow", "AMD Radeon RX 6700 XT (RADV NAVI22)")))
+		var known: Node = budget_script.new()
+		root.add_child(known)
+		known.call("setup", view, environment, sun, 0.5)
+		known.call("watch")
+		known.call("cut_all")
+		var all: Dictionary = known.call("page_state")
+		_check("cut all at once, the whole ladder (%s) and no look to take" % str(all["cuts"]),
+			str(all["cuts"]) == str(all["ladder"]) and int(all["looking"]) == 0
+			and int(known.get("_first_look_at")) == 0 and not sun.shadow_enabled
+			and view.msaa_3d == Viewport.MSAA_DISABLED and not environment.glow_enabled)
+		known.call("pin", [] as Array[String])
+		known.queue_free()
 	budget.queue_free()
 	view.queue_free()
 	await process_frame

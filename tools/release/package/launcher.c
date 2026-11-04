@@ -6,9 +6,9 @@
 // cannot use, it does not fail, it aborts: Apple's paravirtual GPU (every
 // macOS VM on an Intel host, GitHub's macos-15-intel among them) ended the
 // app inside vkCreateInstance, in Metal's newArgumentEncoderWithArguments,
-// and with argument buffers off it ran out of its 64 MB. Godot falls back to
-// OpenGL only when Vulkan reports an error, so the app closed at once with
-// nothing said. On OpenGL the same Mac opens it.
+// and with argument buffers off it could not make a buffer of 256 KB. Godot
+// falls back to OpenGL only when Vulkan reports an error, so the app closed
+// at once with nothing said. On OpenGL the same Mac opens it.
 //
 // So before Vulkan starts this asks Metal what the GPU is, which creates no
 // Vulkan instance, and on a GPU the full renderer cannot run on it starts the
@@ -34,9 +34,10 @@
 
 extern char **environ;
 
-// Less than this to work with and Forward+ runs out: the paravirtual GPU has
-// 64 MB. Every Mac with a GPU of its own, or Intel graphics sharing the
-// Mac's memory, reports a gigabyte or more.
+// Less than this to work with and Forward+ runs out. Every Mac with a GPU of
+// its own, or Intel graphics sharing the Mac's memory, reports a gigabyte or
+// more; so does the paravirtual one (1024 MB, though System Information says
+// 64 MB of VRAM), which is known by its name.
 #define LEAST_WORKING_SET (256ull << 20)
 
 typedef void *id;

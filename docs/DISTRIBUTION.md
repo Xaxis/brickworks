@@ -63,8 +63,16 @@ Ubuntu. Every one of them opens its own documents by double-click.
   so once. Apple silicon draws through Metal and is left alone. Standard
   apps run on whatever GPU they find, in a lesser mode if need be; Settings,
   Graphics lets a person choose either, kept in the app's own folder across
-  updates (src/render/graphics_mode.gd). Windows and Linux already fell back
-  to OpenGL in Godot itself and now say so the same way.
+  updates (src/render/graphics_mode.gd). The paravirtual GPU has no OpenGL
+  of its own, so there it is Apple's software renderer, which compiles and
+  runs every shader on the CPU: the first picture of the car takes minutes,
+  and the frame budget cuts all it can before the first frame
+  (FrameBudget.known_slow). ANGLE, which would draw OpenGL through Metal,
+  cannot make a display on it ("Can't create an EGL display"). Windows on a
+  basic display adapter (windows-2022, Hyper-V Video) already fell back in
+  Godot itself, from Vulkan to Direct3D 12 on the Microsoft Basic Render
+  Driver, and draws the car in the full mode; Linux without Vulkan falls
+  back to OpenGL and now says so the same way.
 - **Owner's:** the Developer ID, below.
 
 ### Windows

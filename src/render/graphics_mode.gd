@@ -65,7 +65,7 @@ static func choose(choice: String) -> void:
 
 
 ## What the launcher found, when it chose the simpler mode for this Mac:
-## "Apple Paravirtual device, 64 MB". Elsewhere, "".
+## "Apple Paravirtual device, 1024 MB". Elsewhere, "".
 static func why() -> String:
 	return OS.get_environment("BRICKWORKS_GRAPHICS")
 

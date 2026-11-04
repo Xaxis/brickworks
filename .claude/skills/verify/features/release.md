@@ -120,7 +120,11 @@ that offers each system its own build. The cycle and its cadence are
   rendering method) or names a renderer on the command line. Godot's own
   fallback cannot catch MoltenVK's abort (`display_server_macos.mm` falls
   back only when `initialize()` returns an error). Windows and Linux fall
-  back in Godot itself (no Vulkan ICD: "switching to OpenGL 3"). Either way
+  back in Godot itself (Windows to Direct3D 12, on a basic display adapter
+  the Microsoft Basic Render Driver; Linux with no Vulkan ICD: "switching to
+  OpenGL 3"). On the Intel VM OpenGL is Apple's software renderer, minutes
+  to a first picture, and FrameBudget cuts its whole ladder before the
+  first frame there (`known_slow`, checked in `look_probe`). Either way
   the window says "This Mac's (This computer's) graphics run Brickworks in
   its simpler mode." once, above the model (`ShellPrefs`
   `said_simpler_graphics`), every start logs `graphics: <mode> mode (<why>),

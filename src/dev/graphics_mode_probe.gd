@@ -17,7 +17,7 @@
 ## --report: it writes what it draws with and whether it would say the line.
 extends SceneTree
 
-const WHY := "Apple Paravirtual device, 64 MB"
+const WHY := "Apple Paravirtual device, 1024 MB"
 
 var _failures: int = 0
 
