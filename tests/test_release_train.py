@@ -202,7 +202,7 @@ class Yard:
             path.write_text(text)
             path.chmod(0o755)
         env = {k: v for k, v in os.environ.items()
-               if not k.startswith(("GIT_", "TRAIN_", "STUB_", "SHIP_", "RELEASE_", "LIVE_WAIT", "BOX_"))}
+               if not k.startswith(("GIT_", "TRAIN_", "STUB_", "SHIP_", "RELEASE_", "LIVE_WAIT", "LIVE_DB", "BOX_"))}
         env.update(GIT_CONFIG_GLOBAL="/dev/null", GIT_CONFIG_NOSYSTEM="1",
                    GIT_AUTHOR_NAME="Xaxis", GIT_AUTHOR_EMAIL="william.neeley@gmail.com",
                    GIT_COMMITTER_NAME="Xaxis", GIT_COMMITTER_EMAIL="william.neeley@gmail.com",
@@ -1067,7 +1067,8 @@ def test_a_ship_that_ends_first_stops_the_probes_beside_it(tmp_path):
 def test_the_checks_run_at_once_as_asked_and_none_begins_once_the_probes_failed(tmp_path):
     """The real preview_checks.sh, its node and heavy stood in for."""
     y = Yard(tmp_path)
-    y.put("tools/release/preview_checks.sh", (ROOT / "tools/release/preview_checks.sh").read_text())
+    for name in ("preview_checks.sh", "live_db_lib.sh"):
+        y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
     (y.r / ".env").write_text("VERCEL_BYPASS=bypass\n")
     node = tmp_path / "bin" / "node"
     node.write_text("""#!/bin/bash
@@ -1258,3 +1259,167 @@ def test_a_ticket_left_by_a_killed_run_holds_no_one(tmp_path):
     finally:
         stranger.kill()
         stranger.wait()
+
+
+def spans(path: Path) -> dict[str, tuple[float, float]]:
+    """NAME began T / NAME ended T lines, as each stand-in check writes them: NAME's (began, ended)."""
+    seen: dict[str, list[float]] = {}
+    for line in path.read_text().splitlines():
+        name, what, when = line.split()
+        seen.setdefault(name, [0.0, 0.0])[0 if what == "began" else 1] = float(when)
+    return {name: (began, ended) for name, (began, ended) in seen.items()}
+
+
+def most_at_once(span: dict[str, tuple[float, float]]) -> int:
+    edges = sorted([(b, 1) for b, _ in span.values()] + [(e, -1) for _, e in span.values()])
+    now = most = 0
+    for _, step in edges:
+        now += step
+        most = max(most, now)
+    return most
+
+
+def held(y: Yard, name: str, seconds: float, *before: str) -> list[str]:
+    """live_db.sh's command for a stand-in check NAME that holds the live database SECONDS."""
+    spans = y.r / "spans"
+    return [*before, str(y.r / "tools/release/live_db.sh"), name, "bash", "-c",
+            f"echo {name} began $(date +%s.%N) >> {spans}; sleep {seconds}; echo {name} ended $(date +%s.%N) >> {spans}"]
+
+
+def test_a_battery_runs_three_live_checks_at_once_and_one_that_reads_every_accounts_alone(tmp_path):
+    """The real preview_checks.sh and its lock (LIVE_DB_SLOTS 3, PC_AT_ONCE 3): five live checks
+    run three at a time, where one at a time held rel-m254's lock for 3.1 hours; challenges, which
+    reads the site's one test challenge (ALONE_DB), runs with no other live check beside it."""
+    y = Yard(tmp_path)
+    for name in ("preview_checks.sh", "live_db_lib.sh"):
+        y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
+    shared = ["share_flow", "versions", "age", "comments", "tested"]
+    flows = {"share_flow": "share_flow", "versions": "versions_flow", "age": "age_flow",
+             "comments": "comments_flow", "tested": "tested_flow", "challenges": "challenges_flow"}
+    for flow in flows.values():
+        y.put(f"tools/web/{flow}.mjs", "await deleteAccount(session)\n")
+    (y.r / ".env").write_text("VERCEL_BYPASS=bypass\n")
+    node = tmp_path / "bin" / "node"
+    node.write_text('#!/bin/bash\nname=$(basename "$1" .mjs)\n'
+                    'echo "$name began $(date +%s.%N)" >> "$RELEASE_OUT/spans"\nsleep 1.5\n'
+                    'echo "$name ended $(date +%s.%N)" >> "$RELEASE_OUT/spans"\necho "$name: all passed"\n')
+    node.chmod(0o755)
+    y.ro.mkdir(parents=True)
+    env = {**y.env, "RELEASE_OUT": str(y.ro), "TMPDIR": str(tmp_path), "PC_AT_ONCE": "3", "LIVE_DB_SLOTS": "3"}
+    battery = subprocess.run(["bash", str(y.r / "tools/release/preview_checks.sh"), "https://preview.invalid",
+                              str(y.r), "t-slots", "share_flow", "versions", "challenges", "age", "comments", "tested"],
+                             env=env, capture_output=True, text=True, timeout=120)
+    assert battery.returncode == 0, battery.stderr
+    out = (y.ro / "t-slots.out").read_text().splitlines()
+    assert len([line for line in out if " exit=0 " in line]) == 6 and out[-1] == "done", out
+    span = {name: spans(y.ro / "spans")[flow] for name, flow in flows.items()}
+    assert most_at_once({n: span[n] for n in shared}) == 3, span
+    began, ended = span["challenges"]
+    beside = [n for n in shared if span[n][0] < ended and span[n][1] > began]
+    assert not beside, f"{beside} ran beside challenges"
+    log = (y.r / ".git" / "live-db.log").read_text().splitlines()
+    assert any("took t-slots challenges" in line and line.endswith("(alone)") for line in log), log
+    assert any("took t-slots age" in line and "of 3)" in line for line in log), log
+    assert not list((y.r / ".git" / "live-db.queue").iterdir()), "a ticket was left behind"
+
+
+def test_three_hold_the_live_database_at_once_a_release_first_and_units_in_the_order_they_came(tmp_path):
+    """live_db.sh with three slots: six units waiting behind a train's mark take them in the order
+    they came, never more than three at once; a release's check that comes once the first three
+    hold them goes before the three units that waited longer."""
+    y = Yard(tmp_path)
+    for name in ("live_db.sh", "live_db_lib.sh"):
+        y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
+    marks = y.r / ".git" / "live-db.release"
+    marks.mkdir(parents=True, exist_ok=True)
+    train = subprocess.Popen(["sleep", "2.5"])
+    (marks / str(train.pid)).write_text("")
+    env = {**y.env, "LIVE_DB_SLOTS": "3"}
+    units = []
+    for k in range(1, 7):
+        units.append(subprocess.Popen(held(y, f"u{k}", 2.5), cwd=y.r, env=env))
+        time.sleep(0.3)
+    train.wait()
+    for _ in range(100):
+        if (y.r / "spans").exists() and len((y.r / "spans").read_text().split()) >= 9:
+            break
+        time.sleep(0.1)
+    time.sleep(0.5)
+    release = subprocess.Popen(held(y, "rel", 1), cwd=y.r, env={**env, "BOX_HEAVY_PRIORITY": "1"})
+    assert release.wait(timeout=60) == 0 and all(unit.wait(timeout=60) == 0 for unit in units)
+    span = spans(y.r / "spans")
+    order = sorted(span, key=lambda n: span[n][0])
+    assert order == ["u1", "u2", "u3", "rel", "u4", "u5", "u6"], order
+    assert most_at_once(span) == 3, span
+    assert min(span[n][0] for n in span) > time.time() - 60
+    assert not list((y.r / ".git" / "live-db.queue").iterdir()), "a ticket was left behind"
+    assert not [f for f in marks.iterdir() if "." in f.name], "a release's ticket was left behind"
+
+
+def test_one_that_holds_the_live_database_alone_runs_with_no_other_and_none_passes_it(tmp_path):
+    """live_db.sh --alone: it waits for the two units holding slots to leave, runs with nothing
+    beside it, and the two that came after it, though slots were free, wait until it is done."""
+    y = Yard(tmp_path)
+    for name in ("live_db.sh", "live_db_lib.sh"):
+        y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
+    env = {**y.env, "LIVE_DB_SLOTS": "3"}
+    runs = [subprocess.Popen(held(y, "a", 2), cwd=y.r, env=env)]
+    time.sleep(0.3)
+    runs.append(subprocess.Popen(held(y, "b", 2), cwd=y.r, env=env))
+    time.sleep(0.5)
+    cmd = held(y, "x", 1)
+    runs.append(subprocess.Popen([cmd[0], "--alone", *cmd[1:]], cwd=y.r, env=env))
+    time.sleep(0.3)
+    runs.append(subprocess.Popen(held(y, "c", 1), cwd=y.r, env=env))
+    time.sleep(0.3)
+    runs.append(subprocess.Popen(held(y, "d", 1), cwd=y.r, env=env))
+    assert all(run.wait(timeout=60) == 0 for run in runs)
+    span = spans(y.r / "spans")
+    began, ended = span["x"]
+    assert span["a"][1] <= began and span["b"][1] <= began, span
+    assert span["c"][0] >= ended and span["d"][0] >= ended, span
+    assert span["a"][0] < span["b"][1], "a and b did not share the live database"
+    log = (y.r / ".git" / "live-db.log").read_text()
+    assert "took x after" in log and "(alone)" in log, log
+
+
+def test_a_run_killed_while_it_waited_holds_no_one(tmp_path):
+    """A unit's run killed whole while it waited leaves its ticket, and a train's run killed
+    leaves its mark, its pid then another process's: neither holds the next run, which begins
+    at once and takes both away."""
+    import fcntl
+    y = Yard(tmp_path)
+    for name in ("live_db.sh", "live_db_lib.sh"):
+        y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
+    env = {**y.env, "LIVE_DB_SLOTS": "3"}
+    queue = y.r / ".git" / "live-db.queue"
+    lock = y.r / ".git" / "live-db.lock"
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    whole = open(lock, "a")
+    fcntl.flock(whole, fcntl.LOCK_EX)
+    waiter = subprocess.Popen(held(y, "killed", 1), cwd=y.r, env=env)
+    for _ in range(50):
+        if queue.exists() and list(queue.iterdir()):
+            break
+        time.sleep(0.1)
+    assert list(queue.iterdir()), "the waiter left no ticket"
+    waiter.kill()
+    waiter.wait()
+    assert list(queue.iterdir()), "the killed run's ticket went with it (no trap runs on a kill)"
+    fcntl.flock(whole, fcntl.LOCK_UN)
+    whole.close()
+    stranger = subprocess.Popen(["sleep", "30"])
+    marks = y.r / ".git" / "live-db.release"
+    marks.mkdir(exist_ok=True)
+    (marks / str(stranger.pid)).write_text("1\n")  # the start time of the train that had its pid
+    try:
+        t0 = time.time()
+        run = subprocess.Popen(held(y, "next", 0.2), cwd=y.r, env=env)
+        assert run.wait(timeout=30) == 0
+        assert time.time() - t0 < 10, "the next run waited on a dead ticket"
+        assert "killed" not in spans(y.r / "spans")
+        assert not list(queue.iterdir()) and not list(marks.iterdir()), "a dead ticket or mark was kept"
+    finally:
+        stranger.kill()
+        stranger.wait()
+

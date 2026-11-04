@@ -171,9 +171,10 @@ const form = { build: "A Technic tower crane with a working slewing ring and a t
 const made = [];
 let deletedA = false;
 let owner = null;
+let on = false;
 try {
   const off = await api("/api/plans?op=beta");
-  const on = off.status === 200 && off.json?.beta === "open";
+  on = off.status === 200 && off.json?.beta === "open";
   console.log(`beta flow: ${site} (beta ${on ? "open" : off.json?.beta || off.status})`);
 
   // What testers get is what Pro is (2026-11-02, docs/PLANS.md): every model
@@ -393,7 +394,10 @@ try {
     if (email === address("a") && deletedA) continue;
     await deleteAccount(email).catch(() => {});
   }
-  await rpc("beta_test_pool", { p_given: 0 }).catch(() => {});
+  // The test pool is one for every run: an off run, which used none of
+  // it, leaves an open one's spots where they are (preview_checks.sh runs
+  // three live checks at once, and an open one alone).
+  if (on) await rpc("beta_test_pool", { p_given: 0 }).catch(() => {});
   await browser.close();
 }
 check(`no page errors: ${errors.join(" | ") || "none"}`, errors.length === 0);

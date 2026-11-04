@@ -289,24 +289,33 @@ What each one guards against, all learned the hard way on 2026-10-13:
   every flow that imports a changed module in `tools/web` (`session.mjs`
   is nearly all of them).
 - The checks that write the live database, every flow that makes a
-  throwaway account and deletes it after, run one at a time across the
-  machine: `preview_checks.sh` holds `.git/live-db.lock` in the main
-  checkout for each one's run, whichever battery it is in, and
-  `.git/live-db.log` says who took it, after how long, and when they left.
-  Two runs at once on 2026-10-22 got 429s in profile, and another run's
-  model took discovery's pick. In a battery a slot takes a live check only
-  when the other slot is not running one, and the next check as soon as it
-  is free, not when its pair's longer half ends. On the times each check
-  took, m146's paired checks take 31 minutes so (37 in its pairs), m145's
-  2.6 (4.2), and m144's, more of them live, 44 (38): the live checks one
-  after another are the floor. Between batteries a live check waits for
-  the one another battery is running; `LIVE_WAIT` (an hour) bounds that,
-  then the check fails. A release's checks go first: waiting, its battery
-  leaves a file named for its pid in `.git/live-db.release/`, and any other
-  battery that gets the lock while one is there hands it back and waits.
-  flock serves no one in order, and a unit's A/B, taking the lock run after
-  run, held rel-m232's arrival 24 minutes (2026-10-31). A train leaves such
-  a file from its start until its battery on the preview, with the checks
+  throwaway account and deletes it after, run `LIVE_DB_SLOTS` (3) at a
+  time across the machine: `preview_checks.sh` holds one of the files
+  `.git/live-db.slot.N` in the main checkout, under a shared hold of
+  `.git/live-db.lock`, for each one's run, whichever battery it is in, and
+  `.git/live-db.log` says who took it, after how long, which slot, and
+  when they left. Two runs at once on 2026-10-22 got 429s in profile, and
+  another run's model took discovery's pick; one at a time, rel-m254's 53
+  held the lock for 3.1 hours and four units gave up behind it. Each flow
+  makes accounts of its own and judges its own models by id; sign-ins are
+  by password, from a bucket of 30 at once and one every 2 s, which a
+  battery draws on about 180 times (`session.mjs`). The checks that read
+  what every account changes hold `.git/live-db.lock` alone (`ALONE_DB` in
+  `preview_checks.sh`, each with its reason): discovery (the week's pick),
+  first_steps (the top designers), challenges (the one test challenge),
+  and beta where the beta is open (one test pool). In a battery a slot
+  takes a live check first while fewer of the battery's than
+  `LIVE_DB_SLOTS` run one, one held alone only when none runs, and the next
+  check as soon as it is free. Between batteries a live check waits for a
+  slot; `LIVE_WAIT` (an hour) bounds that, then the check fails. A
+  release's checks go first: waiting, its battery leaves a ticket in
+  `.git/live-db.release/`, and no other battery takes a slot while one is
+  there. Within each line, a release's and the rest, only the first living
+  ticket takes a slot, so one waiting to hold it alone is not passed by
+  those that came after. flock serves no one in order, and a unit's A/B,
+  taking the lock run after run, held rel-m232's arrival 24 minutes
+  (2026-10-31). A train leaves a mark there, a file named for its pid
+  holding its start time, from its start until its battery on the preview, with the checks
   run again alone, is done (`ship.sh` takes it away, `SHIP_LIVE_MARK`), so
   no unit begins a live check meanwhile: a run already in the lock cannot
   be taken back, and one begun while rel-m233 merged held its oauth 33
@@ -328,8 +337,9 @@ What each one guards against, all learned the hard way on 2026-10-13:
   it publishes and takes back, a session it starts and ends, its own page
   signed out), which no other run can undo.
 - A unit's own run on the live site, an A/B or a diagnostic outside a
-  battery, takes the lock only through `tools/release/live_db.sh WHO CMD...`,
-  which takes it by the same rule (`live_db_lib.sh`, which
+  battery, takes the lock only through `tools/release/live_db.sh [--alone]
+  WHO CMD...`, which takes a slot by the same rule (all of it with
+  `--alone`, for a run of an `ALONE_DB` check; `live_db_lib.sh`, which
   `preview_checks.sh` sources) and writes `.git/live-db.log` as WHO. hover's
   scratch script took it with a bare flock, gave way to no release, and
   held rel-m233's checks twice more, 33 and 38 minutes.

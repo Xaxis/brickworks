@@ -304,7 +304,7 @@ trip 42 to 199 ms, and the whole change p50 193 to 701 ms, p95 under a
 second for every kind but one outlier round (the printed part, 1.4 s).
 
 The flow measures again later, once the model has a motion, a printed
-part, steps of its own and its hidden parts coloured, and says how many
+part and steps of its own, and says how many
 frames a second each page drew meanwhile. Before it said so, with the car
 on a 48 × 48 baseplate, that second measure was 2.8 s p50 on this box;
 then 1.3 s once the motions were read as kept rather than by measuring
@@ -378,7 +378,7 @@ a click. Here:
   session: 50 random edits interleaved, byte-identical after; then each
   kind of the model's own state from either side (the name typed, the
   floor, a printed part made in the app, a build step, a booklet look, a
-  motion, the hidden parts coloured), byte-identical in both browsers and
+  motion), byte-identical in both browsers and
   the desktop after each; Ctrl+Z per person; the time a change takes each
   way; a reload and a lost connection going back in; the owner's pointer
   drawn in the other's view; the chat, and an under-13 refused it; a real
