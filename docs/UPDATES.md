@@ -73,7 +73,8 @@ one starts.
   is up. A copy that cannot say its version, or ends first, is taken away,
   the old one put back and started with `--update-failed=`, which the app
   says and never tries that version again. The new copy takes the old one
-  away once it has started.
+  away once it has started. A `.deb`'s copy is the one exception: apt puts
+  it in (below), and the helper only restarts.
 
 ## Each system
 
@@ -81,25 +82,29 @@ one starts.
 |---|---|---|
 | Linux | AppImage | verified, then renamed over `$APPIMAGE` (the old one hard-linked aside first), relaunched |
 | Linux | tar.xz | unpacked beside the folder with `tar`, the folders swapped after exit, relaunched |
-| Linux | .deb | never written over: the notice says the version is out, and **Download** opens the new `.deb`, which the browser saves and the system's software installer (or `sudo apt install ./…deb`) installs |
+| Linux | .deb | never swapped: the new `.deb` is downloaded and checked into the app's own data (`user://.brickworks-update`), and **Update and restart** runs `pkexec /usr/bin/apt-get install -y <that file>`, which asks for the password in the system's own dialog, then restarts into it. With no pkexec, or the password refused (pkexec's 126 or 127), it says which, installs nothing, and offers **Show the file** for the system's software installer or `sudo apt install`. Never at quit in Automatic, since it asks for a password |
 | macOS | DMG | attached read-only and unseen (`hdiutil attach -nobrowse -noautoopen`), `Brickworks.app` copied out with `ditto` as a drag to Applications copies it, detached; `codesign --verify --deep --strict`, and the same Developer ID team when this copy has one; the `.app` where it is installed (normally /Applications) swapped after quit and opened with `open -n`. Run from Downloads or the disk image itself (translocated), the button reads **Move to Applications and update** and it goes to /Applications (or ~/Applications) |
-| Windows | installer | the NSIS `setup.exe` (tools/release/windows/brickworks.nsi) downloaded and checked; after the app exits the PowerShell helper moves the install folder aside, runs `setup.exe /S /D=<that folder>` (per person, no administrator), needs exit 0, and relaunches; put back, it also puts back the version Settings ▸ Apps lists |
+| Windows | installer | a copy with `Uninstall Brickworks.exe` beside it is the installer's: the NSIS `setup.exe` (tools/release/windows/brickworks.nsi) downloaded and checked; after the app exits the PowerShell helper moves the install folder aside, runs `setup.exe /VERYSILENT /D=<that folder>` (per person, no administrator), which writes Settings ▸ Apps, the Start menu and the file types again, needs exit 0, and relaunches; put back, it also puts back the version Settings ▸ Apps lists |
+| Windows | zip | a copy unpacked from the zip keeps the folder swap, from the new zip; once a release has no zip, from the installer, into its own folder, and it is an installed copy from then on |
 
-The zips beside the DMG and the installer stay for one release, for links
-already shared; the updater never takes them. A copy unpacked from one is
-updated from the DMG or by the installer all the same, in its own place: on
-Windows it is an installed copy from then on (Start menu, Settings ▸ Apps).
+The zips stay for one release, for links already shared. A Mac copy
+unpacked from one is updated from the DMG all the same, in its own place.
+`release.py publish` refuses a `latest.json` that lacks a kind a copy
+updates from (`missing_update_kinds`: the AppImage, the tar.xz, the .deb,
+the DMG, the installer), since every copy installed from it would be
+stranded.
 
 A copy that cannot write where it is installed (a tar.xz under /opt) says so,
 and its button opens the download page.
 
-**Why the .deb leaves its update to the system.** Its files are dpkg's
-(`/usr/lib/brickworks`, linked from `/usr/bin`): written over by the app,
-`dpkg -L` and `apt remove` would describe a version that is not there, and
-only root may write there, which an app should never ask for itself. A
-`.deb` with no apt repository is updated the way Discord's is, by its new
-`.deb`; one in an apt repository (Chrome's, VS Code's) by apt with the rest
-of the system, which would be the next step if the releases ever have one.
+**Why apt puts the .deb in.** Its files are dpkg's (`/usr/lib/brickworks`,
+linked from `/usr/bin`): written over by the app, `dpkg -L` and `apt remove`
+would describe a version that is not there. So apt installs the new `.deb`,
+as root, through pkexec: the system's own password dialog, never one the
+app draws. `BRICKWORKS_UPDATE_ELEVATE` names a stand-in for pkexec, and is
+read only beside `BRICKWORKS_UPDATE_URL`, so only a test can set it. A
+`.deb` in an apt repository (Chrome's, VS Code's) would be updated by apt
+with the rest of the system, the next step if the releases ever have one.
 
 **On Windows the helper first leaves the app's folder.** An exported Godot
 app makes its own folder its working directory as it starts (`main.cpp`),
@@ -113,7 +118,10 @@ folder is moved aside first, so the installer finds no running Brickworks
 to wait for and the old copy is whole until the new one has started. `/D=`
 must come last and unquoted, as NSIS reads it, and it wins over the folder
 the installer remembers (`HKCU\Software\Brickworks`), so a copy installed
-anywhere is updated where it is.
+anywhere is updated where it is. The installer's `/LAUNCH` is not used: the
+helper first asks the new copy its version, then starts it in the same
+session (`--session=`) so the model comes back, and can still put the old
+one back if it never says its window is up.
 
 ## Testing it
 
@@ -127,8 +135,13 @@ Windows runner has no signing key, so `update_check.py lay` signs every
 scenario here and `run --laid=DIR` drives them there, at the same port; the
 proofs run them from a throwaway branch's workflow and a draft release,
 both deleted after, with the runs. `run --system` installs the first copy
-where its installer puts it (/Applications, `%LOCALAPPDATA%\Programs`) on a
-runner's throwaway machine. A `.deb` pair runs the .deb's own checks: told
-what is out, nothing of dpkg's changed, Download the new `.deb`.
+where its installer puts it (/Applications, `%LOCALAPPDATA%\Programs`, or
+`/usr/lib` by `sudo apt-get install`) on a runner's throwaway machine; there
+an installer copy also proves its Start menu entry, its file types and that
+its uninstaller leaves nothing. A `.deb` pair runs the .deb's own checks:
+told what is out, the new `.deb` downloaded and checked, pkexec refused and
+then missing each said with the file offered, nothing of dpkg's changed;
+with `--system` apt installs it for real, sudo standing in for pkexec's
+password dialog, and `apt remove` leaves nothing.
 `src/dev/updater_probe.gd` checks the manifest, the versions and the
 addresses, and drives the notice, the Help menu and the setting.

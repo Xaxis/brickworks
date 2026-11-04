@@ -2286,7 +2286,11 @@ def double_click_mac(models: list[Path]) -> list[tuple[str, bool | None, str]]:
     data = Path.home() / "Library" / "Application Support" / "Godot" / "app_userdata" / "Brickworks"
     try:
         for at, model in enumerate(models):
-            done = subprocess.run(["open", str(model)], capture_output=True, text=True)
+            # Launch Services starts it in the person's environment, not
+            # clean_env's: told here, or an older release under check could
+            # update itself part way through.
+            done = subprocess.run(["open", "--env", "BRICKWORKS_UPDATES=off", str(model)],
+                                  capture_output=True, text=True)
             parts = logs_say(data / "logs", model, 300) if done.returncode == 0 else -1
             said.append(("a double-click on %s opens it in Brickworks%s: %d parts"
                          % (model.name, ", the app already open" if at else "", parts), parts > 0,
@@ -2363,6 +2367,9 @@ def double_click_windows(package: Path, models: list[Path]) -> list[tuple[str, b
         said.append((".%s opens with %s" % (kind["ext"], command or "nothing"),
                      progid == "Brickworks." + kind["ext"] and "Brickworks.exe" in command, ""))
     data = Path(os.environ["APPDATA"]) / "Godot" / "app_userdata" / "Brickworks"
+    # What startfile starts inherits this process's environment, not
+    # clean_env's: an older release under check must not update itself.
+    os.environ["BRICKWORKS_UPDATES"] = "off"
     try:
         for at, model in enumerate(models):
             os.startfile(str(model))  # type: ignore[attr-defined]
@@ -2966,6 +2973,18 @@ def sign_update_manifest(manifest: dict[str, Any],
             "signed": text, "signatures": signatures}
 
 
+# The packages an installed copy updates itself from, by system: a release
+# without one leaves every copy installed from it unable to update.
+UPDATE_KINDS = {"linux": ("AppImage", "tar.xz", "deb"), "macos": ("dmg",), "windows": ("installer",)}
+
+
+def missing_update_kinds(manifest: dict[str, Any]) -> list[str]:
+    """Each package kind of UPDATE_KINDS latest.json does not list."""
+    have = {(str(f.get("os")), str(f.get("kind"))) for f in manifest.get("files", [])}
+    return ["%s %s" % (os_, kind) for os_, kinds in UPDATE_KINDS.items() for kind in kinds
+            if (os_, kind) not in have]
+
+
 def check_update_manifest(envelope: dict[str, Any],
                           keys: dict[str, str] | None = None) -> list[str]:
     """What the app would refuse in latest.json, as Updates.read does it: the
@@ -3081,6 +3100,10 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
                   for f in facts["files"]}
         latest = sign_update_manifest(update_manifest(version, tag, facts["files"], date, pinned))
         problems = check_update_manifest(latest)
+        missing = missing_update_kinds(json.loads(latest["signed"]))
+        if missing:
+            problems.append("it has no %s, so copies installed from one could not update"
+                            % ", ".join(missing))
         if problems:
             raise Failed("latest.json would be refused by the app: " + "; ".join(problems))
         latest_json.write_text(json.dumps(latest, indent=1) + "\n")

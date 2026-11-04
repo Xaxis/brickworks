@@ -105,10 +105,13 @@ if ((Test-Path -LiteralPath $target) -and -not (Move-Retried $target $backup)) {
 }
 if ($staged -like "*.exe") {
   # Into the folder the old copy left, so the old one is whole until the new
-  # one has started. /S is NSIS's silent install, for this person alone; /D=
-  # its folder, which must come last and is never quoted.
+  # one has started: the installer writes that folder into Settings, Apps,
+  # the Start menu and the file types. /VERYSILENT installs for this person
+  # alone, with no window; /D= is its folder, last and never quoted. Not
+  # /LAUNCH: this helper starts the new copy itself, in the same session,
+  # once it has said its version.
   $into = $target -replace "/", "\"
-  $setup = Start-Process -FilePath $staged -ArgumentList "/S /D=$into" -PassThru
+  $setup = Start-Process -FilePath $staged -ArgumentList "/VERYSILENT /D=$into" -PassThru
   $null = $setup.Handle
   if (-not $setup.WaitForExit(600000)) {
     Stop-Process -Id $setup.Id -Force -ErrorAction SilentlyContinue

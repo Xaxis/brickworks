@@ -13,11 +13,14 @@ refusal and through a real install that restarts with the model kept.
           Check for updates; Update and restart (the model kept); Restart;
           Reinstall; Automatic, put in as the app quits; and a new copy that
           cannot start (on a Mac and Windows, says the wrong version), put
-          back. A .deb's copy is never written over: it says the new
-          version is out and downloads the new .deb.
-        --system: the first copy where its installer puts it, /Applications
-        or %LOCALAPPDATA%\\Programs, and taken away after: for a runner's
-        throwaway machine, and refused where a Brickworks is already there
+          back. A .deb's copy is never swapped: the new .deb is downloaded
+          into the app's own data and apt installs it as root; refused, or
+          with no pkexec, it says so and offers the file.
+        --system: the first copy where its installer puts it, /Applications,
+        %LOCALAPPDATA%\\Programs or (the .deb, by sudo apt-get) /usr/lib, and
+        taken away after: for a runner's throwaway machine, and refused
+        where a Brickworks is already there. There the .deb is updated by
+        apt for real, sudo standing in for pkexec's password dialog
     tools/update_check.py run --laid=DIR [--system]
         the same, served from a folder `lay` made: a runner on macOS or
         Windows has no signing key, so its manifests are signed here
@@ -293,6 +296,34 @@ def listed() -> str:
     return found.group(1) if found else ""
 
 
+def has_key(key: str) -> bool:
+    return subprocess.run(["reg", "query", key], capture_output=True).returncode == 0
+
+
+def uninstalled(folder: Path) -> tuple[str, bool, str]:
+    """The copy's own uninstaller run as Settings, Apps runs it, and what it
+    leaves: nothing of the app, its listing, its Start menu entry or its
+    file types (the person's models are in their own folder)."""
+    subprocess.run([str(folder / "Uninstall Brickworks.exe"), "/S"], timeout=600)
+    # It runs from a copy of itself, so its own exit says nothing: the
+    # folder going says it is done.
+    end = time.time() + 300
+    while (folder / "Brickworks.exe").exists() and time.time() < end:
+        time.sleep(2)
+    start_menu = Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" \
+        / "Brickworks.lnk"
+    left = sorted(p.name for p in folder.glob("*")) if folder.exists() else []
+    left += [key for key in (LISTING, r"HKCU\Software\Brickworks", r"HKCU\Software\Classes\Brickworks.ldr")
+             if has_key(key)]
+    left += [str(start_menu)] if start_menu.exists() else []
+    return ("Uninstall leaves nothing of it: %s" % (", ".join(left) or
+            "no file, no Settings, Apps entry, no Start menu entry, no file type"), not left, "")
+
+
+def apt(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["sudo", "apt-get", *args], capture_output=True, text=True, timeout=900)
+
+
 def tree(folder: Path) -> dict[str, tuple[int, int, int]]:
     """Every file and link under [folder], with its size, time and mode."""
     out: dict[str, tuple[int, int, int]] = {}
@@ -334,13 +365,14 @@ class Run:
                 say("        " + line)
 
     def app(self, program: Path, base: str, user: list[str], seconds: int = 300,
-            person: bool = False) -> tuple[int, str]:
+            person: bool = False, more: dict[str, str] | None = None) -> tuple[int, str]:
         """[person]: started as a person starts it, for a step judged by the
         updater's log. On Windows that is Brickworks.exe, not the console
         wrapper, which keeps all the app starts in a job of its own and runs
         until the last has ended (Godot's console_wrapper_windows.cpp): the
         new copy among them, so the old wrapper's own file could not go."""
-        env = dict(self.env, BRICKWORKS_UPDATE_URL="http://127.0.0.1:%d/%s/" % (self.port, base))
+        env = dict(self.env, BRICKWORKS_UPDATE_URL="http://127.0.0.1:%d/%s/" % (self.port, base),
+                   **(more or {}))
         if person and program.name == "Brickworks.console.exe":
             program = program.with_name("Brickworks.exe")
         return release.run_app([str(program), "--headless", "--", *user], env, seconds)
@@ -370,20 +402,41 @@ class Run:
         return sorted(str(p.relative_to(install)) for p in stage.rglob("*")) if stage.exists() else []
 
 
-def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None) -> int:
-    """A copy installed from the .deb: dpkg's files are never written over.
-    It says the newer version is out, refuses to fetch or install it, and
-    its Download is the new .deb, for the system's software installer."""
+def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | None = None,
+              system: bool = False) -> int:
+    """A copy installed from the .deb: dpkg's files are never swapped. The
+    new .deb is downloaded into the app's own data, checked, and installed
+    by apt as root. A stand-in for pkexec says no, then none is there: each
+    is said, and the file offered. With [system] (a runner) apt installed
+    the old copy itself, and the update goes in by apt for real, sudo
+    standing in for pkexec's password dialog; then apt removes it."""
     with tempfile.TemporaryDirectory(prefix="brickworks-update-", ignore_cleanup_errors=True) as scratch:
         root = Path(scratch)
-        lay_out(root / "serve", old, new, port)
-        server = serve(root / "serve", port)
+        serve_dir = laid if laid is not None else root / "serve"
+        if laid is None:
+            lay_out(serve_dir, old, new, port)
+        server = serve(serve_dir, port)
         run = Run(old, new, port, root)
-        say("── %s → %s, deb, served at http://127.0.0.1:%d/ ──" % (run.A, run.B, port))
+        say("── %s → %s, deb%s, served at http://127.0.0.1:%d/ ──" % (
+            run.A, run.B, ", installed by apt" if system else "", port))
+        asked = root / "asked.txt"
+        refuse = root / "refuse.sh"
+        refuse.write_text('#!/bin/sh\necho "$*" > "%s"\nexit 126\n' % asked)
+        refuse.chmod(0o755)
+        staged = user_dir(run.home) / ".brickworks-update" / run.B / new.name
         try:
-            install = root / "install"
-            install.mkdir()
-            program = program_in(old, install)
+            if system:
+                if Path("/usr/lib/brickworks").exists():
+                    raise release.Failed("/usr/lib/brickworks is there already: --system is for a "
+                                         "throwaway machine")
+                done = apt("install", "-y", str(old))
+                if done.returncode != 0:
+                    raise release.Failed("apt-get install %s: %s" % (old.name, done.stderr[-500:]))
+                install, program = Path("/usr/lib/brickworks"), Path("/usr/bin/brickworks")
+            else:
+                install = root / "install"
+                install.mkdir()
+                program = program_in(old, install)
             said = run.about(program)
             run.check("the old copy, in usr/lib/brickworks as dpkg puts it, says %s" % said,
                       said.startswith("Brickworks %s" % run.A))
@@ -392,40 +445,72 @@ def drive_deb(old: Path, new: Path, port: int, keep_log: Path | None) -> int:
             verdict = next((line for line in output.splitlines() if line.startswith("update: check: ")), "")
             run.check("Check for updates: %s" % verdict.removeprefix("update: check: "),
                       code == 0 and "Brickworks %s is out" % run.B in verdict, output)
-            link = "http://127.0.0.1:%d/files/%s" % (port, new.name)
-            for asked in ("fetch", "install"):
-                code, output = run.app(program, "good", ["--update=" + asked])
+            for stand_in, words in ((refuse, "the password was refused or not given"),
+                                    (root / "no-pkexec", "pkexec isn't on this system")):
+                code, output = run.app(program, "good", ["--update=install"],
+                                       more={"BRICKWORKS_UPDATE_ELEVATE": str(stand_in)})
                 verdict = next((line for line in output.splitlines()
-                                if line.startswith("update: %s: " % asked)), "(nothing said)")
-                download = next((line for line in output.splitlines()
-                                 if line.startswith("update: download: ")), "")
-                run.check("--update=%s is refused (%s), and Download is the new .deb: %s"
-                          % (asked, verdict.removeprefix("update: %s: " % asked),
-                             download.removeprefix("update: download: ")),
-                          code == 1 and "installed from its .deb" in verdict
-                          and download == "update: download: " + link, output)
+                                if line.startswith("update: install: ")), "(nothing said)")
+                shown = next((line for line in output.splitlines() if line.startswith("update: show: ")), "")
+                run.check("Update and restart %s: %s; it offers %s" % (
+                    "with pkexec refused" if stand_in == refuse else "with no pkexec",
+                    verdict.removeprefix("update: install: "), shown.removeprefix("update: show: ")),
+                    code == 1 and words in verdict and shown == "update: show: %s" % staged
+                    and staged.exists() and release.sha256_of(staged) == release.sha256_of(new), output)
+            elevated = asked.read_text().strip() if asked.exists() else "(not asked)"
+            run.check("...apt was asked for the checked .deb, as root: %s" % elevated,
+                      elevated == "/usr/bin/apt-get install -y %s" % staged)
             after = tree(install)
-            run.check("nothing dpkg put there was changed, and nothing was staged beside it",
-                      after == before, "\n".join(sorted(str(x) for x in set(after.items()) ^ set(before.items())))[:2000])
-            said = run.about(program)
-            run.check("the copy is still %s" % run.A, said.startswith("Brickworks %s" % run.A))
+            run.check("nothing dpkg put there was changed", after == before,
+                      "\n".join(sorted(str(x) for x in set(after.items()) ^ set(before.items())))[:2000])
+            if not system:
+                said = run.about(program)
+                run.check("the copy is still %s" % run.A, said.startswith("Brickworks %s" % run.A))
+            else:
+                mark = run.mark()
+                code, output = run.app(program, "good", ["--model=res://models/house.ldr", "--update=install"],
+                                       more={"BRICKWORKS_UPDATE_ELEVATE": "sudo"})
+                text = run.log_after(mark, "report:")
+                before_ = re.search(r"restart: model “([^”]*)”, (\d+) parts; session (\w+)", text)
+                after_ = re.search(r"report: running (\S+); model “([^”]*)”, (\d+) parts; session (\w+)", text)
+                run.check("Update and restart, apt installing it by sudo in pkexec's place: %s"
+                          % (after_.group(0) if after_ else "no report"),
+                          bool(before_ and after_) and after_.group(1) == run.B
+                          and after_.groups()[1:] == before_.groups() and int(after_.group(3)) > 0,
+                          output + "\n" + text)
+                listed_ = subprocess.run(["dpkg-query", "-W", "-f", "${Version}", "brickworks"],
+                                         capture_output=True, text=True).stdout.strip()
+                said = run.about(program)
+                run.check("dpkg lists brickworks %s, and the copy says %s" % (listed_, said),
+                          listed_ == run.B and said.startswith("Brickworks %s" % run.B))
+                time.sleep(2)
+                run.check("the downloaded .deb is gone once the new copy started",
+                          not staged.parent.exists())
+                done = apt("remove", "-y", "brickworks")
+                left = [str(path) for path in (Path("/usr/lib/brickworks"), Path("/usr/bin/brickworks"))
+                        if path.exists() or path.is_symlink()]
+                run.check("apt remove leaves nothing of it: %s" % (", ".join(left) or "nothing left"),
+                          done.returncode == 0 and not left, done.stderr)
         finally:
             server.shutdown()
             if keep_log is not None and run.log.exists():
                 keep_log.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(run.log, keep_log)
+            if system and Path("/usr/lib/brickworks").exists():
+                apt("remove", "-y", "brickworks")
     say("")
     if run.failures:
-        say("%d check(s) failed: the .deb's copy does not leave its update to the system" % run.failures)
+        say("%d check(s) failed: the .deb's copy does not update by apt" % run.failures)
         return 1
-    say("%s → %s: the .deb's copy says the new version is out and offers the new .deb" % (old.name, new.name))
+    say("%s → %s: the .deb's copy downloads the new .deb, and apt installs it%s" % (
+        old.name, new.name, "" if system else " (refused and missing here; by sudo on a runner)"))
     return 0
 
 
 def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | None = None,
           system: bool = False) -> int:
     if release.describe_file(old.name)["kind"] == "deb":
-        return drive_deb(old, new, port, keep_log)
+        return drive_deb(old, new, port, keep_log, laid, system)
     programs: list[Path] = []
     with tempfile.TemporaryDirectory(prefix="brickworks-update-", ignore_cleanup_errors=True) as scratch:
         root = Path(scratch)
@@ -486,6 +571,12 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
             installer = old.name.endswith("-setup.exe")
             if installer:
                 run.check("Settings, Apps lists %s" % listed(), listed() == run.B)
+            if installer and system:
+                # The Start menu entry and the file types the update wrote.
+                start_menu = Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" \
+                    / "Programs" / "Brickworks.lnk"
+                run.check("...with its Start menu entry and .ldr opening in it",
+                          start_menu.exists() and has_key(r"HKCU\Software\Classes\Brickworks.ldr"))
             time.sleep(2)
             run.check("the old copy is gone once the new one started: %s" % (run.staged(install) or "nothing left"),
                       not run.staged(install))
@@ -505,6 +596,9 @@ def drive(old: Path, new: Path, port: int, keep_log: Path | None, laid: Path | N
                       bool(after3) and after3.group(1) == run.B
                       and "started %s (from %s)" % (run.B, run.B) in text, output + "\n" + text)
             run.log_after(mark, "is up", 60)
+            if installer and system:
+                time.sleep(3)
+                run.check(*uninstalled(program.parent))
 
             # Automatic: downloaded, then put in as the app quits; the next
             # start is the new version.

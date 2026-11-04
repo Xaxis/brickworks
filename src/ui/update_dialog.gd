@@ -47,8 +47,12 @@ func _confirmed() -> void:
 		if updater.state == Updater.READY and visible:
 			updater.restart("install")
 		return
+	if updater.state == Updater.FAILED and not updater.shown_file.is_empty():
+		Outside.show_in_folder(updater.shown_file)
+		hide()
+		return
 	if not updater.can_install():
-		Outside.open_link(updater.download_link())
+		Outside.open_link(Updates.DOWNLOAD)
 		hide()
 		return
 	updater.update_and_restart()
@@ -95,7 +99,10 @@ func _show() -> void:
 			get_cancel_button().text = "Later"
 		_:
 			dialog_text = updater.said
-			ok.visible = false
+			# The .deb apt could not install, offered for the system's own
+			# software installer.
+			ok.visible = updater.state == Updater.FAILED and not updater.shown_file.is_empty()
+			ok.text = "Show the file"
 			get_cancel_button().text = "OK"
 
 

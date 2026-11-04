@@ -339,15 +339,23 @@ static func here() -> Dictionary:
 			found["launch"] = ["open", "-n", found["moves_to"], "--args"]
 			found["about"] = [str(found["moves_to"]).path_join("Contents/MacOS").path_join(exe.get_file())]
 	elif OS.get_name() == "Windows":
-		# The folder the installer put it in: the new installer is run into
-		# the same one (update_helper.ps1).
+		# Installed by setup.exe, whose uninstaller it left beside the app:
+		# the new installer is run into the same folder (update_helper.ps1),
+		# and it updates Settings, Apps, the Start menu and the file types.
+		# A copy unpacked from the zip keeps its folder swap while releases
+		# carry a zip, and takes the installer after ("or").
 		var folder: String = exe.get_base_dir()
-		found = {"kind": "windows", "os": "windows", "package": "installer", "target": folder,
-			"launch": [exe], "about": [folder.path_join(exe.get_file().get_basename() + ".console.exe")]}
+		var installed: bool = FileAccess.file_exists(folder.path_join("Uninstall Brickworks.exe"))
+		found = {"kind": "windows", "os": "windows", "package": "installer" if installed else "zip",
+			"target": folder, "launch": [exe],
+			"about": [folder.path_join(exe.get_file().get_basename() + ".console.exe")]}
+		if not installed:
+			found["or"] = "installer"
 	else:
 		return {"kind": "", "why_not": "Brickworks cannot update itself on %s" % OS.get_name()}
 	var parent: String = str(found["target"]).get_base_dir()
-	found["stage"] = parent.path_join(".brickworks-update")
+	if not found.has("stage"):
+		found["stage"] = parent.path_join(".brickworks-update")
 	if not found.has("why_not"):
 		found["why_not"] = "" if _writable(parent) else (
 			"Brickworks can't update itself in %s, where it is installed: download the new version from brickworks.diy/download" % parent)
@@ -356,9 +364,10 @@ static func here() -> Dictionary:
 
 ## A Linux copy run as [param exe], from the AppImage [param image] if that
 ## is not "". The .deb's copy (in /usr/lib/brickworks, linked from
-## /usr/bin) is dpkg's: written over, the system's record of what it
-## installed would be wrong, and only root may. So it is updated as the
-## system's other packages are, with the new .deb (Updater.download_link).
+## /usr/bin) is dpkg's: swapped, the system's record of what it installed
+## would be wrong, and only root may write there. So the new .deb is
+## downloaded into the app's own data and apt installs it, as root, which
+## the system's password dialog asks for (Updater._install_deb).
 static func on_linux(exe: String, image: String) -> Dictionary:
 	if not image.is_empty():
 		return {"kind": "appimage", "os": "linux", "package": "AppImage", "target": image,
@@ -369,8 +378,23 @@ static func on_linux(exe: String, image: String) -> Dictionary:
 	if folder.ends_with("/usr/lib/brickworks"):
 		found["kind"] = "deb"
 		found["package"] = "deb"
-		found["why_not"] = "Brickworks was installed from its .deb, so the system's software installer updates it: download the new .deb and open it"
+		found["stage"] = ProjectSettings.globalize_path("user://").path_join(".brickworks-update")
+		found["why_not"] = ""
 	return found
+
+
+## What runs apt as root for a .deb's update: pkexec, which asks for the
+## password in the system's own dialog, or "" where there is none. A test
+## run may name another (BRICKWORKS_UPDATE_ELEVATE, sudo on a runner), and
+## only beside a test server named by hand.
+static func elevator() -> String:
+	if not test_base().is_empty() and OS.has_environment("BRICKWORKS_UPDATE_ELEVATE"):
+		var named: String = OS.get_environment("BRICKWORKS_UPDATE_ELEVATE")
+		return named if not named.is_absolute_path() or FileAccess.file_exists(named) else ""
+	for folder: String in OS.get_environment("PATH").split(":", false):
+		if FileAccess.file_exists(folder.path_join("pkexec")):
+			return folder.path_join("pkexec")
+	return ""
 
 
 ## Whether a folder can be written in: a file made there and taken away.

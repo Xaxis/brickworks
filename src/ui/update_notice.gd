@@ -7,9 +7,11 @@
 ## Settings, Updates, Automatic the version is already downloaded by the
 ## time this shows, and goes in as the app quits if Later is pressed; in
 ## Ask first it is downloaded on the press. Where this copy cannot update
-## itself, the press is Download: the new .deb for a copy installed from
-## one, the download page for one installed where it may not write. On a
-## Mac run from Downloads, it moves the app to Applications as it updates it.
+## itself (installed where it may not write), the press opens the download
+## page instead; on a Mac run from Downloads, it moves the app to
+## Applications as it updates it. A copy installed from the .deb is updated
+## by apt, which asks for the password; where it could not be, the press
+## shows the checked .deb instead.
 class_name UpdateNotice
 extends PanelContainer
 
@@ -118,12 +120,18 @@ func _show() -> void:
 			_words.text = updater.said
 		_:
 			_words.text = "Brickworks %s is out" % version
-	if not updater.can_install():
+	if updater.state == Updater.FAILED and not updater.shown_file.is_empty():
+		_go.text = "Show the file"
+		_go.tooltip_text = "The new .deb, checked, in its folder: install it with your software installer, or with sudo apt install"
+	elif not updater.can_install():
 		_go.text = "Download"
 		_go.tooltip_text = str(updater.install.get("why_not", ""))
 	elif updater.install.has("moves_to"):
 		_go.text = "Move to Applications and update"
 		_go.tooltip_text = "Brickworks is running from Downloads or a disk image, where it can't update itself: it goes to %s" % str(updater.install["moves_to"]).get_base_dir()
+	elif str(updater.install.get("kind", "")) == "deb":
+		_go.text = "Update and restart"
+		_go.tooltip_text = "Install Brickworks %s with apt, which asks for your password, then restart into it. The model on the baseplate comes back as it is." % version
 	else:
 		_go.text = "Update and restart"
 		_go.tooltip_text = "Restart into Brickworks %s now. The model on the baseplate comes back as it is." % version
@@ -131,8 +139,11 @@ func _show() -> void:
 
 
 func _pressed() -> void:
+	if updater.state == Updater.FAILED and not updater.shown_file.is_empty():
+		Outside.show_in_folder(updater.shown_file)
+		return
 	if not updater.can_install():
-		Outside.open_link(updater.download_link())
+		Outside.open_link(Updates.DOWNLOAD)
 		return
 	_going = true
 	await updater.update_and_restart()

@@ -47,6 +47,9 @@ var received: int = 0
 var total: int = 0
 ## Whether what is being downloaded is this same version again (Reinstall).
 var reinstalling: bool = false
+## The checked .deb apt could not install (no pkexec, or no password): the
+## notice offers to show it, for the system's software installer.
+var shown_file: String = ""
 ## Where this copy is and how it would be updated (Updates.here): a probe
 ## puts its own.
 var install: Dictionary = Updates.here()
@@ -168,7 +171,10 @@ func download() -> void:
 		_fail(str(install.get("why_not", "This copy can't update itself")))
 		return
 	var version: String = str(manifest["version"])
+	shown_file = ""
 	var file: Dictionary = Updates.file_for(manifest, str(install["os"]), str(install["package"]))
+	if file.is_empty() and install.has("or"):
+		file = Updates.file_for(manifest, str(install["os"]), str(install["or"]))
 	if file.is_empty():
 		_fail("The release has no %s for this system" % str(install["package"]))
 		return
@@ -245,17 +251,6 @@ func reinstall() -> void:
 	reinstalling = false
 
 
-## Where Download goes, for a copy that cannot update itself: a .deb's
-## copy to the new .deb, which the browser saves and the system's software
-## installer opens; any other to the download page.
-func download_link() -> String:
-	if str(install.get("kind", "")) == "deb":
-		var file: Dictionary = Updates.file_for(manifest, "linux", "deb")
-		if not file.is_empty() and Updates.refuse_url(str(file["url"])).is_empty():
-			return str(file["url"])
-	return Updates.DOWNLOAD
-
-
 ## Update and restart: the newer version downloaded first if it is not yet.
 func update_and_restart() -> void:
 	if state == OUT or (state == FAILED and not manifest.is_empty() and _staged.is_empty()):
@@ -273,6 +268,19 @@ func restart(how: String = "restart") -> void:
 	if how == "install" and _staged.is_empty():
 		return
 	var mine: String = BuildInfo.version()
+	# A .deb's copy is not swapped: apt puts the new one in now, as root,
+	# and the helper only starts it once this one has gone.
+	var deb: bool = how == "install" and str(install.get("kind", "")) == "deb"
+	if deb:
+		var version: String = str(_staged["version"])
+		shown_file = ""
+		_become(RESTARTING, "Installing Brickworks %s…" % version)
+		var why: String = str(await _off_thread(_install_deb.bind(str(_staged["item"]))))
+		if not why.is_empty():
+			shown_file = str(_staged["item"])
+			_fail("Couldn't install Brickworks %s: %s" % [version, why])
+			return
+		_note("apt installed %s" % version)
 	_become(RESTARTING, "Restarting…" if how == "restart" else
 		"Restarting into Brickworks %s…" % str(_staged["version"]))
 	await _keep_the_model()
@@ -284,7 +292,7 @@ func restart(how: String = "restart") -> void:
 	# A test run's copy says what it came back as, and stops (tools/update_check.py).
 	if _asked in ["install", "reinstall", "restart"]:
 		user.append("--update=report")
-	var helper: Array = _helper(how, user)
+	var helper: Array = _helper("restart" if deb else how, user)
 	if helper.is_empty():
 		_fail("Couldn't restart: no helper for this system")
 		return
@@ -302,7 +310,10 @@ func on_quit() -> void:
 	if not _drop_later.is_empty():
 		_drop(_drop_later)
 		_drop_later = ""
-	if state == RESTARTING or _staged.is_empty() or mode() != "auto" or not can_install():
+	# A .deb's update asks for a password, which is never asked unseen as
+	# the app goes: it waits for Update and restart.
+	if state == RESTARTING or _staged.is_empty() or mode() != "auto" or not can_install() \
+			or str(install.get("kind", "")) == "deb":
 		return
 	var item: String = str(_staged["item"])
 	if bool(_staged.get("reinstall", false)) \
@@ -613,10 +624,43 @@ func _unpack(archive: String, folder: String) -> Dictionary:
 		"mac":
 			return _from_disk_image(archive, folder)
 		"windows":
+			if archive.ends_with(".zip"):
+				# Windows 10 and later have bsdtar, which reads a zip.
+				var tar: String = OS.get_environment("SystemRoot").path_join("System32/tar.exe")
+				if OS.execute(tar, ["-xf", archive, "-C", folder], output, true) != 0:
+					output.clear()
+					if OS.execute("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+							"Expand-Archive -LiteralPath '%s' -DestinationPath '%s'" % [archive, folder]],
+							output, true) != 0:
+						return {"why": "the zip would not unpack"}
+				DirAccess.remove_absolute(archive)
+				return _found_in(folder, OS.get_executable_path().get_file())
 			# The installer is what goes in: the helper runs it silently into
 			# this copy's folder once this copy has quit (update_helper.ps1).
 			return {"item": archive}
+		"deb":
+			# apt installs it from here (_install_deb).
+			return {"item": archive}
 	return {"why": "this system's packages are not known"}
+
+
+## The checked .deb installed by apt, as root: pkexec asks for the password
+## in the system's own dialog. "" once it is in, or why not. On a worker
+## thread, since the dialog waits for the person.
+func _install_deb(deb: String) -> String:
+	var elevate: String = Updates.elevator()
+	var output: Array = []
+	var code: int = -1 if elevate.is_empty() else \
+		OS.execute(elevate, ["/usr/bin/apt-get", "install", "-y", deb], output, true)
+	if code == 0:
+		return ""
+	if code == -1:
+		return "pkexec isn't on this system, so Brickworks can't ask for the password to install it"
+	# pkexec: 126 when the dialog was dismissed, 127 when it was refused.
+	if code in [126, 127]:
+		return "the password was refused or not given, so nothing was installed"
+	var lines: PackedStringArray = "".join(output).strip_edges().split("\n")
+	return "apt-get could not install it: %s" % lines[lines.size() - 1].left(200)
 
 
 ## The disk image's Brickworks.app copied out beside the install, as
@@ -772,20 +816,23 @@ func _run_asked() -> void:
 			await check()
 			if state == OUT:
 				await download()
+			# Restarting ends this run; an install apt refused says why.
 			if _asked == "install" and state == READY:
-				restart("install")
-				return
+				await restart("install")
+				if state == RESTARTING:
+					return
 		"reinstall":
 			await reinstall()
 			if state == READY:
-				restart("install")
-				return
+				await restart("install")
+				if state == RESTARTING:
+					return
 		"restart":
 			restart("restart")
 			return
 	print("update: %s: %s" % [_asked, said])
-	if not can_install() and not manifest.is_empty():
-		print("update: download: %s" % download_link())
+	if not shown_file.is_empty():
+		print("update: show: %s" % shown_file)
 	get_tree().quit(0 if state in [UP_TO_DATE, OUT, READY] else 1)
 
 

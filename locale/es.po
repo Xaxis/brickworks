@@ -8400,8 +8400,32 @@ msgstr "Brickworks no puede actualizarse en %s"
 msgid "Brickworks can't update itself in %s, where it is installed: download the new version from brickworks.diy/download"
 msgstr "Brickworks no puede actualizarse en %s, donde está instalado: descarga la versión nueva en brickworks.diy/download"
 
-msgid "Brickworks was installed from its .deb, so the system's software installer updates it: download the new .deb and open it"
-msgstr "Brickworks se instaló desde su .deb, así que lo actualiza el instalador de software del sistema: descarga el nuevo .deb y ábrelo"
+msgid "Installing Brickworks %s…"
+msgstr "Instalando Brickworks %s…"
+
+msgid "Couldn't install Brickworks %s: %s"
+msgstr "No se pudo instalar Brickworks %s: %s"
+
+msgid "pkexec isn't on this system, so Brickworks can't ask for the password to install it"
+msgstr "pkexec no está en este sistema, así que Brickworks no puede pedir la contraseña para instalarlo"
+
+msgid "the password was refused or not given, so nothing was installed"
+msgstr "la contraseña se rechazó o no se dio, así que no se instaló nada"
+
+msgid "apt-get could not install it: %s"
+msgstr "apt-get no pudo instalarlo: %s"
+
+msgid "Show the file"
+msgstr "Mostrar el archivo"
+
+msgid "The new .deb, checked, in its folder: install it with your software installer, or with sudo apt install"
+msgstr "El nuevo .deb, comprobado, en su carpeta: instálalo con tu instalador de software o con sudo apt install"
+
+msgid "Install Brickworks %s with apt, which asks for your password, then restart into it. The model on the baseplate comes back as it is."
+msgstr "Instalar Brickworks %s con apt, que pide tu contraseña, y reiniciar en él. El modelo de la placa vuelve tal como está."
+
+msgid "the zip would not unpack"
+msgstr "el ZIP no se pudo descomprimir"
 
 msgid "hdiutil: %s"
 msgstr "hdiutil: %s"

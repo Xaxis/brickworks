@@ -257,9 +257,11 @@ that offers each system its own build. The cycle and its cadence are
   `releases/latest/download/latest.json` on Xaxis/brickworks-releases; in
   Settings, Updates, Automatic (the default) downloads the newer version
   beside the install (`.brickworks-update/<version>/`), checks its size and
-  SHA-256, makes it ready (the AppImage; the tar.xz unpacked; the DMG's app
-  copied out; the Windows installer as it is), and puts it in as the app
-  quits; Ask first says it is
+  SHA-256, makes it ready (the AppImage; the tar.xz and a Windows zip
+  copy's zip unpacked; the DMG's app copied out; the Windows installer as
+  it is; the .deb as it is, in the app's own data), and puts it in as the
+  app quits (a .deb's copy waits for Update and restart, since apt asks for
+  a password); Ask first says it is
   out; Off asks nothing until Help does. A test server takes GitHub's place
   only by `BRICKWORKS_UPDATE_URL`, set by hand (plain HTTP only on
   127.0.0.1). `--update=check|fetch|install|reinstall|restart` drives it from
@@ -273,16 +275,18 @@ that offers each system its own build. The cycle and its cadence are
   release-assets.githubusercontent.com and brickworks.diy, matched whole
   (`github.com.example.net`, `evilgithub.com` and `//host` redirects are
   refused). `tools/release.py publish --draft` signs it with both keys and uploads it
-  with the packages; `tools/release.py latest --check FILE` reads one as the
-  app would.
+  with the packages, and refuses one that lacks a kind a copy updates from
+  (`missing_update_kinds`: AppImage, tar.xz, .deb, DMG, installer);
+  `tools/release.py latest --check FILE` reads one as the app would.
 - `update notice`: "Brickworks 0.17.0 is out" (or "is ready") above the
   model, in UpdateOffer's look: What's new (the release notes' first
   paragraph), Update and restart, Later. Where the copy cannot write its
   install, the button reads Download and opens brickworks.diy/download; a
-  copy installed from the .deb (in /usr/lib/brickworks) is never written
-  over, and its Download opens the new .deb; a
-  Mac app run from Downloads or a disk image reads Move to Applications and
-  update.
+  copy installed from the .deb (in /usr/lib/brickworks) is never swapped:
+  Update and restart runs `pkexec /usr/bin/apt-get install -y` on the
+  checked .deb, and with no pkexec or the password refused says which and
+  offers Show the file; a Mac app run from Downloads or a disk image reads
+  Move to Applications and update.
 - `check for updates reinstall and restart`: Help, Check for updates…
   ("You're up to date (0.16.0)" or what is new), Reinstall Brickworks…
   (this same version downloaded again, checked the same way) and Restart
@@ -291,10 +295,12 @@ that offers each system its own build. The cycle and its cadence are
   session (`--session=`), on the same model.
 - `update helper`: `src/net/update_helper.sh` (Linux, macOS) and `.ps1`
   (Windows), written to `user://updates/` and run as the app quits: waits
-  for it to end, swaps the folder, .app or AppImage by renames (on Windows
-  moves the folder aside and runs the new `setup.exe /S /D=<folder>`), asks the new
-  copy `--about`, starts it and waits for it to say its window is up, and
-  puts the old copy back (started with `--update-failed=`) when it cannot.
+  for it to end, swaps the folder, .app or AppImage by renames (for a copy
+  with `Uninstall Brickworks.exe` beside it, moves the folder aside and runs
+  the new `setup.exe /VERYSILENT /D=<folder>`; for a .deb's copy, which apt
+  has already updated, only restarts), asks the new copy `--about`, starts
+  it and waits for it to say its window is up, and puts the old copy back
+  (started with `--update-failed=`) when it cannot.
 - `updater probe`: `src/dev/updater_probe.gd` signs a release with a key of
   its own, serves it with `tools/update_check.py serve`, and drives the real
   scene through every refusal, the notice, the download and the hand-over.
@@ -503,7 +509,7 @@ tools/probe.sh updater_probe
 python3 tools/minitest.py tests/test_updates.py
 ```
 
-Proves it when: the probe prints 43 `ok` lines and ends `the desktop app
+Proves it when: the probe prints 46 `ok` lines and ends `the desktop app
 checks, refuses what it must, downloads, and hands over the restart with the
 model kept` (among them: the two release keys each load under their own id;
 Check for updates refuses a bad signature and `0.0.1, which is older`; in
@@ -511,10 +517,16 @@ Automatic a download is refused for a wrong SHA-256, a short size and
 `refused an address off GitHub and brickworks.diy: https://example.com/...`;
 `a redirect to any other host is refused, however like an allowed one it
 looks` (14 lookalikes, `//host` and plain HTTP among them); a copy in
-/usr/lib/brickworks is the .deb's, and in Automatic `a .deb's copy ... is
-told 99.0.0 is out and downloads nothing; Download opens https://github.com/
-.../Brickworks-99.0.0-linux-amd64.deb`; Update and restart hands `/bin/sh helper.sh install <pid> <install> <staged>
-... 99.0.0` with `--session=<id>`); and the tests print `13 passed`.
+/usr/lib/brickworks is the .deb's, and in Automatic `a .deb's copy, in
+Automatic, downloads the new .deb into its own data, checked`; `...Update
+and restart asks apt to install it as root (/usr/bin/apt-get install -y
+.../data/.brickworks-update/99.0.0/Brickworks-99.0.0-linux-amd64.deb);
+refused: Couldn't install Brickworks 99.0.0: the password was refused or
+not given, so nothing was installed`, Show the file shows that .deb, and
+`...let, apt puts it in and the helper only starts the new copy, in the
+same session: restart <pid>`;
+Update and restart hands `/bin/sh helper.sh install <pid> <install> <staged>
+... 99.0.0` with `--session=<id>`); and the tests print `14 passed`.
 Before 2026-11-03 (0.15.0) Help had only `keys` and `tour` and no release
 carried a latest.json.
 

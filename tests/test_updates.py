@@ -101,10 +101,12 @@ def test_the_keys_the_app_carries_are_the_ids_it_names() -> None:
 
 
 def test_the_manifest_lists_every_package_on_its_release() -> None:
-    files = [{"os": "linux", "kind": "AppImage", "name": "Brickworks-0.1.0-linux-x86_64.AppImage",
-              "size": 10, "sha256": "a" * 64},
-             {"os": "windows", "kind": "zip", "name": "Brickworks-0.1.0-windows-x86_64.zip",
-              "size": 20, "sha256": "b" * 64}]
+    """Every file a release builds, each with the kind an installed copy
+    picks its update by: the AppImage, the .deb and the tar.xz; the disk
+    image; the installer; and the zips, for the one release they stay."""
+    names = [name for each in release.artifacts("0.1.0").values() for name in each]
+    files = [dict(release.describe_file(name), name=name, size=10 + at, sha256="%x" % at * 64)
+             for at, name in enumerate(names)]
     urls = {f["name"]: "https://github.com/%s/releases/download/v0.1.0/%s" % (release.REPO, f["name"])
             for f in files}
     kept = release.ROOT
@@ -118,9 +120,17 @@ def test_the_manifest_lists_every_package_on_its_release() -> None:
             release.ROOT = kept
     assert made["product"] == release.UPDATE_PRODUCT and made["version"] == "0.1.0"
     assert made["notes"] == "The first one."
-    assert [(f["os"], f["kind"], f["size"], f["sha256"]) for f in made["files"]] == [
-        ("linux", "AppImage", 10, "a" * 64), ("windows", "zip", 20, "b" * 64)]
-    assert all(f["url"] == urls[f["name"]] for f in made["files"])
+    assert sorted((f["os"], f["kind"]) for f in made["files"]) == [
+        ("linux", "AppImage"), ("linux", "deb"), ("linux", "tar.xz"), ("macos", "dmg"),
+        ("macos", "zip"), ("windows", "installer"), ("windows", "zip")]
+    assert all(f["url"] == urls[f["name"]] and f["size"] >= 10 for f in made["files"])
+    assert release.missing_update_kinds(made) == []
+
+
+def test_a_release_without_a_kind_a_copy_updates_from_is_named() -> None:
+    files = [{"os": "linux", "kind": "AppImage"}, {"os": "linux", "kind": "tar.xz"},
+             {"os": "macos", "kind": "zip"}, {"os": "windows", "kind": "installer"}]
+    assert release.missing_update_kinds({"files": files}) == ["linux deb", "macos dmg"]
 
 
 # -- the helper -------------------------------------------------------------

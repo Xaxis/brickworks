@@ -18,9 +18,10 @@
 ## restart and Later; in Automatic a download is refused when its SHA-256 or
 ## its size is not the manifest's, or a redirect leaves the server, and a
 ## redirect to any host but GitHub's and brickworks.diy is refused however
-## like one of them it looks; a copy installed from the .deb is told what is
-## out, downloads nothing, and its Download opens the new .deb; and a
-## good one is checked, unpacked beside the install and said ready. Update
+## like one of them it looks; a copy installed from the .deb downloads the
+## new .deb into its own data, asks apt to install it as root, says so when
+## refused and shows the file, and once let only restarts; and a good one
+## is checked, unpacked beside the install and said ready. Update
 ## and restart, pressed on the notice, writes the working model and hands
 ## the helper the swap, the new copy and the same session; Help, Restart
 ## Brickworks hands it a restart; Help, Reinstall Brickworks… downloads this
@@ -34,8 +35,8 @@ extends SceneTree
 
 const VERSION := "99.0.0"
 const PACKAGE := "Brickworks-99.0.0-linux-x86_64.tar.xz"
-## The release's .deb, never fetched: a .deb's copy only opens its address.
-const DEB_URL := "https://github.com/Xaxis/brickworks-releases/releases/download/v99.0.0/Brickworks-99.0.0-linux-amd64.deb"
+## The release's .deb: a stand-in, since apt is a stand-in too.
+const DEB := "Brickworks-99.0.0-linux-amd64.deb"
 
 var _failures: int = 0
 var _main: Node
@@ -148,8 +149,9 @@ func _copies() -> void:
 	var deb: Dictionary = Updates.on_linux("/usr/lib/brickworks/brickworks.x86_64", "")
 	var folder: Dictionary = Updates.on_linux("/home/someone/Brickworks-0.16.0-linux-x86_64/brickworks.x86_64", "")
 	var image: Dictionary = Updates.on_linux("/tmp/.mount_Brick/brickworks.x86_64", "/home/someone/Brickworks.AppImage")
-	_check("a copy in /usr/lib/brickworks is the .deb's, which says why it can't update itself: %s" % deb.get("why_not", ""),
-		deb["kind"] == "deb" and deb["package"] == "deb" and str(deb.get("why_not", "")).contains(".deb"))
+	_check("a copy in /usr/lib/brickworks is the .deb's, updated by apt from the app's own data: %s" % deb.get("stage", ""),
+		deb["kind"] == "deb" and deb["package"] == "deb" and str(deb.get("why_not", "x")).is_empty()
+			and str(deb.get("stage", "")) == ProjectSettings.globalize_path("user://").path_join(".brickworks-update"))
 	_check("...a folder of its own is the tar.xz's, and an AppImage is put in place of itself",
 		folder["kind"] == "tar.xz" and not folder.has("why_not")
 			and image["kind"] == "appimage" and image["target"] == "/home/someone/Brickworks.AppImage")
@@ -269,6 +271,8 @@ func _serve(key: CryptoKey) -> bool:
 	var package: String = _root.path_join("serve/files").path_join(PACKAGE)
 	if OS.execute("tar", ["-cJf", package, "-C", made.get_base_dir(), made.get_file()]) != 0:
 		return false
+	var deb: String = _root.path_join("serve/files").path_join(DEB)
+	_put(deb, "!<arch>\ndebian-binary   a stand-in\n".to_utf8_buffer())
 	var probe := TCPServer.new()
 	probe.listen(0, "127.0.0.1")
 	_port = probe.get_local_port()
@@ -279,8 +283,8 @@ func _serve(key: CryptoKey) -> bool:
 	var direct: String = base + "files/" + PACKAGE
 	var lay: Dictionary = {
 		"good": _signed(_manifest(VERSION, [_file(base + "redirect/files/" + PACKAGE, size, sha),
-			{"os": "linux", "kind": "deb", "name": DEB_URL.get_file(), "url": DEB_URL, "size": size,
-				"sha256": sha}]), key),
+			{"os": "linux", "kind": "deb", "name": DEB, "url": base + "files/" + DEB,
+				"size": FileAccess.open(deb, FileAccess.READ).get_length(), "sha256": Updates.sha256_file(deb)}]), key),
 		"badsig": _signed(_manifest(VERSION, [_file(direct, size, sha)]), key, "99.0.0", "99.0.1"),
 		"older": _signed(_manifest("0.0.1", [_file(direct, size, sha)]), key),
 		"badhash": _signed(_manifest(VERSION, [_file(direct, size, "0".repeat(64))]), key),
@@ -363,25 +367,68 @@ func _online() -> void:
 			and dialog.get_cancel_button().text == "Later")
 	dialog.hide()
 
-	# A copy installed from the .deb, even in Automatic: told what is out,
-	# nothing downloaded or staged, and Download opens the new .deb.
+	# A copy installed from the .deb, in Automatic: the new .deb downloaded
+	# and checked into the app's own data, never beside dpkg's files. On
+	# Update and restart apt installs it as root (pkexec's password dialog,
+	# here a stand-in that writes down what it was asked). Refused, it says
+	# so and shows the file; let, the helper only starts the new copy.
 	var kept: Dictionary = _updater.install
-	_updater.install = Updates.on_linux("/usr/lib/brickworks/brickworks.x86_64", "")
-	_updater.install["stage"] = _root.path_join("usr/lib/.brickworks-update")
+	_updater.install = Updates.on_linux(_root.path_join("usr/lib/brickworks/brickworks.x86_64"), "")
+	_updater.install["stage"] = _root.path_join("data/.brickworks-update")
+	var asked: String = _root.path_join("elevated.txt")
+	var stand_in: String = _root.path_join("elevate.sh")
+	_put(stand_in, ("#!/bin/sh\necho \"$*\" > '%s'\nexit ${ELEVATE_EXIT:-126}\n" % asked).to_utf8_buffer())
+	OS.execute("chmod", ["755", stand_in])
+	OS.set_environment("BRICKWORKS_UPDATE_ELEVATE", stand_in)
+	OS.set_environment("ELEVATE_EXIT", "126")
 	Updater.choose("auto")
 	Outside.opened.clear()
 	await _check_at("good")
-	await _frames(3)
-	var offered: Dictionary = _notice.controls_by_name()
-	var download: Button = offered.get("update_restart")
-	if download != null:
-		download.pressed.emit()
-	_check("a .deb's copy, in Automatic, is told %s is out and downloads nothing; Download opens %s"
-		% [VERSION, ", ".join(Outside.opened)], _updater.state == Updater.OUT and download != null
-			and download.text == "Download" and Outside.opened.size() == 1 and Outside.opened[0] == DEB_URL
+	await _until(func() -> bool: return _updater.state in [Updater.FAILED, Updater.READY], 60.0)
+	var deb: String = _root.path_join("data/.brickworks-update/%s/%s" % [VERSION, DEB])
+	_check("a .deb's copy, in Automatic, downloads the new .deb into its own data, checked: %s" % _updater.said,
+		_updater.state == Updater.READY and FileAccess.file_exists(deb)
 			and not DirAccess.dir_exists_absolute(_root.path_join("usr")))
+	await _frames(3)
+	_handed = []
+	var offered: Dictionary = _notice.controls_by_name()
+	if offered.has("update_restart"):
+		(offered["update_restart"] as Button).pressed.emit()
+	await _until(func() -> bool: return _updater.state == Updater.FAILED or not _handed.is_empty(), 60.0)
+	await _frames(2)
+	var show: Button = _notice.controls_by_name().get("update_restart")
+	var elevated: String = FileAccess.get_file_as_string(asked).strip_edges()
+	_check("...Update and restart asks apt to install it as root (%s); refused: %s" % [elevated, _updater.said],
+		elevated == "/usr/bin/apt-get install -y " + deb and _handed.is_empty()
+			and _updater.said == "Couldn't install Brickworks %s: the password was refused or not given, so nothing was installed" % VERSION
+			and show != null and show.text == "Show the file")
+	if show != null:
+		show.pressed.emit()
+	_check("...and Show the file shows the checked .deb: %s" % ", ".join(Outside.opened),
+		Outside.opened.size() == 1 and Outside.opened[0] == deb)
+	OS.set_environment("ELEVATE_EXIT", "0")
+	await _updater.check()
+	await _frames(2)
+	_handed = []
+	offered = _notice.controls_by_name()
+	if offered.has("update_restart"):
+		(offered["update_restart"] as Button).pressed.emit()
+	await _until(func() -> bool: return not _handed.is_empty() or _updater.state == Updater.FAILED, 60.0)
+	var told: Variant = JSON.parse_string(FileAccess.get_file_as_string(Updater.PENDING))
+	_check("...let, apt puts it in and the helper only starts the new copy, in the same session: %s"
+		% " ".join(_handed.slice(2, 4)), _handed.size() > 9 and str(_handed[2]) == "restart"
+			and _handed.has("--updated-from=" + BuildInfo.version())
+			and _handed.has(TabSession.SAME_SESSION + TabSession.id())
+			and told is Dictionary and str((told as Dictionary).get("to", "")) == VERSION)
+	DirAccess.remove_absolute(Updater.PENDING)
+	OS.unset_environment("BRICKWORKS_UPDATE_ELEVATE")
+	OS.unset_environment("ELEVATE_EXIT")
+	_updater.state = Updater.IDLE
 	_updater.install = kept
+	_updater.set("_staged", {})
+	_updater.shown_file = ""
 	_notice.set("_put_off", "")
+	_remove(_root.path_join("data"))
 
 	Updater.choose("auto")
 	var refusals: Dictionary = {
