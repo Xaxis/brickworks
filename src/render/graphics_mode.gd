@@ -6,9 +6,11 @@
 ## themselves, before the full one can fail. A Mac's launcher asks Metal
 ## what the GPU is (tools/release/package/launcher.c): Apple's paravirtual
 ## one, every macOS VM on an Intel host, closed the app inside Vulkan with
-## nothing said, which no fallback of Godot's can catch, and it says why in
-## BRICKWORKS_GRAPHICS. Windows and Linux fall back in Godot itself where
-## Vulkan, and on Windows Direct3D 12, will not start.
+## nothing said, which no fallback of Godot's can catch. It keeps the
+## simpler mode in graphics.cfg, marked as its own (brickworks,
+## graphics/automatic), and says why in BRICKWORKS_GRAPHICS. Windows and
+## Linux fall back in Godot itself where Vulkan, and on Windows Direct3D 12,
+## will not start.
 ##
 ## Said once (to_say), and in Settings, Graphics, where a person chooses
 ## either for themselves: kept in graphics.cfg in the app's own folder,
@@ -35,12 +37,13 @@ static func simpler() -> bool:
 static var _chosen_here: String = ""
 
 
-## What the person chose in Settings, Graphics: "automatic" until they do.
+## What the person chose in Settings, Graphics: "automatic" until they do,
+## and where the file is the launcher's own.
 static func chosen() -> String:
 	if not _chosen_here.is_empty():
 		return _chosen_here
 	var file := ConfigFile.new()
-	if file.load(WHERE) != OK:
+	if file.load(WHERE) != OK or bool(file.get_value("brickworks", "graphics/automatic", false)):
 		return "automatic"
 	var method: String = str(file.get_value("rendering", "renderer/rendering_method", ""))
 	for choice: String in _METHODS:

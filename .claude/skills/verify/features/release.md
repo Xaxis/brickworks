@@ -113,11 +113,17 @@ that offers each system its own build. The cycle and its cadence are
   (`launch_through`, built with a pinned zig as one universal binary,
   `build_launcher`), which asks Metal what the GPU is before Vulkan starts:
   on an Intel slice with Apple's paravirtual GPU, no Metal GPU, or under
-  256 MB to work with, it starts the app with `--rendering-driver opengl3`
-  and says why in `BRICKWORKS_GRAPHICS`; then it becomes
-  `Contents/MacOS/Brickworks` (exec, the same process, so Launch Services'
-  open events still arrive). Not when the person chose (graphics.cfg names a
-  rendering method) or names a renderer on the command line. Godot's own
+  256 MB to work with, it writes the simpler mode into `graphics.cfg`,
+  marked as its own (`[brickworks] graphics/automatic=true`, which
+  `GraphicsMode.chosen` reads as Automatic, and which it removes again on a
+  GPU the full mode runs on), and says why in `BRICKWORKS_GRAPHICS`; then it
+  becomes `Contents/MacOS/Brickworks` (exec, the same process, so Launch
+  Services' open events still arrive). Never on the command line: Godot
+  keeps the files a Mac opens a new app with only when it was started with
+  no arguments (`godot_application_delegate.mm`, `get_cmd_argc() == 0`), and
+  `--rendering-driver opengl3` made `open car.ldr` on the Intel VM open
+  nothing. Not when the person chose (graphics.cfg names a rendering method,
+  unmarked) or names a renderer on the command line. Godot's own
   fallback cannot catch MoltenVK's abort (`display_server_macos.mm` falls
   back only when `initialize()` returns an error). Windows and Linux fall
   back in Godot itself (Windows to Direct3D 12, on a basic display adapter
@@ -133,7 +139,8 @@ that offers each system its own build. The cycle and its cadence are
   Automatic, Full or Simpler, written to `user://graphics.cfg`, which Godot
   reads at start (`application/config/project_settings_override`) and the
   launcher reads too, so it outlives an update. `graphics_mode_probe`
-  (windowed; restarts itself on OpenGL as the launcher would) checks the
+  (windowed; restarts itself with the launcher's graphics.cfg, no renderer
+  named, as the launcher would) checks the
   line once in this start and the next, Got it, the words of Best and Good,
   and each choice's file and the renderer of the start after it. On a Mac:
   the runner proof below.

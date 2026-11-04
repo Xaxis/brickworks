@@ -17,8 +17,17 @@
 // (GraphicsMode). Apple silicon draws through Metal itself, paravirtual or
 // not, and is left alone.
 //
-// Not when the person has chosen (Settings, Graphics writes graphics.cfg,
-// which Godot reads itself), or names a renderer on the command line.
+// It chooses in graphics.cfg, in the app's own folder, which Godot reads as
+// it starts (application/config/project_settings_override), marked as its
+// own (graphics/automatic) so that neither the app nor the next start takes
+// it for the person's, and takes it away on a GPU the full mode runs on.
+// Not on the command line: Godot keeps the files Launch Services opens a new
+// app with only when it was started with no arguments
+// (godot_application_delegate.mm, get_cmd_argc() == 0), and on the Intel VM
+// `open car.ldr` started on --rendering-driver opengl3 opened nothing.
+//
+// Not when the person has chosen (Settings, Graphics writes the same file,
+// unmarked), or names a renderer on the command line.
 //
 // Built by tools/release.py with zig for both architectures. It links only
 // libSystem: Metal and the Objective-C runtime are opened when it runs.
@@ -30,6 +39,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 extern char **environ;
@@ -40,15 +50,31 @@ extern char **environ;
 // 64 MB of VRAM), which is known by its name.
 #define LEAST_WORKING_SET (256ull << 20)
 
+// The simpler mode as this keeps it: read by Godot as a project setting,
+// and by GraphicsMode.chosen as no choice of the person's.
+#define OURS "config_version=5\n\n[rendering]\n\nrenderer/rendering_method=\"gl_compatibility\"\n" \
+             "\n[brickworks]\n\ngraphics/automatic=true\n"
+
 typedef void *id;
 typedef void *SEL;
 
+// Spawning this architecture's slice of [path]: the one the GPU is judged
+// for and the app runs as (an Intel slice run under Rosetta stays one).
+static void this_slice(posix_spawnattr_t *attributes) {
+    posix_spawnattr_init(attributes);
+#if defined(__x86_64__)
+    cpu_type_t cpu = CPU_TYPE_X86_64;
+#else
+    cpu_type_t cpu = CPU_TYPE_ARM64;
+#endif
+    size_t set = 0;
+    posix_spawnattr_setbinpref_np(attributes, 1, &cpu, &set);
+}
+
+#if defined(__x86_64__)
 // Why the full renderer cannot run here, or "" when it can.
 static void judge(char *why, size_t room) {
     why[0] = 0;
-#if !defined(__x86_64__)
-    (void)room;
-#else
     void *metal = dlopen("/System/Library/Frameworks/Metal.framework/Metal", RTLD_LAZY);
     void *objc = dlopen("/usr/lib/libobjc.A.dylib", RTLD_LAZY);
     id (*create)(void) = metal ? (id (*)(void))dlsym(metal, "MTLCreateSystemDefaultDevice") : NULL;
@@ -82,36 +108,66 @@ static void judge(char *why, size_t room) {
     } else if (working > 0 && working < LEAST_WORKING_SET) {
         snprintf(why, room, "%s, only %llu MB", name, (unsigned long long)(working >> 20));
     }
-#endif
 }
 
-// Whether the person chose how it draws: Settings, Graphics (graphics.cfg),
-// or a renderer named on the command line.
-static int chosen(int argc, char **argv) {
+// Whether a renderer is named on the command line.
+static int renderer_named(int argc, char **argv) {
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--rendering-driver") || !strcmp(argv[i], "--rendering-method")) {
             return 1;
         }
     }
+    return 0;
+}
+
+// graphics.cfg, in the app's own folder (user://).
+static int where_kept(char *path, size_t room) {
     const char *home = getenv("HOME");
-    if (!home) {
-        return 0;
-    }
-    char path[4096];
-    snprintf(path, sizeof path,
-             "%s/Library/Application Support/Godot/app_userdata/Brickworks/graphics.cfg", home);
+    return home && snprintf(path, room,
+        "%s/Library/Application Support/Godot/app_userdata/Brickworks/graphics.cfg", home)
+        < (int)room;
+}
+
+enum { NOBODY, PERSON, LAUNCHER };
+
+// Whose choice graphics.cfg holds: the person's names a rendering method,
+// this one's is marked.
+static int whose(const char *path) {
     FILE *file = fopen(path, "r");
     if (!file) {
-        return 0;
+        return NOBODY;
     }
     char line[512];
-    int found = 0;
-    while (!found && fgets(line, sizeof line, file)) {
-        found = strstr(line, "rendering_method") != NULL;
+    int method = 0, ours = 0;
+    while (fgets(line, sizeof line, file)) {
+        method |= strstr(line, "rendering_method") != NULL;
+        ours |= strstr(line, "graphics/automatic=true") != NULL;
     }
     fclose(file);
-    return found;
+    return ours ? LAUNCHER : method ? PERSON : NOBODY;
 }
+
+// The simpler mode kept for Godot to read, in the folders it would make.
+static void keep(char *path) {
+    for (char *at = strchr(path + 1, '/'); at; at = strchr(at + 1, '/')) {
+        *at = 0;
+        mkdir(path, 0755);
+        *at = '/';
+    }
+    char written[4200];
+    snprintf(written, sizeof written, "%s.new", path);
+    FILE *file = fopen(written, "w");
+    if (!file) {
+        return;
+    }
+    int done = fputs(OURS, file) >= 0;
+    if (fclose(file) == 0 && done) {
+        rename(written, path);
+    } else {
+        remove(written);
+    }
+}
+#endif
 
 int main(int argc, char **argv) {
     char self[4096];
@@ -128,39 +184,31 @@ int main(int argc, char **argv) {
     snprintf(app, sizeof app, "%.*s/Brickworks", (int)(slash - self), self);
 
     char why[512] = "";
-    if (!chosen(argc, argv)) {
+#if defined(__x86_64__)
+    char kept[4096];
+    int who = NOBODY;
+    if (!renderer_named(argc, argv) && where_kept(kept, sizeof kept) && (who = whose(kept)) != PERSON) {
         judge(why, sizeof why);
+        if (why[0] && who != LAUNCHER) {
+            keep(kept);
+        } else if (!why[0] && who == LAUNCHER) {
+            remove(kept);
+        }
     }
-    char **args = calloc((size_t)argc + 3, sizeof *args);
-    if (!args) {
-        return 1;
-    }
-    int n = 0;
-    args[n++] = app;
+#else
+    (void)argc;
+#endif
     if (why[0]) {
         fprintf(stderr, "Brickworks: the simpler graphics mode (%s)\n", why);
         setenv("BRICKWORKS_GRAPHICS", why, 1);
-        args[n++] = "--rendering-driver";
-        args[n++] = "opengl3";
     }
-    for (int i = 1; i < argc; i++) {
-        args[n++] = argv[i];
-    }
-    args[n] = NULL;
+    argv[0] = app;
 
-    // Become the app, in this architecture: the slice the GPU was judged for
-    // (an Intel slice run under Rosetta stays one).
+    // Become the app, in this architecture.
     posix_spawnattr_t attributes;
-    posix_spawnattr_init(&attributes);
+    this_slice(&attributes);
     posix_spawnattr_setflags(&attributes, POSIX_SPAWN_SETEXEC);
-#if defined(__x86_64__)
-    cpu_type_t cpu = CPU_TYPE_X86_64;
-#else
-    cpu_type_t cpu = CPU_TYPE_ARM64;
-#endif
-    size_t set = 0;
-    posix_spawnattr_setbinpref_np(&attributes, 1, &cpu, &set);
-    int failed = posix_spawn(NULL, app, NULL, &attributes, args, environ);
+    int failed = posix_spawn(NULL, app, NULL, &attributes, argv, environ);
     fprintf(stderr, "Brickworks: could not start %s (error %d)\n", app, failed);
     return 1;
 }

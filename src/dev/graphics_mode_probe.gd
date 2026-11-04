@@ -4,7 +4,9 @@
 ##   godot --path . --resolution 1400x900 --script src/dev/graphics_mode_probe.gd
 ##
 ## Started again as a Mac's launcher starts a GPU the full mode cannot run
-## on: --rendering-driver opengl3, BRICKWORKS_GRAPHICS saying why. The window
+## on: graphics.cfg as it writes it, marked as its own, BRICKWORKS_GRAPHICS
+## saying why, and no renderer named, which would lose the files Launch
+## Services opens it with. The window
 ## must say "This computer's graphics run Brickworks in its simpler mode."
 ## (on a Mac, "This Mac's") above the model, once: not again in this run,
 ## nor in the next start, which reads the app's own folder. What needs the
@@ -18,6 +20,9 @@
 extends SceneTree
 
 const WHY := "Apple Paravirtual device, 1024 MB"
+## graphics.cfg as the launcher writes it (tools/release/package/launcher.c, OURS).
+const LAUNCHERS := "config_version=5\n\n[rendering]\n\nrenderer/rendering_method=\"gl_compatibility\"\n" \
+	+ "\n[brickworks]\n\ngraphics/automatic=true\n"
 
 var _failures: int = 0
 
@@ -39,10 +44,13 @@ func _initialize() -> void:
 ## This script again, on OpenGL, as the launcher starts the app on a GPU
 ## the full mode cannot run on; its lines and its verdict are this run's.
 func _as_the_launcher_starts_it() -> void:
+	var file := FileAccess.open(GraphicsMode.WHERE, FileAccess.WRITE)
+	file.store_string(LAUNCHERS)
+	file.close()
 	var output: Array = []
 	var code: int = OS.execute(OS.get_executable_path(), ["--path",
-		ProjectSettings.globalize_path("res://"), "--resolution", "1400x900", "--rendering-driver",
-		"opengl3", "--script", "res://src/dev/graphics_mode_probe.gd"], output, true)
+		ProjectSettings.globalize_path("res://"), "--resolution", "1400x900",
+		"--script", "res://src/dev/graphics_mode_probe.gd"], output, true)
 	print("".join(output))
 	quit(code)
 
@@ -68,6 +76,8 @@ func _run() -> void:
 	await process_frame
 	_check("started in the simpler mode: %s" % RenderingServer.get_current_rendering_method(),
 		GraphicsMode.simpler())
+	_check("...from the launcher's graphics.cfg, which is no choice of the person's: %s"
+		% GraphicsMode.chosen(), GraphicsMode.chosen() == "automatic")
 	var main: Node = load("res://src/main.tscn").instantiate()
 	root.add_child(main)
 	for _n: int in 150:
@@ -91,8 +101,8 @@ func _run() -> void:
 		(named["graphics_got_it"] as Button).pressed.emit()
 		await process_frame
 		_check("Got it puts it away", not notice.visible)
-	# As the launcher starts it again on the same Mac: OpenGL, named.
-	var next: Dictionary = _next_start(["--rendering-driver", "opengl3"])
+	# As the launcher starts it again on the same Mac: its file kept.
+	var next: Dictionary = _next_start()
 	_check("the next start is simpler too (%s) and says nothing: \"%s\"" % [next.get("method"),
 		next.get("says")], next.get("method") == "gl_compatibility" and next.has("says")
 		and str(next.get("says")).is_empty())
