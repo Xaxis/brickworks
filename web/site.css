@@ -1389,7 +1389,7 @@ a.badge.accent:hover { border-color: var(--accent-edge); background: var(--panel
 .tile .words .name:hover { text-decoration: underline; }
 /* Its way on, at its foot: a link (.more), or a button in a .go-on. */
 .tile .more { align-self: flex-start; margin-top: auto; padding: var(--s-3) 0 0; font-size: var(--t-small); font-weight: 600; }
-.tile .go-on { margin: auto 0 0; padding-top: var(--s-4); }
+.tile .words .go-on { margin: auto 0 0; padding-top: var(--s-4); }
 .tile.flat { flex-direction: row; align-items: flex-start; gap: var(--s-4); padding: var(--s-5); }
 .tile.flat .words { padding: 0; }
 /* The month's challenge: lit from above in the accent, as the plan to choose is. */
