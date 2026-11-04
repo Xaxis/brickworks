@@ -2369,6 +2369,7 @@ def double_click_windows(package: Path, models: list[Path]) -> list[tuple[str, b
     data = Path(os.environ["APPDATA"]) / "Godot" / "app_userdata" / "Brickworks"
     # What startfile starts inherits this process's environment, not
     # clean_env's: an older release under check must not update itself.
+    kept = os.environ.get("BRICKWORKS_UPDATES")
     os.environ["BRICKWORKS_UPDATES"] = "off"
     try:
         for at, model in enumerate(models):
@@ -2381,6 +2382,10 @@ def double_click_windows(package: Path, models: list[Path]) -> list[tuple[str, b
     finally:
         end_windows(data)
         time.sleep(2)
+        if kept is None:
+            os.environ.pop("BRICKWORKS_UPDATES", None)
+        else:
+            os.environ["BRICKWORKS_UPDATES"] = kept
     subprocess.run([str(WINDOWS_INSTALLED / "Uninstall Brickworks.exe"), "/S"], timeout=600)
     # The uninstaller runs from a copy of itself, so its own exit says
     # nothing: the folder going says it is done.
