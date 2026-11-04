@@ -2443,6 +2443,16 @@ fixing what it got wrong.
   plain one-wide (or two-wide's outer row) wall open to the air, six studs by
   three courses or more, nine tenths one colour, laid again by `_restyle`
   in its box with masonry only (`"turned_out": false`: no stud turned out).
+  And `ground` (`_grounds`, 2026-11-03 design14): a plain plate or baseplate
+  of 16 studs or more at the model's bottom whose studs carry nothing out to
+  its edge is laid again as the smallest real one in its colour (a baseplate
+  for a baseplate, its top where it was) holding what stands on it and a stud
+  round, or taken off when nothing stands on it; never a cut that leaves a
+  hole in the ground or lies in a kept zone, and it is found first, so the
+  studs it takes off are not tiled. The answer says why (`GROUND_WHY`: a
+  set's base is the size of what stands on it); "reject" or "keep" puts the
+  part back. `ground_cut_probe`: a corner house on a 32 x 32 baseplate, a hut
+  on a 16 x 16 plate, a tiled plinth left, a loose bare plate taken off.
   No part may be taken off by two findings (`_taken_off`): the edges
   round's starfighter cut one plate from both sides and the edit of all was
   refused. Every finding is laid at once up to `MOST_FINDINGS` (40); any

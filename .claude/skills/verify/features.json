@@ -3711,7 +3711,7 @@
       "id": "lib:the surface pass",
       "kind": "lib",
       "entry": "src/ai/surface_pass.gd",
-      "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface)",
+      "reach": "godot --headless --path . --script src/dev/surface_probe.gd; tools/probe.sh ground_cut_probe (a bare ground cut back to what stands on it)   (over MCP: review_model {\"surface\": true}, then settle_surface)",
       "area": "assistant",
       "tests": []
     },

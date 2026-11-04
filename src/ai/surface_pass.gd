@@ -49,7 +49,11 @@
 ##              side in their own colour (_side_fields);
 ##   wall       a building's long plain wall of one-wide bricks, one colour:
 ##              laid again by restyle_model's own pass, some as masonry, no
-##              stud turned out.
+##              stud turned out;
+##   ground     a plate or baseplate of the model's ground whose studs carry
+##              nothing out to its edge: laid again as the smallest real one
+##              holding what stands on it and a stud round, or taken off when
+##              nothing does (_grounds).
 ##
 ## Every finding is laid at once, up to MOST_FINDINGS; any over are counted
 ## and said, for the next review to lay. An edge settled "flat" has its curved
@@ -141,6 +145,19 @@ const PLATES: Array = ["41539", "3036", "3958", "3032", "3035", "3031", "3034", 
 const EDGE_SLOPES: Array = ["15068", "11477"]
 ## Edges rounded at once, the biggest tops first.
 const MOST_EDGES := 12
+## A ground part is a plain plate or baseplate of this many studs or more at
+## the model's bottom; a cut takes off at least GROUND_CUT studs and a
+## quarter of the part, or it is left.
+const GROUND_LEAST := 16
+const GROUND_CUT := 24
+const MOST_GROUNDS := 12
+## What a ground part is laid again as, a plate for a plate and a baseplate
+## for a baseplate, so its top stays where it was and its bottom on the table.
+const GROUND_PLATES: Array = ["91405", "92438", "3026", "3027", "3456", "3028", "3033",
+	"3036", "3958", "41539", "3029", "3030", "3035", "3032", "3031", "4282", "91988",
+	"2445", "3832", "3034", "3795", "3020"]
+const GROUND_BASEPLATES: Array = ["782", "4186", "3645", "3811", "3857", "3334", "4187",
+	"3497", "3867", "3865"]
 ## Families whose studs are finished; any other part's stud is its detail. Not a
 ## baseplate's: it is the floor, which the app may take back as scenery, and a
 ## tile left on the floor is a piece of its own. The edges round's shop had 29
@@ -273,6 +290,8 @@ func record() -> String:
 	var skinned: int = 0
 	var of_plates: int = 0
 	var on_sides: int = 0
+	var grounds: int = 0
+	var ground_off: int = 0
 	for one: Finding in findings:
 		var verdict: String = one.verdict if one.settled() else (
 			"offered" if one.offered else "not settled")
@@ -296,6 +315,9 @@ func record() -> String:
 				"flank":
 					skinned += 1
 					of_plates += 1 if one.of == "plates" else 0
+				"ground":
+					grounds += 1
+					ground_off += one.studs
 	var said := PackedStringArray()
 	for verdict: String in ["accepted", "adjusted", "left", "rejected", "kept", "offered",
 			"not settled"]:
@@ -315,6 +337,9 @@ func record() -> String:
 	if skinned > 0:
 		kept.append("%d flank%s skinned%s" % [skinned, "" if skinned == 1 else "s",
 			" (%d of plates)" % of_plates if of_plates > 0 else ""])
+	if grounds > 0:
+		kept.append("%d ground part%s cut back (%d bare studs off)" % [grounds,
+			"" if grounds == 1 else "s", ground_off])
 	return "%d finding%s: %s%s" % [findings.size(), "" if findings.size() == 1 else "s",
 		", ".join(said), "" if kept.is_empty() else "; " + ", ".join(kept)]
 
@@ -407,6 +432,8 @@ func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
 	for one: Finding in offers:
 		lines.append("  %s, offered, not laid: %s \"tile\" lays %s." % [one.key, one.said,
 			one.laid])
+	if laid.any(func(one: Finding) -> bool: return one.kind == "ground"):
+		lines.append(GROUND_WHY)
 	if not left_alone.is_empty():
 		lines.append("Left as studs: %s." % "; ".join(left_alone))
 	if held_back > 0:
@@ -418,6 +445,9 @@ func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
 			+ "{\"surface\": true} again lays them.")
 	lines.append(SETTLE_HOW)
 	return "\n".join(lines)
+
+
+const GROUND_WHY := """A ground finding cuts a part of the model's ground back to what stands on it, a stud round: real sets of scenes lay a base only the size of what stands on it, so a brief's footprint is where the scene spreads, not a ground to cover. A bare field left round a building or a vehicle reads as a flat expanse of studs. "reject" or "keep" with a reason puts the part back as it was: where the open ground is the play (a paddock, a pitch, a field figures will stand on)."""
 
 
 const SETTLE_HOW := """Settle each with settle_surface {"finding": "S1", \
@@ -529,6 +559,9 @@ func _settle_one(one: Finding, verdict: String, reason: String, args: Dictionary
 				one.offered = false
 				one.verdict = "accepted"
 				return "%s: tiled — %s%s." % [one.key, one.laid, _bricks_said(one.ids)]
+			if one.kind == "ground" and one.add.is_empty():
+				one.verdict = "accepted"
+				return "%s: accepted, the ground part is off." % one.key
 			if not _standing(one):
 				return ("%s: the app's pieces are not all standing any more; reject it with " % one.key
 					+ "a reason, or keep it.")
@@ -688,6 +721,9 @@ func find() -> Array[Finding]:
 	var edges: Array[Finding] = []
 	if not _straight_first():
 		edges = _edges(levels, claimed)
+	# The ground cut back to what stands on it, before its studs are tiled:
+	# what comes off is claimed, and no tile is laid there.
+	var grounds: Array[Finding] = _grounds(claimed)
 	var fields: Array[Finding] = _fields(tops, claimed)
 	# And each section's own: a wing laid at an angle is studs up in its own
 	# frame, and tiled in it. The starfighter's wings were open fields of
@@ -708,9 +744,10 @@ func find() -> Array[Finding]:
 	edges.sort_custom(by_size)
 	fields.sort_custom(by_size)
 	walls.sort_custom(by_size)
+	grounds.sort_custom(by_size)
 	var room: int = MOST_FINDINGS
-	for group: Array in [[stairs, MOST_STAIRCASES], [edges, MOST_EDGES], [walls, MOST_WALLS],
-			[fields, MOST_FINDINGS]]:
+	for group: Array in [[grounds, MOST_GROUNDS], [stairs, MOST_STAIRCASES],
+			[edges, MOST_EDGES], [walls, MOST_WALLS], [fields, MOST_FINDINGS]]:
 		var these: Array = group[0]
 		var most: int = int(group[1])
 		for n: int in these.size():
@@ -2036,6 +2073,243 @@ static func _ground(box: AABB, model_box: AABB) -> bool:
 	if box.position.y > model_box.position.y + 16.5:
 		return false
 	return box.size.x >= 0.6 * model_box.size.x or box.size.z >= 0.6 * model_box.size.z
+
+
+## The ground cut back to what stands on it. Each part of the model's ground —
+## a plain plate or baseplate of GROUND_LEAST studs or more, laid flat at its
+## bottom — is laid again as the smallest real plate (a baseplate for a
+## baseplate) that holds everything standing on it and a stud round, its top
+## where it was; one with nothing on it comes off. A brief's "fitting in about
+## 30 x 49 studs" is where a scene's pieces spread, and design14 read the
+## proof's 44 for it: on its 15 scenes (not Architecture, whose plinth is its
+## footprint) our designs laid a ground over 78% of their footprint, their sets
+## 18%, and the largest bare fields came to 4,986 studs against 639. The
+## library's 170 scenes (1995 to 2020) lay one over a median 4% of theirs: a
+## base is the size of what stands on it. The judge named "a flat green baseplate",
+## "a large expanse of flat bright green", "most of its baseplate exposed
+## studs". Not where a cut would leave a hole in the ground, nor in a zone the
+## design kept. [param claimed] gets the cells each takes off, so no tile is
+## laid there.
+func _grounds(claimed: Dictionary) -> Array[Finding]:
+	var out: Array[Finding] = []
+	var bricks: Array[BrickWorld.Brick] = assistant._bricks_inside({})
+	if bricks.is_empty():
+		return out
+	var model_box: AABB = assistant._bounds_of(bricks)
+	var lattice: BrickLattice = assistant.builder.lattice
+	var library: PartLibrary = assistant.library
+	# Every ground cell, by the part it is of: what a cut must not open a hole in.
+	var ground: Dictionary = {}
+	var cuts: Array = []
+	for brick: BrickWorld.Brick in bricks:
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var placement: Assistant.Placement = _read.by_id.get(brick.id) if _read != null else null
+		if info == null or mesh == null or placement == null or placement.face != "up" \
+				or not placement.section.is_empty() or not _ground_part(info):
+			continue
+		var own: AABB = (brick.transform * mesh.bounds).abs()
+		if own.position.y > model_box.position.y + PLATE + 0.5:
+			continue
+		var cells: Array[Vector2i] = _cells_of(own)
+		if cells.size() < GROUND_LEAST:
+			continue
+		for c: Vector2i in cells:
+			ground[c] = true
+		var cut: Dictionary = _ground_cut(brick, own, info, cells, lattice, model_box)
+		if not cut.is_empty() and _free_to_take(null, brick.id):
+			cuts.append(cut)
+	# A cut opens no hole: every cell it takes off is reached from outside the
+	# ground over cells that are not ground once the cuts are made.
+	while not cuts.is_empty():
+		var off: Dictionary = {}
+		for cut: Dictionary in cuts:
+			for c: Vector2i in cut["off"]:
+				off[c] = true
+		var outside: Dictionary = _outside_of(ground, off)
+		var kept: Array = cuts.filter(func(cut: Dictionary) -> bool:
+			return (cut["off"] as Array).all(func(c: Vector2i) -> bool: return outside.has(c)))
+		if kept.size() == cuts.size():
+			break
+		cuts = kept
+	for cut: Dictionary in cuts:
+		var brick: BrickWorld.Brick = cut["brick"]
+		var own: AABB = cut["box"]
+		var off: Array[Vector2i] = []
+		off.assign(cut["off"])
+		var one := Finding.new()
+		one.kind = "ground"
+		one.studs = off.size()
+		one.remove = [brick.id]
+		one.restore = [_as_dict(_read.by_id[brick.id])]
+		if not (cut["add"] as Dictionary).is_empty():
+			one.add = [cut["add"]]
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		_taken_off[brick.id] = one
+		for c: Vector2i in off:
+			claimed[c] = true
+			low = Vector2(minf(low.x, c.x * 10.0 - 10.0), minf(low.y, c.y * 10.0 - 10.0))
+			high = Vector2(maxf(high.x, c.x * 10.0 + 10.0), maxf(high.y, c.y * 10.0 + 10.0))
+		one.box = AABB(Vector3(low.x, own.end.y - 4.0, low.y),
+			Vector3(high.x - low.x, 4.0, high.y - low.y))
+		one.said = "the ground, a %s %s: %d of its %d studs carry nothing, out to its edge, %s." % [
+			assistant._colour_name(brick.color_code).to_lower(),
+			assistant._part_called(brick.part_id), off.size(), int(cut["studs"]),
+			_where_said(one.box)]
+		one.laid = ("laid again as a %s under what stands on it, a stud round" % assistant._part_called(
+			str((cut["add"] as Dictionary)["part"]))) if not one.add.is_empty() \
+			else "taken off: nothing stands on it"
+		out.append(one)
+	return out
+
+
+## Whether a part is ground: a plain rectangular plate or baseplate. Read by
+## the words of its name, so "Plate 16 x 16 with Underside Ribs" is plain and
+## "Plate 1 x 2 with Studs on Side" is not.
+static func _ground_part(info: PartLibrary.PartInfo) -> bool:
+	var family: String = info.family_category()
+	if not family in ["Plate", "Baseplate"]:
+		return false
+	var name: String = info.name.to_lower()
+	if not (name.begins_with("plate") or name.begins_with("baseplate")):
+		return false
+	var words: PackedStringArray = name.replace(",", " ").replace("(", " ").split(" ", false)
+	for word: String in words:
+		for not_plain: String in ["round", "pattern", "print", "sticker", "corner", "wedge",
+				"modulex", "duplo", "road", "canyon", "crater", "raised", "hole", "clip", "bar",
+				"handle", "rail", "towball", "pin", "ring", "lamp", "door", "grille", "jumper",
+				"side", "cut", "angled", "curved", "dome", "island", "hill", "water"]:
+			if word.begins_with(not_plain) and not (not_plain == "corner"
+					and name.contains("square corners")):
+				return false
+	return true
+
+
+## How one ground part would be cut back: {"brick", "box", "studs" it has, "off"
+## the cells taken off, "add" what is laid in its place or {} for nothing}; {}
+## when nothing would come off, or too little. What stands on it is read
+## from just over its studs, so a tile, a figure or a wall all count.
+func _ground_cut(brick: BrickWorld.Brick, own: AABB, info: PartLibrary.PartInfo,
+		cells: Array[Vector2i], lattice: BrickLattice, model_box: AABB) -> Dictionary:
+	var carried: Array[Vector2i] = []
+	for c: Vector2i in cells:
+		var over: int = lattice.brick_at(BrickLattice.to_cell(Vector3(c.x * 10.0, own.end.y + 2.0,
+			c.y * 10.0)))
+		if over != 0 and over != brick.id and not assistant.scenery.has(over):
+			carried.append(c)
+	var add: Dictionary = {}
+	var keep: Dictionary = {}
+	if not carried.is_empty():
+		# What stands on it and a stud round, inside the part.
+		var low := Vector2i(1 << 30, 1 << 30)
+		var high := Vector2i(-(1 << 30), -(1 << 30))
+		for c: Vector2i in carried:
+			low = Vector2i(mini(low.x, c.x), mini(low.y, c.y))
+			high = Vector2i(maxi(high.x, c.x), maxi(high.y, c.y))
+		var first: Vector2i = cells[0]
+		var last: Vector2i = cells[0]
+		for c: Vector2i in cells:
+			first = Vector2i(mini(first.x, c.x), mini(first.y, c.y))
+			last = Vector2i(maxi(last.x, c.x), maxi(last.y, c.y))
+		var ring: int = roundi(STANDING_ROOM * 2.0)
+		low = Vector2i(maxi(first.x, low.x - ring), maxi(first.y, low.y - ring))
+		high = Vector2i(mini(last.x, high.x + ring), mini(last.y, high.y + ring))
+		var wide: int = (high.x - low.x) / 2 + 1
+		var deep: int = (high.y - low.y) / 2 + 1
+		var whole := Vector2i((last.x - first.x) / 2 + 1, (last.y - first.y) / 2 + 1)
+		var family: String = info.family_category()
+		var best: Array = []
+		for option: Array in _rectangles(GROUND_BASEPLATES if family == "Baseplate"
+				else GROUND_PLATES, brick.color_code):
+			var x: int = int(option[1])
+			var z: int = int(option[2])
+			if x < wide or z < deep or x > whole.x or z > whole.y or x * z >= whole.x * whole.y:
+				continue
+			if best.is_empty() or x * z < int(best[1]) * int(best[2]):
+				best = option
+		if best.is_empty():
+			return {}
+		var x: int = int(best[1])
+		var z: int = int(best[2])
+		# Over what stands on it, inside the part, as near the model's middle
+		# as it goes: what is left of a ground part lies toward the rest.
+		var middle: Vector3 = model_box.get_center()
+		var at := Vector2i(_ground_at(first.x, last.x, low.x, high.x, x, middle.x),
+			_ground_at(first.y, last.y, low.y, high.y, z, middle.z))
+		var mesh: Lbm.PartMesh = assistant.library.mesh_for(str(best[0]))
+		if mesh == null:
+			return {}
+		add = {"part": str(best[0]), "color": brick.color_code,
+			"x": snappedf((at.x * 10.0 - 10.0) / STUD, 0.05),
+			"y": snappedf((own.end.y - mesh.bounds.size.y) / PLATE, 0.25),
+			"z": snappedf((at.y * 10.0 - 10.0) / STUD, 0.05), "rot": int(best[3])}
+		for i: int in x:
+			for k: int in z:
+				keep[at + Vector2i(2 * i, 2 * k)] = true
+	var off: Array[Vector2i] = []
+	for c: Vector2i in cells:
+		if not keep.has(c):
+			off.append(c)
+	if off.size() < maxi(GROUND_CUT, cells.size() / 4):
+		return {}
+	for c: Vector2i in off:
+		if _in_zone(Vector3(c.x * 10.0, own.end.y, c.y * 10.0)):
+			return {}
+	return {"brick": brick, "box": own, "studs": cells.size(), "off": off, "add": add}
+
+
+## Where along one way a ground part's new plate goes, as its first stud's cell:
+## over [param low] to [param high] (what stands on it), inside [param first]
+## to [param last] (the part), [param size] studs long, nearest [param middle].
+static func _ground_at(first: int, last: int, low: int, high: int, size: int,
+		middle: float) -> int:
+	var least: int = maxi(first, high - 2 * (size - 1))
+	var most: int = mini(low, last - 2 * (size - 1))
+	var best: int = least
+	var c: int = least
+	while c <= most:
+		if absf((c + size - 1) * 10.0 - middle) < absf((best + size - 1) * 10.0 - middle):
+			best = c
+		c += 2
+	return best
+
+
+## The cells outside [param ground] once [param off] is taken off it, reached
+## from beyond its bounds over cells that are not ground: half studs, as
+## _cells_of keys them.
+static func _outside_of(ground: Dictionary, off: Dictionary) -> Dictionary:
+	var low := Vector2i(1 << 30, 1 << 30)
+	var high := Vector2i(-(1 << 30), -(1 << 30))
+	for c: Vector2i in ground:
+		low = Vector2i(mini(low.x, c.x), mini(low.y, c.y))
+		high = Vector2i(maxi(high.x, c.x), maxi(high.y, c.y))
+	low -= Vector2i(2, 2)
+	high += Vector2i(2, 2)
+	var out: Dictionary = {}
+	var queue: Array[Vector2i] = []
+	var x: int = low.x
+	while x <= high.x:
+		queue.append(Vector2i(x, low.y))
+		queue.append(Vector2i(x, high.y))
+		x += 2
+	var z: int = low.y
+	while z <= high.y:
+		queue.append(Vector2i(low.x, z))
+		queue.append(Vector2i(high.x, z))
+		z += 2
+	for c: Vector2i in queue:
+		out[c] = true
+	while not queue.is_empty():
+		var c: Vector2i = queue.pop_back()
+		for step: Vector2i in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
+			var next: Vector2i = c + step
+			if next.x < low.x or next.x > high.x or next.y < low.y or next.y > high.y \
+					or out.has(next) or (ground.has(next) and not off.has(next)):
+				continue
+			out[next] = true
+			queue.append(next)
+	return out
 
 
 func _living_boxes() -> Array:
@@ -3549,11 +3823,12 @@ func _lay_all(these: Array[Finding], until: int) -> Array[Finding]:
 		if Time.get_ticks_msec() > until:
 			more += 1
 			continue
-		var ids: Array[int] = await _edit(one.add, one.remove)
+		# A ground part with nothing on it is only taken off.
+		var ids: Array[int] = await _edit(one.add, one.remove, one.add.is_empty())
 		if ids.is_empty():
 			_could_not(one)
 			continue
-		one.ids = ids
+		one.ids = ids if not one.add.is_empty() else []
 		_boxed(one)
 		out.append(one)
 	assistant._keep_pieces = -1
@@ -3615,7 +3890,7 @@ func _could_not(one: Finding) -> void:
 
 ## The box of what was laid, for the picture's mark.
 func _boxed(one: Finding) -> void:
-	if one.kind == "wall" or one.ids.is_empty():
+	if one.kind in ["wall", "ground"] or one.ids.is_empty():
 		return
 	var laid: AABB = assistant._bounds_of(_bricks(one.ids))
 	one.box = one.box.merge(laid) if one.box.has_volume() else laid
