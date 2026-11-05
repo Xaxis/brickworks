@@ -196,6 +196,8 @@ func _ready() -> void:
 		get_tree().node_added.connect(_hands_drags)
 	_build()
 	set_process(true)
+	# Only a phone's list is held at its search (_input).
+	set_process_input(by_finger)
 
 
 func _build() -> void:
@@ -388,11 +390,16 @@ func _build() -> void:
 			root.remove_child(row)
 			page.add_child(row)
 		page.add_child(_grid)
-		# Room under the parts to put the search at the top with one row of
-		# them listed (_to_list_top, _process).
+		# Room under the parts to put the search at the top however few are
+		# listed (_to_list_top), made in the layout of the page and the list.
 		_page_foot = Control.new()
 		_page_foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		page.add_child(_page_foot)
+		page.sort_children.connect(_fit_foot)
+		_scroll.resized.connect(_fit_foot)
+		# A new list held at its search whenever its layout changes how far
+		# it scrolls (_hold_at_search).
+		_scroll.get_v_scroll_bar().changed.connect(_hold_at_search)
 
 	# The status line, and at its end how the parts are shown, as a file
 	# window keeps its views at its foot: with their prints or without, as
@@ -1324,14 +1331,6 @@ func _process(_delta: float) -> void:
 			and Time.get_ticks_msec() - _counted_msec >= RECOUNT_MSEC:
 		_recount()
 
-	if _page_foot != null:
-		var under: float = maxf(0.0, _scroll.size.y - (_page_foot.position.y - _search.position.y))
-		if absf(_page_foot.custom_minimum_size.y - under) > 0.5:
-			_page_foot.custom_minimum_size.y = under
-	if _to_top_frames > 0:
-		_to_top_frames -= 1
-		_scroll.scroll_vertical = roundi(_search.position.y)
-
 	# Grow the grid as it is scrolled. Checking here rather than on a
 	# scroll signal covers the case where the window is resized and the
 	# existing page no longer fills it.
@@ -2146,18 +2145,53 @@ static func _is_buried(category: String) -> bool:
 ## A list shown from its start: the scroll's top on a desktop; on a phone
 ## the search, over the chips and the parts, the head above it a drag away,
 ## or a phone on its side showed the head and the chips and not one part.
-## Put there over the next frames, as the grid is laid out (_process).
+## Held there until a finger moves it (_hold_at_search). Put there for three
+## frames instead, a list made while the sheet was put away, whose layout
+## waits for it to be shown, opened at its head: the phone's first Parts,
+## and a list shown in a shut sheet that had fewer parts than the last
+## (bin_list_top_probe, listtop).
 func _to_list_top() -> void:
-	_scroll.scroll_vertical = 0
-	if by_finger:
-		_to_top_frames = 3
+	_at_search = by_finger
+	_scroll.scroll_vertical = roundi(_search.position.y) if by_finger else 0
 
 
-## Frames left to put a phone's list at its search (_to_list_top).
-var _to_top_frames: int = 0
+## On a phone, a new list is at its search until a finger or the wheel
+## moves it (_to_list_top, _input).
+var _at_search: bool = false
 ## On a phone, the room under the parts that lets the list be put at its
 ## search however few they are.
 var _page_foot: Control
+
+
+## The list put at its search again each time its layout changes how far it
+## scrolls: the parts laid out, the room under them made, the sheet shown or
+## made taller. Heard as the list's scroll bar is told, in the layout itself,
+## so the frame is drawn at the search. Each of those clamps the scroll to
+## what the list held at that moment, a shorter list or the room not yet
+## made under it, and nothing put it back once the frames were spent.
+func _hold_at_search() -> void:
+	if _at_search:
+		_scroll.scroll_vertical = roundi(_search.position.y)
+
+
+## The room under the parts, made as they are laid out or the list's view
+## changes size: one view's height under the search, whatever is listed.
+## Worked out a frame later, from the last frame's places, the list was
+## clamped short of its search in between.
+func _fit_foot() -> void:
+	var under: float = maxf(0.0, _scroll.size.y - (_page_foot.position.y - _search.position.y))
+	if absf(_page_foot.custom_minimum_size.y - under) > 0.5:
+		_page_foot.custom_minimum_size.y = under
+
+
+## A press on the list (a finger, the mouse, the wheel) lets go of a new
+## list's hold at its search: from there it is where the person moves it.
+## A chip or the search pressed makes a new list, held again.
+func _input(event: InputEvent) -> void:
+	var press := event as InputEventMouseButton
+	if _at_search and press != null and press.pressed and _scroll.is_visible_in_tree() \
+			and _scroll.get_global_rect().has_point(press.position):
+		_at_search = false
 
 
 func _fill_grid() -> void:
