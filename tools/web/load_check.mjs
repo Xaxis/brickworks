@@ -10,6 +10,9 @@
 //                                 its ghost over the model (each load's held)
 //     --assistant                 the assistant shown (/app?assistant=on), and
 //                                 interactive when its panel is usable, not the bin
+//     --watch=S                   then S seconds more, and the page's longest stall
+//                                 in them said: a compile put after the start
+//                                 (Later) holds the window a person sees
 //     --out=DIR                   each run's files and timeline as JSON
 //
 // A local export (tools/export.sh web), sent and cached as the deployment
@@ -104,13 +107,26 @@ const maxInteractive = args["max-interactive"] ? Number(args["max-interactive"])
 // the model; --max-pick=S holds the longest of those.
 const pickId = args.pick && args.pick !== true ? String(args.pick) : "";
 const maxPick = args["max-pick"] ? Number(args["max-pick"]) * 1000 : 0;
+// --watch=S: S seconds watched after interactive, by the page's own
+// heartbeat (a timer every 50 ms, from before anything runs): a feature
+// compiled once the window is up holds the page as long as its compile,
+// which interactive alone never sees (lazystart c6, 2026-11-03).
+const watchMs = args.watch && args.watch !== true ? Number(args.watch) * 1000 : 0;
 
 // In the page before anything of its own runs: long tasks, when the engine
 // started, and each frame drawn to the window (a draw, clear or blit with
 // no framebuffer of the app's bound) once the app has told the page it runs.
-function instrument() {
-  const at = { started: 0, shown: 0, running: 0, firstFrame: 0, listed: 0, binDrawn: 0, longtasks: [], said: [] };
+function instrument(watching) {
+  const at = { started: 0, shown: 0, running: 0, firstFrame: 0, listed: 0, binDrawn: 0, longtasks: [], said: [], stalls: [] };
   window.__load = at;
+  // With --watch, the page's heartbeat: each gap of over 100 ms between its
+  // 50 ms ticks, [when it began, how long], on the page's clock.
+  let beat = performance.now();
+  if (watching) setInterval(() => {
+    const now = performance.now();
+    if (now - beat > 150 && at.stalls.length < 400) at.stalls.push([Math.round(beat), Math.round(now - beat - 50)]);
+    beat = now;
+  }, 50);
   // The browser's own, before the app's connector steers the page's frames.
   const frame = window.requestAnimationFrame.bind(window);
   // What the engine says as it starts (its banner, the renderer), timed.
@@ -287,7 +303,7 @@ async function load(context, profile, label) {
       url: request.url(), timing: request.timing(), headers: response ? response.headers() : {},
       bytes: sizes.responseBodySize + sizes.responseHeadersSize })).catch(() => null));
   });
-  await page.addInitScript(instrument);
+  await page.addInitScript(instrument, watchMs > 0);
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
   await page.goto(url, { waitUntil: "commit", timeout: 120000 });
@@ -318,6 +334,17 @@ async function load(context, profile, label) {
   if (marks && !marks.shown) {
     marks.shown = await page.waitForFunction(() => window.__load.shown, null, { polling: 100, timeout: 15000 })
       .then((shown) => shown.jsonValue()).catch(() => NaN);
+  }
+  // --watch: the seconds after it, and the page's stalls in them.
+  let watched = null;
+  if (watchMs && Number.isFinite(marks?.interactive)) {
+    const left = marks.interactive + watchMs - (await page.evaluate(() => performance.now()).catch(() => 0));
+    if (left > 0) await page.waitForTimeout(left);
+    const stalls = await page.evaluate(() => window.__load.stalls).catch(() => []);
+    // Those begun after it: the start's own last long task ends where it does.
+    const after = stalls.filter(([t]) => t >= marks.interactive - 50 && t <= marks.interactive + watchMs);
+    const worst = after.reduce((w, s) => (s[1] > w[1] ? s : w), [NaN, 0]);
+    watched = { seconds: watchMs / 1000, worst: worst[1], at: worst[0], stalls: after };
   }
   // What the app loaded on first use (Later), by then: when and how long.
   const loaded = await page.evaluate(() => window.brickworksLoaded || null).catch(() => null);
@@ -353,7 +380,7 @@ async function load(context, profile, label) {
     // A part of the pick fetched alone from the store, after the click.
     picked.fetched = files.filter((f) => f.path.endsWith(".lbm") && f.start >= picked.at).length;
   }
-  const run = { label, profile, marks, net, cpu, cpuAll, busy, bytes, files, errors: errors.slice(0, 5), navStart, picked, loaded };
+  const run = { label, profile, marks, net, cpu, cpuAll, busy, bytes, files, errors: errors.slice(0, 5), navStart, picked, loaded, watched };
   await page.close().catch(() => {});
   return run;
 }
@@ -377,6 +404,10 @@ function sayRun(run) {
   if (run.picked) {
     console.log(`    first pick of ${pickId}: in hand with its ghost ${Number.isFinite(run.picked.ms) ? `${Math.round(run.picked.ms)} ms` : `never (${run.picked.why})`}`
       + ` after the click, ${run.picked.fetched ?? 0} part file${run.picked.fetched === 1 ? "" : "s"} fetched for it alone`);
+  }
+  if (run.watched) {
+    console.log(`    the ${run.watched.seconds} s after interactive: the page's longest stall ${run.watched.worst} ms`
+      + (run.watched.worst ? ` at ${sec(run.watched.at)} s` : "") + `, ${run.watched.stalls.length} over 100 ms`);
   }
   // A feature the start loaded (Later, src/later.gd), or one loaded under
   // the first pick: each is a compile on the main thread.
