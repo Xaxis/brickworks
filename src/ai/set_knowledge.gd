@@ -2,8 +2,7 @@
 ## minifigure parts a licence or a named cast alone carries, the arms official
 ## figures put with a plain torso of each colour (tools/minifig_sets.py), and
 ## how big the official minifigure-scale models of each kind are
-## (tools/set_sizes.py), and how much of its box each fills (Massing,
-## src/dev/set_massing.gd).
+## (tools/set_sizes.py).
 ##
 ## Read from assets/knowledge; on the web, which leaves that folder out of the
 ## pack, fetched from beside the build the first time a design asks, as the
@@ -13,15 +12,11 @@ extends RefCounted
 
 const FIGURES := "res://assets/knowledge/minifig_sets.json"
 const SIZES := "res://assets/knowledge/set_sizes.json"
-const MASSING := "res://assets/knowledge/set_massing.json"
 
 static var _read: Dictionary = {}
 ## sizes() with the sets under test left out, and what was held when it was.
 static var _sized: Array = []
 static var _sized_for: String = ""
-## massing() with the sets under test left out, and what was held when it was.
-static var _massed: Dictionary = {}
-static var _massed_for: String = ""
 
 
 ## minifig_sets.json: {"parts": {id: [sets, generic sets]}, "plain_arms":
@@ -45,22 +40,6 @@ static func sizes() -> Array:
 	return _sized
 
 
-## set_massing.json: {"keys": [measure], "models": [[set, set name, theme,
-## parts, each measure]]}, none of a set under test (DesignMemory.holds), or
-## {} where this build has none.
-static func massing() -> Dictionary:
-	var table: Dictionary = _load(MASSING)
-	if DesignMemory.held_out().is_empty() and DesignMemory.held_names().is_empty():
-		return table
-	var held: String = ",".join(DesignMemory.held_out()) + "|" + "|".join(DesignMemory.held_names())
-	if _massed_for != held or _massed.is_empty():
-		_massed_for = held
-		_massed = {"keys": table.get("keys", []), "models": (table.get("models", []) as Array).filter(
-			func(row: Variant) -> bool:
-				return not DesignMemory.holds(str((row as Array)[0]), str((row as Array)[1])))}
-	return _massed
-
-
 static func _load(path: String) -> Dictionary:
 	if not _read.has(path) and (not OS.has_feature("web") or FileAccess.file_exists(path)):
 		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
@@ -68,9 +47,9 @@ static func _load(path: String) -> Dictionary:
 	return _read.get(path, {})
 
 
-## The files, fetched on the web where the build left them out. Awaited.
+## Both files, fetched on the web where the build left them out. Awaited.
 static func ensure(host: Node) -> void:
-	for path: String in [FIGURES, SIZES, MASSING]:
+	for path: String in [FIGURES, SIZES]:
 		if _read.has(path) or not OS.has_feature("web") or FileAccess.file_exists(path):
 			continue
 		_read[path] = {}
