@@ -27,6 +27,7 @@ import base64
 import json
 import os
 import shutil
+import re
 import sys
 import time
 from pathlib import Path
@@ -38,6 +39,10 @@ import brickworks_mcp  # noqa: E402
 RELAYED = ("look_at_model", "view_model", "edit_model", "attachment_points", "search_parts",
            "undo")
 WHY = ("hidden", "position", "too_many", "callout", "turn", "part", "colour", "count", "other")
+# How long page_done waits for a job still running before it keeps the model, and how
+# often it asks, in seconds.
+JOB_WAIT = 600.0
+JOB_POLL = 3.0
 
 PAGE_TOOL = {
     "name": "booklet_page",
@@ -151,7 +156,7 @@ class Server:
         name = f"follow-page-{number}"
         kept = ""
         try:
-            answer = self.app.ask("save_model", {"name": name})
+            answer = self._save_when_free(name)
             saved = self.models / f"{name}.ldr"
             if answer.get("ok") and saved.exists():
                 target = self.run / "snapshots" / f"page-{number}.ldr"
@@ -166,6 +171,24 @@ class Server:
         return {"content": [{"type": "text", "text":
                              f"Page {number} noted; the model is kept as it stands."}],
                 "isError": False}
+
+    def _save_when_free(self, name: str) -> dict:
+        """save_model, once the job the builder's last edit started has finished.
+
+        A builder may say page_done while its edit is still a job (the edit's picture
+        waits for the GPU): the save was then answered "busy", nothing was kept, and the
+        page scored as nothing built. 2 of 3 runs of 7140 page 18 were lost so
+        (blackedges, 2026-11-05)."""
+        end = time.time() + JOB_WAIT
+        while True:
+            answer = self.app.ask("save_model", {"name": name})
+            said = " ".join(b.get("text", "") for b in answer.get("content") or []
+                            if isinstance(b, dict))
+            busy = re.match(r"The app is busy with job (\d+)", said)
+            if not busy or time.time() > end:
+                return answer
+            self.app.ask("job", {"id": int(busy.group(1))})
+            time.sleep(JOB_POLL)
 
     def handle(self, message: dict) -> dict | None:
         method = message.get("method", "")

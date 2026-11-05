@@ -28,8 +28,13 @@ var shell: Shell
 ## Shown only while something is selected and [member wanted]; the rest is
 ## More away, down the right.
 var compact: bool = false
-## For a compact one, Main's say: whether the window's columns take turns.
-var wanted: bool = false
+## For a compact one, Main's say: whether the properties down the right are
+## out of sight (Main._fit_bin), where it shows at once.
+var wanted: bool = false:
+	set(to):
+		if to != wanted:
+			wanted = to
+			_refresh(true)
 var _more: LinkButton
 
 var _open: bool = true

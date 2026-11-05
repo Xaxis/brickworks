@@ -215,9 +215,21 @@ plainer — see the first lever below.
      - Then colour, hidden parts, and parts carried off by an earlier page's
        mistake.
    - **Next**, a unit each:
-     - steps that add one course of a mass at a time;
+     - steps that add one course of a mass at a time. Tried and not kept
+       (A course a step, docs/INSTRUCTIONS.md, 2026-11-05). On the stair's
+       120 parts, two builders put 14 and 16 right, where before three put
+       41, 50 and 15. The misses shrank to a stud along a run, a course off,
+       or the other column. So the next lever is the picture: the joints
+       of the course below, or a run's length in studs;
      - an attach step that shows where the sub-assembly meets the model;
-     - black parts drawn with their edges.
+     - black parts drawn with their edges. **Tried, NO-GO** (blackedges,
+       2026-11-05). Over 7 runs each way, right parts fell from 73 to 42 of
+       96. Wrong parts rose from 8 to 30. Drawn with its edges, the dish
+       is plainly a round plate from above: that is what its top is, and
+       its dome faces away. The silhouette had left builders unsure, so
+       they checked the box. Next: a parts box that shows what tells a part
+       from its look-alikes. It is in history (fe8e797b) to measure again
+       after that.
    - **The whole castle**, nine hours of builder, is a lead's run; the
      command is in the write-up.
 

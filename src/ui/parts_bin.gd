@@ -356,7 +356,14 @@ func _build() -> void:
 
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Never a bar across, and on the desktop the grid's width not the
+	# scroller's least: disabled, a grid seven across held the bin 570 wide
+	# in a column made 498 or 342, its last tiles cut off at the column's
+	# edge, and the tiles across were counted from that width, so they never
+	# came down (_tiles_across; roomfit, 2026-11-05). A phone's sheet keeps
+	# its four across.
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if by_finger \
+		else ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	# A row of parts at the least, whatever else the column holds: the
 	# model tree and the properties open give back their room before the
 	# parts do (PanelStack.heights).
@@ -581,7 +588,7 @@ func _build_categories() -> void:
 	# The parts reached for lately and the ones kept, beside All: the bin
 	# is searched once per part and then wanted again and again. And the
 	# assistant's worked constructions, each with why it works.
-	_categories = ["All", RECENT, FAVOURITES, TECHNIQUES, FITS]
+	_categories = ["All", RECENT, FAVOURITES, TECHNIQUES, FITS, LIKE]
 	for category: String in LEADING:
 		if counts.has(category):
 			_categories.append(category)
@@ -612,6 +619,10 @@ func _build_categories() -> void:
 			button.text = FITS
 			button.tooltip_text = ("The parts that fit the selected part, or the one in hand: "
 				+ "a pin in its hole, a bar in its clip, a part on its studs")
+		if category == LIKE:
+			button.text = LIKE
+			button.tooltip_text = ("Parts like the selected part, or the one in hand: its size "
+				+ "and kind first, its prints among them; a double-click swaps the selection for one")
 		button.toggle_mode = true
 		button.button_pressed = category == _category
 		FocusGuard.by_keyboard(button)
@@ -853,10 +864,12 @@ func _fit_palette() -> void:
 		_category_scroll.custom_minimum_size.y = _chip_tall * rows \
 			+ float(_category_row.get_theme_constant("v_separation")) * (rows - 1)
 	var wants: float = _palette.get_combined_minimum_size().y
-	# A laptop's short column keeps its room for parts: a row and a half of
-	# colours there, the rest a scroll or a search away. A phone's and a
-	# tablet's parts are a sheet of their own, and their colours keep theirs.
-	var share: float = PALETTE_SHARE if tall_column >= SHORT or by_finger else 0.0
+	# The desktop's column keeps its room for parts: a row and a half of
+	# colours, the rest a scroll or a search away, as a laptop's short column
+	# had them. At 14% of a taller column they took two rows of parts, and
+	# 1400 x 900 showed 30 (docs/APP_UX.md A10). A phone's and a tablet's
+	# parts are a sheet of their own, and their colours keep theirs.
+	var share: float = PALETTE_SHARE if by_finger else 0.0
 	var tall: float = clampf(minf(wants, tall_column * share), PALETTE_FLOOR,
 		maxf(wants, PALETTE_FLOOR))
 	tall = roundf(tall)
@@ -876,15 +889,13 @@ var column: Control:
 ## and the properties (Main).
 var colours: PanelContainer
 
-## The palette's share of the column's height: four rows and more of the
-## colours a set is built in today at 1440 x 900, the rest a scroll away.
+## A phone's and a tablet's palette's share of their drawer's height.
 const PALETTE_SHARE := 0.14
 ## A row and a half of colours and the title over them.
 const PALETTE_FLOOR := 48.0
 ## A row of parts: a cell and the space under it.
 const PARTS_LEAST := 88.0
-## A column shorter than this shows one row of categories, not two, and
-## the palette at its floor.
+## A column shorter than this shows one row of categories, not two.
 const SHORT := 700.0
 var _chip_tall: float = 0.0
 
@@ -1014,11 +1025,21 @@ func show_selection(parts: PackedStringArray, colours: PackedInt32Array) -> void
 	_chosen_parts = by_part
 	_chosen_colours = by_colour
 	_mark_swatches()
+	if _likeness == null and not by_part.is_empty() and library != null:
+		_likeness = PartLike.new(library)
 	# Fits answers for what is selected now. Nothing selected leaves it on
 	# what it was about: a part taken from its list deselects.
 	if _category == FITS and not by_part.is_empty():
 		_fits_of = _fits_subject()
 		_search_soon(_search.text)
+	# So does Like this, but for the parts just swapped in from its list: the
+	# list stays as it was under the pointer, for the next try.
+	if _category == LIKE and not by_part.is_empty():
+		var subject: String = _like_subject()
+		if subject != _like_of and subject != _swapped_in:
+			_like_of = subject
+			_swapped_in = ""
+			_search_soon(_search.text)
 
 
 ## The part the note and the dots are about: the selected one, all of one
@@ -1283,6 +1304,9 @@ func show_category(name: String) -> void:
 func _on_category(name: String) -> void:
 	if name == FITS:
 		_fits_of = _fits_subject()
+	if name == LIKE:
+		_like_of = _like_subject()
+		_swapped_in = ""
 	_category = name
 	for child: Node in _category_row.get_children():
 		var button: Button = child
@@ -1330,6 +1354,11 @@ func _process(_delta: float) -> void:
 			_search_soon(_search.text)
 		else:
 			library.prepare_search(true)
+	if _likeness != null and not _likeness.ready() \
+			and _likeness.read_some(LIKE_WAIT_MS if _like_waiting else LIKE_READ_MS) \
+			and _like_waiting:
+		_like_waiting = false
+		_search_soon(_search.text)
 
 	# Building from a set: the model changed, so the counts are worked out
 	# again from it, a tenth of a second apart at most while it goes on.
@@ -1411,6 +1440,12 @@ func _run_search(query: String) -> void:
 	_results = _kept(_find(query.strip_edges(), _category))
 	_guesses.clear()
 	_open.clear()
+	# A printed part's own prints open under its plain part: what a print is
+	# swapped for is most often another print.
+	var subject: PartLibrary.PartInfo = library.parts.get(_like_of) \
+		if _category == LIKE else null
+	if subject != null and subject.folds_under() != null:
+		_open[subject.folds_under().id] = true
 	_fill_grid()
 
 
@@ -1420,7 +1455,7 @@ func _list_set(query: String) -> void:
 	var needles: PackedStringArray = PartLibrary.in_ldraw_words(query).split(" ", false)
 	var asked: Array = _asked(needles)
 	var among: Dictionary = {}
-	var shelf: bool = _category in [RECENT, FAVOURITES, FITS]
+	var shelf: bool = _category in [RECENT, FAVOURITES, FITS, LIKE]
 	if shelf:
 		for info: PartLibrary.PartInfo in _find(query, _category):
 			among[info.id] = true
@@ -1511,6 +1546,8 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 		return _from_shelf(category, needles)
 	if category == FITS:
 		return _fitting(needles)
+	if category == LIKE:
+		return _liked(needles)
 	var wanted_category: String = category.to_lower()
 	if needles.is_empty():
 		return _unasked(wanted_category)
@@ -1629,6 +1666,56 @@ func _fits_subject() -> PackedStringArray:
 ## The parts Fits lists what fits, and its last answer: [key, parts].
 var _fits_of := PackedStringArray()
 var _fits_found: Array = []
+
+
+## The parts like the part [member _like_of] (PartLike), that match what is
+## typed: "plate" among the parts like a 2 x 4 brick is its 2 x 4 plates.
+func _liked(needles: PackedStringArray) -> Array[PartLibrary.PartInfo]:
+	_set_aside = 0
+	if _like_of.is_empty():
+		return []
+	if _likeness == null:
+		_likeness = PartLike.new(library)
+	# Read a few frames at a time (_process), and listed when it is.
+	_like_waiting = not _likeness.ready()
+	if _like_waiting:
+		return []
+	var key: String = "%s %d" % [_like_of, library.ids().size()]
+	if _like_found.is_empty() or str(_like_found[0]) != key:
+		_like_found = [key, _likeness.like(_like_of)]
+	var found: Array[PartLibrary.PartInfo] = []
+	for info: PartLibrary.PartInfo in _like_found[1]:
+		if needles.is_empty() or PartLibrary.matched(info, needles) != PartLibrary.NOT_MATCHED:
+			found.append(info)
+	return found
+
+
+## The part Like this is about: the part most of the selection is, or failing
+## that the part in hand when it was chosen.
+func _like_subject() -> String:
+	var most: int = 0
+	var subject: String = ""
+	for part: String in _chosen_parts:
+		if int(_chosen_parts[part]) > most:
+			most = int(_chosen_parts[part])
+			subject = part
+	return subject if not subject.is_empty() else _selected_part
+
+
+## The part Like this lists the parts like, its last answer ([key, parts]),
+## and the part a double-click just swapped in from it, whose selection
+## leaves it as it was.
+var _like_of: String = ""
+var _like_found: Array = []
+var _swapped_in: String = ""
+## What reads the catalogue's sizes and kinds for it, begun when a part is
+## first selected, so it is read by the time Like this is chosen; and whether
+## Like this waits for it.
+var _likeness: PartLike
+var _like_waiting: bool = false
+## How much of a frame it reads in: before it is asked for, and while it is.
+const LIKE_READ_MS := 4.0
+const LIKE_WAIT_MS := 25.0
 
 
 ## A category's parts with nothing typed, staples first: worked out once a
@@ -1770,6 +1857,8 @@ const TECHNIQUES := "Techniques"
 const TECHNIQUES_COUNT := 91
 ## The parts that fit the selected part, or the one in hand (PartFits).
 const FITS := "Fits"
+## The parts like it: its footprint and kind first (PartLike).
+const LIKE := "Like this"
 ## What a construction's picture is asked for by: this and its name.
 const TECHNIQUE := "technique:"
 const STAR := "res://assets/ui/tools/star.svg"
@@ -2463,6 +2552,22 @@ func _update_status() -> void:
 		_status.text = "Select a part, or take one in hand, then choose Fits to see what fits it."
 		_status.tooltip_text = ""
 		return
+	if _category == LIKE and _like_of.is_empty():
+		_status.text = "Select a part, or take one in hand, then choose Like this to see parts like it."
+		_status.tooltip_text = ""
+		return
+	if _category == LIKE and _like_waiting:
+		_status.text = "Reading the parts' sizes and kinds…"
+		_status.tooltip_text = ""
+		return
+	if _category == LIKE and total > 0:
+		var like: PartLibrary.PartInfo = library.parts.get(_like_of)
+		_status.text = ("Parts like %s: its size and kind first; a tap swaps the selection"
+			if by_finger else "Parts like %s: its size and kind first; a double-click swaps the selection") \
+			% (tile_name(like) if like != null else _like_of)
+		_status.tooltip_text = ("Five of its size and kind, then the rest of its size by use, nearby kinds "
+			+ "among them, then its kind in other sizes; its prints folded under it")
+		return
 	if _category == FITS and total > 0:
 		var about: PartLibrary.PartInfo = library.parts.get(_fits_of[0])
 		_status.text = "What fits %s, the best fits first" % (
@@ -3123,6 +3228,14 @@ static func _height_text(info: PartLibrary.PartInfo) -> String:
 
 ## [param colour], a set's tile's own, is taken in hand with the part.
 func _on_part(part_id: String, colour: int = -1) -> void:
+	# By a finger, a tap in Like this swaps the selection for the part: a
+	# phone has no double-click, and taking the part would close its sheet.
+	if by_finger and _category == LIKE and not _chosen_parts.is_empty() and builder != null \
+			and not builder.selection.is_empty():
+		_pressed_on = PackedInt64Array(builder.selection.keys())
+		_pressed_mode = verbs.mode if verbs != null else ""
+		_double_clicked(part_id, colour if colour >= 0 else _selected_color)
+		return
 	var by_keyboard: bool = FocusGuard.keys_with_a_control(get_viewport())
 	if colour >= 0 and colour != _selected_color:
 		_on_colour(colour)
@@ -3178,6 +3291,8 @@ func _double_clicked(part_id: String, colour: int) -> void:
 		verbs.say.call(str(put["words"]))
 	else:
 		builder.held_part = part_id
+		if _category == LIKE:
+			_swapped_in = part_id
 		await verbs.replace()
 	if not _pressed_mode.is_empty() and _pressed_mode != "place":
 		verbs.set_mode(_pressed_mode)
@@ -3699,7 +3814,7 @@ func _count_chips() -> void:
 			continue
 		var button: Button = child
 		var category: String = str(button.get_meta("category"))
-		if category in ["All", RECENT, FAVOURITES, TECHNIQUES, FITS]:
+		if category in ["All", RECENT, FAVOURITES, TECHNIQUES, FITS, LIKE]:
 			continue
 		var count: int = int(kinds.get(category, 0)) if _set_bin != null else int(button.get_meta("count"))
 		button.text = "%s %d" % [category, count]

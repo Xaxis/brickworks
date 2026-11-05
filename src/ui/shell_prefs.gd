@@ -20,8 +20,11 @@ const DEFAULTS: Dictionary = {
 	# itself, the parts bin and the model.
 	"assistant_open": false,
 	# The right-hand column on its model tree and properties, where the
-	# assistant is not showing in it (Main._arrange_columns).
-	"properties_open": true,
+	# assistant is not showing in it (Main._arrange_columns). Folded to its
+	# rail on a first visit, as where the columns take turns: the bin has
+	# the room it gives back (Main._fit_bin), and a part selected shows its
+	# place, turn and colour under the bin, More opening the column.
+	"properties_open": false,
 	"inspector_open": true,
 	# Folded to its header: a model with no sub-assemblies has one row in
 	# it. A phone's drawer keeps it so; the desktop opens it once, the first

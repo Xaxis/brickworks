@@ -234,6 +234,38 @@ def test_the_server_hands_pages_and_hands_never_the_model(tmp_path):
     assert app.asked.count("__tools__") == 1
 
 
+class BusyApp(FakeApp):
+    """An app still running the builder's last edit as a job for two more asks."""
+
+    def __init__(self, models: Path) -> None:
+        super().__init__(models)
+        self.left = 2
+
+    def ask(self, tool: str, arguments: dict) -> dict:
+        if tool == "save_model" and self.left > 0:
+            self.asked.append(tool)
+            self.left -= 1
+            return {"ok": True, "content": [{"type": "text", "text": (
+                "The app is busy with job 1 (edit_model, 22 s in): Changed it: 145 bricks… "
+                "Call job {\"id\": 1} until it gives its answer, then this.")}]}
+        return super().ask(tool, arguments)
+
+
+def test_page_done_keeps_the_model_once_the_edit_it_follows_has_finished(tmp_path, monkeypatch):
+    monkeypatch.setattr(booklet_mcp, "JOB_POLL", 0.0)
+    pages = tmp_path / "pages"
+    pages.mkdir()
+    models = tmp_path / "models"
+    models.mkdir()
+    app = BusyApp(models)
+    server = booklet_mcp.Server(0, pages, tmp_path / "run", models, app)
+    server.call("page_done", {"page": 18, "placed": 5})
+    assert app.asked == ["save_model", "job", "save_model", "job", "save_model"]
+    said = json.loads((tmp_path / "run" / "pages.jsonl").read_text().splitlines()[-1])
+    assert said["snapshot"].endswith("page-18.ldr")
+    assert (tmp_path / "run" / "snapshots" / "page-18.ldr").exists()
+
+
 def test_a_hose_drawn_in_segments_is_never_judged(monkeypatch):
     monkeypatch.setattr(bf, "_NAMES", {"3001": "Brick 2 x 4",
                                        "756": "~Hose Flexible Segment Center Section"})

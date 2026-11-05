@@ -305,6 +305,50 @@ uses for the ones it shares.
 This changes what the owner sees first. It is a plan for the owner's eye
 before it is built.
 
+**Built (roomfit, 2026-11-05).** The right column of the model tree and
+Properties, with the assistant as its tab, was already built (October). Still
+missing at the 11-05 audit, measured by `roomfit_probe` at four sizes, parts
+counted wholly inside the bin's column:
+
+| Window | Parts, before | after | Assistant on, before | after | Model, after |
+|---|---|---|---|---|---|
+| 1280 x 720 | 24 | 24 | folds the bin | folds the bin | 60% |
+| 1400 x 900 | 30 | 42 | folds the bin | beside it, 16 parts | 52% |
+| 1600 x 900 | 28 | 40 | folds the bin | beside it, 12 parts | 54% |
+| 1920 x 1080 | 28 | 40 | folds the bin | beside it, 12 parts | 54% |
+
+- **Both columns from about 1350 px.** They show at once wherever both fit
+  with the model keeping half the window (`Main.BOTH_SHARE`), so a
+  1366 x 768 laptop gets them too. The old rule kept
+  the model 60%, so the columns took turns up to 1835 units, which is
+  1920 x 1080 too. Narrower windows (1280 x 720) still take turns, with the
+  model's 60%.
+- **The bin gives the right column its room.** At 1400 x 900 the bin is 7
+  across while the right column is folded, and 4 across while it is open. With
+  the bin at 6, the model had 41%. A first visit opens with the right column
+  folded (`properties_open` now defaults to off).
+- **The selected part's boxes under the bin.** Whenever Properties are out
+  of sight down the right, the bin shows the part's place, turn and colour,
+  as it already did at a laptop's size. This includes when the assistant is
+  showing.
+- **A row and a half of colours.** The palette took 14% of a tall column. It
+  now stays at the row and a half a laptop's column always had. The rest is a
+  scroll, a name or All away, so the bin keeps two rows of parts.
+- **A bin cut off at its edge.** The grid's scroller took the grid's width as
+  its least, so a bin once 7 across never narrowed again. At 1280 x 720 its
+  last column of tiles, Z and Roll, and Prints and List were cut off at the
+  column's edge. The scroller no longer counts it.
+- **Not built: one row of quick colours while a part is in hand.** Folding
+  the palette while a part is in hand would move it under the pointer just as
+  a colour is chosen for that part. It would also hide the swatches that
+  flows and probes click. The row and a half above gives the bin the same
+  room.
+
+`phone_flow` and `tablet_flow` need a preview. The phone's and the tablet's
+layouts take none of these paths (`Main._fit_bin` returns for drawers, and
+the bin's changes skip a sheet for a finger). On the desktop,
+`tablet_fit_probe` and `phone_idle_probe` cover them.
+
 ### A11. Keys: every tool has one, and a person can set their own (M)
 
 **Problem.**
@@ -403,6 +447,91 @@ notes). It is listed so the plan is whole, not as a new unit.
   bound; one that fails lets it go at once.
 - Left: the warm start's compile (above), the catalogue and the first frame;
   the engine's own wasm is 6.9 MB of the cold 8.9.
+
+**Step 2 plan** (firstscreen, 2026-11-05). The first screen compiles 228
+scripts, 6.18 MB of the app's 10.73 (`tools/web/start_closure.py`). Each
+line below makes a set of classes Later's: what the first screen's code
+names of them is rewritten to reach them by name (`Later.script`,
+`Later.make`, typed by their base), and the walk from `main.tscn` stops
+there. MB is what leaves the closure (the classes and what only they
+name), measured after the line above it. "Names" are the references left
+to rewrite; the bracket counts those in main.gd, parts_bin.gd,
+inspector.gd, shell_prefs.gd and assistant.gd. The start's seconds are
+at 0.37 s a MB. A first use compiles the piece it needs at the rate cut 1
+measured on the web after the start, about 1.7 s a MB (below); "first
+use" is that piece's cost.
+
+| # | line | MB | names | start | first use | when | risk |
+|---|---|---|---|---|---|---|---|
+| 1 | The grab: GrabDrag, Grab, GrabChain, Linkage, HingeAlign, Bodies, Playable (Swing, FlexFollow and Topple go with them) | 0.63 | 18 (14) | 0.23 s | 1.06 s, measured | a drag on a part, the viewer's play, Meet, Motions, Simulate, move_part | one piece; GrabDrag reads the joints ahead from the start. **Landed and measured: NO-GO**, below |
+| 2 | The leaves: Sections, SectionsUi, Handles, SplitMerge, LibraryDialog, GalleryTool, CollectionDialog, Together, the updater (5), Exports (6), Minifig, MinifigData | 0.70 | 66 (21) | 0.26 s | 0.05-0.26 s a piece | each its own menu; a selection's handles; a together link; a model with figures | low: ten pieces, the largest the figures (0.15 MB) |
+| 3 | Making parts: PartForge, PartEditor, ElementMaker, StudioDecor, Stickers, SvgText, PictureFile, Rays | 0.33 | 91 (2) | 0.12 s | 0.42 s for Make (0.25 MB) | Make; a print or a sticker; a model with parts of its own | medium: CustomParts reads a model's own parts as it opens |
+| 4 | The rest of what moves: Mechanism, Balance, Stability, Flex, FlexTool, GearMesh, Racks, Stress, Poser, PoseAnimation, Bands, LdcadPath | 0.43 | 107 (14) | 0.16 s | up to 0.7 s | placing a gear, chain or hose; Stress; Stability is made at the start | high: Builder and Joints read gears' specs and Flex's kinds while placing, so those tables move to a core class first |
+| 5 | Steps and the booklet: Instructions, BookletLooks, Booklet, BookletStudio, AuthorSteps, StepsBar, BuildSteps, SharedPages, SeenParts, HiddenColours, BuildPlayback, Helvetica | 0.57 | 195 (28) | 0.21 s | about 1 s | the timeline; Instructions; a shared model's steps | high: Shell's 770 lines of step edits (135 of the names) move out whole; the timeline is on the first screen and ModelStore reads a model's steps as it opens |
+| 6 | Dialogs and the account: CompareView, ModelDiff, Versions, Feedback, Credits, CommandPalette, FirstBuild, Pattern, ReferenceImage, BuildMode; Account, CloudModels, AccountPanel, SignInForm, OrangecheckSignIn, KeymapSync; CustomParts | 0.35 | 98 (25) | 0.13 s | under 0.1 s a dialog | each its menu; the sign-in gate is on the first screen | medium: the account is read as the window is built, so its part saves nothing until the gate is a piece of its own |
+| 7 | The assistant's providers: ProviderSettings, Provider, the four APIs, Streamer, KeyStore, OwnKey, ClaudeCode, CopilotCli, Brain, DesignMemory, RealSnippets | 0.19 | 52 (46) | 0.07 s | 0.32 s | the first design, which takes seconds already, or the assistant's settings | most of the names are in main.gd and assistant.gd |
+| 8 | Placing: Joints, JointSnap, Exact, Carry, Attach, PartFits | 0.20 | 140 (14) | 0.07 s | 0.34 s | **the first part put down** | fails the rule |
+| 9 | Editing and the bin's search: EditVerbs, TypedEntry, ConnectTool, SelectBy, Mirror, Measure; PartSearch, PartWords, SubjectWords | 0.23 | 46 (19) | 0.09 s | 0.2 s a piece | the first edit; the first letter typed in the search | both come early in a visit |
+
+Ranked by the start's seconds for the risk, with a first use under
+300 ms: **2**, then 6 and 9. Lines 1, 3, 4, 5, 7 and 8 come over it, and
+wait on the penalty below being found and fixed.
+
+Lines 1 to 9 take the closure to 2.56 MB (41%), about 1.3 s off the
+start's compile. A third, 2.06 MB, needs 0.5 MB more of main.gd's own
+(434 KB; its viewer is 100 KB) and of Shell, Builder and ModelStore's.
+
+**What cut 1 measured.** It cannot be the whole story, because a feature
+compiled after the start costs more than its share of the start's
+compile. The grab came off the start: 5.56 MB left, a tenth less. The
+window made the grab once the first screen was up, and a drag made it at
+once if it came first.
+- ABBA at load 15-17, four of each
+  (`bench/results/firstscreen-2026-11-05/abba1`). The compile fell
+  0.25 s cold and 0.5 s warm (paired medians). Usable moved -0.1 s cold
+  (base 11.2-14.2) and -0.5 s warm (base 6.5-8.4): inside the base's own
+  spread.
+- Compiled after the start, the grab took 1.06 s (0.75-1.66, 23 loads
+  at load 15-31). The page stalled 0.9-1.6 s, 0.3 s after it was usable
+  (`load_check --watch`, arms1). Made after 2 s idle instead, the stall
+  came later and was as long. A drag that comes first waits that long:
+  over the 300 ms a first use may add.
+- Natively (the editor's build, scripts as text) the same cut is in
+  proportion: main's compile fell 0.59 s (4.26 to 3.67, medians of three),
+  and the grab compiled after it took 0.44.
+  The penalty belongs to the web. It is not what the grab names: a script
+  typed with Builder, BrickWorld, PartLibrary, BrickLattice, Shell and
+  ModelStore loads in 1-2 ms after the start (arms2). Nor is it the code's
+  density: 57% of the grab's source is code, and 56% of the rest. Per MB
+  of code, the start compiles at 0.8 s and the grab after it at 2.9.
+- On a worker (`Later.script_in_background`, asked once the first frame
+  was drawn) no frame waited for it. It came in 1.2-3.1 s after it was
+  asked, and once not within 5 s. In that run the page stalled 3.5 s,
+  2.4 s after it was usable, most likely the Render dialog (made after
+  3 s idle) waiting for the compile to let go of the scripts' cache.
+- The code is kept on branch `firstscreen-grab` (cee27de8).
+
+**Next.** Line 2, the leaves: ten pieces, each first use 0.05 to 0.26 s
+at the rate the grab was measured at, 0.26 s off the start. It is no
+bigger than cut 1, so its ABBA needs two sets at a calm load, or the
+compile lap's paired medians, to show beyond the noise. Beside it: find
+why a script compiled after the start costs 3x on the web, in a Chrome
+trace of the grab's load (the allocator's lock with workers busy, the
+file reads, the compiler). Until then lines 1, 3, 4, 5, 7 and 8 fail the
+300 ms rule, and at parity line 1 would still add 0.4 s to a first drag.
+Lines 2, 6 and 9 together are 1.28 MB, 0.47 s of the start.
+
+**Beside it, the rest of a warm start** (base laps, abba1, medians at
+load 15-17): the engine 1.05 s (its banner 0.65, its own start 0.4), the
+compile 2.9, the catalogue 1.15 (its JSON parse about half), the
+interface 0.8, the model 0.2, the first frames 1.15. At A13's 6.6 s, a
+third of the code takes the compile from 2.5 to 0.85 s and the warm start
+to about 4.9. So the 4 s bar needs about 0.9 s more from the catalogue,
+the interface and the first frames. The catalogue's parse cannot start
+before Main's compile today. An autoload runs before it (webstart2) and
+could read the file and parse it on a worker, beside the compile, if the
+catalogue were in the engine's pack. The first frames are SwiftShader's;
+what they compile has not been traced yet.
 
 ## Part B: Advanced features
 
@@ -544,6 +673,22 @@ and Replace offering parts of a similar size.
 - A probe with ten pairs (a beam and a pin, a clip and a bar, a jumper and a
   1 x 1 round, ...) has each fitting part in the top five.
 - Replace from "Like this" is 3 actions.
+
+**Built.**
+- Fits (appux371, 2026-10-30): `fits_probe`, twelve pairs each in the first
+  five.
+- Like this (likethis, 2026-11-05): a chip after Fits. `PartLike` reads each
+  part's footprint, height and kind from its name and the catalogue, for
+  every part (no table of chosen ones). It lists five of its footprint and
+  kind first, then the rest of its footprint by what sets use, nearby kinds
+  among them (a 2 x 4 brick's Plate 2 x 4 7th, Tile 2 x 4 8th), then its
+  kind in other sizes. The part's prints and moulds are folded under it.
+  A double-click swaps the selection for one (a tap on a phone): select,
+  the chip, the part, 3 actions, one undo. Over MCP it is
+  `search_parts like=3001`. `likethis_probe`: ten parts across kinds, each
+  one's first five its footprint and kind; the swap in 3 actions with undo;
+  the same with a finger on a phone and a tablet
+  (`likethis_phone_probe`, `likethis_tablet_probe`).
 
 ### B6. Patterns: copies along a line, round an axis, along a path (M)
 

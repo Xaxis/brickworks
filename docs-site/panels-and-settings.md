@@ -44,7 +44,7 @@ ui:colour keys
 
 ## Docked panels {#panels}
 
-Fold a panel by its header, and drag the bar between two to share the room. A click on a column's strip folds it away to the edge, and another brings it back. The model keeps at least 60% of the window's width, so in most windows one column shows beside it at a time, and opening one folds the other; a window about twice as wide as it is tall shows both. **View** turns each panel on or off, and [[Tab]] shows or hides them all. Brickworks remembers the layout, the folds and the snap you chose, and starts with them next time.
+Fold a panel by its header, and drag the bar between two to share the room. A click on a column's strip folds it away to the edge, and another brings it back. In a window about 1350 points across or wider (a 1366 x 768 laptop, 1400 x 900, 1920 x 1080), both columns show at once and the model keeps at least half the width: the assistant or the properties open down the right beside the parts bin, which narrows to make room and widens again when they fold. In a narrower window the model keeps 60% of the width, so one column shows beside it at a time, and opening one folds the other. **View** turns each panel on or off, and [[Tab]] shows or hides them all. Brickworks remembers the layout, the folds and the snap you chose, and starts with them next time.
 
 <!-- covers
 ui:docked panels
@@ -63,7 +63,7 @@ ui:model tree
 
 Select a part and the right-hand column says what it is, under the model tree: its part, its colour, where it stands and what it is joined to, every field in sight. Type its **X**, **Y** and **Z** to the hundredth of an LDraw unit, or, when it hangs from a joint, its **Hinge** angle in degrees. With nothing selected, it holds the floor's settings.
 
-In a window where one column shows at a time, the parts bin has the selected part's name, colour, **X**, **Y**, **Z**, **Turn**, **Tilt** and **Roll** under it as well, so you can put a part down, type it to its place and take the next without folding the bin. A colour clicked under them paints it. **More** opens the rest down the right.
+Whenever the properties down the right are folded or showing the assistant, the parts bin has the selected part's name, colour, **X**, **Y**, **Z**, **Turn**, **Tilt** and **Roll** under it as well, so you can put a part down, type it to its place and take the next without folding the bin. A colour clicked under them paints it. **More** opens the rest down the right.
 
 <!-- covers
 ui:properties panel
