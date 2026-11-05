@@ -6973,8 +6973,8 @@ msgstr "Créer un sous-ensemble"
 msgid "Make it"
 msgstr "Créer"
 
-msgid "What is it called? It moves as one, saves as a sub-model of its own,\nand the instructions build it on its own. Copies of it follow it."
-msgstr "Comment s'appelle-t-il ? Il bouge d'un bloc, s'enregistre comme un sous-modèle à part,\net les instructions le construisent à part. Ses copies le suivent."
+msgid "What is it called? It moves as one and saves as a sub-model of its own.\nCopies of it follow it."
+msgstr "Comment s'appelle-t-il ? Il bouge d'un bloc et s'enregistre comme un sous-modèle à part.\nSes copies le suivent."
 
 msgid "Simulate mechanism"
 msgstr "Simuler le mécanisme"

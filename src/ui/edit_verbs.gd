@@ -365,8 +365,8 @@ func make_submodel() -> void:
 		say.call("select the parts that make up the sub-assembly first")
 		return
 	_ask_name("make", "Make a sub-assembly", "Make it",
-		"What is it called? It moves as one, saves as a sub-model of its own,\n"
-		+ "and the instructions build it on its own. Copies of it follow it.",
+		"What is it called? It moves as one and saves as a sub-model of its own.\n"
+		+ "Copies of it follow it.",
 		assemblies.unused_name("Sub-assembly") if assemblies != null
 			else builder.unused_group("Sub-model"))
 
