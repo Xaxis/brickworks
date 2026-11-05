@@ -627,6 +627,70 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 	return {"bricks": bricks, "units": units}
 
 
+## The steps of the copy at [param path], built in steps of its own, made
+## steps of the section that puts it on, as taking it apart leaves its parts
+## there (Assemblies.ungroup): each of its steps in turn where the copy was
+## put on, then the rest of that step, and every step after it as many
+## later, numbered with no gaps. The build goes in the order it did. Left
+## as they were, its parts were numbered in steps of a sub-model that was
+## gone, and went in among the first steps of the one they were now in.
+## {"bricks": id -> step, "units": path -> step} of what moves, and "steps"
+## {"section": the one it is put on in, "at": the step that put it on,
+## "outer": each of that one's steps -> the step it is now, "inner": each of
+## the copy's -> the step it is now}; empty for a copy built in its
+## parent's steps already, or a model with no steps.
+static func inlined(world: BrickWorld, path: String, skip: Dictionary = {}) -> Dictionary:
+	if path.is_empty() or in_parent(world, path) or not any(world, skip):
+		return {}
+	var outer: String = home(world, Assemblies.parent_of(path))
+	var read: Dictionary = items_in(world, [path, outer], skip)
+	var at: int = -1
+	for item: Dictionary in read[outer]:
+		if str(item.get("unit", "")) == path:
+			at = int(item["step"])
+	var own: Array = steps_of(read[path])
+	if at < 0 or own.is_empty():
+		return {}
+	var inner: Dictionary = {}      ## its step -> where it goes
+	for index: int in own.size():
+		inner[own[index]] = at + index
+	var numbered: Array = []        ## [item, its step before the gaps are closed]
+	for item: Dictionary in read[outer]:
+		if str(item.get("unit", "")) != path:
+			var step: int = int(item["step"])
+			numbered.append([item, step + own.size() if step >= at else step])
+	for item: Dictionary in read[path]:
+		numbered.append([item, int(inner[int(item["step"])])])
+	var used: Dictionary = {}
+	for one: Array in numbered:
+		used[int(one[1])] = true
+	var order: Array = used.keys()
+	order.sort()
+	var place: Dictionary = {}
+	for index: int in order.size():
+		place[order[index]] = index
+	var bricks: Dictionary = {}
+	var units: Dictionary = {}
+	for one: Array in numbered:
+		var item: Dictionary = one[0]
+		var to: int = int(place[int(one[1])])
+		if item.has("brick"):
+			if to != int(item["step"]):
+				bricks[int(item["brick"])] = to
+		else:
+			units[str(item["unit"])] = to
+	var outer_steps: Dictionary = {}
+	for item: Dictionary in read[outer]:
+		if str(item.get("unit", "")) != path:
+			var step: int = int(item["step"])
+			outer_steps[step] = int(place[step + own.size() if step >= at else step])
+	var inner_steps: Dictionary = {}
+	for step: int in own:
+		inner_steps[step] = int(place[int(inner[step])])
+	return {"bricks": bricks, "units": units, "steps": {"section": outer, "at": at,
+		"outer": outer_steps, "inner": inner_steps}}
+
+
 # -- the edits ---------------------------------------------------------------
 
 
