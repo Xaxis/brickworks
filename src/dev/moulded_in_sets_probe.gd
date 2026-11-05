@@ -12,18 +12,27 @@
 ## so every one refused here is the app's to answer for.
 ##
 ## Each animal is taken with the parts round it (its box grown by NEAR), as
-## they stand in the set's file. By edit: read back as a session reads the
-## baseplate (Assistant._model_from_world), the animal marked as put there by
-## this edit, and checked: placed if no fault names it. By hand: taken out,
-## held turned as the set has it, and aimed straight down where it stood:
-## placed if the ghost can go down there and stands where the set has it, to
-## half an LDU. Asked only of one upright on something with studs, which is
-## what a drag on studs is for: a bird on a bar or a fish in a hand is put on
-## its joint, which other probes drive.
+## they stand in the set's file lifted onto the ground as opening it lifts it.
+## By edit: read back as a session reads the baseplate
+## (Assistant._model_from_world), then written as a session writes a part, in
+## studs and plates to a hundredth with nothing past them, put there by this
+## edit, and checked: placed if no fault names it. By hand: held turned as the
+## set has it over the part under its feet alone (a person puts the animal on
+## its plate; what the set builds round it is another test) and aimed
+## straight down where it stood: placed if the ghost can go down there and
+## stands where the set has it, to an LDU (40782-1 stands its frog an LDU off
+## its stud). Asked only of one upright, that takes a stud from underneath (a
+## receiver it draws or a hole its exact shape has there), on something with
+## studs, which is what a drag on studs is for: a bird on a bar or a fish in a
+## hand is put on its joint, which other probes drive.
+##
+## It fails where the stud check calls an animal off its studs where its set
+## has it, or the ghost stands one across from there that ACROSS does not
+## name.
 ##
 ## The files are the fewest that hold every moulded animal the library's
 ## sets use (82 parts); `-- all` reads every set in vendor/omr/files and puts
-## every one of them (458 in 134 sets), which is a measure and not a probe.
+## every one of them (570 in 146 sets), which is a measure and not a probe.
 extends SceneTree
 
 const SETS := "res://vendor/omr/files/"
@@ -41,7 +50,19 @@ const FILES: Array = [
 ## How far round an animal's box its neighbours are taken, in LDU.
 const NEAR := 24.0
 ## How near the set's place the ghost has to stand, in LDU.
-const AT_ITS_PLACE := 0.5
+const AT_ITS_PLACE := 1.0
+## The animals the ghost still stands across from where their sets have them,
+## by part or by set and part, and why. Any other fails the probe.
+const ACROSS: Dictionary = {
+	"10176-1.mpd 48812": "the set stands its wolf 4 LDU off the studs under it, its "
+		+ "holes over x=34 and -6 where the plate's studs are at 30 and -10; the "
+		+ "ghost puts them on the studs",
+	"30169": "the scorpion's one receiver is a tube, and BrickNet labels a tube where "
+		+ "a stud goes inside it, as between a 2 x 2 brick's four: taken for where "
+		+ "a part takes a stud, plain bricks would stand half a stud off; so its "
+		+ "sockets are its foot's two stud squares, and the stud its set puts in its "
+		+ "tube goes between them",
+}
 
 var _library: PartLibrary
 var _world: BrickWorld
@@ -50,6 +71,12 @@ var _assistant: Assistant
 var _failures: int = 0
 ## What each way found: "edit" and "hand" -> [asked, placed].
 var _tally: Dictionary = {"edit": [0, 0], "hand": [0, 0]}
+## By hand, how many the ghost stood across from where the set has them, and
+## how many only above or below it.
+var _across: int = 0
+var _height: int = 0
+## Of those across, the ones ACROSS does not name.
+var _unnamed: PackedStringArray = []
 ## Fault kind -> how many animals an edit was refused by it.
 var _kinds: Dictionary = {}
 var _parts: Dictionary = {}
@@ -95,12 +122,26 @@ func _run() -> void:
 			(Time.get_ticks_msec() - began) / 1000.0])
 	print("  by edit: %d of %d placed where the set has them" % [_tally["edit"][1],
 		_tally["edit"][0]])
-	print("  by hand: %d of %d standing on studs placed where the set has them"
-		% [_tally["hand"][1], _tally["hand"][0]])
+	print("  by hand: %d of %d standing on studs placed where the set has them (%d across "
+		% [_tally["hand"][1], _tally["hand"][0], _across] + "from there, %d above or below it)"
+		% _height)
 	print("  refused by edit, by fault: %s" % _kinds)
 	for line: String in _refused:
 		print("    " + line)
+	_check("by edit, none is called off its studs where its set has it (%d)"
+		% int(_kinds.get("off its studs", 0)), not _kinds.has("off its studs"))
+	for id: String in ACROSS:
+		print("  across, known: %s, %s" % [id, ACROSS[id]])
+	_check("by hand, the ghost stands none across from where its set has it but those "
+		+ "ACROSS names (%d of %d: %s)" % [_unnamed.size(), _across, ", ".join(_unnamed)],
+		_unnamed.is_empty())
 	quit(1 if _failures > 0 else 0)
+
+
+func _check(what: String, ok: bool) -> void:
+	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
+	if not ok:
+		_failures += 1
 
 
 ## Every set in the library with a moulded animal in it, by reading each file.
@@ -132,10 +173,17 @@ func _one_set(file: String) -> void:
 		print("  %s: cannot be read" % file)
 		return
 	var pieces: Array = []
+	var lowest: float = INF
 	for piece: LdrModel.Placement in ldr.flatten():
 		var id: String = _library.resolve(piece.part_id.to_lower().trim_suffix(".dat"))
-		if _library.mesh_for(id) != null:
+		var mesh: Lbm.PartMesh = _library.mesh_for(id)
+		if mesh != null:
 			pieces.append([id, piece.color_code, piece.transform])
+			lowest = minf(lowest, (piece.transform * mesh.bounds).position.y)
+	# Onto the ground, as opening the set puts it (ModelStore._lift_from).
+	var lift := Vector3(0.0, ModelStore._lift_from(lowest, true), 0.0)
+	for piece: Array in pieces:
+		piece[2] = (piece[2] as Transform3D).translated(lift)
 	for n: int in pieces.size():
 		if _animal(str(pieces[n][0])):
 			_one_animal(file, pieces, n)
@@ -178,7 +226,14 @@ func _by_edit(where: String, animal: int) -> void:
 			index = k
 	if index < 0:
 		return
-	model.placements[index].moved = true
+	# As a session writes it: studs and plates to a hundredth, nothing past.
+	var placement: Assistant.Placement = model.placements[index]
+	if placement.section.is_empty():
+		placement.x = snappedf(placement.x + placement.nudge.x / Assistant.STUD, 0.01)
+		placement.y = snappedf(placement.y + placement.nudge.y / Assistant.PLATE, 0.01)
+		placement.z = snappedf(placement.z + placement.nudge.z / Assistant.STUD, 0.01)
+		placement.nudge = Vector3.ZERO
+	placement.moved = true
 	var report: Dictionary = _assistant._check(model, true)
 	(_tally["edit"] as Array)[0] += 1
 	var faults: PackedStringArray = _faults_naming(report, index)
@@ -227,7 +282,7 @@ func _by_hand(where: String, animal: int, id: String, at: Transform3D,
 	if not BrickLattice.is_square_to_grid(at.basis):
 		return
 	var basis: Basis = BrickLattice.snap_basis(at.basis)
-	if (basis * Vector3.UP).y < 0.99 or mesh.sockets.is_empty():
+	if (basis * Vector3.UP).y < 0.99 or not _takes_from_below(id, mesh):
 		return
 	_world.remove_brick(animal)
 	_builder.lattice.release(animal)
@@ -239,6 +294,12 @@ func _by_hand(where: String, animal: int, id: String, at: Transform3D,
 			or (_library.parts[under.part_id] as PartLibrary.PartInfo).stud_count == 0 \
 			or absf(hit.cell.y * BrickLattice.CELL + BrickLattice.CELL - low) > 4.0:
 		return
+	# The part under its feet alone.
+	var ground: Array = [under.part_id, under.color_code, under.transform]
+	_world.clear()
+	_builder.lattice.clear()
+	var alone: int = _world.add_brick(ground[0], ground[1], ground[2])
+	_builder.register(alone, ground[0], ground[2])
 	_builder.held_part = id
 	_builder.held_face = BrickLattice.face_of(basis)
 	_builder.held_rotation = BrickLattice.turns_about(basis, _builder.held_face)
@@ -249,8 +310,31 @@ func _by_hand(where: String, animal: int, id: String, at: Transform3D,
 	if _builder.can_place() and off <= AT_ITS_PLACE and ghost.basis.is_equal_approx(basis):
 		(_tally["hand"] as Array)[1] += 1
 		return
-	_refused.append("hand: %s: the ghost %s at %s, %.1f LDU from the set's place" % [where,
-		"can go down" if _builder.can_place() else "is refused", _ldu(ghost.origin), off])
+	if Vector2(ghost.origin.x - at.origin.x, ghost.origin.z - at.origin.z).length() \
+			> AT_ITS_PLACE:
+		_across += 1
+		if not ACROSS.has(id) and not ACROSS.has(where.get_slice(" ", 0) + " " + id):
+			_unnamed.append(id)
+	else:
+		_height += 1
+	var ghost_says: String = "can go down" if _builder.can_place() else "is refused"
+	_refused.append("hand: %s on %s: the ghost %s at %s, %.1f LDU from the set's place, %s"
+		% [where, ground[0], ghost_says, _ldu(ghost.origin), off,
+			"which has room" if _builder.room_for(id, at) else "which has no room by the lattice"])
+
+
+## Whether [param id] takes a stud from underneath: a receiver it draws
+## pointing down, or a hole its exact shape has pointing up. Read the same way
+## before and after the app learnt either, so both runs ask the same animals.
+func _takes_from_below(id: String, mesh: Lbm.PartMesh) -> bool:
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind == "tube" and connector.axis.y < -0.99:
+			return true
+	var shape: Exact.Shape = Exact.shape_for(_library, id)
+	for k: int in shape.connector_count() if shape != null else 0:
+		if shape.kind[k] == Exact.HOLE and (-shape.frames[k].basis.y).y > 0.99:
+			return true
+	return false
 
 
 static func _ldu(v: Vector3) -> String:

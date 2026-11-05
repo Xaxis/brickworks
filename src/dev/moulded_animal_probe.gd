@@ -134,8 +134,7 @@ func _by_claude() -> void:
 	print("    " + _first_lines(said))
 	_stands_on_its_studs("put by its hoof's connector", said)
 	# Moved a stud along, as a session moves what stands.
-	var horse: int = _brick(HORSE)
-	said = await _say("edit_model", {"move": [{"bricks": [horse], "dx": 1}]})
+	said = await _say("edit_model", {"move": [{"bricks": [_number(HORSE)], "dx": 1}]})
 	print("    " + _first_lines(said))
 	_stands_on_its_studs("moved a stud along", said)
 
@@ -195,7 +194,7 @@ func _by_hand() -> void:
 			off <= ON_A_STUD and horse.transform.origin.distance_to(ghost.origin) < 0.01)
 	await _key(KEY_ESCAPE)
 	# And Claude, asked to check what the person built, finds it on its studs.
-	var said: String = await _say("edit_model", {"move": [{"bricks": [_brick(HORSE)],
+	var said: String = await _say("edit_model", {"move": [{"bricks": [_number(HORSE)],
 		"dz": 1}]})
 	print("    " + _first_lines(said))
 	_stands_on_its_studs("put down by hand, then moved by Claude", said)
@@ -209,20 +208,23 @@ func _the_creature_rule() -> void:
 	print("── the creature rule ──")
 	_main.call("clear_model")
 	await _frames(4)
-	var brief: String = "Gandalf Arrives: Gandalf drives his horse-drawn cart down a Shire lane."
-	_check("the brief is a creature's, so the rule is asked (%s)" % Style.character_of(brief),
-		Style.character_of(brief) == "creature")
+	# design16's second session's words, which the rule read as a creature's.
+	var brief: String = ("Gandalf Arrives, in the style of LEGO® The Hobbit and Lord of the "
+		+ "Rings sets: fitting in about 7 x 17 studs, 70 to 120 pieces.")
+	var about: String = "Test: lane and horse."
+	var kind: String = Style.character_of("%s Gandalf Arrives %s" % [brief, about])
+	_check("the design is a creature's, so the rule is asked (%s)" % kind, kind == "creature")
 	_assistant.heard(brief, true)
+	# The horse along the plate's middle, the cart's bed beside it.
 	var cart: Array = [
 		{"part": PLATE, "color": 2, "x": 0, "y": 0, "z": 0, "name": "base"},
 		{"part": HORSE, "color": 70, "x": 1, "y": 1, "z": 3, "rot": 1},
-		{"part": "3034", "color": 6, "x": 0, "y": 1, "z": 0, "rot": 1},
-		{"part": "3010", "color": 6, "x": 0, "y": 2, "z": 0, "rot": 1},
-		{"part": "3010", "color": 6, "x": 7, "y": 2, "z": 0, "rot": 1},
-		{"part": "3062b", "color": 14, "x": 4, "y": 1, "z": 0}]
+		{"part": "3034", "color": 6, "x": 0, "y": 1, "z": 6, "rot": 1},
+		{"part": "3010", "color": 6, "x": 0, "y": 2, "z": 6, "rot": 1},
+		{"part": "3010", "color": 6, "x": 4, "y": 2, "z": 6, "rot": 1},
+		{"part": "3062b", "color": 14, "x": 0, "y": 1, "z": 0}]
 	var said: String = await _say("submit_design", {"name": "Gandalf Arrives",
-		"description": "Gandalf's cart and his horse on a lane", "floor": "none",
-		"bricks": cart})
+		"description": about, "brief": brief, "floor": "none", "bricks": cart})
 	print("    " + _first_lines(said))
 	_check("a design whose creature is the moulded horse is built, not sent back",
 		not said.begins_with("Not applied") and not said.contains("nothing in it is on a joint"))
@@ -272,6 +274,16 @@ func _brick(part: String) -> int:
 		if brick.part_id == part:
 			found = maxi(found, brick.id)
 	return found
+
+
+## The number edit_model knows the newest brick of [param part] by, as a
+## session reads the model; -1 where there is none.
+func _number(part: String) -> int:
+	var placements: Array = _assistant._model_from_world().placements
+	for n: int in placements.size():
+		if placements[n].id == _brick(part):
+			return n
+	return -1
 
 
 func _first_lines(text: String) -> String:

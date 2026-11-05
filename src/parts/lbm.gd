@@ -72,6 +72,10 @@ class PartMesh extends RefCounted:
 	var boxes: Array[AABB] = []
 	## Underside positions that accept a stud, in LDU.
 	var sockets: PackedVector2Array = PackedVector2Array()
+	## Whether every socket is a stud receiver the part draws (a downward
+	## tube), so says where its studs go whatever grid its studs on top are
+	## on: a moulded horse's hooves, a round plate's tube (on_receivers).
+	var sockets_drawn: bool = false
 	## The occupancy lattice these boxes are measured in, in LDU.
 	var cell_ldu: float = 2.0
 	## Per surface, the LDraw colour code it is moulded in. Entries equal to
@@ -292,7 +296,68 @@ static func parse(bytes: PackedByteArray, source: String = "<memory>") -> PartMe
 			bytes.decode_float(offset), bytes.decode_float(offset + 4)))
 		offset += SOCKET_SIZE
 
+	on_receivers(part)
 	return part
+
+
+## How far from a socket a stud receiver the part draws can be and be the one
+## it stands for, in LDU. A part's ordinary tubes, between its studs, are ten
+## or more from every socket.
+const RECEIVER_REACH := 8.0
+
+
+## [param part]'s sockets moved onto the stud receivers it draws, where the
+## catalogue laid them off those, and [member PartMesh.sockets_drawn] said.
+##
+## tools/ldraw/occupancy.py lays sockets as stud squares, on the grid of the
+## part's own studs on top where its foot is not whole studs across, and a
+## moulded animal's legs stand off its back's grid. 10509p02's hooves are
+## drawn (stud23) 6 LDU along it from the squares laid for them ("Offset by
+## z=-4 to get feet on stud grid", its own file says): the seat put its hooves
+## on the studs by what it draws, and the stud check, a drag's snap and the
+## clutch, reading its sockets, put each 6 LDU off. design16's Gandalf
+## sessions could not stand 9469's own horse on a plate.
+##
+## Only a part with studs on top: one without has its squares laid from its
+## foot's edge, which Assistant._underside_of moves onto its tubes, and how
+## far that edge is off says its foot is narrower than a stud. A drag asks
+## where those receivers are itself (receivers_of).
+static func on_receivers(part: PartMesh) -> void:
+	var moved: PackedVector2Array = receivers_of(part)
+	if moved.is_empty():
+		return
+	var on_top: bool = false
+	for connector: Connector in part.connectors:
+		on_top = on_top or (connector.kind == "stud" and connector.axis.y > 0.99)
+	var drawn: bool = true
+	for n: int in moved.size():
+		drawn = drawn and part.sockets[n].distance_to(moved[n]) <= 0.5
+	if on_top:
+		part.sockets = moved
+		drawn = true
+	part.sockets_drawn = drawn
+
+
+## Where each of [param part]'s sockets is drawn to take a stud, in its order:
+## on the one downward tube (stud23 and its like) within RECEIVER_REACH of it,
+## where every socket has one and no two share it; [] where they do not pair.
+static func receivers_of(part: PartMesh) -> PackedVector2Array:
+	var receivers: Array[Vector2] = []
+	for connector: Connector in part.connectors:
+		if connector.kind == "tube" and connector.axis.y < -0.99:
+			receivers.append(Vector2(connector.position.x, connector.position.z))
+	var out := PackedVector2Array()
+	if receivers.is_empty():
+		return out
+	var taken: Dictionary = {}
+	for socket: Vector2 in part.sockets:
+		var near: Array[Vector2] = receivers.filter(func(at: Vector2) -> bool:
+			return socket.distance_to(at) < RECEIVER_REACH)
+		if near.size() != 1 or taken.has(near[0]):
+			return PackedVector2Array()
+		taken[near[0]] = true
+		out.append(near[0])
+	return out
 
 
 ## Unfold an octahedral-encoded normal.

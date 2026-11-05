@@ -6472,6 +6472,33 @@ static func _posed(model: Model) -> bool:
 	return false
 
 
+## A creature moulded whole, in one part: an animal of the catalogue's (a
+## horse, a cat, a parrot, 4493c01 a horse "(Complete)"), not a piece of one
+## (a dragon's head, a cat's tail, a horse's barding) nor a part drawn inside
+## one ("~"). Its pose is moulded, so it is no statue of stacked bricks:
+## design16's Gandalf sessions both chose 9469's own horse, 10509p02, and
+## were sent back for its having nothing on a joint.
+func _moulded_creature(part: String) -> bool:
+	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(part)) \
+		if library != null else null
+	if info == null or info.family_category() != "Animal" or info.name.begins_with("~"):
+		return false
+	var name: String = info.name.to_lower()
+	return name.contains("(complete") \
+		or _CREATURE_PIECE.search(name.get_slice(" with ", 0).get_slice("(", 0)) == null
+
+
+## What names a piece of a creature, before its name's "with".
+static var _CREATURE_PIECE := RegEx.create_from_string("\\b(head|tail|wings?|body|"
+	+ "jaw|horns?|legs?|fins?|flippers?|arms?|claws?|neck|torso|barding|saddle|section|"
+	+ "segment|emblem|web)\\b")
+
+
+## Whether any of [param parts] (part ids) is a creature moulded whole.
+func _any_moulded_creature(parts: Array) -> bool:
+	return parts.any(func(part: Variant) -> bool: return _moulded_creature(str(part)))
+
+
 ## A figure, a creature or a character with nothing in it on a joint, said
 ## with each joint's one call while how to build it is still being decided.
 ## Every character session of the attach round (2026-10-15) decided at its
@@ -6483,7 +6510,8 @@ func _on_joints_said(model: Model) -> String:
 	if model.placements.size() < JOINTS_FROM or _sculpted_body:
 		return ""
 	var kind: String = Style.character_of(_subject_of(model))
-	if kind.is_empty() or _posed(model):
+	if kind.is_empty() or _posed(model) or _any_moulded_creature(model.placements.map(
+			func(p: Placement) -> String: return p.part)):
 		return ""
 	_joints_told += 1
 	if _joints_told > JOINTS_IN_FULL:
@@ -6610,10 +6638,12 @@ func _outlined(design: Model) -> bool:
 ## Nor a body laid from its outline's parts (_outlined): its outline is what
 ## keeps it from being a statue, and sending it back points it at the figure
 ## pattern's plain stack, the box the outline was chosen against. outline161's
-## pig was sent back so and spent a round trip submitting it again.
+## pig was sent back so and spent a round trip submitting it again. Nor one
+## with a creature moulded whole (_moulded_creature): its pose is moulded.
 func _unjointed_refusal(design: Model) -> String:
 	if _joints_refused or design.placements.size() < JOINTS_FROM or _posed(design) \
-			or _outlined(design):
+			or _outlined(design) or _any_moulded_creature(design.placements.map(
+				func(p: Placement) -> String: return p.part)):
 		return ""
 	var kind: String = Style.character_of(_subject_of(design))
 	var call: String = _figure_call(design, kind)
@@ -7013,6 +7043,11 @@ func _note_loose(loose: Dictionary, model: Model, index: int, under: int,
 	var under_it: Array = _underside(model, index, studs)
 	var reaching: PackedVector2Array = under_it[0]
 	var sockets: PackedVector2Array = under_it[1]
+	# Every stud that reaches into it in one of its sockets is a part on its
+	# studs, whatever its corner says: a moulded horse's corner is on the grid
+	# of its back's studs, and its hooves stand 6 LDU off that, on the plate's.
+	if _each_in_a_socket(reaching, sockets):
+		return
 	var half: bool = _on_the_grid(across) and _on_the_grid(along)
 	if half and (not _underside_known(placement.part)
 			or _none_off(reaching, sockets, under_it[2])):
@@ -7130,7 +7165,9 @@ static func _underside_of(part: Lbm.PartMesh) -> Array:
 	var half: float = STUD / 2.0
 	var shift := Vector2.ZERO
 	var grid: Array[Vector2] = tops if not tops.is_empty() else tubes
-	if not grid.is_empty() and not part.sockets.is_empty():
+	# Sockets on the receivers it draws are where they are: a moulded horse's
+	# hooves stand 6 LDU off the grid of its back's studs (Lbm.on_receivers).
+	if not grid.is_empty() and not part.sockets.is_empty() and not part.sockets_drawn:
 		for axis: int in 2:
 			var off: float = fposmod(part.sockets[0][axis] - grid[0][axis], half)
 			shift[axis] = -off if off < half / 2.0 else half - off
@@ -7213,6 +7250,24 @@ static func _none_off(studs: PackedVector2Array, sockets: PackedVector2Array,
 		elif nearest < HALF_OFF:
 			across = true
 	return seated or not across
+
+
+## How near a socket a stud stands to be seated in it, in studs: one LDU. The
+## seat puts one within a tenth of an LDU, and a part put a tenth of a stud
+## off its studs is two LDU off.
+const SEATED_IN := 0.05
+
+
+## Whether there is a stud in [param studs] and every one is seated in one of
+## [param sockets].
+static func _each_in_a_socket(studs: PackedVector2Array, sockets: PackedVector2Array) -> bool:
+	for stud: Vector2 in studs:
+		var seated: bool = false
+		for socket: Vector2 in sockets:
+			seated = seated or stud.distance_to(socket) <= SEATED_IN
+		if not seated:
+			return false
+	return not studs.is_empty()
 
 
 ## Whether the half-stud rule can judge a part: one whose underside is the
@@ -21388,7 +21443,8 @@ func _stiff_limbs_said(everything: Array[BrickWorld.Brick]) -> String:
 			% [", ".join(stiff), "s" if stiff.size() == 1 else ""]
 			+ "joint, so they read as a statue's, never as reaching, sitting or "
 			+ "turning. " + how)
-	if _bricks_posed(everything):
+	if _bricks_posed(everything) or _any_moulded_creature(everything.map(
+			func(b: BrickWorld.Brick) -> String: return b.part_id)):
 		return ""
 	return ("Nothing in it is on a joint: a figure's or a creature's head, limbs and tail "
 		+ "stacked square on its body stand stiff, as a statue of bricks does, and the "

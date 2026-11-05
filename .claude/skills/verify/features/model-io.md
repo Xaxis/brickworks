@@ -588,6 +588,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   their studs*, which moves each as one undoable step, or *Leave them*. A part
   is moved only where undoing exactly the old corner's error puts its studs on
   stud middles. `src/dev/reseat.gd` does the same to files, by the same rule.
+  A part whose sockets are the receivers it draws is judged by those, not its
+  studs on top (`Seating.off_the_studs`): a moulded horse stands on its hooves,
+  and its back's studs are 6 LDU off their grid.
 - `open a studio model` (`src/parts/studio_io.gd`, `src/ui/model_file_picker.gd`):
   File, Import → BrickLink Studio model (or Open → From a file) reads Studio's
   `.io`, on the desktop and in a browser (read as bytes). Two files Studio saved
