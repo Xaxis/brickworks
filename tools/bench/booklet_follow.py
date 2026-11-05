@@ -39,7 +39,9 @@ the model's parts the pages built is
 
 and the parts the builder put in that the model has not are "extra". Each of the
 model's parts counts on the page that puts it on the model (a sub-assembly built on
-pages of its own counts where it goes on). Written to runs/NAME/score.json with a row a
+pages of its own counts where it goes on). A part "place" moved by just what a part
+it touches from an earlier page was moved is "carried" too (`carried`): that page
+was followed, on a model an earlier one had left wrong. Written to runs/NAME/score.json with a row a
 page; `report` prints the rows and the totals of one run or of several.
 """
 
@@ -529,7 +531,7 @@ def score(truth: Truth, build: list[Placed], first: int, last: int, bounds: Boun
     for n in judged:
         page = truth.placed_on[n]
         row = rows.setdefault(page, {"page": page, "parts": 0, **{k: 0 for k in KINDS},
-                                     "turned": 0, "offsets": [], "wrong": []})
+                                     "turned": 0, "carried": 0, "offsets": [], "wrong": []})
         got = result["parts"][local[n]]
         row["parts"] += 1
         row[got["kind"]] += 1
@@ -548,16 +550,29 @@ def score(truth: Truth, build: list[Placed], first: int, last: int, bounds: Boun
         if said and page in said:
             row["unclear"] = said[page].get("unclear", [])
             row["placed_said"] = said[page].get("placed")
+    for n in carried(truth, judged, scope, result["parts"], local, bounds):
+        rows[truth.placed_on[n]]["carried"] += 1
+        got = result["parts"][local[n]]
+        got["carried"] = True
+        for wrong in rows[truth.placed_on[n]]["wrong"]:
+            if wrong.get("off") == got["off"] and wrong["part"] == truth.parts[n].part \
+                    and not wrong.get("carried"):
+                wrong["carried"] = True
+                break
     causes: collections.Counter = collections.Counter()
     for row in rows.values():
         said_steps = collections.defaultdict(list)
         for u in row.get("unclear", []):
             said_steps[int(u.get("step") or 0)].append(str(u.get("why", "other")))
         for wrong in row["wrong"]:
+            if wrong.get("carried"):
+                causes["carried"] += 1
+                continue
             whys = said_steps.get(wrong["step"]) or said_steps.get(0) or ["unsaid"]
             for why in whys:
                 causes[why] += 1 / len(whys)
-    totals = {k: sum(r[k] for r in rows.values()) for k in ("parts", *KINDS, "turned")}
+    totals = {k: sum(r[k] for r in rows.values())
+              for k in ("parts", *KINDS, "turned", "carried")}
     return {"pages": [rows[p] for p in sorted(rows)], "totals": totals,
             # Wrong parts by what the builder said of their step (a page's word without
             # a step for the rest; "unsaid" where it said nothing), shared among its whys.
@@ -565,6 +580,42 @@ def score(truth: Truth, build: list[Placed], first: int, last: int, bounds: Boun
             "extra": len(result["extra"]), "extra_parts": result["extra"][:200],
             "earlier_lost": result["earlier_lost"], "yaw": result["yaw"],
             "shift": result["shift"]}
+
+
+# Two parts moved by the same studs and plates, to this much.
+SAME_OFF = 0.3
+
+
+def _touch(a: tuple, b: tuple, gap: float = 1.0) -> bool:
+    return all(a[0][k] <= b[1][k] + gap and b[0][k] <= a[1][k] + gap for k in range(3))
+
+
+def carried(truth: Truth, judged: set[int], scope: list[int], parts: dict[int, dict],
+            local: dict[int, int], bounds: Bounds) -> set[int]:
+    """The judged parts put somewhere else only because what they stand on or beside was:
+    each moved by the same studs and plates as a part it touches that an earlier page put
+    on, or that is carried itself. A builder who read a layer one brick low lays the next
+    layer right on it, and that page was followed; its parts are wrong, its page is not."""
+    off = {n: parts[local[n]]["off"] for n in judged if parts[local[n]]["kind"] == "place"}
+    if not off:
+        return set()
+    boxes = {n: bounds.world(truth.parts[n]) for n in scope}
+    near = {n: [m for m in off if m != n and _touch(boxes[n], boxes[m])] for n in off}
+    out: set[int] = set()
+    for page in sorted({truth.placed_on[n] for n in off}):
+        here = [n for n in off if truth.placed_on[n] == page]
+        grew = True
+        while grew:
+            grew = False
+            for n in here:
+                if n in out:
+                    continue
+                if any((truth.placed_on[m] < page or m in out)
+                       and all(abs(a - b) <= SAME_OFF for a, b in zip(off[m], off[n]))
+                       for m in near[n]):
+                    out.add(n)
+                    grew = True
+    return out
 
 
 # -- make -----------------------------------------------------------------------------
@@ -829,18 +880,18 @@ def report(results: list[dict]) -> str:
         share = (lambda k: f"{100 * t[k] / t['parts']:.0f}%" if t["parts"] else "-")
         lines.append(f"{r['run']}: pages {r['first']}-{r['last']}, {t['parts']} parts: right "
                      f"{t['right']} ({share('right')}), near {t.get('near', 0)}, colour "
-                     f"{t['colour']}, place {t['place']}, "
+                     f"{t['colour']}, place {t['place']} ({t.get('carried', 0)} carried), "
                      f"part {t['part']}, missing {t['missing']}; extra {r['extra']}; earlier "
                      f"pages' parts lost {r['earlier_lost']}; {r['minutes']} min")
-        lines.append("| page | steps | parts | right | near | colour | place | part | missing | "
-                     "builder could not tell |")
+        lines.append("| page | steps | parts | right | near | colour | place (carried) | part | "
+                     "missing | builder could not tell |")
         lines.append("|---|---|---|---|---|---|---|---|---|---|")
         for row in r["pages"]:
             unclear = "; ".join(f"{u.get('why')}: {u.get('what', '')[:80]}"
                                 for u in row.get("unclear", []))
             lines.append(f"| {row['page']} | {','.join(map(str, row['steps']))} | "
                          f"{row['parts']} | {row['right']} | {row.get('near', 0)} | "
-                         f"{row['colour']} | {row['place']} | "
+                         f"{row['colour']} | {row['place']} ({row.get('carried', 0)}) | "
                          f"{row['part']} | {row['missing']} | {unclear} |")
         lines.append("")
     return "\n".join(lines)

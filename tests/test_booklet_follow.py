@@ -262,3 +262,38 @@ def test_a_second_vehicle_may_stand_anywhere_but_a_part_of_the_first_may_not():
                      for p in joined]
     got = bf.compare(MODEL + joined, build, BOUNDS)
     assert [kinds(got)[i] for i in (6, 7, 8)] == ["place"] * 3 and got["pieces"] == 1
+
+
+def test_a_layer_laid_on_a_wrong_one_is_carried_and_a_wrong_one_alone_is_not():
+    # Four bricks in a row (page 2), a brick on the first (page 3), and a plate on that
+    # brick and one on the last of the row (page 4).
+    at = {"1": (0, 0), "2": (80, 0), "3": (160, 0), "4": (240, 0), "5": (0, -24),
+          "6": (0, -32), "7": (240, -8)}
+    # The row's first brick blue, so the row has an end to tell it by.
+    bricks = {n: {"part": "3023" if n in ("6", "7") else "3001", "colour": 1 if n == "1" else 4,
+                  "ldraw": [x, y, 0, *ONE]} for n, (x, y) in at.items()}
+    t = bf.Truth({
+        "model": "m.ldr", "title": "M",
+        "pages": [{"number": 1, "kind": "cover", "steps": []},
+                  {"number": 2, "kind": "steps", "steps": [{"plan": 0, "number": 1}]},
+                  {"number": 3, "kind": "steps", "steps": [{"plan": 1, "number": 2}]},
+                  {"number": 4, "kind": "steps", "steps": [{"plan": 2, "number": 3}]}],
+        "plan": [{"index": 0, "number": 1, "callout": 0, "callout_step": 0, "attaches": False,
+                  "bricks": [1, 2, 3, 4]},
+                 {"index": 1, "number": 2, "callout": 0, "callout_step": 0, "attaches": False,
+                  "bricks": [5]},
+                 {"index": 2, "number": 3, "callout": 0, "callout_step": 0, "attaches": False,
+                  "bricks": [6, 7]}],
+        "bricks": bricks})
+    build = list(t.parts)
+    for n in (4, 5, 6):   # the brick on the first a stud along, and both plates too
+        build[n] = bf.Placed(build[n].part, build[n].colour, bf._add(build[n].at, [20, 0, 0]) +
+                             build[n].turn)
+    result = bf.score(t, moved(build, 90, [0, 0, 0]), 2, 4, BOUNDS)
+    rows = {r["page"]: r for r in result["pages"]}
+    assert (rows[3]["place"], rows[3]["carried"]) == (1, 0)
+    # The plate on the moved brick followed its page; the one on the row's end did not.
+    assert (rows[4]["place"], rows[4]["carried"]) == (2, 1)
+    assert [w.get("carried", False) for w in rows[4]["wrong"]].count(True) == 1
+    assert result["totals"]["carried"] == 1
+    assert result["said_causes"] == {"unsaid": 2.0, "carried": 1.0}
