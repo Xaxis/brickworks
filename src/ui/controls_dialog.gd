@@ -231,7 +231,8 @@ func _build() -> void:
 		_show_designer()
 		ai_changed.emit())
 	# What Test found, scrolled into sight: below the fold in a short window.
-	ai.tested.connect(func(said: Control) -> void: _ai_page.ensure_control_visible(said))
+	# Once laid out: just put in, it had no size, and stayed below the view.
+	ai.tested.connect(func(said: Control) -> void: LaidOut.into_view(_ai_page, said))
 	ai.design_wanted.connect(func() -> void:
 		visible = false
 		ai_design_wanted.emit())

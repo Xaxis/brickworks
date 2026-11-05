@@ -88,6 +88,11 @@ var _queued: Dictionary = {}       ## key -> true, so nothing queues twice
 ## fetched for one swatch is wanted for whichever is selected when it
 ## arrives, and the tiles in sight say which that is.
 var _awaiting: Dictionary = {}
+## Pictures asked for by [method request] whose part is on its way: part ->
+## their jobs, queued again when it comes. A tile in sight is looked at
+## again; these were lost, and a part read off the frame was never drawn
+## (colour_probe's 3811).
+var _held: Dictionary = {}
 ## Parts that could not be drawn -> when that was found, in msec.
 var _failed: Dictionary = {}
 ## The previews being drawn now, by key, so that a tile is not given to two
@@ -384,6 +389,11 @@ func _on_geometry_arrived(part_id: String) -> void:
 	# the one wanted when the fetch started, which may be several
 	# swatches ago.
 	_look = true
+	for job: Dictionary in _held.get(part_id, []):
+		if not _queued.has(job["key"]):
+			_queued[job["key"]] = true
+			_queue.append(job)
+	_held.erase(part_id)
 
 
 func _on_fetch_failed(part_id: String, _why: String) -> void:
@@ -408,6 +418,7 @@ func _group_part_came(part_id: String, came: bool) -> void:
 ## the next time the tiles in sight are looked through.
 func _fail(part_id: String) -> void:
 	_awaiting.erase(part_id)
+	_held.erase(part_id)
 	_failed[part_id] = Time.get_ticks_msec()
 	_look = true
 
@@ -441,15 +452,24 @@ func _render(job: Dictionary, stage: Stage) -> void:
 	if _groups.has(job["part"]):
 		_render_group(job, stage)
 		return
-	var part: Lbm.PartMesh = library.mesh_for(job["part"])
+	var part: Lbm.PartMesh = library.mesh_here(job["part"])
 	if part == null:
-		# On the web most parts are a request away rather than absent, and
+		# Read from disk off the frame where the build has it: read here, a
+		# search typed in the bin read 20 to 30 tiles' parts a frame, 100 to
+		# 150 ms of it (watched_frames_probe). And on the web most parts are
+		# a request away rather than absent, and
 		# giving up here left the bin showing a few hundred previews and
 		# twenty-eight thousand empty squares. Ask for the geometry and
 		# come back when it lands; the library caps how many are in the
 		# air at once, so a scroll does not open a connection per cell.
+		# Waiting before it is asked: one read where there is no frame to
+		# read it in is said at once.
+		_awaiting[job["part"]] = true
+		if not job.has("in_sight"):
+			if not _held.has(job["part"]):
+				_held[job["part"]] = []
+			(_held[job["part"]] as Array).append(job)
 		if library.request_mesh(job["part"]):
-			_awaiting[job["part"]] = true
 			_reorder = true
 		else:
 			_fail(job["part"])
@@ -551,11 +571,10 @@ func _render_group(job: Dictionary, stage: Stage) -> void:
 	var entry: Array = _groups[id]
 	var coming: bool = false
 	for part_id: String in entry[0]:
-		# From disk first, where the build has it (Assistant._ensure_parts).
-		if not library.is_resident(part_id):
-			library.mesh_for(part_id)
 		if library.is_resident(part_id):
 			continue
+		# Read from disk off the frame where the build has it, as one part's
+		# picture is (_render), else fetched.
 		if not library.request_mesh(part_id):
 			_fail(id)
 			return

@@ -540,7 +540,8 @@ func _apply(step: Dictionary) -> Dictionary:
 	if step.get("undo", "") == "unitstep":
 		var unit: String = str(step["unit"])
 		var held: int = int(world.unit_steps.get(unit, -1))
-		if int(step["step"]) < 0:
+		# -1 is none; AuthorSteps.IN_PARENT, a copy built in its parent's steps.
+		if int(step["step"]) == -1:
 			world.unit_steps.erase(unit)
 		else:
 			world.unit_steps[unit] = int(step["step"])
@@ -2202,6 +2203,11 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 	if framed != null and room_for(held_part, framed, false, true):
 		_ghost_transform = framed
 		_ghost_valid = true
+	var seated: Variant = _on_struck_studs(part, basis, hit, target, _ghost_transform) \
+		if onto == null else null
+	if seated != null:
+		_ghost_transform = seated
+		_ghost_valid = true
 	_show_ghost(part)
 
 
@@ -2911,6 +2917,11 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		# 60596 had no room, nor did any door swung open on its frame's hinge.
 		if _hinged_clear(mine, at, theirs, there):
 			continue
+		# So do a part and the one whose studs it is on, where both have
+		# exact shapes and the shapes are clear, as check_design clears them:
+		# a saddle on a horse's back had no room where every set has it.
+		if _studded_clear(mine, at, theirs, there):
+			continue
 		if turning.has(other):
 			var square: bool = BrickLattice.is_square_to_grid(at.basis) \
 				and BrickLattice.is_square_to_grid(there.basis)
@@ -2941,6 +2952,23 @@ func _hinged_clear(mine: String, at: Transform3D, theirs: String, there: Transfo
 	var a := Exact.Item.new(one, at)
 	var b := Exact.Item.new(other, there)
 	return not Exact.hinge_between(a, b).is_empty() and Exact.clash(a, b, true).is_empty()
+
+
+## Whether one of two parts is on the other's studs by BrickNet's labels (a
+## stud in a hole) and their exact shapes are clear of each other: a cover is
+## whole cells, and a saddle's and its horse's meet round the horse's back.
+func _studded_clear(mine: String, at: Transform3D, theirs: String, there: Transform3D) -> bool:
+	var one: Exact.Shape = Exact.shape_for(library, mine)
+	var other: Exact.Shape = Exact.shape_for(library, theirs)
+	if one == null or other == null or not one.has_pieces() or not other.has_pieces():
+		return false
+	var items: Array = [Exact.Item.new(one, at), Exact.Item.new(other, there)]
+	for edge: Array in Exact.connections(items):
+		var kinds: Array = [(items[edge[0]] as Exact.Item).shape.kind[edge[1]],
+			(items[edge[2]] as Exact.Item).shape.kind[edge[3]]]
+		if kinds.has(Exact.STUD) and kinds.has(Exact.HOLE):
+			return Exact.clash(items[0], items[1], true).is_empty()
+	return false
 
 
 ## The part [method room_for] last found in the way, by its shapes; 0 when
@@ -2990,17 +3018,21 @@ func _settle(
 	var snapped: Vector3 = snap_across_to(target, footprint)
 	# Unless what hangs past its plate makes its box another size: a clip
 	# plate's clip, a bracket's arm. Then its sockets say where the studs go.
-	var phase: Variant = _socket_phase(part, basis, footprint)
+	var takes: Array = _takes_studs(held_part, part)
+	var phase: Variant = _socket_phase(takes, basis, footprint)
 	if phase != null and snap_across >= BrickLattice.STUD - 0.01:
 		var on: Vector2 = phase
 		snapped = Vector3(
 			round((target.x - on.x) / BrickLattice.STUD) * BrickLattice.STUD + on.x, target.y,
 			round((target.z - on.y) / BrickLattice.STUD) * BrickLattice.STUD + on.y)
-	if snap_across >= BrickLattice.STUD - 0.01:
+	# Where it takes a stud is where it was drawn to, or labelled, its box and
+	# its studs on top what they may: a moulded horse's back stands 6 LDU off
+	# the grid its hooves are on.
+	if snap_across >= BrickLattice.STUD - 0.01 and not (phase != null and takes[1]):
 		snapped = _on_its_own_grid(part, basis, box, footprint, target, snapped, phase != null)
 	# On the studs of the part aimed at, where those stand off the grid.
 	if snap_across >= BrickLattice.STUD - 0.01 and hit.is_valid() and hit.normal.y > 0:
-		var seated: Variant = _on_studs_off_the_grid(part, basis, hit, target)
+		var seated: Variant = _on_studs_off_the_grid(part, basis, hit, target, takes[0])
 		if seated != null:
 			snapped = Vector3((seated as Vector3).x, snapped.y, (seated as Vector3).z)
 	# Against a side face, out from it until its near side meets the face, as
@@ -3141,10 +3173,12 @@ func _on_its_own_grid(part: Lbm.PartMesh, basis: Basis, box: AABB, footprint: Ve
 ## _in_frame_of] puts it in that part's frame) or the part in hand has no
 ## socket to sit by. 5762-1's tail fin (4286) stands on three jumpers'
 ## middle studs, and stood half a stud aside; the slope on top of it was
-## typed.
+## typed. [param sockets] are where the part takes a stud ([method
+## _takes_studs]): a frog stands on a jumper by the hole under it, a saddle
+## on a horse's back by its two.
 func _on_studs_off_the_grid(part: Lbm.PartMesh, basis: Basis, hit: BrickLattice.Hit,
-		target: Vector3) -> Variant:
-	if part.sockets.is_empty() or (basis * Vector3.UP).y < 0.99 or world == null:
+		target: Vector3, sockets: PackedVector2Array) -> Variant:
+	if sockets.is_empty() or (basis * Vector3.UP).y < 0.99 or world == null:
 		return null
 	var struck: BrickWorld.Brick = world.get_brick(hit.brick_id)
 	if struck == null or scenery.has(hit.brick_id) \
@@ -3173,7 +3207,7 @@ func _on_studs_off_the_grid(part: Lbm.PartMesh, basis: Basis, hit: BrickLattice.
 	var middle: Vector3 = basis * part.bounds.get_center()
 	var chosen: Variant = null
 	var closest: float = INF
-	for socket: Vector2 in part.sockets:
+	for socket: Vector2 in sockets:
 		var under: Vector3 = basis * Vector3(socket.x, 0.0, socket.y)
 		var place := Vector3((stud as Vector3).x - under.x, 0.0, (stud as Vector3).z - under.z)
 		var off: float = Vector2(place.x + middle.x - target.x, place.z + middle.z - target.z).length()
@@ -3181,6 +3215,81 @@ func _on_studs_off_the_grid(part: Lbm.PartMesh, basis: Basis, hit: BrickLattice.
 			closest = off
 			chosen = place
 	return chosen
+
+
+## The part in hand on the studs of the part [param hit] struck the top of,
+## where the ghost [param at] has none of the places it takes a stud on them:
+## each of those places ([method _takes_studs], where it is sure of them) on
+## one of that part's studs, at their foot, as near [param target] as has
+## room ([method room_for], which the two parts' shapes decide), and never
+## higher than the ghost, which hangs a part under that one or holds it below
+## the ground (8643-1's bracket under its plate) where it means to. A
+## horse stood on a plate has the studs on its back off the grid, its hooves
+## being off theirs (4493's by 5 LDU, 10509p02's by 6), and off the lattice
+## too where the set has it, and a saddle aimed at them went 6 LDU aside or
+## 34 LDU up, on the cover of the horse's neck. Null where the ghost is on
+## them already or there is no such place.
+func _on_struck_studs(part: Lbm.PartMesh, basis: Basis, hit: BrickLattice.Hit,
+		target: Vector3, at: Transform3D) -> Variant:
+	if not hit.is_valid() or hit.normal.y <= 0 or (basis * Vector3.UP).y < 0.99 \
+			or world == null or scenery.has(hit.brick_id):
+		return null
+	var takes: Array = _takes_studs(held_part, part)
+	var struck: BrickWorld.Brick = world.get_brick(hit.brick_id)
+	var mesh: Lbm.PartMesh = library.mesh_for(struck.part_id) if struck != null else null
+	if not takes[1] or (takes[0] as PackedVector2Array).is_empty() or mesh == null:
+		return null
+	var box: AABB = _rotated_bounds(part, basis)
+	var reach: float = Vector2(box.size.x, box.size.z).length() * 0.5 + BrickLattice.STUD * 2.0
+	var studs := PackedVector3Array()
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "stud" or (struck.transform.basis * connector.axis).y < 0.99:
+			continue
+		var stud: Vector3 = struck.transform * connector.position
+		if Vector2(stud.x - target.x, stud.z - target.z).length() <= reach:
+			studs.append(stud)
+	var turned := PackedVector2Array()
+	for socket: Vector2 in takes[0]:
+		var v: Vector3 = basis * Vector3(socket.x, 0.0, socket.y)
+		turned.append(Vector2(v.x, v.z))
+	var height: float = takes[2]
+	var here := Vector2(at.origin.x, at.origin.z)
+	for socket: Vector2 in turned:
+		if _stud_at(studs, here + socket, at.origin.y + height) != null:
+			return null
+	# Each place its middle within a stud and a half of the pointer: socket k
+	# on a stud near where the pointer puts it.
+	var middle: Vector3 = basis * part.bounds.get_center()
+	var aimed: Vector2 = Vector2(target.x - middle.x, target.z - middle.z)
+	var places: Array = []
+	for stud: Vector3 in studs:
+		if stud.y - height > at.origin.y + 0.5:
+			continue
+		for k: int in turned.size():
+			var origin: Vector2 = Vector2(stud.x, stud.z) - turned[k]
+			if origin.distance_to(aimed) > BrickLattice.STUD * 1.5:
+				continue
+			var all_on: bool = true
+			for socket: Vector2 in turned:
+				all_on = all_on and _stud_at(studs, origin + socket, stud.y) != null
+			if all_on:
+				places.append([origin.distance_to(aimed),
+					Vector3(origin.x, stud.y - height, origin.y)])
+	places.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+	for place: Array in places.slice(0, 4):
+		var seat := Transform3D(basis, place[1])
+		if room_for(held_part, seat, false, true):
+			return seat
+	return null
+
+
+## The stud of [param studs] at [param across] (x, z), its foot at [param
+## foot], to half an LDU; null for none.
+static func _stud_at(studs: PackedVector3Array, across: Vector2, foot: float) -> Variant:
+	for stud: Vector3 in studs:
+		if Vector2(stud.x, stud.z).distance_to(across) <= 0.5 and absf(stud.y - foot) <= 0.5:
+			return stud
+	return null
 
 
 ## [param snapped] pushed out of the side face [param hit] struck, by whole
@@ -3294,20 +3403,57 @@ func _seated_by_sockets(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
 	return false
 
 
+## Where [param part] ([param part_id]) takes a stud from underneath, in its
+## own LDU across and along, whether that is sure, and how high, where the
+## foot of a stud in it stands: [sockets, sure, height]. Its
+## sockets, sure where they are the receivers it draws. Otherwise the
+## catalogue laid them as stud squares from its foot's edge, and an edge off
+## its own stud grid puts them off: an owl's (40232) 3 LDU from the tube it
+## draws (Lbm.receivers_of), a crouching cat's (6251) 11 from the hole under
+## its feet, a saddle's (4491a) 6 from the holes over a horse's studs, and the
+## ghost stood that far from where their sets have them; or it laid none, a
+## wolf's (48812) foot being no stud square, and the ghost went by its box.
+## So the receivers it draws, or the holes its exact shape has lowest
+## (Exact's "hole", where a stud goes in), which the seat puts it by; a
+## tube's label is not one, being where a stud goes inside a tube.
+func _takes_studs(part_id: String, part: Lbm.PartMesh) -> Array:
+	if part.sockets_drawn:
+		return [part.sockets, true, part.bounds.position.y]
+	var drawn: PackedVector2Array = Lbm.receivers_of(part)
+	if not drawn.is_empty():
+		return [drawn, true, part.bounds.position.y]
+	var shape: Exact.Shape = Exact.shape_for(library, part_id)
+	var holes := PackedVector2Array()
+	var lowest: float = INF
+	for k: int in shape.connector_count() if shape != null else 0:
+		var frame: Transform3D = shape.frames[k]
+		if shape.kind[k] != Exact.HOLE or shape.sub[k] != Exact.S_HOLE \
+				or (-frame.basis.y).y < 0.99 or frame.origin.y > lowest + 1.0:
+			continue
+		if frame.origin.y < lowest - 1.0:
+			holes.clear()
+		lowest = minf(lowest, frame.origin.y)
+		holes.append(Vector2(frame.origin.x, frame.origin.z))
+	return [holes, true, lowest] if not holes.is_empty() \
+		else [part.sockets, false, part.bounds.position.y]
+
+
 ## Where on the stud grid a part goes across, by its sockets, when its box
 ## puts it elsewhere: [x, z] of its origin modulo a stud, or null where the
 ## box and a socket agree (every plain part) or it has none. Studs stand at
 ## odd multiples of half a stud (BrickLattice.snap_to_studs), so a socket
 ## must too. Upright or upside down only: a part on its side has its
-## sockets on a side.
-func _socket_phase(part: Lbm.PartMesh, basis: Basis, footprint: Vector2i) -> Variant:
-	if part.sockets.is_empty() or absf((basis * Vector3.UP).y) < 0.99:
+## sockets on a side. [param takes] is where the part takes a stud
+## ([method _takes_studs]).
+func _socket_phase(takes: Array, basis: Basis, footprint: Vector2i) -> Variant:
+	var sockets: PackedVector2Array = takes[0]
+	if sockets.is_empty() or absf((basis * Vector3.UP).y) < 0.99:
 		return null
 	var half: float = BrickLattice.STUD * 0.5
 	var by_box := Vector2(half if footprint.x % 2 == 1 else 0.0,
 		half if footprint.y % 2 == 1 else 0.0)
 	var counts: Dictionary = {}
-	for socket: Vector2 in part.sockets:
+	for socket: Vector2 in sockets:
 		var at: Vector3 = basis * Vector3(socket.x, 0.0, socket.y)
 		var phase := Vector2(fposmod(half - at.x, BrickLattice.STUD),
 			fposmod(half - at.z, BrickLattice.STUD))
@@ -3316,8 +3462,9 @@ func _socket_phase(part: Lbm.PartMesh, basis: Basis, footprint: Vector2i) -> Var
 			return null
 		# Only a socket on the half-stud grid of the origin says where the
 		# studs go: a wedge plate's (51739) are not, and taken at their word
-		# put it 2 LDU off the studs.
-		if not _on_half_stud(phase.x) or not _on_half_stud(phase.y):
+		# put it 2 LDU off the studs. Or one where the part is drawn or
+		# labelled to take one, wherever that is: a moulded horse's hooves.
+		if not takes[1] and (not _on_half_stud(phase.x) or not _on_half_stud(phase.y)):
 			continue
 		counts[phase] = int(counts.get(phase, 0)) + 1
 	var best: Variant = null

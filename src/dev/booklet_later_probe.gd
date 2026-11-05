@@ -175,7 +175,16 @@ func _run() -> void:
 	# The person's acts.
 	await _key(KEY_B)
 	_act("the timeline (B)")
-	await _frames(10)
+	# Until its steps are worked out, as a person waits for the bar: since
+	# bookletwarm that takes more frames than ten, and the bar is not up yet.
+	var since: int = Time.get_ticks_msec()
+	await _frames(1)
+	while (_steps.is_starting() or not _steps.is_playing_back()) and Time.get_ticks_msec() - since < 120000:
+		await _frames(1)
+	_check("the timeline is up", _steps.is_playing_back())
+	if not _steps.is_playing_back():
+		_end()
+		return
 	var shown: Instructions.Step = _steps.booklet_step()
 	if shown == null or shown.number != 1:
 		await _click((_steps.controls_by_name()["steps_start"] as Control).get_global_rect().get_center())

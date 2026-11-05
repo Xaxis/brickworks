@@ -329,7 +329,9 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	# the sub-model that places it (_restep).
 	var restepped: Dictionary = {}      ## section key -> true
 	for unit: String in unit_steps_now:
-		if not unit_steps.has(unit):
+		# A copy built in its parent's steps is written in that one's
+		# (LdrModel.IN_META), which only the whole file can say.
+		if not unit_steps.has(unit) or int(unit_steps_now[unit]) == AuthorSteps.IN_PARENT:
 			return null
 		if int(unit_steps[unit]) != int(unit_steps_now[unit]):
 			if not unit_lines.has(unit):

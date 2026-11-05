@@ -3667,24 +3667,47 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 ## Shown as they will be kept, an edit changes only what it moves. A model
 ## of no sub-models keeps any order, and is shown it as worked out.
 ##
-## But a sub-model in the model's steps is built whole, and the order worked
-## out may build one round what holds it: the castle's north-east tower went
-## up whole where its first plate went in, a column of its bricks before
-## the front curtain wall's bricks under it, and 31 parts were put down in
-## the air (suitesteps). A person following the booklet is never
-## asked to, so where the steps that can be kept build worse than the order
-## worked out, by the steps test's rules ([param read], the mend's), the
-## order worked out is shown.
+## But a sub-model built whole may be built round what holds it: the
+## castle's north-east tower went up whole where its first plate went in, a
+## column of its bricks before the front curtain wall's bricks under it, and
+## 31 parts were put down in the air (suitesteps). A person following the
+## booklet is never asked to, so where those steps build worse than the
+## order worked out, by the steps test's rules ([param read], the mend's),
+## the steps kept are that order itself: every sub-model not built on the
+## side built in the steps of the one that places it (AuthorSteps.IN_PARENT).
+## Shown the order worked out, the castle's first edit gave it the steps of
+## sub-models built whole, and every step but its first 44 was numbered
+## anew (stepskeep).
 static func _kept(world: BrickWorld, library: PartLibrary, skip: Dictionary,
 		steps: Array[Step], read: Dictionary = {}) -> Array[Step]:
 	if steps.is_empty() or not _of_sub_models(world, skip):
 		return steps
-	var kept: Array[Step] = _authored_plan(world, library, skip,
-		AuthorSteps.adopted(world, steps, skip))
-	if not _builds_as_well(kept, read, library, Later.script(&"HeldSteps")):
-		return steps
+	var kept: Array[Step] = _kept_of(world, library, skip, steps, read)[1]
 	_carry(steps, kept)
 	return kept
+
+
+## The numbers the plan shows [param steps], worked out, in (AuthorSteps.
+## numbers_from_plan), as [method _kept] chooses them: those of sub-models
+## built whole where they build as well, else the order's own.
+static func kept_numbers(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		steps: Array[Step], read: Dictionary = {}) -> Dictionary:
+	if steps.is_empty() or not _of_sub_models(world, skip):
+		return AuthorSteps.adopted(world, steps, skip)
+	return _kept_of(world, library, skip, steps, read)[0]
+
+
+## [the numbers [param steps] are kept in, the plan they give]: sub-models
+## built whole where that builds as well, else every one not built on the
+## side in its parent's steps.
+static func _kept_of(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		steps: Array[Step], read: Dictionary) -> Array:
+	var numbers: Dictionary = AuthorSteps.adopted(world, steps, skip)
+	var kept: Array[Step] = _authored_plan(world, library, skip, numbers)
+	if _builds_as_well(kept, read, library, Later.script(&"HeldSteps")):
+		return [numbers, kept]
+	numbers = AuthorSteps.adopted(world, steps, skip, true)
+	return [numbers, _authored_plan(world, library, skip, numbers)]
 
 
 ## [method _kept] a slice at a time with a [param job], for [method
@@ -3706,7 +3729,12 @@ static func _kept_paced(world: BrickWorld, library: PartLibrary, skip: Dictionar
 	if job.cancelled:
 		return []
 	if not bool(well):
-		return steps
+		kept = await _authored_plan_paced(world, library, skip, job,
+			AuthorSteps.adopted(world, steps, skip, true))
+		if job.cancelled:
+			return []
+		if kept.is_empty():
+			return steps
 	_carry(steps, kept)
 	return kept
 
@@ -4087,7 +4115,10 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 			unstepped.append(own)
 			continue
 		stepped.append(node)
-		path_of[node.id] = paths[index] if read else Assemblies.path_of(brick)
+		# The section its step is one of: a copy built in its parent's
+		# steps is built in that one's (AuthorSteps.IN_PARENT).
+		path_of[node.id] = AuthorSteps.home(world,
+			paths[index] if read else Assemblies.path_of(brick), units)
 		step_of[node.id] = step
 
 	# The sub-assemblies built on the side: whole, every part of one stepped.
@@ -4113,7 +4144,8 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 	for made: Assembly in callouts:
 		var path: String = _path_of_key(made.key)
 		var at: int = maxi(AuthorSteps.unit_step(world, path, lowest, units), 0)
-		(entry_for.call(Assemblies.parent_of(path), at)["callouts"] as Array).append(made)
+		(entry_for.call(AuthorSteps.home(world, Assemblies.parent_of(path), units), at)["callouts"]
+			as Array).append(made)
 	var ordered: Array = entries.values()
 	ordered.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return AuthorSteps.before(a["key"], b["key"]))
@@ -4213,7 +4245,7 @@ static func _authored_callout(copies: Array, number: int, box: int, world: Brick
 	# Each copy's parts by their step within it, in order.
 	var plans: Array = []
 	for made: Assembly in copies:
-		var depth: int = Assemblies.segments(_path_of_key(made.key)).size()
+		var depth: int = AuthorSteps.levels(world, _path_of_key(made.key), units)
 		var by_key: Dictionary = {}
 		var keys: Array = []
 		for member: Node2 in made.members:

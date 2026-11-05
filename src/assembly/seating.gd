@@ -68,8 +68,19 @@ static func shift_for(mesh: Lbm.PartMesh, part_id: String, at: Transform3D,
 
 
 ## How far a part's upward studs stand from the middles of the grid's, in
-## LDU, the worst of them; its tubes where it has no studs.
+## LDU, the worst of them; its tubes where it has no studs. Its sockets where
+## they are the receivers it draws, which it stands on the studs by: a
+## moulded horse's back is 6 LDU off the grid its hooves are on, and was
+## offered a move off the studs it stood on.
 static func off_the_studs(mesh: Lbm.PartMesh, at: Transform3D) -> float:
+	if mesh.sockets_drawn:
+		var worst: float = 0.0
+		for socket: Vector2 in mesh.sockets:
+			var where: Vector3 = at * Vector3(socket.x, 0.0, socket.y)
+			for v: float in [where.x - 10.0, where.z - 10.0]:
+				var r: float = fposmod(v, 20.0)
+				worst = maxf(worst, minf(r, 20.0 - r))
+		return worst
 	for kind: String in ["stud", "tube"]:
 		var worst: float = -1.0
 		for connector: Lbm.Connector in mesh.connectors:

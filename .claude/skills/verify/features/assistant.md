@@ -172,7 +172,10 @@ fixing what it got wrong.
   any id), temperature and reasoning effort where the model takes them
   (`ProviderSettings.takes_temperature`/`takes_effort`), max output, Test
   (`src/ai/model_test.gd`: one tool call and one picture of a colour to
-  name, "tools ✓, pictures ✗: …", kept per model) and Design with it. The
+  name, "tools ✓, pictures ✗: …", kept per model; what it found scrolled
+  into view once laid out, `LaidOut.into_view`: at once, it was left below
+  the view in a short window every time, `ai_test_view_probe`) and Design
+  with it. The
   chat panel then sends the brief to `Main.design_with_provider` and follows
   `DesignerLoop` as it follows Claude Code (`ChatPanel.design_elsewhere`).
   The key is kept by `KeyStore` (below); where none answers, and in probes
@@ -375,7 +378,14 @@ fixing what it got wrong.
   brief's first words, the design's name or its description headed by a place, a
   building or a vehicle, as "Scorpion Pyramid" is a pyramid, or a place named before
   any person or creature), though it is still told of joints. Recipe under How to
-  check it, "Characters laid on joints".
+  check it, "Characters laid on joints". Nor a design with a creature moulded
+  whole (`_moulded_creature`: a part the catalogue files under Animal, not a
+  piece of one by its name before "with" — a head, a tail, a wing, a body, a
+  barding, a saddle — unless "(Complete)", nor a "~" part): it is neither sent
+  back nor told of joints, in the check or the review (`_on_joints_said`,
+  `_stiff_limbs_said`), its pose being moulded. design16's Gandalf sessions were
+  sent back for 9469's own horse. `moulded_animal_probe` builds the horse's
+  cart, and still sends a horse of stacked bricks back once.
 - `placing a part by its connectors`: `src/assembly/attach.gd` (`Attach`), read by
   `Assistant._attach_parts`. A brick of submit_design, check_design or edit_model
   may say `"attach": {"to": "torso.hinge[0]", "by": "hinge[0]", "yaw": 240}`

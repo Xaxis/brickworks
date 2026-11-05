@@ -640,7 +640,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   screen, and a panel the whole screen; on a tablet both in the middle. Above
   the on-screen keyboard while one is up (the visual viewport's lost height,
   `window.brickworksKeyboardNow`, read while a field in a dialog has the
-  focus), the field scrolled into sight. A dialog wider than the screen is
+  focus), the field scrolled into sight once the dialog is laid out in the
+  room above the keyboard (`TouchSizing._show_focus`, `LaidOut.into_view`):
+  scrolled at once, it was measured against the room before the keyboard,
+  and Settings, AI's Model field was left under the keyboard 8 times in 8
+  (`keyboard_field_probe`, 390x844, Model and Max output 24 times). A dialog wider than the screen is
   made narrower (`TouchSizing._narrower`): a line too long wraps, and a row of
   buttons too long flows onto a second line inside its own row. And again
   whenever what it holds grows wider than it was laid out while it is open
@@ -2211,6 +2215,27 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   upright part of the CAD task's three sets against where its file has it
   across the grid: 97 of 140 by the sockets' rule, 87 by the box alone,
   worse for none.
+- `seated where it takes studs` (`Builder._takes_studs`,
+  `Builder._on_struck_studs`, `Builder._studded_clear`, 2026-11-05): a part
+  goes on studs by where it takes them, the receivers it draws
+  (`Lbm.receivers_of`) or else the holes its exact shape has lowest
+  (BrickNet's "hole"), not by the stud squares the catalogue guessed from its
+  foot's edge, which put a crouching cat (6251) 11 LDU and a saddle (4491a) 6
+  from where their sets have them, and laid none under a wolf (48812). Aimed
+  at the top of a part, a ghost with none of those places on that part's
+  studs goes onto them, wherever they stand, nearest the pointer and never
+  higher than it was: a horse on a plate has its back's studs off the grid
+  (4493's hooves are 5 LDU off their grid, 10509p02's 6), and a saddle went
+  aside or 34 LDU up; a frog on a dish's one stud went 14 aside. A part on
+  another's studs by BrickNet's labels has room where their exact shapes are
+  clear (`room_for`, as check_design clears them): a saddle on a horse's back
+  had none where every set has it. `moulded_in_sets_probe -- all` by hand,
+  upright animals that take a stud from underneath put where their sets have
+  them: 59 of 63 (7 before); the four left are the scorpion (30169), whose
+  one receiver is a tube, and 10176-1's wolf, 4 LDU off its studs in the
+  file (the probe's `ACROSS`). `handbuild_probe -- only=build_from_a_booklet`
+  99 of 140 across the grid, worse for none; `placing_probe` keeps 8643-1's
+  bracket under its plate and 5762-1's clip plates on theirs.
 - `rests by its own shape` (`Builder._sinks_by`, 2026-10-17): a part
   dropped onto what is under it rests where each box of its cover meets what
   is under that box's own columns (`BrickLattice.rise_onto`, as a copy in

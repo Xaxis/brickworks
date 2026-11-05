@@ -720,9 +720,39 @@ func has_unsaved_work() -> bool:
 		# The picture to build over too (ReferenceImage): changed alone, it is
 		# not what was saved.
 		var text: String = FileAccess.get_file_as_string(kept)
-		if _brick_lines(text) == now and ReferenceImage.same(ReferenceImage.read(text), reference):
+		if not ReferenceImage.same(ReferenceImage.read(text), reference):
+			continue
+		if _brick_lines(text) == now:
+			return false
+		# A save written in the steps a person sees puts a copy's parts in
+		# the section that places them (AuthorSteps.IN_PARENT), and its
+		# lines are not the copy's own: the observatory saved over MCP said
+		# at once that it had changes that were not saved (mcp_walk3). The
+		# same parts in the same copies are the same model.
+		if text.contains(LdrModel.IN_META) and _placed_lines(text) == _placed_lines(to_text(UNTITLED)):
 			return false
 	return true
+
+
+## The parts [param text] places, each with its colour, its sub-model copy
+## and where it stands in the model, whichever section of the file has it.
+func _placed_lines(text: String) -> PackedStringArray:
+	var lines := PackedStringArray()
+	var model: LdrModel = LdrModel.parse(text, "saved")
+	if model == null or library == null:
+		return lines
+	for placement: LdrModel.Placement in model.flatten(library.parts):
+		var t: Transform3D = placement.transform
+		var numbers := PackedStringArray()
+		for v: Vector3 in [t.origin / 100.0, t.basis.x, t.basis.y, t.basis.z]:
+			# Composed in another order, the same place differs in its last
+			# digits; + 0.0 makes -0 read as 0.
+			for n: float in [v.x, v.y, v.z]:
+				numbers.append("%.4f" % (snappedf(n, 0.0001) + 0.0))
+		lines.append("%s %d %s %s" % [placement.part_id, placement.color_code,
+			Assemblies.path_from(placement.group, placement.unit), " ".join(numbers)])
+	lines.sort()
+	return lines
 
 
 static func _brick_lines(text: String) -> PackedStringArray:
@@ -2547,7 +2577,8 @@ func to_text_paced(title: String, job: Working.Job) -> String:
 	job.say("Writing %s parts…" % Working.comma(world.brick_count() - scenery.size()))
 	job.count(0, 0)
 	await job.next()
-	return to_text(title, true, AuthorSteps.numbers_of(world, steps, scenery))
+	return to_text(title, true, AuthorSteps.numbers_of(world, steps, scenery,
+		AuthorSteps.in_place_plan(world, steps)))
 
 
 ## A model this big has its build order worked out a slice at a time when

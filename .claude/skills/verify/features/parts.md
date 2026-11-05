@@ -299,6 +299,27 @@ geometry in front of them.
   are kept in the file", `ModelStore.not_coming`); they stay awaited, so Save
   writes them where the file had them, the app's own files too, and one that
   arrives later is put down.
+- `reading off the frame` (`PartLibrary._read_soon`, `read_ahead`,
+  `mesh_here`; `Lbm.parse` without its meshes, `Lbm.make_meshes`;
+  `Exact.keep_shape`): a part's geometry and exact shape are read from their
+  bytes in GDScript, 1 to 50 ms a part, so what is wanted ahead of the frame
+  that shows it is read off that frame: on a worker where there are threads,
+  `READ_AT_ONCE` a task, or in frames under `READ_BUDGET_MS` where there are
+  none (`read_on_a_worker`); the meshes made and everything kept on the main
+  thread, and said as a fetch is (`fetched`, `exact_fetched`). Through it: a
+  tile's picture (`PartThumbnails._render` asks `request_mesh`, which reads a
+  part on disk there and fetches one that is not), a fetch's answer
+  (`_on_fetched`, `_on_fetched_exact`: still on its way until read), and the
+  part under the pointer or the keys in the bin (`PartsBin._part_button`'s
+  `read_ahead`: its geometry and its exact shape, which its first aim reads
+  for its hinges on the click's frame). What wants one now still reads it
+  there (`mesh_for`, `Exact.shape_for`). The shared model's viewer asks for
+  every part's shape only where they are fetched (`Main._ask_shapes`):
+  elsewhere the grab reads them on a worker. `watched_frames_probe` (in a
+  window, about 3 min): the bin's search for three Technic parts, each taken
+  by its tile and aimed, 8808-1 in the viewer, and its shapes landing as
+  fetches answer four a frame, on a worker and paced, each frame against the
+  same act warm.
 - `availability`: which colours each part was really moulded in, and the years it
   appeared in a set. Joined from Rebrickable's tables by `tools/rebrickable.py`
   at catalogue-build time; read by `PartInfo.colors` / `colors_recent` /

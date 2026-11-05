@@ -4481,7 +4481,7 @@
       "kind": "cli",
       "label": "steps_kept probe",
       "entry": "src/dev/steps_kept_probe.gd",
-      "reach": "tools/probe.sh steps_kept_probe   (headless: the lighthouse and 7140-1 with no steps of their own listed over MCP, then a look set, a part moved by edit_steps and Shift-], a recolour, each undone, and a save opened again: every part not moved in the step it was listed in, and every section mark kept, each in the file; none on 7140-1 as stepped or a wall; STEPS_KEPT_ONLY=7140 for one)",
+      "reach": "tools/probe.sh steps_kept_probe   (headless: the lighthouse and 7140-1 with no steps of their own listed over MCP, then a look set, a part moved by edit_steps and Shift-], a recolour, each undone, and a save opened again: every part not moved in the step it was listed in, and every section mark kept, each in the file; none on 7140-1 as stepped or a wall; the castle, its sub-models built in the model's steps, through one edit each way, the steps test, another LDraw reader and a reopen; STEPS_KEPT_ONLY=castle for one)",
       "area": "view"
     },
     {
