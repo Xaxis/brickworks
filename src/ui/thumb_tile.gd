@@ -15,6 +15,12 @@
 ## and no script. Only the fade processes, for a fifth of a second after a
 ## picture lands, and only on the tile it landed on.
 ##
+## A sketch of the part stands in for its picture where a grid gives one
+## (PartSketch). It is drawn once, on a canvas item of its own under the
+## tile's, and the fade only turns its opacity down: drawn with the tile, it
+## was drawn again on every frame of the fade, a baseplate's 110-213 ms each
+## time, seconds for a page of them (sketchfast, 2026-11-05).
+##
 ## And only a tile in sight shimmers ([member in_sight]). A shader reading
 ## TIME has the whole window drawn again every frame it is on the window,
 ## and Godot culls a tile clipped out of a scrolled grid only once it is
@@ -54,6 +60,12 @@ var texture: Texture2D
 var _was: Texture2D
 ## How far the picture has faded in, 0 to 1.
 var _shown: float = 1.0
+## The sketch's own canvas item, drawn behind the tile's and under its
+## material (the shimmer); what it was drawn for, [part, colour, square];
+## and what its studs are stood with, kept while it is drawn so.
+var _sketch_item: RID
+var _sketched: Array = []
+var _sketch_studs: MultiMesh
 
 ## Whether the tile can be seen, which a grid's [ThumbTile.Sight] says;
 ## a tile outside a grid is taken to be. Waiting out of sight it is the
@@ -156,7 +168,15 @@ func _square() -> Rect2:
 	return Rect2((size - Vector2(side, side)) * 0.5, Vector2(side, side))
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and _sketch_item.is_valid():
+		RenderingServer.free_rid(_sketch_item)
+
+
 func _draw() -> void:
+	# Shown again below by the placeholder, when it is the sketch.
+	if _sketch_item.is_valid():
+		RenderingServer.canvas_item_set_visible(_sketch_item, false)
 	match state:
 		State.LOADING:
 			# Another colour's picture, kept till this one's is drawn.
@@ -187,7 +207,7 @@ func _draw() -> void:
 func _draw_placeholder(strength: float) -> void:
 	var square: Rect2 = _square()
 	if sketch != null and caption.is_empty():
-		PartSketch.draw(self, square, sketch, sketch_colour, strength)
+		_show_sketch(square, strength)
 		return
 	var block: Rect2 = square.grow(-square.size.x * 0.12)
 	if not caption.is_empty():
@@ -201,6 +221,24 @@ func _draw_placeholder(strength: float) -> void:
 	if not caption.is_empty():
 		draw_string(get_theme_default_font(), Vector2(0.0, block.end.y + 11.0), caption,
 			HORIZONTAL_ALIGNMENT_CENTER, size.x, 9, Color(1, 1, 1, 0.4 * strength))
+
+
+## The sketch in [param square], [param strength] of the way in: drawn
+## when the part, its colour or the square is not the one it was drawn for,
+## and otherwise only faded.
+func _show_sketch(square: Rect2, strength: float) -> void:
+	if not _sketch_item.is_valid():
+		_sketch_item = RenderingServer.canvas_item_create()
+		RenderingServer.canvas_item_set_parent(_sketch_item, get_canvas_item())
+		RenderingServer.canvas_item_set_draw_behind_parent(_sketch_item, true)
+		RenderingServer.canvas_item_set_use_parent_material(_sketch_item, true)
+	var wanted: Array = [sketch, sketch_colour, square]
+	if wanted != _sketched:
+		RenderingServer.canvas_item_clear(_sketch_item)
+		_sketch_studs = PartSketch.draw(_sketch_item, square, sketch, sketch_colour)
+		_sketched = wanted
+	RenderingServer.canvas_item_set_modulate(_sketch_item, Color(1, 1, 1, strength))
+	RenderingServer.canvas_item_set_visible(_sketch_item, strength > 0.0)
 
 
 ## A brick in outline with a stroke through it, and "no preview" under it

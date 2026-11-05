@@ -245,7 +245,15 @@ geometry in front of them.
   says of it (`PartSketch`, the bin's tiles: its footprint, height, studs,
   a slope's fall, a round part round, a beam's holes, in the colour in hand
   as a ghost; on the web the tiles were grey squares eight seconds in,
-  appux371 A4), its name under it; the picture fades in over it (0.2 s); a part that cannot be drawn
+  appux371 A4), its name under it; the picture fades in over it (0.2 s). The
+  sketch is drawn once, on a canvas item of the tile's own behind its drawing
+  and under its material (`ThumbTile._show_sketch`), and the fade only turns
+  that item's opacity down; one stud is a mesh stood on every place of the top
+  by a `MultiMesh`, its edges made as `canvas_item_add_polyline` makes an
+  antialiased line (`PartSketch._line`). Each stud a cylinder in script, drawn
+  again on every frame of the fade, a baseplate took 110-213 ms and the page
+  "32" lists first over a second, then seconds more (sketchfast); now 0.1 ms a
+  sketch and 0.4 a baseplate (`bin_sketch_probe`). A part that cannot be drawn
   (no geometry, a failed fetch) shows a brick outline and "no preview", and is
   tried again after 30 s if it comes back into sight. The bin tells
   `PartThumbnails.watch` which tiles are in sight (`ThumbTile.Sight`: the rows on
@@ -586,6 +594,15 @@ it is covered by `colour_probe` (windowed, in the suite): the short palette has
 today's colours and not retired ones, every one of the 320 can be pressed and
 held, the eyedropper on a retired colour shows it chosen, and the held part's
 colours carry the dot. It leaves `shots/palette.png` — look at it.
+
+The sketches' cost is `bin_sketch_probe` (windowed, about 2 min; headless it
+stands in for the web's script, every tile staying its sketch): "32" typed,
+whose first page is baseplates, then "3", "6", "brick" and "32" again, each
+frame timed with the sketches' share of it (`PartSketch.spent_usec`), none past
+the grab's 24 ms, none drawn again as the pictures land and fade in, and each
+search said in its parts. `--shots=DIR` keeps `sketches.png`, every kind of
+sketch at the bin's size, larger and halfway faded: put it beside another
+run's to see the look kept.
 
 The previews are covered by `placeholder_probe` (windowed, in the suite, also
 the minifigure builder's grid and slots):
