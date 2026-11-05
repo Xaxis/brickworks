@@ -5245,13 +5245,14 @@ func _build_ui() -> void:
 		# Where the columns take turns, opening the properties folds the
 		# bin: a part put down and typed to its place, and the next one,
 		# cost a rail click each way. So what a part just put down needs is
-		# under the bin too, and the model keeps its share.
+		# under the bin too wherever the properties down the right are out
+		# of sight (_fit_bin), and the model keeps its share.
 		_bin_props = Inspector.new()
 		_bin_props.shell = _shell
 		_bin_props.compact = true
-		_bin_props.wanted = _columns == "turns"
 		_stack.add_section(_bin_props)
 		_stack.keep_whole(_bin_props)
+		_fit_bin()
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
@@ -6688,14 +6689,24 @@ func _art_laid(art: RefCounted) -> void:
 ## Width below which the two panels cannot both sit beside the model.
 ## Their design widths plus something worth looking at between them.
 const ROOMY := 1040.0
-## The share of the window's width the model keeps beside the columns
+## The share of the window's width the model keeps beside one column where
+## the columns take turns, one beside the model at a time
 ## (tools/web/fit_check.mjs asks it of a laptop's window: at 1100 x 700 the
-## panels once left no room to build). Both columns show where both fit
-## round it, which is a window about twice as wide as it is tall; else they
-## take turns, one beside the model at a time. Held to a width of 480 units
-## instead, a laptop showed both, and the model had 41% of a 1400 x 900
-## window.
+## panels once left no room to build).
 const MODEL_SHARE := 0.6
+## Both columns, the bin and the right-hand one, show at once where both fit
+## with the model keeping half the window: from about 1350 points across at
+## the interface's own size, a 1366 x 768 laptop's. Studio keeps its parts down the left and what is
+## selected on the right at once; held to 60% instead, the columns took
+## turns up to a window about twice as wide as it is tall, and the assistant
+## folded the bin at 1920 x 1080 (docs/APP_UX.md A10). With the bin 6
+## across beside the right-hand column the model had 41% of 1400 x 900, so
+## the bin gives the right-hand column its room: four across at 1400 x 900
+## while it is open, back when it folds.
+const BOTH_SHARE := 0.5
+## And where both fit, the share the model keeps while the right-hand column
+## is folded: the bin seven across at 1400 x 900, 42 parts in sight.
+const WIDE_SHARE := 0.55
 ## A tile in the parts bin and the gap after it, in the interface's units
 ## (PartsBin._make_cell, _tiles_across), and what the bin's column takes
 ## round its tiles: its margins and the scroll bar.
@@ -6852,18 +6863,16 @@ func _fit_panels() -> void:
 	var right: bool = _props_dock != null or _chat_dock.visible
 	var rails: float = 2.0 if right else 1.0
 	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * rails - 16.0, 220.0)
-	# What the model leaves the columns, its share kept, the rails showing
-	# whether their columns are open or not. Both columns where both fit
-	# with the bin at its narrowest; else one at a time, and the bin as many
-	# tiles across as the room allows: six in a laptop's 1280 x 720 or
-	# 1400 x 900, five at 1100 x 700.
-	var room: float = units * (1.0 - MODEL_SHARE) - SideDock.RAIL_WIDTH * rails
-	var both: bool = right and room >= _parts_wide(LEAST_ACROSS) + SIDE_WIDE
-	var parts_room: float = room - (SIDE_WIDE if both else 0.0)
-	var parts_wide: float = _parts_wide(maxi(LEAST_ACROSS,
-		floori((parts_room - BIN_EDGES) / TILE_PITCH)))
+	# Both columns where both fit with the bin at its narrowest and the model
+	# keeping half the window (BOTH_SHARE); else one at a time, the model
+	# keeping its 60%, and the bin as many tiles across as the room allows:
+	# six in a laptop's 1280 x 720, five at 1100 x 700. The rails show
+	# whether their columns are open or not.
+	var both: bool = right and units * (1.0 - BOTH_SHARE) - SideDock.RAIL_WIDTH * rails \
+		>= _parts_wide(LEAST_ACROSS) + SIDE_WIDE
 	# A drawer is as wide as it was before the bin had a column to itself.
-	_bin_dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else parts_wide)
+	if phone:
+		_bin_dock.set_open_width(minf(SIDE_WIDE, drawer))
 	# A phone's drawer of the model tree and the properties, sized for a
 	# finger (TouchSizing), is the screen beside its rail: at the desktop's
 	# 336 units then, half a phone, its rows ran off its edge.
@@ -6881,11 +6890,39 @@ func _fit_panels() -> void:
 	# Only when it changes. Arranging them on every resize would fight
 	# anyone dragging a window edge with a panel deliberately open.
 	if share == _columns:
+		_fit_bin()
 		return
 	_columns = share
-	if _bin_props != null:
-		_bin_props.wanted = share == "turns"
 	_arrange_columns()
+	_fit_bin()
+
+
+## The bin's column as many tiles across as the room the model leaves it:
+## where the columns take turns, beside the model's 60%; where both show,
+## beside its half and the right-hand column while that is open, and its
+## 55% while it is folded. [param opening]: a column about to open, as if it
+## were. And the selected part's place, turn and colour under the bin
+## wherever the properties down the right are not in sight
+## (Inspector.compact): where the columns take turns, and beside the
+## assistant or the right-hand column folded where both show.
+func _fit_bin(opening: SideDock = null) -> void:
+	if _columns == "drawers" or _columns.is_empty():
+		return
+	var props: bool = opening == _props_dock if opening != null and opening != _bin_dock \
+		else _props_dock != null and _props_dock.is_open()
+	var right_open: bool = props or opening == _chat_dock or _chat_dock.is_open()
+	var units: float = get_viewport().get_visible_rect().size.x
+	var rails: float = 2.0 if _props_dock != null or _chat_dock.visible else 1.0
+	var share: float = MODEL_SHARE
+	if _columns == "wide":
+		share = BOTH_SHARE if right_open else WIDE_SHARE
+	var room: float = units * (1.0 - share) - SideDock.RAIL_WIDTH * rails \
+		- (SIDE_WIDE if _columns == "wide" and right_open else 0.0)
+	_bin_dock.set_open_width(_parts_wide(maxi(LEAST_ACROSS,
+		floori((room - BIN_EDGES) / TILE_PITCH))))
+	if _bin_props != null:
+		_bin_props.wanted = _columns == "turns" or not props
+
 
 
 ## The bin's column wide enough for this many tiles across.
@@ -7037,7 +7074,12 @@ func _docks() -> Array[SideDock]:
 ## window. The right-hand column's two tabs swap by themselves
 ## (SideDock.share_edge).
 func _column_opening(dock: SideDock) -> void:
-	if _arranging or _columns == "wide":
+	if _arranging:
+		return
+	# Where both show, the right-hand column opens beside the bin, which
+	# gives it the room (_fit_bin).
+	if _columns == "wide":
+		_fit_bin(dock)
 		return
 	for other: SideDock in _docks():
 		if (other == _bin_dock) != (dock == _bin_dock):
@@ -7049,6 +7091,9 @@ func _column_opening(dock: SideDock) -> void:
 func _column_toggled() -> void:
 	if _arranging:
 		return
+	# The bin's room back when the right-hand column folds, and the compact
+	# properties under it while theirs are not in sight.
+	_fit_bin()
 	var props: bool = _props_dock != null and _props_dock.is_open()
 	match _columns:
 		"wide":

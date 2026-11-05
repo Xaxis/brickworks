@@ -16,13 +16,15 @@
 ## panels once left no room to build, and with both columns open at 1400 x
 ## 900 the model had 41%. So a laptop's columns take turns, one beside the
 ## model at a time, and the bin is as wide as the model's share leaves it.
+## From about 1350 points across both show, the model keeping half the window
+## (Main.BOTH_SHARE): roomfit_probe checks those sizes.
 ##
 ## On a first visit, nothing selected: the bin open with at least 24 parts
-## wholly in sight, and the model tree and the properties down the right,
-## open where both columns fit and folded to their rail where they take
-## turns. A part clicked in the model, the Properties rail: every one of its
-## properties in sight, nothing behind a scroller. The assistant turned on:
-## it opens down the right, beside the bin where both fit. Its rail's
+## wholly in sight, and the model tree and the properties folded to their
+## rail down the right. A part clicked in the model, the Properties rail:
+## every one of its properties in sight, nothing behind a scroller, the bin
+## folded where the columns take turns. The assistant turned on: it opens
+## down the right, beside the bin where both fit. Its rail's
 ## Properties brings them back, and the Parts rail the bin: where they take
 ## turns, with the part still selected, its place, turn and colour under the
 ## bin (Inspector.compact) and 12 parts or more in sight (laptop_probe).
@@ -116,16 +118,10 @@ func _first_visit() -> void:
 	var tiles: int = _tiles_in_sight()
 	_check("the parts bin is open, %d parts wholly in sight, %d across"
 		% [tiles, _bin._grid.columns], bin_dock.is_open() and tiles >= 24)
-	if wide:
-		_check("the model tree and the properties are open down the right",
-			props_dock != null and props_dock.is_open() and _shell.inspector.is_visible_in_tree()
-			and _shell.outliner.is_visible_in_tree()
-			and _shell.inspector.get_global_rect().position.x > _model_rect().end.x - 1.0)
-	else:
-		_check("the model tree and the properties are folded to their rail down the right",
-			props_dock != null and not props_dock.is_open()
-			and props_dock.rail().is_visible_in_tree()
-			and props_dock.rail().get_global_rect().position.x >= _model_rect().end.x - 1.0)
+	_check("the model tree and the properties are folded to their rail down the right",
+		props_dock != null and not props_dock.is_open()
+		and props_dock.rail().is_visible_in_tree()
+		and props_dock.rail().get_global_rect().position.x >= _model_rect().end.x - 1.0)
 	_model_keeps_its_share("the model")
 	await _shot("1_first_visit")
 
@@ -137,8 +133,8 @@ func _first_visit() -> void:
 	if props_dock != null and not props_dock.is_open():
 		await _click(props_dock.rail().get_global_rect().get_center())
 		await _frames(30)
-		_check("the Properties rail opens them and folds the bin",
-			props_dock.is_open() and not bin_dock.is_open())
+		_check("the Properties rail opens them, %s" % ("beside the bin" if wide
+			else "folding the bin"), props_dock.is_open() and bin_dock.is_open() == wide)
 	var hidden: Array = _fields_out_of_sight()
 	_check("with it selected every property is in sight, none behind a scroller%s"
 		% ("" if hidden.is_empty() else " (out of sight: %s)" % ", ".join(hidden)),
@@ -174,8 +170,9 @@ func _first_visit() -> void:
 	# The Parts rail: the bin back, and where one column shows at a time
 	# the right-hand one folded, and the part still selected has its place,
 	# turn and colour under the bin (laptop_probe), the bin 12 parts or more.
-	await _click(bin_dock.rail().get_global_rect().get_center())
-	await _frames(30)
+	if not bin_dock.is_open():
+		await _click(bin_dock.rail().get_global_rect().get_center())
+		await _frames(30)
 	tiles = _tiles_in_sight()
 	var under: Array = _compact_out_of_sight()
 	_check("the Parts rail brings the bin back, %d parts in sight%s" % [tiles,
@@ -328,11 +325,13 @@ func _model_rect() -> Rect2:
 
 
 ## The model's share of the window's width, at least what fit_check.mjs asks
-## of a laptop's window (Main.MODEL_SHARE).
+## of a laptop's window (Main.MODEL_SHARE), or half where both columns show
+## (Main.BOTH_SHARE).
 func _model_keeps_its_share(what: String) -> void:
 	var share: float = _model_rect().size.x / root.get_visible_rect().size.x
 	_check("%s keeps %d%% of the width, %d units (%s)" % [what, floori(share * 100.0),
-		_model_rect().size.x, _main.get("_columns")], share >= 0.6)
+		_model_rect().size.x, _main.get("_columns")],
+		share >= (0.5 if _main.get("_columns") == "wide" else 0.6))
 
 
 ## A part of the model clicked: the one nearest the middle of its column

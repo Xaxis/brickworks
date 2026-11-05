@@ -371,15 +371,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and the bin folded them, so a part put down and typed to its place, and the
   next one, cost a rail click each way. A second, compact Properties sits
   between the bin and its colours (`PanelStack.keep_whole`), shown only while
-  something is selected and `_columns` is "turns": the selection's name in
+  something is selected and the full one is out of sight (`Main._fit_bin`:
+  `_columns` "turns", or "wide" with the right column folded or on the
+  assistant; roomfit, 2026-11-05): the selection's name in
   its header, its colour by name, X, Y, Z three across and Turn, Tilt, Roll
   under them (Hinge and Meet when they apply), the same typing as the full
   one. A colour clicked in the bin's colours under it paints the selection.
   **More** runs `show_properties`, the full one down the right. Its boxes are
   published as `prop_x`… and `prop_colour`, `prop_more` while it shows (the
-  full one is folded then), so a flow types into whichever is in sight. A
-  window with room for both columns (`wide`, about twice as wide as it is
-  tall) never shows it; 1920 x 1080 (1600 units) takes turns, and shows it.
+  full one is folded then), so a flow types into whichever is in sight.
   Probe: `laptop_probe` (1280 x 720 and
   PROBE_SIZE=1400x900: five parts from tiles in sight, each selected and
   typed to its place, the first turned and painted, 0 rail clicks, 12 parts
@@ -389,8 +389,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `Main._fit_panels`, 2026-10-30, appux371's A10): the left column is the
   parts bin with its colours under it, as Studio keeps its parts palette down
   the left, as many tiles across as the model's share leaves room for
-  (`Main._fit_panels`, `PartsBin._tiles_across`: six at 1280 x 720 and
-  1400 x 900, five at 1100 x 700, four at the least and on a phone);
+  (`Main._fit_bin`, `PartsBin._tiles_across`: six at 1280 x 720, five at
+  1100 x 700; where both columns show, seven at 1400 x 900 and eight at
+  1600 x 900 with the right column folded, four while it is open; four at the
+  least and on a phone; the grid's scroller never takes the grid's width as
+  its least, or a bin once seven across never narrowed and was cut off at
+  the column's edge);
   the right column is the model tree over the properties, as
   Figma, Blender and Onshape keep the inspector on the right, with the
   assistant as a tab beside them (`SideDock.share_edge`: the two rails one
@@ -445,25 +449,36 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   made in a window): the parts out, the browser's warning up and the app
   busy, the panel opened, the layout no wider than the window, no line of
   it narrower than its longest word, the busy line's Cancel clear of the
-  foot's row, its Close tapped by a finger and put away. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
-  `tools/web/fit_check.mjs` asks of a laptop's window): with both columns
-  open at 1400 x 900 it had 41%. Both show only where both fit round that, a
-  window about twice as wide as it is tall (1835 units); else the columns
-  take turns, opening one folding the other side's (`Main._column_opening`),
-  and a part put in hand (Q, the bin, the eyedropper) brings the bin out
-  (`Main._bring_out_bin`). A first visit opens on the bin; the Properties
-  rail brings out the tree and every property, folding it. With a part
-  selected the bin has its place, turn and colour under it as well
-  (`properties under the bin`), so building needs neither rail. The assistant
-  turned on opens as the right column's tab, folding the bin where they
-  take turns. On a phone or a tablet they are drawers, as before: the drawer down the
+  foot's row, its Close tapped by a finger and put away. Both columns show at
+  once from about 1350 points across (a 1366 x 768 laptop's, 1400 x 900,
+  1920 x 1080), wherever both fit with the model keeping half the window
+  (`Main.BOTH_SHARE`, docs/APP_UX.md A10, roomfit 2026-11-05): the bin gives
+  the right column its room while that is open (four across at 1400 x 900;
+  with the bin six across the model had 41%), and takes it back when it
+  folds (the model's 55%, `WIDE_SHARE`). The assistant turned on opens there
+  as the right column's tab, beside the bin. Narrower (1280 x 720, 1100 x 700)
+  the model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
+  `tools/web/fit_check.mjs` asks of a laptop's window) and the columns take
+  turns, opening one folding the other side's (`Main._column_opening`, the
+  assistant folding the bin), and a part put in hand (Q, the bin, the
+  eyedropper) brings the bin out (`Main._bring_out_bin`). A first visit opens
+  on the bin, the right column folded to its rail (`properties_open` off);
+  the Properties rail brings out the tree and every property, folding the bin
+  where they take turns. With a part selected the bin has its place, turn and
+  colour under it as well (`properties under the bin`), so building needs
+  neither rail. On a phone or a tablet they are drawers, as before: the drawer down the
   left holds the tree, the properties and the colours, and there is no right
   column. Each rail carries its icon and its name ("Parts", "Properties",
   "Assistant"), tinted with the accent down its edge while folded, and
-  switching is one click on it. Probe: `columns_probe` (1280 x 720, and
-  PROBE_SIZE=1400x900 or 1920x1080: 24 parts in sight with the bin open,
-  every property with theirs, the model's 60% at every step) and
-  `columns_saved_probe` (a layout kept before the right column). A folded column's
+  switching is one click on it. Probe: `roomfit_probe` (1280 x 720,
+  1400 x 900, 1600 x 900 and 1920 x 1080 in one window, made each size in
+  turn: 24 parts in sight at the first and 40 at the rest, the selected
+  part's boxes with the bin, the assistant beside the bin from 1400 px with
+  12 parts or more, nothing in the bin's column wider than the column, the
+  model half the width or 60%), `columns_probe` (1280 x 720: 24 parts in
+  sight with the bin open, every property with theirs, the model's 60% at
+  every step) and `columns_saved_probe` (a layout kept before the right
+  column). A folded column's
   content is hidden, not clipped: its fields cannot take the keys and the
   page is not told its buttons are there. The 3D view is centred on the
   model's part of the window, and glides over as a column folds or opens
