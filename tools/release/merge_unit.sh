@@ -27,7 +27,10 @@ ID=(-c user.name=Xaxis -c user.email=william.neeley@gmail.com)
 for f in $(git diff --name-only HEAD...$REF -- '*.uid' 2>/dev/null); do
   if [ -f "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then rm "$f"; fi
 done
-merged=0; out=$(git "${ID[@]}" merge --no-ff --no-commit "$REF" 2>&1) && merged=1
+# The lists' driver given here as well as in .git/config, so a fresh clone
+# merges them an entry at a time too (tools/merge_lists.py).
+LISTS=(-c merge.lists.name="one entry a line" -c merge.lists.driver="python3 tools/merge_lists.py %O %A %B %P")
+merged=0; out=$(git "${ID[@]}" "${LISTS[@]}" merge --no-ff --no-commit "$REF" 2>&1) && merged=1
 # A merge that would not start (an untracked file in the way) leaves no
 # conflicts to resolve: say why rather than commit nothing.
 if [ $merged = 0 ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null; then
