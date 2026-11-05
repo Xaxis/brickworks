@@ -13288,8 +13288,11 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 			var near: PackedInt64Array = _joints_out(own.blockers_boxes(here),
 				index, model, placed_at, joined, rounds, here, own,
 				model.section_for(placement).placed(), true, meshing)
-			# Their exact shapes decide where both have one.
+			# Their exact shapes decide where both have one, and where one has,
+			# its air does (ExactCheck.drop_in_air).
 			near = exact.drop_cleared(near, index)
+			near = exact.drop_in_air(near, index, here, own,
+				model.section_for(placement).placed())
 			# Between two bricks standing, as outside a section: a file's
 			# tipped parts read into one ([method _adopted]) were refused for
 			# what the same parts read square were forgiven — 31 overlaps in
@@ -13353,8 +13356,11 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		blockers = _joints_out(blockers, index, model, placed_at, joined,
 			rounds, packed, lattice, Transform3D.IDENTITY, false, meshing)
 		# A cover is whole cells, and two parts it rounds into each other can
-		# be clear by their real shapes: where both have one, the shapes decide.
+		# be clear by their real shapes: where both have one, the shapes decide;
+		# where one has, the two meet only if a cell they share is in it: a pane
+		# in its frame's groove, a drawer in its cupboard.
 		blockers = exact.drop_cleared(blockers, index)
+		blockers = exact.drop_in_air(blockers, index, packed, lattice, Transform3D.IDENTITY)
 
 		_standing_overlaps(blockers, placement, index, model, collided)
 		blockers = _between_standing(blockers, placement, model)
@@ -14183,10 +14189,19 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		if exact.items[int(pair[0])] == null or exact.items[int(pair[1])] == null \
 				or _in_a_prism(model, int(pair[0])) or _in_a_prism(model, int(pair[1])):
 			extra.append([int(pair[0]), int(pair[1])])
+	# And what holds with no label of BrickNet's to say so, between parts with
+	# shapes too: a bar in a hollow stud or a clip, a hinge's pin in its eye, a
+	# pin the lattice lines up with its hole, a carrot in a hand's grip, a
+	# sticker on its face (holds: Joints.rounds, both_ways, pushed_in,
+	# held_otherwise). The lattice held them and this said each came away:
+	# real sets hang lamps, antennas and flags so. A run kept to BrickBench's
+	# parts (PartsOnly) keeps its verify.py's graph, which has none of them.
+	var plastic: bool = not PartsOnly.active()
 	for index: Variant in holds:
 		for other: Variant in holds[index]:
 			if int(index) < count and int(other) < count \
-					and (exact.items[int(index)] == null or exact.items[int(other)] == null
+					and (plastic or exact.items[int(index)] == null
+						or exact.items[int(other)] == null
 						or _in_a_prism(model, int(index)) or _in_a_prism(model, int(other))):
 				extra.append([int(index), int(other)])
 	# Only what is near this design's parts: anything else that stands is held
