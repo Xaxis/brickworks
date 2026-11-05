@@ -2392,6 +2392,69 @@ The rest (12) is what the builder did not notice or called "other".
 They are listed for units under What is left. The one change made was to the
 measure, the page size.
 
+### Black parts drawn with their edges (blackedges, 2026-11-05): NO-GO
+
+The third cause was tried. It made the builder worse, so it is not in the
+app. It stays in history to revive (fe8e797b).
+
+**What was drawn.** Black and near-black parts were drawn as a LEGO®
+booklet draws them: a dark grey with light lines at its edges, its studs'
+rims and the seam between two black bricks.
+
+- Which parts: those whose LDraw edge colour is light against a dark body
+  (LDConfig's EDGE). Black's edge is grey; dark bluish grey's (72) is
+  black, so 72 kept its dark ink and the two stayed apart.
+- Where: a second pass drew each part's facing and distance
+  (booklet_codes). The ink drew a light line where the facing turns
+  sharply inside one part. LDraw's normals are smooth except across its
+  edge lines (tools/ldraw/geometry.py), so those are LDraw's edges. It
+  also drew one where the distance jumps, such as a stud's back rim.
+- The step pictures, callouts and parts boxes all got it, on desktop and
+  on the web, and so did the PDF.
+
+![7140: the dish's box and page 18, before and after](instructions/7140-black-edges.webp)
+
+**The measure.** booklet_follow ran on the pages that lost the dish (2-3,
+three runs each way) and on 9, plus page 18, the blackest page (two runs
+each way). The two apps differed only by this change, and each ran from a
+locked snapshot. Runs on both sides used both versions of the page_done
+fix below, which only stops a run going void.
+
+| | right | wrong part |
+|---|---|---|
+| before (7 runs, 96 parts) | 73 | 8 |
+| after (7 runs, 96 parts) | 42 | 30, and 4 more swapped |
+
+- Before, the dish ended right in 4 runs of 5. After, it ended right in 0.
+- Page 18's black bricks were right in every run both ways.
+- After, one run lost 2 light grey printed tiles. Those were not drawn
+  differently. Another put page 9's whole tug 2.5 studs off on its
+  towball, which is placement.
+
+**Why it got worse.** A clearer picture of the dish is a picture of a round
+plate.
+
+- The dish sits dome down. From the booklet's angle its top shows, which
+  is a 2x2 round with four studs, as a round plate's is. The dome is the
+  one thing that differs, and it faces away.
+- Before, every builder also first took the dish for a round plate. But
+  the silhouette left them unsure, so they checked:
+  - one counted the box's round plates (4, for 8 places);
+  - one searched for "dish 2x2".
+- Drawn with its edges, the dish was plainly a round plate. "Icon looks
+  like 2x2 round plate (4032a) rather than dish," said one. None checked.
+- One builder saw a dish but read the lined black as dark grey, and took
+  4740 in colour 8.
+
+**What would fix it** is a parts box that shows what tells a part from its
+look-alikes: a dish's dome, from below or the side. Light edges can be
+measured again after that.
+
+**Kept from this unit:** booklet_mcp's page_done now waits for the edit it
+follows to finish, then keeps the model. Two before runs were void without
+it: the page was marked done while its edit was still running, and nothing
+was kept.
+
 **The whole castle** is about nine hours of builder: 320 pages at 1.7
 minutes a page. That is the lead's to run, from a snapshot imported first:
 
@@ -2494,8 +2557,11 @@ does.
     cost 47% of the parts lost.
   - **Where a sub-assembly goes on.** Its attach step should show where it
     meets the model (17%).
-  - **Black parts drawn with their edges.** In the parts box a black part is
-    a silhouette (15% were parts misread, 12 of them one black dish).
+  - **Parts told from their look-alikes.** 15% were parts misread, 12 of
+    them one black dish read as a round plate. Drawing black with its edges
+    was tried and made it worse (NO-GO, above). The dish's top is a round
+    plate's, and its dome faces away. The parts box should show what tells
+    it apart.
   - **The whole castle**, nine hours of builder.
 
 ## Sources
