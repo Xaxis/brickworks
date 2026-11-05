@@ -113,8 +113,8 @@ func due() -> bool:
 
 
 ## The look, as the whole review's answer, for the session to answer with
-## TOOL; or "" when no picture of the model could be taken (the review says
-## what it did).
+## TOOL; or "" when neither the model could be drawn nor a photograph found
+## (the review says what it did).
 func look() -> Variant:
 	# Nothing searched for a model that cannot be drawn: a headless run.
 	if not ModelShot.possible() or assistant.world == null:
@@ -129,20 +129,27 @@ func look() -> Variant:
 	for view: String in ["front", "right"]:
 		if not view in views:
 			views.append(view)
+	# Not drawn in time, as behind a busy graphics card: the photograph still
+	# goes, and the session takes its own pictures. Two of the first smoke's
+	# three looks were lost so, waiting two minutes each behind a release's
+	# probes for a picture that never came.
 	var shots: Array = await _shots(views)
-	if shots.is_empty():
+	if shots.is_empty() and picture.is_empty():
 		last = {"error": "no pictures"}
-		print("photo look: no pictures of the model, nothing said")
+		print("photo look: no pictures of the model and no photo, nothing said")
 		return ""
 	last = {"refused": 0, "photo": str(picture.get("title", ""))}
-	print("photo look: asked, %s, the model from %s" % [_said_of(photo), ", ".join(views)])
+	print("photo look: asked, %s, the model from %s" % [_said_of(photo),
+		", ".join(views) if not shots.is_empty() else "nothing: not drawn in time"])
 	var content: Array = [{"type": "text", "text": opening(photo,
 		assistant._measured(), assistant._outside_features)}]
 	if not picture.is_empty():
 		content.append({"type": "text", "text": photo_line(photo)})
 		content.append({"type": "image", "source": {"type": "base64",
 			"media_type": "image/png", "data": Marshalls.raw_to_base64(picture["bytes"])}})
-	for n: int in views.size():
+	if shots.is_empty():
+		content.append({"type": "text", "text": UNDRAWN})
+	for n: int in shots.size():
 		content.append({"type": "text", "text": "Yours from %s%s:" % [CALLED[views[n]],
 			", the view its title names" if n == 0 and not nearest.is_empty() else ""]})
 		content.append(shots[n])
@@ -280,6 +287,11 @@ const ASK := ("Answer before any other change: %s, with photo (what the photogra
 	+ "one part of it. Rebuild a feature to the photograph's form and proportion, not a stud "
 	+ "nearer it. Then view_model from the photograph's angle to compare again, and "
 	+ "review_model for the rest of the whole review.")
+
+
+const UNDRAWN := ("Your model's pictures could not be drawn in time just now. Take them "
+	+ "yourself before you answer: view_model from the corner, the front and the side, and "
+	+ "set each beside the photograph.")
 
 
 ## How the photograph came, for the log.
