@@ -10,15 +10,19 @@ four seconds on the page's thread once the pack is in, could have been
 compiling while the rest came (webload, 2026-10-30). So the pack Godot
 exports is cut in four, by path:
 
-  index.pck             the code and what it is drawn with (scripts, shaders,
-                        scenes, icons), and the two tables read as their
-                        classes load: what the engine waits for.
+  index.pck             the code the first screen compiles and what it is
+                        drawn with (its scripts, shaders, scenes, icons), and
+                        the two tables read as their classes load: what the
+                        engine waits for.
   index.data.pck        what the start reads once the scripts are made: the
                         catalogue and the rest of assets/web/, the models and
-                        LDraw's tables (assets/ldraw/, not p/); and the
-                        booklet's fonts. Fetched as the engine starts
-                        (src/boot/shell.html) and mounted by the app before
-                        its catalogue (WebPacks).
+                        LDraw's tables (assets/ldraw/, not p/); the booklet's
+                        fonts; and the scripts the first screen does not
+                        compile (tools/web/start_closure.py: Later's classes
+                        and what only they name). Fetched as the engine
+                        starts (src/boot/shell.html) and mounted by the app
+                        before its catalogue (WebPacks), before any of those
+                        scripts is asked for.
   index.primitives.bin  LDraw's primitives (assets/ldraw/p/), as a bundle of
                         files: fetched the first time a part is built from
                         LDraw's text (PartForge, CustomParts).
@@ -32,7 +36,14 @@ worker may be opening one. Their format is index.parts.bin's (web_pack.py):
 "BWP1", the count, each file's name and size, then the files.
 
 A file Godot imported (.godot/imported/) goes where its source does, as
-its .import says: the .import and what it points at, together.
+its .import says: the .import and what it points at, together. A script
+goes as its tokens (.gdc) and the .remap that points res:// at them.
+
+The scripts the first screen does not compile were 1.6 of the code pack's
+3.9 MB (brotli), which a first visit waited for before the engine said a
+word: on broadband, 0.66 s of network before the compile could begin. The
+data pack they join is fetched while the scripts compile, and came 2 s
+before them on the box (webstart2, 2026-11-05).
 
 The packs keep Godot's own format (version 4): its header, each file at a
 16-byte boundary after it, offsets from the first file, and the directory
@@ -146,11 +157,14 @@ def write_bundle(path: str, files: list[tuple[str, bytes]]) -> None:
 AT_CLASS_LOAD = {"assets/ldraw/gears.json", "assets/ldraw/known_fits.json"}
 
 
-def where(path: str) -> str:
+def where(path: str, later: frozenset[str] = frozenset()) -> str:
     """Which of the four a file of the pack goes in, by its own path or, for
-    what Godot imported, its source's (imported_from)."""
+    what Godot imported, its source's (imported_from). [later]: the scripts
+    the first screen does not compile, as src/....gd."""
     if path in AT_CLASS_LOAD:
         return "index.pck"
+    if script_of(path) in later:
+        return DATA
     if path.startswith("assets/ldraw/p/"):
         return PRIMITIVES
     if path.startswith("assets/hdri/"):
@@ -161,6 +175,26 @@ def where(path: str) -> str:
     if path.startswith(("assets/web/", "assets/ldraw/", "models/", "assets/fonts/")):
         return DATA
     return "index.pck"
+
+
+def script_of(path: str) -> str:
+    """The script a file of the pack is, as src/....gd: its tokens (.gdc),
+    the .remap that points res:// at them, or its text."""
+    for ending, cut in ((".gdc", 4), (".gd.remap", 6), (".gd", 0)):
+        if path.endswith(ending):
+            return path[:len(path) - cut] + (".gd" if ending == ".gdc" else "")
+    return ""
+
+
+def later_scripts() -> frozenset[str]:
+    """The app's scripts the first screen does not compile (start_closure),
+    as the pack names them."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import start_closure
+    out = frozenset(path.removeprefix("res://") for path in start_closure.outside())
+    if not out or "src/main.gd" in out:
+        sys.exit("pck_split: could not tell which scripts the first screen compiles (start_closure.py)")
+    return out
 
 
 def imported_from(data: bytes, base: int, entries: list[Entry]) -> dict[str, str]:
@@ -184,14 +218,17 @@ def main() -> None:
     base = len(header)
     groups: dict[str, list[Entry]] = {"index.pck": [], DATA: [], PRIMITIVES: [], HDRI: []}
     sources = imported_from(data, base, entries)
+    later = later_scripts()
     for entry in entries:
-        groups[where(sources.get(entry.path, entry.path))].append(entry)
+        groups[where(sources.get(entry.path, entry.path), later)].append(entry)
     for name in (DATA, PRIMITIVES, HDRI):
         if not groups[name]:
             sys.exit(f"pck_split: nothing in the export for {name}")
     for kept in ["project.binary"] + sorted(AT_CLASS_LOAD):
         if not any(e.path == kept for e in groups["index.pck"]):
             sys.exit(f"pck_split: no {kept} in the code pack")
+    if not any(script_of(e.path) == "src/main.gd" for e in groups["index.pck"]):
+        sys.exit("pck_split: no src/main.gd in the code pack")
 
     primitives = [(e.path.removeprefix("assets/ldraw/p/"), body(data, base, e))
                   for e in sorted(groups[PRIMITIVES], key=lambda e: e.path)]

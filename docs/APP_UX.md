@@ -365,6 +365,45 @@ notes). It is listed so the plan is whole, not as a new unit.
 **Bar.** A return visit is interactive in 4 s or less, and a first visit in
 10 s or less (`load_check --runs=3 --warm`).
 
+**Measured** (webstart2, 2026-11-05, broadband on the box, `load_check --laps`).
+- Live m260 at load 18-30, four of each: cold 12.75 s (12.0-13.7), warm 7.2
+  (6.8-7.8). Local exports at load 8-14 read 11.8 and 6.6.
+- Where a warm 6.6 s goes: the engine to its banner 0.6, its own start 0.3,
+  the scripts' compile 2.5, the catalogue 1.0 (its JSON parse about half), the
+  interface 0.75, the model 0.15, the first frame 1.1. Cold adds 4.4 s of
+  network before the banner; the data pack is in before the compile ends.
+- The compile is the first screen's source, 6.16 MB of the app's 10.7 (58%),
+  at 0.37 s a megabyte: naming Later's 40 classes from main.gd added 4.5 MB
+  and 1.65 s to it, warm and cold alike (ABBA, eight runs, load 7-10). So a
+  cut of the start closure saves 0.37 s a MB. The cheapest real cuts are
+  small: Grab, GrabDrag, Linkage and HingeAlign are 0.5 MB (8%) for ten
+  references, but GrabDrag is made at the start to read the model's joints
+  ahead of a first grab. Taking the 4 s warm bar this way means a first
+  screen of about a third of today's code: an architecture change, not a unit.
+- A columnar catalogue parses no faster (0.32 against 0.28-0.38 s natively).
+- Done: the 101 scripts the first screen does not compile (1.6 MB of the code
+  pack's 3.9, brotli) go with the data pack (`tools/web/pck_split.py`,
+  `tools/web/start_closure.py`): 8.9 MB before the engine starts where it was
+  10.4. ABBA at load 8-14, four of each: cold 10.85 s (10.73-11.09) against
+  11.81 (11.31-12.10), the banner 4.30 against 4.94; warm 6.50 (6.26-6.81)
+  against 6.58 (6.47-6.75), the same.
+- With the scripts in it the data pack is 9 MB bigger, and a return visit
+  then started the engine before the pack was read in 8 of 10 runs (base:
+  5). Its message waited out the compile, and the rest of the parts came
+  in with it under the assistant's first compile: the chat panel took
+  3.6-4.3 s, where it takes 2.3-2.9 when the pack goes in with the
+  engine's. The shell's `startEngine` now waits for the data pack when the
+  engine's own came from the cache, at most 1 s; it waited 7-75 ms.
+- ABBA of base against the cut with that wait, two sets at load 9-40,
+  twelve pairs of each kind, paired cut minus base (medians). The pack went
+  in with the engine's on 24 return visits of 24, base 12. Cold: usable
+  -0.20 s (sooner in 7 of 12), the banner -0.37 (12 of 12). Warm: -0.21.
+  With the assistant: cold -1.46, warm -1.32; the chat panel's first load
+  -0.13 cold, -0.24 warm. A data pack 3 s late costs the start the 1 s
+  bound; one that fails lets it go at once.
+- Left: the warm start's compile (above), the catalogue and the first frame;
+  the engine's own wasm is 6.9 MB of the cold 8.9.
+
 ## Part B: Advanced features
 
 Ranked the same way. Each says which tool does it today, or that none does.
