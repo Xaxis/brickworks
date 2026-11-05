@@ -39,6 +39,7 @@
       "area": "model-io",
       "tests": [
         "tests/test_bench.py",
+        "tests/test_booklet_follow.py",
         "tests/test_cadtask.py",
         "tests/test_collection.py",
         "tests/test_designers.py",
@@ -48,8 +49,7 @@
         "tests/test_model_page.py",
         "tests/test_refresh_catalogue.py",
         "tests/test_release.py",
-        "tests/test_saved_models_plan.py",
-        "tests/test_share_unknowns.py"
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -534,6 +534,14 @@
       "entry": "tools/web/check.mjs",
       "reach": "node tools/web/check.mjs --url=https://brickworks.diy/app",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:build a model from its booklet's pages",
+      "kind": "cli",
+      "entry": "tools/bench/booklet_follow.py",
+      "reach": "python3 tools/minitest.py tests/test_booklet_follow.py   (for real: booklet_follow.py make MODEL --out DIR --app SNAPSHOT (gpu, then heavy node booklet_print.mjs --scale=2) | build DIR --run NAME --port 989x --app SNAPSHOT | score | report; the builder is env -u ANTHROPIC_API_KEY claude with tools/bench/booklet_mcp.py its one server; the recipe is Building from the booklet in features/view.md)",
+      "area": "view",
       "tests": []
     },
     {
@@ -2006,6 +2014,7 @@
       "area": "assistant",
       "tests": [
         "tests/test_bench.py",
+        "tests/test_booklet_follow.py",
         "tests/test_elements.py",
         "tests/test_release.py"
       ]
@@ -4440,6 +4449,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
         "tests/test_gallery_tabs.py",
         "tests/test_release_train.py",
@@ -5417,6 +5427,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_booklet_follow.py",
         "tests/test_feedback.py",
         "tests/test_gallery_tabs.py",
         "tests/test_release_train.py",
@@ -5668,6 +5679,7 @@
         "tests/test_assistant_pages.py",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
+        "tests/test_booklet_follow.py",
         "tests/test_plans.py",
         "tests/test_realset.py",
         "tests/test_saved_models_plan.py"

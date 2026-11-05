@@ -193,8 +193,33 @@ plainer — see the first lever below.
    is that joint in one line: the hinge brick put in, the pin found, the
    section written as if square on a 1 x 2 plate. Not yet tried by a run.
 7. **The booklet's pictures.** A castle's booklet enters its parts 18-30
-   times because walls stand on a shared base; whether a person can
-   follow 250 pages is the next thing to measure, by building from one.
+   times because walls stand on a shared base. Can a person follow 250
+   pages? This is now measured by building from one
+   (`tools/bench/booklet_follow.py`; Building from the booklet in
+   docs/INSTRUCTIONS.md, 2026-11-05).
+   - **The measure.** A Claude session sees only the pages and builds in a
+     fresh model over MCP. What it built is compared part for part and page
+     by page.
+   - **Results.** On a small car, 7140 pages 2-13 and the castle's pages
+     150-161 it put 54%, 60% and 38% of the
+     parts right, or within half a stud. Two runs of the car
+     differ by up to five parts a page.
+   - **The causes**, by parts lost (218):
+     - 47%: where exactly, among parts alike. The castle's stair is a solid
+       ramp of one grey, and its columns lie one behind another in the
+       picture.
+     - 17%: where a sub-assembly goes on. 7140's nose, built right, went on
+       12 plates low.
+     - 15%: which part. A black dish in the parts box is a silhouette, the
+       same as a round plate, and it was read as one every time, unnoticed.
+     - Then colour, hidden parts, and parts carried off by an earlier page's
+       mistake.
+   - **Next**, a unit each:
+     - steps that add one course of a mass at a time;
+     - an attach step that shows where the sub-assembly meets the model;
+     - black parts drawn with their edges.
+   - **The whole castle**, nine hours of builder, is a lead's run; the
+     command is in the write-up.
 
 ## How the levers were found
 
