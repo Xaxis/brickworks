@@ -3354,10 +3354,6 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# The official models' sizes, fetched on the web the first time.
 			await SetKnowledge.ensure(self)
 			return _plan_scale(args)
-		"plan_features":
-			progress.emit("planning the features it is known by")
-			heard(str(args.get("subject", "")))
-			return features_look().plan(args)
 		"find_reference":
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up what a %s looks like" % subject)
@@ -3370,11 +3366,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
-			# Every session asks this first (43 of 43, d15l44), so the features
-			# are asked for here, last, as what comes next.
 			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
-				+ DesignMemory.recall(subject) + ([] if not features_look().planned.is_empty()
-					else [{"type": "text", "text": PLAN_FEATURES_NEXT}])
+				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			var described: String = _describe_world(args)
@@ -4489,7 +4482,6 @@ var who: String = "Claude"
 func sitting_begun(chat_name: String) -> void:
 	_sizes_said.erase(chat_name)
 	fresh_eyes().begin()
-	features_look().begin()
 
 
 ## How big the model actually came out, in studs.
@@ -6433,7 +6425,6 @@ func heard(subject: String, fresh: bool = false) -> void:
 		_their_words = ""
 		_words_passed = ""
 		fresh_eyes().begin()
-		features_look().begin()
 		# What the last design was called is not this one's subject: a
 		# lighthouse after a statue was read as a figure.
 		_begin_subject(_brief if _busy else "")
@@ -20614,19 +20605,6 @@ static func _percentile(values: Array[float], share: float) -> float:
 	return lerpf(values[low], values[high], at - low)
 
 
-## What comes next, said after how real sets build the subject until its
-## features are planned (FeaturesLook).
-const PLAN_FEATURES_NEXT := """Next, before the first brick: plan_features. Name the \
-two or three features anyone would know this subject by, not the box it fits in, and \
-each one's proportion against the whole, from what you know of the real thing (a \
-lighthouse's lantern as wide as the tower's top and a fifth of its height; an \
-elephant's ears as tall as its head), with the technique its form needs. A judge sets \
-a model beside the real one and names the feature whose form is wrong (a round part \
-too small or half hidden, a thin part built as a thick slab, a tapering part built \
-blunt) far more often than its massing. Build them to it; once the model stands, the \
-whole review shows you its front and side to read each against what you named."""
-
-
 func _plan_scale(args: Dictionary) -> String:
 	var metres: float = float(args.get("longest_metres", 0.0))
 	var subject: String = str(args.get("subject", "it"))
@@ -20913,18 +20891,6 @@ func fresh_eyes() -> FreshEyes:
 var _eyes: FreshEyes = null
 
 
-## The features a design is known by, planned before its first brick and
-## looked at in its front and side at its first whole review.
-func features_look() -> FeaturesLook:
-	if _features_look == null:
-		_features_look = FeaturesLook.new()
-		_features_look.assistant = self
-	return _features_look
-
-
-var _features_look: FeaturesLook = null
-
-
 ## Choosing a sketch, for a session outside the app: in the app's own loop
 ## the person chooses, on the cards in the panel, so the loop is not offered it.
 func sketch_tools() -> Array:
@@ -21031,7 +20997,6 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_creative = {}
 		surface_pass().reset()
 		fresh_eyes().designed(bare)
-		features_look().designed(bare)
 	return _built_from_outside(design, report) if designing else _placed_said(design, report)
 
 
@@ -21361,13 +21326,6 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		_detail_added.append([_outside_reviewing["name"], added])
 		_outside_reviewing = {}
 	if assembly.strip_edges().is_empty():
-		# A design's first whole review leads with its features against the
-		# real thing, front and side, the rest once they are answered and
-		# rebuilt: the judge names one feature's form, not the box (design17).
-		if features_look().due():
-			var look: Variant = await features_look().look()
-			if not (look is String and (look as String).is_empty()):
-				return look
 		_outside_looked = true
 		# Every part this design placed is judged, not only what an edit adds:
 		# a design is handed over from here, and BrickBench refuses a build for
@@ -23671,7 +23629,6 @@ func _tools() -> Array:
 				"additionalProperties": false,
 			},
 		},
-		FeaturesLook.plan_definition(),
 		{
 			"name": "find_reference",
 			"description": ("Pictures of a real thing, so you can build "

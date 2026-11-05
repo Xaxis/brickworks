@@ -88,8 +88,6 @@ func _run() -> void:
 		["show_technique", {"name": "round tower"}],
 		["find_parts_like", {"query": "gear"}],
 		["plan_scale", {"subject": "an orrery", "longest_metres": 0.4}],
-		["plan_features", {"subject": "an orrery", "features": [{"name": "the sun",
-			"proportion": "a ball a third of the base's width", "technique": "round bricks"}]}],
 		["read_guide", {"section": "pins"}],
 		["look_at_model", {}],
 		["view_model", {"from": "corner"}],
@@ -152,8 +150,6 @@ func _run() -> void:
 			["weakest_joints", {}], ["fresh_eyes", {"reads_as": "a house", "generic": "its walls",
 				"changes": ["one", "two", "three"]}], ["fresh_eyes_final", {"landed": "both",
 				"reads_as": "a house", "generic": "nothing", "done": true, "change": ""}],
-			["features_look", {"features": [{"name": "the roof", "real": "half its height",
-				"seen": "half its height", "off": false}], "rebuild": ""}],
 			# The window's hand tools that only look (mcphand).
 			["measure", {"from": "0 0 0", "to": "2 3 1"}], ["in_view", {}]]:
 		_called[str(call[0])] = true

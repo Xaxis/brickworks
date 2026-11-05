@@ -564,7 +564,6 @@ const HINTS := {
 	"place_technique": ["Place a real set's piece", "add"],
 	"settle_feature": ["Settle a feature's piece", "add"],
 	"plan_scale": ["Plan the scale", "look"],
-	"plan_features": ["Plan the features it is known by", "look"],
 	"find_reference": ["Find pictures of the real thing", "look", "world"],
 	"how_real_sets_build_this": ["What real sets of its kind use", "look"],
 	"attachment_points": ["Where a part attaches", "look"],
@@ -637,7 +636,6 @@ const HINTS := {
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],
 	"fresh_eyes_final": ["Say what it reads as now", "look"],
-	"features_look": ["Say how its features measure up", "look"],
 }
 const KINDS: Array[String] = ["look", "file", "add", "remove"]
 
@@ -808,14 +806,9 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			return [assistant.fresh_eyes().answered(input), true]
 		if name == FreshEyes.FINAL_TOOL:
 			return [assistant.fresh_eyes().final_answered(input), true]
-		# And the look at its features the first whole review asked for.
-		if name == FeaturesLook.TOOL:
-			return [assistant.features_look().answered(input), true]
 		var not_yet: String = assistant.fresh_eyes().not_yet(name)
 		if not_yet.is_empty():
 			not_yet = assistant.fresh_eyes().final_not_yet(name)
-		if not_yet.is_empty():
-			not_yet = assistant.features_look().not_yet(name)
 		if not not_yet.is_empty():
 			return [not_yet, true]
 	if entry == null:
@@ -1087,7 +1080,7 @@ func _the_app_tools() -> AppTools:
 ## posing, undo, opening, the parts list, rendering, exporting.
 func _own_tools() -> Array:
 	return _socket_tools() + _the_app_tools().definitions() + [ToolJobs.definition(),
-		FreshEyes.definition(), FreshEyes.final_definition(), FeaturesLook.definition()]
+		FreshEyes.definition(), FreshEyes.final_definition()]
 
 
 func _socket_tools() -> Array:

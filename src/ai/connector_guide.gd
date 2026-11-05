@@ -18,8 +18,8 @@ in full.
 
 HOW TO WORK — the way a set is designed:
  1. plan_scale with the real thing's length; find_reference for anything \
-that exists; how_real_sets_build_this with the subject; plan_features: the \
-2-3 features it is known by, each one's size against the whole.
+that exists; how_real_sets_build_this with the subject: real sets' parts, \
+and the faults the judge found in our own designs of it, to design out.
  2. The silhouette: the main masses, sized in studs off the picture and the \
 brief. A hull, a car body, a fuselage or a building is a shape pattern \
 (read_guide "shapes"); a figure, a creature, a character or anything small \
@@ -78,19 +78,14 @@ const METHOD := """How to work here, said once as this chat begins (read_guide "
 whole, and read_guide any section a step names):
  1. Before building: plan_scale with the real thing's size, find_reference \
 for anything that exists, how_real_sets_build_this with the subject: real \
-sets' parts, and the faults found in our own designs of it, to design out. \
-Then plan_features: the two or three features it is known by, each one's \
-proportion against the whole on the real thing, and the technique its form \
-needs.
+sets' parts, and the faults found in our own designs of it, to design out.
  2. submit_design the silhouette first: the main masses, with its \
 assemblies and its features (what the subject is known by, each with where \
 it goes). A hull, a car body or a building is a shape pattern (read_guide \
 "shapes"); a figure or a creature is shaped parts on joints (read_guide \
 "figures"). Pass the person's request, word for word, as brief, and a part \
 count they named as parts.
- 3. review_model: it first shows the front and side, to read each planned \
-feature against the real thing and rebuild one that is off; then fix the \
-silhouette and proportions before any detail.
+ 3. review_model: fix the silhouette and proportions before any detail.
  4. Each feature: the app lays a real set's piece; settle_feature it.
  5. Each assembly: review_model {"assembly": name}, detailed with \
 edit_model.

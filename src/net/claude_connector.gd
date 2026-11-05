@@ -600,10 +600,8 @@ static func _who_said(request: Dictionary) -> String:
 var _sittings: Dictionary = {}
 const QUIET_MS := 30 * 60 * 1000
 ## The calls that say what is being designed, with the words that say it.
-## plan_features among them, or features planned first were lost to the
-## subject its next call began.
 const SUBJECT_CALLS := ["how_real_sets_build_this", "plan_scale", "find_reference",
-	"plan_features", "submit_design"]
+	"submit_design"]
 ## The calls that read or change the parts already standing: a chat whose
 ## first call is one, on a model to change ([member has_work]), is changing
 ## it, not designing.
