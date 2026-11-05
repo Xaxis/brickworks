@@ -519,7 +519,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   above the parts (the set's lines, the search, the chips)
   scroll with the parts and its foot (the status, Prints, List) stays; a
   new list is put at its search (`PartsBin._to_list_top`), so a search
-  with few parts still shows them whole;
+  with few parts still shows them whole, and held there until a finger or
+  the wheel moves it (`PartsBin._input`): put back each time the layout
+  changes how far the list scrolls (`PartsBin._hold_at_search`, on the scroll
+  bar's `changed`), with the room under the parts made in that layout
+  (`PartsBin._fit_foot`). Put there for three frames instead, a list made
+  while the sheet was put away opened at its head, 52 units off: the first
+  Parts on a phone, a shut sheet's list shorter than the last, and upright a
+  sheet swiped up to the whole screen (`bin_list_top_probe`, at 844x390 in
+  the suite, PROBE_SIZE=390x844, 430x932, 768x1024 and 1024x768 by hand);
   the colours, 46-point swatches by group (`PartsBin.choose_colour`, what a
   swatch press does: it paints a selection); More, every menu's commands a
   row each, greyed and lit as the menus are; and a finger held still on a
