@@ -365,6 +365,40 @@ notes). It is listed so the plan is whole, not as a new unit.
 **Bar.** A return visit is interactive in 4 s or less, and a first visit in
 10 s or less (`load_check --runs=3 --warm`).
 
+**Measured** (webstart2, 2026-11-05, broadband on the box, `load_check --laps`).
+- Live m260 at load 18-30, four of each: cold 12.75 s (12.0-13.7), warm 7.2
+  (6.8-7.8). Local exports at load 8-14 read 11.8 and 6.6.
+- Where a warm 6.6 s goes: the engine to its banner 0.6, its own start 0.3,
+  the scripts' compile 2.5, the catalogue 1.0 (its JSON parse about half), the
+  interface 0.75, the model 0.15, the first frame 1.1. Cold adds 4.4 s of
+  network before the banner; the data pack is in before the compile ends.
+- The compile is the first screen's source, 6.16 MB of the app's 10.7 (58%),
+  at 0.37 s a megabyte: naming Later's 40 classes from main.gd added 4.5 MB
+  and 1.65 s to it, warm and cold alike (ABBA, eight runs, load 7-10). So a
+  cut of the start closure saves 0.37 s a MB. The cheapest real cuts are
+  small: Grab, GrabDrag, Linkage and HingeAlign are 0.5 MB (8%) for ten
+  references, but GrabDrag is made at the start to read the model's joints
+  ahead of a first grab. Taking the 4 s warm bar this way means a first
+  screen of about a third of today's code: an architecture change, not a unit.
+- A columnar catalogue parses no faster (0.32 against 0.28-0.38 s natively).
+- Done: the 101 scripts the first screen does not compile (1.6 MB of the code
+  pack's 3.9, brotli) go with the data pack (`tools/web/pck_split.py`,
+  `tools/web/start_closure.py`): 8.9 MB before the engine starts where it was
+  10.4. ABBA at load 8-14, four of each: cold 10.85 s (10.73-11.09) against
+  11.81 (11.31-12.10), the banner 4.30 against 4.94; warm 6.50 (6.26-6.81)
+  against 6.58 (6.47-6.75), the same.
+- A feature's first use reads its scripts from the data pack now. The chat
+  panel (`load_check --assistant`, twelve runs at load 7-15) loaded in 3.58 s
+  (3.49-4.44) cold against 3.73 (3.34-4.32), and 3.81 (2.26-4.26) warm
+  against 3.27 (2.57-4.05). Warm runs are of two kinds in both builds. When
+  the cached data pack is handed in beside the engine's, the rest of the
+  parts come at 9 s and the panel loads in 2.3-2.9 s. When it is not, the
+  parts come with it at 3.5 s and the panel takes 3.6-4.3 s. The bigger data
+  pack misses that hand-off more often, 8 warm runs of 10 against 5: making
+  it sure, or the panel's compile clear of the parts, is a next lever.
+- Left: the warm start's compile (above), the catalogue and the first frame;
+  the engine's own wasm is 6.9 MB of the cold 8.9.
+
 ## Part B: Advanced features
 
 Ranked the same way. Each says which tool does it today, or that none does.

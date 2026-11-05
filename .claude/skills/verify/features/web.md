@@ -141,12 +141,15 @@ plan with Claude as the client.
   the person waited on (the collection's arrival making the assistant
   held a first pick 3.5 to 9 s, 2026-10-31). The pack Godot exports is cut in four after it (webload,
   2026-10-30, `tools/web/pck_split.py`, its docstring), so the engine
-  waits for the code alone: `index.pck` keeps the scripts, shaders and
-  scenes (3.3 MB brotli), and the two tables read as their classes load,
-  before the data pack is mounted (`gears.json`, `known_fits.json`:
-  `AT_CLASS_LOAD`); `index.data.pck` (the catalogue and the rest of
-  `assets/web/`, `models/`, LDraw's tables, and the booklet PDF's fonts,
-  2.9 MB) is
+  waits for the code alone: `index.pck` keeps the scripts the first
+  screen compiles, shaders and scenes (2.2 MB brotli), and the two tables
+  read as their classes load, before the data pack is mounted
+  (`gears.json`, `known_fits.json`: `AT_CLASS_LOAD`); `index.data.pck`
+  (the catalogue and the rest of `assets/web/`, `models/`, LDraw's tables,
+  the booklet PDF's fonts, and the 101 scripts the first screen does not
+  compile, Later's classes and what only they name, as
+  `tools/web/start_closure.py` reads the sources: 1.6 MB of the code
+  pack's 3.9 that the engine waited for, webstart2, 2026-11-05; 4.6 MB) is
   fetched by the page's worker as soon as the engine's files are in,
   before `index.parts.bin`, and mounted by `Main._ready` before the
   catalogue (`WebPacks.here`; the tree paused and nothing drawn while it
@@ -172,8 +175,9 @@ plan with Claude as the client.
   (4.40), the data pack's wait 0.1 s, the bin usable 12.9 s where it was
   14.95; a return visit at `Main._ready` 4.8 s where it was 5.1, fetching
   nothing more. `python3 tools/minitest.py tests/test_pck_split.py`
-  (6 tests) splits a pack made in Godot's format and reads every file
-  back, byte for byte, from the one place it went.
+  (8 tests) splits a pack made in Godot's format and reads every file
+  back, byte for byte, from the one place it went, and holds main.gd with
+  the engine and the assistant with the data pack.
   The bin's All listing ranks each part once before sorting
   (`PartsBin._sort_for`): the same order in 0.44 s natively, where it
   took 1.2. On the web it is not sorted at all (webload, 2026-10-30):
@@ -195,14 +199,19 @@ plan with Claude as the client.
   preview_checks.sh, alone): three cold loads of `/app` on broadband (20
   Mbps, 40 ms), each in a browser on a profile of its own on disk, signed
   in: every file as sent with its encoding and cache header, and the
-  medians of when the engine started, its first frame, when the bin was
+  medians of when the engine started, its first frame, when the page's own
+  screen had faded off the window as painted (`shown`: a frame drawn under
+  that screen is not seen), when the bin was
   usable (its search and first tile told to the page, and `found`), when the
   build's last byte came (net), the main thread's CPU before then (Chrome's
   ThreadTime, which load does not stretch), and the bytes before it.
   `--profiles=broadband,slow --warm` for the full table; `--laps` prints
-  every `brickworksBoot` mark, and each median row is followed by the
-  start's parts (banner, scripts to `Main._ready` with the compile's end
-  where the build marks it, data, catalogue, interface, model, first
+  every `brickworksBoot` mark; `--assistant` opens `/app?assistant=on` and
+  counts it usable at the assistant's panel (its brief, or Connect Claude
+  or the key field; at 1280 the bin is folded beside it); each median row is followed by the
+  start's parts (banner, scripts to `Main._ready`, of which the engine's
+  own start to its last line, "Build configuration", and the compile from
+  there to Main's "compiled", data, catalogue, interface, model, first
   frames; data is the wait for index.data.pck once the scripts are made,
   and each run says when that pack and the rest of the parts were asked,
   came and were written). Locally, serve the export with `serve.py

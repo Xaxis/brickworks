@@ -8,6 +8,8 @@
 //     --max-bytes=MB --max-interactive=S   the gate, on broadband's cold medians
 //     --pick=ID [--max-pick=S]    then ID taken from the bin at once, timed to
 //                                 its ghost over the model (each load's held)
+//     --assistant                 the assistant shown (/app?assistant=on), and
+//                                 interactive when its panel is usable, not the bin
 //     --out=DIR                   each run's files and timeline as JSON
 //
 // A local export (tools/export.sh web), sent and cached as the deployment
@@ -32,6 +34,11 @@
 // Each load is timed from the page's request, in the page's clock:
 //
 //   started      the engine's startGame resolved (the shell's #boot done);
+//   shown        that screen gone, as painted: its fade (0.66 s of frames)
+//                ended and the frame after it drawn, which waits for
+//                whatever the app does in that frame. Until then a person
+//                sees the page's own screen, however many frames were drawn
+//                under it;
 //   first frame  the first frame drawn to the window once the app is
 //                running (its first window.brickworksState);
 //   bin drawn    the first frame drawn once the app has told the page the
@@ -40,7 +47,10 @@
 //   interactive  the parts bin usable as a flow finds it: its search and
 //                first tile told to the page (window.brickworksControls),
 //                which waits for them to stay put a publish (Main), and the
-//                parts it lists first;
+//                parts it lists first; with --assistant, the assistant's
+//                panel usable (ChatPanel): its brief, or for someone with no
+//                Claude to design with yet its Connect Claude or key field
+//                (the bin is folded beside it at this width);
 //   net          when the last byte of the build's own files (the engine's
 //                script, wasm and pack) arrived;
 //   main thread  its CPU before interactive (Chrome's own ThreadTime),
@@ -56,7 +66,7 @@
 // header. With --max-bytes or --max-interactive it is a gate: exit 1 when
 // broadband's cold median is over either.
 import { chromium } from "playwright";
-import { SOFTWARE, START_MS } from "./browser.mjs";
+import { SOFTWARE, START_MS, withAssistant } from "./browser.mjs";
 import { canSignIn, signInContext } from "./session.mjs";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -71,9 +81,11 @@ if (!args.url) {
   process.exit(2);
 }
 const bypass = args.bypass && args.bypass !== true ? String(args.bypass) : (process.env.BW_BYPASS || "");
+const assistant = Boolean(args.assistant);
+const asked = assistant ? withAssistant(String(args.url)) : String(args.url);
 const url = bypass
-  ? `${args.url}${args.url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
-  : String(args.url);
+  ? `${asked}${asked.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
+  : asked;
 const PROFILES = {
   broadband: { down: 20, up: 5, rtt: 40 },
   slow: { down: 5, up: 1, rtt: 100 },
@@ -97,8 +109,10 @@ const maxPick = args["max-pick"] ? Number(args["max-pick"]) * 1000 : 0;
 // started, and each frame drawn to the window (a draw, clear or blit with
 // no framebuffer of the app's bound) once the app has told the page it runs.
 function instrument() {
-  const at = { started: 0, running: 0, firstFrame: 0, listed: 0, binDrawn: 0, longtasks: [], said: [] };
+  const at = { started: 0, shown: 0, running: 0, firstFrame: 0, listed: 0, binDrawn: 0, longtasks: [], said: [] };
   window.__load = at;
+  // The browser's own, before the app's connector steers the page's frames.
+  const frame = window.requestAnimationFrame.bind(window);
   // What the engine says as it starts (its banner, the renderer), timed.
   for (const kind of ["log", "warn", "error"]) {
     const was = console[kind].bind(console);
@@ -129,6 +143,12 @@ function instrument() {
     new MutationObserver(() => {
       if (!at.started && boot.classList.contains("done")) at.started = performance.now();
     }).observe(boot, { attributes: true, attributeFilter: ["class"] });
+    // Its own fade, not its bar's (whose ends bubble up to it). A frame's
+    // callbacks, the app's among them, run before it is painted; a task
+    // queued in one runs once it has been.
+    boot.addEventListener("transitionend", (e) => {
+      if (e.target === boot && !at.shown) frame(() => setTimeout(() => { at.shown ||= performance.now(); }));
+    });
     return true;
   };
   if (!watchBoot()) document.addEventListener("DOMContentLoaded", watchBoot);
@@ -283,15 +303,22 @@ async function load(context, profile, label) {
       const s = window.brickworksState || {};
       return { at: { ...window.__load, boot: window.brickworksBoot || {}, later: window.brickworksLater || null,
         packs: window.brickworksPacks || null }, bin: Boolean(c["part search"] && c["first part"]),
+        panel: ["brief", "connect_claude", "key_field"].some((name) => c[name]),
         found: Array.isArray(s.found) ? s.found.length : 0, now: performance.now() };
     }).catch(() => null);
-    if (now && now.bin && now.found > 0) { marks = { ...now.at, interactive: now.now }; cpu1 = await cpuNow(cdp); break; }
+    if (now && (assistant ? now.panel : now.bin && now.found > 0)) { marks = { ...now.at, interactive: now.now }; cpu1 = await cpuNow(cdp); break; }
     if (Date.now() > deadline) { marks = now ? { ...now.at, interactive: NaN } : null; break; }
     await page.waitForTimeout(100);
   }
   const navStart = await page.evaluate(() => performance.timeOrigin).catch(() => 0);
   const cpu = cpu1 ? cpu1.main - cpu0.main : NaN;
   const picked = pickId && Number.isFinite(marks?.interactive) ? await pickFirst(page, pickId).catch((e) => ({ ms: NaN, why: String(e).slice(0, 120) })) : null;
+  // The page's own screen can come off after the window is usable (it lets
+  // clicks through as it fades): waited for after the pick, not before it.
+  if (marks && !marks.shown) {
+    marks.shown = await page.waitForFunction(() => window.__load.shown, null, { polling: 100, timeout: 15000 })
+      .then((shown) => shown.jsonValue()).catch(() => NaN);
+  }
   // What the app loaded on first use (Later), by then: when and how long.
   const loaded = await page.evaluate(() => window.brickworksLoaded || null).catch(() => null);
   const cpuAll = cpu1 ? cpu1.all - cpu0.all : NaN;
@@ -331,12 +358,20 @@ async function load(context, profile, label) {
   return run;
 }
 
+// When the engine's own start was done: its last line before it loads the
+// main scene (the build's configuration, after the renderer's). From there
+// to Main's "compiled" is the scripts' compile alone, about 0.37 s a
+// megabyte of the first screen's source on the box (webstart2, 2026-11-05).
+function engineUp(m) {
+  return ((m.said || []).find(([, line]) => /^Build configuration/.test(line)) || [NaN])[0];
+}
+
 function sayRun(run) {
   const m = run.marks || {};
   const b = m.boot || {};
   const banner = (m.said || []).find(([, line]) => /^Godot Engine/.test(line));
   console.log(`  ${run.label}: interactive ${sec(m.interactive)} s (bin drawn ${sec(m.binDrawn)} s), first frame ${sec(m.firstFrame)} s, `
-    + `started ${sec(m.started)} s, net ${sec(run.net)} s, main thread ${sec(run.cpu)} s on a CPU (${sec(run.busy)} s in long tasks; `
+    + `shown ${sec(m.shown)} s, started ${sec(m.started)} s, net ${sec(run.net)} s, main thread ${sec(run.cpu)} s on a CPU (${sec(run.busy)} s in long tasks; `
     + `${sec(run.cpuAll)} s all threads), ${mb(run.bytes)} MB before interactive`
     + (run.errors.length ? ` (page errors: ${run.errors.join(" | ")})` : ""));
   if (run.picked) {
@@ -360,7 +395,8 @@ function sayRun(run) {
     // The data pack's wait (WebPacks): from Main._ready to its mount, after
     // which the catalogue is read. A build that was not split has none.
     const data = b.data ?? b.ready;
-    console.log(`    the start: engine banner ${sec(banner ? banner[0] : NaN)} s, `
+    const engine = engineUp(m);
+    console.log(`    the start: engine banner ${sec(banner ? banner[0] : NaN)} s, its own start done ${sec(engine)} s, `
       + `${b.compiled ? `scripts compiled ${sec(b.compiled)} s, ` : ""}app ready ${sec(b.ready)} s, `
       + `data +${sec(data - b.ready)} s, catalogue +${sec(b.catalogue - data)} s, interface +${sec(b.ui - b.catalogue)} s, `
       + `model +${sec(b.model - b.ui)} s, then interactive +${sec(m.interactive - b.model)} s`);
@@ -401,7 +437,7 @@ const results = [];
 let failed = false;
 for (const profile of profiles) {
   const held = PROFILES[profile] ? `${PROFILES[profile].down} Mbps, ${PROFILES[profile].rtt} ms` : "not held";
-  console.log(`load_check: ${args.url}, ${profile} (${held}), ${runs} cold${warm ? " and warm" : ""}`);
+  console.log(`load_check: ${asked}, ${profile} (${held}), ${runs} cold${warm ? " and warm" : ""}`);
   for (let n = 1; n <= runs; n++) {
     const { context, done } = await visitor();
     try {
@@ -435,6 +471,7 @@ for (const profile of profiles) {
       firstFrame: median(these.map((r) => r.marks?.firstFrame)),
       binDrawn: median(these.map((r) => r.marks?.binDrawn)),
       started: median(these.map((r) => r.marks?.started)),
+      shown: median(these.map((r) => r.marks?.shown)),
       net: median(these.map((r) => r.net)),
       cpu: median(these.map((r) => r.cpu)),
       busy: median(these.map((r) => r.busy)),
@@ -444,8 +481,9 @@ for (const profile of profiles) {
       runs: these.length,
     };
     // The start's parts, after the bytes (Main._boot_mark): the engine to
-    // its banner, the scripts to Main._ready (of which the compile, every
-    // script at once, to Main's "compiled" in a build that marks it), the
+    // its banner, the scripts to Main._ready (of which the engine's own
+    // start, to its last line, and the compile, every script at once, from
+    // there to Main's "compiled" in a build that marks it), the
     // wait for the data pack
     // (none where the pack is whole), the catalogue, the interface and the
     // model, and then the first frames until the bin is usable.
@@ -457,7 +495,8 @@ for (const profile of profiles) {
     }));
     row.split = {
       banner: part((m, b, banner) => banner), scripts: part((m, b, banner) => b.ready - banner),
-      compile: part((m, b, banner) => b.compiled - banner),
+      engine: part((m, b, banner) => engineUp(m) - banner),
+      compile: part((m) => (m.boot || {}).compiled - engineUp(m)),
       data: part((m, b) => (b.data ?? b.ready) - b.ready),
       catalogue: part((m, b) => b.catalogue - (b.data ?? b.ready)), interface: part((m, b) => b.ui - b.catalogue),
       model: part((m, b) => b.model - b.ui), frames: part((m, b) => m.interactive - b.model),
@@ -465,11 +504,11 @@ for (const profile of profiles) {
     summary[`${profile} ${kind}`] = row;
     console.log(`  ${`${profile} ${kind}`.padEnd(15)} interactive ${sec(row.interactive).padStart(5)}  bin drawn ${sec(row.binDrawn).padStart(5)}  first frame ${sec(row.firstFrame).padStart(5)}  `
       + `${pickId ? `pick ${Number.isFinite(row.pick) ? `${Math.round(row.pick)} ms` : "-"} (longest)  ` : ""}`
-      + `started ${sec(row.started).padStart(5)}  net ${sec(row.net).padStart(5)}  main ${sec(row.cpu).padStart(5)} (long ${sec(row.busy)}, all ${sec(row.cpuAll)})  ${mb(row.bytes).padStart(6)} MB  (${row.runs} runs)`);
+      + `shown ${sec(row.shown).padStart(5)}  started ${sec(row.started).padStart(5)}  net ${sec(row.net).padStart(5)}  main ${sec(row.cpu).padStart(5)} (long ${sec(row.busy)}, all ${sec(row.cpuAll)})  ${mb(row.bytes).padStart(6)} MB  (${row.runs} runs)`);
     const sp = row.split;
     if (Number.isFinite(sp.scripts)) {
       console.log(`  ${"".padEnd(15)} the start: banner at ${sec(sp.banner)}, scripts +${sec(sp.scripts)}`
-        + `${Number.isFinite(sp.compile) ? ` (compiled at +${sec(sp.compile)})` : ""}, data +${sec(sp.data)}, catalogue +${sec(sp.catalogue)}, `
+        + `${Number.isFinite(sp.compile) ? ` (the engine's own +${sec(sp.engine)}, the compile +${sec(sp.compile)})` : ""}, data +${sec(sp.data)}, catalogue +${sec(sp.catalogue)}, `
         + `interface +${sec(sp.interface)}, model +${sec(sp.model)}, first frames +${sec(sp.frames)}`);
     }
   }
