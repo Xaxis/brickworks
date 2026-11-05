@@ -322,7 +322,20 @@ can occupy the same millimetre.
   from everywhere the part takes one is not judged either. The x and z
   offered for either fault are the least move that puts a stud reaching into
   it in one of its sockets (`_nearest_move`), not the half-stud grid: that
-  offered x=0.5 for a part 0.3 off a plain plate.
+  offered x=0.5 for a part 0.3 off a plain plate. A part whose every stud
+  reaching in stands in one of its sockets, to an LDU, is on its studs
+  whatever its corner says (`_each_in_a_socket`): a moulded horse's corner is
+  on the grid of the two studs on its back, and its hooves stand 6 LDU off
+  that, on the plate's (10509p02, which 9469 stands on a plate). Its sockets
+  are the receivers it draws (`Lbm.on_receivers`, `PartMesh.sockets_drawn`:
+  each socket onto the one downward tube within 8 LDU of it, for a part with
+  studs on top), and `_underside_of` leaves those where they are. Probes:
+  `moulded_animal_probe` (the horse put by edit_model at whole studs, by its
+  hoof's connector and moved, each standing with every hoof on a stud and
+  nothing saying it is off them) and `moulded_in_sets_probe` (every moulded
+  animal of the library's sets where its set has it, by edit: none called off
+  its studs; `-- all` 442 of 570 placed, 434 before, 8 called off their studs
+  before and none now).
 - `technic joints`: pins, axles and ball joints as real attachments, alongside
   studs. Two pieces: the hole has to be *open* in the occupancy lattice (so a
   pin is not a collision), and the two connectors have to be *matched*

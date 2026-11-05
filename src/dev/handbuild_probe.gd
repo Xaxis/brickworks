@@ -1720,7 +1720,8 @@ func _phases_as_the_sets_have_them() -> void:
 			var box: AABB = _builder._rotated_bounds(mesh, at.basis)
 			var footprint := Vector2i(int(round(box.size.x / 20.0)), int(round(box.size.z / 20.0)))
 			var boxed: Vector3 = BrickLattice.snap_to_studs(at.origin, footprint)
-			var phase: Variant = _builder._socket_phase(mesh, at.basis, footprint)
+			var phase: Variant = _builder._socket_phase(_builder._takes_studs(
+				_library.resolve(id), mesh), at.basis, footprint)
 			var ruled: Vector3 = boxed if phase == null else Vector3(
 				round((at.origin.x - (phase as Vector2).x) / 20.0) * 20.0 + (phase as Vector2).x,
 				at.origin.y,
