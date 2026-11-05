@@ -143,6 +143,8 @@ fixing what it got wrong.
   (`Assistant.look_up`) with its own words (`queries`: `plan_scale`'s subject,
   the design's name, `how_real_sets_build_this`'s, `cleaned` of a set's words),
   at most `MOST_SEARCHES`; with none, the look says so and what it searched.
+  When the model is not drawn in time (a busy graphics card), the photograph
+  goes alone with `UNDRAWN`, asking the session to take its own views.
   Every change but `compare_with_photo` (`PhotoLook.definition`, served by
   `CommandSocket._own_tools`, read-only), a save, `view_model`, `look_at_model`
   and `find_reference` is refused until it answers, at most `MOST_REFUSED`

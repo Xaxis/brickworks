@@ -11,14 +11,16 @@
 ## design's name, how_real_sets_build_this's, cleaned of a set's words); then
 ## the model from the view the photograph's title names (or the corner), the
 ## front and the side; then the question, answered with compare_with_photo. A
-## subject with no photograph is told so. Every change but the answer, a
-## save, a look at the model and another photograph is refused until it
-## answers (twice at most); the answer is kept, and the review or save after
-## it counts the parts added and taken off since. Once a subject; never
-## beside the person's own model, never about a selection. Never a picture of
-## anything built of bricks, by its title or by what Commons files it under;
-## while a set is held out, find_reference drops those too. Commons is never
-## asked here: the finder is the probe's. In a window, for the pictures.
+## subject with no photograph is told so; a model not drawn in time gets the
+## photograph alone, and is asked to take its own. Every change but the
+## answer, a save, a look at the model and another photograph is refused
+## until it answers (twice at most); the answer is kept, and the review or
+## save after it counts the parts added and taken off since. Once a subject;
+## never beside the person's own model, never about a selection. Never a
+## picture of anything built of bricks, by its title or by what Commons files
+## it under; while a set is held out, find_reference drops those too. Commons
+## is never asked here: the finder is the probe's. In a window, for the
+## pictures.
 extends SceneTree
 
 var _failures: int = 0
@@ -80,6 +82,7 @@ func _run() -> void:
 	await _its_own_photo("c1")
 	await _found_for_it("c2")
 	await _no_photo("c3")
+	await _not_drawn("c7")
 	await _unanswered("c4")
 	await _beside_a_model("c5")
 	await _about_a_selection("c6")
@@ -295,6 +298,35 @@ func _no_photo(chat: String) -> void:
 			"settle": "rebuild", "why": "a blob is round"}]}))
 	_check("...and answered all the same: %s" % answer.left(40), answer.begins_with(
 		"Now rebuild roundness") and not answer.contains("photograph was not the thing"))
+
+
+## The model not drawn in time, as behind a busy graphics card: the
+## photograph goes all the same, and the session is asked to take its own.
+func _not_drawn(chat: String) -> void:
+	print("\n── the model not drawn in time ──")
+	await _call_as(chat, "clear_model", {})
+	_finder.answers = {"red lighthouse": [_picture("Red lighthouse on a cliff.jpg")]}
+	await _call_as(chat, "find_reference", {"subject": "red lighthouse"})
+	await _call_as(chat, "submit_design", _tower())
+	var shot: ModelShot = _assistant._ensure_shot()
+	var was: float = shot.give_up_after
+	shot.give_up_after = 0.0
+	var said: Array = await _call_as(chat, "review_model", {})
+	shot.give_up_after = was
+	var text: String = _text(said)
+	_check("the photograph still goes, alone: %d picture" % _images(said),
+		_images(said) == 1 and text.contains("The real thing, from your find_reference: Red "
+			+ "lighthouse on a cliff.jpg") and _look().waiting())
+	_check("...and it is asked to take its own: %s" % _line_with(text, "drawn in time"),
+		text.contains(PhotoLook.UNDRAWN) and not text.contains("Yours from"))
+	var looked: Array = await _call_as(chat, "view_model", {"from": "front"})
+	_check("...which it can, the look waiting: %d picture" % _images(looked),
+		_images(looked) == 1 and _look().waiting())
+	var answer: String = _text(await _call_as(chat, PhotoLook.TOOL, {"photo": "a lighthouse",
+		"is_it": true, "silhouette": "taller and tapering", "features": [{"name": "lantern",
+			"photo": "a fifth of the height", "model": "none", "settle": "rebuild",
+			"why": "it is what it is known by"}]}))
+	_check("...and answered as ever: %s" % answer.left(30), answer.begins_with("Now rebuild"))
 
 
 ## Never answered: two changes refused, then they go ahead; or the model
