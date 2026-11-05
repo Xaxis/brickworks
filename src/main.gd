@@ -6400,19 +6400,18 @@ var _booklet_writing: bool = false
 
 ## The booklet's file [param from] read again a page at a time into a PDF
 ## at [param to] (BookletPdf), as NAME.part until it is whole, on a worker
-## while the window goes on. Here, with a frame every eight pages, the car's
-## held one for 200 to 350 ms of its own in the 0.15.0 download (bookletwarm,
-## 2026-11-04). Its pages; -1 when it could not be written, and then nothing
-## of it is left.
+## while the window goes on, its type and its scripts loaded there too. Here,
+## with a frame every eight pages, the car's held one for 155 to 215 ms of
+## its own in the 0.15.0 download (bookletwarm, 2026-11-04). Its pages; -1
+## when it could not be written, and then nothing of it is left.
 func _pdf_file(from: String, to: String) -> int:
-	var read: RefCounted = Later.make(&"BookletRead")
-	var out: RefCounted = Later.make(&"BookletPdf")
+	var read: RefCounted = (await Later.script_in_background(&"BookletRead", null)).new()
+	var out: RefCounted = (await Later.script_in_background(&"BookletPdf", null)).new()
 	var part: String = to + ".part"
-	if not out.begin(part, read):
-		return -1
 	var task: int = WorkerThreadPool.add_task(func() -> void:
-		read.read_file(from, out.page)
-		out.finish(read.title), false, "booklet pdf")
+		if out.begin(part, read):
+			read.read_file(from, out.page)
+			out.finish(read.title), false, "booklet pdf")
 	while not WorkerThreadPool.is_task_completed(task):
 		await get_tree().process_frame
 	WorkerThreadPool.wait_for_task_completion(task)
