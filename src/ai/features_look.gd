@@ -198,10 +198,16 @@ func waiting() -> bool:
 
 
 ## What a call is told while the look waits for its answer: "" when it goes
-## ahead. The answer, a save and a look at the model go ahead; anything else
-## is refused, up to MOST_REFUSED times.
+## ahead. The answer, a save and a look at the model go ahead, and clearing
+## the model lets the look go; anything else is refused, up to MOST_REFUSED
+## times.
 func not_yet(tool: String) -> String:
 	if not waiting() or tool in GO_AHEAD:
+		return ""
+	# Taken off to start again: there is nothing left to look at.
+	if tool == "clear_model":
+		last["unanswered"] = true
+		print("features look: the model taken off, the look let go")
 		return ""
 	if int(last["refused"]) >= MOST_REFUSED:
 		last["unanswered"] = true

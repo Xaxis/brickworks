@@ -12,7 +12,8 @@
 ## in place of the rest of the review. Every change but the answer, a save
 ## and a look at the model is refused until features_look answers (twice at
 ## most), and the answer is kept; one most off is to be rebuilt, and the
-## next whole review is the review. Once a subject: never at a second design
+## next whole review is the review. Clearing the model lets the look go.
+## Once a subject: never at a second design
 ## of the sitting; a chat that planned nothing is asked to name them in the
 ## look, and one whose build had none of them yet is asked again at the
 ## next. A chat that designs beside a model already standing, and one about
@@ -187,7 +188,8 @@ func _named_in_the_look(chat: String) -> void:
 	_check("...and it is never asked a third time", text.begins_with("The whole model:"))
 
 
-## Never answered: two changes refused, then they go ahead.
+## Never answered: two changes refused, then they go ahead; or the model
+## taken off to start again, which lets the look go.
 func _unanswered(chat: String) -> void:
 	print("\n── a look never answered ──")
 	await _call_as(chat, "clear_model", {})
@@ -201,6 +203,15 @@ func _unanswered(chat: String) -> void:
 	_check("two edits refused, the third goes ahead: %s" % " | ".join(said),
 		said[0].begins_with("Not yet") and said[1].begins_with("Not yet")
 		and not said[2].begins_with("Not yet") and bool(_look().last.get("unanswered", false)))
+	await _call_as("c3b", "clear_model", {})
+	await _call_as("c3b", "plan_scale", {"subject": "a red tower", "longest_metres": 30})
+	await _call_as("c3b", "submit_design", _tower())
+	await _call_as("c3b", "review_model", {})
+	var cleared: String = _text(await _call_as("c3b", "clear_model", {}))
+	var again: String = _text(await _call_as("c3b", "submit_design", _tower()))
+	_check("taken off to start again, the look is let go: %s | %s" % [cleared.left(30),
+		again.left(30)], not cleared.begins_with("Not yet") and again.begins_with("Built.")
+		and bool(_look().last.get("unanswered", false)))
 
 
 ## Beside the person's own model: no look, the review as before.
