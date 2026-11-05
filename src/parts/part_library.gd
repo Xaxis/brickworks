@@ -1869,16 +1869,20 @@ signal custom_added(part_id: String)
 ## Put a made part beside the catalogue's, or replace one made before.
 func add_custom(info: PartInfo, mesh: Lbm.PartMesh, source: String) -> void:
 	_wait_for_readers()
+	# The index made from the parts without it let go of, and one being made
+	# from them on a worker stopped before they change under it; made again
+	# ahead of the next search once this frame's parts are in (a file brings
+	# several), where the next key waited for it (handbuild, 2026-11-05).
+	var indexed: bool = forget_search()
 	if not parts.has(info.id):
 		_ordered_ids.append(info.id)
 	parts[info.id] = info
 	custom[info.id] = source
-	_search_lock.lock()
-	_search_index = null
-	_search_lock.unlock()
 	_mesh_cache.erase(info.mesh_hash)
 	_custom_meshes[info.mesh_hash] = mesh
 	custom_added.emit(info.id)
+	if indexed:
+		prepare_search.call_deferred()
 
 
 ## The LDraw source of a custom part, from this session's or the
@@ -2212,12 +2216,28 @@ func unknown_words(query: String) -> PackedStringArray:
 
 var _search_index: PartSearch = null
 var _search_lock := Mutex.new()
+## Whether the search's index is made on a worker, ahead of need: where there
+## are threads. Where there are none it is made in frames instead, [constant
+## INDEX_BUDGET_MS] of each; a probe turns it off to stand in for a browser
+## without threads.
+var index_on_a_worker: bool = not OS.has_feature("nothreads")
+## Of a frame, what making the index takes where there are no threads, ms;
+## and while a search waits for it.
+const INDEX_BUDGET_MS := 4.0
+const INDEX_WANTED_MS := 12.0
+## The index being made in frames, until it is (_index_frame); and whether a
+## search waits for it.
+var _index_making: PartSearch = null
+var _index_wanted: bool = false
 
 
-## Whether the search's index is made, and the element numbers read with it:
-## a search asked now does not wait.
+## Whether the search's index is made, and where there are threads the
+## element numbers read with it: a search asked now does not wait. Never
+## waits itself: the index being made on a worker holds its lock, and the
+## bin asks every frame while a search waits for it (PartsBin._search_soon).
 func search_ready() -> bool:
-	_search_lock.lock()
+	if not _search_lock.try_lock():
+		return false
 	var made: bool = _search_index != null
 	_search_lock.unlock()
 	if made and _preparing >= 0 and not WorkerThreadPool.is_task_completed(_preparing):
@@ -2227,45 +2247,136 @@ func search_ready() -> bool:
 	return made
 
 
-## Make the search's index now, on a thread of its own where there are
-## threads, so the first key typed in the parts bin is not the one that waits
-## the second it takes. A search asked meanwhile waits for it (_finder).
-func prepare_search() -> void:
-	if (OS.has_feature("web") and not OS.has_feature("threads")) or _preparing >= 0 \
-			or search_ready():
+## Make the search's index ahead of the first key typed in the parts bin,
+## which otherwise waits the second and more it takes: on a worker where
+## there are threads, and where there are none in frames ([member
+## index_on_a_worker]), the faster for [param wanted], a search waiting for
+## it. A search asked meanwhile waits for it (_finder); the bin's waits
+## without holding a frame. Without threads the element numbers are read
+## when the first is typed (part_of_element), a seventh of a second.
+func prepare_search(wanted: bool = false) -> void:
+	_index_wanted = _index_wanted or wanted
+	if _preparing >= 0 or _index_making != null or search_ready():
 		return
-	_preparing = WorkerTasks.add(func() -> void:
-		_finder()
-		_read_elements(), false, "index the parts for search")
+	_collect_preparing()
+	if index_on_a_worker:
+		var stop := WorkerTasks.Stop.new()
+		_index_stop = stop
+		_preparing = WorkerTasks.add(func() -> void:
+			if _made_unless(stop):
+				_read_elements(), false, "index the parts for search")
+		return
+	var tree: SceneTree = _read_tree()
+	if tree == null:
+		return
+	var offered: PackedStringArray = _offered_ids()
+	_search_lock.lock()
+	_index_making = PartSearch.new(parts, offered, false)
+	_search_lock.unlock()
+	if not tree.process_frame.is_connected(_index_frame):
+		tree.process_frame.connect(_index_frame)
 
 
-## The task making the index (prepare_search), until it is let go of.
+## Each frame while the index is made in frames: a frame's share of it, kept
+## once it is all made.
+func _index_frame() -> void:
+	_search_lock.lock()
+	var making: PartSearch = _index_making
+	var budget: float = INDEX_WANTED_MS if _index_wanted else INDEX_BUDGET_MS
+	if making != null and making.made_for(roundi(budget * 1000.0)):
+		if _search_index == null:
+			_search_index = making
+		_index_making = null
+		making = null
+	_search_lock.unlock()
+	if making == null:
+		_index_wanted = false
+		var tree: SceneTree = _read_tree()
+		if tree != null and tree.process_frame.is_connected(_index_frame):
+			tree.process_frame.disconnect(_index_frame)
+
+
+## The index made on a worker, a few ms of it at a time under its lock,
+## unless [param stop] is asked first or between them: whether it is made.
+func _made_unless(stop: WorkerTasks.Stop) -> bool:
+	_search_lock.lock()
+	var made: bool = _search_index != null
+	if not made and not stop.asked():
+		var making := PartSearch.new(parts, _offered_ids(), false)
+		while not made and not stop.asked():
+			made = making.made_for(roundi(INDEX_BUDGET_MS * 1000.0))
+		if made:
+			_search_index = making
+	_search_lock.unlock()
+	return made
+
+
+## The index let go of, to be made again from the parts as they are now:
+## whether there was one, made or being made. One being made on a worker
+## from them is told to stop, and has let go of its lock and of the parts
+## when this has the lock; one not started yet stops as it starts. Its task
+## is not waited for, as it may be queued behind a file's geometry.
+func forget_search() -> bool:
+	if _index_stop != null:
+		_index_stop.ask()
+		_index_stop = null
+	_search_lock.lock()
+	var had: bool = _preparing >= 0 or _search_index != null or _index_making != null
+	_search_index = null
+	_index_making = null
+	_search_lock.unlock()
+	if _preparing >= 0:
+		_stopped.append(_preparing)
+		_preparing = -1
+	return had
+
+
+## The task making the index (prepare_search), until it is let go of; what
+## stops it; and tasks stopped, until they are let go of. Main thread only.
 var _preparing: int = -1
+var _index_stop: WorkerTasks.Stop = null
+var _stopped: Array[int] = []
 
 
 func _collect_preparing() -> void:
-	if _preparing >= 0 and _on_main_thread() and WorkerThreadPool.is_task_completed(_preparing):
+	if not _on_main_thread():
+		return
+	if _preparing >= 0 and WorkerThreadPool.is_task_completed(_preparing):
 		WorkerTasks.collect(_preparing)
 		_preparing = -1
+	for task: int in _stopped.duplicate():
+		if WorkerThreadPool.is_task_completed(task):
+			WorkerTasks.collect(task)
+			_stopped.erase(task)
 
 
-## The word index, made at the first search: under a second over the whole
-## catalogue, once, where every search read all of it (a tenth of a second a
-## search, 2026-10-22). A part made in the app makes it again.
+## The word index: under a second over the whole catalogue, once, where every
+## search read all of it (a tenth of a second a search, 2026-10-22); made
+## ahead (prepare_search), and here when it is wanted first, or the rest of
+## it when it is being made in frames. A part made in the app lets it go
+## (add_custom).
 func _finder() -> PartSearch:
 	_search_lock.lock()
+	if _search_index == null and _index_making != null:
+		_index_making.made_for(-1)
+		_search_index = _index_making
+		_index_making = null
 	if _search_index == null:
-		# Not a part LDraw keeps only for old files where one made now is
-		# the same shape (current): search offered 3660a beside 3660c.
-		var offered := PackedStringArray()
-		var old: Dictionary = superseded_ids()
-		for id: String in _ordered_ids:
-			if not old.has(id):
-				offered.append(id)
-		_search_index = PartSearch.new(parts, offered)
+		_search_index = PartSearch.new(parts, _offered_ids())
 	var index: PartSearch = _search_index
 	_search_lock.unlock()
 	return index
+
+
+## The parts the search offers: not one LDraw keeps only for old files where
+## one made now is the same shape (current): search offered 3660a beside 3660c.
+func _offered_ids() -> PackedStringArray:
+	var offered := PackedStringArray()
+	var old: Dictionary = superseded_ids()
+	for id: String in _ordered_ids:
+		if not old.has(id):
+			offered.append(id)
+	return offered
 
 
 ## The part a number actually means today.
