@@ -215,7 +215,12 @@ plainer — see the first lever below.
      - Then colour, hidden parts, and parts carried off by an earlier page's
        mistake.
    - **Next**, a unit each:
-     - steps that add one course of a mass at a time;
+     - steps that add one course of a mass at a time. Tried and not kept
+       (A course a step, docs/INSTRUCTIONS.md, 2026-11-05). On the stair's
+       120 parts, two builders put 14 and 16 right, where before three put
+       41, 50 and 15. The misses shrank to a stud along a run, a course off,
+       or the other column. So the next lever is the picture: the joints
+       of the course below, or a run's length in studs;
      - an attach step that shows where the sub-assembly meets the model;
      - black parts drawn with their edges.
    - **The whole castle**, nine hours of builder, is a lead's run; the
