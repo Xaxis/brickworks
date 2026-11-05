@@ -4797,6 +4797,469 @@ Next, from what the lever did not reach:
   the open studs on the d12 losers, and Level Crossing here. A set that
   stands on a baseplate shows grass and roads there, not a bare field.
 
+### Surface: what d13l44 still loses on, and a bare ground cut back to what stands on it, a smoke (2026-11-04, design14, `a567612e`, NO-GO)
+
+**Why.** design13's lever is now the code. Before the next lever, count what
+its 44 (`realset-2026-11-03-d13l44`) still loses against the set, and why,
+in the judge's own words.
+
+**The losses.** 43 subjects paired (Emma's made no model), both orders: 86
+verdicts a dimension.
+
+| dimension | won | lost |
+|---|---|---|
+| likeness | 24 | 62 |
+| surface | 31 | 55 |
+| colour | 24 | 62 |
+| technique | 12 | 74 |
+| creativity | 40 | 46 |
+| overall | 21 | 65 |
+| all | 152 | 364 |
+
+**The judge's named causes**, each lost verdict's reason read for the kinds
+below (a verdict can name more than one; scratch `py/kinds.py`):
+
+| kind | likeness | surface | colour | technique | creativity | overall | all | subjects |
+|---|---|---|---|---|---|---|---|---|
+| stacked straight, no turned or angled part | 12 | 32 | 2 | 71 | 2 | 8 | 127 | 39 |
+| generic or boxy shape, the defining shape missed | 52 | 10 | 0 | 0 | 4 | 40 | 106 | 33 |
+| flat one-colour fields | 8 | 3 | 59 | 3 | 0 | 2 | 75 | 35 |
+| open studs | 3 | 41 | 5 | 2 | 0 | 11 | 62 | 27 |
+| stepped where the set curves | 9 | 29 | 1 | 9 | 5 | 3 | 56 | 24 |
+| few story or play details | 0 | 0 | 0 | 3 | 36 | 17 | 56 | 26 |
+| Technic brief built in System bricks | 6 | 2 | 0 | 15 | 0 | 16 | 39 | 9 |
+| the line's idiom missed (figures, faces, theme) | 10 | 1 | 4 | 4 | 1 | 12 | 32 | 7 |
+| a bare base or ground | 6 | 8 | 9 | 1 | 1 | 5 | 30 | 9 |
+
+One quote each:
+- stacked straight: "B's wall is straight stacked bricks on a flat base" (Great Wall, technique);
+- generic shape: "A is a generic low tan block with flat grey slab roofs" (Imperial Hotel, likeness);
+- flat one-colour fields: "B is mostly one broad expanse of light grey wall against a tan base" (Uruk-hai, colour);
+- open studs: "its huge baseplate is all exposed studs, apart from the tan tile paths" (Heartlake Stables, surface);
+- stepped: "B just stacks staggered" bricks where "A uses curved elements for the rounded prow" (Flatiron Building, technique);
+- few story details: "spread thinly over a flat base" (The Cave, creativity);
+- Technic in System: "B is built the way Technic sets are, with beams, pins, panels" (Record Breaker, technique);
+- the line's idiom: "B uses true BrickHeadz construction" (Steve & Creeper, technique);
+- a bare ground: "A covers a flat baseplate with exposed studs" (Dino Explorer, surface).
+
+**The most wins.** By count, stacked straight (127 verdicts, 71 of the 74
+technique losses) and the generic shape (106, 40 of the 65 overall losses)
+cost the most. Both have had their levers: technique fifteen since 10-16
+(the last, app-made panels, NO-GO on 11-03), the shape three (the defining
+shape first, the signature features, silhouettes), none ready. The bare
+ground has had none, and read strictly (the verdict faults our ground, not
+the set's, Architecture's plinths left out) it is 21 lost verdicts on 6
+subjects, in five dimensions: surface 6, colour 7, likeness 4, overall 3,
+creativity 1. On those 6 subjects it is 3.5 losses a subject, where stacked
+straight is 3.3 and the shape 3.2.
+
+**What sets do.** Every design and set of the 44 opened in the app and its
+ground read: the flat plates and baseplates within a plate of the model's
+bottom, what stands on them, and what is bare (scratch `ground_read.gd`).
+On the 15 scenes (not Architecture, whose plinth is its footprint):
+
+| | sets | d13l44 |
+|---|---|---|
+| ground over the footprint, pooled | 18% | 78% |
+| median a model | 15% | 93% |
+| bare ground studs | 1,154 | 5,795 |
+| largest bare fields, summed | 639 | 4,986 |
+| baseplates | 0 | 8 |
+
+Level Crossing: the set's largest bare field is 6 studs, ours 1,161. Rise of
+the Sphinx 28 against 951, Naida's Spa Secret 0 against 368, Dino Explorer 8
+against 208. Heartlake Stables is the set that keeps a ground: 395 against
+937. The library's 170 scenes (City, Town, Creator, Friends, Western, 1995
+to 2020) lay a ground over a median 4% of their footprint (quartiles 0%,
+4%, 23%), their median largest bare field 3 studs; 13 have a baseplate,
+mostly the older ones (City Airport, Skull Island). A set's base is the size
+of what stands on it: a brief's "fitting in about 30 x 49 studs" is where a
+scene spreads, and our sessions read it as a ground to cover.
+
+**The change** (`a567612e`), a proposal the session settles: the surface
+pass finds `ground` first. A plain plate or baseplate of 16 studs or more at
+the model's bottom whose studs carry nothing out to its edge is laid again
+as the smallest real one in its colour (a baseplate for a baseplate, its top
+where it was) holding what stands on it and a stud round, or taken off when
+nothing stands on it. No cut that leaves a hole in the ground, none in a
+kept zone. The answer says why (sets lay a base the size of what stands on
+it; a bare field round a building or a vehicle reads as a flat expanse of
+studs) and that "reject" or "keep" puts it back, for ground that is the
+play.
+
+**Proof in the app.** `ground_cut_probe`: a corner house on a 32 x 32
+baseplate gets a 16 x 8 baseplate, its top where it was, the model one piece,
+open studs 1,006 → 110; kept with a reason, the 32 x 32 is back and never
+proposed again; a hut on a 16 x 16 plate gets a 6 x 6; a tiled plinth is
+left; a bare 8 x 8 beside a house comes off; a cut in the ground's middle is
+never made. The first run found the 16 x 16 left alone: "Plate 16 x 16 with
+Underside Ribs" read as a side-stud part, so names are now read by word.
+`surface_probe` 98 ok (its offered ground moved to a 6 x 6 the cut leaves),
+`mcp_sync` ok with the tool list written, `docs_site --check` ok.
+
+**Smoke.** Two locked snapshots, each imported first: `snapd14base` at
+`aeba2fdf` (pre256) and `snapd14lev` at `a567612e`. One job each on the
+owner's path, on the five subjects with the largest bare grounds in d13l44:
+3189-1 Heartlake Stables (937 bare studs in one field), 7936-1 Level
+Crossing (1,161), 7326-1 Rise of the Sphinx (951), 41072-1 Naida's Spa
+Secret (368) and 5934-1 Dino Explorer (208). No login lapse. The holdout
+held in all ten: two base sessions searched for their own set (the library
+for "7326" and "41072", the web for "Naida's Spa Secret 41072") and every
+answer was "nothing matches".
+
+Verdicts won, of 10 per dimension (5 subjects, both orders):
+
+| dimension | d14base | d14lev |
+|---|---|---|
+| likeness | 3 | 4 |
+| surface | 5 | 4 |
+| colour | 3 | 3 |
+| technique | 0 | 0 |
+| creativity | 1 | 2 |
+| overall | 2 | 3 |
+| lost verdicts naming our ground | 8 | 7 |
+
+Where the lever acted, and where it did not:
+
+- **Level Crossing**: the base built no ground at all; the lever's session
+  built a full green lot of two layers. The pass cut four 8 x 8 plates of the
+  upper layer to 4 x 4s, and the session kept all four: "These 8x8 plates are
+  the upper ground layer that bonds the seams of the layer below; the brief
+  asks for a full 30x49 lot." Both arms won the same verdicts.
+- **Rise of the Sphinx**: seven tan plates of an upper ground layer cut
+  back or taken off; all kept, "The open tan sand is the dig site ...
+  Pharaoh's Quest sets leave their desert ground studded for figures."
+  Surface 1 → 2, from the design; a lost likeness verdict names "a flat
+  baseplate".
+- **Heartlake Stables**: no ground finding. Its paths, fences and trees run
+  to the edges of both baseplates, so what stands on them spans each whole.
+  The base's lost verdicts name "a large, mostly empty baseplate", "wide
+  areas of green baseplate studs exposed"; the lever's none (its paddock was
+  tiled by the session).
+- **Naida's Spa Secret**: no cut. design13's laying of the lawn was refused
+  ("it would leave the model in 3 pieces") and the session kept G1 as lawn.
+  Surface 2 → 0: "a large expanse of studded green baseplate", "a flat green
+  field of exposed studs". The base's pass laid 11 findings and its session
+  kept 10 (353 studs tiled): "its pool, its white rim and the tan paths are
+  neatly tiled". A different design, not the lever.
+- **Dino Explorer**: no ground finding in either. The base's ground was a
+  green plate the judge called "a studded green baseplate" twice; the
+  lever's session covered its ground.
+
+Front renders, each looked at: Heartlake, both a stable on two bare green
+baseplates; Level Crossing, the base's crossing on no ground and the lever's
+on a studded green lot to the brief's edges; the Sphinx, the lever's wider on
+a studded tan field, the base's on a narrower one; Naida, the lever's lawn
+bare green, the base's paths and pool tiled; the Dino, both small
+vignettes, the base's on bare green.
+
+**NO-GO.** Surface was won less (5 → 4) and the ground is named about as
+often (8 → 7). Likeness and creativity were no worse (+1 each), from other
+differences between the designs.
+
+Why the lever did not reach it:
+- **Grounds are built in two layers.** In both sessions where it laid
+  anything, the cut plates were the upper layer that bonds the lower one's
+  seams: taking them off shows the same studs a plate lower. The lower layer
+  is covered everywhere by the upper, so no one part's studs carry nothing
+  to an edge. A ground has to be read as a stack, cut through every layer.
+- **What stands on a ground spreads to its edges**: Heartlake's paths and
+  fences. Cut back to one rectangle, the plate stays whole.
+- **By the surface pass the ground is the structure.** Sessions keep it with
+  reasons the build gives them (the bond, the pieces) and with the brief's
+  footprint ("a full 30x49 lot"). The cause is the plan: the footprint is
+  read as a lot to cover before the first part. The next lever for it goes
+  where the ground is chosen, the design's first answer, and says what the
+  library says: a scene's base is the size of what stands on it.
+- The change is taken back out on this branch (`a567612e` holds it), so
+  nothing of it ships.
+
+### Likeness: how much of its box a model fills, against real sets of its theme, told at the first build (2026-11-04, design15, `ed247302`, NO-GO)
+
+**Why.** On d13l44 the judge names a generic or boxy shape in 106 lost
+verdicts on 33 subjects, 52 of the likeness losses and 40 of the 65 overall
+(design14, above). The three shape levers before this one (the defining
+shape first, the signature features, silhouettes) worked late or by
+description, and none moved likeness clear of noise. design14 found that
+by the surface pass the shape is the structure and sessions defend it. So
+this one is a number the build's first answer gives, while the massing is
+all there is.
+
+**The measure, with no judge.** Every model opened in the app, its cover
+read off the lattice (each part's real shape in 2 LDU cells), in voxels half
+a stud across and a plate tall, a voxel filled when half its cells are. The
+ground is left out first: up to four flat bottom layers, each half again
+wider than the first layer standing on them (a baseplate, a plinth). Then:
+
+- **fill**: seen from above, every column counted from its top down to the
+  bottom, over the box. A box is 1.
+- **front**, **side**, **plan**: the outline from each side over its box face.
+- **tall**: height over the square root of width times depth.
+- Two more were tried and dropped: the volumes (connected blocks above a
+  height) and the steps of the roofline. Neither separated anything.
+
+Read over 1,616 judged bench designs of 88 subjects (every realset arm on
+disk with a design.ldr) and the library's 1,234 set models (scratch
+`massing_read.gd`; the sets in `assets/knowledge/set_massing.json` at
+`ed247302`, written by its `src/dev/set_massing.gd`).
+
+**Does it tell the losers from the winners?** Within a subject, yes, and
+only there:
+
+- Each subject's designs split at its median fill: the leaner half won
+  likeness 29.1% and the fuller 25.9%, overall 25.2% and 22.3%. A subject's
+  mean, leaner minus fuller: likeness +3.2 points (+0.5, +6.0), overall
+  +2.9 (+1.0, +4.9). Every dimension went the same way (creativity 40.9%
+  against 37.1%). Boxy-named verdicts a design: 2.00 against 2.18.
+- As an AUC within subject (a likeness winner's value above a loser's): fill
+  0.40 (0.35, 0.46), side 0.38 (0.32, 0.45), plan 0.42, front 0.44. Under
+  0.5 means the winner is leaner. Volumes 0.50, steps 0.52, tall 0.51.
+- 79% of the designs fill more of their box than their own set does.
+
+Across subjects it says nothing. A BrickHeadz figure is a block and wins as
+one (Steve & Creeper fills 74% and won 2 of 2 likeness), and a Bricktober
+Hotel at 65% won both. On d13l44, the median subject that lost every
+likeness verdict filled 0.37 against its set's 0.31; the median one that
+won some filled 0.27 against 0.17. The excess is no bigger among the losers.
+
+So a model is measured only against real sets of its theme and part count,
+and told when it fills more than three in four of them. Over the 1,616
+designs that flags 633, and 573 of them (91%) do fill more than their own
+set, held out. The flag alone does not mark losers across subjects:
+flagged designs won likeness 31.5%, unflagged 22.5%. It marks a design
+fuller than its kind.
+
+On d13l44 it flags 14 of 43 subjects: Imperial Hotel, the Flatiron, the
+Guggenheim, Steve & Creeper, Jack & Sally, the roller, the sweeper, Mia's
+Bedroom, both Bricktobers, and four Technic. Two of those are wrong by
+their own set: the Flatiron (0.54 against the set's 0.66) and the
+Guggenheim (0.46 against 0.48). Three won (Steve & Creeper and both
+Bricktobers). Six subjects have no norm (Elves, Minecraft, Pharaoh's Quest,
+the Hobbit: too few sets of the theme near the size).
+
+**The change** (`ed247302`), a check the session settles:
+
+- `Massing` (src/ai/massing.gd) measures. `SetKnowledge.massing()` reads
+  the sets and leaves out every held-out set by number and name.
+- `Massing.sets_like` picks the sets: the theme the brief names
+  (`ColoursSeen.theme_in` over the table's own themes), within 1.6x of the
+  part count (2.5x when fewer than 8), else the kind by a word of the sets'
+  names. Fewer than 8 sets: nothing is said.
+- The first build's answer (submit_design while designing) and review_model
+  of the whole give the finding when the model's fill is above the sets'
+  upper quartile:
+  "Massing: seen from above, every column counted from its top down, the
+  model fills 59% of its box. City sets of 135 to 326 parts fill 15% to
+  28%, most often 21% (26 sets, none under test), so it is fuller than three
+  in four of them. Of two designs of one subject, the fuller loses on
+  likeness more often: a full box reads as a generic block. Sets break their
+  massing into the volumes the subject is known by ... Give it the subject's
+  own massing now, before the detail, and not with a mast or by making it
+  smaller. If this subject is a block, keep it and say why."
+- It is said once a massing; a new submit_design is a new design. Nothing is
+  changed by it. The box is measured on the main thread and the measure
+  runs on a worker.
+
+**Proof in the app.** `massing_probe`, all passed:
+
+- a 12 x 12 block 12 plates tall on a 16 x 16 plate fills 1.00, the plate
+  ground;
+- two towers over a hall fill 0.625;
+- d13l44's roller, opened from its file (212 parts), fills 0.59;
+- 7746-1 is in the file and absent from `SetKnowledge.massing()` while held
+  out;
+- City sets of about 215 parts: 135 to 326 parts, 26 sets, 15% to 28%;
+- review_model says it, and not twice;
+- a first build of a block is told "fills 100% of its box", and walls round
+  an open yard are told nothing;
+- a brief naming no theme or kind measures nothing.
+
+Also passed: `surface_probe`, `mcp_sync`, `colours_seen`, `holdout`,
+`rules`, `reference`, `section`, `responsive` (what `featuremap affected`
+lists), and tests/test_realset.py and test_challenge_notices.py (36 passed,
+minitest).
+
+**Smoke.** Two locked snapshots, each imported first: `snapd15base` at
+`4d5fceb1` (stage225's code) and `snapd15lev` at `ed247302`. One job each on
+the owner's path, on five flagged subjects that lost on shape in d13l44: a
+building (21017-1 Imperial Hotel), a vehicle (7746-1 Single-Drum Roller), a
+creature (41630-1 Jack Skellington & Sally), a scene (3939-1 Mia's Bedroom)
+and a second vehicle (7242-1 Street Sweeper). There was no login lapse. The
+holdout held in all ten. No tool answer named the set under test by number
+or name (scratch `py/holdout_check.py`). The only hits were both hotels'
+Wikimedia photos of the building and the catalogue's printed tile 4162p0o
+"Imperial Hotel", a part open to both arms. The bench's `held_out_said` is
+true for every design, and every finding says "none under test".
+
+Verdicts won, of 10 a dimension:
+
+| dimension | d13l44 (same 5) | d15base | d15lev |
+|---|---|---|---|
+| likeness | 1 | 2 | 5 |
+| surface | 4 | 4 | 5 |
+| colour | 1 | 1 | 2 |
+| technique | 0 | 1 | 1 |
+| creativity | 4 | 2 | 4 |
+| overall | 0 | 2 | 2 |
+| lost likeness or overall verdicts naming a generic or boxy shape, read by hand | | 12 of 16 | 4 of 13 |
+
+Fill, the final model against its set:
+
+| subject | set | d13l44 | d15base | d15lev (told at first build → final) |
+|---|---|---|---|---|
+| Imperial Hotel | 0.36 | 0.46 | 0.46 | 40%, 43% → 0.42 |
+| Single-Drum Roller | 0.23 | 0.59 | 0.61 | 75% → 0.41 (a worker beside it widens the box) |
+| Jack & Sally | 0.48 | 0.63 | 0.79 | 83% → 0.82 |
+| Mia's Bedroom | 0.19 | 0.23 | 0.24 | 31% → 0.23 |
+| Street Sweeper | 0.29 | 0.40 | 0.40 | 53% → 0.43 |
+
+Each subject, with what I saw in its front and corner renders:
+
+- **Imperial Hotel.** The base is a tall U of three storeys under flat slab
+  roofs, black window bands all round: "a generic multi-storey slab with
+  gridded windows", "could be any modern hotel" (4 of 4 lost). The lever's
+  session was told 40% and rebuilt its plan before any detail: the two long
+  wings (6 x 24, three layers) became shorter wings with taller
+  pavilions at each end, and lower links. That is the one session of five
+  that answered the finding. Then it said "The massing now stands (H plan,
+  pavilions, lobby tower)". Its render is low and spread out, with corner
+  piers and deep roofs. The judge called it "a generic East Asian temple
+  complex", "a generic pagoda-style compound" (heavy roofs, corner posts),
+  so it still lost 4 of 4, now for the wrong roofs rather than a box.
+  Creativity 0 → 2.
+- **Single-Drum Roller.** The base is orange, an open canopy cab over a
+  frame, its drum in a yoke. The lever's is yellow, a slab-sided body full
+  width end to end, a closed cab, its drum under the front deck. It was told
+  75% and went straight to its features. Both lost all 8: "a long, boxy
+  truck-like body", "a boxy orange frame".
+- **Jack & Sally.** Both are BrickHeadz blocks, as the line is. The lever
+  was told 83% (BrickHeadz q3 61%), kept the form, and did not say why.
+  Lost one likeness on "a crude blocky mouth", a face, not the massing.
+- **Mia's Bedroom.** Both are an L of lavender walls on tan plates with the
+  same furniture. The lever was told 31%. Likeness 0 → 2 on "one coherent
+  bedroom on a single base" where the base lost on "a classic minifigure".
+  The same room, judged differently.
+- **Street Sweeper.** The base is one long white box van with its wheels
+  hidden: "a white box van", "generic white body". The lever's is two
+  volumes, a white cab and a rounded orange hopper, with its wheels showing.
+  Likeness 0 → 2, "reads as a City street sweeper from every view". It was
+  told 53% and went on unchanged: the cab and hopper were in its first
+  plan, written before the finding.
+
+The brief's three conditions held: likeness won more (2 → 5), creativity
+no worse (2 → 4), and generic or boxy named less (12 → 4; 8 if "a generic
+pagoda compound" counts). So the paired 44 ran. But only the hotel's
+session acted on the finding. The sweeper and the bedroom moved for reasons
+the finding did not give.
+
+**The paired 44.** Same two snapshots, 2 jobs an arm, both audited:
+`realset-2026-11-04-d15b44` and `-d15l44`. All 44 subjects were judged in
+both, 88 verdicts a dimension. There was no login lapse. The holdout held.
+Every number named in a tool answer was a session searching the gallery for
+its own set and hearing "nothing matches". Every name named was the
+building's own Wikimedia photos or a printed catalogue part ("Chicago",
+"Dubai", "Air Mail"). Six designs an arm have no hold-out line because
+those sessions never searched the real-set index.
+
+| dimension | d13l44 (86) | d15b44 | d15l44 | lever minus base, points (95%) |
+|---|---|---|---|---|
+| likeness | 24 | 28 (32%) | 30 (34%) | +2.3 (-4.5, +10.2) |
+| surface | 31 | 34 (39%) | 33 (38%) | -1.1 (-13.6, +11.4) |
+| colour | 24 | 28 (32%) | 31 (35%) | +3.4 (-5.7, +12.5) |
+| technique | 12 | 16 (18%) | 14 (16%) | -2.3 (-9.1, +4.5) |
+| creativity | 40 | 42 (48%) | 39 (44%) | -3.4 (-10.2, +3.4) |
+| overall | 21 | 23 (26%) | 23 (26%) | +0.0 (-8.0, +9.1) |
+| lost likeness or overall naming a generic or boxy shape (words matched) | | 96 | 88 | |
+
+The interval is a bootstrap over subjects of each subject's share (scratch
+`py/paired.py`). The base is d13l44's code again and won about what d13l44
+won.
+
+**Where the finding reached** (scratch `py/reach.py`). Of 44 lever
+sessions:
+
+- 20 were told. The other 24 fill less than three in four of their sets,
+  or have no norm.
+- 9 of the 20 re-planned: a new submit_design before any review or edit.
+- 11 went on to features. Two of them said the massing already read well,
+  both Bricktobers, which won every likeness and overall verdict in both
+  arms. The rest said
+  nothing of it.
+
+| | subjects | likeness | overall | creativity | boxy named, by hand (base → lever) | mean fill (base → lever) |
+|---|---|---|---|---|---|---|
+| told, re-planned | 9 | 7 → 9 | 5 → 8 | 6 → 7 | 18 → 10 | 0.55 → 0.49 |
+| told, went on | 11 | 12 → 10 | 11 → 9 | 11 → 11 | | 0.48 → 0.51 |
+| not told | 24 | 9 → 11 | 7 → 6 | 25 → 21 | | 0.22 → 0.22 |
+
+Over the 44, the median fill is 0.32 in both arms against the sets' 0.23.
+32 base designs and 33 lever designs fill more than their own set.
+
+Renders: front and corner of both arms, each looked at for the 20 subjects
+told. Contact sheets are in scratch `sheets/`.
+
+- **Flatiron.** The lever's session said "the two long walls will sit at an
+  angle on turntables so the footprint really is a triangle, not a box". It
+  built a tall triangular tower with a cornice, and won likeness and overall
+  2 of 2, where the base's "squat, boxy wedge" lost 4 of 4. That is the
+  lever working as meant. Yet the flag was wrong by its own set: the set
+  fills 0.66, the base's design 0.48 and the lever's 0.60.
+- **Guggenheim.** Fill 0.60 in the base and 0.32 in the lever, a rotunda
+  over a lower drum. Both arms won.
+- **First Responder.** The base lost on "a slab-sided red brick box" and
+  "plain boxy truck"; the lever, now a taller SUV, on "ignores the Technic
+  style". Likeness 0 → 1.
+- **Imperial Hotel.** The lever was told 55% and rebuilt to 35%, low
+  pavilions under sand-green roofs with a flagpole on the lobby. Again it
+  was called "a generic pagoda-like building", 0 of 4 both arms. The base's
+  is a grey low H, "a boxier slab".
+- **Corvette** and **Dune Hopper.** Re-planned and still "a flat yellow
+  brick slab", "a tall, boxy cart". The Hopper's re-plan stood a square cage
+  on round-brick pillars and a flag mast.
+- **Street Sweeper.** It re-planned to "a gap between the cab and the
+  hopper" and lost likeness 1 → 0 to the set's roller brush and hose: "a
+  generic tanker or garbage truck".
+- **Went on**: Big Ben, Emma's, Mia's, both Bricktobers, Steve & Creeper,
+  Jack & Sally, the Roadwork Crew, the BMW, the Charger and the roller. In
+  each pair the two arms' massing is alike to the eye. Jack & Sally's lever
+  faces are cruder.
+
+**NO-GO.** Likeness +2 and colour +3 are inside the noise. Overall did not
+move, and creativity (-3) and technique (-2) went down a little. The judge
+named a boxy shape 96 → 88 times, also inside noise.
+
+Why it fell short:
+- **It reaches too few designs to move a 44.** Told in 20 sessions and
+  answered in 9. Where it was answered, the verdicts moved its way: overall
+  5 → 8 of 18 verdicts, a boxy shape named 18 → 10 times by hand. That is 9
+  subjects, and it may only be that sessions whose first build was plainly
+  off re-plan anyway. Where it was heard and passed over, overall went
+  11 → 9.
+- **It comes last in a long answer.** The finding follows the build's other
+  findings and "the touches an expert adds". In 11 of 20 sessions the next
+  words were about features. design14 found the same of late passes: what
+  the plan chose stays.
+- **Fill is moved by what is not the body.** A figure or a paving slab
+  beside the model widens the box. The smoke's roller fell from 75% to 41%
+  with a worker standing by it, and the judge still called its body "a
+  long, boxy truck-like body". A flagpole or a mast raises the top. A
+  measure for this belongs on the main connected body, its height without
+  anything thinner than a brick.
+- **The flag is not the loss.** Across subjects, flagged designs won
+  likeness more often than unflagged (31.5% against 22.5% over the 1,616).
+  Fill separates only within a subject, and the theme norm is a stand-in
+  for the subject's own set, which a session must never see. It was wrong
+  on the Flatiron and the Guggenheim, whose sets fill more than d13l44's
+  designs, and
+  BrickHeadz were told when their form is the line's.
+- **Next.** Massing belongs before the first build, not after it: the plan
+  names the subject's volumes, each with its height and setback, and the
+  first build is checked against that plan. That is a check of the
+  session's own intent, so it needs no norm and cannot see a held-out set.
+  The measure (`Massing`, `set_massing.json`, `massing_probe`) is at
+  `ed247302` for it.
+- The change is taken back out on this branch, so nothing of it ships.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

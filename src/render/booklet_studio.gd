@@ -299,6 +299,57 @@ static func code_colour(number: int) -> Color:
 		(float(high) * 8.0 + 4.0) / 255.0)
 
 
+## Each kind of plastic [param world] is drawn in, drawn once here as the
+## booklet draws it, a kind a picture of one brick, before the booklet's
+## first picture needs it.
+##
+## The engine builds a shader's pipelines ahead, on its workers, only for
+## the way the window draws: the project's MSAA. The booklet's pictures
+## have none (the codes cannot be blended), so the first picture built
+## them in the frame that drew it: the car's cover was one frame of 950 to
+## 990 ms of the app's own in the 0.15.0 download on a first start, six
+## pipelines, 440 to 520 ms of them a kind of plastic, which no frame can
+## split (bookletwarm, 2026-11-04). Instructions has this done as it is
+## pressed (BookletMaker.warm), so those frames go by behind the Save
+## dialog, and the booklet waits for what is left. Drawn once in a run:
+## the engine keeps them, and on disk for the next start.
+func warm(world: BrickWorld) -> void:
+	while warming:
+		await get_tree().process_frame
+	warming = true
+	var picked: Dictionary = {}
+	for drawn: Array in world.drawing():
+		var kind: String = _kind(drawn[0], drawn[3])
+		if not _warmed.has(kind) and not picked.has(kind):
+			picked[kind] = (drawn[1] as PackedInt64Array)[0]
+	for kind: String in picked:
+		var brick: BrickWorld.Brick = world.get_brick(int(picked[kind]))
+		if brick != null:
+			var made: Stage = stage([[brick.id, brick.part_id, brick.color_code, brick.transform]])
+			var whole: Rect2 = extent(made.boxes, FRONT)
+			var view := View.new(FRONT, whole.get_center(),
+				16.0 / maxf(1.0, maxf(whole.size.x, whole.size.y)))
+			await finished(await shoot(made, made.count, made.count + 1, view, Vector2i(16, 16)))
+			forget(made)
+		_warmed[kind] = true
+	warming = false
+
+
+## Whether [method warm] is under way, and the kinds it has drawn in this
+## run: [method _kind] -> true.
+static var warming: bool = false
+static var _warmed: Dictionary = {}
+
+
+## What decides how a batch is drawn, for [method warm]: its shader and its
+## mesh's vertex format.
+static func _kind(multimesh: MultiMesh, material: Material) -> String:
+	var shader: Shader = (material as ShaderMaterial).shader if material is ShaderMaterial else null
+	var mesh: ArrayMesh = multimesh.mesh as ArrayMesh
+	return "%d %d" % [shader.get_instance_id() if shader != null else 0,
+		mesh.surface_get_format(0) if mesh != null and mesh.get_surface_count() > 0 else 0]
+
+
 ## Draw [param made] with its first [param upto] bricks showing, those
 ## numbered from [param new_from] on marked as new, from [param view],
 ## [param size] pixels, faded to the page over [param fade] of its pixels

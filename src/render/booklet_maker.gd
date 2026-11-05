@@ -91,6 +91,17 @@ func make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	return html
 
 
+## The way the booklet draws [param world]'s plastic made ready by a studio
+## of its own under [param parent] (BookletStudio.warm): asked for as
+## Instructions is pressed, so it is built while the Save dialog is up.
+static func warm(world: BrickWorld, parts: PartLibrary, parent: Node) -> void:
+	var studio := BookletStudio.new()
+	studio.library = parts
+	parent.add_child(studio)
+	await studio.warm(world)
+	studio.queue_free()
+
+
 ## The booklet's pages as [method make] lays them out, with no picture
 ## drawn: each step's place, size and look, for the timeline and a session
 ## (booklet_layout). The steps the booklet turns round by itself are
@@ -188,6 +199,9 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	await get_tree().process_frame
 	if held:
 		GpuFence.let_go()
+	# What Instructions' press set going, or the same here (BookletStudio.warm).
+	if not dry:
+		await _studio.warm(world)
 
 	document = Booklet.Document.new()
 	document.title = title

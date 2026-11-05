@@ -6214,6 +6214,10 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 				return not leave.has(brick.id)):
 			_bar.say("nothing to write instructions for")
 			return "nothing to write instructions for"
+		# How the booklet draws the model's plastic, built while the dialog
+		# is up (BookletMaker.warm): built in its first picture, it was a
+		# second of a frame on a first start.
+		_warm_booklet()
 		to = await SaveTo.ask(title.to_snake_case() + "_instructions.html", "",
 			"Save the instructions")
 		if to.is_empty():
@@ -6308,6 +6312,13 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 var _booklet_out: Node = null
 
 
+## BookletMaker.warm, its script compiled on a worker first, the frames
+## going on.
+func _warm_booklet() -> void:
+	var maker: GDScript = await Later.script_in_background(&"BookletMaker", null)
+	maker.warm(_world, _library, self)
+
+
 ## Save as PDF or Save pages as PNG, pressed in the booklet ([param kind]
 ## "pdf" or "png"): the booklet read again from itself, a page at a time,
 ## into a PDF (BookletPdf) or a zip of a PNG a page (BookletPng). On the
@@ -6388,17 +6399,23 @@ var _booklet_writing: bool = false
 
 
 ## The booklet's file [param from] read again a page at a time into a PDF
-## at [param to] (BookletPdf), as NAME.part until it is whole, with a frame
-## for the window every eight pages. Its pages; -1 when it could not be
-## written, and then nothing of it is left.
+## at [param to] (BookletPdf), as NAME.part until it is whole, on a worker
+## while the window goes on, its type and its scripts loaded there too. Here,
+## with a frame every eight pages, the car's held one for 155 to 215 ms of
+## its own in the 0.15.0 download (bookletwarm, 2026-11-04). Its pages; -1
+## when it could not be written, and then nothing of it is left.
 func _pdf_file(from: String, to: String) -> int:
-	var read: RefCounted = Later.make(&"BookletRead")
-	var out: RefCounted = Later.make(&"BookletPdf")
+	var read: RefCounted = (await Later.script_in_background(&"BookletRead", null)).new()
+	var out: RefCounted = (await Later.script_in_background(&"BookletPdf", null)).new()
 	var part: String = to + ".part"
-	if not out.begin(part, read):
-		return -1
-	var pages: int = await read.read_all(from, out.page, 8)
-	out.finish(read.title)
+	var task: int = WorkerThreadPool.add_task(func() -> void:
+		if out.begin(part, read):
+			read.read_file(from, out.page)
+			out.finish(read.title), false, "booklet pdf")
+	while not WorkerThreadPool.is_task_completed(task):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(task)
+	var pages: int = out.pages
 	return pages if _into_place(part, to, pages > 0 and out.ok()) else -1
 
 

@@ -1798,7 +1798,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   and the probe read the model again on the main thread) (`GrabDrag._ready_ahead`;
   from 300 parts until 2026-10-21), the parts' exact shapes read first on the
   main thread; a press before it is done waits for the rest below 300 parts
-  (`GrabDrag._ready_now`) and says so from 300. The status bar's weighing
+  (`GrabDrag._ready_now`) and says so from 300. A reading on the main thread
+  reads only the shapes of the parts on joints, and the rest, with the part
+  in hand's, are read on a worker after it (`GrabDrag._read_shapes_ahead`):
+  read at the first room test that met them, 8808-1's steering wheel's first
+  stop took 16 ms of its 24 ms frame, and a Technic beam 15's first aim 36 ms
+  (`drag_cost_probe`, headless, about 1 min: three turns of the wheel, every
+  frame under the grab's budget, the first turn's as the others'). The status bar's weighing
   (`Main._weigh`) is on a worker too. Both give way when the library must be
   written (`PartLibrary.reading_in`'s stop, a `WorkerTasks.Stop` that
   `Bodies`, `Balance.prepare` and `Stability.check` ask as they go): a model
