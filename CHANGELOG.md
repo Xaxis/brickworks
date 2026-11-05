@@ -13,6 +13,56 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-05
+
+Brickworks leaves alone what you did not touch, and keeps up while you work.
+Change one step and only the parts you moved move: on the castle, 0.16.0's
+first step edit sent 2,202 of the other 2,496 parts to other steps and lost
+the booklet's sections, and now it moves none of them and keeps every
+section, through an undo and a save opened again. Instructions no longer
+freezes the window, even the first time, where it could hold it still for a
+second and a half, and the PDF is written while you carry on. The first drag
+of a part against another, a new part taken from the bin and a search typed
+in it no longer stutter. A horse, or any animal moulded in one piece, stands
+on the studs where its set puts it. And the chat, Connect your AI and the AI
+page's Test scroll to what they have just shown, not a line short of it.
+
+### Changed
+
+- Instructions keeps the window moving. Each kind of plastic the booklet
+  draws is got ready as you press Instructions, behind the Save dialog, and
+  the PDF is written off the window: the longest frame of its own work, the
+  first time, went from 1,485 ms to 71 ms.
+- What the app reads from disk while you work is read in the background:
+  the shapes of a model's other parts as soon as you take one, so the first
+  time a drag meets another part costs what every later one does; a new
+  part's shape for its hinges before you aim it; the pictures of a search
+  typed in the bin; and the desktop viewer's shapes.
+
+### Fixed
+
+- The first step edit keeps the steps you see, on every model. A model with
+  no steps of its own shows the steps Brickworks works out, and its first
+  step edit makes them the model's own. On the castle that edit put 2,202 of
+  the other 2,496 parts in other steps. Now every other part stays in its
+  step. Where a sub-model is built in its parent's steps, the file writes its
+  parts there, after a line naming the copy (`0 !BRICKWORKS IN`), so another
+  LDraw program builds the order you saw, and Brickworks reads each copy back
+  as it was.
+- A booklet keeps its sections, the sub-models and stages it is built in,
+  through your first edit, its undo and a save opened again, where the first
+  edit lost every one. Each is marked on the step it starts at
+  (`0 !BRICKWORKS SECTION`), a line other programs pass over.
+- A horse, and every animal moulded in one piece, goes on the studs where
+  its set has it. 9469's horse would not stand on a plate: its hooves are
+  drawn off the grid of the studs on its back, so it was called off its
+  studs. A part in hand now takes studs where it is drawn to, and Claude no
+  longer sends a design back because such an animal is on no joint.
+- The chat goes to Claude's newest card once the card has its size, where
+  it often stopped a card short; Build together's chat shows its newest
+  line; and Connect your AI's form and the AI page's Test answer scroll to
+  what they have just shown.
+
 ## [0.16.0] - 2026-11-04
 
 Brickworks now installs the way your system's own apps do, and keeps itself
