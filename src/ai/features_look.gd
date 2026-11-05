@@ -164,8 +164,13 @@ func look() -> Variant:
 static func opening(features: Array[Dictionary], measured: String) -> String:
 	var said := PackedStringArray()
 	said.append(OPENING)
-	if not measured.strip_edges().is_empty():
-		said.append(measured.strip_edges().get_slice("\n", 0))
+	# The whole's size, its first sentence: the layers it goes on to are the
+	# massing, not the features.
+	var whole: String = measured.strip_edges().get_slice("\n", 0)
+	if whole.contains(" Its massing"):
+		whole = whole.get_slice(" Its massing", 0)
+	if not whole.is_empty():
+		said.append(whole)
 	if features.is_empty():
 		said.append("You planned none with %s: name the two or three now, from what you know "
 			% PLAN_TOOL + "of the real thing, each with its proportion against the whole.")

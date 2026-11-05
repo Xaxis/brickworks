@@ -113,7 +113,7 @@ func _planned_then_looked(chat: String) -> void:
 		text.begins_with(FeaturesLook.OPENING) and bool(_look().waiting()))
 	_check("...in place of the rest of the review", not text.contains("The whole model:"))
 	_check("...with the whole's size and what was planned: %s" % _line_with(text, "Measured"),
-		text.contains("Measured, in studs: the whole model is")
+		text.contains("Measured, in studs: the whole model is") and not text.contains("Its massing")
 		and text.contains("What you planned, from the real thing:\n  1. the lantern"))
 	var words := PackedStringArray()
 	var pictures: int = 0
