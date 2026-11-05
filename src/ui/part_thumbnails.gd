@@ -441,15 +441,20 @@ func _render(job: Dictionary, stage: Stage) -> void:
 	if _groups.has(job["part"]):
 		_render_group(job, stage)
 		return
-	var part: Lbm.PartMesh = library.mesh_for(job["part"])
+	var part: Lbm.PartMesh = library.mesh_here(job["part"])
 	if part == null:
-		# On the web most parts are a request away rather than absent, and
+		# Read from disk off the frame where the build has it: read here, a
+		# search typed in the bin read 20 to 30 tiles' parts a frame, 100 to
+		# 150 ms of it (watched_frames_probe). And on the web most parts are
+		# a request away rather than absent, and
 		# giving up here left the bin showing a few hundred previews and
 		# twenty-eight thousand empty squares. Ask for the geometry and
 		# come back when it lands; the library caps how many are in the
 		# air at once, so a scroll does not open a connection per cell.
+		# Waiting before it is asked: one read where there is no frame to
+		# read it in is said at once.
+		_awaiting[job["part"]] = true
 		if library.request_mesh(job["part"]):
-			_awaiting[job["part"]] = true
 			_reorder = true
 		else:
 			_fail(job["part"])
@@ -551,11 +556,10 @@ func _render_group(job: Dictionary, stage: Stage) -> void:
 	var entry: Array = _groups[id]
 	var coming: bool = false
 	for part_id: String in entry[0]:
-		# From disk first, where the build has it (Assistant._ensure_parts).
-		if not library.is_resident(part_id):
-			library.mesh_for(part_id)
 		if library.is_resident(part_id):
 			continue
+		# Read from disk off the frame where the build has it, as one part's
+		# picture is (_render), else fetched.
 		if not library.request_mesh(part_id):
 			_fail(id)
 			return

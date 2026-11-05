@@ -1101,6 +1101,8 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 		request_mesh(part_id)
 		return null
 
+	if _on_main_thread():
+		read_here += 1
 	var part: Lbm.PartMesh = Lbm.load_part(path)
 	if part == null:
 		if not _missing.has(info.mesh_hash):
@@ -1326,20 +1328,18 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 			or _arrived.has(info.mesh_hash):
 		fetched.emit(part_id)
 		return true
-	# Come with the web build's later parts since it was asked for: read,
-	# not fetched again.
-	if not _fetching.has(info.mesh_hash) and OS.has_feature("web") \
-			and FileAccess.file_exists(LATER + info.mesh_hash + ".lbm"):
-		var here: Lbm.PartMesh = Lbm.load_part(LATER + info.mesh_hash + ".lbm")
-		if here != null:
-			_keep(info.mesh_hash, here)
-			fetched.emit(part_id)
-			return true
+	# Here on disk, this build's or the web build's later part come since it
+	# was asked for: read off the frame (_read_soon), not fetched.
+	var path: String = "" if _fetching.has(info.mesh_hash) else _on_disk(info.mesh_hash)
+	if not path.is_empty():
+		_fetching[info.mesh_hash] = [part_id]
+		_read_soon([LBM, info.mesh_hash, FileAccess.get_file_as_bytes(path), part_id, AABB()],
+			urgent)
+		return true
 	# One of them, while they are on their way whole: held for them rather
 	# than fetched alone. The bin's first pictures were asked for in the
 	# frames before the page could write them in, and fetched one by one.
-	if info.packed and not _fetching.has(info.mesh_hash) and _later_coming() \
-			and _on_disk(info.mesh_hash).is_empty():
+	if info.packed and not _fetching.has(info.mesh_hash) and _later_coming():
 		if not _for_later.has(part_id):
 			_for_later.append(part_id)
 		_watch_later()
@@ -1547,25 +1547,210 @@ func _remote_root() -> String:
 
 func _on_fetched(code: int, body: PackedByteArray, hash_name: String,
 		part_id: String) -> void:
-	# Taken before the entry goes, not looked up after it.
-	var asked_for: Array = _fetching.get(hash_name, [part_id])
-	_fetching.erase(hash_name)
 	_next_fetch()
-
 	if code != 200 or body.is_empty():
+		# Taken before the entry goes, not looked up after it.
+		var asked_for: Array = _fetching.get(hash_name, [part_id])
+		_fetching.erase(hash_name)
 		for asked: String in asked_for:
 			fetch_failed.emit(asked, "HTTP %d" % code)
 		return
-	var part: Lbm.PartMesh = Lbm.parse(body, part_id)
-	if part == null:
+	# Still on its way until it is read: one asked for meanwhile joins it.
+	if not _fetching.has(hash_name):
+		_fetching[hash_name] = [part_id]
+	_read_soon([LBM, hash_name, body, part_id, AABB()])
+
+
+# -- read off the frames a person watches -------------------------------------
+#
+# A part's geometry and its exact shape are read from their bytes in GDScript,
+# 1 to 50 ms a part on this box: 35011's geometry 52 ms, a Technic beam 15's
+# shape 49 ms. Read where they were wanted, on the main thread, a search typed
+# in the bin drew 20 to 30 tiles' pictures a frame and held it 100 to 150 ms
+# (watched_frames_probe), the part taken read its shape for its hinges on the
+# click's frame, and in a browser every fetch's answer was read on the frame it
+# came in, four of 8808-1's shapes a frame holding it 50 ms. So what is wanted
+# ahead of the frame that shows it (a tile's picture, the part under the
+# pointer, a fetch's answer) is read here: on a worker where there are threads,
+# a few at a time, in frames under [constant READ_BUDGET_MS] where there are
+# none; kept on the main thread as each is done, and said (fetched,
+# exact_fetched) as a fetch is. What needs one now still reads it there
+# (mesh_for, Exact.shape_for), as before.
+
+const LBM := "lbm"
+const BWX := "bwx"
+## What one frame reads where there are no threads, ms: at least one thing.
+const READ_BUDGET_MS := 4.0
+## The most one worker's task reads before the next frame keeps them and
+## starts another: what is wanted most since then goes first.
+const READ_AT_ONCE := 6
+## Whether what is read ahead is read on a worker: where there are threads. A
+## probe turns it off to read in frames under the budget, as a browser without
+## threads does.
+var read_on_a_worker: bool = not OS.has_feature("nothreads")
+## Parts' geometry read from disk on the main thread, since start-up, by one
+## that wanted it at once (mesh_for). Probes read it.
+var read_here: int = 0
+## Waiting to be read: [kind, hash, bytes, part id, box], under [member
+## _read_lock], which the worker takes too; and what it has read, [that, what
+## it made], under the same lock.
+var _to_read: Array = []
+var _was_read: Array = []
+var _read_lock := Mutex.new()
+var _reading: int = -1
+## Exact shapes being read from this build's files ahead (read_ahead): hash ->
+## true. Not on their way as a fetch is: one wanted now is read there, as before.
+var _reading_shapes: Dictionary = {}
+
+
+## [param item] ([kind, hash, bytes, part id, box]) read off the frame, first
+## with [param first]; read here and now where there is no frame (no tree).
+func _read_soon(item: Array, first: bool = false) -> void:
+	var tree: SceneTree = _read_tree()
+	if tree == null:
+		_kept_read(item, _read_one(item))
+		return
+	_read_lock.lock()
+	if first:
+		_to_read.push_front(item)
+	else:
+		_to_read.append(item)
+	_read_lock.unlock()
+	if not tree.process_frame.is_connected(_read_frame):
+		tree.process_frame.connect(_read_frame)
+
+
+## The tree whose frames [method _read_soon] reads in: the fetch host's.
+func _read_tree() -> SceneTree:
+	return _fetch_host.get_tree() if _fetch_host != null and _fetch_host.is_inside_tree() else null
+
+
+## Each frame while anything is to be read: what a worker has read kept, and
+## the next started; or, with no worker, read under the budget.
+func _read_frame() -> void:
+	if _reading >= 0 and WorkerThreadPool.is_task_completed(_reading):
+		WorkerTasks.collect(_reading)
+		_reading = -1
+	_read_lock.lock()
+	var done: Array = _was_read
+	_was_read = []
+	var waiting: bool = not _to_read.is_empty()
+	_read_lock.unlock()
+	for one: Array in done:
+		_kept_read(one[0], one[1])
+	if waiting and not read_on_a_worker and _reading < 0:
+		var began: int = Time.get_ticks_usec()
+		while true:
+			_read_lock.lock()
+			var item: Array = _to_read.pop_front() if not _to_read.is_empty() else []
+			_read_lock.unlock()
+			if item.is_empty():
+				break
+			_kept_read(item, _read_one(item))
+			if Time.get_ticks_usec() - began > READ_BUDGET_MS * 1000.0:
+				break
+	elif waiting and _reading < 0:
+		_reading = WorkerTasks.add(_read_some, false, "read parts' geometry and shapes")
+	_read_lock.lock()
+	var idle: bool = _to_read.is_empty() and _reading < 0
+	_read_lock.unlock()
+	var tree: SceneTree = _read_tree()
+	if idle and tree != null and tree.process_frame.is_connected(_read_frame):
+		tree.process_frame.disconnect(_read_frame)
+
+
+## On a worker: up to [constant READ_AT_ONCE] of what waits, read. The first
+## of each kind the app reads is read alone (WorkerTasks.first_here).
+func _read_some() -> void:
+	for _n: int in READ_AT_ONCE:
+		_read_lock.lock()
+		var item: Array = _to_read.pop_front() if not _to_read.is_empty() else []
+		_read_lock.unlock()
+		if item.is_empty():
+			return
+		var made: Array = [null]
+		var read: Callable = func() -> void: made[0] = _read_one(item)
+		if not WorkerTasks.first_here("read a part's " + str(item[0]), read):
+			read.call()
+		_read_lock.lock()
+		_was_read.append([item, made[0]])
+		_read_lock.unlock()
+
+
+## What [param item]'s bytes are: a part's geometry, its meshes not made yet,
+## or its exact shape, or null. Any thread.
+static func _read_one(item: Array) -> Variant:
+	var kind: String = item[0]
+	var bytes: PackedByteArray = item[2]
+	if kind == LBM:
+		var source: String = item[3]
+		return Lbm.parse(bytes, source, false)
+	var box: AABB = item[4]
+	return Exact.own(Exact.parse(bytes), box)
+
+
+## [param made], read from [param item], kept here on the main thread and said
+## to whoever asked for it.
+func _kept_read(item: Array, made: Variant) -> void:
+	var hash_name: String = item[1]
+	var part_id: String = item[3]
+	if item[0] == BWX:
+		Exact.keep_shape(hash_name, made)
+		_fetching_exact.erase(hash_name)
+		_reading_shapes.erase(hash_name)
+		exact_fetched.emit(part_id)
+		return
+	var asked_for: Array = _fetching.get(hash_name, [part_id])
+	_fetching.erase(hash_name)
+	var part: Lbm.PartMesh = made
+	if part == null and not is_resident(part_id):
 		for asked: String in asked_for:
 			fetch_failed.emit(asked, "the geometry did not parse")
 		return
-	_keep(hash_name, part)
+	# Read meanwhile by one that wanted it at once (mesh_for): that one stays.
+	if part != null and not is_resident(part_id):
+		Lbm.make_meshes(part)
+		_keep(hash_name, part)
 	# Everyone who asked for this geometry, not only whoever asked
 	# first.
 	for asked: String in asked_for:
 		fetched.emit(asked)
+
+
+## The geometry of [param part_id] if it is here, else null: nothing read for
+## it (mesh_for reads it, request_mesh asks for it).
+func mesh_here(part_id: String) -> Lbm.PartMesh:
+	var info: PartInfo = parts.get(part_id)
+	if info == null:
+		return null
+	if _mesh_cache.has(info.mesh_hash):
+		return _mesh_cache[info.mesh_hash]
+	if _custom_meshes.has(info.mesh_hash):
+		return _custom_meshes[info.mesh_hash]
+	return _arrived.get(info.mesh_hash)
+
+
+## [param part_id]'s geometry and exact shape read ahead of the frame that
+## wants them, off it, first: the part under the pointer in the bin, read
+## before it is clicked (PartsBin). Its first aim, on the click's frame, read
+## its shape for its hinges (JointSnap.hinges_of), 25 to 60 ms of a Technic
+## beam's. In a browser its geometry is fetched, as asked for.
+func read_ahead(part_id: String) -> void:
+	var info: PartInfo = parts.get(part_id)
+	if info == null:
+		return
+	if not is_resident(part_id) and not is_on_its_way(part_id):
+		request_mesh(part_id, true)
+	var shaped: PartInfo = shaped_as(part_id)
+	if OS.has_feature("web") or shaped == null or not shaped.exact or shaped.mesh_hash.is_empty() \
+			or _reading_shapes.has(shaped.mesh_hash) or Exact.known(self, shaped.id):
+		return
+	var file: String = Exact.file_for(self, shaped.id)
+	if not FileAccess.file_exists(file):
+		return
+	_reading_shapes[shaped.mesh_hash] = true
+	_read_soon([BWX, shaped.mesh_hash, FileAccess.get_file_as_bytes(file), shaped.id,
+		shaped.bounds], true)
 
 
 ## Ask for a part's exact shape (Exact, tools/build_exact.py) where this build
@@ -1645,11 +1830,14 @@ func shaped_as(part_id: String) -> PartInfo:
 
 func _on_fetched_exact(code: int, body: PackedByteArray, hash_name: String,
 		part_id: String) -> void:
-	_fetching_exact.erase(hash_name)
 	var info: PartInfo = parts.get(part_id)
-	Exact.keep(hash_name, body if code == 200 else PackedByteArray(),
-		info.bounds if info != null else AABB())
-	exact_fetched.emit(part_id)
+	if code == 200 and not body.is_empty():
+		# On its way until it is read (_read_soon), as a fetch is.
+		_read_soon([BWX, hash_name, body, part_id, info.bounds if info != null else AABB()])
+	else:
+		_fetching_exact.erase(hash_name)
+		Exact.keep(hash_name, PackedByteArray())
+		exact_fetched.emit(part_id)
 	_next_exact()
 
 

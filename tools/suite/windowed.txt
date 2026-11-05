@@ -111,3 +111,4 @@ connect_any   # Connect your AI: the chooser lists assets/assistants.json, Claud
 key_leak   # made-up keys in no file, save, export, share, MCP answer, feedback, Build together message, clipboard or screen; Forget leaves no copy, This visit only writes nothing (keysafe)
 graphics_mode   # the simpler graphics mode said once; Settings, Graphics kept for the next start (macgl)
 chat_follow   # Build it clicked ten times, five with the conversation at its end and five scrolled to its start, each time ends with the card it opened whole in view; six steps of Claude's, each heard while a press is read, leave Claude's card in view to its foot; at 1280x720 (layoutwait)
+watched_frames   # a part, a shape or a mesh read for the first time off the frames a person watches: the bin's search and the part taken and aimed, 8808-1 in the viewer, fetched shapes landing on a worker and paced, each against the same frames warm (mainthread)
