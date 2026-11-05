@@ -682,10 +682,6 @@ static func said(tool: String, arguments: Dictionary = {}) -> String:
 			return "Worked out the scale for %s, %s m long" % [
 				about if not about.is_empty() else "it",
 				_number(arguments.get("longest_metres", "?"))]
-		"plan_massing":
-			var volumes: int = (arguments.get("volumes", []) as Array).size() \
-				if arguments.get("volumes") is Array else 0
-			return "Planned the massing, %d volume%s" % [volumes, "" if volumes == 1 else "s"]
 		"find_reference": return "Looked for a picture of %s" % about
 		"how_real_sets_build_this": return "Asked how real sets build %s" % about
 		"check_design": return "Checked a design of %d bricks" % bricks

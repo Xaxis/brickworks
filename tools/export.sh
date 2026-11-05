@@ -151,13 +151,11 @@ build_web() {
   # technique (src/ai/real_snippets.gd), our own scored designs when a
   # design starts (src/ai/design_memory.gd), and real sets' figures and
   # sizes when a design asks for a figure or a scale (src/ai/set_knowledge.gd),
-  # and the colours real sets show and how much of their box they fill when a
-  # model is reviewed (src/ai/colours_seen.gd, src/ai/massing.gd).
+  # and the colours real sets show when a model is reviewed (src/ai/colours_seen.gd).
   mkdir -p "$dir/knowledge"
   cp assets/knowledge/snippets.json.gz assets/knowledge/part_looks.json \
     assets/knowledge/designs.json.gz assets/knowledge/minifig_sets.json \
-    assets/knowledge/set_sizes.json assets/knowledge/set_colours.json.gz \
-    assets/knowledge/set_massing.json "$dir/knowledge/" \
+    assets/knowledge/set_sizes.json assets/knowledge/set_colours.json.gz "$dir/knowledge/" \
     || { echo "export FAILED: no assets/knowledge to put beside $dir"; return 1; }
   # Each part's, colour's and category's name in German, French and Spanish
   # as this build's app says them, for the site's parts lists: deploy.sh

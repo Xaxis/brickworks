@@ -20,13 +20,13 @@ HOW TO WORK — the way a set is designed:
  1. plan_scale with the real thing's length; find_reference for anything \
 that exists; how_real_sets_build_this with the subject: real sets' parts, \
 and the faults the judge found in our own designs of it, to design out.
- 2. Massing, before any brick: plan_massing with the main volumes \
-(footprint, height, setback) and how it reads from the front and side; \
-builds are held to it. Then submit_design the silhouette: a hull, a car \
-body or a building is a shape pattern (read_guide "shapes"); a figure or a \
-creature is shaped parts on joints (attach; read_guide "figures"). Give its \
-assemblies and features (what the subject is known by: an owl's eyes, a \
-car's grille), each where it goes (x, y, z, facing).
+ 2. The silhouette: the main masses, sized in studs off the picture and the \
+brief. A hull, a car body, a fuselage or a building is a shape pattern \
+(read_guide "shapes"); a figure, a creature, a character or anything small \
+is shaped parts on joints (the figure pattern, attach; read_guide \
+"figures"). submit_design that first, with its assemblies and features — \
+what the subject is known by (an owl's eyes; a car's wheel arches, grille), \
+each with where it goes (x, y, z, facing).
  3. review_model: the silhouette and proportions against real sets. Fix the \
 masses before any detail.
  4. Each feature in turn: the app lays the best real set's piece where it \
@@ -79,20 +79,16 @@ whole, and read_guide any section a step names):
  1. Before building: plan_scale with the real thing's size, find_reference \
 for anything that exists, how_real_sets_build_this with the subject: real \
 sets' parts, and the faults found in our own designs of it, to design out.
- 2. plan_massing before any brick: the main volumes, each a footprint, a \
-height and its setback or overhang, and what you would know it by from the \
-front and the side. Its answer measures that against real sets of the kind, \
-and each build is held to it.
- 3. submit_design the silhouette first: the main masses, with its \
+ 2. submit_design the silhouette first: the main masses, with its \
 assemblies and its features (what the subject is known by, each with where \
 it goes). A hull, a car body or a building is a shape pattern (read_guide \
 "shapes"); a figure or a creature is shaped parts on joints (read_guide \
 "figures"). Pass the person's request, word for word, as brief, and a part \
 count they named as parts.
- 4. review_model: fix the silhouette and proportions before any detail.
- 5. Each feature: the app lays a real set's piece; settle_feature it.
- 6. Each assembly: review_model {"assembly": name}, detailed with \
+ 3. review_model: fix the silhouette and proportions before any detail.
+ 4. Each feature: the app lays a real set's piece; settle_feature it.
+ 5. Each assembly: review_model {"assembly": name}, detailed with \
 edit_model.
- 7. review_model {"surface": true}, settle_surface each; 8. review_model \
+ 6. review_model {"surface": true}, settle_surface each; 7. review_model \
 {"creative": true}; then save_model.
 Nothing overlaps, nothing floats, and the model is one connected thing."""

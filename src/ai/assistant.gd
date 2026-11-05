@@ -3354,10 +3354,6 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# The official models' sizes, fetched on the web the first time.
 			await SetKnowledge.ensure(self)
 			return _plan_scale(args)
-		"plan_massing":
-			progress.emit("measuring the planned massing")
-			heard(str(args.get("subject", "")))
-			return await _plan_massing(args)
 		"find_reference":
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up what a %s looks like" % subject)
@@ -3370,11 +3366,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
-			# Every session asks this first (44 of 44, d15l44), so the plan's
-			# volumes are asked for here, last, as what comes next.
 			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
-				+ DesignMemory.recall(subject) + ([] if not _massing_plan.is_empty()
-					else [{"type": "text", "text": PLAN_MASSING_NEXT}])
+				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			var described: String = _describe_world(args)
@@ -4816,24 +4809,12 @@ func _colours_finding(fresh: bool = true) -> String:
 ## the person's words, and a bench session's subject alone ("street sweeper")
 ## measured 7242-1 against street sets, not City's. Kept until that changes.
 func _colours_reference(standing: int) -> Dictionary:
-	var said: String = _subject_said()
+	var said: String = " ".join(PackedStringArray([_brief, _words_passed, _heard, _named_as]))
 	var parts: int = ColoursSeen.parts_in(said, _parts_asked, standing)
 	var key: String = "%s|%d|%s" % [said, parts, ",".join(DesignMemory.held_out())]
 	if key == _colours_ref_for:
 		return _colours_ref
 	_colours_ref_for = key
-	_colours_ref = ColoursSeen.sets_like(said, _kinds_said(said), parts, library)
-	return _colours_ref
-
-
-## All the app hears of the subject: the brief a session passes
-## submit_design first, its calls' subjects, the design's name.
-func _subject_said() -> String:
-	return " ".join(PackedStringArray([_brief, _words_passed, _heard, _named_as]))
-
-
-## The kinds of real set [param said] is, as how_real_sets_build_this reads them.
-func _kinds_said(said: String) -> PackedStringArray:
 	var found: Array = library.kinds_for(said)
 	if found.is_empty():
 		var plainer: String = _kind_words(said)
@@ -4841,7 +4822,8 @@ func _kinds_said(said: String) -> PackedStringArray:
 	var kinds := PackedStringArray()
 	for kind: Variant in found:
 		kinds.append(str((kind as Dictionary).get("kind", "")))
-	return kinds
+	_colours_ref = ColoursSeen.sets_like(said, kinds, parts, library)
+	return _colours_ref
 
 
 ## look_at_model of the whole model: the colour finding, when the model is
@@ -6442,7 +6424,6 @@ func heard(subject: String, fresh: bool = false) -> void:
 		_heard_fresh = said
 		_their_words = ""
 		_words_passed = ""
-		_massing_plan = {}
 		fresh_eyes().begin()
 		# What the last design was called is not this one's subject: a
 		# lighthouse after a statue was read as a figure.
@@ -18897,14 +18878,10 @@ each feature the subject is known by, then the detail. In this order:
      and no lighthouse. A picture gives you this one.
   3. The silhouette. Decide the main masses and their sizes in studs, \
      off that picture and the brief, and what each is: round in section, \
-     tapered, at a slant, smooth, moving, mechanical, organic. \
-     plan_massing them before any brick: each volume's footprint, height \
-     and setback or overhang, and what you would know it by from the \
-     front and the side. It measures how much of its box that fills \
-     against real sets of the kind, and each build is read against it. \
-     Say a hull, a car body, a fuselage or a building as a shape and \
-     submit that first: its proportions are judged before anything is \
-     put on it. A figure, a creature or a character is not a shape: it is \
+     tapered, at a slant, smooth, moving, mechanical, organic. Say a \
+     hull, a car body, a fuselage or a building as a shape and submit \
+     that first: its proportions are judged before anything is put on \
+     it. A figure, a creature or a character is not a shape: it is \
      sub-assemblies of shaped parts on joints (FIGURES, CREATURES AND \
      SMALL MODELS, above), submitted the same way first. WHAT THE \
      SUBJECT NEEDS, below, says which call builds each; \
@@ -20573,64 +20550,6 @@ static func _percentile(values: Array[float], share: float) -> float:
 	return lerpf(values[low], values[high], at - low)
 
 
-## What comes next, said after how real sets build the subject until the
-## massing is planned.
-const PLAN_MASSING_NEXT := """Next, before the first brick: plan_massing. Name the \
-subject's main volumes, each a footprint in studs and a height in plates, on the \
-ground or on the one under it (set back from its edges or overhanging them), round \
-or square, its top narrower where it is a roof, a taper or a wedge; and what you \
-would know it by from the front and from the side. Its answer measures how much of \
-its box that fills against real sets of this kind and draws its outline, while \
-changing it costs nothing; each build is then read against those volumes."""
-
-
-## The design's massing as plan_massing last planned it: {"volumes"
-## (MassingPlan.parse), "front", "side"}, or {} before one. Each build of
-## the design is read against it (_massing_checked); a session's fresh
-## brief begins without one.
-var _massing_plan: Dictionary = {}
-
-
-## plan_massing: the plan read, measured against real sets of its theme and
-## size (Massing.sets_like, none under test), kept for the builds after it,
-## and said (MassingPlan.said_plan).
-func _plan_massing(args: Dictionary) -> String:
-	var read: Dictionary = MassingPlan.parse(args.get("volumes"))
-	if read.has("error"):
-		return str(read["error"])
-	if not str(args.get("brief", "")).strip_edges().is_empty():
-		_words_passed = str(args["brief"]).strip_edges()
-	if args.has("parts"):
-		_count_asked(int(args["parts"]), PARTS_ABOUT)
-	await SetKnowledge.ensure(self)
-	var volumes: Array = read["volumes"]
-	var found: Variant = await WorkerTasks.awaited(func() -> Variant:
-		return MassingPlan.measured(volumes), "measure the planned massing")
-	var said: String = _subject_said()
-	var ref: Dictionary = Massing.sets_like(said, _kinds_said(said),
-		ColoursSeen.parts_in(said, _parts_asked, 0))
-	_massing_plan = {"volumes": volumes, "front": str(args.get("front", "")),
-		"side": str(args.get("side", ""))}
-	return MassingPlan.said_plan(volumes, found if found is Dictionary else {}, ref)
-
-
-## What a design's build is told of its massing: read against the plan
-## (MassingPlan.check, said_check), or MassingPlan.NO_PLAN before one.
-func _massing_checked() -> String:
-	if _massing_plan.is_empty():
-		return MassingPlan.NO_PLAN
-	var ids: Array = []
-	for brick: BrickWorld.Brick in _bricks_inside({}):
-		ids.append(brick.id)
-	# The cover is read here; the voxels and the reading on a worker.
-	var boxes: Array = Massing.boxes_of(builder.lattice, ids)
-	var volumes: Array = _massing_plan["volumes"]
-	var found: Variant = await WorkerTasks.awaited(func() -> Variant:
-		return MassingPlan.check(volumes, Massing.voxels(boxes)),
-		"read the build against its planned massing")
-	return MassingPlan.said_check(_massing_plan, found if found is Dictionary else {})
-
-
 func _plan_scale(args: Dictionary) -> String:
 	var metres: float = float(args.get("longest_metres", 0.0))
 	var subject: String = str(args.get("subject", "it"))
@@ -21023,9 +20942,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_creative = {}
 		surface_pass().reset()
 		fresh_eyes().designed(bare)
-	if not designing:
-		return _placed_said(design, report)
-	return _built_from_outside(design, report, await _massing_checked())
+	return _built_from_outside(design, report) if designing else _placed_said(design, report)
 
 
 ## A design built from outside — Claude over the connector, or a session
@@ -21075,15 +20992,10 @@ nod only someone who knows it would catch — and the best one or two added, \
 small and joined, where they are seen."""
 
 
-func _built_from_outside(design: Model, report: Dictionary, massing: String = "") -> String:
+func _built_from_outside(design: Model, report: Dictionary) -> String:
 	var said := PackedStringArray()
 	said.append("Built. %d bricks on the baseplate. %s" % [
 		design.placements.size(), report["summary"]])
-	# Its massing first, while the massing is all there is: the detail after
-	# it is laid inside what this chose (design14, design15). Read against the
-	# plan it leads; asked for, it follows the line that says it stands.
-	if not massing.is_empty():
-		said.insert(0 if not _massing_plan.is_empty() else 1, massing)
 	var counted: String = parts_said()
 	if past_count():
 		said.append(counted + ": the passes after this one add their detail only inside "
@@ -23658,71 +23570,6 @@ func _tools() -> Array:
 						+ "side. A guess within half is enough."},
 				},
 				"required": ["longest_metres"],
-				"additionalProperties": false,
-			},
-		},
-		{
-			"name": "plan_massing",
-			"description": ("The model's massing, planned before its first brick: "
-				+ "the subject's main volumes, each a footprint in studs and a height "
-				+ "in plates, on the ground or on another volume (set back from its "
-				+ "edges or overhanging them), round or square, its top the same or "
-				+ "narrower (a roof falling to its eaves, a taper, a wedge); and what "
-				+ "you would know it by from the front and from the side. The answer "
-				+ "says how much of its box that fills against real sets of its theme "
-				+ "and size, and draws its outline from the front and the side, while "
-				+ "changing it costs nothing. Each build of the design is then read "
-				+ "against these volumes: each there at its height, the setbacks, the "
-				+ "gaps and the space under an overhang kept. Call it after "
-				+ "how_real_sets_build_this and before the first submit_design, in the "
-				+ "coordinates the design is built in."),
-			"input_schema": {
-				"type": "object",
-				"properties": {
-					"volumes": {"type": "array", "description": ("the main masses, "
-						+ "a few to a dozen: a tower and its podium, a cab and its "
-						+ "body, a hull, a deck and a wheelhouse, wings, a roof"),
-						"items": {
-							"type": "object",
-							"properties": {
-								"name": {"type": "string", "description":
-									"what a person would call it: the tower, the cab"},
-								"x_from": {"type": "number", "description": "studs across"},
-								"x_to": {"type": "number"},
-								"z_from": {"type": "number", "description":
-									"studs deep; the front is +z"},
-								"z_to": {"type": "number"},
-								"y_from": {"type": "number", "description":
-									"plates up where it begins: 0 on the ground, or "
-									+ "the top of the volume it stands on"},
-								"y_to": {"type": "number", "description": "plates up to its top"},
-								"round": {"type": "boolean", "description":
-									"round in plan: the ellipse in its footprint"},
-								"top": {"type": "object", "description": ("its "
-									+ "footprint at its top, where that is not its "
-									+ "footprint: the same from and to for a ridge "
-									+ "or a point. A gabled roof's z_from and z_to "
-									+ "both at its ridge; a bonnet falling to the "
-									+ "front ends its z_to short of the bottom's"),
-									"properties": {"x_from": {"type": "number"},
-										"x_to": {"type": "number"},
-										"z_from": {"type": "number"},
-										"z_to": {"type": "number"}},
-									"additionalProperties": false},
-							},
-							"required": ["name", "x_from", "x_to", "z_from", "z_to", "y_to"],
-							"additionalProperties": false,
-						}},
-					"front": {"type": "string", "description": ("what you would know "
-						+ "it by from the front: its outline, the setbacks, the gaps")},
-					"side": {"type": "string", "description": "and from the side"},
-					"brief": {"type": "string", "description": ("the person's request "
-						+ "in their own words, as submit_design takes it")},
-					"parts": {"type": "integer", "description":
-						"how many parts the person asked for, when they named a number"},
-					"subject": {"type": "string"},
-				},
-				"required": ["volumes"],
 				"additionalProperties": false,
 			},
 		},
