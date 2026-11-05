@@ -83,6 +83,10 @@ class PartMesh extends RefCounted:
 	var surface_colors: PackedInt32Array = PackedInt32Array()
 	var surface_two_sided: PackedByteArray = PackedByteArray()
 	var triangle_count: int = 0
+	## Each surface's arrays, read and not made into meshes yet ([method
+	## Lbm.parse] without its meshes, as a worker reads a part): [method
+	## Lbm.make_meshes] makes [member surfaces] from them. Empty once made.
+	var arrays: Array = []
 	## A print drawn in the app (PartPrints): surface index -> its picture,
 	## for the surfaces that carry one, and the pictures' PNG files by
 	## name, which go out with any model the part is in. Empty for every
@@ -147,7 +151,18 @@ static func load_part(path: String) -> PartMesh:
 
 
 ## Parse a part from bytes, which is what the web build does after a fetch.
-static func parse(bytes: PackedByteArray, source: String = "<memory>") -> PartMesh:
+## Without [param meshed] its surfaces are read and not made into meshes
+## ([member PartMesh.arrays]), which may be done off the main thread; the
+## caller makes them ([method make_meshes]). Read is most of it: 35011's 52 ms.
+static func parse(bytes: PackedByteArray, source: String = "<memory>",
+		meshed: bool = true) -> PartMesh:
+	var part: PartMesh = _read(bytes, source)
+	if part != null and meshed:
+		make_meshes(part)
+	return part
+
+
+static func _read(bytes: PackedByteArray, source: String) -> PartMesh:
 	if bytes.size() < 32:
 		push_error("lbm: %s is too short to be a part" % source)
 		return null
@@ -232,13 +247,7 @@ static func parse(bytes: PackedByteArray, source: String = "<memory>") -> PartMe
 		arrays[Mesh.ARRAY_VERTEX] = positions
 		arrays[Mesh.ARRAY_NORMAL] = normals
 		arrays[Mesh.ARRAY_INDEX] = indices
-
-		var surface_mesh := ArrayMesh.new()
-		surface_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-		# The bounds come from the file, which knows the real extent;
-		# letting Godot recompute them costs a pass over every vertex.
-		surface_mesh.custom_aabb = part.bounds
-		part.surfaces.append(surface_mesh)
+		part.arrays.append(arrays)
 
 		part.surface_colors.append(color)
 		part.surface_two_sided.append(1 if (flags & SURFACE_TWO_SIDED) != 0 else 0)
@@ -358,6 +367,19 @@ static func receivers_of(part: PartMesh) -> PackedVector2Array:
 		taken[near[0]] = true
 		out.append(near[0])
 	return out
+
+
+## [param part]'s surfaces made into meshes from its arrays: the renderer's,
+## so on the main thread. A part read with them made is left as it is.
+static func make_meshes(part: PartMesh) -> void:
+	for arrays: Array in part.arrays:
+		var surface_mesh := ArrayMesh.new()
+		surface_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		# The bounds come from the file, which knows the real extent;
+		# letting Godot recompute them costs a pass over every vertex.
+		surface_mesh.custom_aabb = part.bounds
+		part.surfaces.append(surface_mesh)
+	part.arrays = []
 
 
 ## Unfold an octahedral-encoded normal.

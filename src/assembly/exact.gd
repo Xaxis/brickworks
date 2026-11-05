@@ -203,6 +203,9 @@ static var _shapes_lock := Mutex.new()
 ## working out asks for (main.gd).
 static var noting: bool = false
 static var _missed: Dictionary = {}
+## Shapes read from disk on the main thread, since start-up: by one that
+## wanted it at once. Written there only; probes read it.
+static var read_here: int = 0
 ## Verdicts between two shapes at one relative pose: key -> [depth, piece a,
 ## piece b, axis] or []. Shared by checks on different threads.
 static var _verdicts: Dictionary = {}
@@ -437,6 +440,8 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 	var path: String = file_for(library, info.id)
 	var shape: Shape = null
 	if FileAccess.file_exists(path):
+		if main:
+			read_here += 1
 		shape = own(parse(FileAccess.get_file_as_bytes(path)), info.bounds)
 	elif OS.has_feature("web"):
 		# Fetched as the geometry is (PartLibrary.request_exact); null until then.
@@ -457,9 +462,17 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 ## Kept from a fetch: the web build's way in (PartLibrary._on_fetched_exact),
 ## for the part whose box is [param box].
 static func keep(mesh_hash: String, bytes: PackedByteArray, box: AABB = AABB()) -> void:
-	var shape: Shape = own(parse(bytes), box) if not bytes.is_empty() else null
+	keep_shape(mesh_hash, own(parse(bytes), box) if not bytes.is_empty() else null)
+
+
+## [param shape] kept for the geometry [param mesh_hash], read from its bytes
+## off the main thread (PartLibrary's reading ahead). With [param only_new],
+## not where one was read meanwhile by one that wanted it at once: one shape
+## a part, as its id keys verdicts. A fetch's answer is kept whatever was.
+static func keep_shape(mesh_hash: String, shape: Shape, only_new: bool = false) -> void:
 	_shapes_lock.lock()
-	_shapes[mesh_hash] = shape
+	if not only_new or not _shapes.has(mesh_hash):
+		_shapes[mesh_hash] = shape
 	_shapes_lock.unlock()
 
 

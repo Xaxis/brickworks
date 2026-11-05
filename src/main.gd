@@ -4258,7 +4258,13 @@ func _read_without(parts: Array) -> bool:
 ## nearest them first. Asked only once the joints were read, in the file's
 ## order, the house's gates' came 10 s after the first, 38 s into a slow
 ## connection: the press waited its 10 s and stopped a gate at 6° (shapes96).
+## Only where they are fetched: elsewhere the grab reads every part's on a
+## worker before it reads the joints (GrabDrag._read_off_thread), and asked
+## here too they were read on the viewer's frames, 8 a frame, 42 ms of one of
+## 8808-1's against 13 once read (watched_frames_probe).
 func _ask_shapes() -> void:
+	if not OS.has_feature("web"):
+		return
 	var first: Dictionary = {}
 	var near: Array = []
 	if _world.motions != null:

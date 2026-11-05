@@ -2709,6 +2709,11 @@ func _part_button(info: PartLibrary.PartInfo, key: String, colour: int) -> Butto
 		info.footprint_studs().x, info.footprint_studs().y, _height_text(info)]
 	button.button_pressed = info.id == _selected_part and colour == _selected_color
 	button.pressed.connect(_on_part.bind(info.id, colour if not key.is_empty() else -1))
+	# Read while the pointer or the keys are on it, off the frame, before it
+	# is taken: taken, its first aim read its shape for its hinges on the
+	# click's frame, 25 to 60 ms of a Technic beam's (PartLibrary.read_ahead).
+	button.mouse_entered.connect(library.read_ahead.bind(info.id))
+	button.focus_entered.connect(library.read_ahead.bind(info.id))
 	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
 	button.gui_input.connect(func(event: InputEvent) -> void:
 		_cell_input(button, info.id, event))
