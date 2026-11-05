@@ -5914,5 +5914,77 @@
       "type": "object"
     },
     "name": "fresh_eyes_final"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Compare it with a photo of the real thing"
+    },
+    "description": "Answer the look beside a photograph of the real thing that a design's first whole review asks for: what the photograph shows, the silhouettes against each other, and each feature's form and size against the whole in the photograph and in your model, each settled rebuild or keep, and why. Only when a review asks.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "model": {
+                "description": "its form and its size against the whole in your model's pictures, in studs and plates",
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "photo": {
+                "description": "its form and its size against the whole, as the photograph shows it",
+                "type": "string"
+              },
+              "settle": {
+                "enum": [
+                  "rebuild",
+                  "keep"
+                ],
+                "type": "string"
+              },
+              "why": {
+                "description": "why, in a line",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "photo",
+              "model",
+              "settle",
+              "why"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "is_it": {
+          "description": "true when the photograph shows the thing you are building",
+          "type": "boolean"
+        },
+        "photo": {
+          "description": "what the photograph shows",
+          "type": "string"
+        },
+        "silhouette": {
+          "description": "the photograph's outline against your model's from the nearest view: length against height, where the mass sits, what stands out of it, and how yours differs",
+          "type": "string"
+        }
+      },
+      "required": [
+        "photo",
+        "is_it",
+        "silhouette",
+        "features"
+      ],
+      "type": "object"
+    },
+    "name": "compare_with_photo"
   }
 ]
