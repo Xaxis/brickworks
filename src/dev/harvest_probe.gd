@@ -66,6 +66,18 @@ func _initialize() -> void:
 			bricks.append({"part": put.part, "color": put.color,
 				"x": snappedf(put.x, 0.01), "y": snappedf(put.y, 0.01),
 				"z": snappedf(put.z, 0.01), "face": put.face, "rot": put.rot})
+		# Stood on its lowest cell. tools/omr.py lowers a sub-model onto its
+		# lowest point, which leaves it off the 2 LDU grid, and read back
+		# every part comes down to the cell under it: 61 of 1,056 stood a
+		# cell below the floor, refused for it and for what stood on them,
+		# and 10 hung above it (2026-11-05). The floor is the harvest's, not
+		# the set's: the set has no floor there.
+		var lowest: float = INF
+		for raw: Dictionary in bricks:
+			lowest = minf(lowest, float(raw["y"]))
+		if not bricks.is_empty() and lowest != 0.0:
+			for raw: Dictionary in bricks:
+				raw["y"] = snappedf(float(raw["y"]) - lowest, 0.01)
 		# Checked as a design on an empty baseplate. Read back from the
 		# world they are bricks that were already standing, and the check
 		# excuses those — every one of them passed that way.
