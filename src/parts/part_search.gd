@@ -225,94 +225,238 @@ var _numbers := PackedStringArray()
 var _number_at := PackedInt32Array()
 
 
-func _init(parts: Dictionary, ids: PackedStringArray) -> void:
-	for id: String in ids:
-		var info: PartLibrary.PartInfo = parts[id]
-		if info.is_redirect():
-			continue
-		var at: int = _infos.size()
-		_infos.append(info)
-		_at[info.id] = at
-		# The number and the category say no size, so the name's is the first.
-		# Read, never written: the index may be made on a thread of its own
-		# (PartLibrary.prepare_search), so the parts' kept words are not
-		# filled in from here.
-		var own: PackedStringArray = words_of(info.own_words_now())
-		_index(_named, own, at)
-		if not info.also_called.is_empty():
-			_index(_also, words_of(info.also_called), at)
-		if not info.keywords.is_empty():
-			_index(_keyed, words_of(info.keyword_words_now()), at)
-		var size: PackedStringArray = _size_key(own)
-		if not size.is_empty():
-			_index(_sized, PackedStringArray([size[0]]), at)
-			if size.size() > 1:
-				_index(_tall, PackedStringArray([size[1]]), at)
-		# And the size Rebrickable names it by where LDraw's name gives none
-		# or another, as fully: 32316, Technic Beam 5, is a 1 x 5 there.
-		var theirs: PackedStringArray = _size_key(words_of(info.also_size))
-		if not theirs.is_empty():
-			_index(_sized, PackedStringArray([theirs[0]]), at)
-			if theirs.size() > 1:
-				_index(_tall, PackedStringArray([theirs[1]]), at)
-		_usage.append(mini(4095, roundi(info.commonness() * USAGE_SCALE)))
-		_plainness.append(15 - mini(15, own.size()))
-		var kind: PackedStringArray = words_of(info.family_category())
-		_lead.append(kind[0] if not kind.is_empty() else "")
-		_bare_brick.append(_bare_size(words_of(info.name)))
-		# What BrickLink files as a brick, plate or tile Modified (Rebrickable,
-		# Special): one with something on it, LDraw's "with", and not a round
-		# one, nor a tile with only the groove every tile has. 15573, the
-		# jumper, for "plate modified"; 4070, the headlight brick, for "brick
-		# modified".
-		if not kind.is_empty() and HEIGHTS.has(kind[0]) \
-				and PartLibrary.decor_of(info.name, info.category) == 0:
-			var named: String = info.name.to_lower().replace("with groove", "")
-			if named.contains(" with ") and not named.contains("round"):
-				_index(_also, PackedStringArray(["modified", "special"]), at)
-		# Brick, plate and tile are each a family and a height. A part of
-		# another family is the height it is: 6564, Wedge 3 x 2 Right, is a
-		# wedge brick; 45677, Wedge 4 x 4 x 0.667 Curved, is not.
-		if not kind.is_empty() and not HEIGHTS.has(kind[0]):
-			var plates: int = roundi((info.size.y - (4.0 if info.stud_count > 0 else 0.0)) / 8.0)
-			for word: String in HEIGHTS:
-				if plates == int(HEIGHTS[word]) and (word == "tile") == (info.stud_count == 0):
-					if not _by_height.has(word):
-						_by_height[word] = PackedInt32Array()
-					var tall: PackedInt32Array = _by_height[word]
-					tall.append(at)
-					_by_height[word] = tall
-		_plain.append(1 if PartLibrary.decor_of(info.name, info.category) == 0
-			and not info.name.begins_with("=") and not _other_line(info) else 0)
-	_named_words = _in_order(_named)
-	_also_words = _in_order(_also)
-	_keyed_words = _in_order(_keyed)
-	# The parts with a word of their names begun by each first letter: what
-	# a first key typed asks, and the start of thousands of words.
-	var seen := PackedInt32Array()
-	seen.resize(_infos.size())
-	for word: String in _named_words:
-		if word.is_valid_float():
-			continue
-		var letter: String = word[0]
-		if not _by_letter.has(letter):
-			_by_letter[letter] = PackedInt32Array()
-		var into: PackedInt32Array = _by_letter[letter]
-		var mark: int = letter.unicode_at(0) + 1
-		for at: int in _named[word]:
-			if seen[at] != mark:
-				seen[at] = mark
-				into.append(at)
-		_by_letter[letter] = into
-	_print_of.resize(_infos.size())
-	var numbers := PackedStringArray()
-	for at: int in _infos.size():
-		_print_of[at] = int(_at.get(_infos[at].print_of, -1))
-		numbers.append("%s %d" % [_infos[at].id.to_lower(), at])
-	numbers.sort()
-	for entry: String in numbers:
-		_numbers.append(entry.get_slice(" ", 0))
-		_number_at.append(int(entry.get_slice(" ", 1)))
+## The stages of making the index, in order (made_for): each part's words,
+## the words in order, the parts by first letter, the numbers, the numbers in
+## order and the numbers kept, each a part, a word or a number at a time, and
+## the sorts in steps too (Sorting).
+enum Making { PARTS, WORDS, BY_LETTER, NUMBERS, SORTED, KEPT, MADE }
+
+## The parts and the numbers being indexed, until the index is made; and how
+## far it is: the stage, and the place in it.
+var _parts: Dictionary = {}
+var _ids := PackedStringArray()
+var _stage: Making = Making.PARTS
+var _next: int = 0
+var _seen := PackedInt32Array()
+var _number_lines := PackedStringArray()
+var _sorting: Array[Sorting] = []
+
+
+## Made whole now: PartSearch.new(parts, ids). Made a step at a time instead,
+## a frame's share each frame where there are no threads to make it on
+## (PartLibrary.prepare_search): PartSearch.new(parts, ids, false), then
+## made_for each frame until it says it is made.
+func _init(parts: Dictionary, ids: PackedStringArray, whole: bool = true) -> void:
+	_parts = parts
+	_ids = ids
+	if whole:
+		made_for(-1)
+
+
+## Whether it is made, after making it for up to [param budget_usec] more (to
+## the end when it is under zero).
+func made_for(budget_usec: int) -> bool:
+	var began: int = Time.get_ticks_usec()
+	while _stage != Making.MADE:
+		match _stage:
+			Making.PARTS:
+				if _next < _ids.size():
+					_index_part(_parts[_ids[_next]])
+					_next += 1
+				else:
+					_sorting = [Sorting.new(_named), Sorting.new(_also), Sorting.new(_keyed)]
+					_stage = Making.WORDS
+			Making.WORDS:
+				if not _sorted_some():
+					_named_words = _sorting[0].sorted
+					_also_words = _sorting[1].sorted
+					_keyed_words = _sorting[2].sorted
+					_sorting = []
+					_seen.resize(_infos.size())
+					_next = 0
+					_stage = Making.BY_LETTER
+			Making.BY_LETTER:
+				if _next < _named_words.size():
+					_letter_of(_named_words[_next])
+					_next += 1
+				else:
+					_seen = PackedInt32Array()
+					_print_of.resize(_infos.size())
+					_next = 0
+					_stage = Making.NUMBERS
+			Making.NUMBERS:
+				if _next < _infos.size():
+					_print_of[_next] = int(_at.get(_infos[_next].print_of, -1))
+					_number_lines.append("%s %d" % [_infos[_next].id.to_lower(), _next])
+					_next += 1
+				else:
+					_sorting = [Sorting.new(_number_lines)]
+					_stage = Making.SORTED
+			Making.SORTED:
+				if not _sorted_some():
+					_number_lines = _sorting[0].sorted
+					_sorting = []
+					_next = 0
+					_stage = Making.KEPT
+			Making.KEPT:
+				if _next < _number_lines.size():
+					_numbers.append(_number_lines[_next].get_slice(" ", 0))
+					_number_at.append(int(_number_lines[_next].get_slice(" ", 1)))
+					_next += 1
+				else:
+					_number_lines = PackedStringArray()
+					_parts = {}
+					_ids = PackedStringArray()
+					_stage = Making.MADE
+		if budget_usec >= 0 and Time.get_ticks_usec() - began >= budget_usec:
+			break
+	return _stage == Making.MADE
+
+
+## A step of the first of [member _sorting] not sorted yet: whether one was.
+func _sorted_some() -> bool:
+	for sorting: Sorting in _sorting:
+		if not sorting.done:
+			sorting.step()
+			return true
+	return false
+
+
+## Words put in order a step at a time, the order a whole sort gives them
+## (PackedStringArray.sort, code point by code point): parted by their first
+## code points, each part sorted alone, and the parts joined in the order of
+## theirs. One sort of the 34,000 words of the parts' names was 25 ms, a
+## frame and more of a browser's without threads; a step of this is 6 ms at
+## most (bin_first_probe, 2026-11-05).
+class Sorting extends RefCounted:
+	## The words in order, once [member done].
+	var sorted := PackedStringArray()
+	var done: bool = false
+	## How many words a step parts.
+	const AT_ONCE := 256
+	## The words, or a Dictionary whose keys they are, until its keys are
+	## taken (a step: 34,000 of them are 4 ms).
+	var _words: Variant
+	var _next: int = 0
+	## A first code point -> its words; and those code points in order, once
+	## every word is parted.
+	var _parts: Dictionary = {}
+	var _firsts: Array = []
+
+	## [param words]: a PackedStringArray of them, or a Dictionary whose keys
+	## they are.
+	func _init(words: Variant) -> void:
+		_words = words
+
+	## The keys taken, up to [constant AT_ONCE] words parted, or one part
+	## sorted and joined.
+	func step() -> void:
+		if _words is Dictionary:
+			_words = (_words as Dictionary).keys()
+			return
+		var count: int = _words.size()
+		if _next < count:
+			var last: int = mini(_next + AT_ONCE, count)
+			for n: int in range(_next, last):
+				var word: String = _words[n]
+				var first: int = word.unicode_at(0) if not word.is_empty() else -1
+				var part: Variant = _parts.get(first)
+				if part == null:
+					part = []
+					_parts[first] = part
+				(part as Array).append(word)
+			_next = last
+			if _next == count:
+				_firsts = _parts.keys()
+				_firsts.sort()
+			return
+		if _firsts.is_empty():
+			done = true
+			return
+		var first: int = _firsts.pop_front()
+		var part := PackedStringArray(_parts[first])
+		part.sort()
+		sorted.append_array(part)
+		_parts.erase(first)
+		done = _firsts.is_empty()
+
+
+## [param info] under each of its words, sizes and heights.
+func _index_part(info: PartLibrary.PartInfo) -> void:
+	if info.is_redirect():
+		return
+	var at: int = _infos.size()
+	_infos.append(info)
+	_at[info.id] = at
+	# The number and the category say no size, so the name's is the first.
+	# Read, never written: the index may be made on a thread of its own
+	# (PartLibrary.prepare_search), so the parts' kept words are not
+	# filled in from here.
+	var own: PackedStringArray = words_of(info.own_words_now())
+	_index(_named, own, at)
+	if not info.also_called.is_empty():
+		_index(_also, words_of(info.also_called), at)
+	if not info.keywords.is_empty():
+		_index(_keyed, words_of(info.keyword_words_now()), at)
+	var size: PackedStringArray = _size_key(own)
+	if not size.is_empty():
+		_index(_sized, PackedStringArray([size[0]]), at)
+		if size.size() > 1:
+			_index(_tall, PackedStringArray([size[1]]), at)
+	# And the size Rebrickable names it by where LDraw's name gives none
+	# or another, as fully: 32316, Technic Beam 5, is a 1 x 5 there.
+	var theirs: PackedStringArray = _size_key(words_of(info.also_size))
+	if not theirs.is_empty():
+		_index(_sized, PackedStringArray([theirs[0]]), at)
+		if theirs.size() > 1:
+			_index(_tall, PackedStringArray([theirs[1]]), at)
+	_usage.append(mini(4095, roundi(info.commonness() * USAGE_SCALE)))
+	_plainness.append(15 - mini(15, own.size()))
+	var kind: PackedStringArray = words_of(info.family_category())
+	_lead.append(kind[0] if not kind.is_empty() else "")
+	_bare_brick.append(_bare_size(words_of(info.name)))
+	# What BrickLink files as a brick, plate or tile Modified (Rebrickable,
+	# Special): one with something on it, LDraw's "with", and not a round
+	# one, nor a tile with only the groove every tile has. 15573, the
+	# jumper, for "plate modified"; 4070, the headlight brick, for "brick
+	# modified".
+	if not kind.is_empty() and HEIGHTS.has(kind[0]) \
+			and PartLibrary.decor_of(info.name, info.category) == 0:
+		var named: String = info.name.to_lower().replace("with groove", "")
+		if named.contains(" with ") and not named.contains("round"):
+			_index(_also, PackedStringArray(["modified", "special"]), at)
+	# Brick, plate and tile are each a family and a height. A part of
+	# another family is the height it is: 6564, Wedge 3 x 2 Right, is a
+	# wedge brick; 45677, Wedge 4 x 4 x 0.667 Curved, is not.
+	if not kind.is_empty() and not HEIGHTS.has(kind[0]):
+		var plates: int = roundi((info.size.y - (4.0 if info.stud_count > 0 else 0.0)) / 8.0)
+		for word: String in HEIGHTS:
+			if plates == int(HEIGHTS[word]) and (word == "tile") == (info.stud_count == 0):
+				if not _by_height.has(word):
+					_by_height[word] = PackedInt32Array()
+				var tall: PackedInt32Array = _by_height[word]
+				tall.append(at)
+				_by_height[word] = tall
+	_plain.append(1 if PartLibrary.decor_of(info.name, info.category) == 0
+		and not info.name.begins_with("=") and not _other_line(info) else 0)
+
+
+## The parts with a word of their names begun by [param word]'s first letter,
+## [param word]'s added: what a first key typed asks, and the start of
+## thousands of words.
+func _letter_of(word: String) -> void:
+	if word.is_valid_float():
+		return
+	var letter: String = word[0]
+	if not _by_letter.has(letter):
+		_by_letter[letter] = PackedInt32Array()
+	var into: PackedInt32Array = _by_letter[letter]
+	var mark: int = letter.unicode_at(0) + 1
+	for at: int in _named[word]:
+		if _seen[at] != mark:
+			_seen[at] = mark
+			into.append(at)
+	_by_letter[letter] = into
 
 
 ## Whether a name's words are "brick" and a size, nothing else: 1 for a
@@ -326,12 +470,6 @@ static func _bare_size(words: PackedStringArray) -> int:
 		if not words[n].is_valid_float():
 			return 0
 	return words.size() / 2 - 1
-
-
-static func _in_order(index: Dictionary) -> PackedStringArray:
-	var words := PackedStringArray(index.keys())
-	words.sort()
-	return words
 
 
 func _words_of_index(index: Dictionary) -> PackedStringArray:
