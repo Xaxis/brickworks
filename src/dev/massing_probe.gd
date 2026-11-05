@@ -17,7 +17,8 @@
 ## Then each build read against it, as a session's first build is: built as
 ## planned; the tower short; the setback built up; a gap between wings
 ## filled; the space under a deck filled; a chimney missing; a gabled roof
-## built flat; a rotunda built square; walls round an open room as planned;
+## built flat; a rotunda built square; a cross inside a planned square as
+## planned, leaner; a tower half as wide; walls round an open room as planned;
 ## a plan laid 20 studs off the build read where the build stands; and a
 ## build with no plan asked for one after its first line.
 extends SceneTree
@@ -185,7 +186,7 @@ func _run() -> void:
 		_volume("house", 0, 16, 0, 12, 0, 9), _volume("chimney", 12, 14, 2, 4, 9, 21)])
 	var no_chimney: String = await _build(assistant, world, builder,
 		[_fill(0, 0, 0, 16, 12, 3, 3, 19)])
-	_ok(no_chimney.contains("chimney: only 0% of it is built where it was planned"),
+	_ok(no_chimney.contains("chimney: not built where it was planned (x 12 to 14, z 2 to 4, 9 to 21 plates)."),
 		"a chimney not built is said missing: %s" % _first(no_chimney, "chimney"))
 	var gabled: Dictionary = _volume("roof", 0, 16, 0, 12, 9, 18)
 	gabled["top"] = {"z_from": 6, "z_to": 6}
@@ -200,6 +201,16 @@ func _run() -> void:
 	var squared: String = await _build(assistant, world, builder, [_fill(0, 0, 0, 12, 12, 4, 3, 19)])
 	_ok(squared.contains("round the rotunda (planned open, ") and squared.contains(" in 4 places)"),
 		"a rotunda built square has its four corners said: %s" % _first(squared, "round the"))
+	await _plan(assistant, [_volume("block", 0, 12, 0, 12, 0, 12)])
+	var cross: String = await _build(assistant, world, builder, [_fill(4, 0, 0, 4, 12, 4, 3, 19),
+		_fill(0, 0, 4, 4, 4, 4, 3, 19), _fill(8, 0, 4, 4, 4, 4, 3, 19)])
+	_ok(cross.begins_with("Massing: built as planned"),
+		"a cross built inside a planned square is the square, there and leaner: %s" % cross.left(100))
+	await _plan(assistant, _tower_on_podium(0))
+	var thin: String = await _build(assistant, world, builder, [_fill(0, 0, 0, 16, 16, 2, 3, 19),
+		_fill(4, 6, 4, 4, 8, 8, 3, 72)])
+	_ok(thin.contains("tower: built narrower than planned, 4 x 8 studs at its height where 8 x 8 was "
+		+ "planned."), "a tower built half as wide is said narrower: %s" % _first(thin, "tower"))
 	await _plan(assistant, [_volume("room", 0, 12, 0, 12, 0, 12)])
 	var walls: Dictionary = _fill(0, 0, 0, 12, 12, 4, 3, 19)
 	walls["wall"] = 1

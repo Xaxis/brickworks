@@ -28,8 +28,10 @@ const SLACK := 3
 ## figure. And the share of what it is measured over.
 const LEAST := 16
 const SHARE := 0.2
-## A volume less of which is built is not there.
-const PRESENT := 0.5
+## A volume built in less of its footprint than this, at its height, is not
+## there; one this much narrower or less, at its height, is narrower.
+const NONE := 0.1
+const NARROWER := 0.6
 ## Columns of the side views drawn, at most, and rows.
 const DRAWN_ACROSS := 40
 const DRAWN_UP := 16
@@ -402,24 +404,34 @@ static func _volume_checked(n: int, one: Dictionary, volumes: Array, mine: Dicti
 	var name: String = one["name"]
 	if mine.is_empty():
 		return said
-	# There: built anywhere in its height, along its edges, where a shell
-	# is built as much as a solid is.
-	var edge: Dictionary = _edge(mine)
-	var met: int = 0
-	for column: Vector2i in edge:
+	# There: built anywhere in its height inside its footprint. A volume
+	# built leaner than its box (a Y where the box is square, a shell) is
+	# there, and better for it; one built nowhere in it is not.
+	var band: Dictionary = {}
+	for column: Vector2i in mine:
 		var span: Vector2i = mine[column]
 		for layer: int in stacks.get(column + shift, []):
 			if layer >= span.x and layer < span.y:
-				met += 1
+				band[column] = true
 				break
-	var present: float = met / float(edge.size())
-	if present < PRESENT:
-		said.append("%s: only %d%% of it is built where it was planned (x %s to %s, z %s to %s, "
-			% [name, roundi(present * 100.0), _num((one["x"] as Vector2).x),
-				_num((one["x"] as Vector2).y), _num((one["z"] as Vector2).x),
-				_num((one["z"] as Vector2).y)]
-			+ "%s to %s plates)." % [_num((one["y"] as Vector2).x), _num((one["y"] as Vector2).y)])
+	var x: Vector2 = one["x"]
+	var z: Vector2 = one["z"]
+	var y: Vector2 = one["y"]
+	if band.size() < maxi(1, ceili(mine.size() * NONE)):
+		said.append("%s: not built where it was planned (x %s to %s, z %s to %s, %s to %s plates)."
+			% [name, _num(x.x), _num(x.y), _num(z.x), _num(z.y), _num(y.x), _num(y.y)])
 		return said
+	# As wide and as deep as planned, at its height.
+	var planned_box: Rect2i = _bounds(mine)
+	var built_box: Rect2i = _bounds(band)
+	for axis: int in 2:
+		if built_box.size[axis] <= planned_box.size[axis] * NARROWER \
+				and planned_box.size[axis] - built_box.size[axis] >= 4:
+			said.append("%s: built narrower than planned, %s x %s studs at its height where "
+				% [name, _num(built_box.size.x / 2.0), _num(built_box.size.y / 2.0)]
+				+ "%s x %s was planned." % [_num(planned_box.size.x / 2.0),
+					_num(planned_box.size.y / 2.0)])
+			break
 	# Its top, where it is the plan's top.
 	var own: Array[Vector2i] = []
 	for column: Vector2i in mine:
@@ -429,6 +441,8 @@ static func _volume_checked(n: int, one: Dictionary, volumes: Array, mine: Dicti
 		var planned_at: Array[int] = []
 		var over: int = 0
 		var over_to: Array[int] = []
+		var built_top: Array[int] = []
+		var wanted_top: Array[int] = []
 		for column: Vector2i in own:
 			var top: int = maxi(int(tops.get(column, floor_at)), floor_at)
 			var want: int = int((planned[column] as Array)[1])
@@ -436,25 +450,33 @@ static func _volume_checked(n: int, one: Dictionary, volumes: Array, mine: Dicti
 			if top - want > SLACK:
 				over += 1
 				over_to.append(top)
+			if band.has(column):
+				built_top.append(top)
+				wanted_top.append(want)
 		planned_at.sort()
-		var height: float = (one["y"] as Vector2).y - (one["y"] as Vector2).x
-		var middle: Vector2i = _middle_at(own, edge, tops, planned, floor_at)
-		if middle.x - middle.y < -maxf(SLACK, height * 0.2):
-			said.append("%s: short, its top at about %d plates where %d was planned."
-				% [name, middle.x, middle.y])
-		elif over >= maxi(LEAST, ceili(own.size() * SHARE)):
+		var height: float = y.y - y.x
+		# Short: its tallest built, a tenth of it aside, under its tallest
+		# planned. What is built lower inside it (a floor in a shell, a
+		# lower wing of a Y) is not its top.
+		if not built_top.is_empty():
+			built_top.sort()
+			wanted_top.sort()
+			var built_high: int = built_top[(built_top.size() - 1) * 9 / 10]
+			var wanted_high: int = wanted_top[(wanted_top.size() - 1) * 9 / 10]
+			if built_high - wanted_high < -maxf(SLACK, height * 0.2):
+				said.append("%s: short, its top at about %d plates where %d was planned."
+					% [name, built_high, wanted_high])
+		if over >= maxi(LEAST, ceili(own.size() * SHARE)):
 			over_to.sort()
 			var to: int = over_to[over_to.size() / 2]
 			var above: String = _above(one, volumes)
-			var bottom: Vector2 = Vector2((one["x"] as Vector2).y - (one["x"] as Vector2).x,
-				(one["z"] as Vector2).y - (one["z"] as Vector2).x)
 			var top_rect: Rect2 = one["top"]
 			if not above.is_empty():
 				said.append("%s: the setback round %s is built up, %s square studs of it to "
 					% [name, above, _num(over / 4.0)]
 					+ "about %d plates, where its top was planned at %d." % [to,
 						planned_at[planned_at.size() / 2]])
-			elif top_rect.get_area() < bottom.x * bottom.y - 0.25:
+			elif top_rect.get_area() < (x.y - x.x) * (z.y - z.x) - 0.25:
 				said.append("%s: built up past its slope over %s square studs, to about %d "
 					% [name, _num(over / 4.0), to] + "plates: its top was to come down to "
 					+ "its edges.")
@@ -463,7 +485,7 @@ static func _volume_checked(n: int, one: Dictionary, volumes: Array, mine: Dicti
 					% [name, _num(over / 4.0), to] + "where %d was planned."
 					% planned_at[planned_at.size() / 2])
 	# The space under it, where the plan has nothing under it.
-	var bottom_at: int = floori((one["y"] as Vector2).x)
+	var bottom_at: int = floori(y.x)
 	if bottom_at >= floor_at + 2 * SLACK:
 		var open: int = 0
 		var filled_under: int = 0
@@ -481,42 +503,6 @@ static func _volume_checked(n: int, one: Dictionary, volumes: Array, mine: Dicti
 			said.append("%s: the space under it, planned open below %d plates, is filled under "
 				% [name, bottom_at] + "%s square studs of it." % _num(filled_under / 4.0))
 	return said
-
-
-## A volume's columns within a stud of its outline: its walls, where a shell
-## has them.
-static func _edge(mine: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	for column: Vector2i in mine:
-		for dx: int in range(-2, 3):
-			for dz: int in range(-2, 3):
-				if not mine.has(column + Vector2i(dx, dz)):
-					out[column] = true
-					break
-			if out.has(column):
-				break
-	return out
-
-
-## The build's top and the plan's, each the middle of [param own]'s columns
-## along the edge (all of them where none are): a shell's middle is open
-## whatever its height.
-static func _middle_at(own: Array[Vector2i], edge: Dictionary, tops: Dictionary,
-		planned: Dictionary, floor_at: int) -> Vector2i:
-	var along: Array[Vector2i] = []
-	for column: Vector2i in own:
-		if edge.has(column):
-			along.append(column)
-	if along.is_empty():
-		along = own
-	var built: Array[int] = []
-	var wanted: Array[int] = []
-	for column: Vector2i in along:
-		built.append(maxi(int(tops.get(column, floor_at)), floor_at))
-		wanted.append(int((planned[column] as Array)[1]))
-	built.sort()
-	wanted.sort()
-	return Vector2i(built[built.size() / 2], wanted[wanted.size() / 2])
 
 
 ## The volumes standing on [param one], said: "the tower", "the tower and the
