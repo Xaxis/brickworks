@@ -2,7 +2,7 @@
 # (tools/probe.sh: the size it names, on Xvfb and the GPU, a data folder of
 # its own), in this order, one a line: NAME, or NAME:ARGS. From a # to the
 # line's end is a comment. A new probe goes on a line of its own, at the end
-# (merged as a union, as headless.txt).
+# (merged a probe at a time, as headless.txt).
 #
 # @out in ARGS is a folder of this run's: left to themselves the motions
 # probes write their pictures over a dated folder in the main checkout's

@@ -1,9 +1,9 @@
 # The probes tools/check.sh runs headless, in this order, one a line: NAME,
 # or NAME:ARGS for what it is given after its `--`. From a # to the line's
 # end is a comment. A new probe goes on a line of its own, at the end: git
-# merges this file as a union (.gitattributes), so two units adding one each
-# both keep theirs, where every unit appending to one array's last line in
-# check.sh was a conflict to settle by hand (four on 2026-10-22).
+# merges this file a probe at a time (tools/merge_lists.py), so two units
+# adding one each both keep theirs, where every unit appending to one array's
+# last line in check.sh was a conflict to settle by hand (four on 2026-10-22).
 #
 # The MCP first of all: it is the app's AI interface, and it falls behind
 # with nothing failing — a tool list four tools stale, a menu command no

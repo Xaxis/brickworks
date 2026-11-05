@@ -1,8 +1,9 @@
 # Functions a later file replaced, one a line, tab-separated:
 # the earlier file, the function, the later file, words only the later
 # one's body has. tools/apply_sql.mjs refuses to re-apply the earlier
-# file over the later one. merge=union (.gitattributes): two units that
-# each add a line merge without a conflict, as five did on 2026-10-24.
+# file over the later one. Merged a row at a time (tools/merge_lists.py):
+# two units that each add a line merge without a conflict, as five did on
+# 2026-10-24, and a row one side edits is kept once.
 follows.sql	feed_rows	challenges.sql	'challenge'::text
 comments.sql	comments_on	replies.sql	'threads', true
 comments.sql	comment_as	replies.sql	'parent', c.parent

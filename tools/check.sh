@@ -32,7 +32,8 @@ cd "$(dirname "$0")/.." || exit 1
 #   tools/suite/out.txt        not run, each with why
 # Files and not arrays here, which every unit adding a probe appended to on
 # one line, so that any two of them conflicted: four were settled by hand on
-# 2026-10-22. The files merge as a union (.gitattributes), keeping both sides.
+# 2026-10-22. The files merge a probe at a time (tools/merge_lists.py), keeping
+# both sides' new lines.
 suite_list() { sed -E 's/(^|[[:space:]])#.*//; s/^[[:space:]]+//; s/[[:space:]]+$//; /^$/d' "tools/suite/$1.txt"; }
 mapfile -t headless < <(suite_list headless)
 mapfile -t windowed < <(suite_list windowed)
@@ -50,10 +51,10 @@ listed=$({ printf '%s\n' "${headless[@]%%:*}" "${windowed[@]%%:*}" "${out[@]}"
 } | sort -u)
 unlisted=$(comm -23 <(echo "$probes") <(echo "$listed"))
 unknown=$(comm -13 <(echo "$probes") <(echo "$listed"))
-# A union keeps a line one side took out when the other added a line beside
-# it: a probe one unit moved from out.txt to headless.txt can come out of the
-# merge in both. So a name twice in one list, or out and run both, stops the
-# run as well.
+# A union, as these merged until 2026-11-05, kept a line one side took out
+# when the other added one beside it, and kept an edited line twice; a merge
+# settled by hand still can. So a name twice in one list, or out and run
+# both, stops the run as well.
 twice=$({ printf '%s\n' "${headless[@]%%:*}" | sort | uniq -d
   printf '%s\n' "${windowed[@]%%:*}" | sort | uniq -d
   printf '%s\n' "${out[@]}" | sort | uniq -d
