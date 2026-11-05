@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
 
 ## Sub-features
 
@@ -1026,6 +1026,27 @@ picture the assistant is shown.
   the fox, the pagoda and the robot (fixtures/house) to it, red without the
   mend, and sculpt170-043 to its plan unchanged. Authored steps are the
   author's and are not touched.
+- `build a model from its booklet's pages` (`tools/bench/booklet_follow.py`,
+  `tools/bench/booklet_mcp.py`, `src/dev/booklet_truth.gd`; the write-up is
+  Building from the booklet in `docs/INSTRUCTIONS.md`). Can a person build from
+  a booklet?
+  - `make` writes the booklet and what each page adds (`booklet_truth.gd`,
+    windowed, under `gpu xvfb-run` with `MESA_VK_WSI_DEBUG=sw`). It then
+    photographs the pages at twice print size (`booklet_print.mjs
+    --shots-only --scale=2`, under heavy).
+  - `build` runs a Claude Code session with no API key and
+    `--strict-mcp-config --tools "" --restricted`. Its one server hands it
+    pages and the app's hands and eyes, never the model. It builds in a
+    headless app on its own port; `--from` seeds a long book's stretch.
+  - `score` compares the build part for part and page by page: right, near,
+    colour, place (carried), part, missing, extra. Each wrong part is put to
+    what the builder said of its step.
+  - Check: `python3 tools/minitest.py tests/test_booklet_follow.py` (13
+    tests). They pin each kind on a known build, a callout counted on its
+    attach page, hose segments never judged, carried layers, and a server
+    that refuses open_model.
+  - Real runs take 15-30 minutes for 6-12 pages, at most two at once on ports
+    9890-9899, from a locked snapshot.
 - `score the steps against real sets' authors` (`tools/steps_score.py`,
   `src/dev/steps_score.gd`; the write-up is `docs/INSTRUCTIONS.md`): files of
   LDraw's model repository (vendor/omr) with their authors' `0 STEP` lines,

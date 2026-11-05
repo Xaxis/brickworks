@@ -1979,6 +1979,13 @@
       "area": "assistant"
     },
     {
+      "kind": "cli",
+      "label": "build a model from its booklet's pages",
+      "entry": "tools/bench/booklet_follow.py",
+      "reach": "python3 tools/minitest.py tests/test_booklet_follow.py   (for real: booklet_follow.py make MODEL --out DIR --app SNAPSHOT (gpu, then heavy node booklet_print.mjs --scale=2) | build DIR --run NAME --port 989x --app SNAPSHOT | score | report; the builder is env -u ANTHROPIC_API_KEY claude with tools/bench/booklet_mcp.py its one server; the recipe is Building from the booklet in features/view.md)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "keep a run to a list of parts",
       "entry": "src/parts/parts_only.gd",

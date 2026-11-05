@@ -2128,6 +2128,279 @@ than the web's was. `booklet_pdf_probe` on the castle, read by
 2350 pixels and saying 300 x 300, and the PDF's pages drawn by poppler at
 300 dpi 2.42 and 1.11 apart of 255 from them.
 
+## Building from the booklet (2026-11-05, booklettest)
+
+Everything above measures steps against an author's. None of it says whether
+a person holding the booklet can build the model. ROADMAP item 7 asked that
+of the castle's 320 pages. So a builder now builds from the pages and nothing
+else, and what it built is compared with the model.
+
+**The measure** (`tools/bench/booklet_follow.py`, tests in
+`tests/test_booklet_follow.py`):
+
+- `make` writes the booklet as Instructions writes it (`src/dev/booklet_truth.gd`,
+  one process, so the pages and the parts each page adds come from one plan).
+  It then photographs every page in a browser (`tools/web/booklet_print.mjs
+  --shots-only --scale=2`).
+- `build`: the builder is a Claude Code session on the owner's subscription.
+  It runs with no API key and three flags: `--strict-mcp-config`, `--tools ""`
+  and `--restricted`.
+  - Its one MCP server (`tools/bench/booklet_mcp.py`) hands it a page as its
+    picture.
+  - It also gets the few app tools a person's hands and eyes stand for:
+    look_at_model, view_model, edit_model, attachment_points, search_parts
+    and undo. open_model, the gallery and the library would hand it the model,
+    so it never gets them.
+  - It builds in a fresh model in a headless app, a few pages a session.
+  - After each page it says `page_done`: how many parts it placed, and each
+    thing the page did not let it tell, with why: hidden, position, too_many,
+    callout, turn, part, colour, count or other. The model is kept after every
+    page.
+  - It is told the box's parts, as a set's box holds them.
+  - A long book is measured a stretch at a time: `--from` starts on the model
+    as the pages before leave it, built right.
+- `score`: the build is turned and moved onto the model first, a piece at a
+  time, because a second vehicle may stand anywhere. Then each part the
+  stretch's pages put on is one of these:
+  - right;
+  - near: seated less than half a stud off, which is the CAD's seat, not the
+    reading;
+  - colour, with what colour it was;
+  - place, with how far off in studs and plates;
+  - part, with which part it was;
+  - missing.
+- A "place" part is also "carried" when it moved by just what a part it
+  touches from an earlier page moved. That page was followed on a model an
+  earlier page had left wrong.
+- A part counts on the page that puts it on the model, so a callout's parts
+  count where the callout goes on. Hose segments are never judged.
+- Each wrong part is put to what the builder said of its step.
+
+**What it measured on.** These are the three models the brief named, from one
+snapshot (3bbc6b7b):
+
+- **models/car.ldr**: 61 parts, 15 planned steps on 6 pages, built whole.
+- **7140-1** with its author's steps: 340 parts, of which 290 are in the box
+  (its 50 hose segments are one hose each), on 69 pages. Pages 2-13 were
+  built whole, and pages 14-37 were built on what 2-13 leave.
+- **The castle** (models/castle.ldr): 2,497 parts on 320 step pages. Pages
+  150-161 were built on the 1,020 parts before them: the stair and bridge to
+  the gate.
+
+A page is at most four steps here, and a builder takes 2 to 13 minutes over
+four pages.
+
+**The pages are shown at twice the screen's print size.** The first runs
+showed the builder the pages at 3.78 px a millimetre: 1018 x 753, which is
+what a screen shows at print size. The booklet draws its step pictures at 5
+px a millimetre and its parts at 10. So the builder saw the parts box at two
+fifths of what it holds, well below what a person reads on paper, and below
+the 2,576 px the model reads. The pages are now 2036 x 1506 (`SCALE`). The
+car and 7140 pages 2-13 were run at both sizes. Each `run.json` says which
+(`page_scale`).
+
+**What a builder built** (the 2x pages; `bench/results/booklettest-2026-11-05/`).
+"Lost" is everything but right and near.
+
+| | pages | parts | right | near | lost | minutes |
+|---|---|---|---|---|---|---|
+| car | 2-7 | 61 | 33 | 0 | 28 (46%) | 19.1 |
+| car, again | 2-7 | 61 | D2X_RIGHT | D2X_NEAR | D2X_LOST | D2X_MIN |
+| 7140 | 2-13 | 73 | 38 | 6 | 29 (40%) | 18.7 |
+| 7140, at 1x | 14-37 | 106 | 28 | 0 | 78 (74%) | 30.6 |
+| castle | 150-161 | 133 | 50 | 0 | 83 (62%) | 26.0 |
+
+At 1x the same pages lost more:
+
+- the car lost 23 and 23 of 61 (two runs);
+- 7140 pages 2-13 lost 35 of 73;
+- the castle lost 102 of 133.
+
+The finer pages won 6 parts on 7140 and 19 on the castle. On the car they
+won none: 33 against 38.
+
+**Run to run.** The car was built twice at each size.
+
+- At 1x both runs put 38 of 61 right or near. They lost different parts:
+  - page 2: 10 right against 14;
+  - page 3: 12 right against 7.
+- At 2x: 33 against D2X_GOOD.
+
+So a page's count moves by up to five parts between two builders. A model's
+count moves by D2X_SPREAD. Trust a difference between models, not between
+two pages of one run.
+
+**The pages.** For each page:
+
+- what its parts became;
+- how many a builder put on in the right place and colour only because an
+  earlier page left them so ("carried");
+- what the builder said it could not tell, by why.
+
+car run c2x: 61 parts, right 33, near 0, colour 4, place 17 (1 carried), part 3, missing 4; extra 4; 19.1 min
+
+| page | steps | parts | right | near | colour | place (carried) | part | missing | builder could not tell |
+|---|---|---|---|---|---|---|---|---|---|
+| 2 | 1-4 | 19 | 11 | 0 | 0 | 5 (0) | 1 | 2 | position 4, part |
+| 3 | 5-8 | 16 | 6 | 0 | 2 | 4 (1) | 2 | 2 | position 2, part |
+| 4 | 9,10 | 8 | 5 | 0 | 0 | 3 (0) | 0 | 0 | position 2 |
+| 5 | 11,12 | 8 | 3 | 0 | 2 | 3 (0) | 0 | 0 | position, colour |
+| 6 | 13,14 | 6 | 4 | 0 | 0 | 2 (0) | 0 | 0 | hidden |
+| 7 | 15 | 4 | 4 | 0 | 0 | 0 (0) | 0 | 0 | hidden |
+
+x7140 run a2x: 73 parts, right 38, near 6, colour 0, place 11 (0 carried), part 14, missing 4; extra 0; 18.7 min
+
+| page | steps | parts | right | near | colour | place (carried) | part | missing | builder could not tell |
+|---|---|---|---|---|---|---|---|---|---|
+| 2 | 1-4 | 8 | 4 | 0 | 0 | 0 (0) | 4 | 0 | hidden |
+| 3 | 5-8 | 8 | 4 | 0 | 0 | 0 (0) | 4 | 0 |  |
+| 4 | 9-12 | 11 | 10 | 0 | 0 | 0 (0) | 1 | 0 | position 2, hidden |
+| 5 | 13-16 | 13 | 5 | 1 | 0 | 6 (0) | 0 | 1 | position 3, part |
+| 9 | 17 | 19 | 1 | 5 | 0 | 5 (0) | 5 | 3 | position, other |
+| 10 | 18 | 3 | 3 | 0 | 0 | 0 (0) | 0 | 0 | part |
+| 11 | 19 | 4 | 4 | 0 | 0 | 0 (0) | 0 | 0 | position 2 |
+| 12 | 20 | 6 | 6 | 0 | 0 | 0 (0) | 0 | 0 | position 2 |
+| 13 | 21 | 1 | 1 | 0 | 0 | 0 (0) | 0 | 0 | position |
+
+x7140 run p14: 106 parts, right 28, near 0, colour 0, place 63 (9 carried), part 6, missing 9; extra 5; 30.6 min
+
+| page | steps | parts | right | near | colour | place (carried) | part | missing | builder could not tell |
+|---|---|---|---|---|---|---|---|---|---|
+| 14 | 22 | 3 | 3 | 0 | 0 | 0 (0) | 0 | 0 | position |
+| 15 | 23 | 3 | 3 | 0 | 0 | 0 (0) | 0 | 0 |  |
+| 16 | 24 | 3 | 3 | 0 | 0 | 0 (0) | 0 | 0 | position |
+| 17 | 25 | 8 | 8 | 0 | 0 | 0 (0) | 0 | 0 | hidden, position, part |
+| 18 | 26 | 5 | 0 | 0 | 0 | 1 (0) | 2 | 2 | part, position |
+| 19 | 27 | 6 | 6 | 0 | 0 | 0 (0) | 0 | 0 |  |
+| 20 | 28 | 3 | 1 | 0 | 0 | 2 (1) | 0 | 0 | position |
+| 21 | 29 | 2 | 2 | 0 | 0 | 0 (0) | 0 | 0 |  |
+| 22 | 30 | 4 | 0 | 0 | 0 | 2 (0) | 0 | 2 | position |
+| 23 | 31 | 4 | 2 | 0 | 0 | 0 (0) | 2 | 0 | position |
+| 24 | 32 | 4 | 0 | 0 | 0 | 4 (1) | 0 | 0 | position |
+| 25 | 33 | 7 | 0 | 0 | 0 | 5 (0) | 2 | 0 | position 2, hidden |
+| 26 | 34 | 5 | 0 | 0 | 0 | 5 (1) | 0 | 0 | position 2 |
+| 27 | 35 | 4 | 0 | 0 | 0 | 4 (0) | 0 | 0 | part, position |
+| 28 | 36 | 5 | 0 | 0 | 0 | 5 (0) | 0 | 0 | position |
+| 29 | 37 | 5 | 0 | 0 | 0 | 4 (1) | 0 | 1 | position 2 |
+| 35 | 38 | 22 | 0 | 0 | 0 | 18 (0) | 0 | 4 | position |
+| 36 | 39 (callout 1-3) | 6 | 0 | 0 | 0 | 6 (0) | 0 | 0 | callout, position |
+| 37 | 40 | 7 | 0 | 0 | 0 | 7 (5) | 0 | 0 | position 2, hidden |
+
+castle run p150-2x: 133 parts, right 50, near 0, colour 8, place 64 (0 carried), part 0, missing 11; extra 1; 26.0 min
+
+| page | steps | parts | right | near | colour | place (carried) | part | missing | builder could not tell |
+|---|---|---|---|---|---|---|---|---|---|
+| 150 | 165 | 4 | 4 | 0 | 0 | 0 (0) | 0 | 0 | position |
+| 151 | 166 | 4 | 4 | 0 | 0 | 0 (0) | 0 | 0 | position |
+| 152 | 167,168 | 9 | 7 | 0 | 0 | 2 (0) | 0 | 0 | position 2 |
+| 153 | 169,170 | 16 | 10 | 0 | 0 | 6 (0) | 0 | 0 | position 2 |
+| 154 | 171,172 | 16 | 10 | 0 | 2 | 4 (0) | 0 | 0 | position 2 |
+| 155 | 173,174 | 14 | 9 | 0 | 4 | 1 (0) | 0 | 0 | position 2 |
+| 156 | 175,176 | 16 | 1 | 0 | 0 | 11 (0) | 0 | 4 | position, other |
+| 157 | 177,178 | 8 | 0 | 0 | 0 | 8 (0) | 0 | 0 | position |
+| 158 | 179,180 | 12 | 0 | 0 | 0 | 11 (0) | 0 | 1 | position 2 |
+| 159 | 181,182 | 13 | 1 | 0 | 1 | 11 (0) | 0 | 0 | position 2 |
+| 160 | 183,184 | 11 | 4 | 0 | 1 | 6 (0) | 0 | 0 | position 2 |
+| 161 | 185,186 | 10 | 0 | 0 | 0 | 4 (0) | 0 | 6 | position, hidden |
+
+**The causes, ranked by the parts each lost.** This counts 218 lost parts
+over the four runs above (car, 7140 2-13, 7140 14-37, castle). Each wrong part
+is put to one cause:
+
+- carried, if it was;
+- the part or colour, if that is what was wrong;
+- "sub-assembly" when it is a callout's part on the page that puts the
+  callout on;
+- otherwise what the builder said of its step.
+
+1. **Where exactly, among parts alike: 103 parts (47%).**
+   - Castle pages 157-161 lost 7-11 each.
+     - The stair to the gate is a solid ramp of 1x4 bricks in one grey.
+     - From 156 on, each step adds a column of it one row deeper.
+     - Drawn from the front-left, the rows of the ramp's depth lie one behind
+       the other in the picture. Nothing tells the fourth from the fifth.
+     - The builder said which row it took each time. It got 0 or 1 of
+       each page's parts right, and 4 on page 160.
+   - The car's red chassis rows (pages 2-5) were the same kind of loss on a
+     small scale.
+   - 7140 page 5 put the minifig's six tools in the wrong clips.
+   - This is the castle's design as much as its booklet: its steps put eight
+     alike bricks in two courses on one picture. A LEGO® booklet would add a
+     course a step, or draw the ramp from its open side.
+2. **Where a sub-assembly goes on: 36 (17%).**
+   - 7140 page 35: the ship's nose, 22 parts built right on its own pages,
+     went on 12 plates low and 9 studs back.
+   - The page shows the nose in its yellow box and on the ship, with an arrow.
+     It never shows where the nose meets the body, which is under the
+     cockpit.
+   - Page 9 (the cart's three sections joined, 8 parts) and page 36 (the
+     seat back, 6) lost the same way.
+3. **Which part: 32 (15%).**
+   - Twelve are one part: 7140's black 2x2 dish (2654), which every run read
+     as a 2x2 round plate (4032). That happened on pages 2, 3 and 9, at both
+     sizes.
+   - The builder never said it was unsure. That is the worst kind of loss: a
+     confident wrong build.
+   - In the parts box a black part is one flat shade:
+     - every pixel of the dish is (47-51, 51-55, 54-58);
+     - the ink draws a crease where shading changes, and a dish seen from
+       above has no such change;
+     - a black part has no black neighbour in its box to be inked against.
+     - So a black part is a silhouette. A dish and a round plate are the
+       same silhouette.
+   - The rest are parts of one shape in another size or kind:
+     - a 2x3 plate read as a 2x4 (car page 2);
+     - two 1x3 plates read as 1x1s (car page 3);
+     - a 1x4 tile read as a plate (7140 page 4);
+     - two 2x4 bricks read as 2x2s, and two grille tiles left off (page 18);
+     - a jumper plate read as a plain plate (page 23);
+     - a 1x3 brick read as a 3x2 slope (page 25).
+4. **Colour: 12 (6%).**
+   - 8 on the castle: which of its two greys a 1x4 on the ramp is (pages
+     154-160).
+   - The car's trans-red 1x1 plates were read as trans-yellow (page 3).
+   - Two are the measure's: the car's windscreen is trans-light-blue (39).
+     edit_model made it 43, and the builder said so.
+5. **Hidden: 12 (6%).**
+   - 7140 page 25: slopes under a wedge.
+   - Castle page 161: an arch under a plate.
+   - The car's far-side wheels, at 1x.
+6. **Carried: 10 (5%).** These are parts laid right on a part an earlier
+   page left wrong. They are 7140 page 37's tan plates, on page 36's
+   misplaced seat back.
+
+The rest (12) is what the builder did not notice or called "other".
+
+![Castle page 156: the ramp's columns](instructions/castle-follow-page156.webp)
+![7140 page 35: the nose goes on](instructions/7140-follow-page35.webp)
+![7140 page 2: the black dish in its box](instructions/7140-follow-page2-box.webp)
+![Car page 3](instructions/car-follow-page3.webp)
+
+**No fix was made here.** None of the causes is small and clear:
+
+- The first is in how the castle's steps are cut.
+- The second needs the attach step to show where a sub-assembly meets the
+  model.
+- The third needs black parts drawn with their edges. LEGO® booklets draw
+  black as a grey with light edge lines. The ink here finds edges from
+  shading, and a dark dome has none. Lifting black further would make it
+  dark grey (72), which the castle uses beside it.
+
+They are listed for units under What is left. The one change made was to the
+measure, the page size.
+
+**The whole castle** is about nine hours of builder: 320 pages at 1.7
+minutes a page. That is the lead's to run, from a snapshot imported first:
+
+    tools/bench/booklet_follow.py make models/castle.ldr --out DIR/castle --app SNAPSHOT
+    tools/bench/booklet_follow.py build DIR/castle --run whole --port 9890 \
+        --pages-a-session 4 --app SNAPSHOT --minutes 60
+    tools/bench/booklet_follow.py score DIR/castle --run whole
+
+Started without --from, it builds from page 2 on a fresh model, as a person
+does.
+
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of
@@ -2211,6 +2484,16 @@ than the web's was. `booklet_pdf_probe` on the castle, read by
   sub-model where it stands, before what it stands on (9.6% of steps float
   something on the held-out sample, from 11.4%, against 3.4% for the author's
   own build), because only small sub-models become callouts.
+
+- **Following the booklet** (Building from the booklet, above):
+  - **A mass of alike parts.** A step that adds a course of a mass should add
+    one course, drawn from the side where its rows can be counted. This
+    cost 47% of the parts lost.
+  - **Where a sub-assembly goes on.** Its attach step should show where it
+    meets the model (17%).
+  - **Black parts drawn with their edges.** In the parts box a black part is
+    a silhouette (15% were parts misread, 12 of them one black dish).
+  - **The whole castle**, nine hours of builder.
 
 ## Sources
 
