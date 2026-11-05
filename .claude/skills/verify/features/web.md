@@ -154,9 +154,16 @@ plan with Claude as the client.
   before `index.parts.bin`, and mounted by `Main._ready` before the
   catalogue (`WebPacks.here`; the tree paused and nothing drawn while it
   waits, `GpuFence.hold`, since a frame drawn in software under the
-  page's screen made the wait 0.4 s where it is 0.1; a return visit
-  often hands it to the engine beside its pack, the shell's
-  `startEngine`, and waits for nothing). `index.primitives.bin` (LDraw's primitives, 1.0 MB) is
+  page's screen made the wait 0.4 s where it is 0.1). On a return visit,
+  whose engine pack came from the cache (its Resource Timing), the
+  shell's `startEngine` waits for the data pack, at most a second
+  (`HAND_OFF_MS`), and hands it to the engine beside its pack, so
+  `_ready` waits for nothing: left to chance it lost that race in 8
+  return visits of 10 and the parts then came in under the assistant's
+  first compile (webstart2). `window.brickworksPacks.data.handed` says
+  which way it went and `waited` how long; load_check prints both. A
+  first visit does not wait; a data pack that fails lets the start go at
+  once. `index.primitives.bin` (LDraw's primitives, 1.0 MB) is
   asked for the first time a part is built from LDraw's text
   (`PartForge`, `CustomParts._primitives_here`, which says "Fetching
   LDraw's primitives…") and `index.hdri.bin` (Studio's six panoramas,

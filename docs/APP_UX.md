@@ -387,15 +387,20 @@ notes). It is listed so the plan is whole, not as a new unit.
   10.4. ABBA at load 8-14, four of each: cold 10.85 s (10.73-11.09) against
   11.81 (11.31-12.10), the banner 4.30 against 4.94; warm 6.50 (6.26-6.81)
   against 6.58 (6.47-6.75), the same.
-- A feature's first use reads its scripts from the data pack now. The chat
-  panel (`load_check --assistant`, twelve runs at load 7-15) loaded in 3.58 s
-  (3.49-4.44) cold against 3.73 (3.34-4.32), and 3.81 (2.26-4.26) warm
-  against 3.27 (2.57-4.05). Warm runs are of two kinds in both builds. When
-  the cached data pack is handed in beside the engine's, the rest of the
-  parts come at 9 s and the panel loads in 2.3-2.9 s. When it is not, the
-  parts come with it at 3.5 s and the panel takes 3.6-4.3 s. The bigger data
-  pack misses that hand-off more often, 8 warm runs of 10 against 5: making
-  it sure, or the panel's compile clear of the parts, is a next lever.
+- With the scripts in it the data pack is 9 MB bigger, and a return visit
+  then started the engine before the pack was read in 8 of 10 runs (base:
+  5). Its message waited out the compile, and the rest of the parts came
+  in with it under the assistant's first compile: the chat panel took
+  3.6-4.3 s, where it takes 2.3-2.9 when the pack goes in with the
+  engine's. The shell's `startEngine` now waits for the data pack when the
+  engine's own came from the cache, at most 1 s; it waited 7-75 ms.
+- ABBA of base against the cut with that wait, two sets at load 9-40,
+  twelve pairs of each kind, paired cut minus base (medians). The pack went
+  in with the engine's on 24 return visits of 24, base 12. Cold: usable
+  -0.20 s (sooner in 7 of 12), the banner -0.37 (12 of 12). Warm: -0.21.
+  With the assistant: cold -1.46, warm -1.32; the chat panel's first load
+  -0.13 cold, -0.24 warm. A data pack 3 s late costs the start the 1 s
+  bound; one that fails lets it go at once.
 - Left: the warm start's compile (above), the catalogue and the first frame;
   the engine's own wasm is 6.9 MB of the cold 8.9.
 

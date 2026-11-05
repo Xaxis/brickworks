@@ -407,6 +407,8 @@ function sayRun(run) {
   const data = m.packs && m.packs.data;
   if (data) {
     console.log(`    data pack: asked ${sec(data.asked)} s, came ${sec(data.came)} s, written ${sec(data.written)} s`
+      + (data.handed ? `, handed in ${data.handed}` : "")
+      + (Number.isFinite(data.waited) ? ` (the start waited ${Math.round(data.waited)} ms for it)` : "")
       + (data.failed ? ` (${data.failed})` : ""));
   }
 }
