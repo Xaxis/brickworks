@@ -1883,12 +1883,15 @@ func _a_small_laptop() -> void:
 		_check("at %d x %d the interface is drawn at %.2f, not %.2f" % [size.x, size.y,
 			drawn, stretched], drawn >= 0.9 - 0.001)
 		_check("...so a part's number is %.1f pixels high" % (drawn * 11.0), drawn * 11.0 >= 9.9)
-	var was: Vector2i = DisplayServer.window_get_size()
-	DisplayServer.window_set_size(Vector2i(1280, 720))
+	# Through the root window: DisplayServer.window_set_size alone, on Xvfb
+	# with no window manager, said the window was 1280 x 720 and never told
+	# the viewport, so this measured 1400 x 900 (roomfit, 2026-11-05).
+	var was: Vector2i = root.size
+	root.size = Vector2i(1280, 720)
 	await _frames(30)
-	if DisplayServer.window_get_size() != Vector2i(1280, 720):
+	if root.size != Vector2i(1280, 720):
 		print("    (this display will not resize the window, so the rest is at %s)"
-			% str(DisplayServer.window_get_size()))
+			% str(root.size))
 	var scale: float = root.get_final_transform().get_scale().y
 	_check("this window is drawn at %.2f" % scale, scale >= 0.9 - 0.001)
 	var shell: Shell = _main.get("_shell")
@@ -1903,7 +1906,7 @@ func _a_small_laptop() -> void:
 	_check("at this size nothing but the view cube is over the model (%d of %d points covered)"
 		% [(cover["covered"] as Array).size(), int(cover["samples"])],
 		(cover["covered"] as Array).is_empty())
-	if DisplayServer.window_get_size() == Vector2i(1280, 720):
+	if root.size == Vector2i(1280, 720):
 		_check("...and the model keeps %.0f%% of the width (columns %s)" % [
 			100.0 * model.size.x / across, _main.get("_columns")], model.size.x >= across * 0.6)
 	await _shot("laptop_1280x720")
@@ -1913,8 +1916,9 @@ func _a_small_laptop() -> void:
 	await _shot("controls_1280x720")
 	await _key(KEY_ESCAPE)
 	_check("Escape closes it", not controls.visible)
-	DisplayServer.window_set_size(was)
+	root.size = was
 	await _frames(20)
+	await create_timer(SideDock.SLIDE_SECONDS + 0.1).timeout
 	# Opened with the pointer resting on a button, its tooltip up: the
 	# tooltip took the first Escape for itself on the web. (After the window
 	# is put back: a display that will not resize the window still reports
@@ -2505,7 +2509,18 @@ func _drag_from_the_bin() -> void:
 		return
 	var tip: String = cell.tooltip_text
 	var from: Vector2 = cell.get_global_rect().get_center()
+	# The view at rest first: the assistant folded just before, and the bin
+	# took its room back as it did (Main._fit_bin), so the model glides to
+	# the middle of its new column frame by frame (CadCamera._ease_lens).
+	await create_timer(SideDock.SLIDE_SECONDS + 0.1).timeout
 	var to: Vector2 = _screen(Vector3(-100, 0, -140))
+	for _n: int in 120:
+		await _frames(2)
+		var now: Vector2 = _screen(Vector3(-100, 0, -140))
+		if now.distance_to(to) < 0.5:
+			break
+		to = now
+	from = cell.get_global_rect().get_center()
 	var before: int = _count()
 	await _move(from)
 	_button(from, true)

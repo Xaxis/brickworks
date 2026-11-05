@@ -341,7 +341,7 @@ func _aim(part: String, want: Transform3D) -> String:
 	var contacts: Array = _contacts(want, mesh) if float(best["off"]) >= 1000.0 else []
 	if not contacts.is_empty():
 		best = {"off": INF, "point": Vector2.ZERO, "t": -1, "r": -1}
-		await _move(Vector2(root.get_visible_rect().size.x * 0.6, 70))
+		await _clear_of_joints()
 		await _turn_to(want.basis)
 	for contact: Array in contacts:
 		for point: Vector3 in contact[1]:
@@ -660,6 +660,25 @@ func _hold(part: String) -> void:
 	_acts["click"] = int(_acts.get("click", 0)) + 1
 
 
+## The pointer moved where the part in hand is on no joint, as a person
+## moves it clear to turn it: on a joint, R and T swing it about the joint
+## and leave the part's own turn as it was. Along the top of the model's
+## room. The window's 60% came first and is tried first; with the bin
+## beside the right-hand column at 1400 x 900 (docs/APP_UX.md A10) it was on
+## 8841-1's axle, and #50 went down unturned.
+func _clear_of_joints() -> void:
+	var room: Rect2 = _main.call("_model_rect")
+	var spots: Array = [Vector2(root.get_visible_rect().size.x * 0.6, 70)]
+	for share: float in [0.9, 0.1, 0.75, 0.25, 0.5]:
+		spots.append(Vector2(room.position.x + room.size.x * share, room.position.y + 8.0))
+	for at: Vector2 in spots:
+		await _move(at)
+		if not _builder.is_on_joint():
+			return
+		print("    turned clear of %s at %s" % [_builder.joint_words(), at])
+	print("    every spot along the top was on a joint")
+
+
 ## Turned to [param basis] by T and R, as a person turns a part in hand.
 func _turn_to(basis: Basis) -> void:
 	for _f: int in 6:
@@ -669,6 +688,7 @@ func _turn_to(basis: Basis) -> void:
 				return
 			await _key(KEY_R)
 		await _key(KEY_T)
+	print("    T and R did not turn it as the file has it")
 
 
 static func _same_turn(a: Basis, b: Basis) -> bool:

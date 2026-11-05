@@ -356,7 +356,14 @@ func _build() -> void:
 
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Never a bar across, and on the desktop the grid's width not the
+	# scroller's least: disabled, a grid seven across held the bin 570 wide
+	# in a column made 498 or 342, its last tiles cut off at the column's
+	# edge, and the tiles across were counted from that width, so they never
+	# came down (_tiles_across; roomfit, 2026-11-05). A phone's sheet keeps
+	# its four across.
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if by_finger \
+		else ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	# A row of parts at the least, whatever else the column holds: the
 	# model tree and the properties open give back their room before the
 	# parts do (PanelStack.heights).
@@ -853,10 +860,12 @@ func _fit_palette() -> void:
 		_category_scroll.custom_minimum_size.y = _chip_tall * rows \
 			+ float(_category_row.get_theme_constant("v_separation")) * (rows - 1)
 	var wants: float = _palette.get_combined_minimum_size().y
-	# A laptop's short column keeps its room for parts: a row and a half of
-	# colours there, the rest a scroll or a search away. A phone's and a
-	# tablet's parts are a sheet of their own, and their colours keep theirs.
-	var share: float = PALETTE_SHARE if tall_column >= SHORT or by_finger else 0.0
+	# The desktop's column keeps its room for parts: a row and a half of
+	# colours, the rest a scroll or a search away, as a laptop's short column
+	# had them. At 14% of a taller column they took two rows of parts, and
+	# 1400 x 900 showed 30 (docs/APP_UX.md A10). A phone's and a tablet's
+	# parts are a sheet of their own, and their colours keep theirs.
+	var share: float = PALETTE_SHARE if by_finger else 0.0
 	var tall: float = clampf(minf(wants, tall_column * share), PALETTE_FLOOR,
 		maxf(wants, PALETTE_FLOOR))
 	tall = roundf(tall)
@@ -876,15 +885,13 @@ var column: Control:
 ## and the properties (Main).
 var colours: PanelContainer
 
-## The palette's share of the column's height: four rows and more of the
-## colours a set is built in today at 1440 x 900, the rest a scroll away.
+## A phone's and a tablet's palette's share of their drawer's height.
 const PALETTE_SHARE := 0.14
 ## A row and a half of colours and the title over them.
 const PALETTE_FLOOR := 48.0
 ## A row of parts: a cell and the space under it.
 const PARTS_LEAST := 88.0
-## A column shorter than this shows one row of categories, not two, and
-## the palette at its floor.
+## A column shorter than this shows one row of categories, not two.
 const SHORT := 700.0
 var _chip_tall: float = 0.0
 

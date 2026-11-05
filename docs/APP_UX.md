@@ -305,6 +305,50 @@ uses for the ones it shares.
 This changes what the owner sees first. It is a plan for the owner's eye
 before it is built.
 
+**Built (roomfit, 2026-11-05).** The right column of the model tree and
+Properties, with the assistant as its tab, was already built (October). Still
+missing at the 11-05 audit, measured by `roomfit_probe` at four sizes, parts
+counted wholly inside the bin's column:
+
+| Window | Parts, before | after | Assistant on, before | after | Model, after |
+|---|---|---|---|---|---|
+| 1280 x 720 | 24 | 24 | folds the bin | folds the bin | 60% |
+| 1400 x 900 | 30 | 42 | folds the bin | beside it, 16 parts | 52% |
+| 1600 x 900 | 28 | 40 | folds the bin | beside it, 12 parts | 54% |
+| 1920 x 1080 | 28 | 40 | folds the bin | beside it, 12 parts | 54% |
+
+- **Both columns from about 1350 px.** They show at once wherever both fit
+  with the model keeping half the window (`Main.BOTH_SHARE`), so a
+  1366 x 768 laptop gets them too. The old rule kept
+  the model 60%, so the columns took turns up to 1835 units, which is
+  1920 x 1080 too. Narrower windows (1280 x 720) still take turns, with the
+  model's 60%.
+- **The bin gives the right column its room.** At 1400 x 900 the bin is 7
+  across while the right column is folded, and 4 across while it is open. With
+  the bin at 6, the model had 41%. A first visit opens with the right column
+  folded (`properties_open` now defaults to off).
+- **The selected part's boxes under the bin.** Whenever Properties are out
+  of sight down the right, the bin shows the part's place, turn and colour,
+  as it already did at a laptop's size. This includes when the assistant is
+  showing.
+- **A row and a half of colours.** The palette took 14% of a tall column. It
+  now stays at the row and a half a laptop's column always had. The rest is a
+  scroll, a name or All away, so the bin keeps two rows of parts.
+- **A bin cut off at its edge.** The grid's scroller took the grid's width as
+  its least, so a bin once 7 across never narrowed again. At 1280 x 720 its
+  last column of tiles, Z and Roll, and Prints and List were cut off at the
+  column's edge. The scroller no longer counts it.
+- **Not built: one row of quick colours while a part is in hand.** Folding
+  the palette while a part is in hand would move it under the pointer just as
+  a colour is chosen for that part. It would also hide the swatches that
+  flows and probes click. The row and a half above gives the bin the same
+  room.
+
+`phone_flow` and `tablet_flow` need a preview. The phone's and the tablet's
+layouts take none of these paths (`Main._fit_bin` returns for drawers, and
+the bin's changes skip a sheet for a finger). On the desktop,
+`tablet_fit_probe` and `phone_idle_probe` cover them.
+
 ### A11. Keys: every tool has one, and a person can set their own (M)
 
 **Problem.**

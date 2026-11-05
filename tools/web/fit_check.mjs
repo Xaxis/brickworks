@@ -71,11 +71,12 @@ const throttle = Number(args.throttle || 1);
 // width, height, ratio, the controls that must be on the page there, and
 // the least share of the page's width the model keeps (0: not asked).
 //
-// A window under the design width (1600 units across) has room beside the
-// model for one column. A first visit shows the parts bin and no assistant;
-// turned on, the assistant's column opens and the parts bin folds to its
-// rail: then the key field is asked for at every desktop size, and both
-// rails where one column shows. On a phone the panels are drawers and start
+// A window about 1350 points across or wider has room for both columns beside the
+// model, which keeps half the width with both open (Main.BOTH_SHARE): turned
+// on, the assistant's column opens beside the parts bin. Narrower, one column
+// shows beside the model's 60%, and the assistant folds the bin to its rail.
+// A first visit shows the parts bin and no assistant; with it on, the key
+// field is asked for at every desktop size, and both rails. On a phone the panels are drawers and start
 // closed. Phones were asked only for New and Save while the toolbar, a
 // thousand units in one row, pushed Clear and the assistant's rail off the
 // side of every phone: there the assistant could not be opened at all. In
@@ -103,11 +104,11 @@ const PHONE_TALL = 0.5;
 const ALL = [
   [1600, 900, 1, BOTH, 0],
   [1920, 1080, 2, BOTH, 0],
-  [1400, 900, 1, ONE, 0.6],
-  [1400, 900, 2, ONE, 0.6],
+  [1400, 900, 1, ONE, 0.5],
+  [1400, 900, 2, ONE, 0.5],
   [1280, 800, 2, ONE, 0.6],
-  [1440, 900, 2, ONE, 0.6],
-  [1440, 900, 3, ONE, 0.6],
+  [1440, 900, 2, ONE, 0.5],
+  [1440, 900, 3, ONE, 0.5],
   [1280, 720, 1, ONE, 0.6],
   [1100, 700, 1, ONE, 0.6],
   [1100, 760, 2, ONE, 0.6],
