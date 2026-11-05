@@ -88,6 +88,11 @@ var _queued: Dictionary = {}       ## key -> true, so nothing queues twice
 ## fetched for one swatch is wanted for whichever is selected when it
 ## arrives, and the tiles in sight say which that is.
 var _awaiting: Dictionary = {}
+## Pictures asked for by [method request] whose part is on its way: part ->
+## their jobs, queued again when it comes. A tile in sight is looked at
+## again; these were lost, and a part read off the frame was never drawn
+## (colour_probe's 3811).
+var _held: Dictionary = {}
 ## Parts that could not be drawn -> when that was found, in msec.
 var _failed: Dictionary = {}
 ## The previews being drawn now, by key, so that a tile is not given to two
@@ -384,6 +389,11 @@ func _on_geometry_arrived(part_id: String) -> void:
 	# the one wanted when the fetch started, which may be several
 	# swatches ago.
 	_look = true
+	for job: Dictionary in _held.get(part_id, []):
+		if not _queued.has(job["key"]):
+			_queued[job["key"]] = true
+			_queue.append(job)
+	_held.erase(part_id)
 
 
 func _on_fetch_failed(part_id: String, _why: String) -> void:
@@ -408,6 +418,7 @@ func _group_part_came(part_id: String, came: bool) -> void:
 ## the next time the tiles in sight are looked through.
 func _fail(part_id: String) -> void:
 	_awaiting.erase(part_id)
+	_held.erase(part_id)
 	_failed[part_id] = Time.get_ticks_msec()
 	_look = true
 
@@ -454,6 +465,10 @@ func _render(job: Dictionary, stage: Stage) -> void:
 		# Waiting before it is asked: one read where there is no frame to
 		# read it in is said at once.
 		_awaiting[job["part"]] = true
+		if not job.has("in_sight"):
+			if not _held.has(job["part"]):
+				_held[job["part"]] = []
+			(_held[job["part"]] as Array).append(job)
 		if library.request_mesh(job["part"]):
 			_reorder = true
 		else:
