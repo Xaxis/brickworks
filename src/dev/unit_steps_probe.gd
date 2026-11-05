@@ -26,8 +26,9 @@
 ## list (an assembly taken apart: its steps the model's, the order of the
 ## build the same); the steps test saying what it said before; undo
 ## putting back every part's step, the table and the tree, and redo the
-## edit; and the save opened again with every part, colour and place in
-## the step it was in, and the same tree.
+## edit; saved as Save saves it with nothing then unsaved; and the save
+## opened again with every part, colour and place in the step it was in,
+## and the same tree.
 extends SceneTree
 
 const CASTLE := "res://models/castle.ldr"
@@ -44,6 +45,7 @@ var _verbs: EditVerbs
 var _assemblies: Assemblies
 var _socket: CommandSocket
 var _rpc_id: int = 0
+var _saves: int = 0
 
 
 func _initialize() -> void:
@@ -284,6 +286,14 @@ func _edit(name: String, text: String, stepped: bool, what: String, edit: Callab
 		"as edited" if _world.unit_steps == units_after
 		else "not: %s" % _unlike(units_after, _world.unit_steps)],
 		again.is_empty() and _world.unit_steps == units_after and _by_path() == tree_after)
+	# Saved as Save saves it, and nothing left unsaved: a model saved in the
+	# steps a person sees said at once it had changes (mcp_walk3, 1d3d6e28).
+	_saves += 1
+	var file_name: String = "unit steps %d" % _saves
+	var stored: bool = _store.save_as(file_name)
+	_check("...saved as \"%s\": %s" % [file_name, ("nothing unsaved after it"
+		if not _store.has_unsaved_work() else "it says it has changes not saved") if stored
+		else "not saved: %s" % _store.refused], stored and not _store.has_unsaved_work())
 
 	await _open(saved, name)
 	var reopened: Array = _placed(_numbers())
