@@ -1687,6 +1687,12 @@ func is_ready() -> bool:
 func _ready_ahead() -> void:
 	if world == null or builder == null:
 		return
+	_shapes_read()
+	# The part in hand too: its first aim reads its shape for its hinges
+	# (JointSnap.hinges_of), and a Technic beam 15's took 36 ms of it.
+	if builder.held_part != _held_read:
+		_held_read = builder.held_part
+		_read_shapes_ahead([_held_read])
 	var now: int = Time.get_ticks_msec()
 	if world.revision != _seen_revision:
 		_seen_revision = world.revision
@@ -1846,6 +1852,56 @@ func _ready_now() -> void:
 	_adopt([read[0], read[1], read[2], Time.get_ticks_msec() - started, read[3], read[4]], world.revision)
 	unread_shapes = unread
 	ready_off_thread = false
+	_read_shapes_ahead(part_ids.keys())
+
+
+## The exact shapes of [param part_ids] not read yet, read on a worker from
+## now, after any it is reading: a reading here ([method _ready_now]) reads
+## only those of the parts on joints, and the first room test against any
+## other part read the two it met on the drag's frame. 8808-1's steering
+## wheel, stopped against its steering arm the first time, read the arm's and
+## a Technic brick's in 16 ms of a 24 ms frame, and the same stop took 3 ms
+## on the next drag (dragwarm, 2026-11-04). A reading on a worker reads them
+## all first ([method _read_off_thread]). Not in a browser, whose shapes are
+## fetched and which reads none on a worker (Exact.shape_for).
+func _read_shapes_ahead(part_ids: Array) -> void:
+	if OS.has_feature("web") or OS.has_feature("nothreads"):
+		return
+	_shapes_wanted.append_array(part_ids)
+	if _shapes_reading >= 0:
+		return
+	var unread: Array = _shapes_wanted.filter(func(id: Variant) -> bool: return not Exact.known(library, str(id)))
+	_shapes_wanted = []
+	if unread.is_empty():
+		return
+	var parts: PartLibrary = library
+	var stop := WorkerTasks.Stop.new()
+	library.begin_reading()
+	_shapes_reading = WorkerTasks.add(func() -> void:
+		for id: Variant in unread:
+			if stop.asked():
+				return
+			Exact.shape_for(parts, str(id)), false, "read the parts' exact shapes")
+	library.reading_in(_shapes_reading, stop.ask)
+
+
+## [method _read_shapes_ahead]'s task, let go of once it is done, and the
+## next begun.
+func _shapes_read() -> void:
+	if _shapes_reading < 0 or not WorkerThreadPool.is_task_completed(_shapes_reading):
+		return
+	WorkerTasks.collect(_shapes_reading)
+	library.end_reading(_shapes_reading)
+	_shapes_reading = -1
+	if not _shapes_wanted.is_empty():
+		_read_shapes_ahead([])
+
+
+var _shapes_reading: int = -1
+## Parts asked for while it was reading.
+var _shapes_wanted: Array = []
+## The part in hand whose shape was last asked for.
+var _held_read: String = ""
 
 
 ## Of [param part_ids], those whose exact shapes are not here yet: on the
