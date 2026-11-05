@@ -2404,6 +2404,125 @@ Started without --from, it builds from page 2 on a fresh model, as a person
 does.
 
 
+## A course a step (2026-11-05, courses): no gain, not kept
+
+The first lever above: on the castle's stair a builder put almost none of
+the parts of pages 157-161 where they go. Tried here: steps that lay a mass
+a course at a time. A builder then put fewer of the stair's parts right,
+not more, so nothing of it was kept. The change is in
+`bench/results/courses-2026-11-05/courses-tried.patch`, with the runs and
+the scripts that counted them.
+
+**Why those pages lost their parts.**
+
+- The stair is a ramp of 1 x 4 bricks two wide, each course two studs back
+  from the one under it. At its foot it rests on a green plate that the
+  south-east tower's sub-model holds.
+- The plan builds a region at a time, and borrows from next door only when
+  nothing of its own is ready (`Instructions._next`). The east wall's
+  region laid every course it could reach, up to the top, and took the
+  tower's plate last.
+- So the stair's foot went in last, and what was ready was a diagonal: each
+  brick laid made the one on it ready, two studs back and a course up. That
+  one was the nearest and the lowest ready, so it came next. Steps 176-186
+  are diagonals of five to eight bricks, each on the one before.
+- On booklettest's run, the parts laid on a part of their own step the same
+  size, a stud or more along it, were lost 36 times in 48. The parts that
+  stood only on earlier steps' parts were lost 28 times in 64.
+
+**How often real sets' authors do that.** Over the 87,090 parts of the tune
+and proof samples, as their authors step them (each sub-model's steps as
+written), against the castle's plan:
+
+| a part laid on a part of its own step | authors | the castle |
+|---|---:|---:|
+| at all | 16.3% | 28.6% |
+| not squarely on it | 6.7% | 19.3% |
+| not squarely, and the same size: a course on a course | 0.7% | 10.2% |
+| squarely, and the same size: a column | 3.1% | 0.1% |
+
+**The change tried**, both halves:
+
+- a region takes a part it waits on from next door first, when that part is
+  lower than the region's own next one and joins what stands;
+- a step does not take a part that stands a stud or more along a part of
+  the same size that the same step lays.
+
+Each half alone fell short. The second alone laid the stair's foot a brick a
+step: 543 steps where there were 400, 144 of them one part. The first alone
+left 6.8% of the castle's parts on a course of their own step.
+
+Together the castle's plan came to 410 steps:
+
+- no part on a course its own step lays;
+- 16.5% on a part of their own step, the authors' rate;
+- 8.5% not squarely.
+
+On the held-out sample, paired file by file, ours:
+
+| measure | before | after |
+|---|---:|---:|
+| tau | 0.358 | 0.354 (change -0.012 to +0.003) |
+| hidden | 6.0% | 5.8% |
+| put in under | 4.7% | 4.7% |
+| floating | 1.0% | 1.0% |
+| steps for each of the author's | 1.07 | 1.07 |
+| same-step pairs kept | 23.5% | 23.0% (change -1.8 to -0.1) |
+
+Without sub-models, tau rose from 0.287 to 0.296. In the first try a
+borrowed part that joined nothing standing floated, and 42105's catamaran
+with it (71 things). A borrowed part must join what stands. Round bricks
+laid on their side along a tail are a column, not a course, so a part must
+stand on the other.
+
+**What a builder did.** These are the same 120 stair parts. Before, they
+were on pages 150-161. After, they were on pages 257-267: the region order
+moved, and the stair now comes after the courtyard. Right counts on those
+parts:
+
+| run | where the stair's diagonals were (52) | its courses (68) | all 120 |
+|---|---:|---:|---:|
+| before, booklettest | 5 | 36 | 41 |
+| before, c1 | 6 | 44 | 50 |
+| before, c2 | 5 | 10 | 15 |
+| after, c1 | 7 | 7 | 14 |
+| after, c2 | 2 | 14 | 16 |
+
+The misses got smaller. Before, 1 to 6 of them were within a stud and a
+course of their place. After, 43 and 45 were. But right fell, and the
+diagonals' parts it was for gained nothing.
+
+**Why it did not help.**
+
+- A course of six or eight 1 x 4s, two wide, is still a run of alike
+  bricks. The builder laid each course at about its height and place, then
+  a stud along it, in the other column, or a course off. The commonest
+  misses were (0, 0, ±1), (±1, 0, 0) and (0, ±3, 0) in studs and plates.
+- Which stud a brick starts on along a run, and which of the two columns
+  takes the embossed one, is what is left. How the steps are cut does not
+  change it. What is drawn might: the joints of the course below, or the
+  run's length in studs.
+- Moving the region order moved the stair behind the south-east tower, and
+  its last four pages are drawn turned. The builders said "turn" there, and
+  put 2 and 0 of those 39 parts right.
+- Before, one builder followed the course pages 152-156 well (45 of 71)
+  and another badly (10). The spread is the builder's, not the page's: a
+  change has to be large to show in two runs.
+
+The car was not run. The change moves one of its steps: step 9's four 1 x 2
+plates, two on two, become two steps. Its losses are not of this kind:
+its parts laid on parts of their own step were lost 6 times in 13, and
+the rest 22 in 48.
+
+A first after run got no picture from view_model for two minutes. Four
+builders and a windowed probe were sharing the GPU at the time. The builder
+said the app had stopped answering, two of its sessions ended with nothing
+built, and the run was rerun (`c1-gpu-stall`).
+
+![Before, page 158: two diagonals of the stair's foot](instructions/castle-courses-before-page158.webp)
+![After, page 259: a course a step](instructions/castle-courses-after-page259.webp)
+
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of
@@ -2489,9 +2608,10 @@ does.
   own build), because only small sub-models become callouts.
 
 - **Following the booklet** (Building from the booklet, above):
-  - **A mass of alike parts.** A step that adds a course of a mass should add
-    one course, drawn from the side where its rows can be counted. This
-    cost 47% of the parts lost.
+  - **A mass of alike parts.** This cost 47% of the parts lost. Laying one
+    course a step was tried and did not help (A course a step, above). The
+    misses then were a stud along a run, so the next lever is the picture:
+    the joints of the course below, or a run's length in studs.
   - **Where a sub-assembly goes on.** Its attach step should show where it
     meets the model (17%).
   - **Black parts drawn with their edges.** In the parts box a black part is
