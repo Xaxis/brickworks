@@ -345,9 +345,12 @@ func unused_name(wanted: String) -> String:
 
 ## The next copy of a definition, numbered across the whole model as an
 ## opened file numbers them: "Wing#1", then "Wing#2".
+## A number a copy taken off still holds a step under (BrickWorld.unit_steps,
+## kept for its undo) is not given again: a copy pasted would be put on in
+## that step, or built in its parent's steps, as the one taken off was.
 func next_copy(name: String) -> String:
 	var highest: int = 0
-	for path: String in paths():
+	for path: String in paths() + PackedStringArray(world.unit_steps.keys()):
 		for segment: String in segments(path):
 			if definition(segment) == name:
 				highest = maxi(highest, copy_of(segment))
@@ -377,12 +380,16 @@ func make(name: String) -> String:
 	if changes.is_empty():
 		return ""
 	builder.regroup(changes, "made the sub-assembly %s of %s" % [definition(segment),
-		Builder._many(changes.size())])
+		Builder._many(changes.size())], wrapped(changes),
+		made_steps(PackedStringArray([path])))
 	changed.emit()
 	return path
 
 
-## Take an assembly apart one level: what was in it is in its parent.
+## Take an assembly apart one level: what was in it is in its parent. A
+## copy built in steps of its own has them made its parent's, in the order
+## they were built (AuthorSteps.inlined), and the looks of the steps with
+## them (BookletLooks.inlined).
 func ungroup(path: String) -> int:
 	if path.is_empty():
 		return 0
@@ -395,7 +402,16 @@ func ungroup(path: String) -> int:
 		return 0
 	if within(entered, path) and entered != parent:
 		leave_to(parent)
-	builder.regroup(changes, "took %s apart" % label(path))
+	var numbers: Dictionary = AuthorSteps.inlined(world, path, scenery)
+	var looks: Dictionary = BookletLooks.inlined(world, path, numbers)
+	var carry: Callable = func(at: String) -> Array:
+		if at == path:
+			return []
+		return [join(parent, at.substr(path.length() + 1))] if within(at, path) else [at]
+	if builder.regroup(changes, "took %s apart" % label(path), carry, numbers) > 0 \
+			and not looks.is_empty():
+		builder.extend_last([{"undo": "steplooks", "looks": world.step_looks}])
+		world.step_looks = looks
 	changed.emit()
 	return changes.size()
 
@@ -423,7 +439,10 @@ func rename(path: String, wanted: String) -> String:
 	if changes.is_empty():
 		return old
 	var was_entered: String = entered
-	builder.regroup(changes, "renamed %s to %s" % [old, name])
+	var carry: Callable = func(at: String) -> Array: return [_renamed_path(at, old, name)]
+	# Its steps' looks are kept by its name.
+	if builder.regroup(changes, "renamed %s to %s" % [old, name], carry) > 0:
+		builder.extend_last(BookletLooks.renamed(world, old, name, true))
 	if not was_entered.is_empty():
 		_set_entered(_renamed_path(was_entered, old, name))
 	changed.emit()
@@ -438,6 +457,59 @@ static func _renamed_path(path: String, old: String, name: String) -> String:
 	return "/".join(parts)
 
 
+## Where a change that puts parts inside new sub-assemblies ([method make],
+## Sections.accept) puts each assembly they were in, as Builder.regroup
+## carries what is kept by its path: [param changes] are brick id -> the
+## path it is given, the path below its level kept ("Tower#1" in "Keep#1/
+## Tower#1"). An assembly some of whose parts stay where they were is split:
+## in both places. Read before the change.
+func wrapped(changes: Dictionary) -> Callable:
+	var to: Dictionary = {}         ## path -> {a path it is at after: true}
+	var going: Dictionary = {}      ## path -> how many of its parts go
+	for brick_id: int in changes:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var was: PackedStringArray = segments(path_of(brick))
+		var now: PackedStringArray = segments(str(changes[brick_id]))
+		var kept: int = 0
+		while kept < mini(was.size(), now.size()) \
+				and was[was.size() - 1 - kept] == now[now.size() - 1 - kept]:
+			kept += 1
+		for n: int in kept:
+			var path: String = "/".join(was.slice(0, was.size() - n))
+			if not to.has(path):
+				to[path] = {}
+			(to[path] as Dictionary)["/".join(now.slice(0, now.size() - n))] = true
+			going[path] = int(going.get(path, 0)) + 1
+	var split: Dictionary = {}
+	for path: String in going:
+		if bricks_under(path).size() > int(going[path]):
+			split[path] = true
+	return func(path: String) -> Array:
+		if not to.has(path):
+			return [path]
+		var out: Array = (to[path] as Dictionary).keys()
+		if split.has(path):
+			out.append(path)
+		return out
+
+
+## The steps of sub-assemblies [param made] from parts of a model with steps
+## of its own, as Builder.regroup takes them: each built in the steps of the
+## one round it (AuthorSteps.IN_PARENT), so the parts stay in the steps the
+## person sees. Built whole, the castle's east wall and tower made one
+## sub-assembly moved 2,194 of its 2,497 parts to other steps, and from step
+## 53 bricks were put down in the air (unitsteps). In a model with no steps,
+## none, and no step an old copy of that name left.
+func made_steps(made: PackedStringArray) -> Dictionary:
+	var units: Dictionary = {}
+	var step: int = AuthorSteps.IN_PARENT if AuthorSteps.any(world, scenery) else -1
+	for path: String in made:
+		units[path] = step
+	return {"units": units}
+
+
 ## A copy cut loose from the others: a definition of its own, so editing it
 ## no longer changes them.
 func make_unique(path: String) -> String:
@@ -448,7 +520,15 @@ func make_unique(path: String) -> String:
 	var changes: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks_under(path):
 		changes[brick.id] = fresh + path_of(brick).substr(path.length())
-	builder.regroup(changes, "made %s a sub-assembly of its own" % label(path))
+	var own_steps: bool = not AuthorSteps.in_parent(world, path)
+	var carry: Callable = func(at: String) -> Array:
+		return [fresh + at.substr(path.length())] if within(at, path) else [at]
+	var moved: int = builder.regroup(changes, "made %s a sub-assembly of its own" % label(path),
+		carry)
+	# Built in steps of its own, it is shown as it was: its steps' looks,
+	# kept by the name it had, are its new name's too.
+	if own_steps and moved > 0:
+		builder.extend_last(BookletLooks.renamed(world, definition(leaf(path)), name, false))
 	if within(entered, path):
 		_set_entered(fresh + entered.substr(path.length()))
 	changed.emit()
@@ -464,8 +544,10 @@ func move_into(path: String, into: String) -> String:
 	var changes: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks_under(path):
 		changes[brick.id] = fresh + path_of(brick).substr(path.length())
+	var carry: Callable = func(at: String) -> Array:
+		return [fresh + at.substr(path.length())] if within(at, path) else [at]
 	builder.regroup(changes, "put %s in %s" % [label(path),
-		"the model" if into.is_empty() else label(into)])
+		"the model" if into.is_empty() else label(into)], carry)
 	changed.emit()
 	return fresh
 

@@ -153,10 +153,15 @@ What each one guards against, all learned the hard way on 2026-10-13:
   `windowed.txt` or `out.txt` (with why after its `#`), never in
   `tools/check.sh`. The suite's lists were arrays there, every unit appended
   to the same last line, and four merges on 2026-10-22 were that conflict
-  settled by hand. The files merge as a union (`.gitattributes`), so git
-  keeps both sides' lines. `merge_unit.sh` then runs `tools/check.sh
-  --lists`, which fails a merge that leaves a probe in no list, or one a
-  union brought back (a name twice, or out and run both).
+  settled by hand. The files merge a probe at a time
+  (`tools/merge_lists.py`, `merge=lists` in `.gitattributes`): both sides'
+  new lines are kept, a line one side edits is kept once, the side merged in
+  winning if both did, and one taken out stays out. A plain union kept an
+  edited line twice (steps_kept, 62d9de65 and fe6808ae). The driver is in the
+  main checkout's `.git/config`, and `merge_unit.sh` passes it on its merge;
+  a merge with neither stops on a conflict. `merge_unit.sh` then runs
+  `tools/check.sh --lists`, which fails a merge that leaves a probe in no
+  list, or one listed twice, or out and run both.
   `tools/check.sh --dry-run` prints every command the suite would run.
 - `parse_gate.sh` parses every GDScript file the merge changed. Two units
   each added a `"dome"` key to one dictionary, git merged both without a

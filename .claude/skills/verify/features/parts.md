@@ -94,7 +94,18 @@ geometry in front of them.
   the index is made on a worker once the bin is filled
   (`PartLibrary.prepare_search`), so a first key typed answers in about
   30 ms on a quiet box (54 ms the slowest letter at load 13, twice that at
-  38). `search_rank_probe` holds 63 queries written before the change
+  38). A key typed before it is made waits for it without holding the
+  frame (`PartsBin._search_soon`, `PartLibrary.search_ready` never waits),
+  where it held one 1.8 s at load 41. A part made in the app lets it go,
+  and it is made again at once, ahead of the next key (`add_custom`), one
+  being made stopped, not waited for. Without threads it is made in frames,
+  4 ms of each and 12 once a search waits (`PartSearch.made_for`).
+  `bin_first_probe` (in a window, about 3 min): the first search typed as
+  the index is made and once it is, with threads and standing in for none,
+  each frame against the later searches', its tiles the settled list's,
+  the index's share of a frame without threads under its budget, and a
+  made part's index made again with no search asking, its name found.
+  `search_rank_probe` holds 63 queries written before the change
   (names, sizes, numbers, misspellings) to the parts an expert wants in the
   first three, in the bin and in search_parts: base 78% and 81%, now 98%
   both; five more of a family and its kind ("round brick", "plate

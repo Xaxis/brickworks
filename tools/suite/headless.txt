@@ -1,9 +1,9 @@
 # The probes tools/check.sh runs headless, in this order, one a line: NAME,
 # or NAME:ARGS for what it is given after its `--`. From a # to the line's
 # end is a comment. A new probe goes on a line of its own, at the end: git
-# merges this file as a union (.gitattributes), so two units adding one each
-# both keep theirs, where every unit appending to one array's last line in
-# check.sh was a conflict to settle by hand (four on 2026-10-22).
+# merges this file a probe at a time (tools/merge_lists.py), so two units
+# adding one each both keep theirs, where every unit appending to one array's
+# last line in check.sh was a conflict to settle by hand (four on 2026-10-22).
 #
 # The MCP first of all: it is the app's AI interface, and it falls behind
 # with nothing failing — a tool list four tools stale, a menu command no
@@ -220,3 +220,4 @@ set_floor   # a set opens on the grid by every way one opens (Library, a set pag
 together_chat   # Build together's chat, four lines tall, ends on its newest line after each of nine said one after another, a long wrapped one among them (layoutwait)
 moulded_in_sets   # every moulded animal the library's sets use, put where its set has it by edit (edit_model's check) and by hand (the part in hand aimed where it stood): the fewest sets that hold all 82; -- all puts all 570 in 146 sets (mouldedanimal)
 steps_kept   # a model's worked-out steps keep their numbers, parts and section marks through its first step edit, a look set, a recolour, an undo and a save: the lighthouse and 7140-1; the castle, its kept steps turned down, keeps the steps a person sees, its sub-models built in the model's steps, read the same by the steps test, another LDraw reader and a reopen (stepsnum, sectionmarks, stepskeep)
+unit_steps   # a sub-assembly renamed, taken apart, made of two, cut loose or made a section, by the menu and over MCP, keeps the steps a person sees: the castle's copies built in its steps and 7140-1's built whole, each undone, redone, saved and opened again (unitsteps)

@@ -2425,9 +2425,15 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	if pace != null and pace.due():
 		await pace.next()
 	# Every frame moved with the parts, so each part is where it was in it.
+	# And each copy listed where the booklet builds it among those its step
+	# puts on: by its first part (AuthorSteps.first_under), as a file read
+	# again numbers them.
+	var first: Dictionary = AuthorSteps.first_under(model, scenery)
 	for path: Variant in instances:
 		var entry: Dictionary = instances[path]
 		entry["frame"] = back * (entry["frame"] as Transform3D)
+		if first.has(path):
+			entry["first"] = int(first[path])
 	# What has not arrived, or could not be fetched, goes out last, where the
 	# file had it, and so does what the catalogue has not got. Someone else's
 	# file carries them below (carried_into); the app's own was saved without

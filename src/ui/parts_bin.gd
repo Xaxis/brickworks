@@ -196,6 +196,8 @@ func _ready() -> void:
 		get_tree().node_added.connect(_hands_drags)
 	_build()
 	set_process(true)
+	# Only a phone's list is held at its search (_input).
+	set_process_input(by_finger)
 
 
 func _build() -> void:
@@ -388,11 +390,16 @@ func _build() -> void:
 			root.remove_child(row)
 			page.add_child(row)
 		page.add_child(_grid)
-		# Room under the parts to put the search at the top with one row of
-		# them listed (_to_list_top, _process).
+		# Room under the parts to put the search at the top however few are
+		# listed (_to_list_top), made in the layout of the page and the list.
 		_page_foot = Control.new()
 		_page_foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		page.add_child(_page_foot)
+		page.sort_children.connect(_fit_foot)
+		_scroll.resized.connect(_fit_foot)
+		# A new list held at its search whenever its layout changes how far
+		# it scrolls (_hold_at_search).
+		_scroll.get_v_scroll_bar().changed.connect(_hold_at_search)
 
 	# The status line, and at its end how the parts are shown, as a file
 	# window keeps its views at its foot: with their prints or without, as
@@ -433,7 +440,7 @@ func _build() -> void:
 		var pref: String = "bin_prints" if button == _prints else "bin_list"
 		button.toggled.connect(func(on: bool) -> void:
 			ShellPrefs.put(pref, on)
-			_run_search(_search.text))
+			_search_soon(_search.text))
 		foot.add_child(button)
 
 	# The colours are a section of their own at the foot of the column
@@ -469,7 +476,7 @@ func _build() -> void:
 	_only_made.set_pressed_no_signal(bool(ShellPrefs.value("bin_only_made")))
 	_only_made.toggled.connect(func(on: bool) -> void:
 		ShellPrefs.put("bin_only_made", on)
-		_run_search(_search.text))
+		_search_soon(_search.text))
 	colour_head.add_child(_only_made)
 	# A colour by its name or number, as Studio's colour menu filters as you
 	# type. The old greys (7 and 8), all over older sets, show only after
@@ -959,7 +966,7 @@ func _on_colour(code: int, again: bool = true) -> void:
 	color_chosen.emit(code)
 	# Only the parts made in it: other parts, listed again.
 	if again and changed and _only_made.button_pressed and _category != TECHNIQUES:
-		_run_search(_search.text)
+		_search_soon(_search.text)
 		return
 	# Previews are per colour: every tile is pointed at the new one and keeps
 	# the picture it has until that one is drawn. The grid was made again,
@@ -1011,7 +1018,7 @@ func show_selection(parts: PackedStringArray, colours: PackedInt32Array) -> void
 	# what it was about: a part taken from its list deselects.
 	if _category == FITS and not by_part.is_empty():
 		_fits_of = _fits_subject()
-		_run_search(_search.text)
+		_search_soon(_search.text)
 
 
 ## The part the note and the dots are about: the selected one, all of one
@@ -1280,7 +1287,7 @@ func _on_category(name: String) -> void:
 	for child: Node in _category_row.get_children():
 		var button: Button = child
 		button.button_pressed = str(button.get_meta("category", "")) == name
-	_run_search(_search.text)
+	_search_soon(_search.text)
 
 
 func _on_search_typed(text: String) -> void:
@@ -1291,7 +1298,7 @@ func _on_search_typed(text: String) -> void:
 	var quiet: bool = not _pending and now - _search_at >= SEARCH_DEBOUNCE
 	_search_at = now
 	if quiet:
-		_run_search(text)
+		_search_soon(text)
 	else:
 		_pending = true
 
@@ -1309,13 +1316,20 @@ func _notification(what: int) -> void:
 		_fit_name(label, _name_width(label))
 	_tell_apart()
 	if not _search.text.strip_edges().is_empty():
-		_run_search(_search.text)
+		_search_soon(_search.text)
 
 
 func _process(_delta: float) -> void:
 	if _pending and Time.get_ticks_msec() - _search_at >= SEARCH_DEBOUNCE:
 		_pending = false
-		_run_search(_search.text)
+		_search_soon(_search.text)
+	# A search asked for before the search's index was made, run once it is,
+	# and the index asked for until then: a part made in the app lets it go.
+	if _waiting and library != null:
+		if library.search_ready():
+			_search_soon(_search.text)
+		else:
+			library.prepare_search(true)
 
 	# Building from a set: the model changed, so the counts are worked out
 	# again from it, a tenth of a second apart at most while it goes on.
@@ -1323,14 +1337,6 @@ func _process(_delta: float) -> void:
 			and builder.world.revision != _counted_at \
 			and Time.get_ticks_msec() - _counted_msec >= RECOUNT_MSEC:
 		_recount()
-
-	if _page_foot != null:
-		var under: float = maxf(0.0, _scroll.size.y - (_page_foot.position.y - _search.position.y))
-		if absf(_page_foot.custom_minimum_size.y - under) > 0.5:
-			_page_foot.custom_minimum_size.y = under
-	if _to_top_frames > 0:
-		_to_top_frames -= 1
-		_scroll.scroll_vertical = roundi(_search.position.y)
 
 	# Grow the grid as it is scrolled. Checking here rather than on a
 	# scroll signal covers the case where the window is resized and the
@@ -1355,9 +1361,32 @@ func _process(_delta: float) -> void:
 		thumbnails.watch(self, _sight.tiles())
 
 
+## [param query] searched for a person's act (a key, a category, a toggle): at
+## once when the search's index is made or none is needed, else as soon as it
+## is (_process), the window drawing meanwhile and the list as it was. Asked
+## for at once, a first key typed while the index was being made held its
+## frame for all of it: 1.8 s at a load past the box's cores, 2.9 to 4.5 s in
+## watched_frames_probe (bin_first_probe, 2026-11-05).
+func _search_soon(query: String) -> void:
+	if library != null and not query.strip_edges().is_empty() and _set_bin == null \
+			and _category != TECHNIQUES and not library.search_ready():
+		_waiting = true
+		library.prepare_search(true)
+		return
+	_run_search(query)
+
+
+## A search asked for before the search's index was made (_search_soon).
+var _waiting: bool = false
+
+
+## What [param query] asks, listed now: the search's index made here if it is
+## not yet (PartLibrary._finder), as a probe or a call that reads the list
+## at once wants. A person's acts ask through _search_soon.
 func _run_search(query: String) -> void:
 	if library == null:
 		return
+	_waiting = false
 	_offer_typed(query)
 	_guesses.clear()
 	if _category == TECHNIQUES:
@@ -1784,7 +1813,7 @@ func _refresh_shelf() -> void:
 		if child.has_meta("shelf"):
 			(child as Button).text = _shelf_label(str(child.get_meta("shelf")))
 	if _category == FAVOURITES:
-		_run_search(_search.text)
+		_search_soon(_search.text)
 
 
 static func _sort_for(found: Array[PartLibrary.PartInfo], query: String) -> void:
@@ -2146,18 +2175,53 @@ static func _is_buried(category: String) -> bool:
 ## A list shown from its start: the scroll's top on a desktop; on a phone
 ## the search, over the chips and the parts, the head above it a drag away,
 ## or a phone on its side showed the head and the chips and not one part.
-## Put there over the next frames, as the grid is laid out (_process).
+## Held there until a finger moves it (_hold_at_search). Put there for three
+## frames instead, a list made while the sheet was put away, whose layout
+## waits for it to be shown, opened at its head: the phone's first Parts,
+## and a list shown in a shut sheet that had fewer parts than the last
+## (bin_list_top_probe, listtop).
 func _to_list_top() -> void:
-	_scroll.scroll_vertical = 0
-	if by_finger:
-		_to_top_frames = 3
+	_at_search = by_finger
+	_scroll.scroll_vertical = roundi(_search.position.y) if by_finger else 0
 
 
-## Frames left to put a phone's list at its search (_to_list_top).
-var _to_top_frames: int = 0
+## On a phone, a new list is at its search until a finger or the wheel
+## moves it (_to_list_top, _input).
+var _at_search: bool = false
 ## On a phone, the room under the parts that lets the list be put at its
 ## search however few they are.
 var _page_foot: Control
+
+
+## The list put at its search again each time its layout changes how far it
+## scrolls: the parts laid out, the room under them made, the sheet shown or
+## made taller. Heard as the list's scroll bar is told, in the layout itself,
+## so the frame is drawn at the search. Each of those clamps the scroll to
+## what the list held at that moment, a shorter list or the room not yet
+## made under it, and nothing put it back once the frames were spent.
+func _hold_at_search() -> void:
+	if _at_search:
+		_scroll.scroll_vertical = roundi(_search.position.y)
+
+
+## The room under the parts, made as they are laid out or the list's view
+## changes size: one view's height under the search, whatever is listed.
+## Worked out a frame later, from the last frame's places, the list was
+## clamped short of its search in between.
+func _fit_foot() -> void:
+	var under: float = maxf(0.0, _scroll.size.y - (_page_foot.position.y - _search.position.y))
+	if absf(_page_foot.custom_minimum_size.y - under) > 0.5:
+		_page_foot.custom_minimum_size.y = under
+
+
+## A press on the list (a finger, the mouse, the wheel) lets go of a new
+## list's hold at its search: from there it is where the person moves it.
+## A chip or the search pressed makes a new list, held again.
+func _input(event: InputEvent) -> void:
+	var press := event as InputEventMouseButton
+	if _at_search and press != null and press.pressed and _scroll.is_visible_in_tree() \
+			and _scroll.get_global_rect().has_point(press.position):
+		_at_search = false
 
 
 func _fill_grid() -> void:
@@ -3605,7 +3669,7 @@ func _follow_step(relist: bool) -> void:
 ## Back to the whole library: the set's counts go with it.
 func leave_set() -> void:
 	_drop_set()
-	_run_search(_search.text)
+	_search_soon(_search.text)
 
 
 ## The set bin let go, and the model's choice with it.
@@ -3675,7 +3739,7 @@ func _follow_model() -> void:
 	if wanted.is_empty():
 		if _set_bin != null:
 			_drop_set()
-			_run_search(_search.text)
+			_search_soon(_search.text)
 		return
 	if await build_from(wanted) == 0:
 		_say_set()

@@ -539,13 +539,17 @@ func _apply(step: Dictionary) -> Dictionary:
 
 	if step.get("undo", "") == "unitstep":
 		var unit: String = str(step["unit"])
-		var held: int = int(world.unit_steps.get(unit, -1))
+		var held: Dictionary = {"undo": "unitstep", "unit": unit,
+			"step": int(world.unit_steps.get(unit, -1))}
+		# A file's copy of no step says -1 (LdrModel), which "kept" puts back.
+		if world.unit_steps.has(unit) and int(held["step"]) == -1:
+			held["kept"] = true
 		# -1 is none; AuthorSteps.IN_PARENT, a copy built in its parent's steps.
-		if int(step["step"]) == -1:
+		if int(step["step"]) == -1 and not bool(step.get("kept", false)):
 			world.unit_steps.erase(unit)
 		else:
 			world.unit_steps[unit] = int(step["step"])
-		return {"undo": "unitstep", "unit": unit, "step": held}
+		return held
 
 	if step.get("undo", "") == "recolor":
 		# Its own reverse: put the old colour back and remember the one
@@ -1674,7 +1678,23 @@ static func set_path(brick: BrickWorld.Brick, path: String) -> void:
 
 
 ## Move bricks to other places in the tree, as one step: brick id -> path.
-func regroup(changes: Dictionary, words: String) -> int:
+## Returns how many moved.
+##
+## What the model keeps by an assembly's path goes where the change puts the
+## assembly, in the same step, so undo and redo carry it too: each copy's
+## step (BrickWorld.unit_steps), a section broken out (broken_out) and a
+## motion's joint on a sub-assembly (Motions). [param carry] says where:
+## (path) -> the paths the assembly is at after the change, none when the
+## change took it apart, two when it split it. Unset, no assembly moves:
+## parts taken out of one. Left under the old names, the castle's renamed
+## tower lost the entry that built it in the castle's steps, and its parts
+## moved steps (unitsteps). [param numbers] are steps the change gives,
+## {"bricks": id -> step, "units": path before the change -> step, -1 for
+## none}: a copy's steps made its parent's as it is taken apart
+## (AuthorSteps.inlined), a sub-assembly made built in its parent's.
+func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
+		numbers: Dictionary = {}) -> int:
+	var units: Dictionary = world.unit_steps.duplicate()
 	var steps: Array = []
 	for brick_id: int in changes:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
@@ -1684,11 +1704,84 @@ func regroup(changes: Dictionary, words: String) -> int:
 		steps.append({"undo": "regroup", "brick": brick_id, "group": brick.group,
 			"unit": brick.unit})
 		set_path(brick, path)
-	if steps.is_empty():
+	var moved: int = steps.size()
+	if moved == 0:
 		return 0
+	if carry.is_valid():
+		steps.append_array(_carry(carry))
+	var stepped: Dictionary = numbers.get("bricks", {})
+	for brick_id: int in stepped:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null and brick.step != int(stepped[brick_id]):
+			steps.append({"undo": "restep", "brick": brick_id, "step": brick.step})
+			brick.step = int(stepped[brick_id])
+	var given: Dictionary = numbers.get("units", {})
+	for path: String in given:
+		for to: String in (carry.call(path) if carry.is_valid() else [path]):
+			if int(given[path]) == -1:
+				world.unit_steps.erase(to)
+			else:
+				world.unit_steps[to] = int(given[path])
+	# Each copy's step once, as it was before all of it: a group's entries
+	# are applied in the order kept, so one an entry carried and another
+	# numbered would be put back to the step between.
+	for path: String in units:
+		if int(world.unit_steps.get(path, -1)) != int(units[path]) or not world.unit_steps.has(path):
+			steps.append({"undo": "unitstep", "unit": path, "step": int(units[path]),
+				"kept": true})
+	for path: String in world.unit_steps:
+		if not units.has(path):
+			steps.append({"undo": "unitstep", "unit": path, "step": -1})
 	_history.append({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
-	return steps.size()
+	return moved
+
+
+## [method regroup]'s tables carried where [param carry] puts each path.
+## Returns the undo of the sections and motions; the copies' steps are
+## undone by regroup, each once.
+func _carry(carry: Callable) -> Array:
+	var undo: Array = []
+	# A copy given the path an entry still holds (one taken off, kept for
+	# its undo) takes the place of that entry: the copies moved are put
+	# after the rest.
+	var going: Dictionary = {}
+	for path: String in world.unit_steps:
+		var to: Array = carry.call(path)
+		if to.size() != 1 or str(to[0]) != path:
+			going[path] = to
+	var held: Dictionary = {}
+	for path: String in going:
+		held[path] = world.unit_steps[path]
+		world.unit_steps.erase(path)
+	for path: String in going:
+		for to: String in going[path]:
+			world.unit_steps[to] = held[path]
+	# A section broken out goes to the one path its parts went to. One taken
+	# apart or split keeps its own: its record names its parts by number
+	# (BrickWorld.home_of), so a save still writes them where they were.
+	for section: String in world.broken_out.keys():
+		var to: Array = carry.call(section)
+		if to.size() == 1 and str(to[0]) != section:
+			undo.append({"undo": "sectionout", "path": section, "record": world.broken_out[section]})
+			undo.append({"undo": "sectionout", "path": str(to[0]),
+				"record": world.broken_out.get(str(to[0]))})
+			world.broken_out[str(to[0])] = world.broken_out[section]
+			world.broken_out.erase(section)
+	# A motion's joint on a sub-assembly, found again by its path.
+	if world.motions != null:
+		var had: Motions = null
+		for joint: Motions.Joint in world.motions.joints:
+			if joint.by != "assembly":
+				continue
+			var to: Array = carry.call(joint.assembly)
+			if to.size() == 1 and str(to[0]) != joint.assembly:
+				if had == null:
+					had = world.motions.copy()
+				joint.assembly = str(to[0])
+		if had != null:
+			undo.append({"undo": "motions", "motions": had})
+	return undo
 
 
 ## The newest step of the history, or nothing.

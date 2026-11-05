@@ -2,7 +2,7 @@
 # (tools/probe.sh: the size it names, on Xvfb and the GPU, a data folder of
 # its own), in this order, one a line: NAME, or NAME:ARGS. From a # to the
 # line's end is a comment. A new probe goes on a line of its own, at the end
-# (merged as a union, as headless.txt).
+# (merged a probe at a time, as headless.txt).
 #
 # @out in ARGS is a folder of this run's: left to themselves the motions
 # probes write their pictures over a dated folder in the main checkout's
@@ -115,3 +115,5 @@ moulded_animal   # 10509p02, the horse design16's Gandalf sessions could not sta
 watched_frames   # a part, a shape or a mesh read for the first time off the frames a person watches: the bin's search and the part taken and aimed, 8808-1 in the viewer, fetched shapes landing on a worker and paced, each against the same frames warm (mainthread)
 ai_test_view   # Settings, AI in a 1280x640 window: Test clicked 24 times from the foot of the view, the answer coming as an HTTPRequest's does with a detail of another length each time, and what Test found ends whole in view every time (laidout2)
 keyboard_field   # a phone's Settings, AI: Model and Max output, each low in the page, tapped and the keyboard brought up 24 times, and the field ends above the keyboard every time (laidout2)
+bin_list_top   # a phone on its side: the first Parts opened, 36 new lists searched and chips tapped where a finger sees them, and six made while the sheet was put away, each at its search once laid out and 600 ms on; by hand PROBE_SIZE=390x844 (the sheet swiped up), 430x932, 768x1024 and 1024x768 (listtop)
+bin_first   # the bin's first search typed as the search's index is being made, and once it is, with threads and standing in for a browser without them: its frames near the later searches', its answer the list everything ready gives; without threads the index made in frames, its share of each under its budget; a part made in the app, the index made again with no search asking (binfirst)

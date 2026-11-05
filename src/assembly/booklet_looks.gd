@@ -519,6 +519,100 @@ static func item_name(item: Dictionary) -> String:
 		else "u" + Assemblies.leaf(str(item["unit"]))
 
 
+## The looks of sub-model [param from], its steps' and its own, given to
+## [param to] as well, or with [param moved] in their place. They are kept
+## by its name: renamed in every copy (Assemblies.rename), a sub-model left
+## them under a name nothing has; a copy made a sub-model of its own
+## (Assemblies.make_unique) is shown as it was. Returns the undo, the whole
+## table as it was, or [] when it had none.
+static func renamed(world: BrickWorld, from: String, to: String, moved: bool) -> Array:
+	if from.is_empty() or to.is_empty() or from == to:
+		return []
+	var head: String = from + "|"
+	var was: Dictionary = {}
+	for name: String in world.step_looks.keys():
+		if not name.begins_with(head):
+			continue
+		if was.is_empty():
+			was = world.step_looks.duplicate(true)
+		world.step_looks[to + "|" + name.substr(head.length())] = \
+			(world.step_looks[name] as Dictionary).duplicate(true)
+		if moved:
+			world.step_looks.erase(name)
+	return [] if was.is_empty() else [{"undo": "steplooks", "looks": was}]
+
+
+## The looks as taking the copy at [param path] apart leaves its steps and
+## those of the section it was put on in ([param numbers], AuthorSteps
+## .inlined), read before it: each of that section's on the step it is now,
+## and the copy's own on the steps they became, a chapter starting where the
+## copy was put on starting with them, and after them the section seen as it
+## was. Its other copies keep theirs. The table that gives, or {} when it is
+## the same.
+static func inlined(world: BrickWorld, path: String, numbers: Dictionary) -> Dictionary:
+	var steps: Dictionary = numbers.get("steps", {})
+	if steps.is_empty() or world.step_looks.is_empty():
+		return {}
+	var outer: String = str(steps["section"])
+	var named: String = definition_of(outer)
+	var into: Dictionary = steps["outer"]
+	var from: Dictionary = steps["inner"]
+	var at: int = int(steps["at"])
+	var out: Dictionary = world.step_looks.duplicate(true)
+	for name: String in world.step_looks:
+		var tail: String = name.get_slice("|", 1)
+		if name.get_slice("|", 0) == named and tail.is_valid_int():
+			out.erase(name)
+	for name: String in world.step_looks:
+		var tail: String = name.get_slice("|", 1)
+		if name.get_slice("|", 0) == named and tail.is_valid_int():
+			out[key(named, int(into.get(tail.to_int(), tail.to_int())))] = \
+				(world.step_looks[name] as Dictionary).duplicate(true)
+	var own: Array = from.keys()
+	own.sort()
+	for step: int in own:
+		var look: Variant = world.step_looks.get(key(definition_of(path), step))
+		if look is Dictionary and not out.has(key(named, int(from[step]))):
+			out[key(named, int(from[step]))] = (look as Dictionary).duplicate(true)
+	var first: Dictionary = out.get(key(named, int(from[own[0]])), {})
+	# The chapter the step putting it on began begins with its first step.
+	var began: Variant = (world.step_looks.get(key(named, at), {}) as Dictionary).get("section")
+	if began != null and into.has(at) and not first.has("section"):
+		first["section"] = began
+		(out[key(named, int(into[at]))] as Dictionary).erase("section")
+	# Seen as it was seen: from its first step, as it was drawn; after its
+	# last, as the section's next step was.
+	var seen: Dictionary = turn_at(world, path, int(own[0]))
+	if not first.has("turn") and JSON.stringify(seen) != JSON.stringify(
+			turn_at(world, outer, at - 1) if at > 0 else {}):
+		_turn_to(first, seen)
+	if not first.is_empty():
+		out[key(named, int(from[own[0]]))] = first
+	var next: Array = into.keys().filter(func(step: int) -> bool: return step >= at)
+	next.sort()
+	if not next.is_empty():
+		var after: Dictionary = out.get(key(named, int(into[next[0]])), {})
+		var then: Dictionary = turn_at(world, outer, int(next[0]))
+		if not after.has("turn") and JSON.stringify(then) != JSON.stringify(
+				turn_at(world, path, int(own[own.size() - 1]))):
+			_turn_to(after, then)
+			out[key(named, int(into[next[0]]))] = after
+	for name: String in out.keys():
+		if out[name] is Dictionary and (out[name] as Dictionary).is_empty():
+			out.erase(name)
+	return {} if out == world.step_looks else out
+
+
+## [param look] made to turn the view to [param turn] (turn_at's), or back
+## to the usual one for none.
+static func _turn_to(look: Dictionary, turn: Dictionary) -> void:
+	if turn.is_empty():
+		look["turn"] = "end"
+		return
+	look["turn"] = (turn["turn"] as Array).duplicate()
+	look["how"] = str(turn.get("how", "REL"))
+
+
 ## After a step edit: each step's look moved to the step most of its parts
 ## went to, the earlier of two where two now share one (merged, the first
 ## step's choices kept and the second's added where the first had none),

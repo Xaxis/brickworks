@@ -6973,8 +6973,8 @@ msgstr "Crear un subconjunto"
 msgid "Make it"
 msgstr "Crear"
 
-msgid "What is it called? It moves as one, saves as a sub-model of its own,\nand the instructions build it on its own. Copies of it follow it."
-msgstr "¿Cómo se llama? Se mueve como un todo, se guarda como un submodelo propio,\ny las instrucciones lo construyen aparte. Sus copias lo siguen."
+msgid "What is it called? It moves as one and saves as a sub-model of its own.\nCopies of it follow it."
+msgstr "¿Cómo se llama? Se mueve como un todo y se guarda como un submodelo propio.\nSus copias lo siguen."
 
 msgid "Simulate mechanism"
 msgstr "Simular el mecanismo"

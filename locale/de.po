@@ -6973,8 +6973,8 @@ msgstr "Baugruppe bilden"
 msgid "Make it"
 msgstr "Bilden"
 
-msgid "What is it called? It moves as one, saves as a sub-model of its own,\nand the instructions build it on its own. Copies of it follow it."
-msgstr "Wie heißt sie? Sie bewegt sich als Ganzes, wird als eigenes Teilmodell gespeichert,\nund die Bauanleitung baut sie für sich. Kopien folgen ihr."
+msgid "What is it called? It moves as one and saves as a sub-model of its own.\nCopies of it follow it."
+msgstr "Wie heißt sie? Sie bewegt sich als Ganzes und wird als eigenes Teilmodell gespeichert.\nKopien folgen ihr."
 
 msgid "Simulate mechanism"
 msgstr "Mechanik simulieren"
