@@ -1,7 +1,103 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.16.0",
+ "latest": "0.17.0",
  "releases": [
+  {
+   "version": "0.17.0",
+   "tag": "v0.17.0",
+   "date": "2026-11-05",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.17.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.17.0",
+   "summary": "Brickworks leaves alone what you did not touch, and keeps up while you work. Change one step and only the parts you moved move: on the castle, 0.16.0's first step edit sent 2,202 of the other 2,496 parts to other steps and lost the booklet's sections, and now it moves none of them and keeps every section, through an undo and a save opened again. Instructions no longer freezes the window, even the first time, where it could hold it still for a second and a half, and the PDF is written while you carry on. The first drag of a part against another, a new part taken from the bin and a search typed in it no longer stutter. A horse, or any animal moulded in one piece, stands on the studs where its set puts it. And the chat, Connect your AI and the AI page's Test scroll to what they have just shown, not a line short of it.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "deb",
+     "name": "Brickworks-0.17.0-linux-amd64.deb",
+     "size": 453546988,
+     "sha256": "101c3dc4387a504b80fbb53ec3eb24c5a58321dd42495ed8ee5e159bddbb7b7b",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.17.0/Brickworks-0.17.0-linux-amd64.deb",
+     "unpacked": 1541545984,
+     "glibc": "2.28"
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.17.0-linux-x86_64.AppImage",
+     "size": 605284856,
+     "sha256": "02dde9bd75bb399a5c72eba5f13ce5df29f339ab0f99370059d5c17869a2fa1d",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.17.0/Brickworks-0.17.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.17.0-linux-x86_64.tar.xz",
+     "size": 453418488,
+     "sha256": "d914fccb5cb2841b4ed22fc6dbc4c7cbfd8d0a51c02e7644bb41d7f23c4898f9",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.17.0/Brickworks-0.17.0-linux-x86_64.tar.xz",
+     "unpacked": 1541531754,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "dmg",
+     "name": "Brickworks-0.17.0-macos-universal.dmg",
+     "size": 764582394,
+     "sha256": "ebdb7c7b68c940cb99fba79620ada17a66a544b69fae024d6bbb2e07af0ae87c",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.17.0/Brickworks-0.17.0-macos-universal.dmg",
+     "unpacked": 1651458048,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.17.0-macos-universal.zip",
+     "size": 787340114,
+     "sha256": "5a2147e60e5859d1343df8376bfd2a799c37aa9bb9ed395d4267becca459f7a1",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.17.0/Brickworks-0.17.0-macos-universal.zip",
+     "unpacked": 1638516709,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "installer",
+     "name": "Brickworks-0.17.0-windows-x86_64-setup.exe",
+     "size": 405963299,
+     "sha256": "63ffcaf928dd5f6916f4e471c5b84df6b269f27bde70ac99ff57dc02e56d5010",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.17.0/Brickworks-0.17.0-windows-x86_64-setup.exe",
+     "unpacked": null,
+     "signed": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.17.0-windows-x86_64.zip",
+     "size": 765654866,
+     "sha256": "d0e4f515da9d1196885f20e704c6947f3aa7a7adfcdf66a73e9c83fd5af40d93",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.17.0/Brickworks-0.17.0-windows-x86_64.zip",
+     "unpacked": 1577229457,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.16.0",
    "tag": "v0.16.0",

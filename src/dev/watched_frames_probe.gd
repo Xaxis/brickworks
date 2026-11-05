@@ -29,6 +29,8 @@
 ##            until what moves is said, which must be nothing, and the frames
 ##            that asked for shapes against the same viewer settled. It read 8
 ##            parts' exact shapes a frame there (Main._play_frame), 30 in all.
+##            After aim, the editor's library is checked gone with the
+##            editor first: a person's viewer is a run of its own.
 ##   fetched  The web build's way in for an exact shape, a fetch's answer
 ##            (PartLibrary._on_fetched_exact), stood in for here: 8808-1's
 ##            shapes forgotten and their files handed in four a frame, as
@@ -53,6 +55,8 @@ var _main: Node
 var _frames: ProbeTime.Frames
 var _phase: String = ""
 var _library: PartLibrary
+## The editor's library, once the editor is gone: let go of with it.
+var _editor_library: WeakRef
 
 
 class FakeShared extends SharedModels:
@@ -92,6 +96,8 @@ func _run() -> void:
 	Engine.max_fps = 0
 	if only.is_empty() or only == "aim":
 		await _aim()
+		_check("the editor's part library went with it, before the viewer opens",
+			_editor_library.get_ref() == null)
 	if only.is_empty() or only in ["viewer", "fetched"]:
 		await _viewer(only)
 	print("")
@@ -178,6 +184,15 @@ func _aim() -> void:
 		for step: String in ["search", "found"]:
 			print("  (%s, %s: its longest frame %.1f ms of its own, warm %.1f)"
 				% [COLD[n], step, _longest("cold %d %s" % [n, step])[0], _longest("warm " + step)[0]])
+	# The editor goes whole, its library with it, before the viewer is
+	# timed. Kept here, the editor's library (30,000 parts' entries and the
+	# search's index, 270-300 ms to let go of) went in the viewer's first
+	# frame up, as this took the viewer's in its place: a frame of 320 to
+	# 480 ms that no person has, the viewer being a run of its own (--view,
+	# a page), never the editor's (viewerframe).
+	_editor_library = weakref(library)
+	library = null
+	_library = null
 	_main.queue_free()
 	_main = null
 	await _wait(5)

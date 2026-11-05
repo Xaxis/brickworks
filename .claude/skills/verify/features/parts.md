@@ -338,7 +338,11 @@ geometry in front of them.
   window, about 3 min): the bin's search for three Technic parts, each taken
   by its tile and aimed, 8808-1 in the viewer, and its shapes landing as
   fetches answer four a frame, on a worker and paced, each frame against the
-  same act warm.
+  same act warm. The editor's library is checked gone with the editor
+  before the viewer opens: a library let go of is 270-300 ms of a frame
+  (30,000 parts' entries), and the probe's own hold on it once put that in
+  the viewer's first frame up. A person's viewer is a run of its own
+  (`--view`, a page), and only `Main` makes a `PartLibrary`.
 - `availability`: which colours each part was really moulded in, and the years it
   appeared in a set. Joined from Rebrickable's tables by `tools/rebrickable.py`
   at catalogue-build time; read by `PartInfo.colors` / `colors_recent` /

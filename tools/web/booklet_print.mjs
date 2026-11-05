@@ -1,6 +1,7 @@
 // Print a booklet the way a person would, and photograph its pages.
 //
 //   node tools/web/booklet_print.mjs BOOKLET.html OUT_DIR [--pages=1,2,5] [--shots-only]
+//       [--scale=2]
 //
 // Writes OUT_DIR/a4.pdf and OUT_DIR/letter.pdf (printed by Chromium with
 // the booklet's own print styles, landscape) and OUT_DIR/page-N.png for
@@ -10,6 +11,9 @@
 // every picture decoded. --shots-only photographs the pages and prints
 // nothing: the browser's own pictures of the pages, to hold the PDF that
 // Brickworks writes itself against (tools/booklet_pdf_check.py --shots).
+// --scale=N photographs them N times finer: at 2, the 5 px a millimetre the
+// booklet's pictures are drawn at, for a reader who looks closely
+// (tools/bench/booklet_follow.py).
 import { launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -23,11 +27,13 @@ if (!input || !outDir) {
 mkdirSync(outDir, { recursive: true });
 const wanted = (rest.find((a) => a.startsWith("--pages=")) || "").slice(8)
   .split(",").filter(Boolean).map(Number);
+const scale = Number((rest.find((a) => a.startsWith("--scale=")) || "--scale=1").slice(8)) || 1;
 
 const browser = await launch();
 let failed = 0;
 try {
-  const page = await browser.newPage({ viewport: { width: 1100, height: 900 } });
+  const page = await browser.newPage({ viewport: { width: 1100, height: 900 },
+    deviceScaleFactor: scale });
   await page.goto(pathToFileURL(path.resolve(input)).href, { waitUntil: "load" });
   const facts = await page.evaluate(() => {
     const pages = [...document.querySelectorAll("section.page")];
@@ -50,7 +56,7 @@ try {
     console.log(`wrote ${file}`);
   }
 
-  // Each page on screen, at print size (3.78 px a millimetre), without
+  // Each page on screen, at print size (3.78 px a millimetre, times --scale), without
   // the toolbar that sticks to the top of the window.
   await page.setViewportSize({ width: 1060, height: 800 });
   await page.addStyleTag({ content: ".bar { display: none !important; }" });

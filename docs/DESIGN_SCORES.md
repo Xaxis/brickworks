@@ -5438,6 +5438,168 @@ Why it fell short:
 - The change is taken back out on this branch (`4388ddf7`; `02a0456e` holds
   it), so nothing of it ships.
 
+### Likeness: a design's defining features planned against the real thing, and looked at in its own front and side (2026-11-05, design17, `860827ad`, NO-GO)
+
+**Why.** In design16, likeness and overall did not move off 0 of 10 in
+either arm. The judge's shape words named one feature's form, not the box:
+the roller's drum small and half hidden, the horse brick-built, the wings
+thick slabs, the nose blunt, the grille. The next step was for the
+session to name the features its subject is known by, with each one's size
+against the whole, and then to look at them in its own pictures.
+
+**What d16's sessions heard and did.** No one looked at the feature the
+judge named. In 10 sessions, the Burj's spire was the only feature reasoned
+about by its real proportion. The roller's sessions built the drum and went
+on to detail, and nothing asked how big it was against the body. design16's
+`plan_massing` reached 5 of 5 because the head named it in two steps and
+how_real_sets_build_this's answer ended on it.
+
+**The change** (`4215e3ba`, with fixes in `c79acf95` and `860827ad`):
+
+- `plan_features` (src/ai/features_look.gd) takes the 2 or 3 features the
+  subject is known by, each with its proportion against the whole and the
+  technique its form needs. The answer reads the plan back.
+  how_real_sets_build_this's answer ends by asking for it when nothing is
+  planned, and the head's step 1 names it.
+- A new design's first whole review_model, once the model stands, leads
+  with a look before anything else. The look gives the size of the whole,
+  then the planned features. If nothing was planned, it asks for the
+  features to be named now. Then it shows the model's own front (from +z)
+  and side (from +x), with rulers in studs. Its words: a judge "names one
+  feature's form far more often than the box it fits in: a round part built
+  too small or half hidden under the body, a part that is thin built as a
+  thick slab, a part that tapers built blunt, a part the subject is known
+  by left out."
+- `features_look` takes the answer. For each feature it takes what the real
+  one is, what the pictures show, whether it is off, and which one to
+  rebuild. An answer that names one off is told to rebuild it before any
+  detail, then view front and side, then review_model for the rest. The
+  session decides what is off and what to do. Until it answers, other
+  calls are refused, twice at most. clear_model lets the look go.
+- It shows only the session's own model. The holdout is untouched.
+
+**Proof in the app.**
+
+- `features_look_probe` (windowed): all 30 passed. Both tools are served
+  read-only. The cases: planned, then looked at; an edit refused, then a
+  view allowed; an incomplete answer; a full answer, after which the next
+  whole review is the review; a second design is not asked; nothing
+  planned; a feature not built; never answered, refused twice, then let go;
+  clear_model; beside the person's model; a selection.
+- Also passed: `fresh_eyes` 78, `freeze` 10, `read_only` 43, `mcp` 75,
+  `mcp_sync` 14, `connector_method` 12, `holdout` 18, `surface` 98,
+  `design_memory` 23 and `cad_sitting` 15. The head is 3302 characters, and
+  3487 with the connector's note. METHOD is 1413.
+
+**Smoke.** Two locked snapshots, each imported first. `snapd17base` is at
+`1d3d6e28` (pre260's code, with the moulded horse). `snapd17lev` is at
+`c79acf95`: the lever before `860827ad` cut one stray clause from the
+look's opening. One job each on the owner's path, on design16's 5 subjects.
+
+There was no login lapse, and the holdout held in all ten:
+- `held_out_said` is true for every design.
+- The only hits on a set's name or number were the session's own brief and
+  printed tiles, the Burj's Wikimedia photos, and the part 3069bp1h's own
+  name, "Air Mail Letter Envelope Pattern".
+
+Verdicts won, of 10 a dimension:
+
+| dimension | d16base | d16lev2 | d17base | d17lev |
+|---|---|---|---|---|
+| likeness | 0 | 0 | 0 | 1 |
+| surface | 2 | 3 | 3 | 3 |
+| colour | 3 | 2 | 3 | 3 |
+| technique | 0 | 0 | 0 | 1 |
+| creativity | 4 | 2 | 3 | 4 |
+| overall | 0 | 0 | 0 | 1 |
+| lost likeness naming a defining feature wrong, by hand | | | 10 of 10 | 8 of 10 |
+
+The base's 10 count both Charger verdicts, which are near generic: "a
+raised cabin and stepped bumpers", "a flat tail". The lever's 2 not counted
+are Gandalf's win and the Burj's "a generic stepped tower".
+
+By subject (likeness, overall, creativity), base then lever: Gandalf 0 0 0
+then 1 1 2, the roller 0 0 0 then 0 0 0, the Burj 0 0 2 then 0 0 2, Air Mail
+0 0 1 then 0 0 0, the Charger 0 0 0 then 0 0 0.
+
+**Reach** (scratch `py/reach17.py`):
+
+- **The plan reached 3 of 5 before the first brick.** The Burj, Air Mail and
+  the Charger called plan_features right after how_real_sets_build_this.
+  Gandalf and the roller never did, so the look asked them to name the
+  features then, and both did.
+- **The look reached 5 of 5.** All 5 sessions were shown it at their first
+  whole review, and all 5 answered. None was refused a call.
+- **5 of 5 named a feature off, and 5 of 5 rebuilt it before any detail.**
+- **The look found the judge's feature in 4 of 5.** The rebuilds were small,
+  and the judge still named the same feature's form:
+  - The roller named the drum off, but only as hidden by the yoke. It took
+    the drum's size as right, and its idea of the real drum was "black
+    barrel". It opened the yoke. The judge, both ways: "a narrow black
+    tyre-like drum inside a boxy yellow frame".
+  - Air Mail named the nose off (it hid the windscreen) and lowered it. It
+    read its wings as right: "20 studs span, 1 plate thick". The judge:
+    "a blunt boxy nose and slab wings", "a bus with wings". The long square
+    fuselage was never one of its features.
+  - The Charger named the grille ("a plain black wall") and the cabin off,
+    and rebuilt the cabin. A grille came later. The judge: "a flat dark
+    grille with no headlights".
+  - The Burj named its setbacks off ("a stepped wedding-cake, not a
+    spiral") and staggered them. It read the spire as right, at a quarter of
+    the height. The judge: once "a generic stepped tower", once "its spire
+    is too short and its top a plain square shaft".
+  - Gandalf named the seat (not built) and the fireworks (too low), and
+    rebuilt both. It is the one win. The base lost on "a generic
+    yellow-faced wizard with glasses"; the lever's Gandalf is bearded and
+    rides up front. Its loss: "a blocky all-brown box cart, the horse jammed
+    against the cart body".
+
+Each subject, with what I saw in its front and corner renders:
+
+- **Gandalf Arrives.** The base has a white moulded horse, a dark-brown cart
+  and a yellow-faced Gandalf in glasses. The lever has a brown moulded
+  horse, an all-brown cart, Gandalf bearded on a raised seat, and tall red
+  and yellow rockets.
+- **Single-Drum Roller.** In the base the drum is half hidden in a yellow
+  box under a flat deck. In the lever the yoke is open, but the drum is
+  black, narrower than the body, and behind a yellow frame and a Technic
+  upright.
+- **Burj Khalifa.** Both are square grey stacks with stepped wings, the
+  lever's staggered. The base's spire is a cone and rod over about a fifth
+  of the height; the lever's is a little longer.
+- **Air Mail.** The base is a boxy fuselage with a black seat-back up top
+  and a big red tailplane. The lever's is a long white box
+  with a low nose, a visible windscreen, flat red wings and a tall red fin.
+- **Dom's Dodge Charger.** Both are long black brick slabs. The lever's has
+  a silver blower through the bonnet and a grille with chrome ends. The
+  base's cabin sits high.
+
+**NO-GO.** Of the three conditions, only creativity held (3 → 4):
+- likeness and overall went 0 → 1 of 10, one verdict (Gandalf, the set
+  shown first), which is noise on 10;
+- a defining feature named wrong went 10 → 8 of 10. That is not clearly
+  less: the drum, the nose, the wings and the grille are still named.
+
+So the paired 44 did not run.
+
+Why it fell short:
+- **The reach is there.** Every session looked, named one off and rebuilt.
+  The look moved a session to its features where design16's numbers did not.
+- **A session judges its pictures against its own memory of the thing.**
+  The roller's memory was wrong (a black drum). The plane's wings read as
+  right in studs, yet the judge saw slabs. The look measures size well and
+  form poorly, and form is what the judge names.
+- **One small rebuild does not change a form.** Opening a yoke and lowering
+  a nose kept the narrow drum and the blunt box. The Charger rebuilt the
+  feature it found easier, not the grille it had named.
+- **Next.** Only 2 of 5 called find_reference. It brings photos of the real
+  thing from Commons, not the set, so the holdout allows them. Set the
+  session's own front and side beside the reference photo it chose, so it
+  reads form against form rather than against memory. Ask find_reference
+  first wherever the subject exists.
+- The change is taken back out on this branch (`73adcf6d`; `860827ad` holds
+  it), so nothing of it ships.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
