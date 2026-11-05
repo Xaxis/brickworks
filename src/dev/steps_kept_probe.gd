@@ -22,6 +22,19 @@
 ## every other part in the step it was listed in, by the plan and by the
 ## list, and the undo gives the worked-out steps back. Then the steps made
 ## the model's own are saved and opened again: every part where it was.
+##
+## And the booklet's section marks, its chapters (sectionmarks): the step
+## each sub-model's or stage's banner starts on, and its name, the same
+## through every edit, every undo, and the save opened again, and the saved
+## file saying them. They were the worked-out plan's alone, and the first
+## edit lost every one. A model with steps of its own (7140-1 as its author
+## stepped it) and one of no sub-models are given none: no mark, and no
+## line in the file, after an edit. And the castle (models/castle.ldr),
+## whose steps that can be kept build worse than its order worked out, so
+## that order is shown (suitesteps) and the first edit gives it the kept
+## steps, numbered otherwise: every part in the section it was in, through
+## the edit and the save opened again, and the undo giving back the
+## worked-out sections.
 extends SceneTree
 
 const MODELS: Array = [
@@ -44,6 +57,8 @@ var _rpc_id: int = 0
 var _listed: Dictionary = {}
 ## The same off edit_steps's list.
 var _said: Dictionary = {}
+## The section marks as the model was listed ([method _marks]).
+var _marked: Array = []
 
 
 func _initialize() -> void:
@@ -77,6 +92,12 @@ func _run() -> void:
 	for model: Array in MODELS:
 		if only.is_empty() or str(model[1]).contains(only):
 			await _model(str(model[0]), str(model[1]))
+	if only.is_empty():
+		await _unmarked("7140-1 as its author stepped it",
+			FileAccess.get_file_as_string("res://vendor/omr/files/7140-1.mpd"))
+		await _unmarked("a wall of no sub-models", _wall())
+	if only.is_empty() or "castle".contains(only):
+		await _turned_down("the castle, its kept steps turned down", "res://models/castle.ldr")
 	if _failures == 0:
 		print("steps_kept probe: all checks passed")
 	else:
@@ -95,11 +116,14 @@ func _model(name: String, path: String) -> void:
 	if not _check("opened with no steps of its own, %d parts" % _listed.size(),
 			not AuthorSteps.any(_world, _store.scenery) and _listed.size() > 100):
 		return
+	_check("...its booklet in %d sections: %s" % [_marked.size(), ", ".join(_marked)],
+		_marked.size() >= 2)
 	var listed: String = await _say("edit_steps", {})
 	var unlike: Array = _said.keys().filter(func(id: int) -> bool:
 		return str(_said[id]) != str(_listed.get(id, "")).get_slice(".", 0))
-	_check("...listed as worked out (\"%s\"), %d parts, %d not where the plan has them" % [
-		listed.get_slice("\n", 0), _said.size(), unlike.size()],
+	_check("...listed as worked out (\"%s\", %s), %d parts, %d not where the plan has them" % [
+		listed.get_slice("\n", 0), "the steps it can keep" if _kept_shown()
+			else "the order worked out", _said.size(), unlike.size()],
 		listed.get_slice("\n", 0).contains("worked out by the app") and _said.size() > 50
 		and unlike.is_empty())
 	var at: Array = _chosen()
@@ -131,6 +155,10 @@ func _model(name: String, path: String) -> void:
 	var depth: int = _builder.history_depth()
 	var said: String = await _say("edit_steps", {"op": "next", "bricks": [part]})
 	var edited: Array = _placed(_numbers())
+	var listed_marks: Array = _marked
+	var kept: int = 0
+	for marks: Dictionary in BookletLooks.marks_of(_world).values():
+		kept += marks.size()
 	var saved: String = _store.to_text(name, true)
 	await _open(saved, name)
 	var reopened: Array = _placed(_numbers())
@@ -141,6 +169,10 @@ func _model(name: String, path: String) -> void:
 			if not moved.is_empty() else ""],
 		AuthorSteps.any(_world, _store.scenery) and moved.is_empty()
 		and reopened.size() == edited.size())
+	_marks_kept("...its sections", listed_marks)
+	var lines: PackedStringArray = _section_lines(saved)
+	_check("...the file has a line for each of the %d marks on its steps: %s" % [kept,
+		" | ".join(lines)], kept > 0 and lines.size() == kept)
 	await _back_to(depth)
 
 
@@ -164,10 +196,130 @@ func _kept(what: String, moves: Array, edit: Callable) -> void:
 	if not moves.is_empty():
 		_check("...#%d moved, %s to %s" % [int(moves[0]), _listed.get(moves[0], "?"),
 			now.get(moves[0], "?")], now.get(moves[0]) != _listed.get(moves[0]))
+	_marks_kept("...its sections", _marked)
 	await _back_to(depth)
 	var back: Array = _moved(_listed, _numbers())
 	_check("...undone: the worked-out steps again, %d parts in another step" % back.size(),
 		back.is_empty() and not AuthorSteps.any(_world, _store.scenery))
+	_marks_kept("...undone, its sections", _marked)
+	_check("...and no mark kept on its steps", BookletLooks.marks_of(_world).is_empty())
+
+
+## Whether the plan shows the steps the model can keep (stepsnum), not the
+## order worked out: kept steps are named among the model's.
+func _kept_shown() -> bool:
+	return _plan().any(func(step: Instructions.Step) -> bool: return step.authored_step >= 0)
+
+
+## A model shown the order worked out, its kept steps turned down
+## (suitesteps): [param path], opened, a part of a middle step moved on.
+## Every other part in the section it was in, and in the file, and the undo
+## gives back the worked-out sections.
+func _turned_down(name: String, path: String) -> void:
+	print("\n%s" % name)
+	await _open(FileAccess.get_file_as_string(path), name, false)
+	var before: Dictionary = _sections()
+	var marked: Array = _marks()
+	var steps: Array[Instructions.Step] = _plan()
+	if not _check("opened with no steps of its own, %d parts, shown %s, in %d sections: %s" % [
+			before.size(), "the steps it can keep" if _kept_shown() else "the order worked out",
+			marked.size(), ", ".join(marked.slice(0, 8))],
+			not AuthorSteps.any(_world, _store.scenery) and not _kept_shown() and marked.size() >= 2):
+		return
+	var part: int = 0
+	for step: Instructions.Step in steps.slice(steps.size() / 2):
+		if not step.in_callout() and step.brick_ids.size() >= 2:
+			part = step.brick_ids[0]
+			break
+	var depth: int = _builder.history_depth()
+	var said: String = await _say("edit_steps", {"op": "next", "bricks": [part]})
+	await _frames(2)
+	var after: Dictionary = _sections()
+	var moved: Array = before.keys().filter(func(id: int) -> bool:
+		return id != part and str(after.get(id, "?")) != str(before[id]))
+	_check("after %s: %d of %d other parts in another section%s; now %s" % [
+		said.get_slice("\n", 0), moved.size(), before.size() - 1, (": " + ", ".join(
+			moved.slice(0, 4).map(func(id: int) -> String: return "#%d %s->%s" % [id,
+				before[id], after.get(id, "?")]))) if not moved.is_empty() else "",
+		", ".join(_marks().slice(0, 8))], AuthorSteps.any(_world, _store.scenery)
+		and moved.is_empty())
+	var edited: Array = _placed(after)
+	var saved: String = _store.to_text(name, true)
+	await _back_to(depth)
+	_marks_kept("...undone, its sections", marked)
+	_check("...and no mark kept on its steps", BookletLooks.marks_of(_world).is_empty())
+	await _open(saved, name, false)
+	var reopened: Array = _placed(_sections())
+	var apart: Array = _unmatched(edited, reopened)
+	_check("...saved (%d section lines) and opened again: %d of %d parts in another section" % [
+		_section_lines(saved).size(), apart.size(), edited.size()],
+		apart.is_empty() and reopened.size() == edited.size())
+
+
+## Every part's section in the booklet now, by id.
+func _sections() -> Dictionary:
+	var out: Dictionary = {}
+	for step: Instructions.Step in _plan():
+		for brick_id: int in step.brick_ids:
+			out[brick_id] = step.section
+	return out
+
+
+## A model whose booklet has no sections of the app's: [param text] opened,
+## a part of a middle step moved on, and its sections, its marks and its
+## file as they were.
+func _unmarked(name: String, text: String) -> void:
+	print("\n%s" % name)
+	await _open(text, name)
+	var before: Array = _marks()
+	var steps: Array[Instructions.Step] = _plan()
+	var part: int = 0
+	for step: Instructions.Step in steps.slice(steps.size() / 2):
+		if not step.in_callout() and step.brick_ids.size() >= 2:
+			part = step.brick_ids[0]
+			break
+	if not _check("opened, %d steps, sections %s; a part of a middle step: #%d" % [steps.size(),
+			str(before), part], part > 0):
+		return
+	var depth: int = _builder.history_depth()
+	var said: String = await _say("edit_steps", {"op": "next", "bricks": [part]})
+	await _frames(2)
+	var saved: String = _store.to_text(name, true)
+	_check("after %s: sections %s, %d marks, %d lines in its file" % [said.get_slice("\n", 0),
+		str(_marks()), BookletLooks.marks_of(_world).size(), _section_lines(saved).size()],
+		_marks() == before and BookletLooks.marks_of(_world).is_empty()
+		and _section_lines(saved).is_empty() and AuthorSteps.any(_world, _store.scenery))
+	await _back_to(depth)
+
+
+## Twenty 2 x 4 bricks, a wall of five courses, in one file of no sub-models.
+static func _wall() -> String:
+	var lines := PackedStringArray(["0 Wall", "0 Name: wall.ldr", "0 Author: A. Builder"])
+	for course: int in 5:
+		for at: int in 4:
+			lines.append("1 4 %d %d 0 1 0 0 0 1 0 0 0 1 3001.dat" % [at * 80 + (course % 2) * 40,
+				-24 * (course + 1)])
+	return "\n".join(lines) + "\n"
+
+
+## The lines of [param text] that mark a section of the booklet.
+static func _section_lines(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for line: String in text.split("\n"):
+		if line.strip_edges().begins_with(BookletLooks.META + "SECTION"):
+			out.append(line.strip_edges())
+	return out
+
+
+## The booklet's section marks now the same as [param was] ([method _marks]).
+func _marks_kept(what: String, was: Array) -> void:
+	var now: Array = _marks()
+	var lost: Array = was.filter(func(mark: String) -> bool: return not now.has(mark))
+	var gained: Array = now.filter(func(mark: String) -> bool: return not was.has(mark))
+	_check("%s: %d of %d marks%s%s" % [what, was.size() - lost.size(), was.size(),
+		(", lost " + ", ".join(lost.slice(0, 4))) if not lost.is_empty() else "",
+		(", new " + ", ".join(gained.slice(0, 4))) if not gained.is_empty() else ""],
+		now == was)
 
 
 ## A step of an in-place sub-model's (the model's own when it has none) in
@@ -199,16 +351,17 @@ func _chosen() -> Array:
 	return [0, 0, 0]
 
 
-func _open(text: String, name: String) -> void:
+func _open(text: String, name: String, listed: bool = true) -> void:
 	_main.call("clear_model")
 	await _frames(4)
 	var bar: ModelBar = _main.get("_bar")
 	var opened: Dictionary = await bar.open_text_with_progress(text, name)
 	bar.opened.emit(int(opened.get("placed", 0)))
 	await _frames(10)
-	if not AuthorSteps.any(_world, _store.scenery):
+	if listed and not AuthorSteps.any(_world, _store.scenery):
 		_listed = _numbers()
 		_said = await _said_now()
+		_marked = _marks()
 
 
 ## [param text] with no STEP or ROTSTEP lines: a model nobody gave steps.
@@ -245,6 +398,19 @@ func _numbers() -> Dictionary:
 		for brick_id: int in step.brick_ids:
 			out[brick_id] = ("%d.%d" % [step.number, step.callout_step]) if step.in_callout() \
 				else str(step.number)
+	return out
+
+
+## The booklet's section marks: each step its banner starts on, as
+## Booklet.lay_out reads them off the steps outside a callout, "12 island".
+func _marks() -> Array:
+	var out: Array = []
+	var section: String = ""
+	for step: Instructions.Step in _plan():
+		if step.in_callout() or step.section == section:
+			continue
+		section = step.section
+		out.append("%d %s" % [step.number, section])
 	return out
 
 

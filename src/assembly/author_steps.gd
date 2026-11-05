@@ -289,14 +289,18 @@ static func _all_given(world: BrickWorld, skip: Dictionary) -> bool:
 ## The worked-out order made the author's: every part and every copy of a
 ## sub-model given the numbers the plan was shown in (numbers_from_plan),
 ## so the first step edit on a model nobody gave steps starts from what the
-## timeline showed, every step it does not change where it was. Returns the
-## undo for it; nothing when the model already has steps.
+## timeline showed, every step it does not change where it was. And the
+## booklet's sections with them, marked on the steps they start on
+## (BookletLooks.mark_sections), which the model's own steps do not say:
+## the lighthouse's three banners were gone after one edit (sectionmarks).
+## Returns the undo for it; nothing when the model already has steps.
 static func adopt_plan(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}) -> Array:
 	var undo: Array = []
 	if any(world, skip):
 		return undo
-	var numbers: Dictionary = numbers_from_plan(world, library, skip)
+	var worked: Array[Instructions.Step] = Instructions.worked_out(world, library, skip)
+	var numbers: Dictionary = adopted(world, worked, skip)
 	var bricks: Dictionary = numbers["bricks"]
 	for brick_id: int in bricks:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
@@ -307,6 +311,9 @@ static func adopt_plan(world: BrickWorld, library: PartLibrary,
 		undo.append({"undo": "unitstep", "unit": path,
 			"step": int(world.unit_steps.get(path, -1))})
 		world.unit_steps[path] = int(units[path])
+	if not worked.is_empty():
+		undo.append_array(BookletLooks.mark_sections(world,
+			Instructions.adopted_plan(world, library, skip, worked)))
 	return squash(undo)
 
 

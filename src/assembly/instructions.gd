@@ -3725,6 +3725,17 @@ static func _builds_as_well(kept: Array[Step], read: Dictionary, library: PartLi
 	return now[0] <= was[0] and now[1] <= was[1]
 
 
+## The model's own steps as the plan shows them once [param worked], its
+## order worked out, is made its own (AuthorSteps.adopt_plan): each in the
+## section [param worked] built its parts in, as [method _kept] shows them
+## before.
+static func adopted_plan(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		worked: Array[Step]) -> Array[Step]:
+	var kept: Array[Step] = _authored_plan(world, library, skip)
+	_carry(worked, kept)
+	return kept
+
+
 ## Whether any part of the model is in a sub-model, or a group of its own.
 static func _of_sub_models(world: BrickWorld, skip: Dictionary) -> bool:
 	for brick: BrickWorld.Brick in world.bricks():
@@ -3755,6 +3766,18 @@ static func _carry(steps: Array[Step], kept: Array[Step]) -> void:
 			step.unsupported = step.unsupported or was.unsupported
 			if step.section.is_empty():
 				step.section = was.section
+		# A step that puts a sub-assembly on, and nothing beside it, is in the
+		# section its copies were built in. Found by its first copy's first
+		# part only as the worked-out step that puts it on listed them, the
+		# kept one listing them in another order, 7140's figures went on in
+		# no section, and the banner before them came again after.
+		for ids: PackedInt64Array in step.copies:
+			for brick_id: int in ids:
+				if not step.section.is_empty():
+					break
+				var was: Step = of.get(brick_id)
+				if was != null:
+					step.section = was.section
 
 
 ## Each of [param shape]'s parts' step in [param numbers], in the order
@@ -4155,7 +4178,23 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 			out.append(step)
 	for index: int in out.size():
 		out[index].index = index + 1
+	if units == null:
+		_sections_kept(world, out)
 	return out
+
+
+## [param steps]' sections as the marks kept on the model's steps say
+## (BookletLooks.sections_by), when any are: the sections the plan showed
+## once its steps were made the model's own (AuthorSteps.adopt_plan). The
+## model's own steps say nothing of sections, and the first step edit lost
+## every banner the booklet had (sectionmarks).
+static func _sections_kept(world: BrickWorld, steps: Array[Step]) -> void:
+	var marks: Dictionary = BookletLooks.marks_of(world)
+	if marks.is_empty():
+		return
+	var sections: PackedStringArray = BookletLooks.sections_by(steps, marks)
+	for index: int in steps.size():
+		steps[index].section = sections[index]
 
 
 ## A callout's key as a path: "Window#2" is one; "group:Gandalf" is the one
