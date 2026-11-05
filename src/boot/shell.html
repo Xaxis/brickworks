@@ -1212,9 +1212,11 @@ const loaderSays = (function () {
 		(coming || fetchBytes(GODOT_CONFIG.executable + PACKS[name])).then(function (bytes) {
 			state.came = performance.now();
 			packBytes[name] = bytes;
+			if (name === "data") handOff();
 			writePacks();
 		}).catch(function (trouble) {
 			state.failed = String(trouble);
+			if (name === "data") handOff();
 			if (tries < 3) {
 				setTimeout(function () { fetchPack(name, tries + 1); }, 2000 * (tries + 1));
 				return;
@@ -1291,6 +1293,17 @@ const loaderSays = (function () {
 	// the engine's pack the app reads it at once rather than a frame after
 	// its scripts are made (WebPacks). Otherwise it is written in once the
 	// engine has started (writePacks).
+	//
+	// On a return visit the engine's pack came from the cache, and so is
+	// the data pack coming, a moment behind it: the start waits for it, at
+	// most HAND_OFF_MS, so that it always goes in with the engine's. Left to
+	// chance the engine often started first, and the pack's message then
+	// waited out the scripts' compile on this thread, the rest of the parts
+	// behind it, which then came in under the first feature's compile: the
+	// chat panel's took 3.6-4.3 s where it takes 2.3-2.9. The bigger data
+	// pack lost that race in 8 return visits of 10 (webstart2, 2026-11-05).
+	// A first visit, whose packs come over the network, does not wait.
+	// packs.data.handed says which way it went, and waited for how long.
 	function startEngine(override) {
 		if (typeof engine.init !== "function" || typeof engine.preloadFile !== "function"
 				|| typeof engine.start !== "function" || !engine.config) {
@@ -1303,6 +1316,8 @@ const loaderSays = (function () {
 			engine.init(engine.config.executable),
 			engine.preloadFile(pack, pack),
 		]).then(function () {
+			return dataInTime(pack);
+		}).then(function () {
 			const bytes = packBytes.data;
 			if (bytes) {
 				delete packBytes.data;
@@ -1311,7 +1326,40 @@ const loaderSays = (function () {
 				packs.data.files = 1;
 				packs.data.written = performance.now();
 			}
+			if (packs.data) packs.data.handed = bytes ? "with the engine's" : "after its start";
 			return engine.start();
+		});
+	}
+	const HAND_OFF_MS = 1000;
+	let handedOff = null;
+	function handOff() {
+		if (handedOff) handedOff();
+	}
+	// Whether [address] was read from the browser's cache: nothing, or only
+	// a revalidation's headers, came over the wire for it.
+	function fromTheCache(address) {
+		try {
+			const seen = performance.getEntriesByName(new URL(address, location.href).href);
+			const last = seen[seen.length - 1];
+			return Boolean(last) && last.encodedBodySize > 0 && last.transferSize < last.encodedBodySize;
+		} catch (e) {
+			return false;
+		}
+	}
+	// Resolves once the data pack is here, failed or HAND_OFF_MS passed, when
+	// the engine's [pack] came from the cache and the data pack is on its way.
+	// Not when a try of it has failed already: the next is seconds away.
+	function dataInTime(pack) {
+		const state = packs.data;
+		if (!state || state.came || state.failed || state.gave_up || !fromTheCache(pack)) return Promise.resolve();
+		const from = performance.now();
+		return new Promise(function (resolve) {
+			handedOff = function () {
+				handedOff = null;
+				state.waited = performance.now() - from;
+				resolve();
+			};
+			setTimeout(handOff, HAND_OFF_MS);
 		});
 	}
 	// The app is up once it has built its window (its "ui" mark), or said

@@ -28,7 +28,12 @@ HEADER = 112
 FILES = {
     "project.binary": b"ECFG settings",
     "src/main.gdc": b"GDSC tokens of main" * 40,
+    "src/main.gd.remap": b'[remap]\npath="res://src/main.gdc"\n',
     "src/ui/look.gdc": b"GDSC look",
+    # The assistant, which the first screen does not compile (Later), with
+    # the .remap that points res:// at its tokens.
+    "src/ai/assistant.gdc": b"GDSC tokens of the assistant" * 60,
+    "src/ai/assistant.gd.remap": b'[remap]\npath="res://src/ai/assistant.gdc"\n',
     "assets/fonts/LiberationSans-Regular.ttf.import":
         b"[remap]\npath=\"res://.godot/imported/LiberationSans-Regular.ttf-abc.fontdata\"\n",
     ".godot/imported/LiberationSans-Regular.ttf-abc.fontdata": b"font" * 100,
@@ -113,7 +118,7 @@ def test_the_engine_waits_for_the_code_alone(split: Path) -> None:
     code = read_pack(split / "index.pck")
     # With the tables read as their classes load, while the scripts are
     # made and before the data pack is mounted (Mechanism, KnownFits).
-    assert sorted(code) == sorted(["project.binary", "src/main.gdc", "src/ui/look.gdc",
+    assert sorted(code) == sorted(["project.binary", "src/main.gdc", "src/main.gd.remap", "src/ui/look.gdc",
                                    "assets/ui/tools/accept.svg.import", ".godot/imported/accept.svg-d7c.ctex",
                                    "assets/ldraw/gears.json", "assets/ldraw/known_fits.json"])
 
@@ -122,11 +127,26 @@ def test_what_the_start_reads_is_a_pack_beside_it(split: Path) -> None:
     data = read_pack(split / "index.data.pck")
     # And the booklet's type, read when a PDF is made: its .import and the
     # font it points at, together.
+    # And the scripts the first screen does not compile, mounted before any
+    # of them is asked for (tools/web/start_closure.py).
     assert sorted(data) == sorted(["assets/web/catalogue.json", "assets/web/parts/eab5.lbm",
                                    "assets/web/all_order.txt", "models/car.ldr",
                                    "assets/ldraw/part_names.json", "assets/ldraw/stud.dat",
                                    "assets/fonts/LiberationSans-Regular.ttf.import",
-                                   ".godot/imported/LiberationSans-Regular.ttf-abc.fontdata"])
+                                   ".godot/imported/LiberationSans-Regular.ttf-abc.fontdata",
+                                   "src/ai/assistant.gdc", "src/ai/assistant.gd.remap"])
+
+
+def test_only_the_scripts_the_first_screen_compiles_stay_with_the_engine() -> None:
+    """The app's own split, read from its sources: main.gd and what it names
+    stay; Later's classes, and what only they name, go with the data pack."""
+    later = pck_split.later_scripts()
+    assert "src/main.gd" not in later and "src/ui/parts_bin.gd" not in later
+    assert {"src/ai/assistant.gd", "src/ui/chat_panel.gd", "src/ai/shapes.gd"} <= later
+    assert pck_split.where("src/main.gdc", later) == "index.pck"
+    assert pck_split.where("src/ai/assistant.gdc", later) == "index.data.pck"
+    assert pck_split.where("src/ai/assistant.gd.remap", later) == "index.data.pck"
+    assert pck_split.where("assets/ldraw/gears.json", later) == "index.pck"
 
 
 def test_the_primitives_and_the_light_are_files_under_their_own_names(split: Path) -> None:

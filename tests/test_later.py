@@ -14,80 +14,29 @@ first screen's code brings it back, and with it everything it names. This
 fails then, and says which script named it and how the start reaches that
 script.
 
-It reads the scripts as Godot's compiler does for this purpose: every class
-name outside comments and strings, preloads, and extends by path.
+It reads the scripts as Godot's compiler does for this purpose
+(tools/web/start_closure.py): every class name outside comments and
+strings, preloads, and extends by path.
 """
 
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 
 
-def _strip(text: str) -> str:
-    """The script with its comments and strings taken out."""
-    text = re.sub(r'"""[\s\S]*?"""', '""', text)
-    out = []
-    for line in text.split("\n"):
-        line = re.sub(r'"(?:\\.|[^"\\])*"', '""', line)
-        line = re.sub(r"'(?:\\.|[^'\\])*'", "''", line)
-        at = line.find("#")
-        if at >= 0:
-            line = line[:at]
-        out.append(line)
-    return "\n".join(out)
-
-
-def _scripts() -> dict[str, str]:
-    """Every script of the app by res:// path; the probes in src/dev are not the app's."""
-    out = {}
-    for path in SRC.rglob("*.gd"):
-        rel = path.relative_to(ROOT).as_posix()
-        if rel.startswith("src/dev/"):
-            continue
-        out["res://" + rel] = path.read_text()
-    return out
-
-
-def _graph() -> tuple[dict[str, str], dict[str, set[str]]]:
-    """Each class's script, and the scripts each script names."""
-    scripts = _scripts()
-    classes = {}
-    for path, text in scripts.items():
-        found = re.search(r"^class_name\s+(\w+)", text, re.M)
-        if found:
-            classes[found.group(1)] = path
-    deps: dict[str, set[str]] = {}
-    for path, text in scripts.items():
-        named = set()
-        for word in set(re.findall(r"\b([A-Z]\w*)\b", _strip(text))):
-            if word in classes and classes[word] != path:
-                named.add(classes[word])
-        for loaded in re.findall(r'preload\(\s*"(res://[^"]+\.gd)"\s*\)', text):
-            if loaded in scripts:
-                named.add(loaded)
-        base = re.search(r'^extends\s+"(res://[^"]+)"', text, re.M)
-        if base and base.group(1) in scripts:
-            named.add(base.group(1))
-        deps[path] = named
-    return classes, deps
-
-
-def _later() -> dict[str, str]:
-    """Later.PATHS: class name -> script."""
-    text = (SRC / "later.gd").read_text()
-    table = text[text.index("const PATHS"):]
-    table = table[:table.index("\n}")]
-    return dict(re.findall(r'&"(\w+)":\s*"(res://[^"]+)"', table))
-
-
-def _first_screen() -> list[str]:
-    """The scripts the main scene names: where the start's compile begins."""
-    scene = (SRC / "main.tscn").read_text()
-    return sorted(set(re.findall(r'path="(res://[^"]+\.gd)"', scene)))
+# How the scripts are read, and the first screen walked: shared with
+# tools/web/pck_split.py, which sends what the first screen does not
+# compile with the data pack.
+sys.path.insert(0, str(ROOT / "tools" / "web"))
+from start_closure import first_screen as _first_screen  # noqa: E402
+from start_closure import graph as _graph  # noqa: E402
+from start_closure import later as _later  # noqa: E402
+from start_closure import scripts as _scripts  # noqa: E402
 
 
 def test_later_names_each_class_by_its_own_script():
