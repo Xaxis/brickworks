@@ -80,10 +80,27 @@ func _initialize() -> void:
 		else:
 			var why: String = str(verdict["summary"]).get_slice("(", 1).get_slice(" ", 0)
 			refused[why] = int(refused.get(why, 0)) + 1
+		# What met what, as part numbers: an overlap in the lattice, then a
+		# collision of the exact shapes, [part, part it met] each, for the
+		# record to count refusals by the kind of joint they are.
+		var met: Array = []
+		var overlapping: Dictionary = verdict.get("overlapping", {})
+		for index: Variant in overlapping:
+			var other: int = int(overlapping[index]) - 1
+			if other >= 0 and other < bricks.size():
+				met.append(["overlap", bricks[int(index)]["part"], bricks[other]["part"]])
+		# The exact check says its pairs only in words: "brick 3 (3937 ...)
+		# and brick 4 (3938 ...): their real shapes overlap".
+		var pair := RegEx.create_from_string("^brick (\\d+) \\(\\S+ .*? and brick (\\d+) \\(")
+		for said: Variant in (verdict.get("exact", {}) as Dictionary).get("collision", []):
+			var found: RegExMatch = pair.search(str(said))
+			if found != null:
+				met.append(["collision", bricks[int(found.get_string(1))]["part"],
+					bricks[int(found.get_string(2))]["part"]])
 		out.store_line(JSON.stringify({"file": file, "placed": placed,
 			"ok": verdict["ok"], "summary": verdict["summary"],
 			"why": str(verdict.get("feedback", "")).substr(0, 600),
-			"bricks": bricks}))
+			"met": met, "bricks": bricks}))
 	out.close()
 	print("%d of %d build; refused: %s" % [passed, seen, str(refused)])
 	quit(0)
