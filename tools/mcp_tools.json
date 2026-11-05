@@ -1053,6 +1053,110 @@
   },
   {
     "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Plan the massing"
+    },
+    "description": "The model's massing, planned before its first brick: the subject's main volumes, each a footprint in studs and a height in plates, on the ground or on another volume (set back from its edges or overhanging them), round or square, its top the same or narrower (a roof falling to its eaves, a taper, a wedge); and what you would know it by from the front and from the side. The answer says how much of its box that fills against real sets of its theme and size, and draws its outline from the front and the side, while changing it costs nothing. Each build of the design is then read against these volumes: each there at its height, the setbacks, the gaps and the space under an overhang kept. Call it after how_real_sets_build_this and before the first submit_design, in the coordinates the design is built in.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "brief": {
+          "description": "the person's request in their own words, as submit_design takes it",
+          "type": "string"
+        },
+        "front": {
+          "description": "what you would know it by from the front: its outline, the setbacks, the gaps",
+          "type": "string"
+        },
+        "parts": {
+          "description": "how many parts the person asked for, when they named a number",
+          "type": "integer"
+        },
+        "side": {
+          "description": "and from the side",
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "volumes": {
+          "description": "the main masses, a few to a dozen: a tower and its podium, a cab and its body, a hull, a deck and a wheelhouse, wings, a roof",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "what a person would call it: the tower, the cab",
+                "type": "string"
+              },
+              "round": {
+                "description": "round in plan: the ellipse in its footprint",
+                "type": "boolean"
+              },
+              "top": {
+                "additionalProperties": false,
+                "description": "its footprint at its top, where that is not its footprint: the same from and to for a ridge or a point. A gabled roof's z_from and z_to both at its ridge; a bonnet falling to the front ends its z_to short of the bottom's",
+                "properties": {
+                  "x_from": {
+                    "type": "number"
+                  },
+                  "x_to": {
+                    "type": "number"
+                  },
+                  "z_from": {
+                    "type": "number"
+                  },
+                  "z_to": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "x_from": {
+                "description": "studs across",
+                "type": "number"
+              },
+              "x_to": {
+                "type": "number"
+              },
+              "y_from": {
+                "description": "plates up where it begins: 0 on the ground, or the top of the volume it stands on",
+                "type": "number"
+              },
+              "y_to": {
+                "description": "plates up to its top",
+                "type": "number"
+              },
+              "z_from": {
+                "description": "studs deep; the front is +z",
+                "type": "number"
+              },
+              "z_to": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "x_from",
+              "x_to",
+              "z_from",
+              "z_to",
+              "y_to"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "volumes"
+      ],
+      "type": "object"
+    },
+    "name": "plan_massing"
+  },
+  {
+    "annotations": {
       "openWorldHint": true,
       "readOnlyHint": true,
       "title": "Find pictures of the real thing"

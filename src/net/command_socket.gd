@@ -564,6 +564,7 @@ const HINTS := {
 	"place_technique": ["Place a real set's piece", "add"],
 	"settle_feature": ["Settle a feature's piece", "add"],
 	"plan_scale": ["Plan the scale", "look"],
+	"plan_massing": ["Plan the massing", "look"],
 	"find_reference": ["Find pictures of the real thing", "look", "world"],
 	"how_real_sets_build_this": ["What real sets of its kind use", "look"],
 	"attachment_points": ["Where a part attaches", "look"],

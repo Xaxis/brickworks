@@ -88,6 +88,8 @@ func _run() -> void:
 		["show_technique", {"name": "round tower"}],
 		["find_parts_like", {"query": "gear"}],
 		["plan_scale", {"subject": "an orrery", "longest_metres": 0.4}],
+		["plan_massing", {"subject": "an orrery", "volumes": [{"name": "base", "x_from": 0,
+			"x_to": 8, "z_from": 0, "z_to": 8, "y_to": 3}]}],
 		["read_guide", {"section": "pins"}],
 		["look_at_model", {}],
 		["view_model", {"from": "corner"}],

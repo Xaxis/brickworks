@@ -2625,6 +2625,32 @@ fixing what it got wrong.
   to 2,000 parts. Probe: `colours_seen_probe` (a bench design of 7992-1 and the
   judge's picture of it: the Python read's six colours, City's 258 sets with
   7992-1 left out, both tools' words).
+- **The massing, planned before the first brick, and each build held to it**
+  (`plan_massing`, `MassingPlan`, `Massing`, `Assistant._plan_massing`,
+  `Assistant._massing_checked`, design16, 2026-11-05). The plan names the
+  subject's main volumes, each a footprint in studs and a height in plates on
+  the ground or on another volume, round or square, its top the same footprint
+  or a narrower one (a gabled roof's ridge, a taper, a wedge), and what it is
+  known by from the front and the side. The answer leads with how much of its
+  box the plan fills (every column from its top down, the ground left out),
+  against real sets of the theme the brief names, else its kind, within 1.6x of
+  its part count, none held out (`SetKnowledge.massing()`, the library's 1,234
+  set models in `assets/knowledge/set_massing.json`, written by
+  `src/dev/set_massing.gd`; beside the web build in `knowledge/`), then each
+  volume as read and how it stands on the one under it (set back, overhanging),
+  and its outline drawn from the front and the side. Each submit_design of a
+  design after it leads with the build read against the volumes: each there at
+  its height (along its edges, so walls round an open room count), the
+  setbacks, the gaps between volumes, a round volume's corners and the space
+  under an overhang left open, four square studs or more; a plan laid off the
+  build is read where the build stands. With no plan the build's answer asks
+  for one after its first line, and how_real_sets_build_this ends by asking for
+  one until there is one. Nothing is changed for it. Probe: `massing_probe` (a
+  block and two towers measured, a bench design of 7746-1 at 59% with 7746-1
+  held out, a tower on a podium planned at 40% against City sets, then builds:
+  as planned, short, a setback built up, a gap filled, a deck filled under, a
+  chimney missing, a gable built flat, a rotunda built square, an open room, a
+  plan 20 studs off, and no plan).
 
 ## How to reach it
 

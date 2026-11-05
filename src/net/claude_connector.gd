@@ -600,8 +600,10 @@ static func _who_said(request: Dictionary) -> String:
 var _sittings: Dictionary = {}
 const QUIET_MS := 30 * 60 * 1000
 ## The calls that say what is being designed, with the words that say it.
+## plan_massing among them, or a plan made first was lost to the subject
+## its build began.
 const SUBJECT_CALLS := ["how_real_sets_build_this", "plan_scale", "find_reference",
-	"submit_design"]
+	"plan_massing", "submit_design"]
 ## The calls that read or change the parts already standing: a chat whose
 ## first call is one, on a model to change ([member has_work]), is changing
 ## it, not designing.
@@ -643,7 +645,8 @@ func _begin(sitting: Dictionary, tool: String, arguments: Dictionary) -> void:
 	if not tool in SUBJECT_CALLS or bool(sitting["begun"]) or rpc == null or rpc.assistant == null:
 		return
 	sitting["begun"] = true
-	var subject: String = str(arguments.get("subject", "")) if tool != "submit_design" \
+	var subject: String = str(arguments.get("subject", arguments.get("brief", ""))) \
+		if tool != "submit_design" \
 		else "%s. %s" % [arguments.get("name", ""), arguments.get("description", "")]
 	rpc.assistant.heard(subject.strip_edges().trim_suffix(".").strip_edges(), true)
 
