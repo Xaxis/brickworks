@@ -37,6 +37,20 @@ uniform bool only_new = false;
 // where it is not. The same pixels as the codes say are new, for the
 // engine to count rather than a loop over them (BookletStudio.measure_all).
 uniform bool mask = false;
+// Which way each pixel's surface faces and how far it is, instead of its
+// number: what booklet_ink draws a black part's edges from. The parts'
+// normals are smooth everywhere but across the edge lines their authors
+// drew (tools/ldraw/geometry.py), so where the facing turns sharply
+// inside one part is where LDraw draws an edge; and where the distance
+// jumps inside one part is where it hides itself, the back of a stud's
+// top against the brick behind it. Red and green are the facing across
+// and up (it faces the camera, so that is all of it). Blue is the
+// distance in LDU, wrapped every DEPTH_WRAP (only a jump between
+// neighbours is read), in its upper half when the brick's edges are drawn
+// light (BookletStudio.lined_light, alpha's top level of the code). Written
+// from 64 up, as the numbers are, so Compatibility keeps it.
+uniform bool normals = false;
+const float DEPTH_WRAP = 48.0;
 
 varying flat vec4 code;
 
@@ -58,7 +72,7 @@ void fragment() {
 	float red = level(code.r);
 	float green = level(code.g);
 	float blue = floor(level(code.b) / 2.0);
-	float number = red + 32.0 * green + 1024.0 * blue + 16384.0 * level(code.a);
+	float number = red + 32.0 * green + 1024.0 * blue + 16384.0 * mod(level(code.a), 16.0);
 	bool fresh = number >= new_from;
 	if (only_new && !fresh) {
 		discard;
@@ -70,6 +84,11 @@ void fragment() {
 	vec3 shown = (vec3(out_red, out_green, out_blue) * 8.0 + 64.0) / 255.0;
 	if (mask) {
 		shown = fresh ? vec3(1.0) : vec3(0.0);
+	}
+	if (normals) {
+		vec2 across_up = normalize(NORMAL).xy * 0.5 + 0.5;
+		float light = level(code.a) >= 16.0 ? 0.5 : 0.0;
+		shown = vec3(across_up, light + 0.45 * fract(-VERTEX.z / DEPTH_WRAP)) * 0.75 + 0.25;
 	}
 	ALBEDO = linearise ? to_linear(shown) : shown;
 }
