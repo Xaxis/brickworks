@@ -172,7 +172,10 @@ fixing what it got wrong.
   any id), temperature and reasoning effort where the model takes them
   (`ProviderSettings.takes_temperature`/`takes_effort`), max output, Test
   (`src/ai/model_test.gd`: one tool call and one picture of a colour to
-  name, "tools ✓, pictures ✗: …", kept per model) and Design with it. The
+  name, "tools ✓, pictures ✗: …", kept per model; what it found scrolled
+  into view once laid out, `LaidOut.into_view`: at once, it was left below
+  the view in a short window every time, `ai_test_view_probe`) and Design
+  with it. The
   chat panel then sends the brief to `Main.design_with_provider` and follows
   `DesignerLoop` as it follows Claude Code (`ChatPanel.design_elsewhere`).
   The key is kept by `KeyStore` (below); where none answers, and in probes

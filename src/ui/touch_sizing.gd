@@ -771,7 +771,9 @@ func _lay_panel(panel: Control) -> void:
 
 
 ## The field being typed in kept in sight above the keyboard: scrolled to in
-## whatever scrolls round it.
+## whatever scrolls round it, once that is laid out in the room it was just
+## given. At once, the scroll was measured as tall as it was before the
+## keyboard came up, and a field low in it was left under the keyboard.
 func _show_focus(dialog: Node) -> void:
 	var field: Control = typing()
 	if field == null or _dialog_of(field) != dialog:
@@ -779,5 +781,5 @@ func _show_focus(dialog: Node) -> void:
 	var up: Node = field.get_parent()
 	while up != null and up != dialog:
 		if up is ScrollContainer:
-			(up as ScrollContainer).ensure_control_visible(field)
+			LaidOut.into_view(up as ScrollContainer, field)
 		up = up.get_parent()

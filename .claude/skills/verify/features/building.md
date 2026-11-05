@@ -640,7 +640,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   screen, and a panel the whole screen; on a tablet both in the middle. Above
   the on-screen keyboard while one is up (the visual viewport's lost height,
   `window.brickworksKeyboardNow`, read while a field in a dialog has the
-  focus), the field scrolled into sight. A dialog wider than the screen is
+  focus), the field scrolled into sight once the dialog is laid out in the
+  room above the keyboard (`TouchSizing._show_focus`, `LaidOut.into_view`):
+  scrolled at once, it was measured against the room before the keyboard,
+  and Settings, AI's Model field was left under the keyboard 8 times in 8
+  (`keyboard_field_probe`, 390x844, Model and Max output 24 times). A dialog wider than the screen is
   made narrower (`TouchSizing._narrower`): a line too long wraps, and a row of
   buttons too long flows onto a second line inside its own row. And again
   whenever what it holds grows wider than it was laid out while it is open
