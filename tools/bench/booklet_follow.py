@@ -62,6 +62,11 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 CORE = Path.home() / ".claude" / "claude-core" / "bin"
 GPU, HEAVY = str(CORE / "gpu"), str(CORE / "heavy")
 SCREEN = "-screen 0 1600x900x24"
+# The pages are photographed twice as fine as the screen shows them at print size: at 7.6
+# px a millimetre, the 5 the booklet's pictures are drawn at. At one, a builder saw the
+# castle's step pictures and the parts box at three quarters and two fifths of what they
+# hold, below what a person reads on paper and below what the model can see (2576 px).
+SCALE = 2
 DRAWER = [GPU, "--brief", "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
 MCP_SERVER = ROOT / "tools" / "bench" / "booklet_mcp.py"
 SECRETS = re.compile(r"KEY|TOKEN|SECRET|PASSWORD", re.I)
@@ -586,18 +591,26 @@ def make(model: Path, out: Path, app: Path) -> None:
     truth = Truth.load(out / "truth.json")
     count = len(truth.data["pages"])
     shots = out / "pages"
-    if len(list(shots.glob("page-*.png"))) < count:
+    if len(list(shots.glob("page-*.png"))) < count or page_scale(out) != SCALE:
         pages = ",".join(str(n) for n in range(1, count + 1))
         with (out / "pages.log").open("w") as log:
             status = subprocess.run(
                 [HEAVY, "node", str(ROOT / "tools" / "web" / "booklet_print.mjs"),
-                 str(out / "booklet.html"), str(shots), "--shots-only", f"--pages={pages}"],
+                 str(out / "booklet.html"), str(shots), "--shots-only", f"--pages={pages}",
+                 f"--scale={SCALE}"],
                 cwd=ROOT, stdout=log, stderr=subprocess.STDOUT).returncode
         if status != 0:
             raise SystemExit(f"make: the pages were not photographed; see {out / 'pages.log'}")
+        (shots / "scale.txt").write_text(f"{SCALE}\n")
     (out / "inventory.json").write_text(json.dumps(inventory(truth), indent=1) + "\n")
     shutil.rmtree(home, ignore_errors=True)
     print(f"make: {count} pages, {len(truth.parts)} parts, {len(truth.step_pages())} of steps")
+
+
+def page_scale(out: Path) -> int:
+    """How much finer than the screen's print size DIR's pages were photographed."""
+    said = out / "pages" / "scale.txt"
+    return int(said.read_text().strip()) if said.exists() else 1
 
 
 # -- build ----------------------------------------------------------------------------
@@ -695,6 +708,7 @@ def build(out: Path, name: str, port: int, first: int | None, last: int | None, 
         tail.insert(1, f"--model={(run / 'seed.ldr').resolve()}")
     record = {"model": truth.data["model"], "first": first, "last": last, "pages": todo,
               "seed_parts": len(seed), "each": each, "port": port,
+              "page_scale": page_scale(out),
               "app": str(app), "commit": subprocess.run(
                   ["git", "rev-parse", "--short", "HEAD"], cwd=app, capture_output=True,
                   text=True).stdout.strip(), "started": time.strftime("%Y-%m-%d %H:%M:%S")}
