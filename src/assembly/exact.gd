@@ -466,11 +466,12 @@ static func keep(mesh_hash: String, bytes: PackedByteArray, box: AABB = AABB()) 
 
 
 ## [param shape] kept for the geometry [param mesh_hash], read from its bytes
-## off the main thread (PartLibrary's reading ahead), unless one was read
-## meanwhile: one shape a part, as its id keys verdicts.
-static func keep_shape(mesh_hash: String, shape: Shape) -> void:
+## off the main thread (PartLibrary's reading ahead). With [param only_new],
+## not where one was read meanwhile by one that wanted it at once: one shape
+## a part, as its id keys verdicts. A fetch's answer is kept whatever was.
+static func keep_shape(mesh_hash: String, shape: Shape, only_new: bool = false) -> void:
 	_shapes_lock.lock()
-	if _shapes.get(mesh_hash) == null:
+	if not only_new or not _shapes.has(mesh_hash):
 		_shapes[mesh_hash] = shape
 	_shapes_lock.unlock()
 

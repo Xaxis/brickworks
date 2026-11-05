@@ -1695,7 +1695,7 @@ func _kept_read(item: Array, made: Variant) -> void:
 	var hash_name: String = item[1]
 	var part_id: String = item[3]
 	if item[0] == BWX:
-		Exact.keep_shape(hash_name, made)
+		Exact.keep_shape(hash_name, made, _reading_shapes.has(hash_name))
 		_fetching_exact.erase(hash_name)
 		_reading_shapes.erase(hash_name)
 		exact_fetched.emit(part_id)
