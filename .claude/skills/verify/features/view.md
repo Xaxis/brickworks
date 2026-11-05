@@ -1362,6 +1362,26 @@ picture the assistant is shown.
   edit, each undo (no mark left) and the save opened again, a line in the
   file for each mark, and none marked, in the plan or the file, on 7140-1
   as its author stepped it or on a wall of no sub-models after an edit.
+  Where sub-models built whole build worse (the castle, the fox and the
+  robot of `held_steps_probe`), the steps kept are the order worked out
+  itself (stepskeep, 2026-11-04): every copy not built on the side is built
+  in the steps of the one that places it (`AuthorSteps.IN_PARENT` as its
+  unit step; `AuthorSteps.home` is the section its parts are numbered in),
+  chosen once for the plan and the first edit (`Instructions.kept_numbers`,
+  `_kept_of`; `AuthorSteps.adopted` with in_place). Shown the order worked
+  out, the castle's first edit gave it sub-models built whole, every step
+  from 45 numbered anew and 31 bricks in the air. Such a copy's parts are
+  written in its parent's steps after `0 !BRICKWORKS IN <path>`
+  (`LdrModel.IN_META`, read back by `_built_within`), so another LDraw
+  reader builds the order shown; a file written back over (SourceFile)
+  writes whole instead, and the paced save reads the plan so
+  (`AuthorSteps.in_place_plan`). `steps_kept_probe`'s castle
+  (`STEPS_KEPT_ONLY=castle`) lists it, moves one part on by `edit_steps`
+  and Shift-], each undone, with every other part in its listed step; then
+  the steps test passes the model's own steps after the edit
+  (`SharedPages.attach_tested`), another reader (the file without the
+  app's lines) builds every part in the same step, and the save opened
+  again has every part in its step and every sub-model part for part.
 - `the booklet as a PDF and as PNG pages`: **Save as PDF** and **Save pages as PNG** sit beside Print in the
   booklet's bar (pdf249, 2026-10-24), shown where they work: on the desktop
   while the app serves the booklet (`Booklet.SAVE_SCRIPT` asks the app with

@@ -2412,7 +2412,7 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		var all_in: bool = true
 		for brick_id: Variant in ids:
 			var brick: BrickWorld.Brick = world.get_brick(int(brick_id))
-			if brick == null or Assemblies.path_of(brick) != at.authored_in:
+			if brick == null or AuthorSteps.home(world, Assemblies.path_of(brick)) != at.authored_in:
 				all_in = false
 				break
 		if all_in:
@@ -2632,12 +2632,13 @@ func _not_in_step(number: int, section: String, ids: Array, level: String,
 
 
 ## The parts of [param section], a sub-model's path at any depth below it,
-## or the model's own alone for "".
+## or the model's own alone for "", with those of the copies built in its
+## steps (AuthorSteps.IN_PARENT).
 func _parts_in(section: String, skip: Dictionary) -> Array:
 	var out: Array = []
 	for brick: BrickWorld.Brick in world.bricks():
 		var path: String = Assemblies.path_of(brick)
-		if not skip.has(brick.id) and (path == section
+		if not skip.has(brick.id) and (AuthorSteps.home(world, path) == section
 				or (not section.is_empty() and Assemblies.within(path, section))):
 			out.append(brick.id)
 	return out
@@ -3131,7 +3132,8 @@ func _step_at(at: Instructions.Step) -> Array:
 	# were all taken off, and the number the timeline had was the next step's.
 	if at.authored_step >= 0 and not at.brick_ids.is_empty():
 		var own: BrickWorld.Brick = world.get_brick(at.brick_ids[0])
-		if own != null and own.step >= 0 and Assemblies.path_of(own) == at.authored_in:
+		if own != null and own.step >= 0 \
+				and AuthorSteps.home(world, Assemblies.path_of(own)) == at.authored_in:
 			return [at.authored_in, own.step]
 	if at.authored_step >= 0:
 		var unit: String = BookletLooks.attached(world, at, at.authored_in)
@@ -3150,7 +3152,7 @@ func _step_at(at: Instructions.Step) -> Array:
 	if at.attaches() and at.brick_ids.is_empty():
 		var top: String = Assemblies.segments(Assemblies.path_of(brick))[0]
 		return ["", int(world.unit_steps.get(top, 0))]
-	return [Assemblies.path_of(brick), brick.step]
+	return [AuthorSteps.home(world, Assemblies.path_of(brick)), brick.step]
 
 
 ## Whether a point is over the shell's own panels rather than the model.

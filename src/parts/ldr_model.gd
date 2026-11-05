@@ -57,6 +57,10 @@ class Placement extends RefCounted:
 	## For a reference to a sub-model, which copy of it this is, as the
 	## file says (COPY_META); 0 where it does not.
 	var copy: int = 0
+	## The copy built in the steps of the sub-model it was read in that it
+	## is part of, by its path within that sub-model ("tower#1"), as the
+	## file says (IN_META); "" for the sub-model's own.
+	var within: String = ""
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id
@@ -140,6 +144,15 @@ var marked_worked: bool = false
 ## wing built first came back as the wing and the original as its copy
 ## (assembly_flow.mjs, 2026-10-16).
 const COPY_META := "0 !BRICKWORKS COPY"
+## The line before a run of a step's lines that are of a copy of a
+## sub-model built in this one's steps (AuthorSteps.IN_PARENT), naming it by
+## its path within this one: "0 !BRICKWORKS IN north-east tower#1". In
+## force to the next such line or the end of the step; the line alone goes
+## back to this one's own. The castle's towers and walls go up a course of
+## each in turn, which no sub-model placed whole can say, so their parts are
+## written in the steps they are built in: every LDraw reader builds the
+## order shown, and this app reads each copy back as it was (stepskeep).
+const IN_META := "0 !BRICKWORKS IN"
 ## Every FILE section's text but the model's own, by its FILE name in lower
 ## case: what a part drawn from the file's sections is built from
 ## (CustomParts.begin_skins), LDCad's donor sections among them.
@@ -189,6 +202,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	var step: int = 0
 	## The copy the next reference is, from a COPY_META line before it.
 	var copy_next: int = 0
+	## The copy built in this one's steps the lines now read are of, from an
+	## IN_META line: to the next, or the end of the step.
+	var within: String = ""
 	var first_file: bool = true
 	## The FILE section being read, and its lines as written.
 	var section: String = ""
@@ -247,6 +263,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				# the whole sub-assembly silently dropped.
 				model.submodels[_key(sub_name)] = current
 				step = 0
+				within = ""
 				if first_file:
 					# The first FILE in an .mpd is the model itself; the
 					# rest are parts of it.
@@ -259,6 +276,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				step += 1
 				current.step_count = step + 1
 				model.stepped = true
+				within = ""
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == AUTHORED_META.get_slice(" ", 2):
 				model.marked_authored = true
@@ -268,6 +286,11 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			elif keyword == "!BRICKWORKS" and tokens.size() > 3 \
 					and tokens[2] == COPY_META.get_slice(" ", 2):
 				copy_next = maxi(tokens[3].to_int(), 0)
+			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
+					and tokens[2] == IN_META.get_slice(" ", 2):
+				# A path's names may hold spaces: the rest of the line.
+				within = line.substr(line.to_upper().find(keyword) + keyword.length()).strip_edges() \
+					.substr(tokens[2].length()).strip_edges()
 			elif keyword == "!LDCAD" and tokens.size() > 2 and tokens[2] == "GENERATED" \
 					and not model.generated.has(_key(current.name)):
 				model.generated[_key(current.name)] = [index, step]
@@ -305,6 +328,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		var read := Placement.new(part_id, color, to_transform(numbers), step)
 		read.line = index
 		read.copy = copy_next
+		read.within = within
 		copy_next = 0
 		current.placements.append(read)
 
@@ -536,19 +560,29 @@ func _inline(
 		push_warning("ldr: %s contains itself; not expanding further" % sub.name)
 		return
 	visiting[_key(sub.name)] = true
+	## Each copy built in this one's steps (Placement.within) -> its path.
+	var made: Dictionary = {}
 
 	for placement: Placement in sub.placements:
 		var nested: SubModel = submodels.get(_key(placement.part_id))
+		# In a copy built in this one's steps: that copy's, as a reference
+		# makes one, numbered as the file says where that number is free.
+		var own_group: String = group
+		var own_unit: String = unit
+		if not placement.within.is_empty():
+			own_unit = _built_within(placement.within, unit, copies, made)
+			if depth == 0:
+				own_group = own_unit.get_slice("/", 0).get_slice("#", 0)
 
 		# A name is a sub-model only if it is not a real part: published
 		# models occasionally name a sub-assembly after a part number.
 		if nested != null and not known_parts.has(placement.part_id):
 			# A sub-model referenced by the model itself is one of its
 			# assemblies; what that sub-model nests stays part of it.
-			var named: String = group
-			var inside: String = unit
+			var named: String = own_group
+			var inside: String = own_unit
 			var kind: String = _names.get(_key(nested.name), _key(nested.name))
-			if depth == 0:
+			if depth == 0 and placement.within.is_empty():
 				named = kind
 			# Each copy its own unit, at every depth: the four windows are
 			# four assemblies of one kind, not one assembly of sixteen parts.
@@ -564,7 +598,7 @@ func _inline(
 			copies[kind] = maxi(int(copies.get(kind, 0)), number)
 			var copy: String = "%s#%d" % [kind, number]
 			copies[copy] = true
-			inside = copy if unit.is_empty() else "%s/%s" % [unit, copy]
+			inside = copy if inside.is_empty() else "%s/%s" % [inside, copy]
 			unit_steps[inside] = placement.step
 			unit_frames[inside] = at * placement.transform
 			unit_sections[inside] = _key(nested.name)
@@ -583,8 +617,8 @@ func _inline(
 			resolved = color
 		var placed := Placement.new(
 			placement.part_id, resolved, at * placement.transform, placement.step)
-		placed.group = group
-		placed.unit = unit
+		placed.group = own_group
+		placed.unit = own_unit
 		placed.line = placement.line
 		if at.basis.determinant() < 0.0:
 			placed.mirrored = true
@@ -593,6 +627,34 @@ func _inline(
 		out.append(placed)
 
 	visiting.erase(sub.name.to_lower())
+
+
+## The path of the copy [param within] names (IN_META), built in the steps
+## of the copy at [param unit]: each of its copies numbered as the file says
+## where that number is still free in [param copies], else the next after
+## the highest, as a reference's is ([method _inline]); the same path for
+## every line of one copy in one reading of [param unit] ([param made]).
+## Each is a copy built in its parent's steps (AuthorSteps.IN_PARENT).
+func _built_within(within: String, unit: String, copies: Dictionary, made: Dictionary) -> String:
+	var path: String = unit
+	var said: String = ""
+	for segment: String in within.split("/", false):
+		said = segment if said.is_empty() else "%s/%s" % [said, segment]
+		if made.has(said):
+			path = made[said]
+			continue
+		var kind: String = segment.get_slice("#", 0).strip_edges()
+		var asked: int = segment.get_slice("#", 1).to_int() if segment.contains("#") else 0
+		var number: int = int(copies.get(kind, 0)) + 1
+		if asked > 0 and not copies.has("%s#%d" % [kind, asked]):
+			number = asked
+		copies[kind] = maxi(int(copies.get(kind, 0)), number)
+		var copy: String = "%s#%d" % [kind, number]
+		copies[copy] = true
+		path = copy if path.is_empty() else "%s/%s" % [path, copy]
+		made[said] = path
+		unit_steps[path] = AuthorSteps.IN_PARENT
+	return path
 
 
 ## Serialise placements back to .ldr text.
@@ -686,13 +748,28 @@ static func write_ldr(
 ## references there. A part's place is its unit (Placement.unit).
 ## [param unit_steps] is each path's step in the section that places it,
 ## path -> step (see BrickWorld.unit_steps); without it, every reference
-## goes in its section's first step.
+## goes in its section's first step. A copy built in its parent's steps
+## (AuthorSteps.IN_PARENT) has no section: its parts, and the copies it
+## places, are written in the steps of the one round it after a line
+## naming it (IN_META).
 static func write_tree(
 	placements: Array, title: String, author_name: String,
 	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {},
 	parts: Dictionary = {}
 ) -> String:
-	var ordered: Array = instances.keys()
+	var in_parent := func(path: String) -> bool:
+		return int(unit_steps.get(path, -1)) == AuthorSteps.IN_PARENT
+	# The section a path's own parts are written in, and the path within it.
+	var home_of := func(path: String) -> String:
+		while not path.is_empty() and in_parent.call(path):
+			path = "" if path.rfind("/") < 0 else path.substr(0, path.rfind("/"))
+		return path
+	var within_of := func(path: String, home: String) -> String:
+		if path == home:
+			return ""
+		return path if home.is_empty() else path.substr(home.length() + 1)
+	var ordered: Array = instances.keys().filter(func(path: String) -> bool:
+		return not in_parent.call(path))
 	ordered.sort_custom(func(a: String, b: String) -> bool:
 		var depth_a: int = a.count("/")
 		var depth_b: int = b.count("/")
@@ -714,13 +791,16 @@ static func write_tree(
 				or parts.has(file.get_basename()):
 			file = file.get_basename() + "_.ldr"
 		file_of[def] = file
-	var children: Dictionary = {}    ## parent path -> Array of paths
+	var children: Dictionary = {}    ## the section placing it -> Array of paths
+	var placed_within: Dictionary = {}     ## path -> the copy it is placed in there, IN_META
 	for path: String in ordered:
 		var at: int = path.rfind("/")
 		var parent: String = "" if at < 0 else path.substr(0, at)
-		if not children.has(parent):
-			children[parent] = []
-		(children[parent] as Array).append(path)
+		var section: String = home_of.call(parent)
+		placed_within[path] = within_of.call(parent, section)
+		if not children.has(section):
+			children[section] = []
+		(children[section] as Array).append(path)
 	var refs := func(parent: String, inverse: Transform3D) -> Array[String]:
 		var out: Array[String] = []
 		for child: String in children.get(parent, []):
@@ -740,24 +820,31 @@ static func write_tree(
 			return []
 		return children.get(parent, []).map(func(child: String) -> int:
 			return int(unit_steps.get(child, 0)))
-	var loose: Array = placements.filter(func(p: Placement) -> bool: return p.unit.is_empty())
+	var ref_within := func(parent: String) -> Array:
+		return children.get(parent, []).map(func(child: String) -> String:
+			return str(placed_within[child]))
+	var loose: Array = placements.filter(func(p: Placement) -> bool:
+		return home_of.call(p.unit) == "")
 	var text: String = "0 FILE " + main_file + "\n" \
 		+ _write_one(loose, title, author_name, refs.call("", Transform3D.IDENTITY), "",
-			ref_steps.call("")) \
+			ref_steps.call(""), loose.map(func(p: Placement) -> String:
+				return within_of.call(p.unit, "")), ref_within.call("")) \
 		+ "0 NOFILE\n"
 	for def: String in defs:
 		var master: String = masters[def]
 		var inverse: Transform3D = ((instances[master] as Dictionary)["frame"] as Transform3D) \
 			.affine_inverse()
 		var own: Array = placements.filter(func(p: Placement) -> bool:
-			return p.unit == master).map(func(p: Placement) -> Placement:
+			return home_of.call(p.unit) == master).map(func(p: Placement) -> Placement:
 				var local := Placement.new(p.part_id, p.color_code, inverse * p.transform, p.step)
 				local.group = p.group
 				local.unit = p.unit
+				local.within = within_of.call(p.unit, master)
 				return local)
 		text += "0 FILE " + str(file_of[def]) + "\n" \
 			+ _write_one(own, def, author_name, refs.call(master, inverse), str(file_of[def]),
-				ref_steps.call(master)) \
+				ref_steps.call(master), own.map(func(p: Placement) -> String: return p.within),
+				ref_within.call(master)) \
 			+ "0 NOFILE\n"
 	var names: Array = embedded.keys()
 	names.sort()
@@ -781,9 +868,13 @@ static func write_tree(
 ## each reference the step it goes on in, as [param placements] carry
 ## theirs; without them every reference goes first, in the first step. A
 ## reference was always written first, so a window an author put on in
-## step 9 came back put on in step 1.
+## step 9 came back put on in step 1. [param within] and [param ref_within]
+## name the copy built in this one's steps each part and each reference is
+## of, "" for its own: each run of a step's lines of one such copy is
+## written after a line naming it (IN_META).
 static func _write_one(placements: Array, title: String, author_name: String,
-		refs: Array[String], file_name: String = "", ref_steps: Array = []) -> String:
+		refs: Array[String], file_name: String = "", ref_steps: Array = [],
+		within: Array = [], ref_within: Array = []) -> String:
 	var lines := PackedStringArray()
 	lines.append("0 " + title)
 	lines.append("0 Name: " + (file_name if not file_name.is_empty()
@@ -792,13 +883,14 @@ static func _write_one(placements: Array, title: String, author_name: String,
 		lines.append("0 Author: " + author_name)
 	lines.append("")
 
-	# [step, 0 for a reference or 1 for a part, its place, its line]: in a
-	# step, the sub-models it puts on before its own parts.
+	# [step, 0 for a reference or 1 for a part, its place, its line, the copy
+	# built in this one's steps it is of]: in a step, this one's own before
+	# each such copy's, and the sub-models each puts on before its parts.
 	var first: int = (placements[0] as Placement).step if not placements.is_empty() else 0
 	var items: Array = []
 	for n: int in refs.size():
 		var at: int = int(ref_steps[n]) if n < ref_steps.size() else first
-		items.append([at, 0, n, refs[n]])
+		items.append([at, 0, n, refs[n], str(ref_within[n]) if n < ref_within.size() else ""])
 	for n: int in placements.size():
 		var placement: Placement = placements[n]
 		# A direct colour goes back out in the form it came in, or it
@@ -807,20 +899,30 @@ static func _write_one(placements: Array, title: String, author_name: String,
 			if is_direct_colour(placement.color_code)
 			else str(placement.color_code))
 		items.append([placement.step, 1, n, "1 %s %s %s.dat" % [
-			colour, _line_numbers(placement.transform), placement.part_id]])
+			colour, _line_numbers(placement.transform), placement.part_id],
+			str(within[n]) if n < within.size() else ""])
 	items.sort_custom(func(a: Array, b: Array) -> bool:
-		for k: int in 3:
+		if int(a[0]) != int(b[0]):
+			return int(a[0]) < int(b[0])
+		if str(a[4]) != str(b[4]):
+			return str(a[4]) < str(b[4])
+		for k: int in [1, 2]:
 			if int(a[k]) != int(b[k]):
 				return int(a[k]) < int(b[k])
 		return false)
 
 	var started: bool = false
 	var step: int = 0
+	var inside: String = ""
 	for item: Array in items:
 		if started and int(item[0]) != step:
 			lines.append("0 STEP")
+			inside = ""
 		step = int(item[0])
 		started = true
+		if str(item[4]) != inside:
+			inside = str(item[4])
+			lines.append(IN_META + ("" if inside.is_empty() else " " + inside))
 		lines.append(str(item[3]))
 
 	lines.append("0")

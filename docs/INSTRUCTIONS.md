@@ -1571,6 +1571,34 @@ as ever; the line says which sub-model's build or which stage each chapter
 starts at, and another program passes over it. A model with steps of its
 own, or with no section in its plan, is given no mark.
 
+The first edit keeps the steps the person was shown. A model nobody gave
+steps is shown its worked-out order as steps its file can hold, each
+sub-model built whole in steps of its own before the step that puts it on,
+as LDraw, LPub and Studio read a file (stepsnum); where that builds worse
+than the order worked out, by the steps test, the order itself is shown
+(suitesteps). The castle is such a model: its towers and walls go up a
+course of each in turn, each of its ten sub-models in 8 to 16 runs of the
+order, and built whole the north-east tower put a column of its bricks down
+before the front curtain wall's bricks under it, 31 in the air. Its first
+edit still gave it the sub-models built whole: every step from 45 on was
+numbered anew, and the booklet asked for bricks in the air again.
+
+Now a model whose sub-models build worse whole keeps the order itself:
+every sub-model not built on the side is built in the steps of the one that
+places it (`AuthorSteps.IN_PARENT`, stepskeep), its parts numbered among
+that one's, still a sub-model, every part where it was. A sub-model built
+on the side stays one, put on in its step. The file writes such a
+sub-model's parts in the model's steps, each run of them after a line
+naming it, `0 !BRICKWORKS IN north-east tower#1`: this app reads the copy
+back as it was, and another LDraw reader passes over the line and builds
+the parts in the steps shown, where a sub-model placed whole would have it
+build each tower in one go. What LDraw cannot say is lost to that reader:
+there the tower's parts are the model's own. On the castle, and on the fox
+and the robot of `held_steps_probe`, whose sub-models also build worse
+whole, the steps kept are the order shown part for part: 0 of 2,497, 681
+and 151 parts numbered otherwise. The pagoda, the lighthouse and 7140-1,
+whose sub-models build as well whole, keep them so as before.
+
 Someone else's file is written back with only what changed. A merge took
 every part after it out of its line and put it back one step early, and
 left an empty step at the end; now the sub-model is written again a step at
