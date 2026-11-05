@@ -2205,7 +2205,7 @@ car and 7140 pages 2-13 were run at both sizes. Each `run.json` says which
 | | pages | parts | right | near | lost | minutes |
 |---|---|---|---|---|---|---|
 | car | 2-7 | 61 | 33 | 0 | 28 (46%) | 19.1 |
-| car, again | 2-7 | 61 | D2X_RIGHT | D2X_NEAR | D2X_LOST | D2X_MIN |
+| car, again | 2-7 | 61 | 31 | 0 | 30 (49%) | 25.1 |
 | 7140 | 2-13 | 73 | 38 | 6 | 29 (40%) | 18.7 |
 | 7140, at 1x | 14-37 | 106 | 28 | 0 | 78 (74%) | 30.6 |
 | castle | 150-161 | 133 | 50 | 0 | 83 (62%) | 26.0 |
@@ -2217,17 +2217,18 @@ At 1x the same pages lost more:
 - the castle lost 102 of 133.
 
 The finer pages won 6 parts on 7140 and 19 on the castle. On the car they
-won none: 33 against 38.
+did not help: 33 and 31 against 38 and 38. The car's losses are rows and
+hidden parts, which a finer picture does not change.
 
 **Run to run.** The car was built twice at each size.
 
 - At 1x both runs put 38 of 61 right or near. They lost different parts:
   - page 2: 10 right against 14;
   - page 3: 12 right against 7.
-- At 2x: 33 against D2X_GOOD.
+- At 2x: 33 against 31. Page 5 got 3 against 0, and page 6 got 4 against 6.
 
 So a page's count moves by up to five parts between two builders. A model's
-count moves by D2X_SPREAD. Trust a difference between models, not between
+count moves by 0 to 2 parts of 61 at one size. Trust a difference between models, not between
 two pages of one run.
 
 **The pages.** For each page:
@@ -2304,7 +2305,8 @@ castle run p150-2x: 133 parts, right 50, near 0, colour 8, place 64 (0 carried),
 | 161 | 185,186 | 10 | 0 | 0 | 0 | 4 (0) | 0 | 6 | position, hidden |
 
 **The causes, ranked by the parts each lost.** This counts 218 lost parts
-over the four runs above (car, 7140 2-13, 7140 14-37, castle). Each wrong part
+over four runs: the first 2x car run, 7140 2-13, 7140 14-37 and the
+castle. Each wrong part
 is put to one cause:
 
 - carried, if it was;
@@ -2314,7 +2316,7 @@ is put to one cause:
 - otherwise what the builder said of its step.
 
 1. **Where exactly, among parts alike: 103 parts (47%).**
-   - Castle pages 157-161 lost 7-11 each.
+   - Castle pages 157-161 lost 7-12 each.
      - The stair to the gate is a solid ramp of 1x4 bricks in one grey.
      - From 156 on, each step adds a column of it one row deeper.
      - Drawn from the front-left, the rows of the ramp's depth lie one behind
@@ -2328,8 +2330,8 @@ is put to one cause:
      alike bricks in two courses on one picture. A LEGO® booklet would add a
      course a step, or draw the ramp from its open side.
 2. **Where a sub-assembly goes on: 36 (17%).**
-   - 7140 page 35: the ship's nose, 22 parts built right on its own pages,
-     went on 12 plates low and 9 studs back.
+   - 7140 page 35: the ship's nose went on 12 plates low and 9 studs back.
+     It has 22 parts, and 18 of them were built right on its own pages.
    - The page shows the nose in its yellow box and on the ship, with an arrow.
      It never shows where the nose meets the body, which is under the
      cockpit.
@@ -2359,8 +2361,9 @@ is put to one cause:
    - 8 on the castle: which of its two greys a 1x4 on the ramp is (pages
      154-160).
    - The car's trans-red 1x1 plates were read as trans-yellow (page 3).
-   - Two are the measure's: the car's windscreen is trans-light-blue (39).
-     edit_model made it 43, and the builder said so.
+   - Two are the app's: the car's windscreen is in a colour LEGO® never
+     made that part in (39). edit_model puts it in the nearest colour it was
+     made in (43), and says so.
 5. **Hidden: 12 (6%).**
    - 7140 page 25: slopes under a wedge.
    - Castle page 161: an arch under a plate.
