@@ -674,6 +674,22 @@ and Replace offering parts of a similar size.
   1 x 1 round, ...) has each fitting part in the top five.
 - Replace from "Like this" is 3 actions.
 
+**Built.**
+- Fits (appux371, 2026-10-30): `fits_probe`, twelve pairs each in the first
+  five.
+- Like this (likethis, 2026-11-05): a chip after Fits. `PartLike` reads each
+  part's footprint, height and kind from its name and the catalogue, for
+  every part (no table of chosen ones). It lists five of its footprint and
+  kind first, then the rest of its footprint by what sets use, nearby kinds
+  among them (a 2 x 4 brick's Plate 2 x 4 7th, Tile 2 x 4 8th), then its
+  kind in other sizes. The part's prints and moulds are folded under it.
+  A double-click swaps the selection for one (a tap on a phone): select,
+  the chip, the part, 3 actions, one undo. Over MCP it is
+  `search_parts like=3001`. `likethis_probe`: ten parts across kinds, each
+  one's first five its footprint and kind; the swap in 3 actions with undo;
+  the same with a finger on a phone and a tablet
+  (`likethis_phone_probe`, `likethis_tablet_probe`).
+
 ### B6. Patterns: copies along a line, round an axis, along a path (M)
 
 **Problem.** Fences, colonnades, round towers, wheel spokes and roof tiles

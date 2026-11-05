@@ -2130,6 +2130,27 @@ msgstr "Sélectionnez une pièce, ou prenez-en une en main, puis choisissez Comp
 msgid "What fits %s, the best fits first"
 msgstr "Ce qui va avec %s, le meilleur d'abord"
 
+msgid "Like this"
+msgstr "Similaires"
+
+msgid "Parts like the selected part, or the one in hand: its size and kind first, its prints among them; a double-click swaps the selection for one"
+msgstr "Des pièces comme celle sélectionnée, ou celle en main : sa taille et son type d'abord, ses impressions parmi elles ; un double-clic remplace la sélection par l'une d'elles"
+
+msgid "Select a part, or take one in hand, then choose Like this to see parts like it."
+msgstr "Sélectionnez une pièce, ou prenez-en une en main, puis choisissez Similaires pour voir des pièces comme elle."
+
+msgid "Reading the parts' sizes and kinds…"
+msgstr "Lecture des tailles et des types des pièces…"
+
+msgid "Parts like %s: its size and kind first; a tap swaps the selection"
+msgstr "Pièces comme %s : sa taille et son type d'abord ; un toucher remplace la sélection"
+
+msgid "Parts like %s: its size and kind first; a double-click swaps the selection"
+msgstr "Pièces comme %s : sa taille et son type d'abord ; un double-clic remplace la sélection"
+
+msgid "Five of its size and kind, then the rest of its size by use, nearby kinds among them, then its kind in other sizes; its prints folded under it"
+msgstr "Cinq de sa taille et de son type, puis le reste de sa taille selon l'usage, types proches compris, puis son type dans d'autres tailles ; ses impressions repliées dessous"
+
 msgid "%d worked constructions: choose one to hold it whole"
 msgstr "%d constructions éprouvées : choisissez-en une pour la prendre entière"
 
