@@ -740,7 +740,9 @@ static func write_ldr(
 
 ## The model as a tree of sub-models, one file section per definition:
 ## [param instances] is every assembly's path -> {"frame": Transform3D,
-## "def": its definition's name}, from Assemblies.file_frames. A
+## "def": its definition's name, and "first" where it is known: the id of
+## its first part, which orders the references of a section}, from
+## Assemblies.file_frames and ModelStore. A
 ## definition is written once, from its first copy, in that copy's frame;
 ## every copy, that one included, is a reference placed by its own frame —
 ## a mirrored copy by a matrix that reflects, as LDraw allows. Parts
@@ -801,6 +803,17 @@ static func write_tree(
 		if not children.has(section):
 			children[section] = []
 		(children[section] as Array).append(path)
+	# Each section's references in the order the model holds their parts
+	# (an instance's "first"): two put on in one step are built in the order
+	# they are read in (AuthorSteps.key_of). By name, 7140-1's ship went
+	# before its support vehicle once a sub-model was renamed, and every
+	# step of the vehicle came 30 later (unitsteps).
+	var last: int = 1 << 62
+	for section: String in children:
+		(children[section] as Array).sort_custom(func(a: String, b: String) -> bool:
+			var at_a: int = int((instances[a] as Dictionary).get("first", last))
+			var at_b: int = int((instances[b] as Dictionary).get("first", last))
+			return at_a < at_b if at_a != at_b else a.naturalnocasecmp_to(b) < 0)
 	var refs := func(parent: String, inverse: Transform3D) -> Array[String]:
 		var out: Array[String] = []
 		for child: String in children.get(parent, []):

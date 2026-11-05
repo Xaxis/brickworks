@@ -1404,6 +1404,24 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which saves
   as Save does (with the steps) and finds each copy the one it was, and also
   opens `vendor/omr`'s 31037 and finds its two propellers as two copies.
+  What the model keeps by a copy's path goes with it through every edit of
+  the tree, in the same undo step (`Builder.regroup`'s carry, unitsteps): the
+  step each copy is put on in or `IN_PARENT` (`BrickWorld.unit_steps`), a
+  section broken out, a motion's joint on a sub-assembly, and a renamed or
+  cut-loose sub-model's step looks (`BookletLooks.renamed`). A sub-assembly
+  made (`Ctrl-G`, Sections' Accept, `make_sections`) in a model with steps of
+  its own is built in its parent's steps, so no part changes step, and the
+  booklet makes no callout of a copy built so however well it holds together
+  (`Instructions._authored_from`); one built in steps of its own taken apart has them made its parent's in the order
+  they were built (`AuthorSteps.inlined`, its looks by `BookletLooks
+  .inlined`). Probe: `unit_steps_probe` (headless; `UNIT_STEPS_ONLY=castle`,
+  `copies` or `7140` for one) renames, ungroups, makes and cuts loose copies
+  of the castle (its steps made its own) and 7140-1 (as its author stepped
+  it) by the menu and over MCP: no part in another step by the plan and
+  `edit_steps`, the steps test as before, undo and redo exact, and the save
+  opened again with every part, colour and place in its step (a whole save
+  lists the copies one step puts on in the order the booklet builds them,
+  `LdrModel.write_tree` by each instance's `first`).
 - `model tree`: at the top of the right-hand column, over the properties
   (View, Model tree, or its header) lists the
   model and its sub-assemblies inside one another with their part counts. A

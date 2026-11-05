@@ -4122,9 +4122,15 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 		step_of[node.id] = step
 
 	# The sub-assemblies built on the side: whole, every part of one stepped.
+	# Not one the model builds in its parent's steps (AuthorSteps.IN_PARENT),
+	# however well it holds together: the castle's sections, made of its
+	# parts in its steps, were each a callout of step 1, and 2,452 of its
+	# 2,497 parts changed step (unitsteps).
 	var callouts: Array[Assembly] = []
 	var in_callout: Dictionary = {}
 	for made: Assembly in found:
+		if AuthorSteps.in_parent(world, _path_of_key(made.key), units):
+			continue
 		callouts.append(made)
 		for member: Node2 in made.members:
 			in_callout[member.id] = true

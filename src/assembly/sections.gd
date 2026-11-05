@@ -1426,7 +1426,8 @@ func accept(numbers: Array = []) -> PackedStringArray:
 	if changes.is_empty():
 		return PackedStringArray()
 	builder.regroup(changes, "made %d section%s of %s" % [made_paths.size(),
-		"" if made_paths.size() == 1 else "s", Builder._many(changes.size())])
+		"" if made_paths.size() == 1 else "s", Builder._many(changes.size())],
+		assemblies.wrapped(changes), assemblies.made_steps(made_paths))
 	assemblies.no_copies_follow()
 	var kept: Array[Suggestion] = []
 	for made: Suggestion in suggested:
