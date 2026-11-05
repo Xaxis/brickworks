@@ -1091,6 +1091,14 @@ try {
   const ownerIn = async (page) => ((await together(page)).people || []).find((one) => one.owner) || {};
   const ownerWho = (await ownerIn(guest.page)).who;
   await timePointer("on the rich car (3b to 5e)");
+  // How long to wait for what the owner does to show in the second browser,
+  // on the rich car: a wait, not a bar (the pointer's line is that).
+  // It rides the pointer's trip, whose p95 was 9.6 s there in run 4 of
+  // 2026-11-01, the pages' frames held 1 s and more; in run 3 a selection
+  // was still not there at 15 s, and was by the picture after. Following
+  // the owner's turn took 6.1 s alone and missed a 10 s wait beside the
+  // release's other checks (rel-m259).
+  const PRESENCE_S = 60;
   // Follow, on the owner's name in the second person's panel.
   const sameView = (a, b) => Boolean(a && b) && near(a.yaw, b.yaw, 0.01) && near(a.pitch, b.pitch, 0.01)
     && near(a.distance, b.distance, 0.01 * b.distance);
@@ -1102,7 +1110,7 @@ try {
   await shot(guest.page, "5f_panel_follow.png");
   await press(guest.page, "together_close").catch(() => {});
   const onTheirs = await until(async () => sameView((await state(guest.page)).view, (await state(owner.page)).view),
-    "the second view on the owner's", 10).catch(() => false);
+    "the second view on the owner's", PRESENCE_S).catch(() => false);
   check("Follow pressed: the second person's view is the owner's", following && onTheirs);
   const turnOwner = async (by) => {
     const at = (await controls(owner.page)).view;
@@ -1115,7 +1123,7 @@ try {
   await turnOwner(20);
   const turnedAt = Date.now();
   const caught = await until(async () => sameView((await state(guest.page)).view, (await state(owner.page)).view)
-    && !sameView((await state(guest.page)).view, viewBefore) ? Date.now() : null, "the second view going with the owner's", 10)
+    && !sameView((await state(guest.page)).view, viewBefore) ? Date.now() : null, "the second view going with the owner's", PRESENCE_S)
     .catch(() => null);
   check(`the owner turns the view: the second goes with it, ${caught ? caught - turnedAt : "-"} ms after the turn ends`,
     Boolean(caught));
@@ -1123,12 +1131,6 @@ try {
     .catch(() => null);
   check("...framed in the owner's colour, with their name and Stop", Boolean(stopAt));
   await shot(guest.page, "5f_following.png");
-  // How long to wait for what the owner does to show in the second browser,
-  // on the rich car: a wait, not a bar (the pointer's line above is that).
-  // It rides the pointer's trip, whose p95 was 9.6 s there in run 4 of
-  // 2026-11-01, the pages' frames held 1 s and more; in run 3 a selection
-  // was still not there at 15 s, and was by the picture after.
-  const PRESENCE_S = 60;
   // The owner selects a part, as a click does, and frames it (F); the second
   // view goes with it, so the part is where the owner clicked, large. Its
   // outline in the owner's colour read off the second page's pixels, with
@@ -1137,7 +1139,7 @@ try {
     return ((await askApp(owner.page, "Layout", { seconds: 30 })) || {}).targets || [];
   };
   const followed = async () => until(async () => sameView((await state(guest.page)).view, (await state(owner.page)).view),
-    "the second view on the owner's", 15).catch(() => false);
+    "the second view on the owner's", PRESENCE_S).catch(() => false);
   const colour = ((await together(guest.page)).colours || {})[ownerWho] || "#e8590c";
   let spot = (await partsInSight())[0];
   if (spot) {
