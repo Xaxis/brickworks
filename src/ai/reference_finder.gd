@@ -78,6 +78,27 @@ func look_for(subject: String) -> void:
 		missed.emit("could not reach Wikimedia Commons")
 
 
+## Whether a picture is of something built of LEGO bricks rather than the
+## real thing: its title, or what Commons files it under and says of it.
+## "A Wizard Is Never Late Lego diorama" came back for a held set's own
+## name, Gandalf Arrives, and named neither the set nor its number: only
+## its category, "Lego models of Middle-earth", said what it was. Whole
+## words, or Legolas is a LEGO model.
+static func of_lego(title: String, about: String) -> bool:
+	var said: String = "%s %s" % [title, about]
+	return RegEx.create_from_string("(?i)\\b(lego|duplo|brickheadz)\\b|\\bminifig").search(said) != null
+
+
+## What Commons says of a picture besides its title: its categories, its
+## name and its description, as plain words.
+static func _about(info: Dictionary) -> String:
+	var extra: Dictionary = info.get("extmetadata", {}) as Dictionary
+	var said := PackedStringArray()
+	for field: String in ["Categories", "ObjectName", "ImageDescription"]:
+		said.append(str((extra.get(field, {}) as Dictionary).get("value", "")))
+	return RegEx.create_from_string("<[^>]+>").sub(" ".join(said), " ", true)
+
+
 ## Whether [param title] is a picture of a LEGO set under test
 ## (DesignMemory.holds): LEGO, and the set's number or its name. A
 ## photograph of the real thing it is a model of stays.
@@ -135,10 +156,17 @@ func _on_searched(_result: int, code: int, _headers: PackedStringArray,
 		# Nor a photograph of the real set a design run is judged against.
 		if _of_a_held_set(title):
 			continue
+		# And while one is held out, nothing built of bricks at all: a
+		# builder's own model of the subject is a set's answer as much as
+		# the set is, and its title need name neither.
+		var lego: bool = of_lego(title, _about(first))
+		if lego and not DesignMemory.held_out().is_empty():
+			continue
 		_pending.append({
 			"url": url,
 			"title": title,
 			"credit": _credit(first),
+			"lego": lego,
 		})
 		if _pending.size() >= MOST:
 			break
@@ -229,6 +257,7 @@ func _on_fetched(_result: int, code: int, _headers: PackedStringArray,
 				"bytes": image.save_png_to_buffer(),
 				"title": about["title"],
 				"credit": about["credit"],
+				"lego": bool(about.get("lego", false)),
 				"colours": colours_in(image, swatches),
 			})
 	_fetch_next()
