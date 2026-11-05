@@ -1527,20 +1527,7 @@ picture the assistant is shown.
   edge), found from the lightness, within one brick. Black and the darkest
   greys are lifted towards charcoal, as print draws black so its faces can be
   told apart; coloured plastic is left alone (lifted too, a red's shaded side
-  came out neon), and black stays well clear of dark bluish grey. A black
-  part (and dark brown, dark green, trans-black: `BookletStudio.lined_light`,
-  plastic LDraw edges in a clearly lighter colour) has its edges drawn as
-  light lines, as a LEGO® booklet draws black: a fourth pass draws the same
-  bricks as which way each pixel faces and how far it is (`booklet_codes`'
-  `normals`, the picture lane's `normals` viewport, sharing the codes'
-  world on a layer of its own), and the ink draws a light line where the
-  facing turns (LDraw's edge lines, which the parts' normals are creased
-  along) or the distance jumps (a stud's back rim) inside one black brick.
-  The flag rides in the code's alpha (`code_colour`'s `light`), and two
-  black bricks side by side are parted by a grey line. Check: a booklet of
-  black and 72 parts side by side (blackedges, 2026-11-05) shows each black
-  part's studs and edges in grey and 72 with its dark ink, under Forward+
-  and Compatibility. Measured
+  came out neon), and black stays well clear of dark bluish grey. Measured
   2026-10-11 on the GPU: house 71 pieces, 14 pages, 7 s and 1.6 MB; castle
   2,438 pieces, 364 pages, 2 min and 72 MB; Orthanc 8,603 pieces, 1,298 pages,
   6 min, 137 MB and a 105 MB PDF (LEGO's own PDFs run about 0.5 MB a page). In

@@ -10,10 +10,8 @@
 ##
 ##   colour  the model as it looks, in its own lights, on nothing
 ##   codes   every brick a flat colour that is its number (booklet_codes)
-##   normals the codes' bricks again, each pixel the way its surface faces
-##   ink     the three together: a line wherever the number changes, and
-##           on a black part a light one wherever its surface turns a
-##           corner (booklet_ink), which is the picture that goes on the page
+##   ink     the two together: a line wherever the number changes
+##           (booklet_ink), which is the picture that goes on the page
 ##
 ## Bricks are put on a stage in the order the booklet builds them, so the
 ## picture after any step is the first so many bricks (BrickWorld.show_first)
@@ -197,20 +195,6 @@ func _picture_lane() -> PictureLane:
 	lane.codes_token = _token_rect()
 	lane.codes.add_child(lane.codes_token)
 	lane.code_material = _code_material.duplicate()
-	# The codes' world drawn again by a camera of its own, which sees only
-	# the copies of the bricks drawn as their normals (_picture_twin): the
-	# same MultiMeshes, so nothing is copied twice.
-	lane.codes_camera.cull_mask = CODES_LAYER
-	lane.normals = _viewport(false)
-	lane.normals.world_3d = lane.codes.world_3d
-	add_child(lane.normals)
-	lane.normals_camera = _camera()
-	lane.normals_camera.cull_mask = NORMALS_LAYER
-	lane.normals.add_child(lane.normals_camera)
-	lane.normals_token = _token_rect()
-	lane.normals.add_child(lane.normals_token)
-	lane.normal_material = _code_material.duplicate()
-	lane.normal_material.set_shader_parameter("normals", true)
 
 	lane.ink = SubViewport.new()
 	lane.ink.transparent_bg = true
@@ -222,7 +206,6 @@ func _picture_lane() -> PictureLane:
 	lane.ink_material.shader = preload("res://src/render/booklet_ink.gdshader")
 	lane.ink_material.set_shader_parameter("colour_tex", lane.colour.get_texture())
 	lane.ink_material.set_shader_parameter("code_tex", lane.codes.get_texture())
-	lane.ink_material.set_shader_parameter("normal_tex", lane.normals.get_texture())
 	lane.ink_rect.material = lane.ink_material
 	lane.ink.add_child(lane.ink_rect)
 	return lane
@@ -268,14 +251,11 @@ func stage(bricks: Array) -> Stage:
 	made.colour.library = library
 	made.codes = BrickWorld.new()
 	made.codes.library = library
-	var light_lined: Dictionary = {}
 	for entry: Array in bricks:
 		var id: int = made.colour.add_brick(str(entry[1]), int(entry[2]), entry[3])
 		if id == 0:
 			continue
-		var number: int = made.codes.add_brick(str(entry[1]), int(entry[2]), entry[3])
-		if lined_light(library.color(int(entry[2]))):
-			light_lined[number] = true
+		made.codes.add_brick(str(entry[1]), int(entry[2]), entry[3])
 		made.count += 1
 		made.number[int(entry[0])] = made.count
 		var part: Lbm.PartMesh = library.mesh_for(str(entry[1]))
@@ -283,7 +263,7 @@ func stage(bricks: Array) -> Stage:
 	_held.add_child(made.colour)
 	_held.add_child(made.codes)
 	made.codes.draw_as(_code_material, func(number: int) -> Color:
-		return code_colour(number, light_lined.has(number)))
+		return code_colour(number))
 	made.colour.visible = false
 	made.codes.visible = false
 	_stages.append(made)
@@ -308,28 +288,15 @@ func forget(made: Stage) -> void:
 			lane.twins.erase(made)
 
 
-## The colour that is brick [param number]'s code: see booklet_codes. With
-## [param light], the brick's edges are drawn light (booklet_ink), which
-## takes alpha's top level: a stage of 262,144 bricks is past any booklet.
-static func code_colour(number: int, light: bool = false) -> Color:
+## The colour that is brick [param number]'s code: see booklet_codes.
+static func code_colour(number: int) -> Color:
 	var low: int = number % 16384
-	var high: int = mini(number / 16384, 15 if light else 31)
+	var high: int = mini(number / 16384, 31)
 	return Color(
 		(float(low % 32) * 8.0 + 4.0) / 255.0,
 		(float((low / 32) % 32) * 8.0 + 4.0) / 255.0,
 		(float((low / 1024) * 2) * 8.0 + 4.0) / 255.0,
-		(float(high + (16 if light else 0)) * 8.0 + 4.0) / 255.0)
-
-
-## Whether a part in [param colour] has its edges drawn light: plastic about
-## as dark as black that LDraw itself edges in a clearly lighter colour
-## (LDConfig's EDGE). Black, dark brown, dark green, trans-black and their
-## rubber and canvas; not dark bluish grey, whose edges are darker than it,
-## not dark red or dark blue, edged in a grey hardly lighter, and not
-## reddish brown, which is no darker than a red in shade.
-static func lined_light(colour: PartLibrary.BrickColor) -> bool:
-	var body: float = colour.rgb.get_luminance()
-	return body < 0.21 and colour.edge.get_luminance() > body + 0.15
+		(float(high) * 8.0 + 4.0) / 255.0)
 
 
 ## Each kind of plastic [param world] is drawn in, drawn once here as the
@@ -432,13 +399,15 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 	ink.set_shader_parameter("fade", fade * times)
 	ink.set_shader_parameter("crease", crease)
 
-	for viewport: SubViewport in [lane.colour, lane.codes, lane.normals, lane.ink]:
-		viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	var drawn: Image = await _drawn(lane.ink, [Vector2i(1, 1), Vector2i(4, 1), Vector2i(7, 1)],
-		[lane.codes_token.color, lane.colour_token.color, lane.normals_token.color])
+	lane.colour.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	lane.codes.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	lane.ink.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	var drawn: Image = await _drawn(lane.ink, [Vector2i(1, 1), Vector2i(4, 1)],
+		[lane.codes_token.color, lane.colour_token.color])
 	var codes: Image = lane.codes.get_texture().get_image() if drawn != null else null
-	for viewport: SubViewport in [lane.colour, lane.codes, lane.normals, lane.ink]:
-		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	lane.colour.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	lane.codes.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	lane.ink.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	lane.busy = false
 	if drawn == null:
 		return shot
@@ -452,30 +421,20 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 const PICTURE_LANES := 4
 
 
-## Which of a picture lane's copies of the bricks its codes camera sees,
-## and which its normals camera: two layers of one world.
-const CODES_LAYER := 1
-const NORMALS_LAYER := 2
-
-
-## Four viewports of [method shoot]'s own, as the booklet had one of each:
-## the colour, the codes, the normals and the ink drawn from the three, with
-## a copy of each stage it has drawn on.
+## Three viewports of [method shoot]'s own, as the booklet had one of each:
+## the colour, the codes and the ink drawn from the two, with a copy of
+## each stage it has drawn on.
 class PictureLane extends RefCounted:
 	var colour: SubViewport
 	var codes: SubViewport
-	var normals: SubViewport
 	var ink: SubViewport
 	var colour_camera: Camera3D
 	var codes_camera: Camera3D
-	var normals_camera: Camera3D
 	var colour_token: ColorRect
 	var codes_token: ColorRect
-	var normals_token: ColorRect
 	var ink_rect: ColorRect
 	var ink_material: ShaderMaterial
 	var code_material: ShaderMaterial
-	var normal_material: ShaderMaterial
 	## Counted on by one each picture: see [method BookletStudio._next_token].
 	var token: int = 0
 	var busy: bool = false
@@ -721,8 +680,7 @@ static func _count_marked(mask: Image) -> int:
 
 
 ## [param made] copied into [param lane]: its colour, drawn as its own world
-## draws it, and its codes in the lane's codes material, each copy drawn
-## again in its normals material for the normals camera alone.
+## draws it, and its codes in the lane's codes material.
 func _picture_twin(lane: PictureLane, made: Stage) -> Twin:
 	var twin := Twin.new()
 	twin.in_codes = Node3D.new()
@@ -737,14 +695,6 @@ func _picture_twin(lane: PictureLane, made: Stage) -> Twin:
 			instance.material_override = pair[2] if pair[2] != null else drawn[3]
 			instance.custom_aabb = drawn[2]
 			(pair[1] as Node3D).add_child(instance)
-			if pair[2] != null:
-				instance.layers = CODES_LAYER
-				var facing := MultiMeshInstance3D.new()
-				facing.multimesh = copy
-				facing.material_override = lane.normal_material
-				facing.custom_aabb = drawn[2]
-				facing.layers = NORMALS_LAYER
-				(pair[1] as Node3D).add_child(facing)
 			twin.multimeshes.append(copy)
 			twin.ids.append(drawn[1])
 			twin.buffers.append(slots)
@@ -852,13 +802,11 @@ func _aim(lane: PictureLane, made: Stage, upto: int, new_from: int, view: View,
 	lane.code_material.set_shader_parameter("new_from", float(new_from))
 	lane.colour.size = big
 	lane.codes.size = big
-	lane.normals.size = big
-	for camera: Camera3D in [lane.colour_camera, lane.codes_camera, lane.normals_camera]:
+	for camera: Camera3D in [lane.colour_camera, lane.codes_camera]:
 		_point(camera, made, view, big, times)
 	var token: Color = _next_token(lane)
 	lane.colour_token.color = token
 	lane.codes_token.color = token
-	lane.normals_token.color = token
 
 
 ## Point [param camera] at [param made] from [param view], for a picture
@@ -919,8 +867,8 @@ func _drawn(viewport: SubViewport, spots: Array, tokens: Array) -> Image:
 			if absf(got.r - want.r) > 0.03 or absf(got.g - want.g) > 0.03:
 				fresh = false
 		if fresh:
-			# Every token is read from this picture, so the passes it was
-			# drawn from had all drawn what was asked for.
+			# Both tokens are read from this picture, so the two passes it
+			# was drawn from had both drawn what was asked for.
 			return image
 	push_warning("booklet: a picture was not drawn within %d s" % int(GIVE_UP))
 	return null
