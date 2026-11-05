@@ -16,6 +16,14 @@
 ## ones were plates hung under an overhang, which led to support being
 ## walked out from the ground; 110 pass now. The overlaps left are clips
 ## on bars and hollow studs, which the parts pipeline gives no connector.
+##
+## 2026-11-05, over the whole repository (1,056 sub-models, each stood on
+## its lowest cell): 917 passed. A pane or a drawer in a frame its cover
+## fills, and a part held by a joint BrickNet has no label for, were most of
+## the rest; with the frame's air (ExactCheck.drop_in_air) and those joints
+## in the exact graph, 939, none newly refused. Each verdict's "met" says
+## which parts' overlaps and collisions refused it (docs/ROADMAP.md, "Round
+## joints again").
 extends SceneTree
 
 

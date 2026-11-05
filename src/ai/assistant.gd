@@ -14207,8 +14207,8 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 	# say so, between parts with shapes too: a bar in a hollow stud or a clip, a
 	# hinge's pin in its eye, a pin lined up in its hole, a sticker on its face
 	# ([param jointed]: Joints.rounds, both_ways, held_otherwise). The lattice
-	# held each and this said it came away: 6370's lamp has a round brick on
-	# its antenna's tip, 10261's pillars a drum on a round brick's axle hole.
+	# held each and this said it came away: 10261's pillars each have a drum
+	# on the axle up their middle, which BrickNet's labels do not join.
 	# Not what is only pushed in or worn round a post (Joints.pushed_in): a
 	# beard on a neck falls once its head is off, as ExactCheck.clamped says.
 	# A run kept to BrickBench's parts (PartsOnly) keeps its verify.py's graph,
