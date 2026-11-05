@@ -229,10 +229,12 @@ geometry in front of them.
   shape word: "slope 45", "round", "beam") once, time-sliced in
   `PartsBin._process` from the first selection (4 ms a frame, 25 ms while
   the chip waits; "Reading the parts' sizes and kinds…"). Tiers: itself;
-  its footprint, kind and height; its footprint and kind; its footprint in
-  a nearby kind (brick, plate and tile beside each other); its kind in
-  other sizes, the nearest first; its footprint among parts with studs.
-  Within each, the most used (`commonness`). Prints and assemblies take
+  its footprint, kind and height, then its footprint and kind, five of
+  these at most (`PartLike.CLOSEST`, a row of the bin); the rest of its
+  footprint by use alone, nearby kinds among them (brick, plate and tile
+  beside each other: 3001's Plate 2 x 4 is 7th, not 36th behind rare
+  moulds); its kind in other sizes, the nearest first; its footprint among
+  parts with studs. Within each, the most used (`commonness`). Prints and assemblies take
   their plain part's kind and fold under it; a print chosen opens its
   fold. Typed words narrow it. A double-click on a tile swaps the
   selection for it (`EditVerbs.replace`, one undo, pose, colour, step and
@@ -242,7 +244,7 @@ geometry in front of them.
   selection's answer says so. `likethis_probe`: the chip after Fits, its
   siblings' size; ten parts (3001, 3023b, 3068b, 3039, 6141, 32523,
   973pc8, 3069bpc1, 55981, 60592) each with its first five its footprint
-  and kind; one of three red 2 x 4 bricks swapped for a 2 x 4 plate in 3
+  and kind, and 3001's first 12 printed with Plate 2 x 4 among them; one of three red 2 x 4 bricks swapped for a 2 x 4 plate in 3
   actions, in place, kept in its step and sub-model, one undo; all three
   in one action and one undo. `likethis_phone_probe` (390 x 844) and
   `likethis_tablet_probe` (1024 x 768) do it with taps, the chip a
@@ -555,7 +557,7 @@ tools/probe.sh search_rank_probe -- quality   # + 26 words builders type (snot, 
 tools/probe.sh bin_names_probe                # every tile in sight named in words and fitted, no two alike, its part drawn while it waits; shots/bin_names/
 PROBE_SIZE=1400x900 tools/probe.sh bin_names_probe
 tools/probe.sh fits_probe                     # Fits: twelve pairs each in the first five; the part in hand; typed words narrow it
-tools/probe.sh likethis_probe                 # Like this: ten parts each with its footprint and kind in the first five; a swap in 3 actions, one undo; shots/likethis/
+tools/probe.sh likethis_probe                 # Like this: ten parts each with its footprint and kind in the first five; 3001's Plate 2 x 4 in its first 12; a swap in 3 actions, one undo; shots/likethis/
 tools/probe.sh likethis_phone_probe           # the same with taps on a phone, the chip a fingertip
 tools/probe.sh likethis_tablet_probe          # and on a tablet
 tools/probe.sh bin2_probe                     # only parts made in Sand Green; Prints off; List rows; a double-click replaces three bricks, and puts two pins in a beam from Fits; "1x4 brick" bricks first; 8841-1's Balance booklet, each step's parts first; the toggles kept over a restart; shots/bin2/

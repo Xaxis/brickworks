@@ -9,11 +9,15 @@
 ## any geometry is fetched:
 ## - the part itself, or the plain part a print is of, its prints and moulds
 ##   with it (the bin folds a print under its part);
-## - the parts of its footprint and kind: a 2 x 4 brick's 2 x 4 bricks, a round
-##   plate's round plates, a 45's 45s, a beam's beams; of its box first, then
-##   of another height;
-## - the same footprint in nearby kinds: a round tile and a round brick for a
-##   round plate, a plate and a tile for a brick, another window for a window;
+## - five of its footprint and kind, a row of the bin with the part: a 2 x 4
+##   brick's 2 x 4 bricks, a round plate's round plates, a 45's 45s, a beam's
+##   beams; of its box first, then of another height;
+## - then the rest of its footprint by use alone, its kind and nearby kinds
+##   as one: a 2 x 4 brick's Plate 2 x 4 and Tile 2 x 4 before its rare
+##   moulds, a round tile and a round brick for a round plate. Brick, plate
+##   and tile of one footprint are the swaps made most, and with its kind
+##   whole first Plate 2 x 4 came 36th, after 7049a's axle bushes of 1968
+##   and a 2 x 4 x 4 propeller housing;
 ## - its kind in the nearest other sizes, so a part with nothing of its size
 ##   still has an answer: a beam's other beams;
 ## - and last any part that sits on studs of its footprint.
@@ -33,12 +37,13 @@ class_name PartLike
 extends RefCounted
 
 ## How alike a part is, best first: the part itself; its kind, footprint and
-## box; its kind and footprint; its footprint in a nearby kind; its kind in
-## another size; its footprint, a part that sits on studs as it does.
+## box; its kind and footprint (these two CLOSEST at most); the rest of its
+## footprint, its kind or a nearby kind, by use; its kind in another size;
+## its footprint, a part that sits on studs as it does.
 const ITSELF := 6
 const SAME_BOX := 5
 const SAME_FOOT := 4
-const NEARBY := 3
+const MORE_FOOT := 3
 const OTHER_SIZE := 2
 const ON_STUDS := 1
 
@@ -59,6 +64,9 @@ const DECOR: Array[String] = ["pattern", "patt", "sticker", "stickers"]
 const FAMILY: Array[String] = ["brick", "plate", "tile"]
 ## How far apart two heights may be, in LDU, and be one box.
 const SAME_HEIGHT := 2.0
+## How many of its footprint and kind come first, its box's first: a row of
+## the bin with the part itself. The rest of its footprint is ranked by use.
+const CLOSEST := 5
 
 ## What a part is, read from the catalogue once.
 class Kind extends RefCounted:
@@ -138,15 +146,11 @@ func ranked(id: String, most: int = 300) -> Array:
 			how = SAME_BOX
 		elif kind and foot:
 			how = SAME_FOOT
-		elif foot and _shares_head(mine, theirs):
-			# A round tile for a round plate, a plate for a brick, before
-			# another of its category.
-			how = NEARBY
-			near = 2.0
-		elif foot and theirs.category == mine.category \
-				and (mine.head.is_empty() or theirs.head.is_empty()):
-			how = NEARBY
-			near = 1.0
+		elif foot and (_shares_head(mine, theirs) or (theirs.category == mine.category
+				and (mine.head.is_empty() or theirs.head.is_empty()))):
+			# A nearby kind: a round tile for a round plate, a plate for a
+			# brick.
+			how = MORE_FOOT
 		elif kind:
 			how = OTHER_SIZE
 			near = -(absf(theirs.foot.x - mine.foot.x) + absf(theirs.foot.y - mine.foot.y))
@@ -154,16 +158,30 @@ func ranked(id: String, most: int = 300) -> Array:
 			how = ON_STUDS
 		else:
 			continue
-		# Within a tier, its own shape, then the most used: a box alike
-		# put Plate 2 x 4 with Towball Socket, a brick's height, before
-		# Plate 2 x 4 among a 2 x 4 brick's nearby kinds.
-		rows.append([how, near, 1 if theirs.shape == mine.shape else 0,
-			them.commonness(), other, them])
-	rows.sort_custom(func(a: Array, b: Array) -> bool:
+		# Within a tier, its own shape, then the most used; the rest of its
+		# footprint by use alone.
+		var exact: int = 1 if theirs.shape == mine.shape and how != MORE_FOOT else 0
+		rows.append([how, near, exact, them.commonness(), other, them])
+	var before := func(a: Array, b: Array) -> bool:
 		for n: int in 4:
 			if a[n] != b[n]:
 				return a[n] > b[n]
-		return str(a[4]).naturalnocasecmp_to(str(b[4])) < 0)
+		return str(a[4]).naturalnocasecmp_to(str(b[4])) < 0
+	rows.sort_custom(before)
+	# CLOSEST tiles of its kind first; past them, its footprint by use. A
+	# print is folded under its part in the bin, so it is not one of them.
+	var kept: int = 0
+	for row: Array in rows:
+		if row[0] != SAME_BOX and row[0] != SAME_FOOT:
+			continue
+		var them: PartLibrary.PartInfo = row[5]
+		if them.folds_under() != null and them.whole_of.is_empty():
+			continue
+		kept += 1
+		if kept > CLOSEST:
+			row[0] = MORE_FOOT
+			row[2] = 0
+	rows.sort_custom(before)
 	# A print after its plain part, before the other prints of it.
 	var out: Array = [[ITSELF, base]] if base == info else [[ITSELF, base], [ITSELF, info]]
 	for row: Array in rows:

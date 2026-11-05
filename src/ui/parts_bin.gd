@@ -2494,8 +2494,8 @@ func _update_status() -> void:
 		_status.text = ("Parts like %s: its size and kind first; a tap swaps the selection"
 			if by_finger else "Parts like %s: its size and kind first; a double-click swaps the selection") \
 			% (tile_name(like) if like != null else _like_of)
-		_status.tooltip_text = ("Its size and kind, then its size in nearby kinds, then its kind in "
-			+ "other sizes, the most used first; its prints folded under it")
+		_status.tooltip_text = ("Five of its size and kind, then the rest of its size by use, nearby kinds "
+			+ "among them, then its kind in other sizes; its prints folded under it")
 		return
 	if _category == FITS and total > 0:
 		var about: PartLibrary.PartInfo = library.parts.get(_fits_of[0])

@@ -10,7 +10,7 @@
       "additionalProperties": false,
       "properties": {
         "like": {
-          "description": "a part number (\"3001\"): the parts like it, as the bin's Like this lists them: its footprint and kind first (its prints among them), then its footprint in nearby kinds, then its kind in other sizes, the most used first",
+          "description": "a part number (\"3001\"): the parts like it, as the bin's Like this lists them: five of its footprint and kind first (its prints among them), then the rest of its footprint by use, nearby kinds among them (a 2 x 4 brick's plate and tile), then its kind in other sizes",
           "type": "string"
         },
         "limit": {

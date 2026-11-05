@@ -2148,8 +2148,8 @@ msgstr "Teile wie %s: zuerst seine Größe und Art; ein Tippen tauscht die Auswa
 msgid "Parts like %s: its size and kind first; a double-click swaps the selection"
 msgstr "Teile wie %s: zuerst seine Größe und Art; ein Doppelklick tauscht die Auswahl"
 
-msgid "Its size and kind, then its size in nearby kinds, then its kind in other sizes, the most used first; its prints folded under it"
-msgstr "Seine Größe und Art, dann seine Größe in verwandten Arten, dann seine Art in anderen Größen, die meistgenutzten zuerst; seine Drucke darunter gefaltet"
+msgid "Five of its size and kind, then the rest of its size by use, nearby kinds among them, then its kind in other sizes; its prints folded under it"
+msgstr "Fünf seiner Größe und Art, dann der Rest seiner Größe nach Nutzung, verwandte Arten darunter, dann seine Art in anderen Größen; seine Drucke darunter gefaltet"
 
 msgid "%d worked constructions: choose one to hold it whole"
 msgstr "%d ausgearbeitete Konstruktionen: eine wählen, um sie ganz in die Hand zu nehmen"

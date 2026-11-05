@@ -6188,7 +6188,7 @@ const LIKE_GROUPS: Dictionary = {
 	PartLike.ITSELF: "Itself:",
 	PartLike.SAME_BOX: "Its footprint and kind, its height:",
 	PartLike.SAME_FOOT: "Its footprint and kind, another height:",
-	PartLike.NEARBY: "Its footprint, a nearby kind:",
+	PartLike.MORE_FOOT: "More of its footprint, nearby kinds among them, the most used first:",
 	PartLike.OTHER_SIZE: "Its kind, the nearest other sizes:",
 	PartLike.ON_STUDS: "Its footprint, other parts on studs:",
 }
@@ -23465,9 +23465,9 @@ func _tools() -> Array:
 					"limit": {"type": "integer"},
 					"like": {"type": "string", "description":
 						"a part number (\"3001\"): the parts like it, as the bin's Like this "
-						+ "lists them: its footprint and kind first (its prints among them), "
-						+ "then its footprint in nearby kinds, then its kind in other sizes, "
-						+ "the most used first"},
+						+ "lists them: five of its footprint and kind first (its prints among them), "
+						+ "then the rest of its footprint by use, nearby kinds among them (a 2 x 4 "
+						+ "brick's plate and tile), then its kind in other sizes"},
 				},
 				"required": ["query"],
 				"additionalProperties": false,

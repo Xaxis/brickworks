@@ -511,9 +511,10 @@ and Replace offering parts of a similar size.
   five.
 - Like this (likethis, 2026-11-05): a chip after Fits. `PartLike` reads each
   part's footprint, height and kind from its name and the catalogue, for
-  every part (no table of chosen ones). It lists its footprint and kind
-  first, then its footprint in nearby kinds, then its kind in other sizes,
-  each by what sets use. The part's prints and moulds are folded under it.
+  every part (no table of chosen ones). It lists five of its footprint and
+  kind first, then the rest of its footprint by what sets use, nearby kinds
+  among them (a 2 x 4 brick's Plate 2 x 4 7th, Tile 2 x 4 8th), then its
+  kind in other sizes. The part's prints and moulds are folded under it.
   A double-click swaps the selection for one (a tap on a phone): select,
   the chip, the part, 3 actions, one undo. Over MCP it is
   `search_parts like=3001`. `likethis_probe`: ten parts across kinds, each

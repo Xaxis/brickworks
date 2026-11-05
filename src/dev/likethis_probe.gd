@@ -17,7 +17,8 @@
 ##   45 degree slope, a 1 x 1 round plate, a Technic beam, a printed minifig
 ##   torso, a printed tile, a wheel and a window. The first five tiles under
 ##   Like this are each of its footprint and kind, as a builder names them
-##   (the names are printed), a printed part's own plain part first;
+##   (the names are printed), a printed part's own plain part first; and the
+##   2 x 4 brick's Plate 2 x 4 within its first 12 tiles;
 ## * three actions: a click selects a 2 x 4 brick of a sub-model's step 2 in
 ##   the model, a click chooses Like this, a double-click on the 2 x 4 plate's
 ##   tile swaps it where it stood, in its colour, step and sub-model; one step
@@ -198,6 +199,15 @@ func _ten() -> void:
 			var status: Label = _bin.get("_status")
 			_check("...the bin's foot names what they are like: \"%s\"" % status.text,
 				status.text.replace("×", " x ").contains("Brick 2 x 4"))
+			# The swaps made most are brick, plate and tile of one footprint:
+			# the plate in the first two rows, not after the rare moulds.
+			var twelve: PackedStringArray = _bin.first_found(12)
+			var rows := PackedStringArray()
+			for at: int in twelve.size():
+				rows.append("%2d %s %s" % [at + 1, twelve[at], _named(twelve[at])])
+			print("        its first 12 tiles:\n          %s" % "\n          ".join(rows))
+			_check("...Plate 2 x 4 (%s) within its first 12 tiles (%d)" % [PLATE, twelve.find(PLATE) + 1],
+				twelve.has(PLATE))
 			await _shot("brick_2x4")
 	_failures += TEN.size() - within
 	print("  %d of %d with their first five of their footprint and kind" % [within, TEN.size()])

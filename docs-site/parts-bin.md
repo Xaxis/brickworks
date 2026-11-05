@@ -48,7 +48,7 @@ Select a part in the model, or take one in hand, and choose **Fits** beside Tech
 
 ## Like this {#like-this}
 
-Select a part, or take one in hand, and choose **Like this** beside Fits: the bin lists the parts of its size and kind first, the ones real sets use most first. A 2 × 4 brick lists the 2 × 4 bricks, a 1 × 2 plate the 1 × 2 plates, a 45° slope the 45° slopes of its size; then parts of its size in nearby kinds (a 2 × 4 plate and tile beside the brick), then its kind in other sizes. Its prints and other moulds are among them, folded under the plain part. Double-click one, or tap it on a phone, and every selected part is swapped for it where it stands: each keeps its place, its turn, its colour, its step and its sub-model. [[Ctrl+Z]] brings them all back. An assistant gets the same list from search_parts with `like=` and a part number.
+Select a part, or take one in hand, and choose **Like this** beside Fits: the bin lists five parts of its size and kind first, the ones real sets use most: a 2 × 4 brick's 2 × 4 bricks, a 1 × 2 plate's 1 × 2 plates, a 45° slope's 45° slopes of its size. Then the rest of its size by how much sets use them, nearby kinds among them, so a 2 × 4 brick's Plate 2 × 4 and Tile 2 × 4 come right after; then its kind in other sizes. Its prints and other moulds are among them, folded under the plain part. Double-click one, or tap it on a phone, and every selected part is swapped for it where it stands: each keeps its place, its turn, its colour, its step and its sub-model. [[Ctrl+Z]] brings them all back. An assistant gets the same list from search_parts with `like=` and a part number.
 
 ## Colours {#colours}
 
