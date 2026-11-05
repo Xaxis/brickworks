@@ -574,7 +574,7 @@ func _build_categories() -> void:
 	# The parts reached for lately and the ones kept, beside All: the bin
 	# is searched once per part and then wanted again and again. And the
 	# assistant's worked constructions, each with why it works.
-	_categories = ["All", RECENT, FAVOURITES, TECHNIQUES, FITS]
+	_categories = ["All", RECENT, FAVOURITES, TECHNIQUES, FITS, LIKE]
 	for category: String in LEADING:
 		if counts.has(category):
 			_categories.append(category)
@@ -605,6 +605,10 @@ func _build_categories() -> void:
 			button.text = FITS
 			button.tooltip_text = ("The parts that fit the selected part, or the one in hand: "
 				+ "a pin in its hole, a bar in its clip, a part on its studs")
+		if category == LIKE:
+			button.text = LIKE
+			button.tooltip_text = ("Parts like the selected part, or the one in hand: its size "
+				+ "and kind first, its prints among them; a double-click swaps the selection for one")
 		button.toggle_mode = true
 		button.button_pressed = category == _category
 		FocusGuard.by_keyboard(button)
@@ -1007,11 +1011,21 @@ func show_selection(parts: PackedStringArray, colours: PackedInt32Array) -> void
 	_chosen_parts = by_part
 	_chosen_colours = by_colour
 	_mark_swatches()
+	if _likeness == null and not by_part.is_empty() and library != null:
+		_likeness = PartLike.new(library)
 	# Fits answers for what is selected now. Nothing selected leaves it on
 	# what it was about: a part taken from its list deselects.
 	if _category == FITS and not by_part.is_empty():
 		_fits_of = _fits_subject()
 		_run_search(_search.text)
+	# So does Like this, but for the parts just swapped in from its list: the
+	# list stays as it was under the pointer, for the next try.
+	if _category == LIKE and not by_part.is_empty():
+		var subject: String = _like_subject()
+		if subject != _like_of and subject != _swapped_in:
+			_like_of = subject
+			_swapped_in = ""
+			_run_search(_search.text)
 
 
 ## The part the note and the dots are about: the selected one, all of one
@@ -1276,6 +1290,9 @@ func show_category(name: String) -> void:
 func _on_category(name: String) -> void:
 	if name == FITS:
 		_fits_of = _fits_subject()
+	if name == LIKE:
+		_like_of = _like_subject()
+		_swapped_in = ""
 	_category = name
 	for child: Node in _category_row.get_children():
 		var button: Button = child
@@ -1315,6 +1332,11 @@ func _notification(what: int) -> void:
 func _process(_delta: float) -> void:
 	if _pending and Time.get_ticks_msec() - _search_at >= SEARCH_DEBOUNCE:
 		_pending = false
+		_run_search(_search.text)
+	if _likeness != null and not _likeness.ready() \
+			and _likeness.read_some(LIKE_WAIT_MS if _like_waiting else LIKE_READ_MS) \
+			and _like_waiting:
+		_like_waiting = false
 		_run_search(_search.text)
 
 	# Building from a set: the model changed, so the counts are worked out
@@ -1382,6 +1404,12 @@ func _run_search(query: String) -> void:
 	_results = _kept(_find(query.strip_edges(), _category))
 	_guesses.clear()
 	_open.clear()
+	# A printed part's own prints open under its plain part: what a print is
+	# swapped for is most often another print.
+	var subject: PartLibrary.PartInfo = library.parts.get(_like_of) \
+		if _category == LIKE else null
+	if subject != null and subject.folds_under() != null:
+		_open[subject.folds_under().id] = true
 	_fill_grid()
 
 
@@ -1391,7 +1419,7 @@ func _list_set(query: String) -> void:
 	var needles: PackedStringArray = PartLibrary.in_ldraw_words(query).split(" ", false)
 	var asked: Array = _asked(needles)
 	var among: Dictionary = {}
-	var shelf: bool = _category in [RECENT, FAVOURITES, FITS]
+	var shelf: bool = _category in [RECENT, FAVOURITES, FITS, LIKE]
 	if shelf:
 		for info: PartLibrary.PartInfo in _find(query, _category):
 			among[info.id] = true
@@ -1482,6 +1510,8 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 		return _from_shelf(category, needles)
 	if category == FITS:
 		return _fitting(needles)
+	if category == LIKE:
+		return _liked(needles)
 	var wanted_category: String = category.to_lower()
 	if needles.is_empty():
 		return _unasked(wanted_category)
@@ -1600,6 +1630,56 @@ func _fits_subject() -> PackedStringArray:
 ## The parts Fits lists what fits, and its last answer: [key, parts].
 var _fits_of := PackedStringArray()
 var _fits_found: Array = []
+
+
+## The parts like the part [member _like_of] (PartLike), that match what is
+## typed: "plate" among the parts like a 2 x 4 brick is its 2 x 4 plates.
+func _liked(needles: PackedStringArray) -> Array[PartLibrary.PartInfo]:
+	_set_aside = 0
+	if _like_of.is_empty():
+		return []
+	if _likeness == null:
+		_likeness = PartLike.new(library)
+	# Read a few frames at a time (_process), and listed when it is.
+	_like_waiting = not _likeness.ready()
+	if _like_waiting:
+		return []
+	var key: String = "%s %d" % [_like_of, library.ids().size()]
+	if _like_found.is_empty() or str(_like_found[0]) != key:
+		_like_found = [key, _likeness.like(_like_of)]
+	var found: Array[PartLibrary.PartInfo] = []
+	for info: PartLibrary.PartInfo in _like_found[1]:
+		if needles.is_empty() or PartLibrary.matched(info, needles) != PartLibrary.NOT_MATCHED:
+			found.append(info)
+	return found
+
+
+## The part Like this is about: the part most of the selection is, or failing
+## that the part in hand when it was chosen.
+func _like_subject() -> String:
+	var most: int = 0
+	var subject: String = ""
+	for part: String in _chosen_parts:
+		if int(_chosen_parts[part]) > most:
+			most = int(_chosen_parts[part])
+			subject = part
+	return subject if not subject.is_empty() else _selected_part
+
+
+## The part Like this lists the parts like, its last answer ([key, parts]),
+## and the part a double-click just swapped in from it, whose selection
+## leaves it as it was.
+var _like_of: String = ""
+var _like_found: Array = []
+var _swapped_in: String = ""
+## What reads the catalogue's sizes and kinds for it, begun when a part is
+## first selected, so it is read by the time Like this is chosen; and whether
+## Like this waits for it.
+var _likeness: PartLike
+var _like_waiting: bool = false
+## How much of a frame it reads in: before it is asked for, and while it is.
+const LIKE_READ_MS := 4.0
+const LIKE_WAIT_MS := 25.0
 
 
 ## A category's parts with nothing typed, staples first: worked out once a
@@ -1741,6 +1821,8 @@ const TECHNIQUES := "Techniques"
 const TECHNIQUES_COUNT := 91
 ## The parts that fit the selected part, or the one in hand (PartFits).
 const FITS := "Fits"
+## The parts like it: its footprint and kind first (PartLike).
+const LIKE := "Like this"
 ## What a construction's picture is asked for by: this and its name.
 const TECHNIQUE := "technique:"
 const STAR := "res://assets/ui/tools/star.svg"
@@ -2398,6 +2480,22 @@ func _update_status() -> void:
 	if _category == FITS and _fits_of.is_empty():
 		_status.text = "Select a part, or take one in hand, then choose Fits to see what fits it."
 		_status.tooltip_text = ""
+		return
+	if _category == LIKE and _like_of.is_empty():
+		_status.text = "Select a part, or take one in hand, then choose Like this to see parts like it."
+		_status.tooltip_text = ""
+		return
+	if _category == LIKE and _like_waiting:
+		_status.text = "Reading the parts' sizes and kinds…"
+		_status.tooltip_text = ""
+		return
+	if _category == LIKE and total > 0:
+		var like: PartLibrary.PartInfo = library.parts.get(_like_of)
+		_status.text = ("Parts like %s: its size and kind first; a tap swaps the selection"
+			if by_finger else "Parts like %s: its size and kind first; a double-click swaps the selection") \
+			% (tile_name(like) if like != null else _like_of)
+		_status.tooltip_text = ("Its size and kind, then its size in nearby kinds, then its kind in "
+			+ "other sizes, the most used first; its prints folded under it")
 		return
 	if _category == FITS and total > 0:
 		var about: PartLibrary.PartInfo = library.parts.get(_fits_of[0])
@@ -3059,6 +3157,14 @@ static func _height_text(info: PartLibrary.PartInfo) -> String:
 
 ## [param colour], a set's tile's own, is taken in hand with the part.
 func _on_part(part_id: String, colour: int = -1) -> void:
+	# By a finger, a tap in Like this swaps the selection for the part: a
+	# phone has no double-click, and taking the part would close its sheet.
+	if by_finger and _category == LIKE and not _chosen_parts.is_empty() and builder != null \
+			and not builder.selection.is_empty():
+		_pressed_on = PackedInt64Array(builder.selection.keys())
+		_pressed_mode = verbs.mode if verbs != null else ""
+		_double_clicked(part_id, colour if colour >= 0 else _selected_color)
+		return
 	var by_keyboard: bool = FocusGuard.keys_with_a_control(get_viewport())
 	if colour >= 0 and colour != _selected_color:
 		_on_colour(colour)
@@ -3114,6 +3220,8 @@ func _double_clicked(part_id: String, colour: int) -> void:
 		verbs.say.call(str(put["words"]))
 	else:
 		builder.held_part = part_id
+		if _category == LIKE:
+			_swapped_in = part_id
 		await verbs.replace()
 	if not _pressed_mode.is_empty() and _pressed_mode != "place":
 		verbs.set_mode(_pressed_mode)
@@ -3635,7 +3743,7 @@ func _count_chips() -> void:
 			continue
 		var button: Button = child
 		var category: String = str(button.get_meta("category"))
-		if category in ["All", RECENT, FAVOURITES, TECHNIQUES, FITS]:
+		if category in ["All", RECENT, FAVOURITES, TECHNIQUES, FITS, LIKE]:
 			continue
 		var count: int = int(kinds.get(category, 0)) if _set_bin != null else int(button.get_meta("count"))
 		button.text = "%s %d" % [category, count]

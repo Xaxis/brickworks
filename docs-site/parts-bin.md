@@ -1,6 +1,6 @@
 ---
 tools: search_parts, find_parts_like
-ai: Finding parts by words, number, shape or a photo, and the colours they come in. An assistant finds real parts with search_parts or by their look with find_parts_like, never by guessing a part number.
+ai: Finding parts by words, number, shape or a photo, and the colours they come in. An assistant finds real parts with search_parts, the parts like one (to swap it for) with search_parts like=, or by their look with find_parts_like, never by guessing a part number.
 rules:
   - Every part is from the LDraw library; printed parts are found with the word print, stickered ones with sticker.
   - Colours are LDraw colour codes, and a part comes only in colours it was really made in.
@@ -45,6 +45,10 @@ lib:worked constructions
 ## What fits {#fits}
 
 Select a part in the model, or take one in hand, and choose **Fits** beside Techniques: the bin lists the parts that fit it, the best fits first. A beam lists its pins, a clip its bars, a bar its clips, a hinge's base its top, a click hinge its other half, a ball its socket, and a jumper the 1 × 1 parts that sit on its stud; then the parts that sit on its studs, the ones real sets use most first. Type to narrow it: *axle* among a beam's fits lists the axles that go through it. Picking a part from the list keeps it on the part you asked about. Double-click a part in the list to put it on the selected part, where it fits and there is room: a pin goes into a beam's hole. [[Ctrl+Z]] takes it off.
+
+## Like this {#like-this}
+
+Select a part, or take one in hand, and choose **Like this** beside Fits: the bin lists the parts of its size and kind first, the ones real sets use most first. A 2 × 4 brick lists the 2 × 4 bricks, a 1 × 2 plate the 1 × 2 plates, a 45° slope the 45° slopes of its size; then parts of its size in nearby kinds (a 2 × 4 plate and tile beside the brick), then its kind in other sizes. Its prints and other moulds are among them, folded under the plain part. Double-click one, or tap it on a phone, and every selected part is swapped for it where it stands: each keeps its place, its turn, its colour, its step and its sub-model. [[Ctrl+Z]] brings them all back. An assistant gets the same list from search_parts with `like=` and a part number.
 
 ## Colours {#colours}
 

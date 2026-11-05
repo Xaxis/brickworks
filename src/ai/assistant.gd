@@ -3231,6 +3231,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 	match name:
 		"search_parts":
 			var query: String = str(args.get("query", ""))
+			if not str(args.get("like", "")).strip_edges().is_empty():
+				progress.emit("looking for parts like %s" % str(args["like"]).strip_edges())
+				return await _like(str(args["like"]).strip_edges(), query, int(args.get("limit", 15)))
 			progress.emit("looking up \"%s\"" % query)
 			return _search(query, int(args.get("limit", 15)))
 		"check_design":
@@ -6135,6 +6138,63 @@ func _search(query: String, limit: int) -> String:
 	if not jointed.is_empty():
 		lines.append(jointed)
 	return "\n".join(lines)
+
+
+## The parts like [param part] (PartLike), as the bin's Like this lists them,
+## that answer [param query]'s words, at most [param limit]: what a session
+## swaps a part for when the person asks for one like it.
+func _like(part: String, query: String, limit: int) -> String:
+	var id: String = library.resolve(part)
+	var info: PartLibrary.PartInfo = library.parts.get(id)
+	if info == null:
+		return "No part %s. search_parts finds its number by its name." % part
+	if _likeness == null:
+		_likeness = PartLike.new(library)
+	# Read a few milliseconds a frame, as the bin reads it: whole at once it
+	# held the window about 450 ms.
+	while not _likeness.read_some(8.0):
+		await Engine.get_main_loop().process_frame
+	var needles: PackedStringArray = PartLibrary.in_ldraw_words(query).split(" ", false)
+	var said: Dictionary = {}
+	var lines := PackedStringArray([("Parts like %s (%s), the most used first in each group. To "
+		+ "swap a part for one: edit_selection (or edit_model) takes it off and adds this where "
+		+ "it stood.") % [id, Inventory._tidy(info.name)]])
+	var shown: int = 0
+	var folded: int = 0
+	for row: Array in _likeness.ranked(id):
+		var them: PartLibrary.PartInfo = row[1]
+		if not needles.is_empty() and PartLibrary.matched(them, needles) == PartLibrary.NOT_MATCHED:
+			continue
+		# A print of a part listed is told by its part's count, as the bin
+		# folds it; the part asked about's own are listed.
+		if them.folds_under() != null and them != info and them.folds_under() != info.folds_under():
+			folded += 1
+			continue
+		if shown >= maxi(1, limit):
+			break
+		var group: String = LIKE_GROUPS.get(int(row[0]), "")
+		if not said.has(group):
+			said[group] = true
+			lines.append(group)
+		lines.append("  " + _describe(them) + _prints_note(them))
+		shown += 1
+	if shown <= 1:
+		lines.append("Nothing else of its footprint or kind.")
+	return "\n".join(lines)
+
+
+## How each group of [method _like] is headed (PartLike's how alike).
+const LIKE_GROUPS: Dictionary = {
+	PartLike.ITSELF: "Itself:",
+	PartLike.SAME_BOX: "Its footprint and kind, its height:",
+	PartLike.SAME_FOOT: "Its footprint and kind, another height:",
+	PartLike.NEARBY: "Its footprint, a nearby kind:",
+	PartLike.OTHER_SIZE: "Its kind, the nearest other sizes:",
+	PartLike.ON_STUDS: "Its footprint, other parts on studs:",
+}
+## What reads the catalogue's sizes and kinds for [method _like], made at its
+## first call.
+var _likeness: PartLike
 
 
 ## Words of a search that ask for a limb, a neck or a joint.
@@ -21968,6 +22028,10 @@ func _focus_words() -> String:
 		var info: PartLibrary.PartInfo = library.parts.get(bits[0])
 		lines.append("  %d x %s (%s) in %s (%s)" % [int(tally[key]), bits[0],
 			info.name if info != null else "?", _colour_name(int(bits[1])), bits[1]])
+	# The bin's Like this, for "swap these for something like them".
+	if not keys.is_empty():
+		lines.append("  To swap them for a part like them: search_parts like=%s lists its "
+			% str(keys[0]).get_slice(":", 0) + "footprint and kind first.")
 	lines.append("")
 	lines.append("Each, by number:")
 	lines.append_array(rows)
@@ -23391,12 +23455,19 @@ func _tools() -> Array:
 				+ "guessing a part number. Printed parts are found by "
 				+ "what is on them with the word print: \"porsche print\", "
 				+ "\"control panel print\", \"3623 print\" (3623's prints); "
-				+ "a part with a sticker on, with sticker."),
+				+ "a part with a sticker on, with sticker. like= a part number lists "
+				+ "the parts like it, to swap it for: its footprint and kind first."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
-					"query": {"type": "string"},
+					"query": {"type": "string", "description":
+						"what to find; with like=, words that narrow its list (\"\" for all)"},
 					"limit": {"type": "integer"},
+					"like": {"type": "string", "description":
+						"a part number (\"3001\"): the parts like it, as the bin's Like this "
+						+ "lists them: its footprint and kind first (its prints among them), "
+						+ "then its footprint in nearby kinds, then its kind in other sizes, "
+						+ "the most used first"},
 				},
 				"required": ["query"],
 				"additionalProperties": false,
