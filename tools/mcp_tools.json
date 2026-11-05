@@ -1053,6 +1053,57 @@
   },
   {
     "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Plan the features it is known by"
+    },
+    "description": "The two or three features anyone would know the subject by, planned before its first brick: not its box, but what a person names it by (a lighthouse's lantern, an elephant's ears and trunk, a galleon's masts), each with its proportion against the whole, from what you know of the real thing (a lantern as wide as the tower's top and a fifth of its height; ears as tall as the head; masts taller than the hull is long), and the technique its form needs (round: a body of revolution; thin: plates and wedge plates; curved: curved slopes; smooth: SNOT; a moulded part where real sets use one). Call it after how_real_sets_build_this and before the first submit_design. Once the model stands, the whole review shows its front and side to read each against this.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "description": "the two or three the subject is known by",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "what a person would call it",
+                "type": "string"
+              },
+              "proportion": {
+                "description": "its size against the whole on the real thing: how wide, tall or long against the body, where it sits, how it tapers",
+                "type": "string"
+              },
+              "technique": {
+                "description": "how its form is built",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "proportion",
+              "technique"
+            ],
+            "type": "object"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "type": "array"
+        },
+        "subject": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject",
+        "features"
+      ],
+      "type": "object"
+    },
+    "name": "plan_features"
+  },
+  {
+    "annotations": {
       "openWorldHint": true,
       "readOnlyHint": true,
       "title": "Find pictures of the real thing"
@@ -5914,5 +5965,63 @@
       "type": "object"
     },
     "name": "fresh_eyes_final"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Say how its features measure up"
+    },
+    "description": "Answer the look at its features a design's first whole review asks for, from the front and side pictures it handed you: each feature's proportion on the real thing, what the pictures show of it against the whole, whether it is off, and the one to rebuild. Only when a review asks.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "features": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "built": {
+                "description": "false when this build has none of it yet",
+                "type": "boolean"
+              },
+              "name": {
+                "type": "string"
+              },
+              "off": {
+                "description": "true when seen is not real",
+                "type": "boolean"
+              },
+              "real": {
+                "description": "its proportion against the whole on the real thing",
+                "type": "string"
+              },
+              "seen": {
+                "description": "what the front and side pictures show of it against the whole, in studs and plates, as a judge shown only the pictures would say it",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "real",
+              "seen",
+              "off"
+            ],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "rebuild": {
+          "description": "the one most off, and how you will build it to its real proportion with the technique its form needs; empty when none is off",
+          "type": "string"
+        }
+      },
+      "required": [
+        "features",
+        "rebuild"
+      ],
+      "type": "object"
+    },
+    "name": "features_look"
   }
 ]

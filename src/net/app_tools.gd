@@ -150,7 +150,9 @@ Each change is one undo step.
 save_model writes it with the person's models, and a new design's first \
 save hands back its pictures for a fresh look, answered with fresh_eyes \
 before any other call, and the first save after the creative pass one \
-last look, answered with fresh_eyes_final; make_part makes a part the \
+last look, answered with fresh_eyes_final; a new design's first whole \
+review_model shows its front and side to read the features it planned \
+against the real thing, answered with features_look; make_part makes a part the \
 LEGO Group has not made, when search_parts finds no real one that will do.
  - set_floor: what the model stands on — a baseplate 8 to 192 studs in \
 eights, in a colour baseplates come in, a grid floor, or nothing (a car \

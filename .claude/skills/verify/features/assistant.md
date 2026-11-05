@@ -129,6 +129,26 @@ fixing what it got wrong.
   `fresh eyes: the session's own final look (N refused): {...}`.
   `fresh_eyes_probe` chats c14 (Claude Code here, the pass a save hands over),
   c16 and c17 (none, the pass asked for, and before the first look).
+- `the features a design is known by`: `src/ai/features_look.gd`. `plan_features`
+  (`FeaturesLook.plan_definition`, in `Assistant._tools`, read-only) names the two
+  or three features a subject is known by, each with its proportion against the
+  whole from the real thing and the technique its form needs, kept for the look
+  (`FeaturesLook.planned`); `how_real_sets_build_this` ends with
+  `Assistant.PLAN_FEATURES_NEXT` until it is called. A session from outside whose
+  new design went down on a bare baseplate gets, at its first whole review
+  (`Assistant.review` with no assembly, `FeaturesLook.due`), the look in place of
+  the rest of the review: `OPENING`, the whole's size, what was planned (or a
+  request to name them now), the model from the front and the side, and `ASK`.
+  Every change but `features_look` (`FeaturesLook.definition`, served by
+  `CommandSocket._own_tools`, read-only), a save, `view_model` and
+  `look_at_model` is refused until it answers, at most `MOST_REFUSED` times
+  (`not_yet`, in `CommandSocket._call`); the next whole review is the review.
+  Once a subject; asked again (up to `MOST_ASKED`) only when the answer says
+  none of the features is built yet. Never a chat about a selection or beside
+  the person's own model. It shows no real set. The log says `features planned:
+  [...]`, `features look: asked, N planned, with 2 pictures` and `features look:
+  answered (N refused): {...}`. `features_look_probe` (windowed, for the
+  pictures).
 - `designing with any provider on the person's key`: `src/ai/designer_loop.gd`
   (`DesignerLoop`), `src/ai/provider.gd` (the adapter's shape and the
   transcript), `src/ai/openai_chat.gd` (Chat Completions: every server that

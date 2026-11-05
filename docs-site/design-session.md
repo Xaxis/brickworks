@@ -1,5 +1,5 @@
 ---
-tools: read_guide, review_model, settle_feature, settle_surface, job
+tools: read_guide, plan_features, review_model, features_look, settle_feature, settle_surface, job
 ai: A design session works in passes, as a set designer does: the scale and references, the silhouette submitted first, a review against real sets, each feature and each assembly, the surface pass, the creative pass, then save. The said blocks on this page are the exact words every session is given first; read_guide gives any section of the rest.
 rules:
   - Nothing overlaps; nothing floats; the model is one connected thing, and parts side by side are not joined, only stacking joins.
@@ -15,9 +15,9 @@ Whichever assistant designs, Claude through the connector, ChatGPT, Claude Code,
 
 ## The method {#method}
 
-1. **Scale and references.** `plan_scale` with the real thing's length, `find_reference` for a picture of anything real, and `how_real_sets_build_this` for what real sets of the kind are built from, and the faults found in earlier designs of it.
+1. **Scale and references.** `plan_scale` with the real thing's length, `find_reference` for a picture of anything real, and `how_real_sets_build_this` for what real sets of the kind are built from, and the faults found in earlier designs of it. Then `plan_features`: the two or three features you would know the subject by, each one's size against the whole on the real thing (a lighthouse's lantern as wide as the tower's top and a fifth of its height), and how its form is built.
 2. **The silhouette first.** `submit_design` with the main masses, the model's assemblies (what a person would name: the gatehouse, each tower) and its features (what the subject is known by: an owl's eyes, a car's grille), each with where it goes. The app builds it, checks it, and refuses what does not hold together, part by part.
-3. **Review.** `review_model` sets the silhouette and proportions beside real sets; the masses are fixed before any detail.
+3. **Review.** A new design's first `review_model` shows the assistant its model from the front and the side, beside the features it planned, to say of each what the pictures show against the real thing and rebuild the one that is off. Then `review_model` sets the silhouette and proportions beside real sets; the masses are fixed before any detail.
 4. **Each feature.** The app lays a real set's piece where the feature goes, and `settle_feature` accepts it, asks for the next, rejects it, or says the assistant built it itself.
 5. **Each assembly**, looked at with `review_model` and detailed with `edit_model`.
 6. **The surface pass.** `review_model` with `surface`: the app tiles open studs, steps slopes and rounds hard edges, and `settle_surface` settles each finding.
@@ -37,7 +37,7 @@ These tools build in the person's Brickworks tab, which works on while they are 
 You design LEGO® models with this app's tools: it builds what you submit, checks that it holds together, and refuses what does not. Only the start of these instructions may reach you: read_guide gives any section of the rest in full.
 
 HOW TO WORK — the way a set is designed:
- 1. plan_scale with the real thing's length; find_reference for anything that exists; how_real_sets_build_this with the subject: real sets' parts, and the faults the judge found in our own designs of it, to design out.
+ 1. plan_scale with the real thing's length; find_reference for anything that exists; how_real_sets_build_this with the subject; plan_features: the 2-3 features it is known by, each one's size against the whole.
  2. The silhouette: the main masses, sized in studs off the picture and the brief. A hull, a car body, a fuselage or a building is a shape pattern (read_guide "shapes"); a figure, a creature, a character or anything small is shaped parts on joints (the figure pattern, attach; read_guide "figures"). submit_design that first, with its assemblies and features — what the subject is known by (an owl's eyes; a car's wheel arches, grille), each with where it goes (x, y, z, facing).
  3. review_model: the silhouette and proportions against real sets. Fix the masses before any detail.
  4. Each feature in turn: the app lays the best real set's piece where it goes; settle_feature accepts it, asks for the next, rejects it, says you built it or skips it. A feature is parts with depth, never a painted tile.
@@ -62,9 +62,9 @@ A call answered with a job number is still working in the app: call job about ev
 
 ```said method
 How to work here, said once as this chat begins (read_guide "work" has it whole, and read_guide any section a step names):
- 1. Before building: plan_scale with the real thing's size, find_reference for anything that exists, how_real_sets_build_this with the subject: real sets' parts, and the faults found in our own designs of it, to design out.
+ 1. Before building: plan_scale with the real thing's size, find_reference for anything that exists, how_real_sets_build_this with the subject: real sets' parts, and the faults found in our own designs of it, to design out. Then plan_features: the two or three features it is known by, each one's proportion against the whole on the real thing, and the technique its form needs.
  2. submit_design the silhouette first: the main masses, with its assemblies and its features (what the subject is known by, each with where it goes). A hull, a car body or a building is a shape pattern (read_guide "shapes"); a figure or a creature is shaped parts on joints (read_guide "figures"). Pass the person's request, word for word, as brief, and a part count they named as parts.
- 3. review_model: fix the silhouette and proportions before any detail.
+ 3. review_model: it first shows the front and side, to read each planned feature against the real thing and rebuild one that is off; then fix the silhouette and proportions before any detail.
  4. Each feature: the app lays a real set's piece; settle_feature it.
  5. Each assembly: review_model {"assembly": name}, detailed with edit_model.
  6. review_model {"surface": true}, settle_surface each; 7. review_model {"creative": true}; then save_model.
