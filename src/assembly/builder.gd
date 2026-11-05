@@ -540,7 +540,8 @@ func _apply(step: Dictionary) -> Dictionary:
 	if step.get("undo", "") == "unitstep":
 		var unit: String = str(step["unit"])
 		var held: int = int(world.unit_steps.get(unit, -1))
-		if int(step["step"]) < 0:
+		# -1 is none; AuthorSteps.IN_PARENT, a copy built in its parent's steps.
+		if int(step["step"]) == -1:
 			world.unit_steps.erase(unit)
 		else:
 			world.unit_steps[unit] = int(step["step"])

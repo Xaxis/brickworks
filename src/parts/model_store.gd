@@ -2547,7 +2547,8 @@ func to_text_paced(title: String, job: Working.Job) -> String:
 	job.say("Writing %s parts…" % Working.comma(world.brick_count() - scenery.size()))
 	job.count(0, 0)
 	await job.next()
-	return to_text(title, true, AuthorSteps.numbers_of(world, steps, scenery))
+	return to_text(title, true, AuthorSteps.numbers_of(world, steps, scenery,
+		AuthorSteps.in_place_plan(world, steps)))
 
 
 ## A model this big has its build order worked out a slice at a time when

@@ -238,7 +238,9 @@ static func turn_for(from: Vector3) -> Array:
 
 
 ## The sub-assembly step [param at] puts on, as the path of its first copy
-## inside [param section], or "" for a step that puts none on.
+## inside [param section], or "" for a step that puts none on: the first
+## round its part with steps of its own, past any built in the steps of
+## [param section] (AuthorSteps.IN_PARENT).
 static func attached(world: BrickWorld, at: Instructions.Step, section: String) -> String:
 	if not at.attaches() or at.copies.is_empty() or at.copies[0].is_empty():
 		return ""
@@ -246,10 +248,12 @@ static func attached(world: BrickWorld, at: Instructions.Step, section: String) 
 	if brick == null:
 		return ""
 	var depth: int = Assemblies.segments(section).size()
-	var segments: PackedStringArray = Assemblies.segments(Assemblies.path_of(brick))
-	if segments.size() <= depth:
-		return ""
-	return Assemblies.join(section, segments[depth])
+	var path: String = section
+	for segment: String in Assemblies.segments(Assemblies.path_of(brick)).slice(depth):
+		path = Assemblies.join(path, segment)
+		if not AuthorSteps.in_parent(world, path):
+			return path
+	return ""
 
 
 static func _vector(raw: Variant) -> Vector3:
@@ -491,9 +495,11 @@ static func any_step_look(world: BrickWorld) -> bool:
 
 
 ## The section each step look's definition is read from: the model's own ("")
-## and the first copy of each sub-model, by path.
+## and the first copy of each sub-model, by path, that has steps of its own
+## (not AuthorSteps.IN_PARENT).
 static func first_copies(world: BrickWorld, skip: Dictionary = {}) -> Array:
-	var sections: Array = AuthorSteps.paths_in(world, skip).keys()
+	var sections: Array = AuthorSteps.paths_in(world, skip).keys().filter(
+		func(path: String) -> bool: return not AuthorSteps.in_parent(world, path))
 	sections.sort()
 	sections.push_front("")
 	var out: Array = []

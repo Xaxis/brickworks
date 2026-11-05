@@ -13,8 +13,52 @@
 ## where it is — a "section", the sub-model's path, "" for the model — and
 ## its number there. The edits here change those numbers, one undo each
 ## (Builder.record), and leave every section numbered 0, 1, 2… with no gaps.
+##
+## A copy whose unit step is [constant IN_PARENT] is built in the steps of
+## the sub-model that places it, its parts numbered among that one's: the
+## section of its parts is that one's ([method home]). The castle's towers
+## and walls go up together, a course of each in turn, and the order a
+## person was shown could not be kept by sub-models built whole, each in
+## steps of its own (stepskeep).
 class_name AuthorSteps
 extends RefCounted
+
+## The unit step of a copy built in the steps of the one that places it.
+## In the file its parts are written in that one's steps, each run of them
+## after a line naming the copy ("0 !BRICKWORKS IN tower#1", LdrModel.IN_META),
+## so every LDraw reader builds them in the order shown, and this app reads
+## the copy back as it was.
+const IN_PARENT := -2
+
+
+## The section the parts directly in [param path] are stepped in: its own,
+## or for a copy built in its parent's steps ([constant IN_PARENT]), the
+## nearest one round it that has steps of its own. With [param units], as
+## those say (numbers_from_plan's, before they are the model's).
+static func home(world: BrickWorld, path: String, units: Variant = null) -> String:
+	var steps: Dictionary = world.unit_steps if units == null else units
+	if steps.is_empty():
+		return path
+	while not path.is_empty() and int(steps.get(path, -1)) == IN_PARENT:
+		path = Assemblies.parent_of(path)
+	return path
+
+
+## Whether the copy at [param path] is built in its parent's steps.
+static func in_parent(world: BrickWorld, path: String, units: Variant = null) -> bool:
+	return int((world.unit_steps if units == null else units).get(path, -1)) == IN_PARENT
+
+
+## How many of [param path]'s copies are built in steps of their own, the
+## outermost first: the levels of its key ([method key_of]).
+static func levels(world: BrickWorld, path: String, units: Variant = null) -> int:
+	var count: int = 0
+	var at: String = ""
+	for segment: String in Assemblies.segments(path):
+		at = Assemblies.join(at, segment)
+		if not in_parent(world, at, units):
+			count += 1
+	return count
 
 
 ## Whether any part of the model has a step its author gave it. Then the
@@ -86,13 +130,16 @@ static func unit_step(world: BrickWorld, path: String, lowest: Dictionary,
 ## sub-models it puts on come before its own parts (even, then odd), since
 ## they are built first and then put on; and each is built whole before the
 ## next. With the step alone, five buildings one step places went up a step
-## of each in turn: the first course of every one, then the second.
+## of each in turn: the first course of every one, then the second. A copy
+## built in its parent's steps is no level of its own.
 static func key_of(world: BrickWorld, section: String, step: int,
 		lowest: Dictionary, first: Dictionary = {}, units: Variant = null) -> Array:
 	var key: Array = []
 	var path: String = ""
 	for segment: String in Assemblies.segments(section):
 		path = Assemblies.join(path, segment)
+		if in_parent(world, path, units):
+			continue
 		key.append(2 * maxi(unit_step(world, path, lowest, units), 0))
 		key.append(int(first.get(path, 0)))
 	key.append(2 * step + 1)
@@ -122,8 +169,9 @@ static func paths_in(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 
 
 ## What a section is built of, each with its step: its own parts
-## ({"brick": id}) and the copies of sub-models it puts on ({"unit": path}).
-## Only those that have a step.
+## ({"brick": id}) and the copies of sub-models it puts on ({"unit": path}),
+## and those of every copy built in its steps ([constant IN_PARENT]). Only
+## those that have a step.
 static func items_of(world: BrickWorld, section: String, skip: Dictionary = {}) -> Array:
 	return items_in(world, [section], skip)[section]
 
@@ -140,12 +188,12 @@ static func items_in(world: BrickWorld, sections: Array, skip: Dictionary = {}) 
 	for brick: BrickWorld.Brick in world.bricks():
 		if brick.step < 0 or skip.has(brick.id):
 			continue
-		var items: Variant = out.get(Assemblies.path_of(brick))
+		var items: Variant = out.get(home(world, Assemblies.path_of(brick)))
 		if items != null:
 			(items as Array).append({"brick": brick.id, "step": brick.step})
 	var lowest: Dictionary = lowest_under(world, skip)
 	for path: String in paths_in(world, skip):
-		var items: Variant = out.get(Assemblies.parent_of(path))
+		var items: Variant = out.get(home(world, Assemblies.parent_of(path)))
 		if items == null:
 			continue
 		var at: int = unit_step(world, path, lowest)
@@ -299,8 +347,9 @@ static func adopt_plan(world: BrickWorld, library: PartLibrary,
 	var undo: Array = []
 	if any(world, skip):
 		return undo
-	var worked: Array[Instructions.Step] = Instructions.worked_out(world, library, skip)
-	var numbers: Dictionary = adopted(world, worked, skip)
+	var read: Dictionary = {}
+	var worked: Array[Instructions.Step] = Instructions.worked_out(world, library, skip, {}, read)
+	var numbers: Dictionary = Instructions.kept_numbers(world, library, skip, worked, read)
 	var bricks: Dictionary = numbers["bricks"]
 	for brick_id: int in bricks:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
@@ -319,21 +368,25 @@ static func adopt_plan(world: BrickWorld, library: PartLibrary,
 
 ## The worked-out order as numbers the model can keep, and a file can
 ## hold: {"bricks": id -> its step in its own sub-model, "units": path ->
-## the step its copy goes on in, in the one that places it}. The plan shows
-## a model nobody gave steps in these (Instructions._kept), the first step
-## edit gives them to it (adopt_plan), and a save writes them: what the
-## person saw is what is kept.
+## the step its copy goes on in, in the one that places it, or IN_PARENT}.
+## The plan shows a model nobody gave steps in these (Instructions._kept),
+## the first step edit gives them to it (adopt_plan), and a save writes
+## them: what the person saw is what is kept.
 static func numbers_from_plan(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}) -> Dictionary:
-	return adopted(world, Instructions.worked_out(world, library, skip), skip)
+	var read: Dictionary = {}
+	var worked: Array[Instructions.Step] = Instructions.worked_out(world, library, skip, {}, read)
+	return Instructions.kept_numbers(world, library, skip, worked, read)
 
 
 ## [param steps], a plan, as numbers the model can keep ([method
 ## numbers_of]), each section numbered 0, 1, 2… and every copy of a
-## sub-model stepped as its first copy is.
+## sub-model stepped as its first copy is. With [param in_place], every copy
+## not built on the side is built in its parent's steps ([constant
+## IN_PARENT]), so the numbers are [param steps]' own.
 static func adopted(world: BrickWorld, steps: Array[Instructions.Step],
-		skip: Dictionary = {}) -> Dictionary:
-	var numbers: Dictionary = numbers_of(world, steps, skip)
+		skip: Dictionary = {}, in_place: bool = false) -> Dictionary:
+	var numbers: Dictionary = numbers_of(world, steps, skip, in_place)
 	_tidy_numbers(world, numbers, skip)
 	_copies_alike(world, numbers, skip)
 	return numbers
@@ -348,8 +401,13 @@ static func adopted(world: BrickWorld, steps: Array[Instructions.Step],
 ## The model's steps cannot hold that, and given the step of its last part
 ## the island was built after the keeper, every step of it one later than
 ## the person had read it (stepsnum).
+##
+## With [param in_place], every copy but those built on the side is built in
+## the steps of the one that places it ([constant IN_PARENT]): the plan's
+## own order, which builds the castle's towers and walls a course of each in
+## turn, as no sub-model built whole can.
 static func numbers_of(world: BrickWorld, steps: Array[Instructions.Step],
-		skip: Dictionary = {}) -> Dictionary:
+		skip: Dictionary = {}, in_place: bool = false) -> Dictionary:
 	var bricks: Dictionary = {}
 	var aside: Dictionary = {}      ## a copy built on the side -> the step that puts it on
 	for index: int in steps.size():
@@ -361,6 +419,13 @@ static func numbers_of(world: BrickWorld, steps: Array[Instructions.Step],
 				var copy: String = _copy_made_of(world, ids)
 				if not copy.is_empty():
 					aside[copy] = index
+	if in_place:
+		var units: Dictionary = {}
+		for path: String in paths_in(world, skip):
+			if not path.is_empty():
+				units[path] = IN_PARENT
+		units.merge(aside, true)
+		return {"bricks": bricks, "units": units}
 	var first: Dictionary = {}
 	for brick_id: int in bricks:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
@@ -372,6 +437,22 @@ static func numbers_of(world: BrickWorld, steps: Array[Instructions.Step],
 	units.erase("")
 	units.merge(aside, true)
 	return {"bricks": bricks, "units": units}
+
+
+## Whether [param steps], a plan of the steps a model can keep
+## (Instructions._kept), builds its copies in their parents' steps: a step
+## holds a part of a section other than its own (in a callout, of the copy
+## it shows). Its numbers are then [method numbers_of]'s with in_place;
+## read without, the castle's paced save wrote each tower whole.
+static func in_place_plan(world: BrickWorld, steps: Array[Instructions.Step]) -> bool:
+	for step: Instructions.Step in steps:
+		if step.authored_step < 0:
+			continue
+		for brick_id: int in (step.shown_ids if step.in_callout() else step.brick_ids):
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick != null and Assemblies.path_of(brick) != step.authored_in:
+				return true
+	return false
 
 
 ## The copy of a sub-model [param ids] make: the path every one of them is
@@ -403,17 +484,21 @@ static func _tidy_numbers(world: BrickWorld, numbers: Dictionary, skip: Dictiona
 	var units: Dictionary = numbers["units"]
 	var used: Dictionary = {}       ## section -> {number: true}
 	var own: Dictionary = {}        ## part id -> its section
+	var placed: Dictionary = {}     ## a copy put on in a step -> the section it is put on in
+	for path: String in units:
+		if int(units[path]) != IN_PARENT:
+			placed[path] = home(world, Assemblies.parent_of(path), units)
 	for brick_id: int in bricks:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick == null or skip.has(brick_id):
 			continue
-		var section: String = Assemblies.path_of(brick)
+		var section: String = home(world, Assemblies.path_of(brick), units)
 		own[brick_id] = section
 		if not used.has(section):
 			used[section] = {}
 		(used[section] as Dictionary)[int(bricks[brick_id])] = true
-	for path: String in units:
-		var parent: String = Assemblies.parent_of(path)
+	for path: String in placed:
+		var parent: String = placed[path]
 		if not used.has(parent):
 			used[parent] = {}
 		(used[parent] as Dictionary)[int(units[path])] = true
@@ -427,8 +512,8 @@ static func _tidy_numbers(world: BrickWorld, numbers: Dictionary, skip: Dictiona
 		place[section] = at
 	for brick_id: int in own:
 		bricks[brick_id] = int(place[own[brick_id]][int(bricks[brick_id])])
-	for path: String in units:
-		units[path] = int(place[Assemblies.parent_of(path)][int(units[path])])
+	for path: String in placed:
+		units[path] = int(place[placed[path]][int(units[path])])
 
 
 ## Every copy of a sub-model in [param numbers] stepped as its first copy
@@ -436,7 +521,8 @@ static func _tidy_numbers(world: BrickWorld, numbers: Dictionary, skip: Dictiona
 ## (LdrModel.write_tree), so a second copy the plan built in an order of its
 ## own was built as the first once saved and opened again (10016-1's second
 ## pair of wheels). A copy whose parts are not the first's, part for part,
-## keeps its own.
+## keeps its own. So does one built in the model's own steps, whose parts
+## the file writes there, each copy's its own (IN_PARENT).
 static func _copies_alike(world: BrickWorld, numbers: Dictionary, skip: Dictionary) -> void:
 	var bricks: Dictionary = numbers["bricks"]
 	var units: Dictionary = numbers["units"]
@@ -452,6 +538,8 @@ static func _copies_alike(world: BrickWorld, numbers: Dictionary, skip: Dictiona
 		(own[path] as Array).append(brick)
 	var by_definition: Dictionary = {}
 	for path: String in paths_in(world, skip):
+		if int(units.get(path, -1)) == IN_PARENT and home(world, path, units).is_empty():
+			continue
 		var named: String = Assemblies.definition(Assemblies.leaf(path))
 		if not by_definition.has(named):
 			by_definition[named] = []
@@ -506,7 +594,7 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 	for brick: BrickWorld.Brick in world.bricks():
 		if skip.has(brick.id):
 			continue
-		var section: String = Assemblies.path_of(brick)
+		var section: String = home(world, Assemblies.path_of(brick))
 		if brick.step >= 0:
 			bricks[brick.id] = brick.step
 			last[section] = maxi(int(last.get(section, 0)), brick.step)
@@ -514,9 +602,11 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 			loose.append(brick.id)
 	for path: String in paths_in(world, skip):
 		var at: int = unit_step(world, path, lowest)
-		if at >= 0:
+		if at == IN_PARENT:
 			units[path] = at
-			var parent: String = Assemblies.parent_of(path)
+		elif at >= 0:
+			units[path] = at
+			var parent: String = home(world, Assemblies.parent_of(path))
 			last[parent] = maxi(int(last.get(parent, 0)), at)
 	if loose.is_empty():
 		return {"bricks": bricks, "units": units}
@@ -529,11 +619,11 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 			for brick_id: int in step.brick_ids:
 				order[brick_id] = step.number
 	for brick_id: int in loose:
-		var section: String = Assemblies.path_of(world.get_brick(brick_id))
+		var section: String = home(world, Assemblies.path_of(world.get_brick(brick_id)))
 		bricks[brick_id] = int(last.get(section, -1)) + 1 + int(order.get(brick_id, 0))
 	for path: String in paths_in(world, skip):
 		if not units.has(path):
-			units[path] = int(last.get(Assemblies.parent_of(path), -1)) + 1
+			units[path] = int(last.get(home(world, Assemblies.parent_of(path)), -1)) + 1
 	return {"bricks": bricks, "units": units}
 
 
@@ -563,11 +653,16 @@ static func _selected(world: BrickWorld, ids: Array, level: String,
 			continue
 		var path: String = Assemblies.path_of(brick)
 		var item: Dictionary = {"brick": brick_id, "step": maxi(brick.step, 0)}
-		var section: String = path
+		# A copy built in its parent's steps is no item: its parts are each
+		# their own, in the steps of the one round it.
+		var section: String = home(world, path)
 		if path != level and Assemblies.within(path, level):
 			if not read:
 				lowest = lowest_under(world, skip)
 				whole = _whole_under(world, ids, skip)
+				for copy: String in whole.keys():
+					if in_parent(world, copy):
+						whole.erase(copy)
 				read = true
 			var copy: String = level
 			for segment: String in Assemblies.segments(path).slice(Assemblies.segments(level).size()):
@@ -575,7 +670,7 @@ static func _selected(world: BrickWorld, ids: Array, level: String,
 				if whole.has(copy):
 					break
 			if whole.has(copy):
-				section = Assemblies.parent_of(copy)
+				section = home(world, Assemblies.parent_of(copy))
 				item = {"unit": copy, "step": maxi(unit_step(world, copy, lowest), 0)}
 		var name: String = str(item.get("unit", item.get("brick")))
 		if seen.has(name):
@@ -690,11 +785,13 @@ static func close_step(world: BrickWorld, section: String, skip: Dictionary = {}
 	for item: Dictionary in items_of(world, section, skip):
 		last = maxi(last, int(item["step"]))
 	for brick: BrickWorld.Brick in world.bricks():
-		if brick.step < 0 and not skip.has(brick.id) and Assemblies.path_of(brick) == section:
+		if brick.step < 0 and not skip.has(brick.id) \
+				and home(world, Assemblies.path_of(brick)) == section:
 			_put(world, {"brick": brick.id, "step": -1}, last + 1, undo)
 	var lowest: Dictionary = lowest_under(world, skip)
 	for path: String in paths_in(world, skip):
-		if Assemblies.parent_of(path) == section and unit_step(world, path, lowest) < 0:
+		if home(world, Assemblies.parent_of(path)) == section \
+				and unit_step(world, path, lowest) == -1:
 			_put(world, {"unit": path, "step": -1}, last + 1, undo)
 	return squash(undo)
 
@@ -708,7 +805,7 @@ static func _copies(world: BrickWorld, section: String, skip: Dictionary) -> Arr
 	var kind: String = Assemblies.definition(Assemblies.leaf(section))
 	var depth: int = Assemblies.segments(section).size()
 	for path: String in paths_in(world, skip):
-		if Assemblies.segments(path).size() == depth \
+		if Assemblies.segments(path).size() == depth and not in_parent(world, path) \
 				and Assemblies.definition(Assemblies.leaf(path)) == kind:
 			out.append(path)
 	return out

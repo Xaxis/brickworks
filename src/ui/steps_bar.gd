@@ -612,7 +612,7 @@ func place_step(path: String) -> int:
 	if _mode != AUTHORS:
 		return -1
 	var at: Instructions.Step = current_step()
-	if at == null or at.authored_step < 0 or at.authored_in != path:
+	if at == null or at.authored_step < 0 or at.authored_in != AuthorSteps.home(_world, path):
 		return -1
 	return at.authored_step
 

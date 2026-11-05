@@ -30,11 +30,15 @@
 ## edit lost every one. A model with steps of its own (7140-1 as its author
 ## stepped it) and one of no sub-models are given none: no mark, and no
 ## line in the file, after an edit. And the castle (models/castle.ldr),
-## whose steps that can be kept build worse than its order worked out, so
-## that order is shown (suitesteps) and the first edit gives it the kept
-## steps, numbered otherwise: every part in the section it was in, through
-## the edit and the save opened again, and the undo giving back the
-## worked-out sections.
+## whose sub-models built whole put 31 parts in the air (suitesteps): its
+## towers and walls go up a course of each in turn, so each is kept built
+## in the steps of the model that places it (AuthorSteps.IN_PARENT,
+## stepskeep). The first edit gave it the steps of sub-models built whole,
+## every step from 45 numbered anew, the booklet asking for bricks in the
+## air. Now one part moved on over MCP and by Shift-], each undone: every
+## other part in the step it was listed in, the steps test passing the
+## model's own steps after it, and the save opened again with every part in
+## its step, here and as another LDraw reader builds the file.
 extends SceneTree
 
 const MODELS: Array = [
@@ -217,43 +221,163 @@ func _kept_shown() -> bool:
 ## gives back the worked-out sections.
 func _turned_down(name: String, path: String) -> void:
 	print("\n%s" % name)
-	await _open(FileAccess.get_file_as_string(path), name, false)
-	var before: Dictionary = _sections()
-	var marked: Array = _marks()
+	await _open(FileAccess.get_file_as_string(path), name)
+	var held_in: Dictionary = _by_path()
 	var steps: Array[Instructions.Step] = _plan()
-	if not _check("opened with no steps of its own, %d parts, shown %s, in %d sections: %s" % [
-			before.size(), "the steps it can keep" if _kept_shown() else "the order worked out",
-			marked.size(), ", ".join(marked.slice(0, 8))],
-			not AuthorSteps.any(_world, _store.scenery) and not _kept_shown() and marked.size() >= 2):
+	var opened: Dictionary = await _tested(_store.to_text(name, true))
+	if not _check("opened with no steps of its own, %d parts, shown %s, in %d sections: %s; the steps test: %s" % [
+			_listed.size(), "the steps it can keep, built in their parents' steps"
+				if AuthorSteps.in_place_plan(_world, steps) else ("the steps it can keep"
+				if _kept_shown() else "the order worked out"), _marked.size(),
+			", ".join(_marked.slice(0, 6)), _verdict(opened)],
+			not AuthorSteps.any(_world, _store.scenery) and _marked.size() >= 2
+			and _passes(opened)):
 		return
 	var part: int = 0
+	var number: int = 0
 	for step: Instructions.Step in steps.slice(steps.size() / 2):
 		if not step.in_callout() and step.brick_ids.size() >= 2:
 			part = step.brick_ids[0]
+			number = step.number
 			break
+	print("  one part moved on, #%d of step %d (%s)" % [part, number,
+		Assemblies.path_of(_world.get_brick(part))])
+	await _kept("edit_steps next on #%d" % part, [part], func() -> String:
+		return await _say("edit_steps", {"op": "next", "bricks": [part]}))
+	await _kept("Shift-] on #%d" % part, [part], func() -> String:
+		return _shell.change_steps("next", [part], _step_numbered(number)))
+
+	print("  the model's own steps, tested, saved and opened again")
 	var depth: int = _builder.history_depth()
 	var said: String = await _say("edit_steps", {"op": "next", "bricks": [part]})
 	await _frames(2)
-	var after: Dictionary = _sections()
-	var moved: Array = before.keys().filter(func(id: int) -> bool:
-		return id != part and str(after.get(id, "?")) != str(before[id]))
-	_check("after %s: %d of %d other parts in another section%s; now %s" % [
-		said.get_slice("\n", 0), moved.size(), before.size() - 1, (": " + ", ".join(
-			moved.slice(0, 4).map(func(id: int) -> String: return "#%d %s->%s" % [id,
-				before[id], after.get(id, "?")]))) if not moved.is_empty() else "",
-		", ".join(_marks().slice(0, 8))], AuthorSteps.any(_world, _store.scenery)
-		and moved.is_empty())
-	var edited: Array = _placed(after)
+	var edited: Array = _placed(_numbers())
 	var saved: String = _store.to_text(name, true)
+	var tested: Dictionary = await _tested(saved)
+	_check("after %s, the steps test of its own steps: %s" % [said.get_slice("\n", 0),
+		_verdict(tested)], _passes(tested))
+	var read: Array = _as_others_read(saved, edited)
+	_check("...another LDraw reader builds the file in the same steps: %d of %d parts in another%s"
+		% [read.size(), edited.size(), (": " + ", ".join(read.slice(0, 3).map(
+			func(one: Array) -> String: return "%s in %s" % [one[0], one[2]])))
+			if not read.is_empty() else ""], read.is_empty())
 	await _back_to(depth)
-	_marks_kept("...undone, its sections", marked)
+	_marks_kept("...undone, its sections", _marked)
 	_check("...and no mark kept on its steps", BookletLooks.marks_of(_world).is_empty())
 	await _open(saved, name, false)
-	var reopened: Array = _placed(_sections())
+	var reopened: Array = _placed(_numbers())
 	var apart: Array = _unmatched(edited, reopened)
-	_check("...saved (%d section lines) and opened again: %d of %d parts in another section" % [
-		_section_lines(saved).size(), apart.size(), edited.size()],
-		apart.is_empty() and reopened.size() == edited.size())
+	_check("...saved (%d lines say a sub-model built in the model's steps) and opened again: "
+		% _in_lines(saved) + "%d of %d parts in another step%s" % [apart.size(), edited.size(),
+		(": " + ", ".join(apart.slice(0, 3).map(func(one: Array) -> String:
+			return "%s in %s" % [one[0], one[2]]))) if not apart.is_empty() else ""],
+		AuthorSteps.any(_world, _store.scenery) and apart.is_empty()
+		and reopened.size() == edited.size())
+	var now: Dictionary = _by_path()
+	_check("...every sub-model kept, part for part: %d sub-models, %s" % [now.size() - 1,
+		", ".join(now.keys().slice(0, 4).map(func(path: String) -> String:
+			return "%s %d" % [path if not path.is_empty() else "its own", int(now[path])]))],
+		now == held_in and now.size() > 2)
+
+
+## The Tested mark's tests of the model in [param text], as a shared page
+## carries them (SharedPages.attach_tested).
+func _tested(text: String) -> Dictionary:
+	return (await SharedPages.attach_tested(text, _library, _store))["tested"]
+
+
+func _passes(tested: Dictionary) -> bool:
+	return bool(((tested.get("tests", {}) as Dictionary).get("steps", {}) as Dictionary) \
+		.get("ok", false))
+
+
+func _verdict(tested: Dictionary) -> String:
+	var why: String = str(((tested.get("tests", {}) as Dictionary).get("steps", {}) as Dictionary) \
+		.get("why", ""))
+	return ("passes" if _passes(tested) else "fails") + ("" if why.is_empty() else ", " + why.left(120))
+
+
+## The lines of [param text] naming a sub-model built in its parent's steps.
+static func _in_lines(text: String) -> int:
+	var count: int = 0
+	for line: String in text.split("\n"):
+		if line.strip_edges().begins_with(LdrModel.IN_META):
+			count += 1
+	return count
+
+
+## How many parts each sub-model's path holds now, the model's own as "".
+func _by_path() -> Dictionary:
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			var path: String = Assemblies.path_of(brick)
+			out[path] = int(out.get(path, 0)) + 1
+	return out
+
+
+## The parts of [param placed] ([method _placed], the steps as the app reads
+## them) another LDraw reader puts down in another step of the file
+## [param text]: one that knows none of the app's own lines and builds each
+## sub-model whole in the step that places it. Its steps are matched to the
+## app's by the order they come in, the first part of each of its steps
+## telling which of the app's that is.
+func _as_others_read(text: String, placed: Array) -> Array:
+	var kept := PackedStringArray()
+	for line: String in text.split("\n"):
+		if not line.strip_edges().begins_with("0 !BRICKWORKS"):
+			kept.append(line)
+	var model: LdrModel = LdrModel.parse("\n".join(kept), "model")
+	var read: Array = []
+	for placement: LdrModel.Placement in model.flatten(_library.parts):
+		if not _library.parts.has(placement.part_id):
+			continue
+		var top: String = placement.unit.get_slice("/", 0)
+		var at: int = placement.step if top.is_empty() else int(model.unit_steps.get(top, 0))
+		read.append(["%s/%d" % [placement.part_id, placement.color_code],
+			placement.transform.origin, at])
+	# The app stands the model on the ground: the same parts, moved as one.
+	var shift := Vector3.ZERO
+	if not read.is_empty() and not placed.is_empty():
+		var sum_read := Vector3.ZERO
+		for one: Array in read:
+			sum_read += one[1]
+		var sum_ours := Vector3.ZERO
+		for one: Array in placed:
+			sum_ours += one[1]
+		shift = sum_ours / placed.size() - sum_read / read.size()
+	# Each of its steps the main step of the app's its parts are in, by order.
+	var main: Dictionary = {}       ## its step -> the app's number
+	var by_part: Array = []
+	for one: Array in read:
+		by_part.append([one[0], (one[1] as Vector3) + shift, one[2]])
+	var matched: Array = []
+	var free: Array = placed.duplicate()
+	for one: Array in by_part:
+		for index: int in free.size():
+			var other: Array = free[index]
+			if other[0] == one[0] and (other[1] as Vector3).distance_to(one[1]) < 0.1:
+				matched.append([one, str(other[2]).get_slice(".", 0).to_int()])
+				free.remove_at(index)
+				break
+	var out: Array = []
+	for pair: Array in matched:
+		var theirs: int = int((pair[0] as Array)[2])
+		if not main.has(theirs):
+			main[theirs] = int(pair[1])
+		elif int(main[theirs]) != int(pair[1]):
+			out.append([(pair[0] as Array)[0], (pair[0] as Array)[1], "their step %d, our %d"
+				% [theirs + 1, int(pair[1])]])
+	# The same steps in the same order: theirs one to one with ours.
+	var order: Array = main.keys()
+	order.sort()
+	for index: int in range(1, order.size()):
+		if int(main[order[index]]) <= int(main[order[index - 1]]):
+			out.append(["step %d" % (int(order[index]) + 1), Vector3.ZERO,
+				"ours %d after %d" % [int(main[order[index]]), int(main[order[index - 1]])]])
+	for one: Array in free:
+		out.append([one[0], one[1], "not read"])
+	return out
 
 
 ## Every part's section in the booklet now, by id.
