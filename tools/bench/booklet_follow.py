@@ -30,6 +30,8 @@ the model's parts the pages built is
 
     right     that part, in that colour, filling the same space (a part turned half
               round on its own symmetry fills it too: "turned" counts those)
+    near      that part in that colour on the stud or pin it goes on, seated less
+              than half a stud (half a plate) off: the CAD's seat, not the reading
     colour    that part where it goes, in another colour
     place     that part in that colour somewhere else: how far, in studs and plates
     part      another part where it goes
@@ -70,7 +72,10 @@ SAME_TURN = 0.01
 # A builder's part over this share of the model's part's box, the smaller of the two,
 # stands where it goes.
 OVERLAP = 0.5
-KINDS = ("right", "colour", "place", "part", "missing")
+# Less than half a stud across and half a plate up: the right stud or pin, the CAD's seat
+# not exact (a wheel pushed a little less far onto its pin). A whole stud is a stud.
+NEAR = (10.0, 4.0, 10.0)
+KINDS = ("right", "near", "colour", "place", "part", "missing")
 
 
 # -- LDraw -----------------------------------------------------------------------------
@@ -253,45 +258,119 @@ def _rounded(box: tuple) -> tuple:
     return tuple(round(v / SAME_BOX) for side in box for v in side)
 
 
+def pieces(boxes: list[tuple], touch: float = 1.0) -> list[list[int]]:
+    """The model's parts in the pieces they stand in, by their boxes meeting (within
+    `touch` LDU), largest first: a second vehicle beside the first, a figure standing
+    apart. Where the builder stands a piece apart is its own to choose."""
+    parent = list(range(len(boxes)))
+
+    def root(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    cell = 40.0
+    grid: dict = collections.defaultdict(list)
+    for i, (lo, hi) in enumerate(boxes):
+        for cx in range(int(math.floor((lo[0] - touch) / cell)), int((hi[0] + touch) // cell) + 1):
+            for cy in range(int(math.floor((lo[1] - touch) / cell)),
+                            int((hi[1] + touch) // cell) + 1):
+                for cz in range(int(math.floor((lo[2] - touch) / cell)),
+                                int((hi[2] + touch) // cell) + 1):
+                    grid[(cx, cy, cz)].append(i)
+    for members in grid.values():
+        for a in range(len(members)):
+            for b in range(a + 1, len(members)):
+                i, j = members[a], members[b]
+                if root(i) == root(j):
+                    continue
+                if all(boxes[i][0][k] <= boxes[j][1][k] + touch and
+                       boxes[j][0][k] <= boxes[i][1][k] + touch for k in range(3)):
+                    parent[root(i)] = root(j)
+    groups: dict = collections.defaultdict(list)
+    for i in range(len(boxes)):
+        groups[root(i)].append(i)
+    return sorted(groups.values(), key=lambda g: (-len(g), g[0]))
+
+
+# A piece apart of fewer parts than this is judged where the largest piece puts it:
+# alone, a part could be laid on anything of its kind.
+PIECE_ALONE = 3
+
+
 def compare(model: list[Placed], build: list[Placed], bounds: Bounds,
             judged: set[int] | None = None) -> dict:
     """Each of the model's parts (by index; only `judged` ones, when given) as right,
-    colour, place, part or missing against the build, and the build's extra parts.
-    Returns {"yaw", "shift", "parts": {index: {kind, ...}}, "extra": [...]}."""
-    yaw, shift = align(model, build, bounds)
-    turn = YAWS[yaw]
+    near, colour, place, part or missing against the build, and the build's extra
+    parts. The build is laid on each piece of the model in turn (`pieces`), largest
+    first, on what the pieces before it left. Returns {"yaw", "shift" (the largest
+    piece's), "parts": {index: {kind, ...}}, "extra": [...], "earlier_lost"}."""
     boxes_m = [bounds.world(p) for p in model]
-    boxes_b = [bounds.world(b, turn, shift) for b in build]
-    turns_b = [_mul(turn, b.turn) for b in build]
     free = set(range(len(build)))
     out: dict[int, dict] = {}
-    wanted = [i for i in range(len(model)) if judged is None or i in judged]
-    others = [i for i in range(len(model)) if judged is not None and i not in judged]
+    wanted_all = {i for i in range(len(model)) if judged is None or i in judged}
     by_key: dict = collections.defaultdict(list)
-    for j, b in enumerate(build):
-        by_key[b.key()].append(j)
     by_part: dict = collections.defaultdict(list)
     for j, b in enumerate(build):
+        by_key[b.key()].append(j)
         by_part[same_part(b.part)].append(j)
+    placed_boxes: dict = {}
 
-    # The parts not judged (built before the stretch measured) take theirs first, so a
-    # part of the stretch is not counted right for standing in an earlier one's place.
-    for i in others + wanted:
-        for j in by_key.get(model[i].key(), []):
-            if j in free and _same_box(boxes_m[i], boxes_b[j]):
-                free.discard(j)
-                turned = any(abs(a - b) > SAME_TURN for a, b in zip(model[i].turn, turns_b[j]))
-                out[i] = {"kind": "right", "turned": turned, "by": j}
-                break
-    for i in wanted:
-        if i in out:
-            continue
-        for j in by_part.get(same_part(model[i].part), []):
-            if j in free and _same_box(boxes_m[i], boxes_b[j]):
-                free.discard(j)
-                out[i] = {"kind": "colour", "was": build[j].colour, "by": j}
-                break
-    # Moved: as many of one part and colour as are left on both sides, nearest first.
+    def box_b(j: int, laid: tuple) -> tuple:
+        key = (j, laid[0], tuple(laid[1]))
+        if key not in placed_boxes:
+            placed_boxes[key] = bounds.world(build[j], YAWS[laid[0]], laid[1])
+        return placed_boxes[key]
+
+    laid_of: dict[int, tuple] = {}
+    groups = pieces(boxes_m)
+    first = None
+    for group in groups:
+        if first is None or len(group) >= PIECE_ALONE:
+            rest = sorted(free)
+            yaw, shift = align([model[i] for i in group], [build[j] for j in rest], bounds)
+            laid = (yaw, shift)
+            first = first or laid
+        else:
+            laid = first
+        turn = YAWS[laid[0]]
+        for i in group:
+            laid_of[i] = laid
+        wanted = [i for i in group if i in wanted_all]
+        others = [i for i in group if i not in wanted_all]
+        # The parts not judged (built before the stretch measured) take theirs first, so
+        # a part of the stretch is not counted right for standing in an earlier one's place.
+        for i in others + wanted:
+            for j in by_key.get(model[i].key(), []):
+                if j in free and _same_box(boxes_m[i], box_b(j, laid)):
+                    free.discard(j)
+                    turned = any(abs(a - b) > SAME_TURN for a, b in
+                                 zip(model[i].turn, _mul(turn, build[j].turn)))
+                    out[i] = {"kind": "right", "turned": turned, "by": j}
+                    break
+        for i in wanted:
+            if i in out:
+                continue
+            for j in by_part.get(same_part(model[i].part), []):
+                if j in free and _same_box(boxes_m[i], box_b(j, laid)):
+                    free.discard(j)
+                    out[i] = {"kind": "colour", "was": build[j].colour, "by": j}
+                    break
+        # Near: where it goes, seated a little off.
+        for i in wanted:
+            if i in out:
+                continue
+            here = _centre(boxes_m[i])
+            for j in by_key.get(model[i].key(), []):
+                if j in free and all(abs(c - h) < lim for c, h, lim in
+                                     zip(_centre(box_b(j, laid)), here, NEAR)):
+                    free.discard(j)
+                    out[i] = {"kind": "near", "by": j}
+                    break
+    wanted = sorted(wanted_all)
+    # Moved: as many of one part and colour as are left on both sides, nearest first,
+    # each measured as its own piece lays the build.
     pairs = []
     for i in wanted:
         if i in out:
@@ -299,14 +378,13 @@ def compare(model: list[Placed], build: list[Placed], bounds: Bounds,
         here = _centre(boxes_m[i])
         for j in by_key.get(model[i].key(), []):
             if j in free:
-                there = _centre(boxes_b[j])
-                pairs.append((math.dist(here, there), i, j))
+                pairs.append((math.dist(here, _centre(box_b(j, laid_of[i]))), i, j))
     pairs.sort()
     for _d, i, j in pairs:
         if i in out or j not in free:
             continue
         free.discard(j)
-        here, there = _centre(boxes_m[i]), _centre(boxes_b[j])
+        here, there = _centre(boxes_m[i]), _centre(box_b(j, laid_of[i]))
         off = [there[k] - here[k] for k in range(3)]
         out[i] = {"kind": "place", "by": j,
                   # Studs across, plates up, studs deep (LDraw's y is down).
@@ -315,16 +393,19 @@ def compare(model: list[Placed], build: list[Placed], bounds: Bounds,
     for i in wanted:
         if i in out:
             continue
-        best = max(((_overlap(boxes_m[i], boxes_b[j]), j) for j in free), default=(0.0, -1))
+        best = max(((_overlap(boxes_m[i], box_b(j, laid_of[i])), j) for j in free),
+                   default=(0.0, -1))
         if best[0] >= OVERLAP:
             free.discard(best[1])
             out[i] = {"kind": "part", "was": build[best[1]].part, "by": best[1]}
         else:
             out[i] = {"kind": "missing"}
     extra = [{"part": build[j].part, "colour": build[j].colour} for j in sorted(free)]
-    lost_before = [i for i in others if i not in out]
+    lost_before = [i for i in range(len(model)) if i not in wanted_all and i not in out]
+    yaw, shift = first or (0, [0.0, 0.0, 0.0])
     return {"yaw": yaw, "shift": shift, "parts": {i: out[i] for i in wanted}, "extra": extra,
-            "earlier_lost": len(lost_before)}
+            "earlier_lost": len(lost_before),
+            "pieces": sum(1 for g in groups if len(g) >= PIECE_ALONE)}
 
 
 # -- the truth: what each page adds ------------------------------------------------------
@@ -350,6 +431,7 @@ class Truth:
                 attach_page[int(step["callout"])] = page_of_step[step["index"]]
         self.placed_on: dict[int, int] = {}
         self.built_on: dict[int, int] = {}
+        self.step_of: dict[int, int] = {}
         for step in data["plan"]:
             page = page_of_step.get(step["index"])
             if page is None:
@@ -361,6 +443,9 @@ class Truth:
                 if n is not None and n not in self.placed_on:
                     self.placed_on[n] = put
                     self.built_on[n] = page
+                    # The number its page prints: a callout's steps carry the number
+                    # of the step that puts the callout on.
+                    self.step_of[n] = int(step.get("number", 0))
 
         # A hose or a cable drawn in segments (LSynth's "~... Segment" parts) is one
         # flexible part in the box; a builder lays it, never its forty segments one at a
@@ -444,10 +529,11 @@ def score(truth: Truth, build: list[Placed], first: int, last: int, bounds: Boun
         row["parts"] += 1
         row[got["kind"]] += 1
         row["turned"] += 1 if got.get("turned") else 0
-        if got["kind"] != "right":
+        if got["kind"] not in ("right", "near"):
             p = truth.parts[n]
-            row["wrong"].append({"part": p.part, "colour": p.colour, **{k: v for k, v in
-                                 got.items() if k != "by"}})
+            row["wrong"].append({"part": p.part, "colour": p.colour,
+                                 "step": truth.step_of.get(n, 0),
+                                 **{k: v for k, v in got.items() if k != "by"}})
         if got["kind"] == "place":
             row["offsets"].append(got["off"])
     for page, row in rows.items():
@@ -457,8 +543,20 @@ def score(truth: Truth, build: list[Placed], first: int, last: int, bounds: Boun
         if said and page in said:
             row["unclear"] = said[page].get("unclear", [])
             row["placed_said"] = said[page].get("placed")
+    causes: collections.Counter = collections.Counter()
+    for row in rows.values():
+        said_steps = collections.defaultdict(list)
+        for u in row.get("unclear", []):
+            said_steps[int(u.get("step") or 0)].append(str(u.get("why", "other")))
+        for wrong in row["wrong"]:
+            whys = said_steps.get(wrong["step"]) or said_steps.get(0) or ["unsaid"]
+            for why in whys:
+                causes[why] += 1 / len(whys)
     totals = {k: sum(r[k] for r in rows.values()) for k in ("parts", *KINDS, "turned")}
     return {"pages": [rows[p] for p in sorted(rows)], "totals": totals,
+            # Wrong parts by what the builder said of their step (a page's word without
+            # a step for the rest; "unsaid" where it said nothing), shared among its whys.
+            "said_causes": {k: round(v, 1) for k, v in causes.most_common()},
             "extra": len(result["extra"]), "extra_parts": result["extra"][:200],
             "earlier_lost": result["earlier_lost"], "yaw": result["yaw"],
             "shift": result["shift"]}
@@ -533,7 +631,11 @@ would put a part below y=0, or leave a part held by nothing. Where a person woul
 model to put a part under it, move every part up (edit_model's move, dy in plates) in the \
 same call that adds the part under it. A part held only by a part still to come goes in the \
 same call as that part. The ground is the app's rule, not the booklet's: say nothing of it \
-in page_done.
+in page_done. A sub-assembly the booklet builds on pages of its own (a yellow page) is built \
+apart, as a person builds it in their hand: beside the model, named with edit_model's \
+assemblies (the app refuses a piece apart that nothing names), then moved onto the model \
+(edit_model's move) on the page that puts it on. Building it where it goes from the start is \
+as good, when you can tell where that is.
 Keep going until page_done({last}) is said. Do not ask questions: decide as a person would, \
 and say in page_done what you were unsure of."""
 
@@ -712,17 +814,19 @@ def report(results: list[dict]) -> str:
         t = r["totals"]
         share = (lambda k: f"{100 * t[k] / t['parts']:.0f}%" if t["parts"] else "-")
         lines.append(f"{r['run']}: pages {r['first']}-{r['last']}, {t['parts']} parts: right "
-                     f"{t['right']} ({share('right')}), colour {t['colour']}, place {t['place']}, "
+                     f"{t['right']} ({share('right')}), near {t.get('near', 0)}, colour "
+                     f"{t['colour']}, place {t['place']}, "
                      f"part {t['part']}, missing {t['missing']}; extra {r['extra']}; earlier "
                      f"pages' parts lost {r['earlier_lost']}; {r['minutes']} min")
-        lines.append("| page | steps | parts | right | colour | place | part | missing | "
+        lines.append("| page | steps | parts | right | near | colour | place | part | missing | "
                      "builder could not tell |")
-        lines.append("|---|---|---|---|---|---|---|---|---|")
+        lines.append("|---|---|---|---|---|---|---|---|---|---|")
         for row in r["pages"]:
             unclear = "; ".join(f"{u.get('why')}: {u.get('what', '')[:80]}"
                                 for u in row.get("unclear", []))
             lines.append(f"| {row['page']} | {','.join(map(str, row['steps']))} | "
-                         f"{row['parts']} | {row['right']} | {row['colour']} | {row['place']} | "
+                         f"{row['parts']} | {row['right']} | {row.get('near', 0)} | "
+                         f"{row['colour']} | {row['place']} | "
                          f"{row['part']} | {row['missing']} | {unclear} |")
         lines.append("")
     return "\n".join(lines)

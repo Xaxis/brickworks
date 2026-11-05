@@ -48,8 +48,8 @@ MODEL = [
     brick("3001", 4, 0, -24, 0),      # 1
     brick("3001", 1, 80, 0, 0),       # 2
     brick("3039", 15, 0, -48, 0),     # 3
-    brick("3023", 14, 80, -24, 0),    # 4
-    brick("3023", 14, 120, -24, 0),   # 5
+    brick("3023", 14, 80, -8, 0),     # 4
+    brick("3023", 14, 120, -8, 0),    # 5
 ]
 
 
@@ -91,9 +91,17 @@ def test_a_part_turned_on_its_own_symmetry_is_right_and_a_slope_is_not():
     assert kinds(bf.compare(MODEL, build, BOUNDS))[3] == "place"
 
 
+def test_a_wheel_a_little_short_of_its_pin_is_near_and_a_stud_off_is_not():
+    build = list(MODEL)
+    build[4] = brick("3023", 14, 86, -10, 0)    # 0.3 stud and a quarter plate off
+    build[5] = brick("3023", 14, 140, -8, 0)    # a whole stud off
+    got = kinds(bf.compare(MODEL, build, BOUNDS))
+    assert (got[4], got[5]) == ("near", "place")
+
+
 def test_letters_of_one_mould_are_one_part():
     build = list(MODEL)
-    build[4] = brick("3023b", 14, 80, -24, 0)
+    build[4] = brick("3023b", 14, 80, -8, 0)
     assert kinds(bf.compare(MODEL, build, BOUNDS))[4] == "right"
 
 
@@ -101,7 +109,7 @@ def test_parts_built_before_the_stretch_are_not_judged_and_keep_their_place():
     # Parts 0-2 were the seed. The builder put the yellow plate where the seed's
     # blue brick was not, and nothing where part 4 goes, so part 5's plate stands in
     # part 4's place: one is right, one is missing, never two right.
-    build = [MODEL[0], MODEL[1], MODEL[2], MODEL[3], brick("3023", 14, 80, -24, 0)]
+    build = [MODEL[0], MODEL[1], MODEL[2], MODEL[3], brick("3023", 14, 80, -8, 0)]
     result = bf.compare(MODEL, build, BOUNDS, judged={3, 4, 5})
     assert sorted(result["parts"]) == [3, 4, 5]
     assert sorted(k for k in kinds(result).values()) == ["missing", "right", "right"]
@@ -137,13 +145,13 @@ def truth() -> bf.Truth:
                       {"plan": 2, "number": 3, "in_callout": True}]},
                   {"number": 4, "kind": "steps", "steps": [{"plan": 3, "number": 3}]},
                   {"number": 5, "kind": "parts", "steps": []}],
-        "plan": [{"index": 0, "callout": 0, "callout_step": 0, "attaches": False,
+        "plan": [{"index": 0, "number": 1, "callout": 0, "callout_step": 0, "attaches": False,
                   "bricks": [1, 2]},
-                 {"index": 1, "callout": 0, "callout_step": 0, "attaches": False,
+                 {"index": 1, "number": 2, "callout": 0, "callout_step": 0, "attaches": False,
                   "bricks": [3]},
-                 {"index": 2, "callout": 1, "callout_step": 1, "attaches": False,
+                 {"index": 2, "number": 3, "callout": 1, "callout_step": 1, "attaches": False,
                   "bricks": [4, 5, 6]},
-                 {"index": 3, "callout": 1, "callout_step": 0, "attaches": True,
+                 {"index": 3, "number": 3, "callout": 1, "callout_step": 0, "attaches": True,
                   "bricks": [7]}],
         "bricks": bricks})
 
@@ -166,6 +174,10 @@ def test_score_rows_a_page_and_the_seed_is_written_as_ldraw():
     assert (rows[4]["parts"], rows[4]["right"], rows[4]["missing"]) == (4, 3, 1)
     assert rows[4]["built_on"] == [3, 4]
     assert rows[4]["unclear"][0]["why"] == "hidden"
+    # The part left off is the callout's, numbered as the step that puts it on, and
+    # what the builder said of its page is taken as the cause.
+    assert rows[4]["wrong"][0]["step"] == 3
+    assert result["said_causes"] == {"hidden": 1.0}
     seed = bf.read_ldraw(t.ldraw([0, 1], "seed"))
     assert [(p.part, p.at) for p in seed] == [("3001", [0.0, -24.0, 0.0]),
                                               ("3001", [0.0, -48.0, 0.0])]
@@ -231,3 +243,22 @@ def test_a_hose_drawn_in_segments_is_never_judged(monkeypatch):
     assert t.flex == {t.index["7"]}
     result = bf.score(t, moved(t.parts[:6], 0, [0, 0, 0]), 2, 4, BOUNDS)
     assert result["totals"]["parts"] == 6 and result["totals"]["right"] == 6
+
+
+def test_a_second_vehicle_may_stand_anywhere_but_a_part_of_the_first_may_not():
+    # A second model of three bricks, standing apart from the first: the builder stood
+    # it elsewhere, turned. Where it stands is the builder's; its parts are right.
+    apart = [brick("3001", 2, 400, 0, 0), brick("3001", 2, 400, -24, 0),
+             brick("3023", 2, 400, -32, 0)]
+    model = MODEL + apart
+    build = MODEL + moved(apart, 90, [-300, 0, 500])
+    got = bf.compare(model, build, BOUNDS)
+    assert set(kinds(got).values()) == {"right"} and got["pieces"] == 2
+    # The same three bricks put on the first model a stud off are one piece with it:
+    # where they go is the booklet's, and a stud off is a stud off.
+    joined = [brick("3001", 2, 160, 0, 0), brick("3001", 2, 160, -24, 0),
+              brick("3023", 2, 160, -32, 0)]
+    build = MODEL + [bf.Placed(p.part, p.colour, bf._add(p.at, [0, 0, 20]) + p.turn)
+                     for p in joined]
+    got = bf.compare(MODEL + joined, build, BOUNDS)
+    assert [kinds(got)[i] for i in (6, 7, 8)] == ["place"] * 3 and got["pieces"] == 1
