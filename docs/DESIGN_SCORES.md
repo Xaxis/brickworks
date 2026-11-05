@@ -5260,6 +5260,184 @@ Why it fell short:
   `ed247302` for it.
 - The change is taken back out on this branch, so nothing of it ships.
 
+### Likeness: the massing planned before the first brick, and each build read against it (2026-11-05, design16, `02a0456e`, NO-GO)
+
+**Why.** design15's finding reached 20 of 44 sessions and came last in a
+long first-build answer. Where a session re-planned, it won (overall 5 → 8
+of 18). Its next step was to plan the volumes first and check the first
+build against them, so the finding comes while the massing is all there is,
+in every session.
+
+**How sessions planned before it.** plan_scale, how_real_sets_build_this,
+find_reference, then a first submit_design whose `assemblies` name boxes.
+Nothing read those boxes back or measured them. On d15l44 the fill
+finding followed the build's other findings, after the touches an expert
+adds. In 11 of the 20 told sessions the next words were about features.
+
+**The change** (`450bf487`, with a fix in `02a0456e`):
+
+- `plan_massing` (src/ai/massing_plan.gd) takes the main volumes, each a
+  footprint, a height span, round or not, and an optional smaller top for
+  a slope or a ridge. It also takes how the subject reads from the front
+  and the side.
+- Its answer leads with the plan's fill against sets of the theme and size
+  (design15's `Massing`, the set under test held out). Then come the
+  volumes as read, each setback and overhang named, and the front and side
+  outlines drawn in characters.
+- Every build while designing (submit_design) leads with the check against
+  the plan. It covers each volume (there, at its height, narrower, short,
+  built up past its setback or slope), the planned gaps and the space under
+  an overhang. The plan is laid where the build stands first. The answer
+  ends: "bring the build back to the plan ..., or keep it and say why, and
+  plan_massing the volumes as they now are".
+- The method, the head and how_real_sets_build_this's answer ask for the
+  plan. A build with no plan is asked for one.
+- The first lever run (`realset-2026-11-05-d16lev`, kept, not judged) showed
+  a wrong finding at once. The Burj's box of "lower wings", built as a Y
+  inside it, was told "only 22% of it is built". That pushes a session to
+  fill its box, so I stopped the run. Now a volume is missing only when
+  almost nothing stands in its span. Leaner inside its box is as planned,
+  and spill past the plan is still said (`02a0456e`).
+
+**Proof in the app.**
+
+- `massing_probe`: all 29 passed. A tower on a podium plans at 40%,
+  "fuller". The build cases: as planned; short; a setback built up; the gap
+  between wings filled; the space under a deck filled; a chimney missing; a
+  gable built flat; a rotunda built square; a cross inside a planned square
+  as planned; a tower half as wide said narrower; a plan 20 studs off read
+  where the build stands; no plan.
+- Also passed: `read_only`, `connector_method`, `holdout`, `surface`,
+  `colours_seen`, `docs_pages` and `mcp_sync`. The head is 3314 characters,
+  and 3499 with the connector's note.
+
+**Smoke.** Two locked snapshots, each imported first: `snapd16base` at
+`1ecb8a17` (pre259's code) and `snapd16lev2` at `02a0456e`. One job each on
+the owner's path, on 5 subjects where shape lost in d15l44. Two were told
+there and passed it over: 42111-1 Dom's Dodge Charger and 7746-1
+Single-Drum Roller. Three were never told: 21031-1 Burj Khalifa, 7732-1 Air
+Mail and 9469-1 Gandalf Arrives.
+
+There was no login lapse, and the holdout held in all ten:
+- `held_out_said` is true for every design.
+- The only hits were the Burj's Wikimedia photos, the printed tiles "Burj
+  Khalifa" and "Air Mail Letter Envelope", and one session's gallery search
+  for its own set, which heard "nothing matches".
+
+Verdicts won, of 10 a dimension:
+
+| dimension | d15b44 (same 5) | d15l44 (same 5) | d16base | d16lev2 |
+|---|---|---|---|---|
+| likeness | 0 | 0 | 0 | 0 |
+| surface | 1 | 4 | 2 | 3 |
+| colour | 2 | 3 | 3 | 2 |
+| technique | 0 | 0 | 0 | 0 |
+| creativity | 2 | 2 | 4 | 2 |
+| overall | 0 | 0 | 0 | 0 |
+| lost likeness or overall naming our shape generic or boxy, by hand | | | 15 of 20 | 17 of 20 |
+
+**Reach** (scratch `py/reach16.py`, `py/checks16.py`):
+
+- **The plan reached every session.** 5 of 5 planned volumes before the
+  first brick, right after how_real_sets_build_this.
+- **The plan's fill moved no one.** 2 of 5 plans were told "fuller than
+  three in four" (the Charger 64% against Technic's 27% to 44%, the
+  roller 51% against City's 15% to 28%). Neither re-planned. 2 were
+  "within", and Gandalf had no norm.
+- **Every first build was read off its plan.** None was as planned. None of
+  the 5 sessions re-planned, and none settled a finding in words. The
+  Charger and Gandalf submitted again, but to go on with their own order:
+  the body first, and the lane and horse first. The other 3 went on to
+  review_model.
+- **Some findings were noise.**
+  - The Burj's spire read "short, 114 plates where 127": a thin antenna
+    fills under half a voxel.
+  - Two first builds were partial ("Test: lane and horse"), so whole
+    volumes read "not built".
+  - The plane's findings were true. It built its wings 2 plates lower and
+    its tailplane 6 plates higher than it planned. A thin volume moved off its
+    planned height reads "narrower" rather than "lower".
+
+Fill: the plan, the first build and the final model against the set (the
+final model measured by scratch `massing_read.gd`):
+
+| subject | set | d16base final | d16lev2 plan → first build → final |
+|---|---|---|---|
+| Burj Khalifa | 0.12 | 0.13 | 36% within → 20% → 0.12 |
+| Air Mail | 0.22 | 0.18 | 19% within → 17% → 0.21 |
+| Gandalf Arrives | 0.26 | 0.28 | 48% no norm → 46% (lane and horse) → 0.27 |
+| Dom's Dodge Charger | 0.71 | 0.56 | 64% fuller → 60% (body alone) → 0.70 |
+| Single-Drum Roller | 0.23 | 0.50 | 51% fuller → 50% → 0.49 |
+
+The plan held the build: the roller was planned at 51%, built at 50% and
+finished at 49%. But it was planned at twice its kind's fill, and being told
+so moved nothing. The Charger shows the norm's limit. Its own set fills
+0.71, so "fuller than Technic sets" was wrong for a car. Technic's sets of
+that size are mostly machines.
+
+Each subject, with what I saw in its front and corner renders (scratch
+`sheets/`):
+
+- **Burj Khalifa.** The base is a bundle of round columns that step in, with
+  a long spire: "looks more like organ pipes", "a generic clustered
+  tower". The lever's is square bricks stacked in stepped blocks, a box in
+  plan at every height: "a chunky stack of square brick blocks", "boxy,
+  studded". Its plan was six rectangles, and it built rectangles. Both lost
+  4 of 4.
+- **Air Mail.** The base is a white box fuselage with flat red slab wings and
+  a figure standing on one. The lever's has thin white wings, a red nose and
+  a yellow tailplane wider than the wings, high on the fin: "an oversized
+  yellow tailplane", "boxy, car-like fuselage". Both lost 4 of 4.
+- **Gandalf Arrives.** Both lost every likeness verdict on the horse. Each
+  session first chose the moulded horse (10509p02), as the set has. The
+  stud check refused it at every position tried, more than a dozen across
+  the two sessions ("its tubes land between that part's studs"). The base
+  said "the app's two checks disagree about where its hooves land". In the
+  lever, the creature rule also refused it as "nothing in it is on a
+  joint". Both fell back to a brick-built horse: "a blocky grey brick-built
+  horse", "a boxy brick-built white horse with a flat head".
+- **Dom's Dodge Charger.** The two are alike to the eye: a long black slab of
+  stacked bricks with a stepped roof. Both lost 4 of 4 on "a boxy black
+  slab", "a crude black box".
+- **Single-Drum Roller.** The base's drum is at one end, half under the
+  body, with a tall canopy cab. The lever's drum is at the front in a yoke,
+  with a black roll cage. In both the drum is narrower than the body:
+  "small, narrow ... tucked under a boxy body". Both lost 4 of 4.
+
+**NO-GO.** None of the three conditions held:
+- likeness and overall won 0 of 10 in both arms;
+- creativity went 4 → 2 (Gandalf's base won 2, and its lever none);
+- our shape was named generic or boxy 15 → 17 times, read by hand.
+
+So the paired 44 did not run.
+
+Why it fell short:
+- **Planning reached everyone, and the number still moved no one.** Two
+  plans told "fuller" were built as planned. The finding goes the way of
+  design15's. A session hears a fill against its kind as advice, and the
+  plan it has just written outweighs it.
+- **A check against the session's own plan measures consistency, not
+  likeness.** Every first build was off its plan, and every session went on.
+  Where a finding was true, it was the session's loose plan (the plane's
+  wings 2 plates off), not the subject's shape.
+- **A plan of boxes builds boxes.** The tool takes rectangles, with a round
+  plan or a smaller top as the only other forms. The Burj's planned
+  rectangles became stacked square blocks, where the base built round
+  columns.
+- **These subjects lose on one feature's form, not the box.** The judge's
+  words name the drum (small, half hidden), the horse (brick-built), the
+  wings (thick slabs), the nose (blunt) and the grille. The massing was
+  never the named reason.
+- **Next.** For Gandalf, the moulded horse 10509p02 cannot be placed at all.
+  The stud check refuses it at every position, and the creature rule
+  refuses it as a statue. Both sessions wanted the set's own part. Fix that
+  part's connections and let a moulded animal pass the creature rule. That
+  is the smallest step on these five, and it is general: every moulded
+  animal is hit. For the rest, the judge's shape words name a defining
+  feature's proportion against the set.
+- The change is taken back out on this branch (`4388ddf7`; `02a0456e` holds
+  it), so nothing of it ships.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
