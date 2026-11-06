@@ -93,7 +93,7 @@ ui:copy paste and duplicate
 A fence, a colonnade, a round tower or a wheel's spokes are copies laid out at once:
 
 - **Straight after a copy:** put a [[Ctrl+D]] copy down one step along, then type `11x` and [[Enter]] to make it one of 11 in the row, each the same step again. `/4` cuts the gap between the copy and where it came from in four, putting three between. One [[Ctrl+Z]] takes the copy and all the rest back.
-- **Edit › Pattern…** ([[Ctrl+Shift+D]]) copies the selection **In a row** along x, z or up, **Round** what it stands on, the joint it hangs on or the middle of the floor, or **Along a hose** laid in the model. **In all** counts the selection: 16 is a ring of sixteen.
+- **Edit › Pattern…** ([[Ctrl+Shift+D]]) copies the selection **In a row** along x, z or up, **In a grid** of columns along x, rows along z and levels up, each so many studs or plates apart, **Round** what it stands on, the joint it hangs on or the middle of the floor, or **Along a hose** laid in the model. **In all** counts the selection: 16 is a ring of sixteen. A grid counts it too: 4 columns, 3 rows and 2 levels is 24, the selection one of them, and a copy with no room is named by its column, row and level.
 
 The copies are drawn where they will go as you type, each checked for room. One with no room is red, says what is in its way, and nothing goes down until they all fit.
 

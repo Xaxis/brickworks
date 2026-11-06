@@ -10741,3 +10741,73 @@ msgstr "Automatisch: der einfachere Modus, den diese Grafik braucht (%s). Kein P
 
 msgid "From the next start."
 msgstr "Ab dem nächsten Start."
+
+# Pattern's In a grid: columns, rows and levels in one dialog (APP_UX4 grid)
+msgid "In a grid"
+msgstr "Im Raster"
+
+msgid "Columns"
+msgstr "Spalten"
+
+msgid "Rows"
+msgstr "Reihen"
+
+msgid "Levels"
+msgstr "Ebenen"
+
+msgid "studs along x"
+msgstr "Noppen entlang x"
+
+msgid "studs along z"
+msgstr "Noppen entlang z"
+
+msgid "plates up"
+msgstr "Platten nach oben"
+
+msgid "1 copy"
+msgstr "1 Kopie"
+
+msgid "%d copies"
+msgstr "%d Kopien"
+
+msgid "1 column"
+msgstr "1 Spalte"
+
+msgid "%d columns %s apart"
+msgstr "%d Spalten im Abstand von %s"
+
+msgid "1 row"
+msgstr "1 Reihe"
+
+msgid "%d rows %s apart"
+msgstr "%d Reihen im Abstand von %s"
+
+msgid "1 level"
+msgstr "1 Ebene"
+
+msgid "%d levels %s apart"
+msgstr "%d Ebenen im Abstand von %s"
+
+msgid "1 stud"
+msgstr "1 Noppe"
+
+msgid "each has room"
+msgstr "jede hat Platz"
+
+msgid "the copy in column %d, row %d, level %d has no room: %s is in the way"
+msgstr "die Kopie in Spalte %d, Reihe %d, Ebene %d hat keinen Platz: %s ist im Weg"
+
+msgid "%d copies have no room, the first in column %d, row %d, level %d: %s is in the way"
+msgstr "%d Kopien haben keinen Platz, die erste in Spalte %d, Reihe %d, Ebene %d: %s ist im Weg"
+
+msgid "%d copies have no room, the first copy %d: %s is in the way"
+msgstr "%d Kopien haben keinen Platz, die erste ist Kopie %d: %s ist im Weg"
+
+msgid "a grid of %d copies"
+msgstr "ein Raster aus %d Kopien"
+
+msgid "one %s takes them all back"
+msgstr "ein %s nimmt sie alle zurück"
+
+msgid "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
+msgstr "Kopien der Auswahl in einer Reihe, im Raster, im Kreis oder entlang eines Schlauchs, auf einmal abgesetzt"
