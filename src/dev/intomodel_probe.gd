@@ -503,8 +503,10 @@ func _in_each_language() -> void:
 			if Language.says(english).is_empty():
 				lacking.append(english.left(60))
 				continue
+			# A maker's credit is kept as it is: "Michael Heidemann, CCAL 2.0".
 			for kept: Variant in Language.left_in_english(english):
-				if not names.search(str(kept).strip_edges()):
+				if not Array(str(kept).split(", ")).all(func(piece: String) -> bool:
+						return names.search(piece.strip_edges()) != null):
 					lacking.append("%s (in %s)" % [str(kept).left(50), english.left(40)])
 		_check("%s: all %d of its words and lines said%s" % [code, _heard.size(),
 			"" if lacking.is_empty() else "; not: " + " | ".join(lacking)], lacking.is_empty())
