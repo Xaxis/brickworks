@@ -1089,6 +1089,8 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 		if not _on_main_thread():
 			_arrived_lock.lock()
 			var waiting: Lbm.PartMesh = _arrived.get(info.mesh_hash)
+			if waiting == null:
+				_unread[part_id] = true
 			_arrived_lock.unlock()
 			return waiting
 		if _arrived.has(info.mesh_hash):
@@ -1209,6 +1211,11 @@ var _readers: int = 0
 ## on a worker takes to read it.
 var _arrived: Dictionary = {}
 var _arrived_lock := Mutex.new()
+## Parts a reader on a worker asked for that were not loaded, which it read
+## as having no geometry: id -> true, under [member _arrived_lock]. A shape
+## laid on a worker with one of its parts read so lays other parts than the
+## same shape laid on the main thread, which loads it (bigedit, 2026-11-06).
+var _unread: Dictionary = {}
 ## The WorkerThreadPool tasks reading, for _wait_for_readers.
 var _reading_tasks: Array[int] = []
 ## task -> what ends it early, for the readers that can be.
@@ -1240,6 +1247,17 @@ func end_reading(task: int = -1) -> void:
 	_arrived_lock.lock()
 	_arrived.clear()
 	_arrived_lock.unlock()
+
+
+## The parts readers on workers asked for and found not loaded since this
+## was last called ([member _unread]), forgotten here: load them and read
+## again for the answer the main thread would give.
+func unread_by_readers() -> PackedStringArray:
+	_arrived_lock.lock()
+	var out := PackedStringArray(_unread.keys())
+	_unread.clear()
+	_arrived_lock.unlock()
+	return out
 
 
 ## Whether a worker is reading the library now: what changes it waits for

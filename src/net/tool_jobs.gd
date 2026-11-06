@@ -65,6 +65,18 @@ class Entry extends RefCounted:
 	var finished: bool = false
 	var began_ms: int = 0
 	var ended_ms: int = 0
+	## What the work says it is doing now, for a call that became a job part
+	## way: its words were what it said then, and an edit's job, waiting on
+	## its picture for two minutes, said "Changed it: 1118 bricks" to every
+	## asking (the Charger's, bigedit 2026-11-06).
+	var doing: Callable = Callable()
+
+	## Its bar's words brought up to what the work says it is doing.
+	func heard() -> void:
+		if doing.is_valid() and not finished and work != null:
+			var now: String = str(doing.call())
+			if not now.is_empty() and now != work.words:
+				work.say(now)
 
 	func seconds() -> int:
 		return roundi(float((ended_ms if finished else Time.get_ticks_msec()) - began_ms) / 1000.0)
@@ -231,6 +243,7 @@ func call_tool(tool: String, long: Dictionary, run: Callable, doing: Callable,
 	if entry.finished and after_s > 0.0:
 		return entry.answer
 	entry.work = Working.begin(str(doing.call()), 0, false)
+	entry.doing = doing
 	_keep(entry)
 	if entry.finished:
 		entry.work.end()
@@ -307,6 +320,7 @@ func answer(input: Dictionary) -> Variant:
 	while not entry.finished and Time.get_ticks_msec() < until:
 		await tree.process_frame
 	if not entry.finished:
+		entry.heard()
 		var share: String = ""
 		if entry.work.total > 0:
 			share = " (%d%%)" % roundi(100.0 * entry.work.done / entry.work.total)
@@ -333,6 +347,7 @@ func answer(input: Dictionary) -> Variant:
 
 ## What the job holding the app is doing, for a call made meanwhile.
 func busy(entry: Entry) -> String:
+	entry.heard()
 	return ("The app is busy with job %d (%s, %d s in): %s Call job {\"id\": %d} until it "
 		% [entry.id, entry.tool, entry.seconds(), _sentence(entry.work.line()), entry.id]
 		+ "gives its answer%s, then this." % (", or cancel it" if entry.work.can_cancel else ""))
