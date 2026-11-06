@@ -234,6 +234,17 @@ the parts list's What do I need?). Recipe and proofs:
   grants `authenticated`: SELECT, INSERT, UPDATE, DELETE and nothing for
   `anon`. The project has no Supabase CLI migration table, so it is recorded
   here. Nothing existing was changed.
+- **Database, applied to the live project 2026-11-06, additive only**
+  (`supabase/collection_ops.sql`, mybricks2, the same way, after a dry run
+  with `--try=tools/collection_ops_try.sql`): sequence
+  `public.collections_rev`; columns `collections.rev bigint not null default
+  0` and `collections.recent jsonb not null default '[]'`; function
+  `public.collections_next_rev()` (security definer, search_path '', no
+  grant to `public`, `anon` or `authenticated`) and its trigger
+  `collections_next_rev` before insert or update, which moves `rev` on at
+  every write, the older api's included. `api/collection.js` writes only
+  over the rev it read; the api before it reads and writes neither column
+  and goes on working. Nothing existing was changed.
 - **Not yet proven:** a real Rebrickable account (none here has a key); the
   client is proven against a stand-in answering in Rebrickable's documented
   shape. The web flow runs on a preview, not production.
