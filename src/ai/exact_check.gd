@@ -395,8 +395,8 @@ func pairs_near(of: Dictionary, by: float) -> Array:
 ## [param of] (every pair when it is empty), i < j, items numbered as here.
 ## A part down another's stud past the stud's foot is one too, whatever
 ## their shapes meet by ([method sunk]): a cone 4 LDU down a cone's stud
-## meets it by 2 LDU, a 2 x 2 dome by 0.8, and it is in that part all the
-## same. Nothing forgives it (a found pair with "sunk").
+## meets it by 2 LDU, a 2 x 2 cone down 4589's by 0.8, and it is in that
+## part all the same. Nothing forgives it (a found pair with "sunk").
 func collisions(of: Dictionary) -> Array:
 	var began: int = Time.get_ticks_usec()
 	var out: Array = []
@@ -414,8 +414,8 @@ func collisions(of: Dictionary) -> Array:
 
 
 ## Each pair of items, one of them in [param of] (any when it is empty),
-## where one is down a stud of the other past the stud's foot by more than
-## the 1 LDU a build allows (Exact.sunk_pairs): Vector2i(a, b), a < b ->
+## where one is down a stud of the other past the stud's foot, further than
+## BrickNet joins the two (Exact.sunk_pairs): Vector2i(a, b), a < b ->
 ## the collision, as [method between] gives one, with "sunk": [the stud's
 ## item, the one down it] and the stud's way as its axis.
 func sunk(of: Dictionary = {}) -> Dictionary:
@@ -429,12 +429,13 @@ func sunk(of: Dictionary = {}) -> Dictionary:
 
 
 ## Whether item [param i] is down a stud of one of [param others], or one of
-## theirs down its, past the stud's foot by more than a build allows: no seat
-## moves it, as it is in that part (the check says so, [method collisions]).
+## theirs down its, past the stud's foot further than BrickNet joins them: no
+## seat moves it, as it is in that part (the check says so, [method
+## collisions]). Nearer, it is on the stud, low, and the seat puts it up.
 func _sunk_near(i: int, others: PackedInt32Array) -> bool:
 	for j: int in others:
-		if items[j] != null and (Exact.sunk(items[j], items[i]) > Exact.TAU
-				or Exact.sunk(items[i], items[j]) > Exact.TAU):
+		if items[j] != null and (Exact.sunk(items[j], items[i]) > Exact.SUNK_PAST
+				or Exact.sunk(items[i], items[j]) > Exact.SUNK_PAST):
 			return true
 	return false
 

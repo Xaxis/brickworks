@@ -1147,6 +1147,13 @@ const SUNK_REACH := 8.0
 ## How far off a stud's line a hole may be and take that stud, LDU: LDraw's
 ## three decimals, not the next stud's.
 const SUNK_ACROSS := 1.0
+## How far past a stud's foot a part must stand to be in the stud's part,
+## LDU: further than BrickNet joins a hole to a stud (POS_THR), as
+## BrickBench's own check reads the two. Nearer, it is on the stud, a little
+## low, and the check seats it. Real sets put a round plate 2 LDU past a
+## half pin's foot, over its collar (42088's rear lights, 42105's cabin),
+## and past a door's stud handle's (7632).
+const SUNK_PAST := POS_THR
 ## How much deeper two parts' shapes must meet where one is down the other's
 ## stud than at the stud's stop, LDU, for it to be in that part: more than
 ## the hundredths two parts touching meet by. A cone 2 LDU down a cone's
@@ -1187,7 +1194,7 @@ static func past_foot(foot: Vector3, way: Vector3, at: Vector3, its_way: Vector3
 ## top, are clear of it; it is in the cone all the same. Asked
 ## by the line each stud and hole is on, square to the axes, to the LDU and
 ## the LDU either side, so a model of thousands of parts asks each stud once.
-static func sunk_pairs(items: Array, of: Dictionary = {}, beyond: float = TAU) -> Array:
+static func sunk_pairs(items: Array, of: Dictionary = {}, beyond: float = SUNK_PAST) -> Array:
 	var lines: Dictionary = {}    ## line -> [item, connector, position, way] each
 	for i: int in items.size():
 		var item: Item = items[i]

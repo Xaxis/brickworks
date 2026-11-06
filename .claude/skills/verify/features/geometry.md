@@ -412,17 +412,18 @@ can occupy the same millimetre.
   `technic_hand_probe` the stack by hand and over MCP; 939 → 957 with
   `BrickLattice.grid_cell` (realjoints2).
   A stud stops what goes onto it at its foot: a hole or tube of one part past
-  the foot of another's stud it mates with, by more than TAU, with their
-  shapes meeting deeper there than at the stud's stop, is in that part
-  (`Exact.sunk_pairs`). The check refuses it as passing that far into the
-  part below and never seats it up (`ExactCheck.sunk`, `_sunk_near`), and the
-  hand lifts what it rests on a cover to the stud's stop (`Builder.
-  stud_feet_lift`, in `_aim_single`, `settle_figure` and `Carry._aim`): a
-  cone's cover stops 4 LDU under its top (4589's 6), and a cone, round plate
-  or dome put on its stud went that far down it. `technic_hand_probe` has
-  each by hand, dragged, swapped and over MCP at the stop to 0.01 LDU;
-  `joints_probe` four parts 4 LDU down a cone's stud from a file, refused
-  (conestop).
+  the foot of another's stud it mates with, further than BrickNet joins the
+  two (`Exact.SUNK_PAST`, POS_THR's 3 LDU), with their shapes meeting deeper
+  there than at the stud's stop, is in that part (`Exact.sunk_pairs`). The
+  check refuses it as passing that far into the part below and never seats
+  it up (`ExactCheck.sunk`, `_sunk_near`), and the hand lifts what it rests
+  on a cover to the stud's stop (`Builder.stud_feet_lift`, in `_aim_single`,
+  `settle_figure` and `Carry._aim`): a cone's cover stops 4 LDU under its top
+  (4589's 6), and a cone, round plate or dome put on its stud went that far
+  down it. `technic_hand_probe` has each by hand, dragged, swapped and over
+  MCP at the stop to 0.01 LDU, and a figure on two cones by hand and by
+  add_minifig; `joints_probe` four parts 4 LDU down a cone's stud from a
+  file, refused (conestop).
 - `axles and gears on a line`: an axle or a pin is in every hole along its
   whole length (`Joints.through`, by Mechanism's own rule: on the line to
   1.5 LDU, the hole's middle no more than 2 LDU past an end; a pin not in an
