@@ -15,6 +15,13 @@
 ## through a brick with no hole, a turntable's top off its base, a clip on
 ## something too thick for it, a hinge's halves apart.
 ##
+## And over 1,056 sub-models of the whole repository (2026-11-05), what was
+## left: a pane in its frame and a drawer in its cupboard, which the cover
+## fills shut, and a part held by a joint BrickNet's labels do not join, a
+## piece of its own by the exact check (ExactCheck.drop_in_air,
+## Assistant._exact_unheld). Each where its set has it, then pushed into
+## the frame or off the joint.
+##
 ## Needs a catalogue built with shafts and bores. One without them is
 ## said, and fails: a checker that cannot see the joints refuses every
 ## one of the cases that should pass.
@@ -205,6 +212,56 @@ func _initialize() -> void:
 1 15 0 -72 0 1 0 0 0 1 0 0 0 1 6556.dat
 1 47 34 -68 5 1 0 0 0 1 0 0 0 1 3854.dat
 """)
+
+	print("\na pane in its frame and a drawer in its cupboard, where the frame is air")
+	# The cover fills each layer's holes shut, so a frame's groove and a
+	# cupboard's inside are cover, and what sits in them overlapped it: 10183's
+	# glass in 60032, 36 shared cells, every middle in the frame's air by its
+	# exact shape (ExactCheck.drop_in_air). The same pane pushed into a post,
+	# or the drawer down into the cupboard's floor, meets the shape itself.
+	var window := "1 4 0 -48 0 1 0 0 0 1 0 0 0 1 60032.dat\n"
+	await _passes("4862 in 60032, as 10183's cabin has it",
+		window + "1 47 0 -48 0 1 0 0 0 1 0 0 0 1 4862.dat")
+	await _refused("the same pane pushed 10 LDU into the frame's post",
+		window + "1 47 10 -48 0 1 0 0 0 1 0 0 0 1 4862.dat")
+	var cupboard := "1 15 40 -48 110 0 0 -1 0 1 0 1 0 0 92410.dat\n"
+	await _passes("a drawer in its cupboard, as 3939's bed has it",
+		cupboard + "1 29 40 -44 110 0 0 -1 0 1 0 1 0 0 4536.dat")
+	await _refused("the drawer pushed 4 LDU down into the cupboard's floor",
+		cupboard + "1 29 40 -40 110 0 0 -1 0 1 0 1 0 0 4536.dat")
+	# And the hand, by the same rule (Builder.room_for).
+	_ok(await _hand_room(window + "1 47 0 -48 0 1 0 0 0 1 0 0 0 1 4862.dat"),
+		"by hand, the pane has room in its frame")
+	_ok(not await _hand_room(window + "1 47 10 -48 0 1 0 0 0 1 0 0 0 1 4862.dat"),
+		"...and none pushed into the post")
+	_ok(await _hand_room(cupboard + "1 29 40 -44 110 0 0 -1 0 1 0 1 0 0 4536.dat"),
+		"by hand, the drawer has room in its cupboard")
+	_ok(not await _hand_room(cupboard + "1 29 40 -40 110 0 0 -1 0 1 0 1 0 0 4536.dat"),
+		"...and none pushed into its floor")
+
+	print("\nheld by a joint between parts with exact shapes")
+	# BrickNet's labels join no robot body's axle holder to the axle up a
+	# column's middle, so its graph had each drum of 10261's pillars as a
+	# piece of its own, which fell when the pillar was picked up; the lattice
+	# held it. As the set has it, its axle's end on the ground, then without
+	# the axle, which leaves the drum standing on the round plate's studs off
+	# them, as BrickNet's graph had it.
+	var pillar := """
+1 15 20 -186 20 0 0 -1 0 1 0 1 0 0 6143.dat
+1 14 20 -110 20 0 0 -1 -1 0 0 0 1 0 23948.dat
+1 71 20 -194 20 0 0 -1 0 1 0 1 0 0 4032a.dat
+1 15 20 -162 20 0 0 -1 0 1 0 1 0 0 6143.dat
+1 15 20 -138 20 0 0 -1 0 1 0 1 0 0 6143.dat
+1 15 20 -114 20 0 0 -1 0 1 0 1 0 0 6143.dat
+1 15 20 -90 20 0 0 -1 0 1 0 1 0 0 6143.dat
+1 15 20 -66 20 0 0 -1 0 1 0 1 0 0 6143.dat
+1 15 20 -42 20 0 0 -1 0 1 0 1 0 0 6143.dat
+"""
+	await _one_piece("10261's pillar, its drum on the axle up its middle", pillar
+		+ "1 15 20 -232 20 1 0 0 0 1 0 0 0 1 30361d.dat")
+	await _refused("the drum with no axle in it", pillar.replace(
+		"1 14 20 -110 20 0 0 -1 -1 0 0 0 1 0 23948.dat\n", "")
+		+ "1 15 20 -232 20 1 0 0 0 1 0 0 0 1 30361d.dat", false, "held")
 
 	print("\nturned about the upright and read from a file, in a section of its own")
 	# A file keeps where a part is, not the section it was laid in, so a part
@@ -634,11 +691,31 @@ func _one_piece(said: String, ldraw: String) -> void:
 			int(verdict["pieces"]), "" if int(verdict["pieces"]) == 1 else "s"])
 
 
-func _refused(said: String, ldraw: String, sections: bool = false) -> void:
+func _refused(said: String, ldraw: String, sections: bool = false,
+		cause: String = "overlap") -> void:
 	var model: Assistant.Model = await _design(ldraw, sections)
 	var verdict: Dictionary = _assistant._check(model, true)
-	_ok(not bool(verdict["ok"]) and str(verdict["summary"]).contains("overlap"),
+	_ok(not bool(verdict["ok"]) and str(verdict["summary"]).contains(cause),
 		"%s: refused (%s)" % [said, verdict["summary"]])
+
+
+## Whether the hand has room for the last part of [param ldraw] where the
+## file has it, the rest of it standing (Builder.room_for).
+func _hand_room(ldraw: String) -> bool:
+	_clear()
+	_store.open_text("0 joints probe\n" + ldraw.strip_edges() + "\n", "hand")
+	await process_frame
+	var last: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if last == null or brick.id > last.id:
+			last = brick
+	var part: String = last.part_id
+	var at: Transform3D = last.transform
+	_builder.lattice.release(last.id)
+	_world.remove_brick(last.id)
+	var room: bool = _builder.room_for(part, at, true, true)
+	_clear()
+	return room
 
 
 ## The turntable square, then its top and a 2x2 brick on it moved into a

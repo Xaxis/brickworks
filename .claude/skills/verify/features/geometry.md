@@ -395,7 +395,16 @@ can occupy the same millimetre.
   cape round a torso's neck, drawn about it), and a visor and a helmet whose
   side pivots are one point on one axis (`MinifigData.PIVOTS`). The covers
   asked are where the parts really are (`Assistant._filled_by`), not the
-  square turn the checker's lattice has them at.
+  square turn the checker's lattice has them at. Between two parts with exact
+  shapes, the exact check's graph (BrickNet's labels) joins the connector
+  joins, rounds and glue too, but not what is only pushed in or worn on a post
+  (`Assistant._exact_unheld`, `jointed`): 10261's drums on the axle up each
+  pillar were pieces of their own, and a beard on a headless neck still falls. And a part with no exact shape that
+  meets a shaped one only in cells whose middles are the shaped one's air is
+  clear of it, in the check and by hand (`ExactCheck.drop_in_air`,
+  `Builder._in_air_of_one`): a pane in its frame's groove, a drawer in its
+  cupboard, which the cover fills shut. `joints_probe` has both and a little
+  wrong; `harvest_probe` over 1,056 real sub-models, 917 → 939 (2026-11-05).
 - `axles and gears on a line`: an axle or a pin is in every hole along its
   whole length (`Joints.through`, by Mechanism's own rule: on the line to
   1.5 LDU, the hole's middle no more than 2 LDU past an end; a pin not in an

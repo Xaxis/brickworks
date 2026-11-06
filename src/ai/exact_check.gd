@@ -328,6 +328,41 @@ func drop_cleared(blockers: PackedInt64Array, index: int) -> PackedInt64Array:
 	return kept
 
 
+## [param blockers] without the ones that meet placement [param index] only
+## in the air of whichever of the two has an exact shape, where the other has
+## none: a pane, a drawer, a tyre, a part BrickNet does not have. A cover is
+## filled a layer at a time, and a frame's groove, a cupboard's inside and a
+## window's opening close in a layer like a brick's underside: 4862 in 60032,
+## where 10183 Cafe Corner glazes its cab, shared 36 cells with its frame and
+## every one was air by the frame's shape; a drawer in 92410, 728 (realjoints,
+## 2026-11-05). So where one part has a shape, every cell the two covers share
+## must have its middle outside that shape for the pair to be clear. The other
+## part's cover holds the middle of each of its cells (a turned one, more), so
+## what is left is less than a cell's half, as near as BrickBench's TAU lets
+## two shapes meet. [param mine] is the placement's cover, [param against] the
+## lattice the blockers are in, [param to_world] that lattice's cells into the
+## world, as in [method Joints.overlap_within].
+func drop_in_air(blockers: PackedInt64Array, index: int, mine: PackedInt32Array,
+		against: BrickLattice, to_world: Transform3D) -> PackedInt64Array:
+	if blockers.is_empty() or PartsOnly.active():
+		return blockers
+	var began: int = Time.get_ticks_usec()
+	var kept := PackedInt64Array()
+	for key: int in blockers:
+		var other: int = item_of(key)
+		var shaped: int = -1
+		if other >= 0 and other < items.size() and index < items.size():
+			if _shaped(index) and items[other] == null:
+				shaped = index
+			elif _shaped(other) and items[index] == null:
+				shaped = other
+		if shaped < 0 or not Exact.meet_in_air(mine, against.boxes_of(key), items[shaped],
+				to_world):
+			kept.append(key)
+	_spent("cleared", began)
+	return kept
+
+
 ## Pairs [i, j] (i < j) of items whose boxes overlap by more than [param by]
 ## on every axis (a negative one reaches that far apart), at least one of
 ## them in [param of]; every such pair when [param of] is empty. A few parts

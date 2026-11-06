@@ -3029,6 +3029,13 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		# a saddle on a horse's back had no room where every set has it.
 		if _studded_clear(mine, at, theirs, there):
 			continue
+		# And where one of the two has an exact shape and the other none, as
+		# check_design judges them (ExactCheck.drop_in_air): a pane put in its
+		# frame's groove, a drawer in its cupboard, meet only in covers a layer
+		# filled shut, which the frame's shape has as air.
+		if _in_air_of_one(part_id, at, packed, str(entries[n][3]), there,
+				lattice.boxes_of(other)):
+			continue
 		if turning.has(other):
 			var square: bool = BrickLattice.is_square_to_grid(at.basis) \
 				and BrickLattice.is_square_to_grid(there.basis)
@@ -3076,6 +3083,20 @@ func _studded_clear(mine: String, at: Transform3D, theirs: String, there: Transf
 		if kinds.has(Exact.STUD) and kinds.has(Exact.HOLE):
 			return Exact.clash(items[0], items[1], true).is_empty()
 	return false
+
+
+## Whether two parts, one with an exact shape and the other with none, share
+## only cells whose middles are in the shaped one's air (Exact.meet_in_air).
+func _in_air_of_one(mine: String, at: Transform3D, my_boxes: PackedInt32Array,
+		theirs: String, there: Transform3D, their_boxes: PackedInt32Array) -> bool:
+	var one: Exact.Shape = Exact.shape_for(library, mine)
+	var other: Exact.Shape = Exact.shape_for(library, theirs)
+	var one_shaped: bool = one != null and one.has_pieces()
+	var other_shaped: bool = other != null and other.has_pieces()
+	if one_shaped == other_shaped:
+		return false
+	var item := Exact.Item.new(one, at) if one_shaped else Exact.Item.new(other, there)
+	return Exact.meet_in_air(my_boxes, their_boxes, item, Transform3D.IDENTITY)
 
 
 ## The part [method room_for] last found in the way, by its shapes; 0 when
