@@ -1057,7 +1057,7 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 				# first, as there (WorkerTasks.first_here): the skins of a
 				# file all start it at once, and the carried parts with them.
 				WorkerTasks.first_here("the forge", PartForge.warm)
-				entry["task"] = WorkerThreadPool.add_task(build, true, "build a flexible part")
+				entry["task"] = WorkerTasks.add(build, true, "build a flexible part")
 		begun.append(entry)
 	return begun
 
@@ -1071,7 +1071,7 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 	var made := PackedStringArray()
 	for entry: Dictionary in begun:
 		if int(entry["task"]) >= 0:
-			WorkerThreadPool.wait_for_task_completion(int(entry["task"]))
+			WorkerTasks.collect(int(entry["task"]))
 		var sub: LdrModel.SubModel = entry["sub"]
 		var id: String = entry["id"]
 		var text: String = entry["text"]
@@ -1136,7 +1136,7 @@ static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
 			continue
 		while not WorkerThreadPool.is_task_completed(task):
 			await tree.process_frame
-		WorkerThreadPool.wait_for_task_completion(task)
+		WorkerTasks.collect(task)
 		var built: PartForge.Result = (entry["built"] as Array)[0]
 		if built != null:
 			await readers_done(library)
@@ -1287,7 +1287,7 @@ static func _built_at_once(texts: Dictionary, others: Dictionary) -> Dictionary:
 	var going: Array = _build_begun(texts, others)
 	if going.is_empty():
 		return {}
-	WorkerThreadPool.wait_for_group_task_completion(int(going[0]))
+	WorkerTasks.collect_group(int(going[0]))
 	return _build_ended(going)
 
 
@@ -1299,7 +1299,7 @@ static func _built_by(going: Array) -> Dictionary:
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	while not WorkerThreadPool.is_group_task_completed(int(going[0])):
 		await tree.process_frame
-	WorkerThreadPool.wait_for_group_task_completion(int(going[0]))
+	WorkerTasks.collect_group(int(going[0]))
 	return _build_ended(going)
 
 
@@ -1325,7 +1325,7 @@ static func _build_begun(texts: Dictionary, others: Dictionary) -> Array:
 	# The forge run once here first: every worker starting it at once, the
 	# first time it ran, crashed the app (WorkerTasks.first_here).
 	WorkerTasks.first_here("the forge", PartForge.warm)
-	var task: int = WorkerThreadPool.add_group_task(func(n: int) -> void:
+	var task: int = WorkerTasks.add_group(func(n: int) -> void:
 		var result: PartForge.Result = PartForge.build(texts[plain[n]],
 			plain[n].get_basename(), sources, true, null, false)
 		writing.lock()

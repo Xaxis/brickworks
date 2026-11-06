@@ -16,6 +16,19 @@
 ## worked out in script and drawn on its own: 110-213 ms for a baseplate,
 ## over a second for the page of them "32" lists first, and all of it again
 ## on every frame of each picture's fade (sketchfast, 2026-11-05).
+##
+## Worked out (plan) apart from drawn (draw_plan): the shapes are arithmetic
+## on what the catalogue says, which a worker can do, and only the drawing
+## is the window's. The bin's search works out its first page's on its
+## worker, its faces and their edges made one mesh there, drawn at once: each
+## a polygon and an antialiased line of the RenderingServer's own, a sketch
+## was six to ten of them, each with its buffers made and freed and drawn on
+## its own, and a page of new parts took 5 to 10 ms of the frame its key was
+## typed in, and its drawing 3 to 5 more (bintiles, 2026-11-05). The mesh's
+## lines are made as the RenderingServer makes them (_line), as the studs'
+## are. A sketch worked out on the window's own thread (draw) is still drawn
+## a polygon and a line at a time: the mesh made there, in script, took
+## longer than the RenderingServer's own calls.
 class_name PartSketch
 extends RefCounted
 
@@ -46,20 +59,131 @@ static var spent_usec: int = 0
 
 ## Draw [param info] in [param rect] onto the canvas item [param item], in
 ## [param colour], whole: a tile fades it by the item's opacity. Gives back
-## what the drawing stands its studs with, which must be kept as long as the
-## item is drawn so; null for a part without studs.
-static func draw(item: RID, rect: Rect2, info: PartLibrary.PartInfo, colour: Color) -> MultiMesh:
+## what the drawing is made of, which must be kept as long as the item is
+## drawn so.
+static func draw(item: RID, rect: Rect2, info: PartLibrary.PartInfo, colour: Color) -> Array:
 	if info == null:
-		return null
+		return []
 	var began: int = Time.get_ticks_usec()
-	var studs: MultiMesh = _draw_sketch(item, rect, info, colour)
+	var held: Array = _draw_each(item, _steps(rect, info, colour, null))
 	drawn += 1
 	spent_usec += Time.get_ticks_usec() - began
+	return held
+
+
+## What [method draw] draws of [param info] in [param rect] in [param
+## colour], worked out and not drawn: of nothing but what it is given, so a
+## worker can (PartsBin._seek), [param kept] the worker's own (_strips).
+## Drawn by [method draw_plan].
+static func plan(rect: Rect2, info: PartLibrary.PartInfo, colour: Color,
+		kept: Dictionary = {}) -> Array:
+	return _plan(rect, info, colour, kept) if info != null else []
+
+
+## A [method plan] drawn onto [param item], as [method draw] would have drawn
+## it; what it gives back, as draw does.
+static func draw_plan(item: RID, plan: Array) -> Array:
+	var began: int = Time.get_ticks_usec()
+	var held: Array = _draw_steps(item, plan)
+	drawn += 1
+	spent_usec += Time.get_ticks_usec() - began
+	return held
+
+
+## The steps a sketch is worked out in: a polygon filled ([points, its
+## colour]), a line round it ([points, its colour]), the studs ([their stud's
+## key, the stud's surfaces or none, the moves to each place, how many]).
+const FILL_STEP := 0
+const LINE_STEP := 1
+const STUDS_STEP := 2
+
+
+## [param steps] drawn each as it comes: a polygon, an antialiased line, and
+## the studs a MultiMesh of the stud's (_stood). Gives back what must be kept
+## while it is drawn.
+static func _draw_each(item: RID, steps: Array) -> Array:
+	var held: Array = []
+	for step: Array in steps:
+		match int(step[0]):
+			FILL_STEP:
+				RenderingServer.canvas_item_add_polygon(item, step[1], step[2])
+			LINE_STEP:
+				RenderingServer.canvas_item_add_polyline(item, step[1], step[2], LINE, true)
+			STUDS_STEP:
+				held.append(_stood(item, step))
+	return held
+
+
+## The studs' step [param step] drawn onto [param item]: the stud stood on
+## each place at once.
+static func _stood(item: RID, step: Array) -> MultiMesh:
+	var studs := MultiMesh.new()
+	studs.transform_format = MultiMesh.TRANSFORM_2D
+	studs.mesh = _stud(step[1], step[2])
+	studs.instance_count = int(step[4])
+	studs.buffer = step[3]
+	RenderingServer.canvas_item_add_multimesh(item, studs.get_rid())
 	return studs
 
 
-static func _draw_sketch(item: RID, rect: Rect2, info: PartLibrary.PartInfo,
-		colour: Color) -> MultiMesh:
+## A plan ([the faces and lines, one surface: [points, colours, corners], or
+## none; the studs' step, or none]) drawn: the surface a mesh, the studs a
+## MultiMesh of the stud's. Gives back both, to be kept while it is drawn.
+static func _draw_steps(item: RID, plan: Array) -> Array:
+	var held: Array = []
+	if plan.is_empty():
+		return held
+	var body: Array = plan[0]
+	if not body.is_empty():
+		var mesh := ArrayMesh.new()
+		_surface(mesh, body[0], body[1], body[2])
+		RenderingServer.canvas_item_add_mesh(item, mesh.get_rid())
+		held.append(mesh)
+	var step: Array = plan[1]
+	if not step.is_empty():
+		held.append(_stood(item, step))
+	return held
+
+
+## [param steps] made one surface, the fills and the lines in their order,
+## each made as the RenderingServer makes a polygon and an antialiased line
+## (_fill, _line); and the studs' step as it is: the plan [method _draw_steps]
+## draws. Into [param kept] where it is given, as a worker gives it (_strips).
+static func _merged(steps: Array, kept: Variant) -> Array:
+	var strips: Dictionary = kept if kept is Dictionary else _stripped
+	var surfaces: Array = []
+	var studs: Array = []
+	for step: Array in steps:
+		match int(step[0]):
+			FILL_STEP:
+				_fill(surfaces, step[1], (step[2] as PackedColorArray)[0])
+			LINE_STEP:
+				_line(surfaces, step[1], (step[2] as PackedColorArray)[0], strips)
+			STUDS_STEP:
+				studs = step
+	var points := PackedVector2Array()
+	var ink := PackedColorArray()
+	var corners := PackedInt32Array()
+	for surface: Array in surfaces:
+		var base: int = points.size()
+		points.append_array(surface[0])
+		ink.append_array(surface[1])
+		for corner: int in (surface[2] as PackedInt32Array):
+			corners.append(base + corner)
+	return [[points, ink, corners] if not corners.is_empty() else [], studs]
+
+
+## The plan of [param info]'s sketch (_merged); the stud's surfaces worked out
+## with it into [param kept] (_strips) where it is given, as a worker, which
+## cannot read the studs made (_stud), gives it.
+static func _plan(rect: Rect2, info: PartLibrary.PartInfo, colour: Color,
+		kept: Variant) -> Array:
+	return _merged(_steps(rect, info, colour, kept), kept)
+
+
+static func _steps(rect: Rect2, info: PartLibrary.PartInfo, colour: Color,
+		kept: Variant) -> Array:
+	var item: Array = []
 	var studs: Vector2i = info.footprint_studs()
 	var width: float = maxf(PITCH * 0.5, info.size.x)
 	var depth: float = maxf(PITCH * 0.5, info.size.z)
@@ -92,12 +216,13 @@ static func _draw_sketch(item: RID, rect: Rect2, info: PartLibrary.PartInfo,
 			_holes(item, view, width, depth, height, int(info.connector_counts["pin_hole"]),
 				_shade(colour, -0.6, GHOST))
 	if info.stud_count <= 0:
-		return null
+		return item
 	var rows: int = studs.y
 	if info.category == "Slope" and not round:
 		rows = maxi(1, ceili(float(info.stud_count) / float(maxi(studs.x, 1))))
-	return _studs(item, origin, scale, height,
-		_stud_places(studs, info.stud_count, rows, width, depth), top, left, edge)
+	_studs(item, origin, scale, height,
+		_stud_places(studs, info.stud_count, rows, width, depth), top, left, edge, kept)
+	return item
 
 
 ## A point of the part in LDU, on the screen, before it is scaled: the part
@@ -134,16 +259,16 @@ static func _is_round(info: PartLibrary.PartInfo) -> bool:
 		and info.footprint_studs().x == info.footprint_studs().y
 
 
-static func _face(item: RID, points: PackedVector2Array, fill: Color, edge: Color) -> void:
-	RenderingServer.canvas_item_add_polygon(item, points, PackedColorArray([fill]))
+static func _face(item: Array, points: PackedVector2Array, fill: Color, edge: Color) -> void:
+	item.append([FILL_STEP, points, PackedColorArray([fill])])
 	var closed: PackedVector2Array = points.duplicate()
 	closed.append(points[0])
-	RenderingServer.canvas_item_add_polyline(item, closed, PackedColorArray([edge]), LINE, true)
+	item.append([LINE_STEP, closed, PackedColorArray([edge])])
 
 
 ## The three faces of a box seen from its front corner: its top, its left
 ## (the z end) and its right (the x end).
-static func _box(item: RID, view: Callable, width: float, depth: float, height: float,
+static func _box(item: Array, view: Callable, width: float, depth: float, height: float,
 		top: Color, left: Color, right: Color, edge: Color) -> void:
 	_face(item, PackedVector2Array([view.call(0.0, height, 0.0), view.call(width, height, 0.0),
 		view.call(width, height, depth), view.call(0.0, height, depth)]), top, edge)
@@ -155,7 +280,7 @@ static func _box(item: RID, view: Callable, width: float, depth: float, height: 
 
 ## A slope: flat on top over the rows its studs take at the back, falling
 ## from there to a plate's height at the front.
-static func _slope(item: RID, view: Callable, width: float, depth: float, height: float,
+static func _slope(item: Array, view: Callable, width: float, depth: float, height: float,
 		studs: Vector2i, stud_count: int, top: Color, left: Color, right: Color,
 		edge: Color) -> void:
 	var rows: int = mini(studs.y, ceili(float(stud_count) / float(maxi(studs.x, 1))))
@@ -174,7 +299,7 @@ static func _slope(item: RID, view: Callable, width: float, depth: float, height
 
 ## An inverted slope: its top whole, falling away underneath from a lip at
 ## the front to the row it stands on at the back.
-static func _inverted(item: RID, view: Callable, width: float, depth: float, height: float,
+static func _inverted(item: Array, view: Callable, width: float, depth: float, height: float,
 		top: Color, left: Color, right: Color, edge: Color) -> void:
 	var lip: float = minf(PLATE * 0.5, height)
 	var foot: float = minf(PITCH, depth)
@@ -189,14 +314,14 @@ static func _inverted(item: RID, view: Callable, width: float, depth: float, hei
 
 ## An upright round, [param across] and [param deep] its radii, standing
 ## on [param base]: its side, then its top.
-static func _cylinder(item: RID, origin: Vector2, scale: float, base: Vector3, across: float,
+static func _cylinder(item: Array, origin: Vector2, scale: float, base: Vector3, across: float,
 		deep: float, height: float, top: Color, side: Color, edge: Color) -> void:
 	var outline: Array = _rings(origin, scale, base, across, deep, height)
 	var body: PackedVector2Array = outline[1]
 	if body.size() >= 3:
-		RenderingServer.canvas_item_add_polygon(item, body, PackedColorArray([side]))
+		item.append([FILL_STEP, body, PackedColorArray([side])])
 	_face(item, outline[0], top, edge)
-	RenderingServer.canvas_item_add_polyline(item, outline[2], PackedColorArray([edge]), LINE, true)
+	item.append([LINE_STEP, outline[2], PackedColorArray([edge])])
 
 
 ## A round's outline seen from [param origin] at [param scale]: [its top's
@@ -229,28 +354,11 @@ static func _rings(origin: Vector2, scale: float, base: Vector3, across: float, 
 ## Every stud, [param height] up on the part at [param places]: one drawn
 ## as a mesh, as [method _cylinder] draws a round, and stood on each place
 ## at once. Drawn each on its own, a baseplate's 1,024 took 110-213 ms.
-static func _studs(item: RID, origin: Vector2, scale: float, height: float,
-		places: Array[Vector2], top: Color, side: Color, edge: Color) -> MultiMesh:
+static func _studs(item: Array, origin: Vector2, scale: float, height: float,
+		places: Array[Vector2], top: Color, side: Color, edge: Color, kept: Variant) -> void:
 	if places.is_empty():
-		return null
-	# The stud about its own foot's middle, at the sketch's scale: its side,
-	# its top and the top's edge, the side's lower edge, in that order.
-	var outline: Array = _rings(Vector2.ZERO, scale, Vector3.ZERO, STUD_RADIUS, STUD_RADIUS,
-		STUD_HEIGHT)
-	var stud := ArrayMesh.new()
-	var body: PackedVector2Array = outline[1]
-	if body.size() >= 3:
-		_fill(stud, body, side)
-	var high: PackedVector2Array = outline[0]
-	_fill(stud, high, top)
-	var closed: PackedVector2Array = high.duplicate()
-	closed.append(high[0])
-	_line(stud, closed, edge)
-	_line(stud, outline[2], edge)
-	var many := MultiMesh.new()
-	many.transform_format = MultiMesh.TRANSFORM_2D
-	many.mesh = stud
-	many.instance_count = places.size()
+		return
+	var stud: Array = [scale, top, side, edge]
 	# Each a move from the stud's own: [x.x, y.x, -, origin.x, x.y, y.y, -, origin.y].
 	var moves := PackedFloat32Array()
 	moves.resize(places.size() * 8)
@@ -263,21 +371,70 @@ static func _studs(item: RID, origin: Vector2, scale: float, height: float,
 		moves[n + 5] = 1.0
 		moves[n + 7] = lift + (place.x + place.y) * DOWN * scale
 		n += 8
-	many.buffer = moves
-	RenderingServer.canvas_item_add_multimesh(item, many.get_rid())
-	return many
+	item.append([STUDS_STEP, stud, _stud_surfaces(stud, kept) if kept is Dictionary else [], moves,
+		places.size()])
+
+
+## The stud [param wanted] says, [scale, top, side, edge], about its own
+## foot's middle: its side, its top and the top's edge, the side's lower
+## edge, in that order. One made for each scale and colours, and stood on
+## every sketch drawn at them: made for each, its four surfaces were a third
+## of a sketch drawn, and the bin draws a page of them for a key typed
+## (bintiles, 2026-11-05). Made of [param surfaces] where a plan worked them
+## out (_stud_surfaces).
+static func _stud(wanted: Array, surfaces: Array) -> ArrayMesh:
+	var made: ArrayMesh = _studs_made.get(wanted)
+	if made != null:
+		return made
+	if surfaces.is_empty():
+		surfaces = _stud_surfaces(wanted, _stripped)
+	var stud := ArrayMesh.new()
+	for surface: Array in surfaces:
+		_surface(stud, surface[0], surface[1], surface[2])
+	if _studs_made.size() >= STUDS_KEPT:
+		_studs_made.clear()
+	_studs_made[wanted] = stud
+	return stud
+
+
+## The surfaces of the stud [param wanted] says (_stud), each [its points,
+## their colours, its triangles' corners]; the strips' corners kept in
+## [param strips], the main thread's own (_stripped) or a worker's.
+static func _stud_surfaces(wanted: Array, strips: Dictionary) -> Array:
+	var scale: float = wanted[0]
+	var top: Color = wanted[1]
+	var side: Color = wanted[2]
+	var edge: Color = wanted[3]
+	var outline: Array = _rings(Vector2.ZERO, scale, Vector3.ZERO, STUD_RADIUS, STUD_RADIUS,
+		STUD_HEIGHT)
+	var surfaces: Array = []
+	var body: PackedVector2Array = outline[1]
+	if body.size() >= 3:
+		_fill(surfaces, body, side)
+	var high: PackedVector2Array = outline[0]
+	_fill(surfaces, high, top)
+	var closed: PackedVector2Array = high.duplicate()
+	closed.append(high[0])
+	_line(surfaces, closed, edge, strips)
+	_line(surfaces, outline[2], edge, strips)
+	return surfaces
+
+
+## The studs made (_stud), by [scale, top, side, edge], and how many are kept.
+static var _studs_made: Dictionary = {}
+const STUDS_KEPT := 256
 
 
 ## [param polygon] filled in [param colour], a surface of [param mesh],
 ## triangulated as the RenderingServer fills one (Geometry2D).
-static func _fill(mesh: ArrayMesh, polygon: PackedVector2Array, colour: Color) -> void:
+static func _fill(surfaces: Array, polygon: PackedVector2Array, colour: Color) -> void:
 	var corners: PackedInt32Array = Geometry2D.triangulate_polygon(polygon)
 	if corners.is_empty():
 		return
 	var ink := PackedColorArray()
 	ink.resize(polygon.size())
 	ink.fill(colour)
-	_surface(mesh, polygon, ink, corners)
+	surfaces.append([polygon, ink, corners])
 
 
 ## [param line] a surface of [param mesh], [constant LINE] wide in [param
@@ -287,7 +444,8 @@ static func _fill(mesh: ArrayMesh, polygon: PackedVector2Array, colour: Color) -
 ## [constant FEATHER] times that, mitred at each bend, an open line's ends
 ## fading out as far beyond them. Made a pixel wide with the whole fade each
 ## side, the studs were ringed twice as dark and a baseplate's top went black.
-static func _line(mesh: ArrayMesh, line: PackedVector2Array, colour: Color) -> void:
+static func _line(surfaces: Array, line: PackedVector2Array, colour: Color,
+		strips: Dictionary) -> void:
 	var count: int = line.size()
 	if count < 2:
 		return
@@ -392,8 +550,8 @@ static func _line(mesh: ArrayMesh, line: PackedVector2Array, colour: Color) -> v
 			right_ink[k + 2] = clear
 		before = along
 	var points: PackedVector2Array = middle + left + right
-	_surface(mesh, points, middle_ink + left_ink + right_ink,
-		_strips([middle.size(), left.size(), right.size()]))
+	surfaces.append([points, middle_ink + left_ink + right_ink,
+		_strips([middle.size(), left.size(), right.size()], strips)])
 
 
 ## Where a polyline's edge is from a point at a bend, coming along [param
@@ -412,21 +570,20 @@ static func _mitre(along: Vector2, before: Vector2) -> Vector2:
 
 
 ## The triangles of triangle strips [param sizes] long laid end to end, each
-## as a strip runs: made once for each line's length, on the main thread,
-## where the tiles draw.
+## as a strip runs: made once for each line's length, kept in [param kept],
+## the main thread's own (_stripped) or a worker's.
 static var _stripped: Dictionary = {}
 
-static func _strips(sizes: Array) -> PackedInt32Array:
-	var made: Variant = _stripped.get(sizes)
-	if made != null:
-		return made
+static func _strips(sizes: Array, kept: Dictionary) -> PackedInt32Array:
+	if kept.has(sizes):
+		return kept[sizes]
 	var corners := PackedInt32Array()
 	var from: int = 0
 	for size: int in sizes:
 		for n: int in size - 2:
 			corners.append_array([from + n, from + n + 1, from + n + 2])
 		from += size
-	_stripped[sizes] = corners
+	kept[sizes] = corners
 	return corners
 
 
@@ -483,7 +640,7 @@ static func _stud_places(studs: Vector2i, count: int, rows: int, width: float,
 
 
 ## A beam's holes, along its long side, dark where they go through.
-static func _holes(item: RID, view: Callable, width: float, depth: float, height: float,
+static func _holes(item: Array, view: Callable, width: float, depth: float, height: float,
 		count: int, ink: Color) -> void:
 	var along_x: bool = width >= depth
 	var length: float = width if along_x else depth
@@ -496,4 +653,4 @@ static func _holes(item: RID, view: Callable, width: float, depth: float, height
 			var u: float = at + cos(turn) * PITCH * 0.3
 			var y: float = height * 0.5 + sin(turn) * minf(PITCH * 0.3, height * 0.4)
 			ring.append(view.call(u, y, depth) if along_x else view.call(width, y, u))
-		RenderingServer.canvas_item_add_polygon(item, ring, PackedColorArray([ink]))
+		item.append([FILL_STEP, ring, PackedColorArray([ink])])

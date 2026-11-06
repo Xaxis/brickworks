@@ -127,6 +127,54 @@ static func _with_chunk(png: PackedByteArray, chunk: PackedByteArray) -> PackedB
 
 
 func _page(page: BookletRead.Page) -> void:
+	var image: Image = _drawn(page)
+	if image == null:
+		return
+	_zip.start_file("%s-%03d.png" % [_name, page.number])
+	_zip.write_file(_with_chunk(image.save_png_to_buffer(), _dpi_chunk))
+	_zip.close_file()
+	pages += 1
+
+
+## Page [param number] of the booklet [param html] drawn alone at
+## [param density] pixels a millimetre, as every page of the zip is: the
+## page as Instructions shows it and its PDF prints it, for a session to
+## see (booklet_page, SeeTools). Only that page is read. Null when the
+## booklet has no such page.
+func page_image(html: String, number: int, density: float) -> Image:
+	at_density(density)
+	_read = BookletRead.new()
+	_fonts = []
+	for type: Array in BookletPdf.TYPE:
+		_fonts.append(load(str(type[0])) as Font)
+	# Its title and the parts' pictures are outside the pages: read those,
+	# then the one page.
+	var wanted: String = "id=\"page-%d\"" % number
+	var at: int = 0
+	var section: String = ""
+	while true:
+		var start: int = html.find("<section", at)
+		_read.feed(html.substr(at) if start < 0 else html.substr(at, start - at))
+		if start < 0:
+			break
+		var end: int = html.find("</section>", start)
+		if end < 0:
+			break
+		end += "</section>".length()
+		var opening: String = html.substr(start, html.find(">", start) - start)
+		if opening.contains(wanted):
+			section = html.substr(start, end - start)
+		at = end
+	var image: Image = null
+	if not section.is_empty():
+		for page: BookletRead.Page in _read.feed(section):
+			image = _drawn(page)
+	_free()
+	return image
+
+
+## One page, drawn: a picture of it at [member px_per_mm], or null.
+func _drawn(page: BookletRead.Page) -> Image:
 	if _viewport == null:
 		_viewport = SubViewport.new()
 		_viewport.size = Vector2i((Booklet.PAGE * px_per_mm).round())
@@ -168,12 +216,9 @@ func _page(page: BookletRead.Page) -> void:
 	var image: Image = _viewport.get_texture().get_image()
 	kept.clear()
 	if image == null or image.is_empty():
-		return
+		return null
 	image.convert(Image.FORMAT_RGB8)
-	_zip.start_file("%s-%03d.png" % [_name, page.number])
-	_zip.write_file(_with_chunk(image.save_png_to_buffer(), _dpi_chunk))
-	_zip.close_file()
-	pages += 1
+	return image
 
 
 func _px(mm: Vector2) -> Vector2:

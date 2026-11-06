@@ -30,9 +30,12 @@ set -u
 check=; [ "${1:-}" = --check ] && check=1
 list=.godot/global_script_class_cache.cfg
 
-# The scripts and import files Godot scans, as it scans.
+# The kinds of file Godot imports here, each given a .import beside it.
+IMPORTED='.*\.(png|svg|webp|jpe?g|ttf|otf|hdr|exr|glsl|obj|fbx|glb|gltf|wav|ogg|mp3)'
+# The scripts, the import files and what they import, as Godot scans.
 scanned() {
-  find -L . -name '.?*' -type d -prune -o -type f \( -name '*.gd' -o -name '*.import' -o -name .gdignore \) -print \
+  find -L . -name '.?*' -type d -prune -o -type f \( -name '*.gd' -o -name '*.import' -o -name .gdignore \
+    -o -regextype posix-extended -regex "$IMPORTED" \) -print \
     | awk '{ line[NR] = $0 }
         /\/\.gdignore$/ { d = $0; sub(/\.gdignore$/, "", d); skip[++n] = d }
         END { for (i = 1; i <= NR; i++) {
@@ -67,6 +70,17 @@ unimported() {
         done
       done
 }
+# Each resource with no .import beside it at all. The check above reads only
+# the .import files there are, and an import cut short by its timeout leaves
+# none for what it never reached: a unit's worktree had 92 of pre261's 411,
+# no font among them, so BookletPng drew with none and booklet3 failed far
+# from the cause (rotroll, 2026-11-06).
+no_import_file() {
+  grep -E "$IMPORTED"'$|\.import$' <<< "$1" | awk '
+    /\.import$/ { has[substr($0, 1, length($0) - 7)] = 1; next }
+    { src[++n] = $0 }
+    END { for (i = 1; i <= n; i++) if (!(src[i] in has)) print "res://" substr(src[i], 3) }'
+}
 # One walk of the tree, the cost of a run whose list is current: comm -3
 # prints the scripts' lines bare and the list's after a tab.
 behind() {
@@ -74,6 +88,7 @@ behind() {
   LC_ALL=C comm -3 <(in_scripts "$files") <(in_list) \
     | sed -e 's/^\t/  in the class list, not in a script: /;t' -e 's/^/  not in the class list: /'
   unimported "$files" | sed 's/^/  not imported: /'
+  no_import_file "$files" | sed 's/^/  not imported: /'
 }
 
 # Takes the import lock, shared (-s) or alone (-x), after another's import.

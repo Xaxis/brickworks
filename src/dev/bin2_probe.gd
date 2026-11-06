@@ -185,7 +185,7 @@ func _prints() -> void:
 	var part: String = str(first.get_meta("part"))
 	var badge: Button = null
 	for inner: Node in first.get_children():
-		if inner is Button:
+		if inner is Button and (inner as Button).visible:
 			badge = inner
 	_check("its first tile, %s, has prints folded under it (%s)" % [first.get_meta("part"),
 		badge.text if badge != null else "none"], badge != null)

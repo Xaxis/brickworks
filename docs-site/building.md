@@ -1,6 +1,6 @@
 ---
 panels: PatternDialog#patterns
-tools: edit_model, look_at_model, check_design, attachment_points, where_to_attach, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section, mirror_parts, split_parts, merge_parts, measure
+tools: edit_model, look_at_model, check_design, attachment_points, where_to_attach, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section, mirror_parts, split_parts, merge_parts, measure, pattern_parts
 ai: How parts go down, snap, turn and move once placed, and how a model is grouped into sub-assemblies and sections. An assistant does the same with edit_model and edit_selection, reads the model with look_at_model, and checks a change with check_design before making it.
 rules:
   - Positions are studs across (x), plates up (y) and studs deep (z); 3 plates make a brick.
@@ -93,12 +93,13 @@ ui:copy paste and duplicate
 A fence, a colonnade, a round tower or a wheel's spokes are copies laid out at once:
 
 - **Straight after a copy:** put a [[Ctrl+D]] copy down one step along, then type `11x` and [[Enter]] to make it one of 11 in the row, each the same step again. `/4` cuts the gap between the copy and where it came from in four, putting three between. One [[Ctrl+Z]] takes the copy and all the rest back.
-- **Edit › Pattern…** ([[Ctrl+Shift+D]]) copies the selection **In a row** along x, z or up, **Round** what it stands on, the joint it hangs on or the middle of the floor, or **Along a hose** laid in the model. **In all** counts the selection: 16 is a ring of sixteen.
+- **Edit › Pattern…** ([[Ctrl+Shift+D]]) copies the selection **In a row** along x, z or up, **In a grid** of columns along x, rows along z and levels up, each so many studs or plates apart, **Round** what it stands on, the joint it hangs on or the middle of the floor, or **Along a hose** laid in the model. **In all** counts the selection: 16 is a ring of sixteen. A grid counts it too: 4 columns, 3 rows and 2 levels is 24, the selection one of them, and a copy with no room is named by its column, row and level. An assistant lays the same grid on parts it names with `pattern_parts`, in one call: columns, rows and levels, each so many studs or plates apart (the parts' own size, touching, when it gives none), one undo step, a copy with no room named by its column, row and level and the part in its way, and the copies pictured.
 
 The copies are drawn where they will go as you type, each checked for room. One with no room is red, says what is in its way, and nothing goes down until they all fit.
 
 <!-- covers
 ui:patterns
+lib:pattern's grid over mcp
 -->
 
 ## Move and turn what is down {#move}
@@ -146,7 +147,7 @@ ui:replace part
 - [[Alt+S]] splits the selection: a plate, brick or tile into 1 x 1s on the same studs, a 1 x 1 brick into three 1 x 1 plates, and a slope or curved slope into 1-wide slopes of the same angle and length.
 - [[Alt+M]] merges the selected plates, bricks and tiles of each colour into the fewest real parts made in that colour, in one press: five 1 x 2 plates in a 2 x 5 become a 2 x 4 and a 1 x 2, and three stacked plates become a brick.
 - Both are on the menu you get by right-clicking a part. Whatever was attached stays attached, and one undo takes the change back. When no real part is made of the selection, the status bar says so and nothing changes.
-- An assistant does the same to parts it names, with `split_parts` and `merge_parts`.
+- An assistant does the same to parts it names, with `split_parts` and `merge_parts`. Like `mirror_parts`, each answers with the change pictured, its new parts edged in magenta.
 
 <!-- covers
 ui:split and merge parts

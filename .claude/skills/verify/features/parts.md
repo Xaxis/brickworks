@@ -99,7 +99,10 @@ geometry in front of them.
   where it held one 1.8 s at load 41. A part made in the app lets it go,
   and it is made again at once, ahead of the next key (`add_custom`), one
   being made stopped, not waited for. Without threads it is made in frames,
-  4 ms of each and 12 once a search waits (`PartSearch.made_for`).
+  4 ms of each and 12 once a search waits (`PartSearch.made_for`). One let
+  go of goes the same way, 4 ms a frame once no search still reads it
+  (`PartLibrary.forget_search`, `PartSearch.let_go_for`), where at once it
+  held 60-80 ms of a frame; `index_letgo_probe` (headless, in the suite).
   `bin_first_probe` (in a window, about 3 min): the first search typed as
   the index is made and once it is, with threads and standing in for none,
   each frame against the later searches', its tiles the settled list's,
@@ -226,7 +229,10 @@ geometry in front of them.
   within each, the most used. From the catalogue alone (connector counts,
   and a clip or a bar by its name, since the catalogue counts rounds, not
   their width), so it answers on the web before any geometry. What is typed
-  narrows it ("axle" among a beam's fits). It does not yet know which of
+  narrows it ("axle" among a beam's fits), said in its note ("What fits
+  Technic Beam 5, with “axle”"); chosen, it starts from no words, and the
+  words typed for the rest of the bin come back when it is left
+  (`PartsBin._words_for`, as Like this). It does not yet know which of
   the selection's connectors are taken. `fits_probe`: twelve pairs, each
   with a part that fits in the first five, about 140 ms an answer over
   29,668 parts (appux371 B5, 2026-10-30). A double-click on one of its
@@ -245,9 +251,16 @@ geometry in front of them.
   footprint by use alone, nearby kinds among them (brick, plate and tile
   beside each other: 3001's Plate 2 x 4 is 7th, not 36th behind rare
   moulds); its kind in other sizes, the nearest first; its footprint among
-  parts with studs. Within each, the most used (`commonness`). Prints and assemblies take
+  parts with studs. Within each, the most used (`commonness`); every part
+  alike ranked, none cut (cut at 300, a printed torso's were its own prints
+  alone). Prints and assemblies take
   their plain part's kind and fold under it; a print chosen opens its
-  fold. Typed words narrow it. A double-click on a tile swaps the
+  fold. Chosen, it starts from no words: what was typed for All stays out
+  of the box, which says "Narrow these parts…", and comes back when All or
+  a category is chosen; Fits and Like this each start empty
+  (`PartsBin._words_for`). Words typed in it narrow it, said in its note
+  ("Parts like Brick 2 x 4, with “curved”"; none: "No part like … has
+  “…”"). A double-click on a tile swaps the
   selection for it (`EditVerbs.replace`, one undo, pose, colour, step and
   sub-model kept; the list stays on the part it was asked about); with a
   finger a tap swaps it and the sheet stays open. Over MCP,
@@ -260,6 +273,13 @@ geometry in front of them.
   in one action and one undo. `likethis_phone_probe` (390 x 844) and
   `likethis_tablet_probe` (1024 x 768) do it with taps, the chip a
   fingertip, the sheet still open after the swap (likethis, B5).
+  `likewords_probe` (1280 x 720, PROBE_SIZE=1400x900 too): "1x4 brick" typed
+  and a wall of four put down by clicks, then a 2 x 4 brick on it clicked and
+  Like this chosen: the box empty, Plate 2 x 4 in the first 12, the 12 as on
+  an empty search, no two the same mould printed or not; "curved" typed:
+  every tile curved and like it, the curved slopes 93606 and 61068 among
+  them, said; All puts "1x4 brick" and its list back; Fits the same, "plate"
+  narrowing it, said (APP_UX4 likewords).
 - `previews` (`src/ui/part_thumbnails.gd`, `src/ui/thumb_tile.gd`): each cell is
   a `ThumbTile`. A colour picked points each tile at the new colour
   (`show_part(..., keep)`) and it keeps the picture it had until the new one
@@ -583,6 +603,7 @@ tools/probe.sh fits_probe                     # Fits: twelve pairs each in the f
 tools/probe.sh likethis_probe                 # Like this: ten parts each with its footprint and kind in the first five; 3001's Plate 2 x 4 in its first 12; a swap in 3 actions, one undo; shots/likethis/
 tools/probe.sh likethis_phone_probe           # the same with taps on a phone, the chip a fingertip
 tools/probe.sh likethis_tablet_probe          # and on a tablet
+tools/probe.sh likewords_probe                # Like this and Fits after a search start from no words, its list as on an empty one; "curved" narrows it, said; All gets its words back; shots/likewords/ (PROBE_SIZE=1400x900 too)
 tools/probe.sh bin2_probe                     # only parts made in Sand Green; Prints off; List rows; a double-click replaces three bricks, and puts two pins in a beam from Fits; "1x4 brick" bricks first; 8841-1's Balance booklet, each step's parts first; the toggles kept over a restart; shots/bin2/
 PROBE_SIZE=1400x900 tools/probe.sh bin2_probe
 # the tiles on the web, on a slow network: drawn as the bin opens, and from the first frame of a search typed (local only)
@@ -638,6 +659,34 @@ the grab's 24 ms, none drawn again as the pictures land and fade in, and each
 search said in its parts. `--shots=DIR` keeps `sketches.png`, every kind of
 sketch at the bin's size, larger and halfway faded: put it beside another
 run's to see the look kept.
+
+Each key typed in the bin's search is `bin_keys_probe` (windowed, about 4
+min; `bin_keys_phone_probe` lays it out for a phone, 390 x 844): ten searches
+a builder types ("brick 2x4", "slope", "technic beam"...), a key every 180 ms,
+each key's longest frame of its own under 33 ms (three times that past the
+box's cores), said in its parts. Every key freed 64 tiles and made 64, and
+searched, sketched and fitted names on the frame: 28-263 ms a key at 1400 x
+900, 114-155 on a phone (bintiles). A key's search is made on a worker where
+there are threads (`PartsBin._seek`: `_searched`, `_kept_of`, `_folding`, and
+the first page's sketches `_sketched` and names `_named_ahead`, of nothing
+of the bin's) and listed in the first frame after it is done; the first of a
+run searches a word few parts have on the main thread first
+(`WorkerTasks.first_here`). A sketch planned there is drawn as one mesh
+(`PartSketch.plan`, `draw_plan`), the same picture as one drawn a step at a
+time to within 1 of 255 (8 edge pixels of 263,296 more). The tiles a list
+showed are kept and bound to the next list's parts (`_keep_tiles`,
+`_tile_for`, `_bind_tile`), a part listed again keeping its tile, and a
+tile's +N badge kept with it, hidden while its part folds nothing (made and
+freed each key, the badges cost 3-5 ms of "slope"'s frames); tiles that
+must come into the window come in the rows in sight first and the rest of
+the page a frame on, the grid held as tall meanwhile (`_shown_at_once`,
+`_hold_page`, `_show_coming`). Each name is fitted once, as it is told apart
+(`_tell_apart`), and told apart again once its tiles are laid out
+(`_tell_apart_soon`). `--said=FILE` writes each key's first page tile by
+tile and `--shots=DIR` a picture of each search, to put a run before a change
+beside one after it. In a browser, `tools/web/bin_keys_flow.mjs` types the
+same ten into a local export, each frame timed up to `gl.finish()`, a frame
+long in WebGL said with the calls it was long in.
 
 The previews are covered by `placeholder_probe` (windowed, in the suite, also
 the minifigure builder's grid and slots):

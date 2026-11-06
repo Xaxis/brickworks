@@ -632,6 +632,12 @@ const HINTS := {
 	"merge_parts": ["Merge parts", "remove"],
 	"measure": ["Measure between connectors", "look"],
 	"in_view": ["What the person sees", "look"],
+	# What a session sees as a person does (SeeTools): boards of views, parts
+	# picked out or seen through, and a booklet page as a picture.
+	"view_board": ["Look from several sides", "look"],
+	"booklet_page": ["See a booklet page", "look"],
+	# Edit, Pattern…'s grid (PatternTool): copies added, nothing taken off.
+	"pattern_parts": ["Lay copies in a grid", "add"],
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],
@@ -825,8 +831,9 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 	if assistant != null and not assistant.progress.is_connected(_heard):
 		assistant.progress.connect(_heard)
 	var doing: Callable = func() -> String:
-		return (_doing.left(1).to_upper() + _doing.substr(1) + "…") if not _doing.is_empty() \
-			else "Working on %s's %s…" % [who, name]
+		return ((_doing.left(1).to_upper() + _doing.substr(1)) if not _doing.is_empty()
+			else "Working on %s's %s" % [who, name]) \
+			+ ("; drawing its picture…" if ModelShot.drawing > 0 else "…")
 	if name in ["clear_model", "save_model", "review_model"]:
 		return [await jobs.call_tool(name, {}, func(_work: Working.Job) -> Variant:
 			# One step too: a review lays a feature's piece, saving can hand

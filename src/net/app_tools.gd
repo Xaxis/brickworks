@@ -39,6 +39,11 @@ var chat: String = ""
 var _gallery: GalleryTool
 ## The window's hand tools, for a session (HandTools, APP_UX3).
 var _hands: HandTools
+## What a session sees as a person does: boards of views, parts picked out,
+## a booklet page (SeeTools, APP_UX4).
+var _see: SeeTools
+## Edit, Pattern…'s grid for a session (PatternTool, APP_UX4 grid).
+var _pattern: PatternTool
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -57,9 +62,10 @@ const COMMANDS: Dictionary = {
 	"undo": "undo", "redo": "undo",
 	"cut_parts": "edit_model", "copy": "edit_model", "paste": "edit_model",
 	"duplicate": "edit_model", "delete": "edit_model", "paint": "edit_model",
-	# A session repeats a named section stepped or round a centre
-	# (edit_model's repeat_section; submit_design's repeat pattern).
-	"pattern": "edit_model",
+	# Edit, Pattern…'s grid (and a row, a grid of one row) on parts by number
+	# (PatternTool); a named section repeats stepped or round a centre with
+	# edit_model's repeat_section, a design with submit_design's repeat.
+	"pattern": "pattern_parts",
 	"replace": "edit_model", "make_submodel": "edit_model",
 	"step_*": "edit_steps", "timeline": "edit_steps", "booklet_*": "edit_booklet",
 	"floor_*": "set_floor",
@@ -80,6 +86,8 @@ const COMMANDS: Dictionary = {
 	# The window's hand tools on the parts a session names (HandTools).
 	"mirror": "mirror_parts", "split_parts": "split_parts", "merge_parts": "merge_parts",
 	"measure": "measure",
+	# picklist: LEGO's Pick a Brick list (export_model format=pickabrick).
+	"export_pickabrick": "export_model",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -129,6 +137,8 @@ const WINDOW_ONLY: Dictionary = {
 	"palette": "finds one of the person's commands by its words; a session calls the tool itself",
 	"keys": "help for the person",
 	"tour": "help for the person",
+	# whatsthis: a click of the person's on a control, answered in words.
+	"whats_this": "help for the person: what a control does, said where the person's next click lands",
 	"website": "help for the person",
 	"docs": "help for the person",
 	"about": "help for the person",
@@ -212,8 +222,8 @@ after another while the person goes on working, as File, Render queue… \
 does; list says how far each has got and where it was saved.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
-parts list, or the building instructions as a booklet, written where \
-Export writes; all_models is every saved model in one .zip.
+parts list, a LEGO® Pick a Brick list, or the building instructions as a \
+booklet, written where Export writes; all_models is every saved model in one .zip.
  - brickify: a 3D model (OBJ, STL, glTF, PLY, 3MF, VOX, FBX) laid in LEGO® bricks at the size asked, \
 as one sub-assembly: file= its path on this computer, url= a link the app \
 fetches, or pick=true opens the window's file dialog for the person, after \
@@ -250,6 +260,19 @@ joint with the turn between them as attach's yaw. in_view, read-only: what \
 the person sees and a session is not told — the step the timeline is at, \
 the part in their hand, and the reference picture they build over, with a \
 picture of it.
+ - view_board, read-only: up to six of view_model's views in one labelled \
+picture; highlight= parts edged in magenta with the rest see-through, xray= \
+parts see-through so what they hide shows, step=N the model as built to step \
+N with its new parts edged. booklet_page, read-only: a page of the booklet as \
+Instructions draws it and its PDF prints it, to see what edit_booklet did. \
+mirror_parts, split_parts and merge_parts answer with the change pictured, as \
+edit_model does (picture=true the whole model, false words alone).
+ - pattern_parts: Edit, Pattern…'s grid on parts by number, in one call: \
+columns along x, rows along z and levels up (a row is one row and one level), \
+column_studs= and row_studs= apart in studs, level_plates= in plates, each the \
+parts' own size when not given, so copies touch. Every copy checked for room, \
+all or nothing, one undo step; a copy with no room is said by its column, row \
+and level and the part in its way. Answered with the copies pictured.
  - weakest_joints: what gives first in the whole model as it stands, \
 read-only, as View, Stress weighs it: each joint that alone holds what is \
 past it, weakest first, with its margin against its studs' working load. \
@@ -763,14 +786,24 @@ func definitions() -> Array:
 				+ "model), gltf (the same as text), obj (with an .mtl of its colours) or stl "
 				+ "(one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are "
 				+ "capped — picture (.png), bricklink (a wanted list), rebrickable (a parts "
-				+ "list .csv), or instructions (the building instructions as a booklet to "
+				+ "list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and "
+				+ "quantities, 400 lines a file; the answer names the parts with no element "
+				+ "number known), or instructions (the building instructions as a booklet to "
 				+ "print); all_models is every model the person saved, as LDraw in one .zip "
 				+ "(File, Export, All my models). studio, picture and instructions are jobs: "
-				+ "the answer is a job number at once, and job gives the result."),
+				+ "the answer is a job number at once, and job gives the result. A bricklink "
+				+ "wanted list takes condition, wanted_list and notify, as BrickLink's upload "
+				+ "reads them; what is not given is what the person chose last on the parts "
+				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
-					"stl", "picture", "bricklink", "rebrickable", "instructions", "all_models"]},
+					"stl", "picture", "bricklink", "rebrickable", "instructions", "all_models",
+					"pickabrick"]},
+				"condition": {"type": "string", "enum": ["new", "used", "any"],
+					"description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)"},
+				"wanted_list": {"type": "integer", "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list"},
+				"notify": {"type": "boolean", "description": "bricklink: BrickLink emails the person when a lot of a part is listed for sale (NOTIFY Y)"},
 			}},
 		},
 		{
@@ -965,7 +998,8 @@ func definitions() -> Array:
 			}},
 		},
 		GalleryTool.definition(),
-	] + HandTools.definitions()
+		PatternTool.definition(),
+	] + HandTools.definitions() + SeeTools.definitions()
 
 
 func has(tool: String) -> bool:
@@ -986,7 +1020,7 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 		"set_floor":
 			return _set_floor(input)
 		"edit_steps":
-			return _edit_steps(input)
+			return await _edit_steps(input)
 		"booklet_layout":
 			return await _booklet_layout(input)
 		"edit_booklet":
@@ -1056,8 +1090,31 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			if _hands == null:
 				_hands = HandTools.new()
 				_hands.app = app
-			return await _hands.run(tool, input)
+			var handled: Variant = await _hands.run(tool, input)
+			# A change answered with it pictured, as edit_model's is (SeeTools).
+			if handled is String and not _hands.changed.is_empty():
+				return await _seeing().pictured(handled, _hands.changed, input.get("picture"))
+			return handled
+		"view_board", "booklet_page":
+			return await _seeing().run(tool, input, work)
+		# Edit, Pattern…'s grid (PatternTool), answered with the copies
+		# pictured as the hand tools' changes are.
+		"pattern_parts":
+			if _pattern == null:
+				_pattern = PatternTool.new()
+				_pattern.app = app
+			var laid: String = _pattern.run(input)
+			if not _pattern.changed.is_empty():
+				return await _seeing().pictured(laid, _pattern.changed, input.get("picture"))
+			return laid
 	return "No tool called %s." % tool
+
+
+func _seeing() -> SeeTools:
+	if _see == null:
+		_see = SeeTools.new()
+		_see.app = app
+	return _see
 
 
 ## Why [param tool] is not done now, before it begins, or "".
@@ -1093,7 +1150,9 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_
 	"define_motion", "play_motion",
 	"undo", "open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts",
 	"make_sections", "break_out_section",
-	"mirror_parts", "split_parts", "merge_parts"]
+	"mirror_parts", "split_parts", "merge_parts",
+	# Edit, Pattern…'s grid (PatternTool).
+	"pattern_parts"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the
@@ -1118,6 +1177,8 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions", "weakest_joints":
 			return true
 		"measure", "in_view":
+			return true
+		"view_board", "booklet_page":
 			return true
 	return false
 
@@ -1189,14 +1250,27 @@ func _one_undo_since(depth: int) -> void:
 # -- the build steps ------------------------------------------------------------
 
 
+## Parts from which edit_steps works its steps out paced (plan_paced).
+const STEPS_PACED_FROM := 300
+
+
 func _edit_steps(input: Dictionary) -> String:
 	var world: BrickWorld = app.get("_world")
 	var library: PartLibrary = app.get("_library")
 	var store: ModelStore = app.get("_store")
 	var shell: Shell = app.get("_shell")
 	var op: String = str(input.get("op", "list"))
-	var steps: Array[Instructions.Step] = Instructions.plan(world, library, store.scenery, {},
-		true)
+	var steps: Array[Instructions.Step] = []
+	# Worked out a slice a frame on a big model: in one go, the Charger's
+	# 1,083 parts held the window a second on the desktop and several in a
+	# browser, whose page says nothing to the relay meanwhile (bigedit).
+	if world.brick_count() >= STEPS_PACED_FROM:
+		var job: Working.Job = Working.begin("Setting out the steps…")
+		await job.shown()
+		steps = await Instructions.plan_paced(world, library, store.scenery, {}, job, true)
+		job.end()
+	else:
+		steps = Instructions.plan(world, library, store.scenery, {}, true)
 	if steps.is_empty():
 		return "There is nothing built to have steps."
 	match op:
@@ -3094,6 +3168,9 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		chosen.frames = seconds * chosen.fps
 		kind = "building"
 	var said: String = await dialog.render_for(kind, chosen, work)
+	var how: String = _best_said(dialog, chosen)
+	if not how.is_empty():
+		said = "%s. %s" % [said.trim_suffix("."), how]
 	if kind != "picture" or dialog.last_picture() == null:
 		return said
 	var small: Image = dialog.last_picture().duplicate() as Image
@@ -3101,6 +3178,22 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		Image.INTERPOLATE_BILINEAR)
 	return [{"type": "text", "text": said}, {"type": "image", "source": {"type": "base64",
 		"media_type": "image/png", "data": Marshalls.raw_to_base64(small.save_png_to_buffer())}}]
+
+
+## How Best drew the render just made, in Render's words (RenderSettings
+## .best_words), read off what drew it: a session asked for Best with the
+## product look and guessed from its 4 seconds whether it was path traced
+## (APP_UX4, seeing). "" when it was not Best.
+static func _best_said(dialog: RenderDialog, chosen: RenderSettings) -> String:
+	if chosen.quality != RenderSettings.Quality.BEST:
+		return ""
+	var traced: bool = dialog.renderer != null and dialog.renderer.traced_last()
+	if traced == chosen.traced_here():
+		return "Best was drawn so: " + chosen.best_words()
+	# Asked to trace and drawn without, or the other way: what it was drawn as.
+	var drawn: RenderSettings = chosen.copy()
+	drawn.traced = traced
+	return "Best was drawn so: " + drawn.best_words()
 
 
 ## File, Render queue…, for a session: the window's own queue (RenderQueue).
@@ -3187,9 +3280,14 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 				return "A picture needs something to draw with, and this app is running without a window."
 			said = await exports.take_picture()
 		"bricklink":
-			said = await exports.shop_list("bricklink")
+			var wants: Variant = ShopLists.Wants.from(input)
+			if wants is String:
+				return str(wants).left(1).to_upper() + str(wants).substr(1) + "."
+			said = await exports.shop_list("bricklink", {}, false, wants)
 		"rebrickable":
 			said = await exports.shop_list("rebrickable")
+		"pickabrick":
+			said = await exports.shop_list("pickabrick")
 		"instructions":
 			if DisplayServer.get_name() == "headless":
 				return "The booklet's pictures need something to draw with, and this app is running without a window."
@@ -3201,7 +3299,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
 		_:
 			return ("format is ldraw, studio, glb, gltf, obj, stl, picture, bricklink, rebrickable, "
-				+ "instructions or all_models.")
+				+ "pickabrick, instructions or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
 
 

@@ -85,20 +85,25 @@ class Shot extends RefCounted:
 
 ## How to point the camera: the direction it looks from, the point of
 ## the view plane at the centre of the picture, and how many pixels a
-## unit of the model is.
+## unit of the model is. [member turn] is how the model is turned before
+## it is looked at, as LDraw's ROTSTEP turns it about its own axes: a roll
+## (the model turned over, its underside up), which no direction to look
+## from can say. The identity for none.
 class View extends RefCounted:
 	var from: Vector3 = FRONT
 	var centre: Vector2 = Vector2.ZERO
 	var scale: float = 1.0
+	var turn: Basis = Basis.IDENTITY
 
 	func _init(direction: Vector3 = FRONT, middle: Vector2 = Vector2.ZERO,
-			pixels_per_ldu: float = 1.0) -> void:
+			pixels_per_ldu: float = 1.0, turned: Basis = Basis.IDENTITY) -> void:
 		from = direction
 		centre = middle
 		scale = pixels_per_ldu
+		turn = turned
 
 	func basis() -> Basis:
-		return BookletStudio.basis_for(from)
+		return BookletStudio.basis_for(from, turn)
 
 	## Where a point of the model lands in a picture [param size] across.
 	func project(point: Vector3, size: Vector2) -> Vector2:
@@ -109,18 +114,22 @@ class View extends RefCounted:
 
 
 ## The camera's axes for a view from [param direction]: x across the
-## picture, y up it, z back towards the camera.
-static func basis_for(direction: Vector3) -> Basis:
+## picture, y up it, z back towards the camera. Of the model as it stands,
+## when [param turn] turns it first (View.turn): the camera that sees the
+## model as it stands as the upright one sees it turned.
+static func basis_for(direction: Vector3, turn: Basis = Basis.IDENTITY) -> Basis:
 	var back: Vector3 = direction.normalized()
 	var across: Vector3 = Vector3.UP.cross(back).normalized()
 	var up: Vector3 = back.cross(across).normalized()
-	return Basis(across, up, back)
+	if turn == Basis.IDENTITY:
+		return Basis(across, up, back)
+	return turn.transposed() * Basis(across, up, back)
 
 
 ## The rectangle a set of boxes covers on the view plane, in model units,
-## y up.
-static func extent(boxes: Array, direction: Vector3) -> Rect2:
-	var turn: Basis = basis_for(direction)
+## y up, the model turned by [param turned] first (View.turn).
+static func extent(boxes: Array, direction: Vector3, turned: Basis = Basis.IDENTITY) -> Rect2:
+	var turn: Basis = basis_for(direction, turned)
 	var low := Vector2(INF, INF)
 	var high := Vector2(-INF, -INF)
 	for box: AABB in boxes:
@@ -183,6 +192,7 @@ func _picture_lane() -> PictureLane:
 	fill.light_energy = BrickWorld.light_energy(0.3)
 	fill.light_specular = 0.0
 	lane.colour.add_child(fill)
+	lane.lights = [[key, key.basis], [fill, fill.basis]]
 	lane.colour_token = _token_rect()
 	lane.colour.add_child(lane.colour_token)
 
@@ -411,7 +421,7 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 	lane.busy = false
 	if drawn == null:
 		return shot
-	shot.task = WorkerThreadPool.add_task(
+	shot.task = WorkerTasks.add(
 		_develop.bind(shot, drawn, codes, size, times, finish), false,
 		"booklet picture")
 	return shot
@@ -435,6 +445,8 @@ class PictureLane extends RefCounted:
 	var ink_rect: ColorRect
 	var ink_material: ShaderMaterial
 	var code_material: ShaderMaterial
+	## The colour world's lights, each [light, its basis on an upright view].
+	var lights: Array = []
 	## Counted on by one each picture: see [method BookletStudio._next_token].
 	var token: int = 0
 	var busy: bool = false
@@ -449,7 +461,7 @@ func finished(shot: Shot) -> void:
 	# A build without threads does the work when it is waited for.
 	while OS.has_feature("threads") and not WorkerThreadPool.is_task_completed(shot.task):
 		await get_tree().process_frame
-	WorkerThreadPool.wait_for_task_completion(shot.task)
+	WorkerTasks.collect(shot.task)
 	shot.task = -1
 
 
@@ -804,6 +816,10 @@ func _aim(lane: PictureLane, made: Stage, upto: int, new_from: int, view: View,
 	lane.codes.size = big
 	for camera: Camera3D in [lane.colour_camera, lane.codes_camera]:
 		_point(camera, made, view, big, times)
+	# A model turned over is lit as it stands turned: the lights turned with
+	# the camera, so its underside, now up, takes the key as a top does.
+	for light: Array in lane.lights:
+		(light[0] as Node3D).basis = view.turn.transposed() * (light[1] as Basis)
 	var token: Color = _next_token(lane)
 	lane.colour_token.color = token
 	lane.codes_token.color = token

@@ -1089,6 +1089,8 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 		if not _on_main_thread():
 			_arrived_lock.lock()
 			var waiting: Lbm.PartMesh = _arrived.get(info.mesh_hash)
+			if waiting == null:
+				_unread[part_id] = true
 			_arrived_lock.unlock()
 			return waiting
 		if _arrived.has(info.mesh_hash):
@@ -1209,6 +1211,11 @@ var _readers: int = 0
 ## on a worker takes to read it.
 var _arrived: Dictionary = {}
 var _arrived_lock := Mutex.new()
+## Parts a reader on a worker asked for that were not loaded, which it read
+## as having no geometry: id -> true, under [member _arrived_lock]. A shape
+## laid on a worker with one of its parts read so lays other parts than the
+## same shape laid on the main thread, which loads it (bigedit, 2026-11-06).
+var _unread: Dictionary = {}
 ## The WorkerThreadPool tasks reading, for _wait_for_readers.
 var _reading_tasks: Array[int] = []
 ## task -> what ends it early, for the readers that can be.
@@ -1240,6 +1247,17 @@ func end_reading(task: int = -1) -> void:
 	_arrived_lock.lock()
 	_arrived.clear()
 	_arrived_lock.unlock()
+
+
+## The parts readers on workers asked for and found not loaded since this
+## was last called ([member _unread]), forgotten here: load them and read
+## again for the answer the main thread would give.
+func unread_by_readers() -> PackedStringArray:
+	_arrived_lock.lock()
+	var out := PackedStringArray(_unread.keys())
+	_unread.clear()
+	_arrived_lock.unlock()
+	return out
 
 
 ## Whether a worker is reading the library now: what changes it waits for
@@ -2278,9 +2296,14 @@ func prepare_search(wanted: bool = false) -> void:
 
 
 ## Each frame while the index is made in frames: a frame's share of it, kept
-## once it is all made.
+## once it is all made; and then, while one let go of is still held, a
+## frame's share of letting go of it ([constant INDEX_BUDGET_MS]). Never
+## waits for the lock: a worker making the index holds it all the while
+## (_made_unless), and waited for, a first key's frame held 1.3 s.
 func _index_frame() -> void:
-	_search_lock.lock()
+	if not _search_lock.try_lock():
+		_let_go_some()
+		return
 	var making: PartSearch = _index_making
 	var budget: float = INDEX_WANTED_MS if _index_wanted else INDEX_BUDGET_MS
 	if making != null and making.made_for(roundi(budget * 1000.0)):
@@ -2289,11 +2312,26 @@ func _index_frame() -> void:
 		_index_making = null
 		making = null
 	_search_lock.unlock()
-	if making == null:
-		_index_wanted = false
-		var tree: SceneTree = _read_tree()
-		if tree != null and tree.process_frame.is_connected(_index_frame):
-			tree.process_frame.disconnect(_index_frame)
+	if making != null:
+		return
+	_index_wanted = false
+	if _let_go_some():
+		return
+	var tree: SceneTree = _read_tree()
+	if tree != null and tree.process_frame.is_connected(_index_frame):
+		tree.process_frame.disconnect(_index_frame)
+
+
+## A frame's share of letting go of an index let go of (forget_search), once
+## nothing else holds it, as a search on a worker may still be reading it:
+## whether any is still held.
+func _let_go_some() -> bool:
+	if _letting_go.is_empty():
+		return false
+	var going: PartSearch = _letting_go[0]
+	if going.get_reference_count() <= 2 and going.let_go_for(roundi(INDEX_BUDGET_MS * 1000.0)):
+		_letting_go.pop_front()
+	return true
 
 
 ## The index made on a worker, a few ms of it at a time under its lock,
@@ -2315,20 +2353,35 @@ func _made_unless(stop: WorkerTasks.Stop) -> bool:
 ## whether there was one, made or being made. One being made on a worker
 ## from them is told to stop, and has let go of its lock and of the parts
 ## when this has the lock; one not started yet stops as it starts. Its task
-## is not waited for, as it may be queued behind a file's geometry.
+## is not waited for, as it may be queued behind a file's geometry. What it
+## held is let go of in frames (_index_frame), where all at once held the
+## frame for 60 to 80 ms: the first search of bin_first_probe's browser
+## without threads, and a part made in the app (bintiles, 2026-11-05).
 func forget_search() -> bool:
 	if _index_stop != null:
 		_index_stop.ask()
 		_index_stop = null
 	_search_lock.lock()
 	var had: bool = _preparing >= 0 or _search_index != null or _index_making != null
+	for gone: PartSearch in [_search_index, _index_making]:
+		if gone != null:
+			_letting_go.append(gone)
 	_search_index = null
 	_index_making = null
 	_search_lock.unlock()
 	if _preparing >= 0:
 		_stopped.append(_preparing)
 		_preparing = -1
+	var tree: SceneTree = _read_tree()
+	if tree == null:
+		_letting_go.clear()
+	elif not tree.process_frame.is_connected(_index_frame):
+		tree.process_frame.connect(_index_frame)
 	return had
+
+
+## Indexes let go of (forget_search), a frame's share at a time (_index_frame).
+var _letting_go: Array[PartSearch] = []
 
 
 ## The task making the index (prepare_search), until it is let go of; what

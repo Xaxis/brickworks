@@ -194,6 +194,17 @@ var _reply: HTTPRequest
 ## hang, which is how a tab brought back into view stayed deaf.
 var _asking_since: int = 0
 const STALLED_MS := 45_000
+## The window's word that it is alive, as the page's worker says it on the
+## web (_watch_the_page): every BEAT_MS while listening, whatever the loop
+## asking for work is waiting on. Without it a desktop window was seen only
+## when it asked for work, and the loop asks again only once a call is
+## answered: a job's 45 s wait, answered, left its last word 46 s old, and
+## the session's next call, a second behind, was told the tab had closed
+## (the Charger's, bigedit 2026-11-06).
+const BEAT_MS := 10_000
+var _beat: HTTPRequest
+var _beat_at: int = 0
+var _beating: bool = false
 
 
 func _ready() -> void:
@@ -210,6 +221,11 @@ func _ready() -> void:
 	_reply = HTTPRequest.new()
 	_reply.timeout = 30.0
 	add_child(_reply)
+	_beat = HTTPRequest.new()
+	_beat.timeout = 10.0
+	add_child(_beat)
+	_beat.request_completed.connect(func(_r: int, _c: int, _h: PackedStringArray,
+			_b: PackedByteArray) -> void: _beating = false)
 	_instance = _new_token().substr(0, 16)
 	var kept: String = str(ShellPrefs.value("connect_with"))
 	assistant = kept if Assistants.known(kept) else Assistants.CLAUDE
@@ -225,6 +241,8 @@ func _process(_delta: float) -> void:
 	if _waiting_until > now and now >= _next_ask and not _asking_connections:
 		_next_ask = now + 5000
 		refresh_connections()
+	if _on and not OS.has_feature("web") and now - _beat_at >= BEAT_MS:
+		_say_alive(now)
 	if not _on or _asking_since == 0:
 		return
 	if now - _asking_since > STALLED_MS:
@@ -232,6 +250,21 @@ func _process(_delta: float) -> void:
 		_http.cancel_request()
 		_generation += 1
 		_listen()
+
+
+## The window's word to the relay that it is alive (BEAT_MS): in view
+## unless minimised, when it was last used and what its model is called,
+## as the page's says (_watch_the_page's alive()).
+func _say_alive(now: int) -> void:
+	_beat_at = now
+	if _token.is_empty() or _beating:
+		return
+	var away: bool = DisplayServer.get_name() != "headless" \
+		and DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_MINIMIZED
+	var used: int = _used_ago()
+	_beating = _beat.request("%s/api/mcp?t=%s&i=%s&op=state&visible=%d%s&model=%s" % [base_url,
+		_token, _instance, 0 if away else 1, ("&used=%d" % used) if used >= 0 else "",
+		_model().uri_encode()], PackedStringArray(), HTTPClient.METHOD_POST, "") == OK
 
 
 func is_on() -> bool:
@@ -609,7 +642,10 @@ const CHANGING_CALLS := ["look_at_model", "view_model", "in_view", "measure", "s
 	"edit_model", "edit_selection", "where_to_attach", "attachment_points", "move_part",
 	"mirror_parts", "split_parts", "merge_parts", "make_unique", "colour_hidden_parts",
 	"weakest_joints", "edit_steps", "make_sections", "suggest_sections", "break_out_section",
-	"evaluate_section", "parts_list", "undo", "restyle_model", "pose_model"]
+	"evaluate_section", "parts_list", "undo", "restyle_model", "pose_model",
+	"view_board",
+	# Edit, Pattern…'s grid on the parts standing (PatternTool).
+	"pattern_parts"]
 
 
 func _sitting(request: Dictionary) -> Dictionary:

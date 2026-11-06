@@ -367,7 +367,26 @@ plan with Claude as the client.
   worker sends `op=state` every ten seconds, which also counts as seen, so the
   relay judges a tab by its page: alive is ready, in view or not; a page that
   stopped altogether is "paused" if it was out of view and "not open" if not,
-  and a call nobody takes says so after 30 s instead of four minutes. A
+  and a call nobody takes says so after 30 s instead of four minutes.
+  **A working tab is busy, not closed** (bigedit, 2026-11-06): the Charger of
+  design19 lost its build when its desktop tab, which then spoke only as it
+  asked for work, held a job's 45 s poll, answered, and the session's next
+  call a second later found its last word 48 s old and was told the tab had
+  closed. Now an answer counts as seen (`op=answer` writes `seen_at`), the
+  desktop window sends `op=state` every ten seconds too
+  (`ClaudeConnector._say_alive`, `BEAT_MS`), and a tab in view silent over
+  45 s is "quiet" (`stateOf`), listed "busy: not answered for 50 s": its call
+  waits up to 30 s for it (`QUIET_WAIT_MS`) and is then told it is busy,
+  nothing done, the chat kept in it. Closed is `op=close` or 3 min of silence
+  (`TAB_LOST_MS`), and a closed tab's chat is told the model comes back from
+  its autosave when the tab or the app is opened again (`KEPT_WORDS`).
+  `tests/test_relay_busy.py` holds it on the real handler;
+  `tools/bench/busy_tab.py --app=CHECKOUT --calls=FILE --stall` plays a
+  session's calls through a local relay to a headless tab whose pictures
+  never come (every edit a long job), reading `relay_tabs.seen_at` every half
+  second, and fails on an answer saying closed, a silence of 15 s, a job that
+  never said what it was doing, or an undo that does not take the last call
+  back; `freeze_check.mjs --watch [--hide]` does the same for a browser tab. A
   request for work outstanding over 45 s is replaced (`STALLED_MS`). The tab
   still sends its initialize and tools/list answers when it switches on
   (`op=hello`) and the relay answers those itself; `op=close` goes by
@@ -2955,12 +2974,42 @@ plan with Claude as the client.
   then waits hundreds of ms to seconds inside WebGL calls on SwiftShader
   (the part pictures' fence, the outline's window-sized passes, step 30's
   7,000 calls), however little the app did (see the share steps flow
-  below).
+  below). **A part at a time** (APP_UX4 partbypart, 2026-11-05; BUF3D
+  builds so on a phone): under the card, beside the step's words, a choice
+  of two, **One part** and **Whole step** (`build_one_part`,
+  `build_whole_step`, `BuildMode.choose_by_part`), kept on the device
+  (`localStorage["brickworks.build.by_part"]` = "1" or "0"; this run only on
+  the desktop). Whole step is where a person starts, as the booklet shows a
+  step. One part puts the page down a part at a time (`main._build_part`):
+  the part alone in its colours and outlined, everything already on faded,
+  the step's later parts not there; its picture on the card with "3 of 8 in
+  this step" under it and its name and colour beside. Next (the button, a
+  swipe, Right/Space) puts the next part down and from the step's last goes
+  to the next step's first (`_build_next`); Back takes one part off, from a
+  step's first to the step before finished, at its last (`_build_back`); End
+  is the last step's last part. A page that puts a finished sub-assembly on
+  puts it down first, whole, then its loose parts. The camera is framed when
+  the page changes, never for a part, so a view turned by hand stays. The
+  page reached is kept as before (a part is not: a phone that slept comes
+  back to the step's first part). Every target of the player is 44 points
+  or more each way: Close, Back, Next, the two halves of the choice, the
+  comments count and Go to step (the count and Go to step were 38 and 40).
+  `brickworksShare.build` adds `by_part`, `part`, `parts`, `part_count` and
+  `targets` (each tappable control's size in points). `partbypart_probe`
+  (390 x 844) and `partbypart_tablet_probe` (1024 x 768), on the racer's
+  first step of five parts, do it with taps and a swipe, reading what the
+  world draws: each tap exactly one part in full colour, in its own colour,
+  the one before pale.
 - `build pages` (`src/assembly/build_steps.gd`): what each page shows —
   `shown`, `fresh`, `faded`, `lots` (by part and colour via `Inventory.key_of`,
   the most first), `caption`, `note` ("Build this on the side", "Put them on",
   "hold this one in place"), `view` — and `recall`/`remember` for the kept
-  page, which reads a stored value of the wrong shape as none.
+  page, which reads a stored value of the wrong shape as none. A part at a
+  time, `parts(page)` (each part it adds, after the sub-assembly it puts on)
+  and `shown`, `fresh`, `faded`, `count`, `standing`, `fading` and `lots`
+  with a part (0, the page whole, as before); `count(page, part)` is a count
+  of the same order, so a part is shown by `BrickWorld.reveal_upto` and
+  `set_faded_in_order` as a page is.
 - `steps carried with a shared model` (`src/net/shared_pages.gd`,
   `SharedPages`, 2026-10-17): the Share panel works the model's build steps
   out once ("Working out its steps for the link…") and writes them at the end
@@ -3095,7 +3144,12 @@ plan with Claude as the client.
   each call is printed with it. With `--dir=build/web` it serves the
   export itself through `tools/web/relay_server.mjs --static`, the deployment's
   real functions; with `--url=` it drives a preview (`BW_BYPASS`). `--calls=`
-  replays a run's own calls. Fails when a frame of the app's own work is over
+  replays a run's own calls. `--watch` (`.env` loaded) reads the tab's word to
+  the relay every half second and fails on a silence of `--silence` ms (15,000;
+  the relay takes 45 s for gone) or an answer saying the tab closed or has not
+  answered, and prints what each job said it was doing; `--hide` makes the
+  calls out of view, on the page's own frames (bigedit, 2026-11-06).
+  Fails when a frame of the app's own work is over
   `--budget` (500 ms: the browser here is niced on a shared box and runs the
   scripts four to eight times slower than the desktop app, whose freeze_probe
   holds 200 ms on a GPU) or a call goes unanswered; a build from before the app
@@ -4816,6 +4870,23 @@ about a minute on the GPU):
 ```sh
 tools/probe.sh share_play_probe
 ```
+
+Build it a part at a time, on 8808-1's first step of five parts, with taps
+(a window; a phone, then a tablet; `PROBE_SIZE=1280x720` or `1400x900` for
+a desktop's):
+
+```sh
+tools/probe.sh partbypart_probe          # 390 x 844
+tools/probe.sh partbypart_tablet_probe   # 1024 x 768
+```
+
+Proves it when it ends "partbypart_probe: all passed": tap k of five says
+"step N, part k of 5", exactly one part in full colour and it the step's
+k-th, drawn in its own colour with the one before pale, outlined, "k of 5 in
+this step" under its picture; the last part's Next at the next step's first
+part; a swipe and a tap of Back each one part off; every target 44 points
+or more; Whole step shows the step whole again; One part kept for the next
+Build it. Pictures in `shots/partbypart/<size>_*.png`.
 
 Proves it when it ends "a shared model's steering turns by its wheel,
 nothing is kept, and Reset puts it back" with no `FAIL` (40 checks): the

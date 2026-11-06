@@ -58,7 +58,10 @@
 ## steps after it until another, or "0 ROTSTEP END" puts the usual view
 ## back. Here x tilts the view up (degrees of pitch from the booklet's
 ## usual angle) and y turns it round (degrees of yaw), which for a turn
-## alone is what LPub draws. The rest are the app's own lines inside the
+## alone is what LPub draws; z rolls the model about its front-to-back
+## axis first, as LPub turns it (180 is the model turned over, its
+## underside up, which 7140's author asks for where the dishes go under
+## each cart). The rest are the app's own lines inside the
 ## step, which other readers pass over: "0 !BRICKWORKS PAGE NEW", "... PAGE
 ## ALONE", "... ZOOM 1.5", "... SIZE 1.25", "... PARTS OFF", and in a
 ## sub-model "... CALLOUT OFF"; "... PER_PAGE 2" and "... HIGHLIGHT OFF" in
@@ -198,8 +201,10 @@ static func turn_at(world: BrickWorld, section: String, step: int) -> Dictionary
 			continue
 		var turn: Vector3 = _vector(look["turn"])
 		if str(look.get("how", "REL")) == "ADD":
+			# Added to the turn before it, which stays ABS or REL, as MLCad
+			# reads it.
 			added += turn
-			found = {"turn": [added.x, added.y, added.z], "how": "REL"}
+			found = {"turn": [added.x, added.y, added.z], "how": str(found.get("how", "REL"))}
 		else:
 			added = turn
 			found = {"turn": [turn.x, turn.y, turn.z], "how": str(look.get("how", "REL"))}
@@ -207,6 +212,17 @@ static func turn_at(world: BrickWorld, section: String, step: int) -> Dictionary
 			and str(found["how"]) == "REL":
 		return {}
 	return found
+
+
+## Whether any step of [param world] has a turn of its designer's: a
+## ROTSTEP in its file, or one set on its timeline. The booklet turns such a
+## model over only where its designer did (BookletMaker._turn_over).
+static func any_turn(world: BrickWorld) -> bool:
+	for name: String in world.step_looks:
+		var look: Variant = world.step_looks[name]
+		if look is Dictionary and (look as Dictionary).has("turn"):
+			return true
+	return false
 
 
 ## The direction a step is drawn from for a turn ([method turn_at]): the
@@ -217,13 +233,45 @@ static func direction(turn: Dictionary, usual: Vector3 = BookletStudio.FRONT) ->
 	var front: Vector3 = usual.normalized()
 	var yaw: float = atan2(front.x, front.z)
 	var pitch: float = asin(front.y)
-	var by: Vector3 = _vector(turn.get("turn", [0, 0, 0]))
+	var by: Vector3 = upright(_vector(turn.get("turn", [0, 0, 0])))
 	if str(turn.get("how", "REL")) == "ABS":
 		yaw = 0.0
 		pitch = 0.0
 	yaw += deg_to_rad(by.y)
 	pitch = clampf(pitch + deg_to_rad(by.x), deg_to_rad(-PITCH_MOST), deg_to_rad(PITCH_MOST))
 	return Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch))
+
+
+## How the model is turned before it is looked at from [method direction],
+## for [param turn]'s roll (its z, degrees): about its own front-to-back
+## axis, which LPub turns it about first (BookletStudio.View.turn). 180 is
+## the model turned over. A direction alone cannot say a roll: read as one,
+## the turn was a view from above with the dishes under the plate. A
+## callout's step rolls about the axis of the way the callout faces,
+## [param usual], as its own model's front does; ABS about the model's.
+static func roll(turn: Dictionary, usual: Vector3 = BookletStudio.FRONT) -> Basis:
+	var by: float = upright(_vector(turn.get("turn", [0, 0, 0]))).z
+	if absf(angle_difference(0.0, deg_to_rad(by))) < 0.0001:
+		return Basis.IDENTITY
+	var front: Vector3 = BookletStudio.FRONT
+	var facing: float = 0.0 if str(turn.get("how", "REL")) == "ABS" \
+		else atan2(usual.x, usual.z) - atan2(front.x, front.z)
+	# LDraw's y points down and its z away from the front: its roll of z
+	# degrees is one of -z about the front axis here (LdrModel.FLIP).
+	return Basis(Vector3.BACK.rotated(Vector3.UP, facing), deg_to_rad(-by))
+
+
+## [param by] (a ROTSTEP's x, y and z) as the same turn tilted no more than
+## a quarter over, which [method direction] can draw as a tilt: LPub turns
+## the model about x, then y, then z, and x 180 is the model turned over
+## end to end, the same as y 180 with z 180 (x + 180, 180 - y, z + 180 is
+## always the same turn). Read as a tilt, x 180 was a view from nearly
+## straight above (PITCH_MOST), with what goes underneath out of sight.
+static func upright(by: Vector3) -> Vector3:
+	var x: float = fposmod(by.x + 180.0, 360.0) - 180.0
+	if absf(x) <= 90.0:
+		return Vector3(x, by.y, by.z)
+	return Vector3(x - 180.0 if x > 0.0 else x + 180.0, 180.0 - by.y, by.z + 180.0)
 
 
 ## The turn that draws a step from [param from] (a camera's direction to
@@ -1672,6 +1720,10 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 				var own_line: String = said(world, named, step, entry.in_callout)
 				if not own_line.is_empty():
 					how.append(own_line)
+			# Turned over by the booklet: its parts go on from below
+			# (BookletMaker._turn_over).
+			if not entry.fixed and entry.turn != Basis.IDENTITY:
+				how.append("drawn turned over, its parts going on from below")
 			if not entry.actual.is_empty():
 				how.append("a 1:1 guide of the %s" % ", the ".join(entry.actual.map(
 					func(guide: Dictionary) -> String: return str(guide["name"]))))
@@ -1792,7 +1844,7 @@ static func turn_said(world: BrickWorld, section: String, step: int) -> String:
 	var turn: Dictionary = turn_at(world, section, step)
 	if turn.is_empty():
 		return ""
-	var by: Vector3 = _vector(turn["turn"])
+	var by: Vector3 = upright(_vector(turn["turn"]))
 	var bits := PackedStringArray()
 	if str(turn.get("how", "REL")) == "ABS":
 		# Measured from straight in front, as LDraw's ABS is.
@@ -1802,6 +1854,9 @@ static func turn_said(world: BrickWorld, section: String, step: int) -> String:
 			bits.append("turned %d°" % roundi(by.y))
 		if not is_zero_approx(by.x):
 			bits.append("tilted %d°" % roundi(by.x))
+	var rolled: int = roundi(fposmod(by.z + 180.0, 360.0) - 180.0)
+	if rolled != 0:
+		bits.append("turned over" if absi(rolled) == 180 else "rolled %d°" % rolled)
 	return ", ".join(bits) + ("" if of(world, section, step).has("turn") else " (from before)")
 
 

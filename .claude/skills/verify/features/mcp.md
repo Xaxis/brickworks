@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
 
 ## Sub-features
 
@@ -112,6 +112,39 @@ asking for an API key.
   against the window's own command on the same parts. `in_view`'s hand says
   its colour, its face and rot, and the span its ghost takes under the
   pointer, or that no ghost shows (`HandTools._held_where`, APP_UX3 mcpcad).
+  **What a session sees** (`src/net/see_tools.gd`, `SeeTools`, APP_UX4
+  seeing, 2026-11-05): `view_board` draws up to six of `view_model`'s views
+  in one labelled picture (`ModelShot.board`), each the same camera and
+  lights as `view_model`'s, and takes `highlight=` (the parts edged in magenta
+  in their own colours, every other part see-through, as X-ray draws it),
+  `xray=` (parts see-through) and `step=N` (the model as built to step N, its
+  new parts edged). The edges come from a second picture of which part each
+  pixel shows (`booklet_codes`, `ModelShot._edges_on`, `shot_edges`).
+  `booklet_page` draws one page of the booklet as Instructions and its PDF
+  do (`BookletPng.page_image`): a steps page from `BookletMaker.draw_steps`
+  alone, the cover and the pages after the steps from the whole booklet,
+  kept while the model and its looks stay. `mirror_parts`, `split_parts` and
+  `merge_parts` answer with the change pictured (`SeeTools.pictured`: unset a
+  480 px close-up, `picture=true` the whole model, false words), and
+  `render_model` Best says how it was drawn (`AppTools._best_said`, read off
+  `StudioRender.traced_last`). `src/dev/seeing_probe.gd` measures each picture
+  against the app's own drawing of the same, windowed.
+  **Pattern's grid** (`src/net/pattern_tool.gd`, `PatternTool`, APP_UX4 grid,
+  2026-11-05): `pattern_parts` is Edit, Pattern…, In a grid on bricks= in one
+  call: `columns`, `rows`, `levels` (each counting the parts given; a row is
+  one row and one level), `column_studs`/`row_studs` in studs and
+  `level_plates` in plates, each the parts' own size when not given
+  (`Pattern.own_spacing`: a 2 x 2 brick is 2, 2 and 3, its studs not
+  counted). The window's own `Pattern.grid` over `Pattern.grid_places`, put
+  down by the dialog's `Pattern` node (`Pattern.put`: every copy checked by
+  `Builder.room_for`, all or nothing, one undo step), the person's selection
+  kept; a refusal is `Pattern.refusal` with the grid's places, the column, row
+  and level of the first copy with no room and the part in its way with its
+  number. Answered with the copies pictured (`SeeTools.pictured`).
+  `grid_probe`'s last section calls it as the connector does
+  (`CommandSocket.answer_rpc`): the 4 x 3 x 2 in 1 call, 24 to the LDU, the
+  session's undo once, the collision refused with where, and the copies
+  touching when no spacing is given.
   **CAD answers** (mcpcad, 2026-10-31): a `submit_design` from outside is a
   design (`Assistant.is_design`: features named, or `design_parts`, 20, parts
   or more) told the designer's method (`FROM_OUTSIDE_NEXT`), its save handed
@@ -150,7 +183,27 @@ asking for an API key.
   queue cost a design eleven calls) for it to end, answering the moment it
   does, else says how far it has got ("12 of 36"),
   gives the answer (picture and all) once done, or that it was cancelled or
-  failed; `cancel=true` stops it where it can be stopped. The job **is** the
+  failed; `cancel=true` stops it where it can be stopped. A call that became a
+  job part way says what its work says it is doing now, asked each time
+  (`Entry.heard`), and "drawing its picture" while one is drawn
+  (`ModelShot.drawing`): the Charger's edit, its picture waiting two
+  minutes, had said "Changed it: 1118 bricks" to every asking (bigedit,
+  2026-11-06). Its window keeps drawing meanwhile: a design's shapes are
+  laid on a worker before its read (`Assistant._shapes_ready`, as sculpts
+  are), which held the window 7.0-8.6 s on every check of the Charger's 947
+  shape parts (68-405 ms after, on a loaded box), and the web page's
+  7.9-12.6 s in view, 10.3-16.0 s out of view (102-244 ms after). A
+  worker reads a part not loaded as empty, and Shapes keeps what it read
+  off a part: laid so, the
+  Charger's windscreens were none for every read after, 1,124 parts for the
+  read's 1,127 (built, 1,019 bricks for 1,013). So the parts it is known to
+  read are loaded first (Brickify's, `Shapes.SCREENS`, the design's own
+  bricks), and one it still misses is loaded, the tables read empty read
+  again (`Brickify.warm`) and the shapes laid again
+  (`PartLibrary.unread_by_readers`, `Assistant._laid_whole`). `shapes_probe`
+  holds a worker's parts to a read's from cleared tables. And
+  `edit_steps` on 300 parts or more works its steps out a slice a frame
+  (`Instructions.plan_paced`; 1,029 ms in one go on the Charger). The job **is** the
   `Working` job the person sees along the foot of the window — its words, its
   count, its Cancel — handed down as `work` to `RenderDialog.render_for`,
   `PosePanel.render_animation`, `SimulatePanel.record_of` and main's
@@ -645,6 +698,7 @@ tools/probe.sh first_session_probe                                  # the first 
 tools/probe.sh undo_ids_probe                                       # a part back from Undo or Redo keeps its number
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 godot --headless --path . --script src/dev/mcphand_probe.gd        # Mirror, Split, Merge, Measure and what the person sees, as the window does them
+PROBE_SIZE=1400x900 tools/probe.sh seeing                           # what a session sees: six views in one picture, highlight/xray/step, a booklet page against its PDF, hand tools pictured, how Best was drawn (also PROBE_SIZE=1280x720)
 godot --headless --path . --script src/dev/mcpcad_probe.gd         # CAD answers without the method, designs with it, the refusal's place, attachment_points parts=, in_view at step 4 of 9 with a part in hand
 node tools/web/in_view_flow.mjs --dir=build/web --out=shots/in_view [--size=1400x900]   # in_view in the browser: step 4 of 9, 3004 in hand turned once over the floor, a picture laid by the mouse and keys; nothing changed; step 4's bricks drawn in the picture, and again in --again=4 more openings with Next at once (a local export, .env loaded)
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running

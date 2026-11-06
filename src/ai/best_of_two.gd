@@ -84,6 +84,8 @@ var _stop_asked_ms: int = 0
 var _gone: bool = false
 var _beat_ms: int = 0
 var _deciding: bool = false
+## The pick under way ([method _pick]), told to stop as the app closes.
+var _picker: DesignPick = null
 var _shot: ModelShot = null
 ## Parts the person put down while the two were designed: theirs, and left
 ## standing whichever design is kept.
@@ -177,9 +179,13 @@ func _process(_delta: float) -> void:
 			_end_second()
 
 
-## Nothing of the second left running when the app closes.
+## Nothing of the second left running when the app closes, nor of the pick:
+## its session ended, its thread ends, and is waited for as the tree goes
+## (WorkerTasks.start).
 func _exit_tree() -> void:
 	stop()
+	if _picker != null:
+		_picker.stop()
 
 
 ## Stop the second, if it runs: asked first, so it stops its own session,
@@ -289,14 +295,15 @@ func _pick(text: String) -> Dictionary:
 	if a.size() < DesignPick.VIEWS.size() or b.size() < DesignPick.VIEWS.size():
 		return {"error": "no pictures to choose by"}
 	var picker := DesignPick.new()
-	var thread := Thread.new()
-	thread.start(picker.ask.bind(brief, a, b))
+	_picker = picker
+	var thread: Thread = WorkerTasks.start(picker.ask.bind(brief, a, b))
 	var until: int = Time.get_ticks_msec() + int(PICK_MOST_S * 1000.0)
 	while thread.is_alive():
 		if Time.get_ticks_msec() > until:
 			picker.stop()
 		await get_tree().process_frame
-	var answer: Variant = thread.wait_to_finish()
+	var answer: Variant = WorkerTasks.finish(thread)
+	_picker = null
 	return answer if answer is Dictionary else {"error": "no answer"}
 
 

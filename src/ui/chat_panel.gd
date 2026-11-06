@@ -226,6 +226,9 @@ func _build() -> void:
 
 	_send = Button.new()
 	_send.text = "Build it"
+	# Read out by a screen reader, and said by Help, What's This?.
+	_send.accessibility_description = ("Sends what is written above to the assistant, which "
+		+ "designs it and builds it in the model; with parts chosen over the box, it works on those")
 	_send.pressed.connect(_on_send)
 	_send.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var send_row := HBoxContainer.new()

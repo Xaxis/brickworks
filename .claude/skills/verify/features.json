@@ -1764,6 +1764,14 @@
       "tests": []
     },
     {
+      "id": "cli:picklist probe",
+      "kind": "cli",
+      "entry": "src/dev/picklist_probe.gd",
+      "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:picture themes check",
       "kind": "cli",
       "entry": "tools/web/picture_themes.mjs",
@@ -3372,6 +3380,14 @@
       "tests": []
     },
     {
+      "id": "lib:pattern's grid over mcp",
+      "kind": "lib",
+      "entry": "src/net/pattern_tool.gd",
+      "reach": "tools/probe.sh grid_probe   (pattern_parts: bricks= in columns, rows and levels, column_studs/row_studs/level_plates apart or touching; one call, one undo step, a copy with no room said by its column, row and level and the part in its way)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "lib:placing a part by its connectors",
       "kind": "lib",
       "entry": "src/assembly/attach.gd",
@@ -3415,7 +3431,7 @@
       "id": "lib:quitting cleanly",
       "kind": "lib",
       "entry": "src/render/worker_tasks.gd",
-      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; by hand: open a big file, close the window at once)",
+      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)",
       "area": "view",
       "tests": []
     },
@@ -3812,6 +3828,14 @@
       "entry": "api/_bases.js",
       "reach": "node tools/web/based_on_flow.mjs --out=DIR   (the stand-in: Say what it is based on on a model's page, a set and a link said, refused in words, its page's lines, structured data and JSON, the set's page's Based on this set, taken away; supabase/model_bases.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/model_bases.sql --dry --try=tools/model_bases_try.sql --table=model_bases; tests/test_model_bases.py)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:what a session sees over mcp",
+      "kind": "lib",
+      "entry": "src/net/see_tools.gd",
+      "reach": "PROBE_SIZE=1400x900 tools/probe.sh seeing   (view_board: six views in one labelled picture, highlight= edged with the rest see-through, xray=, step=N; booklet_page as the PDF prints it; split/merge/mirror pictured; render_model Best says how it was drawn)",
+      "area": "mcp",
       "tests": []
     },
     {
@@ -4315,6 +4339,14 @@
       "tests": []
     },
     {
+      "id": "ui:cut away by a shape",
+      "kind": "ui",
+      "entry": "src/render/cut_shape.gd",
+      "reach": "tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes && tools/probe.sh cutshapes_kept   (by hand: View, Cut away by, A box; drag a knob, or the wheel over it; Grow, Shrink; A sphere or A cylinder in the strip; save, open)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:cut-away",
       "kind": "ui",
       "entry": "src/ui/see_inside.gd",
@@ -4811,7 +4843,7 @@
       "id": "ui:parts lists for shops",
       "kind": "ui",
       "entry": "src/assembly/shop_lists.gd",
-      "reach": "godot --path .  (File, Export, then BrickLink wanted list or Rebrickable parts list)",
+      "reach": "godot --path .  (File, Export, then BrickLink wanted list, Rebrickable parts list or LEGO\u00ae Pick a Brick list; or the parts list's BrickLink, its choices beside it, Rebrickable and LEGO\u00ae Pick a Brick)  /  export_model format=pickabrick, format=bricklink condition= wanted_list= notify=",
       "area": "model-io",
       "tests": []
     },
@@ -4819,7 +4851,7 @@
       "id": "ui:patterns",
       "kind": "ui",
       "entry": "src/assembly/pattern.gd",
-      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
+      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, In a grid (columns, rows and levels, each so many studs or plates apart), Round or Along a hose, a count In all, the copies shown as they will go, a copy with no room red and named by its place; one Ctrl+Z takes them all back)  /  tools/probe.sh grid_probe",
       "area": "building",
       "tests": [
         "tests/test_release.py"
@@ -5593,6 +5625,14 @@
       "entry": "src/ui/working.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/progress_probe.gd  (or open Orthanc and press Timeline: the bar at the foot, with Cancel)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:what's this",
+      "kind": "ui",
+      "entry": "src/ui/whats_this.gd",
+      "reach": "tools/probe.sh whatsthis_probe   (Help, What's This?, or Shift+F1: the next click on any control answers in a bubble beside it and does nothing else; Esc, a right click or Shift+F1 again leave; a part in hand: the status bar's x, z and height are where it lands)",
+      "area": "view",
       "tests": []
     },
     {

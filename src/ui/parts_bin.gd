@@ -555,7 +555,7 @@ func populate() -> void:
 			offerable += 1
 	_offerable = offerable
 	library.prepare_search()
-	_search.placeholder_text = "Search %s parts…" % _comma(offerable)
+	_search.placeholder_text = _search_hint(_category)
 	_build_categories()
 	_build_swatches()
 	_run_search("")
@@ -1263,10 +1263,11 @@ func controls_by_name() -> Dictionary:
 	named["palette"] = _palette_scroll
 	if _grid.get_child_count() > 0:
 		named["first part"] = _grid.get_child(0)
-	# The first tile's count of what is folded under it (_fold_badge).
+	# The first tile's count of what is folded under it (_fold_badge); a
+	# tile keeps one hidden while its part has none (_bind_tile).
 	for child: Node in _grid.get_children():
 		for inner: Node in child.get_children():
-			if inner is Button:
+			if inner is Button and (inner as Button).visible:
 				named["first fold"] = inner
 				break
 		if named.has("first fold"):
@@ -1307,11 +1308,43 @@ func _on_category(name: String) -> void:
 	if name == LIKE:
 		_like_of = _like_subject()
 		_swapped_in = ""
+	_words_for(name)
 	_category = name
 	for child: Node in _category_row.get_children():
 		var button: Button = child
 		button.button_pressed = str(button.get_meta("category", "")) == name
 	_search_soon(_search.text)
+
+
+## Like this and Fits are about a part, not the last search: each, chosen,
+## starts from no words, and what was typed for the rest of the bin is kept
+## and put back when it is left. Words typed while in one narrow it. A 2 x 4
+## brick's Like this after "1x4 brick" listed only bricks and no plate in its
+## first twelve (APP_UX4 likewords). Before [param name] is the category.
+func _words_for(name: String) -> void:
+	var was: bool = _category in ABOUT_A_PART
+	if name in ABOUT_A_PART and name != _category:
+		if not was:
+			_typed_before = _search.text
+		_search.text = ""
+	elif was and not name in ABOUT_A_PART:
+		_search.text = _typed_before
+		_search.caret_column = _search.text.length()
+		_typed_before = ""
+	_search.placeholder_text = _search_hint(name)
+
+
+## What the search's empty box says typing in it does, in [param category].
+func _search_hint(category: String) -> String:
+	if category in ABOUT_A_PART:
+		return "Narrow these parts…"
+	return "Search %s parts…" % _comma(_offerable) if _offerable > 0 else "Search parts…"
+
+
+## The shelves about a part, which start from no words (_words_for), and what
+## was typed for the rest of the bin meanwhile.
+const ABOUT_A_PART: Array[String] = [FITS, LIKE]
+var _typed_before: String = ""
 
 
 func _on_search_typed(text: String) -> void:
@@ -1330,6 +1363,17 @@ func _on_search_typed(text: String) -> void:
 ## Another language chosen: each tile's name said in it and fitted again
 ## (said_name), and what is typed searched in it.
 func _notification(what: int) -> void:
+	# The tiles put by, out of the window, go with the bin, and a search on a
+	# worker is waited for: it marks the parts.
+	if what == NOTIFICATION_PREDELETE:
+		if _seeking >= 0:
+			WorkerTasks.collect(_seeking)
+			_seeking = -1
+		for tile: Button in _put_by:
+			if is_instance_valid(tile):
+				tile.free()
+		_put_by.clear()
+		return
 	if what != NOTIFICATION_TRANSLATION_CHANGED or _grid == null or _search == null or library == null:
 		return
 	for cell: Node in _grid.get_children():
@@ -1344,6 +1388,9 @@ func _notification(what: int) -> void:
 
 
 func _process(_delta: float) -> void:
+	# A search made on a worker (_seek), listed in the first frame after it is done.
+	if _seeking >= 0 and WorkerThreadPool.is_task_completed(_seeking):
+		_settle_seek()
 	if _pending and Time.get_ticks_msec() - _search_at >= SEARCH_DEBOUNCE:
 		_pending = false
 		_search_soon(_search.text)
@@ -1367,12 +1414,22 @@ func _process(_delta: float) -> void:
 			and Time.get_ticks_msec() - _counted_msec >= RECOUNT_MSEC:
 		_recount()
 
+	# The rest of a list's first page, a frame after the tiles in sight.
+	if _coming > 0 and Engine.get_process_frames() != _coming_at:
+		_show_coming()
+
+	# A list filled since the last frame has the tiles it wants (_first_page),
+	# laid out by the next, which grows it and tells what is in sight.
+	if _just_filled:
+		_just_filled = false
+		return
+
 	# Grow the grid as it is scrolled. Checking here rather than on a
 	# scroll signal covers the case where the window is resized and the
 	# existing page no longer fills it.
 	if _shown < _display.size() and _scroll != null:
 		var bar: VScrollBar = _scroll.get_v_scroll_bar()
-		if bar.max_value > 0.0 and bar.max_value - bar.value - bar.page < 260.0:
+		if bar.max_value > 0.0 and bar.max_value - bar.value - bar.page < MORE_ROOM:
 			# A page a frame at most, so no one frame makes them all.
 			_show_more(FIRST_PAGE)
 
@@ -1402,11 +1459,224 @@ func _search_soon(query: String) -> void:
 		_waiting = true
 		library.prepare_search(true)
 		return
+	if _seeks(query):
+		_seek(query)
+		return
 	_run_search(query)
 
 
 ## A search asked for before the search's index was made (_search_soon).
 var _waiting: bool = false
+
+
+## Whether [param query] is searched on a worker (_seek): words typed, in
+## the catalogue or a category of it, where there are threads.
+func _seeks(query: String) -> bool:
+	return library != null and _set_bin == null and not OS.has_feature("nothreads") \
+		and not query.strip_edges().is_empty() \
+		and not _category in [TECHNIQUES, RECENT, FAVOURITES, FITS, LIKE]
+
+
+## [param query] searched on a worker, the window drawing meanwhile and the
+## list as it was, and listed in the first frame after it is done (_process):
+## what _find, _kept and _fold work out, with nothing of the bin's read or
+## written off the main thread but the parts' marks (listed_in), which the bin
+## reads only once the search is done (_settle_seek). On the frame, a key's
+## search held it 25 to 105 ms, a first letter's 15,000 parts ranked and
+## folded (bintiles, 2026-11-05). One at a time: a key typed meanwhile is
+## searched when it is done, and the list it found not shown.
+func _seek(query: String) -> void:
+	if _seeking >= 0:
+		_seek_next = query
+		return
+	_waiting = false
+	_offer_typed(query)
+	_guesses.clear()
+	_listing_set = false
+	_take_element(query)
+	var from: PartLibrary = library
+	var asked: String = query.strip_edges()
+	var needles: PackedStringArray = PartLibrary.in_ldraw_words(asked).split(" ", false)
+	var wanted: String = _category.to_lower()
+	var spoken: Dictionary = PartWords.spoken(Language.current())
+	var plain: bool = not _prints.button_pressed
+	var made: bool = _only_made.button_pressed
+	var colour: int = _selected_color
+	var folds: bool = _folds_listed(query)
+	# The sketches of its first page, worked out with it, in the square a tile
+	# has and the colour in hand: as each tile was drawn, 5 to 10 ms of the
+	# key's frame.
+	var square: Rect2 = _sketch_square()
+	var shown: Color = _sketch_colour(colour)
+	# And its first page's names, told apart and fitted as _tell_apart will
+	# ask for them, at the width and in the font a tile's name has: fitted as
+	# they were bound, 3 to 9 ms of the key's frame.
+	var naming: Array = _naming()
+	var page: int = _first_page(FIRST_PAGE + 1)
+	# The first search of a run made here, as the engine wants of GDScript run
+	# on two threads at once (WorkerTasks.first_here): one for a word a few
+	# parts have, each step of it run once, where the key's own held its frame
+	# 75 to 105 ms. Marked as a listing of its own.
+	var warm: int = _listing + 1
+	_listing += 2
+	WorkerTasks.first_here("search the parts bin", func() -> void:
+		var few: Array[PartLibrary.PartInfo] = PartsBin._searched(from, FIRST_WORD,
+			PackedStringArray([FIRST_WORD]), "all", spoken, warm)
+		var shown_few: Array = PartsBin._folding(PartsBin._kept_of(few, true, true, colour), few, warm,
+			warm, true, {})
+		PartsBin._sketched(shown_few[0], square, shown)
+		PartsBin._named_ahead(shown_few[0], (shown_few[0] as Array).size(), naming))
+	# The marks _find and then _fold give the parts listed.
+	var listing: int = _listing + 1
+	_listing += 2
+	var out: Array = []
+	_seek_out = out
+	# Of the class, not the bin: nothing of it is read on the worker.
+	_seeking = WorkerTasks.add(func() -> void:
+		var found: Array[PartLibrary.PartInfo] = PartsBin._searched(from, asked, needles, wanted,
+			spoken, listing)
+		var results: Array[PartLibrary.PartInfo] = PartsBin._kept_of(found, plain, made, colour)
+		var folded: Array = PartsBin._folding(results, found, listing, listing, folds, {})
+		var display: Array[PartLibrary.PartInfo] = folded[0]
+		out.append_array([found, listing, results, folded,
+			PartsBin._sketched(display, square, shown), square, shown,
+			PartsBin._named_ahead(display, display.size() if display.size() <= FIRST_PAGE
+				else mini(display.size(), page), naming)]), false,
+		"search the parts bin")
+
+
+## What the first search of a run asks here (_seek): a word few parts have.
+const FIRST_WORD := "macaroni"
+
+
+## The square a tile draws its picture in, as a tile kept has it laid out;
+## none before one is.
+func _sketch_square() -> Rect2:
+	var made: Control = _grid.get_child(0) if _grid.get_child_count() > 0 \
+		else _put_by.back() if not _put_by.is_empty() else null
+	var image: ThumbTile = made.get_meta("tile") if made != null and made.has_meta("tile") else null
+	return ThumbTile.square_of(image.size) if image != null else Rect2()
+
+
+## The sketches of the first tiles of [param display] (PartSketch.plan), in
+## [param square] in [param colour], by part number: of nothing but what it
+## is given, as a search on a worker asks (_seek).
+static func _sketched(display: Array[PartLibrary.PartInfo], square: Rect2, colour: Color) -> Dictionary:
+	var plans: Dictionary = {}
+	if not square.has_area():
+		return plans
+	var kept: Dictionary = {}
+	for n: int in mini(display.size(), FIRST_PAGE * 2):
+		plans[display[n].id] = PartSketch.plan(square, display[n], colour, kept)
+	return plans
+
+
+## What a tile's name is fitted with (_name_text), as a tile kept has it laid
+## out: [its font, its size, its width, its lines]; none before one is.
+func _naming() -> Array:
+	var made: Control = _grid.get_child(0) if _grid.get_child_count() > 0 \
+		else _put_by.back() if not _put_by.is_empty() else null
+	var label: Label = made.get_meta("name_label") if made != null and made.has_meta("name_label") \
+		else null
+	if label == null or label.size.x <= 1.0 or label.has_meta("lines"):
+		return []
+	return [label.get_theme_font("font"), label.get_theme_font_size("font_size"), label.size.x,
+		NAME_LINES]
+
+
+## The first [param count] names of [param display] fitted as _tell_apart
+## fits them with [param naming] (_naming), by what _name_text asks: told
+## apart from each other, and those still alike with their numbers. Of
+## nothing but what it is given, as a search on a worker asks (_seek), each
+## measured on a line of its own (TextLine) as Font.get_string_size measures
+## it, and not through the font's own, which the window's thread uses.
+static func _named_ahead(display: Array, count: int, naming: Array) -> Dictionary:
+	var fits: Dictionary = {}
+	if naming.is_empty() or count <= 0:
+		return fits
+	var font: Font = naming[0]
+	var size: int = naming[1]
+	var width: float = naming[2]
+	var lines: int = naming[3]
+	var wide: Callable = func(text: String) -> float:
+		var line := TextLine.new()
+		line.add_string(text, font, size)
+		return line.get_size().x
+	var names := PackedStringArray()
+	var numbers := PackedStringArray()
+	var words: Array[PackedStringArray] = []
+	for n: int in count:
+		var info: PartLibrary.PartInfo = display[n]
+		var name: String = said_name(info)
+		names.append(name)
+		numbers.append(info.id)
+		words.append(name.split(" ", false))
+	var from: PackedInt32Array = _parting(words)
+	var alone := PackedStringArray()
+	var alike: Dictionary = {}
+	for n: int in count:
+		var text: String = fit_lines(names[n], "", font, size, width, lines, from[n], wide)
+		fits[_fit_key(names[n], "", width, lines, from[n], size, font)] = text
+		alone.append(text)
+		alike[text] = int(alike.get(text, 0)) + 1
+	for n: int in count:
+		if int(alike[alone[n]]) > 1:
+			var after: String = " " + numbers[n]
+			fits[_fit_key(names[n], after, width, lines, from[n], size, font)] = fit_lines(names[n],
+				after, font, size, width, lines, from[n], wide)
+	return fits
+
+
+## The sketches a search on a worker worked out (_sketched), for the tiles
+## its list is shown with, and the square and colour they were worked out in.
+var _plans: Dictionary = {}
+var _planned_in: Rect2 = Rect2()
+var _planned_colour: Color = Color()
+
+## The search on a worker (_seek): its task, what it found, and the query
+## asked since, searched once it is done.
+var _seeking: int = -1
+var _seek_out: Array = []
+var _seek_next: Variant = null
+
+
+## The search on a worker (_seek) waited for, and listed with [param listed];
+## not when a key was typed since, whose search starts instead.
+func _settle_seek(listed: bool = true) -> void:
+	if _seeking < 0:
+		return
+	WorkerTasks.collect(_seeking)
+	_seeking = -1
+	var out: Array = _seek_out
+	var next: Variant = _seek_next
+	_seek_out = []
+	_seek_next = null
+	if not listed:
+		return
+	if next != null:
+		_search_soon(str(next))
+		return
+	_list_sought(out)
+
+
+## What a search on a worker found (_seek), listed: its parts marked, those
+## kept, and how they fold.
+func _list_sought(out: Array) -> void:
+	_set_aside = 0
+	_listed = out[0]
+	_listed_as = int(out[1])
+	_results = out[2]
+	_plans = out[4]
+	_planned_in = out[5]
+	_planned_colour = out[6]
+	var fits: Dictionary = out[7]
+	if _fitted.size() + fits.size() > FITTED_MOST:
+		_fitted.clear()
+	_fitted.merge(fits, true)
+	_list_results(out[3])
+	# Those of tiles still to come in are drawn with them (_show_coming).
+	if _coming <= 0:
+		_plans = {}
 
 
 ## What [param query] asks, listed now: the search's index made here if it is
@@ -1416,6 +1686,8 @@ func _run_search(query: String) -> void:
 	if library == null:
 		return
 	_waiting = false
+	# Asked again before the one on a worker is done: that one is not shown.
+	_settle_seek(false)
 	_offer_typed(query)
 	_guesses.clear()
 	if _category == TECHNIQUES:
@@ -1430,14 +1702,24 @@ func _run_search(query: String) -> void:
 		_list_set(query.strip_edges())
 		return
 	_listing_set = false
-	# An element number, as a booklet prints it, is a part in a colour: the
-	# colour is taken in hand, so its tile is drawn and placed in it. First,
-	# so the parts made in it are the ones listed.
+	_take_element(query)
+	_results = _kept(_find(query.strip_edges(), _category))
+	_list_results()
+
+
+## An element number, as a booklet prints it, is a part in a colour: the
+## colour is taken in hand, so its tile is drawn and placed in it. First, so
+## the parts made in it are the ones listed.
+func _take_element(query: String) -> void:
 	var element: Array = library.part_of_element(query)
 	if not element.is_empty() and int(element[1]) != _selected_color \
 			and library.colors.has(int(element[1])):
 		_on_colour(int(element[1]), false)
-	_results = _kept(_find(query.strip_edges(), _category))
+
+
+## The results listed (_results), from their first tile; with [param folded]
+## worked out already (_folding), as a search on a worker does.
+func _list_results(folded: Array = []) -> void:
 	_guesses.clear()
 	_open.clear()
 	# A printed part's own prints open under its plain part: what a print is
@@ -1446,7 +1728,7 @@ func _run_search(query: String) -> void:
 		if _category == LIKE else null
 	if subject != null and subject.folds_under() != null:
 		_open[subject.folds_under().id] = true
-	_fill_grid()
+	_fill_grid(folded)
 
 
 ## The set's parts, a tile each part and colour in the set's order, those
@@ -1557,22 +1839,29 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 	# leaves out what LDraw keeps only for old files where the part made now
 	# stands for it (PartLibrary.current): "slope inverted 2x2" showed 3660a,
 	# obsolete, beside 3660c. Still there in its own category.
-	var found: Array[PartLibrary.PartInfo] = []
-	# Each marked as listed as it is kept, for _fold.
 	_listing += 1
-	for info: PartLibrary.PartInfo in library.search(query, -1, true, true,
-			PartWords.spoken(Language.current())):
-		if not info.reachable:
-			continue  # no geometry anywhere in this build
-		if wanted_category != "all" and info.category.to_lower() != wanted_category:
-			continue
-		info.listed_in = _listing
-		found.append(info)
-	found = _named_first(found, needles)
+	var found: Array[PartLibrary.PartInfo] = _searched(library, query, needles, wanted_category,
+		PartWords.spoken(Language.current()), _listing)
 	_set_aside = 0
 	_listed = found
 	_listed_as = _listing
 	return found
+
+
+## What _find lists for words typed, in [param wanted_category] ("all" for
+## every one), each part marked as [param listing]'s as it is kept, for _fold.
+## Of nothing but what it is given, as a search on a worker asks (_seek).
+static func _searched(from: PartLibrary, query: String, needles: PackedStringArray,
+		wanted_category: String, spoken: Dictionary, listing: int) -> Array[PartLibrary.PartInfo]:
+	var found: Array[PartLibrary.PartInfo] = []
+	for info: PartLibrary.PartInfo in from.search(query, -1, true, true, spoken):
+		if not info.reachable:
+			continue  # no geometry anywhere in this build
+		if wanted_category != "all" and info.category.to_lower() != wanted_category:
+			continue
+		info.listed_in = listing
+		found.append(info)
+	return _named_first(found, needles)
 
 
 ## [param found] with the parts whose names say each family word asked
@@ -1612,15 +1901,20 @@ static func _named_first(found: Array[PartLibrary.PartInfo],
 ## colour in hand (Only parts made in it), and every printed and stickered
 ## part (Prints cleared). As it was when neither is asked, never copied.
 func _kept(found: Array[PartLibrary.PartInfo]) -> Array[PartLibrary.PartInfo]:
-	var made: bool = _only_made.button_pressed
-	var plain: bool = not _prints.button_pressed
+	return _kept_of(found, not _prints.button_pressed, _only_made.button_pressed, _selected_color)
+
+
+## [param found] less every printed and stickered part with [param plain],
+## and with [param made] every part not made in [param colour] (_kept).
+static func _kept_of(found: Array[PartLibrary.PartInfo], plain: bool, made: bool,
+		colour: int) -> Array[PartLibrary.PartInfo]:
 	if not made and not plain:
 		return found
 	var kept: Array[PartLibrary.PartInfo] = []
 	for info: PartLibrary.PartInfo in found:
 		if plain and info.decor() != 0:
 			continue
-		if made and not made_in(info, _selected_color):
+		if made and not made_in(info, colour):
 			continue
 		kept.append(info)
 	return kept
@@ -2313,19 +2607,207 @@ func _input(event: InputEvent) -> void:
 		_at_search = false
 
 
-func _fill_grid() -> void:
-	# Out of the grid now, not at the end of the frame, or what is in
-	# sight is worked out over the old cells and the new ones together.
-	for child: Node in _grid.get_children():
-		_grid.remove_child(child)
-		child.queue_free()
+## The results as tiles from the first, folded (_fold), or as [param folded]
+## says (_folding). A list asked for here, while a search on a worker is
+## being made (_seek), is the one shown.
+func _fill_grid(folded: Array = []) -> void:
+	_settle_seek(false)
+	_keep_tiles()
 	_cells.clear()
 	_shown = 0
+	_hold_page(0)
+	_just_filled = true
 	_to_list_top()
 	_grid.columns = 1 if _list.button_pressed else _tiles_across()
 	_grid.add_theme_constant_override("v_separation", 0 if _list.button_pressed else int(_z(4)))
-	_fold()
-	_show_more(FIRST_PAGE)
+	if folded.is_empty():
+		_fold()
+	else:
+		_take_fold(folded)
+	var page: int = mini(_first_page(), _display.size())
+	var now: int = _shown_at_once(page)
+	if now < page:
+		_hold_page(page)
+	_show_more(now)
+
+
+## The tiles of a new list's first page it is shown with in the frame it is
+## listed in, of [param page]: those the view shows, and every tile the grid
+## kept (_keep_tiles), bound where it stands. A tile put by or made comes into
+## the window, its theme and its name's lines worked out afresh, 150 to 250 us
+## a tile, and after "nothing matches" a page of them came in at once: 12 to
+## 17 ms of the key's frame at 1400 x 900 (bintiles, 2026-11-05). The rest of
+## the page comes in a frame on (_process), out of sight under the view, the
+## grid held as tall meanwhile (_hold_page), so its scroll bar is as it will
+## be. A catalogue's search only: a set's tiles and a photo's guesses say
+## more after their names.
+func _shown_at_once(page: int) -> int:
+	var kept: int = _reusable.size() + _spare.size()
+	if page <= kept or _list.button_pressed or _listing_set or not _guesses.is_empty() \
+			or not _scroll.is_visible_in_tree() or _scroll.size.y <= 1.0:
+		return page
+	var made: Control = _grid.get_child(0) if _grid.get_child_count() > 0 \
+		else _put_by.back() if not _put_by.is_empty() else null
+	if made == null:
+		return page
+	# From the view's top: a desktop's grid starts there, and a phone's starts
+	# under its search and chips, so this is as many rows as it shows or more.
+	var row: float = made.get_combined_minimum_size().y + float(_grid.get_theme_constant("v_separation"))
+	var rows: int = ceili(_scroll.size.y / maxf(row, 1.0))
+	return clampi(rows * maxi(_grid.columns, 1), kept, page)
+
+
+## A new list's first page still to come into the window (_shown_at_once):
+## how many tiles it has, and the frame it was listed in; 0 when none is.
+var _coming: int = 0
+var _coming_at: int = -1
+
+
+## The grid held as tall as [param page] tiles make it while they come in
+## (_shown_at_once), or let go with 0.
+func _hold_page(page: int) -> void:
+	_coming = page
+	_coming_at = Engine.get_process_frames()
+	if page <= 0:
+		_grid.custom_minimum_size.y = 0.0
+		return
+	var made: Control = _grid.get_child(0) if _grid.get_child_count() > 0 \
+		else _put_by.back() if not _put_by.is_empty() else null
+	var tall: float = made.get_combined_minimum_size().y if made != null else _z(84)
+	var rows: int = ceili(float(page) / maxi(_grid.columns, 1))
+	_grid.custom_minimum_size.y = rows * tall + (rows - 1) * float(_grid.get_theme_constant("v_separation"))
+
+
+## The rest of a new list's first page (_shown_at_once), a frame after the
+## tiles in sight.
+func _show_coming() -> void:
+	var rest: int = _coming - _shown
+	_hold_page(0)
+	if rest > 0:
+		_show_more(rest)
+	_plans = {}
+
+
+## A list filled (_fill_grid) since the last frame: what it shows in sight is
+## told to the pictures (PartThumbnails.watch) a frame on, laid out, as when
+## its tiles were made afresh. Told at once, their renders began in the
+## key's own frame, 9 to 13 ms of it.
+var _just_filled: bool = false
+
+
+## The tiles a list showed, kept where they stand to show the next one's parts
+## (_show_more): a part listed again keeps its tile, and the rest are bound to
+## the new parts. Made afresh, every key typed freed 64 tiles and made 64, each
+## a button, a box, a picture, a label and a star put into the window and its
+## theme, its name fitted twice: 70 to 90 of its 100 to 190 ms at 1400 x 900
+## (bintiles, 2026-11-05). Anything else (a list's rows, a set's tiles, a
+## technique) goes, out of the grid now and not at the end of the frame, or
+## what is in sight is worked out over the old cells and the new ones together.
+func _keep_tiles() -> void:
+	_reusable.clear()
+	_spare.clear()
+	var kind: Array = _tile_kind()
+	for child: Node in _grid.get_children():
+		if _list.button_pressed or child.get_meta("made_as", []) != kind or child.has_meta("key"):
+			_grid.remove_child(child)
+			child.queue_free()
+			continue
+		var id: String = str(child.get_meta("part", ""))
+		if _reusable.has(id):
+			_spare.append(child)
+		else:
+			_reusable[id] = child
+	# The tiles they show are another list's: what is in sight is told again.
+	if _sight != null:
+		_sight.forget()
+
+
+## Of the tiles kept (_keep_tiles), those showing a part, by its number, and
+## the rest; and tiles out of the grid, kept for the next list that shows more.
+var _reusable: Dictionary = {}
+var _spare: Array[Button] = []
+var _put_by: Array[Button] = []
+
+
+## A tile for [param info] at the grid's [member _shown]: the one kept showing
+## it, or another kept, bound to it, or one made.
+func _tile_for(info: PartLibrary.PartInfo, key: String) -> Control:
+	var tile: Button = null
+	if key.is_empty():
+		tile = _reusable.get(info.id)
+		if tile != null:
+			_reusable.erase(info.id)
+		elif not _spare.is_empty():
+			tile = _spare.pop_back()
+		else:
+			var kind: Array = _tile_kind()
+			while tile == null and not _put_by.is_empty():
+				var kept: Button = _put_by.pop_back()
+				if kept.get_meta("made_as", []) == kind:
+					tile = kept
+				else:
+					kept.free()
+	if tile == null:
+		return _make_cell(info, key)
+	_bind_tile(tile, info)
+	return tile
+
+
+## The kept tiles no part of the list took, out of the grid: put by, out of the
+## window, for a list that shows more, a page of them at most.
+func _put_by_unused() -> void:
+	for tile: Button in _spare + _reusable.values():
+		_grid.remove_child(tile)
+		if _put_by.size() < PAGE:
+			# Nothing to wait for: its picture is not asked for while it is put by.
+			(tile.get_meta("tile") as ThumbTile).show_part("", 0)
+			_put_by.append(tile)
+		else:
+			tile.queue_free()
+	_reusable.clear()
+	_spare.clear()
+
+
+## How many tiles a new list is made with, of [param listed] parts or the list
+## shown: the first page, and the next as well
+## when the first falls short of the view and [constant MORE_ROOM] under it, as
+## the grid's growth (_process) would have it before the frame is drawn, the
+## list laid out first. Worked out from the list as it stands, so the tiles
+## kept are bound to the second page with the first, rather than put by and
+## brought back into the window a frame later.
+func _first_page(listed: int = -1) -> int:
+	if _list.button_pressed or (_display.size() if listed < 0 else listed) <= FIRST_PAGE \
+			or not _scroll.is_visible_in_tree():
+		return FIRST_PAGE
+	# A tile's height, as made (_new_tile): one kept, in the grid or put by.
+	var made: Control = _grid.get_child(0) if _grid.get_child_count() > 0 \
+		else _put_by.back() if not _put_by.is_empty() else null
+	var tall: float = made.get_combined_minimum_size().y if made != null else _z(84)
+	var columns: int = maxi(_grid.columns, 1)
+	var gap: float = float(_grid.get_theme_constant("v_separation"))
+	var rows: int = ceili(float(FIRST_PAGE) / columns)
+	var grid_tall: float = rows * tall + (rows - 1) * gap
+	# The view's height: the scroll bar's page is no taller than what it
+	# scrolls, none after "nothing matches", and the first page was made
+	# alone, the rows under it blank for a frame.
+	var view: float = _scroll.size.y
+	var below: float = grid_tall - view
+	if _grid.get_parent() != _scroll:
+		# A phone's page: the rows over the parts, and the room under them
+		# that puts the search at the top (_fit_foot) as long as the parts
+		# fall short of it; the list held at its search (_hold_at_search).
+		var page: Control = _grid.get_parent()
+		var after: float = _page_foot.position.y - (_grid.position.y + _grid.size.y)
+		var foot_at: float = _grid.position.y + grid_tall + after
+		var foot: float = maxf(0.0, _scroll.size.y - (foot_at - _search.position.y))
+		var whole: float = foot_at + foot + (page.size.y - _page_foot.position.y - _page_foot.size.y)
+		below = whole - minf(_search.position.y, maxf(0.0, whole - view)) - view
+	return FIRST_PAGE * 2 if below < MORE_ROOM else FIRST_PAGE
+
+
+## How far under the view a list is made: the grid grows (_process) while less
+## of it than this is under it.
+const MORE_ROOM := 260.0
 
 
 ## How many tiles a row holds: as many as the bin's width has room for, and
@@ -2356,60 +2838,86 @@ const FIRST_PAGE := 32
 ## what a house is built of: 60593c01 after 60593. Not when a print or a
 ## sticker is asked for, nor for a shelf's or a photo's parts, each chosen.
 func _fold() -> void:
-	_display = []
-	_folds = {}
-	_folded = 0
-	var asked: String = " %s " % PartLibrary.in_ldraw_words(_search.text)
-	if not _guesses.is_empty() or _listing_set or _category == RECENT or _category == FAVOURITES \
-			or _category == FITS \
-			or asked.contains(" print ") or asked.contains(" sticker "):
-		_display = _results.duplicate()
-		return
+	_take_fold(_folding(_results, _listed, _listed_as, _listing, _folds_listed(_search.text), _open))
+
+
+## What _folding worked out, shown.
+func _take_fold(folded: Array) -> void:
+	_display = folded[0]
+	_folds = folded[1]
+	_folded = int(folded[2])
+	_listing = int(folded[3])
+
+
+## Whether the results fold (_fold), with [param typed] in the search.
+func _folds_listed(typed: String) -> bool:
+	var asked: String = " %s " % PartLibrary.in_ldraw_words(typed)
+	return _guesses.is_empty() and not _listing_set and _category != RECENT \
+		and _category != FAVOURITES and _category != FITS \
+		and not asked.contains(" print ") and not asked.contains(" sticker ")
+
+
+## What _fold shows of [param results], with [param folds], those of [param
+## open] opened: [the tiles in order, part id -> the tiles folded under it,
+## how many are, the listing they are marked as]. [param listed] are the parts
+## _find marked as [param listed_as]'s, and [param listing] the last listing's
+## mark. Of nothing but what it is given, as a search on a worker asks (_seek).
+static func _folding(results: Array[PartLibrary.PartInfo], listed: Array[PartLibrary.PartInfo],
+		listed_as: int, listing: int, folds: bool, open: Dictionary) -> Array:
+	var display: Array[PartLibrary.PartInfo] = []
+	var folded_under: Dictionary = {}
+	var folded: int = 0
+	if not folds:
+		display = results.duplicate()
+		return [display, folded_under, folded, listing]
 	# Each listed part marked as this listing's, and each folded one as its
 	# folded, where a dictionary entry for each of twenty thousand took
 	# longer than the search.
-	_listing += 1
-	if not is_same(_listed, _results):
-		for info: PartLibrary.PartInfo in _results:
-			info.listed_in = _listing
+	listing += 1
+	if not is_same(listed, results):
+		for info: PartLibrary.PartInfo in results:
+			info.listed_in = listing
 	else:
-		_listing = _listed_as
+		listing = listed_as
 	var groups: Dictionary = {}     ## PartInfo -> [its prints and assemblies listed]
-	for info: PartLibrary.PartInfo in _results:
+	for info: PartLibrary.PartInfo in results:
 		var of: PartLibrary.PartInfo = info.folds_under()
-		if of == null or of.listed_in != _listing:
+		if of == null or of.listed_in != listing:
 			continue
-		info.listed_in = -_listing
+		info.listed_in = -listing
 		var into: Variant = groups.get(of)
 		if into == null:
 			into = []
 			groups[of] = into
 		(into as Array).append(info)
-	for info: PartLibrary.PartInfo in _results:
-		if info.listed_in == -_listing:
+	for info: PartLibrary.PartInfo in results:
+		if info.listed_in == -listing:
 			continue
-		_display.append(info)
+		display.append(info)
 		if groups.is_empty() or not groups.has(info):
 			continue
 		var under: Array = groups[info]
 		for n: int in under.size():
 			var one: PartLibrary.PartInfo = under[n]
 			if not one.whole_of.is_empty():
-				_display.append(one)
+				display.append(one)
 				under.remove_at(n)
 				break
 		if under.is_empty():
 			continue
-		_folds[info.id] = under
-		_folded += under.size()
-		if _open.has(info.id):
+		folded_under[info.id] = under
+		folded += under.size()
+		if open.has(info.id):
 			for one: PartLibrary.PartInfo in under:
-				_display.append(one)
+				display.append(one)
+	return [display, folded_under, folded, listing]
 
 
 ## Open the tiles folded under [param part_id], or fold them again, where the
 ## grid stands.
 func toggle_fold(part_id: String) -> void:
+	# A key's search being made on a worker listed first: it marks the parts.
+	_settle_seek()
 	if not _folds.has(part_id):
 		return
 	if _open.has(part_id):
@@ -2417,10 +2925,9 @@ func toggle_fold(part_id: String) -> void:
 	else:
 		_open[part_id] = true
 	var at: int = _scroll.scroll_vertical
-	var keep: int = _shown
-	for child: Node in _grid.get_children():
-		_grid.remove_child(child)
-		child.queue_free()
+	var keep: int = maxi(_shown, _coming)
+	_hold_page(0)
+	_keep_tiles()
 	_cells.clear()
 	_shown = 0
 	_fold()
@@ -2436,14 +2943,27 @@ func toggle_fold(part_id: String) -> void:
 ## without ever building 28,000 controls.
 func _show_more(most: int = PAGE) -> void:
 	var limit: int = mini(_shown + most, _display.size())
+	# A tile kept showing a part this page does not list is free to show another.
+	if not _reusable.is_empty():
+		var wanted: Dictionary = {}
+		for n: int in range(_shown, limit):
+			wanted[_display[n].id] = true
+		for id: String in _reusable.keys():
+			if not wanted.has(id):
+				_spare.append(_reusable[id])
+				_reusable.erase(id)
 	while _shown < limit:
 		var key: String = _result_keys[_shown] if _listing_set else ""
 		var cell: Control = _make_row(_display[_shown], key) if _list.button_pressed \
-			else _make_cell(_display[_shown], key)
+			else _tile_for(_display[_shown], key)
 		if not key.is_empty() and _step_keys.has(key):
 			_mark_step(cell)
-		_grid.add_child(cell)
+		if cell.get_parent() != _grid:
+			_grid.add_child(cell)
+		if cell.get_index() != _shown:
+			_grid.move_child(cell, _shown)
 		_shown += 1
+	_put_by_unused()
 	_tell_apart()
 	_update_status()
 
@@ -2468,6 +2988,55 @@ func _mark_step(cell: Control) -> void:
 		cell.tooltip_text = "In step %d of %s\n%s" % [_step + 1, _booklet.name, cell.tooltip_text]
 
 
+## Names told apart again (_tell_apart) at the end of the frame, their tiles
+## laid out: told apart only as they were made, at the width a tile is made
+## at beside tiles laid out at theirs, two read alike with no number after
+## them (3660e and 76959, "Slope 45 2×2 …Round Bot…") and others had one they
+## did not need (bintiles, 2026-11-05).
+func _tell_apart_soon() -> void:
+	if _retelling:
+		return
+	_retelling = true
+	_tell_apart_later.call_deferred()
+
+
+func _tell_apart_later() -> void:
+	_retelling = false
+	if _grid != null:
+		_tell_apart()
+
+
+## A telling apart asked for at the end of the frame (_tell_apart_soon).
+var _retelling: bool = false
+
+
+## Where each of names [param words] parts from the name nearest it, the word
+## its last line goes on from (_tell_apart): of nothing but what it is given,
+## as a search on a worker asks (_named_ahead).
+static func _parting(words: Array[PackedStringArray]) -> PackedInt32Array:
+	var keys := PackedStringArray()
+	for each: PackedStringArray in words:
+		keys.append("\u0001".join(each))
+	var order: Array = range(words.size())
+	order.sort_custom(func(a: int, b: int) -> bool: return keys[a] < keys[b])
+	var from := PackedInt32Array()
+	from.resize(words.size())
+	for n: int in range(1, order.size()):
+		var a: int = order[n - 1]
+		var b: int = order[n]
+		var same: int = 0
+		while same < mini(words[a].size(), words[b].size()) and words[a][same] == words[b][same]:
+			same += 1
+		# A name the other runs on from is told by its own end: "Double
+		# Convex" beside "Double Convex with 45 Corner" goes on from "Convex",
+		# where it parts from "Double Concave".
+		if same < words[a].size():
+			from[a] = maxi(from[a], same)
+		if same < words[b].size():
+			from[b] = maxi(from[b], same)
+	return from
+
+
 ## Tiles whose names begin alike tell themselves apart: a name cut short
 ## goes on from the word where it parts from the one nearest it. Searching
 ## "slope 45 2x2", seven inverted slopes each read "Slope 45 2×2 Inverted
@@ -2484,48 +3053,44 @@ func _tell_apart() -> void:
 			labels.append(label)
 			words.append(str(label.get_meta("name")).split(" ", false))
 			numbers.append(str(cell.get_meta("part", "")))
-	var keys := PackedStringArray()
-	for each: PackedStringArray in words:
-		keys.append("\u0001".join(each))
-	var order: Array = range(labels.size())
-	order.sort_custom(func(a: int, b: int) -> bool: return keys[a] < keys[b])
-	var from := PackedInt32Array()
-	from.resize(labels.size())
-	for n: int in range(1, order.size()):
-		var a: int = order[n - 1]
-		var b: int = order[n]
-		var same: int = 0
-		while same < mini(words[a].size(), words[b].size()) and words[a][same] == words[b][same]:
-			same += 1
-		# A name the other runs on from is told by its own end: "Double
-		# Convex" beside "Double Convex with 45 Corner" goes on from "Convex",
-		# where it parts from "Double Concave".
-		if same < words[a].size():
-			from[a] = maxi(from[a], same)
-		if same < words[b].size():
-			from[b] = maxi(from[b], same)
-	for n: int in labels.size():
-		if int(labels[n].get_meta("from", 0)) != from[n]:
-			labels[n].set_meta("from", from[n])
-			_fit_name(labels[n], _name_width(labels[n]))
-	# Two that still read alike, "…Round Bot…" from two names, end in their
-	# numbers: how a builder tells 3660e from 76959 anyway.
+	# A first page still coming in (_shown_at_once) is told apart whole, as
+	# its tiles will be once they are in: a name in sight reads as it will then.
+	var coming := PackedStringArray()
+	if _coming > labels.size() and not labels.is_empty() and labels.size() == _shown:
+		for n: int in range(labels.size(), mini(_coming, _display.size())):
+			coming.append(said_name(_display[n]))
+			words.append(coming[coming.size() - 1].split(" ", false))
+	var from: PackedInt32Array = _parting(words)
+	# Each fitted from there, alone; then two that still read alike, "…Round
+	# Bot…" from two names, end in their numbers: how a builder tells 3660e
+	# from 76959 anyway. Each name fitted here, once, and again only for its
+	# number (_name_text keeps what it fitted): a tile bound to a new part
+	# was fitted as bound and then once or twice more here, 130 fits a page.
 	var alone := PackedStringArray()
 	var alike: Dictionary = {}
-	for label: Label in labels:
-		var text: String = label.text if str(label.get_meta("number", "")).is_empty() \
-			else _name_text(label, _name_width(label), "")
+	for n: int in labels.size():
+		labels[n].set_meta("from", from[n])
+		var text: String = _name_text(labels[n], _name_width(labels[n]), "")
 		alone.append(text)
 		alike[text] = int(alike.get(text, 0)) + 1
+	for k: int in coming.size():
+		var text: String = _fitted_name(coming[k], "", from[labels.size() + k], labels[0],
+			_name_width(labels[0]))
+		alike[text] = int(alike.get(text, 0)) + 1
 	for n: int in labels.size():
+		var label: Label = labels[n]
 		var number: String = numbers[n] if int(alike[alone[n]]) > 1 else ""
-		if str(labels[n].get_meta("number", "")) != number:
-			labels[n].set_meta("number", number)
-			_fit_name(labels[n], _name_width(labels[n]))
+		label.set_meta("number", number)
+		var text: String = alone[n] if number.is_empty() \
+			else _name_text(label, _name_width(label), number)
+		if label.text != text:
+			label.text = text
 
 
 func _update_status() -> void:
 	var total: int = _display.size()
+	# A first page still coming in (_shown_at_once) is said as shown.
+	var shown: int = maxi(_shown, _coming)
 	if _listing_set:
 		_status.text = ("%s, the step's %d first, then the most held" % [Counted.of(total, "kind"),
 			_step_keys.size()] if not _step_keys.is_empty()
@@ -2534,7 +3099,7 @@ func _update_status() -> void:
 			if _search.text.strip_edges().is_empty() and _category == "All"
 			else "%s of the set's match" % Counted.of(total, "kind") if total > 0
 			else "none of the set's parts match")
-		if _shown < total:
+		if shown < total:
 			_status.text += " — scroll for more"
 		_status.tooltip_text = "All parts, on the line at the top, gives every part again"
 		return
@@ -2560,19 +3125,37 @@ func _update_status() -> void:
 		_status.text = "Reading the parts' sizes and kinds…"
 		_status.tooltip_text = ""
 		return
-	if _category == LIKE and total > 0:
+	# The words typed there narrow it, and are said with it.
+	var words: String = _search.text.strip_edges()
+	# None, with nothing else left out (Only parts made in it, Prints cleared).
+	var none: bool = total == 0 and not _only_made.button_pressed and _prints.button_pressed
+	if _category == LIKE and (total > 0 or none and not words.is_empty()):
 		var like: PartLibrary.PartInfo = library.parts.get(_like_of)
-		_status.text = ("Parts like %s: its size and kind first; a tap swaps the selection"
-			if by_finger else "Parts like %s: its size and kind first; a double-click swaps the selection") \
-			% (tile_name(like) if like != null else _like_of)
+		var named: String = tile_name(like) if like != null else _like_of
+		if total == 0:
+			_status.text = "No part like %s has “%s”" % [named, words]
+		elif words.is_empty():
+			_status.text = ("Parts like %s: its size and kind first; a tap swaps the selection"
+				if by_finger else "Parts like %s: its size and kind first; a double-click swaps the selection") \
+				% named
+		else:
+			_status.text = ("Parts like %s, with “%s”: its size and kind first; a tap swaps the selection"
+				if by_finger
+				else "Parts like %s, with “%s”: its size and kind first; a double-click swaps the selection") \
+				% [named, words]
 		_status.tooltip_text = ("Five of its size and kind, then the rest of its size by use, nearby kinds "
 			+ "among them, then its kind in other sizes; its prints folded under it")
 		return
-	if _category == FITS and total > 0:
+	if _category == FITS and (total > 0 or none and not words.is_empty()):
 		var about: PartLibrary.PartInfo = library.parts.get(_fits_of[0])
-		_status.text = "What fits %s, the best fits first" % (
-			tile_name(about) if _fits_of.size() == 1 and about != null
-			else "the %d parts selected" % _fits_of.size())
+		var what: String = tile_name(about) if _fits_of.size() == 1 and about != null \
+			else "the %d parts selected" % _fits_of.size()
+		if total == 0:
+			_status.text = "Nothing that fits %s has “%s”" % [what, words]
+		elif words.is_empty():
+			_status.text = "What fits %s, the best fits first" % what
+		else:
+			_status.text = "What fits %s, with “%s”, the best fits first" % [what, words]
 		_status.tooltip_text = ("A pin in its holes, a bar in its clip, the other half of a hinge, "
 			+ "then what sits on its studs, the most used first")
 		return
@@ -2586,12 +3169,12 @@ func _update_status() -> void:
 		_status.text = "nothing matches"
 	elif _only_made.button_pressed:
 		_status.text = "%s made in %s%s" % [Counted.of(total, "part"),
-			library.color(_selected_color).name, "" if _shown >= total else " — scroll for more"]
-	elif _shown >= total:
+			library.color(_selected_color).name, "" if shown >= total else " — scroll for more"]
+	elif shown >= total:
 		_status.text = "%s part%s" % [_comma(total), "" if total == 1 else "s"]
 	else:
 		_status.text = "Showing %s of %s — scroll for more" % [
-			_comma(_shown), _comma(total)]
+			_comma(shown), _comma(total)]
 	# What the tiles hold folded: said where nothing else is, on one line.
 	if _folded > 0 and _set_aside == 0:
 		_status.text += ("\n1 more folded under its part: press +" if _folded == 1
@@ -2619,10 +3202,16 @@ func _update_status() -> void:
 ## A tile for [param info]; for a set's, in its own colour and counting
 ## what is left of [param key], its part and colour.
 func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
-	var colour: int = Collection.colour_of(key) if not key.is_empty() else _selected_color
-	var button: Button = _part_button(info, key, colour)
+	var button: Button = _new_tile()
+	_bind_tile(button, info, key)
+	return button
+
+
+## A tile, made once and bound to a part (_bind_tile) each time a list shows
+## one where it stands (_show_more).
+func _new_tile() -> Button:
+	var button: Button = _new_part_button()
 	button.custom_minimum_size = Vector2(_z(74), _z(84))
-	var after: String = str(button.get_meta("after"))
 
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2632,19 +3221,9 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 
 	# Its size is the cell's, never the picture's, so nothing moves when
 	# the picture lands.
-	# A print or sticker made here is drawn with its picture. The face it is
-	# on is a surface of its own, which a plain picture leaves out: under My
-	# prints every tile was a hole where its print should be.
-	var made_print: bool = info.category in [PartPrints.MY_PRINTS, PartPrints.MY_STICKERS]
-	var image := ThumbTile.new(info.id, colour, made_print)
+	var image := ThumbTile.new()
 	image.custom_minimum_size = Vector2(0, _z(52))
 	image.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# Until its picture is drawn, the part drawn from what the catalogue
-	# says of it: its footprint, height, studs and colour (PartSketch). On
-	# the web a picture is a fetch and a render away, and the tiles were
-	# grey squares eight seconds in (appux371 A4).
-	image.sketch = info
-	image.sketch_colour = _sketch_colour(colour)
 	box.add_child(image)
 	button.set_meta("tile", image)
 
@@ -2652,8 +3231,6 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	# and a person new to LDraw's numbers hovered each to learn that 3710 is
 	# a plate 1 x 4 (appux371 A4). The number is on its tooltip.
 	var label := Label.new()
-	label.set_meta("name", said_name(info))
-	label.set_meta("after", after)
 	button.set_meta("name_label", label)
 	# Said already, before it is fitted: a line of it is no name of its own.
 	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
@@ -2668,13 +3245,17 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	var font: Font = label.get_theme_font("font")
 	label.custom_minimum_size.y = ceilf(font.get_height(ceili(_z(11))) * NAME_LINES
 		+ float(label.get_theme_constant("line_spacing")) * (NAME_LINES - 1))
-	# Fitted to the tile's width as it is laid out, and before that to the
-	# width a tile is made at, so its first frame already reads.
-	_fit_name(label, _name_width(label))
-	label.resized.connect(func() -> void: _fit_name(label, label.size.x))
-	if by_finger and _folds.has(info.id):
-		# Its "+N" has the foot's right end, a fingertip (_fold_badge): the
-		# number keeps to the room beside it.
+	# Fitted to the tile's width as it is laid out (_bind_tile fits it to the
+	# width a tile is made at, so its first frame already reads), and told
+	# apart from the names beside it again at that width.
+	label.resized.connect(func() -> void:
+		_fit_name(label, label.size.x)
+		_tell_apart_soon())
+	if by_finger:
+		# A part with prints folded under it has its "+N" at the foot's right
+		# end, a fingertip (_fold_badge): the name keeps to the room beside
+		# it, shown only on such a tile (_bind_tile). Hidden, the name has
+		# the foot's width, as it had alone under the picture.
 		var foot := HBoxContainer.new()
 		foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		foot.add_theme_constant_override("separation", 0)
@@ -2683,8 +3264,10 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 		var beside := Control.new()
 		beside.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		beside.custom_minimum_size.x = least + _z(2.0)
+		beside.visible = false
 		foot.add_child(beside)
 		box.add_child(foot)
+		button.set_meta("beside", beside)
 	else:
 		box.add_child(label)
 
@@ -2695,11 +3278,65 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	star.offset_right = -_z(4.0)
 	star.offset_top = _z(4.0)
 	star.offset_bottom = _z(18.0)
-	star.visible = PartShelf.is_favourite(info.id)
+	star.visible = false
 	button.add_child(star)
 	button.set_meta("star", star)
+	button.set_meta("made_as", _tile_kind())
+	return button
+
+
+## What a tile is made for: the bin's zoom, a finger's or the mouse's, and the
+## screen's density. A tile made for another is not bound again.
+func _tile_kind() -> Array:
+	return [zoom, by_finger, least, Icons.density(self)]
+
+
+## [param button], a tile (_new_tile), showing [param info]; for a set's, in
+## its own colour and counting what is left of [param key], its part and
+## colour. Whatever part it showed before, it shows this one as a tile made
+## for it does.
+func _bind_tile(button: Button, info: PartLibrary.PartInfo, key: String = "") -> void:
+	var colour: int = Collection.colour_of(key) if not key.is_empty() else _selected_color
+	_bind_part_button(button, info, key, colour)
+	# A print or sticker made here is drawn with its picture. The face it is
+	# on is a surface of its own, which a plain picture leaves out: under My
+	# prints every tile was a hole where its print should be.
+	var made_print: bool = info.category in [PartPrints.MY_PRINTS, PartPrints.MY_STICKERS]
+	var image: ThumbTile = button.get_meta("tile")
+	# Until its picture is drawn, the part drawn from what the catalogue
+	# says of it: its footprint, height, studs and colour (PartSketch). On
+	# the web a picture is a fetch and a render away, and the tiles were
+	# grey squares eight seconds in (appux371 A4).
+	image.show_part(info.id, colour, made_print)
+	image.sketch = info
+	image.sketch_colour = _sketch_colour(colour)
+	image.plan_sketch(_plans.get(info.id, []), _planned_in, _planned_colour)
+
+	var label: Label = button.get_meta("name_label")
+	label.set_meta("name", said_name(info))
+	label.set_meta("after", str(button.get_meta("after")))
+	# Fitted as it is told apart from the tiles beside it, once (_tell_apart,
+	# after every tile of the page is bound: _show_more).
+	label.remove_meta("from")
+	label.remove_meta("number")
+	if button.has_meta("beside"):
+		(button.get_meta("beside") as Control).visible = _folds.has(info.id)
+
+	(button.get_meta("star") as Control).visible = PartShelf.is_favourite(info.id)
+	# Its "+N", kept hidden while its part has nothing folded under it: made
+	# and freed as each list came, a page's held 3 to 5 ms of a key's frame
+	# where many parts have prints ("slope", "tile", "wedge"; bintiles,
+	# 2026-11-05).
+	var badge: Button = button.get_meta("badge") if button.has_meta("badge") else null
 	if _folds.has(info.id):
-		button.add_child(_fold_badge(info))
+		if badge == null:
+			badge = _new_fold_badge()
+			button.add_child(badge)
+			button.set_meta("badge", badge)
+		_bind_fold_badge(badge, info)
+		badge.visible = true
+	elif badge != null:
+		badge.visible = false
 
 	_cells[info.id] = image
 	if thumbnails:
@@ -2708,7 +3345,6 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 			image.show_picture(ready_now, false)
 	if not key.is_empty():
 		_show_count(button)
-	return button
 
 
 ## A row of the list for [param info] (List, at the bin's foot), as a details
@@ -2853,7 +3489,42 @@ func _row_look(state: String, striped: bool) -> StyleBox:
 ## and a right-click on it do, and [code]"after"[/code], what its name ends
 ## in: a set's count, or how sure a photo's answer is.
 func _part_button(info: PartLibrary.PartInfo, key: String, colour: int) -> Button:
+	var button: Button = _new_part_button()
+	_bind_part_button(button, info, key, colour)
+	return button
+
+
+## A part's button, a tile's or a row's, made once: what it does is asked of
+## the part it shows (_bind_part_button) as it is pressed, so a tile bound to
+## another part by the next key typed does what that part's does.
+func _new_part_button() -> Button:
 	var button := Button.new()
+	button.toggle_mode = true
+	# The pointing hand Cursors gives every button, given before it is in the
+	# window: given as it came in, each asked the window what the pointer is
+	# over, 0.75 ms a "+N" a key made (Control.set_default_cursor_shape).
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	# Clicked, a tile kept the keys: the arrows then walked the focus round
+	# the grid, and Right never reached the timeline (the CAD task test,
+	# 2026-10-16). So a click leaves the keys with the model, and only Tab
+	# and the arrows bring them here, where Return takes the part.
+	FocusGuard.by_keyboard(button)
+	button.add_theme_stylebox_override("focus", FocusGuard.ring())
+	button.pressed.connect(_on_cell_pressed.bind(button))
+	# Read while the pointer or the keys are on it, off the frame, before it
+	# is taken: taken, its first aim read its shape for its hinges on the
+	# click's frame, 25 to 60 ms of a Technic beam's (PartLibrary.read_ahead).
+	button.mouse_entered.connect(_read_ahead_of.bind(button))
+	button.focus_entered.connect(_read_ahead_of.bind(button))
+	button.gui_input.connect(func(event: InputEvent) -> void:
+		_cell_input(button, str(button.get_meta("part", "")), event))
+	return button
+
+
+## [param button] (_new_part_button) made [param info]'s, in [param colour];
+## for a set's, its [param key], its part and colour.
+func _bind_part_button(button: Button, info: PartLibrary.PartInfo, key: String,
+		colour: int) -> void:
 	# LDraw pads its names into columns, "Brick  1 x  2", which reads as
 	# a typo in a tooltip.
 	button.tooltip_text = "%s\n%s\n%d x %d studs, %s" % [
@@ -2865,29 +3536,18 @@ func _part_button(info: PartLibrary.PartInfo, key: String, colour: int) -> Butto
 	# by prefix lights 30055 when you pick 3005 — and there is no reason
 	# for a lookup to go through a string meant for a person.
 	button.set_meta("part", info.id)
-	button.toggle_mode = true
-	# Clicked, a tile kept the keys: the arrows then walked the focus round
-	# the grid, and Right never reached the timeline (the CAD task test,
-	# 2026-10-16). So a click leaves the keys with the model, and only Tab
-	# and the arrows bring them here, where Return takes the part.
-	FocusGuard.by_keyboard(button)
-	button.add_theme_stylebox_override("focus", FocusGuard.ring())
 	# Its title, as a screen reader says it, and its number and size after.
 	button.accessibility_name = "%s, %s" % [Inventory._tidy(info.name), info.id]
 	button.accessibility_description = "%d x %d studs, %s" % [
 		info.footprint_studs().x, info.footprint_studs().y, _height_text(info)]
 	button.button_pressed = info.id == _selected_part and colour == _selected_color
-	button.pressed.connect(_on_part.bind(info.id, colour if not key.is_empty() else -1))
-	# Read while the pointer or the keys are on it, off the frame, before it
-	# is taken: taken, its first aim read its shape for its hinges on the
-	# click's frame, 25 to 60 ms of a Technic beam's (PartLibrary.read_ahead).
-	button.mouse_entered.connect(library.read_ahead.bind(info.id))
-	button.focus_entered.connect(library.read_ahead.bind(info.id))
 	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
-	button.gui_input.connect(func(event: InputEvent) -> void:
-		_cell_input(button, info.id, event))
 
 	button.set_meta("after", "")
+	# What the part it showed before left on it: a set's key and count, a
+	# drag's tooltip put by.
+	for left: StringName in [&"key", &"plain_tip", &"left", &"tip"]:
+		button.remove_meta(left)
 	if not key.is_empty():
 		var colour_named: PartLibrary.BrickColor = library.color(colour)
 		button.tooltip_text = "%s\n%s" % [colour_named.name.replace("_", " ") if colour_named != null
@@ -2901,7 +3561,16 @@ func _part_button(info: PartLibrary.PartInfo, key: String, colour: int) -> Butto
 		button.set_meta("after", "  %d%%" % roundi(float(_guesses[info.id]) * 100.0))
 		button.tooltip_text = "Brickognize is %d%% sure of it\n%s" % [
 			roundi(float(_guesses[info.id]) * 100.0), button.tooltip_text]
-	return button
+
+
+## A tile or a row pressed: its part taken, a set's in its own colour.
+func _on_cell_pressed(button: Button) -> void:
+	var key: String = str(button.get_meta("key", ""))
+	_on_part(str(button.get_meta("part", "")), Collection.colour_of(key) if not key.is_empty() else -1)
+
+
+func _read_ahead_of(button: Button) -> void:
+	library.read_ahead(str(button.get_meta("part", "")))
 
 
 ## How many lines a tile's name has at most.
@@ -2961,11 +3630,42 @@ func _fit_name(label: Label, width: float) -> void:
 
 
 ## What [param label] reads at [param width], [param number] after its name.
+## Fitted once for a name, its end and its width: a part listed again by the
+## next key typed reads as it did (fit_lines measures a name a word and then a
+## letter at a time, 70 us a tile, three times a tile made).
 func _name_text(label: Label, width: float, number: String) -> String:
 	var after: String = (" " + number if not number.is_empty() else "") + str(label.get_meta("after", ""))
-	return fit_lines(str(label.get_meta("name", "")), after, label.get_theme_font("font"),
-		label.get_theme_font_size("font_size"), width, int(label.get_meta("lines", NAME_LINES)),
-		int(label.get_meta("from", 0)))
+	return _fitted_name(str(label.get_meta("name", "")), after, int(label.get_meta("from", 0)), label,
+		width)
+
+
+## [param name], [param after] after it, fitted as [param label] fits its own
+## at [param width], cut from word [param from] (_name_text): of a tile not
+## yet in, as the label of one that is.
+func _fitted_name(name: String, after: String, from: int, label: Label, width: float) -> String:
+	var font: Font = label.get_theme_font("font")
+	var size: int = label.get_theme_font_size("font_size")
+	var lines: int = int(label.get_meta("lines", NAME_LINES))
+	var asked: String = _fit_key(name, after, width, lines, from, size, font)
+	var fitted: Variant = _fitted.get(asked)
+	if fitted == null:
+		fitted = fit_lines(name, after, font, size, width, lines, from)
+		if _fitted.size() >= FITTED_MOST:
+			_fitted.clear()
+		_fitted[asked] = fitted
+	return fitted
+
+
+## Names fitted (_name_text), and how many are kept.
+var _fitted: Dictionary = {}
+const FITTED_MOST := 4096
+
+
+## What a name fitted is kept under (_fitted).
+static func _fit_key(name: String, after: String, width: float, lines: int, from: int, size: int,
+		font: Font) -> String:
+	return "%s\u0001%s\u0001%.6f\u0001%d\u0001%d\u0001%d\u0001%d" % [name, after, width, lines, from, size,
+		font.get_instance_id()]
 
 
 ## The width a name is fitted to: its label's, or before it is laid out the
@@ -2981,11 +3681,13 @@ func _name_width(label: Label) -> float:
 ## [param font] at [param size], whole words to a line, the last line cut
 ## with "…" where the name runs on, and [param after] at the end of it.
 ## Cut, its last line starts at word [param from] where that is further
-## on: where the name parts from a tile's beside it (_tell_apart).
+## on: where the name parts from a tile's beside it (_tell_apart). Measured
+## by [param wide] where it is given, as a worker measures (_named_ahead).
 static func fit_lines(name: String, after: String, font: Font, size: int, width: float,
-		lines: int, from: int = 0) -> String:
-	var wide: Callable = func(text: String) -> float:
-		return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+		lines: int, from: int = 0, wide: Callable = Callable()) -> String:
+	if not wide.is_valid():
+		wide = func(text: String) -> float:
+			return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 	var wrapped := PackedStringArray()
 	for word: String in name.split(" ", false):
 		var at: int = wrapped.size() - 1
@@ -3043,14 +3745,15 @@ func _sketch_colour(code: int = -1) -> Color:
 ## them back at Tab, FocusGuard); typed, "3008 print" and "3008 sticker" list
 ## them, unfolded, and its tooltip says so.
 func _fold_badge(info: PartLibrary.PartInfo) -> Button:
-	var count: int = (_folds[info.id] as Array).size()
-	var opened: bool = _open.has(info.id)
+	var badge: Button = _new_fold_badge()
+	_bind_fold_badge(badge, info)
+	return badge
+
+
+func _new_fold_badge() -> Button:
 	var badge := Button.new()
-	badge.text = "%s%d" % ["−" if opened else "+", count]
-	badge.tooltip_text = "%s %s print%s, sticker%s and assembl%s of %s; typed, \"%s print\" lists them" % [
-		"Fold away" if opened else "Show", _comma(count), "" if count == 1 else "s",
-		"" if count == 1 else "s", "y" if count == 1 else "ies", info.id, info.id]
 	badge.focus_mode = Control.FOCUS_NONE
+	badge.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	# Eleven by a finger: ten came out under twelve points.
 	badge.add_theme_font_size_override("font_size", ceili(_z(11.0 if by_finger else 10.0)))
 	if by_finger:
@@ -3068,8 +3771,19 @@ func _fold_badge(info: PartLibrary.PartInfo) -> Button:
 		badge.offset_left = _z(2.0)
 		badge.offset_top = _z(2.0)
 		badge.custom_minimum_size = Vector2(maxf(least, _z(24.0)), maxf(least, _z(18.0)))
-	badge.pressed.connect(toggle_fold.bind(info.id))
+	badge.pressed.connect(func() -> void: toggle_fold(str(badge.get_meta("folds_of", ""))))
 	return badge
+
+
+## [param badge] (_new_fold_badge) counting what is folded under [param info].
+func _bind_fold_badge(badge: Button, info: PartLibrary.PartInfo) -> void:
+	var count: int = (_folds[info.id] as Array).size()
+	var opened: bool = _open.has(info.id)
+	badge.text = "%s%d" % ["−" if opened else "+", count]
+	badge.tooltip_text = "%s %s print%s, sticker%s and assembl%s of %s; typed, \"%s print\" lists them" % [
+		"Fold away" if opened else "Show", _comma(count), "" if count == 1 else "s",
+		"" if count == 1 else "s", "y" if count == 1 else "ies", info.id, info.id]
+	badge.set_meta("folds_of", info.id)
 
 
 ## A part pressed and dragged out of the bin: picked up, its ghost after
@@ -3405,6 +4119,7 @@ func _fill_techniques(query: String) -> void:
 		child.queue_free()
 	_cells.clear()
 	_shown = 0
+	_hold_page(0)
 	_to_list_top()
 	_grid.columns = 1
 	_grid.add_theme_constant_override("v_separation", int(_z(4)))
@@ -3669,8 +4384,10 @@ func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
 	_count_chips()
 	# The whole set in sight: what was typed or chosen is let go.
 	_search.text = ""
+	_typed_before = ""
 	_pending = false
 	_category = "All"
+	_search.placeholder_text = _search_hint(_category)
 	for child: Node in _category_row.get_children():
 		(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
 	_recount(false)
@@ -3700,11 +4417,11 @@ func _follow_booklet(number: String, file: String) -> void:
 	# Read off the frame, as a model opened is: a set's file is a few
 	# hundred parts, and the repository's largest tens of thousands.
 	var parsed: Array = []
-	var reading: int = WorkerThreadPool.add_task(func() -> void:
-		parsed.append(LdrModel.parse(text, str(chosen["file"]))))
+	var reading: int = WorkerTasks.add(func() -> void:
+		parsed.append(LdrModel.parse(text, str(chosen["file"]))), false, "read a set's model")
 	while not WorkerThreadPool.is_task_completed(reading):
 		await get_tree().process_frame
-	WorkerThreadPool.wait_for_task_completion(reading)
+	WorkerTasks.collect(reading)
 	_booklet = SetBooklet.make(parsed[0], model_name(chosen), str(chosen["file"]), _set_bin, library)
 	_step = 0
 	_step_by_hand = false

@@ -17,6 +17,12 @@
 ## offered once, on a first visit, with nothing changed until Start (so the
 ## example car is still there to look at), one click on Skip ends it, and it
 ## never comes back uninvited. Help, Take the tour brings it back.
+##
+## And an offer nobody took goes by itself once the person is plainly doing
+## something else: [constant BUILT_BY_HAND] parts put down by hand, or a
+## model opened, theirs or an example. It stayed over the model through a
+## wall built by hand, the car and 22 panels (APP_UX4, quiet). A baseplate
+## made empty (File, New, Clear) keeps it: that is who it is for.
 class_name FirstBuild
 extends PanelContainer
 
@@ -35,6 +41,9 @@ const VIEW_TURN := deg_to_rad(10.0)
 const LOOK_WAIT_MS := 6000
 ## Under this much room across, the line goes without its title.
 const NARROW := 560.0
+## Parts put down by hand while it is offered, at which the person is
+## building already and the offer goes.
+const BUILT_BY_HAND := 3
 
 ## A probe about the first visit offers it for itself, as one about the
 ## assistant's offer does (Main.offer_for_probe). Any other run under
@@ -61,6 +70,8 @@ var _since: int = -1
 var _by_itself: bool = false
 ## Frames since a step was last measured: the model is read every few.
 var _tick: int = 0
+## Parts put down by hand since it was offered.
+var _put_by_hand: int = 0
 var _title: Label
 var _words: Label
 var _go: Button
@@ -140,12 +151,22 @@ func _ready() -> void:
 		if visible:
 			_snap())
 	shell.store.loaded.connect(func(_name: String, _bricks: int) -> void:
-		# A model of the person's came back after it was offered by itself
-		# (the account's, once it answered): the offer was not for them.
-		if visible and _at == -1 and _by_itself:
-			visible = false
+		# A model opened while it is offered, however it was: the person's
+		# (the account's own, once it answered, or one from File, Open) or an
+		# example. There is a model to work on, and the offer goes.
+		if visible and _at == -1:
+			_withdraw()
 		elif visible:
 			_snap())
+	# Parts put down by hand while it is offered: a person building already.
+	# The builder hears only a person's (a session's edits are history, not
+	# placing), so the assistant building leaves it.
+	shell.builder.placed.connect(func(_id: int, _part: String) -> void:
+		if not visible or _at != -1:
+			return
+		_put_by_hand += 1
+		if _put_by_hand >= BUILT_BY_HAND:
+			_withdraw())
 	shell.bar.started_new.connect(func() -> void:
 		if _waiting_for_new and visible and _at == -1:
 			_waiting_for_new = false
@@ -185,10 +206,16 @@ func start() -> void:
 
 
 func stop(how: String = "skipped") -> void:
+	_withdraw()
+	ShellPrefs.put("first_build", how)
+
+
+## Put away, with nothing kept: offered by itself it is kept as offered
+## already, and never offered again; asked for, Help brings it back.
+func _withdraw() -> void:
 	visible = false
 	_frame.visible = false
 	_waiting_for_new = false
-	ShellPrefs.put("first_build", how)
 
 
 func is_running() -> bool:
@@ -233,6 +260,7 @@ func _offer() -> void:
 	_go.visible = true
 	_skip.visible = true
 	_frame.visible = false
+	_put_by_hand = 0
 	visible = true
 	set_process(true)
 
@@ -320,8 +348,9 @@ func _process(_delta: float) -> void:
 # -- offered on a first visit ----------------------------------------------------
 
 ## Offered once, on the first visit to this device, to a person in front of
-## the window, once they are signed in and the baseplate still holds the
-## example car: never over a model of theirs, which a person who has built
+## the window, once they are signed in and the baseplate holds nothing of
+## theirs: the example car untouched, or nothing at all (a first visit in a
+## new window). Never over a model of theirs, which a person who has built
 ## here before comes back to.
 func _decide() -> void:
 	if not _wanted():
@@ -337,8 +366,8 @@ func _decide() -> void:
 			and Time.get_ticks_msec() - _since < LOOK_WAIT_MS:
 		return
 	_decided = true
-	if not bool(shell.app.get("_sample_untouched")) or bool(shell.app.get("_theirs_opened")) \
-			or shell.builder.history_depth() > 0:
+	if bool(shell.app.get("_theirs_opened")) or shell.builder.history_depth() > 0 \
+			or not _room_here():
 		return
 	ShellPrefs.put("first_build", "offered")
 	_by_itself = true

@@ -49,6 +49,12 @@ if [ $merged = 0 ]; then
   for f in $(git diff --name-only --diff-filter=U | grep -E '\.md$'); do
     out=$(python3 "$HERE/resolve_docs.py" "$f") && { echo "$out" | grep DOUBLED; git add "$f"; }
   done
+  # The languages' word lists: each unit appends its block at the end, so two units
+  # conflict there every time (quiet, then whatsthis, 2026-11-06). Both blocks are
+  # kept when no entry is then twice (resolve_po.py); otherwise it stays a conflict.
+  for f in $(git diff --name-only --diff-filter=U | grep -E '^locale/.*\.po$'); do
+    python3 "$HERE/resolve_po.py" "$f" && git add "$f"
+  done
   if git diff --name-only --diff-filter=U | grep -qx .claude/skills/verify/features.json; then
     git checkout --theirs .claude/skills/verify/features.json && git add .claude/skills/verify/features.json
   fi
@@ -56,6 +62,14 @@ if [ $merged = 0 ]; then
     echo "CONFLICTS:"; git diff --name-only --diff-filter=U; exit 2
   fi
 fi
+# A browser flow the merge brings in that preview_checks.sh doesn't name holds
+# the ship (ship.sh's unwired_flows): rel-m267 was held for bintiles'
+# bin_keys_flow.mjs after a whole day's merges (2026-11-06). Stop here, as a
+# conflict does, with the merge left to finish once it's named.
+for f in $(git diff --cached --name-only --diff-filter=A -- 'tools/web/*_flow.mjs'); do
+  grep -qF "$(basename "$f")" "$HERE/preview_checks.sh" \
+    || { echo "UNWIRED: $(basename "$f") is in no preview check: name it in tools/release/preview_checks.sh, or mark it there '# local only: $(basename "$f")', then commit the merge"; exit 5; }
+done
 ~/.claude/claude-core/bin/featuremap generate --write >/dev/null 2>&1
 git add .claude/skills/verify/features.json 2>/dev/null
 git "${ID[@]}" commit -q -m "$MSG" || exit 1
