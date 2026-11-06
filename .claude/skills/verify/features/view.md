@@ -515,7 +515,8 @@ picture the assistant is shown.
   designed afresh) ends it. The booklet and the assistant's pictures are drawn
   from worlds of their own and never see it; Export's picture is the world on
   screen and does.
-- `cut away by a box, a sphere or a cylinder` (`src/render/cut_shape.gd`,
+<!-- covers: ui:cut away by a shape -->
+- `cut away by a shape` (`src/render/cut_shape.gd`,
   `BrickWorld.set_cut_shape`, APP_UX4 8): View → Cut away by → A box, A sphere
   or A cylinder, or the strip's first list. A shape goes round the selection,
   or with none takes the middle of the model off from half way up; its faces

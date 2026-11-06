@@ -361,13 +361,20 @@ func _first_room() -> AABB:
 	return _fitted(_snapped(around), -1)
 
 
-## [param box] grown to odd whole LDU at each face and whole plates across.
+## [param box] grown to odd whole LDU at each face and whole plates across,
+## as evenly at each end as odd faces allow: a box round a roof 80 LDU
+## across is 88, 5 to spare at one side and 3 at the other, not 1 and 7.
 static func _snapped(box: AABB) -> AABB:
 	var out := AABB()
 	for n: int in 3:
 		var low: float = floorf((box.position[n] - 1.0) / STEP) * STEP + 1.0
 		var size: float = maxf(PLATE, ceilf((box.end[n] - low) / PLATE - 0.001) * PLATE)
-		out.position[n] = low
+		# What is spare past the end, moved to the start a STEP at a time.
+		var spare_low: float = box.position[n] - low
+		var spare_high: float = low + size - box.end[n]
+		var back: float = clampf(roundf((spare_high - spare_low) / (2.0 * STEP)), 0.0,
+			floorf(spare_high / STEP)) * STEP
+		out.position[n] = low - back
 		out.size[n] = size
 	return out
 
@@ -689,9 +696,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## A knob held: everything the pointer does is its, over the model or a
-## panel, until it is let go.
+## panel, until it is let go. None held, a move unlights the knob here, and
+## _unhandled_input lights it again only if the move reaches the view: a
+## pointer that leaves a knob for a panel leaves no knob lit.
 func _input(event: InputEvent) -> void:
 	if _press.is_empty() and _drag.is_empty():
+		if event is InputEventMouseMotion:
+			lit = -1
 		return
 	var key: InputEventKey = event as InputEventKey
 	if key != null:

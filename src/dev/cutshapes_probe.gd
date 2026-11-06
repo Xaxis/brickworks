@@ -209,6 +209,13 @@ func _a_box_through_the_cab() -> void:
 	_check("the strip has Grow and Shrink", grow != null and shrink != null
 		and grow.is_visible_in_tree() and shrink.is_visible_in_tree())
 	if grow != null and shrink != null:
+		# A knob lit under the pointer goes out when the pointer leaves it for
+		# the strip, as a hand reaches for Grow.
+		await _move(see.call("knob_on_screen", 1))
+		var lit_over: int = see.get("lit")
+		await _move(grow.get_global_rect().get_center())
+		_check("the pointer over the right knob lights it, and over the strip lights none (%d, %d)"
+			% [lit_over, int(see.get("lit"))], lit_over == 1 and int(see.get("lit")) == -1)
 		await _click(grow.get_global_rect().get_center())
 		room = see.get("room")
 		_check("Grow takes every face out a plate (%s)" % room.size,
