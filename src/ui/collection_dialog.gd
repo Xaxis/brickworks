@@ -29,9 +29,11 @@
 ## What a session added over MCP (edit_collection) is listed apart, under
 ## who added it, with Keep them and Take back.
 ##
-## The sums are Collection's; the keeping is CollectionStore's. Built by
-## Shell, which reaches the app the way it does for its own parts, so
-## main.gd only has the parts list's new button to pass on.
+## The sums are Collection's; the keeping is CollectionStore's, the one the
+## window makes and fetches as the person signs in (Shell.collection_store),
+## given to this panel as it is made. Built by Shell, which reaches the app
+## the way it does for its own parts, so main.gd only has the parts list's
+## new button to pass on.
 class_name CollectionDialog
 extends PanelContainer
 
@@ -46,6 +48,7 @@ var library: PartLibrary
 var world: BrickWorld
 var models: ModelStore
 var bar: ModelBar
+## The window's (Shell.collection_store), set before [method attach].
 var store: CollectionStore
 var rebrickable: RebrickableAccount
 
@@ -78,8 +81,6 @@ var _ranked: Array = []
 ## path -> {"modified", "needs"}, so a model is read once until it changes.
 var _read: Dictionary = {}
 var _busy: bool = false
-## Whose collection was last fetched: the account's id, empty for nobody.
-var _loaded_for: String = ""
 
 signal said(text: String)
 
@@ -129,10 +130,6 @@ func attach(main: Node) -> void:
 	world = main.get("_world")
 	models = main.get("_store")
 	bar = main.get("_bar")
-	store = CollectionStore.new()
-	store.account = main.get("_account")
-	store.library = library
-	add_child(store)
 	rebrickable = RebrickableAccount.new()
 	add_child(rebrickable)
 	_picker = TextFilePicker.new()
@@ -150,10 +147,6 @@ func attach(main: Node) -> void:
 		bin.part_chosen.connect(func(id: String) -> void:
 			if visible and _page == "own":
 				choose_loose(id, int(bin.get("_selected_color"))))
-	var account: Account = main.get("_account")
-	if account != null:
-		account.changed.connect(_on_account)
-		_on_account()
 
 
 func _ready() -> void:
@@ -207,30 +200,7 @@ func _fit() -> void:
 	offset_bottom = tall * 0.5
 
 
-## Fetched once per person signing in, not on every change the account
-## reports (a renewal, going offline); forgotten on signing out, so the next
-## person on this machine starts from their own.
-func _on_account() -> void:
-	var account: Account = app.get("_account")
-	var who: String = account.user_id if account != null and account.signed_in() else ""
-	if who == _loaded_for:
-		return
-	_loaded_for = who
-	if who.is_empty():
-		store.collection = Collection.new()
-		store.on_hand = {}
-		store.records = {}
-		store.changed.emit()
-		return
-	store.load_collection()
-
-
 func _on_store_changed() -> void:
-	# The assistant prefers what is owned, for a brief that asks it to: told
-	# here once it is made, and told as it is made (Main._make_assistant).
-	var assistant: Variant = app.get("_assistant_made")
-	if assistant != null:
-		assistant.set("owned", store.on_hand)
 	_read.clear()
 	if visible:
 		_show(_page)

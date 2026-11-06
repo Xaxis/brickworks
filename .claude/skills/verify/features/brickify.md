@@ -203,7 +203,12 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   up (STL defaults to Z), what it comes to in studs, bricks and centimetres,
   Hollow, A stand where it needs one (on by default), Surface (smooth, or plain
   bricks and plates), Colour (its own, one, or its own cut to at most N; a stand
-  is black, or the one colour, or the darkest kept). Brickify works on a worker
+  is black, or the one colour, or the darkest kept). The panel does not name
+  Brickify (its sizes, ways up and colours are `BrickifySize`'s): Brickify, the
+  assistant it lays with and what they name, 4.4 MB, compile on a worker as the
+  first model is shown (`Later.script_in_background`), and a first use the main
+  thread compiles meanwhile waits for that compile to end (Godot's script cache
+  is held for the whole of it; `brickify_worker_probe`). Brickify works on a worker
   (the web's page keeps drawing), one model at a time: it waits for a design's
   sculpt being laid, and a sculpt for it (`Brickify.begin_laying`). Cancel, closing the panel, quitting, or the
   library having to add a part (a file opened meanwhile) tell the run to stop
@@ -290,6 +295,7 @@ seller's keys). `app_tools_probe` covers it.
 godot --path .                     # then I, and choose a .obj/.stl/.gltf/.glb/.ply/.3mf/.vox/.fbx
 godot --headless --path . --script src/dev/brickify_probe.gd [-- OUTDIR]   # OUTDIR gets brickify_*.ldr
 godot --path . --resolution 1400x900 --script src/dev/brickify_ui_probe.gd
+tools/probe.sh brickify_worker_probe   # Brickify compiled on a worker as the panel shows the bunny, then laid three times
 node tools/web/brickify_flow.mjs --url=<a preview>/app --out=shots/brickify_web   # with .env sourced and BW_BYPASS
 tools/probe.sh mesh_formats_probe [--fixtures] [--bench=bench/data/brickify] [--real=DIR]
 node tools/web/mesh_formats_flow.mjs --url=<a preview>/app --out=shots/mesh_formats_web

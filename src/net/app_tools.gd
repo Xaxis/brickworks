@@ -3179,7 +3179,7 @@ func _parts_list(input: Dictionary) -> String:
 	if not which in ["need", "buildable"]:
 		return "which is model, need or buildable."
 	var shell: Shell = app.get("_shell")
-	var mine: CollectionStore = shell.collection.store if shell.collection != null else null
+	var mine: CollectionStore = shell.collection_store
 	if mine == null:
 		return "This app has no collection."
 	if mine.on_hand.is_empty() and not mine.collection.is_empty():

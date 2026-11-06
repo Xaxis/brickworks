@@ -119,7 +119,11 @@ which models they could build from what they have. Added 2026-10-12.
   the account's copy (`/api/collection`) is the one that counts, and a copy is
   written to `user://collection.json` whenever it arrives, tagged with whose it
   is; with no network the desktop works from that copy and says so. Loaded at
-  sign-in, so the assistant has it without the panel opening.
+  sign-in by the window's own store (`Shell.collection_store`), so the
+  assistant, Bring in a 3D model's box and `parts_list which=need` have it
+  without the panel, which is made on first use (Later) and reads the same
+  store. With the panel made on first use and fetching then, the first of
+  them read nothing (leaves3, 2026-11-06): `collection_arrives_probe`.
 - `a rebrickable account` (`src/collection/rebrickable_account.gd`): the app
   calls rebrickable.com itself (its API answers any page; the deploy's content
   security policy names it), `/users/{token}/sets/` and `/users/{token}/parts/`
@@ -267,6 +271,7 @@ curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   #
 ```sh
 python3 tools/minitest.py tests/test_collection.py        # a set's expansion against the raw tables
 godot --headless --path . --script src/dev/collection_probe.gd
+tools/probe.sh collection_arrives_probe   # fetched as they sign in, read first thing with no panel made
 godot --path . --resolution 1400x900 --script src/dev/collection_ui_probe.gd   # needs a display
 # building from a set's parts: the counts down, undo, delete, over, saved (1280x720; PROBE_SIZE=1400x900 too)
 tools/probe.sh setbin_probe -- --shots=DIR

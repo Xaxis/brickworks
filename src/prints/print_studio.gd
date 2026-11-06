@@ -75,6 +75,13 @@ func _cover(panel: Control, inset: int = 24) -> void:
 
 ## Print on a part: the one in hand, or a 2 x 2 tile.
 func print_part(part_id: String) -> void:
+	# The part maker the print areas are read with, compiled in a frame of
+	# its own the first time (Later): with the studio's own it held one
+	# frame 395 ms in a browser (leaves, 2026-11-05).
+	if not Later.loaded(&"PartEditor"):
+		await get_tree().process_frame
+		Later.script(&"PartEditor")
+		await get_tree().process_frame
 	# One part picked out in the model is printed where it stands: the
 	# printed part takes its place, in its colour, when it is saved.
 	_replacing = 0
