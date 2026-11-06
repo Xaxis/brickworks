@@ -23,6 +23,8 @@
 ##   does the timeline number its steps as the booklet does?
 ##   does a model with its author's steps get a booklet in those steps?
 ##   does every page fit its sheet (Booklet.PAGE inside A4 and Letter)?
+##   is each part in a parts box drawn from the side that tells it from
+##   its look-alikes: a dish and an inverted slope turned over?
 extends SceneTree
 
 var _failures: int = 0
@@ -55,6 +57,7 @@ func _run() -> void:
 	await _turned()
 	await _apart()
 	await _authored()
+	await _telling()
 	await _the_button()
 
 	print("")
@@ -423,6 +426,32 @@ func _parts_boxes(what: String, maker: BookletMaker, html: String) -> void:
 		% [what, drawn, lots, inventory], drawn == lots + inventory)
 
 
+## A dish's dome and an inverted slope's slope face down, so their pictures
+## in the parts boxes are drawn turned over; a round plate, a slope, a tile,
+## a jumper, a seat and an upturned dish stay as they stand. Builders took
+## 7140's black dish for a round plate on every run while its box drew its
+## top (partsbox, 2026-11-05).
+func _telling() -> void:
+	var world: BrickWorld = _world_of(LdrModel.parse(_TELLING, "telling.ldr"))
+	var made: Array = await _make(world, "telling")
+	var maker: BookletMaker = made[0]
+	print("\n  each part drawn from the side that tells it apart")
+	var over: Vector3 = BookletMaker.part_views()[1]
+	var turned := PackedStringArray()
+	var tall: Dictionary = {}
+	for lot: Booklet.Lot in maker.document.lots:
+		if BookletMaker.telling_view(lot.part_id, _library.mesh_for(lot.part_id)) == over:
+			turned.append(lot.part_id)
+		tall[lot.part_id] = lot.size.y / maxf(lot.size.x, 0.1)
+	turned.sort()
+	_assert("the dish and the inverted slopes are turned over, and only they (%s)"
+		% ", ".join(turned), turned == PackedStringArray(["2654a", "3665a", "3747a", "4871"]))
+	_assert("...so the dish's picture is its flat profile, not a round plate's top "
+		+ "(%.2f high to its width, the plate %.2f)" % [tall.get("2654a", 0.0),
+		tall.get("4032a", 0.0)],
+		float(tall.get("2654a", 1.0)) < float(tall.get("4032a", 0.0)) * 0.85)
+
+
 ## Every step entry, main and (with [param callouts]) a callout's own.
 func _entries(maker: BookletMaker, callouts: bool = false) -> Array[Booklet.Entry]:
 	var out: Array[Booklet.Entry] = []
@@ -465,6 +494,23 @@ func _assert(what: String, ok: bool) -> void:
 	print("  %s %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
 		_failures += 1
+
+
+## Look-alikes side by side on the ground: a black dish and a black round
+## plate, inverted slopes and a slope, a tile, a jumper, a seat and an
+## upturned dish.
+const _TELLING := """0 Telling parts
+1 0 0 -8 0 1 0 0 0 1 0 0 0 1 2654a.dat
+1 0 80 -8 0 1 0 0 0 1 0 0 0 1 4032a.dat
+1 0 160 -24 0 1 0 0 0 1 0 0 0 1 3665a.dat
+1 7 240 -24 0 1 0 0 0 1 0 0 0 1 3747a.dat
+1 8 320 -24 0 1 0 0 0 1 0 0 0 1 4871.dat
+1 4 0 -24 80 1 0 0 0 1 0 0 0 1 3039.dat
+1 0 80 -8 80 1 0 0 0 1 0 0 0 1 2431.dat
+1 15 160 -8 80 1 0 0 0 1 0 0 0 1 3794a.dat
+1 1 240 -8 80 1 0 0 0 1 0 0 0 1 4079.dat
+1 7 320 -8 80 1 0 0 0 1 0 0 0 1 4740.dat
+"""
 
 
 const _SHED := """0 FILE shed.ldr

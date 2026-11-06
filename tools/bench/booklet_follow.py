@@ -621,7 +621,9 @@ def carried(truth: Truth, judged: set[int], scope: list[int], parts: dict[int, d
 # -- make -----------------------------------------------------------------------------
 
 
-def make(model: Path, out: Path, app: Path) -> None:
+def make(model: Path, out: Path, app: Path, only: list[int] | None = None) -> None:
+    """The booklet and its truth, and its pages photographed: every page, or `only` these
+    (the castle's 324 take most of an hour, and a stretch needs a dozen)."""
     out.mkdir(parents=True, exist_ok=True)
     home = out / "xdg-make"
     home.mkdir(exist_ok=True)
@@ -642,8 +644,9 @@ def make(model: Path, out: Path, app: Path) -> None:
     truth = Truth.load(out / "truth.json")
     count = len(truth.data["pages"])
     shots = out / "pages"
-    if len(list(shots.glob("page-*.png"))) < count or page_scale(out) != SCALE:
-        pages = ",".join(str(n) for n in range(1, count + 1))
+    wanted = [n for n in (only or range(1, count + 1)) if 1 <= n <= count]
+    if any(not (shots / f"page-{n}.png").exists() for n in wanted) or page_scale(out) != SCALE:
+        pages = ",".join(str(n) for n in wanted)
         with (out / "pages.log").open("w") as log:
             status = subprocess.run(
                 [HEAVY, "node", str(ROOT / "tools" / "web" / "booklet_print.mjs"),
@@ -656,6 +659,15 @@ def make(model: Path, out: Path, app: Path) -> None:
     (out / "inventory.json").write_text(json.dumps(inventory(truth), indent=1) + "\n")
     shutil.rmtree(home, ignore_errors=True)
     print(f"make: {count} pages, {len(truth.parts)} parts, {len(truth.step_pages())} of steps")
+
+
+def _page_list(text: str) -> list[int]:
+    """Pages as a list says them: "2-5,9" is 2, 3, 4, 5 and 9."""
+    pages: list[int] = []
+    for piece in text.split(","):
+        low, _, high = piece.partition("-")
+        pages.extend(range(int(low), int(high or low) + 1))
+    return pages
 
 
 def page_scale(out: Path) -> int:
@@ -904,6 +916,7 @@ def main(argv: list[str]) -> int:
     m.add_argument("model", type=Path)
     m.add_argument("--out", type=Path, required=True)
     m.add_argument("--app", type=Path, default=ROOT)
+    m.add_argument("--pages", type=_page_list, help="photograph only these: 2-5,9")
     b = sub.add_parser("build")
     b.add_argument("out", type=Path)
     b.add_argument("--run", required=True)
@@ -922,7 +935,7 @@ def main(argv: list[str]) -> int:
     r.add_argument("--run", action="append", required=True)
     args = parser.parse_args(argv[1:])
     if args.command == "make":
-        make(args.model, args.out, args.app.resolve())
+        make(args.model, args.out, args.app.resolve(), args.pages)
     elif args.command == "build":
         build(args.out, args.run, args.port, args.first, args.last, args.each,
               args.app.resolve(), args.minutes, args.scratch)
