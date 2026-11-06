@@ -608,13 +608,14 @@ func _process(_delta: float) -> void:
 
 ## [param work] run on a thread of its own, waited for a frame at a time, and
 ## what it returned. A Thread's own answer: an Array element written from a
-## worker thread can read as null on this one.
+## worker thread can read as null on this one. Still running as the app
+## quits, it is waited for then (WorkerTasks.start): left to the engine, a
+## download being hashed dumped core on the way out.
 func _off_thread(work: Callable) -> Variant:
-	var thread := Thread.new()
-	thread.start(work)
+	var thread: Thread = WorkerTasks.start(work)
 	while thread.is_alive():
 		await get_tree().process_frame
-	return thread.wait_to_finish()
+	return WorkerTasks.finish(thread)
 
 
 ## The package made ready in [param folder]: {"item": the AppImage, folder,

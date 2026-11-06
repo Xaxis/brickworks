@@ -4417,11 +4417,11 @@ func _follow_booklet(number: String, file: String) -> void:
 	# Read off the frame, as a model opened is: a set's file is a few
 	# hundred parts, and the repository's largest tens of thousands.
 	var parsed: Array = []
-	var reading: int = WorkerThreadPool.add_task(func() -> void:
-		parsed.append(LdrModel.parse(text, str(chosen["file"]))))
+	var reading: int = WorkerTasks.add(func() -> void:
+		parsed.append(LdrModel.parse(text, str(chosen["file"]))), false, "read a set's model")
 	while not WorkerThreadPool.is_task_completed(reading):
 		await get_tree().process_frame
-	WorkerThreadPool.wait_for_task_completion(reading)
+	WorkerTasks.collect(reading)
 	_booklet = SetBooklet.make(parsed[0], model_name(chosen), str(chosen["file"]), _set_bin, library)
 	_step = 0
 	_step_by_hand = false
