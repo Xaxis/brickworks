@@ -436,6 +436,36 @@ commit. None of the ten needs the owner.
   - `mcp_sync`, `mcp`, `mcphand` pass;
   - then the MCP walk's 18 tasks (`docs/app_ux4/mcp_walk/`) rerun by a real
     session, its looks counted beside today's (said, not gated).
+- **Done** (unit seeing, 2026-11-05; `seeing` red on `pre261`, where
+  neither tool is served and `split_parts` takes no `picture=`; green at
+  1280 x 720 and 1400 x 900, every check, the pictures in
+  `bench/results/seeing-2026-11-05/`):
+  - six views of the car in **1 call**, 0.8 s, one 1536 x 1092 picture,
+    six labels, each view at most 0.0003 apart from `view_model`'s;
+  - `highlight=` the headlight brick, a 1 x 1 and a mudguard: 100% of each
+    one's edge magenta; the 21 other parts seen alone on the line of sight
+    at 19% of their strength at most;
+  - `xray=` the roof: the blue seat, 0 px in sight from the top without it,
+    33,594 px with it, all in the seat's own colour;
+  - `step=3`: steps 1 to 3's 15 parts, 0.0000 apart from them drawn alone;
+    100% of step 3's six parts' edges magenta, none elsewhere;
+  - `booklet_page` page 2 in 0.7 s, 0.0041 apart from the PDF's page 2
+    drawn by poppler at 1399 x 1035; nothing changed by either tool;
+  - `split_parts picture=true` answers with the whole model, the eight
+    pieces edged; unasked, `merge_parts` answers with a close look;
+    `picture=false` words alone;
+  - Best: "Path traced, 256 samples" on the RX 6700 XT; "64 frames
+    averaged", and why, with nothing behind the model or a card that
+    cannot trace;
+  - `mcp_sync`, `mcp`, `mcphand` pass, and `read_only`, `mcp_lean`,
+    `mcp_walk3`, `booklet_pdf`, `booklet3`, `buildvideo`;
+  - the MCP walk's 18 tasks again: **52 calls**, 57 before. Looks after
+    a hand tool, **0** (4 before): each of the five split, merge and
+    mirror calls answered with its picture. The pod checked from three
+    sides in one `view_board`. The booklet task looked at pages 2 and 3
+    with `booklet_page` and described them, where before it said it had
+    not seen the page. The Best render said "path traced, 256 samples",
+    where before it guessed.
 
 **2. likewords: Like this is about the part, not the last search.**
 - **Change.**
@@ -468,6 +498,30 @@ commit. None of the ten needs the owner.
   - over MCP in 1 call;
   - an .io with Studio-only parts comes in with them;
   - `unit_steps`, `steps_kept`, `io` and `given_file` pass.
+- **Done** (unit intomodel, 2026-11-05; every line met: `intomodel_probe`
+  red on `pre261`, where it cannot load, the store having no way to open a
+  model into another; green at 1280 x 720 and 1400 x 900, 53 checks each,
+  none failed, the pictures in `bench/results/intomodel-2026-11-05/`):
+  - the gatehouse (14 parts, 5 steps, a base and a window put on twice)
+    into the car in **2 actions**, its row in File, Import, Into this
+    model… and a click: one sub-assembly, `Gatehouse#1`, its sub-models
+    inside it; every part **0.0000 LDU** and 0.00000 turned off its place
+    against the others; its 5 steps kept as its own, each copy's in it
+    too; the car given the 15 steps it was shown, the gatehouse in step 16;
+  - **one Ctrl+Z** takes all 14 out, the car's parts and steps as they were;
+  - `open_model {"into": true, "name": "Gatehouse"}` in **1 call**, beside
+    the car, the same checks;
+  - `whole_2025.io` comes in with all 6 parts, the **4 only Studio has**
+    among them, each drawn;
+  - `unit_steps` 231, `steps_kept` 119, `io` 74 and `given_file` 5 checks
+    pass.
+  - The library's sets and gallery models have Put in this model: 106-1
+    in hand in one click, credited to its maker; a gallery model whose
+    maker kept every right is greyed and says why. Saved and opened again,
+    it is as it was put in. Every new word in German, French and Spanish.
+  - Before, on pre261: no Into this model, no Put in this model, no
+    `into`; a person opened the gatehouse, selected all, copied, switched
+    back and pasted, about 5 actions, and the copy kept no steps.
 
 **4. picklist: buying from LEGO, and a fuller BrickLink list.**
 - **Change.**
@@ -485,6 +539,28 @@ commit. None of the ten needs the owner.
     each tag as BrickLink's wanted list help documents it (nothing
     uploaded: an upload is bricklink's, parked);
   - `inventory` passes.
+- **Done** (picklist, 2026-11-05; `picklist_probe`, red on pre261 with
+  20 failures, green at 1280 x 720, 1400 x 900 and on a phone):
+  - the car's list: 31 lines for its 31 elements, summing to the 59 of its
+    61 pieces that have one, as LEGO's template writes it
+    (`elementId,quantity`, CRLF); the one lot with none named on the status
+    line and in the parts list's note at its foot, where no row moves for
+    it ("2 × Windscreen 2 x 4 x 2 in Trans Very Light Blue (3823)"); the same from File, Export,
+    the parts list's LEGO® Pick a Brick button, and `export_model
+    {"format": "pickabrick"}` in 1 call;
+  - 450 lots, each an element of its own: `_1.csv` of 400 lines and
+    `_2.csv` of 50, every element on one;
+  - the arrow beside the parts list's BrickLink asks the condition, the
+    wanted list's ID and the email: new, list 1234567 and email put
+    CONDITION N, WANTEDLISTID 1234567 and NOTIFY Y in all 32 items, kept for
+    File, Export; used, the main list and no email put U and leave the other
+    two out; new or used leaves CONDITION out; over MCP `condition`,
+    `wanted_list` and `notify` do the same, and a condition or ID BrickLink
+    has not is refused with its choices. Every tag is one helpID=207 lists,
+    in its order, with a value it allows (its text kept in
+    `bench/results/picklist-2026-11-05/`). Nothing is uploaded;
+  - `inventory` passes, and `app_tools`, `mcp_sync`, `save_dialog`,
+    `share_view` and `languages`.
 
 **5. tracks: train tracks join end to end.**
 - **Change.**

@@ -622,7 +622,6 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 		made_with = "hand"
 	# Nobody's file: written whole, where it stands.
 	_source = null
-	_own_header = PackedStringArray()
 	_opened_in = -1
 	begun.emit(title)
 
@@ -1324,31 +1323,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# The author's steps go on to every part; steps Brickworks worked out
 	# and wrote are no one's, and are worked out again (LdrModel).
 	var authored: bool = model.steps_are_authored()
-	# A mirrored copy's parts: each put where its reflection is, in its
-	# other hand where it has one.
-	var mirrored_lines: Dictionary = {}
-	for item: Variant in flattened:
-		var placement: LdrModel.Placement = item
-		if not authored:
-			placement.step = -1
-		placement.part_id = studio_part(placement.part_id, library)
-		if placement.mirrored:
-			mirrored_lines["%d|%s" % [placement.line, placement.unit]] = true
-			Assemblies.unmirror(placement, library)
-		# A retired number as the part it became, where its stub puts it
-		# (PartLibrary.moved_by), before the lift is worked out from it and
-		# before it waits for geometry by the right name.
-		var real: String = library.resolve(placement.part_id)
-		if real != placement.part_id:
-			placement.transform = placement.transform * library.moved_by(placement.part_id)
-			placement.part_id = real
-		# A part LDraw draws in one colour only, kept for old files, as the
-		# part it draws in that colour (303923, 3039 in blue): drawn the same,
-		# and the parts list and a BrickLink order name a part made now.
-		var colour: int = library.current_colour(placement.part_id)
-		if colour >= 0:
-			placement.part_id = library.current(placement.part_id)
-			placement.color_code = colour
+	var mirrored_lines: Dictionary = _as_placed(flattened, library, authored)
 	# A model saved with no parts opens as that: an empty model under its
 	# name. It was refused as "no parts", and the model before it was left
 	# on the baseplate for a save to write under this one's name.
@@ -1435,7 +1410,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_told_not_coming = false
 	_phase("clear")
 	_source = source
-	_own_header = read["header"]
 	_opened_in = world.generation()
 	_opens_in = world.generation()
 	# Whatever arrives from now is put down in this model (place_awaited).
@@ -1660,6 +1634,39 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 ## line as a model saved empty is, here or by any LDraw tool. A file of
 ## anything else places nothing because it is not a model, and opening it
 ## would put an empty baseplate where the person's model was.
+## A file's placements made what this library puts down, in place: Studio's
+## names as LDraw's, a retired number as the part it became, a part drawn
+## in one colour only as the part it draws, and a mirrored copy's parts each
+## where its reflection is, in its other hand where it has one. Steps the
+## file's author did not give are cleared ([param authored]). Returns the
+## mirrored placements' lines ("line|unit" -> true), for SourceFile.
+static func _as_placed(flattened: Array, library: PartLibrary, authored: bool) -> Dictionary:
+	var mirrored_lines: Dictionary = {}
+	for item: Variant in flattened:
+		var placement: LdrModel.Placement = item
+		if not authored:
+			placement.step = -1
+		placement.part_id = studio_part(placement.part_id, library)
+		if placement.mirrored:
+			mirrored_lines["%d|%s" % [placement.line, placement.unit]] = true
+			Assemblies.unmirror(placement, library)
+		# A retired number as the part it became, where its stub puts it
+		# (PartLibrary.moved_by), before the lift is worked out from it and
+		# before it waits for geometry by the right name.
+		var real: String = library.resolve(placement.part_id)
+		if real != placement.part_id:
+			placement.transform = placement.transform * library.moved_by(placement.part_id)
+			placement.part_id = real
+		# A part LDraw draws in one colour only, kept for old files, as the
+		# part it draws in that colour (303923, 3039 in blue): drawn the same,
+		# and the parts list and a BrickLink order name a part made now.
+		var colour: int = library.current_colour(placement.part_id)
+		if colour >= 0:
+			placement.part_id = library.current(placement.part_id)
+			placement.color_code = colour
+	return mirrored_lines
+
+
 static func _why_not_a_model(text: String) -> String:
 	var lines: int = 0
 	var drawn: bool = false
@@ -1687,7 +1694,6 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"looks": BookletLooks.read(text, model._assembly_names(), LdrModel._key(model.main.name))
 			if authored else {},
 		"title": title_meta_in(text) if foreign else "",
-		"header": PackedStringArray() if foreign else SourceFile.header_of(text.split("\n")),
 		"share": share_in(text),
 		"remix": remix_in(text),
 		"remix_version": remix_version_in(text),
@@ -1958,12 +1964,6 @@ static func studio_part(part_id: String, library: PartLibrary) -> String:
 ## Only while the world is the one it was opened into ([member _opened_in]).
 var _source: SourceFile = null
 var _opened_in: int = -1
-## The header of the app's own file the model was opened from, the lines
-## it does not write itself (SourceFile.header_of): written back under its
-## own on every save, while the world is the one it was opened into. The
-## castle's "0 // Designed by the assistant from: ..." went with every save,
-## edited or not (keeptext).
-var _own_header: PackedStringArray = PackedStringArray()
 ## Parts the file holds that are not on the baseplate, by number, how many
 ## of each: not in the library, or a flexible part's skin. Kept in the file
 ## when it is someone else's, and said when it opens.
@@ -2052,16 +2052,13 @@ func _source_asked(title_now: String) -> Dictionary:
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
 			waiting["%d|%s" % [placement.line, placement.unit]] = true
-	# The copies' steps where the model has steps: the file's, or those a
-	# step edit gave a model whose file had none (SourceFile.write).
-	var authored: bool = AuthorSteps.any(world, scenery)
 	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting,
 		"library": library, "title": title_now,
-		"unit_steps": world.unit_steps.duplicate(true) if source.authored or authored else {},
+		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
 		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
 		"pins": pins.lines(world, _lift_now()),
-		"authored": authored, "set": from_set}
+		"authored": AuthorSteps.any(world, scenery), "set": from_set}
 
 
 ## The source file with the parts [method _source_asked] copied written into
@@ -2496,8 +2493,6 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		text = _live_source().carried_into(text, waiting)
 		# And LDCad's hoses keep their paths, where they now lie.
 		text = LdcadPath.written_into(text, _live_source(), library)
-	elif world.generation() == _opened_in and not _own_header.is_empty():
-		text = _with_header(text, _own_header, true)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
@@ -2993,3 +2988,139 @@ static func _safe_name(name: String) -> String:
 			out += character
 	out = out.strip_edges().replace("  ", " ")
 	return out.substr(0, 60)
+
+
+# -- a model into this one ------------------------------------------------------
+
+
+## A model put into the one open as a sub-assembly of its own (File, Import,
+## Into this model…; the library's Put in this model; open_model into=true),
+## read as an open reads it and put on nothing: its parts as Carry holds
+## them, each where the file puts it against the others, under one copy of a
+## definition named for the model ("Gatehouse#1"), its sub-models copies
+## inside that one, and its author's steps kept as the sub-assembly's: each
+## part's within its own sub-model, each copy's within the one that places
+## it. Parts the file carries (a Studio file's own) join the library first.
+## A definition named as one in this model already is renamed ("window 2"):
+## two definitions of one name are copies of each other, and an edit to one
+## would build the other again from it. [param called] names it, else the
+## file's title. LeoCAD puts another file in as a reference in two actions;
+## here it was open, select all, copy, switch, paste (APP_UX4, intomodel).
+##
+## {"items" (Carry.framed), "units" (path in hand -> its step, the whole's
+## -1: given where it is put down, Builder._put_carried), "root" (the whole's
+## path in hand), "name", "parts", "steps" (the whole's own), "missing"
+## (part id -> count), "error"}.
+func held_from(text: String, file_name: String, job: Working.Job = null,
+		called: String = "") -> Dictionary:
+	var out: Dictionary = {"items": [], "units": {}, "root": "", "name": "", "parts": 0,
+		"steps": 0, "missing": {}, "error": ""}
+	var model: LdrModel = LdrModel.parse(text, file_name)
+	if model == null:
+		out["error"] = "that is not an LDraw file"
+		return out
+	var taken: Array = []
+	if job != null:
+		await CustomParts.readers_done(library)
+		await CustomParts.take_into(taken, library, model, job)
+	else:
+		CustomParts.take_into(taken, library, model, null)
+	var flattened: Array = model.flatten(library.parts)
+	var authored: bool = model.steps_are_authored()
+	_as_placed(flattened, library, authored)
+	var known: Array = []
+	var missing: Dictionary = {}
+	var waiting: Dictionary = {}
+	for item: Variant in flattened:
+		var placement: LdrModel.Placement = item
+		if not library.parts.has(placement.part_id):
+			missing[placement.part_id] = int(missing.get(placement.part_id, 0)) + 1
+			continue
+		if not library.is_resident(placement.part_id):
+			waiting[placement.part_id] = true
+		known.append(placement)
+	out["missing"] = missing
+	if known.is_empty():
+		out["error"] = ("it has no parts" if flattened.is_empty()
+			else "none of the %d parts in it are in the library (%s)" % [missing.size(),
+				named_counts(missing)])
+		return out
+	# On the web most parts are fetched when first wanted: Carry frames
+	# the hand by every part's box.
+	if not waiting.is_empty():
+		await _await_geometry(waiting, job if job != null else Working.Job.new())
+	var names: Dictionary = _definitions_here()
+	var whole: String = _free_definition(called if not called.strip_edges().is_empty()
+		else _title_of(model, file_name), names)
+	var root: String = whole + "#1"
+	var renamed: Dictionary = {}
+	var placed: Array = []
+	var own_steps: Dictionary = {}
+	for item: Variant in known:
+		var placement: LdrModel.Placement = item
+		if library.mesh_for(placement.part_id) == null:
+			continue
+		var inner: String = Assemblies.path_from(placement.group, placement.unit)
+		var path: String = root if inner.is_empty() \
+			else Assemblies.join(root, _renamed_in(inner, names, renamed))
+		placed.append({"part": placement.part_id, "color": placement.color_code,
+			"at": placement.transform, "group": Assemblies.group_of(path), "unit": path,
+			"step": placement.step})
+		if inner.is_empty() and placement.step >= 0:
+			own_steps[placement.step] = true
+	if placed.is_empty():
+		out["error"] = "none of its parts could be drawn"
+		return out
+	var units: Dictionary = {root: -1}
+	if authored:
+		for unit: String in model.unit_steps:
+			units[Assemblies.join(root, _renamed_in(unit, names, renamed))] = int(model.unit_steps[unit])
+			if not unit.contains("/") and int(model.unit_steps[unit]) >= 0:
+				own_steps[int(model.unit_steps[unit])] = true
+	Language.keep_name(whole)
+	for kind: String in renamed.values():
+		Language.keep_name(kind)
+	out.merge({"items": Carry.framed(placed, library), "units": units, "root": root,
+		"name": whole, "parts": placed.size(), "steps": own_steps.size()}, true)
+	return out
+
+
+## Every definition of a sub-assembly this model has, by name, and the
+## numbers a copy taken off still holds a step under (Assemblies.next_copy).
+func _definitions_here() -> Dictionary:
+	var names: Dictionary = {}
+	var paths: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		paths[Assemblies.path_of(brick)] = true
+	for path: Variant in paths.keys() + world.unit_steps.keys():
+		for segment: String in Assemblies.segments(str(path)):
+			names[Assemblies.definition(segment)] = true
+	return names
+
+
+## [param wanted], or "wanted 2", "wanted 3", whichever [param names] has
+## not got, as Assemblies.unused_name makes one; taken into [param names].
+static func _free_definition(wanted: String, names: Dictionary) -> String:
+	var base: String = wanted.strip_edges().replace("/", "-").replace("#", "")
+	if base.is_empty():
+		base = "Sub-assembly"
+	var free: String = base
+	var n: int = 2
+	while names.has(free):
+		free = "%s %d" % [base, n]
+		n += 1
+	names[free] = true
+	return free
+
+
+## A path in the file brought in, each definition in it as named here: a
+## name this model uses already given another ([method _free_definition]),
+## the same one each time it comes ([param renamed], definition -> name).
+static func _renamed_in(path: String, names: Dictionary, renamed: Dictionary) -> String:
+	var out: String = ""
+	for segment: String in Assemblies.segments(path):
+		var kind: String = Assemblies.definition(segment)
+		if not renamed.has(kind):
+			renamed[kind] = _free_definition(kind, names)
+		out = Assemblies.join(out, "%s#%d" % [renamed[kind], Assemblies.copy_of(segment)])
+	return out

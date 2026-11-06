@@ -2061,7 +2061,9 @@ func _callout_by_hand(base: String) -> void:
 	var page: int = -1
 	for n: int in 30:
 		var now: int = int(editor.page_state().get("page", -1))
-		if str(editor.page_state().get("kind", "")) == "callout":
+		# The first of its pages, not the first met: from the attach step,
+		# Previous page meets its last page first once it takes two.
+		if str(editor.page_state().get("kind", "")) == "callout" and now == target:
 			page = now
 			break
 		if target < 0:
@@ -2262,8 +2264,12 @@ func _first_look_adopts(base: String) -> void:
 	_check("a model with no steps of its own, Zoom in on step 3 (\"%s\"): one undo step, the "
 		% said + "worked-out steps its own", _history() == history + 1
 		and AuthorSteps.any(_world, _store.scenery))
-	_check("...saved with its steps, said to be the author's, and the zoom",
-		saved.contains("\n0 STEP") and saved.contains(LdrModel.AUTHORED_META)
+	# Someone else's file takes the steps in place (keeptext): its own Author
+	# line says they are the author's, so the app's mark is needed only on a
+	# file the app wrote. Read back, they must be the author's either way.
+	var reread: LdrModel = LdrModel.parse(saved, "saved.ldr")
+	_check("...saved with its steps, read back as the author's, and the zoom",
+		saved.contains("\n0 STEP") and reread != null and reread.steps_are_authored()
 		and saved.contains("0 !BRICKWORKS ZOOM 1.25"))
 	_builder.undo()
 	await _frames(2)

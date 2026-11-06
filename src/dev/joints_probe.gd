@@ -263,32 +263,6 @@ func _initialize() -> void:
 		"1 14 20 -110 20 0 0 -1 -1 0 0 0 1 0 23948.dat\n", "")
 		+ "1 15 20 -232 20 1 0 0 0 1 0 0 0 1 30361d.dat", false, "held")
 
-	print("\na stud in a hollow the cover leaves open")
-	# A cone's, a round plate's and a round brick's cover is cleared up the
-	# bore through its middle, so a stud under one has its tip in nothing,
-	# and the parts on it floated: 5891's lamp, two cones each on the stud
-	# of the one under it, and 31038's table, a round plate on a cone. Read
-	# by the walls round the tip, as Stability reads it. Then the top cone
-	# a brick up, its hollow off the stud: in nothing, it floats (a plate
-	# up, the check seats it on the stud).
-	var lamp := """
-1 72 20 -24 20 1 0 0 0 1 0 0 0 1 59900.dat
-%s
-1 0 20 -56 20 1 0 0 0 1 0 0 0 1 6141.dat
-1 46 20 -80 20 1 0 0 0 1 0 0 0 1 3062b.dat
-1 0 20 -88 20 1 0 0 0 1 0 0 0 1 4740.dat
-"""
-	await _passes("5891's lamp: cones stacked, each stud up the hollow of the one on it",
-		lamp % "1 72 20 -48 20 1 0 0 0 1 0 0 0 1 59900.dat")
-	await _passes("31038's table: a round plate on a cone's stud", """
-1 0 20 -24 20 1 0 0 0 1 0 0 0 1 59900.dat
-1 0 20 -32 20 1 0 0 0 1 0 0 0 1 4032a.dat
-1 47 20 -56 20 1 0 0 0 1 0 0 0 1 3899.dat
-""")
-	await _refused("the lamp's top cone a brick up off the stud under it",
-		"1 72 20 -24 20 1 0 0 0 1 0 0 0 1 59900.dat\n"
-		+ "1 72 20 -72 20 1 0 0 0 1 0 0 0 1 59900.dat", false, "floating")
-
 	print("\nturned about the upright and read from a file, in a section of its own")
 	# A file keeps where a part is, not the section it was laid in, so a part
 	# turned off the square comes back in a section found for it

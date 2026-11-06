@@ -1148,17 +1148,23 @@ def _tab_env(env: dict[str, str], home: Path, claude_code: bool) -> dict[str, st
     can tell (ClaudeCode.found() looks on PATH, then where installers put it under
     HOME): a home of its own, and each folder of PATH that holds claude stood in for
     by one with everything else of that folder, so godot, xvfb-run and the rest are
-    found as before. Caches stay where they were, so drawing is no slower."""
+    found as before. The stand-in is the run's, beside the tabs' homes and not in one:
+    a home goes when its design ends, and a drawer the tab started still waiting for
+    the GPU's lease then found no xvfb-run (44 relay designs' logs end on it,
+    2026-10-29 to 11-05). Caches stay where they were, so drawing is no slower."""
     if claude_code:
         return env
-    kept = home / "bin-without-claude"
+    kept = home.parent / "bin-without-claude"
     kept.mkdir(parents=True, exist_ok=True)
     path: list[str] = []
     for folder in env.get("PATH", os.defpath).split(os.pathsep):
         if folder and (Path(folder) / "claude").exists():
             for entry in Path(folder).iterdir():
                 if entry.name != "claude" and not os.path.lexists(kept / entry.name):
-                    (kept / entry.name).symlink_to(entry)
+                    try:
+                        (kept / entry.name).symlink_to(entry)
+                    except FileExistsError:     # another of the run's tabs, just now
+                        pass
             folder = str(kept)
         if folder and folder not in path:
             path.append(folder)

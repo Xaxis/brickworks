@@ -1221,6 +1221,14 @@
       "tests": []
     },
     {
+      "id": "cli:intomodel probe",
+      "kind": "cli",
+      "entry": "src/dev/intomodel_probe.gd",
+      "reach": "tools/probe.sh intomodel_probe   (a window, 1280 x 720 or PROBE_SIZE=1400x900; starts tools/web/serve.py --library tests/fixtures/library on 9801 and stops it)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:judge design rounds in pairs",
       "kind": "cli",
       "entry": "tools/bench/pairwise.py",
@@ -1761,6 +1769,14 @@
       "entry": "src/dev/picker_folder_probe.gd",
       "reach": "tools/probe.sh picker_folder_probe",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "cli:picklist probe",
+      "kind": "cli",
+      "entry": "src/dev/picklist_probe.gd",
+      "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -3815,6 +3831,14 @@
       "tests": []
     },
     {
+      "id": "lib:what a session sees over mcp",
+      "kind": "lib",
+      "entry": "src/net/see_tools.gd",
+      "reach": "PROBE_SIZE=1400x900 tools/probe.sh seeing   (view_board: six views in one labelled picture, highlight= edged with the rest see-through, xray=, step=N; booklet_page as the PDF prints it; split/merge/mirror pictured; render_model Best says how it was drawn)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "lib:what moves in a model",
       "kind": "lib",
       "entry": "src/assembly/playable.gd",
@@ -3964,6 +3988,14 @@
       "entry": "tools/viewer/inline.js",
       "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/start3d.js imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:a model into this one",
+      "kind": "ui",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (File, Import, Into this model\u2026: a saved model, an example, a file or the library's; in hand as one sub-assembly with its steps, a click puts it down, one undo takes it out; the library's Put in this model; open_model into=true over MCP)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -4811,7 +4843,7 @@
       "id": "ui:parts lists for shops",
       "kind": "ui",
       "entry": "src/assembly/shop_lists.gd",
-      "reach": "godot --path .  (File, Export, then BrickLink wanted list or Rebrickable parts list)",
+      "reach": "godot --path .  (File, Export, then BrickLink wanted list, Rebrickable parts list or LEGO\u00ae Pick a Brick list; or the parts list's BrickLink, its choices beside it, Rebrickable and LEGO\u00ae Pick a Brick)  /  export_model format=pickabrick, format=bricklink condition= wanted_list= notify=",
       "area": "model-io",
       "tests": []
     },

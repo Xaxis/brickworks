@@ -149,7 +149,7 @@ func register(brick_id: int, part_id: String, at: Transform3D) -> bool:
 		cover = [packed, bound, BrickLattice._rows_of(packed, bound)
 			if packed.size() > BrickLattice.ROWS_FROM * 6 else []]
 		(by_basis as Dictionary)[at.basis] = cover
-	lattice.occupy_moved(brick_id, cover, BrickLattice.grid_cell(at.origin))
+	lattice.occupy_moved(brick_id, cover, BrickLattice.to_cell(at.origin))
 	return true
 
 
@@ -1216,7 +1216,7 @@ static func _cells_moved(from: Transform3D, to: Transform3D) -> Variant:
 	var off: Vector3 = (by - Vector3(cells)).abs()
 	if maxf(off.x, maxf(off.y, off.z)) > 0.001:
 		return null
-	if BrickLattice.grid_cell(to.origin) != BrickLattice.grid_cell(from.origin) + cells:
+	if BrickLattice.to_cell(to.origin) != BrickLattice.to_cell(from.origin) + cells:
 		return null
 	return cells
 
@@ -2210,16 +2210,18 @@ func _put_carried() -> int:
 		world.get_brick(brick_id).unit = unit
 		if not carrying.lifted and copy_group.is_valid():
 			set_path(world.get_brick(brick_id), path)
-		# Moved, a part keeps its build step; a copy goes in the step a
-		# placed part would.
-		world.get_brick(brick_id).step = int(item.get("step", -1)) if carrying.lifted \
-			else _new_step(world.get_brick(brick_id))
+		# Moved, a part keeps its build step, and so does a model brought
+		# in whole; a copy goes in the step a placed part would.
+		world.get_brick(brick_id).step = int(item.get("step", -1)) \
+			if carrying.lifted or carrying.brought else _new_step(world.get_brick(brick_id))
 		lattice.occupy_boxes(brick_id, item["boxes"])
 		steps.append({"undo": "remove", "brick": brick_id})
 		ids.append(brick_id)
 	if ids.is_empty():
 		return 0
 	var words: String = "pasted %s" % _many(ids.size())
+	if carrying.brought:
+		words = _bring_steps(steps, renamed, ids)
 	if carrying.lifted and _lift_on_top():
 		# One move: what picked it up and what put it down undo together.
 		steps.append_array(_history.pop_back()["steps"])
@@ -2241,6 +2243,55 @@ func _put_carried() -> int:
 	selection_changed.emit(selection.size())
 	placed.emit(ids[0], world.get_brick(ids[0]).part_id)
 	return ids[0]
+
+
+# -- a model brought into this one -------------------------------------------
+
+
+## The step a model brought into this one whole goes on in, within the
+## sub-assembly being edited ([member place_group]): the step showing, as a
+## part put down by hand goes in, else after that one's last step, built
+## last and put on last; -1, none, in a model nobody gave steps. Its own
+## parts, [param skip], are not counted.
+func _brought_step(skip: Dictionary) -> int:
+	var shown: int = int(place_step.call(place_group)) if place_step.is_valid() else -1
+	if shown >= 0:
+		return shown
+	var had: Array = AuthorSteps.steps_in(world, AuthorSteps.home(world, place_group), skip)
+	return int(had.max()) + 1 if not had.is_empty() else -1
+
+
+## A model brought in whole, its parts [param ids] down: each copy of a
+## sub-model in it (Carry.brought_units) put on in the step its author gave
+## it, under the path this put-down gave it ([param renamed]), and the whole
+## after the last step of the one it went into ([method _brought_step]).
+## Into a model nobody gave steps, one that has them makes the steps that
+## model was shown its own first (AuthorSteps.adopt_plan), as its first step
+## edit would: else its parts, numbered after the steps brought in, came
+## after them, every step one later than the person had read it. Each a
+## step of [param steps], so the one undo that takes its parts off takes
+## these too. What the history calls it.
+func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> String:
+	var skip: Dictionary = {}
+	for brick_id: int in ids:
+		skip[brick_id] = true
+	var stepped: bool = carrying.brought_units.values().any(
+		func(step: Variant) -> bool: return int(step) >= 0) or carrying.items.any(
+		func(item: Dictionary) -> bool: return int(item.get("step", -1)) >= 0)
+	if stepped:
+		steps.append_array(AuthorSteps.adopt_plan(world, library, skip))
+	var at: int = _brought_step(skip)
+	var whole: String = ""
+	for path: String in carrying.brought_units:
+		var now: String = str(renamed.get(path, path))
+		var step: int = int(carrying.brought_units[path])
+		if step == -1 and not path.contains("/"):
+			whole = now
+			step = at
+		if step != -1:
+			steps.append(_apply({"undo": "unitstep", "unit": now, "step": step}))
+	return "put in %s, %s" % [Assemblies.definition(Assemblies.leaf(whole)), _many(ids.size())] \
+		if not whole.is_empty() else "put in %s" % _many(ids.size())
 
 
 ## Work out where the held part would go, given a ray from the camera.
@@ -3752,7 +3803,7 @@ var _stretched_off_main: Dictionary = {}
 func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 	if part == null:
 		return PackedInt32Array()
-	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
 	var stretch := Vector3(at.basis.x.length(), at.basis.y.length(), at.basis.z.length())
 	if not stretch.is_equal_approx(Vector3.ONE) and at.basis.determinant() > 0.0:
 		# A part stretched, as LDraw lets a file do: a hose's one-LDU piece
@@ -3849,7 +3900,7 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 func turned_cover(part: Lbm.PartMesh, at: Transform3D) -> BrickLattice.TurnedCover:
 	if part == null:
 		return null
-	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
 	var on_main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
 	var stretch := Vector3(at.basis.x.length(), at.basis.y.length(), at.basis.z.length())
 	if not stretch.is_equal_approx(Vector3.ONE) and at.basis.determinant() > 0.0:
@@ -4032,7 +4083,7 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 	# else's .ldr need not be — and squaring it up first, which is what
 	# used to happen here, meant a brick turned thirty degrees reserved
 	# the cells of a brick turned none.
-	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
 	if BrickLattice.is_square_to_grid(at.basis):
 		return BrickLattice.cells_for(_cover_boxes(part), cell, at.basis)
 	return BrickLattice.cells_for_turned(_cover_boxes(part), cell, at.basis)
@@ -4068,7 +4119,7 @@ func _cell_span(part: Lbm.PartMesh, at: Transform3D) -> Array:
 		hi = hi.max(to - Vector3i.ONE)
 	if lo.x == 0x7FFFFFFF:
 		return []
-	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
 	return [lo + cell, hi + cell]
 
 

@@ -6047,7 +6047,7 @@ func _corners_in_studs(brick: BrickWorld.Brick) -> Array:
 	# Named by the same corner a placement is written with, or a model read
 	# back and written again moves every part drawn inside its footprint.
 	if BrickLattice.is_square_to_grid(brick.transform.basis):
-		lo = BrickLattice.grid_cell(brick.transform.origin) + _corner_cell(part,
+		lo = BrickLattice.to_cell(brick.transform.origin) + _corner_cell(part,
 			brick.part_id, BrickLattice.snap_basis(brick.transform.basis))
 	var near: Vector3 = BrickLattice.to_ldu(lo)
 	# One cell past the last one filled, because a cell is a step and
@@ -12901,7 +12901,7 @@ func _written_at(model: Model, placement: Placement, mesh: Lbm.PartMesh, at: Tra
 		placement.rot = BrickLattice.turns_about(basis, placement.face)
 		var corner: Vector3i = _corner_cell(mesh, placement.part,
 			BrickLattice.basis_for(placement.face, placement.rot))
-		var cell: Vector3i = BrickLattice.grid_cell(local.origin)
+		var cell: Vector3i = BrickLattice.to_cell(local.origin + Vector3.ONE * 0.001)
 		placement.x = _into_cell(cell.x + corner.x, STUD)
 		placement.y = _into_cell(cell.y + corner.y, PLATE)
 		placement.z = _into_cell(cell.z + corner.z, STUD)
@@ -14110,7 +14110,7 @@ func _seat_exactly(model: Model, exact: ExactCheck) -> String:
 		# The cell the seated origin is in, written as its own number of studs
 		# and plates, and the rest of the way as a nudge: whole cells for a
 		# move of whole cells, an LDU over for a round part's odd stud.
-		var cell: Vector3i = BrickLattice.grid_cell(at.origin)
+		var cell: Vector3i = BrickLattice.to_cell(at.origin + Vector3.ONE * 0.001)
 		var was := [placement.x, placement.y, placement.z, placement.nudge]
 		placement.x = _into_cell(cell.x + corner.x, STUD)
 		placement.y = _into_cell(cell.y + corner.y, PLATE)

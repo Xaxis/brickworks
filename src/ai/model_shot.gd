@@ -201,6 +201,20 @@ var marks: Array = []
 ## that it cannot be mistaken for a colour somebody chose.
 const PICKED_OUT := 5
 
+## Bricks drawn see-through, by number, as the window's X-ray draws them
+## (BrickWorld.set_xray): a faint fill and an edge, so what they hide is
+## in the picture. A session asks for it (SeeTools' xray= and highlight=).
+var see_through: Dictionary = {}
+## Bricks edged in magenta, by number, in their own colours: the parts a
+## session asked to see picked out, as ldraw-xray edges them, and a step's
+## new parts (SeeTools). Each part's own edge, found where the part each
+## pixel shows changes (booklet_codes), as the booklet finds its ink.
+var edged: Dictionary = {}
+## The edge's colour: [constant PICKED_OUT]'s magenta, at full strength.
+const EDGE := Color(1.0, 0.0, 1.0)
+## Half the edge's width, px of a picture [constant SIZE] across.
+const EDGE_REACH := 2.5
+
 
 ## What was last staged, so a second picture of an unchanged model does not
 ## stage it again: the world, its revision, what was left out and what was
@@ -213,6 +227,8 @@ var _staged_bounds := AABB()
 ## And every corner of every part staged, each part's box turned with it:
 ## what a picture is framed on (Picture.add_corners).
 var _staged_corners := PackedVector3Array()
+## The model's brick numbers -> the stage's: x-ray names the stage's.
+var _on_stage: Dictionary = {}
 
 
 ## What a staging is kept by: the world, its revision, what was left out
@@ -232,6 +248,7 @@ func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
 		return _staged_bounds
 	_staged = wanted
 	_stage.clear()
+	_on_stage.clear()
 	_stage.hold_drawing()
 	var pace := FramePace.new()
 	var box := AABB()
@@ -256,7 +273,9 @@ func _restage(world: BrickWorld, skip: Dictionary) -> AABB:
 		# the same reason.
 		var colour: int = PICKED_OUT if highlight.has(brick.id) \
 			else brick.color_code
-		_stage.add_brick(brick.part_id, colour, brick.transform)
+		var staged_as: int = _stage.add_brick(brick.part_id, colour, brick.transform)
+		if staged_as != 0:
+			_on_stage[brick.id] = staged_as
 		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		if part == null:
 			continue
@@ -377,6 +396,13 @@ func _take(world: BrickWorld, from: String,
 	var bounds: AABB = await _restage(world, skip)
 	if bounds.size.length() <= 0.0:
 		return null
+	# Drawn see-through on the stage, by the stage's numbers; none is x-ray
+	# off. Written at this frame's end, before it is drawn.
+	var ghosts: Dictionary = {}
+	for brick_id: int in see_through:
+		if _on_stage.has(brick_id):
+			ghosts[_on_stage[brick_id]] = true
+	_stage.set_xray(ghosts)
 	# Staged in full either way, so what is around the part being looked
 	# at is still in the picture — a close look at a nacelle that had
 	# cut the hull out of it would not show whether the two meet.
@@ -504,7 +530,138 @@ func _take(world: BrickWorld, from: String,
 			taken = image
 			break
 	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	if taken != null and not edged.is_empty():
+		taken = await _edges_on(taken, world, skip)
 	return taken
+
+
+# -- parts edged in magenta ---------------------------------------------------------
+#
+# A second picture from the same camera, of which part each pixel shows
+# (booklet_codes, as the booklet finds where to draw its ink), and a pass
+# that draws magenta wherever that changes beside an edged part: each
+# part's own outline, the seam between two of them too, and only where the
+# part is in sight. What is see-through is left out of it, so a part
+# behind a ghost is edged where it shows through.
+
+var _codes: SubViewport
+var _codes_camera: Camera3D
+var _codes_stage: BrickWorld
+var _codes_material: ShaderMaterial
+var _codes_staged: Array = []
+var _marks: SubViewport
+var _marks_rect: ColorRect
+
+
+func _build_edges() -> void:
+	_codes = SubViewport.new()
+	_codes.size = Vector2i(SIZE, SIZE)
+	_codes.msaa_3d = Viewport.MSAA_DISABLED
+	_codes.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	_codes.use_taa = false
+	_codes.use_debanding = false
+	_codes.positional_shadow_atlas_size = 0
+	_codes.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	var world := World3D.new()
+	var flat := Environment.new()
+	flat.background_mode = Environment.BG_COLOR
+	flat.background_color = Color(0, 0, 0)
+	flat.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
+	flat.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	world.environment = flat
+	_codes.world_3d = world
+	add_child(_codes)
+	_codes_camera = Camera3D.new()
+	_codes_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	_codes.add_child(_codes_camera)
+	_codes_material = ShaderMaterial.new()
+	_codes_material.shader = preload("res://src/render/booklet_codes.gdshader")
+	_codes_material.set_shader_parameter("linearise",
+		RenderingServer.get_current_rendering_method() != "gl_compatibility")
+	_codes_stage = BrickWorld.new()
+	_codes_stage.library = library
+	_codes_stage.keeps_history = false
+	_codes.add_child(_codes_stage)
+
+	_marks = SubViewport.new()
+	_marks.size = Vector2i(SIZE, SIZE)
+	_marks.disable_3d = true
+	_marks.transparent_bg = false
+	_marks.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(_marks)
+	_marks_rect = ColorRect.new()
+	_marks_rect.size = Vector2(SIZE, SIZE)
+	var material := ShaderMaterial.new()
+	material.shader = preload("res://src/ai/shot_edges.gdshader")
+	material.set_shader_parameter("pixel", Vector2.ONE / float(SIZE))
+	material.set_shader_parameter("reach", EDGE_REACH)
+	material.set_shader_parameter("edge", Vector3(EDGE.r, EDGE.g, EDGE.b))
+	material.set_shader_parameter("code_tex", _codes.get_texture())
+	_marks_rect.material = material
+	_marks.add_child(_marks_rect)
+
+
+## [param colour] with every edged part's outline drawn on it in magenta:
+## the same camera, drawn again as which part each pixel shows.
+func _edges_on(colour: Image, world: BrickWorld, skip: Dictionary) -> Image:
+	if _codes == null:
+		_build_edges()
+		for _n: int in 2:
+			await get_tree().process_frame
+	var wanted: Array = [stage_key(world, skip), see_through.hash(), edged.hash()]
+	if wanted != _codes_staged:
+		_codes_staged = wanted
+		_codes_stage.clear()
+		# Solid parts first, then the edged, so the edged are numbered from
+		# new_from: booklet_codes marks those "new", and the pass edges them.
+		var later: Array = []
+		for brick: BrickWorld.Brick in world.bricks():
+			# What is drawn see-through hides nothing behind it, and is edged
+			# nowhere.
+			if skip.has(brick.id) or see_through.has(brick.id):
+				continue
+			if edged.has(brick.id):
+				later.append(brick)
+				continue
+			# Nor does glass, unless it is what was asked for.
+			var shade: PartLibrary.BrickColor = library.color(brick.color_code)
+			if shade != null and shade.is_transparent():
+				continue
+			_codes_stage.add_brick(brick.part_id, brick.color_code, brick.transform)
+		var first_edged: int = 0
+		for brick: BrickWorld.Brick in later:
+			var number: int = _codes_stage.add_brick(brick.part_id, brick.color_code,
+				brick.transform)
+			if first_edged == 0:
+				first_edged = number
+		_codes_material.set_shader_parameter("new_from",
+			float(first_edged) if first_edged > 0 else 1.0e9)
+		_codes_stage.draw_as(_codes_material, func(number: int) -> Color:
+			return BookletStudio.code_colour(number))
+	_codes_camera.global_transform = _camera.global_transform
+	_codes_camera.size = _camera.size
+	_codes_camera.near = _camera.near
+	_codes_camera.far = _camera.far
+	_codes_camera.current = true
+	_codes.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var drawing: int = 1 if OS.has_feature("web") else FRAMES_TO_DRAW
+	for _n: int in drawing:
+		await get_tree().process_frame
+	_codes.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	var material: ShaderMaterial = _marks_rect.material
+	material.set_shader_parameter("colour_tex", ImageTexture.create_from_image(colour))
+	_marks.render_target_update_mode = SubViewport.UPDATE_ONCE
+	for _n: int in drawing:
+		await get_tree().process_frame
+	await GpuFence.finished()
+	var asked: int = Time.get_ticks_usec()
+	var marked: Image = _marks.get_texture().get_image()
+	gpu_wait_us += Time.get_ticks_usec() - asked
+	_marks.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	if marked == null or marked.is_empty():
+		return colour
+	marked.convert(colour.get_format())
+	return marked
 
 
 ## Whether every pixel sampled is the same. Sampled, not walked: a
@@ -517,6 +674,69 @@ static func _is_blank(image: Image) -> bool:
 			if not image.get_pixel(x, y).is_equal_approx(first):
 				return false
 	return true
+
+
+## Several pictures as one board: each [param cell] px square under its
+## label, [param columns] across, in the order given (SeeTools' view_board,
+## ldraw-xray's and Brickforge's boards of views). Each picture is scaled
+## down whole, so a cell is its picture at a smaller size.
+const LABEL_HIGH := 34
+const BOARD_BACK := Color(1.0, 1.0, 1.0)
+const LABEL_INK := Color(0.09, 0.09, 0.10)
+
+
+func board(pictures: Array[Image], labels: PackedStringArray, cell: int, columns: int) -> Image:
+	var rows: int = ceili(float(pictures.size()) / float(maxi(columns, 1)))
+	var across: int = mini(columns, pictures.size())
+	var room := SubViewport.new()
+	room.size = Vector2i(across * cell, rows * (cell + LABEL_HIGH))
+	room.disable_3d = true
+	room.transparent_bg = false
+	room.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	add_child(room)
+	var back := ColorRect.new()
+	back.color = BOARD_BACK
+	back.size = Vector2(room.size)
+	room.add_child(back)
+	for index: int in pictures.size():
+		var at := Vector2i((index % columns) * cell, (index / columns) * (cell + LABEL_HIGH))
+		var small: Image = pictures[index].duplicate() as Image
+		small.resize(cell, cell, Image.INTERPOLATE_LANCZOS)
+		var shown := TextureRect.new()
+		shown.texture = ImageTexture.create_from_image(small)
+		shown.position = Vector2(at.x, at.y + LABEL_HIGH)
+		shown.size = Vector2(cell, cell)
+		room.add_child(shown)
+		var label := Label.new()
+		label.text = labels[index] if index < labels.size() else ""
+		label.position = Vector2(at.x + 10, at.y + 3)
+		label.size = Vector2(cell - 20, LABEL_HIGH - 6)
+		label.add_theme_font_size_override("font_size", 22)
+		label.add_theme_color_override("font_color", LABEL_INK)
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		room.add_child(label)
+		# A line between the cells, so each reads as a picture of its own.
+		var rule := ColorRect.new()
+		rule.color = Color(0.75, 0.77, 0.8)
+		rule.position = Vector2(at.x, at.y + LABEL_HIGH - 1)
+		rule.size = Vector2(cell, 1)
+		room.add_child(rule)
+		if index % columns > 0:
+			var side := ColorRect.new()
+			side.color = rule.color
+			side.position = Vector2(at.x, at.y)
+			side.size = Vector2(1, cell + LABEL_HIGH)
+			room.add_child(side)
+	room.render_target_update_mode = SubViewport.UPDATE_ONCE
+	var drawing: int = 1 if OS.has_feature("web") else 3
+	for _n: int in drawing:
+		await get_tree().process_frame
+	await GpuFence.finished()
+	var asked: int = Time.get_ticks_usec()
+	var drawn: Image = room.get_texture().get_image()
+	gpu_wait_us += Time.get_ticks_usec() - asked
+	room.queue_free()
+	return drawn
 
 
 ## The picture as a content block the model can be handed.

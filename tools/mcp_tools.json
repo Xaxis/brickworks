@@ -4984,6 +4984,10 @@
         "discard_changes": {
           "type": "boolean"
         },
+        "into": {
+          "description": "put name= (or library=, link=) into the model open now as one sub-assembly with its own steps, as File, Import, Into this model… does, in place of opening it; nothing is replaced",
+          "type": "boolean"
+        },
         "library": {
           "description": "a library id from gallery library=true, like omr-10179-1, or a set's number or name",
           "type": "string"
@@ -4996,6 +5000,10 @@
           "description": "a model's name from the list",
           "type": "string"
         },
+        "turn": {
+          "description": "with into: quarter turns about the vertical, 0 to 3",
+          "type": "integer"
+        },
         "version": {
           "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it",
           "type": "integer"
@@ -5003,6 +5011,14 @@
         "versions": {
           "description": "list name='s saves kept as versions",
           "type": "boolean"
+        },
+        "x": {
+          "description": "with into: studs across to its low corner; beside the model when omitted",
+          "type": "number"
+        },
+        "z": {
+          "description": "with into: studs deep to its low corner",
+          "type": "number"
         }
       },
       "type": "object"
@@ -5207,10 +5223,19 @@
       "readOnlyHint": false,
       "title": "Export the model"
     },
-    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result.",
+    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and quantities, 400 lines a file; the answer names the parts with no element number known), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result. A bricklink wanted list takes condition, wanted_list and notify, as BrickLink's upload reads them; what is not given is what the person chose last on the parts list's BrickLink button. Nothing is uploaded: the person uploads the file.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "condition": {
+          "description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)",
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ],
+          "type": "string"
+        },
         "format": {
           "enum": [
             "ldraw",
@@ -5223,9 +5248,18 @@
             "bricklink",
             "rebrickable",
             "instructions",
-            "all_models"
+            "all_models",
+            "pickabrick"
           ],
           "type": "string"
+        },
+        "notify": {
+          "description": "bricklink: BrickLink emails the person when a lot of a part is listed for sale (NOTIFY Y)",
+          "type": "boolean"
+        },
+        "wanted_list": {
+          "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list",
+          "type": "integer"
         }
       },
       "required": [
@@ -5712,6 +5746,10 @@
         },
         "copy": {
           "type": "boolean"
+        },
+        "picture": {
+          "description": "unset: a close look at what changed, its new parts edged in magenta; true: the whole model so; false: words alone",
+          "type": "boolean"
         }
       },
       "required": [
@@ -5739,6 +5777,10 @@
             "type": "integer"
           },
           "type": "array"
+        },
+        "picture": {
+          "description": "unset: a close look at what changed, its new parts edged in magenta; true: the whole model so; false: words alone",
+          "type": "boolean"
         }
       },
       "required": [
@@ -5766,6 +5808,10 @@
             "type": "integer"
           },
           "type": "array"
+        },
+        "picture": {
+          "description": "unset: a close look at what changed, its new parts edged in magenta; true: the whole model so; false: words alone",
+          "type": "boolean"
         }
       },
       "required": [
@@ -5817,6 +5863,109 @@
       "type": "object"
     },
     "name": "in_view"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Look from several sides"
+    },
+    "description": "Look at the model from up to six sides in one picture: each view labelled, and each the picture view_model gives from that side (views= any of front, back, left, right, top, corner; all six when not given). Also takes, with one view or several: where= to look closely at one box, as view_model's; highlight= parts edged in magenta in their own colours with every other part drawn see-through, to find them in a big model or inside it; xray= parts drawn see-through, so what they hide shows (a roof, a shell, a hull); step=N the model as built to step N, that step's new parts edged in magenta (edit_steps lists the steps). Changes nothing.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "highlight": {
+          "description": "parts by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "step": {
+          "description": "a step's number, from 1",
+          "type": "integer"
+        },
+        "views": {
+          "description": "the sides, in the board's order",
+          "items": {
+            "enum": [
+              "front",
+              "back",
+              "left",
+              "right",
+              "top",
+              "corner"
+            ],
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "where": {
+          "additionalProperties": false,
+          "description": "a box in studs and plates to look closely at",
+          "properties": {
+            "x_from": {
+              "type": "number"
+            },
+            "x_to": {
+              "type": "number"
+            },
+            "y_from": {
+              "type": "number"
+            },
+            "y_to": {
+              "type": "number"
+            },
+            "z_from": {
+              "type": "number"
+            },
+            "z_to": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_from",
+            "x_to",
+            "y_from",
+            "y_to",
+            "z_from",
+            "z_to"
+          ],
+          "type": "object"
+        },
+        "xray": {
+          "description": "parts by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "name": "view_board"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "See a booklet page"
+    },
+    "description": "A page of the building instructions as a picture, drawn as Instructions draws it and as its PDF prints it: page 1 the cover, the steps' pages from 2 (booklet_layout lists them), then the finished model and the parts list. See what edit_booklet did. A steps page is drawn on its own in seconds; the cover and the pages after the steps need the whole booklet, which on a big model takes minutes (a job). Changes nothing.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "page": {
+          "description": "the page's number, from 1",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "page"
+      ],
+      "type": "object"
+    },
+    "name": "booklet_page"
   },
   {
     "annotations": {
