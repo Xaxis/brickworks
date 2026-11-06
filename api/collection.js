@@ -27,25 +27,32 @@
 //   {"from": "sets", "text": "10237-1, 6020"}          typed by number
 //
 // Every lot and set keeps where it came from ("src"): "hand" (added in My
-// collection, a set typed by number), "rebrickable", "rebrickable_csv" or
-// "bricklink_xml"; a lot a session added says who instead ("by", the name
-// the session goes by, "Claude") and which of its chats ("chat"). Each is
-// its own lot, apart from the same part and colour from anywhere else, so
-// "replace" (a Rebrickable fetch) replaces only what that source brought
-// before: a sets list its sets, a parts list its lots. What was kept before
-// sources were (no src, no by) came from imports, and a replace takes it as
-// it always did; a lot counted by hand or a session's is never touched by
-// an import.
+// collection, a set typed by number), "rebrickable" (the person's
+// Rebrickable data, fetched with their key or exported as a CSV: one
+// person's one list, however it came) or "bricklink_xml"; a lot a session
+// added says who instead ("by", the name the session goes by, "Claude")
+// and which of its chats ("chat"). Each is its own lot, apart from the
+// same part and colour from anywhere else, so "replace" (a Rebrickable
+// fetch) replaces only what Rebrickable brought before: a sets list its
+// sets, a parts list its lots. A set the person typed that the fetch lists
+// is the same set, kept once, as the fetch's. What was kept before sources
+// were (no src, no by) came from imports, and a replace takes it as it
+// always did (My collection lists it as brought in before, and says a
+// fetch replaces it); a lot counted by hand or a session's is never
+// touched by an import.
 //
 // Ops, each with an "id" the app makes per action and sends again as it was
-// when the network fails: an id already applied is not applied again.
+// when the network fails: an id already applied is not applied again, and
+// is answered as it was the first time (its reply is kept with it, the last
+// MOST_REMEMBERED).
 //
 //   {"op": "lots", "add": [{part, colour, qty, by?, chat?}],
-//                  "remove": [{part, colour, qty?, by, chat?}]}
+//                  "remove": [{part, colour, qty?, by, chat?, was}]}
 //       added to the lot (made if new: the person's own, src "hand", or the
-//       session's); a session's own lot taken down by qty (all of it when
-//       qty is 0 or none), never below none. Several removes of one lot add
-//       up. Only a session's lots are taken down this way.
+//       session's); a session's own lot, at the count it saw ("was"), taken
+//       down by qty (all of it when qty is 0 or none), never below none.
+//       Several removes of one lot add up. Only a session's lots are taken
+//       down this way.
 //   {"op": "set", "lots": [{part, colour, src?, by?, chat?, was, qty}]}
 //       each lot from the count the person saw ("was") to qty (0 takes it
 //       out)
@@ -61,11 +68,17 @@
 // moved on) is refused with 409 and the collection as it is now, changing
 // nothing: the app shows it and the person asks again.
 //
-// An older app (rel-m266, desktop 0.17.0) takes a set out by PUT of its
-// whole copy, which says nothing of when it was read: a copy read before
-// another device took a set out and added another names the one added as
-// the one to take out. So a PUT is refused with 409 and words that say to
-// update, changing nothing; its imports and its DELETE are ops as above.
+// An older app (rel-m267 and before, desktop 0.17.0) takes a set out by PUT
+// of its whole copy, without any lot's source or session, and says nothing
+// of when it was read. It is made as remove_set only when it is the
+// collection as kept with one set number gone: its sets exactly the sets
+// kept without that number, and its lots, added up by part and colour,
+// exactly the lots kept. Anything else (a copy read before another device
+// changed something) is refused with 409 and words that say to update,
+// changing nothing. Its imports and its DELETE are ops as above.
+//
+// A count over MAX_QTY is kept at MAX_QTY, and the reply says which lots
+// were ("clamped").
 //
 // The Rebrickable key is never sent here. The app calls Rebrickable's API
 // itself (its CORS allows any page) and sends on only what came back.
@@ -116,8 +129,11 @@ const TRIES = 12;
 
 /// Where each import's lots and sets come from; "hand" is My collection's.
 export const HAND = "hand";
+/// A fetch from the person's Rebrickable account and an export from it are
+/// one list: one source.
+export const REBRICKABLE = "rebrickable";
 export const SOURCE_OF = {
-  sets: HAND, rebrickable_api: "rebrickable", rebrickable_csv: "rebrickable_csv", bricklink_xml: "bricklink_xml",
+  sets: HAND, rebrickable_api: REBRICKABLE, rebrickable_csv: REBRICKABLE, bricklink_xml: "bricklink_xml",
 };
 const SOURCES = new Set(Object.values(SOURCE_OF));
 
@@ -418,20 +434,24 @@ function said(lot) {
   return `${lot.part} in colour ${lot.colour}${lot.by ? ` that ${lot.by} added` : ""}`;
 }
 
-/// Lots or sets by key, in their order; one added to the end when new.
+/// Lots or sets by key, in their order; one added to the end when new. A
+/// Map keeps the order it was given, and takes one out at once.
 class Keyed {
   constructor(keyOf, list = []) {
     this.keyOf = keyOf;
-    this.list = [];
     this.at = new Map();
+    /// The lots a count went past MAX_QTY in: [{part, colour, over}].
+    this.clamped = [];
     for (const one of list) this.keep({ ...one });
   }
 
+  get list() {
+    return [...this.at.values()];
+  }
+
   keep(one) {
-    const key = this.keyOf(one);
-    if (this.at.has(key)) return this.add(one, one.qty);
-    this.at.set(key, one);
-    this.list.push(one);
+    if (this.at.has(this.keyOf(one))) return this.add(one, one.qty);
+    this.at.set(this.keyOf(one), one);
     return one;
   }
 
@@ -439,23 +459,30 @@ class Keyed {
     return this.at.get(this.keyOf(one));
   }
 
-  /// [qty] more of [one], made at the end if new.
+  /// [qty] more of [one], made at the end if new; at most MAX_QTY, and a
+  /// lot that would have held more noted in [clamped].
   add(one, qty) {
     const held = this.get(one);
-    if (held) {
-      held.qty = Math.min(MAX_QTY, held.qty + qty);
-      if (one.spares) held.spares = true;
-      return held;
+    if (!held) return this.keep({ ...one, qty: Math.min(MAX_QTY, qty) });
+    const sum = held.qty + qty;
+    if (sum > MAX_QTY && one.part !== undefined) {
+      this.clamped.push({ part: held.part, colour: held.colour, over: sum - MAX_QTY });
     }
-    return this.keep({ ...one, qty });
+    held.qty = Math.min(MAX_QTY, sum);
+    if (one.spares) held.spares = true;
+    return held;
   }
 
   take(one) {
-    const held = this.get(one);
-    if (!held) return;
     this.at.delete(this.keyOf(one));
-    this.list = this.list.filter((other) => other !== held);
   }
+}
+
+/// [done] with the lots [parts] kept at MAX_QTY, when there were any: the
+/// first 50 named, and how many in all.
+function withClamped(done, parts) {
+  if (parts.clamped.length === 0) return done;
+  return { ...done, clamped: parts.clamped.slice(0, 50), clamped_lots: parts.clamped.length };
 }
 
 /// [have] with an import added: each lot and set marked with [src]. In a
@@ -467,11 +494,14 @@ function merged(have, add, mode, src) {
   const replaceSets = mode === "replace" && add.sets.length > 0;
   const replaceParts = mode === "replace" && add.parts.length > 0;
   const brought = (one) => !one.by && (one.src === src || !one.src);
-  const sets = new Keyed(setKey, have.sets.filter((s) => !(replaceSets && brought(s))));
+  // A set typed by hand that Rebrickable's list has is that set, kept once.
+  const fetched = new Set(replaceSets && src === REBRICKABLE ? add.sets.map((s) => s.set) : []);
+  const sets = new Keyed(setKey, have.sets.filter((s) => !(replaceSets && brought(s))
+    && !(s.src === HAND && fetched.has(s.set))));
   const parts = new Keyed(lotKey, have.parts.filter((p) => !(replaceParts && brought(p))));
   for (const s of add.sets) sets.add({ ...s, src }, s.qty);
   for (const p of add.parts) parts.add({ ...p, src }, p.qty);
-  return { sets: sets.list, parts: parts.list };
+  return { next: { sets: sets.list, parts: parts.list }, parts };
 }
 
 function listed(body, field, most, where = field) {
@@ -518,25 +548,26 @@ export function applyOp(have, body) {
       return [id, counted(p?.qty, `add ${n + 1}`)];
     });
     const removes = removing.map((p, n) => [lotId(p, `remove ${n + 1}`, "must"),
-      p?.qty === undefined || p?.qty === null ? 0 : counted(p.qty, `remove ${n + 1}`, 0)]);
-    // A lot taken down all the way by one remove is not missing for the next.
-    const gone = new Set();
-    removes.forEach(([id, qty], n) => {
+      p?.qty === undefined || p?.qty === null ? 0 : counted(p.qty, `remove ${n + 1}`, 0),
+      counted(p?.was, `remove ${n + 1}`, 1, "count seen")]);
+    // Each lot as the session saw it, before any of this call's removes.
+    removes.forEach(([id, , was], n) => {
       const held = parts.get(id);
       if (!held) {
-        if (gone.has(lotKey(id))) return;
         throw new Conflict(`remove ${n + 1}: ${id.part} in colour ${id.colour} is not a lot ${id.by} added`
           + `${id.chat ? " in this chat" : ""} (the person may have kept it or taken it back)`, have);
       }
-      if (qty === 0 || qty >= held.qty) {
-        parts.take(id);
-        gone.add(lotKey(id));
-      } else {
-        held.qty -= qty;
-      }
+      if (held.qty !== was) throw new Conflict(`remove ${n + 1}: ${said(id)} is ${held.qty} now, not the ${was} seen`, have);
     });
+    // A lot taken down all the way by one remove is not missing for the next.
+    for (const [id, qty] of removes) {
+      const held = parts.get(id);
+      if (!held) continue;
+      if (qty === 0 || qty >= held.qty) parts.take(id);
+      else held.qty -= qty;
+    }
     for (const [id, qty] of adds) parts.add(id, qty);
-    return { next: next(), done: { added: adds.length, taken_down: removes.length } };
+    return { next: next(), done: withClamped({ added: adds.length, taken_down: removes.length }, parts) };
   }
 
   if (op === "set") {
@@ -575,7 +606,7 @@ export function applyOp(have, body) {
       parts.take(id);
       if (op === "keep") parts.add({ part: id.part, colour: id.colour, src: HAND }, was[n]);
     });
-    return { next: next(), done: { [op === "keep" ? "kept" : "taken_back"]: ids.length } };
+    return { next: next(), done: withClamped({ [op === "keep" ? "kept" : "taken_back"]: ids.length }, parts) };
   }
 
   if (op === "remove_set") {
@@ -605,13 +636,43 @@ export function applyOp(have, body) {
     + "or from rebrickable_csv, bricklink_xml, rebrickable_api or sets");
 }
 
-/// An import, as a change: {next, done}.
+/// An import, as a change: {next, done}. What it imported and left out is
+/// in [done], so a resend is told the same.
 function importing(have, body, imported) {
   const mode = body?.mode === "replace" ? "replace" : "add";
+  const { next, parts } = merged(have, imported, mode, SOURCE_OF[String(body.from)]);
   return {
-    next: merged(have, imported, mode, SOURCE_OF[String(body.from)]),
-    done: { imported: { sets: imported.sets.length, lots: imported.parts.length } },
+    next,
+    done: withClamped({
+      imported: { sets: imported.sets.length, lots: imported.parts.length },
+      left_out: Object.entries(imported.leftOut).map(([why, count]) => ({ why, count })),
+    }, parts),
   };
+}
+
+/// An older app's PUT (rel-m267 and before), made as remove_set when it is
+/// the collection as kept with one set number gone, every lot as kept:
+/// such an app takes a set out by filtering its whole copy and sending it.
+/// Anything else is refused with UPDATE_WORDS, changing nothing.
+export function olderRemoval(have, body) {
+  const refuse = () => { throw new Conflict(UPDATE_WORDS, have); };
+  if (!Array.isArray(body?.sets) || !Array.isArray(body?.parts)) refuse();
+  const setOf = (s) => JSON.stringify([String(s?.set ?? ""), Number(s?.qty), Boolean(s?.spares)]);
+  const tally = (list, keyOf, qtyOf = () => 1) => {
+    const out = new Map();
+    for (const one of list) out.set(keyOf(one), (out.get(keyOf(one)) || 0) + qtyOf(one));
+    return out;
+  };
+  const same = (a, b) => a.size === b.size && [...a].every(([key, n]) => b.get(key) === n);
+  const sent = new Set(body.sets.map((s) => String(s?.set ?? "")));
+  const gone = [...new Set(have.sets.map((s) => s.set))].filter((set) => !sent.has(set));
+  if (gone.length !== 1) refuse();
+  if (!same(tally(body.sets, setOf), tally(have.sets.filter((s) => s.set !== gone[0]), setOf))) refuse();
+  const lot = (p) => JSON.stringify([String(p?.part ?? ""), Number(p?.colour)]);
+  if (!same(tally(body.parts, lot, (p) => Number(p?.qty)), tally(have.parts, lot, (p) => p.qty))) refuse();
+  const taken = have.sets.filter((s) => s.set === gone[0]).length;
+  return { next: { sets: have.sets.filter((s) => s.set !== gone[0]), parts: have.parts },
+    done: { removed_sets: taken, set: gone[0] } };
 }
 
 // --- imports ----------------------------------------------------------------------
@@ -677,6 +738,9 @@ function shown(row) {
   return { sets: row.sets || [], parts: row.parts || [], updated_at: row.updated_at ?? null, rev: row.rev ?? null };
 }
 
+/// A remembered change's id: an entry is {id, done}.
+const idOf = (one) => (typeof one === "string" ? one : one?.id);
+
 const pause = (attempt) => new Promise((done) => setTimeout(done, 15 + Math.random() * 40 * (attempt + 1)));
 
 /// [make] made on the row as kept and written only over that row: the rev
@@ -688,14 +752,19 @@ const pause = (attempt) => new Promise((done) => setTimeout(done, 15 + Math.rand
 async function change(owner, make, id = "") {
   for (let attempt = 0; attempt < TRIES; attempt++) {
     const have = await readRow(owner);
-    if (id && have.recent.includes(id)) return { row: have, done: { again: true } };
+    const before = id ? have.recent.find((one) => idOf(one) === id) : undefined;
+    if (before !== undefined) return { row: have, done: { ...(before?.done || {}), again: true } };
     const made = make(have);
-    if (!made.next) return { row: have, done: made.done };
-    within(made.next);
+    // A change that changes nothing is remembered too, where there is a
+    // row to keep it in, so a resend is told what the first was.
+    if (!made.next && !(id && have.there)) return { row: have, done: made.done };
+    const next = made.next || { sets: have.sets, parts: have.parts };
+    within(next);
     const kept = {
-      sets: made.next.sets,
-      parts: made.next.parts,
-      recent: id ? [...have.recent.filter((one) => one !== id), id].slice(-MOST_REMEMBERED) : have.recent,
+      sets: next.sets,
+      parts: next.parts,
+      recent: id ? [...have.recent.filter((one) => idOf(one) !== id), { id, done: made.done }].slice(-MOST_REMEMBERED)
+        : have.recent,
       updated_at: new Date().toISOString(),
     };
     let saved = null;
@@ -729,10 +798,11 @@ function bodyOf(request) {
   }
 }
 
-/// What an older app's PUT is told: it would write a copy that may be days
-/// old over what another device changed since.
-export const UPDATE_WORDS = "This copy of Brickworks is older than the way collections are kept now: taking a "
-  + "set out from it could undo what you changed on another device, so nothing was changed. Update "
+/// What an older app's PUT is told when its copy is not the collection as
+/// kept: taking a set out from it could bring back or drop what another
+/// device changed since.
+export const UPDATE_WORDS = "This copy of Brickworks read your collection before it last changed (on another "
+  + "device, or by an assistant), so taking the set out from it could undo that, and nothing was changed. Update "
   + "Brickworks (on the web, reload the page), then take the set out again.";
 
 export default async function handler(request, response) {
@@ -796,7 +866,10 @@ export default async function handler(request, response) {
       throw new Refusal(413, `that is ${size} bytes; ${body?.op ? "a change" : "an import"} is at most ${most}`);
     }
 
-    if (request.method === "PUT") throw new Conflict(UPDATE_WORDS, await readRow(owner));
+    if (request.method === "PUT") {
+      const { row, done } = await change(owner, (have) => olderRemoval(have, body));
+      return response.status(200).json({ ...shown(row), done });
+    }
 
     const id = body?.id === undefined || body?.id === null ? "" : String(body.id);
     if (id && !REQUEST.test(id)) throw new Refusal(400, `"${id.slice(0, 80)}" is not a request id`);
@@ -813,12 +886,7 @@ export default async function handler(request, response) {
     }
     const imported = parseImport(body);
     const { row, done } = await change(owner, (have) => importing(have, body, imported), id);
-    return response.status(200).json({
-      ...shown(row),
-      done,
-      imported: done.again ? { sets: 0, lots: 0 } : done.imported,
-      left_out: Object.entries(imported.leftOut).map(([why, count]) => ({ why, count })),
-    });
+    return response.status(200).json({ ...shown(row), done, imported: done.imported, left_out: done.left_out || [] });
   } catch (error) {
     if (error instanceof Conflict) return response.status(409).json({ error: error.message, ...shown(error.row) });
     if (error instanceof Refusal) return response.status(error.status).json({ error: error.message });
