@@ -19,8 +19,10 @@
 ##      page turned that the booklet draws upright.
 ##   2. Step 6 shown turned over, the eye under the model and its underside
 ##      up on the screen; its new parts in sight, in pixels of the very
-##      frame, at least as much of them as the booklet's own picture of the
-##      page shows (BookletStudio.measure_all, the booklet's measure). The
+##      frame through a parallel lens as the booklet draws, at least as
+##      much of them as the booklet's own picture of the page shows
+##      (BookletStudio.measure_all, the booklet's measure); and in Build
+##      it's own perspective more of them than the right way up. The
 ##      lights turned with it, so the underside is lit as a top is, and the
 ##      floor put aside, which seen from under the model covered all of it.
 ##   3. A finger's drag on the turned page turns the view, still turned;
@@ -349,18 +351,37 @@ func _turned_over(main: Node, pages: BuildSteps, booklet: Dictionary, page: int)
 	_ok(floor != null and not floor.visible and plates_hidden,
 		"...the floor put aside, its grid, shadow and %d plate batches" % plates.size())
 
-	# Pixels of the step's new parts in the very frame, and drawn alone; and
-	# the same through a parallel lens, as the booklet draws (CadCamera's
-	# own square_on), which says what of any gap is the lens.
-	var seen: Array = await _seen_in_frame(main, pages, page)
-	var share: float = float(seen[0]) / maxf(float(seen[1]), 1.0)
+	# Pixels of the step's new parts in the very frame, and drawn alone:
+	# through a parallel lens, as the booklet draws (CadCamera's own
+	# square_on), against the booklet's own picture of the page; and as
+	# Build it draws it, in perspective, against the same step the right way
+	# up as Build it showed it before (the front, or the back where the
+	# front hides them). The parallel and the perspective share apart are
+	# the lens.
 	var square: Array = await _seen_in_frame(main, pages, page, true)
 	var square_share: float = float(square[0]) / maxf(float(square[1]), 1.0)
 	var printed: float = await _seen_in_booklet(main, booklet, page)
-	_ok(seen[1] > 0 and share >= printed - 0.005,
-		"its new parts in sight: %d of their %d pixels, %.1f%% (%.1f%% through a parallel lens, as the booklet draws); the booklet's page shows %.1f%% of them"
-			% [seen[0], seen[1], share * 100.0, square_share * 100.0, printed * 100.0])
+	_ok(square[1] > 0 and square_share >= printed - 0.005,
+		"its new parts in sight as its booklet page sees them, through a parallel lens: %d of their %d pixels, %.1f%%; the booklet's page shows %.1f%% of them"
+			% [square[0], square[1], square_share * 100.0, printed * 100.0])
+	var seen: Array = await _seen_in_frame(main, pages, page)
+	var share: float = float(seen[0]) / maxf(float(seen[1]), 1.0)
 	await _shot("2_step_%d_turned_again" % page)
+	var from: Vector3 = BookletStudio.FRONT
+	var front: float = pages.seen(page, from)
+	if front < BuildSteps.TURN_BELOW and pages.seen(page, BookletStudio.BACK) > front + BuildSteps.TURN_GAIN:
+		from = BookletStudio.BACK
+	if camera.has_method("upright"):
+		camera.call("upright")
+	camera.look_from(from)
+	camera.frame(pages.view(page)["box"], 1.0)
+	await _arrive(main)
+	await _shot("2_step_%d_upright" % page)
+	var upright: Array = await _seen_in_frame(main, pages, page)
+	var upright_share: float = float(upright[0]) / maxf(float(upright[1]), 1.0)
+	_ok(seen[1] > 0 and share > upright_share + 0.05,
+		"...as Build it draws it, in perspective: %d of their %d pixels, %.1f%%, where the right way up showed %.1f%% (%d of %d)"
+			% [seen[0], seen[1], share * 100.0, upright_share * 100.0, upright[0], upright[1]])
 
 
 ## How many pixels of [param page]'s new parts the frame shows, and how

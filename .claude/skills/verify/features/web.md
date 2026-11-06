@@ -4900,16 +4900,18 @@ tools/probe.sh buildturn_probe
 Proves it when it ends "buildturn_probe: all passed": every page of the
 sports car opened as a link within 1 degree of its booklet page's view and
 up, the pages the booklet draws upright upright on the direction they always
-had; step 6 seen from under the car, its new plates in sight as much as the
-booklet's own picture shows them, the sun the same in the camera's frame as
+had; step 6 seen from under the car, its new plates in sight through a
+parallel lens as much as the booklet's own picture shows them (the booklet
+draws parallel) and, in Build it's own perspective, more than the right way
+up showed them, the sun the same in the camera's frame as
 the page before, the floor and baseplate aside; a drag turns it and it stays
 turned, Next lands on the next page's own turn, Close puts the model, the
 sun and the floor back; 7140's author-turned pages in the real app; and the
 car and the 44 authored-ROTSTEP files, every page within 1 degree (turned
 ones) or upright (the rest); the castle's turn-overs worked out with no
 frame past 60 ms of its own and no page's view over 20. The parts in sight
-are counted unshaded with edges unsmoothed, as the booklet counts them, and
-again through a parallel lens. Pictures in `shots/buildturn/<size>_*.png`:
+are counted unshaded with edges unsmoothed, as the booklet counts them.
+Pictures in `shots/buildturn/<size>_*.png`:
 look at `2_step_6_turned` against `2_step_5_before`.
 
 Build it a part at a time, on 8808-1's first step of five parts, with taps
