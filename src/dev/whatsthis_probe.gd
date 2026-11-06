@@ -13,8 +13,8 @@
 ##    assistant's, the status bar's and the side panels' rails) answers with
 ##    words, in the bubble beside it: none empty past its name, none the
 ##    same as another's, each its own or those of what it is part of, never
-##    only the panel's it is in; the bubble just under or over it, in the
-##    window, no taller than its words. The bin's part tiles and colour swatches
+##    only the panel's it is in; the bubble just under, over or beside it,
+##    in the window, no taller than its words. The bin's part tiles and colour swatches
 ##    are its contents, each named by its part or colour, not its buttons;
 ## 2. the click does nothing else: the control under it never hears the
 ##    press or the release, and nothing of the model, the selection, the
@@ -316,7 +316,8 @@ func _ask_about(control: Control) -> Dictionary:
 			placed = "out of the window (%s)" % bubble
 		elif bubble.size.y > room.size.y * 0.4:
 			placed = "%d px tall" % int(bubble.size.y)
-		elif absf(bubble.position.y - near.end.y - 6.0) > 1.0 and absf(near.position.y - bubble.end.y - 6.0) > 1.0:
+		elif absf(bubble.position.y - near.end.y - 6.0) > 1.0 and absf(near.position.y - bubble.end.y - 6.0) > 1.0 \
+				and absf(bubble.position.x - near.end.x - 6.0) > 1.0 and absf(near.position.x - bubble.end.x - 6.0) > 1.0:
 			placed = "not beside it (%s, it %s)" % [bubble, near]
 	var changed: Array = _changes(before, _state())
 	if not _heard.is_empty():

@@ -162,10 +162,10 @@ func answer(point: Vector2) -> void:
 	_body.text = words
 	_body.visible = not words.is_empty()
 	var about: Rect2 = _rect_of(said_of) if said_of != null else Rect2(point, Vector2.ONE)
-	_show_by(about)
+	_show_by(about, point)
 
 
-func _show_by(about: Rect2) -> void:
+func _show_by(about: Rect2, point: Vector2) -> void:
 	var room: Rect2 = get_viewport().get_visible_rect()
 	var wide: float = minf(WIDEST, room.size.x - EDGE * 2.0)
 	for label: Label in [_title, _body]:
@@ -193,10 +193,16 @@ func _show_by(about: Rect2) -> void:
 	_bubble.reset_size()
 	var size: Vector2 = _bubble.get_combined_minimum_size()
 	_bubble.size = size
-	# Below the control, or above it where there is no room below.
+	# Below the control, or above it where there is no room below; beside
+	# it, at the click, where there is room for neither (a side panel's
+	# strip runs the window's height).
 	var at := Vector2(about.position.x, about.end.y + 6.0)
 	if at.y + size.y > room.end.y - EDGE:
 		at.y = about.position.y - size.y - 6.0
+		if at.y < room.position.y + EDGE:
+			at = Vector2(about.end.x + 6.0, point.y - size.y * 0.5)
+			if at.x + size.x > room.end.x - EDGE:
+				at.x = about.position.x - size.x - 6.0
 	at.x = clampf(at.x, room.position.x + EDGE, maxf(room.position.x + EDGE, room.end.x - size.x - EDGE))
 	at.y = clampf(at.y, room.position.y + EDGE, maxf(room.position.y + EDGE, room.end.y - size.y - EDGE))
 	_bubble.position = at
