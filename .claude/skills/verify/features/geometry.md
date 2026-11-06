@@ -428,10 +428,12 @@ can occupy the same millimetre.
   MCP at the stop to 0.01 LDU, and a figure on two cones by hand and by
   add_minifig; `joints_probe` four parts 4 LDU down a cone's stud from a
   file, refused (conestop). A pose the LEGO Group's sets are built in
-  (`ExactCheck.known_fit`) is not sunk: three sets' headlights put a 6141
-  4 LDU into a 4740 dish's tube, and `tested_seeds` holds 42022-1 to the
-  faults it had before (checks267). A duplicate plate on the one before it
-  is sunk its whole 8 LDU (851-1, 6680-1).
+  (`ExactCheck.known_fit`) no deeper than a stud reaches is not sunk
+  (`ExactCheck._fit_sunk`): three sets' headlights put a 6141 4 LDU into a
+  4740 dish's tube, and `tested_seeds` holds 42022-1 to the faults it had
+  before (checks267); a known pose 8 LDU down, one author's file in two set
+  numbers, still is. A duplicate plate on the one before it is sunk its
+  whole 8 LDU (851-1, 6680-1).
   A part that only rests on a lone stud at a hinge's free end, its stud's
   part held to it another way round, is out of the joints (`Bodies.rests`,
   `_lift_rests`): its hinge lifts it off, and it goes neither down into the
