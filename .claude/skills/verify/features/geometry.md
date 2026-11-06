@@ -30,6 +30,10 @@ can occupy the same millimetre.
   check's support and its piece count alike: read as in nothing, a 1 x 1 tile
   on a chamfered wing (41769b, no exact shape) in a ball's strip turned 210
   degrees was refused as not held (`turned_tips_probe` lays that ball).
+  The piece count joins the very stud pairs support read
+  (`Assistant._join_studs`, `Joints.studs_in`), a stud up a hollow too: with a
+  copy of the rule of its own, 10179-1's loudhailer on a stud was held and a
+  piece of its own, and `sections_probe` failed 3 of its sections (checks267).
   A turned cover is a box a row of cells, hundreds of them (42112's mixer
   drum, a part its file carries, is 23,309), so what two covers meet is not
   asked pair by pair (`_overlaps_pairwise`, kept as the reference): past a few
@@ -423,7 +427,11 @@ can occupy the same millimetre.
   down it. `technic_hand_probe` has each by hand, dragged, swapped and over
   MCP at the stop to 0.01 LDU, and a figure on two cones by hand and by
   add_minifig; `joints_probe` four parts 4 LDU down a cone's stud from a
-  file, refused (conestop).
+  file, refused (conestop). A pose the LEGO Group's sets are built in
+  (`ExactCheck.known_fit`) is not sunk: three sets' headlights put a 6141
+  4 LDU into a 4740 dish's tube, and `tested_seeds` holds 42022-1 to the
+  faults it had before (checks267). A duplicate plate on the one before it
+  is sunk its whole 8 LDU (851-1, 6680-1).
   A part that only rests on a lone stud at a hinge's free end, its stud's
   part held to it another way round, is out of the joints (`Bodies.rests`,
   `_lift_rests`): its hinge lifts it off, and it goes neither down into the

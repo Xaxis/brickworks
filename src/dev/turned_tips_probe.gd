@@ -102,8 +102,10 @@ func _tips() -> void:
 	var reaching: Array = _assistant._studs_reaching_in(model, cells_of, lattice)
 	var into: Array = reaching.map(func(pair: Array) -> String: return "%d>%d" % [pair[0], pair[1]])
 	_check("support reads the plate's stud in the tile: %s" % [into], into == ["0>1"])
-	var pieces: Array = _assistant._pieces_of(model, cells_of, lattice, cells_of.duplicate())
-	_check("and the two are one piece: %d" % pieces.size(), pieces.size() == 1)
+	var pieces: Array = _assistant._pieces_of(cells_of, lattice, cells_of.duplicate(), {}, [], {},
+		reaching)
+	_check("and the two are one piece by the studs support read: %d" % pieces.size(),
+		pieces.size() == 1)
 
 
 ## The model it was found on: the ball's own wings swapped for the chamfered

@@ -396,7 +396,8 @@ func pairs_near(of: Dictionary, by: float) -> Array:
 ## A part down another's stud past the stud's foot is one too, whatever
 ## their shapes meet by ([method sunk]): a cone 4 LDU down a cone's stud
 ## meets it by 2 LDU, a 2 x 2 cone down 4589's by 0.8, and it is in that
-## part all the same. Nothing forgives it (a found pair with "sunk").
+## part all the same. Nothing forgives it (a found pair with "sunk") but
+## the sets themselves, as [method sunk] reads them.
 func collisions(of: Dictionary) -> Array:
 	var began: int = Time.get_ticks_usec()
 	var out: Array = []
@@ -417,12 +418,20 @@ func collisions(of: Dictionary) -> Array:
 ## where one is down a stud of the other past the stud's foot, further than
 ## BrickNet joins the two (Exact.sunk_pairs): Vector2i(a, b), a < b ->
 ## the collision, as [method between] gives one, with "sunk": [the stud's
-## item, the one down it] and the stud's way as its axis.
+## item, the one down it] and the stud's way as its axis. Not a pair posed
+## as the LEGO Group's own sets build the two ([method known_fit]): what
+## they sold goes together, so a part there is no further down the stud
+## than the plastic lets it go, and is judged as any pair is. Three sets put
+## a 6141 round plate 4 LDU into a 4740 dish's tube, a headlight's lens in
+## its reflector (31038-1, 41015-1, 42022-1), where LDraw draws the tube's
+## mouth at the dish's rim and BrickNet frames it there.
 func sunk(of: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
 	for one: Array in Exact.sunk_pairs(items, of):
 		var a: int = mini(int(one[0]), int(one[1]))
 		var b: int = maxi(int(one[0]), int(one[1]))
+		if known_fit(a, b):
+			continue
 		out[Vector2i(a, b)] = {"a": a, "b": b, "depth": float(one[2]), "piece_a": -1,
 			"piece_b": -1, "axis": one[3], "sunk": [int(one[0]), int(one[1])]}
 	return out
@@ -431,11 +440,12 @@ func sunk(of: Dictionary = {}) -> Dictionary:
 ## Whether item [param i] is down a stud of one of [param others], or one of
 ## theirs down its, past the stud's foot further than BrickNet joins them: no
 ## seat moves it, as it is in that part (the check says so, [method
-## collisions]). Nearer, it is on the stud, low, and the seat puts it up.
+## collisions]). Nearer, it is on the stud, low, and the seat puts it up. A
+## pose the sets build is not sunk ([method sunk]), here as there.
 func _sunk_near(i: int, others: PackedInt32Array) -> bool:
 	for j: int in others:
 		if items[j] != null and (Exact.sunk(items[j], items[i]) > Exact.SUNK_PAST
-				or Exact.sunk(items[i], items[j]) > Exact.SUNK_PAST):
+				or Exact.sunk(items[i], items[j]) > Exact.SUNK_PAST) and not known_fit(i, j):
 			return true
 	return false
 
