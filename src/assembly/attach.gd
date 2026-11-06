@@ -33,7 +33,7 @@ extends RefCounted
 
 ## The types a connector is addressed by, in the words a session writes.
 const TYPES: PackedStringArray = ["stud", "open", "hole", "tube", "post", "axle", "cross",
-	"pin", "socket", "bar", "clip", "hinge", "ball", "fixed"]
+	"pin", "socket", "bar", "clip", "hinge", "ball", "fixed", "track"]
 ## How far an axle joint must overlap (BrickNet's _AXLE_MIN_OVERLAP).
 const MIN_OVERLAP := 4.0
 ## 180 degrees about the connector's x: the flip that opposes two axes.
@@ -79,11 +79,13 @@ class Point extends RefCounted:
 ## A part's connectors, addressed: its exact shape's (BrickNet's) when it has
 ## one, else the catalogue's. Main thread, as Exact.shape_for is.
 static func points_of(library: PartLibrary, part_id: String) -> Array:
+	# A train track's ends after the rest, track[0] and on (TrackSnap).
+	var ends: Array = TrackSnap.points(library.resolve(part_id) if library != null else part_id)
 	var shape: Exact.Shape = Exact.shape_for(library, part_id)
 	if shape != null and not shape.kind.is_empty():
-		return points_from_shape(shape)
+		return points_from_shape(shape) + ends
 	var mesh: Lbm.PartMesh = library.mesh_for(part_id) if library != null else null
-	return points_from_mesh(mesh) if mesh != null else []
+	return (points_from_mesh(mesh) if mesh != null else []) + ends
 
 
 ## BrickNet's connectors, in its order, each typed and numbered within its type.
@@ -226,6 +228,8 @@ static func count_of(points: Array, type: String) -> int:
 ## what takes one, an axle-family pair, or two halves of a hinge, a ball or a
 ## fixed joint of one subtype and opposite polarities.
 static func compatible(a: Point, b: Point) -> bool:
+	if a.kind == TrackSnap.KIND or b.kind == TrackSnap.KIND:
+		return TrackSnap.points_join(a, b)
 	if (a.kind == Exact.STUD and b.kind == Exact.HOLE) or (a.kind == Exact.HOLE and b.kind == Exact.STUD):
 		return Exact._mates(Exact.STUD_MATES, a.sub, b.sub)
 	if a.kind == Exact.AXLE and b.kind == Exact.AXLE:
@@ -238,6 +242,8 @@ static func compatible(a: Point, b: Point) -> bool:
 
 ## What a connector of [param type] takes, in words.
 static func takes(type: String) -> String:
+	if type == "track":
+		return "a track's end of its kind, face to face"
 	var mates := PackedStringArray()
 	var code: int = Exact.SUB_NAMES.find(type)
 	if code >= 0:
@@ -358,6 +364,8 @@ static func direction(said: Variant) -> Variant:
 ## orientation in that frame; a ball takes any, the rest only a turn about
 ## their axis, a fixed joint none).
 static func pose(target: Transform3D, a: Point, b: Point, options: Dictionary = {}) -> Dictionary:
+	if a.kind == TrackSnap.KIND or b.kind == TrackSnap.KIND:
+		return TrackSnap.attach_pose(target, a, b, options)
 	if not compatible(a, b):
 		return {"error": "%s does not take %s: %s takes %s" % [_a(a.said()), _a(b.said()),
 			_a(a.type), takes(a.type)]}

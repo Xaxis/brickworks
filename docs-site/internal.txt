@@ -28,6 +28,7 @@ entry:tools/web_pack.py  # the parts pipeline: the parts packed for the web
 entry:tools/library_build.py  # the model library's index, built for the app
 entry:tools/collection_data.py  # set inventories, built for My collection
 entry:tools/gears.py  # a check of the gear table the app ships
+entry:tools/track_ends.py  # a check of the track ends table the app ships
 entry:tools/apply_sql.mjs  # the owner's: changes to the live database
 entry:tools/connection_audit.py  # a measure of joints in real sets, for the project
 entry:tools/hidden_colours_audit.py  # a measure of hidden colours in real sets, for the project

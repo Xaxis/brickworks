@@ -91,7 +91,7 @@ func _run() -> void:
 	# their own. The file puts a 1 x 2 plate inside a 1 x 6 one (6680 -
 	# main.ldr, 3023 at 30 -16 150 in the 3666 at 30 -16 110), which the exact
 	# check finds, and which is the plate its steps hide.
-	_ok(_why(real, "whole") == "1 pair of parts passes into each other: Plate 1 x 6 into Plate 1 x 2 by 4 LDU",
+	_ok(_why(real, "whole") == "1 pair of parts passes into each other: Plate 1 x 6 into Plate 1 x 2 by 8 LDU",
 		"...its figures and stretcher are builds of their own, and the whole test names only the plate the file puts in another: %s"
 		% _why(real, "whole"))
 

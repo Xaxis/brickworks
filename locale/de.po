@@ -11226,3 +11226,12 @@ msgstr "Was zu %s passt, mit „%s“, das Beste zuerst"
 
 msgid "Nothing that fits %s has “%s”"
 msgstr "Nichts, was zu %s passt, hat „%s“"
+
+msgid "Placing %s on the end of %s: click puts it there"
+msgstr "%s auf das Ende von %s absetzen: Ein Klick setzt es dort ab"
+
+msgid "%s puts its next end to the joint"
+msgstr "%s legt sein nächstes Ende an die Verbindungsstelle"
+
+msgid "a sleeper goes under the joint with it"
+msgstr "eine Schwelle kommt mit unter die Verbindungsstelle"

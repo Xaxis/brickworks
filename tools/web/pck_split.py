@@ -151,10 +151,11 @@ def write_bundle(path: str, files: list[tuple[str, bytes]]) -> None:
 
 
 # Tables read as their classes load, which is while the scripts are made,
-# before the data pack is mounted (Mechanism._table, KnownFits._table): in
-# the data pack they would read as nothing, for good. 15 KB over the wire,
-# so they stay with the code.
-AT_CLASS_LOAD = {"assets/ldraw/gears.json", "assets/ldraw/known_fits.json"}
+# before the data pack is mounted (Mechanism._table, KnownFits._table,
+# TrackSnap._table): in the data pack they would read as nothing, for good.
+# 18 KB over the wire, so they stay with the code.
+AT_CLASS_LOAD = {"assets/ldraw/gears.json", "assets/ldraw/known_fits.json",
+                 "assets/ldraw/track_ends.json"}
 
 
 def where(path: str, later: frozenset[str] = frozenset()) -> str:

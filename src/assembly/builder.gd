@@ -45,6 +45,9 @@ var _figure_ghosts: Array[MeshInstance3D] = []
 ## or a selection picked up to move it. See [Carry].
 var carrying: Carry
 
+## A train track in hand on a free end of a track down (TrackSnap).
+var tracks := TrackSnap.new()
+
 var _ghost: MeshInstance3D
 var _ghost_material: ShaderMaterial
 var _ghost_valid: bool = false
@@ -197,13 +200,36 @@ func place() -> int:
 	var packed: PackedInt32Array = boxes_for(part, _ghost_transform)
 	lattice.occupy_boxes(brick_id, packed)
 
-	_history.append({"undo": "remove", "brick": brick_id})
+	var step: Dictionary = {"undo": "remove", "brick": brick_id}
+	# The sleeper a train track's joint needs goes down with it, in the same
+	# undo (TrackSnap).
+	if tracks.on_end and not tracks.sleepers.is_empty():
+		step = {"undo": "group", "steps": [step] + _put_sleepers(tracks.sleepers)}
+	_history.append(step)
 	_redo.clear()
 	below = maxf(0.0, -part.lowest_at(_ghost_transform)) if part != null else 0.0
 	# A number typed is spent once it is put down: the next follows the pointer.
 	_typed_from = null
 	placed.emit(brick_id, held_part)
 	return brick_id
+
+
+## Sleepers put down under a train track's joint ([member tracks]), as
+## [method place] puts a part: [part, colour, where] each. Their undo steps.
+func _put_sleepers(list: Array) -> Array:
+	var steps: Array = []
+	for one: Array in list:
+		var where: Transform3D = one[2]
+		var sleeper: int = world.add_brick(str(one[0]), int(one[1]), where)
+		if sleeper == 0:
+			continue
+		set_path(world.get_brick(sleeper), place_group)
+		world.get_brick(sleeper).step = _new_step(world.get_brick(sleeper))
+		var mesh: Lbm.PartMesh = library.mesh_for(str(one[0]))
+		if mesh != null:
+			lattice.occupy_boxes(sleeper, boxes_for(mesh, where))
+		steps.append({"undo": "remove", "brick": sleeper})
+	return steps
 
 
 ## How far the part last put down reaches below the ground, in LDU, for the
@@ -2250,6 +2276,7 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 		return
 	var was: Vector3 = carrying.pivot() if is_carrying() else _ghost_transform.origin
 	_joint_site = null
+	tracks.on_end = false
 	if is_carrying():
 		_ghost.visible = false
 		_ghost_valid = false
@@ -2278,6 +2305,15 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
 	_hovered = hit.brick_id
+	# A train track in hand onto a free end of a track down, within 12
+	# pixels of the pointer: end to end, before any stud (TrackSnap).
+	if tracks.aim(self, held_part, origin, direction.normalized()):
+		_ghost_transform = tracks.at
+		_ghost_valid = room_for(held_part, tracks.at, false, true)
+		_hovered = tracks.target.brick
+		_seated_on = 0
+		_show_ghost(part)
+		return
 	if _onto_a_joint(part, origin, direction.normalized(), hit):
 		_show_ghost(part)
 		return
@@ -3088,6 +3124,9 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		if pinned.has(other) or in_mesh.has(other):
 			continue
 		var theirs: String = library.resolve(str(entries[n][3]))
+		# Two train tracks joined end to end: a tab in the other's slot.
+		if TrackSnap.joined(mine, at, theirs, there):
+			continue
 		if Nests._seated_in(mine, at, theirs, there) \
 				or Nests._seated_in(theirs, there, mine, at):
 			continue
@@ -4183,6 +4222,10 @@ static func _cover_boxes(part: Lbm.PartMesh) -> Array[AABB]:
 func rotate_held(quarter_turns: int) -> void:
 	if is_carrying():
 		carrying.turn(quarter_turns)
+		return
+	# On a train track's end: its next end to the joint (TrackSnap).
+	if tracks.on_end:
+		tracks.turn(quarter_turns)
 		return
 	if _joint_site != null:
 		for _n: int in absi(quarter_turns):
