@@ -10741,3 +10741,26 @@ msgstr "Automático: el modo más sencillo, que necesitan estos gráficos (%s). 
 
 msgid "From the next start."
 msgstr "Desde el próximo arranque."
+
+# Build it a part at a time (partbypart, APP_UX4 7): the step player's choice.
+
+msgid "One part"
+msgstr "Una pieza"
+
+msgid "Whole step"
+msgstr "Paso entero"
+
+msgid "Build it a part at a time: the next part alone, in its colours"
+msgstr "Construirlo pieza a pieza: la siguiente pieza sola, en sus colores"
+
+msgid "Build it a step at a time, as the booklet shows it"
+msgstr "Construirlo paso a paso, como lo muestran las instrucciones"
+
+msgid "%d of %d in this step"
+msgstr "%d de %d en este paso"
+
+msgid "The next part (right arrow, space)"
+msgstr "La siguiente pieza (flecha derecha, espacio)"
+
+msgid "Take the last part off (left arrow)"
+msgstr "Quitar la última pieza (flecha izquierda)"
