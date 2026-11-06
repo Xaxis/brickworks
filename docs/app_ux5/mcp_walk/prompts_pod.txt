@@ -1,0 +1,3 @@
+s1|Clear the baseplate. On a red 4x6 plate build a little side pod: a light grey wing plate 2x4, the left-hand one, along its right edge; a red 1x2 slope 45 at the back facing outwards; a red headlight brick at the front facing outwards, and a red cheese slope on top of the headlight.
+s2|Now make an exact mirror image of the whole pod beside it, the right-hand pod, as a builder would mirror it: left and right parts swapped, everything facing the other way.
+s3|Put a blue 2x2 slope 45 on the baseplate away from the pods and split it into 1-wide slopes on the same studs.
