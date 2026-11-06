@@ -2912,8 +2912,13 @@ plan with Claude as the client.
   2026-11-06; `BuildSteps.view` gives `from`, `up` and `turn`): an author's
   ROTSTEP with its roll (`BookletLooks.turn_at`), and in a model without
   one, a step whose parts go on from below seen turned over from under, as
-  the booklet draws it (BookletMaker's `OVER_TURN`, asked of its own
-  `_goes_on` on a dry maker, through `Later`, never a copy). The camera looks
+  the booklet draws it (BookletMaker's `OVER_TURN`; which way each brick
+  goes on asked of its own `_stud_way` on a dry maker, through `Later`,
+  never a copy). That is worked out a little a frame while the model is
+  looked at (`BuildSteps.work_out_turns`, from `main._turn_pages_over`: the
+  castle's 400 pages in about 2 s, no frame past 60 ms), never in a page's
+  view; a page shown before its turn is known is upright until it is, then
+  turns (`turned_over`). The camera looks
   from the turn with the turn's up (`CadCamera.look_from(direction, up)`
   turns the turntable by a frame, `is_turned`, `upright`, `aim` carries it
   as `frame`); a drag turns the view about the model's turned up, Next goes
@@ -4901,7 +4906,10 @@ the page before, the floor and baseplate aside; a drag turns it and it stays
 turned, Next lands on the next page's own turn, Close puts the model, the
 sun and the floor back; 7140's author-turned pages in the real app; and the
 car and the 44 authored-ROTSTEP files, every page within 1 degree (turned
-ones) or upright (the rest). Pictures in `shots/buildturn/<size>_*.png`:
+ones) or upright (the rest); the castle's turn-overs worked out with no
+frame past 60 ms of its own and no page's view over 20. The parts in sight
+are counted unshaded with edges unsmoothed, as the booklet counts them, and
+again through a parallel lens. Pictures in `shots/buildturn/<size>_*.png`:
 look at `2_step_6_turned` against `2_step_5_before`.
 
 Build it a part at a time, on 8808-1's first step of five parts, with taps

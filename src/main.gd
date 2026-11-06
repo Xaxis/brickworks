@@ -3078,6 +3078,8 @@ func _view_shared() -> void:
 		JavaScriptBridge.eval("window.brickworksStepsReady = performance.now()", true)
 	# Back where this device left it: a phone that slept mid-build opens on
 	# the page it was on.
+	if _build_pages != null:
+		_build_pages.stop()
 	_build_pages = null
 	var kept: Dictionary = BuildSteps.recall(_viewing)
 	# Kept on another version of the link: still right if nothing up to the
@@ -3302,13 +3304,46 @@ func _enter_build(page: int = -1) -> void:
 
 ## The pages of [param made], and the order and key the world shows them by.
 func _make_build_pages(made: Array[Instructions.Step]) -> void:
+	if _build_pages != null:
+		_build_pages.stop()
 	_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
+	_build_pages.turned_over.connect(_page_turned_over)
+	_turn_pages_over(_build_pages)
 	# The timeline's order, when the pages are its steps (they are, unless
 	# it is showing the order parts were put down in): the world is laid
 	# out in it already, and the cover costs nothing.
 	var timeline: Array = _steps.reveal_order()
 	_build_key = int(timeline[1]) if timeline[0] == _build_pages.order \
 		else -1000 - Time.get_ticks_msec()
+
+
+## Which of [param pages] the booklet turns over for their parts, worked out
+## a little a frame while the model is looked at (BuildSteps.work_out_turns):
+## a castle's is two seconds, which no page turn can spend. Its script
+## compiled on a worker first, as the first screen leaves it.
+func _turn_pages_over(pages: BuildSteps) -> void:
+	if not pages.asks_the_booklet() or pages.turns_known():
+		return
+	await Later.script_in_background(&"BookletMaker", null)
+	if pages == _build_pages:
+		pages.work_out_turns()
+
+
+## A page found to be turned over while it is on screen, in Build it or lit
+## on the timeline, turns over now: until then it was the right way up.
+## Pages done with are stopped (BuildSteps.stop) and say nothing more.
+func _page_turned_over(page: int) -> void:
+	var pages: BuildSteps = _build_pages
+	if pages == null:
+		return
+	var showing: bool = _build_page == page and _build_framed == page \
+		if _build_mode != null and _build_mode.is_open() \
+		else _step_lit and pages.steps.find(_steps.current_step()) + 1 == page
+	if not showing:
+		return
+	var view: Dictionary = pages.view(page)
+	_camera.look_from(view["from"], view["up"])
+	_camera.frame(view["box"], 1.0)
 
 
 ## The pages made, and the first page's view worked out, in a frame of
@@ -3321,9 +3356,9 @@ func _ready_the_pages() -> void:
 		return
 	_make_build_pages(_steps.steps())
 	await get_tree().process_frame
-	# Whether a page's parts go on from below, so its page is turned over,
-	# is the booklet's to say (BuildSteps.booklet_turn): its script compiled
-	# on a worker while the frames go on, not in a page turn's frame.
+	# The booklet says which way a figure's callout faces, and which pages
+	# are turned over (_turn_pages_over): its script compiled on a worker
+	# while the frames go on, not in a page's frame.
 	if _build_pages != null and _build_pages.asks_the_booklet():
 		await Later.script_in_background(&"BookletMaker", null)
 	if _build_pages != null and _build_pages.last() >= 1:

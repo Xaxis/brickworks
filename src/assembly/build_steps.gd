@@ -72,6 +72,20 @@ var _own_turns: bool = false
 ## stage ([method _callout_stage]).
 var _maker: Node = null
 var _callouts: Dictionary = {}
+## Which pages the booklet turns over for their parts, worked out a little
+## a frame ([method work_out_turns]): page -> true, turned over; every page
+## asked so far; all of them; the job going, and told to stop; the page
+## the player asked for while it went, asked next.
+var _over: Dictionary = {}
+var _asked: Dictionary = {}
+var _overs_known: bool = false
+var _working: bool = false
+var _stopped: bool = false
+var _wanted: int = 0
+
+## [param page]'s turn over is known now ([method work_out_turns]): its
+## view is the booklet's, where until now it was the right way up.
+signal turned_over(page: int)
 ## direction -> {"turn": Basis, "cells": {Vector2i: PackedInt64Array}}
 var _planes: Dictionary = {}
 ## brick id -> the lot key it is counted under (Inventory.key_of), and the
@@ -414,7 +428,8 @@ func note(page: int) -> String:
 ## box to fit}. As its booklet page draws it ([method booklet_turn]): turned
 ## where its designer turned it, roll and all, and turned over where its
 ## parts go on from below, so the eye is under the model and its underside
-## is up on the screen (BookletStudio.basis_for). Otherwise from the front,
+## is up on the screen (BookletStudio.basis_for), once that is known
+## ([method work_out_turns], turned_over). Otherwise from the front,
 ## as every booklet step is drawn (BookletStudio.FRONT), or from the back
 ## where the step's new parts are hidden from the front and the back shows
 ## them, as BookletMaker turns a page round, the right way up; framed on
@@ -494,12 +509,86 @@ func booklet_turn(page: int) -> Array:
 		if not turn.is_empty():
 			var facing: Vector3 = _facing(page)
 			out = [BookletLooks.direction(turn, facing), BookletLooks.roll(turn, facing)]
-		elif not _own_turns and _goes_on(page) < 0:
+		elif _over.has(page):
 			var facing: Vector3 = _facing(page)
 			var over: Dictionary = Later.script(&"BookletMaker").get_script_constant_map()["OVER_TURN"]
 			out = [facing, BookletLooks.roll(over, facing)]
+		elif not _own_turns and not _asked.has(page):
+			# Not known yet: the right way up until it is (turned_over), and
+			# this page asked next.
+			_wanted = page
+			return out
 	_turns[page] = out
 	return out
+
+
+## Whether every page's turn is known: none of them waits on
+## [method work_out_turns].
+func turns_known() -> bool:
+	return _own_turns or _overs_known or last() < 1
+
+
+## Work out which pages the booklet turns over because their parts go on
+## from below, as it does (BookletMaker._goes_on: each of the step's bricks
+## asked BookletMaker._stud_way, on the booklet's own stage of the model),
+## spending at most [param budget_ms] of a frame's time before the next
+## frame, from page 1 on, a page the player asks for meanwhile first. A
+## castle's 400 pages are two seconds of joints read (Exact.connections),
+## and a step of eight baseplates a fifth of one, which a page turn cannot
+## spend: so it is done while the model is looked at, and a page asked
+## before its turn is known is the right way up until it is, then turned
+## (turned_over). Nothing to do in a model with turns of its designer's.
+func work_out_turns(budget_ms: float = 4.0) -> void:
+	if turns_known() or _working:
+		return
+	_working = true
+	var tree := Engine.get_main_loop() as SceneTree
+	var budget: int = int(budget_ms * 1000.0)
+	var began: Array = [Time.get_ticks_usec()]
+	var pause := func() -> bool:
+		if Time.get_ticks_usec() - int(began[0]) < budget:
+			return false
+		await tree.process_frame
+		began[0] = Time.get_ticks_usec()
+		return true
+	var maker: Node = _booklet_maker()
+	# The booklet's stage of the model (BookletMaker._main), its bricks in
+	# the pages' order, a slice a frame.
+	var entries: Array = []
+	for brick_id: int in order:
+		entries.append(maker.call(&"_entry_of", brick_id))
+		await pause.call()
+		if _stopped:
+			return
+	maker.set(&"_order", entries)
+	maker.set(&"_main", maker.call(&"_stage", entries))
+	var next: int = 1
+	while not _stopped:
+		var page: int = _wanted if _wanted > 0 and not _asked.has(_wanted) else next
+		_wanted = 0
+		while page <= last() and _asked.has(page):
+			page += 1
+		if page > last():
+			break
+		if page == next:
+			next += 1
+		var way: int = await _goes_on(page, pause)
+		if _stopped:
+			break
+		_asked[page] = true
+		if way < 0:
+			_over[page] = true
+			_turns.erase(page)
+			_views.erase(page)
+			turned_over.emit(page)
+		await pause.call()
+	_working = false
+	_overs_known = not _stopped
+
+
+## Stop [method work_out_turns]: these pages are done with.
+func stop() -> void:
+	_stopped = true
 
 
 ## The way the booklet looks at [param page]'s step before any turn: the
@@ -521,9 +610,17 @@ func _facing(page: int) -> Vector3:
 ## ranks its steps (BookletMaker._entries): the step that puts a callout's
 ## sub-assembly on takes in the callout's parts; a callout's own step on
 ## the callout's own stage, the first copy as its steps build it.
-func _goes_on(page: int) -> int:
+##
+## BookletMaker._goes_on asked a brick at a time, [param pause] between
+## them (a step of eight baseplates is a fifth of a second of the castle):
+## the same bricks in the same order, the same answer, one from above
+## enough.
+func _goes_on(page: int, pause: Callable) -> int:
 	var maker: Node = _booklet_maker()
 	var step: Instructions.Step = step_of(page)
+	var span := Vector2i.ZERO
+	var stage: Object = maker.get(&"_main")
+	var ranked: Array = maker.get(&"_order")
 	if step.in_callout():
 		var attach: int = _attach_of(page)
 		if attach < 1:
@@ -532,13 +629,25 @@ func _goes_on(page: int) -> int:
 		var at: int = (callout[3] as Array).find(page)
 		if at < 0:
 			return 0
-		var span: Array = callout[2][at]
-		return int(maker.call(&"_goes_on", int(span[0]), int(span[1]), callout[0], callout[1]))
-	var first: int = page
-	if step.attaches():
-		first -= _built_for(page).size()
-	return int(maker.call(&"_goes_on", _upto[first - 1] + 1, _upto[page], maker.get(&"_main"),
-		maker.get(&"_order")))
+		span = Vector2i(int(callout[2][at][0]), int(callout[2][at][1]))
+		stage = callout[0]
+		ranked = callout[1]
+	else:
+		var first: int = page
+		if step.attaches():
+			first -= _built_for(page).size()
+		span = Vector2i(_upto[first - 1] + 1, _upto[page])
+	var below: bool = false
+	var last_rank: int = mini(span.y, (stage.get(&"boxes") as Array).size())
+	for rank: int in range(span.x, last_rank + 1):
+		var way: int = int(maker.call(&"_stud_way", rank, span.x, last_rank, stage, ranked))
+		if way > 0:
+			return 1
+		below = below or way < 0
+		await pause.call()
+		if _stopped:
+			return 0
+	return -1 if below else 0
 
 
 ## The page that puts on the callout [param page] is a step of: the next
@@ -584,12 +693,13 @@ func _callout_stage(attach: int) -> Array:
 
 
 ## The booklet's maker, laying out only (BookletMaker.dry), on the model's
-## bricks in [member order], the booklet's stage of them as it makes it:
-## what says which way a step's parts go on is the booklet's, not a copy.
-## Made when a page first asks, which in a model with turns of its
+## bricks: what says which way a step's parts go on, and which way a
+## figure's callout faces, is the booklet's, not a copy. Its stage of the
+## model in [member order] is set by [method work_out_turns]. Made when
+## first asked, which in a model with no figure and turns of its
 ## designer's is never; freed with the pages. Through Later, as everything
 ## the first screen does not need (main._ready_the_pages compiles it on a
-## worker before Build it asks).
+## worker before the pages ask).
 func _booklet_maker() -> Node:
 	if _maker != null:
 		return _maker
@@ -597,19 +707,22 @@ func _booklet_maker() -> Node:
 	_maker.set(&"dry", true)
 	_maker.set(&"library", _library)
 	_maker.set(&"_world", _world)
-	var entries: Array = []
-	for brick_id: int in order:
-		entries.append(_maker.call(&"_entry_of", brick_id))
-	_maker.set(&"_order", entries)
-	_maker.set(&"_main", _maker.call(&"_stage", entries))
 	return _maker
 
 
-## Whether a page's turn may ask the booklet's maker ([method
+## Whether a page's turn asks the booklet's maker ([method
 ## _booklet_maker]): the model has none of its designer's turns, so a step
-## whose parts go on from below is turned over.
+## whose parts go on from below is turned over; or a callout of a figure
+## faces the way the figure does.
 func asks_the_booklet() -> bool:
-	return not _own_turns and last() > 0
+	if last() < 1:
+		return false
+	if not _own_turns:
+		return true
+	for step: Instructions.Step in steps:
+		if step.figure:
+			return true
+	return false
 
 
 func _notification(what: int) -> void:

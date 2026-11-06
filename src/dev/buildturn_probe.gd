@@ -31,6 +31,14 @@
 ##   5. Every page of the 44 files of LDraw's model repository whose authors
 ##      turn the model (rotroll's validation), and the sports car, each
 ##      against its booklet page's layout, through the camera's own code.
+##   6. The castle's pages, none turned: which are turned over is worked
+##      out a little a frame while the model is looked at, no frame of it
+##      past a page turn's 60 ms, and no page's view working it out.
+##
+## The new parts in sight are counted as the booklet counts them, by what
+## is drawn where: unshaded, edges unsmoothed, on a background no part is;
+## and again through a parallel lens, as the booklet draws, which says how
+## much of any gap is Build it's perspective.
 ##
 ## Pictures in shots/buildturn/, named by the window's size.
 extends SceneTree
@@ -38,6 +46,7 @@ extends SceneTree
 const CAR := "res://models/sports_car.ldr"
 const CART := "res://vendor/omr/files/7140-1.mpd"
 const FILES := "res://vendor/omr/files/"
+const CASTLE := "res://models/castle.ldr"
 const SHOTS := "res://shots/buildturn/"
 ## Within this much of the booklet's view, in degrees.
 const WITHIN := 1.0
@@ -135,7 +144,65 @@ func _run() -> void:
 
 		print("\n5. every page of the 44 files whose authors turn the model, and the sports car")
 		await _files(library, car)
+		print("\n6. the castle's pages turned over a little a frame, none in a page turn")
+		await _castle_paced(library)
 	_finish()
+
+
+## The castle (2,497 parts, 400 steps, none of its designer's turns): which
+## of its pages are turned over worked out a little a frame
+## (BuildSteps.work_out_turns), each frame's own time on the main thread
+## under a page turn's 60 ms; and a page's view, asked before and after,
+## never working it out itself (it was 195 ms for the eight baseplates of
+## step 1, asked in the page's view).
+func _castle_paced(library: PartLibrary) -> void:
+	var world := BrickWorld.new()
+	world.library = library
+	root.add_child(world)
+	for piece: LdrModel.Placement in LdrModel.load_file(CASTLE).flatten(library.parts):
+		var id: String = piece.part_id.to_lower().trim_suffix(".dat")
+		if library.mesh_for(id) == null:
+			continue
+		var brick_id: int = world.add_brick(id, piece.color_code, piece.transform)
+		world.get_brick(brick_id).group = piece.group
+		world.get_brick(brick_id).unit = piece.unit
+	var pages: BuildSteps = BuildSteps.of(world, library, Instructions.plan(world, library))
+	if not pages.has_method("work_out_turns"):
+		_ok(false, "the castle's pages turned over a little a frame: no BuildSteps.work_out_turns")
+		world.queue_free()
+		return
+	var viewed: Array = []
+	for page: int in range(1, pages.last() + 1):
+		var span := ProbeTime.Span.new()
+		pages.view(page)
+		viewed.append(span.end())
+	var frames: Array = []
+	var since: int = Time.get_ticks_msec()
+	pages.call("work_out_turns")
+	var span := ProbeTime.Span.new()
+	while not pages.call("turns_known") and Time.get_ticks_msec() - since < 60000:
+		await process_frame
+		frames.append(span.end())
+		span = ProbeTime.Span.new()
+	var took: float = (Time.get_ticks_msec() - since) / 1000.0
+	var slowest: ProbeTime.Span = ProbeTime.slowest(frames)
+	var bar: float = 60.0 * ProbeTime.slack(ProbeTime.busiest(frames))
+	_ok(pages.call("turns_known") and slowest.own < bar,
+		"the castle's %d pages: which are turned over known in %.1f s over %d frames, the longest %.1f ms of its own, under %.0f (%s)"
+			% [pages.last(), took, frames.size(), slowest.own, bar, slowest.said()])
+	var before: ProbeTime.Span = ProbeTime.slowest(viewed)
+	viewed.clear()
+	for page: int in range(1, pages.last() + 1):
+		var one := ProbeTime.Span.new()
+		pages.view(page)
+		viewed.append(one.end())
+	var after: ProbeTime.Span = ProbeTime.slowest(viewed)
+	var view_bar: float = 20.0 * ProbeTime.slack(ProbeTime.busiest(viewed))
+	_ok(before.own < view_bar and after.own < view_bar,
+		"...a page's view %.1f ms of its own at most before, %.1f after, under %.0f"
+			% [before.own, after.own, view_bar])
+	world.queue_free()
+	await process_frame
 
 
 # -- 1. page by page ------------------------------------------------------------
@@ -178,6 +245,15 @@ func _every_page(main: Node, pages: BuildSteps, booklet: Dictionary, called: Str
 	var camera: CadCamera = main.get("_camera")
 	var plan: Array = booklet["plan"]
 	var entries: Dictionary = booklet["entries"]
+	# Which pages are turned over is worked out while the model is looked
+	# at (BuildSteps.work_out_turns): every one known before they are read.
+	var since: int = Time.get_ticks_msec()
+	while pages.has_method("turns_known") and not pages.call("turns_known") \
+			and Time.get_ticks_msec() - since < 60000:
+		await process_frame
+	if pages.has_method("turns_known"):
+		_ok(pages.call("turns_known"), "%s: which pages are turned over known %.1f s after Build it opened"
+			% [called, (Time.get_ticks_msec() - since) / 1000.0])
 	var same: bool = plan.size() == pages.steps.size()
 	for index: int in mini(plan.size(), pages.steps.size()):
 		same = same and (plan[index] as Instructions.Step).brick_ids == pages.steps[index].brick_ids
@@ -273,31 +349,43 @@ func _turned_over(main: Node, pages: BuildSteps, booklet: Dictionary, page: int)
 	_ok(floor != null and not floor.visible and plates_hidden,
 		"...the floor put aside, its grid, shadow and %d plate batches" % plates.size())
 
-	# Pixels of the step's new parts in the very frame, and drawn alone.
+	# Pixels of the step's new parts in the very frame, and drawn alone; and
+	# the same through a parallel lens, as the booklet draws (CadCamera's
+	# own square_on), which says what of any gap is the lens.
 	var seen: Array = await _seen_in_frame(main, pages, page)
 	var share: float = float(seen[0]) / maxf(float(seen[1]), 1.0)
+	var square: Array = await _seen_in_frame(main, pages, page, true)
+	var square_share: float = float(square[0]) / maxf(float(square[1]), 1.0)
 	var printed: float = await _seen_in_booklet(main, booklet, page)
 	_ok(seen[1] > 0 and share >= printed - 0.005,
-		"its new parts in sight: %d of their %d pixels, %.0f%%; the booklet's page shows %.0f%% of them"
-			% [seen[0], seen[1], share * 100.0, printed * 100.0])
+		"its new parts in sight: %d of their %d pixels, %.1f%% (%.1f%% through a parallel lens, as the booklet draws); the booklet's page shows %.1f%% of them"
+			% [seen[0], seen[1], share * 100.0, square_share * 100.0, printed * 100.0])
 	await _shot("2_step_%d_turned_again" % page)
 
 
 ## How many pixels of [param page]'s new parts the frame shows, and how
 ## many it would were nothing in front of them: the frame with the parts
 ## and without, then the parts alone and nothing, compared pixel by pixel.
-## Shadows, ambient occlusion, glow and the outline off meanwhile, so only
-## the parts themselves differ; the page put back after.
-func _seen_in_frame(main: Node, pages: BuildSteps, page: int) -> Array:
+## Drawn as the booklet measures, by what is where and not how it is lit:
+## unshaded, no smoothing of edges (a pixel is one part's or none's), on a
+## background no part is, the outline off. Through a parallel lens with
+## [param square] (CadCamera.square_on). The page put back after.
+func _seen_in_frame(main: Node, pages: BuildSteps, page: int, square: bool = false) -> Array:
 	var world: BrickWorld = main.get("_world")
+	var camera: CadCamera = main.get("_camera")
 	var outline: Node = main.get("_build_outline")
 	var look: Environment = (main.get_node("WorldEnvironment") as WorldEnvironment).environment
-	var sun: DirectionalLight3D = main.get_node("Sun")
-	var kept: Array = [look.ssao_enabled, look.glow_enabled, sun.shadow_enabled, outline.get("visible")]
-	look.ssao_enabled = false
-	look.glow_enabled = false
-	sun.shadow_enabled = false
+	var kept: Array = [root.debug_draw, root.msaa_3d, root.screen_space_aa, root.use_taa,
+		look.background_mode, look.background_color, outline.get("visible")]
+	root.debug_draw = Viewport.DEBUG_DRAW_UNSHADED
+	root.msaa_3d = Viewport.MSAA_DISABLED
+	root.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	root.use_taa = false
+	look.background_mode = Environment.BG_COLOR
+	look.background_color = Color(1.0, 0.0, 1.0)
 	outline.set("visible", false)
+	if square:
+		camera.square_on(true)
 	var with: Image = await _frame()
 	world.reveal_upto(pages.order, pages.count(page - 1), int(main.get("_build_key")))
 	var without: Image = await _frame()
@@ -305,10 +393,15 @@ func _seen_in_frame(main: Node, pages: BuildSteps, page: int) -> Array:
 	var alone: Image = await _frame()
 	world.show_only({-1: true})
 	var nothing: Image = await _frame()
-	look.ssao_enabled = kept[0]
-	look.glow_enabled = kept[1]
-	sun.shadow_enabled = kept[2]
-	outline.set("visible", kept[3])
+	if square:
+		camera.square_on(false)
+	root.debug_draw = kept[0]
+	root.msaa_3d = kept[1]
+	root.screen_space_aa = kept[2]
+	root.use_taa = kept[3]
+	look.background_mode = kept[4]
+	look.background_color = kept[5]
+	outline.set("visible", kept[6])
 	main.call("_build_go", page)
 	await _arrive(main)
 	return [_differ(with, without), _differ(alone, nothing)]
@@ -455,6 +548,8 @@ func _files(library: PartLibrary, car: String) -> void:
 		var plan: Array[Instructions.Step] = booklet["plan"]
 		var entries: Dictionary = booklet["entries"]
 		var pages: BuildSteps = BuildSteps.of(world, library, plan, store.scenery)
+		if pages.has_method("work_out_turns"):
+			await pages.call("work_out_turns", 1000.0)
 		var own: int = 0
 		var digest := PackedStringArray()
 		for index: int in plan.size():
