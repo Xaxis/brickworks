@@ -183,8 +183,13 @@ func _show_by(about: Rect2) -> void:
 			longest = maxf(longest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1,
 				label.get_theme_font_size("font_size") if label == _title else font_size).x)
 	var inner: float = minf(longest + 1.0, wide - 24.0)
+	# A wrapping label's height is of the width it last had, which for the
+	# first answer was none, a word a line: the window's height. Given the
+	# width now, its height is that width's before the bubble is sized.
 	for label: Label in [_title, _body]:
 		label.custom_minimum_size.x = inner
+		label.size = Vector2(inner, label.size.y)
+		label.update_minimum_size()
 	_bubble.reset_size()
 	var size: Vector2 = _bubble.get_combined_minimum_size()
 	_bubble.size = size

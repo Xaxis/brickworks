@@ -13,7 +13,8 @@
 ##    assistant's, the status bar's and the side panels' rails) answers with
 ##    words, in the bubble beside it: none empty past its name, none the
 ##    same as another's, each its own or those of what it is part of, never
-##    only the panel's it is in. The bin's part tiles and colour swatches
+##    only the panel's it is in; the bubble just under or over it, in the
+##    window, no taller than its words. The bin's part tiles and colour swatches
 ##    are its contents, each named by its part or colour, not its buttons;
 ## 2. the click does nothing else: the control under it never hears the
 ##    press or the release, and nothing of the model, the selection, the
@@ -252,6 +253,9 @@ func _answers() -> void:
 			if said.has(whole):
 				bad.append("%s %s said what %s said: \"%s\"" % [kind, named, said[whole], whole.replace("\n", " / ")])
 				continue
+			if not str(answer["placed"]).is_empty():
+				bad.append("%s %s: its bubble %s" % [kind, named, answer["placed"]])
+				continue
 			said[whole] = "%s %s" % [kind, named]
 			counts[kind][1] += 1
 			if not pictured.has(kind):
@@ -301,14 +305,27 @@ func _ask_about(control: Control) -> Dictionary:
 	var about: Variant = asker.get("said_of") if bool(asker.call("answering")) else null
 	if about != null and not is_instance_valid(about):
 		about = null
+	# The bubble beside what it is about, just under it or just over it, in
+	# the window, and only as tall as its words.
+	var placed: String = ""
+	if about != null:
+		var bubble: Rect2 = asker.call("bubble_rect")
+		var near: Rect2 = _rect(about as Control)
+		var room: Rect2 = root.get_visible_rect()
+		if not room.encloses(bubble):
+			placed = "out of the window (%s)" % bubble
+		elif bubble.size.y > room.size.y * 0.4:
+			placed = "%d px tall" % int(bubble.size.y)
+		elif absf(bubble.position.y - near.end.y - 6.0) > 1.0 and absf(near.position.y - bubble.end.y - 6.0) > 1.0:
+			placed = "not beside it (%s, it %s)" % [bubble, near]
 	var changed: Array = _changes(before, _state())
 	if not _heard.is_empty():
 		changed.push_front("it heard %s" % ", ".join(_heard))
 	var lines: PackedStringArray = said.split("\n")
 	# The words past its name: a one-line answer is a name alone.
 	var words: String = "\n".join(lines.slice(1)) if lines.size() > 1 else ""
-	return {"said": said, "words": words, "about": about, "quiet": changed.is_empty(),
-		"did": ", ".join(changed)}
+	return {"said": said, "words": words, "about": about, "placed": placed,
+		"quiet": changed.is_empty(), "did": ", ".join(changed)}
 
 
 ## A point of [param control] in sight: its middle, or the middle of what
@@ -658,6 +675,8 @@ func _languages() -> void:
 		"Sends what is written above to the assistant, which designs it and builds it in the model; with parts chosen over the box, it works on those",
 		"Checks the key pasted above with Anthropic and keeps it, so the assistant designs on your own Anthropic account",
 		"Opens Anthropic's Console in the browser, at the page where an account makes its keys",
+		"Shows how the Claude desktop and mobile apps add Brickworks, with the address to paste",
+		"Shows this browser's own address, to add to Claude by hand: the way before Claude could sign in",
 	]
 	for code: String in ["de", "fr", "es"]:
 		Language.apply(code)

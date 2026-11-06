@@ -10866,3 +10866,9 @@ msgstr "Comprueba con Anthropic la clave pegada arriba y la guarda, para que el 
 
 msgid "Opens Anthropic's Console in the browser, at the page where an account makes its keys"
 msgstr "Abre la Console de Anthropic en el navegador, en la página donde una cuenta crea sus claves"
+
+msgid "Shows how the Claude desktop and mobile apps add Brickworks, with the address to paste"
+msgstr "Muestra cómo las apps de Claude para escritorio y móvil añaden Brickworks, con la dirección que pegar"
+
+msgid "Shows this browser's own address, to add to Claude by hand: the way before Claude could sign in"
+msgstr "Muestra la dirección propia de este navegador, para añadirla a Claude a mano: la forma de antes de que Claude pudiera iniciar sesión"
