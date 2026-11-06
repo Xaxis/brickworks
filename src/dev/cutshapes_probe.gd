@@ -17,7 +17,7 @@
 ##       out than the ambient occlusion's reach changes;
 ##   (2) drawn with the cut's faces marked, a face the box goes through is a
 ##       cap (magenta) and no inside face of a part is drawn (green): none;
-##   the same for a sphere and a cylinder, chosen in the strip;
+##   the same for a cylinder and a sphere, chosen in the strip;
 ##   each part is drawn as the shape says, worked out here from its box:
 ##       whole outside it, cut across it, not at all inside;
 ##   (3) Render and the booklet, made with the box on, are the ones made
@@ -250,7 +250,11 @@ func _a_sphere_and_a_cylinder() -> void:
 		and choice.selected == BOX)
 	if choice == null:
 		return
-	for kind: int in [SPHERE, CYLINDER]:
+	# The cylinder first, so it takes the box's room, a drum through the cab
+	# whose walls it cuts; after the sphere it would keep the sphere's height
+	# and take nearly the whole car, leaving few faces to count. The sphere
+	# is the same ball from either.
+	for kind: int in [CYLINDER, SPHERE]:
 		var name: String = ["", "box", "sphere", "cylinder"][kind]
 		print("  a %s" % name)
 		choice.select(kind)
