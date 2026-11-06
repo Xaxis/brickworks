@@ -462,7 +462,9 @@ func write_list(kind: String, asking: bool = false) -> String:
 	var stock: Inventory = Inventory.of(shell.world, shell.library, _rest())
 	if stock.lots.is_empty():
 		return "nothing to list"
-	var exports: Exports = shell.app.get("_exports")
+	# Export, made here if nothing has made it yet (Later): a section's list
+	# is not worth its compile in the first use of Suggest.
+	var exports: Node = shell.app.get("_exports")
 	var base: String = (shell.bar.model_name() + " " + _evaluated_name).to_snake_case()
 	var to: String = await exports._where(
 		base + ("_bricklink.xml" if kind == "bricklink" else "_parts.txt"), asking)
@@ -470,9 +472,9 @@ func write_list(kind: String, asking: bool = false) -> String:
 		return ""
 	if kind == "bricklink":
 		var made: Dictionary = ShopLists.bricklink_xml(stock, shell.library)
-		return Exports._give(str(made["text"]), to.get_file(), "application/xml",
+		return exports._give(str(made["text"]), to.get_file(), "application/xml",
 			to.get_base_dir())
-	return Exports._give(stock.to_text(_evaluated_name), to.get_file(), "text/plain",
+	return exports._give(stock.to_text(_evaluated_name), to.get_file(), "text/plain",
 		to.get_base_dir())
 
 
