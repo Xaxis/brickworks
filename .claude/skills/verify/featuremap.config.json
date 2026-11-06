@@ -771,7 +771,7 @@
       "kind": "ui",
       "label": "parts lists for shops",
       "entry": "src/assembly/shop_lists.gd",
-      "reach": "godot --path .  (File, Export, then BrickLink wanted list or Rebrickable parts list)",
+      "reach": "godot --path .  (File, Export, then BrickLink wanted list, Rebrickable parts list or LEGO® Pick a Brick list; or the parts list's BrickLink, its choices beside it, Rebrickable and LEGO® Pick a Brick)  /  export_model format=pickabrick, format=bricklink condition= wanted_list= notify=",
       "area": "model-io"
     },
     {
@@ -4623,6 +4623,27 @@
       "entry": "src/net/pattern_tool.gd",
       "reach": "tools/probe.sh grid_probe   (pattern_parts: bricks= in columns, rows and levels, column_studs/row_studs/level_plates apart or touching; one call, one undo step, a copy with no room said by its column, row and level and the part in its way)",
       "area": "mcp"
+    },
+    {
+      "kind": "ui",
+      "label": "a model into this one",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (File, Import, Into this model…: a saved model, an example, a file or the library's; in hand as one sub-assembly with its steps, a click puts it down, one undo takes it out; the library's Put in this model; open_model into=true over MCP)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "intomodel probe",
+      "entry": "src/dev/intomodel_probe.gd",
+      "reach": "tools/probe.sh intomodel_probe   (a window, 1280 x 720 or PROBE_SIZE=1400x900; starts tools/web/serve.py --library tests/fixtures/library on 9801 and stops it)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "picklist probe",
+      "entry": "src/dev/picklist_probe.gd",
+      "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
+      "area": "model-io"
     }
   ]
 }

@@ -4984,6 +4984,10 @@
         "discard_changes": {
           "type": "boolean"
         },
+        "into": {
+          "description": "put name= (or library=, link=) into the model open now as one sub-assembly with its own steps, as File, Import, Into this model… does, in place of opening it; nothing is replaced",
+          "type": "boolean"
+        },
         "library": {
           "description": "a library id from gallery library=true, like omr-10179-1, or a set's number or name",
           "type": "string"
@@ -4996,6 +5000,10 @@
           "description": "a model's name from the list",
           "type": "string"
         },
+        "turn": {
+          "description": "with into: quarter turns about the vertical, 0 to 3",
+          "type": "integer"
+        },
         "version": {
           "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it",
           "type": "integer"
@@ -5003,6 +5011,14 @@
         "versions": {
           "description": "list name='s saves kept as versions",
           "type": "boolean"
+        },
+        "x": {
+          "description": "with into: studs across to its low corner; beside the model when omitted",
+          "type": "number"
+        },
+        "z": {
+          "description": "with into: studs deep to its low corner",
+          "type": "number"
         }
       },
       "type": "object"
@@ -5207,10 +5223,19 @@
       "readOnlyHint": false,
       "title": "Export the model"
     },
-    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result.",
+    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and quantities, 400 lines a file; the answer names the parts with no element number known), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result. A bricklink wanted list takes condition, wanted_list and notify, as BrickLink's upload reads them; what is not given is what the person chose last on the parts list's BrickLink button. Nothing is uploaded: the person uploads the file.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "condition": {
+          "description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)",
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ],
+          "type": "string"
+        },
         "format": {
           "enum": [
             "ldraw",
@@ -5223,9 +5248,18 @@
             "bricklink",
             "rebrickable",
             "instructions",
-            "all_models"
+            "all_models",
+            "pickabrick"
           ],
           "type": "string"
+        },
+        "notify": {
+          "description": "bricklink: BrickLink emails the person when a lot of a part is listed for sale (NOTIFY Y)",
+          "type": "boolean"
+        },
+        "wanted_list": {
+          "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list",
+          "type": "integer"
         }
       },
       "required": [

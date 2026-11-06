@@ -178,9 +178,11 @@ const EARLY_COMMANDS: Dictionary = {"beta_hub": "beta_hub"}
 var early: Array[String] = []
 
 const SUBMENUS: Dictionary = {
-	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
+	"import": ["import_into", "-", "import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
-		"export_rebrickable", "-", "export_all"],
+		"export_rebrickable",
+		"export_pickabrick",
+		"-", "export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
@@ -234,6 +236,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	verbs.assemblies = assemblies
 	builder.unit_of = assemblies.unit_of
 	builder.copy_group = assemblies.group_for_copy
+	# A model put into this one comes in hand as a paste does (intomodel).
+	bar.hold_parts = verbs.hold
 	# Whatever replaces the model leaves no assembly being edited.
 	bar.started_new.connect(func() -> void: assemblies.enter(""))
 	bar.cleared.connect(func() -> void: assemblies.enter(""))
@@ -672,7 +676,8 @@ func doing(name: String) -> String:
 ## never put off a frame to say so first. (The clipboard is not among
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
-	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window"]
+	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window",
+	"import_into"]
 
 ## The commands that open a tab of their own in a browser (BookletMaker):
 ## run at once there, as those above are.
@@ -719,6 +724,7 @@ const SLOW_FROM: Dictionary = {
 	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "select_find": 2000,
 	"reseat": 2000,
 	"export_bricklink": 3000, "export_rebrickable": 3000, "pose": 3000,
+	"export_pickabrick": 3000,
 	# New first asks whether the model on the baseplate is saved as it is.
 	"new": 2000,
 	# And the rest command_probe found holding a frame a fifth of a second or
@@ -742,6 +748,7 @@ const DOING: Dictionary = {
 	"export_picture": "Taking a picture of the model…",
 	"export_bricklink": "Exporting the BrickLink wanted list…",
 	"export_rebrickable": "Exporting the parts list…",
+	"export_pickabrick": "Exporting the Pick a Brick list…",
 	"render": "Opening Render…", "pose": "Opening Motions…",
 	"instructions": "Making the instructions…", "share": "Opening Share…",
 	"undo": "Undoing…", "redo": "Redoing…", "history": "Going back…",
@@ -973,6 +980,10 @@ func _define() -> void:
 	_add("import_mesh", "3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb)…", 0,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"A sculpt, a scan or any 3D model, laid in bricks")
+	# A model put into this one whole, as a sub-assembly with its own steps
+	# (ModelBar.into_model, APP_UX4 intomodel).
+	_add("import_into", "Into this model…", 0, bar.into_model, Callable(),
+		"A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes")
 	_add("save", "Save", CTRL | KEY_S, bar._on_save, something,
 		"Keep this model under its name")
 	_add("save_as", "Save as…", CTRL | SHIFT | KEY_S, _ask_save_as, something,
@@ -1004,6 +1015,11 @@ func _define() -> void:
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
 		func() -> void: await (app.get("_exports") as Exports).shop_list("rebrickable", {}, true),
 		something)
+	# picklist: LEGO's own shop (src/ui/exports.gd, ShopLists.pick_a_brick).
+	_add("export_pickabrick", "LEGO® Pick a Brick list (.csv)", 0,
+		func() -> void: await (app.get("_exports") as Exports).shop_list("pickabrick", {}, true),
+		something, "LEGO® element numbers and how many of each, to upload at LEGO® Pick a "
+			+ "Brick, 400 to a file; the parts with no number known are named")
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	# src/ui/render_queue.gd, loaded the first time it is asked for.

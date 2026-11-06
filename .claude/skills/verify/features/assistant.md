@@ -3028,7 +3028,13 @@ ModelShot given the bricks, colours and placings the app would stage, its parts
 made in the session sent as their LDraw, staged again exactly when the app's
 would be (`ModelShot.stage_key`). A drawer starts in 5-10 s (mostly compiling
 the scripts), stays 20 s after its last picture (`LeasedShots.LINGER_S`), 2 s
-when another job waits for the GPU (`YIELD_S`), and ends with the app. A picture
+when another job waits for the GPU (`YIELD_S`), and ends with the app however the
+app ends: on Linux it is started through `setpriv --pdeathsig TERM`, so an app the
+bench ends by a signal (which runs no `tree_exiting`, and never reaches the drawer's
+session of its own) has its drawer sent SIGTERM, and `gpu` leaves the queue or stops
+it; before, a drawer still queued outlived its app and took a slot for nobody. A
+relay tab without Claude Code (`realset.py --no-claude-code`) finds its tools through
+the run's `bin-without-claude` beside the tabs' homes, never inside one. A picture
 with nothing to stage is no picture at once; one not drawn within 120 s
 (`MOST_WAIT_S`, the lease's queue included) is the letters, logged "no picture in
 time". An app without `src/ai/leased_shots.gd` (an older `--checkout` or
@@ -3039,6 +3045,8 @@ their very end, if at all (5 of main's 44 proof designs, 2026-10-19).
 
 ```sh
 python3 tools/minitest.py tests/test_bench.py      # the design stage starts the app headless with --draw-by, an old app in a window
+tools/probe.sh drawer_ends                         # a drawer ends with its app, the app ended by SIGTERM to its group and by SIGKILL
+python3 tools/minitest.py tests/test_realset.py    # a tab without Claude Code finds xvfb-run, godot and gpu, not claude, after its home is gone
 python3 tools/bench/leased_shots_check.py --history --model bench/results/realset-2026-10-20-t3lay44/21052-1/design.ldr --out /tmp/x --port 9040
 python3 tools/bench/leased_shots_check.py --windows-only --model … --out /tmp/y   # how much two windows differ, on their own
 tools/probe.sh shot_probe                          # ModelShot in a window, unchanged

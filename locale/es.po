@@ -6116,6 +6116,100 @@ msgstr "Una lista de deseos de BrickLink (.xml), para subir en Wanted › Upload
 msgid "A Rebrickable parts list (.csv), to import into a list of your own"
 msgstr "Una lista de piezas de Rebrickable (.csv), para importar en una lista propia"
 
+# picklist: LEGO® Pick a Brick's list, and what BrickLink's wanted list asks of each part
+msgid "LEGO® Pick a Brick list (.csv)"
+msgstr "Lista de LEGO® Pick a Brick (.csv)"
+
+msgid "LEGO® element numbers and how many of each, to upload at LEGO® Pick a Brick, 400 to a file; the parts with no number known are named"
+msgstr "Los números de elemento LEGO® y cuántos de cada uno, para subir a LEGO® Pick a Brick, 400 por archivo; se nombran las piezas sin número conocido"
+
+msgid "Exporting the Pick a Brick list…"
+msgstr "Exportando la lista de Pick a Brick…"
+
+msgid "LEGO® Pick a Brick"
+msgstr "LEGO® Pick a Brick"
+
+msgid "A list of LEGO® element numbers (.csv), to upload at LEGO® Pick a Brick: the parts it has no number for are named"
+msgstr "Una lista de números de elemento LEGO® (.csv), para subir a LEGO® Pick a Brick: se nombran las piezas sin número"
+
+msgid "BrickLink wanted list: new or used, which of your wanted lists, and an email when one is listed"
+msgstr "Lista de deseos de BrickLink: nuevo o usado, cuál de tus listas y un correo cuando se ponga una a la venta"
+
+msgid "Save the list"
+msgstr "Guardar la lista"
+
+msgid "Condition"
+msgstr "Estado"
+
+msgid "New or used"
+msgstr "Nuevo o usado"
+
+msgid "New only"
+msgstr "Solo nuevo"
+
+msgid "Used only"
+msgstr "Solo usado"
+
+msgid "The condition BrickLink looks for in each part"
+msgstr "El estado que BrickLink busca en cada pieza"
+
+msgid "Wanted list"
+msgstr "Lista de deseos"
+
+msgid "Main wanted list"
+msgstr "Lista de deseos principal"
+
+msgid "Another of your wanted lists: its ID, the number after wantedMoreID= in its address on BrickLink. Empty for your main wanted list"
+msgstr "Otra de tus listas de deseos: su ID, el número tras wantedMoreID= en su dirección de BrickLink. Vacío para tu lista principal"
+
+msgid "Empty for your main list. Another: the number after wantedMoreID= in its address on BrickLink"
+msgstr "Vacío para tu lista principal. Otra: el número tras wantedMoreID= en su dirección de BrickLink"
+
+msgid "Email me when one is listed for sale"
+msgstr "Enviarme un correo cuando se ponga una a la venta"
+
+msgid "new only"
+msgstr "solo nuevo"
+
+msgid "used only"
+msgstr "solo usado"
+
+msgid "into wanted list %s"
+msgstr "en la lista de deseos %s"
+
+msgid "BrickLink emails when one is listed"
+msgstr "BrickLink envía un correo cuando se ponga una a la venta"
+
+msgid "1 element"
+msgstr "1 elemento"
+
+msgid "%d elements"
+msgstr "%d elementos"
+
+msgid "%s, %s, to upload at LEGO® Pick a Brick"
+msgstr "%s, %s, para subir a LEGO® Pick a Brick"
+
+msgid "in %d files of %d lines at most, as Pick a Brick takes them"
+msgstr "en %d archivos de %d líneas como máximo, como los acepta Pick a Brick"
+
+msgid "Pick a Brick takes %d of an element: add by hand %s"
+msgstr "Pick a Brick acepta %d por elemento: añade a mano %s"
+
+msgid "%d more of %s"
+msgstr "%d más de %s"
+
+msgid "not on it, with no LEGO® element number known: %s"
+msgstr "no incluidas, sin número de elemento LEGO® conocido: %s"
+
+msgid "%d × %s in %s (%s)"
+msgstr "%d × %s en %s (%s)"
+
+msgid "and %s more"
+msgstr "y %s más"
+
+msgid "no LEGO® element number is known for any part of this model, so there is nothing for Pick a Brick"
+msgstr "no se conoce ningún número de elemento LEGO® para las piezas de este modelo, así que no hay nada para Pick a Brick"
+
 msgid "Find in the model: a part's number, its name, a colour…"
 msgstr "Buscar en el modelo: número de pieza, nombre, color…"
 
@@ -10811,3 +10905,75 @@ msgstr "un %s las deshace todas"
 
 msgid "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
 msgstr "Copias de la selección en fila, en cuadrícula, en círculo o a lo largo de una manguera, colocadas de una vez"
+
+# A model into this one (APP_UX4 intomodel): File, Import, Into this model…, the
+# library's Put in this model, and what the status bar says while it is in hand.
+
+msgid "Into this model…"
+msgstr "En este modelo…"
+
+msgid "A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes"
+msgstr "Un modelo guardado, un ejemplo, un archivo o uno de la biblioteca, puesto en este modelo como subconjunto con sus propios pasos: elígelo y luego haz clic donde va"
+
+msgid "Put in this model, then click where it goes"
+msgstr "Poner en este modelo y luego hacer clic donde va"
+
+msgid "could not read “%s”: %s"
+msgstr "no se pudo leer «%s»: %s"
+
+msgid "Reading %s…"
+msgstr "Leyendo %s…"
+
+msgid "could not put it in this model: %s"
+msgstr "no se pudo poner en este modelo: %s"
+
+msgid "click where it goes, %s turns, Esc puts away"
+msgstr "haz clic donde va, %s gira, Esc guarda"
+
+msgid "its 1 step kept"
+msgstr "su paso se conserva"
+
+msgid "its %d steps kept"
+msgstr "sus %d pasos se conservan"
+
+msgid "left out, not in the library: %s"
+msgstr "omitidas, no están en la biblioteca: %s"
+
+msgid "Put in this model"
+msgstr "Poner en este modelo"
+
+msgid "In your hand in this model as one sub-assembly with its steps, then a click where it goes; credit its maker"
+msgstr "En tu mano en este modelo, como un solo subconjunto con sus pasos, y luego un clic donde va; menciona a su autor"
+
+msgid "Its maker kept every right to it: Open builds it, and it cannot go into another model without their leave"
+msgstr "Su autor se reserva todos los derechos: Abrir permite construirlo, y no puede ir en otro modelo sin su permiso"
+
+msgid "Fetching %s from the library…"
+msgstr "Obteniendo %s de la biblioteca…"
+
+msgid "could not put %s in this model: %s"
+msgstr "no se pudo poner %s en este modelo: %s"
+
+msgid "credit %s"
+msgstr "crédito: %s"
+
+msgid "it is kept back while a design is scored"
+msgstr "se retiene mientras se puntúa un diseño"
+
+msgid "its maker kept every right to it"
+msgstr "su autor se reserva todos los derechos"
+
+msgid "it has no parts"
+msgstr "no tiene piezas"
+
+msgid "none of the %d parts in it are in the library (%s)"
+msgstr "ninguna de sus %d piezas está en la biblioteca (%s)"
+
+msgid "none of its parts could be drawn"
+msgstr "no se pudo dibujar ninguna de sus piezas"
+
+msgid "put in %s, %s"
+msgstr "%s añadido, %s"
+
+msgid "put in %s"
+msgstr "%s añadido"

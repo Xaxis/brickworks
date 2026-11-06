@@ -6116,6 +6116,100 @@ msgstr "Une liste de souhaits BrickLink (.xml), à téléverser sous Wanted › 
 msgid "A Rebrickable parts list (.csv), to import into a list of your own"
 msgstr "Une liste de pièces Rebrickable (.csv), à importer dans une liste à vous"
 
+# picklist: LEGO® Pick a Brick's list, and what BrickLink's wanted list asks of each part
+msgid "LEGO® Pick a Brick list (.csv)"
+msgstr "Liste LEGO® Pick a Brick (.csv)"
+
+msgid "LEGO® element numbers and how many of each, to upload at LEGO® Pick a Brick, 400 to a file; the parts with no number known are named"
+msgstr "Les numéros d'élément LEGO® et combien de chacun, à téléverser sur LEGO® Pick a Brick, 400 par fichier ; les pièces sans numéro connu sont nommées"
+
+msgid "Exporting the Pick a Brick list…"
+msgstr "Export de la liste Pick a Brick…"
+
+msgid "LEGO® Pick a Brick"
+msgstr "LEGO® Pick a Brick"
+
+msgid "A list of LEGO® element numbers (.csv), to upload at LEGO® Pick a Brick: the parts it has no number for are named"
+msgstr "Une liste de numéros d'élément LEGO® (.csv), à téléverser sur LEGO® Pick a Brick : les pièces sans numéro sont nommées"
+
+msgid "BrickLink wanted list: new or used, which of your wanted lists, and an email when one is listed"
+msgstr "Liste de souhaits BrickLink : neuf ou d'occasion, laquelle de vos listes, et un e-mail quand une pièce est mise en vente"
+
+msgid "Save the list"
+msgstr "Enregistrer la liste"
+
+msgid "Condition"
+msgstr "État"
+
+msgid "New or used"
+msgstr "Neuf ou d'occasion"
+
+msgid "New only"
+msgstr "Neuf uniquement"
+
+msgid "Used only"
+msgstr "D'occasion uniquement"
+
+msgid "The condition BrickLink looks for in each part"
+msgstr "L'état que BrickLink recherche pour chaque pièce"
+
+msgid "Wanted list"
+msgstr "Liste de souhaits"
+
+msgid "Main wanted list"
+msgstr "Liste de souhaits principale"
+
+msgid "Another of your wanted lists: its ID, the number after wantedMoreID= in its address on BrickLink. Empty for your main wanted list"
+msgstr "Une autre de vos listes de souhaits : son identifiant, le nombre après wantedMoreID= dans son adresse sur BrickLink. Vide pour votre liste principale"
+
+msgid "Empty for your main list. Another: the number after wantedMoreID= in its address on BrickLink"
+msgstr "Vide pour votre liste principale. Une autre : le nombre après wantedMoreID= dans son adresse sur BrickLink"
+
+msgid "Email me when one is listed for sale"
+msgstr "M'envoyer un e-mail quand une pièce est mise en vente"
+
+msgid "new only"
+msgstr "neuf uniquement"
+
+msgid "used only"
+msgstr "d'occasion uniquement"
+
+msgid "into wanted list %s"
+msgstr "dans la liste de souhaits %s"
+
+msgid "BrickLink emails when one is listed"
+msgstr "BrickLink envoie un e-mail quand une pièce est mise en vente"
+
+msgid "1 element"
+msgstr "1 élément"
+
+msgid "%d elements"
+msgstr "%d éléments"
+
+msgid "%s, %s, to upload at LEGO® Pick a Brick"
+msgstr "%s, %s, à téléverser sur LEGO® Pick a Brick"
+
+msgid "in %d files of %d lines at most, as Pick a Brick takes them"
+msgstr "en %d fichiers de %d lignes au plus, comme Pick a Brick les accepte"
+
+msgid "Pick a Brick takes %d of an element: add by hand %s"
+msgstr "Pick a Brick accepte %d par élément : à ajouter à la main %s"
+
+msgid "%d more of %s"
+msgstr "%d de plus de %s"
+
+msgid "not on it, with no LEGO® element number known: %s"
+msgstr "absentes, sans numéro d'élément LEGO® connu : %s"
+
+msgid "%d × %s in %s (%s)"
+msgstr "%d × %s en %s (%s)"
+
+msgid "and %s more"
+msgstr "et %s de plus"
+
+msgid "no LEGO® element number is known for any part of this model, so there is nothing for Pick a Brick"
+msgstr "aucun numéro d'élément LEGO® n'est connu pour les pièces de ce modèle, il n'y a donc rien pour Pick a Brick"
+
 msgid "Find in the model: a part's number, its name, a colour…"
 msgstr "Chercher dans le modèle : numéro de pièce, nom, couleur…"
 
@@ -10811,3 +10905,75 @@ msgstr "un %s les retire toutes"
 
 msgid "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
 msgstr "Des copies de la sélection en ligne, en grille, en cercle ou le long d'un tuyau, posées d'un coup"
+
+# A model into this one (APP_UX4 intomodel): File, Import, Into this model…, the
+# library's Put in this model, and what the status bar says while it is in hand.
+
+msgid "Into this model…"
+msgstr "Dans ce modèle…"
+
+msgid "A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes"
+msgstr "Un modèle enregistré, un exemple, un fichier ou un modèle de la bibliothèque, mis dans ce modèle comme sous-ensemble avec ses propres étapes : choisissez-le, puis cliquez où il va"
+
+msgid "Put in this model, then click where it goes"
+msgstr "Mettre dans ce modèle, puis cliquer où il va"
+
+msgid "could not read “%s”: %s"
+msgstr "impossible de lire « %s » : %s"
+
+msgid "Reading %s…"
+msgstr "Lecture de %s…"
+
+msgid "could not put it in this model: %s"
+msgstr "impossible de le mettre dans ce modèle : %s"
+
+msgid "click where it goes, %s turns, Esc puts away"
+msgstr "cliquez où il va, %s tourne, Esc range"
+
+msgid "its 1 step kept"
+msgstr "son étape gardée"
+
+msgid "its %d steps kept"
+msgstr "ses %d étapes gardées"
+
+msgid "left out, not in the library: %s"
+msgstr "laissées de côté, absentes de la bibliothèque : %s"
+
+msgid "Put in this model"
+msgstr "Mettre dans ce modèle"
+
+msgid "In your hand in this model as one sub-assembly with its steps, then a click where it goes; credit its maker"
+msgstr "En main dans ce modèle, comme un seul sous-ensemble avec ses étapes, puis un clic où il va ; créditez son auteur"
+
+msgid "Its maker kept every right to it: Open builds it, and it cannot go into another model without their leave"
+msgstr "Son auteur en garde tous les droits : Ouvrir permet de le construire, et il ne peut aller dans un autre modèle sans son accord"
+
+msgid "Fetching %s from the library…"
+msgstr "Récupération de %s depuis la bibliothèque…"
+
+msgid "could not put %s in this model: %s"
+msgstr "impossible de mettre %s dans ce modèle : %s"
+
+msgid "credit %s"
+msgstr "crédit : %s"
+
+msgid "it is kept back while a design is scored"
+msgstr "il est mis de côté pendant qu'un design est évalué"
+
+msgid "its maker kept every right to it"
+msgstr "son auteur en garde tous les droits"
+
+msgid "it has no parts"
+msgstr "il n'a aucune pièce"
+
+msgid "none of the %d parts in it are in the library (%s)"
+msgstr "aucune de ses %d pièces n'est dans la bibliothèque (%s)"
+
+msgid "none of its parts could be drawn"
+msgstr "aucune de ses pièces n'a pu être dessinée"
+
+msgid "put in %s, %s"
+msgstr "%s ajouté, %s"
+
+msgid "put in %s"
+msgstr "%s ajouté"

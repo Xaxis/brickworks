@@ -1221,6 +1221,14 @@
       "tests": []
     },
     {
+      "id": "cli:intomodel probe",
+      "kind": "cli",
+      "entry": "src/dev/intomodel_probe.gd",
+      "reach": "tools/probe.sh intomodel_probe   (a window, 1280 x 720 or PROBE_SIZE=1400x900; starts tools/web/serve.py --library tests/fixtures/library on 9801 and stops it)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:judge design rounds in pairs",
       "kind": "cli",
       "entry": "tools/bench/pairwise.py",
@@ -1761,6 +1769,14 @@
       "entry": "src/dev/picker_folder_probe.gd",
       "reach": "tools/probe.sh picker_folder_probe",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "cli:picklist probe",
+      "kind": "cli",
+      "entry": "src/dev/picklist_probe.gd",
+      "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -3983,6 +3999,14 @@
       "tests": []
     },
     {
+      "id": "ui:a model into this one",
+      "kind": "ui",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (File, Import, Into this model\u2026: a saved model, an example, a file or the library's; in hand as one sub-assembly with its steps, a click puts it down, one undo takes it out; the library's Put in this model; open_model into=true over MCP)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:a model's parts and its download",
       "kind": "ui",
       "entry": "api/_parts.js",
@@ -4827,7 +4851,7 @@
       "id": "ui:parts lists for shops",
       "kind": "ui",
       "entry": "src/assembly/shop_lists.gd",
-      "reach": "godot --path .  (File, Export, then BrickLink wanted list or Rebrickable parts list)",
+      "reach": "godot --path .  (File, Export, then BrickLink wanted list, Rebrickable parts list or LEGO\u00ae Pick a Brick list; or the parts list's BrickLink, its choices beside it, Rebrickable and LEGO\u00ae Pick a Brick)  /  export_model format=pickabrick, format=bricklink condition= wanted_list= notify=",
       "area": "model-io",
       "tests": []
     },
