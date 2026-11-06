@@ -934,16 +934,91 @@ func content(path: String) -> Array:
 ## The copy at ``to`` built again from the one at ``from``: its parts taken
 ## off, and ``from``'s put down where ``at`` (and a mirror, when
 ## ``mirrored``) lays them. Returns the history steps, newest last.
+##
+## A copy built in its parent's steps (AuthorSteps.IN_PARENT) has steps of
+## its own, not its definition's, so each part goes in the step of the one it
+## takes the place of: the same part where it stood (painted, it is the same
+## part), else whatever stood there; one put where nothing stood, in the step
+## most of its step's parts went to. Given the steps of the copy it followed,
+## the castle's second north-east tower, built elsewhere in the castle's
+## steps, had all of its parts put in the first tower's steps when one part
+## of that was painted (stepsiblings). Copies built in steps of their own
+## share them, as a file writes the sub-model once: they take the steps of
+## the one they follow.
 func realize(from: String, to: String, at: Transform3D, mirrored: bool) -> Array:
+	var own: bool = (AuthorSteps.in_parent(world, from) or AuthorSteps.in_parent(world, to)) \
+		and AuthorSteps.any(world, scenery)
+	var stood: Dictionary = _steps_where(content(to)) if own else {}
+	var votes: Dictionary = {}      ## a step of from's -> {the step of to's it is: how many}
+	var unplaced: Array = []        ## [an add with none where it goes, its step in from]
 	var adds: Array = []
 	for item: Dictionary in content(from):
 		var placed: Dictionary = _mirrored(item) if mirrored else item
 		var rest: String = str(item["rest"])
-		adds.append({"part": placed["part"], "color": item["color"],
-			"at": Builder._tidy(at * (placed["at"] as Transform3D),
-				BrickLattice.is_square_to_grid((at * (placed["at"] as Transform3D)).basis)),
-			"path": to if rest.is_empty() else to + "/" + rest, "step": item["step"]})
+		var laid: Transform3D = Builder._tidy(at * (placed["at"] as Transform3D),
+			BrickLattice.is_square_to_grid((at * (placed["at"] as Transform3D)).basis))
+		var add: Dictionary = {"part": placed["part"], "color": item["color"], "at": laid,
+			"path": to if rest.is_empty() else to + "/" + rest, "step": item["step"]}
+		adds.append(add)
+		if not own or int(item["step"]) < 0:
+			continue
+		var there: Array = stood.get(_place_key(rest, laid.origin), [])
+		var found: int = -1
+		for n: int in there.size():
+			if str(there[n][0]) == str(placed["part"]):
+				found = n
+				break
+		if found < 0 and not there.is_empty():
+			found = 0
+		if found < 0:
+			unplaced.append([add, int(item["step"])])
+			continue
+		var step: int = int(there[found][1])
+		there.remove_at(found)
+		add["step"] = step
+		var tally: Dictionary = votes.get(int(item["step"]), {})
+		tally[step] = int(tally.get(step, 0)) + 1
+		votes[int(item["step"])] = tally
+	for one: Array in unplaced:
+		(one[0] as Dictionary)["step"] = _voted(votes, int(one[1]))
 	return builder.swap_bricks(ids_under(to), adds)
+
+
+## [param items] (content's) by where each stands: [method _place_key] ->
+## [[part, step], ...].
+static func _steps_where(items: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for item: Dictionary in items:
+		var key: String = _place_key(str(item["rest"]), (item["at"] as Transform3D).origin)
+		if not out.has(key):
+			out[key] = []
+		(out[key] as Array).append([str(item["part"]), int(item["step"])])
+	return out
+
+
+## Where a part stands in a copy, to half an LDU.
+static func _place_key(rest: String, at: Vector3) -> String:
+	return "%s|%d,%d,%d" % [rest, roundi(at.x * 2.0), roundi(at.y * 2.0), roundi(at.z * 2.0)]
+
+
+## The step of the copy built again that most of the parts of [param step]
+## of the one it follows went to ([param votes]), or of its nearest step
+## that any went to; [param step] itself when none did.
+static func _voted(votes: Dictionary, step: int) -> int:
+	var nearest: int = -1
+	for one: int in votes:
+		if nearest < 0 or absi(one - step) < absi(nearest - step) \
+				or absi(one - step) == absi(nearest - step) and one < nearest:
+			nearest = one
+	if nearest < 0:
+		return step
+	var tally: Dictionary = votes[nearest]
+	var best: int = -1
+	for to: int in tally:
+		if best < 0 or int(tally[to]) > int(tally[best]) \
+				or int(tally[to]) == int(tally[best]) and to < best:
+			best = to
+	return best
 
 
 ## A part reflected across the world's x = 0 plane, as Mirror reflects one:

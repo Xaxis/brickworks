@@ -1691,10 +1691,15 @@ static func set_path(brick: BrickWorld.Brick, path: String) -> void:
 ## moved steps (unitsteps). [param numbers] are steps the change gives,
 ## {"bricks": id -> step, "units": path before the change -> step, -1 for
 ## none}: a copy's steps made its parent's as it is taken apart
-## (AuthorSteps.inlined), a sub-assembly made built in its parent's.
+## (AuthorSteps.inlined), a sub-assembly made built in its parent's. What it
+## put in a section other than the one it was stepped in, and numbers none
+## of, is numbered in the one it is in now (AuthorSteps.rehomed), each step's
+## look with its parts (BookletLooks.follow).
 func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 		numbers: Dictionary = {}) -> int:
 	var units: Dictionary = world.unit_steps.duplicate()
+	var looked: Dictionary = BookletLooks.items_by_step(world, scenery)
+	var was: Dictionary = {}
 	var steps: Array = []
 	for brick_id: int in changes:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
@@ -1703,6 +1708,7 @@ func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 			continue
 		steps.append({"undo": "regroup", "brick": brick_id, "group": brick.group,
 			"unit": brick.unit})
+		was[brick_id] = Assemblies.path_of(brick)
 		set_path(brick, path)
 	var moved: int = steps.size()
 	if moved == 0:
@@ -1710,10 +1716,12 @@ func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 	if carry.is_valid():
 		steps.append_array(_carry(carry))
 	var stepped: Dictionary = numbers.get("bricks", {})
+	var kept: Dictionary = {}       ## a part whose step an entry here puts back
 	for brick_id: int in stepped:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick != null and brick.step != int(stepped[brick_id]):
 			steps.append({"undo": "restep", "brick": brick_id, "step": brick.step})
+			kept[brick_id] = true
 			brick.step = int(stepped[brick_id])
 	var given: Dictionary = numbers.get("units", {})
 	for path: String in given:
@@ -1722,6 +1730,12 @@ func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 				world.unit_steps.erase(to)
 			else:
 				world.unit_steps[to] = int(given[path])
+	# Each part's step once, as it was before all of it, as the copies' below.
+	var rehomed: Array = AuthorSteps.rehomed(world, was, units, carry, numbers, scenery)
+	steps.append_array(rehomed.filter(func(entry: Dictionary) -> bool:
+		return str(entry["undo"]) == "restep" and not kept.has(int(entry["brick"]))))
+	if not rehomed.is_empty():
+		steps.append_array(BookletLooks.follow(world, looked, scenery))
 	# Each copy's step once, as it was before all of it: a group's entries
 	# are applied in the order kept, so one an entry carried and another
 	# numbered would be put back to the step between.

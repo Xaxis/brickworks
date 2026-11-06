@@ -523,13 +523,22 @@ static func item_name(item: Dictionary) -> String:
 ## [param to] as well, or with [param moved] in their place. They are kept
 ## by its name: renamed in every copy (Assemblies.rename), a sub-model left
 ## them under a name nothing has; a copy made a sub-model of its own
-## (Assemblies.make_unique) is shown as it was. Returns the undo, the whole
-## table as it was, or [] when it had none.
+## (Assemblies.make_unique) is shown as it was. [param to] is a name no
+## sub-model has (Assemblies.unused_name), so what is kept under it is a
+## gone sub-model's, left by its last copy taken apart or off, and goes:
+## 7140-1's rear engines, renamed as its support section taken apart had been
+## called, were turned upside down in the section's step 2 (stepsiblings).
+## Returns the undo, the whole table as it was, or [] when nothing changed.
 static func renamed(world: BrickWorld, from: String, to: String, moved: bool) -> Array:
 	if from.is_empty() or to.is_empty() or from == to:
 		return []
 	var head: String = from + "|"
 	var was: Dictionary = {}
+	for name: String in world.step_looks.keys():
+		if name.begins_with(to + "|"):
+			if was.is_empty():
+				was = world.step_looks.duplicate(true)
+			world.step_looks.erase(name)
 	for name: String in world.step_looks.keys():
 		if not name.begins_with(head):
 			continue
@@ -549,10 +558,20 @@ static func renamed(world: BrickWorld, from: String, to: String, moved: bool) ->
 ## copy was put on starting with them, and after them the section seen as it
 ## was. Its other copies keep theirs. The table that gives, or {} when it is
 ## the same.
+##
+## A figure's callout faced the figure (BookletMaker._facing), and its steps'
+## turns were from there: taken apart, each is turned so, or Biggs, standing
+## at 45 degrees in 7140-1, had his legs, torso and head drawn from the
+## model's front, not his own (stepsiblings).
 static func inlined(world: BrickWorld, path: String, numbers: Dictionary) -> Dictionary:
 	var steps: Dictionary = numbers.get("steps", {})
-	if steps.is_empty() or world.step_looks.is_empty():
+	if steps.is_empty():
 		return {}
+	var facing: float = _facing_of(world, path)
+	if world.step_looks.is_empty() and is_zero_approx(facing):
+		return {}
+	var seen_as := func(step: int) -> Dictionary:
+		return _faced(turn_at(world, path, step), facing)
 	var outer: String = str(steps["section"])
 	var named: String = definition_of(outer)
 	var into: Dictionary = steps["outer"]
@@ -563,28 +582,43 @@ static func inlined(world: BrickWorld, path: String, numbers: Dictionary) -> Dic
 		var tail: String = name.get_slice("|", 1)
 		if name.get_slice("|", 0) == named and tail.is_valid_int():
 			out.erase(name)
+	# The step that put it on, split round it, looks as it did in both
+	# halves: the chapter it began, and its turn, with the first.
+	var split: int = int(steps.get("before", -1))
 	for name: String in world.step_looks:
 		var tail: String = name.get_slice("|", 1)
 		if name.get_slice("|", 0) == named and tail.is_valid_int():
-			out[key(named, int(into.get(tail.to_int(), tail.to_int())))] = \
-				(world.step_looks[name] as Dictionary).duplicate(true)
+			var look: Dictionary = (world.step_looks[name] as Dictionary).duplicate(true)
+			if split >= 0 and tail.to_int() == at:
+				out[key(named, split)] = look.duplicate(true)
+				look.erase("section")
+				look.erase("turn")
+				look.erase("how")
+				if not into.has(at):
+					continue
+			out[key(named, int(into.get(tail.to_int(), tail.to_int())))] = look
 	var own: Array = from.keys()
 	own.sort()
 	for step: int in own:
 		var look: Variant = world.step_looks.get(key(definition_of(path), step))
 		if look is Dictionary and not out.has(key(named, int(from[step]))):
-			out[key(named, int(from[step]))] = (look as Dictionary).duplicate(true)
+			var mine: Dictionary = (look as Dictionary).duplicate(true)
+			# Its turn as the callout drew it, from the way it faced.
+			if mine.has("turn") and not is_zero_approx(facing):
+				_turn_to(mine, seen_as.call(step))
+			out[key(named, int(from[step]))] = mine
 	var first: Dictionary = out.get(key(named, int(from[own[0]])), {})
 	# The chapter the step putting it on began begins with its first step.
 	var began: Variant = (world.step_looks.get(key(named, at), {}) as Dictionary).get("section")
-	if began != null and into.has(at) and not first.has("section"):
+	if began != null and into.has(at) and split < 0 and not first.has("section"):
 		first["section"] = began
 		(out[key(named, int(into[at]))] as Dictionary).erase("section")
 	# Seen as it was seen: from its first step, as it was drawn; after its
 	# last, as the section's next step was.
-	var seen: Dictionary = turn_at(world, path, int(own[0]))
+	var seen: Dictionary = seen_as.call(int(own[0]))
+	var held: int = at if split >= 0 else at - 1
 	if not first.has("turn") and JSON.stringify(seen) != JSON.stringify(
-			turn_at(world, outer, at - 1) if at > 0 else {}):
+			turn_at(world, outer, held) if held >= 0 else {}):
 		_turn_to(first, seen)
 	if not first.is_empty():
 		out[key(named, int(from[own[0]]))] = first
@@ -594,13 +628,39 @@ static func inlined(world: BrickWorld, path: String, numbers: Dictionary) -> Dic
 		var after: Dictionary = out.get(key(named, int(into[next[0]])), {})
 		var then: Dictionary = turn_at(world, outer, int(next[0]))
 		if not after.has("turn") and JSON.stringify(then) != JSON.stringify(
-				turn_at(world, path, int(own[own.size() - 1]))):
+				seen_as.call(int(own[own.size() - 1]))):
 			_turn_to(after, then)
 			out[key(named, int(into[next[0]]))] = after
 	for name: String in out.keys():
 		if out[name] is Dictionary and (out[name] as Dictionary).is_empty():
 			out.erase(name)
 	return {} if out == world.step_looks else out
+
+
+## How far round from the model's front the callout of the copy at
+## [param path] faced, in degrees: a figure's, the way the figure faces
+## (BookletMaker._facing, Instructions._is_figure); 0 for any other.
+static func _facing_of(world: BrickWorld, path: String) -> float:
+	var bricks: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if Assemblies.within(Assemblies.path_of(brick), path):
+			bricks.append(brick)
+	if bricks.size() < 3 or bricks.size() > 24 or not Minifig.is_figure(bricks, world.library):
+		return 0.0
+	var frame: Variant = Minifig.frame_of(bricks, world.library)
+	if not (frame is Transform3D):
+		return 0.0
+	var facing: Vector3 = (frame as Transform3D).basis.z
+	return rad_to_deg(atan2(facing.x, facing.z))
+
+
+## [param turn] (turn_at's) as seen from a view [param facing] degrees round
+## from the usual one: a turn from the front a REL turn is from there too.
+static func _faced(turn: Dictionary, facing: float) -> Dictionary:
+	if is_zero_approx(facing) or str(turn.get("how", "REL")) == "ABS":
+		return turn
+	var by: Vector3 = _vector(turn.get("turn", [0, 0, 0]))
+	return {"turn": [by.x, by.y + facing, by.z], "how": "REL"}
 
 
 ## [param look] made to turn the view to [param turn] (turn_at's), or back

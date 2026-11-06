@@ -86,6 +86,8 @@ func _run() -> void:
 		await _castle_copies(castle)
 	if only.is_empty() or "7140".contains(only):
 		await _authored(authored)
+	if only.is_empty() or "siblings".contains(only):
+		await _siblings(castle, authored)
 	if _failures == 0:
 		print("unit_steps probe: all checks passed")
 	else:
@@ -219,8 +221,15 @@ func _authored(text: String) -> void:
 ## copy's entry went where the edit put the copy. Every part in the step
 ## it was in, or with [param regrouped] the build in the same order; undone
 ## and redone; saved and opened again.
+## [param opts]: "before" () -> words, an edit made first, as the model
+## stood; "place" true reads each part by what and where it is, not
+## its number (copies follow: the copy built again is new parts); "tree"
+## false for an edit that changes no path; "touched" () -> the ids of the
+## parts the person moved, read before it, which may be in another step and
+## nothing else may; "then" (state before) -> [ok, words], a check of the
+## edit's own after it.
 func _edit(name: String, text: String, stepped: bool, what: String, edit: Callable,
-		kept: Callable, regrouped: bool = false) -> void:
+		kept: Callable, regrouped: bool = false, opts: Dictionary = {}) -> void:
 	await _open(text, name)
 	if stepped:
 		var part: int = _middle_part()
@@ -232,23 +241,52 @@ func _edit(name: String, text: String, stepped: bool, what: String, edit: Callab
 				said.get_slice("\n", 0), parented],
 				AuthorSteps.any(_world, _store.scenery) and parented >= 9):
 			return
-	var before: Dictionary = _numbers()
-	var said_before: Dictionary = await _said_now()
+	if opts.has("before"):
+		var set_up: String = str(await (opts["before"] as Callable).call())
+		print("  ....first: %s" % set_up.get_slice("\n", 0).left(160))
+		await _frames(4)
+	var place: bool = bool(opts.get("place", false))
+	var touched: Dictionary = {}
+	if opts.has("touched"):
+		for brick_id: Variant in (opts["touched"] as Callable).call():
+			touched[_key_of(int(brick_id)) if place else int(brick_id)] = true
+	var state: Dictionary = (await (opts["state"] as Callable).call()) if opts.has("state") \
+		else {}
+	var before: Dictionary = _numbers(place)
+	var said_before: Dictionary = _keyed(await _said_now()) if place else await _said_now()
 	var order_before: Array = _order()
 	var units: Dictionary = _world.unit_steps.duplicate()
 	var tree: Dictionary = _by_path()
 	var tested_then: Dictionary = await _tested(_store.to_text(name, true))
 	var tested_before: bool = _passes(tested_then)
+	var whole_before: bool = _store.call("_source_text", name) == null
 	var depth: int = _builder.history_depth()
 	var said: String = str(await edit.call())
 	await _frames(4)
-	var after: Dictionary = _numbers()
+	var after: Dictionary = _numbers(place)
 	var tree_after: Dictionary = _by_path()
-	if not _check("%s (\"%s\"): the tree changed, %d sub-models now" % [what,
-			said.get_slice("\n", 0).left(160), tree_after.size() - 1], tree_after != tree):
+	var tree_too: bool = bool(opts.get("tree", true))
+	if not _check("%s (\"%s\"): %s, %d sub-models now" % [what,
+			said.get_slice("\n", 0).left(160), "the tree changed" if tree_too
+			else "the tree as it was", tree_after.size() - 1],
+			(tree_after != tree) == tree_too and _builder.history_depth() > depth):
 		await _back_to(depth)
 		return
-	if regrouped:
+	if opts.has("then"):
+		var own: Array = await (opts["then"] as Callable).call(state)
+		_check("...%s" % own[1], bool(own[0]))
+	if opts.get("order", false):
+		var kept_out: Dictionary = {}
+		for brick_id: Variant in touched:
+			kept_out[int(brick_id)] = true
+		var now: Array = _order(kept_out)
+		var then: Array = _order(kept_out, order_before)
+		var differ: int = _first_apart(then, now)
+		_check("...the rest built in the same order, %d steps of it, %s" % [now.size(),
+			"the same" if differ < 0 else "apart from step %d: %s / %s" % [differ + 1,
+			str(then[differ]).left(60) if differ < then.size() else "-",
+			str(now[differ]).left(60) if differ < now.size() else "-"]], differ < 0)
+	elif regrouped:
 		var order_after: Array = _order()
 		var differ: int = _first_apart(order_before, order_after)
 		_check("...its steps now the model's: the build in the same order, %d steps, %s" % [
@@ -258,30 +296,39 @@ func _edit(name: String, text: String, stepped: bool, what: String, edit: Callab
 			< order_after.size() else "-"]], differ < 0)
 	else:
 		var moved: Array = _moved(before, after)
-		_check("...%d of %d parts in another step%s" % [moved.size(), before.size(),
-			_first(moved, before, after)], moved.is_empty() and after.size() == before.size())
-		var said_after: Dictionary = await _said_now()
-		var listed: Array = _moved(said_before, said_after, true)
+		var theirs: Array = moved.filter(func(one: Variant) -> bool: return touched.has(one))
+		var others: Array = moved.filter(func(one: Variant) -> bool: return not touched.has(one))
+		_check("...%d of %d parts in another step%s%s" % [others.size(), before.size(),
+			"" if touched.is_empty() else " beside the %d the person moved (%d of them in "
+			% [touched.size(), theirs.size()] + "another)", _first(others, before, after, 8)],
+			others.is_empty() and after.size() == before.size())
+		var said_after: Dictionary = _keyed(await _said_now()) if place else await _said_now()
+		var listed: Array = _moved(said_before, said_after, true).filter(
+			func(one: Variant) -> bool: return not touched.has(one))
 		_check("...and in edit_steps's list, %d%s" % [listed.size(),
 			_first(listed, said_before, said_after)], listed.is_empty())
 	var carried: Array = kept.call(units)
 	_check("...%s" % carried[1], bool(carried[0]))
 	var saved: String = _store.to_text(name, true)
+	var whole_after: bool = _store.call("_source_text", name) == null
+	print("  ....saved %s before it, %s after it" % ["whole" if whole_before
+		else "into the file it was opened from", "whole" if whole_after
+		else "into the file it was opened from"])
 	var tested: Dictionary = await _tested(saved)
 	_check("...the steps test as before: %s / %s" % [_verdict(tested_then).left(120),
 		_verdict(tested)], _passes(tested) == tested_before)
 	var units_after: Dictionary = _world.unit_steps.duplicate()
-	var edited: Array = _placed(after)
+	var edited: Array = _placed(_numbers())
 
 	await _back_to(depth)
-	var back: Array = _moved(before, _numbers())
+	var back: Array = _moved(before, _numbers(place))
 	_check("...undone: %d parts in another step, the table %s, the tree %s" % [back.size(),
 		"as it was" if _world.unit_steps == units else "not: %s" % _unlike(units, _world.unit_steps),
 		"as it was" if _by_path() == tree else "not"],
 		back.is_empty() and _world.unit_steps == units and _by_path() == tree)
 	_builder.redo()
 	await _frames(4)
-	var again: Array = _moved(after, _numbers())
+	var again: Array = _moved(after, _numbers(place))
 	_check("...redone: %d parts in another step, the table %s" % [again.size(),
 		"as edited" if _world.unit_steps == units_after
 		else "not: %s" % _unlike(units_after, _world.unit_steps)],
@@ -425,6 +472,347 @@ func _sections_carried(units: Dictionary) -> Array:
 		else ": " + ", ".join(wrong.slice(0, 4)))]
 
 
+# -- every other edit of a sub-model (stepsiblings) -----------------------------
+
+
+## The seven edits of a sub-model unitsteps left, each on the castle after one
+## step edit (every copy built in the castle's steps), as a person makes it and
+## over MCP where a tool makes it; and where the castle, all one section, cannot
+## show one, on 7140-1, whose sub-models its author built in steps of their own.
+func _siblings(castle: String, authored: String) -> void:
+	var stepped: String = "the castle, its steps its own"
+	var both: String = "the castle with a second north-east tower"
+	var twice: String = _with_second_tower(castle)
+	var tower: String = "north-east tower#1"
+	var twin: String = "north-east tower#2"
+
+	print("\n1. a copy built again from the one that changed (Assemblies.realize)")
+	var red_in := func(path: String) -> int:
+		return Array(_assemblies.ids_under(path)).filter(func(brick_id: int) -> bool:
+			return _world.get_brick(brick_id).color_code == 4).size()
+	var red_then := func() -> Dictionary: return {"red": red_in.call(twin)}
+	var followed := func(state: Dictionary) -> Array:
+		var now: int = red_in.call(twin)
+		return [now == int(state["red"]) + 1, "the other copy followed: %d of its parts red, %d "
+			% [now, int(state["red"])] + "before"]
+	var paint: Callable = func() -> String:
+		var brick: int = _not_red(tower)
+		_assemblies.enter(tower)
+		_select_only([brick])
+		_builder.held_color = 4
+		_shell.run("paint")
+		await _frames(3)
+		_assemblies.leave_to("")
+		return "painted #%d of %s red by Paint" % [brick, tower]
+	await _edit(both, twice, true, "1. a part of one tower painted by the menu", paint,
+		_as_it_was, false, {"place": true, "tree": false, "state": red_then, "then": followed})
+	# The session's change to the person's selection, which its other copies
+	# follow (edit_model's own changes are no copy's: nothing follows them).
+	var recolour: Callable = func() -> String:
+		var brick: int = _not_red(tower)
+		_assemblies.enter(tower)
+		_select_only([brick])
+		var said: String = await _say("edit_selection", {"recolor": [{"bricks": [brick],
+			"color": 4}], "picture": false})
+		_assemblies.leave_to("")
+		return said
+	await _edit(both, twice, true, "1. a part of one tower painted over MCP (edit_selection)", recolour,
+		_as_it_was, false, {"place": true, "tree": false, "state": red_then, "then": followed})
+
+	print("\n2. the file a model was opened from (SourceFile), saved after a tree edit")
+	var rename: Callable = func() -> String:
+		_select_assembly(tower)
+		_shell.run("rename_assembly")
+		await _frames(2)
+		return _name_it("Keep")
+	await _edit(stepped, castle, true, "2. a tower renamed by its dialog, then saved", rename,
+		func(units: Dictionary) -> Array: return _carried(units, {tower: "Keep#1"}), false,
+		{"then": func(_state: Dictionary) -> Array: return _looks_by_name()})
+
+	print("\n3. a sub-assembly dragged onto another in the model tree (Assemblies.move_into)")
+	var wall: String = "east curtain wall#1"
+	var onto: String = "south-east tower#1"
+	await _edit(stepped, castle, true, "3. the castle's east wall dragged onto its south-east tower",
+		func() -> String: return _drag_row(wall, onto),
+		func(units: Dictionary) -> Array: return _carried(units, {wall: onto + "/" + wall}))
+
+	print("\n4. some of a sub-assembly's parts taken out of it (Ungroup on them)")
+	var three := func() -> Array: return Array(_assemblies.ids_under(tower)).slice(0, 3)
+	await _edit(stepped, castle, true, "4. three parts of a tower taken out of it by Ungroup",
+		func() -> String: return await _take_out(tower, three.call()), _as_it_was, false,
+		{"touched": three})
+
+	print("\n5. parts made a sub-model by name (Builder.name_group)")
+	var loose := func() -> Array:
+		var out: Array = []
+		for brick: BrickWorld.Brick in _world.bricks():
+			if Assemblies.path_of(brick).is_empty() and not _store.scenery.has(brick.id) \
+					and brick.step >= 0 and out.size() < 4:
+				out.append(brick.id)
+		return out
+	var make: Callable = func() -> String:
+		_select_only(loose.call())
+		_shell.run("make_submodel")
+		await _frames(2)
+		return _name_it("Gate plates")
+	await _edit(stepped, castle, true, "5. four of the castle's own parts made a sub-model by Ctrl-G",
+		make, func(units: Dictionary) -> Array: return _carried(units, {}, ["Gate plates#1"]), false,
+		{"then": func(_state: Dictionary) -> Array: return [_verbs.assemblies == _assemblies,
+			"Ctrl-G and Ungroup edit the tree through its sub-assemblies (EditVerbs.assemblies is "
+			+ "the shell's), the only way Builder.name_group is passed by: a window with no tree"]})
+
+	print("\n6 and 7. the castle's copies have no steps of their own, so no looks of their own")
+	var other: String = "south-west tower#1"
+	var looks_then := func() -> Dictionary: return {"looks": _world.step_looks.duplicate(true)}
+	await _edit(stepped, castle, true, "6/7. a tower taken apart by Ungroup",
+		func() -> String:
+			_select_assembly(other)
+			_shell.run("leave_submodel")
+			await _frames(2)
+			return "ungrouped %s" % other,
+		func(units: Dictionary) -> Array: return _carried(units, {other: null}), false,
+		{"state": looks_then, "then": func(state: Dictionary) -> Array:
+			var same: bool = JSON.stringify(state["looks"]) == JSON.stringify(_world.step_looks)
+			var named: Array = _looks_by_name()
+			return [same and bool(named[0]), "its steps' looks as they were (%s); %s" % [
+				"the same" if same else "not", named[1]]]})
+
+	# 7140-1: each sub-model built in steps of its own, as its author stepped it.
+	var name: String = "7140-1 as its author stepped it"
+	await _open(authored, name)
+	var at: Dictionary = {}
+	for path: String in _assemblies.paths():
+		var kind: String = Assemblies.definition(Assemblies.leaf(path))
+		for wanted: String in ["Upper Left Wing", "Ship", "Biggs Darklighter",
+				"Support Vehicle Section 1", "Rear Engines"]:
+			if kind.ends_with(wanted) and (wanted == "Rear Engines" or not at.has(wanted)):
+				if wanted == "Rear Engines":
+					if not at.has(wanted):
+						at[wanted] = []
+					(at[wanted] as Array).append(path)
+				elif not (wanted == "Ship" and kind.ends_with("Ship Nose")):
+					at[wanted] = path
+	if not _check("7140-1: its upper left wing (%s), ship (%s), Biggs (%s), support section 1 "
+			% [at.get("Upper Left Wing", "-"), at.get("Ship", "-"), at.get("Biggs Darklighter", "-")]
+			+ "(%s) and rear engines (%d)" % [at.get("Support Vehicle Section 1", "-"),
+			(at.get("Rear Engines", []) as Array).size()], at.size() == 5):
+		return
+	var wing: String = at["Upper Left Wing"]
+	var ship: String = at["Ship"]
+
+	print("\n3. 7140-1: a sub-assembly built in steps of its own dragged out of another")
+	await _edit(name, authored, false, "3. the upper left wing dragged out of the ship onto the model",
+		func() -> String: return _drag_row(wing, ""),
+		func(units: Dictionary) -> Array: return _put_on_with(units, wing, Assemblies.leaf(wing),
+			ship), false,
+		{"touched": func() -> Array: return Array(_assemblies.ids_under(wing)), "order": true})
+
+	print("\n4. 7140-1: some of a sub-assembly's parts taken out of it")
+	var two := func() -> Array:
+		var own: Array = Array(_assemblies.ids_under(wing)).filter(func(brick_id: int) -> bool:
+			return Assemblies.path_of(_world.get_brick(brick_id)) == wing)
+		var last: int = -1
+		for brick_id: int in own:
+			last = maxi(last, _world.get_brick(brick_id).step)
+		# Its tip, the dish and the cone on the end of its bar: what is left
+		# still holds together, so it is still built on the side.
+		return own.filter(func(brick_id: int) -> bool:
+			return _world.get_brick(brick_id).step == last).slice(-2)
+	var aside := func() -> int:
+		var count: int = 0
+		for step: Instructions.Step in _plan():
+			if step.in_callout() and step.assembly == Assemblies.definition(Assemblies.leaf(wing)):
+				count += 1
+		return count
+	var put_on := func() -> Dictionary:
+		return {"at": int(_world.unit_steps.get(wing, -1)), "ids": two.call(),
+			"aside": aside.call()}
+	await _edit(name, authored, false, "4. two parts of the upper left wing taken out of it by Ungroup",
+		func() -> String: return await _take_out(wing, two.call()), _as_it_was, false,
+		{"touched": two, "state": put_on, "then": func(state: Dictionary) -> Array:
+			var wrong := PackedStringArray()
+			for brick_id: int in state["ids"]:
+				var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+				var home: String = AuthorSteps.home(_world, Assemblies.path_of(brick))
+				if home != ship or brick.step != int(state["at"]):
+					wrong.append("#%d in step %d of %s" % [brick_id, brick.step, home])
+			var now: int = aside.call()
+			return [wrong.is_empty() and now == int(state["aside"]), "taken out, they go on in "
+				+ "the step of the ship that put the wing on (%d)%s" % [int(state["at"]),
+				"" if wrong.is_empty() else ": " + ", ".join(wrong)]
+				+ "; the wing built on the side in %d steps, %d before" % [now,
+				int(state["aside"])]]})
+
+	print("\n6. 7140-1: a sub-model given a name whose looks a sub-model taken apart left")
+	var section: String = at["Support Vehicle Section 1"]
+	var engines: Array = at["Rear Engines"]
+	var called: String = Assemblies.definition(Assemblies.leaf(section))
+	var renamed: Dictionary = {}
+	for path: String in engines:
+		renamed[path] = Assemblies.join(Assemblies.parent_of(path),
+			"%s#%d" % [called, Assemblies.copy_of(Assemblies.leaf(path))])
+	var engine: String = engines[0]
+	await _edit(name, authored, false, "6. the rear engines renamed by their dialog as the section was",
+		func() -> String:
+			_select_assembly(engine)
+			_shell.run("rename_assembly")
+			await _frames(2)
+			return _name_it(called),
+		func(units: Dictionary) -> Array: return _carried(units, renamed), false,
+		{"before": func() -> String:
+			_select_assembly(section)
+			_shell.run("leave_submodel")
+			await _frames(2)
+			return "took %s apart, %d of its looks left under its name" % [section,
+				_world.step_looks.keys().filter(func(key: String) -> bool:
+					return key.begins_with(called + "|")).size()],
+		"state": func() -> Dictionary: return {"turns": _turns_of(engine)},
+		"then": func(state: Dictionary) -> Array:
+			var now: Array = _turns_of(str(renamed[engine]))
+			return [now == state["turns"], "each of its steps seen as it was: %s / %s" % [
+				str(state["turns"]), str(now)]]})
+
+	print("\n7. 7140-1: a figure built in steps of its own taken apart")
+	var biggs: String = at["Biggs Darklighter"]
+	await _edit(name, authored, false, "7. Biggs taken apart by Ungroup",
+		func() -> String:
+			_select_assembly(biggs)
+			_shell.run("leave_submodel")
+			await _frames(2)
+			return "ungrouped %s" % biggs,
+		func(units: Dictionary) -> Array:
+			var gone: Array = units.keys().filter(func(path: String) -> bool:
+				return path != biggs and not _world.unit_steps.has(path))
+			return [not _world.unit_steps.has(biggs) and gone.is_empty(),
+				"its entry gone, every other copy's kept%s" % ("" if gone.is_empty()
+				else ": not " + ", ".join(gone))], true,
+		{"state": func() -> Dictionary:
+			var ids: Array = Array(_assemblies.ids_under(biggs))
+			return {"ids": ids, "views": await _views_of(ids)},
+		"then": func(state: Dictionary) -> Array:
+			var now: Array = await _views_of(state["ids"])
+			return [now == state["views"], "its steps drawn from where they were, in degrees round: "
+				+ "%s / %s" % [str(state["views"]), str(now)]]})
+
+
+## The castle with a second north-east tower beside it, on the ground.
+func _with_second_tower(text: String) -> String:
+	var lines: PackedStringArray = text.split("\n")
+	for n: int in lines.size():
+		if lines[n].strip_edges().ends_with(" north_east_tower.ldr"):
+			lines.insert(n + 1, "1 16 1600 0 0 1 0 0 0 1 0 0 0 1 north_east_tower.ldr")
+			break
+	return "\n".join(lines)
+
+
+## A part of [param path] not yet red.
+func _not_red(path: String) -> int:
+	for brick_id: int in _assemblies.ids_under(path):
+		if _world.get_brick(brick_id).color_code != 4:
+			return brick_id
+	return 0
+
+
+## [ok, words]: every copy's step as it was in [param units].
+func _as_it_was(units: Dictionary) -> Array:
+	return [_world.unit_steps == units, "each copy's step as it was%s" % (""
+		if _world.unit_steps == units else ": " + _unlike(units, _world.unit_steps))]
+
+
+## [ok, words]: no look is kept under a sub-model's name, as in a model
+## every copy of which is built in its steps.
+func _looks_by_name() -> Array:
+	var named: Array = _world.step_looks.keys().filter(func(key: String) -> bool:
+		return not key.get_slice("|", 0).is_empty())
+	return [named.is_empty(), "the model's looks %d, %d of them under a sub-model's name%s" % [
+		_world.step_looks.size(), named.size(), "" if named.is_empty()
+		else ": " + ", ".join(named.slice(0, 3))]]
+
+
+## The row of [param path] dragged onto [param into]'s in the model tree, as
+## its drop does (Outliner._drop): what the status bar then says.
+func _drag_row(path: String, into: String) -> String:
+	var moved: String = _assemblies.move_into(path, into)
+	_verbs.edited.call()
+	return "%s is in %s now" % [Assemblies.label(moved), "the model" if into.is_empty()
+		else Assemblies.label(into)]
+
+
+## [param ids], parts of [param path], selected inside it and taken out of it
+## by Ungroup.
+func _take_out(path: String, ids: Array) -> String:
+	_assemblies.enter(path)
+	_select_only(ids)
+	_shell.run("leave_submodel")
+	await _frames(3)
+	_assemblies.leave_to("")
+	return "took %s out of %s by Ungroup" % [", ".join(ids.map(func(brick_id: int) -> String:
+		return "#%d" % brick_id)), path]
+
+
+## [ok, words]: the copy that was at [param was] goes on at [param now] in the
+## step that puts [param with] on, where its parts were taken out to.
+func _put_on_with(units: Dictionary, was: String, now: String, with: String) -> Array:
+	var step: int = int(_world.unit_steps.get(now, -9))
+	var wanted: int = int(units.get(with, -1))
+	var wrong := PackedStringArray()
+	if step != wanted:
+		wrong.append("in step %d" % step)
+	if _world.unit_steps.has(was):
+		wrong.append("%s kept as well" % was)
+	return [wrong.is_empty(), "%s goes on in the step %s goes on in (%d)%s" % [now, with, wanted,
+		"" if wrong.is_empty() else ": " + ", ".join(wrong)]]
+
+
+## The turn each step of the copy at [param path] is seen at, in order.
+func _turns_of(path: String) -> Array:
+	var out: Array = []
+	for step: int in AuthorSteps.steps_in(_world, path, _store.scenery):
+		var turn: Dictionary = BookletLooks.turn_at(_world, path, step)
+		out.append(str(turn.get("turn", "-")))
+	return out
+
+
+## The way each step that puts any of [param ids] down is drawn from in the
+## booklet as it lays out now (BookletMaker.lay_out_only), in whole degrees
+## round from straight in front; "?" where no page has it.
+func _views_of(ids: Array) -> Array:
+	var wanted: Dictionary = {}
+	for brick_id: Variant in ids:
+		wanted[int(brick_id)] = true
+	# By where each step is in the plan, which the booklet's entries keep
+	# ("step"): a step puts on several callouts, each its own entry.
+	var asked: Array = []
+	var plan: Array[Instructions.Step] = _plan()
+	for index: int in plan.size():
+		for brick_id: int in plan[index].brick_ids:
+			if wanted.has(brick_id):
+				asked.append(index)
+				break
+	var maker := BookletMaker.new()
+	maker.library = _library
+	_main.add_child(maker)
+	var pages: Array[Booklet.Page] = await maker.lay_out_only(_world, _store.scenery, "Model")
+	maker.queue_free()
+	var from_of: Dictionary = {}
+	for page: Booklet.Page in pages:
+		for entry: Booklet.Entry in page.entries:
+			var shown: Array = [entry]
+			if entry.callout != null:
+				shown.append_array(entry.callout.steps)
+			for one: Booklet.Entry in shown:
+				if one.has_meta("step") and not from_of.has(int(one.get_meta("step"))):
+					from_of[int(one.get_meta("step"))] = one.from
+	var out: Array = []
+	for index: int in asked:
+		if not from_of.has(index):
+			out.append("?")
+			continue
+		var from: Vector3 = from_of[index]
+		out.append(roundi(rad_to_deg(atan2(from.x, from.z))))
+	return out
+
+
 # -- driving it as a person ------------------------------------------------------
 
 
@@ -474,26 +862,59 @@ func _middle_part() -> int:
 
 
 ## Every part's step in the booklet now, by id: "12", or "12.3" in the
-## callout step 12 puts on.
-func _numbers() -> Dictionary:
+## callout step 12 puts on. With [param place], by what and where each is
+## ([method _key_of]).
+func _numbers(place: bool = false) -> Dictionary:
 	var out: Dictionary = {}
 	for step: Instructions.Step in _plan():
 		for brick_id: int in step.brick_ids:
 			out[brick_id] = ("%d.%d" % [step.number, step.callout_step]) if step.in_callout() \
 				else str(step.number)
+	return _keyed(out) if place else out
+
+
+## A part by what it is and where, not its number, nor its colour: the
+## copy that follows another is built again of new parts (Assemblies.realize).
+func _key_of(brick_id: int) -> String:
+	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+	if brick == null:
+		return "#%d" % brick_id
+	var at: Transform3D = brick.transform
+	var b: Basis = at.basis
+	return "%s@%d,%d,%d/%d%d%d%d%d%d" % [brick.part_id, roundi(at.origin.x * 10.0),
+		roundi(at.origin.y * 10.0), roundi(at.origin.z * 10.0), roundi(b.x.x), roundi(b.x.z),
+		roundi(b.y.y), roundi(b.z.x), roundi(b.z.z), roundi(b.x.y)]
+
+
+## [param by_id] (id -> anything) by [method _key_of].
+func _keyed(by_id: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for brick_id: Variant in by_id:
+		out[_key_of(int(brick_id))] = by_id[brick_id]
 	return out
 
 
 ## The build as the booklet orders it, by what each step adds: its parts'
-## numbers, a step a line, whatever it is numbered.
-func _order() -> Array:
+## numbers, a step a line, whatever it is numbered. Without the parts
+## [param leaving] out (id -> true), of [param from] (an order read before)
+## when given.
+func _order(leaving: Dictionary = {}, from: Variant = null) -> Array:
+	var lines: Array = []
+	if from == null:
+		for step: Instructions.Step in _plan():
+			var ids: Array = Array(step.brick_ids)
+			ids.sort()
+			lines.append(ids)
+	else:
+		for line: String in from:
+			lines.append(Array(line.split(",", false)).map(func(id: String) -> int:
+				return id.to_int()))
 	var out: Array = []
-	for step: Instructions.Step in _plan():
-		var ids: Array = Array(step.brick_ids)
-		if ids.is_empty():
+	for ids: Array in lines:
+		var kept: Array = ids.filter(func(id: int) -> bool: return not leaving.has(id))
+		if kept.is_empty():
 			continue
-		ids.sort()
-		out.append(",".join(ids.map(func(id: int) -> String: return str(id))))
+		out.append(",".join(kept.map(func(id: int) -> String: return str(id))))
 	return out
 
 
@@ -586,19 +1007,19 @@ static func _moved(before: Dictionary, after: Dictionary, both: bool = false) ->
 		if both and not after.has(brick_id):
 			continue
 		if str(after.get(brick_id, "")) != str(before[brick_id]):
-			out.append(int(brick_id))
+			out.append(int(brick_id) if not (brick_id is String) else brick_id)
 	out.sort()
 	return out
 
 
-static func _first(ids: Array, was: Dictionary, now: Dictionary) -> String:
+static func _first(ids: Array, was: Dictionary, now: Dictionary, most: int = 4) -> String:
 	if ids.is_empty():
 		return ""
 	var named := PackedStringArray()
-	for brick_id: int in ids.slice(0, 4):
-		named.append("#%d %s->%s" % [brick_id, str(was.get(brick_id, "?")),
-			str(now.get(brick_id, "?"))])
-	return ": " + ", ".join(named) + (" ..." if ids.size() > 4 else "")
+	for one: Variant in ids.slice(0, most):
+		named.append("%s %s->%s" % [("#%d" % one) if one is int else str(one),
+			str(was.get(one, "?")), str(now.get(one, "?"))])
+	return ": " + ", ".join(named) + (" ..." if ids.size() > most else "")
 
 
 static func _unlike(a: Dictionary, b: Dictionary) -> String:
