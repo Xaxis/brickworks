@@ -78,7 +78,7 @@ var stress: StressView
 ## until then, so the first screen never compiles it.
 var stud_map: Node:
 	get:
-		if _stud_map == null and world != null:
+		if _stud_map == null and model_area != null:
 			_make_stud_map()
 		return _stud_map
 var _stud_map: Node = null
@@ -3369,7 +3369,7 @@ func covers(point: Vector2) -> bool:
 
 ## View, Stud directions (StudMap), made the first time something asks for
 ## it: the command, or a session's view_board studs. Its legend goes over
-## the model's top left corner, shown while it is on.
+## the model's top left corner ([member model_area]), shown while it is on.
 func _make_stud_map() -> void:
 	var map: Node = Later.make(&"StudMap")
 	map.world = world
@@ -3378,7 +3378,7 @@ func _make_stud_map() -> void:
 	map.say = bar.say
 	_stud_map = map
 	add_child(map)
-	over_model.add_child(map.legend)
+	model_area.add_child(map.legend)
 
 
 ## Whether Stud directions is on, asked by the menu without making it.
