@@ -90,6 +90,35 @@ func _run() -> void:
 	store.keeps = false
 	await process_frame
 
+	# First, while no part is loaded: what a submit lays on a worker ahead of
+	# its read (Assistant._shapes_ready) is what the read lays on the main
+	# thread. A worker reads a part not loaded as empty, and the Charger's
+	# body laid so came to other parts than its read (bigedit, 2026-11-06).
+	print("  shapes laid on a worker, as the read lays them")
+	var charger: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(
+		"res://src/dev/fixtures/charger_design.json"))
+	var said_car: Dictionary = {"name": "car", "patterns": [(BODIES["car"] as Dictionary).duplicate(true)]}
+	for design: Dictionary in [charger, said_car]:
+		assistant._patterns_laid.clear()
+		var began: int = Time.get_ticks_msec()
+		await assistant._shapes_ready(design)
+		var laid_ms: int = Time.get_ticks_msec() - began
+		var ahead: bool = not assistant._patterns_laid.is_empty()
+		var on_worker: Array = _parts_of(assistant._read_model(design))
+		assistant._patterns_laid.clear()
+		var in_read: Array = _parts_of(assistant._read_model(design))
+		var first: int = -1
+		for i: int in maxi(on_worker.size(), in_read.size()):
+			if i >= on_worker.size() or i >= in_read.size() or on_worker[i] != in_read[i]:
+				first = i
+				break
+		_check("%s: laid on a worker (%s, %d ms) %d parts, the read %d, the same%s" % [design["name"],
+			"kept" if ahead else "NOT kept", laid_ms, on_worker.size(), in_read.size(),
+			"" if first < 0 else ": first apart at %d, %s against %s" % [first,
+				on_worker[first] if first < on_worker.size() else "-",
+				in_read[first] if first < in_read.size() else "-"]],
+			ahead and first < 0 and in_read.size() > 20)
+
 	print("  the surface parts read off their meshes")
 	for id: String in ["3040b", "4286", "60477", "11477", "15068", "61678", "50950",
 			"54200", "85984"]:
@@ -838,3 +867,10 @@ const ENGINES: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 0, "z": 0},
 	"bottom": 6, "round": 0.6}]}}, {"loft": {"along": "z", "centre": 15,
 	"sections": [{"at": 0, "width": 4, "height": 8, "bottom": 6, "round": 0.6}, {"at": 14,
 	"width": 4, "height": 8, "bottom": 6, "round": 0.6}]}}], "top": "studs"}
+
+
+## [param model]'s parts, each said whole, in order.
+static func _parts_of(model: Assistant.Model) -> Array:
+	return model.placements.map(func(one: Assistant.Placement) -> String:
+		return "%s c%d %.2f %.2f %.2f %s %d" % [one.part, one.color, one.x, one.y, one.z, one.face,
+			one.rot])
