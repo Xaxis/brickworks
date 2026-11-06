@@ -12393,8 +12393,8 @@ func _sculpt_ready(args: Dictionary) -> void:
 				# Its own copies: the worker reads them while this frame goes on.
 				var own: Dictionary = raw.duplicate(true)
 				var standing: Dictionary = feet.duplicate(true)
-				var laid: Variant = await WorkerTasks.awaited(func() -> Variant:
-					return _lay_sculpt(own, standing, checker), "lay a sculpt", library)
+				var laid: Variant = await _laid_whole(func() -> Variant:
+					return _lay_sculpt(own, standing, checker), "lay a sculpt")
 				# A worker that failed leaves nothing: laid in the read instead,
 				# slow, but an answer (as _checked does).
 				if laid is Dictionary and not (laid as Dictionary).is_empty():
@@ -12460,11 +12460,11 @@ func _shapes_ready(args: Dictionary) -> void:
 	var own_plain: Array = plain.duplicate(true)
 	var own_written: Array = written.duplicate(true)
 	var parts: PartLibrary = library
-	var laid: Variant = await WorkerTasks.awaited(func() -> Variant:
+	var laid: Variant = await _laid_whole(func() -> Variant:
 		var trouble: Array = []
 		var made: Array = Patterns.expand(own_plain, own_written, trouble, parts)
 		return {"made": made, "trouble": trouble, "said": Shapes.said.duplicate(true),
-			"turned": Shapes.turned}, "lay a design's shapes", library)
+			"turned": Shapes.turned}, "lay a design's shapes")
 	Brickify.end_laying(self)
 	job.end()
 	# A worker that failed leaves nothing: expanded in the read instead,
@@ -12473,6 +12473,30 @@ func _shapes_ready(args: Dictionary) -> void:
 		if _patterns_laid.size() >= SCULPTS_KEPT:
 			_patterns_laid.erase(_patterns_laid.keys()[0])
 		_patterns_laid[key] = laid
+
+
+## [param work] run on a worker, reading the library, until it reads no part
+## whose geometry is not loaded: a reader on a worker finds such a part empty
+## (PartLibrary.mesh_for), and a shape or sculpt laid with a part read empty
+## lays other parts than the main thread lays, which loads it. The parts it
+## missed are loaded and it runs again, three times at most: null if it
+## still misses one that could be loaded, or the worker failed, for the
+## caller to lay it on the main thread instead.
+func _laid_whole(work: Callable, label: String) -> Variant:
+	for _round: int in 3:
+		library.unread_by_readers()
+		var laid: Variant = await WorkerTasks.awaited(work, label, library)
+		var missed: PackedStringArray = library.unread_by_readers()
+		if missed.is_empty():
+			return laid
+		var wanted := Model.new()
+		for id: String in missed:
+			wanted.placements.append(Placement.from_dict({"part": id}))
+		await _ensure_parts(wanted)
+		# None of them to be had: the main thread reads them empty too.
+		if not Array(missed).any(func(id: Variant) -> bool: return library.is_resident(str(id))):
+			return laid
+	return null
 
 
 ## What Patterns.expand makes of [param plain] over [param written], with
