@@ -466,6 +466,14 @@ func _sheet_lists_them() -> void:
 			missing.append("%s (%s)" % [name, chip.accessibility_name if chip != null else "no row"])
 	_check("each is on it with its words and key%s" % ("" if missing.is_empty() else ": not " + ", ".join(missing)),
 		missing.is_empty())
+	# Its row's words keep a name's capitals: LEGO®, never "lEGO®".
+	var rows: Array = []
+	for binding: ControlsHint.Binding in _sheet.bindings():
+		if binding.actions.has("export_pickabrick") or binding.actions.has("export_bricklink"):
+			rows.append(binding.verb)
+	_check("the lists' rows keep their names' capitals: %s" % ", ".join(rows), rows.size() == 2
+		and rows.any(func(verb: String) -> bool: return verb.begins_with("LEGO®"))
+		and rows.any(func(verb: String) -> bool: return verb.begins_with("BrickLink")))
 	var find: LineEdit = _sheet.get("_find")
 	for typed: String in ["F9", "cut away", "list"]:
 		find.text = typed
