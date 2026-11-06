@@ -1310,7 +1310,7 @@ ${header}
     + ` <span aria-hidden="true">›</span> <a href="${at}/library">${asText(say("Sets"))}</a>${set.theme
     ? ` <span aria-hidden="true">›</span> <a href="${at}/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(themeSaid(set.theme))}</a>` : ""}`
     : `<a href="${at}/gallery">${asText(say("Gallery"))}</a>${model.kind
-    ? ` <span aria-hidden="true">›</span> <a href="${at}/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}`}</nav>
+    ? ` <span aria-hidden="true">›</span> <a href="${at}/gallery?kind=${encodeURIComponent(model.kind)}">${escapeHtml(kind)}</a>` : ""}`}</nav>
   ${old ? `<p class="old-version" role="note"><b>${asText(say("An older version."))}</b> ${sayHtml("This is version {n} of {newest}, "
     + "published {when}.", { n: version.n, newest, when: when(version.at) })} <a href="${at}/m/${id}">${asText(say("See the newest, "
     + "version {newest}", { newest }))}</a></p>` : ""}
@@ -1385,14 +1385,14 @@ function mediaStrip(model, picture, photos, small = picture) {
   let shown = 0;
   const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
     + `width="96" height="72" loading="${shown++ < 5 ? "eager" : "lazy"}" decoding="async"></a>`;
-  const file = (photo) => `/api/people?op=photo_file&amp;id=${photo.id}`;
+  const file = (photo) => `/api/people?op=photo_file&amp;id=${encodeURIComponent(photo.id)}`;
   return `<div class="media-strip scroller" id="pictures" role="group" aria-label="${asText(say("Its pictures"))}"${photos?.length ? "" : " hidden"}>`
     + (picture ? thumb(small, say("{name}, as it was published", { name: model.name }),
       `href="${picture}" data-picture="${picture}" aria-current="true"`) : "")
     + (photos || []).map((photo) => thumb(file(photo), photo.own ? say("{name}, a photo by its designer", { name: model.name })
       : photo.by ? say("A real build of {name}, by {builder}", { name: model.name, builder: photo.by.name })
       : say("A real build of {name}", { name: model.name }),
-    `href="#photo-${photo.id}" data-picture="${file(photo)}"${photo.own ? " data-own" : ""}`)).join("")
+    `href="#photo-${escapeHtml(photo.id)}" data-picture="${file(photo)}"${photo.own ? " data-own" : ""}`)).join("")
     + `<button type="button" class="thumb add" data-add-picture hidden>${asText(say("Add a picture"))}</button></div>`;
 }
 

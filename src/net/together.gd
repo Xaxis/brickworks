@@ -1483,6 +1483,10 @@ func _put_meta(key: String, words: String) -> void:
 		"~looks":
 			var looks: Variant = str_to_var(words)
 			world.step_looks = looks if looks is Dictionary else {}
+			# The other person's pictures go into the booklet's HTML: PNG and JPEG alone.
+			if world.step_looks.get(BookletLooks.DATA) is Dictionary:
+				world.step_looks[BookletLooks.DATA] = BookletLooks.kept_pictures(
+					world.step_looks[BookletLooks.DATA])
 		"~unit_steps":
 			var steps: Variant = str_to_var(words)
 			world.unit_steps = steps if steps is Dictionary else {}

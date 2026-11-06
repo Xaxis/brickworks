@@ -187,7 +187,7 @@ export function cleanKind(given) {
 
 export function cleanLicence(given) {
   if (given === undefined) return undefined;
-  if (typeof given !== "string" || !(given in LICENCES)) {
+  if (typeof given !== "string" || !Object.hasOwn(LICENCES, given)) {
     throw new Unacceptable(`a licence is one of ${Object.keys(LICENCES).join(", ")}`);
   }
   return given;
