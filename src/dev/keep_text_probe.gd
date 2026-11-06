@@ -64,6 +64,15 @@
 ## part with notes, tabs, lines before the first FILE line, CRLF, and every
 ## kind of line that says what the next is (kt_runs.mpd).
 ##
+## And a saved model (the gatehouse) put down in each by File, Import, Into
+## this model… over MCP (intomodel): saved, opened again and undone, the
+## file's parts and the gatehouse's 14, and nothing else. And the lines the
+## app keeps of its own (its floor, hidden colours, cut-away, motions, pins,
+## the link it is shared at, the sets in its bin, a picture to trace, the set
+## it is), each written into the CRLF file by its writer, then all of them,
+## opened, saved and opened again: every line in CRLF and each read again
+## (SourceFile.lines_put; each writer had put its line in with "\n" alone).
+##
 ##   KEEP_TEXT_ONLY=7140,6650   those files;  KEEP_TEXT_EDITS=rename,copy   those edits
 ##   KEEP_TEXT_STEPS=0     no step edits, only the edits above
 extends SceneTree
@@ -93,7 +102,24 @@ const MODELS: Array = [
 
 ## The edits to a model's sub-models, in the order a person meets them.
 const EDITS: Array = ["rename", "copy", "make unique", "add a part", "take off a copy",
-	"take a part out of one copy", "make a sub-assembly", "move a part of a mirrored copy"]
+	"take a part out of one copy", "make a sub-assembly", "move a part of a mirrored copy",
+	"put a saved model in"]
+
+## The saved model put in each (intomodel_probe's): five sub-models in five
+## steps, 14 parts.
+const GATEHOUSE := "res://tests/fixtures/steps/gatehouse.mpd"
+const CRLF_FILE := "res://src/dev/fixtures/kt_crlf.mpd"
+## The lines the app keeps of its own in a model's text, each by its writer.
+const META_KINDS: Array = ["floor", "hidden colours", "cut-away", "motions", "pins",
+	"shared link", "sets in its bin", "picture to trace", "set"]
+const HIDDEN := {"mode": "sections", "groups": [{"label": "Base", "colour": 4, "also": [],
+	"sections": ["notes.ldr"]}]}
+const CUT := {"shape": "box", "from": [-80, -100, -40], "to": [0, 10, 40], "ghosts": false}
+const MOTION := ['0 !BRICKWORKS MOTION "Turn the brick" AFTER "" SECONDS 2',
+	'0 !BRICKWORKS MOTION_TRACK "Turn the brick" 1 TURN AT 0 JOINT PART 3004 14 0 -48 0',
+	'0 !BRICKWORKS MOTION_KEY "Turn the brick" 1 0 0 EASE',
+	'0 !BRICKWORKS MOTION_KEY "Turn the brick" 1 2 90 EASE']
+const SHARE := "kt3CrLfAbc"
 
 var _failures: int = 0
 var _main: Node
@@ -143,6 +169,12 @@ func _run() -> void:
 	_library = _main.get("_library")
 	_shell = _main.get("_shell")
 	_socket = (_main.get("_connector") as ClaudeConnector).rpc
+	# The gatehouse, saved: one of the person's own models, to put in.
+	var gatehouse: String = ModelStore.saved_path("Gatehouse")
+	DirAccess.make_dir_recursive_absolute(gatehouse.get_base_dir())
+	var file := FileAccess.open(gatehouse, FileAccess.WRITE)
+	file.store_string(FileAccess.get_file_as_string(GATEHOUSE))
+	file.close()
 	var only: String = OS.get_environment("KEEP_TEXT_ONLY")
 	var steps: bool = OS.get_environment("KEEP_TEXT_STEPS") != "0"
 	var edits: Array = EDITS if OS.get_environment("KEEP_TEXT_EDITS").is_empty() \
@@ -155,6 +187,8 @@ func _run() -> void:
 			if steps:
 				await _model(str(model[0]), str(model[1]), model.size() > 2)
 			await _edits(str(model[0]), str(model[1]), model.size() > 2, edits)
+	if only.is_empty() or only.contains("crlf") or only.contains("metas"):
+		await _metas_crlf()
 	print("\nlines lost by one step edit and a save:")
 	for row: Array in _summary:
 		print("  %-48s %4d in its section, %4d from the file, saved %s" % row)
@@ -570,7 +604,134 @@ func _do(edit: String, text: String) -> Dictionary:
 			await _frames(2)
 			return {"said": "moved a %s in %s" % [_world.get_brick(part).part_id, path],
 				"ok": moved > 0, "lines": line}
+		"put a saved model in":
+			# File, Import, Into this model… over MCP (intomodel): a saved
+			# model put down in this one as a sub-assembly, with its steps.
+			var said: String = await _say("open_model", {"into": true, "name": "Gatehouse"})
+			await _frames(4)
+			return {"said": said, "ok": said.begins_with("Put Gatehouse in the model")}
 	return {"skip": "no such edit"}
+
+
+# -- the app's own lines in a file in CRLF -------------------------------------------
+
+
+## The lines the app keeps of its own in a model's text ([constant META_KINDS])
+## written into a file in CRLF, each by its writer: each line in CRLF as the
+## file's are, and read again. Each writer put its line in with "\n" alone; a
+## save made the file CRLF again after the floor, hidden colours, cut-away,
+## motions and pins (SourceFile.ended), but not after the link it is shared
+## at, the sets in its bin and the picture to trace (ModelStore._write). Then
+## the file with all of them opened, saved, opened again and saved again: in
+## CRLF, every line, and each of them kept.
+func _metas_crlf() -> void:
+	print("\nthe app's own lines written into a file in CRLF")
+	var text: String = FileAccess.get_file_as_string(CRLF_FILE)
+	await _open(text, "CRLF metas")
+	var part: int = _chosen()
+	var pins := PinnedComments.new()
+	pins.add(part, "the author's favourite", "probe", "", _world, _store.lift())
+	var pin_lines: PackedStringArray = pins.lines(_world, _store.lift())
+	var all: String = text
+	for kind: String in META_KINDS:
+		var one: String = _meta_written(kind, text, pin_lines)
+		_check("%s written into it by itself: %d lines ending otherwise than the file's, read "
+			% [kind, _endings_wrong(text, one)] + "again: %s" % _meta_read(kind, one),
+			one != text and _endings_wrong(text, one) == 0 and _meta_read(kind, one))
+		all = _meta_written(kind, all, pin_lines)
+	var none: Array = META_KINDS.filter(func(kind: String) -> bool:
+		return not _meta_read(kind, all))
+	_check("all of them, one after another: %d lines ending otherwise, %d not read again%s"
+		% [_endings_wrong(text, all), none.size(), _first(none)],
+		_endings_wrong(text, all) == 0 and none.is_empty())
+	var parts: Array = _parts_of(text)
+	_same_parts("...with all of them", parts, all)
+	_shape_kept("...with all of them", text, all)
+	# As the app keeps them: opened, saved as Save saves it, opened again.
+	await _open(all, "CRLF metas")
+	_saves += 1
+	var file_name: String = "keep metas %d" % _saves
+	var saved_ok: bool = _store.save_as(file_name)
+	var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(file_name))
+	none = META_KINDS.filter(func(kind: String) -> bool: return not _meta_read(kind, saved))
+	_check("opened and saved: %d lines ending otherwise than the file's, %d of them not kept%s"
+		% [_endings_wrong(text, saved), none.size(), _first(none)],
+		saved_ok and _endings_wrong(text, saved) == 0 and none.is_empty())
+	_same_parts("...saved", parts, saved)
+	_shape_kept("...saved", text, saved)
+	await _open(saved, "CRLF metas")
+	_saves += 1
+	var again_name: String = "keep metas %d" % _saves
+	saved_ok = _store.save_as(again_name)
+	var again: String = FileAccess.get_file_as_string(ModelStore.saved_path(again_name))
+	none = META_KINDS.filter(func(kind: String) -> bool: return not _meta_read(kind, again))
+	_check("...opened again and saved again: %d lines ending otherwise, %d not kept, %d lines "
+		% [_endings_wrong(text, again), none.size(), _lost(saved, again).size()
+			+ _lost(again, saved).size()] + "changed%s" % _first(none + _lost(saved, again)),
+		saved_ok and _endings_wrong(text, again) == 0 and none.is_empty()
+		and _lost(saved, again).is_empty() and _lost(again, saved).is_empty())
+	_same_parts("...saved again", parts, again)
+
+
+## [param text] with the app's own line of [param kind] written in by its
+## writer, as a save writes it.
+func _meta_written(kind: String, text: String, pin_lines: PackedStringArray) -> String:
+	match kind:
+		"floor":
+			return ModelFloor.make(ModelFloor.BASEPLATE, 16, 16, 2).written_into(text)
+		"hidden colours":
+			return HiddenColours.written_into(text, HIDDEN)
+		"cut-away":
+			return CutShape.written_into(text, CUT)
+		"motions":
+			return Motions.written_into(text, PackedStringArray(MOTION))
+		"pins":
+			return PinnedComments.written_into(text, pin_lines)
+		"shared link":
+			return ModelStore.with_share(text, SHARE)
+		"sets in its bin":
+			return SetBin.written_into(text, PackedStringArray(["6780-1"]))
+		"picture to trace":
+			return ReferenceImage.written_into(text, {"on": "floor", "at": [0, 0, 0],
+				"width": 200, "picture": _picture()})
+		"set":
+			return ModelStore.with_set(text, "6780-1")
+	return text
+
+
+## Whether [param text] says what [method _meta_written] wrote of [param kind],
+## read as the app reads it when it opens the file.
+func _meta_read(kind: String, text: String) -> bool:
+	match kind:
+		"floor":
+			var ground: ModelFloor = ModelFloor.read(text)
+			return ground != null and ground.kind == ModelFloor.BASEPLATE and ground.across == 16
+		"hidden colours":
+			return HiddenColours.read(text).get("groups", []).size() == 1
+		"cut-away":
+			return not CutShape.read(text).is_empty()
+		"motions":
+			var motions: Motions = Motions.read(text)
+			return motions.list.size() == 1 and motions.unread.is_empty()
+		"pins":
+			var pins: PinnedComments = PinnedComments.read(text)
+			return pins.list.size() == 1 and pins.list[0].text == "the author's favourite"
+		"shared link":
+			return ModelStore.share_in(text) == SHARE
+		"sets in its bin":
+			return SetBin.read(text) == PackedStringArray(["6780-1"])
+		"picture to trace":
+			return ReferenceImage.read(text).get("picture", "") == _picture()
+		"set":
+			return ModelStore.set_in(text) == "6780-1"
+	return false
+
+
+## A picture to trace, as the app keeps one: a WebP in base64.
+func _picture() -> String:
+	var image: Image = Image.create(4, 4, false, Image.FORMAT_RGB8)
+	image.fill(Color(0.8, 0.2, 0.2))
+	return Marshalls.raw_to_base64(image.save_webp_to_buffer())
 
 
 ## The first copy the file places by a reference that mirrors it, or "".
@@ -918,7 +1079,7 @@ func _parts_of(text: String) -> Array:
 	var model: LdrModel = LdrModel.parse(text, "model")
 	if model == null:
 		return out
-	for item: Variant in model.flatten(_library.parts):
+	for item: Variant in _drawn(model):
 		var placement: LdrModel.Placement = item
 		placement.part_id = ModelStore.studio_part(placement.part_id, _library)
 		if placement.mirrored:
@@ -933,6 +1094,30 @@ func _parts_of(text: String) -> Array:
 			placement.color_code = colour
 		out.append([placement.part_id, placement.color_code, placement.transform,
 			_library.parts.has(placement.part_id), placement.unit])
+	return out
+
+
+## [param model]'s parts, a flexible part's skin the file carries as a part
+## of its own as the pieces it draws: written whole, a rope goes as its skin
+## (CustomParts), a part whose section holds the pieces the rope's did, and
+## a reader draws those pieces. Counted as one part, 31037-1's rope was 50
+## pieces lost and a part more.
+func _drawn(model: LdrModel) -> Array:
+	var out: Array = []
+	for item: Variant in model.flatten(_library.parts):
+		var placement: LdrModel.Placement = item
+		var skin: String = str(model.embedded_parts.get(LdrModel._key(placement.part_id) + ".dat", ""))
+		if not CustomParts.is_skin_text(skin):
+			out.append(placement)
+			continue
+		var pieces: LdrModel = LdrModel.parse(skin, "skin")
+		for one: Variant in pieces.flatten(_library.parts) if pieces != null else []:
+			var piece: LdrModel.Placement = one
+			piece.transform = placement.transform * piece.transform
+			if piece.color_code == 16:
+				piece.color_code = placement.color_code
+			piece.unit = placement.unit
+			out.append(piece)
 	return out
 
 

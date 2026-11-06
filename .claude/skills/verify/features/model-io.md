@@ -110,6 +110,25 @@ Whether what you built is still there tomorrow, and still means the same thing.
   written whole, the lines before the first FILE line stay before it, a note
   equal to a header line stays, a section of one part moved or of copies
   renamed keeps its notes (`kept_in`, `_paired_lines`).
+  Every line the app writes of its own into a model's text ends as the
+  file's lines do (`SourceFile.eol_of`, `lines_put`): the floor, hidden
+  colours, cut-away, motions and pins, and the share link, bin sets, picture
+  to trace and set that `_write` adds after `ended()`; before, a shared CRLF
+  file was saved with its endings mixed. The probe writes each into kt_crlf,
+  then all, opens, saves and opens again: CRLF throughout, each read again.
+  A saved model put down by File, Import, Into this model… (`open_model`
+  with `into`) is a ninth edit on every file: saved, opened again and undone,
+  the file's parts and the gatehouse's 14 and nothing else (a rope written
+  whole as its skin part counted as the pieces it draws). SourceFile.write
+  cannot say a new copy of a new kind ("made:"), so it is written whole, the
+  first whole write of the repository's files here; written whole, a note
+  "0" is no longer taken for the "0" the app ends each section with, header
+  lines and sub-model titles are kept byte for byte, and an LDCad rope with
+  no pieces is carried with its donor section (`kept_in`, `header_of`,
+  `carried_into`). Still lost written whole (the writer's design): a rope's
+  own header under its skin's, copies built in their parent's steps written
+  inline (the castle's sub-model sections), and the author's empty steps
+  (6650-1, 7140-1 reopen a step out).
   What cannot be one line is written whole (`write` returns null): a part of
   a mirrored copy changed, a copy built in a parent placed more than once, a
   copy the file built in its parent's steps given its own. Then the author's

@@ -2577,10 +2577,11 @@ static func _with_header(text: String, header: PackedStringArray, authored: bool
 static func with_set(text: String, number: String) -> String:
 	if number.is_empty() or text.contains(SET_META):
 		return text
+	var eol: String = SourceFile.eol_of(text) + "\n"
 	var cut: int = text.find("\n")
 	if cut < 0:
-		return text + "\n" + SET_META + number + "\n"
-	return text.substr(0, cut + 1) + SET_META + number + "\n" + text.substr(cut + 1)
+		return text + eol + SET_META + number + eol
+	return text.substr(0, cut + 1) + SET_META + number + eol + text.substr(cut + 1)
 
 
 ## The real set a model's text is, or empty: its own line, else the
@@ -2850,16 +2851,19 @@ static func _has_parts(text: String) -> bool:
 ## as it is for none.
 static func with_share(text: String, id: String, remix: String = "", remix_version: int = 0,
 		credited: Dictionary = {}, made: String = "") -> String:
-	var lines: String = (SHARE_META + id + "\n" if not id.is_empty() else "") \
-		+ (REMIX_META + remix + "\n" if not remix.is_empty() else "") \
-		+ (REMIX_VERSION_META + str(remix_version) + "\n" if not remix.is_empty() and remix_version > 0 else "") \
-		+ (CREDIT_META + JSON.stringify(credited) + "\n" if not credited.is_empty() else "") \
-		+ (MADE_META + made + "\n" if made in MADE_WAYS else "")
+	# Each line ending as the file's do: run after SourceFile.ended, a shared
+	# CRLF file got its link on a line ended "\n" alone.
+	var eol: String = SourceFile.eol_of(text) + "\n"
+	var lines: String = (SHARE_META + id + eol if not id.is_empty() else "") \
+		+ (REMIX_META + remix + eol if not remix.is_empty() else "") \
+		+ (REMIX_VERSION_META + str(remix_version) + eol if not remix.is_empty() and remix_version > 0 else "") \
+		+ (CREDIT_META + JSON.stringify(credited) + eol if not credited.is_empty() else "") \
+		+ (MADE_META + made + eol if made in MADE_WAYS else "")
 	if lines.is_empty():
 		return text
 	var cut: int = text.find("\n")
 	if cut < 0:
-		return text + "\n" + lines
+		return text + eol + lines
 	return text.substr(0, cut + 1) + lines + text.substr(cut + 1)
 
 

@@ -423,10 +423,7 @@ static func written_into(text: String, motion_lines: PackedStringArray) -> Strin
 			break
 	if at < 0:
 		at = ModelFloor.head_end(kept)
-	var head: PackedStringArray = kept.slice(0, at)
-	head.append_array(motion_lines)
-	head.append_array(kept.slice(at))
-	return "\n".join(head)
+	return SourceFile.lines_put(kept, at, motion_lines)
 
 
 ## The motions a model's text carries, read at the edge: a line of the

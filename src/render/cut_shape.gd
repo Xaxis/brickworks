@@ -109,8 +109,7 @@ static func written_into(text: String, scheme: Dictionary) -> String:
 			kept.append(line)
 	if scheme.is_empty():
 		return "\n".join(kept)
-	kept.insert(mini(1, kept.size()), META + JSON.stringify(scheme))
-	return "\n".join(kept)
+	return SourceFile.lines_put(kept, mini(1, kept.size()), [META + JSON.stringify(scheme)])
 
 
 ## The cut [param text] keeps, as [method written_into] was given it; empty

@@ -278,7 +278,8 @@ func unshown(placements: Array) -> Dictionary:
 ## parts still on their way, in the file's coordinates.
 func carried_into(text: String, waiting: Array) -> String:
 	var parts: Array = not_shown + waiting
-	if parts.is_empty():
+	var empty: Array = _empty_flexible(parts)
+	if parts.is_empty() and empty.is_empty():
 		return text
 	var shown_sections: Dictionary = {}
 	for line: int in by_line:
@@ -307,16 +308,34 @@ func carried_into(text: String, waiting: Array) -> String:
 			needed[LdrModel._key(reference)] = true
 		refs.append("1 %s %s %s" % [_colour_token(placement.color_code),
 			LdrModel._line_numbers(placement.transform), reference])
-	# And what those sections draw on that the file carries.
+	# And a flexible part of no pieces at all, LDCad's path alone (6650-1's
+	# rope, its 82 segments empty): nothing of it on the baseplate, nor one
+	# the app cannot show, so written whole its line and its section went
+	# (keeptext3).
+	for unit: String in empty:
+		var outer: String = _outermost_unshown(unit, shown_sections)
+		if outer.is_empty() or placed_units.has(outer):
+			continue
+		placed_units[outer] = true
+		var section: String = str(unit_sections[outer])
+		needed[section] = true
+		refs.append("1 %s %s %s" % [_colour_token(int(unit_colours.get(outer, 16))),
+			LdrModel._line_numbers(unit_frames[outer]), _file_name(section)])
+	# And what those sections draw on that the file carries: a flexible
+	# part's donor too, which its LDCad path names (donPart), drawn on by
+	# none of its pieces where they are all empty (6650-1).
 	var todo: Array = needed.keys()
 	while not todo.is_empty():
 		var key: String = todo.pop_back()
 		var span: Array = sections[key]
 		for n: int in range(int(span[0]) + 1, int(span[1])):
 			var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
-			if words.size() < 15 or words[0] != "1":
-				continue
-			var named: String = LdrModel._key(" ".join(words.slice(14)))
+			var named: String = ""
+			if words.size() >= 15 and words[0] == "1":
+				named = LdrModel._key(" ".join(words.slice(14)))
+			elif flexible.has(key) and lines[n].contains("[donPart="):
+				var from: int = lines[n].find("[donPart=") + "[donPart=".length()
+				named = LdrModel._key(lines[n].substr(from, lines[n].find("]", from) - from))
 			if sections.has(named) and not needed.has(named):
 				needed[named] = true
 				todo.append(named)
@@ -374,20 +393,30 @@ func kept_in(text: String, library: PartLibrary) -> String:
 	var unshown_at: Dictionary = {}     ## a line of a part the app cannot show -> true
 	for item: Variant in not_shown:
 		unshown_at[(item as LdrModel.Placement).line] = true
-	# The app's sections, and how many of each line each has: a line of the
-	# file the app wrote already (its header, its BFC line) is not put in
-	# twice, but only as many times as the app wrote it. Kept by kind, a note
-	# the same as a header line was taken for it and lost (ktreview).
+	# The app's sections, and how many of each line the head of each has
+	# (before its first part or step): a line of the file the app wrote
+	# already (its header, its BFC line) is not put in twice, but only as
+	# many times as the app wrote it. Kept by kind, a note the same as a
+	# header line was taken for it and lost (ktreview); counted in the whole
+	# section, a note "0" was taken for the "0" the app ends each with, and
+	# 7140-1's ship lost its own (keeptext3).
 	var span_of: PackedInt32Array = PackedInt32Array()
 	span_of.resize(written.size())
 	var heads: Array = [0]
 	var has: Array = [{}]
+	var in_head: bool = true
 	for n: int in written.size():
 		if _keyword(written[n]) == "FILE" and n > 0:
 			heads.append(n)
 			has.append({})
+			in_head = true
 		span_of[n] = heads.size() - 1
-		var key: String = " ".join(_words(written[n]))
+		var words: PackedStringArray = _words(written[n])
+		if not words.is_empty() and words[0] != "0" or _is_step(written[n]):
+			in_head = false
+		if not in_head:
+			continue
+		var key: String = " ".join(words)
 		var counts: Dictionary = has[heads.size() - 1]
 		counts[key] = int(counts.get(key, 0)) + 1
 	var before: Dictionary = {}         ## a line the app wrote -> the file's put before it
@@ -404,6 +433,14 @@ func kept_in(text: String, library: PartLibrary) -> String:
 			if first.size() >= 2 and first[0] == "0" and not first[1].begins_with("!") \
 					and not first[1].begins_with("//"):
 				title = 0
+		# Its title as the file has it, where the app's says it in the same
+		# words: written whole, 7755-1's doors lost the double spaces of
+		# theirs (keeptext3). The model's own, _named_as_file.
+		if title >= 0 and not key.is_empty() and key != main_key:
+			var app_file: int = _app_file_line(key, model, written, unit_map)
+			if app_file >= 0 and app_file + 1 < written.size() \
+					and _words(written[app_file + 1]) == _words(lines[title]):
+				again[app_file + 1] = lines[title].trim_suffix("\r")
 		var waiting: Array = []
 		var last: int = -1
 		var tail: int = int(span[1])
@@ -618,24 +655,7 @@ func _renamed_unit(unit: String, model: LdrModel, unit_map: Dictionary, used: Di
 ## go. -1 when the app wrote it no section: its every part taken out.
 func _app_head_end(key: String, model: LdrModel, written: PackedStringArray,
 		unit_map: Dictionary) -> int:
-	var first: int = -1
-	if key == main_key:
-		first = 0
-	else:
-		var app_key: String = ""
-		for unit: String in unit_sections:
-			var mine: String = str(unit_map.get(unit, unit))
-			if str(unit_sections[unit]) == key and model.unit_sections.has(mine):
-				app_key = str(model.unit_sections[mine])
-				break
-		if app_key.is_empty():
-			return -1
-		for n: int in written.size():
-			var words: PackedStringArray = _words(written[n])
-			if words.size() >= 3 and words[0] == "0" and words[1].to_upper() == "FILE" \
-					and LdrModel._key(" ".join(words.slice(2))) == app_key:
-				first = n
-				break
+	var first: int = _app_file_line(key, model, written, unit_map)
 	if first < 0 or first >= written.size():
 		return -1
 	var at: int = first
@@ -647,6 +667,29 @@ func _app_head_end(key: String, model: LdrModel, written: PackedStringArray,
 			break
 		at += 1
 	return at
+
+
+## The FILE line of the section the app wrote for this file's section
+## [param key] in [param written] (read as [param model]), or -1 when it
+## wrote none.
+func _app_file_line(key: String, model: LdrModel, written: PackedStringArray,
+		unit_map: Dictionary) -> int:
+	if key == main_key:
+		return 0
+	var app_key: String = ""
+	for unit: String in unit_sections:
+		var mine: String = str(unit_map.get(unit, unit))
+		if str(unit_sections[unit]) == key and model.unit_sections.has(mine):
+			app_key = str(model.unit_sections[mine])
+			break
+	if app_key.is_empty():
+		return -1
+	for n: int in written.size():
+		var words: PackedStringArray = _words(written[n])
+		if words.size() >= 3 and words[0] == "0" and words[1].to_upper() == "FILE" \
+				and LdrModel._key(" ".join(words.slice(2))) == app_key:
+			return n
+	return -1
 
 
 ## The model written whole ([param written]) called what this file calls
@@ -733,6 +776,32 @@ func _outermost_unshown(unit: String, shown_sections: Dictionary) -> String:
 	return found
 
 
+## The copies of a flexible part the file places that nothing is in: no
+## piece on the baseplate, none the app cannot show, none on its way
+## ([param parts]).
+func _empty_flexible(parts: Array) -> Array:
+	if flexible.is_empty():
+		return []
+	var holding: Dictionary = {}
+	for line: int in by_line:
+		for origin: Read in by_line[line]:
+			holding[origin.unit] = true
+	for item: Variant in parts:
+		holding[(item as LdrModel.Placement).unit] = true
+	var out: Array = []
+	for unit: String in unit_sections:
+		if not flexible.has(str(unit_sections[unit])):
+			continue
+		var held: bool = false
+		for other: String in holding:
+			if other == unit or str(other).begins_with(unit + "/"):
+				held = true
+				break
+		if not held:
+			out.append(unit)
+	return out
+
+
 ## Whether any part under the copy at [param unit] is shown.
 func _shows_any(unit: String, shown_sections: Dictionary) -> bool:
 	for other: String in unit_sections:
@@ -796,7 +865,9 @@ static func header_of(text_lines: PackedStringArray) -> PackedStringArray:
 			break
 	var at_part: bool = false
 	for raw: String in text_lines.slice(from):
-		var line: String = raw.strip_edges()
+		# As the file has it, byte for byte: stripped, 6780-1's keywords line
+		# lost the space it ends in (keeptext3).
+		var line: String = raw.trim_suffix("\r")
 		var words: PackedStringArray = _words(line)
 		if words.is_empty():
 			continue
@@ -1953,7 +2024,30 @@ func _repath(change: Callable) -> void:
 
 
 func _eol() -> String:
-	return "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
+	return eol_of(lines[0] if not lines.is_empty() else "")
+
+
+## What ends a line of [param text] before its "\n": "\r" in a CRLF file
+## (Studio's, the LDraw library's), as its first line ends; else "". Given a
+## text or its first line. Each line the app writes into someone else's file
+## ends as this says: a meta writer that put its line in with "\n" alone left
+## a CRLF file with its endings mixed (ktreview, keeptext3).
+static func eol_of(text: String) -> String:
+	var cut: int = text.find("\n")
+	return "\r" if (text.left(cut) if cut >= 0 else text).ends_with("\r") else ""
+
+
+## [param text_lines], a text split on "\n", with [param put] in before line
+## [param at], each ending as the text's own lines do ([method eol_of]),
+## joined again: how the app's own lines go into a model's text (ModelFloor,
+## HiddenColours, CutShape, Motions, PinnedComments).
+static func lines_put(text_lines: PackedStringArray, at: int, put: PackedStringArray) -> String:
+	var eol: String = eol_of(text_lines[0] if not text_lines.is_empty() else "")
+	var out: PackedStringArray = text_lines.slice(0, at)
+	for line: String in put:
+		out.append(line + eol)
+	out.append_array(text_lines.slice(at))
+	return "\n".join(out)
 
 
 ## [param texts] put in before line [param at]: every line from there on,
@@ -2356,14 +2450,14 @@ func _write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibr
 
 	_drop_emptied(replace, left)
 
-	var eol_now: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
+	var eol_now: String = _eol()
 	for section: String in restepped:
 		if not _restep(section, replace, inserts, added.get(section, []), paired,
 				unit_steps_now, eol_now):
 			return null
 
 	# A line written here ends as the file's lines do (Studio's in "\r\n").
-	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
+	var eol: String = _eol()
 	var out := PackedStringArray()
 	for n: int in lines.size():
 		for extra: String in inserts.get(n, []):

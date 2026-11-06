@@ -142,8 +142,9 @@ static func read(text: String) -> PackedStringArray:
 static func written_into(text: String, numbers: PackedStringArray) -> String:
 	if numbers.is_empty():
 		return text
-	var line: String = META + " ".join(numbers) + "\n"
+	var eol: String = SourceFile.eol_of(text) + "\n"
+	var line: String = META + " ".join(numbers) + eol
 	var cut: int = text.find("\n")
 	if cut < 0:
-		return text + "\n" + line
+		return text + eol + line
 	return text.substr(0, cut + 1) + line + text.substr(cut + 1)

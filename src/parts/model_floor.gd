@@ -140,8 +140,7 @@ func written_into(text: String) -> String:
 	for line: String in lines:
 		if not line.begins_with(META):
 			kept.append(line)
-	kept.insert(head_end(kept), to_meta())
-	return "\n".join(kept)
+	return SourceFile.lines_put(kept, head_end(kept), [to_meta()])
 
 
 ## Where the app's own lines go in the head of the model [param text_lines]

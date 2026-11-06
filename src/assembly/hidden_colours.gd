@@ -877,8 +877,7 @@ static func written_into(text: String, scheme: Dictionary) -> String:
 			kept.append(line)
 	if scheme.is_empty() or (scheme.get("groups", []) as Array).is_empty():
 		return "\n".join(kept)
-	kept.insert(mini(1, kept.size()), META + JSON.stringify(scheme))
-	return "\n".join(kept)
+	return SourceFile.lines_put(kept, mini(1, kept.size()), [META + JSON.stringify(scheme)])
 
 
 ## The scheme a model's text carries, or {}: read at the edge and made

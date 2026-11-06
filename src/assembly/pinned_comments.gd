@@ -153,10 +153,7 @@ static func written_into(text: String, pin_lines: PackedStringArray) -> String:
 			at = n + 1
 	if at < 0:
 		at = ModelFloor.head_end(kept)
-	var head: PackedStringArray = kept.slice(0, at)
-	head.append_array(pin_lines)
-	head.append_array(kept.slice(at))
-	return "\n".join(head)
+	return SourceFile.lines_put(kept, at, pin_lines)
 
 
 ## [param pin]'s part here: the one it is on while that is still its part,

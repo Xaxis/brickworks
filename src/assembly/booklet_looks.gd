@@ -1232,7 +1232,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	if looks.is_empty() and not _written_in(text):
 		return text
 	var lines: PackedStringArray = text.split("\n")
-	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
+	var eol: String = SourceFile.eol_of(text)
 	var out := PackedStringArray()
 	var definition: String = ""
 	var step: int = 0
