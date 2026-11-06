@@ -2107,6 +2107,14 @@ func _index_prints() -> void:
 		(_prints[plain.id] as Array).append(id)
 
 
+## Whether a part holds by its glue: a film laid on a face, one of ours or
+## one LDraw files as a Sticker ([method decor_of]). What it is stuck to is
+## Stickers.lies_on's, which Later loads.
+func sticks(part_id: String) -> bool:
+	var info: PartInfo = parts.get(part_id)
+	return info != null and (info.decor() & PartInfo.STICKER) != 0
+
+
 ## The prints and stickered versions of a plain part: the prints first,
 ## then the most used, then by number. 3623 has eleven prints.
 func prints_of(plain: String) -> Array[PartInfo]:

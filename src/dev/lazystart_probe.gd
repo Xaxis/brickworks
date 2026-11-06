@@ -11,8 +11,9 @@
 ##
 ##   main.tscn loaded, none of Later's scripts is (ResourceLoader.has_cached),
 ##   and how long the load took, which is main.gd's compile;
-##   the window up and settled, still none, and nothing asked Later for one,
-##   nor once a signed-in person's collection has come;
+##   the window up and settled, still none, and nothing asked Later for one
+##   (but the desktop's updater, which a web build never makes), nor once
+##   My collection is made and the person's collection has come;
 ##   each member asked for as a probe or a check asks (main.get), made once,
 ##   over the window under the sign-in screens, or in the tools' column
 ##   above Stress's legend; the assistant with its panel and Claude's
@@ -59,14 +60,15 @@ func _run() -> void:
 	await _frames(120)
 	_check("the window up and settled, still none loaded: %s" % ", ".join(_loaded()),
 		_loaded().is_empty())
-	_check("and nothing asked Later for one: %s" % str(Later.took), Later.took.is_empty())
-	# A signed-in person's collection arrives a few seconds in: it told the
-	# assistant, and asking for it made one then, on the web 5 to 9 s of
-	# compiling under the person's first click (load_check, 2026-10-31).
+	_check("and nothing asked Later for one: %s" % str(_took()), _took().is_empty())
+	# A signed-in person's collection arrives a few seconds after My
+	# collection is made (Shell.collection): it told the assistant, and
+	# asking for it made one then, on the web 5 to 9 s of compiling under the
+	# person's first click (load_check, 2026-10-31).
 	_shell.collection.store.changed.emit()
 	await _frames(3)
-	_check("their collection arriving makes no assistant: %s" % str(Later.took),
-		Later.took.is_empty() and _main.get("_assistant_made") == null)
+	_check("their collection arriving makes no assistant: %s" % str(_took()),
+		_took().keys() == [&"CollectionDialog"] and _main.get("_assistant_made") == null)
 
 	await _a_model()
 	_made_where_they_were()
@@ -75,12 +77,26 @@ func _run() -> void:
 	_finish()
 
 
-## Later's classes whose scripts are loaded.
+## The desktop's own, made as its window is (Main, where not on the web):
+## it looks for a newer version as the app starts.
+const DESKTOP_START: Array[StringName] = [&"Updater", &"Updates", &"UpdateNotice", &"UpdateDialog"]
+
+
+## Later's classes whose scripts are loaded, but the desktop's own.
 func _loaded() -> PackedStringArray:
 	var out := PackedStringArray()
 	for name: StringName in Later.PATHS:
-		if Later.loaded(name):
+		if Later.loaded(name) and not (name in DESKTOP_START and not OS.has_feature("web")):
 			out.append(name)
+	return out
+
+
+## What Later was asked for, but the desktop's own.
+func _took() -> Dictionary:
+	var out: Dictionary = Later.took.duplicate()
+	if not OS.has_feature("web"):
+		for name: StringName in DESKTOP_START:
+			out.erase(name)
 	return out
 
 

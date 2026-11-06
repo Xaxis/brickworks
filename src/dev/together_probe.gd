@@ -463,7 +463,7 @@ func _reload(a: Dictionary, b: Dictionary) -> Dictionary:
 	var back: Dictionary = await _side("", b["account"] as Account)
 	var tc: Together = back["together"]
 	tc.keeps_place = true
-	var trouble: String = await tc.join(Together.kept_secret(), true)
+	var trouble: String = await tc.join(TogetherLink.kept_secret(), true)
 	await _settle([a, back], 30000)
 	_check("the copy back in its place sends them again, and both have them: %s" % str(tc.timing.get("restored", 0)),
 		trouble.is_empty() and ta.brick_of(str(placed.get("uid", ""))) != 0
@@ -487,7 +487,7 @@ func _reload(a: Dictionary, b: Dictionary) -> Dictionary:
 	var again: Dictionary = await _side("", b["account"] as Account)
 	var td: Together = again["together"]
 	td.keeps_place = true
-	trouble = await td.join(Together.kept_secret(), true)
+	trouble = await td.join(TogetherLink.kept_secret(), true)
 	await _settle([a, again], 30000)
 	_check("...and the app opened again is back in, with nothing left to send again (%d restored)"
 		% int(td.timing.get("restored", 0)), trouble.is_empty() and ta.model_hash() == td.model_hash()

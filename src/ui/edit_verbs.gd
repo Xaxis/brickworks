@@ -29,8 +29,9 @@ var reopen: Callable = func(_again: bool) -> bool: return false
 ## (ModelStore.reopen_words).
 var reopen_words: Callable = func(_again: bool) -> String: return ""
 ## Building together (Together): while in a session, Undo and Redo are this
-## person's own, and take back none of anybody else's parts.
-var together: Together = null
+## person's own, and take back none of anybody else's parts. Null until the
+## session is made (Main._together, Later): then nobody is in one.
+var together: Node = null
 
 ## What this app last put on the system clipboard, so a paste can tell
 ## LDraw another program put there from its own copy coming back.
@@ -988,12 +989,45 @@ func set_mode(to: String) -> void:
 	if mode == "connect":
 		connect_tool.end()
 	mode = to
+	if (to == "move" or to == "rotate") and handles == null:
+		_make_handles()
 	if measure != null and measure.active:
 		measure.leave()
 	if to != "place" and not builder.is_carrying():
 		builder.hide_preview()
 	mode_changed.emit(mode)
 	aim_again.call()
+
+
+## The Move and Rotate tools' rings and arrows (Handles), made the first time
+## either tool is chosen. Their code was compiled before a first visit's
+## window was drawn (leaves, 2026-11-05).
+func _make_handles() -> void:
+	handles = Later.make(&"Handles")
+	handles.builder = builder
+	handles.world = world
+	handles.library = library
+	handles.camera = camera
+	handles.verbs = self
+	handles.say = func(line: String) -> void: say.call(line)
+	handles.edited = func() -> void: edited.call()
+	handles.flash = _flash
+	add_child(handles)
+
+
+## Whether the handles are on the selection now.
+func _handles_shown() -> bool:
+	return handles != null and handles.shown()
+
+
+## Whether a number typed now is the handles' (a handle dragged, or just
+## let go), and whether they have it.
+func _handles_want_typing() -> bool:
+	return handles != null and handles.wants_typing()
+
+
+func _handles_typing() -> bool:
+	return handles != null and handles.is_typing()
 
 
 ## Connect (ConnectTool): with a part in hand, its points offered where its
@@ -1059,7 +1093,7 @@ func take_last_part() -> void:
 ## Studio's eyedropper. With the handles on a selection (Move, Rotate), the
 ## point they turn about instead.
 func pick_at(at: Vector2) -> bool:
-	if handles.shown():
+	if _handles_shown():
 		return handles.pick_pivot(at)
 	var brick_id: int = brick_at(at)
 	var brick: BrickWorld.Brick = world.get_brick(brick_id) if brick_id != 0 else null
@@ -1135,11 +1169,11 @@ func hint() -> String:
 			return "Placing %s: click puts one down · type a number to move it exactly · %s, the part stays in hand · Esc lets go" % [
 				named, look]
 		"move":
-			if handles.shown():
+			if _handles_shown():
 				return "Move: drag an arrow to slide it, a pane for two axes at once, a number typed makes it exact · click it again to pick it up · Alt-click picks the point the arrows start from · %s" % look
 			return "Move: click a part for its arrows, again to pick it up (the selection with it) · %s" % look
 		"rotate":
-			if handles.shown():
+			if _handles_shown():
 				return "Rotate: drag a ring to turn it, finer further out, the outer ring about the view, inside the rings freely · a number typed makes it exact · click it again to turn it %d° · Alt-click picks the point it turns about · %s" % [
 					roundi(turn_step), look]
 			return "Rotate: click a part for its rings, again to turn it %d° (Shift-click back) · %s" % [
@@ -1268,8 +1302,9 @@ func click(at: Vector2, shift: bool) -> bool:
 var typed: TypedEntry
 ## A point on the part, then the point it goes on (ConnectTool).
 var connect_tool: ConnectTool
-## Rings and arrows on the selection, with the Rotate and Move tools.
-var handles: Handles
+## Rings and arrows on the selection, with the Rotate and Move tools
+## (Handles), made the first time either is chosen (Later): null until then.
+var handles: Node = null
 ## R or T just pressed, which a number typed straight after takes the place
 ## of: {verb, hand} with what was in hand before them (Builder.hand_state),
 ## or {verb, depth, degrees or way} for a selection turned on the model,
@@ -1291,36 +1326,36 @@ func _ready() -> void:
 	# A number while a handle is dragged, or straight after, is the
 	# handles' (Handles); otherwise it moves what is in hand.
 	typed.may_open = func() -> bool:
-		return handles.begin_typing() if handles.wants_typing() else _begin_typing()
+		return handles.begin_typing() if _handles_want_typing() else _begin_typing()
 	typed.opened_as = func() -> String:
-		return handles.typed_verb() if handles.wants_typing() else str(_armed.get("verb", "move"))
+		return handles.typed_verb() if _handles_want_typing() else str(_armed.get("verb", "move"))
 	typed.going = func() -> Vector3:
-		return handles.typed_way() if handles.is_typing() else builder.last_way
+		return handles.typed_way() if _handles_typing() else builder.last_way
 	# Straight after a copy, "5x" and "/5" are copies (Pattern), not a move;
 	# never while a handle has the number.
 	typed.reads = func(text: String) -> Dictionary:
-		return {} if handles.wants_typing() or handles.is_typing() else _copies_read(text)
+		return {} if _handles_want_typing() or _handles_typing() else _copies_read(text)
 	typed.preview = func(what: Dictionary) -> String:
-		if handles.is_typing():
+		if _handles_typing():
 			return handles.typed_preview(what)
 		if what.has("copies"):
 			return _copies_shown(what)
 		pattern.hide_copies()
 		return _typed_preview(what)
 	typed.apply = func(what: Dictionary) -> bool:
-		if handles.is_typing():
+		if _handles_typing():
 			return handles.typed_apply(what)
 		return _copies_put(what) if what.has("copies") else _typed_apply(what)
 	typed.cancel = func() -> void:
-		if handles.is_typing():
+		if _handles_typing():
 			handles.typed_cancel()
 			return
 		pattern.hide_copies()
 		_typed_cancel()
 	typed.still_held = func() -> bool:
-		return handles.is_dragging() if handles.is_typing() else builder.is_pinned()
+		return handles.is_dragging() if _handles_typing() else builder.is_pinned()
 	typed.clear_of = func() -> Rect2:
-		return handles.on_screen() if handles.is_typing() else _hand_on_screen()
+		return handles.on_screen() if _handles_typing() else _hand_on_screen()
 	layer.add_child(typed)
 	connect_tool = ConnectTool.new()
 	connect_tool.builder = builder
@@ -1331,16 +1366,6 @@ func _ready() -> void:
 	connect_tool.edited = func() -> void: edited.call()
 	connect_tool.aim_again = func() -> void: aim_again.call()
 	add_child(connect_tool)
-	handles = Handles.new()
-	handles.builder = builder
-	handles.world = world
-	handles.library = library
-	handles.camera = camera
-	handles.verbs = self
-	handles.say = func(line: String) -> void: say.call(line)
-	handles.edited = func() -> void: edited.call()
-	handles.flash = _flash
-	add_child(handles)
 	pattern = Pattern.new()
 	pattern.builder = builder
 	pattern.world = world
