@@ -11334,6 +11334,37 @@ msgstr "%s legt sein nächstes Ende an die Verbindungsstelle"
 msgid "a sleeper goes under the joint with it"
 msgstr "eine Schwelle kommt mit unter die Verbindungsstelle"
 
+# modelinfo: the model's size and weight, on the status bar and in Properties
+# with nothing selected (ModelSize)
+msgid "%s × %s studs, %s plates high"
+msgstr "%s × %s Noppen, %s Platten hoch"
+
+msgid "%s × %s studs, 1 plate high"
+msgstr "%s × %s Noppen, 1 Platte hoch"
+
+msgid "%s × %s × %s cm"
+msgstr "%s × %s × %s cm"
+
+msgid "About %d g"
+msgstr "Etwa %d g"
+
+msgid "1 part not in the library, not counted"
+msgstr "1 Teil nicht in der Bibliothek, nicht mitgezählt"
+
+msgid "%d parts not in the library, not counted"
+msgstr "%d Teile nicht in der Bibliothek, nicht mitgezählt"
+
+# Properties' selection, a height of half a plate: "4.5 plates" (a tyre on
+# its edge is 4½)
+msgid "%s plates"
+msgstr "%s Platten"
+
+msgid "How big the model is, or the parts selected: studs across and deep, plates high without the studs on top, and centimetres each way with them"
+msgstr "Wie groß das Modell ist, oder die ausgewählten Teile: Noppen breit und tief, Platten hoch ohne die Noppen obenauf, und Zentimeter in jede Richtung mit ihnen"
+
+msgid "How big the model is: studs across and deep, and plates high without the studs on its top; in centimetres with them, as a shelf needs. Its weight is worked out from each part's shape, within about 6% of the bricks weighed"
+msgstr "Wie groß das Modell ist: Noppen breit und tief, und Platten hoch ohne die Noppen obenauf; in Zentimetern mit ihnen, wie ein Regal es braucht. Sein Gewicht wird aus der Form jedes Teils berechnet, auf etwa 6 % genau bei den gewogenen Steinen"
+
 # My collection: lots under where they came from (mybricks2)
 msgid "From Rebrickable"
 msgstr "Aus Rebrickable"

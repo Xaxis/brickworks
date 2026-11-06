@@ -1,4 +1,4 @@
-# Keys for the commands a builder uses often (2026-11-05)
+# Keys for the commands a builder uses often (2026-11-05, and keys2 2026-11-06)
 
 An expert CAD is driven from the keyboard. Before this, 114 of the menus' 201 commands had
 no key under the app's own keys, among them the reference picture, Simulate and Motions.
@@ -9,19 +9,23 @@ why each one left without a key is left so.
 Counted off the app itself (Shell's commands, Keymap's key for each, under each preset,
 nothing set by hand), on the desktop. The web has one more under every preset: New tab,
 whose Ctrl-Shift-N the browser keeps. `src/dev/keys4_probe.gd` counts them again and
-fails when a command has no key and no row below.
+fails when a command has no key and no row below; `src/dev/keys2_probe.gd` checks the
+eight keys2 gave.
 
-| Preset | Commands | Without a key before | After |
-|---|---|---|---|
-| Brickworks | 208 | 115 | 110 |
-| Studio | 208 | 118 | 113 |
-| Mecabricks | 208 | 116 | 111 |
-| LDCad | 208 | 118 | 114 |
+| Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
+|---|---|---|---|---|---|
+| Brickworks | 210 | 115 | 110 | 112 | 104 |
+| Studio | 210 | 118 | 113 | 115 | 107 |
+| Mecabricks | 210 | 116 | 111 | 113 | 105 |
+| LDCad | 210 | 118 | 114 | 116 | 108 |
 
-The menus had 201 commands when this was counted. Cut away by a box, a sphere or a cylinder
+The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
-more with none, and What's This? one with Shift-F1 under every preset: 208 now, six more
-without a key after.
+more with none, and What's This? one with Shift-F1 under every preset: 208 when keys was
+done, six more without a key after it. Page setup… (pagesetup) and Stud directions
+(seeing2) added one more each with none: 210, and 112 without a key under the app's keys,
+before keys2. keys2 gave eight a key under every preset, each one no command had: 104
+without a key now, so 106 of the 210 have one (the walk's `counts`, APP_UX5).
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -57,13 +61,39 @@ LDCad's G and A are the editing grid and animation mode, as Alt-G and Alt-O are 
 under LDCad's keys G stays the pick and A the move left: each is used every minute, and A
 is one of W, A, S and D. So the stud grid and Motions keep the app's own keys there.
 
+## Given a key in round five (keys2, 2026-11-06)
+
+The rest of what a builder reaches for once a model or more, which APP_UX5's walk found
+with no key (its 9). Each has the same key under all four presets: none of the presets
+gives these keys to anything, and none was a command's before. Into this model… was
+planned here too, but it is not in this release (intomodel was taken out); it gets its key
+when it returns. Its place went to Page setup…, new in the same round.
+
+The app's own rule, Alt and the first free letter of the menu row, is kept where a letter
+is free (Alt-X, Alt-Y, Alt-L); Render takes the wider 3D field's key, F9 (3ds Max's Render
+Last, LightWave's and Modo's Render), as no LEGO® CAD keys it and Blender's F12 opens a
+browser's developer tools. The sphere's own letters all have keys, so it sits beside the
+box. Page setup's key on a Mac, Cmd-Shift-P, is Firefox's private window, which a page
+never hears: it goes beside Alt-B, the booklet itself. The Library opens a model as Open
+does, and so sits beside Ctrl-O, as a browser's own Library is Ctrl-Shift-O.
+
+| Command | Menu | Studio | LeoCAD | LDCad | How often | Brickworks | Studio's keys | Mecabricks' | LDCad's | Why this key |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `render` | File › Render | — | — (its POV-Ray and Blender Render have none) | — | once a model, again for each picture | F9 | F9 | F9 | F9 | the render key of 3ds Max, LightWave and Modo; Blender's F12 is a browser's |
+| `render_queue` | File › Render queue | — | — | — | after Render, to see what waits | shift-F9 | shift-F9 | shift-F9 | shift-F9 | beside Render's F9 |
+| `cut_box` | View › Cut away by › A box | — | — | — | a few times a model | alt-X | alt-X | alt-X | alt-X | Alt and the first free letter, boX; K then cuts away by it again |
+| `cut_sphere` | View › Cut away by › A sphere | — | — | — | a few times a model | alt-Z | alt-Z | alt-Z | alt-Z | every letter of "sphere" has a key; Z beside the box's X |
+| `cut_cylinder` | View › Cut away by › A cylinder | — | — | — | a few times a model | alt-Y | alt-Y | alt-Y | alt-Y | Alt and the first free letter, cYlinder |
+| `booklet_page_setup` | Build › Booklet page › Page setup | — | — (Print and Print Preview have none) | — | once a booklet | Ctrl-shift-B | Ctrl-shift-B | Ctrl-shift-B | Ctrl-shift-B | beside Alt-B, Instructions, the booklet; the Mac's Cmd-Shift-P is Firefox's |
+| `export_pickabrick` | File › Export › LEGO® Pick a Brick list (.csv) | — | — | — | once a model, again as it changes | alt-L | alt-L | alt-L | alt-L | Alt and the first free letter, LEGO®'s L; BrickLink's and Rebrickable's lists are on the parts list (P) |
+| `library` | File › Library | — | — | — | once a session | Ctrl-shift-O | Ctrl-shift-O | Ctrl-shift-O | Ctrl-shift-O | beside Open's Ctrl-O, as a browser's Library is Ctrl-Shift-O |
+
 ## Left without a key, on purpose
 
 "Keyless under" names the presets a command has no key in; "all" is all four.
 
 | Command | Menu | Studio | LeoCAD | LDCad | How often | Keyless under | Why |
 |---|---|---|---|---|---|---|---|
-| `library` | File › Library | — | — | — | once a session | all | Open (Ctrl-O) is the way in |
 | `import_ldraw` | File › Import › LDraw model (.ldr, .mpd) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_io` | File › Import › BrickLink Studio model (.io) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_lxf` | File › Import › LEGO® Digital Designer model (.lxf) | — | — | — | once a model | all | a file chosen once, from File › Import |
@@ -77,9 +107,6 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `export_bricklink` | File › Export › BrickLink wanted list (.xml) | — | — | — | once a model | all | made once a model is done |
 | `export_all` | File › Export › All my models (.zip) | — | — | — | once a model | all | made once a model is done |
 | `export_rebrickable` | File › Export › Rebrickable parts list (.csv) | — | — | — | once a model | all | made once a model is done |
-| `export_pickabrick` | File › Export › LEGO® Pick a Brick list (.csv) | — | — | — | once a model | all | made once a model is done |
-| `render` | File › Render | — | — (its POV-Ray and Blender Render have none) | — | once a model | all | a picture once a model is done; no field tool keys it |
-| `render_queue` | File › Render queue | — | — | — | rarely | all | pictures waiting, looked at after Render |
 | `share` | File › Share | — | — | — | once a model | all | a link once a model is done |
 | `together` | File › Build together | — | — | — | rarely | all | a session started once |
 | `comments` | File › Comments | — | — | — | rarely | all | read when someone comments |
@@ -140,12 +167,10 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `cut_y` | View › Cut away by › A plane along Y | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
 | `cut_z` | View › Cut away by › A plane along Z | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
 | `cut_ghosts` | View › Cut away by › Leave a ghost of what is cut away | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
-| `cut_box` | View › Cut away by › A box | — | — | — | a few times a model | all | K cuts away by the shape last chosen; the shape is picked once a cut, and its knobs and the strip do the rest |
-| `cut_sphere` | View › Cut away by › A sphere | — | — | — | a few times a model | all | K cuts away by the shape last chosen; the shape is picked once a cut, and its knobs and the strip do the rest |
-| `cut_cylinder` | View › Cut away by › A cylinder | — | — | — | a few times a model | all | K cuts away by the shape last chosen; the shape is picked once a cut, and its knobs and the strip do the rest |
 | `cut_grow` | View › Cut away by › Grow it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Grow is the strip's button |
 | `cut_shrink` | View › Cut away by › Shrink it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Shrink is the strip's button |
 | `stress` | View › Stress | — | — | — | a few times a model | all | Alt-K checks stability; Stress is the colour of it, looked at after |
+| `stud_map` | View › Stud directions | — | — | — | once a design | all | a check of which way studs face, looked at once and put away; it shares Stress's layer, and Stress has none either |
 | `panel_parts` | View › Parts bin | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_assistant` | View › Assistant | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_properties` | View › Properties | — (Instruction Maker's inspector, Ctrl-Alt-2) | — | I, the information panel | once a session | all | a panel set once a session; I is X-ray here, used far more |

@@ -512,7 +512,12 @@ func bindings() -> Array[ControlsHint.Binding]:
 				continue
 			named[name] = true
 			var words: String = command.words.trim_suffix("…")
-			var binding := ControlsHint.keyed([name], words[0].to_lower() + words.substr(1))
+			# A name keeps its capitals: "LEGO® Pick a Brick list", "BrickLink
+			# wanted list", never "lEGO®" (keys2).
+			var first: String = words.get_slice(" ", 0)
+			if first.substr(1) == first.substr(1).to_lower():
+				words = words[0].to_lower() + words.substr(1)
+			var binding := ControlsHint.keyed([name], words)
 			binding.section = MENU_SECTIONS.get(menu[0], "Panels")
 			if not extra.has(binding.section):
 				extra[binding.section] = []
