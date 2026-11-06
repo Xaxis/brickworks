@@ -436,6 +436,36 @@ commit. None of the ten needs the owner.
   - `mcp_sync`, `mcp`, `mcphand` pass;
   - then the MCP walk's 18 tasks (`docs/app_ux4/mcp_walk/`) rerun by a real
     session, its looks counted beside today's (said, not gated).
+- **Done** (unit seeing, 2026-11-05; `seeing` red on `pre261`, where
+  neither tool is served and `split_parts` takes no `picture=`; green at
+  1280 x 720 and 1400 x 900, every check, the pictures in
+  `bench/results/seeing-2026-11-05/`):
+  - six views of the car in **1 call**, 0.8 s, one 1536 x 1092 picture,
+    six labels, each view at most 0.0003 apart from `view_model`'s;
+  - `highlight=` the headlight brick, a 1 x 1 and a mudguard: 100% of each
+    one's edge magenta; the 21 other parts seen alone on the line of sight
+    at 19% of their strength at most;
+  - `xray=` the roof: the blue seat, 0 px in sight from the top without it,
+    33,594 px with it, all in the seat's own colour;
+  - `step=3`: steps 1 to 3's 15 parts, 0.0000 apart from them drawn alone;
+    100% of step 3's six parts' edges magenta, none elsewhere;
+  - `booklet_page` page 2 in 0.7 s, 0.0041 apart from the PDF's page 2
+    drawn by poppler at 1399 x 1035; nothing changed by either tool;
+  - `split_parts picture=true` answers with the whole model, the eight
+    pieces edged; unasked, `merge_parts` answers with a close look;
+    `picture=false` words alone;
+  - Best: "Path traced, 256 samples" on the RX 6700 XT; "64 frames
+    averaged", and why, with nothing behind the model or a card that
+    cannot trace;
+  - `mcp_sync`, `mcp`, `mcphand` pass, and `read_only`, `mcp_lean`,
+    `mcp_walk3`, `booklet_pdf`, `booklet3`, `buildvideo`;
+  - the MCP walk's 18 tasks again: **52 calls**, 57 before. Looks after
+    a hand tool, **0** (4 before): each of the five split, merge and
+    mirror calls answered with its picture. The pod checked from three
+    sides in one `view_board`. The booklet task looked at pages 2 and 3
+    with `booklet_page` and described them, where before it said it had
+    not seen the page. The Best render said "path traced, 256 samples",
+    where before it guessed.
 
 **2. likewords: Like this is about the part, not the last search.**
 - **Change.**
