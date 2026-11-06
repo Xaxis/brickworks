@@ -5704,7 +5704,7 @@
           "type": "number"
         },
         "columns": {
-          "description": "along x, counting the parts given (1)",
+          "description": "along x, counting the parts given; 1 when not given",
           "type": "integer"
         },
         "level_plates": {
@@ -5712,7 +5712,7 @@
           "type": "integer"
         },
         "levels": {
-          "description": "up, counting the parts given (1)",
+          "description": "up, counting the parts given; 1 when not given",
           "type": "integer"
         },
         "picture": {
@@ -5724,7 +5724,7 @@
           "type": "number"
         },
         "rows": {
-          "description": "along z, counting the parts given (1)",
+          "description": "along z, counting the parts given; 1 when not given",
           "type": "integer"
         }
       },

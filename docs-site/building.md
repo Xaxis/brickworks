@@ -99,6 +99,7 @@ The copies are drawn where they will go as you type, each checked for room. One 
 
 <!-- covers
 ui:patterns
+lib:pattern's grid over mcp
 -->
 
 ## Move and turn what is down {#move}
