@@ -4658,6 +4658,13 @@
       "entry": "src/net/pattern_tool.gd",
       "reach": "tools/probe.sh grid_probe   (pattern_parts: bricks= in columns, rows and levels, column_studs/row_studs/level_plates apart or touching; one call, one undo step, a copy with no room said by its column, row and level and the part in its way)",
       "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "into kept probe",
+      "entry": "src/dev/into_kept_probe.gd",
+      "reach": "tools/probe.sh into_kept_probe   (headless; 11 cases, -- unshown_name,rotstep for some: a model brought in, put down, undone, redone, saved and opened twice keeps every part of both, the app's unshown ones too, in place, colour, sub-model and step; a sub-model of parts the app cannot show never shadowed by a brought one's name; the brought model's ROTSTEP and its maker in its own sections, after a rename and a copy made its own too; an awaited part lands when it arrives)",
+      "area": "model-io"
     }
   ]
 }
