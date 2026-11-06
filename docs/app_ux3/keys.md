@@ -13,13 +13,15 @@ fails when a command has no key and no row below.
 
 | Preset | Commands | Without a key before | After |
 |---|---|---|---|
-| Brickworks | 206 | 114 | 109 |
-| Studio | 206 | 117 | 112 |
-| Mecabricks | 206 | 115 | 110 |
-| LDCad | 206 | 117 | 113 |
+| Brickworks | 209 | 116 | 111 |
+| Studio | 209 | 119 | 114 |
+| Mecabricks | 209 | 117 | 112 |
+| LDCad | 209 | 119 | 115 |
 
 The menus had 201 commands when this was counted. Cut away by a box, a sphere or a cylinder
-(APP_UX4 8) added five, each with no key: 206 now, five more without a key after.
+(APP_UX4 8) added five, each with no key. Into this model and the Pick a Brick list added two
+more with none, and What's This? one with Shift-F1 under every preset: 209 now, seven more
+without a key after.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
