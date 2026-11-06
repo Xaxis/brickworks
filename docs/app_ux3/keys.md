@@ -13,14 +13,14 @@ fails when a command has no key and no row below.
 
 | Preset | Commands | Without a key before | After |
 |---|---|---|---|
-| Brickworks | 209 | 116 | 111 |
-| Studio | 209 | 119 | 114 |
-| Mecabricks | 209 | 117 | 112 |
-| LDCad | 209 | 119 | 115 |
+| Brickworks | 208 | 115 | 110 |
+| Studio | 208 | 118 | 113 |
+| Mecabricks | 208 | 116 | 111 |
+| LDCad | 208 | 118 | 114 |
 
 The menus had 201 commands when this was counted. Cut away by a box, a sphere or a cylinder
-(APP_UX4 8) added five, each with no key. Into this model and the Pick a Brick list added two
-more with none, and What's This? one with Shift-F1 under every preset: 209 now, seven more
+(APP_UX4 8) added five, each with no key. The Pick a Brick list added one
+more with none, and What's This? one with Shift-F1 under every preset: 208 now, six more
 without a key after.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
@@ -68,7 +68,6 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `import_io` | File › Import › BrickLink Studio model (.io) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_lxf` | File › Import › LEGO® Digital Designer model (.lxf) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_mesh` | File › Import › 3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb) | — | — | — | once a model | all | a file chosen once, from File › Import |
-| `import_into` | File › Import › Into this model… | — | — | — | once a model | all | a model chosen once, then put where it goes |
 | `versions` | File › Versions | — | — | — | rarely | all | an older save, looked for now and then |
 | `compare` | File › Compare with | — | — | — | rarely | all | two versions side by side, now and then |
 | `export_ldraw` | File › Export › LDraw model (.ldr, or .mpd with its sub-models) | — | — | — | once a model | all | made once a model is done |

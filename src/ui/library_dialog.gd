@@ -616,7 +616,7 @@ func _sets(ask: Dictionary) -> Dictionary:
 		cards.append({"id": entry["id"], "name": ModelLibrary.tidy(str(entry["name"])), "kind": "set",
 			"facts": " · ".join(facts), "theme": ModelLibrary.tidy(str(entry["theme"])),
 			"credit": _credit_line(str(entry["author"]), str(entry["licence"])),
-			"picture": entry["cover"], "entry": entry, "licence": str(entry["licence"])})
+			"picture": entry["cover"], "entry": entry})
 	_page = int(found["page"])
 	var total: int = int(found["total"])
 	return {"models": cards, "pages": int(found["pages"]), "total": total, "answered": true,
@@ -655,7 +655,6 @@ func _community(ask: Dictionary) -> Dictionary:
 			"facts": " · ".join(facts), "theme": "",
 			"credit": _credit_line(str(model["author"]) if model.get("author") is String else "",
 				GalleryTool._licence_name(model.get("licence"))),
-			"licence": str(model["licence"]) if model.get("licence") is String else "",
 			"picture": thumb if thumb.begins_with("http") else "%s/m/%s.webp" % [Deployment.api_base(),
 				model["id"]]})
 	var more: bool = bool((json.data as Dictionary).get("more", false))
@@ -744,18 +743,9 @@ func _card(card: Dictionary, first: bool) -> Control:
 	go.add_theme_font_size_override("font_size", 12)
 	go.tooltip_text = "Open it in a new %s; the model here stays as it is" % _tab_word()
 	go.pressed.connect(_open_card.bind(card))
-	# Open and Put in this model side by side, the second under the first
-	# where the card is too narrow for both (intomodel).
-	var buttons := HFlowContainer.new()
-	buttons.add_theme_constant_override("h_separation", 4)
-	buttons.add_theme_constant_override("v_separation", 4)
-	column.add_child(buttons)
-	buttons.add_child(go)
-	var put: Button = _put_button(card)
-	buttons.add_child(put)
+	column.add_child(go)
 	if first:
 		_controls["library_open_first"] = go
-		_controls["library_put_first"] = put
 	return panel
 
 
@@ -809,81 +799,6 @@ func _open_card(card: Dictionary) -> void:
 	last["opened"] = card["id"]
 	said.emit(_status.text)
 	_tell_page()
-
-
-# --- putting one in this model -----------------------------------------------
-
-## The licences a model may be put in another under, crediting its maker:
-## LDraw's (the repository's CCAL 2.0 is CC BY 2.0) and the gallery's own
-## (SharedModels.LICENCES). Not all rights reserved, and not none chosen:
-## those are opened to build, as Open does, and not made part of anything.
-const MAY_BUILD_ON: Array[String] = ["cc-by-4.0", "cc-by-sa-4.0", "cc-by-2.0", "CCAL 2.0",
-	"CC BY 2.0", "CC BY 4.0", "CC BY-SA 4.0", "CC0 1.0"]
-
-
-## Whether a model under [param licence] may be put in another model.
-static func may_build_on(licence: String) -> bool:
-	return licence in MAY_BUILD_ON
-
-
-## Put in this model: the model in hand in this tab, as File, Import, Into
-## this model… brings one, greyed with why where its licence does not allow it.
-func _put_button(card: Dictionary) -> Button:
-	var put := Button.new()
-	put.text = "Put in this model"
-	put.add_theme_font_size_override("font_size", 12)
-	put.disabled = not may_build_on(str(card.get("licence", "")))
-	put.tooltip_text = ("In your hand in this model as one sub-assembly with its steps, then "
-		+ "a click where it goes; credit its maker") if not put.disabled \
-		else ("Its maker kept every right to it: Open builds it, and it cannot go into "
-			+ "another model without their leave")
-	put.pressed.connect(func() -> void: await put_card(card))
-	return put
-
-
-## [param card]'s model in the person's hand in this model, its maker's
-## credit said with it (ModelBar.hold_text); the library closed first, so
-## the click that puts it down lands on the model. How many parts are held.
-func put_card(card: Dictionary) -> int:
-	if not may_build_on(str(card.get("licence", ""))):
-		return 0
-	var bar: ModelBar = app.get("_bar") if app != null else null
-	if bar == null:
-		return 0
-	close()
-	last["put"] = card["id"]
-	var job: Working.Job = Working.begin("Fetching %s from the library…" % card["name"])
-	await job.shown()
-	var text: String = ""
-	var credit: String = ""
-	var why: String = ""
-	if card["kind"] == "set":
-		var got: Dictionary = await books.model_text(card["entry"], job)
-		text = str(got["text"])
-		why = str(got["error"])
-		credit = "credit %s" % ModelBar.credit_words(ModelLibrary.credit_of(card["entry"]))
-	else:
-		var shared: SharedModels = app.get("_shared")
-		var answer: Dictionary = await shared.fetch(str(card["id"])) if shared != null \
-			else {"code": 0, "body": null}
-		var body: Dictionary = answer["body"] if answer["body"] is Dictionary else {}
-		if int(answer["code"]) != 200 or body.is_empty():
-			why = SharedModels.trouble(answer, "the gallery did not answer")
-		elif GalleryTool.held(body):
-			why = "it is kept back while a design is scored"
-		elif not may_build_on(str(body.get("licence", ""))):
-			why = "its maker kept every right to it"
-		else:
-			text = str(body.get("model", ""))
-			credit = "credit %s" % ModelBar.credit_words(SharedModels.credit_of(body,
-				str(card["id"])))
-	job.end()
-	if not why.is_empty() or text.is_empty():
-		bar.say("could not put %s in this model: %s" % [card["name"],
-			why if not why.is_empty() else "it has no parts"])
-		return 0
-	return await bar.hold_text(text, "%s.mpd" % card["id"], ModelLibrary.title_of(card["entry"])
-		if card["kind"] == "set" else str(card["name"]), credit)
 
 
 func _say(text: String) -> void:

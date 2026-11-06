@@ -178,7 +178,7 @@ const EARLY_COMMANDS: Dictionary = {"beta_hub": "beta_hub"}
 var early: Array[String] = []
 
 const SUBMENUS: Dictionary = {
-	"import": ["import_into", "-", "import_ldraw", "import_io", "import_lxf", "import_mesh"],
+	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
 		"export_rebrickable",
 		"export_pickabrick",
@@ -237,8 +237,6 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	verbs.assemblies = assemblies
 	builder.unit_of = assemblies.unit_of
 	builder.copy_group = assemblies.group_for_copy
-	# A model put into this one comes in hand as a paste does (intomodel).
-	bar.hold_parts = verbs.hold
 	# Whatever replaces the model leaves no assembly being edited.
 	bar.started_new.connect(func() -> void: assemblies.enter(""))
 	bar.cleared.connect(func() -> void: assemblies.enter(""))
@@ -678,8 +676,7 @@ func doing(name: String) -> String:
 ## never put off a frame to say so first. (The clipboard is not among
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
-	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window",
-	"import_into"]
+	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window"]
 
 ## The commands that open a tab of their own in a browser (BookletMaker):
 ## run at once there, as those above are.
@@ -987,10 +984,6 @@ func _define() -> void:
 	_add("import_mesh", "3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb)…", 0,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"A sculpt, a scan or any 3D model, laid in bricks")
-	# A model put into this one whole, as a sub-assembly with its own steps
-	# (ModelBar.into_model, APP_UX4 intomodel).
-	_add("import_into", "Into this model…", 0, bar.into_model, Callable(),
-		"A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes")
 	_add("save", "Save", CTRL | KEY_S, bar._on_save, something,
 		"Keep this model under its name")
 	_add("save_as", "Save as…", CTRL | SHIFT | KEY_S, _ask_save_as, something,
