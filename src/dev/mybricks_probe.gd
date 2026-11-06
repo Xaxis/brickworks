@@ -35,15 +35,21 @@
 ##   8. nothing lost as a person uses it (mybricks2): a count typed then
 ##      Remove pressed at once takes the lot out; a session's count typed
 ##      then Keep pressed at once keeps the count typed; a reply that comes
-##      for an account no longer signed in is dropped; two MCP sessions that
-##      name no chat (the desktop's port, by their Mcp-Session-Id) each keep
-##      their own lots; the old collection lot for lot as it was after
-##   9. the build before (rel-m266, its own Collection and CollectionStore
-##      read from git at a209f558) against this server: it reads every lot,
-##      its import adds to its own source's lot, and its set Remove (a PUT
-##      of the whole collection as it keeps it, every lot's source and
-##      session dropped) is refused with words to update: no lot lost, no
-##      mark stripped
+##      for an account no longer signed in is dropped, and a change whose
+##      answer came for one is told it may have been made; a read answered
+##      after a later Add leaves the Add in (replies by rev), and a
+##      session's change and the window's sent at once are made in turn;
+##      two MCP sessions that name no chat (the desktop's port, by their
+##      Mcp-Session-Id) each keep their own lots, and a session's remove
+##      from a count changed on another device since is refused with
+##      words; the old collection lot for lot as it was after
+##   9. the builds out there (rel-m267, live on the web, and desktop
+##      0.17.0: each one's own Collection and CollectionStore read from git
+##      and compiled) against this server: each reads every lot, its import
+##      adds to its own source's lot, and its set Remove (a PUT of the whole
+##      collection as it keeps it, every lot's source and session dropped)
+##      takes that one set out and nothing else, every mark kept; from a
+##      copy read before another change, it is refused with words to update
 ##
 ## On pre261 there is no row to add a loose lot in, no "lots" at the
 ## account and no edit_collection: 2 to 9 fail with words. Writes nothing in
@@ -381,27 +387,138 @@ func _lossless(before: Dictionary) -> void:
 		return "%s:%d" % [str(lot.get("chat", "")), int(lot["qty"])])
 	_check("...and one's remove takes down its own lot, not the other's: %s" % ", ".join(chats),
 		took.begins_with("Took down") and chats == ["mcp-sessionone:2"])
+	# A session's remove carries the count it was shown (mb2review finding
+	# 7): changed on another device since, it is refused with words.
+	var elsewhere := CollectionStore.new()
+	elsewhere.library = _library
+	elsewhere.account = _account
+	root.add_child(elsewhere)
+	await elsewhere.load_collection()
+	var seen: Array = elsewhere.collection.added_lots("mcp-sessionone")
+	var moved: String = "no lot of session one's there"
+	if not seen.is_empty():
+		var asked: Dictionary = (seen[0] as Dictionary).duplicate()
+		asked["to"] = 3
+		moved = str((await elsewhere.set_counts([asked]))["said"])
+	elsewhere.queue_free()
+	var stale: String = await _over_http("sessionone.x", {"remove": [{"part": "3005", "color": 1, "count": 1}]})
+	chats = _store.collection.added_lots().map(func(lot: Dictionary) -> String:
+		return "%s:%d" % [str(lot.get("chat", "")), int(lot["qty"])])
+	_check("a session's remove from the count it was shown (2), made 3 on another device since%s: refused, "
+		% ("" if moved.is_empty() else " (" + moved + ")") + "nothing changed: \"%s\"; %s" % [stale, ", ".join(chats)],
+		moved.is_empty() and stale.begins_with("Nothing was changed") and stale.contains("is 3 now, not the 2 seen")
+		and chats == ["mcp-sessionone:3"])
+	var again: String = await _over_http("sessionone.x", {"remove": [{"part": "3005", "color": 1, "count": 1}]})
+	chats = _store.collection.added_lots().map(func(lot: Dictionary) -> String:
+		return "%s:%d" % [str(lot.get("chat", "")), int(lot["qty"])])
+	_check("...and asked again, shown 3 by that answer, it takes 1 down: %s" % ", ".join(chats),
+		again.begins_with("Took down") and chats == ["mcp-sessionone:2"])
 	_socket.stop()
 	await _store.take_back()
+	await _in_turn(before)
 	_check("...the old collection lot for lot as it was after all of it", _same(_kept(), before))
 
 
-## The build before this one, whose collection code is still out there
-## (rel-m266; desktop 0.17.0 is older still and the same here).
-const OLD_BUILD := "a209f558"
+## Replies taken by rev and every write made in turn (mb2review findings 4
+## and 6), as the window and a session meet them.
+func _in_turn(before: Dictionary) -> void:
+	# A read sent before an Add and answered after it: the Add stays.
+	var read_before: Dictionary = await _store._ask(HTTPClient.METHOD_GET, null)
+	var added: Dictionary = await _store.change_lots([{"part": "3010", "colour": 4, "qty": 1}])
+	var held_rev: Variant = _store.collection.rev
+	var taken: bool = _store._take(read_before["body"])
+	_check("a read answered after a later Add (rev %s, the Add's %s): not taken, the Add still listed"
+		% [(read_before["body"] as Dictionary).get("rev") if read_before["body"] is Dictionary else "?", held_rev],
+		added["kind"] == CollectionStore.DONE and not taken
+		and int(_store.collection.lot_of("3010", 4, "", "", "hand").get("qty", 0)) == 1)
+	# The window opened (its read not waited for) and Add pressed at once.
+	_dialog.call("open", "own")
+	var second: Dictionary = await _store.change_lots([{"part": "3010", "colour": 4, "qty": 1}])
+	var waited: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - waited < 4000:
+		await process_frame
+	_check("My collection opened, its read not waited for, and an Add at once: the Add listed after both (%d)"
+		% int(_store.collection.lot_of("3010", 4, "", "", "hand").get("qty", 0)),
+		second["kind"] == CollectionStore.DONE
+		and int(_store.collection.lot_of("3010", 4, "", "", "hand").get("qty", 0)) == 2)
+	# A session's edit_collection and the window's Add sent at once: made
+	# one after the other, the second waiting its turn.
+	var order: Array = []
+	var by_session := func() -> void:
+		await _call("edit_collection", {"add": [{"part": "3010", "color": 4, "count": 1}]})
+		order.append("session")
+	var by_window := func() -> void:
+		await _store.change_lots([{"part": "3010", "colour": 4, "qty": 1}])
+		order.append("window")
+	by_session.call()
+	var busy: bool = bool(_store.get("_changing"))
+	by_window.call()
+	waited = Time.get_ticks_msec()
+	while order.size() < 2 and Time.get_ticks_msec() - waited < 30000:
+		await process_frame
+	_check("a session's change and the window's sent at once: the window's waited its turn (%s), both made in "
+		% busy + "order: %s; the window's lot %d, the session's %d" % [", ".join(order),
+		int(_store.collection.lot_of("3010", 4, "", "", "hand").get("qty", 0)),
+		int(_store.collection.lot_of("3010", 4, "Claude", CHAT).get("qty", 0))],
+		busy and order == ["session", "window"]
+		and int(_store.collection.lot_of("3010", 4, "", "", "hand").get("qty", 0)) == 3
+		and int(_store.collection.lot_of("3010", 4, "Claude", CHAT).get("qty", 0)) == 1)
+	# A change whose answer comes for an account no longer signed in: it
+	# may have been made, and is told so (finding 6).
+	var mine_id: String = _account.user_id
+	var result: Array = [{}]
+	var sending := func() -> void:
+		result[0] = await _store.change_lots([{"part": "3010", "colour": 4, "qty": 1}])
+	sending.call()
+	await process_frame
+	_account.user_id = "00000000-0000-4000-8000-00000000d1ff"
+	waited = Time.get_ticks_msec()
+	while (result[0] as Dictionary).is_empty() and Time.get_ticks_msec() - waited < 15000:
+		await process_frame
+	_account.user_id = mine_id
+	var told: String = str((result[0] as Dictionary).get("said", ""))
+	_check("a change answered for an account no longer signed in is told it may have been made: \"%s\"" % told,
+		(result[0] as Dictionary).get("kind") == CollectionStore.UNREACHED and told.contains("may have been made")
+		and not told.to_lower().contains("nothing was changed"))
+	# Back as it was.
+	await _store.load_collection()
+	var hand: Dictionary = _store.collection.lot_of("3010", 4, "", "", "hand")
+	if not hand.is_empty():
+		var asked: Dictionary = hand.duplicate()
+		asked["to"] = 0
+		await _store.set_counts([asked])
+	await _store.take_back()
 
 
-## The build before's collection code against this server (mybricks2).
+## The builds whose collection code is still out there: the web's live one
+## (rel-m267) and the desktop's (0.17.0). Each Removes a set by a PUT of the
+## whole collection as it keeps it.
+const OLD_BUILDS := ["04e44b6d", "v0.17.0"]
+
+
+## Each build out there's collection code against this server (mybricks2).
 func _older_app(before: Dictionary) -> void:
-	print("\n9. the build before (rel-m266's own collection code) against this server")
-	var old_code: GDScript = _old_build()
-	_check("rel-m266's Collection and CollectionStore, read from git (%s) and compiled" % OLD_BUILD, old_code != null)
-	if old_code == null:
-		return
+	print("\n9. the builds out there (rel-m267's and desktop 0.17.0's collection code) against this server")
 	# A lot by hand and a session's, so there are marks to strip.
 	await _store.change_lots([{"part": "3005", "colour": 1, "qty": 2}])
 	await _call("edit_collection", {"add": [{"part": "3005", "color": 1, "count": 4}]})
 	await _store.load_collection()
+	for build: String in OLD_BUILDS:
+		await _older_build(build)
+	var hand: Dictionary = _store.collection.lot_of("3005", 1, "", "", "hand")
+	if not hand.is_empty():
+		var asked: Dictionary = hand.duplicate()
+		asked["to"] = 0
+		await _store.set_counts([asked])
+	await _store.take_back()
+	_check("...the old collection lot for lot as it was after", _same(_kept(), before))
+
+
+func _older_build(build: String) -> void:
+	var old_code: GDScript = _old_build(build)
+	_check("%s's Collection and CollectionStore, read from git and compiled" % build, old_code != null)
+	if old_code == null:
+		return
 	var marked: Dictionary = _kept()
 	var store_class: GDScript = old_code.get("Store266")
 	store_class.set("where", "user://probe_old_collection.json")
@@ -411,7 +528,7 @@ func _older_app(before: Dictionary) -> void:
 	root.add_child(old)
 	var said: String = str(await old.call("load_collection"))
 	var read: Array = (old.get("collection") as Object).get("parts")
-	_check("it reads every lot (%d of %d)%s" % [read.size(), (marked["parts"] as Array).size(),
+	_check("%s reads every lot (%d of %d)%s" % [build, read.size(), (marked["parts"] as Array).size(),
 		"" if said.is_empty() else ": " + said], said.is_empty() and read.size() == (marked["parts"] as Array).size())
 	# Its import, as its dialog sends one: adds to that source's lot only.
 	var got: Dictionary = await old.call("add", {"from": "rebrickable_csv", "text": "Part,Color,Quantity\n3001,4,2\n",
@@ -419,51 +536,69 @@ func _older_app(before: Dictionary) -> void:
 	await _store.load_collection()
 	var grown: Dictionary = marked.duplicate(true)
 	for lot: Dictionary in grown["parts"]:
-		if str(lot["part"]) == "3001" and int(lot["colour"]) == 4 and str(lot.get("src", "")) == "rebrickable_csv":
+		if str(lot["part"]) == "3001" and int(lot["colour"]) == 4 and str(lot.get("src", "")) == "rebrickable":
 			lot["qty"] = int(lot["qty"]) + 2
-	_check("its import adds 2 to the CSV's lot, nothing else moved, every mark kept%s"
+	_check("its import adds 2 to Rebrickable's lot, nothing else moved, every mark kept%s"
 		% ("" if str(got["error"]).is_empty() else ": " + str(got["error"])),
 		str(got["error"]).is_empty() and _same(_kept(), grown))
-	# Its set Remove, as its dialog makes one (a209f558 collection_dialog.gd
-	# _remove_set): the whole collection as it keeps it, PUT.
-	var collection_class: GDScript = old_code.get("Collection266")
-	var next: Object = collection_class.call("from_json", (old.get("collection") as Object).call("to_json"))
-	var sets: Array = []
-	for entry: Dictionary in next.get("sets"):
-		if str(entry["set"]) != "6020-1":
-			sets.append(entry)
-	next.set("sets", sets)
+	# Its set Remove, as its dialog makes one (collection_dialog.gd
+	# _remove_set, the same in both): the whole collection as it keeps it,
+	# PUT, from a copy read now.
+	await old.call("load_collection")
+	var next: Object = _old_without(old_code, old, "6020-1")
 	var stripped: bool = (next.get("parts") as Array).all(func(lot: Dictionary) -> bool:
 		return not lot.has("src") and not lot.has("by"))
 	var trouble: String = str(await old.call("put", next))
 	await _store.load_collection()
-	_check("its set Remove (every lot's source and session dropped: %s) refused with words: \"%s\"; nothing changed"
-		% [stripped, trouble], stripped and trouble.contains("Update Brickworks") and _same(_kept(), grown))
+	var less: Dictionary = grown.duplicate(true)
+	less["sets"] = (less["sets"] as Array).filter(func(entry: Dictionary) -> bool: return str(entry["set"]) != "6020-1")
+	_check("its Remove a set (every lot's source and session dropped in what it sends: %s) takes 6020-1 out%s, "
+		% [stripped, "" if trouble.is_empty() else ": " + trouble] + "every lot and mark kept",
+		stripped and trouble.is_empty() and _same(_kept(), less))
+	await _store.add({"from": "sets", "text": "6020-1", "mode": "add"})
+	# From a copy read before another change: refused, nothing changed.
+	await old.call("load_collection")
+	await _store.change_lots([{"part": "3010", "colour": 4, "qty": 1}])
+	var then: Dictionary = _kept()
+	var stale: String = str(await old.call("put", _old_without(old_code, old, "6020-1")))
+	await _store.load_collection()
+	_check("...and from a copy read before a lot was added: refused with words, nothing changed: \"%s\"" % stale,
+		stale.contains("Update Brickworks") and _same(_kept(), then))
 	old.queue_free()
-	# Back as it was.
-	var csv: Dictionary = _store.collection.lot_of("3001", 4, "", "", "rebrickable_csv")
-	var hand: Dictionary = _store.collection.lot_of("3005", 1, "", "", "hand")
+	# Back as it was before this build.
 	var back: Array = []
-	for lot: Dictionary in [csv, hand]:
+	for lot: Dictionary in [_store.collection.lot_of("3001", 4, "", "", "rebrickable"),
+			_store.collection.lot_of("3010", 4, "", "", "hand")]:
 		if not lot.is_empty():
 			var asked: Dictionary = lot.duplicate()
-			asked["to"] = int(lot["qty"]) - (2 if lot == csv else int(lot["qty"]))
+			asked["to"] = int(lot["qty"]) - 2 if str(lot["part"]) == "3001" else 0
 			back.append(asked)
 	await _store.set_counts(back)
-	await _store.take_back()
-	_check("...the old collection lot for lot as it was after", _same(_kept(), before))
+	_check("...%s's steps undone: the collection lot for lot as before them" % build, _same(_kept(), marked))
+
+
+## The old store's collection less [param number], as its dialog makes it.
+static func _old_without(old_code: GDScript, old: Node, number: String) -> Object:
+	var next: Object = (old_code.get("Collection266") as GDScript).call("from_json",
+		(old.get("collection") as Object).call("to_json"))
+	var sets: Array = []
+	for entry: Dictionary in next.get("sets"):
+		if str(entry["set"]) != number:
+			sets.append(entry)
+	next.set("sets", sets)
+	return next
 
 
 ## The build before's Collection and CollectionStore as it has them, read
 ## from git and compiled as two inner classes of one script (Collection266,
 ## Store266), so neither takes a global class's name.
-func _old_build() -> GDScript:
+func _old_build(build: String) -> GDScript:
 	var text: String = "extends RefCounted\n"
 	var renamed := RegEx.create_from_string("\\bCollection\\b")
 	for pair: Array in [["src/collection/collection.gd", "Collection266"], ["src/collection/collection_store.gd", "Store266"]]:
 		var out: Array = []
 		if OS.execute("git", ["-C", ProjectSettings.globalize_path("res://"), "show",
-				"%s:%s" % [OLD_BUILD, pair[0]]], out) != 0 or out.is_empty():
+				"%s:%s" % [build, pair[0]]], out) != 0 or out.is_empty():
 			return null
 		var head: String = ""
 		var body: PackedStringArray = []

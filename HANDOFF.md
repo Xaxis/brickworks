@@ -244,7 +244,17 @@ the parts list's What do I need?). Recipe and proofs:
   `collections_next_rev` before insert or update, which moves `rev` on at
   every write, the older api's included. `api/collection.js` writes only
   over the rev it read; the api before it reads and writes neither column
-  and goes on working. Nothing existing was changed.
+  and goes on working. Nothing existing was changed. `recent` keeps each
+  remembered request id with its reply (`{id, done}`, the last 100), so a
+  resend is answered as the first was; a plain id string there is read too.
+- **Collection release order (mybricks2):** the web api goes live before
+  (or with) a desktop build carrying mybricks2's app, which sends ops the
+  api before does not know. Once lots kept with a source or a session's
+  mark exist, the api is never rolled back to rel-m267's: its whole-row
+  writes drop `src`, `by` and `chat`. Builds from before (rel-m267, desktop
+  0.17.0) keep working against it: they read every lot, import, and take a
+  set out (their PUT is made as `remove_set` when exact, refused with words
+  to update from a stale copy).
 - **Not yet proven:** a real Rebrickable account (none here has a key); the
   client is proven against a stand-in answering in Rebrickable's documented
   shape. The web flow runs on a preview, not production.

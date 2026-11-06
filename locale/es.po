@@ -6607,11 +6607,11 @@ msgstr "Obtener"
 msgid "Read your sets and parts lists from your Rebrickable account"
 msgstr "Leer tus sets y listas de piezas de tu cuenta de Rebrickable"
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces what Rebrickable brought before. What you count here, and what an assistant added, stay."
-msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda; lo que vuelve sustituye lo que Rebrickable trajo antes. Lo que cuentas aquí, y lo que añadió un asistente, se quedan."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay."
+msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda. Lo que vuelve sustituye lo que vino antes de Rebrickable, descargado o exportado, y las piezas sueltas importadas antes. Lo que cuentas aquí, un XML de BrickLink y lo que añadió un asistente se quedan."
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces what Rebrickable brought before. What you count here, and what an assistant added, stay. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
-msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda; lo que vuelve sustituye lo que Rebrickable trajo antes. Lo que cuentas aquí, y lo que añadió un asistente, se quedan. Pide al asistente «una casita con mi colección» y construirá con lo que tienes."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
+msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda. Lo que vuelve sustituye lo que vino antes de Rebrickable, descargado o exportado, y las piezas sueltas importadas antes. Lo que cuentas aquí, un XML de BrickLink y lo que añadió un asistente se quedan. Pide al asistente «una casita con mi colección» y construirá con lo que tienes."
 
 msgid "BrickLink wanted list"
 msgstr "Lista de deseos de BrickLink"
@@ -11335,11 +11335,8 @@ msgid "a sleeper goes under the joint with it"
 msgstr "una traviesa va con ella bajo la unión"
 
 # My collection: lots under where they came from (mybricks2)
-msgid "From your Rebrickable account"
-msgstr "De tu cuenta de Rebrickable"
-
-msgid "From a Rebrickable export"
-msgstr "De una exportación de Rebrickable"
+msgid "From Rebrickable"
+msgstr "De Rebrickable"
 
 msgid "From a BrickLink XML"
 msgstr "De un XML de BrickLink"
@@ -11349,9 +11346,6 @@ msgstr "Piezas sueltas importadas antes"
 
 msgid "from Rebrickable"
 msgstr "de Rebrickable"
-
-msgid "from a Rebrickable export"
-msgstr "de una exportación de Rebrickable"
 
 msgid "from a BrickLink XML"
 msgstr "de un XML de BrickLink"

@@ -15,6 +15,7 @@
 //
 //   1. a collection made the old ways first: two sets, a Rebrickable parts
 //      export and a BrickLink wanted list; each lot kept with its source
+//      (a Rebrickable export's is Rebrickable's, as a fetch's is)
 //   2. twelve loose lots in one op, the person's own (hand); the old lots
 //      and the sets as they were, in their places; one more of a part and
 //      colour already counted adds to that lot
@@ -22,14 +23,20 @@
 //      a stale view refused (409, the collection as it is), nothing changed
 //   4. a session's twelve, marked as its own (by, chat), apart from the
 //      person's of the same part and colour; another chat's lot apart and
-//      taken down by its own remove; an older app's PUT refused with words,
-//      nothing changed, every mark kept; a set taken out by remove_set, at
-//      the count shown, nothing else moved
+//      taken down by its own remove, from the count it was shown (a stale
+//      count refused); an older app's Remove a set (its whole copy PUT,
+//      marks stripped) takes that set out and nothing else, and from a copy
+//      read before another change is refused with words, nothing changed;
+//      a set taken out by remove_set, at the count shown, nothing else moved
 //   5. taken back at the counts shown: exactly those twelve gone, everything
-//      else lot for lot as before; two kept as the person's own
-//   6. a Rebrickable fetch (replace) replaces only Rebrickable's lots
+//      else lot for lot as before; two kept as the person's own; a Keep
+//      into a lot near 100,000 says what went over
+//   6. a Rebrickable fetch (replace) replaces only Rebrickable's lots, its
+//      export's among them, and a set typed by hand that it lists is kept
+//      once, as the fetch's
 //   7. five changes at once, against the real database: all five kept
-//   8. an op sent twice with one id is made once
+//   8. an op sent twice with one id is made once, and answered the second
+//      time as the first was (an import's counts too)
 //   9. what is refused, with words: a count of 0 to add, colours that are
 //      not codes (a word, null, "", false), a part that is not one, a chat
 //      with no one, a name with nothing printable, a change of lots with no
@@ -103,7 +110,7 @@ try {
   const before = await call(token);
   check(before.status === 200 && before.body.sets.length === 2 && own(before.body).length === 5
     && pieces(before.body, "3001", 4) === 12 && before.body.sets.every((s) => s.src === "hand")
-    && lot(before.body, "3001", 4, "", "rebrickable_csv")?.qty === 10 && lot(before.body, "3001", 4, "", "bricklink_xml")?.qty === 2,
+    && lot(before.body, "3001", 4, "", "rebrickable")?.qty === 10 && lot(before.body, "3001", 4, "", "bricklink_xml")?.qty === 2,
     `two sets typed, five lots each with its source, 12 red 2 x 4s in all (${JSON.stringify(before.body?.parts)})`);
   check(Number.isInteger(before.body.rev) && before.body.rev > 0, `...and the rev it was read at (${before.body.rev})`);
 
@@ -148,17 +155,34 @@ try {
     add: [{ part: "3004", colour: 4, qty: 1, by: "Claude", chat: "chat-mybricks-2" }] } });
   check(theirs(second.body).length === 13, "another chat's lot of the same part and colour is its own lot (13)");
   const down = await call(token, { method: "POST", body: { op: "lots", id: id(),
-    remove: [{ part: "3004", colour: 4, by: "Claude", chat: "chat-mybricks-2" }] } });
+    remove: [{ part: "3004", colour: 4, by: "Claude", chat: "chat-mybricks-2", was: 1 }] } });
   check(down.status === 200 && theirs(down.body).length === 12 && lot(down.body, "3004", 4, "Claude")?.qty === 6,
-    "...taken down by its own remove; the first chat's lot of it untouched");
+    "...taken down by its own remove, from the 1 it was shown; the first chat's lot of it untouched");
+  const staleDown = await call(token, { method: "POST", body: { op: "lots", id: id(),
+    remove: [{ part: "3004", colour: 4, ...CHAT1, qty: 1, was: 5 }] } });
+  check(staleDown.status === 409 && /is 6 now, not the 5 seen/.test(staleDown.body?.error || "")
+    && lot((await call(token)).body, "3004", 4, "Claude")?.qty === 6,
+    `a session's remove from a count no longer so (5 seen, 6 kept) refused, nothing changed (${staleDown.status} "${staleDown.body?.error}")`);
   const notMine = await call(token, { method: "POST", body: { op: "lots", id: id(), remove: [{ part: "3001", colour: 4 }] } });
   check(notMine.status === 400 && /only a lot a session added/.test(notMine.body?.error || ""),
     `a remove of the person's own lot is refused: ${notMine.status} "${notMine.body?.error}"`);
   const asKept = (await call(token)).body;
-  const put = await call(token, { method: "PUT", body: { sets: [asKept.sets[0]], parts: asKept.parts.map(({ part, colour, qty }) => ({ part, colour, qty })) } });
+  // As rel-m267 and desktop 0.17.0 Remove a set: their copy less the set,
+  // every source and mark dropped (Collection.to_json there), PUT.
+  const oldCopy = (c) => ({ sets: [c.sets[0]].map(({ set, qty, spares }) => ({ set, qty, spares })),
+    parts: c.parts.map(({ part, colour, qty }) => ({ part, colour, qty })) });
+  const put = await call(token, { method: "PUT", body: oldCopy(asKept) });
   const afterPut = (await call(token)).body;
-  check(put.status === 409 && /Update/.test(put.body?.error || "") && same(afterPut.parts, asKept.parts) && same(afterPut.sets, asKept.sets),
-    `an older app's PUT (marks stripped, a set out) refused with words to update, nothing changed (${put.status})`);
+  check(put.status === 200 && same(afterPut.sets, [asKept.sets[0]]) && same(afterPut.parts, asKept.parts),
+    `an older app's Remove a set (its whole copy PUT, marks stripped): that set out, every lot and mark kept (${put.status} ${JSON.stringify(put.body?.done || put.body?.error)})`);
+  const readBack = await call(token, { method: "POST", body: { from: "sets", text: asKept.sets[1].set, id: id() } });
+  const extra = await call(token, { method: "POST", body: { op: "lots", id: id(), add: [{ part: "3005", colour: 4, qty: 1 }] } });
+  const stalePut = await call(token, { method: "PUT", body: oldCopy(readBack.body) });
+  const afterStale = (await call(token)).body;
+  check(stalePut.status === 409 && /Update Brickworks/.test(stalePut.body?.error || "")
+    && same(afterStale.parts, extra.body.parts) && same(afterStale.sets, extra.body.sets),
+    `...from a copy read before a lot was added: refused with words to update, nothing changed (${stalePut.status})`);
+  await call(token, { method: "POST", body: { op: "set", id: id(), lots: [{ ...seen(lot(extra.body, "3005", 4, "", "hand")), qty: 0 }] } });
   const setOut = await call(token, { method: "POST", body: { op: "remove_set", id: id(), set: asKept.sets[1].set, src: asKept.sets[1].src,
     was: asKept.sets[1].qty } });
   check(setOut.status === 200 && same(setOut.body.sets, [asKept.sets[0]]) && same(setOut.body.parts, asKept.parts),
@@ -179,16 +203,26 @@ try {
     "two kept as the person's own: 6 + 2 = 8 of 3004 red, and a new lot of 2357");
   await call(token, { method: "POST", body: { op: "set", id: id(), lots: [{ ...seen(lot(kept.body, "3004", 4, "", "hand")), qty: 6 },
     { ...seen(lot(kept.body, "2357", 15, "", "hand")), qty: 0 }] } });
+  const near = await call(token, { method: "POST", body: { op: "lots", id: id(),
+    add: [{ part: "3008", colour: 1, qty: 99990 }, { part: "3008", colour: 1, qty: 50, ...CHAT1 }] } });
+  const full = await call(token, { method: "POST", body: { op: "keep", id: id(), lots: theirs(near.body).map(seen) } });
+  check(full.status === 200 && full.body.done?.clamped?.[0]?.over === 40 && lot(full.body, "3008", 1, "", "hand")?.qty === 100000,
+    `a Keep into a lot of 99,990: kept at 100,000, and the answer says 40 went over (${JSON.stringify(full.body?.done)})`);
+  await call(token, { method: "POST", body: { op: "set", id: id(), lots: [{ ...seen(lot(full.body, "3008", 1, "", "hand")), qty: 0 }] } });
 
   console.log("\n6. a Rebrickable fetch replaces only what Rebrickable brought");
   await call(token, { method: "POST", body: { op: "lots", id: id(), add: [{ part: "3005", colour: 1, qty: 9, ...CHAT1 }] } });
   const fetched1 = await call(token, { method: "POST", body: { from: "rebrickable_api", id: id(), mode: "replace",
-    sets: [], parts: [["3001", 4, 5]] } });
+    sets: [["6020-1", 1, false]], parts: [["3001", 4, 5]] } });
   const fetched2 = await call(token, { method: "POST", body: { from: "rebrickable_api", id: id(), mode: "replace",
-    sets: [], parts: [["3001", 4, 4]] } });
-  check(fetched1.status === 200 && fetched2.status === 200 && lot(fetched2.body, "3001", 4, "", "rebrickable")?.qty === 4
-    && same(own(fetched2.body).filter((p) => p.src !== "rebrickable"), own(mine.body)) && lot(fetched2.body, "3005", 1, "Claude")?.qty === 9,
-    "fetched twice: Rebrickable's 5 replaced by its 4, every hand, CSV and XML lot and the session's as they were");
+    sets: [["6020-1", 1, false]], parts: [["3001", 4, 4]] } });
+  const rebrickable = (c) => own(c).filter((p) => p.src === "rebrickable");
+  check(fetched1.status === 200 && fetched2.status === 200 && same(rebrickable(fetched2.body).map(({ part, colour, qty }) => [part, colour, qty]), [["3001", 4, 4]])
+    && same(own(fetched2.body).filter((p) => p.src !== "rebrickable"), own(mine.body).filter((p) => p.src !== "rebrickable"))
+    && lot(fetched2.body, "3005", 1, "Claude")?.qty === 9,
+    "fetched twice: Rebrickable's export and first fetch replaced by its 4 x 3001, one list; every hand and XML lot and the session's as they were");
+  check(same(fetched2.body.sets.map((s) => `${s.qty}x${s.set}<${s.src}>`).sort(), ["1x10237-1<hand>", "1x6020-1<rebrickable>"]),
+    `...and 6020-1, typed by hand and listed by the fetch, kept once, as the fetch's: ${fetched2.body.sets.map((s) => `${s.qty}x${s.set}<${s.src}>`).join(" ")}`);
 
   console.log("\n7. five changes at once, against the real database");
   const many = await Promise.all(["3001", "3002", "3003", "3004", "3005"].map((part, n) => call(token, { method: "POST",
@@ -201,8 +235,17 @@ try {
   const once = { op: "lots", id: id(), add: [{ part: "3003", colour: 15, qty: 7 }] };
   const first = await call(token, { method: "POST", body: once });
   const again = await call(token, { method: "POST", body: once });
-  check(first.status === 200 && again.status === 200 && again.body.done?.again === true && lot(again.body, "3003", 15)?.qty === 7,
-    `sent again with its id: ${again.status} ${JSON.stringify(again.body?.done)}, 7 x 3003 not 14`);
+  check(first.status === 200 && again.status === 200 && again.body.done?.again === true && again.body.done?.added === 1
+    && lot(again.body, "3003", 15)?.qty === 7,
+    `sent again with its id: ${again.status} ${JSON.stringify(again.body?.done)}, answered as the first was; 7 x 3003 not 14`);
+  const csv = { from: "bricklink_xml", id: id(), text: "<INVENTORY><ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>3009</ITEMID>"
+    + "<COLOR>11</COLOR><MINQTY>3</MINQTY></ITEM></INVENTORY>" };
+  const imported = await call(token, { method: "POST", body: csv });
+  const reimported = await call(token, { method: "POST", body: csv });
+  check(imported.status === 200 && reimported.status === 200 && same(reimported.body.imported, imported.body.imported)
+    && imported.body.imported?.lots === 1
+    && reimported.body.parts.filter((p) => p.part === "3009").reduce((n, p) => n + p.qty, 0) === 3,
+    `an import sent again with its id is told what the first did (${JSON.stringify(reimported.body?.imported)}), made once: 3 x 3009`);
 
   console.log("\n9. refused, with words");
   const held = (await call(token)).body;

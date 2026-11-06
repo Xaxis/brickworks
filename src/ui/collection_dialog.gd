@@ -165,12 +165,16 @@ func open(page: String = "own") -> void:
 		store.load_collection()
 
 
-## What happens to a Rebrickable key, and, with the assistant in the window
-## (Settings, Assistant (AI)), what it can do with the collection.
+## What happens to a Rebrickable key and to what a fetch replaces, and,
+## with the assistant in the window (Settings, Assistant (AI)), what it can
+## do with the collection. A fetch replaces all the person's Rebrickable
+## data, fetched or exported, and the loose parts brought in before
+## sources were kept (mb2review findings 1 and 5).
 static func _rebrickable_note() -> String:
 	return ("Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is "
-		+ "not kept; what comes back replaces what Rebrickable brought before. What you count here, "
-		+ "and what an assistant added, stay."
+		+ "not kept. What comes back replaces what came from Rebrickable before, fetched or "
+		+ "exported, and the loose parts brought in before. What you count here, a BrickLink XML, "
+		+ "and what an assistant added stay."
 		+ (" Ask the assistant for \"a small house from my collection\" and it builds from what you own."
 			if ShellPrefs.assistant_shown() else ""))
 
@@ -1023,6 +1027,8 @@ func _report(result: Dictionary, source: String) -> void:
 	var unknown: PackedStringArray = store.collection.unknown_sets
 	if not unknown.is_empty():
 		line += " — no inventory is known for %s" % ", ".join(unknown)
+	if not str(result.get("clamped", "")).is_empty():
+		line += " — " + str(result["clamped"])
 	_say(line)
 
 
@@ -1209,7 +1215,9 @@ func add_loose() -> void:
 	if done["kind"] != CollectionStore.DONE:
 		_say(str(done["said"]))
 		return
-	_say("added %d × %s in %s" % [count, Inventory._tidy(info.name), _colour(colour)])
+	var held: String = CollectionStore.clamped_words(done["body"])
+	_say("added %d × %s in %s" % [count, Inventory._tidy(info.name), _colour(colour)]
+		+ ("" if held.is_empty() else " — " + held))
 	_loose_search.text = ""
 	_loose_count.value = 1
 	_loose_search.grab_focus()
@@ -1311,8 +1319,11 @@ func _keep_added() -> void:
 	var count: int = store.collection.added_lots().size()
 	var done: Dictionary = await store.keep_added()
 	_end()
-	_say(str(done["said"]) if done["kind"] != CollectionStore.DONE
-		else "kept the %s as your own" % Counted.of(count, "lot"))
+	if done["kind"] != CollectionStore.DONE:
+		_say(str(done["said"]))
+		return
+	var held: String = CollectionStore.clamped_words(done["body"])
+	_say("kept the %s as your own" % Counted.of(count, "lot") + ("" if held.is_empty() else " — " + held))
 
 
 static func _lot_key(lot: Dictionary) -> String:
@@ -1491,8 +1502,6 @@ static func _from_words(from: String) -> String:
 	match from:
 		"rebrickable":
 			return " · from Rebrickable"
-		"rebrickable_csv":
-			return " · from a Rebrickable export"
 		"bricklink_xml":
 			return " · from a BrickLink XML"
 	return ""

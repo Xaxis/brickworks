@@ -3256,8 +3256,10 @@ const MOST_LOTS := 500
 
 ## edit_collection: lots added, marked as this chat's, or taken off its own,
 ## all or nothing, as one change at the account (CollectionStore
-## .change_lots, api/collection.js op "lots"); with neither, the collection
-## read back afresh.
+## .change_lots, api/collection.js op "lots"), in turn with every other
+## write; with neither, the collection read back afresh. A lot taken off
+## carries the count this chat was last shown of it, and is refused when
+## that is no longer so (mb2review finding 7).
 func _edit_collection(input: Dictionary) -> String:
 	var shell: Shell = app.get("_shell")
 	var dialog: CollectionDialog = shell.collection if shell != null else null
@@ -3320,23 +3322,38 @@ func _edit_collection(input: Dictionary) -> String:
 	var add_lots: Array = []
 	for key: String in order:
 		add_lots.append(added[key])
+	# Each at the count this chat was last shown: the copy here is what its
+	# last answer or read back said. One not there is read afresh once.
+	for key: String in down_order:
+		if mine.collection.lot_of(str(down[key]["part"]), int(down[key]["colour"]), who, mark).is_empty():
+			await mine.load_collection()
+			break
 	var down_lots: Array = []
+	var own := PackedStringArray()
 	for key: String in down_order:
 		var one: Dictionary = (down[key] as Dictionary).duplicate()
 		one["qty"] = maxi(0, int(one["qty"]))
+		var held: Dictionary = mine.collection.lot_of(str(one["part"]), int(one["colour"]), who, mark)
+		if held.is_empty():
+			own.append(("%s in colour %d is the person's own lot, which only they change (My collection)"
+				if not mine.collection.lot_of(str(one["part"]), int(one["colour"])).is_empty()
+				else "%s in colour %d is not a lot this chat added (the person may have kept it or taken it "
+				+ "back)") % [one["part"], int(one["colour"])])
+			continue
+		one["was"] = int(held["qty"])
 		down_lots.append(one)
+	if not own.is_empty():
+		return "Nothing was changed: %s. edit_collection with nothing reads back what is there." % "; ".join(own)
 	var done: Dictionary = await mine.change_lots(add_lots, down_lots)
 	if done["kind"] == CollectionStore.UNREACHED:
-		return ("Could not tell whether that was kept (%s). edit_collection with nothing reads back "
+		return ("No answer came, so it may have been made (%s). edit_collection with nothing reads back "
 			+ "what is there: read it before sending this again.") % done["said"]
+	if done["kind"] == CollectionStore.CONFLICT:
+		return ("Nothing was changed: %s. The collection changed since this chat was shown it; "
+			+ "edit_collection with nothing reads back what is there now.") \
+			% str((done["body"] as Dictionary).get("error", done["said"]))
 	if done["kind"] != CollectionStore.DONE:
-		var own: PackedStringArray = PackedStringArray()
-		for lot: Dictionary in down_lots:
-			if mine.collection.lot_of(str(lot["part"]), int(lot["colour"]), who, mark).is_empty() \
-					and not mine.collection.lot_of(str(lot["part"]), int(lot["colour"])).is_empty():
-				own.append("%s in colour %d is the person's own lot, which only they change (My collection)"
-					% [lot["part"], int(lot["colour"])])
-		return "Nothing was changed: %s." % ("; ".join(own) if not own.is_empty() else str(done["said"]))
+		return "Nothing was changed: %s." % done["said"]
 	var said := PackedStringArray()
 	if not add_lots.is_empty():
 		var pieces: int = 0
@@ -3347,6 +3364,9 @@ func _edit_collection(input: Dictionary) -> String:
 		said.append("Added %s, %s, to the person's collection, each marked as this chat's:"
 			% [Counted.of(add_lots.size(), "lot"), Counted.of(pieces, "piece")])
 		said.append_array(lines)
+		var held_back: String = CollectionStore.clamped_words(done["body"])
+		if not held_back.is_empty():
+			said.append(held_back[0].to_upper() + held_back.substr(1) + ".")
 	if not down_lots.is_empty():
 		said.append("Took down %s of this chat's." % Counted.of(down_lots.size(), "lot"))
 	var theirs: Array = mine.collection.added_lots().filter(func(lot: Dictionary) -> bool:

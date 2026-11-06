@@ -148,12 +148,16 @@ try {
     "read back: three sets (four Magic Shops), twelve red 2 x 4s, and when");
   const replaced = await call(a.access_token, { method: "POST", body: {
     from: "rebrickable_csv", mode: "replace", text: "Set Number,Quantity\n6020-1,1\n" } });
-  check(replaced.status === 200 && canon(replaced.body.sets.filter((s) => s.src === "rebrickable_csv"))
-    === canon([{ set: "6020-1", qty: 1, spares: false, src: "rebrickable_csv" }])
-    && canon(replaced.body.sets.filter((s) => s.src !== "rebrickable_csv"))
-    === canon(back.body.sets.filter((s) => s.src !== "rebrickable_csv"))
+  // A Rebrickable export and a fetch are one list, the person's (mb2review
+  // finding 1): a replace from either replaces both's sets, and a set typed
+  // by hand that it lists is kept once, as Rebrickable's.
+  check(replaced.status === 200 && canon(replaced.body.sets.filter((s) => s.src === "rebrickable"))
+    === canon([{ set: "6020-1", qty: 1, spares: false, src: "rebrickable" }])
+    && canon(replaced.body.sets.filter((s) => s.src !== "rebrickable"))
+    === canon(back.body.sets.filter((s) => s.src !== "rebrickable" && s.set !== "6020-1"))
     && canon(replaced.body.parts) === canon(back.body.parts),
-    "replace with a sets list replaces that export's sets, and keeps the sets typed and fetched and the loose parts");
+    "replace with Rebrickable's sets list replaces all its sets, exported or fetched, and keeps the 6020-1 typed by hand "
+    + "once, as Rebrickable's; 75192-1 typed and the loose parts kept");
 
   console.log("\nanother account");
   const theirs = await call(b.access_token);

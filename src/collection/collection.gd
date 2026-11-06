@@ -32,8 +32,10 @@ var sets: Array = []
 ## kept before sources were), and a lot a session added says who instead
 ## ("by": "Claude") and which of its chats ("chat"). Each is a lot apart
 ## from the same part and colour from anywhere else, so a Rebrickable fetch
-## replaces only what Rebrickable brought, and taking back what a session
-## added takes back exactly that (mybricks, mybricks2, 2026-11-06).
+## replaces only what Rebrickable brought (fetched or exported: one list,
+## the person's) and what was brought in before sources were, and taking
+## back what a session added takes back exactly that (mybricks, mybricks2,
+## 2026-11-06).
 var parts: Array = []
 ## When the account last kept it, as the server says; empty when never.
 var updated_at: String = ""
@@ -46,8 +48,7 @@ var rev: Variant = null
 ## with. "hand" is My collection's own: a lot added there, a set typed.
 const SOURCES := {
 	"hand": "Loose parts",
-	"rebrickable": "From your Rebrickable account",
-	"rebrickable_csv": "From a Rebrickable export",
+	"rebrickable": "From Rebrickable",
 	"bricklink_xml": "From a BrickLink XML",
 	"": "Loose parts brought in before",
 }
