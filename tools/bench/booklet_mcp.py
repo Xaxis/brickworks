@@ -26,8 +26,8 @@ from __future__ import annotations
 import base64
 import json
 import os
-import shutil
 import re
+import shutil
 import sys
 import time
 from pathlib import Path
@@ -38,11 +38,16 @@ import brickworks_mcp  # noqa: E402
 # The app's tools a builder may use: its eyes and its hands, no more.
 RELAYED = ("look_at_model", "view_model", "edit_model", "attachment_points", "search_parts",
            "undo")
-WHY = ("hidden", "position", "too_many", "callout", "turn", "part", "colour", "count", "other")
-# How long page_done waits for a job still running before it keeps the model, and how
-# often it asks, in seconds.
+# A call still going after 20 s becomes one of the app's jobs, and the app answers "Started
+# job N" or, to the next call, "The app is busy with job N" (src/net/tool_jobs.gd). A picture
+# waits for the GPU's lease, which other work on the box can hold for minutes. A person's
+# eyes wait for the picture, so the relay waits on the job and hands its answer on, as the app's
+# own design loop does (designer_loop._wait_for); the builder has no job tool. Without it, on
+# 2026-11-05 a builder was told "busy with job 4" for a minute, stopped twice, and its run lost
+# page 6. page_done's save waits the same way. JOB_WAIT is the longest wait, in seconds.
+JOB = re.compile(r"(Started job|The app is busy with job) (\d+)")
 JOB_WAIT = 600.0
-JOB_POLL = 3.0
+WHY = ("hidden", "position", "too_many", "callout", "turn", "part", "colour", "count", "other")
 
 PAGE_TOOL = {
     "name": "booklet_page",
@@ -94,6 +99,15 @@ INSTRUCTIONS = (
     "then call page_done.")
 
 
+
+def _text(answer: dict) -> str:
+    """The first words of an answer."""
+    for block in answer.get("content", []):
+        if block.get("type") == "text":
+            return str(block.get("text", ""))
+    return ""
+
+
 class Server:
     """What one session may reach: the pages, its run's records, the relayed tools."""
 
@@ -128,7 +142,7 @@ class Server:
         elif name == "page_done":
             answer = self.done(arguments)
         elif name in RELAYED:
-            answer = brickworks_mcp.call(self.app, name, arguments)
+            answer = self.relay(name, arguments)
         else:
             answer = {"content": [{"type": "text", "text": f"There is no tool {name} here."}],
                       "isError": True}
@@ -139,6 +153,30 @@ class Server:
                                   "images": sum(b.get("type") == "image"
                                                 for b in answer.get("content", []))})
         return answer
+
+    def relay(self, name: str, arguments: dict) -> dict:
+        """The app's answer to the call, waited for when it became a job: the job's answer
+        when the call started it, the call made again once the job it waited behind ends."""
+        answer = brickworks_mcp.call(self.app, name, arguments)
+        for _ in range(3):
+            found = JOB.match(_text(answer))
+            if found is None:
+                return answer
+            ended = self.wait(int(found.group(2)))
+            if found.group(1) == "Started job":
+                return ended
+            answer = brickworks_mcp.call(self.app, name, arguments)
+        return answer
+
+    def wait(self, job: int) -> dict:
+        """Job `job`'s answer once it ends (each ask waits up to 45 s in the app), or what
+        the app last said of it after JOB_WAIT seconds."""
+        until = time.time() + JOB_WAIT
+        while True:
+            answer = brickworks_mcp.call(self.app, "job", {"id": job})
+            going = re.match(rf"Job {job} \(.*?\) is still going", _text(answer))
+            if going is None or answer["isError"] or time.time() > until:
+                return answer
 
     def page(self, number: int) -> dict:
         picture = self.pages / f"page-{number}.png"
@@ -187,8 +225,7 @@ class Server:
             busy = re.match(r"The app is busy with job (\d+)", said)
             if not busy or time.time() > end:
                 return answer
-            self.app.ask("job", {"id": int(busy.group(1))})
-            time.sleep(JOB_POLL)
+            self.wait(int(busy.group(1)))
 
     def handle(self, message: dict) -> dict | None:
         method = message.get("method", "")

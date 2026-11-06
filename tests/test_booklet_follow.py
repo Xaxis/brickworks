@@ -251,8 +251,7 @@ class BusyApp(FakeApp):
         return super().ask(tool, arguments)
 
 
-def test_page_done_keeps_the_model_once_the_edit_it_follows_has_finished(tmp_path, monkeypatch):
-    monkeypatch.setattr(booklet_mcp, "JOB_POLL", 0.0)
+def test_page_done_keeps_the_model_once_the_edit_it_follows_has_finished(tmp_path):
     pages = tmp_path / "pages"
     pages.mkdir()
     models = tmp_path / "models"
@@ -264,6 +263,46 @@ def test_page_done_keeps_the_model_once_the_edit_it_follows_has_finished(tmp_pat
     said = json.loads((tmp_path / "run" / "pages.jsonl").read_text().splitlines()[-1])
     assert said["snapshot"].endswith("page-18.ldr")
     assert (tmp_path / "run" / "snapshots" / "page-18.ldr").exists()
+
+
+class SlowApp(FakeApp):
+    """An app whose pictures wait for the GPU: view_model becomes job 4, which is still
+    going when first asked about, and a call made meanwhile finds the app busy."""
+
+    def __init__(self, models: Path) -> None:
+        super().__init__(models)
+        self.job_asks = 0
+
+    def ask(self, tool: str, arguments: dict) -> dict:
+        self.asked.append(tool)
+        if tool == "view_model":
+            words = "Started job 4: drawing the model. Call job {\"id\": 4} until it ends."
+        elif tool == "look_at_model" and self.job_asks < 4:
+            words = "The app is busy with job 4 (view_model, 50 s in): drawing."
+        elif tool == "job":
+            self.job_asks += 1
+            words = ("Job 4 (view_model) is still going, 45 s in: drawing." if self.job_asks
+                     in (1, 3) else "Job 4 (view_model) is done, after 70 s:")
+            if "still" not in words:
+                return {"ok": True, "content": [{"type": "text", "text": words},
+                                                {"type": "image", "data": "", "mimeType": "image/png"}]}
+        else:
+            words = f"did {tool}"
+        return {"ok": True, "content": [{"type": "text", "text": words}]}
+
+
+def test_a_picture_that_waits_for_the_gpu_is_waited_for(tmp_path):
+    # The builder has no job tool: on 2026-11-05 one was told "busy with job 4" for a
+    # minute and stopped twice. The relay waits on the job as the app's design loop does.
+    app = SlowApp(tmp_path)
+    server = booklet_mcp.Server(0, tmp_path, tmp_path / "run", tmp_path, app)
+    seen = server.call("view_model", {"from": "top"})
+    assert seen["content"][0]["text"].startswith("Job 4 (view_model) is done")
+    assert seen["content"][1]["type"] == "image" and not seen["isError"]
+    assert app.asked == ["view_model", "job", "job"]
+    looked = server.call("look_at_model", {})
+    assert looked["content"][0]["text"] == "did look_at_model"
+    assert app.asked[3:] == ["look_at_model", "job", "job", "look_at_model"]
 
 
 def test_a_hose_drawn_in_segments_is_never_judged(monkeypatch):
