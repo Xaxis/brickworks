@@ -576,46 +576,6 @@ collisions), and a lamp held only by an antenna's tip pushed into a round
 brick (`Joints.pushed_in`, which a toilet roll a stud off the studs also
 meets). No catalogue rebuild: the checker alone changed.
 
-Round joints, the third pass, 2026-11-05 (realjoints2). On the same 1,056
-sub-models, from 939: floating 39, overlaps 33, not held 32, collisions 9
-and off their studs 4. Two causes held most of the floating and all of the
-off, each read from the parts' own shapes. A cone's, a round plate's and a
-round brick's cover is cleared up the bore through its middle, so a stud
-under one has its tip in no cover, and the part on it floated though its
-walls stand round the stud: 5891's lamp, cones stacked each on the stud of
-the one under it, 31038's table, a round plate on a cone, two antennas on
-6861's cars. Stability already read such a stud by the walls round its tip;
-the checker, the booklet and the hand (`Joints.studs_in`) now read it the
-same way (`Joints._hollow_round`, the reach and the count shared with
-Stability), and a cone a brick up off the stud still floats. The hand's
-reading of what turns changed with it: 4096's crane boom lies on two cones
-on a plate's studs, and the cones, read as floating, had gone with the boom,
-which turned on its turntable and its hinge. On its rest it is held at both
-ends and says so; `grab_probe` lifts it off its rest before turning it. And LDraw
-writes a position to three decimals, so a part drawn on the grid can stand
-a thousandth short of it: 6542's container panels at x 9.999 were read a
-cell short, covers and all, and named 2 LDU off their studs. A part's
-origin now names its cell to within 0.01 of the corner
-(`BrickLattice.grid_cell`), as `is_off_lattice` already read it, wherever a
-placement or a cover is named by it (the checker, the builder's covers,
-Stability, the booklet); over all 1,576 sets `half_studs_in_sets` reads
-4,722 half-stud seats where it read 4,535, and refuses the same 57.
-**939 → 957, none newly refused**: floating 39 →
-27, off 4 → 0, overlaps 33 → 31, collisions 9 → 8, not held 32 → 33 (10272's
-grille, floating before, is now said to rest on a round plate unjoined).
-Refused with an overlap, by the joint that met: panes 8 → 7, bars and axles
-through holes 10 → 9, hollow studs 11, hinges 1, others 9. A rule for a pane
-held at both ends of a line (60608 in 60594) was tried and dropped: its pins
-sit in recesses drawn with boxes, which the cover fills and no bore names.
-Still refused, each needing the parts pipeline and a catalogue rebuild: 4595
-(five sub-models), whose side studs' bores open its inside to the cover's
-fill; the 60608 and 86210 panes' pin recesses; 4346's doors, which have no
-connector at all; and 3710 under 2582's lip, which BrickNet has no label
-for. By hand a cone goes on a cone's stud at the stud's foot, 4 LDU below
-where its stop rests it, and the check seats it (`technic_hand_probe`); over
-MCP a bar in a hollow stud, a clip on it and a cone stack pass as one design.
-No catalogue rebuild: the checker alone changed.
-
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety
 (shapes, colours) moved least of all. `add_rooms` lays a floor at each

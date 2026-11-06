@@ -405,12 +405,6 @@ can occupy the same millimetre.
   `Builder._in_air_of_one`): a pane in its frame's groove, a drawer in its
   cupboard, which the cover fills shut. `joints_probe` has both and a little
   wrong; `harvest_probe` over 1,056 real sub-models, 917 → 939 (2026-11-05).
-  A stud whose tip is in no cover, up a cone's or a round plate's hollow that
-  the cover leaves open, is in the part whose walls stand round it
-  (`Joints._hollow_round`, read the same by Stability): `joints_probe` has
-  5891's lamp, 31038's table and a cone a brick up that floats, and
-  `technic_hand_probe` the stack by hand and over MCP; 939 → 957 with
-  `BrickLattice.grid_cell` (realjoints2).
 - `axles and gears on a line`: an axle or a pin is in every hole along its
   whole length (`Joints.through`, by Mechanism's own rule: on the line to
   1.5 LDU, the hole's middle no more than 2 LDU past an end; a pin not in an
@@ -1128,11 +1122,8 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where the LEGO Group moulds 
   A placement's x is the part's *corner*; an LDraw origin is wherever the author
   put it. Dividing the origin by a stud puts a 1x1 plate half a stud out and
   invents off-grid offsets — six of them, across models that have none. Invert
-  `_square_transform`: `grid_cell(origin) + _corner_cell(part, id, basis)`, and
-  `_corners_in_studs` does. `grid_cell`, not `to_cell`: LDraw writes three
-  decimals, so 6542's panels at x 9.999 were a cell short and named 2 LDU off
-  their studs; the builder's covers, Stability and the booklet name a part's
-  cell by it too.
+  `_square_transform`: `to_cell(origin) + _corner_cell(part, id, basis)`, and
+  `_corners_in_studs` does.
 
 - **Half a stud is judged by where the studs went, and the socket data lies.**
   Taken at their word — sockets and 2 x N tubes only — the catalogue refused
