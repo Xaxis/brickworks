@@ -530,14 +530,20 @@ the one under it, 31038's table, a round plate on a cone, two antennas on
 6861's cars. Stability already read such a stud by the walls round its tip;
 the checker, the booklet and the hand (`Joints.studs_in`) now read it the
 same way (`Joints._hollow_round`, the reach and the count shared with
-Stability), and a cone a brick up off the stud still floats. And LDraw
+Stability), and a cone a brick up off the stud still floats. The hand's
+reading of what turns changed with it: 4096's crane boom lies on two cones
+on a plate's studs, and the cones, read as floating, had gone with the boom,
+which turned on its turntable and its hinge. On its rest it is held at both
+ends and says so; `grab_probe` lifts it off its rest before turning it. And LDraw
 writes a position to three decimals, so a part drawn on the grid can stand
 a thousandth short of it: 6542's container panels at x 9.999 were read a
 cell short, covers and all, and named 2 LDU off their studs. A part's
 origin now names its cell to within 0.01 of the corner
 (`BrickLattice.grid_cell`), as `is_off_lattice` already read it, wherever a
 placement or a cover is named by it (the checker, the builder's covers,
-Stability, the booklet). **939 → 957, none newly refused**: floating 39 →
+Stability, the booklet); over all 1,576 sets `half_studs_in_sets` reads
+4,722 half-stud seats where it read 4,535, and refuses the same 57.
+**939 → 957, none newly refused**: floating 39 →
 27, off 4 → 0, overlaps 33 → 31, collisions 9 → 8, not held 32 → 33 (10272's
 grille, floating before, is now said to rest on a round plate unjoined).
 Refused with an overlap, by the joint that met: panes 8 → 7, bars and axles

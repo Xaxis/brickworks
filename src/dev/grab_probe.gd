@@ -34,6 +34,15 @@ const CASES: Array = [
 	["slider", "res://vendor/omr/files/6630-1.mpd", "slide", 0.0],
 ]
 
+## What a set's moving side rests on, pressed on its studs, by part. 4096's
+## crane boom lies on two cones, their studs in it and their hollows on a
+## plate's studs, so as the set has it the boom is held at both ends, its
+## hinge and its rest, and does not turn. The cones were read as floating
+## until a stud up a cone's hollow was read as in it (Joints._hollow_round,
+## realjoints2); the cases that turn the boom lift it off its rest first,
+## as a person does, and the session's says it is held there before.
+const RESTS: Dictionary = {"4096-1_Crane.mpd": "4589"}
+
 ## Closed loops on real sets (Linkage), each against its closed form: a
 ## steering's arms and track rod (a four-bar: the rocker's turn from the
 ## circles its pins move on) and an engine's crank, rod and piston (a
@@ -365,6 +374,23 @@ func _open(path: String) -> bool:
 	_verbs.set_mode("select")
 	_builder.clear_selection()
 	return _world.brick_count() > 0
+
+
+## Lift a set's moving side off what it rests on ([constant RESTS]), as a
+## step nobody undoes.
+func _off_its_rest(path: String) -> void:
+	var rest: String = str(RESTS.get(path.get_file(), ""))
+	if rest.is_empty():
+		return
+	var ids: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == rest:
+			ids.append(brick.id)
+	for id: int in ids:
+		_builder.remove_brick_id(id)
+	_builder.forget_history()
+	await _frames(3)
+	print("    lifted off its rest: %d x %s" % [ids.size(), rest])
 
 
 ## Until the view stops moving: framed from another side, it eases there
@@ -1114,6 +1140,7 @@ func _case(name: String, path: String, want: String) -> void:
 	print("\n%s: %s" % [name, path.get_file()])
 	if not await _open(path):
 		return
+	await _off_its_rest(path)
 	var bodies: Bodies = _bodies()
 	print("    %d parts read as %s" % [_world.brick_count(), bodies.summary()])
 	var chosen: Dictionary = _choose(bodies, want)
@@ -4581,6 +4608,7 @@ func _hinge_flick() -> void:
 	print("\n%s" % name)
 	if not await _open("res://vendor/omr/files/4096-1_Crane.mpd"):
 		return
+	await _off_its_rest("res://vendor/omr/files/4096-1_Crane.mpd")
 	_grab._ready_now()
 	var bodies: Bodies = _grab._bodies
 	var chosen: Dictionary = _choose(bodies, "hinge")
@@ -7580,17 +7608,29 @@ func _held_says() -> void:
 
 func _session() -> void:
 	print("\nmove_part over MCP: 4096-1_Crane.mpd")
-	if not await _open("res://vendor/omr/files/4096-1_Crane.mpd"):
+	var crane: String = "res://vendor/omr/files/4096-1_Crane.mpd"
+	if not await _open(crane):
 		return
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	# As the set has it, the boom on its rest: held at both ends, said so,
+	# and nothing moved.
+	var as_built: Bodies = _bodies()
+	var on_rest: Dictionary = _choose(as_built, "turntable")
+	if not on_rest.is_empty():
+		var boom: int = int(as_built.parts_of(as_built.beyond(int(on_rest["child"])))[0])
+		var held: String = str(await tools.run("move_part", {"part": "#%d" % boom, "degrees": 90}))
+		_check("on its rest the boom is held at both ends, and says so: %s"
+			% held.left(120).replace("\n", " | "),
+			held.contains("held at both ends") and _builder.history_depth() == 0)
+	await _off_its_rest(crane)
 	var bodies: Bodies = _bodies()
 	var chosen: Dictionary = _choose(bodies, "turntable")
 	if chosen.is_empty():
 		_check("a turntable to move", false)
 		return
 	var moving: PackedInt64Array = bodies.parts_of(bodies.beyond(int(chosen["child"])))
-	var tools := AppTools.new()
-	tools.app = _main
-	tools.assistant = _main.get("_assistant")
 	var before: Dictionary = _snapshot()
 	var revision: int = _world.revision
 	var read: String = str(await tools.run("move_part", {"part": "#%d" % int(moving[0])}))
@@ -7608,6 +7648,9 @@ func _session() -> void:
 	_check("...and undo puts it back exactly (%s)" % _differs(before), _differs(before) == "none differs")
 	# A chain over MCP: the crane's end drawn to a point its joints reach,
 	# found as the chain probe finds one: each joint a third of its range.
+	# On the crane as the set has it, its boom on its rest.
+	if not await _open(crane):
+		return
 	_grab._ready_now()
 	var read_bodies: Bodies = _grab._bodies
 	var end_key: int = 0
