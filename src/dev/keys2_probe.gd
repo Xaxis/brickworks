@@ -315,7 +315,8 @@ func _model() -> void:
 ## What is open now, of what the eight open: one word for each, "" for none.
 func _open_now() -> Array:
 	var out: Array = []
-	var render: Variant = _main.get("_render")
+	# The panels made, or null: reading them never makes one (Later).
+	var render: Variant = _main.get("_render_made")
 	if render != null and (render as Control).visible:
 		out.append("Render")
 	if _main.call("_render_queue_up") != null:
@@ -328,7 +329,8 @@ func _open_now() -> Array:
 		out.append("Page setup")
 	if SaveTo.showing != null and SaveTo.showing.visible:
 		out.append("Save " + SaveTo.showing.current_file.get_slice("_", SaveTo.showing.current_file.get_slice_count("_") - 1))
-	if _shell.library_dialog != null and _shell.library_dialog.visible:
+	var library: Variant = _shell.get("_library_dialog")
+	if library != null and (library as Control).visible:
 		out.append("the Library")
 	return out
 
@@ -342,7 +344,7 @@ const OPENS: Dictionary = {"render": "Render", "render_queue": "the render queue
 
 ## Everything the eight open, put away.
 func _put_away() -> void:
-	var render: Variant = _main.get("_render")
+	var render: Variant = _main.get("_render_made")
 	if render != null and (render as Control).visible:
 		render.call("close")
 	var queue: Variant = _main.call("_render_queue_up")
@@ -359,8 +361,9 @@ func _put_away() -> void:
 			if SaveTo.showing == null:
 				break
 			await process_frame
-	if _shell.library_dialog != null and _shell.library_dialog.visible:
-		_shell.library_dialog.close()
+	var library: Variant = _shell.get("_library_dialog")
+	if library != null and (library as Control).visible:
+		library.call("close")
 	await _frames(6)
 	root.gui_release_focus()
 
