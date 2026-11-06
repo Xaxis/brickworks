@@ -70,6 +70,18 @@ func _init() -> void:
 	legend.visible = false
 	legend.mouse_filter = Control.MOUSE_FILTER_STOP
 	legend.position = Vector2(12.0, 12.0)
+	# Stress's panel's backing (StressPanel._build), so the two read as one
+	# kind of thing.
+	var backing := StyleBoxFlat.new()
+	backing.bg_color = Color(0.10, 0.11, 0.13, 0.95)
+	backing.border_color = Color(1, 1, 1, 0.14)
+	backing.set_border_width_all(1)
+	backing.set_corner_radius_all(6)
+	backing.content_margin_left = 12
+	backing.content_margin_right = 8
+	backing.content_margin_top = 6
+	backing.content_margin_bottom = 10
+	legend.add_theme_stylebox_override("panel", backing)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
 	legend.add_child(column)

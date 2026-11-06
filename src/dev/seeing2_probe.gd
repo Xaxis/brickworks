@@ -244,6 +244,7 @@ func _stud_map() -> void:
 	var right: int = 0
 	var wrong := PackedStringArray()
 	var hidden := PackedStringArray()
+	var out_of_sight: Array = []
 	for id: int in expected:
 		var got: Dictionary = votes.get(id, {})
 		var total: int = 0
@@ -254,6 +255,7 @@ func _stud_map() -> void:
 				best = name
 		if total < 4:
 			hidden.append("#%d %s" % [id, _world.get_brick(id).part_id])
+			out_of_sight.append(id)
 		elif best == expected[id]:
 			right += 1
 		else:
@@ -262,8 +264,49 @@ func _stud_map() -> void:
 	print("    out of sight from all six: %s" % (", ".join(hidden) if not hidden.is_empty() else "none"))
 	if not wrong.is_empty():
 		print("    wrong: %s" % "; ".join(wrong))
-	_check("each part's colour that of its studs' facing, read off the picture: %d of %d in sight right"
-		% [right, expected.size() - hidden.size()], wrong.is_empty() and right > 0)
+	# The parts no side shows, picked out with the rest see-through, as a
+	# session would look for them: their colour read inside their edges.
+	var inside: int = 0
+	if not out_of_sight.is_empty():
+		var again: Dictionary = await _rpc("tools/call", {"name": "view_board",
+			"arguments": {"studs": true, "views": ["corner"], "highlight": out_of_sight}})
+		var seen: Array[Image] = _images(again)
+		if seen.size() == 1:
+			seen[0].save_png(_shots.path_join("1_stud_map_inside.png"))
+			var shot: ModelShot = _see()._shot
+			var codes: Image = shot._codes.get_texture().get_image()
+			var data: PackedByteArray = codes.get_data()
+			var channels: int = 4 if codes.get_format() == Image.FORMAT_RGBA8 else 3
+			var side: int = codes.get_width()
+			for staged: BrickWorld.Brick in shot._codes_stage.bricks():
+				var id: int = 0
+				for brick: BrickWorld.Brick in _world.bricks():
+					if brick.part_id == staged.part_id \
+							and brick.transform.origin.is_equal_approx(staged.transform.origin):
+						id = brick.id
+				var tally: Dictionary = {}
+				for y: int in range(4, side - 4, 2):
+					for x: int in range(4, side - 4, 2):
+						var here: Array = _code(data, y * side + x, channels)
+						if int(here[0]) != staged.id:
+							continue
+						var near: bool = true
+						for step: Vector2i in [Vector2i(0, -4), Vector2i(0, 4), Vector2i(-4, 0), Vector2i(4, 0)]:
+							near = near and int(_code(data, (y + step.y) * side + x + step.x,
+								channels)[0]) == staged.id
+						if not near:
+							continue
+						var read: String = _class_of(seen[0].get_pixel(x, y))
+						tally[read] = int(tally.get(read, 0)) + 1
+				var best: String = ""
+				for name: String in tally:
+					if best.is_empty() or int(tally[name]) > int(tally[best]):
+						best = name
+				print("    #%d %s inside, picked out: %s %s" % [id, staged.part_id, best, str(tally)])
+				inside += 1 if expected.has(id) and best == expected[id] else 0
+	_check("each part's colour that of its studs' facing, read off the pictures: %d of %d, %d in the six views and %d of %d no side shows, picked out with the rest see-through"
+		% [right + inside, expected.size(), right, inside, out_of_sight.size()],
+		wrong.is_empty() and right + inside == expected.size())
 	# And every part, in sight or not, painted so on the picture's stage.
 	var shot: ModelShot = _see()._shot
 	var staged: Dictionary = shot._stage.call("painted_ids") if shot._stage.has_method("painted_ids") else {}
@@ -338,7 +381,8 @@ func _window_map() -> void:
 	painted = _world.call("painted_ids")
 	_check("...a part put down while it is on painted its facing's colour",
 		painted.get(plate) == _colours["up"])
-	await _rpc("tools/call", {"name": "undo", "arguments": {}})
+	_shell.call("run", "undo")
+	await _frames(2)
 	_shell.call("run", "stud_map")
 	await _frames(8)
 	painted = _world.call("painted_ids")
@@ -450,34 +494,49 @@ func _picked(arguments: Dictionary, wanted: Array, what: String, name: String) -
 func _findings() -> void:
 	print("")
 	print("── 3. check_design's findings pictured ──")
-	var floater: int = _put("3024", 14, Vector3(0.0, 400.0, 0.0))
+	# What if #40 went up a plate: it runs into the part over it, and the
+	# check says so by its copy's numbers ("brick 49 overlaps brick 39").
 	var depth: int = _builder.history_depth()
+	var model: Array = _signature()
 	var answer: Dictionary = await _finished(await _rpc("tools/call", {"name": "check_design",
-		"arguments": {"edit": {}}}))
+		"arguments": {"edit": {"move": [{"bricks": [40], "dy": 1}]}}}))
 	var said: String = _text(answer)
 	_print(said)
 	var shown: Array[Image] = _images(answer)
-	if not _check("a part floating, #%d: check_design names it and answers with a picture"
-			% floater, said.contains("#%d" % floater) and shown.size() == 1):
-		await _rpc("tools/call", {"name": "undo", "arguments": {}})
+	var pairs: Dictionary = {}
+	for found: RegExMatch in RegEx.create_from_string("brick (\\d+) is #(\\d+)").search_all(said):
+		pairs[int(found.get_string(2))] = int(found.get_string(1))
+	if not _check("a what-if move of #40 into the part over it: the finding said, its parts by their own numbers (%s), one picture"
+			% str(pairs), said.contains("overlaps") and pairs.has(40) and shown.size() == 1):
 		return
 	shown[0].save_png(_shots.path_join("3_check_design.png"))
 	var shot: ModelShot = _see()._shot
-	var edged: Array = []
-	var order: int = 0
-	var at: Vector3 = _world.get_brick(floater).transform.origin
-	for brick: BrickWorld.Brick in shot._codes_stage.bricks():
-		edged.append(brick.id)
-		if brick.transform.origin.is_equal_approx(at):
-			order = brick.id
 	var codes: Image = shot._codes.get_texture().get_image()
-	var ring: Array = _ring(codes, func(number: int) -> bool: return number == order)
-	var magenta: float = _share_at(shown[0], ring, _is_magenta)
-	_check("...the part it names magenta in its picture: %.0f%% of its ring (%d px), %d part%s edged"
-		% [magenta * 100.0, ring.size(), edged.size(), "" if edged.size() == 1 else "s"],
-		order > 0 and ring.size() > 40 and magenta >= EDGED_LEAST)
-	_check("...and nothing changed", _builder.history_depth() == depth)
-	await _rpc("tools/call", {"name": "undo", "arguments": {}})
+	var edged: Array = []
+	var rings := PackedStringArray()
+	var magenta_ok: int = 0
+	var counted: int = 0
+	for staged: BrickWorld.Brick in shot._codes_stage.bricks():
+		var id: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.part_id == staged.part_id \
+					and brick.transform.origin.is_equal_approx(staged.transform.origin):
+				id = brick.id
+		edged.append(id)
+		var ring: Array = _ring(codes, func(number: int) -> bool: return number == staged.id)
+		if ring.size() < 40:
+			continue
+		counted += 1
+		var magenta: float = _share_at(shown[0], ring, _is_magenta)
+		rings.append("#%d %.0f%%" % [id, magenta * 100.0])
+		magenta_ok += 1 if magenta >= EDGED_LEAST else 0
+	edged.sort()
+	var wanted: Array = pairs.keys()
+	wanted.sort()
+	_check("...exactly the parts the findings name edged (%s), each in sight magenta: %s"
+		% [str(edged), ", ".join(rings)], edged == wanted and counted > 0 and magenta_ok == counted)
+	_check("...and nothing changed: the model and its history as they were",
+		_signature() == model and _builder.history_depth() == depth)
 
 
 # -- 4. a pull by brick number ------------------------------------------------------------
@@ -520,10 +579,10 @@ func _pull() -> void:
 	_print(said)
 	var looks: String = str(_world.step_looks)
 	var after: Image = await _page(page, "4_page_pulled")
-	var apart: float = _apart(before, after) if before != null and after != null else 0.0
-	_check("pull {\"parts\": [%d]}, brick %d a %s in step %d, pulls it: kept as %s, page %d drawn otherwise (%.4f apart)"
-		% [number, number, part, at.number, part, page, apart],
-		looks.contains("\"%s\"" % part.to_lower()) and apart > 0.001
+	var changed: int = _changed(before, after) if before != null and after != null else 0
+	_check("pull {\"parts\": [%d]}, brick %d a %s in step %d, pulls it: kept as %s, page %d drawn otherwise (%d px)"
+		% [number, number, part, at.number, part, page, changed],
+		looks.contains("\"%s\"" % part.to_lower()) and changed >= 300
 		and _builder.history_depth() == depth + 1)
 	# A part id that is not in the step.
 	var not_in: String = "3001"
@@ -588,10 +647,10 @@ func _build_video() -> void:
 	var cells: Array[Image] = _cells(shown[0], 6)
 	var dialog: RenderDialog = _main.get("_render")
 	var built: BuildRender = dialog._last.get("build") as BuildRender
-	_check("...laid two across, three down, the first frame not the last (%.3f apart), the video's last frame the whole model"
-		% (_apart(cells[0], cells[5]) if cells.size() == 6 else 0.0),
-		cells.size() == 6 and _apart(cells[0], cells[5]) > 0.02 and built != null
-		and built.shown[built.frames - 1] == parts)
+	var moved: int = _changed(cells[0], cells[5]) if cells.size() == 6 else 0
+	_check("...laid two across, three down, the first frame not the last (%d px), the video's last frame the whole model"
+		% moved, cells.size() == 6 and moved > cells[0].get_width() * cells[0].get_height() / 100
+		and built != null and built.shown[built.frames - 1] == parts)
 
 
 func _motion_frames() -> void:
@@ -620,8 +679,9 @@ func _motion_frames() -> void:
 	var cells: Array[Image] = _cells(shown[0], 6) if shown.size() == 1 else []
 	if shown.size() == 1:
 		shown[0].save_png(_shots.path_join("5_motion_frames.png"))
-	_check("render_motion answered with six frames in one picture, the first not the last",
-		said.contains("6 of its frames") and cells.size() == 6 and _apart(cells[0], cells[5]) > 0.005)
+	var moved: int = _changed(cells[0], cells[5]) if cells.size() == 6 else 0
+	_check("render_motion answered with six frames in one picture, the first not the last (%d px)"
+		% moved, said.contains("6 of its frames") and cells.size() == 6 and moved > 300)
 
 
 ## [param count] frames laid as PosePanel.sheet_of lays them, two across.
@@ -655,6 +715,25 @@ static func _apart(a: Image, b: Image) -> float:
 	for at: int in x.size():
 		sum += absi(x[at] - y[at])
 	return float(sum) / float(maxi(x.size(), 1)) / 255.0
+
+
+## How many pixels of [param a] and [param b] differ by more than a tenth in
+## some channel.
+static func _changed(a: Image, b: Image) -> int:
+	var one: Image = a.duplicate() as Image
+	var two: Image = b.duplicate() as Image
+	one.convert(Image.FORMAT_RGB8)
+	two.convert(Image.FORMAT_RGB8)
+	if one.get_size() != two.get_size():
+		return one.get_width() * one.get_height()
+	var x: PackedByteArray = one.get_data()
+	var y: PackedByteArray = two.get_data()
+	var count: int = 0
+	for at: int in range(0, x.size(), 3):
+		if absi(x[at] - y[at]) > 25 or absi(x[at + 1] - y[at + 1]) > 25 \
+				or absi(x[at + 2] - y[at + 2]) > 25:
+			count += 1
+	return count
 
 
 static func _share(image: Image, test: Callable) -> float:

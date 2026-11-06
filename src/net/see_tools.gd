@@ -458,14 +458,14 @@ const FINDINGS_MOST := 40
 
 
 ## check_design's [param answer] with the parts its findings name pictured
-## (APP_UX5 seeing2): a check of the model as it stands (edit=) that finds a
-## part floating, overlapping or not joined names it "#14", and a session
-## then looked for #14 in look_at_model's list. Each named part standing
-## edged in magenta in its own colours and every other part see-through,
-## from the corner, as view_board's highlight= draws them; the parts the
-## change takes off left out. A check of a list of bricks (bricks=) names
-## parts that are not on the baseplate, and is answered as it was; so is a
-## check whose findings name none.
+## (APP_UX5 seeing2): a check of the model as it stands (edit=) names a part
+## "#14", or as its copy of the model lists it, "brick 49" from 0, which is
+## no number look_at_model gives. Each named part standing edged in magenta
+## in its own colours and every other part see-through, from the corner, as
+## view_board's highlight= draws them, the parts the change takes off left
+## out, and each "brick N" said by its own number. A check of a list of
+## bricks (bricks=) names parts that are not on the baseplate, and is
+## answered as it was; so is a check whose findings name none standing.
 func findings_pictured(answer: Variant, input: Dictionary) -> Variant:
 	if not (answer is String) or not (input.get("edit") is Dictionary) \
 			or not ModelShot.possible() or LeasedShots.in_use():
@@ -487,6 +487,30 @@ func findings_pictured(answer: Variant, input: Dictionary) -> Variant:
 		var brick_id: int = int(found.get_string(1))
 		if not gone.has(brick_id) and world.get_brick(brick_id) != null \
 				and not named.has(brick_id):
+			named.append(brick_id)
+	# The check's copy lists the parts standing in the model's order, those
+	# the change takes off left out (Assistant._edit), then what it adds.
+	var library: PartLibrary = app.get("_library")
+	var listed: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if not gone.has(brick.id) and library.parts.has(brick.part_id):
+			listed.append(brick.id)
+	var as_listed := PackedStringArray()
+	var added := PackedStringArray()
+	for found: RegExMatch in RegEx.create_from_string(
+			"\\bbrick (\\d+)(?: \\(([^\\s,)]+))?").search_all(findings):
+		var index: int = int(found.get_string(1))
+		if index >= listed.size():
+			if not added.has("brick %d" % index):
+				added.append("brick %d" % index)
+			continue
+		var brick_id: int = listed[index]
+		var part: String = found.get_string(2).to_lower()
+		if not part.is_empty() and world.get_brick(brick_id).part_id.to_lower() != part:
+			continue
+		if not as_listed.has("brick %d is #%d" % [index, brick_id]):
+			as_listed.append("brick %d is #%d" % [index, brick_id])
+		if not named.has(brick_id):
 			named.append(brick_id)
 	if named.is_empty():
 		return answer
@@ -511,6 +535,11 @@ func findings_pictured(answer: Variant, input: Dictionary) -> Variant:
 		+ "other part see-through, from the corner%s: %s." % [
 			", without the parts the change takes off" if gone.size() > store.scenery.size() else "",
 			_named(named)])
+	if not as_listed.is_empty():
+		said += " The check numbers its copy's parts from 0: %s." % ", ".join(as_listed)
+	if not added.is_empty():
+		said += " %s, which the change adds, %s not drawn." % [", ".join(added),
+			"is" if added.size() == 1 else "are"]
 	if moved:
 		said += (" Drawn as the model stands: the change was made to a copy, so a part it "
 			+ "moves, turns or adds is not drawn so.")
