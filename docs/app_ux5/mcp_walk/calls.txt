@@ -1,0 +1,339 @@
+=== r1.jsonl: 2 calls, 43 s, error=False
+   1 render_model {"kind": "build", "seconds": 15}
+   2 job {"id": 2}
+  RESULT: I made a 15-second video of the model being built up in 4 steps. The parts drop into place one step at a time while the camera turns slowly round. It covers all 12 parts: both pods and the two blue 2×1 slopes.
+    
+    I haven't watched it myself.
+    
+    The app saved it as an animated WebP, an MP4 and a folder of separate frames:
+    - MP4: `…/Brickworks/downloads/little_side_pod_building.mp4`
+    - WebP: `…/Brickworks/downloads/little_side_pod_building.webp`
+    - Frames: `…/Brickworks/downloads/little_side_pod_building/`
+    
+    The full folder is `/mnt/Projects/brickworks/bench/results/appux5-2026-11-06/mcp/run/xdg/godot/app_userdata/Brickworks/downloads/`.
+    
+    I let the app split the build into its own 4 steps. If you want a different order, for example one pod at a time, I can change the steps and make the video again. I can also make it longer, up to 60 seconds, or in 1080p.
+=== r2.jsonl: 1 calls, 13 s, error=False
+   1 search_parts {"query": "", "like": "4070", "limit": 25}
+  RESULT: I'd pick these three. All of them are 1×1 bricks, three plates tall like the headlight brick, so the cheese slope still sits at the same height and has a stud to go on. I haven't changed anything in the model.
+    
+    1. **87087, a 1×1 brick with a stud on one side.** This is the closest swap. It's the same size, and it has one sideways stud you can turn to face forward, just as the headlight's recess does now. That stud can take a 1×1 round tile or a round plate as the lamp. Unlike the headlight's recess, the stud sticks out a little past the front edge. It comes in 39 colours, red included.
+    
+    2. **26604, a 1×1 brick with studs on two adjacent sides.** It suits the front corner, where the brick sits. One stud faces forward for a lamp, and the other faces outwards for a second detail such as a side marker light or a small tile. Turned a quarter, the same part works on the mirrored right-hand pod, so you don't need a left and a right version.
+    
+    3. **3005, a plain 1×1 brick.** This is the simple stand-in. It holds the cheese slope at exactly the same height and comes in 55 colours, but it has no forward-facing detail, so the pod loses its lamp.
+    
+    My first choice is 87087. The 4733 (studs on four sides) and 47905 (studs on two opposite sides) also fit, but they'd leave studs facing into the pod or towards the wing. The 32952 is five plates tall, which would raise the cheese slope.
+=== r3.jsonl: 1 calls, 3 s, error=False
+   1 in_view {"picture": false}
+  RESULT: Your window isn't showing a build step. The timeline is closed, so you're looking at the whole model as it stands now.
+    
+    There's no part in your hand: you're on the Select tool, and nothing is selected. You also haven't laid a reference picture in the scene.
+=== r4.jsonl: 8 calls, 22 s, error=False
+   1 edit_steps {"op": "list"}
+   2 edit_booklet {"step": 1, "pull": {"studs": 2, "parts": [3]}}
+   3 edit_booklet {"step": 1, "colours_all": true}
+   4 booklet_layout {}
+   5 booklet_page {"page": 1}
+   6 booklet_page {"page": 2}
+   7 edit_booklet {"step": 1, "pull": {"studs": 2, "parts": ["41770a"]}}
+   8 booklet_page {"page": 2}
+  RESULT: Both changes are in the instructions, and I checked them on the printed pages.
+    
+    - **Wing pulled out:** in step 1, the left pod's light grey wing plate (41770a) now hangs 2 studs above the plate, with a red arrow pointing down to where it goes. My first try named the wing by its number in the model, which the booklet accepted but didn't draw. Naming it by its part number, 41770a, worked. The right-hand wing (41769a) stays in place. I can pull that one out too if you like.
+    - **Colour guide on every step:** each step now lists its colours under its number. Step 1 says Red and Light Bluish Grey, step 2 Blue, and steps 3 and 4 Red.
+    
+    Because step 1's picture is now taller, the page fits fewer steps: steps 1 and 2 are on page 2, and steps 3 and 4 moved to page 3. Before, all four steps fitted on page 2.
+    
+    **The first page (the cover)** didn't change, because it shows the finished model rather than a step:
+    - A dark blue band across the top, with a red BRICKWORKS badge on the left and the title "Little side pod" in large white letters.
+    - Below it, on a pale blue background, the finished model drawn large: the two red pods side by side with their grey wings tapering towards each other, the 45° slopes at the back and the headlight bricks with cheese slopes at the front. The two blue 2×1 slopes stand off to the lower right.
+    - At the bottom left, "12 pieces · 4 steps", and under it "Building instructions made with Brickworks — brickworks.diy".
+=== r5.jsonl: 2 calls, 17 s, error=False
+   1 render_model {"kind": "picture", "quality": "best", "look": "product"}
+   2 job {"id": 3}
+  RESULT: I rendered the model at Best, the app's highest quality setting, in the product-shot look. It's saved at:
+    
+    `/mnt/Projects/brickworks/bench/results/appux5-2026-11-06/mcp/run/xdg/godot/app_userdata/Brickworks/downloads/little_side_pod_render.png`
+    
+    **How it was lit:**
+    - **The lights:** the product look lights the model the way a studio product photo is lit. A main light gives the shape and the shadows, a fill light softens those shadows, and a rim light from behind picks out the edges. All of it sits over a softbox, a large soft light, against a light studio backdrop that curves up behind the model with no visible corner.
+    - **How it was drawn:** Best was path traced with 256 samples per pixel, simulating each light ray rather than taking shortcuts. You can see it in the soft shadows the pods cast on the floor, in light bouncing off the floor and between the parts, and in the glossy highlights along the plastic's rounded edges.
+    - **Not used:** depth of field (blurring what is nearer and farther than the model's middle). There are no transparent parts in the model, so the clear-plastic effects the product look can draw don't show.
+    
+    The picture shows the two red pods from the front corner, with the grey wings between them and the headlight recesses facing forward. The blue slopes stand behind them to the right. I can also make it in 4K, or from a lower angle, with a softer backdrop or with depth of field.
+=== s1.jsonl: 8 calls, 39 s, error=False
+   1 clear_model {}
+   2 search_parts {"query": "wedge plate 2 x 4 left", "limit": 5}
+   3 search_parts {"query": "headlight brick 1x1", "limit": 3}
+   4 attachment_points {"parts": [{"part": "41770a", "x": 2, "y": 1, "z": 1, "rot": 0}, {"part": "3040", "x": 0, "y": 1, "z": 0, "rot": 0}, {"part": "4070", "x": 0, "y": 1, "z": 5, "r
+   5 submit_design {"name": "Little side pod", "description": "A small side pod on a red 4x6 plate: a light grey left-hand 2x4 wing plate along the right edge, a red 45\u00b0 slop
+   6 submit_design {"name": "Little side pod", "description": "A small side pod on a red 4x6 plate: a light grey left-hand 2x4 wing plate along the right edge, a red 45\u00b0 slop
+   7 view_model {"from": "corner"}
+   8 edit_model {"remove": [4, 6], "add": [{"part": "3040", "color": 4, "x": 0, "y": 1, "z": 0, "rot": 0}, {"part": "54200", "color": 4, "x": 0, "y": 4, "z": 5, "rot": 2}], "pi
+  RESULT: I cleared the baseplate and built the side pod. It's 5 parts, it holds together as one piece, and none of the joints is overloaded.
+    
+    - **Base:** a red 4×6 plate (3032), 4 studs across and 6 deep. The front is +z.
+    - **Wing:** a light grey left-hand 2×4 wing plate (41770a) on the right half of the plate. Its straight edge is on the inside and the tapered edge faces the right side of the plate.
+    - **Back:** a red 2×1 45° slope (3040) in the back-left corner, falling away towards the back.
+    - **Front:** a red 1×1 headlight brick (4070) in the front-left corner, with its headlight facing forward. A red 1×1 cheese slope (54200) sits on top and falls towards the front.
+    
+    In my first try the slope and the cheese slope faced inwards. I saw that in the picture, turned them round and checked them again.
+    
+    The wing sits on top of the plate within its edges. If you meant it to stick out past the right edge, or want it turned the other way, I can move it.
+=== s2.jsonl: 2 calls, 16 s, error=False
+   1 mirror_parts {"bricks": [2, 3, 5, 7, 8], "axis": "x", "copy": true, "picture": true}
+   2 look_at_model {"where": {"x_from": 4, "x_to": 8}}
+  RESULT: I've built the right-hand pod as an exact left–right mirror copy, right beside the first one. The two now sit side by side across x 0 to 8.
+    
+    **Right-hand pod (x 4–8):**
+    - **Base:** a red 4×6 plate (3032) at x 4–8.
+    - **Wing:** the left-hand wing was swapped for the right-hand one, **41769a**, in light grey. It sits at x 4–6, the mirror of x 2–4. Its straight edge is now on the inside at x 6, and its tapered edge points towards the left-hand pod.
+    - **Back:** the red 45° slope is at the back-right corner (x 7–8), falling away towards the back.
+    - **Front:** the red headlight brick is at the front-right corner (x 7–8), facing forward, with the red cheese slope on top falling towards the front.
+    
+    Two things to know:
+    - **What turned round:** in a left–right mirror only what faces left or right swaps, which here is the wing's left/right hand. So the slope still falls towards the back and the headlight still faces forward, as they should in a mirrored pair. The slope, headlight brick, cheese slope and plate are the same parts either way, so only the wing needed swapping.
+    - **Not joined:** the two pods touch but nothing connects them, so they come apart as two pieces when lifted. If you want them as one piece, I can add a plate underneath or across the join.
+=== s3.jsonl: 2 calls, 6 s, error=False
+   1 edit_model {"add": [{"part": "3039", "color": 1, "x": 12, "y": 0, "z": 2}], "assemblies": [{"name": "blue slope", "x_from": 12, "x_to": 14, "z_from": 2, "z_to": 4}], "pict
+   2 split_parts {"bricks": [14]}
+  RESULT: I put a blue 2×2 45° slope (3039) on the baseplate at x 12–14, z 2–4, four studs clear of the pods. Then I split it into two blue 2×1 45° slopes (3040b) on the same studs, side by side, each one stud wide.
+    
+    They fall the same way the 2×2 did, so they look like the original slope with a seam down the middle. Each has its own stud on top, and they stand straight on the baseplate.
+    
+    I named this spot "blue slope" so the app treats it as its own piece, apart from the pods. Undo puts the single 2×2 slope back.
+=== t10.jsonl: 2 calls, 8 s, error=False
+   1 render_model {"kind": "picture"}
+   2 job {"id": 1}
+  RESULT: I rendered the model. The picture shows:
+    
+    - **The wall:** the bottom row (three blue bricks and one red at the right end) with the red top row set half a brick along.
+    - **In front of it:** the eight red 1x1 plates, the yellow 1x4 brick and the pair of grey wing plates.
+    - **Not in it:** the Technic beam and blue pin, because they were never placed.
+    
+    It's saved at `/mnt/Projects/brickworks/bench/results/appux5-2026-11-06/mcp/run/xdg/godot/app_userdata/Brickworks/downloads/small_red_wall_render.png`.
+=== t1.jsonl: 2 calls, 10 s, error=False
+   1 clear_model {}
+   2 submit_design {"name": "Small red wall", "description": "Eight red 1x4 bricks in running bond: four in a row, four on top shifted half a brick (2 studs). On a plain grid floo
+  RESULT: I cleared the baseplate and built the wall. The app checked it and confirmed it holds together as one piece.
+    
+    - **Bottom row:** four red 1x4 bricks laid end to end, from stud 0 to stud 16.
+    - **Top row:** four more red 1x4 bricks shifted 2 studs (half a brick) along. Each one sits across a joint in the row below, so the bricks lock together like a real bond.
+    
+    Because of the shift, the top row sticks out 2 studs past the right end of the bottom row and stops 2 studs short at the left. That's how a bond looks when both rows have the same number of full bricks. If you'd like square ends, I can put a 1x2 brick at each end of the top row and use three 1x4s between them.
+    
+    It stands on a plain grid floor rather than a baseplate.
+=== t2.jsonl: 1 calls, 10 s, error=False
+   1 edit_model {"turn": [{"bricks": [7], "yaw": 15}]}
+  RESULT: I couldn't turn it. The app refused the change, so the wall is exactly as it was.
+    
+    **Why it doesn't work:** that brick (#7) sits on two studs of each of the two bricks below it. Turned 15° about its middle, its ends hit those studs, and the part check reports that overlap. A turned brick also can't grip studs laid out square, so nothing would join the two halves of the wall. The check says the model would split into two loose pieces, and the 3 bricks at the left end (x 0 to 4) come out as joined to nothing.
+    
+    **Ways to get a knocked-askew look with real parts:**
+    
+    1. **Pivot on one stud:** put a 1x1 round plate on one stud below and seat the brick on that single stud, turned 15°. This is the simplest option, but the brick stands one plate higher than its neighbours. It also leaves the left 2 bricks of the top row and the left 2 of the bottom row joined to nothing, unless the bottom row gets a tie as well.
+    2. **A turntable:** put a turntable plate in its place so the brick can sit at any angle. It's sturdier but adds more height.
+    3. **Leave the gap:** take the brick out of the bond and stand it on the ground in front of the wall, turned 15°, as if it had fallen out. It would be a separate piece, but it would read clearly as knocked loose.
+    
+    Which one would you like?
+=== t3.jsonl: 1 calls, 3 s, error=False
+   1 edit_model {"recolor": [{"bricks": [2, 3, 4], "color": 1}], "picture": true}
+  RESULT: I painted three bricks of the bottom row blue. You didn't say which three, so I took the first three from the left (#2, #3 and #4, studs 0 to 12). The fourth bottom brick, at the right end, and the whole top row are still red. Nothing moved, and the app says the wall still stands.
+    
+    If you meant a different three, such as the right-hand ones, I can swap them.
+=== t4.jsonl: 3 calls, 12 s, error=False
+   1 edit_model {"add": [{"part": "3020", "color": 4, "x": 0, "y": 0, "z": 2}], "assemblies": [{"name": "plate beside the wall", "x_from": 0, "x_to": 4, "z_from": 2, "z_to": 4}
+   2 split_parts {"bricks": [10]}
+   3 look_at_model {"where": {"z_from": 1.5}}
+  RESULT: Both steps are done.
+    
+    1. **The plate:** I put a red 2x4 plate on the ground in front of the wall, 4 studs along and 2 deep (x 0 to 4, z 2 to 4). I left one stud of space between it and the wall. Your floor is a plain grid, not a baseplate, so it sits directly on the ground. The app accepted it and said the model still stands.
+    2. **The split:** I split it into eight red 1x1 plates (#11 to #18), each on the same stud the 2x4 covered, in two rows of four.
+    
+    Nothing holds these eight plates to each other or to the wall, so they're eight loose pieces. The 2x4 was a separate piece too, so I named its area "plate beside the wall" for the app to treat it as meant to stand apart. If you want them held together, I can lay a plate over them or merge them back with one undo.
+=== t5.jsonl: 2 calls, 7 s, error=False
+   1 edit_model {"add": [{"part": "3710", "color": 14, "x": 5, "y": 0, "z": 2}, {"part": "3710", "color": 14, "x": 5, "y": 1, "z": 2}, {"part": "3710", "color": 14, "x": 5, "y"
+   2 merge_parts {"bricks": [19, 20, 21]}
+  RESULT: Both steps are done.
+    
+    1. **The stack:** I stacked three yellow 1x4 plates (#19 to #21) on the ground beside the red 1x1 plates, one stud along from them at x 5 to 9, z 2. The app said the model still stands.
+    2. **The merge:** I merged them into one yellow 1x4 brick (#22) in the same spot. It's the same height as the stack, since three plates make a brick.
+    
+    Like the red plates, the brick isn't joined to the wall. I named its area "yellow stack" so the app treats it as meant to stand apart. One undo turns it back into the three plates.
+=== t6.jsonl: 4 calls, 17 s, error=False
+   1 search_parts {"query": "wedge plate 3 x 6 left", "limit": 5}
+   2 attachment_points {"part": "54384", "x": 10, "y": 0, "z": 2}
+   3 edit_model {"add": [{"part": "54384", "color": 71, "x": 13, "y": 0, "z": 2}], "assemblies": [{"name": "wing pair", "x_from": 10, "x_to": 16, "z_from": 2, "z_to": 8}], "pic
+   4 mirror_parts {"bricks": [23], "copy": true, "across": 13}
+  RESULT: I added the pair of grey wing plates in front of the wall.
+    
+    - **Left wing:** a light bluish grey 3x6 left-hand wing plate (54384, #23), flat on the ground at x 13 to 16, z 2 to 8.
+    - **Mirror copy:** I mirrored a copy across x = 13 and the app swapped it for the right-hand part (54383, #24). It sits at x 10 to 13. Their straight edges meet down the middle and they taper out to each side, like a pair of plane wings.
+    
+    I used light bluish grey, which is the light grey LEGO® parts are made in today. The older light grey would need recolouring if that's what you meant.
+    
+    The two wings only touch side by side, so nothing joins them to each other or to the wall. I named the area "wing pair" so the app treats them as meant to stand apart. A plate laid across both would join them.
+=== t7.jsonl: 6 calls, 30 s, error=False
+   1 search_parts {"query": "technic beam 7", "limit": 4}
+   2 search_parts {"query": "technic pin blue friction", "limit": 5}
+   3 attachment_points {}
+   4 attachment_points {"parts": [{"part": "32524", "x": 19, "y": 0, "z": 0, "face": "+z"}, {"part": "32524", "x": 19, "y": 0, "z": 0, "face": "+x"}, {"part": "6558"}]}
+   5 edit_model {"add": [{"part": "32524", "color": 0, "x": 19, "y": 0, "z": 0, "face": "+z", "name": "beam"}, {"part": "6558", "color": 1, "attach": {"to": "beam.socket[1]", "
+   6 check_design {"edit": {"add": [{"part": "32524", "color": 0, "x": 19, "y": 0, "z": 0, "face": "+x", "rot": 1, "name": "beam"}], "assemblies": [{"name": "upright beam", "x_fr
+  RESULT: The beam isn't in the model: the app refused it both times, so nothing changed.
+    
+    **What went wrong:** a Technic beam 7 standing on its end rests only on its rounded tip, which is barely any footing at all. In the app's balance check, it tips over by itself. I tried it standing with the holes facing along z (with the blue pin in its second hole) and again turned the other way without the pin, and both fell. The pin didn't cause it, the beam simply can't stand upright alone. Also, the wall has no pin holes, so the beam can't be pinned to it.
+    
+    **Ways to make it stand:**
+    
+    1. **A Technic brick footing:** lay a 1x2 Technic brick with a hole on the ground beside the wall, and pin the beam's bottom hole to the brick's hole. The beam then stands upright held by that pin, and the blue pin goes in its second hole as you asked.
+    2. **Built into the wall:** swap the end brick of the wall for a Technic brick 1x4 with holes and pin the beam to its side. That would make the beam part of the wall too.
+    3. **Lying flat:** lay the beam flat on the ground next to the wall, with the blue pin pushed up into its second hole. It's stable but not upright.
+    
+    For the blue pin I'd use 6558, the long blue 3L friction pin. If you meant the blue axle pin (43093), I can use that instead. Which footing would you like?
+=== t8.jsonl: 0 calls, 3 s, error=False
+  RESULT: There isn't an angle to measure, because the beam was never placed. Both tries were refused, so the model has no beam.
+    
+    In the version I tried with the pin (beam upright, facing +z), the holes ran along z and the wall's long side runs along x. That's **90°**: the holes would have pointed straight out from the wall's face, so the blue pin would have stuck out towards or away from the wall.
+    
+    Once one of the footings is in and the beam stands, I can measure the real angle with the app's measuring tool.
+=== t9.jsonl: 5 calls, 17 s, error=False
+   1 edit_steps {}
+   2 edit_steps {"op": "next", "bricks": [6, 7, 8, 9]}
+   3 edit_steps {}
+   4 edit_steps {"op": "new", "bricks": [6, 7, 8, 9]}
+   5 edit_steps {}
+  RESULT: The top row is now the last step of the build, but that's two steps later, not three.
+    
+    **The order now:**
+    
+    | Step | Parts |
+    |---|---|
+    | 1 | Left bottom brick #2 and three red 1x1 plates |
+    | 2 | Four red 1x1 plates |
+    | 3 | Bottom bricks #3 and #4, the last 1x1 plate and the yellow brick |
+    | 4 | Right bottom brick #5 |
+    | 5 | The two wing plates |
+    | 6 | The whole top row, #6 to #9 |
+    
+    **Why not three:** before the change the top row was split across two steps. Three of its bricks were in step 4 and the right end brick (#9) was in step 6. Step 4 plus three would be step 7, and the build only has six steps, so there's nothing for them to come after. They're now together in the final step, after everything else.
+    
+    If you want the gap exactly, I can split an earlier step in two, for example putting the yellow brick in a step of its own. That would place the top row three steps after the step it started in.
+=== u1.jsonl: 1 calls, 13 s, error=False
+   1 view_board {"views": ["front", "left", "top"], "where": {"x_from": 0, "x_to": 8, "y_from": 0, "y_to": 6, "z_from": 0, "z_to": 6}}
+  RESULT: Yes, the two pods are true mirror images of each other across the line where their plates meet, at x = 4. I checked the three views and the parts' exact positions.
+    
+    - **From the front:** the two halves match exactly. A headlight brick with its cheese slope stands at each outer corner, and the grey wings meet in a point at the middle.
+    - **From the top:** the wings form a symmetrical V. Each wing's straight edge is on the outside (x 2 and x 6), and both taper towards the join. The slopes and headlight bricks sit in matching corners: back-left and front-left on one pod, back-right and front-right on the other.
+    - **From the left:** the two pods line up exactly one behind the other, with the same heights and front-to-back positions. The slope falls towards the back and the cheese slope towards the front on both. The blue slope also shows in this view, but only because it is further along in the same line of sight; it isn't part of either pod.
+    
+    **The positions match:** each part on the right-hand pod sits where its partner would land if reflected across x = 4. The plate is at x 0–4 and x 4–8, the wing at x 2–4 and x 4–6, and the slope, headlight brick and cheese slope at x 0–1 and x 7–8. The slopes and headlight bricks are at the same front and back spots on both.
+    
+    **The parts:** the wing is the only part made in left and right versions, and it has been swapped: 41770a on the left pod, 41769a on the right. The plate, 45° slope, headlight brick and cheese slope look the same from ei
+=== u2.jsonl: 1 calls, 6 s, error=False
+   1 view_board {"views": ["corner"], "highlight": [5, 11]}
+  RESULT: I made a picture from the front corner with just the two headlight bricks picked out in their own red and outlined, and everything else see-through.
+    
+    **#5, the left pod's headlight brick:** front-left corner of the left pod, at x 0–1, z 5–6. It stands on the red plate (y 1 to 4 plates up), with its headlight facing forward.
+    
+    **#11, the right pod's headlight brick:** front-right corner of the right pod, at x 7–8, z 5–6. It also stands on the plate (y 1 to 4) and faces forward.
+    
+    They sit at the same height and depth, one at each outer front corner of the pair, mirrored across the join at x = 4. Each carries a red cheese slope on top, drawn faded with the rest of the model in this view.
+=== u3.jsonl: 1 calls, 8 s, error=False
+   1 booklet_page {"page": 2}
+  RESULT: Page 2 has the first two steps of the instructions, one above the other on a pale blue page.
+    
+    **Step 1 (top half)**
+    - **Parts box (top left):** 2× red 4×6 plate, 1× light grey 2×4 wing plate, and 1× light grey 2×4 wing plate of the other hand.
+    - **Colour guide:** under the big step number "1", a small label lists Red and Light Bluish Grey.
+    - **Picture:** the two red plates side by side with the grey wings on them. One wing floats above the plate with a red arrow pointing down to where it goes; that's the pull-out I added. The other wing is already in place. The new parts are outlined in orange.
+    
+    **Step 2 (bottom half)**
+    - **Parts box:** 2× blue 2×1 45° slope.
+    - **Colour guide:** under "2", a label reads Blue.
+    - **Picture:** the plates and both wings, now seated, with the two blue slopes standing side by side off to the right. The slopes are outlined in orange as the new parts.
+    
+    **Along the bottom:** the page number "2" in the left corner, and a progress bar that is about halfway filled. Steps 3 and 4 are on page 3.
+    
+    From the drawing alone I can't tell for sure which pod's wing is the floating one. I set it up on the left pod's wing (41770a).
+=== u4.jsonl: 2 calls, 9 s, error=False
+   1 edit_model {"add": [{"part": "3003", "color": 71, "x": 0, "y": 0, "z": 10}], "assemblies": [{"name": "grey block", "x_from": 0, "x_to": 8, "z_from": 10, "z_to": 16}], "pic
+   2 pattern_parts {"bricks": [17], "columns": 4, "rows": 3, "levels": 2, "picture": true}
+  RESULT: I laid a block of 24 light grey 2×2 bricks (3003) in front of the pods, at x 0–8, z 10–16, two bricks high (6 plates).
+    
+    - **Layout:** 4 columns across, 3 rows deep and 2 levels, with each brick touching its neighbours and no gaps. That makes a solid block 8 studs across, 6 studs deep and 2 bricks tall.
+    - **Distance from the rest:** there's a 4-stud gap between the block and the pods, and it sits well clear of the blue slopes.
+    
+    The bricks are stacked straight up, each on the one below, so the block is really 12 two-brick columns side by side. Nothing locks one column to the next, and it would come apart if lifted. If you want it to hold together as one piece, I can offset the top level by one stud, as in a brick wall, or put plates across the top.
+=== u5.jsonl: 1 calls, 8 s, error=False
+   1 export_model {"format": "pickabrick"}
+  RESULT: I've made the Pick a Brick file for the LEGO® Pick a Brick shop. It covers all 36 pieces as 8 lines, one for each part and colour:
+    
+    `/mnt/Projects/brickworks/bench/results/appux5-2026-11-06/mcp/run/xdg/godot/app_userdata/Brickworks/downloads/little_side_pod_pickabrick.csv`
+    
+    **Parts it could not include: none.** Every part in the model had a known LEGO® element number, so nothing was left out. The 8 lines are:
+    
+    | Part | Colour | Qty |
+    |---|---|---|
+    | Plate 4×6 (3032) | Red | 2 |
+    | Wing plate 2×4, left (41770) | Light Bluish Grey | 1 |
+    | Wing plate 2×4, right (41769) | Light Bluish Grey | 1 |
+    | Slope 45° 2×1 (3040) | Red | 2 |
+    | Slope 45° 2×1 (3040) | Blue | 2 |
+    | Brick 1×1 with headlight (4070) | Red | 2 |
+    | Cheese slope 1×1 (54200) | Red | 2 |
+    | Brick 2×2 (3003) | Light Bluish Grey | 24 |
+    
+    Having an element number doesn't mean the shop has it in stock right now. Pick a Brick will show anything it's out of when you upload the file. The file is only saved on your computer; you upload it to the shop yourself.
+=== u6.jsonl: 1 calls, 5 s, error=False
+   1 save_model {"name": "Pods.ldr"}
+  RESULT: I saved the model as **Pods.ldr** with your other models, so File, Open will list it:
+    
+    `/mnt/Projects/brickworks/bench/results/appux5-2026-11-06/mcp/run/xdg/godot/app_userdata/Brickworks/models/Pods.ldr`
+    
+    It saved fine, but the app noted the model is in 16 separate pieces that nothing joins:
+    - the two pods (2 pieces), which touch but aren't connected;
+    - the two blue 2×1 slopes (2 pieces), which stand side by side without joining;
+    - the grey block (12 pieces), whose stacked columns aren't locked to each other.
+    
+    That's fine for a scene on the baseplate. But they'll come apart if you pick them up, so I can join any of them if you'd like.
+=== u7.jsonl: 6 calls, 13 s, error=False
+   1 clear_model {}
+   2 search_parts {"query": "plate 16 x 16", "limit": 3}
+   3 edit_model {"add": [{"part": "91405", "color": 2, "x": 0, "y": 0, "z": 0}], "picture": false}
+   4 open_model {"name": "Pods", "into": true, "x": 1, "z": 0}
+   5 check_design {"edit": {}}
+   6 view_model {"from": "corner"}
+  RESULT: I cleared the baseplate, put down a green 16×16 plate (91405), and brought in your saved Pods model whole, standing on top of it.
+    
+    - **Where it sits:** Pods is one sub-assembly, "Pods#1", with all 36 of its parts. It stands on the plate's studs (1 plate up), shifted 1 stud in from the left so the 14-stud width sits in the middle across. Front to back it covers all 16 studs, so the grey block runs right to the plate's front edge.
+    - **Layout on the plate:** the two red pods are at the back, the blue slopes are to the back right, and the grey block is at the front left.
+    - **Steps:** its 5 build steps came with it, so the booklet builds it in the same order after the green plate.
+    
+    The app checked it and it all holds together. Everything now stands on the green plate's studs, so the model is one connected piece. This fixes the loose pieces from before: the pods, the blue slopes and the grey block's columns are all held by the plate underneath. The saved Pods.ldr file hasn't changed; this is a new model on the baseplate that isn't saved yet.
+=== u8.jsonl: 0 calls, 4 s, error=False
+  RESULT: The model is 16 studs across, 16 studs deep and 7 plates tall, which is about **12.8 × 12.8 × 2.2 cm** (about 2.4 cm counting the studs on top). The green 16×16 plate sets the width and depth. The height is the plate plus the two-brick grey block on it, which is the tallest part.
+    
+    The app's balance check weighs it at about **80 g** built, so roughly as heavy as a small apple. It has 37 parts in all.
+=== u9.jsonl: 11 calls, 101 s, error=False
+   1 clear_model {}
+   2 search_parts {"query": "train track 9V", "limit": 10}
+   3 attachment_points {"parts": [{"part": "74747", "x": 0, "y": 0, "z": 0}, {"part": "74746", "x": 0, "y": 0, "z": 0}]}
+   4 check_design {"bricks": [{"part": "74746", "color": 72, "x": 0, "y": 0, "z": 0, "name": "s1"}, {"part": "74746", "color": 72, "name": "s2", "attach": {"to": "s1.fixed[1]", "
+   5 edit_model {"add": [{"part": "74746", "color": 72, "x": 0, "y": 0, "z": 0}], "picture": false}
+   6 check_design {"edit": {"add": [{"part": "74746", "color": 72, "attach": {"to": "#2.fixed[3]", "by": "fixed[0]"}}]}}
+   7 submit_design {"name": "9V train track oval", "description": "A closed oval of 9V train track: 16 curves (two half circles of 8, radius 40 studs) joined by two straights on e
+   8 view_model {"from": "top"}
+   9 look_at_model {"where": {"x_from": 60, "x_to": 100, "z_from": 0, "z_to": 12}}
+  10 measure {"from": "#5.fixed[1]", "to": "#8.fixed[2]"}
+  11 measure {"from": "#5.fixed[3]", "to": "#8.fixed[0]"}
+  RESULT: I cleared the baseplate and laid a closed oval of 9V train track: 20 pieces in Dark Gray, the colour real 9V track came in.
+    
+    - **The ends:** each end is a half circle of 8 curved pieces (74747), 16 curves in all. Each curve turns 22.5°, at the standard 9V radius of 40 studs to the track's centre line.
+    - **The sides:** two straights (74746) along each long side, 4 in all, each 16 studs long.
+    - **Size:** about 122 × 90 studs, roughly 98 × 72 cm, and 3 plates high. That's too big for one baseplate, so it's on a grid floor, like a track laid out on a table or the floor.
+    
+    **How I checked it:** joined connector to connector, the app turned each piece 90° wrong. So I worked out every curve's position and angle by hand and placed them directly. From above, the loop runs without breaks. I measured where the first curve meets the straight before it: both rail-end connectors sit at exactly the same point, 0 mm apart. I checked that one join; the loop is symmetrical, so the others should line up the same way.
+    
+    Both 9V track pieces are retired; the last ones were in sets in 2006. To build it for real you'd need them second-hand. I can lengthen the straights, add a switch for a siding, or swap in Powered Up track.
