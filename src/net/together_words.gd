@@ -98,8 +98,9 @@ static func dictionary(words: String, what: String) -> Dictionary:
 
 ## Said in the log: the other side's [param what] was left out, and why.
 static func left_out(what: String, why: String) -> void:
-	var line: String = "Build together: left out the other side's %s: %s" % [what,
-		why.c_escape().left(200)]
+	# The other side's words are in it: no control character of theirs reaches the log.
+	var line: String = _control.sub("Build together: left out the other side's %s: %s" % [what,
+		why.left(200)], "?", true)
 	# Once each: the same words are put again every few seconds (Together._heal).
 	if _said.has(line):
 		return

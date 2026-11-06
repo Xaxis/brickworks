@@ -1562,7 +1562,7 @@ func _add_made(part: String, words: String) -> void:
 		var dropped := PackedStringArray()
 		var files: Dictionary = TogetherWords.made_part(part, TogetherWords.dictionary(words,
 			"made part"), dropped)
-		TogetherWords.left_out_each("made part %s" % part.left(80).c_escape(), dropped)
+		TogetherWords.left_out_each("made part %s" % part.left(80), dropped)
 		if not files.is_empty():
 			CustomParts.add(builder.library, files[part + ".dat"], part, false, files)
 	for uid: String in _awaiting.keys():
