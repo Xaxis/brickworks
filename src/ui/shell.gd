@@ -42,6 +42,8 @@ var library_dialog: LibraryDialog
 var see_inside: SeeInside
 ## View, Stress: src/ui/stress_view.gd.
 var stress: StressView
+## View, Stud directions: src/ui/stud_map.gd (APP_UX5 seeing2).
+var stud_map: StudMap
 ## File, Versions…: src/ui/versions_dialog.gd.
 var versions: VersionsDialog
 ## Compare with a save, from Versions… or File, Compare with…:
@@ -127,7 +129,7 @@ const MENUS: Array = [
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-", "panel_parts",
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
@@ -259,6 +261,15 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	stress.panel = StressPanel.new()
 	stress.panel.view = stress
 	add_child(stress)
+	# View, Stud directions (APP_UX5 seeing2): its legend over the model's
+	# top left corner while it is on.
+	stud_map = StudMap.new()
+	stud_map.world = world
+	stud_map.library = library
+	stud_map.scenery = store.scenery
+	stud_map.say = bar.say
+	add_child(stud_map)
+	over_model.add_child(stud_map.legend)
 	# Sections: suggested, broken out, exploded, evaluated (src/assembly/sections.gd).
 	sections = SectionsUi.new()
 	sections.shell = self
@@ -1318,6 +1329,15 @@ func _define() -> void:
 		"Every part tinted by how near its weakest joint is to letting go: red past its "
 		+ "studs' working load, amber within twice it")
 	_ticked("stress", func() -> bool: return stress.on)
+	# View, Stud directions (APP_UX5 seeing2). It and Stress draw with one
+	# layer, so turning it on turns Stress off, and Stress on turns it off.
+	_add("stud_map", "Stud directions", 0, func() -> void:
+		if not stud_map.on and stress.on:
+			stress.set_on(false)
+		stud_map.set_on(not stud_map.on),
+		func() -> bool: return stud_map.on or world.brick_count() > store.scenery.size(),
+		"Every part coloured by where its studs point: up, down, or to the front, back, left or right")
+	_ticked("stud_map", func() -> bool: return stud_map.on)
 	# Shift: Q alone takes the last part back into hand (Tools, Place).
 	_add("turn_left", "Turn the model left", SHIFT | KEY_Q,
 		func() -> void: app.call("_turn_model", -1), something)

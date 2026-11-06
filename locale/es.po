@@ -11226,3 +11226,44 @@ msgstr "Lo que encaja con %s, con «%s», lo mejor primero"
 
 msgid "Nothing that fits %s has “%s”"
 msgstr "Nada de lo que encaja con %s tiene «%s»"
+
+# View, Stud directions (APP_UX5 seeing2): each part coloured by where its studs point, its legend
+
+msgid "Stud directions"
+msgstr "Dirección de las espigas"
+
+msgid "Every part coloured by where its studs point: up, down, or to the front, back, left or right"
+msgstr "Cada pieza coloreada según hacia dónde apuntan sus espigas: arriba, abajo, o hacia delante, atrás, la izquierda o la derecha"
+
+msgid "Turn Stud directions off"
+msgstr "Desactivar la dirección de las espigas"
+
+msgid "Studs up"
+msgstr "Espigas hacia arriba"
+
+msgid "Studs down"
+msgstr "Espigas hacia abajo"
+
+msgid "Studs to the front"
+msgstr "Espigas hacia delante"
+
+msgid "Studs to the back"
+msgstr "Espigas hacia atrás"
+
+msgid "Studs to the left"
+msgstr "Espigas a la izquierda"
+
+msgid "Studs to the right"
+msgstr "Espigas a la derecha"
+
+msgid "Studs on two sides or more"
+msgstr "Espigas en dos lados o más"
+
+msgid "No studs"
+msgstr "Sin espigas"
+
+msgid "stud directions: each part coloured by where its studs point"
+msgstr "dirección de las espigas: cada pieza coloreada según hacia dónde apuntan sus espigas"
+
+msgid "stud directions off"
+msgstr "dirección de las espigas desactivada"

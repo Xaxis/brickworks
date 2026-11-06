@@ -1181,6 +1181,13 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "stud directions",
+      "entry": "src/ui/stud_map.gd",
+      "reach": "tools/probe.sh seeing2   (by hand: View, Stud directions; a session: view_board studs=true)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "see inside in a browser",
       "entry": "tools/web/see_inside_flow.mjs",

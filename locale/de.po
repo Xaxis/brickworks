@@ -11226,3 +11226,44 @@ msgstr "Was zu %s passt, mit „%s“, das Beste zuerst"
 
 msgid "Nothing that fits %s has “%s”"
 msgstr "Nichts, was zu %s passt, hat „%s“"
+
+# View, Stud directions (APP_UX5 seeing2): each part coloured by where its studs point, its legend
+
+msgid "Stud directions"
+msgstr "Noppenrichtungen"
+
+msgid "Every part coloured by where its studs point: up, down, or to the front, back, left or right"
+msgstr "Jedes Teil danach eingefärbt, wohin seine Noppen zeigen: nach oben, nach unten oder nach vorn, hinten, links oder rechts"
+
+msgid "Turn Stud directions off"
+msgstr "Noppenrichtungen ausschalten"
+
+msgid "Studs up"
+msgstr "Noppen nach oben"
+
+msgid "Studs down"
+msgstr "Noppen nach unten"
+
+msgid "Studs to the front"
+msgstr "Noppen nach vorn"
+
+msgid "Studs to the back"
+msgstr "Noppen nach hinten"
+
+msgid "Studs to the left"
+msgstr "Noppen nach links"
+
+msgid "Studs to the right"
+msgstr "Noppen nach rechts"
+
+msgid "Studs on two sides or more"
+msgstr "Noppen an zwei Seiten oder mehr"
+
+msgid "No studs"
+msgstr "Keine Noppen"
+
+msgid "stud directions: each part coloured by where its studs point"
+msgstr "Noppenrichtungen: jedes Teil danach eingefärbt, wohin seine Noppen zeigen"
+
+msgid "stud directions off"
+msgstr "Noppenrichtungen aus"

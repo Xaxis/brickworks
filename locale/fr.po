@@ -11226,3 +11226,44 @@ msgstr "Ce qui va avec %s, avec « %s », le meilleur d'abord"
 
 msgid "Nothing that fits %s has “%s”"
 msgstr "Rien de ce qui va avec %s n'a « %s »"
+
+# View, Stud directions (APP_UX5 seeing2): each part coloured by where its studs point, its legend
+
+msgid "Stud directions"
+msgstr "Orientation des tenons"
+
+msgid "Every part coloured by where its studs point: up, down, or to the front, back, left or right"
+msgstr "Chaque pièce colorée selon l'orientation de ses tenons : vers le haut, vers le bas, ou vers l'avant, l'arrière, la gauche ou la droite"
+
+msgid "Turn Stud directions off"
+msgstr "Désactiver l'orientation des tenons"
+
+msgid "Studs up"
+msgstr "Tenons vers le haut"
+
+msgid "Studs down"
+msgstr "Tenons vers le bas"
+
+msgid "Studs to the front"
+msgstr "Tenons vers l'avant"
+
+msgid "Studs to the back"
+msgstr "Tenons vers l'arrière"
+
+msgid "Studs to the left"
+msgstr "Tenons vers la gauche"
+
+msgid "Studs to the right"
+msgstr "Tenons vers la droite"
+
+msgid "Studs on two sides or more"
+msgstr "Tenons sur deux côtés ou plus"
+
+msgid "No studs"
+msgstr "Sans tenons"
+
+msgid "stud directions: each part coloured by where its studs point"
+msgstr "orientation des tenons : chaque pièce colorée selon l'orientation de ses tenons"
+
+msgid "stud directions off"
+msgstr "orientation des tenons désactivée"
