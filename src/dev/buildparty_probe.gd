@@ -166,8 +166,20 @@ func _run() -> void:
 	print("\n1. Build together, on phone A")
 	var named: Dictionary = view.controls_by_name()
 	_ok(named.has("view_together") and (named["view_together"] as Control).is_visible_in_tree(),
-		"Build together is offered beside Build it (%s)" % ("the pill beside the big Build it"
+		"Build together is offered with Build it (%s)" % ("the pill over the big Build it"
 			if bool(view.page_state()["party"].get("pill", false)) else "on the bar"))
+	# Nothing it covers, nor anything over it: the big Build it, the
+	# comments' count, the bar's buttons.
+	var crossed := PackedStringArray()
+	if named.has("view_together"):
+		var own: Rect2 = (named["view_together"] as Control).get_global_rect()
+		for other_name: String in named:
+			var other_control: Control = named[other_name]
+			if other_name != "view_together" and other_control.is_visible_in_tree() \
+					and own.intersects(other_control.get_global_rect()):
+				crossed.append(other_name)
+	_ok(crossed.is_empty(), "Build together overlaps none of the viewer's %d other controls%s" % [named.size() - 1,
+		"" if crossed.is_empty() else ": " + ", ".join(crossed)])
 	if not named.has("view_together"):
 		await _close(main)
 		_finish()
@@ -239,7 +251,7 @@ func _run() -> void:
 	_ok(_pages_hold_only(theirs, shares[1], ground, null),
 		"and B's %d pages only B's" % (theirs.last() - 1))
 	var said: Dictionary = main.call("build_state")
-	_ok(bool(mode.by_part) and str(said["party"].get("chips", [])).contains("Leo 0 of"),
+	_ok(bool(mode.by_part) and (said["party"].get("chips", []) as Array).has("Leo"),
 		"a part at a time, everyone along the top: %s" % [said["party"].get("chips", [])])
 	await _shot("3_dealt")
 

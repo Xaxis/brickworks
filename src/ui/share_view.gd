@@ -826,9 +826,7 @@ func _lay_out() -> void:
 		if not _place.visible and not _pill_shown() and not _play.visible and not _party_card.visible:
 			set_process(false)
 		return
-	# Build together's pill beside it, the two together in the middle.
-	var beside: float = _party_pill.size.x + _big.size.y * 0.2 if _party_pill.visible else 0.0
-	var spot := Vector2((size.x - _big.size.x - beside) * 0.5, bottom - _big.size.y - _big.size.y * 0.35)
+	var spot := Vector2((size.x - _big.size.x) * 0.5, bottom - _big.size.y - _big.size.y * 0.35)
 	if _big.position != spot:
 		_big.position = spot
 	_lay_party_pill()
@@ -956,7 +954,7 @@ func page_state() -> Dictionary:
 # -- Build together: a build party (APP_UX5 buildparty, 2026-11-06) ----------
 #
 # Several phones build this model together (BuildParty): Build together
-# beside Build it (on a phone, a pill beside the big one) opens a card over
+# beside Build it (on a phone, a pill over the big one) opens a card over
 # the model. Start a build gives a four-letter code; on another phone, Build
 # together, the code and Join. Everyone's name is in the card, each in its
 # seat's colour, and the phone that started deals the model out with Start
@@ -1177,7 +1175,8 @@ func _say_party() -> void:
 		elif dealt > 0 and bool(one.get("finished", false)):
 			words.text = "%s is done" % who
 		else:
-			words.text = ("%s %d of %d" % [who, int(one.get("done", 0)), int(one.get("of", 0))]) if dealt > 0 else who
+			words.text = ("%s %d of %d" % [who, int(one.get("done", 0)), int(one.get("of", 0))]) \
+				if dealt > 0 and int(one.get("of", 0)) > 0 else who
 		words.add_theme_font_size_override("font_size", roundi((15.0 if _narrow else 13.0) * _party_pt))
 		row.add_child(words)
 		_party_seats.add_child(row)
@@ -1220,7 +1219,7 @@ func _fit_party() -> void:
 	_party_trouble.custom_minimum_size = _party_words.custom_minimum_size
 	_party_card.custom_minimum_size = Vector2(wide, 0.0)
 	_party_card.reset_size()
-	# The pill beside the big Build it: a word smaller, outlined, not lit.
+	# The pill over the big Build it: a word smaller, outlined, not lit.
 	for face: String in ["normal", "hover", "pressed"]:
 		var outlined := StyleBoxFlat.new()
 		outlined.bg_color = Color(0.09, 0.10, 0.12, {"normal": 0.88, "hover": 0.95, "pressed": 1.0}[face])
@@ -1253,8 +1252,10 @@ func _lay_party(bottom: float) -> void:
 func _lay_party_pill() -> void:
 	if not _party_pill.visible:
 		return
-	var spot := Vector2(_big.position.x + _big.size.x + _big.size.y * 0.2,
-		_big.position.y + (_big.size.y - _party_pill.size.y) * 0.5)
+	# Over the big Build it, in the middle: beside it, the two reached over
+	# the comments' count at the left (390 points across).
+	var spot := Vector2((size.x - _party_pill.size.x) * 0.5,
+		_big.position.y - _party_pill.size.y - _big.size.y * 0.2)
 	if _party_pill.position != spot:
 		_party_pill.position = spot
 

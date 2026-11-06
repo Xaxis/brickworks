@@ -812,6 +812,9 @@ static func _chip_words(one: Dictionary) -> String:
 		return "%s has left" % who
 	if bool(one.get("finished", false)):
 		return "%s is done" % who
+	# Not heard from since the deal: the name alone, not "0 of 0".
+	if int(one.get("of", 0)) == 0:
+		return who
 	return "%s %d of %d" % [who, int(one.get("done", 0)), int(one.get("of", 0))]
 
 

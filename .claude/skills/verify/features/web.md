@@ -3020,7 +3020,7 @@ plan with Claude as the client.
   the one before pale.
 - `build party` (`src/net/build_party.gd`, APP_UX5 buildparty, 2026-11-06):
   **Build together** on a shared link's viewer (beside Build it on the bar;
-  on a phone a pill beside the big Build it, `view_together`) opens a card:
+  on a phone a pill over the big Build it, `view_together`) opens a card:
   an optional name, **Start a build** (`party_start`) gives a four-letter
   code ("Code: K7Q2"; no vowels, no 0/O/1/I), and the others, on the same
   link, type it and **Join** (`party_code`, `party_join`); a link with
