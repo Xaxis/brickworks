@@ -800,6 +800,12 @@
 					"tip": "Every part tinted by how near its weakest joint is to letting go: red past its studs' working load, amber within twice it"
 				},
 				{
+					"name": "stud_map",
+					"words": "Stud directions",
+					"key": "",
+					"tip": "Every part coloured by where its studs point: up, down, or to the front, back, left or right"
+				},
+				{
 					"line": true
 				},
 				{
@@ -1764,6 +1770,7 @@
 		"cut_shrink": "",
 		"xray": "I",
 		"stress": "",
+		"stud_map": "",
 		"turn_left": "shift-Q",
 		"turn_right": "shift-E",
 		"panel_parts": "",

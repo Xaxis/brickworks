@@ -335,7 +335,8 @@ func _measure() -> void:
 	await _frames(5)
 	var one: int = _put("32524", 0, Vector3(0, 100, 0))
 	var other: int = _put("32524", 0, Vector3(200, 100, 60), Basis(Vector3.RIGHT, deg_to_rad(37.0)))
-	var ruler: Measure = _main.get("_measure")
+	# Made as it is first taken out (Later), as the window's U does.
+	var ruler: Measure = _main.call("_make_measure")
 	ruler.toggle()
 	var ends: Array = []
 	for brick_id: int in [one, other]:
