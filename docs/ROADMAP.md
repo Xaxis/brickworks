@@ -221,7 +221,16 @@ plainer — see the first lever below.
        41, 50 and 15. The misses shrank to a stud along a run, a course off,
        or the other column. So the next lever is the picture: the joints
        of the course below, or a run's length in studs;
-     - an attach step that shows where the sub-assembly meets the model;
+     - an attach step that shows where the sub-assembly meets the model.
+       **Tried, NO-GO** (attachstep, 2026-11-05). In place, a sub-assembly
+       hides the studs it lands on: 4% are in view over the proof sample.
+       Drawn lifted off its place with a red arrow down, 99% were, but
+       builders put it where it was drawn. The seat back fell from 5 of 6
+       right in three runs to 0 in two (6 plates high, "about how the
+       picture looks"). The nose stayed 0 of 22, now 4 plates low, not
+       high. Next: keep it drawn in place and show the landing another way,
+       see-through or marked the step before. The change is in
+       bench/results/attachstep-2026-11-05/lift.patch;
      - black parts drawn with their edges. **Tried, NO-GO** (blackedges,
        2026-11-05). Over 7 runs each way, right parts fell from 73 to 42 of
        96. Wrong parts rose from 8 to 30. Drawn with its edges, the dish

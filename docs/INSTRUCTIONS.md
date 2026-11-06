@@ -2586,6 +2586,91 @@ built, and the run was rerun (`c1-gpu-stall`).
 ![After, page 259: a course a step](instructions/castle-courses-after-page259.webp)
 
 
+## An attach step drawn lifted off its place (2026-11-05, attachstep): NO-GO
+
+The second cause above: 7140's nose (page 35) and seat back (page 36) went
+on in the wrong place. Tried here: the attach step draws the sub-assembly
+lifted off its place, as a LEGO® booklet does, with a red arrow down to
+where it lands. Builders placed it worse, so nothing of it was kept. The
+change is in `bench/results/attachstep-2026-11-05/lift.patch`, with the
+runs.
+
+**Why those pages lose the sub-assembly's place.** An attach step draws the
+sub-assembly where it goes, outlined, with the callout's arrow on it.
+
+- Drawn there, it covers the studs and holes it lands on. Over the proof
+  sample's attach steps (1,445 sub-assemblies put on), 4% of those studs
+  and holes are in view. On 7140 none are.
+- So the page shows where the sub-assembly ends up, but not what it stands
+  on. The builder must judge its height and depth from its outline.
+- The misses are whole sub-assemblies, a few plates or studs off (below).
+
+**The change tried.**
+
+- Each sub-assembly put on is drawn lifted off its place along the line
+  most of its connectors share with the model (Exact.connections), to the
+  free side.
+- It goes 2 studs at least and 6 at most: until 90% of its landing studs
+  and holes are in view from the step's angle, and never through a part.
+- A red arrow runs from the lifted sub-assembly to where it lands, and the
+  callout's arrow points at the lifted one.
+- On the proof sample 873 of the 1,445 were lifted; the rest meet the
+  model by nothing exact, or have no room. The landing in view went from
+  4% to 99%. On 7140, 7 of 16 were lifted, 100% in view.
+- Of 7140's pages only 35, 36, 58 and 59 changed. Page 9's attach step was
+  not lifted, so its runs are controls.
+
+![7140 pages 35 and 36, before and after](instructions/7140-attach-lifted.webp)
+
+**steps_score** on the held-out sample did not move on any measure (ours:
+tau 0.358, together 23.5%, hidden 6.0%). It measures the steps, not their
+pictures; the change touches only the pictures.
+
+**What a builder did.** booklet_follow, from two locked snapshots whose
+apps differ only by this change. The m and p runs built pages 30-36 on a
+model seeded with pages 2-29 built right, twice each way. Where a sub-assembly
+went is in plates up and studs along the ship.
+
+| run | page 35, nose (22) | page 36, seat back (6) |
+|---|---|---|
+| booklettest | 0 right; 12 plates low, 9 studs along | 0 right |
+| before, 35-36 alone | 10 right; the rest 1-6 studs along | 5 right |
+| before, m1 | 0 right; 4 plates high, 2 studs along | 5 right |
+| before, m2 | 0 right; 4 plates high, 1 stud along | 5 right |
+| after, p1 | 0 right; 4 plates low, 2 studs the other way | 0 right; 6 plates high |
+| after, p2 | 0 right; 4 plates low, 2 studs the other way | 0 right; 2 plates low, 2.5 studs along |
+
+- Pages 2-13 came out the same byte for byte, so their three runs (two
+  before, one after) measure the spread alone. They put 51, 55 and 38 of
+  73 parts right or near. Page 9 misplaced 2, 5 and 12 of its 19.
+- The nose was lost both ways. The seat back was 5 of 6 right in this
+  unit's three before runs and 0 in both after runs, which is beyond that
+  spread.
+
+**Why it did not help.**
+
+- The builder puts the sub-assembly where it is drawn. Lifted, the seat
+  back went on 6 plates high: "about how the picture looks".
+- From the booklet's angle, a lift up and a move back draw alike. Lifted
+  up, the nose went on 4 plates low: "Page 35 draws the nose beside the
+  fuselage."
+- In this booklet a red arrow already means a new part goes here: it points
+  at small parts in place. Here it pointed at an empty landing.
+- Seeing the landing is not enough. The builder must still match the
+  sub-assembly to it across the gap, and the gap is what it misjudged.
+
+**What would fix it** keeps the sub-assembly drawn where it goes, and shows
+the landing another way: the sub-assembly drawn see-through over it, or the
+landing marked on the step before. Measure with more runs: one builder can
+misplace 10 parts more than another on the same page.
+
+**Kept from this unit:** booklet_mcp relays a call that became an app job
+(a picture waiting for the GPU) by waiting on the job. The builder has no
+job tool: told "busy with job 4" for a minute, one stopped twice, and its
+run skipped page 6. courses' `c1-gpu-stall` was likely the same.
+page_done's save waits through the same helper.
+
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of
@@ -2675,8 +2760,11 @@ built, and the run was rerun (`c1-gpu-stall`).
     course a step was tried and did not help (A course a step, above). The
     misses then were a stud along a run, so the next lever is the picture:
     the joints of the course below, or a run's length in studs.
-  - **Where a sub-assembly goes on.** Its attach step should show where it
-    meets the model (17%).
+  - **Where a sub-assembly goes on.** This cost 17% of the parts lost. In
+    place, it hides the studs it lands on. Drawing it lifted off its place
+    with an arrow down was tried and made it worse (NO-GO, above): builders
+    put it where it was drawn. Next: keep it drawn in place and show the
+    landing another way, see-through or marked the step before.
   - **Parts told from their look-alikes.** 15% were parts misread, 12 of
     them one black dish read as a round plate. Drawing black with its edges
     was tried and made it worse (NO-GO, above). The dish's top is a round
