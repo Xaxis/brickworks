@@ -11324,3 +11324,12 @@ msgstr "Encontrar una pieza a partir de una foto"
 
 msgid "Choose a photo"
 msgstr "Elegir una foto"
+
+msgid "Placing %s on the end of %s: click puts it there"
+msgstr "Colocando %s en el extremo de %s: un clic la deja ahí"
+
+msgid "%s puts its next end to the joint"
+msgstr "%s pone su siguiente extremo en la unión"
+
+msgid "a sleeper goes under the joint with it"
+msgstr "una traviesa va con ella bajo la unión"

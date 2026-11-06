@@ -5122,6 +5122,9 @@ func _connectors_said(part_id: String, at: Transform3D, prefix: String = "",
 	for point: Attach.Point in points:
 		var frame: Transform3D = at * point.frame
 		var way: Vector3 = (-frame.basis.y).normalized()
+		# A train track's end points out of the track, along its frame's x.
+		if point.kind == TrackSnap.KIND:
+			way = frame.basis.x.normalized()
 		var line: bool = point.kind == Exact.AXLE or point.kind == Exact.HINGE
 		var spot: Vector3 = frame.origin
 		rows.append([spot.distance_to(where) if where != null else 0.0, point.type,
@@ -5155,7 +5158,8 @@ func _connectors_said(part_id: String, at: Transform3D, prefix: String = "",
 			% [prefix if not prefix.is_empty() else "<its name>.", (points[0] as Attach.Point).address()]
 		+ "\"by\": \"<that part's own connector>\", \"yaw\": <degrees about the joint>}}. A stud "
 		+ "takes a hole, tube or open stud; a clip or a hollow stud a bar; a pin a socket; an "
-		+ "axle a cross hole; a hinge, a ball or a fixed joint its other half (same sub, in to on).")
+		+ "axle a cross hole; a hinge, a ball or a fixed joint its other half (same sub, in to on); "
+		+ "a train track's end another track's end of its kind.")
 
 
 ## How many connectors attachment_points lists of a type, and near a point.
@@ -17299,6 +17303,12 @@ func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 			if placed_at.has(other) and _seated(model.placements[index].part, at,
 					model.placements[other].part, placed_at[other]):
 				continue
+			# Two train tracks joined end to end: a tab in the other's slot
+			# (TrackSnap).
+			if placed_at.has(other) and TrackSnap.joined(
+					library.resolve(model.placements[index].part), at,
+					library.resolve(model.placements[other].part), placed_at[other]):
+				continue
 			if turning.has(other) and placed_at.has(other):
 				var slack: float = Joints.ROUND_SLACK
 				var own: Array = []
@@ -23089,8 +23099,9 @@ func _tools() -> Array:
 						+ "that part's connector: \"torso.hinge[0]\" (a part named so "
 						+ "before this one) or \"#41.stud[3]\" (a brick standing, by its "
 						+ "number). Types: stud, open, hole, tube, post, axle, cross, pin, "
-						+ "socket, bar, clip, hinge, ball, fixed; numbered from 0 in each "
-						+ "type, as attachment_points lists them"},
+						+ "socket, bar, clip, hinge, ball, fixed, track (a train track's "
+						+ "end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered "
+						+ "from 0 in each type, as attachment_points lists them"},
 					"by": {"type": "string", "description": "this part's own connector "
 						+ "that goes there, as \"hinge[0]\"; leave out when only one fits"},
 					"yaw": {"type": "number", "description": "degrees about the joint's "
