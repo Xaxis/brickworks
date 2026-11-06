@@ -592,7 +592,7 @@ func join(address: String, rejoining: bool = false) -> String:
 	if camera != null:
 		camera.aim_at((snapshot as Dictionary).get("view"))
 	builder.forget_history()
-	people = body.get("people", []) as Array
+	people = TogetherWords.people(body.get("people"))
 	_seen = str(body.get("seen", ""))
 	chat_words = str(body.get("chat", ""))
 	_keep_place()
@@ -630,7 +630,7 @@ func _restore_pending() -> void:
 		for uid: String in changes:
 			if uid == "~chat" or uid.begins_with(MADE_PART):
 				if uid.begins_with(MADE_PART):
-					_add_made(str(changes[uid]))
+					_add_made(uid.substr(MADE_PART.length()), str(changes[uid]))
 				continue
 			if uid.begins_with("~"):
 				_put(uid, changes[uid])
@@ -676,7 +676,8 @@ func remove(who: String) -> void:
 		return
 	var got: Array = await _ask("remove", {"s": _token, "who": who})
 	if int(got[0]) == 200:
-		people = (got[1] as Dictionary).get("people", people) as Array
+		people = TogetherWords.people((got[1] as Dictionary)["people"]) \
+			if (got[1] as Dictionary).has("people") else people
 		changed.emit()
 
 
@@ -760,16 +761,23 @@ static func transform_of(numbers: Array) -> Transform3D:
 		Vector3(n[6], n[7], n[8])), Vector3(n[9], n[10], n[11]))
 
 
-## [param state] as JSON gave it back: its numbers as numbers, so it
-## compares equal to one read off a part here.
+## [param given] as JSON gave it back: its numbers as numbers, so it
+## compares equal to one read off a part here. Null for anything that is
+## not a part's state: its part a name of the library's, its colour and step
+## numbers, its place 12 finite numbers.
 static func _as_state(given: Variant) -> Variant:
 	if not given is Array or (given as Array).size() != STATE_PARTS:
 		return null
 	var s: Array = given
+	if not TogetherWords.part_named(s[0]) or not TogetherWords.number(s[1], 2147483647.0) \
+			or not TogetherWords.numbers(s[2], 12) or not s[3] is String or not s[4] is String \
+			or (s[3] as String).length() > 200 or (s[4] as String).length() > 400 \
+			or not TogetherWords.number(s[5], 2147483647.0):
+		return null
 	var numbers: Array = []
 	for value: Variant in s[2]:
 		numbers.append(float(value))
-	return [str(s[0]), int(s[1]), numbers, str(s[3]), str(s[4]), int(s[5])]
+	return [s[0], int(s[1]), numbers, s[3], s[4], int(s[5])]
 
 
 func _map(uid: String, brick_id: int) -> void:
@@ -792,7 +800,8 @@ static func _place_key(at: Vector3) -> String:
 ## file's. Then each set exactly as the owner had it, and the lift too.
 func _lay_snapshot(snapshot: Dictionary) -> void:
 	var lift_here: float = store.lift().y
-	var lift_there: float = float(snapshot.get("lift", 0.0))
+	var lift_there: float = float(snapshot.get("lift")) \
+		if TogetherWords.number(snapshot.get("lift")) else 0.0
 	var candidates: Dictionary = {}
 	# And by where each stands, so a part is found at once where the file
 	# put it: looked for among every part of its kind, 25,600 plates took a
@@ -811,9 +820,10 @@ func _lay_snapshot(snapshot: Dictionary) -> void:
 		(placed[where] as Array).append(brick.id)
 	var taken: Dictionary = {}
 	for entry: Variant in snapshot.get("bricks", []):
-		if not entry is Array or (entry as Array).size() != STATE_PARTS + 1:
+		if not entry is Array or (entry as Array).size() != STATE_PARTS + 1 \
+				or not TogetherWords.uid(entry[0]):
 			continue
-		var uid: String = str(entry[0])
+		var uid: String = entry[0]
 		var state: Variant = _as_state((entry as Array).slice(1))
 		if state == null:
 			continue
@@ -1227,7 +1237,7 @@ func _poll_loop() -> void:
 ## (_on_page_heard).
 func _heard_people(body: Dictionary, polled: int) -> void:
 	_seen = str(body.get("seen", _seen))
-	var now: Array = body.get("people", people) as Array
+	var now: Array = TogetherWords.people(body["people"]) if body.has("people") else people
 	if now == people:
 		return
 	# A pointer moving is the view's; the panel redraws only for who is in
@@ -1253,12 +1263,14 @@ func _take(ops: Array) -> void:
 	var shown_again: Dictionary = {}
 	var popped: bool = false
 	for item: Variant in ops:
+		if not item is Dictionary or not (item as Dictionary).get("changes", {}) is Dictionary:
+			continue
 		var op: Dictionary = item
 		var number: int = int(op.get("seq", 0))
 		if number <= seq:
 			continue
 		seq = number
-		var changes: Dictionary = op.get("changes", {}) as Dictionary
+		var changes: Dictionary = op.get("changes", {})
 		# A send taken twice: its second time is nothing, on every side.
 		var from: String = str(op.get("client", ""))
 		var cid_now: int = int(op.get("cid", -1))
@@ -1270,7 +1282,7 @@ func _take(ops: Array) -> void:
 		# A part made in the app, before any part of it is put down.
 		for key: String in changes:
 			if key.begins_with(MADE_PART):
-				_add_made(str(changes[key]))
+				_add_made(key.substr(MADE_PART.length()), str(changes[key]))
 		if from == _client:
 			var cid: int = int(op.get("cid", -1))
 			while not _pending.is_empty() and int((_pending[0] as Dictionary)["cid"]) <= cid:
@@ -1336,7 +1348,10 @@ func _name_of(who: String) -> String:
 
 func _confirm(uid: String, given: Variant) -> void:
 	if uid.begins_with("~"):
-		_confirmed[uid] = str(given) if given != null else ""
+		if _carried(uid):
+			_confirmed[uid] = str(given) if given != null else ""
+		return
+	if not TogetherWords.uid(uid):
 		return
 	var state: Variant = _as_state(given)
 	if state == null:
@@ -1453,8 +1468,15 @@ func _pin_words() -> Dictionary:
 	return out
 
 
+## Whether [param key] is the model's own state as a session carries it.
+static func _carried(key: String) -> bool:
+	return key in META_KEYS or key.begins_with(PIN_KEY)
+
+
 ## Set the model's own state [param key] to [param words], past the history.
 func _put_meta(key: String, words: String) -> void:
+	if not _carried(key):
+		return
 	var counts: Dictionary = timing.get("meta_put", {})
 	counts[key] = int(counts.get(key, 0)) + 1
 	timing["meta_put"] = counts
@@ -1476,20 +1498,22 @@ func _put_meta(key: String, words: String) -> void:
 				if chosen != null:
 					store.model_floor = chosen
 		"~hidden":
-			var scheme: Variant = str_to_var(words)
-			store.hidden_scheme = scheme if scheme is Dictionary else {}
+			var given: Dictionary = TogetherWords.dictionary(words, "hidden colours")
+			store.hidden_scheme = HiddenColours.typed(given)
+			if store.hidden_scheme.is_empty() and not given.is_empty():
+				TogetherWords.left_out("hidden colours", "not a scheme")
 		"~motions":
 			world.motions = Motions.read(words) if not words.is_empty() else null
 		"~looks":
-			var looks: Variant = str_to_var(words)
-			world.step_looks = looks if looks is Dictionary else {}
-			# The other person's pictures go into the booklet's HTML: PNG and JPEG alone.
-			if world.step_looks.get(BookletLooks.DATA) is Dictionary:
-				world.step_looks[BookletLooks.DATA] = BookletLooks.kept_pictures(
-					world.step_looks[BookletLooks.DATA])
+			var dropped := PackedStringArray()
+			world.step_looks = BookletLooks.typed(TogetherWords.dictionary(words, "booklet looks"),
+				dropped)
+			TogetherWords.left_out_each("booklet looks", dropped)
 		"~unit_steps":
-			var steps: Variant = str_to_var(words)
-			world.unit_steps = steps if steps is Dictionary else {}
+			var dropped := PackedStringArray()
+			world.unit_steps = TogetherWords.unit_steps(TogetherWords.dictionary(words,
+				"steps of sub-assembly copies"), dropped)
+			TogetherWords.left_out_each("steps of sub-assembly copies", dropped)
 		"~broken":
 			_broken_from(words)
 		_ when key.begins_with(PIN_KEY):
@@ -1514,30 +1538,33 @@ func _broken_words() -> String:
 
 
 func _broken_from(words: String) -> void:
-	var given: Variant = str_to_var(words)
+	var dropped := PackedStringArray()
+	var given: Dictionary = TogetherWords.broken(TogetherWords.dictionary(words,
+		"sections broken out"), dropped)
+	TogetherWords.left_out_each("sections broken out", dropped)
 	world.broken_out.clear()
-	if not given is Dictionary:
-		return
 	for section: String in given:
-		var record: Dictionary = (given[section] as Dictionary).duplicate(true)
+		var record: Dictionary = given[section]
 		var home: Dictionary = {}
-		for uid: Variant in record.get("home", {}):
-			if _ids.has(str(uid)):
-				home[int(_ids[str(uid)])] = record["home"][uid]
+		for uid: String in record.get("home", {}):
+			if _ids.has(uid):
+				home[int(_ids[uid])] = record["home"][uid]
 		record["home"] = home
 		world.broken_out[section] = record
 
 
-## A part made in the app on the other side: its files, added here.
-func _add_made(words: String) -> void:
-	var files: Variant = str_to_var(words)
-	if not files is Dictionary:
-		return
-	for file: String in files:
-		var id: String = file.trim_suffix(".dat")
-		if builder.library.parts.has(id):
-			continue
-		CustomParts.add(builder.library, str(files[file]), id, false, files)
+## The part made in the app [param part] on the other side: built here from
+## its files, in memory alone. Only the part its key names, and only from
+## files named as a part's are (TogetherWords.made_part): never one of the
+## library's own, and never a file whose name the other side chose.
+func _add_made(part: String, words: String) -> void:
+	if not builder.library.parts.has(part):
+		var dropped := PackedStringArray()
+		var files: Dictionary = TogetherWords.made_part(part, TogetherWords.dictionary(words,
+			"made part"), dropped)
+		TogetherWords.left_out_each("made part %s" % part.left(80), dropped)
+		if not files.is_empty():
+			CustomParts.add(builder.library, files[part + ".dat"], part, false, files)
 	for uid: String in _awaiting.keys():
 		_put(uid, _awaiting[uid])
 
@@ -1610,7 +1637,7 @@ func chat(words: String) -> String:
 
 
 func _heard_chat(op: Dictionary, mine: bool) -> void:
-	var line: String = str((op.get("changes", {}) as Dictionary).get("~chat", ""))
+	var line: String = str((op.get("changes", {}) as Dictionary).get("~chat", "")).left(280)
 	if line.is_empty():
 		return
 	var name: String = "You" if mine else _name_of(str(op.get("who", "")))
