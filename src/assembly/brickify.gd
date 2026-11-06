@@ -1762,6 +1762,11 @@ static func warm(library: PartLibrary, job: Working.Job = null) -> void:
 	for key: Variant in Shapes._plans.keys():
 		if str(Shapes._plans[key]).is_empty():
 			Shapes._plans.erase(key)
+	# A windscreen read on a worker before its geometry was loaded was kept
+	# as none (bigedit, 2026-11-06): read again.
+	for key: Variant in Shapes._screens.keys():
+		if (Shapes._screens[key] as Dictionary).is_empty():
+			Shapes._screens.erase(key)
 	if Patterns._wedge_shapes.size() < 4 * Patterns.WEDGES.size():
 		Patterns._wedge_shapes.clear()
 		Patterns._wedge_prints.clear()

@@ -12448,9 +12448,15 @@ func _shapes_ready(args: Dictionary) -> void:
 	var key: String = _patterns_key(plain, written)
 	if _patterns_laid.has(key):
 		return
+	# Every part it is known to read loaded first: Brickify's, the
+	# windscreens a shape's glass reads (Shapes.SCREENS) and the design's own
+	# bricks, which its shapes are laid against.
 	var wanted := Model.new()
-	for id: String in Brickify.parts_needed(library):
+	for id: String in Array(Brickify.parts_needed(library)) + Shapes.SCREENS:
 		wanted.placements.append(Placement.from_dict({"part": id}))
+	for raw: Variant in written:
+		if raw is Dictionary and not str((raw as Dictionary).get("part", "")).is_empty():
+			wanted.placements.append(Placement.from_dict({"part": str((raw as Dictionary)["part"])}))
 	await _ensure_parts(wanted)
 	progress.emit("laying its shapes")
 	var job: Working.Job = Working.begin("Laying its shapes…")
@@ -12477,11 +12483,14 @@ func _shapes_ready(args: Dictionary) -> void:
 
 ## [param work] run on a worker, reading the library, until it reads no part
 ## whose geometry is not loaded: a reader on a worker finds such a part empty
-## (PartLibrary.mesh_for), and a shape or sculpt laid with a part read empty
-## lays other parts than the main thread lays, which loads it. The parts it
-## missed are loaded and it runs again, three times at most: null if it
-## still misses one that could be loaded, or the worker failed, for the
-## caller to lay it on the main thread instead.
+## (PartLibrary.mesh_for), and Shapes keeps what it read off a part, so a
+## shape laid with one read empty, and every shape after it, lays other parts
+## than the main thread lays, which loads it: the Charger's windscreens, read
+## empty, came to 1,124 parts for 1,127 (bigedit, 2026-11-06). The parts it
+## missed are loaded, what was read empty is read again (Brickify.warm) and
+## it runs again, three times at most: null if it still misses one that
+## could be loaded, or the worker failed, for the caller to lay it on the
+## main thread instead. Called between Brickify.begin_laying and end_laying.
 func _laid_whole(work: Callable, label: String) -> Variant:
 	for _round: int in 3:
 		library.unread_by_readers()
@@ -12496,6 +12505,7 @@ func _laid_whole(work: Callable, label: String) -> Variant:
 		# None of them to be had: the main thread reads them empty too.
 		if not Array(missed).any(func(id: Variant) -> bool: return library.is_resident(str(id))):
 			return laid
+		await Brickify.warm(library)
 	return null
 
 
