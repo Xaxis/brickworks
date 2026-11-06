@@ -66,8 +66,12 @@ fi
 # the ship (ship.sh's unwired_flows): rel-m267 was held for bintiles'
 # bin_keys_flow.mjs after a whole day's merges (2026-11-06). Stop here, as a
 # conflict does, with the merge left to finish once it's named.
+# Named in the merge's own preview_checks.sh (the index, here in $W), not this
+# script's: a train runs this from the main checkout, whose copy is main's, so
+# booksafe's flow, named in the same release, held rel-m268 (2026-11-06).
+named=$(git show :tools/release/preview_checks.sh 2>/dev/null || cat "$HERE/preview_checks.sh")
 for f in $(git diff --cached --name-only --diff-filter=A -- 'tools/web/*_flow.mjs'); do
-  grep -qF "$(basename "$f")" "$HERE/preview_checks.sh" \
+  grep -qF "$(basename "$f")" <<< "$named" \
     || { echo "UNWIRED: $(basename "$f") is in no preview check: name it in tools/release/preview_checks.sh, or mark it there '# local only: $(basename "$f")', then commit the merge"; exit 5; }
 done
 ~/.claude/claude-core/bin/featuremap generate --write >/dev/null 2>&1
