@@ -125,6 +125,22 @@ const PRESET_KEYS: Dictionary = {
 		"select_find": CTRL | KEY_F, "replace": ALT | KEY_R, "grid": ALT | KEY_G,
 		"stability": ALT | KEY_K, "simulate": ALT | KEY_U, "pose": ALT | KEY_O,
 		"reference": ALT | KEY_N, "instructions": ALT | KEY_B,
+		# keys2 (docs/app_ux3/keys.md, 2026-11-06): the rest a builder
+		# reaches for once a model or more. Render on F9, the render key of
+		# the wider 3D field (3ds Max, LightWave, Modo): no LEGO® CAD keys
+		# it, and Blender's F12 is a browser's own. Its queue beside it, on
+		# Shift-F9. The cut shapes Alt and a letter of their word, as above:
+		# Alt-X the boX, Alt-Y the cYlinder, and the sphere, whose letters
+		# all have keys, Alt-Z beside the box's. The booklet's Page setup
+		# Ctrl-Shift-B, beside Alt-B, the booklet itself: the Mac's own
+		# Page Setup key, Cmd-Shift-P, is a browser's, Firefox's private
+		# window. The Pick a Brick list Alt-L, LEGO®'s L. The
+		# Library Ctrl-Shift-O, beside Open's Ctrl-O, another way to open a
+		# model (as a browser's own Library is).
+		"render": KEY_F9, "render_queue": SHIFT | KEY_F9,
+		"cut_box": ALT | KEY_X, "cut_sphere": ALT | KEY_Z, "cut_cylinder": ALT | KEY_Y,
+		"booklet_page_setup": CTRL | SHIFT | KEY_B, "export_pickabrick": ALT | KEY_L,
+		"library": CTRL | SHIFT | KEY_O,
 	},
 	"studio": {
 		"mode_select": KEY_V, "mode_hinge": KEY_H, "mode_clone": KEY_C, "mode_hide": KEY_L,
