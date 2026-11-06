@@ -78,16 +78,41 @@ func look_for(subject: String) -> void:
 		missed.emit("could not reach Wikimedia Commons")
 
 
-## Whether [param title] is a picture of a LEGO set under test
-## (DesignMemory.holds): LEGO, and the set's number or its name. A
-## photograph of the real thing it is a model of stays.
-static func _of_a_held_set(title: String) -> bool:
-	if not title.to_lower().contains("lego"):
-		return false
-	for number: RegExMatch in RegEx.create_from_string("[0-9]{3,6}").search_all(title):
+## Whether a picture is of something built of bricks rather than the real
+## thing: by its title, or by what Commons files it under and says of it
+## ([param about], [method _about]). For Gandalf Arrives, a held set, Commons
+## gave "A Wizard Is Never Late Lego diorama by Flounder's Bricks, 2020",
+## which names neither the set nor its number; for the United States Capitol
+## Building, "LEGO US Capitol"; for a tractor, "MT Ursus C-330", whose
+## description alone says LEGO. Legoland's models and its Miniland are bricks
+## too; Legolas is not.
+static func of_bricks(title: String, about: String) -> bool:
+	return RegEx.create_from_string(BRICKS).search("%s %s" % [title, about]) != null
+
+
+## The words a picture of bricks is known by, whole words but Lego's own
+## (LEGO, Legos, Legoland).
+const BRICKS := "(?i)\\blego(?!las)|\\b(duplo|brickheadz|bionicle|mindstorms|miniland)\\b|\\bminifig"
+
+
+## Whether [param title] names a set under test by its number
+## (DesignMemory.holds): "7242 Street Sweeper" is the set whatever else it
+## says, or does not.
+static func _names_a_held_set(title: String) -> bool:
+	for number: RegExMatch in RegEx.create_from_string("(?<![0-9])[0-9]{3,6}(?![0-9])").search_all(title):
 		if DesignMemory.holds(number.get_string()):
 			return true
-	return DesignMemory.holds("", title)
+	return false
+
+
+## What Commons says of a picture besides its title: its categories, its
+## name and its description, as plain words.
+static func _about(info: Dictionary) -> String:
+	var extra: Dictionary = info.get("extmetadata", {}) as Dictionary
+	var said := PackedStringArray()
+	for field: String in ["Categories", "ObjectName", "ImageDescription"]:
+		said.append(str((extra.get(field, {}) as Dictionary).get("value", "")))
+	return RegEx.create_from_string("<[^>]+>").sub(" ".join(said), " ", true)
 
 
 func _owner() -> Node:
@@ -114,6 +139,7 @@ func _on_searched(_result: int, code: int, _headers: PackedStringArray,
 		missed.emit("nothing on Wikimedia Commons matches \"%s\"" % _asked)
 		return
 
+	var bricks: int = 0
 	for page: Variant in pages:
 		var one: Dictionary = page
 		var info: Array = one.get("imageinfo", [])
@@ -132,8 +158,12 @@ func _on_searched(_result: int, code: int, _headers: PackedStringArray,
 		# lighthouse were Victorian title pages.
 		if _is_a_document(title):
 			continue
-		# Nor a photograph of the real set a design run is judged against.
-		if _of_a_held_set(title):
+		# While a real set is under test (DesignMemory.holding), nothing
+		# built of bricks at all: the set itself under any name, or a
+		# builder's model of its subject, is the answer a design run is
+		# judged against. A photograph of the real thing stays.
+		if DesignMemory.holding() and (of_bricks(title, _about(first)) or _names_a_held_set(title)):
+			bricks += 1
 			continue
 		_pending.append({
 			"url": url,
@@ -142,6 +172,11 @@ func _on_searched(_result: int, code: int, _headers: PackedStringArray,
 		})
 		if _pending.size() >= MOST:
 			break
+	if _pending.is_empty() and bricks > 0:
+		missed.emit(("what Wikimedia Commons has of \"%s\" is built of bricks, and nothing built of "
+			+ "bricks is shown while a design is being scored: ask for the real thing by its own name")
+			% _asked)
+		return
 	if _pending.is_empty():
 		missed.emit("nothing on Wikimedia Commons matches \"%s\"" % _asked)
 		return

@@ -456,7 +456,18 @@ fixing what it got wrong.
   --held-out-name=<its name>` (`DesignMemory.holds`): the index of pieces,
   plan_scale's sizes, the techniques read off sets, the library shelf, the
   catalogue's sets, the official models, the gallery's copies of LDraw's models
-  and Commons' pictures of the set; `holdout_probe` asks each.
+  and Commons' pictures of the set; `holdout_probe` asks each. While anything
+  is held out (`DesignMemory.holding`), nothing built of bricks reaches a
+  session under any name: `find_reference` drops every picture whose title,
+  categories or description say LEGO, Legoland, Duplo, BrickHeadz, Bionicle,
+  Mindstorms, Miniland or minifig, or whose title names a held set's number
+  (`ReferenceFinder.of_bricks`, `_names_a_held_set`), and says so when that
+  leaves none; the gallery lists and opens no builder's own model
+  (`GalleryTool.held`), nor does `open_model link=`; and no link is fetched
+  (`AppTools._fetch`: `brickify url=`, `print_part picture_url=`). A person's
+  references are as they were. `reference_holdout_probe` asks `find_reference`
+  over MCP on the app's scene with Commons' own answers for 9469-1, 21030-1 and
+  21036-1 (`src/dev/fixtures/commons_held.json`; `-- --live` asks Commons).
   `docs/DESIGN_SCORES.md`, "Against real sets". Under How to check it, "Real sets".
 - `test designs on the owner's own ideas`: `tools/bench/ideas.py`, twenty fixed
   briefs in a person's words (`tools/bench/ideas_briefs.py`: scenes, vehicles with
