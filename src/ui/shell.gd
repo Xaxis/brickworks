@@ -522,15 +522,28 @@ func command(name: String) -> Command:
 
 ## Run a command by name, when it can be. True when it ran, or will in a
 ## frame: one known to be slow is said on the status bar first (Working).
+##
+## Handed on as this node's method and the command's name, never as a
+## lambda of this script or its Command (whose [member Command.can] is one).
+## Working.attend and the coroutine it runs the command in wait on objects of
+## their own, which the scene tree does not free: a command still going as
+## the app quits (Instructions or Save as… with its Save dialog up, a booklet
+## being drawn) keeps what it was handed until the engine tears GDScript down,
+## and a lambda of this node's script let go of then writes into memory
+## already freed: "corrupted size vs. prev_size in fastbins", exit 250, every
+## time (quitabort, 2026-11-06). A bound method holds nothing of GDScript.
 func run(name: String) -> bool:
 	var found: Command = _commands.get(name)
 	if found == null or not can(name):
 		return false
-	attend(name, func() -> void:
-		# Asked again: put off a frame, it may not be any more.
-		if can(name):
-			await found.run.call())
+	attend(name, _run_now.bind(name))
 	return true
+
+
+## Command [param name], asked again: put off a frame, it may not be any more.
+func _run_now(name: String) -> void:
+	if can(name):
+		await (_commands[name] as Command).run.call()
 
 
 ## What a key the keymap gives runs where no handler answers it

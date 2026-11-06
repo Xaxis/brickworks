@@ -777,12 +777,12 @@ func open_text_with_progress(text: String, name: String) -> Dictionary:
 ## LdrModel.parse touches nothing but what it makes.
 static func read_off_frame(text: String, name: String) -> LdrModel:
 	var out: Array = [null]
-	var task: int = WorkerThreadPool.add_task(func() -> void: out[0] = LdrModel.parse(text, name),
+	var task: int = WorkerTasks.add(func() -> void: out[0] = LdrModel.parse(text, name),
 		false, "read a model")
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	while not WorkerThreadPool.is_task_completed(task):
 		await tree.process_frame
-	WorkerThreadPool.wait_for_task_completion(task)
+	WorkerTasks.collect(task)
 	return out[0]
 
 
