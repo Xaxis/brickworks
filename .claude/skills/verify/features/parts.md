@@ -99,7 +99,10 @@ geometry in front of them.
   where it held one 1.8 s at load 41. A part made in the app lets it go,
   and it is made again at once, ahead of the next key (`add_custom`), one
   being made stopped, not waited for. Without threads it is made in frames,
-  4 ms of each and 12 once a search waits (`PartSearch.made_for`).
+  4 ms of each and 12 once a search waits (`PartSearch.made_for`). One let
+  go of goes the same way, 4 ms a frame once no search still reads it
+  (`PartLibrary.forget_search`, `PartSearch.let_go_for`), where at once it
+  held 60-80 ms of a frame; `index_letgo_probe` (headless, in the suite).
   `bin_first_probe` (in a window, about 3 min): the first search typed as
   the index is made and once it is, with threads and standing in for none,
   each frame against the later searches', its tiles the settled list's,
@@ -638,6 +641,34 @@ the grab's 24 ms, none drawn again as the pictures land and fade in, and each
 search said in its parts. `--shots=DIR` keeps `sketches.png`, every kind of
 sketch at the bin's size, larger and halfway faded: put it beside another
 run's to see the look kept.
+
+Each key typed in the bin's search is `bin_keys_probe` (windowed, about 4
+min; `bin_keys_phone_probe` lays it out for a phone, 390 x 844): ten searches
+a builder types ("brick 2x4", "slope", "technic beam"...), a key every 180 ms,
+each key's longest frame of its own under 33 ms (three times that past the
+box's cores), said in its parts. Every key freed 64 tiles and made 64, and
+searched, sketched and fitted names on the frame: 28-263 ms a key at 1400 x
+900, 114-155 on a phone (bintiles). A key's search is made on a worker where
+there are threads (`PartsBin._seek`: `_searched`, `_kept_of`, `_folding`, and
+the first page's sketches `_sketched` and names `_named_ahead`, of nothing
+of the bin's) and listed in the first frame after it is done; the first of a
+run searches a word few parts have on the main thread first
+(`WorkerTasks.first_here`). A sketch planned there is drawn as one mesh
+(`PartSketch.plan`, `draw_plan`), the same picture as one drawn a step at a
+time to within 1 of 255 (8 edge pixels of 263,296 more). The tiles a list
+showed are kept and bound to the next list's parts (`_keep_tiles`,
+`_tile_for`, `_bind_tile`), a part listed again keeping its tile, and a
+tile's +N badge kept with it, hidden while its part folds nothing (made and
+freed each key, the badges cost 3-5 ms of "slope"'s frames); tiles that
+must come into the window come in the rows in sight first and the rest of
+the page a frame on, the grid held as tall meanwhile (`_shown_at_once`,
+`_hold_page`, `_show_coming`). Each name is fitted once, as it is told apart
+(`_tell_apart`), and told apart again once its tiles are laid out
+(`_tell_apart_soon`). `--said=FILE` writes each key's first page tile by
+tile and `--shots=DIR` a picture of each search, to put a run before a change
+beside one after it. In a browser, `tools/web/bin_keys_flow.mjs` types the
+same ten into a local export, each frame timed up to `gl.finish()`, a frame
+long in WebGL said with the calls it was long in.
 
 The previews are covered by `placeholder_probe` (windowed, in the suite, also
 the minifigure builder's grid and slots):
