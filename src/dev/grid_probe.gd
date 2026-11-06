@@ -46,6 +46,8 @@ var _verbs: EditVerbs
 var _shell: Shell
 var _tag: String = ""
 var _said: String = ""
+## What the status bar said when the grid was put down.
+var _put_down: String = ""
 var _autosave: PackedByteArray = PackedByteArray()
 var _had_autosave: bool = false
 
@@ -183,6 +185,7 @@ func _a_grid() -> bool:
 	_check("...the copies selected (%d)" % _builder.selection.size(),
 		_builder.selection.size() == COLUMNS * ROWS * LEVELS - 1)
 	var status: String = _status()
+	_put_down = status
 	_check("the status bar says it and its undo: \"%s\"" % status,
 		status.contains("23 copies") and status.contains("takes them all back"))
 	_builder.clear_selection()
@@ -243,9 +246,53 @@ func _in_the_way() -> void:
 	await _frames(4)
 	_check("...Enter puts none of it down (%d parts, %d before)" % [_world.bricks().size(), before],
 		_world.bricks().size() == before)
+	await _words(dialog, [str(state["said"]), _put_down])
 	await _key(KEY_ESCAPE)
 	await _frames(4)
 	_check("Escape closes Pattern, the copies' ghosts gone", not dialog.is_open())
+
+
+## Every word the dialog shows, and [param lines] (what it and the status bar
+## said), in German, French and Spanish: each translated, none left in English
+## but a part's name and a key; and the dialog inside the window in each.
+func _words(dialog: PatternDialog, lines: Array) -> void:
+	print("")
+	print("  in German, French and Spanish")
+	var english: Array[String] = []
+	for node: Node in dialog.find_children("*", "", true, false):
+		var text: String = str(node.get("text")) if (node is Label or node is Button) else ""
+		if not text.is_empty() and text.to_lower() != text.to_upper() and not english.has(text) \
+				and (node as CanvasItem).is_visible_in_tree():
+			english.append(text)
+	for line: Variant in lines:
+		if not str(line).is_empty():
+			english.append(str(line))
+	var allowed: Array[String] = [_name(IN_WAY), "Ctrl-Z", "x", "z"]
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		await _frames(6)
+		var lacking := PackedStringArray()
+		for text: String in english:
+			var said: String = Language.says(text)
+			var left: Array = Language.left_in_english(text).filter(func(kept: String) -> bool:
+				return not allowed.has(kept.strip_edges()))
+			if said.is_empty() or not left.is_empty():
+				lacking.append("%s%s" % [text, (" (%s)" % ", ".join(left)) if not left.is_empty() else ""])
+		_check("%s: every one of the %d translated%s" % [code, english.size(),
+			"" if lacking.is_empty() else "; not: " + " | ".join(lacking)], lacking.is_empty())
+		print("    %s" % Language.says(str(lines[0])))
+		# Opened again as a person in this language opens it, laid out in its
+		# words: the counts kept, the spacings the brick's own again.
+		dialog.hide()
+		await _frames(2)
+		dialog.open(_builder.selection.keys())
+		await _frames(6)
+		var window := Rect2(Vector2.ZERO, root.get_visible_rect().size)
+		var box := Rect2(Vector2(dialog.position), Vector2(dialog.size))
+		_check("%s: ...the dialog inside the window (%s)" % [code, box], window.encloses(box))
+		await _shot("in_the_way_" + code)
+	Language.apply("en")
+	await _frames(4)
 
 
 # -- the model -----------------------------------------------------------------

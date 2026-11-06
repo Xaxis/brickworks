@@ -60,31 +60,31 @@ static func row(by: Vector3, count: int) -> Array[Transform3D]:
 	return out
 
 
-## A grid of [param places] (each a column, a row and a layer, from 0, as
+## A grid of [param places] (each a column, a row and a level, from 0, as
 ## [method grid_places] gives them): each copy [param column] further on for
-## each column, [param row] for each row and [param layer] for each layer
+## each column, [param row] for each row and [param level] for each level
 ## (LDU). LeoCAD's Array: a block of copies in one go, not a row of rows.
-static func grid(column: Vector3, row: Vector3, layer: Vector3,
+static func grid(column: Vector3, row: Vector3, level: Vector3,
 		places: Array[Vector3i]) -> Array[Transform3D]:
 	var out: Array[Transform3D] = []
 	for place: Vector3i in places:
-		out.append(Transform3D(Basis.IDENTITY, column * place.x + row * place.y + layer * place.z))
+		out.append(Transform3D(Basis.IDENTITY, column * place.x + row * place.y + level * place.z))
 	return out
 
 
-## Every place in a grid of [param columns] by [param rows] by [param layers]
-## but the first, where the parts stand: (column, row, layer) from 0, a row's
-## columns first, then the rows, then the layers. A copy's number is its
+## Every place in a grid of [param columns] by [param rows] by [param levels]
+## but the first, where the parts stand: (column, row, level) from 0, a row's
+## columns first, then the rows, then the levels. A copy's number is its
 ## place in this list, so a refusal can say where it is. One more than
 ## [constant MOST_COPIES] at most, enough to be refused as too many: 500
 ## each way is not counted out to 125 million.
-static func grid_places(columns: int, rows: int, layers: int) -> Array[Vector3i]:
+static func grid_places(columns: int, rows: int, levels: int) -> Array[Vector3i]:
 	var out: Array[Vector3i] = []
-	for layer: int in layers:
+	for level: int in levels:
 		for row: int in rows:
 			for column: int in columns:
-				if column != 0 or row != 0 or layer != 0:
-					out.append(Vector3i(column, row, layer))
+				if column != 0 or row != 0 or level != 0:
+					out.append(Vector3i(column, row, level))
 					if out.size() > MOST_COPIES:
 						return out
 	return out
@@ -338,7 +338,7 @@ func show_copies(ids: Array, moves: Array, places: Array[Vector3i] = []) -> Stri
 
 ## In words, why these copies cannot go down: "" when they can. Given a
 ## grid's [param places] (one a copy, as [method grid_places] gives them),
-## the first copy with no room is said by its column, row and layer, as a
+## the first copy with no room is said by its column, row and level, as a
 ## person counts them from the parts copied: "copy 14" in a block of 24 is
 ## somewhere in it.
 func refusal(ids: Array, moves: Array, places: Array[Vector3i] = []) -> String:
@@ -355,9 +355,9 @@ func refusal(ids: Array, moves: Array, places: Array[Vector3i] = []) -> String:
 	if places.size() == moves.size():
 		var at: Vector3i = places[first_refused] + Vector3i.ONE
 		if refused.size() == 1:
-			return "the copy in column %d, row %d, layer %d has no room: %s is in the way" \
+			return "the copy in column %d, row %d, level %d has no room: %s is in the way" \
 				% [at.x, at.y, at.z, what]
-		return "%d copies have no room, the first in column %d, row %d, layer %d: %s is in the way" \
+		return "%d copies have no room, the first in column %d, row %d, level %d: %s is in the way" \
 			% [refused.size(), at.x, at.y, at.z, what]
 	if refused.size() == 1:
 		return "copy %d has no room: %s is in the way" % [first_refused + 1, what]
