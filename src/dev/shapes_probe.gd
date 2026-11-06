@@ -92,8 +92,11 @@ func _run() -> void:
 
 	# First, while no part is loaded: what a submit lays on a worker ahead of
 	# its read (Assistant._shapes_ready) is what the read lays on the main
-	# thread. A worker reads a part not loaded as empty, and the Charger's
-	# body laid so came to other parts than its read (bigedit, 2026-11-06).
+	# thread. A worker reads a part not loaded as empty, and what Shapes
+	# reads off a part is kept: the Charger's windscreens, read empty there,
+	# were no windscreens for every read after, 1,124 parts for 1,127
+	# (bigedit, 2026-11-06). So the read it is held to starts from tables
+	# read afresh, as the app's first read of it would.
 	print("  shapes laid on a worker, as the read lays them")
 	var charger: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(
 		"res://src/dev/fixtures/charger_design.json"))
@@ -106,6 +109,9 @@ func _run() -> void:
 		var ahead: bool = not assistant._patterns_laid.is_empty()
 		var on_worker: Array = _parts_of(assistant._read_model(design))
 		assistant._patterns_laid.clear()
+		for table: Dictionary in [Shapes._parts, Shapes._screens, Shapes._plans, Shapes._edge_parts,
+				Patterns._wedge_shapes, Patterns._wedge_prints]:
+			table.clear()
 		var in_read: Array = _parts_of(assistant._read_model(design))
 		var first: int = -1
 		for i: int in maxi(on_worker.size(), in_read.size()):
