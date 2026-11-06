@@ -86,7 +86,7 @@
 				{
 					"name": "library",
 					"words": "Library…",
-					"key": "",
+					"key": "Ctrl+Shift+O",
 					"tip": "Any of LDraw's models of real sets, or a model the community shared, opened in a new window"
 				},
 				{
@@ -227,7 +227,7 @@
 						{
 							"name": "export_pickabrick",
 							"words": "LEGO® Pick a Brick list (.csv)",
-							"key": "",
+							"key": "Alt+L",
 							"tip": "LEGO® element numbers and how many of each, to upload at LEGO® Pick a Brick, 400 to a file; the parts with no number known are named"
 						},
 						{
@@ -244,13 +244,13 @@
 				{
 					"name": "render",
 					"words": "Render…",
-					"key": "",
+					"key": "F9",
 					"tip": "A photo-real picture or turntable of the model, on a backdrop, in studio light"
 				},
 				{
 					"name": "render_queue",
 					"words": "Render queue…",
-					"key": "",
+					"key": "Shift+F9",
 					"tip": "Pictures lined up with Render's settings and drawn one after another while you go on building"
 				},
 				{
@@ -743,19 +743,19 @@
 						{
 							"name": "cut_box",
 							"words": "A box",
-							"key": "",
+							"key": "Alt+X",
 							"tip": "Cut away what is inside a box round the selection; drag its knobs to push or pull a face a plate at a time"
 						},
 						{
 							"name": "cut_sphere",
 							"words": "A sphere",
-							"key": "",
+							"key": "Alt+Z",
 							"tip": "Cut away what is inside a sphere round the selection; drag its knobs to make it bigger or smaller a plate at a time"
 						},
 						{
 							"name": "cut_cylinder",
 							"words": "A cylinder",
-							"key": "",
+							"key": "Alt+Y",
 							"tip": "Cut away what is inside an upright cylinder round the selection; drag its knobs to push or pull a face a plate at a time"
 						},
 						{
@@ -1081,7 +1081,7 @@
 						{
 							"name": "booklet_page_setup",
 							"words": "Page setup…",
-							"key": "",
+							"key": "Ctrl+Shift+B",
 							"tip": "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another"
 						}
 					]
@@ -1625,7 +1625,7 @@
 		"new": "Ctrl-N",
 		"new_window": "Ctrl-shift-N",
 		"open": "Ctrl-O",
-		"library": "",
+		"library": "Ctrl-shift-O",
 		"import_ldraw": "",
 		"import_io": "",
 		"import_lxf": "",
@@ -1641,9 +1641,9 @@
 		"export_bricklink": "",
 		"export_all": "",
 		"export_rebrickable": "",
-		"export_pickabrick": "",
-		"render": "",
-		"render_queue": "",
+		"export_pickabrick": "alt-L",
+		"render": "F9",
+		"render_queue": "shift-F9",
 		"pose": "alt-O",
 		"instructions": "alt-B",
 		"share": "",
@@ -1714,7 +1714,7 @@
 		"booklet_colours": "",
 		"booklet_actual_size": "",
 		"booklet_preview": "",
-		"booklet_page_setup": "",
+		"booklet_page_setup": "Ctrl-shift-B",
 		"flex": "",
 		"reshape_flex": "",
 		"view_default": "0",
@@ -1757,9 +1757,9 @@
 		"cut_z": "",
 		"cut_flip": "shift-K",
 		"cut_ghosts": "",
-		"cut_box": "",
-		"cut_sphere": "",
-		"cut_cylinder": "",
+		"cut_box": "alt-X",
+		"cut_sphere": "alt-Z",
+		"cut_cylinder": "alt-Y",
 		"cut_grow": "",
 		"cut_shrink": "",
 		"xray": "I",

@@ -768,7 +768,9 @@ picture the assistant is shown.
   under each preset (Render's panel, the queue, the three shapes cut away, Page
   setup, the Pick a Brick Save dialog cancelled, the Library); Render in one
   key press; none runs while the parts' search is typed in; the sheet lists
-  them (pictures: File, File › Export, View › Cut away by, Build › Booklet page
+  them, its rows keeping a name's capitals ("LEGO® Pick a Brick list",
+  "BrickLink wanted list", never "lEGO®"; `ControlsDialog.bindings`)
+  (pictures: File, File › Export, View › Cut away by, Build › Booklet page
   opened, the sheet filtered "F9", "cut away", "list"). `keys4_probe` still
   checks the counts and the keyless rows.
 - `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
