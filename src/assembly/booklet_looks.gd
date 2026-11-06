@@ -1258,6 +1258,195 @@ static func _put_in(out: Dictionary, name: String, field: String, value: Variant
 	out[name] = look
 
 
+# -- the looks another copy of the app sent -------------------------------------
+
+## [param raw], the looks the other side of Build together sent, made precise
+## as [method read] makes a file's: each key a step's, a sub-model's, the
+## booklet's or the pages' pictures, each field of its own kind and in the
+## range a file's line gives it. A field of another kind or name, or a picture
+## not in strict base64, is left out and named in [param dropped].
+static func typed(raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
+	var out: Dictionary = {}
+	for name: Variant in raw:
+		var given: Variant = raw[name]
+		if not name is String or not (name as String).contains("|") or (name as String).length() > 400 \
+				or not given is Dictionary or out.size() >= TogetherWords.ENTRIES_MOST:
+			dropped.append("look %s" % str(name).left(40))
+			continue
+		var look: Dictionary = {}
+		for field: Variant in given:
+			var value: Variant = _typed_picture(field, given[field]) if name == DATA \
+				else _typed_field(str(field), given[field]) if field is String else null
+			if value == null:
+				dropped.append("%s of look %s" % [str(field).left(40), str(name).left(40)])
+			else:
+				look[field] = value
+		if not look.is_empty():
+			out[name] = look
+	return out
+
+
+## A page's picture by its name, as a file's !DATA names one: its base64
+## when it is a PNG or a JPEG ([method picture_kind]), or null. With
+## [param data] null, whether the name is one.
+static func _typed_picture(name: Variant, data: Variant) -> Variant:
+	if not name is String or not (name as String).begins_with(IMAGE_PREFIX) \
+			or (name as String).contains("..") or (name as String).length() > 120 \
+			or RegEx.create_from_string("^[a-z0-9._-]+$").search(name) == null:
+		return null
+	if data == null:
+		return name
+	return data if data is String and not picture_kind(data).is_empty() else null
+
+
+static func _typed_field(field: String, value: Variant) -> Variant:
+	var page: float = BookletSheet.LONGEST
+	match field:
+		"turn":
+			if value is String:
+				return value if value == "end" else null
+			return _typed_numbers(value, [3], -3600.0, 3600.0)
+		"how":
+			return value if value is String and value in ["REL", "ABS", "ADD"] else null
+		"line", "section":
+			return (value as String).left(400) if value is String else null
+		"zoom":
+			return _typed_number(value, 0.25, 4.0)
+		"size":
+			return _typed_number(value, 0.4, 3.0)
+		"page":
+			return value if value is String and value in ["new", "alone"] else null
+		"parts", "sign", "colours", "preview", "callout", "highlight", "colours_all":
+			return value if value is bool else null
+		"per_page":
+			return value if (value is int or value is float) and float(value) in [1.0, 2.0, 4.0] \
+				else null
+		"panel":
+			return _typed_numbers(value, [4], -page, page * 2.0)
+		"place":
+			if not value is Dictionary:
+				return null
+			var place: Dictionary = {}
+			for item: Variant in value:
+				var at: Variant = _typed_numbers(value[item], [int(ITEMS.get(item, 0))], -page,
+					page * 2.0) if ITEMS.has(item) else null
+				if at != null:
+					place[item] = at
+			return place
+		"notes":
+			return _typed_list(value, func(note: Dictionary) -> Variant: return _typed_note(note))
+		"arrows":
+			return _typed_list(value, func(arrow: Dictionary) -> Variant:
+				var at: Variant = _typed_numbers(arrow.get("at"), range(4, (MOST_BENDS + 2) * 2 + 1, 2),
+					-page, page * 2.0)
+				if at == null or not str(arrow.get("colour", "")) in ARROW_COLOURS \
+						or not TogetherWords.number(arrow.get("width"), 10.0):
+					return null
+				return {"at": at, "colour": arrow["colour"], "width": arrow["width"]})
+		"pull":
+			if not value is Dictionary or _typed_number(value.get("studs"), 0.5, PULL_MOST) == null:
+				return null
+			var parts: Variant = _typed_words(value.get("parts", []))
+			return {"studs": _typed_number(value["studs"], 0.5, PULL_MOST), "parts": parts} \
+				if parts != null else null
+		"actual_size":
+			return value if value is bool else _typed_words(value)
+		"guides":
+			if not value is Dictionary:
+				return null
+			var guides: Dictionary = {}
+			for axis: Variant in value:
+				var lines: Variant = _typed_numbers(value[axis], range(0, 201), 0.0, page) \
+					if axis in ["x", "y"] else null
+				if lines != null:
+					guides[axis] = lines
+			return guides
+		"sheet":
+			if not value is Dictionary:
+				return null
+			var fields: Dictionary = {}
+			for key: Variant in value:
+				if key is String and (key != "picture" or _typed_picture(value[key], null) != null):
+					fields[key] = value[key]
+			return BookletSheet.from(fields).said()
+	return null
+
+
+## Words on the page, or a picture: {text, at, size} or {image, at}, each
+## turned and faded or not.
+static func _typed_note(note: Dictionary) -> Variant:
+	var page: float = BookletSheet.LONGEST
+	var at: Variant = _typed_numbers(note.get("at"), [4], -page, page * 2.0)
+	if at == null:
+		return null
+	var out: Dictionary = {"at": at}
+	if note.get("text") is String:
+		out["text"] = (note["text"] as String).left(4000)
+		if note.has("size"):
+			var size: Variant = _typed_number(note["size"], 1.5, 40.0)
+			if size == null:
+				return null
+			out["size"] = size
+	elif note.get("image") is String and _typed_picture(note["image"], null) != null:
+		out["image"] = note["image"]
+	else:
+		return null
+	for field: String in ["turn", "opacity"]:
+		if note.has(field):
+			var value: Variant = _typed_number(note[field], -360.0 if field == "turn" else FAINTEST,
+				360.0 if field == "turn" else 1.0)
+			if value == null:
+				return null
+			out[field] = value
+	return out
+
+
+## [param value] when it is an array of dictionaries, each as [param each]
+## makes it (null leaves it out); null when it is not an array.
+static func _typed_list(value: Variant, each: Callable) -> Variant:
+	if not value is Array:
+		return null
+	var out: Array = []
+	for item: Variant in value:
+		if item is Dictionary and out.size() < 500:
+			var made: Variant = each.call(item)
+			if made != null:
+				out.append(made)
+	return out
+
+
+## A number within [param lo] and [param hi], the kind it was kept as.
+static func _typed_number(value: Variant, lo: float, hi: float) -> Variant:
+	if not TogetherWords.number(value, INF):
+		return null
+	if float(value) >= lo and float(value) <= hi:
+		return value
+	return clampf(float(value), lo, hi)
+
+
+## An array of so many numbers as [param counts] allows, each within range.
+static func _typed_numbers(value: Variant, counts: Array, lo: float, hi: float) -> Variant:
+	if not value is Array or not (value as Array).size() in counts:
+		return null
+	var out: Array = []
+	for one: Variant in value:
+		var number: Variant = _typed_number(one, lo, hi)
+		if number == null:
+			return null
+		out.append(number)
+	return out
+
+
+## Part ids, lowercase, as a step's extras name them.
+static func _typed_words(value: Variant) -> Variant:
+	if not value is Array or (value as Array).size() > 500:
+		return null
+	for one: Variant in value:
+		if not one is String or (one as String).length() > 64:
+			return null
+	return value
+
+
 ## Whether [param text] has any of the lines these are written as.
 static func _written_in(text: String) -> bool:
 	if text.contains("ROTSTEP") or text.contains("rotstep") \
