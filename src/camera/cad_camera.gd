@@ -34,7 +34,9 @@
 ## It is a turntable, not a trackball: up stays up, and the pitch stops
 ## just short of straight down. A model sitting on a baseplate has an
 ## obvious up, and a free rotation that can roll it is a rotation
-## nobody asked for.
+## nobody asked for. Build it asks for one: where a step's booklet page
+## turns the model over, the turntable turns with it ([method look_from]'s
+## up), and turns back when the step is left.
 ##
 ## Distances are in LDU, because everything here is. A 2x4 brick is 80
 ## wide and a big model runs to a few thousand, so the sensible viewing
@@ -86,6 +88,16 @@ var _target_yaw: float = _DEFAULT_YAW
 var _target_pitch: float = _DEFAULT_PITCH
 var _target_distance: float = 400.0
 var _target_focus: Vector3 = Vector3.ZERO
+## How the turntable is turned ([method look_from]'s up): the camera stands
+## where its yaw and pitch put it, turned about the focus by this. Build it
+## turns it where a step's booklet page turns the model, so a step whose
+## parts go on from below is seen from under the model, its underside up on
+## the screen, and a drag turns the model about its own turned up. The
+## identity, the model's own up, everywhere else.
+var _frame: Basis = Basis.IDENTITY
+var _target_frame: Basis = Basis.IDENTITY
+## The frame last told ([signal frame_turned]).
+var _frame_told: Basis = Basis.IDENTITY
 
 ## What a drag is doing, and which button it belongs to.
 ##
@@ -162,6 +174,10 @@ signal lens_moved
 ## The view framed a box (a model opened, Fit, the usual view), about
 ## [param focus]: the second view's own place comes along (SplitView).
 signal framed(focus: Vector3)
+## The turntable turned to [param frame] on its way to [method look_from]'s
+## up, each frame it moves: what lights the model turns with it (main.gd),
+## so a model seen turned over is lit on the side that is up on the screen.
+signal frame_turned(frame: Basis)
 
 
 ## Where the mark goes.
@@ -748,9 +764,10 @@ func _turn_by(by: Vector2, rate: float) -> void:
 		return
 	# Swing the focus about the pivot by the same rotation the camera
 	# just made, so their offset keeps the direction the angles say it
-	# has and the pivot stays where it is on screen.
+	# has and the pivot stays where it is on screen. Round the turntable's
+	# up, which a model turned over has turned with it.
 	var right: Vector3 = global_transform.basis.x
-	var turn: Basis = Basis(Vector3.UP, around_up) * Basis(right, around_right)
+	var turn: Basis = Basis(_target_frame * Vector3.UP, around_up) * Basis(right, around_right)
 	_target_focus = _pivot + turn * (_target_focus - _pivot)
 
 
@@ -885,16 +902,68 @@ func zoom_by_drag(by: float, at: Vector2 = Vector2.INF) -> void:
 ## Look at the focus from a direction, from the focus towards the eye: the
 ## view cube's faces, edges and corners. Straight up and down stop at the
 ## same limit a drag does.
-func look_from(direction: Vector3) -> void:
+##
+## With [param up] the way up on the screen: the model's own up unless Build
+## it turns it (BuildSteps.view), as its booklet page does, over or rolled.
+## The turntable then turns about [param up], so a drag turns a model turned
+## over about its own turned up, and the screen's up is [param up] made
+## square to the view, as [method Node3D.look_at]'s is. Until the next call
+## with the model's own up, [method set_view] or [method upright].
+func look_from(direction: Vector3, up: Vector3 = Vector3.UP) -> void:
 	if direction.length_squared() < 0.0001:
 		return
 	var way: Vector3 = direction.normalized()
+	_target_frame = _frame_for(up, way)
+	way = _target_frame.transposed() * way
 	_target_pitch = clampf(asin(clampf(way.y, -1.0, 1.0)), -_PITCH_LIMIT, _PITCH_LIMIT)
 	if Vector2(way.x, way.z).length() > 0.001:
 		# The nearest turn to the one already taken, so the view swings
 		# the short way round rather than spinning back through zero.
 		var aim: float = atan2(way.x, way.z)
 		_target_yaw = aim + TAU * roundf((_target_yaw - aim) / TAU)
+
+
+## The turn that takes the model's up to [param up], seen along [param
+## way]: none for the model's own up, so every view the right way up is the
+## turntable it always was. Otherwise the least turn there is, which for a
+## roll is a turn about the roll's own axis. Upside down, a half turn about
+## any level line does it; the one taken keeps the view's turn round where
+## it is, so a page turned over from the page before rolls over in front of
+## the eye instead of swinging round as it rolls.
+func _frame_for(up: Vector3, way: Vector3) -> Basis:
+	if up.length_squared() < 0.0001:
+		return Basis.IDENTITY
+	var to: Vector3 = up.normalized()
+	var along: float = Vector3.UP.dot(to)
+	if along > 0.99999:
+		return Basis.IDENTITY
+	if along > -0.99999:
+		return Basis(Vector3.UP.cross(to).normalized(), acos(clampf(along, -1.0, 1.0)))
+	# A half turn about the level line at phi takes a view round by alpha to
+	# 2 phi - alpha; phi halfway between the way's alpha and the yaw taken
+	# leaves the yaw as it is.
+	var alpha: float = atan2(way.x, way.z) if Vector2(way.x, way.z).length() > 0.001 \
+		else _target_yaw
+	var phi: float = (alpha + _target_yaw) * 0.5
+	return Basis(Vector3(sin(phi), 0.0, cos(phi)), PI)
+
+
+## The model the right way up again, seen from the same side of it: what
+## leaving a step Build it turned leaves (main._unlight_step).
+func upright() -> void:
+	_target_frame = Basis.IDENTITY
+
+
+## Whether the turntable is turned ([method look_from]'s up): the model seen
+## other than its own way up.
+func is_turned() -> bool:
+	return _target_frame != Basis.IDENTITY
+
+
+## Which way up the view is going to: the model's own up, or the up of a
+## turn Build it gave it ([method look_from]).
+func up_now() -> Vector3:
+	return _target_frame * Vector3.UP
 
 
 ## How far the view has turned round in all, in radians, without wrapping:
@@ -917,11 +986,17 @@ func focus_now() -> Vector3:
 
 ## Where the view is going, as words another copy of the app can be given:
 ## its turn, tilt, distance and focus, and its size when orthographic
-## (Together gives the owner's to whoever joins).
+## (Together gives the owner's to whoever joins). Turned (Build it's turned
+## steps, [method look_from]'s up), the turn as a quaternion, "frame":
+## without it, the same turn and tilt would be a view of the model upright.
 func aim() -> Dictionary:
-	return {"yaw": _target_yaw, "pitch": _target_pitch, "distance": _target_distance,
+	var out: Dictionary = {"yaw": _target_yaw, "pitch": _target_pitch, "distance": _target_distance,
 		"focus": [_target_focus.x, _target_focus.y, _target_focus.z],
 		"size": size if projection == Camera3D.PROJECTION_ORTHOGONAL else 0.0}
+	if is_turned():
+		var turn := Quaternion(_target_frame)
+		out["frame"] = [turn.x, turn.y, turn.z, turn.w]
+	return out
 
 
 ## The view turned to [param given], [method aim]'s words from another copy
@@ -941,6 +1016,16 @@ func aim_at(given: Variant) -> bool:
 		if not (number is float or number is int) or not is_finite(float(number)) \
 				or absf(float(number)) > 1e7:
 			return false
+	# Turned, or upright when it says no turn (a copy of the app from before
+	# Build it turned the view says none).
+	var turn: Variant = view.get("frame")
+	var frame: Basis = Basis.IDENTITY
+	if turn is Array and (turn as Array).size() == 4 and (turn as Array).all(
+			func(n: Variant) -> bool: return (n is float or n is int) and is_finite(float(n))):
+		var q := Quaternion(float(turn[0]), float(turn[1]), float(turn[2]), float(turn[3]))
+		if q.length() > 0.5:
+			frame = Basis(q.normalized())
+	_target_frame = frame
 	_target_yaw = float(view["yaw"])
 	_target_pitch = clampf(float(view["pitch"]), -_PITCH_LIMIT, _PITCH_LIMIT)
 	_target_distance = clampf(float(view["distance"]), min_distance, max_distance)
@@ -1063,17 +1148,26 @@ func _apply(weight: float) -> void:
 		distance = _target_distance
 	if focus.distance_to(_target_focus) < hair:
 		focus = _target_focus
+	# Turned over by the shortest way round, as a hand turns a model over.
+	if _frame != _target_frame:
+		var was := Quaternion(_frame)
+		var going := Quaternion(_target_frame)
+		_frame = _target_frame if was.angle_to(going) < ARRIVED \
+			else Basis(was.slerp(going, weight))
 	_ease_lens(weight)
-	var pose: Array = [_yaw, _pitch, distance, focus]
+	var pose: Array = [_yaw, _pitch, distance, focus, _frame]
 	if pose != _posed or global_transform != _posed_at:
 		_posed = pose
 		var offset := Vector3(
 			cos(_pitch) * sin(_yaw),
 			sin(_pitch),
 			cos(_pitch) * cos(_yaw)) * distance
-		global_position = focus + offset
-		look_at(focus, Vector3.UP)
+		global_position = focus + _frame * offset
+		look_at(focus, _frame * Vector3.UP)
 		_posed_at = global_transform
+		if _frame != _frame_told:
+			_frame_told = _frame
+			frame_turned.emit(_frame)
 
 		# Clip planes that follow the distance.
 		#
@@ -1315,8 +1409,10 @@ func frame(box: AABB, margin: float = 1.25) -> void:
 	framed.emit(_target_focus)
 
 
-## Point the camera from a named direction, keeping the focus.
+## Point the camera from a named direction, keeping the focus: of the model
+## the right way up.
 func set_view(view: String) -> void:
+	_target_frame = Basis.IDENTITY
 	match view:
 		"front": _target_yaw = 0.0; _target_pitch = 0.0
 		"back": _target_yaw = PI; _target_pitch = 0.0
