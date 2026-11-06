@@ -316,26 +316,31 @@ func _lossless(before: Dictionary) -> void:
 	await _store.change_lots([{"part": "3005", "colour": 1, "qty": 5}])
 	await _frames(5)
 	var row: HBoxContainer = _row_of("3005", 1, "")
-	if row != null:
+	# Found now: the row is freed when the page is drawn again, and a freed
+	# row reads as null after.
+	var found: bool = row != null
+	if found:
 		(row.get_child(0) as SpinBox).value = 6
 		(row.get_child(row.get_child_count() - 1) as Button).pressed.emit()
 		await _settled()
 	_check("a count typed (5 -> 6), then Remove pressed at once: the lot is out%s"
-		% ("" if row != null else " (no row for it)"),
-		row != null and _store.collection.lot_of("3005", 1).is_empty() and _same(_kept(), before))
+		% ("" if found else " (no row for it)"),
+		found and _store.collection.lot_of("3005", 1).is_empty() and _same(_kept(), before))
 	# A session's lot's count typed, then Keep pressed before it is sent
 	# (finding 5, R11): kept at the count typed.
 	await _call("edit_collection", {"add": [{"part": "3005", "color": 1, "count": 5}]})
 	await _frames(5)
 	var theirs: HBoxContainer = _row_of("3005", 1, "Claude")
-	if theirs != null:
+	found = theirs != null
+	if found:
 		(theirs.get_child(0) as SpinBox).value = 3
 		((_dialog.call("controls_by_name") as Dictionary)["collection_keep_added"] as Button).pressed.emit()
 		await _settled()
 	var kept: Dictionary = _store.collection.lot_of("3005", 1, "", "", "hand")
-	_check("a session's count typed (5 -> 3), then Keep pressed at once: 3 kept as the person's own, none left marked: %s"
-		% JSON.stringify(_store.collection.parts.filter(func(lot: Dictionary) -> bool: return str(lot["part"]) == "3005")),
-		theirs != null and int(kept.get("qty", 0)) == 3 and _store.collection.added_lots().is_empty())
+	_check("a session's count typed (5 -> 3), then Keep pressed at once: 3 kept as the person's own, none left marked: %s%s"
+		% [JSON.stringify(_store.collection.parts.filter(func(lot: Dictionary) -> bool: return str(lot["part"]) == "3005")),
+			"" if found else " (no row for it)"],
+		found and int(kept.get("qty", 0)) == 3 and _store.collection.added_lots().is_empty())
 	if not kept.is_empty():
 		var asked: Dictionary = kept.duplicate()
 		asked["to"] = 0
