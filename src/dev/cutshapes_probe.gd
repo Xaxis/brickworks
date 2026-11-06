@@ -194,6 +194,23 @@ func _a_box_through_the_cab() -> void:
 	await _frames(4)
 	_check("...and Esc puts it back", (see.get("room") as AABB).is_equal_approx(was))
 
+	# Shift drags the whole box, its size kept; a right click puts it back.
+	await _move(side)
+	_button(side, true, MOUSE_BUTTON_LEFT, true)
+	await _frames(2)
+	await _move(side + Vector2(60, 0), true)
+	var slid: AABB = see.get("room")
+	_check("Shift-dragging a knob slides the whole box, its size kept (%.0f to %.0f across)"
+		% [was.position.x, slid.position.x], not is_equal_approx(slid.position.x, was.position.x)
+		and slid.size.is_equal_approx(was.size)
+		and is_equal_approx(fmod(slid.position.x - was.position.x, PLATE), 0.0))
+	_button(side + Vector2(60, 0), true, MOUSE_BUTTON_RIGHT)
+	await _frames(2)
+	_button(side + Vector2(60, 0), false, MOUSE_BUTTON_RIGHT)
+	_button(side + Vector2(60, 0), false)
+	await _frames(4)
+	_check("...and a right click puts it back", (see.get("room") as AABB).is_equal_approx(was))
+
 	# The wheel over a knob, a plate a notch.
 	await _wheel(side, true)
 	room = see.get("room")
@@ -722,10 +739,12 @@ func _move(at: Vector2, held: bool = false) -> void:
 	await _frames(3)
 
 
-func _button(at: Vector2, down: bool, which: MouseButton = MOUSE_BUTTON_LEFT) -> void:
+func _button(at: Vector2, down: bool, which: MouseButton = MOUSE_BUTTON_LEFT,
+		shift: bool = false) -> void:
 	var event := InputEventMouseButton.new()
 	event.button_index = which
 	event.pressed = down
+	event.shift_pressed = shift
 	event.position = _as_event(at)
 	event.global_position = event.position
 	if down and which == MOUSE_BUTTON_LEFT:
