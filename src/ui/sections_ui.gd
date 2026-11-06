@@ -78,20 +78,7 @@ func accept(numbers: Array = []) -> String:
 ## The section the window's commands act on: the selected sub-assembly, or
 ## the one directly inside the level being edited that the selection is in.
 func target() -> String:
-	var assemblies: Assemblies = shell.assemblies
-	var chosen: String = assemblies.selected_assembly()
-	if not chosen.is_empty():
-		return chosen
-	var found: String = ""
-	for brick_id: int in shell.builder.selection:
-		var brick: BrickWorld.Brick = shell.world.get_brick(brick_id)
-		if brick == null:
-			continue
-		var child: String = Sections._child_of(assemblies.entered, Assemblies.path_of(brick))
-		if child.is_empty() or (not found.is_empty() and child != found):
-			return ""
-		found = child
-	return found
+	return shell.section_target()
 
 
 func can_target() -> bool:

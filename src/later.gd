@@ -70,6 +70,33 @@ const PATHS: Dictionary[StringName, String] = {
 	&"MosaicArt": "res://src/assembly/mosaic_art.gd",
 	&"MotionPlayer": "res://src/assembly/motion_player.gd",
 	&"Tested": "res://src/assembly/tested.gd",
+	# The leaves, each its own menu or tool: sections, the Move and Rotate
+	# tools' handles, Split and Merge, the library and the collection, Build
+	# together, the desktop's updater and Export (leaves, 2026-11-05).
+	&"Sections": "res://src/assembly/sections.gd",
+	&"SectionsUi": "res://src/ui/sections_ui.gd",
+	&"Handles": "res://src/ui/handles.gd",
+	&"SplitMerge": "res://src/assembly/split_merge.gd",
+	&"LibraryDialog": "res://src/ui/library_dialog.gd",
+	&"GalleryTool": "res://src/net/gallery_tool.gd",
+	&"CollectionDialog": "res://src/ui/collection_dialog.gd",
+	&"Together": "res://src/net/together.gd",
+	&"Updater": "res://src/net/updater.gd",
+	&"Updates": "res://src/net/updates.gd",
+	&"UpdateNotice": "res://src/ui/update_notice.gd",
+	&"UpdateDialog": "res://src/ui/update_dialog.gd",
+	&"Exports": "res://src/ui/exports.gd",
+	&"MeshExport": "res://src/parts/mesh_export.gd",
+	# Making parts: Make, a print or a sticker, a model with parts of its
+	# own, a Studio file read.
+	&"PartForge": "res://src/parts/part_forge.gd",
+	&"PartEditor": "res://src/parts/part_editor.gd",
+	&"ElementMaker": "res://src/parts/element_maker.gd",
+	&"StudioDecor": "res://src/parts/studio_decor.gd",
+	&"Stickers": "res://src/prints/stickers.gd",
+	&"SvgText": "res://src/prints/svg_text.gd",
+	&"PictureFile": "res://src/prints/picture_file.gd",
+	&"Rays": "res://src/prints/rays.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:

@@ -29,15 +29,38 @@ var inspector: Inspector
 var assemblies: Assemblies
 var outliner: Outliner
 var banner: AssemblyBanner
-## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd.
-var sections: SectionsUi
+## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd,
+## made the first time something asks (Later): null in [member _sections] until then.
+var sections: Node:
+	get:
+		if _sections == null and world != null:
+			_make_sections()
+		return _sections
+var _sections: Node = null
 var grid: StudGrid
 ## Build your first model, along the top of the model: src/ui/first_build.gd.
 var first_build: FirstBuild
-## My collection: src/ui/collection_dialog.gd.
-var collection: CollectionDialog
-## File, Library…: src/ui/library_dialog.gd.
-var library_dialog: LibraryDialog
+## My collection: src/ui/collection_dialog.gd, made the first time it is asked
+## for (Later): null in [member _collection] until then.
+var collection: Control:
+	get:
+		if _collection == null and app != null:
+			_collection = Later.make(&"CollectionDialog")
+			_collection.said.connect(func(text: String) -> void: bar.say(text))
+			_collection.attach(app)
+			place_dialogs()
+		return _collection
+var _collection: Control = null
+## File, Library…: src/ui/library_dialog.gd, made as [member collection] is.
+var library_dialog: Control:
+	get:
+		if _library_dialog == null and app != null:
+			_library_dialog = Later.make(&"LibraryDialog")
+			_library_dialog.said.connect(func(text: String) -> void: bar.say(text))
+			_library_dialog.attach(app)
+			place_dialogs()
+		return _library_dialog
+var _library_dialog: Control = null
 ## The cut-away and x-ray: src/ui/see_inside.gd.
 var see_inside: SeeInside
 ## View, Stress: src/ui/stress_view.gd.
@@ -255,21 +278,14 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	stress.panel = StressPanel.new()
 	stress.panel.view = stress
 	add_child(stress)
-	# Sections: suggested, broken out, exploded, evaluated (src/assembly/sections.gd).
-	sections = SectionsUi.new()
-	sections.shell = self
-	sections.sections = Sections.new()
-	sections.sections.world = world
-	sections.sections.library = library
-	sections.sections.builder = builder
-	sections.sections.assemblies = assemblies
-	sections.sections.scenery = store.scenery
-	add_child(sections)
-	verbs.drawn_pick = sections.pick_drawn
-	# A suggestion is of the model it was made for.
+	# A suggestion of sections is of the model it was made for.
 	for replaced: Signal in [bar.started_new, bar.cleared]:
-		replaced.connect(func() -> void: sections.sections.dismiss())
-	bar.opened.connect(func(_n: int) -> void: sections.sections.dismiss())
+		replaced.connect(func() -> void:
+			if _sections != null:
+				_sections.sections.dismiss())
+	bar.opened.connect(func(_n: int) -> void:
+		if _sections != null:
+			_sections.sections.dismiss())
 	_define()
 
 	for menu: Array in MENUS:
@@ -303,7 +319,6 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	outliner = Outliner.new()
 	outliner.shell = self
 	outliner.assemblies = assemblies
-	outliner.sections = sections
 	stack.add_section(outliner, "tree_height")
 
 	inspector = Inspector.new()
@@ -335,16 +350,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	notices.add_child(first_build)
 
 	# What the person owns, what this model needs of it, what they could
-	# build: src/ui/collection_dialog.gd. The parts list leads there too.
-	collection = CollectionDialog.new()
-	collection.said.connect(func(text: String) -> void: bar.say(text))
-	collection.attach(app)
-
-	# Any of LDraw's models of real sets, or the community's, opened in a
-	# tab of its own: src/ui/library_dialog.gd. File, Open leads there too.
-	library_dialog = LibraryDialog.new()
-	library_dialog.said.connect(func(text: String) -> void: bar.say(text))
-	library_dialog.attach(app)
+	# build ([member collection]); the parts list leads there too. Any of
+	# LDraw's models of real sets, or the community's, opened in a tab of its
+	# own ([member library_dialog]); File, Open leads there too.
 	bar.library_wanted.connect(func() -> void: library_dialog.open())
 
 	# Every text field gives the keys back, and Tab goes into the frame
@@ -987,22 +995,22 @@ func _define() -> void:
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
-		func() -> void: await (app.get("_exports") as Exports).studio_io(true), something)
+		func() -> void: await app.get("_exports").studio_io(true), something)
 	# src/ui/exports.gd, src/parts/mesh_export.gd.
 	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
-		func() -> void: (app.get("_exports") as Exports).ask_model_3d(), something,
+		func() -> void: app.get("_exports").ask_model_3d(), something,
 		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
-		func() -> void: await (app.get("_exports") as Exports).take_picture(true), something)
+		func() -> void: await app.get("_exports").take_picture(true), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,
-		func() -> void: await (app.get("_exports") as Exports).shop_list("bricklink", {}, true),
+		func() -> void: await app.get("_exports").shop_list("bricklink", {}, true),
 		something)
 	_add("export_all", "All my models (.zip)", 0,
-		func() -> void: await (app.get("_exports") as Exports).all_models(true),
+		func() -> void: await app.get("_exports").all_models(true),
 		func() -> bool: return ModelStore.any_saved(),
 		"Every model saved here, as LDraw files in one .zip: a copy of your own")
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
-		func() -> void: await (app.get("_exports") as Exports).shop_list("rebrickable", {}, true),
+		func() -> void: await app.get("_exports").shop_list("rebrickable", {}, true),
 		something)
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
@@ -1107,10 +1115,10 @@ func _define() -> void:
 		"Make the selection its mirror image, left to right as you see it")
 	# src/assembly/split_merge.gd: Studio's Split and Merge, on its keys.
 	_add("split_parts", "Split into smaller parts", ALT | KEY_S,
-		func() -> void: SplitMerge.split(verbs), selected,
+		func() -> void: Later.script(&"SplitMerge").split(verbs), selected,
 		"Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs")
 	_add("merge_parts", "Merge into bigger parts", ALT | KEY_M,
-		func() -> void: SplitMerge.merge(verbs), selected,
+		func() -> void: Later.script(&"SplitMerge").merge(verbs), selected,
 		"The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick")
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
@@ -1349,13 +1357,14 @@ func _define() -> void:
 	_add("suggest_sections", "Suggest sections", 0, func() -> void: await sections.suggest(),
 		something, "How a builder would split this into sections, as a set into bags: "
 		+ "shown in the model tree to accept, rename, merge or split")
+	var targets: Callable = func() -> bool: return not section_target().is_empty()
 	_add("evaluate_section", "Evaluate the section…", 0,
-		func() -> void: await sections.show_evaluation(), sections.can_target,
+		func() -> void: await sections.show_evaluation(), targets,
 		"The selected section on its own: parts, weight, whether it holds together and "
 		+ "stands, what joins it to the rest, its own steps")
 	_add("break_out", "Break out the section", KEY_Y,
 		func() -> void: sections.break_out_or_back(),
-		func() -> bool: return sections.can_target() or not world.broken_out.is_empty(),
+		func() -> bool: return targets.call() or not world.broken_out.is_empty(),
 		"Pull the selected section away from the model to work on it, or put it back "
 		+ "exactly where it was ({break_out} again)")
 	_add("put_back", "Put every section back", 0, func() -> void: sections.put_back_all(),
@@ -1363,7 +1372,7 @@ func _define() -> void:
 		"Every section broken out back exactly where it was")
 	_add("explode", "Exploded view", SHIFT | KEY_Y, func() -> void: sections.toggle_explode(),
 		something, "Every section drawn apart, and back together ({explode} again)")
-	_ticked("explode", func() -> bool: return sections.is_exploded())
+	_ticked("explode", func() -> bool: return _sections != null and _sections.is_exploded())
 	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
 		Callable(), "The model's sub-assemblies by name, inside one another")
 	_ticked("panel_outliner", func() -> bool: return _section_shown(outliner))
@@ -3164,6 +3173,60 @@ func covers(point: Vector2) -> bool:
 	return false
 
 
+## Sections (SectionsUi over Sections), made the first time something asks
+## for them: Suggest sections, Break out, Exploded view, the model tree's
+## buttons, a session's suggest_sections. Their 0.1 MB of code was compiled
+## before a first visit's window was drawn (leaves, 2026-11-05).
+func _make_sections() -> void:
+	var found: RefCounted = Later.make(&"Sections")
+	found.world = world
+	found.library = library
+	found.builder = builder
+	found.assemblies = assemblies
+	found.scenery = store.scenery
+	var ui: Node = Later.make(&"SectionsUi")
+	ui.shell = self
+	ui.sections = found
+	_sections = ui
+	add_child(ui)
+	verbs.drawn_pick = ui.pick_drawn
+	outliner.use_sections(ui)
+
+
+## The section a section's command works on: the sub-assembly chosen in the
+## model tree, or the one directly inside the assembly entered that all the
+## selected parts are in; "" for none. Asked by the menus and the model
+## tree's buttons without making [member sections].
+func section_target() -> String:
+	var chosen: String = assemblies.selected_assembly()
+	if not chosen.is_empty():
+		return chosen
+	var found: String = ""
+	for brick_id: int in builder.selection:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var child: String = Assemblies.child_of(assemblies.entered, Assemblies.path_of(brick))
+		if child.is_empty() or (not found.is_empty() and child != found):
+			return ""
+		found = child
+	return found
+
+
+## The library and My collection placed for a finger as Main's panels are,
+## once the app is dressed for one (Main._dress_for_phone) and as each is made.
+func place_dialogs() -> void:
+	var touch: Object = app.get("_touch") if app != null else null
+	if touch == null:
+		return
+	if _library_dialog != null:
+		var library: GDScript = Later.script(&"LibraryDialog")
+		touch.place_panel(_library_dialog, Vector2(library.WIDE, library.TALL))
+	if _collection != null:
+		var mine: GDScript = Later.script(&"CollectionDialog")
+		touch.place_panel(_collection, Vector2(mine.WIDE, mine.TALL))
+
+
 ## Where each control is, for a browser test to press it as a person does.
 func controls_by_name() -> Dictionary:
 	var out: Dictionary = {}
@@ -3177,10 +3240,10 @@ func controls_by_name() -> Dictionary:
 		out.merge(outliner.controls_by_name())
 	if banner != null:
 		out.merge(banner.controls_by_name())
-	if collection != null:
-		out.merge(collection.controls_by_name())
-	if library_dialog != null:
-		out.merge(library_dialog.controls_by_name())
+	if _collection != null:
+		out.merge(_collection.controls_by_name())
+	if _library_dialog != null:
+		out.merge(_library_dialog.controls_by_name())
 	var parts_list: Control = app.get("_inventory_made") if app != null else null
 	if parts_list != null:
 		out.merge(parts_list.controls_by_name())

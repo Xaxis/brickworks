@@ -32,19 +32,20 @@ static var keeps: bool = true
 ##
 ## The same shape under another name is another part: a designer who calls
 ## one 2 x 7 brick a sill and another a lintel gets both, numbered apart.
-static func make(library: PartLibrary, spec: ElementMaker.Spec,
+static func make(library: PartLibrary, spec: RefCounted,
 		keep: bool = true) -> Dictionary:
-	var problem: String = ElementMaker.problem(spec)
+	var maker: GDScript = Later.script(&"ElementMaker")
+	var problem: String = maker.problem(spec)
 	if not problem.is_empty():
 		return {"id": "", "problem": problem}
-	var base: String = ElementMaker.id_for(spec)
+	var base: String = maker.id_for(spec)
 	var id: String = base
-	var text: String = ElementMaker.dat(spec, id)
+	var text: String = maker.dat(spec, id)
 	var n: int = 1
 	while library.parts.has(id) and library.custom_source(id) != text:
 		n += 1
 		id = "%s-%d" % [base, n]
-		text = ElementMaker.dat(spec, id)
+		text = maker.dat(spec, id)
 	return add(library, text, id, keep)
 
 
@@ -52,7 +53,7 @@ static func make(library: PartLibrary, spec: ElementMaker.Spec,
 ## the library and keep it. The part's geometry has to be to hand
 ## ([method PartLibrary.mesh_for]); on the web that can mean fetching it
 ## first. Returns {"id", "problem"}, as [method make] does.
-static func make_modified(library: PartLibrary, edit: PartEditor.Edit,
+static func make_modified(library: PartLibrary, edit: RefCounted,
 		keep: bool = true) -> Dictionary:
 	var result: Dictionary = modified_text(library, edit)
 	if not str(result["problem"]).is_empty():
@@ -62,21 +63,22 @@ static func make_modified(library: PartLibrary, edit: PartEditor.Edit,
 
 ## The part file an edit makes, under an id no other part has unless it is
 ## this very part: {"text", "id", "problem"}.
-static func modified_text(library: PartLibrary, edit: PartEditor.Edit) -> Dictionary:
+static func modified_text(library: PartLibrary, edit: RefCounted) -> Dictionary:
 	var info: PartLibrary.PartInfo = library.parts.get(edit.from)
 	if info == null:
 		return {"text": "", "id": "", "problem": "there is no part %s" % edit.from}
 	var mesh: Lbm.PartMesh = library.mesh_for(edit.from)
 	var category: String = info.ldraw_category if info.custom else info.category
-	var base: String = PartEditor.id_for(edit)
+	var editor: GDScript = Later.script(&"PartEditor")
+	var base: String = editor.id_for(edit)
 	var id: String = base
-	var made: Dictionary = PartEditor.make_dat(edit, mesh, info.name, category, id)
+	var made: Dictionary = editor.make_dat(edit, mesh, info.name, category, id)
 	var n: int = 1
 	while made["problem"] == "" and library.parts.has(id) \
 			and library.custom_source(id) != str(made["text"]):
 		n += 1
 		id = "%s-%d" % [base, n]
-		made = PartEditor.make_dat(edit, mesh, info.name, category, id)
+		made = editor.make_dat(edit, mesh, info.name, category, id)
 	return {"text": made["text"], "id": id, "problem": made["problem"]}
 
 
@@ -85,7 +87,7 @@ static func modified_text(library: PartLibrary, edit: PartEditor.Edit) -> Dictio
 ## from the same model file. [param built]: the part built already
 ## ([method _built_at_once]), or null to build it here.
 static func add(library: PartLibrary, text: String, id: String, keep: bool = true,
-		others: Dictionary = {}, built: PartForge.Result = null) -> Dictionary:
+		others: Dictionary = {}, built: RefCounted = null) -> Dictionary:
 	if built == null:
 		built = _built(library, text, id, others)
 	if not built.problem.is_empty():
@@ -425,7 +427,7 @@ static func read_as_copy(library: PartLibrary, info: PartLibrary.PartInfo,
 
 ## A part built from its LDraw text, as [method add] builds it.
 static func _built(library: PartLibrary, text: String, id: String,
-		others: Dictionary) -> PartForge.Result:
+		others: Dictionary) -> RefCounted:
 	# A print drawn here carries pictures (PartPrints): from the model file
 	# it came in, or kept beside it.
 	var pictures: Dictionary = {}
@@ -435,7 +437,7 @@ static func _built(library: PartLibrary, text: String, id: String,
 			pictures[name.to_lower()] = others[name]
 		else:
 			sources[name] = others[name]
-	var built: PartForge.Result
+	var built: RefCounted
 	if PartPrints.has_pictures(text):
 		for name: String in PartPrints.pictures_named(text):
 			if not pictures.has(name.to_lower()) and FileAccess.file_exists(dir + name):
@@ -444,14 +446,14 @@ static func _built(library: PartLibrary, text: String, id: String,
 				pictures[name] = pictures[name.to_lower()]
 		built = PartPrints.build(text, id, pictures, library, sources)
 	elif is_skin_text(text):
-		built = PartForge.build_skin(text, id, sources)
+		built = Later.script(&"PartForge").build_skin(text, id, sources)
 	else:
-		built = PartForge.build(text, id, sources)
+		built = Later.script(&"PartForge").build(text, id, sources)
 	return built
 
 
 ## What the catalogue would say about a built part.
-static func info_for(built: PartForge.Result) -> PartLibrary.PartInfo:
+static func info_for(built: RefCounted) -> PartLibrary.PartInfo:
 	var info := PartLibrary.PartInfo.new()
 	info.id = built.id
 	info.name = built.name
@@ -494,9 +496,9 @@ static func load_all(library: PartLibrary) -> int:
 				sources[file_name] = needed
 				drawn_from[file_name.get_basename()] = needed
 	var later: Dictionary = {}
-	if fetches():
+	if not texts.is_empty() and fetches():
 		for file_name: String in texts.keys():
-			if not PartForge.unreached(texts[file_name], sources.get(file_name, {})).is_empty():
+			if not Later.script(&"PartForge").unreached(texts[file_name], sources.get(file_name, {})).is_empty():
 				later[file_name] = texts[file_name]
 				texts.erase(file_name)
 	if not later.is_empty():
@@ -534,7 +536,7 @@ static func _load_later(library: PartLibrary, texts: Dictionary,
 	await _fetch_until(library, func() -> PackedStringArray:
 		var named: Dictionary = {}
 		for file_name: String in texts:
-			for key: String in PartForge.unreached(texts[file_name], sources.get(file_name, {})):
+			for key: String in Later.script(&"PartForge").unreached(texts[file_name], sources.get(file_name, {})):
 				named[key] = true
 		return PackedStringArray(named.keys()))
 	for file_name: String in texts:
@@ -681,7 +683,7 @@ static var _unfetched: Dictionary = {}
 static func fetch_root(library: PartLibrary) -> String:
 	if not sources_from.is_empty():
 		return sources_from.rstrip("/") + "/"
-	if (OS.has_feature("web") or not PartForge.library_here) \
+	if (OS.has_feature("web") or not Later.script(&"PartForge").library_here) \
 			and not library.remote_parts.is_empty():
 		return library.remote_parts.rstrip("/") + "/"
 	return ""
@@ -692,7 +694,7 @@ static func fetch_root(library: PartLibrary) -> String:
 ## ships LDraw's primitives and not its parts (PartForge.library_here); and
 ## a probe that says where from. A checkout reads them from vendor/ldraw.
 static func fetches() -> bool:
-	return OS.has_feature("web") or not sources_from.is_empty() or not PartForge.library_here
+	return OS.has_feature("web") or not sources_from.is_empty() or not Later.script(&"PartForge").library_here
 
 
 ## The files the parts [param model] carries and its flexible parts are drawn
@@ -708,7 +710,7 @@ static func unreached_by(library: PartLibrary, model: LdrModel) -> PackedStringA
 			carried[name] = model.embedded_parts[name]
 		carried.merge(model.embedded_sources)
 		for file_name: String in wanted:
-			for key: String in PartForge.unreached(model.embedded_parts[file_name], carried):
+			for key: String in Later.script(&"PartForge").unreached(model.embedded_parts[file_name], carried):
 				found[key] = true
 	if not model.generated.is_empty():
 		var sources: Dictionary = model.section_texts.duplicate()
@@ -727,7 +729,7 @@ static func unreached_by(library: PartLibrary, model: LdrModel) -> PackedStringA
 			var made_of: Dictionary = model.skin_texts[body]
 			if made_of.is_empty():
 				continue
-			made_of["unreached"] = PartForge.unreached(str(made_of["text"]), sources)
+			made_of["unreached"] = Later.script(&"PartForge").unreached(str(made_of["text"]), sources)
 			for name: String in made_of["unreached"]:
 				found[name] = true
 	return PackedStringArray(found.keys())
@@ -895,7 +897,7 @@ static func _fetch_each(tree: SceneTree, root: String, keys: PackedStringArray,
 				if not _took(key, result, code, headers, body):
 					return
 				arrived[0] = int(arrived[0]) + 1
-				for named: String in PartForge.unreached(PartForge.fetched(key)):
+				for named: String in Later.script(&"PartForge").unreached(Later.script(&"PartForge").fetched(key)):
 					if not asked.has(named) and not _unfetched.has(named):
 						asked[named] = true
 						todo.append(named)
@@ -918,7 +920,7 @@ static func _took(key: String, result: int, code: int, headers: PackedStringArra
 		_unfetched[key] = [why, code == 0 or code >= 500]
 		push_warning("could not fetch the LDraw file %s: %s" % [key, why])
 		return false
-	PartForge.keep_fetched(key, body.get_string_from_utf8())
+	Later.script(&"PartForge").keep_fetched(key, body.get_string_from_utf8())
 	return true
 
 
@@ -1036,7 +1038,7 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 		if not (library.parts.has(id) and library.custom_source(id) == text):
 			# Found already where the web looked before it opened (unreached_by).
 			var unreached: PackedStringArray = made_of["unreached"] if made_of.has("unreached") \
-				else PartForge.unreached(text, sources)
+				else Later.script(&"PartForge").unreached(text, sources)
 			made_of["unreached"] = unreached
 			if not unreached.is_empty():
 				problems.append(_with_why("%s (flexible): it uses files this build does not have: %s"
@@ -1046,8 +1048,9 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 			# (PartForge.build_skin): it is read on another thread.
 			var given: Dictionary = sources.duplicate()
 			var built: Array = entry["built"]
+			var forge: GDScript = Later.script(&"PartForge")
 			var build: Callable = func() -> void:
-				built[0] = PartForge.build_skin(text, id, given, true, false)
+				built[0] = forge.build_skin(text, id, given, true, false)
 			if OS.has_feature("web") and not OS.has_feature("threads"):
 				build.call()
 			else:
@@ -1056,7 +1059,7 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 				# keep its low side busy for seconds. The forge run once here
 				# first, as there (WorkerTasks.first_here): the skins of a
 				# file all start it at once, and the carried parts with them.
-				WorkerTasks.first_here("the forge", PartForge.warm)
+				WorkerTasks.first_here("the forge", Callable(forge, &"warm"))
 				entry["task"] = WorkerThreadPool.add_task(build, true, "build a flexible part")
 		begun.append(entry)
 	return begun
@@ -1075,7 +1078,7 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 		var sub: LdrModel.SubModel = entry["sub"]
 		var id: String = entry["id"]
 		var text: String = entry["text"]
-		var built: PartForge.Result = (entry["built"] as Array)[0]
+		var built: RefCounted = (entry["built"] as Array)[0]
 		if built != null:
 			var problem: String = _add_skin(library, built, text)
 			if not problem.is_empty():
@@ -1100,8 +1103,8 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 
 ## A skin built (PartForge.build_skin) put in the library as a part no bin
 ## shows; why not, or "".
-static func _add_skin(library: PartLibrary, built: PartForge.Result, text: String) -> String:
-	built = PartForge.with_mesh(built)
+static func _add_skin(library: PartLibrary, built: RefCounted, text: String) -> String:
+	built = Later.script(&"PartForge").with_mesh(built)
 	if not built.problem.is_empty():
 		return built.problem
 	var info: PartLibrary.PartInfo = info_for(built)
@@ -1137,7 +1140,7 @@ static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
 		while not WorkerThreadPool.is_task_completed(task):
 			await tree.process_frame
 		WorkerThreadPool.wait_for_task_completion(task)
-		var built: PartForge.Result = (entry["built"] as Array)[0]
+		var built: RefCounted = (entry["built"] as Array)[0]
 		if built != null:
 			await readers_done(library)
 			_add_skin(library, built, str(entry["text"]))
@@ -1278,7 +1281,7 @@ static func _is_piece(library: PartLibrary, model: LdrModel, key: String,
 ## The parts [param texts] holds (file name -> LDraw text), drawn from
 ## [param others] as [method add] has them, built all at once on the
 ## engine's worker threads as [method add] would build each, their meshes
-## made here: file name -> PartForge.Result. Built one after another they
+## made here: file name -> RefCounted. Built one after another they
 ## were most of opening a file that carries parts (42082-1: 1.8 s of 4.3),
 ## and of starting the app after opening one ([method load_all]). A print is
 ## left out (PartPrints builds it with the library), and so is everything on
@@ -1324,9 +1327,10 @@ static func _build_begun(texts: Dictionary, others: Dictionary) -> Array:
 	var writing := Mutex.new()
 	# The forge run once here first: every worker starting it at once, the
 	# first time it ran, crashed the app (WorkerTasks.first_here).
-	WorkerTasks.first_here("the forge", PartForge.warm)
+	var forge: GDScript = Later.script(&"PartForge")
+	WorkerTasks.first_here("the forge", Callable(forge, &"warm"))
 	var task: int = WorkerThreadPool.add_group_task(func(n: int) -> void:
-		var result: PartForge.Result = PartForge.build(texts[plain[n]],
+		var result: RefCounted = forge.build(texts[plain[n]],
 			plain[n].get_basename(), sources, true, null, false)
 		writing.lock()
 		made[n] = result
@@ -1336,13 +1340,13 @@ static func _build_begun(texts: Dictionary, others: Dictionary) -> Array:
 
 
 ## What the builds [method _build_begun] set going made, their meshes made
-## here: file name -> PartForge.Result.
+## here: file name -> RefCounted.
 static func _build_ended(going: Array) -> Dictionary:
 	var plain: PackedStringArray = going[1]
 	var made: Array = going[2]
 	var out: Dictionary = {}
 	for n: int in plain.size():
-		out[plain[n]] = PartForge.with_mesh(made[n])
+		out[plain[n]] = Later.script(&"PartForge").with_mesh(made[n])
 	return out
 
 

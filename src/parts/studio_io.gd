@@ -74,7 +74,7 @@ static func read(bytes: PackedByteArray, library: PartLibrary = null) -> Diction
 	for name: String in entries:
 		if name.begins_with("customparts/") and name.ends_with(".dat"):
 			custom[name.trim_prefix("customparts/")] = _text_of(_unpack(bytes, entries[name]))
-	var carried: Dictionary = StudioDecor.carried(text, model2, custom, library)
+	var carried: Dictionary = Later.script(&"StudioDecor").carried(text, model2, custom, library)
 	# What of Studio's own was left out, and why; what came in is counted
 	# when the model opens, with every other part.
 	var notes: PackedStringArray = carried["notes"]

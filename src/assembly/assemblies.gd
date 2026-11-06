@@ -120,6 +120,15 @@ static func within(group: String, path: String) -> bool:
 	return group == path or group.begins_with(path + "/")
 
 
+## The assembly directly inside [param at] that [param path] is in, or "".
+static func child_of(at: String, path: String) -> String:
+	if path == at or not within(path, at):
+		return ""
+	var rest: String = path.substr(at.length()).trim_prefix("/")
+	var first: String = rest.get_slice("/", 0)
+	return join(at, first) if not first.is_empty() else ""
+
+
 ## How a person reads an assembly's name: "Wing", "Wing (copy 2)".
 static func label(path: String) -> String:
 	var segment: String = leaf(path)

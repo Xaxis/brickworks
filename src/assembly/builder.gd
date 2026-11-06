@@ -2272,7 +2272,7 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 		_ghost.visible = false
 		_ghost_valid = false
 		return
-	if Stickers.sticks(library, held_part):
+	if library.sticks(held_part):
 		_preview_sticker(part, origin, direction)
 		return
 
@@ -2353,14 +2353,15 @@ var view_up: Vector3 = Vector3.UP
 ## under it (Stickers.lies_on), and a sticker put down on the grid floated
 ## a plate over the brick it was for. R turns it about the face.
 func _preview_sticker(part: Lbm.PartMesh, origin: Vector3, direction: Vector3) -> void:
-	var face: Stickers.Face = Stickers.face_at(world, library, origin, direction, false, view_up)
+	var stickers: GDScript = Later.script(&"Stickers")
+	var face: RefCounted = stickers.face_at(world, library, origin, direction, false, view_up)
 	if face == null:
 		_ghost.visible = false
 		_ghost_valid = false
 		_hovered = 0
 		return
 	_hovered = face.bricks[0]
-	_ghost_transform = Stickers.laid_on(face, part.bounds, held_rotation)
+	_ghost_transform = stickers.laid_on(face, part.bounds, held_rotation)
 	_seated_on = 0
 	_ghost_valid = true
 	_show_ghost(part)

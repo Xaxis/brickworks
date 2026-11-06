@@ -17,7 +17,7 @@
 class_name Stickers
 extends RefCounted
 
-const STICKER_BY := "0 // Sticker by Brickworks:"
+const STICKER_BY := PartPrints.STICKER_BY
 const AUTHOR := "Brickworks sticker designer"
 ## How thick the film is, how much a real brick is shy of its pitch on
 ## each side, and how far in from the face's edge a sticker stands, LDU.
@@ -252,8 +252,7 @@ static func is_sticker(library: PartLibrary, part_id: String) -> bool:
 ## one LDraw files as a Sticker (PartLibrary.decor_of). What it is stuck to
 ## is [method lies_on]'s.
 static func sticks(library: PartLibrary, part_id: String) -> bool:
-	var info: PartLibrary.PartInfo = library.parts.get(part_id)
-	return info != null and (info.decor() & PartLibrary.PartInfo.STICKER) != 0
+	return library.sticks(part_id)
 
 
 ## Points a little behind a film at [param at], across it, [param film] its
