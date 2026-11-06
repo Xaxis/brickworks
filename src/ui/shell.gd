@@ -392,6 +392,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	over_model.add_child(see_inside.bar)
 	see_inside.below.append(app.get("_hint"))
 	see_inside.below.append(app.get("_steps"))
+	# Inside the model's room, clear of the columns beside it.
+	if app.has_method("_model_rect"):
+		see_inside.room_of_model = func() -> Rect2: return app.call("_model_rect")
 	# View, Stress's legend, count and weakest joints: Main puts it in the
 	# column beside the model, with the tools' panels.
 

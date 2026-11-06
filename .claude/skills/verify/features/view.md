@@ -512,7 +512,15 @@ picture the assistant is shown.
   the eye is on; a strip at the foot of the model (above the key strip and the
   timeline) has X, Y and Z, a slider that drags it
   through the model (the wheel moves it too), where it is in bricks up or studs
-  in, Flip (`Shift-K`), Ghost (what is cut away left faint) and ×. Each part
+  in, Flip (`Shift-K`), Ghost (what is cut away left faint) and ×. The strip
+  lies in the model's room (`SeeInside._place`, by `Main._model_rect`, as the
+  render queue does), in its middle: one line where the room has it, and
+  where it has not (Stress's panel, the bin and the assistant beside the
+  model) as wide as the room, its three groups (what it is by; the slider or
+  Shrink, Grow and the size; Flip, Ghost and ×) wrapping to a line or two
+  more. Laid out for a finger its buttons are a fingertip each way
+  (`TouchSizing.size_panel`). Made one width for the window it ran past the
+  room, its Ghost and × under the columns (APP_UX5 striproom). Each part
   is sorted by its box against the plane (`BrickWorld._write_cut`): wholly on
   the near side, drawn by its batch as ever, with the plain shader and its
   early depth test; wholly past the plane, not drawn; across it, by the
@@ -2598,6 +2606,18 @@ xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_pro
 # file and someone else's step-free .mpd (headless), and --keep=DIR then
 # --older=DIR on an older checkout, which opens each whole.
 tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes
+# Cut away's strip in the model's room (APP_UX5 striproom): the car cut by a
+# plane, a box, a sphere and a cylinder with Stress, the assistant and the bin
+# opened as a person opens them (two orders), the bin and the assistant alone,
+# and nothing beside the model: every control the strip shows inside
+# Main._model_rect and the window, over no column or rail, clear of the key
+# strip; each clicked where it is drawn does its job (the list opens, X/Y/Z,
+# the slider, Flip, Shrink, Grow, Ghost on and off, × last); one line with
+# nothing beside the model. The phone's and the tablet's own: the model alone,
+# Stress, the parts beside it (tablet), by taps, every button a fingertip.
+# Pictures in shots/striproom/<size>[_phone|_tablet]/: look at the strip.
+tools/probe.sh striproom && PROBE_SIZE=1400x900 tools/probe.sh striproom
+tools/probe.sh striproom_phone && tools/probe.sh striproom_tablet
 tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied into an older checkout: tools/probe.sh cutshapes_kept -- --older=/tmp/cut_kept
 # View, Stress: a loaded 2x10 cantilever's root red on 1x1s, plain on 2x2s; a
 # bare one and a bonded wall not red; nothing painted; the shipped models none
