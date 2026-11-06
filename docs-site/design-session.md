@@ -1,5 +1,5 @@
 ---
-tools: read_guide, review_model, compare_with_photo, settle_feature, settle_surface, job
+tools: read_guide, review_model, settle_feature, settle_surface, job
 ai: A design session works in passes, as a set designer does: the scale and references, the silhouette submitted first, a review against real sets, each feature and each assembly, the surface pass, the creative pass, then save. The said blocks on this page are the exact words every session is given first; read_guide gives any section of the rest.
 rules:
   - Nothing overlaps; nothing floats; the model is one connected thing, and parts side by side are not joined, only stacking joins.
@@ -17,7 +17,7 @@ Whichever assistant designs, Claude through the connector, ChatGPT, Claude Code,
 
 1. **Scale and references.** `plan_scale` with the real thing's length, `find_reference` for a picture of anything real, and `how_real_sets_build_this` for what real sets of the kind are built from, and the faults found in earlier designs of it.
 2. **The silhouette first.** `submit_design` with the main masses, the model's assemblies (what a person would name: the gatehouse, each tower) and its features (what the subject is known by: an owl's eyes, a car's grille), each with where it goes. The app builds it, checks it, and refuses what does not hold together, part by part.
-3. **Review.** A new design's first `review_model` sets the assistant's model, from the front and the side, beside a photograph of the real thing (the one its `find_reference` brought, or one found for it), to compare the silhouettes and each feature's form, and settle each difference with `compare_with_photo`: rebuild it or keep it, and why. Then `review_model` sets the silhouette and proportions beside real sets; the masses are fixed before any detail.
+3. **Review.** `review_model` sets the silhouette and proportions beside real sets; the masses are fixed before any detail.
 4. **Each feature.** The app lays a real set's piece where the feature goes, and `settle_feature` accepts it, asks for the next, rejects it, or says the assistant built it itself.
 5. **Each assembly**, looked at with `review_model` and detailed with `edit_model`.
 6. **The surface pass.** `review_model` with `surface`: the app tiles open studs, steps slopes and rounds hard edges, and `settle_surface` settles each finding.
@@ -64,7 +64,7 @@ A call answered with a job number is still working in the app: call job about ev
 How to work here, said once as this chat begins (read_guide "work" has it whole, and read_guide any section a step names):
  1. Before building: plan_scale with the real thing's size, find_reference for anything that exists, how_real_sets_build_this with the subject: real sets' parts, and the faults found in our own designs of it, to design out.
  2. submit_design the silhouette first: the main masses, with its assemblies and its features (what the subject is known by, each with where it goes). A hull, a car body or a building is a shape pattern (read_guide "shapes"); a figure or a creature is shaped parts on joints (read_guide "figures"). Pass the person's request, word for word, as brief, and a part count they named as parts.
- 3. review_model: it first sets your front and side beside a photo of the real thing, to compare their forms and rebuild what differs; then fix the silhouette and proportions before any detail.
+ 3. review_model: fix the silhouette and proportions before any detail.
  4. Each feature: the app lays a real set's piece; settle_feature it.
  5. Each assembly: review_model {"assembly": name}, detailed with edit_model.
  6. review_model {"surface": true}, settle_surface each; 7. review_model {"creative": true}; then save_model.

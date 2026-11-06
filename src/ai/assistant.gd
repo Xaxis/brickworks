@@ -3351,7 +3351,6 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"plan_scale":
 			progress.emit("working out how big it should be")
 			heard(str(args.get("subject", "")))
-			photo_look().heard_from(name, str(args.get("subject", "")))
 			# The official models' sizes, fetched on the web the first time.
 			await SetKnowledge.ensure(self)
 			return _plan_scale(args)
@@ -3364,7 +3363,6 @@ func _tool_answer(block: Dictionary) -> Variant:
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up how real sets build a %s" % subject)
 			heard(subject)
-			photo_look().heard_from(name, subject)
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
@@ -4484,7 +4482,6 @@ var who: String = "Claude"
 func sitting_begun(chat_name: String) -> void:
 	_sizes_said.erase(chat_name)
 	fresh_eyes().begin()
-	photo_look().begin()
 
 
 ## How big the model actually came out, in studs.
@@ -6428,7 +6425,6 @@ func heard(subject: String, fresh: bool = false) -> void:
 		_their_words = ""
 		_words_passed = ""
 		fresh_eyes().begin()
-		photo_look().begin()
 		# What the last design was called is not this one's subject: a
 		# lighthouse after a statue was read as a figure.
 		_begin_subject(_brief if _busy else "")
@@ -20748,43 +20744,6 @@ func _plan_scale(args: Dictionary) -> String:
 func _find_reference(subject: String) -> Variant:
 	if subject.strip_edges().is_empty():
 		return "Say what to look for."
-	var pictures: Array = await look_up(subject)
-	# Kept for the look beside the photo at the first whole review.
-	photo_look().found(subject, pictures)
-	if pictures.is_empty():
-		return ("No pictures of \"%s\" came back%s. Build it from what " % [
-			subject, "" if _lookup_trouble.is_empty() else " — " + _lookup_trouble]
-			+ "you know of it, and look at what you build.")
-
-	var blocks: Array = [{"type": "text", "text":
-		("%d picture%s of \"%s\", from Wikimedia Commons. Check each one "
-			% [pictures.size(), "" if pictures.size() == 1 else "s", subject]
-			+ "is the thing you were asked for before you build to it: "
-			+ "Commons carries what is free to use, so a name can bring "
-			+ "back something else that shares it." + _colours_seen(pictures))}]
-	for one: Variant in pictures:
-		var picture: Dictionary = one
-		var encoded: String = Marshalls.raw_to_base64(picture["bytes"])
-		# Kept, where a draft is not. The subject has to still be there
-		# when the detailing starts, which is the point at which the
-		# sweep that drops old pictures would otherwise have taken it.
-		_kept_pictures[encoded] = true
-		blocks.append({"type": "text", "text": "%s — %s"
-			% [picture["title"], picture["credit"]]})
-		blocks.append({
-			"type": "image",
-			"source": {
-				"type": "base64",
-				"media_type": "image/png",
-				"data": encoded,
-			},
-		})
-	return blocks
-
-
-## Pictures of [param subject] from Wikimedia Commons, each {bytes, title,
-## credit, lego, colours}, or [] with why in [member _lookup_trouble].
-func look_up(subject: String) -> Array:
 	if _finder == null:
 		_finder = ReferenceFinder.new()
 		add_child(_finder)
@@ -20824,7 +20783,37 @@ func look_up(subject: String) -> Array:
 		_finder.found.disconnect(done)
 	if _finder.missed.is_connected(failed):
 		_finder.missed.disconnect(failed)
-	return _lookup_pictures
+
+	var pictures: Array = _lookup_pictures
+	if pictures.is_empty():
+		return ("No pictures of \"%s\" came back%s. Build it from what " % [
+			subject, "" if _lookup_trouble.is_empty() else " — " + _lookup_trouble]
+			+ "you know of it, and look at what you build.")
+
+	var blocks: Array = [{"type": "text", "text":
+		("%d picture%s of \"%s\", from Wikimedia Commons. Check each one "
+			% [pictures.size(), "" if pictures.size() == 1 else "s", subject]
+			+ "is the thing you were asked for before you build to it: "
+			+ "Commons carries what is free to use, so a name can bring "
+			+ "back something else that shares it." + _colours_seen(pictures))}]
+	for one: Variant in pictures:
+		var picture: Dictionary = one
+		var encoded: String = Marshalls.raw_to_base64(picture["bytes"])
+		# Kept, where a draft is not. The subject has to still be there
+		# when the detailing starts, which is the point at which the
+		# sweep that drops old pictures would otherwise have taken it.
+		_kept_pictures[encoded] = true
+		blocks.append({"type": "text", "text": "%s — %s"
+			% [picture["title"], picture["credit"]]})
+		blocks.append({
+			"type": "image",
+			"source": {
+				"type": "base64",
+				"media_type": "image/png",
+				"data": encoded,
+			},
+		})
+	return blocks
 
 
 ## The pictures' colours as LEGO colours, said as numbers to build in.
@@ -20900,18 +20889,6 @@ func fresh_eyes() -> FreshEyes:
 
 
 var _eyes: FreshEyes = null
-
-
-## A new design's front and side beside a photograph of the real thing, at
-## its first whole review.
-func photo_look() -> PhotoLook:
-	if _photo_look == null:
-		_photo_look = PhotoLook.new()
-		_photo_look.assistant = self
-	return _photo_look
-
-
-var _photo_look: PhotoLook = null
 
 
 ## Choosing a sketch, for a session outside the app: in the app's own loop
@@ -21020,7 +20997,6 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_creative = {}
 		surface_pass().reset()
 		fresh_eyes().designed(bare)
-		photo_look().designed(bare)
 	return _built_from_outside(design, report) if designing else _placed_said(design, report)
 
 
@@ -21350,13 +21326,6 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		_detail_added.append([_outside_reviewing["name"], added])
 		_outside_reviewing = {}
 	if assembly.strip_edges().is_empty():
-		# A design's first whole review leads with its front and side beside a
-		# photograph of the real thing, the rest once it is answered: a session
-		# read its pictures against its memory of the thing (design17).
-		if photo_look().due():
-			var look: Variant = await photo_look().look()
-			if not (look is String and (look as String).is_empty()):
-				return look
 		_outside_looked = true
 		# Every part this design placed is judged, not only what an edit adds:
 		# a design is handed over from here, and BrickBench refuses a build for

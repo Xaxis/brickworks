@@ -85,9 +85,7 @@ it goes). A hull, a car body or a building is a shape pattern (read_guide \
 "shapes"); a figure or a creature is shaped parts on joints (read_guide \
 "figures"). Pass the person's request, word for word, as brief, and a part \
 count they named as parts.
- 3. review_model: it first sets your front and side beside a photo of the \
-real thing, to compare their forms and rebuild what differs; then fix the \
-silhouette and proportions before any detail.
+ 3. review_model: fix the silhouette and proportions before any detail.
  4. Each feature: the app lays a real set's piece; settle_feature it.
  5. Each assembly: review_model {"assembly": name}, detailed with \
 edit_model.
