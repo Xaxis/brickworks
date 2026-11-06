@@ -91,7 +91,7 @@ var _rb_note: Label
 var _loose_search: LineEdit
 var _loose_colour: OptionButton
 var _loose_count: SpinBox
-var _loose_found: HBoxContainer
+var _loose_found: HFlowContainer
 var _loose_picture: TextureRect
 var _picture_wait: Timer
 var _search_wait: Timer
@@ -386,7 +386,11 @@ func _loose_row(page: Container) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	page.add_child(row)
-	row.add_child(_label("Loose parts", 12, 0.75))
+	# Its own width: a clipped label beside a field that fills the row had
+	# none, and the row went unnamed.
+	var named: Label = _label("Loose parts", 12, 0.75)
+	named.clip_text = false
+	row.add_child(named)
 	_loose_search = LineEdit.new()
 	_loose_search.placeholder_text = "A part: its number or words, like red 2x4 brick"
 	_loose_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -437,10 +441,13 @@ func _loose_row(page: Container) -> void:
 	_button(row, "Add", add_loose, "collection_loose_add",
 		"Add these to your loose parts, kept with your account")
 
-	_loose_found = HBoxContainer.new()
-	_loose_found.add_theme_constant_override("separation", 4)
+	# Flowing, so the parts found go onto a second line rather than widen
+	# the page: in one row, six of them pushed Add, Add sets and every
+	# Remove past the dialog's edge at 1280 x 720.
+	_loose_found = HFlowContainer.new()
+	_loose_found.add_theme_constant_override("h_separation", 4)
+	_loose_found.add_theme_constant_override("v_separation", 4)
 	_loose_found.custom_minimum_size = Vector2(0, 30)
-	_loose_found.clip_contents = true
 	page.add_child(_loose_found)
 	_picture_wait = Timer.new()
 	_picture_wait.wait_time = 0.25
@@ -1074,6 +1081,14 @@ func search_loose(text: String) -> void:
 		if info.reachable and Collection.ownable(info.id, library):
 			found.append(info)
 	found = PartsBin._named_first(found, needles)
+	# The part named exactly as asked, first: the search put the Plate 1 x 1
+	# Round, used more, before the Plate 1 x 1 to "black plate 1 x 1", and a
+	# person counting their own pile then had a fourth action to choose it.
+	var said: String = " ".join(needles)
+	for n: int in found.size():
+		if " ".join(PartLibrary.in_ldraw_words(found[n].name).split(" ", false)) == said:
+			found.push_front(found.pop_at(n))
+			break
 	_loose_listed = found.slice(0, LISTED)
 	if found.is_empty():
 		_loose_part = ""

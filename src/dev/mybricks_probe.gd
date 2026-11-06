@@ -153,7 +153,6 @@ func _steps() -> void:
 		listed.size() == 15 and _all_in(twelve, listed))
 	_check("...after the old lots, which are as they were",
 		_same((after_hand["parts"] as Array).slice(0, 3), before["parts"]) and _same(after_hand["sets"], before["sets"]))
-	await _shot("mybricks_loose")
 
 	print("\n3. What do I need? and What can I build?")
 	var short_hand: Array = _short(needs)
@@ -229,6 +228,7 @@ func _steps() -> void:
 		take is Button and (take as Button).text == "Take back what Claude added"
 		and _text_of(_dialog.get("_own_rows")).contains("Added by Claude"))
 	await _shot("mybricks_claude")
+	_in_the_dialog("Keep them, Take back and the lots Claude added")
 
 	print("\n6. kept over a restart, and over a sign-in on another device")
 	var kept_now: Dictionary = _kept()
@@ -341,6 +341,7 @@ func _by_hand(twelve: Array) -> void:
 			actions += 1
 		if n == 0:
 			await _shot("mybricks_row")
+			_in_the_dialog("the row, its part and the parts found beside it")
 		var add: Button = (_dialog.call("controls_by_name") as Dictionary)["collection_loose_add"]
 		add.pressed.emit()
 		actions += 1
@@ -351,7 +352,8 @@ func _by_hand(twelve: Array) -> void:
 		lines.append("%s x%d %s by “%s”: %d actions" % [lot["part"], int(lot["qty"]), colour, how, actions])
 	for line: String in lines:
 		print("     " + line)
-	_check("12 lots added by hand, each in %d actions or fewer (search or a photo, a count, Add)" % most,
+	await _shot("mybricks_loose")
+	_check("12 lots added by hand, each in 3 actions or fewer (search or a photo, a count, Add): most %d" % most,
 		all_right and most <= 3)
 	# The bin's own choosing fills the row, and Like this lists parts like it.
 	var bin: PartsBin = _main.get("_bin")
@@ -367,10 +369,32 @@ func _by_hand(twelve: Array) -> void:
 	_check("...and one of them chosen is the row's part: %s" % str((_dialog.call("loose_chosen") as Dictionary)["part"]),
 		like.size() > 1 and str((_dialog.call("loose_chosen") as Dictionary)["part"]) == str(like[1]))
 	await _shot("mybricks_like")
+	_in_the_dialog("Like this's parts")
 	(_dialog.call("controls_by_name")["collection_loose_search"] as LineEdit).text = ""
 
 
 # -- what is kept -------------------------------------------------------------------
+
+
+## Every button, field and count on the page in sight inside the dialog's
+## sides: in one row, the parts found beside the row's part pushed Add, Add
+## sets and every Remove past its right edge at 1280 x 720 (the first run).
+func _in_the_dialog(what: String) -> void:
+	var panel: Rect2 = (_dialog as Control).get_global_rect()
+	var past := PackedStringArray()
+	for found: Node in (_dialog as Node).find_children("*", "Control", true, false):
+		if not (found is BaseButton or found is LineEdit or found is SpinBox):
+			continue
+		var control := found as Control
+		if not control.is_visible_in_tree() or control.get_parent() is SpinBox:
+			continue
+		var at: Rect2 = control.get_global_rect()
+		if at.position.x < panel.position.x - 0.5 or at.end.x > panel.end.x + 0.5:
+			past.append(str(control.get("text")) if not str(control.get("text")).is_empty()
+				else str(control.get("placeholder_text")) if control is LineEdit else str(control.name))
+	_check("%s and every control beside it inside the dialog's sides (%d wide)%s"
+		% [what, roundi(panel.size.x), "" if past.is_empty() else ": past them " + ", ".join(past.slice(0, 6))],
+		past.is_empty())
 
 
 ## The collection as the account last sent it: {"sets", "parts"}.
