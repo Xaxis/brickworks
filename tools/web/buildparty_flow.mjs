@@ -197,12 +197,17 @@ try {
 
   console.log("\n4. a part done crosses in 2 s");
   for (const [from, to, name] of [[a, b, "A"], [b, a, "B"]]) {
-    // Each phone's own chip is "<name> (you) …" at home; the other shows the name alone.
-    const before = (await build(from)).shown || 0;
+    // What the phone has told it has done (its own seat, "me"), before and after one Next:
+    // the cover shows the whole share, so the parts on show are no count of parts down.
+    const doneOf = (state) => ((state.party_state?.seats || []).find((one) => one.me) || {}).done || 0;
+    const before = doneOf(await build(from));
     await tap(from, "build_next");
     const tapped = Date.now();
-    const mine = await until(from, (was) => ((window.brickworksShare || {}).build || {}).shown > was
-      ? (window.brickworksShare || {}).build.shown : null, `${name}'s part down`, 20, before).catch(() => 0);
+    const mine = await until(from, (was) => {
+      const seats = ((((window.brickworksShare || {}).build || {}).party_state || {}).seats) || [];
+      const done = (seats.find((one) => one.me) || {}).done || 0;
+      return done > was ? done : null;
+    }, `${name}'s part down`, 20, before).catch(() => 0);
     const theirs = await until(to, ([who, wanted]) => {
       const chips = (((window.brickworksShare || {}).build || {}).party || {}).chips || [];
       const chip = chips.find((one) => String(one).startsWith(who) && !String(one).includes("(you)")) || "";
