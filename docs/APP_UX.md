@@ -648,6 +648,190 @@ could read the file and parse it on a worker, beside the compile, if the
 catalogue were in the engine's pack. The first frames are SwiftShader's;
 what they compile has not been traced yet.
 
+**Lines 2 and 3 with leaves2's splits, proved: ready** (leaves3,
+2026-11-06, `bench/results/leaves3-2026-11-06`). The branch is `leaves3`
+(1d009cfd, and this record on it). It holds leaves (1964f118) and
+leaves2's cut (b22c5df5) on pre261, four fixes the proof found, and
+today's pre261 merged in. leaves2 added three splits to leaves:
+- Export reaches the part maker only for a model with a print, so its first
+  use fell from 307 KB to 54 KB.
+- The part maker's dialog opens on 92 KB.
+- Brickify compiles on a worker while its panel shows. Before, Bring in a
+  3D model compiled 4.3 MB in one frame.
+
+The closure:
+- Against the pre261 the cut was measured on (5bb19f51): 229 scripts and
+  6.226 MB, down to 190 scripts and 5.229 MB.
+- With today's pre261 merged in (a2ccd7e6): 232 scripts and 6.409 MB, down
+  to 193 scripts and 5.389 MB.
+- Either way that is 1.0 MB, or 16%: about 0.37 s at the start's rate.
+- test_later passes on both. The merge had named Exports and Handles from
+  the first screen again, and both were fixed (below).
+
+The ABBA: four sets, each one `heavy --solo` job of 16 loads, B C C B
+four times, with a person's frames (`abba*/summary.txt`). B is the
+pre261 the cut was measured on (5bb19f51) for the first three, and
+today's (a2ccd7e6) for the merged branch. No quiet slot came: the fourth
+set's gate waited two hours for a load under 16, then ran at 20-53.
+Seconds:
+
+| set | lap | base, median (spread) | cut, median (spread) | cut minus base, paired by block |
+|---|---|---|---|---|
+| abba, c3be3c11, load 12-26 | cold compile | 2.76 (2.55-3.64) | 2.23 (2.02-3.23) | -0.35 (-0.27, -0.43, -0.15, -0.85) |
+|  | warm compile | 2.76 (2.31-3.74) | 2.41 (1.99-3.19) | -0.39 (-0.38, -0.59, -0.07, -0.41) |
+|  | cold interactive | 12.03 (10.94-14.91) | 11.18 (9.82-14.01) | -1.04 (-1.50, -0.57, +0.17, -1.83) |
+|  | warm interactive | 6.87 (6.23-9.39) | 7.04 (5.93-9.19) | -0.17 (-0.82, +0.17, +0.57, -0.50) |
+| abba2, d54234a2, load 13-32 | cold compile | 3.28 (2.56-4.30) | 2.71 (1.99-5.39) | -0.61 (-0.48, +0.85, -1.05, -0.75) |
+|  | warm compile | 2.85 (2.44-4.33) | 2.74 (2.07-3.44) | -0.53 (-1.01, +0.67, -1.04, -0.05) |
+|  | cold interactive | 12.97 (11.10-16.90) | 12.53 (10.52-22.30) | -1.43 (-1.02, +5.16, -1.94, -1.83) |
+|  | warm interactive | 7.30 (6.46-11.00) | 7.29 (6.14-9.80) | -0.50 (-2.08, +1.85, -1.90, +0.90) |
+| abba3, 5a9ecaed, load 22-40 | cold compile | 3.86 (3.17-4.84) | 3.42 (2.84-4.29) | -0.68 (-0.62, -0.74, +0.10, -0.93) |
+|  | warm compile | 4.14 (2.87-4.52) | 3.49 (2.82-3.92) | -0.52 (-0.56, -0.32, -0.47, -0.88) |
+|  | cold interactive | 15.81 (12.92-18.80) | 15.12 (12.46-17.83) | -1.21 (-1.22, -1.19, +1.84, -2.68) |
+|  | warm interactive | 10.45 (8.36-11.58) | 10.15 (7.83-12.65) | -0.42 (+0.02, -1.08, +1.32, -0.85) |
+| abba4, 1d009cfd, load 20-53 | cold compile | 4.72 (3.63-6.84) | 3.84 (2.35-4.13) | -1.50 (-1.57, -1.73, -1.42, -0.50) |
+|  | warm compile | 4.47 (3.20-5.94) | 3.76 (2.21-5.08) | -0.81 (-1.64, -0.74, -0.87, -0.19) |
+|  | cold interactive | 17.31 (13.81-26.34) | 16.53 (11.16-18.20) | -2.26 (-3.36, -5.07, -1.16, +0.40) |
+|  | warm interactive | 11.09 (7.97-15.85) | 10.70 (6.56-13.66) | -1.24 (-3.00, -1.59, -0.90, +0.57) |
+
+- At the calmest load (abba, 12-26) the cut's cold compile median, 2.23
+  s, is under the base's lowest run, 2.55. That is the bar.
+- At two to four times that load both arms spread wider and the medians
+  fall inside the base's spread. The paired drop holds and grows with
+  the load: 0.35, 0.61, 0.68 and 1.50 s cold. 14 of 16 cold blocks and 15
+  of 16 warm ones are lower in the cut.
+- Interactive is no worse in any set. Paired, it fell 1.04-2.26 s cold
+  and 0.17-1.24 s warm.
+
+First uses, through the results' `tools/firstuse.mjs`. Each piece is the
+first thing done after a load of its own, from Find a command, with a
+person's frames, on the export of each fix. The time is the largest
+main-thread compile in any one frame of the use. Brickify's compile on
+its worker and Render's idle make are left out (below). The cut ran 9
+times at load 17-52 (`firstuse`, `firstuse3`-`5`), print and a sticker 5
+times from the studio's warm-up on. The base ran 6 times at load 18-73.
+Milliseconds:
+
+| first use | the cut | over 300 | the base |
+|---|---|---|---|
+| Find a command | 38-177 | 312, at load 33 | compiled at the start |
+| Library | 97-270 | 551, at load 44 | compiled at the start |
+| My collection | 45-152 | none | compiled at the start |
+| Build together | 96-154 | none | 9, once |
+| Suggest sections | 69-164 | none | compiled at the start |
+| Move's handles | 40-91 | none | compiled at the start |
+| Split | 13-62 | none | compiled at the start |
+| Reference picture | 19-62 | none | compiled at the start |
+| the part maker | 178-260 | none | 89-148 |
+| Export, Studio .io | 42-177 | none | compiled at the start |
+| Export, 3D | 35-123 | none | compiled at the start |
+| Bring in a 3D model | 74-143 | 394, at load 48 | 1858-3481 |
+| Print on a part | 189-233 | none | 236-454 |
+| a sticker | 225-274 | none | 243-285 |
+
+- 3 of 118 first uses went over 300 ms, each once, at load 33-48. Each
+  is the piece's own class, the same code that took 38-270 ms in the
+  other runs, and each came while the whole page was held: 1.2 s around
+  Find's, 38 s around the library's, 12.3 s around Bring in a 3D model's.
+  At those moments the box set the time, not the size of the compile.
+- The studio's warm-up compiles a frame each: the picture reader 31-42,
+  the stickers 53-87, the paint 29-61, the editor 139-232, the studio
+  74-132.
+- Brickify itself compiles on the web's worker in 4.2-6.4 s at load
+  17-52, once 10.7 s at load 48, and no frame waits for it.
+
+Brickify on a worker:
+- The worker's load compiles the 98 scripts Brickify reaches beyond the
+  start (4.44 MB, the assistant's among them), and runs their static
+  initializers there. Each of those is built as its class loads: KnownFits'
+  table, the RegExes, the flags. That is the safe kind.
+- The tables filled later (ColoursSeen, Style's norms under its lock,
+  Shapes, Mirror, SplitMerge) are filled by Brickify's build. That build ran
+  on a worker before this cut too.
+- No crash, Nil or script error showed in any run: brickify_worker on the
+  desktop 10 times, brickify_ui, and brickify_flow and firstuse on the web.
+- A new probe, `brickify_worker`, has the main thread compile About's
+  credits while the worker compiles. It then reads every class that came in
+  meanwhile for a broken script, and found none.
+
+What is left:
+- The scripts' cache holds its lock for a whole compile. So a main-thread
+  first use while Brickify compiles waits out the rest of that compile.
+- On the desktop Brickify took 3.4-5.6 s, and the credits, asked half a
+  second in, waited 2.8-5.1 s (9 runs). On the web's worker Brickify took
+  4.2-6.4 s at load 17-52, once 10.7 s at load 48.
+- In the base, opening the panel held every frame for 1.7-3.8 s.
+- Nothing the app does by itself compiles in that window. The panel's
+  turning preview keeps frames drawn, so Render's idle make waits.
+- A person who opens a dialog for the first time in those seconds still
+  waits. Compiling Brickify's reach on the worker in parts, deepest first,
+  would cut that wait to one part.
+
+What the proof found, and fixed:
+- Once Brickify came in, the panel read the parts it may lay one after
+  another in a single frame: 78 of them. They are now asked for off the
+  frame (`request_mesh(id, true)`), and none are read in it (deac6355).
+- My collection's store was made with its panel, which leaves moved to a
+  first use. So a signed-in person's collection was fetched only when
+  something asked for it, and the first to ask read nothing. Bring in a 3D
+  model said "none kept yet", and `parts_list which=need` said the
+  collection was empty.
+  - The store is now made with the window. It is fetched as a person signs
+    in and forgotten as they sign out (Shell.collection_store, d54234a2).
+  - A new probe, `collection_arrives`, fails 7 checks on the commit before
+    and passes on the fix. It also checks that no panel is compiled for it.
+  - The first attempt at the fix told Brickify's panel a frame later
+    instead. That made My collection's panel compile while the worker
+    compiled, and the frame waited 4.06-4.07 s. brickify_worker caught it,
+    and the commit was dropped (53f7a77e).
+- Print and a sticker compiled the studio, 189 KB, in one frame, where the
+  base compiled 137 KB. The picture reader and the stickers had left the
+  start. At load 24-35 that took 331-414 ms. The studio's scripts now
+  compile a frame each, deepest first (`Later.warm`), for every way a
+  person reaches the studio (5a9ecaed).
+- Merging today's pre261 brought back two names the cut had taken off the
+  first screen. The Pick a Brick list reached Exports through its type; it
+  now reaches it as its sibling lists do. The cut-away's knobs drew in the
+  move handles' colours. Those now live in PivotMark, which the first
+  screen keeps, and Handles reads them there.
+
+Checks at 1d009cfd (`probes_merged`, `checks`), probes through
+tools/probe.sh:
+- lazystart 94, handles 120, together_pins 31, sticker 45, print 65,
+  element_files 209, carried_at_once 3 and studio_ui 25 ok, none failed.
+- sections 113 ok and 1 failed: 10179-1's build check, on 4 of its 47
+  pieces. Today's pre261 (a2ccd7e6) fails the same check, word for word
+  (`probes_base`). Before the merge, at 5a9ecaed, sections passed 114.
+- The new collection_arrives 10 and brickify_worker 12. For what the
+  merge touched: quit 32, worker_first_run, grid 40, compare 42,
+  cutshapes 44, cutshapes_kept 33, picklist 43 and tracks 25.
+- ci_gate 1466 passed, 72 skipped; test_later 7 passed; `check.sh --lists`
+  ok; `featuremap check` current.
+- At 5a9ecaed (`probes_final2`) the same probes passed, with collection
+  70, collection_ui 17, brickify_ui 21 and app_tools 106. ci_gate 1455
+  passed.
+- dialogs_flow on the web. At c3be3c11: 586 ok and 8 failed. The 8 are
+  the share publish and Build together's start, which need the live API,
+  and the base fails the same 8. At 5a9ecaed, `--only=library,rest`: 164
+  ok, none failed. The library, My collection, the part maker and the
+  parts list are each used by a finger at 390x844 and 1024x768.
+- brickify_flow on the web, at c3be3c11 and 5a9ecaed: 1375 parts, the
+  longest frame while it worked 33 and 17 ms, the booklet 58 pages.
+
+Asides:
+- Render's dialog is made after 3 s idle. It compiles in 279-632 ms and
+  lands in a first use's window in both arms. That is the base's
+  behaviour.
+- A desktop run that quits while Brickify still compiles on its worker
+  prints parse errors for the classes in flight. No person quits that way,
+  and the probes now wait for the compile to end.
+- Under load 33-73 the page stalled for 1-38 s at a time in both arms,
+  around and between actions. Those stalls are not compiles: the first-use
+  times above are each class's own compile.
+- I broke the one-export rule once. The base's `dialogs_flow` overlapped
+  the first run of `firstuse2` by about 5 minutes, so that run is not
+  counted.
+
 ## Part B: Advanced features
 
 Ranked the same way. Each says which tool does it today, or that none does.
