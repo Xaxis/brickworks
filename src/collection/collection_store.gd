@@ -75,6 +75,52 @@ func add(payload: Dictionary) -> Dictionary:
 	return {"error": "", "imported": body.get("imported", {}), "left_out": body.get("left_out", [])}
 
 
+## Loose lots changed one at a time (api/collection.js "lots"): each of
+## [param set_to] put at exactly its "qty" (0 takes it out), then each of
+## [param adding] added, made if new. Each is {"part", "colour", "qty"}, and
+## "by" and "chat" for a session's. Nothing else in the collection is
+## touched, at the account or here, so what another device changed
+## meanwhile stays. Returns what to say: empty when all went well.
+func change_lots(set_to: Array, adding: Array) -> String:
+	var reply: Dictionary = await _ask(HTTPClient.METHOD_POST,
+		{"from": "lots", "set": set_to, "add": adding})
+	if int(reply["code"]) != 200:
+		return _why(reply)
+	_take(reply["body"])
+	offline = false
+	await refresh_pool()
+	changed.emit()
+	return ""
+
+
+## Every lot a session added, taken back: exactly those, nothing of the
+## person's own.
+func take_back() -> String:
+	var gone: Array = []
+	for lot: Dictionary in collection.added_lots():
+		var none: Dictionary = lot.duplicate()
+		none["qty"] = 0
+		gone.append(none)
+	if gone.is_empty():
+		return ""
+	return await change_lots(gone, [])
+
+
+## Every lot a session added, kept as the person's own: each joins the
+## person's lot of its part and colour.
+func keep_added() -> String:
+	var gone: Array = []
+	var kept: Array = []
+	for lot: Dictionary in collection.added_lots():
+		var none: Dictionary = lot.duplicate()
+		none["qty"] = 0
+		gone.append(none)
+		kept.append({"part": lot["part"], "colour": lot["colour"], "qty": lot["qty"]})
+	if gone.is_empty():
+		return ""
+	return await change_lots(gone, kept)
+
+
 ## Keep exactly this collection (after taking a set out, say).
 func put(next: Collection) -> String:
 	var reply: Dictionary = await _ask(HTTPClient.METHOD_PUT,

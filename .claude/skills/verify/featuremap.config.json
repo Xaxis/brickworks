@@ -1125,6 +1125,34 @@
       "area": "collection"
     },
     {
+      "kind": "ui",
+      "label": "loose parts in my collection",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection…, What I own: the Loose parts row, a part by its number or words, a photo, Like this or the bin, its colour, how many, Add; each lot's count and Remove; Added by Claude with Keep them and Take back)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "a session's loose parts over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "edit_collection over MCP: add= lots marked as the chat's, remove= its own, nothing to read back   (tools/relay_probe.sh mybricks)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mybricks probe",
+      "entry": "src/dev/mybricks_probe.gd",
+      "reach": "tools/relay_probe.sh mybricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: 12 lots by hand, What do I need? and What can I build?, the same 12 over MCP, a restart and another device, Take back)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mybricks api test",
+      "entry": "tools/web/mybricks_api.mjs",
+      "reach": "node tools/web/mybricks_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview: loose lots set and added one at a time, a session's apart, taken back lot for lot)",
+      "area": "collection"
+    },
+    {
       "kind": "cli",
       "label": "collection browser flow",
       "entry": "tools/web/collection_flow.mjs",

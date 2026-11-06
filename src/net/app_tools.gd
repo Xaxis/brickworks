@@ -71,8 +71,10 @@ const COMMANDS: Dictionary = {
 	"floor_*": "set_floor",
 	"flex": "lay_flex", "reshape_flex": "lay_flex",
 	"pose": "pose_model", "mode_hinge": "pose_model", "swing": "pose_model",
-	"parts_list": "parts_list", "collection": "parts_list", "collection_need": "parts_list",
+	"parts_list": "parts_list", "collection_need": "parts_list",
 	"collection_build": "parts_list",
+	# mybricks: My collection's What I own, loose lots added and read back.
+	"collection": "edit_collection",
 	"minifig": "add_minifig", "mosaic": "make_art", "part_maker": "make_part",
 	"stability": "review_model", "ask_claude": "selection", "brace": "selection",
 	"stress": "weakest_joints",
@@ -214,6 +216,11 @@ library= opens LDraw's model of a real set (gallery library=true finds them).
  - parts_list: the model's parts by part and colour with element ids; \
 which="need" what the person's collection is short of; "buildable" What \
 can I build?: saved models, examples and real sets' models by how much is owned.
+ - edit_collection: the person's own loose bricks, as My collection's What \
+I own keeps them. add= lots seen in a photo of their pile (part, colour, \
+count), all in one call, each marked as the session's for the person to \
+keep or take back; remove= takes the session's own lots off; with neither \
+it reads the collection back. Their sets and their own lots are never changed.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
 the model built up step by step as a video, saved where Render saves.
@@ -716,6 +723,40 @@ func definitions() -> Array:
 				"limit": {"type": "integer", "description": "how many rows; 60 when omitted"},
 			}},
 		},
+		# mybricks (APP_UX5 #2): the person's loose bricks, from a photo of
+		# their pile, in one call.
+		{
+			"name": "edit_collection",
+			"description": ("The person's own bricks, as Build, My collection's What I own "
+				+ "keeps them with their account: sets, and loose parts by part, colour and "
+				+ "count. add=[{part, color, count}] adds loose lots, all in one call: given a "
+				+ "photo of their pile, look at it closely, name each part (its LDraw number, "
+				+ "as search_parts gives it; a BrickLink number is read too) and its LDraw "
+				+ "colour code, count each, and add them together. Every lot added is marked "
+				+ "as this chat's and listed for the person apart from their own, to keep or "
+				+ "take back with one button. remove=[{part, color, count}] takes pieces off "
+				+ "lots this chat added (count omitted: the whole lot). With neither, it reads "
+				+ "the collection back, this chat's lots apart. Their sets and their own lots "
+				+ "are theirs: this never changes them. parts_list which=\"need\" then measures "
+				+ "the model against it, and which=\"buildable\" ranks what they can build."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"add": {"type": "array", "description": "loose lots to add", "items": {
+					"type": "object", "additionalProperties": false, "required": ["part", "color", "count"],
+					"properties": {
+						"part": {"type": "string", "description": "the part's LDraw number, like 3001"},
+						"color": {"type": "integer", "description": "LDraw colour code, like 4 for Red"},
+						"count": {"type": "integer", "description": "how many, 1 or more"},
+					}}},
+				"remove": {"type": "array", "description": "pieces to take off lots this chat added", "items": {
+					"type": "object", "additionalProperties": false, "required": ["part", "color"],
+					"properties": {
+						"part": {"type": "string"},
+						"color": {"type": "integer"},
+						"count": {"type": "integer", "description": "how many to take off; the whole lot when omitted"},
+					}}},
+				"limit": {"type": "integer", "description": "how many lots the read back lists; 60 when omitted"},
+			}},
+		},
 		{
 			"name": "render_model",
 			"description": ("Render the model as File, Render does: a picture, a turntable "
@@ -1054,6 +1095,8 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _open(input)
 		"parts_list":
 			return await _parts_list(input)
+		"edit_collection":
+			return await _edit_collection(input)
 		"render_model":
 			return await _render(input, work)
 		"render_queue":
@@ -3113,6 +3156,184 @@ func _parts_list(input: Dictionary) -> String:
 			int(cover["missing"]), roundi(100.0 * float(cover["any_colour"]))])
 	said.append("open_model name= opens a saved model or an example; an official model opens from My "
 		+ "collection, What can I build? in the window. limit= lists more.")
+	return "\n".join(said)
+
+
+# -- mybricks: the person's own loose bricks (APP_UX5 #2) ---------------------------
+
+## The most lots one call adds or takes off.
+const MOST_LOTS := 500
+
+
+## edit_collection: lots added, marked as this chat's, or taken off its own,
+## all or nothing, through the account as My collection's Add does
+## (CollectionStore.change_lots); with neither, the collection read back.
+func _edit_collection(input: Dictionary) -> String:
+	var shell: Shell = app.get("_shell")
+	var dialog: CollectionDialog = shell.collection if shell != null else null
+	if dialog == null:
+		return "This app has no collection."
+	var mine: CollectionStore = dialog.store
+	var library: PartLibrary = app.get("_library")
+	var account: Account = app.get("_account")
+	if account == null or not account.signed_in():
+		return ("The person is not signed in, and a collection is kept with their account: "
+			+ "they sign in (Account), then it can be read and added to.")
+	var adding: Variant = input.get("add", [])
+	var removing: Variant = input.get("remove", [])
+	if not adding is Array or not removing is Array:
+		return "add and remove are lists of {part, color, count}."
+	if (adding as Array).is_empty() and (removing as Array).is_empty():
+		return _collection_said(mine, library, clampi(int(input.get("limit", 60)), 1, 2000))
+	if (adding as Array).size() + (removing as Array).size() > MOST_LOTS:
+		return "At most %d lots a call; send the rest in another." % MOST_LOTS
+	var who: String = assistant.who if assistant != null and not str(assistant.who).is_empty() \
+		else CommandSocket.CLAUDE
+	var refused := PackedStringArray()
+	var added: Dictionary = {}   ## part/colour -> lot, counts of one part and colour together
+	var order: Array = []
+	for n: int in (adding as Array).size():
+		var lot: Variant = _collection_lot(adding[n], library, true)
+		if lot is String:
+			refused.append("add %d: %s" % [n + 1, lot])
+			continue
+		var key: String = "%s/%d" % [lot["part"], int(lot["colour"])]
+		if added.has(key):
+			added[key]["qty"] = mini(100000, int(added[key]["qty"]) + int(lot["qty"]))
+		else:
+			added[key] = {"part": lot["part"], "colour": lot["colour"], "qty": lot["qty"], "by": who}
+			if not chat.is_empty():
+				added[key]["chat"] = chat
+			order.append(key)
+	var set_to: Array = []
+	for n: int in (removing as Array).size():
+		var lot: Variant = _collection_lot(removing[n], library, false)
+		if lot is String:
+			refused.append("remove %d: %s" % [n + 1, lot])
+			continue
+		var held: Dictionary = mine.collection.lot_of(str(lot["part"]), int(lot["colour"]), who, chat)
+		if held.is_empty():
+			var own: bool = not mine.collection.lot_of(str(lot["part"]), int(lot["colour"])).is_empty()
+			refused.append("remove %d: %s in colour %d is %s" % [n + 1, lot["part"], int(lot["colour"]),
+				"the person's own lot, which only they change (My collection)" if own
+				else "not a lot this chat added"])
+			continue
+		var gone: Dictionary = held.duplicate()
+		gone["qty"] = maxi(0, int(held["qty"]) - int(lot["qty"])) if int(lot["qty"]) > 0 else 0
+		set_to.append(gone)
+	if not refused.is_empty():
+		return ("Nothing was changed: " + "; ".join(refused)
+			+ ". search_parts finds a part's LDraw number; colours are LDraw codes.")
+	var add_lots: Array = []
+	for key: String in order:
+		add_lots.append(added[key])
+	var trouble: String = await mine.change_lots(set_to, add_lots)
+	if not trouble.is_empty():
+		return "Nothing was changed: %s." % trouble
+	var said := PackedStringArray()
+	if not add_lots.is_empty():
+		var pieces: int = 0
+		var lines := PackedStringArray()
+		for lot: Dictionary in add_lots:
+			pieces += int(lot["qty"])
+			lines.append("  %d x %s" % [int(lot["qty"]), _lot_words(lot, library)])
+		said.append("Added %s, %s, to the person's collection, each marked as this chat's:"
+			% [Counted.of(add_lots.size(), "lot"), Counted.of(pieces, "piece")])
+		said.append_array(lines)
+	if not set_to.is_empty():
+		said.append("Took off %s of this chat's lots." % Counted.of(set_to.size(), "change"))
+	var theirs: Array = mine.collection.added_lots().filter(func(lot: Dictionary) -> bool:
+		return _chats(lot, who, chat))
+	said.append(("The person sees what this chat added under My collection, Added by %s (%s now), "
+		+ "and keeps it or takes it back with one button. parts_list which=\"need\" measures the "
+		+ "model against the collection now; edit_collection with nothing reads it back.")
+		% [who, Counted.of(theirs.size(), "lot")])
+	return "\n".join(said)
+
+
+## Whether [param lot] is one [param who]'s chat [param chat] added.
+static func _chats(lot: Dictionary, who: String, chat: String) -> bool:
+	return str(lot.get("by", "")) == who and str(lot.get("chat", "")) == chat
+
+
+## One lot as a session gives it, checked: {"part", "colour", "qty"}, or why
+## not, in words. The part by its LDraw number, or BrickLink's
+## (PartLibrary.by_shop); the colour by its LDraw code, or its name.
+static func _collection_lot(given: Variant, library: PartLibrary, adding: bool) -> Variant:
+	if not given is Dictionary:
+		return "a lot is {part, color, count}"
+	var asked: String = str((given as Dictionary).get("part", "")).strip_edges().to_lower().trim_suffix(".dat")
+	if asked.is_empty():
+		return "no part"
+	var id: String = library.resolve(asked)
+	if not library.parts.has(id):
+		id = library.by_shop(asked)
+	if id.is_empty() or not library.parts.has(id):
+		return "no part numbered %s (search_parts finds it by its words)" % asked
+	if not Collection.ownable(id, library):
+		return "%s is not a part anyone owns on its own (a sticker, or a piece of a bigger part)" % id
+	var colour: Variant = (given as Dictionary).get("color", (given as Dictionary).get("colour"))
+	var code: int = -1
+	if colour is float or colour is int:
+		code = int(colour)
+	elif colour is String and (colour as String).is_valid_int():
+		code = int(colour)
+	elif colour is String:
+		var named: Array[PartLibrary.BrickColor] = PartsBin.colours_named(library, colour)
+		code = named[0].code if not named.is_empty() else -1
+	if code in PartsBin.NOT_A_COLOUR or not library.colors.has(code):
+		return "colour %s is not an LDraw colour code" % str(colour)
+	var count: Variant = (given as Dictionary).get("count", (given as Dictionary).get("qty", 0 if not adding else null))
+	if count == null or not (count is float or count is int) or float(count) != floorf(float(count)) \
+			or int(count) < (1 if adding else 0) or int(count) > 100000:
+		return "count is a whole number from 1 to 100,000"
+	return {"part": id, "colour": code, "qty": int(count)}
+
+
+static func _lot_words(lot: Dictionary, library: PartLibrary) -> String:
+	var info: PartLibrary.PartInfo = library.parts.get(str(lot["part"]))
+	var colour: PartLibrary.BrickColor = library.color(int(lot["colour"]))
+	return "%s %s, %s (%d)" % [lot["part"], Inventory._tidy(info.name) if info != null else "",
+		colour.name.replace("_", " ") if colour != null else "colour", int(lot["colour"])]
+
+
+## The collection read back: its sets, this chat's lots, the person's own.
+func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -> String:
+	var held: Collection = mine.collection
+	var who: String = assistant.who if assistant != null and not str(assistant.who).is_empty() \
+		else CommandSocket.CLAUDE
+	var ours: Array = held.added_lots().filter(func(lot: Dictionary) -> bool:
+		return _chats(lot, who, chat))
+	var others: Array = held.added_lots().filter(func(lot: Dictionary) -> bool:
+		return not _chats(lot, who, chat))
+	var own: Array = held.own_lots()
+	var said := PackedStringArray()
+	var sets := PackedStringArray()
+	for entry: Dictionary in held.sets:
+		var record: Dictionary = mine.records.get(str(entry["set"]), {})
+		sets.append("%s%s%s" % [entry["set"], " " + str(record["n"]) if record.has("n") else "",
+			" x%d" % int(entry["qty"]) if int(entry["qty"]) > 1 else ""])
+	said.append("The person's collection%s: %s%s, %s of their own, %s this chat added%s; %s on hand in all."
+		% [" (the copy on this device)" if mine.offline else "", Counted.of(held.sets.size(), "set"),
+			(" (" + ", ".join(sets.slice(0, 20)) + (", …" if sets.size() > 20 else "") + ")") if not sets.is_empty() else "",
+			Counted.of(own.size(), "loose lot"), Counted.of(ours.size(), "lot"),
+			", %s other chats added" % Counted.of(others.size(), "lot") if not others.is_empty() else "",
+			Counted.of(mine.pieces_on_hand(), "piece")])
+	var listed: int = 0
+	for group: Array in [[ours, "This chat added (remove= takes any of these off):"],
+			[others, "Other chats added (theirs to take off):"],
+			[own, "The person's own loose lots (only they change these):"]]:
+		if (group[0] as Array).is_empty():
+			continue
+		said.append(str(group[1]))
+		for lot: Dictionary in group[0]:
+			if listed >= limit:
+				break
+			listed += 1
+			said.append("  %d x %s" % [int(lot["qty"]), _lot_words(lot, library)])
+	var total: int = ours.size() + others.size() + own.size()
+	if total > listed:
+		said.append("  and %d more lots: limit= for more." % (total - listed))
 	return "\n".join(said)
 
 
