@@ -764,7 +764,10 @@ func _shot_bar(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var image: Image = root.get_texture().get_image()
 	var bar: Rect2 = _rect(_shell.status)
-	var top: int = clampi(floori(bar.position.y), 0, image.get_height() - 1)
+	# The bar's place is in the interface's units, scaled by its size
+	# setting; the picture is in the window's pixels.
+	var pixels: float = image.get_height() / root.get_visible_rect().size.y
+	var top: int = clampi(floori(bar.position.y * pixels), 0, image.get_height() - 1)
 	var strip: Image = image.get_region(Rect2i(0, top, image.get_width(), image.get_height() - top))
 	if strip.is_empty():
 		print("    (no picture of the bar: it is at %s in a picture %s)" % [bar, image.get_size()])
