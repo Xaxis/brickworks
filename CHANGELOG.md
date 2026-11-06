@@ -13,6 +13,125 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-06
+
+Brickworks gives you more room and more ways in. At 1400 × 900 the parts
+bin shows 42 parts where it showed 30, every field of the part you select
+stays in sight, and the assistant opens beside the bin instead of folding
+it away. Select a part and choose Like this for the parts that could stand
+in its place, a 2 × 4 brick's plate and tile among the first, and
+double-click one to swap it in where it stands. Cut a box, a sphere or a
+cylinder out of a model to see inside it, and the cut is kept with the
+file. Pattern lays a whole grid of copies at once. A model's parts go to
+LEGO® Pick a Brick as a list it takes, or to BrickLink as a wanted list
+that says the condition you want. Find, Replace, Simulate, Motions and more
+have keys now, and Shift+F1 asks any control what it does. Build it can go
+a part at a time, a booklet's parts box shows a dish or an inverted slope
+turned over so it is not taken for a plate, and a step its author turned
+over stays turned over. Typing in the bin, a page of baseplates and a big
+design being checked no longer hold the window still, renaming or copying a
+sub-assembly keeps its steps, and Brickworks quits at once and cleanly with
+a dialog open, a booklet drawing, a model being read or an update on its
+way. When you build with your own Claude, it now sees what you see:
+several views in one picture, parts picked out, the model as built to a
+step, and a booklet's page.
+
+### Added
+
+- **Like this**, a chip beside Fits: the parts that could stand in the
+  selected one's place. Five of its size and kind come first, the ones real
+  sets use most, then the rest of its size, so a 2 × 4 brick's Plate 2 × 4
+  and Tile 2 × 4 come seventh and eighth, then its kind in other sizes. Its
+  prints and other moulds fold under the plain part. Double-click one and
+  every selected part is swapped for it, keeping its place, turn, colour,
+  step and sub-model, in one undo. Words typed while in it narrow it:
+  "curved" on a 2 × 4 brick finds the curved slopes.
+- **View › Cut away by › A box, A sphere or A cylinder**, round the
+  selection. Drag a face's knob, or turn the wheel over it, to move it a
+  plate at a time; Grow and Shrink move them all. Where the cut goes through
+  a part, its face is filled in the part's colour. The cut, plane or shape,
+  is kept in the file on a line other LDraw programs pass over, and comes
+  back when it opens; Render, the booklet and a shared model's viewer show
+  the model whole.
+- **Edit › Pattern… › In a grid**: columns, rows and levels, each so many
+  studs or plates apart, in one go and one undo. A copy with no room is
+  named by its column, row and level.
+- **A LEGO® Pick a Brick list**, from File › Export or the parts list: each
+  part's element number and how many, in files of 400 lines as its upload
+  takes them. A part with no element number is named under the parts list,
+  so none is left off unseen. BrickLink's wanted list now carries the
+  condition you want, which wanted list it goes in and whether BrickLink
+  tells you, chosen from the arrow beside the parts list's BrickLink
+  button. Nothing is uploaded for you.
+- **Keys** for the commands a builder reaches for often, under every
+  preset: a part found in the model by its number or name (Ctrl+F, or
+  Ctrl+Shift+F under Studio's keys, whose Ctrl+F searches the bin), Select
+  nothing (Ctrl+Shift+A), the same part and colour (Alt+A), Replace (Alt+R),
+  the stud grid (Alt+G), Check stability (Alt+K), Simulate mechanism
+  (Alt+U), Motions (Alt+O), the reference picture (Alt+N) and Instructions
+  (Alt+B). Each shows on its menu row and in the keys sheet (F1).
+- **What's This?** (Shift+F1, or Help › What's This?), then click any
+  button, field, chip or panel: it says what it does, whether it is on, and
+  why it is greyed when it is, and does nothing else. With a part in hand,
+  the status bar says where it would land, in studs and plates.
+- **Build it a part at a time.** Under the card, One part shows the next
+  part alone in its colours, the rest faded, with "3 of 8 in this step";
+  Next and Back go a part at a time, and the last part's Next goes on to the
+  next step. Whole step stays the start. The choice is kept.
+- **Your Claude sees what you see.** `view_board` puts up to six views in
+  one picture; `highlight=` edges parts in magenta and shows the rest
+  see-through, `xray=` shows them all see-through, and `step=` shows the
+  model as built to that step. `booklet_page` shows a page as Instructions
+  draws it. Split, merge and mirror answer with a picture of the change, and
+  `render_model` says how Best was drawn. `pattern_parts` lays a grid in
+  one call.
+
+### Changed
+
+- **More room.** Both side columns show from about 1350 px wide, with the
+  model at half, and the bin narrows while the right column is open and
+  widens when it folds. At 1280 × 720 the bin's last column of tiles is no
+  longer cut off. A first start opens with the right column folded, and a
+  selected part's place, turn and colour show under the bin whenever
+  Properties is out of sight.
+- **A quieter start.** The first build's offer goes at the third part you
+  put down, or when any model opens. The render queue lies under whatever
+  opens after it and Esc puts it away. Split, short of room with the
+  assistant open, folds the right column and opens it again after.
+- **A booklet's parts box** draws a part turned over when its underside is
+  what tells it apart: a dish, an inverted slope. Plain plates, bricks,
+  tiles, slopes and seats stay upright.
+- **A step built from below** is drawn turned over, as LEGO® instructions
+  turn the model, in a file whose author gave no turn.
+- **A big design keeps the window answering.** Its shaped parts are laid
+  off the window, and your Claude's step edits on a big model are worked
+  out a slice at a time. A window your Claude is working in says it is
+  alive every ten seconds, so a long edit reads as busy, not as closed.
+
+### Fixed
+
+- **The author's turn is kept.** A step's ROTSTEP roll was lost, and a
+  turn over (x 180) showed the model from nearly straight above, its
+  underside out of sight. A step now turns the model itself, and the
+  cameras and lights follow.
+- **Steps you did not touch stay where they are.** Renaming, ungrouping or
+  copying a sub-assembly, or editing one copy of a sub-model, moved
+  hundreds of other parts to other steps: on the castle, a renamed tower
+  moved 2,203 of its 2,497 parts. Now none move, by the menu or over the
+  connector, through undo, save and reopening.
+- **Typing in the parts bin** keeps up with each key, the first search no
+  longer holds the window while its index is made, and a
+  page of baseplates no longer freezes the bin while its pictures come in.
+  Names that read alike on their tiles are always told apart.
+- **Like this and Fits answer for the part**, not for the search typed
+  before them; what was typed comes back when you leave them.
+- **Quitting** with Instructions or Save As asking where to save, with a
+  booklet drawing, a model being read or a downloaded update being checked
+  aborted the app or left a core dump. It now quits at once and cleanly.
+- **The checker passes how real sets are built**: a pane in its frame, a
+  drawer in its cupboard, a bar in a hollow stud and parts hung from clips,
+  which it used to send back.
+
 ## [0.17.0] - 2026-11-05
 
 Brickworks leaves alone what you did not touch, and keeps up while you work.

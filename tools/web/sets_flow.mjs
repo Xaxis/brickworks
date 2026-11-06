@@ -269,8 +269,9 @@ try {
     const three = listed.lots.slice(0, 3);
     const pieces = three.reduce((n, lot) => n + lot.count, 0);
     const { access_token: token } = await mintSession(email);
-    const put = await made.request.put(`${site}/api/collection`, { headers: { ...headers, authorization: `Bearer ${token}`,
-      "content-type": "application/json" }, data: { sets: [], parts: three.map((lot) => ({ part: lot.part, colour: lot.colour, qty: lot.count })) } });
+    const put = await made.request.post(`${site}/api/collection`, { headers: { ...headers, authorization: `Bearer ${token}`,
+      "content-type": "application/json" }, data: { op: "lots", id: `sets-flow-${Date.now().toString(36)}`,
+      add: three.map((lot) => ({ part: lot.part, colour: lot.colour, qty: lot.count })) } });
     check(`a throwaway's collection of three of its lots, ${pieces} parts (${put.status()})`, put.ok());
     const mine = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers, acceptDownloads: true });
     await signInContext(mine, email);
