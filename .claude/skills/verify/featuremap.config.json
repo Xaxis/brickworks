@@ -1202,6 +1202,13 @@
       "area": "web"
     },
     {
+      "kind": "cli",
+      "label": "each thread's CPU in a browser",
+      "entry": "tools/web/thread_cpu.mjs",
+      "reach": "node tools/web/thread_cpu.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (with .env sourced; a local export served by tools/web/serve.py; --profile=phone; --idle=60 --build=60)",
+      "area": "web"
+    },
+    {
       "kind": "ui",
       "label": "drawing only what changed",
       "entry": "src/render/idle_draw.gd",
@@ -2939,20 +2946,6 @@
     },
     {
       "kind": "ui",
-      "label": "a model into this one",
-      "entry": "src/ui/model_bar.gd",
-      "reach": "godot --path .  (File, Import, Into this model…: a saved model, an example, a file or the library's; in hand as one sub-assembly with its steps, a click puts it down, one undo takes it out; the library's Put in this model; open_model into=true over MCP)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "intomodel probe",
-      "entry": "src/dev/intomodel_probe.gd",
-      "reach": "tools/probe.sh intomodel_probe   (a window, 1280 x 720 or PROBE_SIZE=1400x900; starts tools/web/serve.py --library tests/fixtures/library on 9801 and stops it)",
-      "area": "model-io"
-    },
-    {
-      "kind": "ui",
       "label": "theme choice",
       "entry": "web/theme.js",
       "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
@@ -4213,6 +4206,13 @@
     },
     {
       "kind": "ui",
+      "label": "what's this",
+      "entry": "src/ui/whats_this.gd",
+      "reach": "tools/probe.sh whatsthis_probe   (Help, What's This?, or Shift+F1: the next click on any control answers in a bubble beside it and does nothing else; Esc, a right click or Shift+F1 again leave; a part in hand: the status bar's x, z and height are where it lands)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "keys of one's own",
       "entry": "src/ui/keymap.gd",
       "reach": "godot --path .  (F1: Keys like BrickLink Studio, Mecabricks or LDCad; click a key on the sheet and press another; kept on the device and, signed in, on the account: GET/POST /api/account?op=keys, supabase/keymap.sql)",
@@ -4618,11 +4618,18 @@
       "area": "mcp"
     },
     {
+      "kind": "ui",
+      "label": "a model into this one",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (File, Import, Into this model…: a saved model, an example, a file or the library's; in hand as one sub-assembly with its steps, a click puts it down, one undo takes it out; the library's Put in this model; open_model into=true over MCP)",
+      "area": "model-io"
+    },
+    {
       "kind": "cli",
-      "label": "each thread's CPU in a browser",
-      "entry": "tools/web/thread_cpu.mjs",
-      "reach": "node tools/web/thread_cpu.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (with .env sourced; a local export served by tools/web/serve.py; --profile=phone; --idle=60 --build=60)",
-      "area": "web"
+      "label": "intomodel probe",
+      "entry": "src/dev/intomodel_probe.gd",
+      "reach": "tools/probe.sh intomodel_probe   (a window, 1280 x 720 or PROBE_SIZE=1400x900; starts tools/web/serve.py --library tests/fixtures/library on 9801 and stops it)",
+      "area": "model-io"
     },
     {
       "kind": "lib",

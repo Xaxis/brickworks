@@ -1354,6 +1354,12 @@
 					"tip": "What every button and key does"
 				},
 				{
+					"name": "whats_this",
+					"words": "What's This?",
+					"key": "Shift+F1",
+					"tip": "Click any button, field or panel next to hear what it does, without doing it"
+				},
+				{
 					"name": "tour",
 					"words": "Take the tour",
 					"key": "",
@@ -1776,6 +1782,7 @@
 		"settings": ",",
 		"keys": "F1",
 		"tour": "",
+		"whats_this": "shift-F1",
 		"check_updates": "",
 		"reinstall": "",
 		"restart": "",

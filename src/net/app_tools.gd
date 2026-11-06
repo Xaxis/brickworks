@@ -136,6 +136,8 @@ const WINDOW_ONLY: Dictionary = {
 	"palette": "finds one of the person's commands by its words; a session calls the tool itself",
 	"keys": "help for the person",
 	"tour": "help for the person",
+	# whatsthis: a click of the person's on a control, answered in words.
+	"whats_this": "help for the person: what a control does, said where the person's next click lands",
 	"website": "help for the person",
 	"docs": "help for the person",
 	"about": "help for the person",

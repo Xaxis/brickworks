@@ -613,6 +613,24 @@ commit. None of the ten needs the owner.
   - the click does nothing else;
   - while carrying, the status bar's x, z and height are where the part
     then lands, to the stud and plate.
+- **Done** (whatsthis, 2026-11-05; `whatsthis_probe` 34 checks, none
+  failed, at 1280 x 720 and at 1400 x 900; on pre261 it fails: there was no
+  way to ask). Help, What's This? is Shift+F1 under all four presets, kept
+  for itself as F1 is, so no preset can give the key away; Esc, a right
+  click or Shift+F1 again leave it.
+  - **1, met:** 168 controls asked at 1280 x 720 (33 toolbar buttons, 100
+    bin chips, 28 panel buttons, 7 Properties fields) and 173 at 1400 x 900
+    each answer in a bubble beside the control, no answer empty and no two
+    alike, none borrowing only its panel's words. Five buttons and links of
+    the assistant's and the connector's had no words at all; they now carry a
+    description a screen reader reads too.
+  - **2, met:** 168 of 168 clicks (173 at 1400) did nothing else; the same
+    check sees a click on Move with no question first act.
+  - **3, met:** a 2 x 4 brick at four places, on another brick, a turned
+    1 x 2 plate on the ground and on top, and two bricks carried: the bar's
+    x, z and height are where each landed, to the half stud and the plate
+    ("x 4½, z 3 studs · on the ground", "x 3, z 1 studs · 6 plates up").
+  - The new words in German, French and Spanish (29 checked).
 
 **Next, once those land:**
 - **Keys** for the 114: the lead's `keys` unit.

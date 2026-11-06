@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
 
 ## Sub-features
 
@@ -711,6 +711,23 @@ picture the assistant is shown.
   sheet runs from Alt-W. `docs_menus.gd` now writes each row's key as the app's
   own keys have it, so the docs' menus and shortcuts pages list Alt-C and the
   rest.
+- `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
+  whatsthis unit, APP_UX4 10): the next click on any control says what it does
+  in a bubble beside it, and does nothing else, as LeoCAD's, Qt's and Windows'
+  own. A sheet over the window takes the click; the control under it is found
+  as the window finds it (`control_at`: by canvas layer, then the tree, through
+  clips, past what lets the pointer through), outlined while the pointer is
+  over it, and its words are its tooltip where the pointer is, what a screen
+  reader is told, or the nearest control round it with any; then whether it is
+  on, and why a greyed one is greyed (`Shell.why_not`). The bin's chips say
+  what a click shows; over the model, what the tool in use does there. Esc, a
+  right click or Shift+F1 again leave; the status bar asks while it waits.
+  Shift+F1 is the command's own key in every preset, kept for itself as F1 is
+  (`Keymap.FIXED`). `whatsthis_probe` (windowed, 1280 x 720; `PROBE_SIZE=1400x900`)
+  asks about every toolbar button, bin chip, Properties field and panel button
+  with each panel open in turn, as a person does, and fails on an empty answer,
+  two alike, or a click that a control heard or that changed anything; one
+  click on the Move tool with no question shows the check sees a click act.
 - `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
   do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
   and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the
