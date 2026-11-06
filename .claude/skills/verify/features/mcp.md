@@ -167,7 +167,21 @@ asking for an API key.
   queue cost a design eleven calls) for it to end, answering the moment it
   does, else says how far it has got ("12 of 36"),
   gives the answer (picture and all) once done, or that it was cancelled or
-  failed; `cancel=true` stops it where it can be stopped. The job **is** the
+  failed; `cancel=true` stops it where it can be stopped. A call that became a
+  job part way says what its work says it is doing now, asked each time
+  (`Entry.heard`), and "drawing its picture" while one is drawn
+  (`ModelShot.drawing`): the Charger's edit, its picture waiting two
+  minutes, had said "Changed it: 1118 bricks" to every asking (bigedit,
+  2026-11-06). Its window keeps drawing meanwhile: a design's shapes are
+  laid on a worker before its read (`Assistant._shapes_ready`, as sculpts
+  are), which held the window 7.0-8.6 s on every check of the Charger's 947
+  shape parts. A worker reads a part not loaded as empty, so a shape or
+  sculpt laid ahead is laid again with the parts it missed loaded
+  (`PartLibrary.unread_by_readers`, `Assistant._laid_whole`): laid with them
+  missing, the Charger came to 1,019 bricks for the read's 1,013, and
+  `shapes_probe` holds the worker's parts to the read's. And
+  `edit_steps` on 300 parts or more works its steps out a slice a frame
+  (`Instructions.plan_paced`; 1,029 ms in one go on the Charger). The job **is** the
   `Working` job the person sees along the foot of the window — its words, its
   count, its Cancel — handed down as `work` to `RenderDialog.render_for`,
   `PosePanel.render_animation`, `SimulatePanel.record_of` and main's

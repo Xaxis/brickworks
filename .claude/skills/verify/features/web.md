@@ -367,7 +367,26 @@ plan with Claude as the client.
   worker sends `op=state` every ten seconds, which also counts as seen, so the
   relay judges a tab by its page: alive is ready, in view or not; a page that
   stopped altogether is "paused" if it was out of view and "not open" if not,
-  and a call nobody takes says so after 30 s instead of four minutes. A
+  and a call nobody takes says so after 30 s instead of four minutes.
+  **A working tab is busy, not closed** (bigedit, 2026-11-06): the Charger of
+  design19 lost its build when its desktop tab, which then spoke only as it
+  asked for work, held a job's 45 s poll, answered, and the session's next
+  call a second later found its last word 48 s old and was told the tab had
+  closed. Now an answer counts as seen (`op=answer` writes `seen_at`), the
+  desktop window sends `op=state` every ten seconds too
+  (`ClaudeConnector._say_alive`, `BEAT_MS`), and a tab in view silent over
+  45 s is "quiet" (`stateOf`), listed "busy: not answered for 50 s": its call
+  waits up to 30 s for it (`QUIET_WAIT_MS`) and is then told it is busy,
+  nothing done, the chat kept in it. Closed is `op=close` or 3 min of silence
+  (`TAB_LOST_MS`), and a closed tab's chat is told the model comes back from
+  its autosave when the tab or the app is opened again (`KEPT_WORDS`).
+  `tests/test_relay_busy.py` holds it on the real handler;
+  `tools/bench/busy_tab.py --app=CHECKOUT --calls=FILE --stall` plays a
+  session's calls through a local relay to a headless tab whose pictures
+  never come (every edit a long job), reading `relay_tabs.seen_at` every half
+  second, and fails on an answer saying closed, a silence of 15 s, a job that
+  never said what it was doing, or an undo that does not take the last call
+  back; `freeze_check.mjs --watch [--hide]` does the same for a browser tab. A
   request for work outstanding over 45 s is replaced (`STALLED_MS`). The tab
   still sends its initialize and tools/list answers when it switches on
   (`op=hello`) and the relay answers those itself; `op=close` goes by
@@ -3095,7 +3114,12 @@ plan with Claude as the client.
   each call is printed with it. With `--dir=build/web` it serves the
   export itself through `tools/web/relay_server.mjs --static`, the deployment's
   real functions; with `--url=` it drives a preview (`BW_BYPASS`). `--calls=`
-  replays a run's own calls. Fails when a frame of the app's own work is over
+  replays a run's own calls. `--watch` (`.env` loaded) reads the tab's word to
+  the relay every half second and fails on a silence of `--silence` ms (15,000;
+  the relay takes 45 s for gone) or an answer saying the tab closed or has not
+  answered, and prints what each job said it was doing; `--hide` makes the
+  calls out of view, on the page's own frames (bigedit, 2026-11-06).
+  Fails when a frame of the app's own work is over
   `--budget` (500 ms: the browser here is niced on a shared box and runs the
   scripts four to eight times slower than the desktop app, whose freeze_probe
   holds 200 ms on a GPU) or a call goes unanswered; a build from before the app

@@ -25,6 +25,20 @@
 // --calls=FILE replays a design's calls instead ([{name, input}], as
 // pulled from a Claude Code session log).
 //
+// --watch (with .env's SUPABASE_URL and SUPABASE_SECRET_KEY): the tab's
+// word to the relay (relay_tabs.seen_at), read every half second. The page
+// says it is alive every ten seconds from its main thread, and the relay
+// takes a tab silent 45 s for one that has stopped: a frame held that long
+// is a tab Claude is told is gone. The Charger's design (bigedit,
+// 2026-11-06) held the page's thread for its shapes. Said: the longest the
+// tab went without a word, how old its word was as each answer came back,
+// and what each job said it was doing when asked. Fails on a silence of
+// --silence ms (15000) or more, or an answer saying the tab has closed or
+// has not answered.
+// --hide: out of view for the calls, as a browser puts a tab out of view
+// (document.hidden, its frames stopped), once the connector is on: the app
+// then runs on the frames its page makes (ClaudeConnector._watch_the_page).
+//
 // Passes when no frame of the app's own work is over --budget ms (default
 // 500) and every call is answered. 500 because the browser here is niced,
 // shares 24 cores with several projects and draws in software, and runs
@@ -39,6 +53,7 @@
 // model is called.
 import { clickStill, controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 
@@ -53,6 +68,7 @@ const budget = Number(args.budget || 500);
 // else to be judged by: the longest task, drawing and all.
 const taskBudget = Number(args["task-budget"] || 10000);
 const bypass = process.env.BW_BYPASS || "";
+const silenceBudget = Number(args.silence || 15000);
 
 // A port nobody is using, for a local export.
 async function freePort() {
@@ -120,6 +136,24 @@ await context.addInitScript(() => {
   Kept.prototype = Real.prototype;
   WebAssembly.Memory = Kept;
 });
+// Out of view as a browser puts a tab out of view: its frames held
+// (hidden_start_flow.mjs has why this way).
+await context.addInitScript(() => {
+  const real = window.requestAnimationFrame.bind(window);
+  const frames = { stopped: false, held: [] };
+  window.brickworksTestFrames = frames;
+  window.requestAnimationFrame = (callback) => {
+    if (frames.stopped) { frames.held.push(callback); return 0; }
+    return real(callback);
+  };
+  window.__see = (hidden) => {
+    Object.defineProperty(document, "hidden", { value: hidden, configurable: true });
+    Object.defineProperty(document, "visibilityState", { value: hidden ? "hidden" : "visible", configurable: true });
+    frames.stopped = hidden;
+    document.dispatchEvent(new Event("visibilitychange"));
+    if (!hidden) frames.held.splice(0).forEach((f) => window.requestAnimationFrame(f));
+  };
+});
 const page = await context.newPage();
 // What the app printed, with when: its own account of where the time went.
 // Written as it comes, so a run that is cut off still leaves it.
@@ -172,11 +206,58 @@ if (!address.includes("/api/mcp")) {
 }
 const view = await control("view");
 
+// The tab's word to the relay, as the relay reads it (stateOf).
+const watch = { seen: [], longest: 0, at: "", reads: 0, failed: 0 };
+let watching = null;
+async function seenAt() {
+  const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const key = process.env.SUPABASE_SECRET_KEY || "";
+  const channel = createHash("sha256").update(new URL(address).searchParams.get("t") || "").digest("hex");
+  try {
+    const rows = await (await fetch(`${base}/rest/v1/relay_tabs?channel=eq.${channel}&select=seen_at`,
+      { headers: { apikey: key, authorization: `Bearer ${key}` } })).json();
+    watch.reads += 1;
+    return rows[0] && rows[0].seen_at ? Date.parse(rows[0].seen_at) : null;
+  } catch {
+    watch.failed += 1;
+    return null;
+  }
+}
+if (args.watch) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+    console.log("FAIL  --watch needs SUPABASE_URL and SUPABASE_SECRET_KEY (set -a; . ./.env; set +a)");
+    await browser.close();
+    stop(1);
+  }
+  watching = setInterval(async () => {
+    const seen = await seenAt();
+    if (seen === null) return;
+    const last = watch.seen[watch.seen.length - 1];
+    if (last === undefined || seen !== last) watch.seen.push(seen);
+    const quiet = Date.now() - seen;
+    if (quiet > watch.longest) { watch.longest = quiet; watch.at = `${((Date.now() - started) / 1000).toFixed(0)} s in`; }
+  }, 500);
+}
+
 let sent = 0;
 // Calls as a session makes them: a job followed to its answer, and a call
 // turned away while one runs made again after it.
 const claude = withJobs(send);
+// Per call: what each asking of its job said it was doing, and how old the
+// tab's last word was as each answer came back (--watch).
+let heard = { progress: [], ages: [] };
 async function send(method, params) {
+  const answer = await sent_(method, params);
+  const text = (answer?.result?.content || []).map((c) => c.text || "").join(" ");
+  const going = /is still going, (\d+) s in[^:]*: (.*?) Call job/s.exec(text);
+  if (going) heard.progress.push(`${going[1]} s: ${going[2].trim().slice(0, 80)}`);
+  if (watching && method === "tools/call") {
+    const seen = await seenAt();
+    if (seen !== null) heard.ages.push(Math.round((Date.now() - seen) / 100) / 10);
+  }
+  return answer;
+}
+async function sent_(method, params) {
   sent += 1;
   const headers = { "content-type": "application/json", accept: "application/json, text/event-stream" };
   if (bypass) headers["x-vercel-protection-bypass"] = bypass;
@@ -264,6 +345,10 @@ await page.waitForTimeout(10000);
 const idle = await window_(idleFrom, await now());
 const idleRate = ((await state()).frames - idleFrames) / (idle.span / 1000);
 console.log(`idle: ${idleRate.toFixed(1)} frames a second, ${idle.count} long tasks in ${(idle.span / 1000).toFixed(0)} s, the longest ${idle.longest.toFixed(0)} ms, median ${idle.median.toFixed(0)} ms`);
+if (args.hide) {
+  await page.evaluate(() => window.__see(true));
+  console.log("out of view from here: the page's own frames only");
+}
 console.log("     call              took  own frame  picture   longest task  busy (of)        frozen  input  | bricks batches triangles  wasm MB js MB");
 for (const call of calls) {
   if (call.name === "save_model") continue;
@@ -271,8 +356,9 @@ for (const call of calls) {
   const from = await now();
   const t0 = Date.now();
   worstInput = 0;
-  poking = true;
+  poking = !args.hide;
   const poking_ = poke();
+  heard = { progress: [], ages: [] };
   const input = JSON.parse(JSON.stringify(call.input).replace('"first listed"', String(firstListed)));
   const answer = await claude("tools/call", { name: call.name, arguments: input });
   const took = Date.now() - t0;
@@ -287,17 +373,29 @@ for (const call of calls) {
   if (call.name === "look_at_model" && listed) firstListed = Number(listed[1]);
   const mine = own(s.slow, engineFrom);
   delete s.slow;
-  const row = { call: call.name, took, ...mine, ...w, input: worstInput, ...s, said: text.slice(0, 70) };
+  const row = { call: call.name, took, ...mine, ...w, input: worstInput, ...s, said: text.slice(0, 70),
+    progress: heard.progress, ages: heard.ages };
   rows.push(row);
-  const unanswered = /did not answer|is not open|not connected/i.test(text);
+  const unanswered = /did not answer|is not open|not connected|has closed|not answered for|No Brickworks tab/i.test(text);
   const timed = s.now > 0;
   const over = (timed ? mine.ownLongest > budget : w.longest > taskBudget) || unanswered;
   if (over) failures += 1;
   if (mine.ownDoing) console.log(`       (its longest own frame was during: ${mine.ownDoing.slice(0, 80)})`);
+  if (heard.progress.length) console.log(`       its job said: ${heard.progress.join(" | ")}`);
+  if (watching) console.log(`       the tab's word as each answer came: ${heard.ages.join(", ")} s old`);
   console.log(`${over ? "FAIL" : "ok  "} ${call.name.padEnd(14)} ${String(took).padStart(6)} ms ${String(mine.ownLongest).padStart(6)} ms ${String(mine.pictureWait).padStart(6)} ms ${w.longest.toFixed(0).padStart(7)} ms ${w.busy.toFixed(0).padStart(7)} (${(w.span / 1000).toFixed(0).padStart(3)} s) ${w.frozen.toFixed(0).padStart(7)} ${String(worstInput).padStart(6)}  | ${String(s.bricks).padStart(6)} ${String(s.batches ?? "?").padStart(7)} ${String(s.triangles ?? "?").padStart(9)} ${(s.wasm / 1048576).toFixed(0).padStart(7)} ${(s.js / 1048576).toFixed(0).padStart(5)}  ${text.slice(0, 50)}`);
 }
+if (watching) {
+  clearInterval(watching);
+  const silent = watch.longest >= silenceBudget;
+  if (silent) failures += 1;
+  console.log(`${silent ? "FAIL" : "ok  "} the tab's longest silence to the relay was ${(watch.longest / 1000).toFixed(1)} s`
+    + ` (${watch.at}; ${watch.seen.length} words in ${watch.reads} reads), budget ${(silenceBudget / 1000).toFixed(0)} s;`
+    + ` the relay takes 45 s for gone`);
+}
 await page.screenshot({ path: `${out}/after.png`, timeout: 120000 }).catch(() => {});
-writeFileSync(`${out}/freeze.json`, JSON.stringify({ url, budget, idle, idleRate, rows }, null, 1));
+writeFileSync(`${out}/freeze.json`, JSON.stringify({ url, budget, idle, idleRate, hidden: Boolean(args.hide),
+  watch: watching ? { longest_ms: watch.longest, at: watch.at, words: watch.seen.length } : null, rows }, null, 1));
 await browser.close();
 const longest = Math.max(...rows.map((r) => r.ownLongest));
 const task = Math.max(...rows.map((r) => r.longest));

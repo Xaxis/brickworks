@@ -30,7 +30,7 @@ Watched, and said at the end:
     which is when the session's next call finds it. 45 s or more is a tab the relay calls
     gone;
   - each job's progress, as each asking of it said it;
-  - one undo after each edit job takes the model back to its parts before it.
+  - one undo after the last call takes the model back to what it was before that call.
 Results in DIR/busy_tab.json and the tab's log beside it. Exit 0 when all hold.
 """
 
@@ -68,6 +68,14 @@ def _env(keys: Path) -> dict[str, str]:
             k, v = line.split("=", 1)
             out[k.strip()] = v.strip().strip('"').strip("'")
     return out
+
+
+def _parts(looked: str) -> int:
+    """How many parts look_at_model says are on the baseplate: 0 when it is bare."""
+    if re.search(r"baseplate is (?:bare|empty)|[Nn]othing (?:is )?on the baseplate", looked):
+        return 0
+    found = re.search(r"(\d[\d,]*) parts? (?:is|are) on the baseplate", looked)
+    return int(found.group(1).replace(",", "")) if found else -1
 
 
 class Watch(threading.Thread):
@@ -217,8 +225,11 @@ def main() -> int:
         claude.ask("initialize", {"protocolVersion": "2025-06-18", "capabilities": {},
                                   "clientInfo": {"name": "busy_tab", "version": "1"}})
         claude.ask("tools/list", {})
-        for call in calls:
+        before = None
+        for i, call in enumerate(calls):
             name, given = str(call["name"]), call.get("input", {})
+            if i == len(calls) - 1:
+                before = _parts(claude.call("look_at_model", {}))
             began = time.time()
             text = claude.call(name, given)
             row = {"n": call.get("n"), "call": name, "said": [text[:600]], "progress": [],
@@ -243,13 +254,14 @@ def main() -> int:
                 f"tab's word at each job answer {row['ages_at_answer']} s old, "
                 f"progress {row['progress']}: {text[:160]!r}")
             time.sleep(args.think)
-        # One undo after the last call takes it back: the parts before it, read again.
-        before = next((r["parts"] for r in reversed(rows[:-1]) if r["parts"]), None)
+        # One undo after the last call takes it back: the model looked at before it and
+        # after the undo, and the undo naming that call.
         undone = claude.call("undo", {})
         looked = claude.call("look_at_model", {})
-        now = re.search(r"(\d+) parts are on the baseplate", looked)
+        last = str(calls[-1]["name"]).replace("_", " ") if calls else ""
         rows.append({"call": "undo", "said": [undone[:400], looked[:200]],
-                     "parts": int(now.group(1)) if now else None, "before": before,
+                     "parts": _parts(looked), "before": before,
+                     "undid_it": bool(re.search(r"Undid [^.\n]*?'s " + re.escape(last), undone)),
                      "trouble": bool(TROUBLE.search(undone + looked))})
         say(f"undo: {undone[:160]!r}; then {looked[:120]!r}")
     finally:
@@ -285,8 +297,9 @@ def main() -> int:
         (f"{len(jobs)} call(s) were jobs, each asked of said what it was doing",
          all(r["progress"] for r in jobs if len(r["said"]) > 2)),
         ("every job came to its answer", all("is done" in r["said"][-1] for r in jobs)),
-        (f"one undo took it back to {undo.get('before')} parts: {undo.get('parts')}",
-         bool(undo) and undo.get("parts") == undo.get("before")),
+        (f"one undo of the last call took it back to {undo.get('before')} parts: {undo.get('parts')}",
+         bool(undo) and undo.get("undid_it") and (undo.get("before") or 0) >= 0
+         and undo.get("parts") == undo.get("before")),
     ]
     for words, held in checks:
         print(f"{'ok  ' if held else 'FAIL'} {words}")

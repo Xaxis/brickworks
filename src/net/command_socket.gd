@@ -829,8 +829,9 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 	if assistant != null and not assistant.progress.is_connected(_heard):
 		assistant.progress.connect(_heard)
 	var doing: Callable = func() -> String:
-		return (_doing.left(1).to_upper() + _doing.substr(1) + "…") if not _doing.is_empty() \
-			else "Working on %s's %s…" % [who, name]
+		return ((_doing.left(1).to_upper() + _doing.substr(1)) if not _doing.is_empty()
+			else "Working on %s's %s" % [who, name]) \
+			+ ("; drawing its picture…" if ModelShot.drawing > 0 else "…")
 	if name in ["clear_model", "save_model", "review_model"]:
 		return [await jobs.call_tool(name, {}, func(_work: Working.Job) -> Variant:
 			# One step too: a review lays a feature's piece, saving can hand
