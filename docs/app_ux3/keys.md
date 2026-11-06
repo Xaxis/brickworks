@@ -13,10 +13,13 @@ fails when a command has no key and no row below.
 
 | Preset | Commands | Without a key before | After |
 |---|---|---|---|
-| Brickworks | 201 | 114 | 104 |
-| Studio | 201 | 117 | 107 |
-| Mecabricks | 201 | 115 | 105 |
-| LDCad | 201 | 117 | 108 |
+| Brickworks | 206 | 114 | 109 |
+| Studio | 206 | 117 | 112 |
+| Mecabricks | 206 | 115 | 110 |
+| LDCad | 206 | 117 | 113 |
+
+The menus had 201 commands when this was counted. Cut away by a box, a sphere or a cylinder
+(APP_UX4 8) added five, each with no key: 206 now, five more without a key after.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -132,10 +135,15 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `floor_colour_7` | View › Floor › Baseplate colour › Light Grey | — | — | — | once a model | all | set once; the floor stays as it is |
 | `floor_part` | View › Floor › The baseplate is part of the model | — | — | — | once a model | all | set once; the floor stays as it is |
 | `floor_default` | View › Floor › Start new models on this floor | — | — | — | once a model | all | set once; the floor stays as it is |
-| `cut_x` | View › Cut along › Along X | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
-| `cut_y` | View › Cut along › Along Y | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
-| `cut_z` | View › Cut along › Along Z | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
-| `cut_ghosts` | View › Cut along › Leave a ghost of what is cut away | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
+| `cut_x` | View › Cut away by › A plane along X | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
+| `cut_y` | View › Cut away by › A plane along Y | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
+| `cut_z` | View › Cut away by › A plane along Z | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
+| `cut_ghosts` | View › Cut away by › Leave a ghost of what is cut away | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
+| `cut_box` | View › Cut away by › A box | — | — | — | a few times a model | all | K cuts away by the shape last chosen; the shape is picked once a cut, and its knobs and the strip do the rest |
+| `cut_sphere` | View › Cut away by › A sphere | — | — | — | a few times a model | all | K cuts away by the shape last chosen; the shape is picked once a cut, and its knobs and the strip do the rest |
+| `cut_cylinder` | View › Cut away by › A cylinder | — | — | — | a few times a model | all | K cuts away by the shape last chosen; the shape is picked once a cut, and its knobs and the strip do the rest |
+| `cut_grow` | View › Cut away by › Grow it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Grow is the strip's button |
+| `cut_shrink` | View › Cut away by › Shrink it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Shrink is the strip's button |
 | `stress` | View › Stress | — | — | — | a few times a model | all | Alt-K checks stability; Stress is the colour of it, looked at after |
 | `panel_parts` | View › Parts bin | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_assistant` | View › Assistant | — | — | — | once a session | all | a panel set once a session, and it stays |

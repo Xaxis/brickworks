@@ -57,10 +57,13 @@ ui:split view
 ## Cut away and X-ray {#see-inside}
 
 - **View › Cut away** ([[K]]) puts a plane through the model. Drag the strip's slider to move it, choose **X**, **Y** or **Z**, **Flip** to cut the other side away, and **Ghost** to leave a faint copy of what is cut.
+- **View › Cut away by › A box**, **A sphere** or **A cylinder** takes a shape out of the model: round the selection, or with nothing selected the middle of the model from half way up. Drag the knob on any face to push or pull it a plate at a time, or turn the wheel over it. Shift-drag moves the whole shape, and Esc or a right-click puts a drag back. **Grow** and **Shrink** in the strip move every face at once, and its first list swaps the shape for another or for the plane. Where the cut goes through a part, the face it leaves is filled in the part's colour, so a wall reads as a wall.
+- The cut, a plane or a shape, is saved with the model and is there again when you open it. Other LDraw programs ignore it, and Render and the instructions always draw the model whole.
 - **View › X-ray** ([[I]] with a part selected, or inside a sub-assembly) shows the selection through everything in front of it.
 
 <!-- covers
 ui:cut-away
+ui:cut away by a shape
 ui:x-ray
 -->
 

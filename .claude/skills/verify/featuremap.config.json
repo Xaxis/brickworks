@@ -4644,6 +4644,13 @@
       "entry": "src/dev/picklist_probe.gd",
       "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "cut away by a shape",
+      "entry": "src/render/cut_shape.gd",
+      "reach": "tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes && tools/probe.sh cutshapes_kept   (by hand: View, Cut away by, A box; drag a knob, or the wheel over it; Grow, Shrink; A sphere or A cylinder in the strip; save, open)",
+      "area": "view"
     }
   ]
 }
