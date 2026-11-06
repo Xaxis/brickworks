@@ -221,8 +221,8 @@ plainer — see the first lever below.
      a side: 41 against 48 of 73 on the carts and the hull's start, 6
      against 11 of 28 on the nose and the seat back.
      - It read the dish right 48 times in 48, because it draws the cart
-       turned over. Ours drops that turn. Our parts box now shows the dish
-       turned over instead (partsbox, below).
+       turned over. Ours dropped that turn; it is drawn now (rotroll,
+       below), and the parts box shows the dish turned over (partsbox).
      - It lost parts drawn in place with no parts list, and put the seat
        back 6 plates high 3 times in 4.
      - So the measure reads what a part is, and what is new, about as a
@@ -237,10 +237,6 @@ plainer — see the first lever below.
        back went 6 plates high in 4 of 4. The builder sees the picture agree
        with a placement a person's hands would never make.
    - **Next**, a unit each:
-     - a step that puts parts underneath drawn turned over, as LEGO's is.
-       The author's file asks for it (ROTSTEP's roll), and ours draws no
-       roll. The parts box shows the dish now (partsbox); the turn would
-       show where each part underneath goes;
      - a builder that puts a sub-assembly on only where it connects, as
        hands do, before any placement change is judged again (bookletcal);
      - a modern LEGO booklet (2015 or later: a parts list a step, black with
@@ -278,7 +274,23 @@ plainer — see the first lever below.
        parts. On 7140's pages 2-3, over 5 runs each way, the wrong part fell
        from 24 to 0 and right parts rose from 55 to 80 of 80. The dish was
        lost there in 6 of 10 runs on the old picture, 0 of 5 turned over.
-       Page 9 and the castle's page 172 did not move beyond their spread.
+       Page 9 and the castle's page 172 did not move beyond their spread;
+     - a step that puts parts underneath drawn turned over, as LEGO's is.
+       **Kept** (rotroll, 2026-11-05). The file's roll was lost: a step's
+       turn was read as a direction to look from, with the camera upright,
+       so z was dropped and x 180 clamped to a view from nearly above. Now
+       the model is turned as its author wrote it (REL, ABS, ADD and END,
+       held as the file says, in callouts too) and then looked at. A file
+       with no ROTSTEP is turned over at a step whose new parts hang from
+       what was built before, by what their stud joints face, and upright
+       again at the next; held longer, it agreed with 44 authors' turns
+       less. Over 4 runs each way: the sports car's steps 3-8 rose from 11
+       of 23 right in every run to 14-18, step 6 underneath from 3 of 4 to
+       4 of 4. 7140's wing put parts underneath in the wrong place 7 times,
+       not 15 (inside the spread), but 3 builders of 4 built it on the right
+       wing's part, not 1: turned over, a left wing looks like a right one,
+       and the builder cannot turn the model in its hands. The steps score
+       did not move. The step player still does not roll.
    - **The whole castle**, nine hours of builder, is a lead's run; the
      command is in the write-up.
 

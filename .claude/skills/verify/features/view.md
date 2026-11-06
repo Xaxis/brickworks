@@ -1507,7 +1507,13 @@ picture the assistant is shown.
   on a page at the same scale; a step whose new parts are hidden from the
   front (less than 40% of them in view, measured by drawing the new parts
   again alone) drawn from the back with the turn sign, and turned
-  back when the front shows 70%; a callout (cream box, sub-steps 1 2 3, "2x")
+  back when the front shows 70%; a step turned as its author's ROTSTEP
+  says, its roll too (the model itself turned before it is looked at,
+  `View.turn`, the lights with it; x 180 read as y 180 with z 180,
+  `BookletLooks.upright`); in a file with no turn of its author's, a step
+  whose parts' stud joints go on from below and none from above drawn
+  turned over (`BookletMaker._turn_over`, booklet_probe's `_rotsteps` and
+  `_from_below`); a callout (cream box, sub-steps 1 2 3, "2x")
   with an arrow to each copy, projected through the step's own camera and
   drawn as print draws it, out of the box at a right angle and round one corner
   (`Booklet.elbow`), with a white edge so it shows on a black model, or, past
