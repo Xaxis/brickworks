@@ -31,6 +31,23 @@ signal wrote(piece: String)
 const PAGE_COLOUR := Color8(220, 236, 248)
 const CALLOUT_COLOUR := Color8(255, 243, 200)
 const CALLOUT_PAGE_COLOUR := Color8(255, 248, 222)
+## A face this near level is a top or a bottom, and this near upright a side
+## ([method telling_faces]): the cosines of its normal with up.
+const FLAT := 0.995
+const UPRIGHT := 0.005
+## The pixels across the longest side of the small picture [method
+## telling_faces] measures a part in.
+const MEASURED := 40.0
+## How far below level a part turned over is seen from ([method part_views]),
+## in radians: fifteen degrees.
+const BELOW := PI / 12.0
+## A part is drawn another way than the usual when that way shows this many
+## times its slanted and curved faces ([method telling_view]), and more of
+## them by this share of the part's picture: a hinge's chamfer or an arch's
+## curve under a 1 x 4 is not worth turning a part over for, a dish's dome
+## (a tenth) is.
+const TELLS_MORE := 2.0
+const TELLS_SHARE := 0.05
 
 var library: PartLibrary
 ## Pixels per millimetre of paper: 5 is 127 dots an inch. Fewer on the
@@ -69,6 +86,10 @@ var _main: BookletStudio.Stage
 
 ## True while a booklet is being made, so a second press waits for it.
 static var busy: bool = false
+## Part id -> the way its parts box shows it ([method telling_view]), worked
+## out once a run: it reads the part's whole mesh. Made and read on the main
+## thread only.
+static var _views_of: Dictionary = {}
 ## The toolbar's Instructions button, for the page to find (main._tell_page).
 static var shown_button: Button = null
 ## Open the file in the browser once it is written, on the desktop. A probe
@@ -435,25 +456,33 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 		var part: Lbm.PartMesh = library.mesh_for(lot.part_id)
 		if part == null:
 			continue
-		var extent: Rect2 = BookletStudio.extent([part.bounds], BookletStudio.FRONT)
+		var from: Vector3 = telling_view(lot.part_id, part)
+		var extent: Rect2 = BookletStudio.extent([part.bounds], from)
 		made.size = Booklet.part_size(extent.size)
 		if dry or not only.is_empty() and not _wanted_lots.has(key):
 			made.size += Vector2(1.0, 1.0)
 			_soon_then(func() -> void: lots[key] = made)
 			continue
-		await _soon(_part_picture.bind(lot, made, extent, lots))
+		await _soon(_part_picture.bind(lot, made, extent, from, lots))
 	await _soon(Callable(), 1)
 	await _keep_up(0)
 	return lots
 
 
-## The picture of [param lot]'s part, into the parts' pictures ([param lots]
-## and the document's), the work done with it put in [param into].
+## The picture of [param lot]'s part seen from [param from], into the parts'
+## pictures ([param lots] and the document's), the work done with it put in
+## [param into].
 func _part_picture(into: Array, lot: Inventory.Lot, made: Booklet.Lot, extent: Rect2,
-		lots: Dictionary) -> void:
+		from: Vector3, lots: Dictionary) -> void:
 	var key: String = made.key
+	# The part is turned rather than the camera moved, so the light falls
+	# on the side the reader sees as it falls on every part's top: from the
+	# booklet's camera the turned part is the part seen from [param from],
+	# and [param extent] frames it.
+	var turn: Basis = BookletStudio.basis_for(BookletStudio.FRONT) \
+		* BookletStudio.basis_for(from).transposed()
 	var stage: BookletStudio.Stage = _studio.stage(
-		[[0, lot.part_id, lot.color_code, Transform3D.IDENTITY]])
+		[[0, lot.part_id, lot.color_code, Transform3D(turn, Vector3.ZERO)]])
 	# Twice the page's resolution: a part is small on the page and
 	# read closely.
 	var pixels: Vector2i = Vector2i((made.size + Vector2(1.0, 1.0)) * px_per_mm * 2.0)
@@ -466,6 +495,139 @@ func _part_picture(into: Array, lot: Inventory.Lot, made: Booklet.Lot, extent: R
 	_later([shot], func() -> void:
 		document.parts[key] = _uri(shot)
 		lots[key] = made, into)
+
+
+## The way [param part_id] faces the reader in its parts box, one of [method
+## part_views]: turned over when that shows clearly more of its slanted and
+## curved faces ([method telling_faces]) than the usual way does, else the
+## usual way. A dish's dome and an inverted slope's slope face down, so they
+## are drawn from under them. A slope, a plate, a tile or a jumper is told by
+## its top, which the usual way shows.
+static func telling_view(part_id: String, part: Lbm.PartMesh) -> Vector3:
+	if not _views_of.has(part_id):
+		var views: Array[Vector3] = part_views()
+		var shown: PackedFloat32Array = telling_faces(part)
+		var best: int = 0
+		for n: int in shown.size():
+			if shown[n] > shown[best] * 1.001:
+				best = n
+		var box: Rect2 = BookletStudio.extent([part.bounds], BookletStudio.FRONT)
+		var clearly: bool = shown[best] >= shown[0] * TELLS_MORE \
+			and shown[best] - shown[0] >= box.get_area() * TELLS_SHARE
+		_views_of[part_id] = views[best] if clearly else views[0]
+	return _views_of[part_id]
+
+
+## The two ways a part can face the reader in its parts box: as it stands
+## in the library, seen as every step sees it (thirty degrees above it), and
+## turned over, seen from [constant BELOW] under its side. Low enough under it
+## that a black part's outline is its profile: a black dish is a silhouette
+## from any side, and only from near level is its outline the dome a round
+## plate lacks. Never turned round: a seat turned round showed its back.
+static func part_views() -> Array[Vector3]:
+	var level: Vector3 = Vector3(BookletStudio.FRONT.x, 0.0, BookletStudio.FRONT.z).normalized()
+	return [BookletStudio.FRONT, level * cos(BELOW) + Vector3.DOWN * sin(BELOW)]
+
+
+## How much of [param part]'s slanted and curved faces each of [method
+## part_views] shows: the area of its picture they fill (LDU²), what is in
+## front of them hiding them, as it hides the dome of a dish seen from above.
+## Flat tops and bottoms and upright sides are left out: a plate, a brick and
+## a tile have nothing else, and every part shares them with its
+## look-alikes. A dish's dome, a slope and a curve are what tell a part from
+## the plain one of its footprint, and so from each other. The picture is
+## drawn here, small and on the processor ([constant MEASURED] across), only
+## for a part that has such faces.
+static func telling_faces(part: Lbm.PartMesh) -> PackedFloat32Array:
+	var views: Array[Vector3] = part_views()
+	var shown := PackedFloat32Array()
+	shown.resize(views.size())
+	# Every face's corners, three by three, and which are slanted; and the
+	# most of them each view could show with nothing in front of them.
+	var corners := PackedVector3Array()
+	var slanted := PackedByteArray()
+	var toward: Array[Vector3] = []
+	for from: Vector3 in views:
+		toward.append(from.normalized())
+	var most: float = 0.0
+	var could := PackedFloat32Array()
+	could.resize(views.size())
+	for surface: ArrayMesh in part.surfaces:
+		var arrays: Array = surface.surface_get_arrays(0)
+		var points: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var order: PackedInt32Array = arrays[Mesh.ARRAY_INDEX] \
+			if arrays[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+		var count: int = order.size() if not order.is_empty() else points.size()
+		for t: int in range(0, count - 2, 3):
+			var a: Vector3 = points[order[t] if not order.is_empty() else t]
+			var b: Vector3 = points[order[t + 1] if not order.is_empty() else t + 1]
+			var c: Vector3 = points[order[t + 2] if not order.is_empty() else t + 2]
+			var face: Vector3 = (b - a).cross(c - a)
+			var size: float = face.length()
+			if size < 1e-6:
+				continue
+			var up: float = absf(face.y) / size
+			var tells: bool = up < FLAT and up > UPRIGHT
+			if tells:
+				for n: int in views.size():
+					could[n] += absf(face.dot(toward[n])) * 0.5
+			corners.append(a)
+			corners.append(b)
+			corners.append(c)
+			slanted.append(1 if tells else 0)
+	for n: int in views.size():
+		most = maxf(most, could[n])
+	# A part whose slanted faces could not fill enough of any picture to
+	# turn it for ([constant TELLS_SHARE]) is not drawn: most parts.
+	if most < BookletStudio.extent([part.bounds], BookletStudio.FRONT).get_area() * TELLS_SHARE:
+		return shown
+	for n: int in views.size():
+		var turn: Basis = BookletStudio.basis_for(views[n])
+		var frame: Rect2 = BookletStudio.extent([part.bounds], views[n])
+		var pixel: float = maxf(frame.size.x, frame.size.y) / MEASURED
+		if pixel <= 0.0:
+			continue
+		var wide: int = int(ceil(frame.size.x / pixel)) + 1
+		var high: int = int(ceil(frame.size.y / pixel)) + 1
+		# Nearest first: z runs back towards the camera.
+		var near := PackedFloat32Array()
+		near.resize(wide * high)
+		near.fill(-INF)
+		var what := PackedByteArray()
+		what.resize(wide * high)
+		for f: int in slanted.size():
+			var p: Array[Vector3] = []
+			for k: int in 3:
+				var point: Vector3 = corners[f * 3 + k]
+				p.append(Vector3((point.dot(turn.x) - frame.position.x) / pixel,
+					(point.dot(turn.y) - frame.position.y) / pixel, point.dot(turn.z)))
+			var area: float = (p[1].x - p[0].x) * (p[2].y - p[0].y) \
+				- (p[2].x - p[0].x) * (p[1].y - p[0].y)
+			if absf(area) < 1e-9:
+				continue
+			var x0: int = maxi(0, int(ceil(minf(p[0].x, minf(p[1].x, p[2].x)) - 0.5)))
+			var x1: int = mini(wide - 1, int(floor(maxf(p[0].x, maxf(p[1].x, p[2].x)) - 0.5)))
+			var y0: int = maxi(0, int(ceil(minf(p[0].y, minf(p[1].y, p[2].y)) - 0.5)))
+			var y1: int = mini(high - 1, int(floor(maxf(p[0].y, maxf(p[1].y, p[2].y)) - 0.5)))
+			for y: int in range(y0, y1 + 1):
+				for x: int in range(x0, x1 + 1):
+					var at := Vector2(x + 0.5, y + 0.5)
+					var w0: float = ((p[1].x - at.x) * (p[2].y - at.y) - (p[2].x - at.x) * (p[1].y - at.y)) / area
+					var w1: float = ((p[2].x - at.x) * (p[0].y - at.y) - (p[0].x - at.x) * (p[2].y - at.y)) / area
+					var w2: float = 1.0 - w0 - w1
+					if w0 < 0.0 or w1 < 0.0 or w2 < 0.0:
+						continue
+					var z: float = w0 * p[0].z + w1 * p[1].z + w2 * p[2].z
+					var cell: int = y * wide + x
+					if z > near[cell]:
+						near[cell] = z
+						what[cell] = 1 + slanted[f]
+		var seen: int = 0
+		for cell: int in what.size():
+			if what[cell] == 2:
+				seen += 1
+		shown[n] = seen * pixel * pixel
+	return shown
 
 
 ## The parts list at the end, by colour: the whites, the greys and black,

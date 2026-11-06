@@ -414,6 +414,99 @@ the 95th percentile, select all 32.3 ms, Next at most 10.2 ms).
 its 100 ms on both builds at load 19 (main 109 and 107 ms, this 148 and
 117), its warm-up drawing the window once here and 9 times on main.
 
+## Standing still: the audio thread that spun a core
+
+Until 2026-11-05 the web app took a whole core for as long as its tab was
+open, model or no model, building or not (spinworker). On a laptop or a
+phone that is battery, heat and a fan, and a core taken from the page.
+
+It was the engine's audio. Brickworks makes no sound, so it runs Godot's
+dummy driver (project.godot `[audio]`). That driver still mixes silence on
+a thread and sleeps 4096 / mix rate seconds between mixes. On the web the
+mix rate is 0 by default, meaning the browser's own, which a dummy has none
+of. So the sleep was infinite. It reached `nanosleep` as 0xFFFFFFFF
+microseconds, which `OS_Unix::delay_usec` turns into a negative nanosecond
+count through a 32-bit `long`. `nanosleep` refused it at once, and the
+thread mixed 4096 frames of silence again, without pause. Now
+`audio/driver/mix_rate.web=44100`, the engine's default everywhere else,
+and the thread sleeps 93 ms between mixes.
+
+The template has no names, so each was read from its code (4.7.2's
+`web_release.zip`, shipped byte for byte as `index.wasm`; wasm-dis, the
+function bodies matched against the engine's source at 4.7.2-stable):
+wasm $9528, the hot function in lazycompile's traces, is
+`AudioDriver::audio_server_process` with `AudioServer::_driver_process`
+inlined; its caller $47402 is `AudioDriverDummy::thread_func` (its fields
+at 84, 88, 100 and 101 are `buffer_frames`, `mix_rate`, `active` and
+`exit_thread`); $69057 is `OS_Unix::delay_usec` (a signed `rem_s` for the
+nanoseconds) and $11245 is emscripten's `nanosleep`, which returns EINVAL
+before it waits. The excerpts are in
+`bench/results/spinworker-2026-11-05/names`. A project setting is the whole
+fix; the engine's two faults (a dummy driver dividing by a mix rate of 0,
+and `delay_usec` wrapping past 2^31 us on a 32-bit build) would each need
+a web template built here, and the templates here are Godot's own
+downloads.
+
+Each thread of the page's renderer as the kernel counts it
+(`tools/web/thread_cpu.mjs`, `/proc`), a minute standing still with the
+example model open, then a minute of building (a part searched and taken,
+put down three times, one dragged, a wheel notch: 3 to 13 parts a minute
+put down), base (302e9eb3) and the fix in turn, base fix fix base, at load
+11 to 20. % of one core, medians of two runs each:
+
+| | desktop still | desktop building | phone still | phone building |
+|---|---|---|---|---|
+| the page's renderer, all threads | 106.7 → 6.8 | 114.4 → 15.2 | 107.2 → 7.2 | 111.3 → 13.2 |
+| the audio mix thread | 99.8 → 0.0 | 97.9 → 0.0 | 99.8 → 0.1 | 98.0 → 0.0 |
+| the page's main thread | 6.0 → 6.0 | 12.5 → 11.9 | 6.5 → 6.2 | 10.1 → 10.1 |
+| WorkerThreadPool, each of 4 | 0 | 0.3-0.6 | 0 | 0.3-0.5 |
+| the IP resolver, two unused engine threads | 0 | 0 | 0 | 0 |
+| the browser's own 28 in the page | 0.8 | 1.7 | 0.8 | 1.7 |
+| the GPU process (SwiftShader) | 0.6 | 588 → 500 | 0.6 | 372 → 441 |
+
+Phone is 390 x 844 at 3x by a finger. The engine starts eight threads, and
+those are all of them: the audio thread, WorkerThreadPool's four, the name
+resolver (IP), two never given work. Parked, they wait in `Atomics.wait`
+and cost nothing. The shell's pack fetcher is a JS worker of its own and
+is done in the first seconds; the connector's clock worker runs only while
+the tab is hidden and connected. Building, the cost is the GPU process
+rasterising in software, which a real card does not pay; the page's own
+threads are 13-15% of a core.
+
+Nothing saw it. `idle_check` counted Chromium's CPU whole (renderer 107%)
+and put it down to drawing in software; features/web.md even said a
+worker "runs at about a core, not yet traced". A trace says every engine
+worker is 100% busy, because V8's sampler counts a thread parked in
+`Atomics.wait` as busy in the wasm function that waits. `idle_check` now
+reads each worker's CPU from `/proc` (`tools/web/proc_cpu.mjs`) and fails
+on one over 10% of a core standing still: base FAIL (99.8%), the fix ok
+(0.1%), the rest of the check the same on both.
+
+Nothing slower. `load_check --warm --pick=3001` on the same two exports,
+12 cold and 12 warm loads of each, at load 17 to 65 (one A B B A set of
+three each, then B A A B three times of one each, a minute apart):
+
+| medians | base | fix |
+|---|---|---|
+| interactive, cold | 14.4 s | 14.3 s |
+| interactive, warm | 8.25 s | 7.5 s |
+| the first part in hand (3001, cold and warm) | 392 ms | 283 ms |
+| the main thread's CPU before interactive, cold | 8.3 s | 8.1 s |
+| all threads' CPU before interactive, cold | 25.4 s | 16.4 s |
+| all threads' CPU before interactive, warm | 20.1 s | 12.0 s |
+
+In the six pairs a minute apart the fix was usable sooner in four, cold
+and warm (paired medians -3.0 s and -0.6 s); the box's load swung from 17
+to 51 under them, so the gain is not claimed, only that nothing is slower.
+The first set's fix arms fell at load 27 and 65 against the base's 22 and
+35, and read 1.4 s later cold. The spinning thread cost 8-9 s of CPU in
+every load. The first search (the bin listing 3001 first) and the longest
+frame of the first drag, timed by `thread_cpu` on the way, are inside each
+other's spread: search 1.9-3.1 s base and 1.2-3.0 s fix (the page is told
+the app's state twice a second), the drag's longest frame 0.8-2.3 s base
+and 0.9-1.2 s fix. The audio thread serves none of the together,
+connector-hidden-tab or hidden_start paths, so those were not rerun.
+
 ## The frames gate
 
 `tools/web/cad_frames.mjs --gate --arrive=300 --only=orbit,select_all,step`

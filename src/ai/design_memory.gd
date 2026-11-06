@@ -140,6 +140,12 @@ static func hold_name(name: String) -> void:
 		_held_words.append(said)
 
 
+## Whether this run holds anything out, by number or by name: a bench's run,
+## never a person's.
+static func holding() -> bool:
+	return not (held_out().is_empty() and held_names().is_empty())
+
+
 ## Whether a real set is under test, by its number (7242-1, or 7242 as a
 ## technique cites it) or its name: its facts stay out of every path that
 ## hands a session a real set's (src/dev/holdout_probe.gd). A name is held

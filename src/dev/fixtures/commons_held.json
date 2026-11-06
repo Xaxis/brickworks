@@ -1,0 +1,1638 @@
+{
+"note": "Wikimedia Commons' answers to find_reference's search (ReferenceFinder.look_for), trimmed to the fields it reads, for src/dev/reference_holdout_probe.gd",
+"asked": "2026-11-05",
+"answers": {
+"Gandalf Arrives": {
+"query": {
+"pages": [
+{
+"title": "File:G-20 Toronto June 2010 (8).jpg",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/52/G-20_Toronto_June_2010_%288%29.jpg/960px-G-20_Toronto_June_2010_%288%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Taken with Canon Digital IXUS 90 IS|Demonstrations and protests against the 2010 G-20 Toronto summit|Flickr images reviewed by File Upload Bot (Magnus Manske)|Oddfellows Hall, Toronto|Queen Street West and Spadina Avenue, Toronto"
+},
+"ObjectName": {
+"value": "G-20 Toronto June 2010 (8)"
+},
+"ImageDescription": {
+"value": "G20 Protests in Toronto - Police Reinforcement Arrives - Protesters at Spadina and Queen"
+},
+"Artist": {
+"value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/25716750@N06\">Commodore Gandalf Cunningham</a>"
+},
+"LicenseShortName": {
+"value": "CC BY 2.0"
+}
+}
+}
+]
+},
+{
+"title": "File:Microcomputer networks- investigation and implementation. (IA microcomputernet00egbe).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/db/Microcomputer_networks-_investigation_and_implementation._%28IA_microcomputernet00egbe%29.pdf/page1-960px-Microcomputer_networks-_investigation_and_implementation._%28IA_microcomputernet00egbe%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|Microcomputers|FEDLINK - United States Federal Collection|Academic theses and dissertations of the Naval Postgraduate School|Documents from the US Naval Postgraduate School Library|IA books copyright review automatically suggested|Scans from the Internet Archive/unverified|CC-PD-Mar"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nMicrocomputer networks: investigation and implementation.</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>ADA155631</dd>\n<dd>Thesis (M.S. in Information Systems)--Naval Postgraduate School, 1985</dd>\n<dd>Bibliography: l. 74-75</dd></dl>\n<br>Subjects: Management</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nEgbert, Jean L.</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:The design and implementation of a syntax directed editor for the specification language Spec. (IA designimplementa00beeb).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/38/The_design_and_implementation_of_a_syntax_directed_editor_for_the_specification_language_Spec._%28IA_designimplementa00beeb%29.pdf/page1-960px-The_design_and_implementation_of_a_syntax_directed_editor_for_the_specification_language_Spec._%28IA_designimplementa00beeb%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|FEDLINK - United States Federal Collection|Academic theses and dissertations of the Naval Postgraduate School|Documents from the US Naval Postgraduate School Library|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books with"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nThe design and implementation of a syntax directed editor for the specification language Spec.</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>ADA212085</dd>\n<dd>Thesis advisor, Valdis Berzins</dd>\n<dd>Thesis (M.S. in Comp. Sci.) Naval Postgraduate School, June 1989</dd>\n<dd>Includes bibliographical references</dd></dl>\n<br>Subjects:</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nBeebe, David Henry.;Bσerzi≈nΘs, Valdis Andris.</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Automation support for concurrent software engineering (IA automationsuppor00badr).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/18/Automation_support_for_concurrent_software_engineering_%28IA_automationsuppor00badr%29.pdf/page1-960px-Automation_support_for_concurrent_software_engineering_%28IA_automationsuppor00badr%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|Documents from the US Naval Postgraduate School Library|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Reports from the Naval Postgraduate School"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nAutomation support for concurrent software engineering</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>Cover title</dd>\n<dd>\"NPS-CS-93-013.\"</dd>\n<dd>\"December 1993.\"</dd>\n<dd>AD A279 691</dd>\n<dd>Includes bibliographical references (p. 21-22)</dd>\n<dd>This paper presents an evolution control system that provide automated assistance for the software evolution process"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nBadr, Salah M.;Luqi.</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:A model and algorithms for a software evolution control system. (IA modelalgorithmsf00badr).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b7/A_model_and_algorithms_for_a_software_evolution_control_system._%28IA_modelalgorithmsf00badr%29.pdf/page1-960px-A_model_and_algorithms_for_a_software_evolution_control_system._%28IA_modelalgorithmsf00badr%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|FEDLINK - United States Federal Collection|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nA model and algorithms for a software evolution control system.</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>Dissertation supervisor(s): Valdis Berzins</dd>\n<dd>\"December 1993.\"</dd>\n<dd>Dissertation (Ph.D. in Computer Science) Naval Postgraduate School, December 1993</dd>\n<dd>Bibliography: p. 441-447</dd>\n<dd>This dissertation introduces an Evolution Control System (ECS) "
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nBadr, Salah M.</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Early plays- Catiline, The warrior's barrow, Olaf Liljekrans (IA cu31924026307615).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e2/Early_plays-_Catiline%2C_The_warrior%27s_barrow%2C_Olaf_Liljekrans_%28IA_cu31924026307615%29.pdf/page1-500px-Early_plays-_Catiline%2C_The_warrior%27s_barrow%2C_Olaf_Liljekrans_%28IA_cu31924026307615%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Books from New York (state)|Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Scans from Cornell University Library"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nEarly plays: Catiline, The warrior's barrow, Olaf Liljekrans</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>The metadata below describe the original scanning. Follow the \"All Files: HTTP\" link in the \"View the book\" box to the left to find XML files that contain more metadata about the original images and the derived formats (OCR results, PDF etc.). See also the <a rel=\"nofoll"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>Ibsen, Henrik, 1828-1906</dd>\n<dd>Orbeck, Anders, 1891- tr</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:State Hornet Winter 2013 (IA css 000800).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/84/State_Hornet_Winter_2013_%28IA_css_000800%29.pdf/page1-960px-State_Hornet_Winter_2013_%28IA_css_000800%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "California Revealed|Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|PD-US missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nState Hornet Winter 2013</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>The State Hornet, student newspaper of California State University, Sacramento (CSUS), chronicles the Capital Campus' evolution, significant events and issues, and interconnection with the local, regional and statewide communities.</dd>\n<dd>For additional informatio"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nCalifornia State University, Sacramento</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Gandalf arrives in Hobbiton with Hobbits (13217261503).jpg",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/Gandalf_arrives_in_Hobbiton_with_Hobbits_%2813217261503%29.jpg/960px-Gandalf_arrives_in_Hobbiton_with_Hobbits_%2813217261503%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Dioramas in Germany|Gandalf|Hobbits|Middle-earth Strategy Battle Game|Flickr images reviewed by FlickreviewR 2"
+},
+"ObjectName": {
+"value": "Gandalf arrives in Hobbiton with Hobbits (13217261503)"
+},
+"ImageDescription": {
+"value": "The Lord of the Rings diorama I posted some time ago, now with Hobbits crowding Hobbiton. And apparently, not everyone is happy to see Gandalf …"
+},
+"Artist": {
+"value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/15686472@N07\">Tobias Bomm</a> from Deutschland"
+},
+"LicenseShortName": {
+"value": "CC BY 2.0"
+}
+}
+}
+]
+},
+{
+"title": "File:TSF Théâtre Sans Fil, Une vie formidable.pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/TSF_Th%C3%A9%C3%A2tre_Sans_Fil%2C_Une_vie_formidable.pdf/page1-960px-TSF_Th%C3%A9%C3%A2tre_Sans_Fil%2C_Une_vie_formidable.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Puppets|Files with no machine-readable author|Uploaded with OpenRefine|Media lacking author information|Media provided by l’Association québécoise des marionnettistes|Marionnettes de Montréal|Parcours de la marionnette au Québec — Histoire de la marionnette|Fonds d’archives de l’AQM"
+},
+"ObjectName": {
+"value": "TSF Théâtre Sans Fil, Une vie formidable"
+},
+"ImageDescription": {
+"value": "Article extrait de la revue Marionnettes"
+},
+"LicenseShortName": {
+"value": "CC BY-SA 4.0"
+}
+}
+}
+]
+},
+{
+"title": "File:A Wizard Is Never Late Lego diorama by Flounder's Bricks, 2020.png",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e1/A_Wizard_Is_Never_Late_Lego_diorama_by_Flounder%27s_Bricks%2C_2020.png/960px-A_Wizard_Is_Never_Late_Lego_diorama_by_Flounder%27s_Bricks%2C_2020.png?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "The Lord of the Rings|Flickr images reviewed by FlickreviewR 2|Lego models of Middle-earth"
+},
+"ObjectName": {
+"value": "A Wizard Is Never Late Lego diorama by Flounder's Bricks, 2020"
+},
+"ImageDescription": {
+"value": "Frodo: \"You're late.\" \n<p>Gandalf: \"A wizard is never late. Nor is he early. He arrives precisely when he means to.\" \n</p>\nQuick build of one of my favorite scenes from The Fellowship of the Ring."
+},
+"Artist": {
+"value": "Flounder's Bricks"
+},
+"LicenseShortName": {
+"value": "CC BY 2.0"
+}
+}
+}
+]
+}
+]
+}
+},
+"LEGO United States Capitol Building": {
+"query": {
+"pages": [
+{
+"title": "File:Redbook-1969-1970 (63GA).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e9/Redbook-1969-1970_%2863GA%29.pdf/page1-500px-Redbook-1969-1970_%2863GA%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "1969 in Iowa|1970 in Iowa|Iowa Official Register|1969 books|PD US no notice|Books from the United States PDF files|Photographs by conner395|Rogers Fund - Books and manuscripts"
+},
+"ObjectName": {
+"value": "Redbook-1969-1970 (63GA)"
+},
+"ImageDescription": {
+"value": "This is the 1969-70 entry in the \"Iowa Official Register\" series of publications by the State of Iowa."
+},
+"Artist": {
+"value": "J. C. Moore, Superintendent of Printing; L. Dale Ahern, Editor"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:REAUTHORIZING THE VISION FOR SPACE EXPLORATION (IA gov.gpo.fdsys.CHRG-110shrg74618).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6d/REAUTHORIZING_THE_VISION_FOR_SPACE_EXPLORATION_%28IA_gov.gpo.fdsys.CHRG-110shrg74618%29.pdf/page1-960px-REAUTHORIZING_THE_VISION_FOR_SPACE_EXPLORATION_%28IA_gov.gpo.fdsys.CHRG-110shrg74618%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Congress|Scans from the Internet Archive/unverified|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Hearing documents of the United States Senate Committee on Commerce, Science, and Transportation"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nREAUTHORIZING THE VISION FOR SPACE EXPLORATION</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p><b>Government Publishing Office</b></p><p>U.S. Congress<br>Senate<br>Committee on Commerce, Science, and Transportation<br></p><p>REAUTHORIZING THE VISION FOR SPACE EXPLORATION</p><p>Date(s) Held: 2008-05-07</p><p> 110th Congress, 2nd Session</p><p>GPO Document Source: &"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nCommittee on Commerce, Science, and Transportation</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:An introduction to Latin prose composition, with a complete course of exercises, illustrative of all the important principles of Latin syntax (IA introductiontola00anth).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/74/An_introduction_to_Latin_prose_composition%2C_with_a_complete_course_of_exercises%2C_illustrative_of_all_the_important_principles_of_Latin_syntax_%28IA_introductiontola00anth%29.pdf/page1-500px-thumbnail.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Charles Anthon|PD US expired|Books uploaded by Fæ|Books without Wikidata item|Books in the Library of Congress"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nAn introduction to Latin prose composition, with a complete course of exercises, illustrative of all the important principles of Latin syntax</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Latin language</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nAnthon, Charles, 1797-1867</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Latin exercises - adapted to Andrews and Stoddard's Latin grammar (IA latinexercisesad01andr).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/f/ff/Latin_exercises_-_adapted_to_Andrews_and_Stoddard%27s_Latin_grammar_%28IA_latinexercisesad01andr%29.pdf/page1-500px-Latin_exercises_-_adapted_to_Andrews_and_Stoddard%27s_Latin_grammar_%28IA_latinexercisesad01andr%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US expired|Books uploaded by Fæ|Books without Wikidata item|Books in the Library of Congress"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nLatin exercises : adapted to Andrews and Stoddard's Latin grammar</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Latin language</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>Andrews, E. A. (Ethan Allen), 1787-1858</dd>\n<dd>Andrews, E. A. (Ethan Allen), 1787-1858. Grammar of the Latin language</dd>\n<dd>Stoddard, S. (Solomon), 1800-1847</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Roman antiquities- or, An account of the manners and customs of the Romans .. (IA romanantiquities01adam).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a8/Roman_antiquities-_or%2C_An_account_of_the_manners_and_customs_of_the_Romans_.._%28IA_romanantiquities01adam%29.pdf/page1-960px-Roman_antiquities-_or%2C_An_account_of_the_manners_and_customs_of_the_Romans_.._%28IA_romanantiquities01adam%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US expired|Books uploaded by Fæ|Books without Wikidata item|Books in the Library of Congress"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nRoman antiquities: or, An account of the manners and customs of the Romans ..</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects:</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>Adam, Alexander, 1741-1809</dd>\n<dd>Wilson, Peter, 1747-1825, [from old catalog] ed</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Roman antiquities- or, An account of the manners and customs of the Romans .. (IA romanantiquities03adam).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/40/Roman_antiquities-_or%2C_An_account_of_the_manners_and_customs_of_the_Romans_.._%28IA_romanantiquities03adam%29.pdf/page1-500px-Roman_antiquities-_or%2C_An_account_of_the_manners_and_customs_of_the_Romans_.._%28IA_romanantiquities03adam%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US expired|Books uploaded by Fæ|Books without Wikidata item|Books in the Library of Congress"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nRoman antiquities: or, An account of the manners and customs of the Romans ..</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects:</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>Adam, Alexander, 1741-1809</dd>\n<dd>Wilson, Peter, 1747-1825, [from old catalog] ed</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Latin exercises; adapted to Andrews and Stoddard's Latin grammar (IA latinexercisesad00andr).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/Latin_exercises%3B_adapted_to_Andrews_and_Stoddard%27s_Latin_grammar_%28IA_latinexercisesad00andr%29.pdf/page1-500px-Latin_exercises%3B_adapted_to_Andrews_and_Stoddard%27s_Latin_grammar_%28IA_latinexercisesad00andr%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US expired|Books uploaded by Fæ|Books without Wikidata item|Books in the Library of Congress|PD-US missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nLatin exercises; adapted to Andrews and Stoddard's Latin grammar</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Latin language</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nAndrews, E. A. (Ethan Allen), 1787-1858</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:National Poultry Improvement Plan- 1991 directory of participants handling waterfowl, exhibition poultry, and game birds (IA nationalpoultryi5500unit).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0c/National_Poultry_Improvement_Plan-_1991_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5500unit%29.pdf/page1-960px-National_Poultry_Improvement_Plan-_1991_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5500unit%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|FEDLINK - United States Federal Collection|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Internet Archive (redundant cover page removed)"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nNational Poultry Improvement Plan: 1991 directory of participants handling waterfowl, exhibition poultry, and game birds</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>\"March 1991\" --cover\n</p>\n<br>Subjects: Poultry industry United States; Poultry Breeding United States; Waterfowl Breeding United States; Game and game-birds United States</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nUnited States. Animal and Plant Health Inspection Service. Veterinary Services</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:National Poultry Improvement Plan- 1992 directory of participants handling waterfowl, exhibition poultry, and game birds (IA nationalpoultryi5500unit 1).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/b0/National_Poultry_Improvement_Plan-_1992_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5500unit_1%29.pdf/page1-960px-National_Poultry_Improvement_Plan-_1992_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5500unit_1%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|FEDLINK - United States Federal Collection|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nNational Poultry Improvement Plan: 1992 directory of participants handling waterfowl, exhibition poultry, and game birds</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>\"March 1992\" --cover\n</p>\n<br>Subjects: Poultry industry United States; Poultry Breeding United States; Waterfowl Breeding United States; Game and game-birds United States</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nUnited States. Animal and Plant Health Inspection Service</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:National Poultry Improvement Plan- 1993 directory of participants handling waterfowl, exhibition poultry, and game birds (IA nationalpoultryi5501unit 0).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/17/National_Poultry_Improvement_Plan-_1993_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5501unit_0%29.pdf/page1-500px-National_Poultry_Improvement_Plan-_1993_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5501unit_0%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|FEDLINK - United States Federal Collection|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nNational Poultry Improvement Plan: 1993 directory of participants handling waterfowl, exhibition poultry, and game birds</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>Cover title</dd>\n<dd>Shipping list no.: 93-0496-P</dd>\n<dd>\"July 1993.\"</dd></dl>\n<br>Subjects: Poultry industry United States Directories; Game bird culture United States Directories</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nUnited States. Animal and Plant Health Inspection Service</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:National Poultry Improvement Plan - 1994 directory of participants handling waterfowl, exhibition poultry, and game birds (IA nationalpoultryi5502unit).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/66/National_Poultry_Improvement_Plan_-_1994_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5502unit%29.pdf/page1-960px-National_Poultry_Improvement_Plan_-_1994_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5502unit%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|FEDLINK - United States Federal Collection|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nNational Poultry Improvement Plan : 1994 directory of participants handling waterfowl, exhibition poultry, and game birds</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>Cover title</dd>\n<dd>\"May 1994.\"</dd></dl>\n<br>Subjects: Poultry industry United States Directories; Game bird culture United States Directories</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nUnited States. Animal and Plant Health Inspection Service</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:National Poultry Improvement Plan- 1995 directory of participants handling waterfowl, exhibition poultry, and game birds (IA nationalpoultryi5502unit 2).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/49/National_Poultry_Improvement_Plan-_1995_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5502unit_2%29.pdf/page1-960px-National_Poultry_Improvement_Plan-_1995_directory_of_participants_handling_waterfowl%2C_exhibition_poultry%2C_and_game_birds_%28IA_nationalpoultryi5502unit_2%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|FEDLINK - United States Federal Collection|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|PD-USGov missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nNational Poultry Improvement Plan: 1995 directory of participants handling waterfowl, exhibition poultry, and game birds</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>\"May 1995\" --cover\n</p>\n<br>Subjects: Poultry industry United States; Poultry Breeding United States; Waterfowl Breeding United States; Game and game-birds United States</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nUnited States. Animal and Plant Health Inspection Service</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:LEGO US Capitol.jpg",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/2/24/LEGO_US_Capitol.jpg/960px-LEGO_US_Capitol.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "July 2020 in Washington, D.C.|PD US Congress|Lego buildings|Models of the United States Capitol|TJ Cox in 2020"
+},
+"ObjectName": {
+"value": "LEGO US Capitol"
+},
+"ImageDescription": {
+"value": "Thanks to my kids for a great birthday present - a LEGO replica of our Capitol that fits perfectly in my DC office!"
+},
+"Artist": {
+"value": "<bdi><a href=\"https://en.wikipedia.org/wiki/en:TJ_Cox\" class=\"extiw\" title=\"w:en:TJ Cox\"><span title=\"American politician (born 1963)\">TJ Cox</span></a></bdi>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Abridged list of federal laws applicable to agriculture (IA CAT1108451007).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/a7/Abridged_list_of_federal_laws_applicable_to_agriculture_%28IA_CAT1108451007%29.pdf/page1-960px-Abridged_list_of_federal_laws_applicable_to_agriculture_%28IA_CAT1108451007%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|FEDLINK - United States Federal Collection|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Internet Archive (redundant cover page removed)"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nAbridged list of federal laws applicable to agriculture</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>NAL holdings: [Dec. 1943?]-</dd>\n<dd>Aug. 1944-July 1946 issued as its USDA document no.8; July 1947- issued as its USDA document no.2</dd></dl>\n<br>Subjects:</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>United States. Department of Agriculture. Office of Information</dd>\n<dd>United States. Department of Agriculture. Office of Information. USDA document no.8</dd>\n<dd>United States. Department of Agriculture. Office of Information. USDA document no.2</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Stem rust and barberry news (IA CAT11089056008).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/Stem_rust_and_barberry_news_%28IA_CAT11089056008%29.pdf/page1-960px-Stem_rust_and_barberry_news_%28IA_CAT11089056008%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|FEDLINK - United States Federal Collection|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|PD-USGov missing SDC copyright status|Internet Archive (redundant cover page removed)"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nStem rust and barberry news</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>v. 1, 12 nos.;v. 2, 15 nos</dd>\n<dd>v. 1-v.2, no. 1 issued by Office of berberry eradication</dd></dl>\n<br>Subjects:</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>United States. Bureau of Plant Industry. Division of Barberry Eradication</dd>\n<dd>United States. Office of Barberry Eradication</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:The federation of the world .. (IA federationofworl00kenn).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/43/The_federation_of_the_world_.._%28IA_federationofworl00kenn%29.pdf/page1-960px-The_federation_of_the_world_.._%28IA_federationofworl00kenn%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Books in the Library of Congress"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nThe federation of the world ..</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects:</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nKennedy, Jesse Thomas, 1876- [from old catalog]</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:An introduction to the making of Latin; (IA introductiontoma01bigl).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/64/An_introduction_to_the_making_of_Latin%3B_%28IA_introductiontoma01bigl%29.pdf/page1-500px-An_introduction_to_the_making_of_Latin%3B_%28IA_introductiontoma01bigl%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Scans from Duke University Libraries"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nAn introduction to the making of Latin;</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Latin language</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>Biglow, William, 1773-1844</dd>\n<dd>Lyne, Richard, 1760 or 61-1834</dd>\n<dd>Duke University. Library. Jantz Collection. German Americana</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Drury Class Book (IA druryclassbook1917drur).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/66/Drury_Class_Book_%28IA_druryclassbook1917drur%29.pdf/page1-500px-Drury_Class_Book_%28IA_druryclassbook1917drur%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Regional digitization in Massachusetts|PD-US missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nDrury Class Book</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Drury High School--Massachusetts--North Adams; North Adams, MA--Drury High School--Periodicals; School Yearbooks</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nDrury High School (North Adams, Mass.) students</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Selected epigrams of Martial (IA selectedepigrams00martrich).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Selected_epigrams_of_Martial_%28IA_selectedepigrams00martrich%29.pdf/page1-500px-Selected_epigrams_of_Martial_%28IA_selectedepigrams00martrich%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Epigrams|Books from New York (state)|Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books published in London|Books uploaded by Fæ|Books without Wikidata item|California Digital Library|Epigrammata|PD-US missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nSelected epigrams of Martial</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Includes bibliographical references\n</p>\n<br>Subjects: Epigrams, Latin</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>Martial</dd>\n<dd>Stephenson, H. M. (Henry Major)</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Six speeches, with a sketch of the life of Hon. Eli Thayer (IA sixspeecheswiths00thayiala).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ed/Six_speeches%2C_with_a_sketch_of_the_life_of_Hon._Eli_Thayer_%28IA_sixspeecheswiths00thayiala%29.pdf/page1-500px-Six_speeches%2C_with_a_sketch_of_the_life_of_Hon._Eli_Thayer_%28IA_sixspeecheswiths00thayiala%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|California Digital Library|Books published in Boston|Books from the United States PDF files"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nSix speeches, with a sketch of the life of Hon. Eli Thayer</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>On the Central American question, Jan. 7, 1858.--On the suicide of slavery, Mar. 25, 1858.--On the admission of Oregon, Feb. 11, 1859.--On fair play between free and slave labor, Feb. 24, 1859.--On polygamy, Apr. 3, 1859.--On the organization of the territories, May 11, "
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nThayer, Eli, 1819-1899</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Thomas Dunckerley, his life, labours, and letters, including some masonic and naval memorials of the 18th century (IA thomasdunckerley00sadliala).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/61/Thomas_Dunckerley%2C_his_life%2C_labours%2C_and_letters%2C_including_some_masonic_and_naval_memorials_of_the_18th_century_%28IA_thomasdunckerley00sadliala%29.pdf/page1-500px-Thomas_Dunckerley%2C_his_life%2C_labours%2C_and_letters%2C_including_some_masonic_and_naval_memorials_of_the_18th_century_%28IA_thomasdunckerley00sadliala%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books published in London|Books uploaded by Fæ|Books without Wikidata item|California Digital Library|PD-US missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nThomas Dunckerley, his life, labours, and letters, including some masonic and naval memorials of the 18th century</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Dunckerley, Thomas; Freemasons</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nSadler, Henry</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Viage literario a las iglesias de Espana (IA viageliterariola17vill).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/82/Viage_literario_a_las_iglesias_de_Espana_%28IA_viageliterariola17vill%29.pdf/page1-500px-Viage_literario_a_las_iglesias_de_Espana_%28IA_viageliterariola17vill%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|California Digital Library|Viage literario a las iglesias de España"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nViage literario a las iglesias de Espana</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>\"Emprendido por mi hermano fr. Jayme Villanueva ... en virtud de real orden de S. M., con el objeto de recoger de nuestros archivos los documentos necesarios para escribir la historia que se ha dignado encargarme S. M. de los ritos antiguos de nuestra iglesia.\"--Pro"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>Villanueva, Jaime, 1766-1824</dd>\n<dd>Villanueva, Joaquín Lorenzo, 1757-1837</dd>\n<dd>Real Academia de la Historia (Spain)</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:TRAINING GUIDE VOLUME-I (IA trainingguidevol004314mbp).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/1/16/TRAINING_GUIDE_VOLUME-I_%28IA_trainingguidevol004314mbp%29.pdf/page1-500px-TRAINING_GUIDE_VOLUME-I_%28IA_trainingguidevol004314mbp%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Files with no machine-readable author|PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Universal Library Project"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nTRAINING_GUIDE_VOLUME-I</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects:</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:An introduction to Latin prose composition, with a complete course of exercises, illustrative of all the important principles of Latin syntax (IA cu31924031204849).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/An_introduction_to_Latin_prose_composition%2C_with_a_complete_course_of_exercises%2C_illustrative_of_all_the_important_principles_of_Latin_syntax_%28IA_cu31924031204849%29.pdf/page1-500px-thumbnail.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Charles Anthon|Books from New York (state)|PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Scans from Cornell University Library|Books from the United States PDF files"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nAn introduction to Latin prose composition, with a complete course of exercises, illustrative of all the important principles of Latin syntax</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>The metadata below describe the original scanning. Follow the \"All Files: HTTP\" link in the \"View the book\" box to the left to find XML files that contain more metadata about the original images and the derived formats (OCR results, PDF etc.). See also the <a rel=\"n"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nAnthon, Charles, 1797-1867</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:New-Dark Evangelist 1874-05-28- Vol 45 Iss 22 (IA sim evangelist-and-religious-review 1874-05-28 45 22).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/db/New-Dark_Evangelist_1874-05-28-_Vol_45_Iss_22_%28IA_sim_evangelist-and-religious-review_1874-05-28_45_22%29.pdf/page1-960px-New-Dark_Evangelist_1874-05-28-_Vol_45_Iss_22_%28IA_sim_evangelist-and-religious-review_1874-05-28_45_22%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Files with no machine-readable author|1874-05-28|PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Evangelist and Religious Review|PD-old missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nNew-Dark Evangelist 1874-05-28: Vol 45 Iss 22</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>New-Dark Evangelist 1874-05-28: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/search.php?query=sim_pubid%3A5320%20AND%20volume%3A45\">Volume 45</a>, Issue 22.<br>Digitized from <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/details/s"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:New-Dark Evangelist 1876-06-29- Vol 47 Iss 26 (IA sim evangelist-and-religious-review 1876-06-29 47 26).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/5d/New-Dark_Evangelist_1876-06-29-_Vol_47_Iss_26_%28IA_sim_evangelist-and-religious-review_1876-06-29_47_26%29.pdf/page1-960px-New-Dark_Evangelist_1876-06-29-_Vol_47_Iss_26_%28IA_sim_evangelist-and-religious-review_1876-06-29_47_26%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Files with no machine-readable author|1876-06-29|PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Evangelist and Religious Review|PD-old missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nNew-Dark Evangelist 1876-06-29: Vol 47 Iss 26</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>New-Dark Evangelist 1876-06-29: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/search.php?query=sim_pubid%3A5320%20AND%20volume%3A47\">Volume 47</a>, Issue 26.<br>Digitized from <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/details/s"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Federal Register 2006-10-25- Vol 71 Iss 206 (IA sim federal-register-find 2006-10-25 71 206).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/69/Federal_Register_2006-10-25-_Vol_71_Iss_206_%28IA_sim_federal-register-find_2006-10-25_71_206%29.pdf/page1-960px-Federal_Register_2006-10-25-_Vol_71_Iss_206_%28IA_sim_federal-register-find_2006-10-25_71_206%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|Files with no machine-readable author|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Federal Register, Volume 71 (2006)"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nFederal Register 2006-10-25: Vol 71 Iss 206</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Federal Register 2006-10-25: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/search.php?query=sim_pubid%3A2575%20AND%20volume%3A71\">Volume 71</a>, Issue 206.<br>Digitized from <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/details/sim"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Federal Register 2007-03-22- Vol 72 Iss 55 (IA sim federal-register-find 2007-03-22 72 55).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c1/Federal_Register_2007-03-22-_Vol_72_Iss_55_%28IA_sim_federal-register-find_2007-03-22_72_55%29.pdf/page1-960px-Federal_Register_2007-03-22-_Vol_72_Iss_55_%28IA_sim_federal-register-find_2007-03-22_72_55%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD US Government|Files with no machine-readable author|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Federal Register, Volume 72 (2007)"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nFederal Register 2007-03-22: Vol 72 Iss 55</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Federal Register 2007-03-22: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/search.php?query=sim_pubid%3A2575%20AND%20volume%3A72\">Volume 72</a>, Issue 55.<br>Digitized from <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/details/sim_"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Rome- its churches, its charities, and its schools (IA RomeIts).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/Rome-_its_churches%2C_its_charities%2C_and_its_schools_%28IA_RomeIts%29.pdf/page1-500px-Rome-_its_churches%2C_its_charities%2C_and_its_schools_%28IA_RomeIts%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Books from New York (state)|PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Internet Archive (Google cover page removed)|Old books in Internet Archive additional collections|Books from the Unite"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nRome: its churches, its charities, and its schools</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Digitized by Google.\n</p>\n<br>Subjects: Rome</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nNeligan, William H</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Victoria Daily Times (1925-04-22) (IA victoriadailytimes19250422).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Victoria_Daily_Times_%281925-04-22%29_%28IA_victoriadailytimes19250422%29.pdf/page1-960px-Victoria_Daily_Times_%281925-04-22%29_%28IA_victoriadailytimes19250422%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Files with no machine-readable author|PD Canada|Scans from the Internet Archive/unverified|Scans from the Internet Archive|April 1925 in Canada|Books uploaded by Fæ|Books without Wikidata item|PD-old missing SDC copyright status|1925 Victoria Daily Times"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nVictoria Daily Times (1925-04-22)</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Historic newspaper from British Columbia - Canada\n</p>\n<br>Subjects: British Columbia; Newspapers</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Victoria Daily Times (1925-06-18) (IA victoriadailytimes19250618).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/64/Victoria_Daily_Times_%281925-06-18%29_%28IA_victoriadailytimes19250618%29.pdf/page1-960px-Victoria_Daily_Times_%281925-06-18%29_%28IA_victoriadailytimes19250618%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Files with no machine-readable author|PD Canada|Scans from the Internet Archive/unverified|Scans from the Internet Archive|June 1925 in Canada|Books uploaded by Fæ|Books without Wikidata item|PD-old missing SDC copyright status|1925 Victoria Daily Times"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nVictoria Daily Times (1925-06-18)</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Historic newspaper from British Columbia - Canada\n</p>\n<br>Subjects: British Columbia; Newspapers</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Palmer Journal- Mar-Apr 1860 (IA marapr1860images).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/a/ad/Palmer_Journal-_Mar-Apr_1860_%28IA_marapr1860images%29.pdf/page1-960px-Palmer_Journal-_Mar-Apr_1860_%28IA_marapr1860images%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Old books in Internet Archive additional collections|PD-old missing SDC copyright status|Palmer Journal"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nPalmer Journal: Mar-Apr 1860</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nContains issues:<div><br></div><div>Mar 3, 1860</div><div>Mar 10, 1860</div><div>Mar 17, 1860</div><div>Mar 24, 1860</div><div>Mar 31, 1860</div><div>Apr 7, 1860</div><div>Apr 14, 1860</div><div>Apr 21, 1860</div><div>Apr 28, 1860</div>\n<br>Subjects: Palmer (MASS), Palmer ("
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>Gordon M. Fisk</dd>\n<dd>Benjamin F. Goff</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Journey to Rome and Naples Performed in 1817, giving an Account of the Present State of Society in Italy and containing Observations on the Fine Arts (IA dli.granth.18146).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/4c/Journey_to_Rome_and_Naples_Performed_in_1817%2C_giving_an_Account_of_the_Present_State_of_Society_in_Italy_and_containing_Observations_on_the_Fine_Arts_%28IA_dli.granth.18146%29.pdf/page1-500px-thumbnail.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Bharat Ek Khoj|PD-old missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nJourney to Rome and Naples Performed in 1817, giving an Account of the Present State of Society in Italy and containing Observations on the Fine Arts</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd><p>Source: Asiatic Society of Mumbai<br>Pages/Folios: lv, 345p.<br>Identifier: BK_00084573<br>Digitization Sponsor: Government of Maharashtra</p></dd>\n<dd>Original Source: &lt;a href=\"<a rel=\"nofollow\" class=\"external free\" href=\"https://granthsanjeevani.com/jspui/h"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nSass, Henry</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Crosscurrents - USACE-p16021coll8-4132.pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c4/Crosscurrents_-_USACE-p16021coll8-4132.pdf/page1-960px-Crosscurrents_-_USACE-p16021coll8-4132.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Uploaded with OpenRefine|PD US Army USACE|Books without Wikidata item|Images from USACE, Magazines & Newsletters collection|Publications of the Engineer Research and Development Center"
+},
+"ObjectName": {
+"value": "Crosscurrents – 2018-2019 Winter"
+},
+"Artist": {
+"value": "United States. Army. Corps of Engineers. St. Paul District"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:The New York Times 1916-03-20- Vol 65 Iss 21240 (IA per new-york-times-magazine the-new-york-times 1916-03-20 65 21240).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c9/The_New_York_Times_1916-03-20-_Vol_65_Iss_21240_%28IA_per_new-york-times-magazine_the-new-york-times_1916-03-20_65_21240%29.pdf/page1-960px-The_New_York_Times_1916-03-20-_Vol_65_Iss_21240_%28IA_per_new-york-times-magazine_the-new-york-times_1916-03-20_65_21240%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Files with no machine-readable author|PD-old-70-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|The New York Times, 1916|Books uploaded by Fæ|Books without Wikidata item|IA uploads needing categories|PD-old missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nThe New York Times  1916-03-20: Vol 65 Iss 21240</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>The New York Times 1916-03-20: <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/search.php?query=sim_pubid%3A60067%20AND%20volume%3A65\">Volume 65</a>, Issue 21240.<br>Digitized from <a rel=\"nofollow\" class=\"external text\" href=\"https://archive.org/detail"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Official register of the United States (IA officialregister53unit).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Official_register_of_the_United_States_%28IA_officialregister53unit%29.pdf/page1-500px-Official_register_of_the_United_States_%28IA_officialregister53unit%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-70-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|IA uploads needing categories|PD-old missing SDC copyright status|Books scanned by Boston Public Library"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nOfficial register of the United States</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Imprint varies: 1917-1932, by the Bureau of the Census; 1933-1959, by the Civil Service Commission\n</p>\n<br>Subjects: United States -- Registers; United States -- Officials and employees Periodicals</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>United States. Bureau of the Census</dd>\n<dd>United States Civil Service Commission</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+}
+]
+}
+},
+"LEGO Arc de Triomphe": {
+"query": {
+"pages": [
+{
+"title": "File:Arc de triomph.jpg",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/Arc_de_triomph.jpg/960px-Arc_de_triomph.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Lego Architecture|Self-published work|Arc de Triomphe de l'Étoile in art|Files with coordinates missing SDC location of creation"
+},
+"ObjectName": {
+"value": "Arc de triomph"
+},
+"ImageDescription": {
+"value": "The Arch De Triomph on display on my bookshelf."
+},
+"Artist": {
+"value": "<a href=\"//commons.wikimedia.org/w/index.php?title=User:Eliasj428&amp;action=edit&amp;redlink=1\" class=\"new\" title=\"User:Eliasj428 (page does not exist)\">Eliasj428</a>"
+},
+"LicenseShortName": {
+"value": "CC BY-SA 4.0"
+}
+}
+}
+]
+},
+{
+"title": "File:Paris-Esperanto 1908-12.pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/45/Paris-Esperanto_1908-12.pdf/page1-960px-Paris-Esperanto_1908-12.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Paris-Esperanto|Author died more than 70 years ago public domain images|CC-PD-Mark|PD-old missing SDC copyright status"
+},
+"ObjectName": {
+"value": "Paris-Esperanto 1908-12"
+},
+"ImageDescription": {
+"value": "Revue espérantiste de Paris"
+},
+"Artist": {
+"value": "Groupe espérantiste de Paris"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Catalogue des livres, estampes & desseins du cabinet des beaux arts & des sciences, appartenent au Baron Tessin (IA cataloguedeslivr00tess).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/08/Catalogue_des_livres%2C_estampes_%26_desseins_du_cabinet_des_beaux_arts_%26_des_sciences%2C_appartenent_au_Baron_Tessin_%28IA_cataloguedeslivr00tess%29.pdf/page1-500px-Catalogue_des_livres%2C_estampes_%26_desseins_du_cabinet_des_beaux_arts_%26_des_sciences%2C_appartenent_au_Baron_Tessin_%28IA_cataloguedeslivr00tess%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Nicodemus Tessin the Younger|1712 books|Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Images from the Getty Research Institute|French-language books|Books published in Stockholm"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nCatalogue des livres, estampes &amp; desseins du cabinet des beaux arts &amp; des sciences, appartenent au Baron Tessin, marèchal de la cour du roy &amp; sur-intendent de battiments &amp; jardins royaux de Suede</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>Binding: old sprinkled calf. Gilt tooling on spine. Page edges gilt</dd>\n<dd>Old shelf mark on front pastedown. On front free endpaper recto and on t.p. verso is the stamp in black ink of: Bibliothek d. Mecklinb. Ritter u. Landschaft</dd></dl>\n<br>Subjects: Tessin, "
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nTessin, Nicodemus, 1654-1728</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Histoire de l'influence italienne sur l'architecture dans les Pays-Bas (IA histoiredelinflu00scho).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6a/Histoire_de_l%27influence_italienne_sur_l%27architecture_dans_les_Pays-Bas_%28IA_histoiredelinflu00scho%29.pdf/page1-960px-Histoire_de_l%27influence_italienne_sur_l%27architecture_dans_les_Pays-Bas_%28IA_histoiredelinflu00scho%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Auguste Schoy|Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Images from the Getty Research Institute|French-language books|Books published in Brussels"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nHistoire de l'influence italienne sur l'architecture dans les Pays-Bas</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>\"Mémoire couronnée par la Classe des beaux-arts de l'Académie royale de Belgique le 18 septembre, 1875.\"</dd>\n<dd>\"Extrait du tome XXXIX des Mémoires couronnés et Mémoires des savants étrangers, publiés par l'Académie royale des sciences, des lettres et des beaux-ar"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nSchoy, Auguste, 1838-1885</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:From West to East, notes by the way (IA fromwesttoeastno00jern).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/87/From_West_to_East%2C_notes_by_the_way_%28IA_fromwesttoeastno00jern%29.pdf/page1-500px-From_West_to_East%2C_notes_by_the_way_%28IA_fromwesttoeastno00jern%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Books from New York (state)|Scans from the Internet Archive/unverified|PD US expired|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|California Digital Library|Books from the United States PDF files|PD-US missing SDC copyright status"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nFrom West to East, notes by the way</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Voyages and travels; Russo-Japanese War, 1904-1905; East Asia -- Description and travel; Japan -- Description and travel</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nJerningham, Hubert Edward Henry, Sir, 1842-1914</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Histoire de la Nouuelle France - contenat les navigations, dećouvertes, & habitations faites par les François és Indes Occidentales & Nouvelle-France ... - avec les tables & figures (IA histoiredelanouu00lesc 0).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/91/Histoire_de_la_Nouuelle_France_-_contenat_les_navigations%2C_de%C4%87ouvertes%2C_%26_habitations_faites_par_les_Fran%C3%A7ois_%C3%A9s_Indes_Occidentales_%26_Nouvelle-France_..._-_avec_les_tables_%26_figures_%28IA_histoiredelanouu00lesc_0%29.pdf/page1-500px-thumbnail.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Old books from American Libraries|PD-old missing SDC copyright status|French-language books|Histoire de la Nouvelle-France (Lescarbot)|Books from "
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nHistoire de la Nouuelle France : contenat les navigations, dećouvertes, &amp; habitations faites par les François és Indes Occidentales &amp; Nouvelle-France ... : avec les tables &amp; figures necessaires.</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>Originally published: Paris, 1609</dd>\n<dd>Errata: p. [1], 6th count</dd>\n<dd>\"Les Muses de la Nouvelle France ... A Paris, Chez Adrian Perier ... M.DC.XVIII\" has special t.p. and separate paging and signatures</dd>\n<dd>Brown Univ. JCB Library catalogue</dd>\n<dd>Har"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nLescarbot, Marc</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Rimes de Pétrarque (IA rimesdeptrarqu03petr).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6f/Rimes_de_P%C3%A9trarque_%28IA_rimesdeptrarqu03petr%29.pdf/page1-500px-Rimes_de_P%C3%A9trarque_%28IA_rimesdeptrarqu03petr%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|Old books from American Libraries|PD-old missing SDC copyright status|French-language books"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nRimes de Pétrarque</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Fowler, M. Petrarch\n</p>\n<br>Subjects:</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\n<dl><dd>Petrarca, Francesco, 1304-1374</dd>\n<dd>Poulenc, Joseph</dd>\n<dd>Petrarca, Francesco, 1304-1374</dd></dl></div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:P1060363 (14424840201).jpg",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d4/P1060363_%2814424840201%29.jpg/960px-P1060363_%2814424840201%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Lego buildings|Files with coordinates missing SDC location of creation|Flickr images reviewed by FlickreviewR 2|Arc de Triomphe du Carrousel in art|Brickworld 2014"
+},
+"ObjectName": {
+"value": "P1060363 (14424840201)"
+},
+"ImageDescription": {
+"value": "P1060363"
+},
+"Artist": {
+"value": "<a rel=\"nofollow\" class=\"external text\" href=\"https://www.flickr.com/people/23501684@N00\">Bill Ward</a> from El Cerrito, CA, USA"
+},
+"LicenseShortName": {
+"value": "CC BY 2.0"
+}
+}
+}
+]
+},
+{
+"title": "File:LEGO Arc de Triomphe.jpg",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/78/LEGO_Arc_de_Triomphe.jpg/960px-LEGO_Arc_de_Triomphe.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Self-published work|Replicas of Arc de Triomphe de l'Étoile|Lego in France|Uploads by DiscoA340"
+},
+"ObjectName": {
+"value": "LEGO Arc de Triomphe"
+},
+"ImageDescription": {
+"value": "LEGO Arc de Triomphe found in a LEGO Shop in Paris, France."
+},
+"Artist": {
+"value": "<a href=\"//commons.wikimedia.org/wiki/User:DiscoA340\" title=\"User:DiscoA340\">DiscoA340</a>"
+},
+"LicenseShortName": {
+"value": "CC BY-SA 4.0"
+}
+}
+}
+]
+},
+{
+"title": "File:The Esperantist - Novembro 1905.pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e7/The_Esperantist_-_Novembro_1905.pdf/page1-960px-The_Esperantist_-_Novembro_1905.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Files with no machine-readable author|Author died more than 70 years ago public domain images|Uploaded with pattypan|The Esperantist|Media lacking author information|CC-PD-Mark|PD-old missing SDC copyright status|Esperanto Wikisource books"
+},
+"ObjectName": {
+"value": "The Esperantist - Novembro 1905"
+},
+"ImageDescription": {
+"value": "The Esperantist"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Histoire de la Nouuelle France - contenat les navigations, dećouvertes, & habitations faites par les François és Indes Occidentales & Nouvelle-France ... - avec les tables (IA histoiredelanouu00lesc 0).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/95/Histoire_de_la_Nouuelle_France_-_contenat_les_navigations%2C_de%C4%87ouvertes%2C_%26_habitations_faites_par_les_Fran%C3%A7ois_%C3%A9s_Indes_Occidentales_%26_Nouvelle-France_..._-_avec_les_tables_%28IA_histoiredelanouu00lesc_0%29.pdf/page1-500px-thumbnail.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|IA uploads needing categories|PD-old missing SDC copyright status|Books from John Carter Brown Library"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nHistoire de la Nouuelle France : contenat les navigations, dećouvertes, &amp; habitations faites par les François és Indes Occidentales &amp; Nouvelle-France ... : avec les tables &amp; figures necessaires.</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<dl><dd>Originally published: Paris, 1609</dd>\n<dd>Errata: p. [1], 6th count</dd>\n<dd>\"Les Muses de la Nouvelle France ... A Paris, Chez Adrian Perier ... M.DC.XVIII\" has special t.p. and separate paging and signatures</dd>\n<dd>Brown Univ. JCB Library catalogue</dd>\n<dd>Har"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nLescarbot, Marc</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Gazeta W. Xięstwa Poznańskiego. 1853, № 9 (12 stycznia) (IA jbc.bj.uj.edu pl.0009 NDIGCZAS030703 89468372).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/0b/Gazeta_W._Xi%C4%99stwa_Pozna%C5%84skiego._1853%2C_%E2%84%96_9_%2812_stycznia%29_%28IA_jbc.bj.uj.edu_pl.0009_NDIGCZAS030703_89468372%29.pdf/page1-960px-Gazeta_W._Xi%C4%99stwa_Pozna%C5%84skiego._1853%2C_%E2%84%96_9_%2812_stycznia%29_%28IA_jbc.bj.uj.edu_pl.0009_NDIGCZAS030703_89468372%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|IA uploads needing categories|PD-old missing SDC copyright status|Polish Public Domain collection"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nGazeta W. Xięstwa Poznańskiego. 1853, № 9 (12 stycznia)</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: zabór pruski; Poznań (Polska; region); Prusy 19 w.; czasopisma polskie 19 w.; Wielkie Księstwo Poznańskie</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nKamieński, Napoleon Ludwik Felicjan</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Gazeta Literacka. No 36 (4 września 1821) (IA jbc.bj.uj.edu pl.0036 NDIGCZAS028211 89433184).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/4/41/Gazeta_Literacka._No_36_%284_wrze%C5%9Bnia_1821%29_%28IA_jbc.bj.uj.edu_pl.0036_NDIGCZAS028211_89433184%29.pdf/page1-960px-Gazeta_Literacka._No_36_%284_wrze%C5%9Bnia_1821%29_%28IA_jbc.bj.uj.edu_pl.0036_NDIGCZAS028211_89433184%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "Files with no machine-readable author|PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|Books without Wikidata item|IA uploads needing categories|PD-old missing SDC copyright status|Polish Public Domain collection"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nGazeta Literacka. No 36 (4 września 1821)</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: literatura polska 19 w.; historia i krytyka literatury; czasopisma literackie 19 w.; czasopisma polskie 19 w.</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Kurjer Warszawski. R.51, Nr. 85 (18 kwietnia 1871) + dod. (IA jbc.bj.uj.edu pl.0085 NDIGCZAS035218 106532723).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/34/Kurjer_Warszawski._R.51%2C_Nr._85_%2818_kwietnia_1871%29_%2B_dod._%28IA_jbc.bj.uj.edu_pl.0085_NDIGCZAS035218_106532723%29.pdf/page1-960px-Kurjer_Warszawski._R.51%2C_Nr._85_%2818_kwietnia_1871%29_%2B_dod._%28IA_jbc.bj.uj.edu_pl.0085_NDIGCZAS035218_106532723%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|IA uploads needing categories|PD-old missing SDC copyright status|Polish Public Domain collection"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nKurjer Warszawski. R.51, Nr. 85 (18 kwietnia 1871) + dod.</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Zawiera: Dodatek do Kurjera Warszawskiego Nr 85\n</p>\n<br>Subjects: zabór rosyjski; życie społeczne; czasopisma polskie 19 w.; życie intelektualne; dzienniki polskie</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nStatkowski, Julian</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Czas. (R.12), № 137 (16 czerwca 1859) (IA jbc.bj.uj.edu pl.0137 NDIGCZAS026703 79756005).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/57/Czas._%28R.12%29%2C_%E2%84%96_137_%2816_czerwca_1859%29_%28IA_jbc.bj.uj.edu_pl.0137_NDIGCZAS026703_79756005%29.pdf/page1-960px-Czas._%28R.12%29%2C_%E2%84%96_137_%2816_czerwca_1859%29_%28IA_jbc.bj.uj.edu_pl.0137_NDIGCZAS026703_79756005%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|IA uploads needing categories|PD-old missing SDC copyright status|Polish Public Domain collection"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nCzas. [R.12], № 137 (16 czerwca 1859)</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Królestwo Galicji i Lodomerii (1772–1918); Kraków (Polska; region); konserwatyzm; czasopisma polskie 19 w.; dzienniki polskie 19 w.</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nKłobukowski, Antoni Adam</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Czas. (R.8), № 185 (17 sierpnia 1855) (IA jbc.bj.uj.edu pl.0185 NDIGCZAS026703 79747787).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/9e/Czas._%28R.8%29%2C_%E2%84%96_185_%2817_sierpnia_1855%29_%28IA_jbc.bj.uj.edu_pl.0185_NDIGCZAS026703_79747787%29.pdf/page1-960px-Czas._%28R.8%29%2C_%E2%84%96_185_%2817_sierpnia_1855%29_%28IA_jbc.bj.uj.edu_pl.0185_NDIGCZAS026703_79747787%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|IA uploads needing categories|PD-old missing SDC copyright status|Polish Public Domain collection"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nCzas. [R.8], № 185 (17 sierpnia 1855)</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Królestwo Galicji i Lodomerii (1772–1918); Kraków (Polska; region); konserwatyzm; czasopisma polskie 19 w.; dzienniki polskie 19 w.</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nKłobukowski, Antoni Adam</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Czas. (R.8), № 188 (21 sierpnia 1855) + dod. (IA jbc.bj.uj.edu pl.0188 NDIGCZAS026703 79747790).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d9/Czas._%28R.8%29%2C_%E2%84%96_188_%2821_sierpnia_1855%29_%2B_dod._%28IA_jbc.bj.uj.edu_pl.0188_NDIGCZAS026703_79747790%29.pdf/page1-960px-Czas._%28R.8%29%2C_%E2%84%96_188_%2821_sierpnia_1855%29_%2B_dod._%28IA_jbc.bj.uj.edu_pl.0188_NDIGCZAS026703_79747790%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|IA uploads needing categories|PD-old missing SDC copyright status|Polish Public Domain collection"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nCzas. [R.8], № 188 (21 sierpnia 1855) + dod.</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\n<p>Zawiera: Dodatek do Nru 188 Dziennika „Czas”\n</p>\n<br>Subjects: Królestwo Galicji i Lodomerii (1772–1918); Kraków (Polska; region); konserwatyzm; czasopisma polskie 19 w.; dzienniki polskie 19 w.</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nKłobukowski, Antoni Adam</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Kraj. 1870, nr 216 (22 września) (IA jbc.bj.uj.edu pl.0215 NDIGCZAS033545 102161228).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/86/Kraj._1870%2C_nr_216_%2822_wrze%C5%9Bnia%29_%28IA_jbc.bj.uj.edu_pl.0215_NDIGCZAS033545_102161228%29.pdf/page1-960px-Kraj._1870%2C_nr_216_%2822_wrze%C5%9Bnia%29_%28IA_jbc.bj.uj.edu_pl.0215_NDIGCZAS033545_102161228%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|IA uploads needing categories|PD-old missing SDC copyright status|Polish Public Domain collection"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nKraj. 1870, nr 216 (22 września)</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: satyra polityczna polska; Królestwo Galicji i Lodomerii (Austria); czasopisma literackie 19 w.; stosunki międzynarodowe; czasopisma społeczno-polityczne; czasopisma polskie 19 w.; literatura polska 19 w.; pozytywizm; liberalizm</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nGumplowicz, Ludwik</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Czas. (R.11), № 280 (7 grudnia 1858) (IA jbc.bj.uj.edu pl.0280 NDIGCZAS026703 79751985).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Czas._%28R.11%29%2C_%E2%84%96_280_%287_grudnia_1858%29_%28IA_jbc.bj.uj.edu_pl.0280_NDIGCZAS026703_79751985%29.pdf/page1-960px-Czas._%28R.11%29%2C_%E2%84%96_280_%287_grudnia_1858%29_%28IA_jbc.bj.uj.edu_pl.0280_NDIGCZAS026703_79751985%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|IA uploads needing categories|PD-old missing SDC copyright status|Polish Public Domain collection"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nCzas. [R.11], № 280 (7 grudnia 1858)</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Królestwo Galicji i Lodomerii (1772–1918); Kraków (Polska; region); konserwatyzm; czasopisma polskie 19 w.; dzienniki polskie 19 w.</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nKłobukowski, Antoni Adam</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+},
+{
+"title": "File:Czas. (R.5), № 281 (7 grudnia 1852) (IA jbc.bj.uj.edu pl.0281 NDIGCZAS026703 79746869).pdf",
+"imageinfo": [
+{
+"thumburl": "https://thumb.wikimedia.org/wikipedia/commons/thumb/9/92/Czas._%28R.5%29%2C_%E2%84%96_281_%287_grudnia_1852%29_%28IA_jbc.bj.uj.edu_pl.0281_NDIGCZAS026703_79746869%29.pdf/page1-960px-Czas._%28R.5%29%2C_%E2%84%96_281_%287_grudnia_1852%29_%28IA_jbc.bj.uj.edu_pl.0281_NDIGCZAS026703_79746869%29.pdf.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+"extmetadata": {
+"Categories": {
+"value": "PD-old-100-expired|Scans from the Internet Archive/unverified|CC-PD-Mark|Scans from the Internet Archive|Books uploaded by Fæ|IA uploads needing categories|PD-old missing SDC copyright status|Polish Public Domain collection"
+},
+"ObjectName": {
+"value": "<div class=\"fn\">\nCzas. [R.5], № 281 (7 grudnia 1852)</div>"
+},
+"ImageDescription": {
+"value": "<div class=\"description\">\nSubjects: Królestwo Galicji i Lodomerii (1772–1918); Kraków (Polska; region); konserwatyzm; czasopisma polskie 19 w.; dzienniki polskie 19 w.</div>"
+},
+"Artist": {
+"value": "<div class=\"fn value\">\nSobolewski, Konstanty Leon Kryspin Józef</div>"
+},
+"LicenseShortName": {
+"value": "Public domain"
+}
+}
+}
+]
+}
+]
+}
+}
+}
+}

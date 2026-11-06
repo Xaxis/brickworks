@@ -368,3 +368,40 @@ def test_a_layer_laid_on_a_wrong_one_is_carried_and_a_wrong_one_alone_is_not():
     assert [w.get("carried", False) for w in rows[4]["wrong"]].count(True) == 1
     assert result["totals"]["carried"] == 1
     assert result["said_causes"] == {"unsaid": 2.0, "carried": 1.0}
+
+
+def test_make_photographs_only_the_pages_asked_for():
+    # The castle's 324 pages take most of an hour; a stretch needs a dozen.
+    assert bf._page_list("2-5,9") == [2, 3, 4, 5, 9]
+    assert bf._page_list("172") == [172]
+
+
+def test_a_booklet_drawn_another_way_is_read_as_it_says_and_ours_as_ours(tmp_path):
+    """A printed LEGO® booklet has no parts box and no outline: a builder told it has
+    would look for them. Its DIR says how its pages read; ours are read as before."""
+    ours = bf.reading(tmp_path)
+    prompt = bf.PROMPT.format(kinds=1, pieces=1, parts="", start="", notes="", first=2,
+                              last=2, step_reading=ours["step"], apart=ours["apart"])
+    assert "outlined in orange" in prompt and "(a yellow page)" in prompt
+    assert "page" not in ours
+    (tmp_path / "reading.json").write_text(json.dumps({
+        "step": "New parts are drawn lifted above their place.",
+        "apart": "steps of its own, numbered from 1 again",
+        "page": "Page 1 is the cover. No parts boxes."}))
+    printed = bf.reading(tmp_path)
+    prompt = bf.PROMPT.format(kinds=1, pieces=1, parts="", start="", notes="", first=2,
+                              last=2, step_reading=printed["step"], apart=printed["apart"])
+    assert "outlined in orange" not in prompt and "yellow page" not in prompt
+    assert "drawn lifted above their place" in prompt and "numbered from 1 again" in prompt
+    models = tmp_path / "models"
+    models.mkdir()
+    told = booklet_mcp.Server(0, tmp_path, tmp_path / "run", models, FakeApp(models),
+                              reading=printed["page"]).tools()[0]["description"]
+    assert "No parts boxes." in told and "outlined" not in told
+    assert told.startswith("One page of the booklet, as its picture.")
+    plain = booklet_mcp.Server(0, tmp_path, tmp_path / "run", models, FakeApp(models))
+    assert plain.tools()[0] == booklet_mcp.PAGE_TOOL
+    other = tmp_path / "other.json"
+    other.write_text(json.dumps({"step": "Told the conventions."}))
+    assert bf.reading(tmp_path, other)["step"] == "Told the conventions."
+    assert bf.reading(tmp_path, other)["apart"] == bf.READING["apart"]

@@ -63,7 +63,7 @@ ui:bands and springs by hand
 
 ## Check stability {#stability}
 
-**Tools › Check stability** weighs the model: where its centre of mass is against its footprint, whether it would stand, and which joints carry more than they can hold. Those parts are selected and tinted, so you can see what to brace. [View › Stress](/docs/the-view#stress) shows the same for every part as you build.
+**Tools › Check stability** ([[Alt+K]]) weighs the model: where its centre of mass is against its footprint, whether it would stand, and which joints carry more than they can hold. Those parts are selected and tinted, so you can see what to brace. [View › Stress](/docs/the-view#stress) shows the same for every part as you build.
 
 <!-- covers
 lib:stability
@@ -75,7 +75,7 @@ ui:balance readout
 
 ## Simulate a mechanism {#simulate}
 
-**Tools › Simulate mechanism…**, then click an axle or a crank: the gear train turns from it, and the panel says how fast each part goes, each arm's period, what locks it, and whether the model stays standing as it turns. It reads the model as it is and changes nothing.
+**Tools › Simulate mechanism…** ([[Alt+U]]), then click an axle or a crank: the gear train turns from it, and the panel says how fast each part goes, each arm's period, what locks it, and whether the model stays standing as it turns. It reads the model as it is and changes nothing.
 
 It also says where the motion stops. Over the whole cycle it finds the first angle where two moving parts meet, names them and tints them red. It gives the range of a crank or a linkage in degrees. When a motor turns the train (Power Functions M, L or XL, an E-motor or a 9 V motor), it weighs the motor's torque against the load it lifts, and says where the motor stalls. Play and the slider stop there, and **Go to the stop** shows it.
 
@@ -91,7 +91,7 @@ Claude can find a gear train for a ratio you need, from real gears on real axle 
 
 ## Motions {#motions}
 
-A model can keep its own named movements in its file: *Open the doors*, *Steer left and right*, *Lift the boom*. **Build › Motions…** lists them, with suggestions from what moves in the model. Keep a suggestion, or press **New motion**, then **Record** and drag a part in the view, or set a joint's slider to put a key. **Play** and **Play backwards** run it. Anybody who opens your shared model can play them too.
+A model can keep its own named movements in its file: *Open the doors*, *Steer left and right*, *Lift the boom*. **Build › Motions…** ([[Alt+O]]) lists them, with suggestions from what moves in the model. Keep a suggestion, or press **New motion**, then **Record** and drag a part in the view, or set a joint's slider to put a key. **Play** and **Play backwards** run it. Anybody who opens your shared model can play them too.
 
 <!-- covers
 ui:motions panel

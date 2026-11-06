@@ -27,7 +27,7 @@ extends RefCounted
 ## (DesignMemory.holds): 3189-1's session was handed 3189's own fence.
 static func all() -> Array:
 	var cited: RegEx = null
-	if not (DesignMemory.held_out().is_empty() and DesignMemory.held_names().is_empty()):
+	if DesignMemory.holding():
 		cited = RegEx.create_from_string("built it in ([0-9]+) ([^:]+):")
 	return written().filter(func(one: Variant) -> bool:
 		if WITHDRAWN.has(str((one as Dictionary)["name"])):

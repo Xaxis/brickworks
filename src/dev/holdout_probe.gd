@@ -22,8 +22,13 @@
 ##   the library shelf (ModelLibrary: gallery library=, open_model library=)
 ##   the catalogue's sets with no model (gallery library=, its parts lists)
 ##   the official models a collection is measured against (SetInventories)
-##   the gallery's shared copies of LDraw's models (gallery search and open)
-##   the pictures of the real thing (find_reference: no photograph of a set)
+##   the gallery's shared copies of LDraw's models (gallery search and open),
+##     and every builder's own model, which can be the set under any name
+##   the pictures of the real thing (find_reference: no picture of anything
+##     built of bricks, by its title, categories or description)
+##   a link (brickify url=, print_part picture_url=): nothing is fetched
+## src/dev/reference_holdout_probe.gd asks find_reference as a session does,
+## over MCP, with Commons' own answers for three of the bench's sets.
 extends SceneTree
 
 ## The sets under test: number -> name, as realset.py passes them.
@@ -163,27 +168,51 @@ func _run() -> void:
 	_ok(official == PackedStringArray(["7992-1"]), "only the set not held: %s" % ", ".join(official))
 	inventories.free()
 
-	print("── the gallery's shared copies of LDraw's models ──")
+	print("── the gallery's shared copies of LDraw's models, and builders' own ──")
 	var copy := {"name": "Street Sweeper", "parts": 112, "modelled_by": {"name": "Someone"},
 		"licence": "cc-by"}
-	var own := {"name": "My street sweeper", "parts": 90, "author": "a builder", "licence": "cc-by"}
-	catalogue.body = {"models": [copy, own], "more": false}
-	var searched: String = str(await catalogue.run({"q": "street sweeper"}))
-	_ok(not searched.contains("modelled by Someone") and searched.contains("My street sweeper"),
-		"a search lists a builder's own design, not LDraw's model of the set: %s"
-			% searched.get_slice("\n", 1).left(80))
+	var own := {"name": "A city cleaner", "parts": 90, "author": "a builder", "licence": "cc-by"}
+	var other := {"name": "Container Stacker", "parts": 300, "modelled_by": {"name": "Another"},
+		"licence": "cc-by"}
+	# Of the held set's subject under another name, as the shelf leaves out.
+	var alike := {"name": "Road Sweeper", "parts": 80, "modelled_by": {"name": "Third"},
+		"licence": "cc-by"}
+	catalogue.body = {"models": [copy, own, alike, other], "more": false}
+	var searched: String = str(await catalogue.run({"q": "street"}))
+	_ok(not searched.contains("modelled by Someone") and not searched.contains("A city cleaner")
+		and not searched.contains("Road Sweeper") and searched.contains("Container Stacker"),
+		"a search lists LDraw's model of a set not held, not the held set's nor one of its subject, "
+		+ "nor a builder's own, which can be the set by any name: %s" % searched.get_slice("\n", 1).left(80))
+	catalogue.body = own
+	var opened: String = str(await catalogue.run({"open": "AbCdE12345"}))
+	_ok(opened.contains("builder's own model"), "gallery open= reads no builder's own: %s" % opened.left(80))
+
+	print("── a link ──")
+	var tools := AppTools.new()
+	var refused := PackedStringArray([tools.refusal("brickify", {"url": "https://example.invalid/7242.obj"}),
+		tools.refusal("print_part", {"brick": 1, "picture_url": "https://example.invalid/7242.png"})])
+	_ok(refused[0].contains("no link is fetched") and refused[1] == refused[0],
+		"brickify url= and print_part picture_url= fetch nothing: %s" % refused[1])
 
 	print("── pictures of the real thing ──")
 	var commons := Commons.new()
 	get_root().add_child(commons)
 	var request := HTTPRequest.new()
 	get_root().add_child(request)
+	# Commons' own: "21020 Trevi Fountain.jpg" was the set, "Arc de triomph.jpg"
+	# only its categories called LEGO Architecture, "MT Ursus C-330.jpg" only
+	# its description a model in LEGO, "A Wizard Is Never Late Lego diorama"
+	# named neither Gandalf Arrives nor 9469 (2026-11-05).
 	commons._on_searched(0, 200, PackedStringArray(), JSON.stringify({"query": {"pages": [
 		_page("File:LEGO 7242 Street Sweeper.jpg"), _page("File:Lego city street sweeper set.jpg"),
+		_page("File:7242 Street Sweeper.jpg"), _page("File:A street cleaning diorama.jpg",
+			{"Categories": {"value": "Lego models of vehicles|Brickworld 2014"}}),
+		_page("File:P1060363.jpg", {"ImageDescription": {"value": "A <b>LEGO</b> sweeper at BrickCon"}}),
+		_page("File:Legoland Miniland street.jpg"), _page("File:Legolas in Paris.jpg"),
 		_page("File:Street sweeper in Paris.jpg")]}}).to_utf8_buffer(), request)
 	var titles: PackedStringArray = commons.titles()
-	_ok(titles == PackedStringArray(["Street sweeper in Paris.jpg"]),
-		"find_reference shows the street, not a set: %s" % ", ".join(titles))
+	_ok(titles == PackedStringArray(["Legolas in Paris.jpg", "Street sweeper in Paris.jpg"]),
+		"find_reference shows the street, nothing built of bricks: %s" % ", ".join(titles))
 
 	print("")
 	if _failures == 0:
@@ -228,9 +257,9 @@ func _card(number: String, name: String) -> Dictionary:
 		"library": {"set": number, "theme": "Town", "year": 2005, "model3d": false}}
 
 
-func _page(title: String) -> Dictionary:
+func _page(title: String, about: Dictionary = {}) -> Dictionary:
 	return {"title": title, "imageinfo": [{"thumburl": "https://upload.example.invalid/%s"
-		% title.trim_prefix("File:").uri_encode(), "extmetadata": {}}]}
+		% title.trim_prefix("File:").uri_encode(), "extmetadata": about}]}
 
 
 func _ok(passed: bool, what: String) -> void:
