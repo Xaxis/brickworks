@@ -203,6 +203,11 @@ var _standing: Dictionary = {}   ## brick id -> true: on the baseplate's studs
 var _on_ground: Dictionary = {}
 ## Pairs joined by studs the lattice did not see, from their resting.
 var _resting: Dictionary = {}
+## Studs a part only rests on, at a hinge's free end ([method _lift_rests]):
+## [the stud's Link, the body on the stud]. A person swings it off them, so
+## they hold nothing and close no loop, and it meets them when swung into
+## them (Grab's room). Not in [member links].
+var rests: Array = []
 
 
 ## Read [param from]'s model. Pure but for asking the lattice what a stud
@@ -805,8 +810,80 @@ func _read() -> void:
 			if link.detent == 0.0:
 				link.detent = c[6]
 		link.pairs.append([int(c[0]), int(c[1])])
+	_lift_rests(info_of)
 	_anchor_and_grow()
 	took_ms = Time.get_ticks_msec() - started
+
+
+## The turn about a hinge lifts a part off a stud when the way the stud's
+## foot goes as it turns is this square to the stud (a cosine).
+const LIFTS_OFF := 0.9
+
+
+## Take out of the joints each lone stud a part only rests on at a hinge's
+## free end, into [member rests]: a stud whose part, and the part on it,
+## are held to each other another way round, where the part on it turns on
+## a joint that lifts it straight off the stud. A boom on its rest is lifted
+## off it by a person, and kept from swinging into it by meeting it.
+## 4096's crane boom lies on two cones' studs, the cones on a plate's studs
+## up their hollows (Joints._hollow_round): read as held there too, the boom
+## was locked in a loop with its turntable and its hinge, and Lift the boom,
+## the motion the set is made for, was gone. Two or more studs into one
+## part hold it, as before.
+func _lift_rests(info_of: Dictionary) -> void:
+	rests.clear()
+	for link: Link in links.duplicate():
+		if link.kind != "stud" or link.pairs.size() != 1:
+			continue
+		var on: int = _body_on_stud(link, info_of)
+		if on < 0:
+			continue
+		var under: int = link.other(on)
+		for hinge: Link in touching.get(on, []):
+			if hinge == link or not hinge.turns or hinge.axis == Vector3.ZERO:
+				continue
+			var goes: Vector3 = hinge.axis.normalized().cross(link.point - hinge.point)
+			if goes.length() <= SAME_LINE or absf(goes.normalized().dot(link.axis)) < LIFTS_OFF:
+				continue
+			if not _reaches_without(under, hinge.other(on), on, link):
+				continue
+			links.erase(link)
+			(touching[link.a] as Array).erase(link)
+			(touching[link.b] as Array).erase(link)
+			rests.append([link, on])
+			break
+
+
+## Of a lone stud's two bodies, the one on the stud: its part's middle the
+## further along the way the stud points. -1 where neither part is known.
+func _body_on_stud(link: Link, info_of: Dictionary) -> int:
+	var pair: Array = link.pairs[0]
+	var along: Array = []
+	for key: int in [int(pair[0]), int(pair[1])]:
+		var brick: BrickWorld.Brick = world.get_brick(key)
+		var info: PartLibrary.PartInfo = info_of.get(key)
+		if brick == null or info == null:
+			return -1
+		along.append(((brick.transform * info.bounds).get_center() - link.point).dot(link.axis))
+	var key: int = int(pair[0]) if float(along[0]) > float(along[1]) else int(pair[1])
+	return int(body_of.get(key, -1))
+
+
+## Whether body [param from] reaches body [param to] by joints, through
+## neither [param not_through] nor [param but].
+func _reaches_without(from: int, to: int, not_through: int, but: Link) -> bool:
+	var seen: Dictionary = {from: true, not_through: true}
+	var frontier: Array = [from]
+	while not frontier.is_empty():
+		var at: int = frontier.pop_back()
+		if at == to:
+			return true
+		for link: Link in touching.get(at, []):
+			var next: int = link.other(at)
+			if link != but and not seen.has(next):
+				seen[next] = true
+				frontier.append(next)
+	return false
 
 
 ## Each piece of the model that nothing holds where it is (no part of it

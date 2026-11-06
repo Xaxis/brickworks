@@ -31,11 +31,16 @@
 ## camera does not draw.
 ##
 ## It takes its width from the model's own column, beside it, and none from
-## the bin or the right-hand column. A window with less than [constant LEAST]
-## points a view, a phone, or a tablet held upright keeps one view: View ›
-## Split is greyed with why, and the split comes back when there is room.
-## Off out of the box, and kept on this device (ShellPrefs "split",
-## "split_side").
+## the bin. Where that column is short of [constant LEAST] points a view and
+## the right-hand column (the assistant, or Properties) is open, View › Split
+## folds that to its tab while the split is on, and opens it again when the
+## split goes, if nothing else was opened or folded meanwhile: a laptop's
+## 1280 x 720 with the assistant and a tool's panel open had no second view
+## (APP_UX4, quiet). Opened again by hand, it takes the room back and the
+## split waits, as it does for any column. A window with no room even so, a
+## phone, or a tablet held upright keeps one view: View › Split is greyed
+## with why, and the split comes back when there is room. Off out of the
+## box, and kept on this device (ShellPrefs "split", "split_side").
 ##
 ## It draws only when the main view draws (IdleDraw): its camera is set only
 ## when what it shows has changed, and nothing of it is drawn while it is off.
@@ -104,6 +109,11 @@ var _keep_at: int = 0
 var _reach: float = 1500.0
 var _reach_for: Array = []
 var _reach_at: int = -REACH_EVERY_MS
+## The right-hand column's panels folded to their tab to make the split's
+## room, to open again when it goes, and every side column open or folded
+## as that left them, to know nothing was changed since.
+var _folded: Array[SideDock] = []
+var _left_as: Dictionary = {}
 
 
 func _ready() -> void:
@@ -191,9 +201,42 @@ static func wanted() -> bool:
 	return bool(ShellPrefs.value("split"))
 
 
-## Whether the model's column has room for two views.
+## Whether two views can be shown: the model's column has room for them, or
+## will have once the right-hand column folds to its tab ([method set_on]).
 func fits() -> bool:
+	return has_room() or room() + _foldable() >= least()
+
+
+## Whether the model's column has room for two views as it is.
+func has_room() -> bool:
 	return room() >= least()
+
+
+## The side columns beside the model: the bin's, and the properties' and
+## the assistant's on the right.
+func _docks() -> Array[SideDock]:
+	var out: Array[SideDock] = []
+	var row: Control = get_parent() as Control
+	if row == null:
+		return out
+	for child: Node in row.get_children():
+		var dock: SideDock = child as SideDock
+		if dock != null and dock.visible:
+			out.append(dock)
+	return out
+
+
+## The room folding the right-hand column gives the model: each open
+## panel's width, its tab staying. None while the bin is open beside it,
+## which widens into what the right-hand column gives up (Main._fit_bin).
+func _foldable() -> float:
+	var gives: float = 0.0
+	for dock: SideDock in _docks():
+		if dock.is_open() and dock.edge == SideDock.Edge.LEFT:
+			return 0.0
+		if dock.is_open():
+			gives += dock.open_width()
+	return gives
 
 
 ## The model's column a split needs, in the window's units: [constant LEAST]
@@ -230,16 +273,48 @@ func is_showing() -> bool:
 	return visible
 
 
-## Turn the split on or off, and keep that on this device.
+## Turn the split on or off, and keep that on this device. On, short of
+## room, the right-hand column folds to its tab for it; off, what that
+## folded opens again.
 func set_on(on: bool) -> void:
 	ShellPrefs.put("split", on)
+	if on and not has_room() and fits():
+		_make_room()
+	elif not on:
+		_give_back()
 	fit()
+
+
+func _make_room() -> void:
+	_folded.clear()
+	for dock: SideDock in _docks():
+		if dock.edge == SideDock.Edge.RIGHT and dock.is_open():
+			dock.set_open(false)
+			_folded.append(dock)
+	_left_as.clear()
+	for dock: SideDock in _docks():
+		_left_as[dock] = dock.is_open()
+
+
+## The panels [method _make_room] folded, open again, unless a side column
+## was opened or folded since: then the person's layout stands.
+func _give_back() -> void:
+	var folded: Array[SideDock] = _folded.duplicate()
+	_folded.clear()
+	if folded.is_empty():
+		return
+	for dock: SideDock in _docks():
+		if not _left_as.has(dock) or bool(_left_as[dock]) != dock.is_open():
+			return
+	for dock: SideDock in folded:
+		if is_instance_valid(dock) and dock.visible and not dock.is_open():
+			dock.set_open(true)
 
 
 ## Show the split if it is wanted and has room, else put it away: after the
 ## command, and whenever the model's column changes width.
 func fit() -> void:
-	var show: bool = wanted() and fits()
+	var show: bool = wanted() and has_room()
 	if show == visible:
 		return
 	visible = show

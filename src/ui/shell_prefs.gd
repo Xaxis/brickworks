@@ -57,6 +57,13 @@ const DEFAULTS: Dictionary = {
 	# Whether finding a part from a photo has said, once, that the photo goes
 	# to Brickognize, a third party (PartsBin._ask_photo).
 	"photo_told": false,
+	# picklist: what the parts list's BrickLink wanted list asks of each item
+	# (ShopLists.Wants): CONDITION "N", "U" or "" for either; WANTEDLISTID,
+	# the ID of one of the person's wanted lists, or "" for the main one; and
+	# NOTIFY, BrickLink's email when a lot of it is listed.
+	"bricklink_condition": "",
+	"bricklink_list": "",
+	"bricklink_notify": false,
 	"key_strip": true,
 	"grid": false,
 	"snap": "stud",

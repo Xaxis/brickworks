@@ -892,7 +892,8 @@ static func _taking(owners: Array, foot: Vector3, way: Vector3, placed: Dictiona
 ## is in no part but its own, is in: a hollow the cover leaves open, a
 ## round brick's, a cone's or a dish's underside, so the first part of
 ## [param boxes] but [param own] round its tip on five of six sides, half a
-## cell past its radius, as a peg in a hole is read (Joints.pushed_in): a
+## cell past its radius, as a peg in a hole is read (Joints.pushed_in) and
+## as Joints.studs_in reads every other stud (Joints._hollow_round): a
 ## cell's coarseness leaves one side of a 1 x 1 cone's thin wall out. Null
 ## for none.
 static func _stud_in(foot: Vector3, way: Vector3, own: int, boxes: Dictionary,
@@ -903,13 +904,13 @@ static func _stud_in(foot: Vector3, way: Vector3, own: int, boxes: Dictionary,
 	var sides: Dictionary = {}         ## id -> sides it is on
 	for n: int in 6:
 		var turn: float = TAU * float(n) / 6.0
-		var point: Vector3 = tip + (across * cos(turn) + other * sin(turn)) * (STUD_RADIUS + 1.5)
+		var point: Vector3 = tip + (across * cos(turn) + other * sin(turn)) * Joints.HOLLOW_REACH
 		for id: int in _owners(lattice, BrickLattice.to_cell(point), own, boxes):
 			sides[id] = int(sides.get(id, 0)) + 1
 		if n == 1 and sides.is_empty():
 			return null
 	for id: int in sides:
-		if int(sides[id]) >= 5:
+		if int(sides[id]) >= Joints.HOLLOW_SIDES:
 			return id
 	return null
 
@@ -1221,7 +1222,7 @@ func _derive_boxes(brick: BrickWorld.Brick) -> PackedInt32Array:
 	var boxes: Array[AABB] = part.boxes
 	if boxes.is_empty():
 		return PackedInt32Array()
-	var at: Vector3i = BrickLattice.to_cell(brick.transform.origin)
+	var at: Vector3i = BrickLattice.grid_cell(brick.transform.origin)
 	if BrickLattice.is_square_to_grid(brick.transform.basis):
 		var square: PackedInt32Array = BrickLattice.boxes_for(boxes, at, brick.transform.basis)
 		# As the builder reckons it: square and off the lattice, kept

@@ -170,6 +170,9 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_world = world
 	measured.clear()
 	_apart.clear()
+	_near_grid.clear()
+	_over_of.clear()
+	_own_turns = BookletLooks.any_turn(world)
 	# In the author's steps, when the model has them.
 	var steps: Array[Instructions.Step] = []
 	# Planned and staged with the drawing held (GpuFence) while the booklet's
@@ -783,6 +786,7 @@ func _look(entry: Booklet.Entry, step: Instructions.Step) -> Dictionary:
 	if not turn.is_empty():
 		entry.fixed = true
 		entry.from = BookletLooks.direction(turn)
+		entry.turn = BookletLooks.roll(turn)
 	return own
 
 
@@ -1067,7 +1071,19 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 		if not turn.is_empty():
 			entry.fixed = true
 			entry.from = BookletLooks.direction(turn, callout.from)
-			entry.subject = BookletStudio.extent(boxes, entry.from)
+			entry.turn = BookletLooks.roll(turn, callout.from)
+			entry.subject = BookletStudio.extent(boxes, entry.from, entry.turn)
+		elif not _own_turns:
+			# Turned over where its parts go on from below, as the model's
+			# steps are (_turn_over), on what the callout has built so far.
+			if _goes_on(int(spans[at][0]), int(spans[at][1]), stage, order) < 0:
+				entry.turn = BookletLooks.roll(OVER_TURN, callout.from)
+				entry.subject = BookletStudio.extent(boxes, entry.from, entry.turn)
+		# The turn sign where it is turned from its step before, as on the
+		# model's pages.
+		entry.sign_off = not bool(BookletLooks.of(_world, built[at].authored_in,
+			built[at].authored_step).get("sign", true))
+		_sign(entry, at > 0 and _turned_between(callout.steps[at - 1], entry))
 		callout.steps.append(entry)
 	_callouts[callout] = [stage, spans]
 	return callout
@@ -1098,13 +1114,16 @@ func _facing(attach: Instructions.Step) -> Vector3:
 ## before them: the pages are laid out and drawn as the views are chosen,
 ## so the first is read while the last are still to be seen (_make).
 func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
+	_turn_over(entries, from, upto)
 	if dry:
 		for index: int in range(from, upto):
 			var entry: Booklet.Entry = entries[index]
 			if not entry.fixed:
 				entry.from = BookletStudio.FRONT
-			_sign(entry, index > 0 and _round_from(_before, entry.from))
+				entry.turn = OVER if _over_of.has(entry) else Basis.IDENTITY
+			_sign(entry, index > 0 and _turned_from_before(entry))
 			_before = entry.from
+			_before_turn = entry.turn
 		return
 	var last: int = -1
 	for number: Variant in only:
@@ -1118,7 +1137,7 @@ func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 	var keys: Array = []
 	for index: int in range(from, upto):
 		var entry: Booklet.Entry = entries[index]
-		if entry.fixed or last >= 0 and entry.number > last:
+		if entry.fixed or _over_of.has(entry) or last >= 0 and entry.number > last:
 			continue
 		asks.append(_ask(_where(entry), BookletStudio.FRONT))
 		keys.append([entry, BookletStudio.FRONT])
@@ -1129,7 +1148,7 @@ func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 	keys.clear()
 	for index: int in range(from, upto):
 		var entry: Booklet.Entry = entries[index]
-		if float(_seen.get([entry, BookletStudio.FRONT], 1.0)) < 0.4:
+		if not _over_of.has(entry) and float(_seen.get([entry, BookletStudio.FRONT], 1.0)) < 0.4:
 			asks.append(_ask(_where(entry), BookletStudio.BACK))
 			keys.append([entry, BookletStudio.BACK])
 	await _measure(asks, keys, _seen)
@@ -1141,13 +1160,27 @@ func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 		if last >= 0 and entry.number > last:
 			if not entry.fixed:
 				entry.from = BookletStudio.FRONT
+				entry.turn = OVER if _over_of.has(entry) else Basis.IDENTITY
+			continue
+		# Turned over: its parts all go on from below ([method _turn_over]).
+		# Seen from the front, the model rolled over, as 7140's author turns
+		# a cart for the dishes under it.
+		if _over_of.has(entry):
+			entry.from = BookletStudio.FRONT
+			entry.turn = OVER
+			_sign(entry, index > 0 and _turned_from_before(entry))
+			_before = entry.from
+			_before_turn = entry.turn
+			measured.append({"what": "view of step %d" % entry.number, "seen": -1.0,
+				"other": -1.0, "turned": entry.turned, "over": true})
 			continue
 		# Seen the way its designer set it: turned where the turn is more
 		# than a glance round from the step before.
 		if entry.fixed:
 			# The first step is where the reader starts: nothing to turn from.
-			_sign(entry, index > 0 and _round_from(_before, entry.from))
+			_sign(entry, index > 0 and _turned_from_before(entry))
 			_before = entry.from
+			_before_turn = entry.turn
 			_turned_to = BookletStudio.FRONT
 			measured.append({"what": "view of step %d" % entry.number, "seen": -1.0,
 				"other": -1.0, "turned": entry.turned, "fixed": true})
@@ -1170,8 +1203,64 @@ func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 		if turn:
 			_turned_to = other
 		entry.from = _turned_to
-		_sign(entry, turn or _round_from(_before, entry.from))
+		_sign(entry, turn or _turned_from_before(entry))
 		_before = entry.from
+		_before_turn = entry.turn
+
+
+## LDraw's ROTSTEP 0 0 180: the model rolled over about its front-to-back
+## axis, its underside up (BookletLooks.roll).
+const OVER_TURN := {"turn": [0.0, 0.0, 180.0], "how": "REL"}
+static var OVER: Basis = BookletLooks.roll(OVER_TURN)
+## How near straight up or down a way in is to say a part goes on from
+## above or below: within 45 degrees.
+const STRAIGHT_IN := 0.7
+
+
+## Which of [param entries], from [param from] up to [param upto], are drawn
+## turned over, into [member _over_of]: as a LEGO® booklet turns the model
+## for parts that go into its underside, so the reader sees where each goes.
+## A step is turned over when a part of it goes on from below what was built
+## before it and none from above, and turns back at the next step that does
+## not. Which way a part goes on is what its stud joints face
+## ([method _stud_way]): a dish's stud pressed up into a plate's underside
+## goes on from below; a brick's tubes pressed down onto studs from above.
+## Held through steps with no stud joints (pins, axles), the turn ran on for
+## hundreds of a Technic model's steps its author drew upright, and every
+## shorter hold agreed with authors less often than none (ROADMAP 7). Only
+## where the model has no turns of its author's: a ROTSTEP anywhere says
+## where its author wants the model turned.
+func _turn_over(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
+	if _own_turns:
+		return
+	for index: int in range(from, upto):
+		var entry: Booklet.Entry = entries[index]
+		if entry.fixed or entry.in_callout or not entry.has_meta("step"):
+			continue
+		var span: Array = _ranks[int(entry.get_meta("step"))]
+		if _goes_on(int(span[0]), int(span[1]), _main, _order) < 0:
+			_over_of[entry] = true
+
+
+## Whether the bricks ranked [param first] to [param last] on [param stage]
+## ([param order] its entries), a step's, go on from below what is ranked
+## before them (-1: one does and none from above), from above (1: one does),
+## or neither (0: sideways, or onto nothing): [method _stud_way] each.
+func _goes_on(first: int, last: int, stage: BookletStudio.Stage, order: Array) -> int:
+	var below: bool = false
+	last = mini(last, stage.boxes.size())
+	for rank: int in range(first, last + 1):
+		var way: int = _stud_way(rank, first, last, stage, order)
+		if way > 0:
+			return 1
+		below = below or way < 0
+	return -1 if below else 0
+
+
+## The steps [method _turn_over] turned over.
+var _over_of: Dictionary = {}
+## The model has turns of its author's (BookletLooks.any_turn).
+var _own_turns: bool = false
 
 
 ## Where the walk of [method _choose_views] has got to: the way the model
@@ -1179,6 +1268,7 @@ func _choose_views(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 ## [entry, from].
 var _turned_to: Vector3 = BookletStudio.FRONT
 var _before: Vector3 = BookletStudio.FRONT
+var _before_turn: Basis = Basis.IDENTITY
 var _seen: Dictionary = {}
 
 
@@ -1291,6 +1381,29 @@ static func _round_from(from: Vector3, to: Vector3) -> bool:
 	if a.length() < 0.01 or b.length() < 0.01:
 		return false
 	return absf(a.angle_to(b)) > deg_to_rad(TURN_ROUND)
+
+
+## Whether [param entry] is drawn turned from the step before it, seen
+## from [member _before] with the model turned by [member _before_turn]
+## ([method _turned_between]).
+func _turned_from_before(entry: Booklet.Entry) -> bool:
+	var before := Booklet.Entry.new()
+	before.from = _before
+	before.turn = _before_turn
+	return _turned_between(before, entry)
+
+
+## Whether [param now] is drawn turned from [param was]: round, up or down
+## past the sign's angles ([method _round_from]), or turned over, where
+## which way is up in the picture changes.
+static func _turned_between(was: Booklet.Entry, now: Booklet.Entry) -> bool:
+	if was.turn == now.turn:
+		return _round_from(was.from, now.from)
+	# Where the eye is, and which way is up in the picture, on the model as
+	# it stands.
+	var a: Basis = BookletStudio.basis_for(was.from, was.turn)
+	var b: Basis = BookletStudio.basis_for(now.from, now.turn)
+	return _round_from(a.z, b.z) or a.y.angle_to(b.y) > deg_to_rad(TURN_ROUND)
 
 
 ## The stage a step is drawn on and its new parts' ranks there: [stage,
@@ -1463,6 +1576,88 @@ func _way_in(brick_id: int, rank: int) -> Vector3:
 	return way if out >= 0.0 else -way
 
 
+## The ranks of the model's bricks before [param before] whose boxes meet
+## [param box], lowest first: off a grid of every brick made once, where
+## each brick asking all those before it was the castle's 2,500 bricks
+## times as many.
+func _ranks_near(box: AABB, before: int) -> Array[int]:
+	const CELL := 40.0
+	if _near_grid.is_empty() and not _main.boxes.is_empty():
+		for rank: int in range(1, _main.boxes.size() + 1):
+			for cell: Vector3i in _cells_of(_main.boxes[rank - 1], CELL):
+				if not _near_grid.has(cell):
+					_near_grid[cell] = []
+				(_near_grid[cell] as Array).append(rank)
+	var found: Dictionary = {}
+	for cell: Vector3i in _cells_of(box, CELL):
+		for rank: int in _near_grid.get(cell, []):
+			if rank < before and not found.has(rank) and (_main.boxes[rank - 1] as AABB).intersects(box):
+				found[rank] = true
+	var out: Array[int] = []
+	out.assign(found.keys())
+	out.sort()
+	return out
+
+
+## Every brick of the model by the cells its box is in: [method _ranks_near].
+var _near_grid: Dictionary = {}
+
+
+## Which way the brick ranked [param rank], of a step's bricks ranked
+## [param first] to [param last], goes on, by what its stud joints face
+## (Exact.connections): -1 from below, a stud of its own pressed up into the
+## underside of a part already there or of another of the step's; 1 from
+## above, a hole or tube of its own pressed down onto a stud already there,
+## or onto one of the step's parts without hanging from anything; 0 for no
+## stud joint, or studs only on a side. Pins, axles, clips and bars go in
+## along their lines, either way, and say nothing.
+func _stud_way(rank: int, first: int, last: int, stage: BookletStudio.Stage,
+		order: Array) -> int:
+	var brick: BrickWorld.Brick = _world.get_brick(int(order[rank - 1][0]))
+	var shape: Exact.Shape = Exact.shape_for(library, brick.part_id) if brick != null else null
+	if shape == null:
+		return 0
+	var items: Array = [Exact.Item.new(shape, brick.transform)]
+	var earlier: Array = [false]
+	var near: AABB = (stage.boxes[rank - 1] as AABB).grow(4.0)
+	# The model's off its grid; a callout's few, all of them.
+	var others: Array = _ranks_near(near, last + 1) if stage == _main else range(1, last + 1)
+	for other: int in others:
+		if other == rank or not (stage.boxes[other - 1] as AABB).intersects(near):
+			continue
+		var other_shape: Exact.Shape = Exact.shape_for(library, str(order[other - 1][1]))
+		if other_shape != null:
+			items.append(Exact.Item.new(other_shape, order[other - 1][3]))
+			earlier.append(other < first)
+	if items.size() < 2:
+		return 0
+	var mine: Array = (items[0] as Exact.Item).world()
+	var hung: bool = false
+	var on_new: bool = false
+	for edge: Array in Exact.connections(items):
+		if int(edge[0]) != 0 and int(edge[2]) != 0:
+			continue
+		var own: int = int(edge[1]) if int(edge[0]) == 0 else int(edge[3])
+		var other: int = int(edge[2]) if int(edge[0]) == 0 else int(edge[0])
+		var kind: int = shape.kind[own]
+		if kind != Exact.STUD and kind != Exact.HOLE or shape.sub[own] >= Exact.S_BAR:
+			continue
+		# A stud and the hole it is in point the same way, out of the stud's
+		# part: the way the part with the stud goes in; the hole's part goes
+		# in the other way.
+		var axis: Vector3 = mine[own][2]
+		var goes: float = axis.y if kind == Exact.STUD else -axis.y
+		if goes > STRAIGHT_IN:
+			hung = true
+		elif goes < -STRAIGHT_IN:
+			if bool(earlier[other]):
+				return 1
+			on_new = true
+	if hung:
+		return -1
+	return 1 if on_new else 0
+
+
 ## The red arrows of [param entry]'s parts pulled out, in page mm: from the
 ## end of each that goes in first, where it is drawn, to where that end
 ## goes, through the picture's own camera ([param view], [param size]).
@@ -1561,15 +1756,16 @@ func _subjects(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 			placed[key] = []
 		for rank: int in range(int(span[0]), int(span[1]) + 1):
 			(placed[key] as Array).append(_main.boxes[rank - 1])
-		entry.subject = BookletStudio.extent(placed[key], entry.from)
+		entry.subject = BookletStudio.extent(placed[key], entry.from, entry.turn)
 		if _pulled.has(entry):
 			entry.subject = entry.subject.merge(BookletStudio.extent(_pulled_boxes(entry),
-				entry.from))
+				entry.from, entry.turn))
 		entry.cropped = not fits
 		if _apart.has(entry):
 			var where: Array = _where(entry)
 			entry.subject = BookletStudio.extent(
-				(where[0] as BookletStudio.Stage).boxes.slice(0, int(where[2])), entry.from)
+				(where[0] as BookletStudio.Stage).boxes.slice(0, int(where[2])), entry.from,
+				entry.turn)
 			entry.cropped = false
 		_zoomed(entry)
 
@@ -1588,7 +1784,7 @@ func _zoomed(entry: Booklet.Entry) -> void:
 	var where: Array = _where(entry)
 	var stage: BookletStudio.Stage = where[0]
 	var fresh: Rect2 = BookletStudio.extent(stage.boxes.slice(int(where[1]) - 1, int(where[2])),
-		entry.from)
+		entry.from, entry.turn)
 	var whole: Rect2 = entry.subject
 	var size: Vector2 = whole.size / entry.zoom
 	var centre: Vector2 = whole.get_center()

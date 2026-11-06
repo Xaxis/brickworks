@@ -407,7 +407,7 @@ func _queue() -> void:
 		and shell.can("render_queue"))
 	shell.run("render_queue")
 	await _frames(3)
-	var queue: RenderQueue = _main.get_node("HUD").get_node_or_null("RenderQueue") as RenderQueue
+	var queue: RenderQueue = RenderQueue.of(_main)
 	_check("it opens its panel", queue != null and queue.visible)
 	if queue == null:
 		return

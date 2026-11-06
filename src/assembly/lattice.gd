@@ -87,6 +87,12 @@ var cut: Plane = Plane():
 	set(value):
 		cut = value
 		revision += 1
+## ...or the box, sphere or cylinder it cuts by instead (CutShape): a ray
+## passes through every cell inside it. None while null.
+var cut_shape: CutShape = null:
+	set(value):
+		cut_shape = value
+		revision += 1
 ## Goes up with every brick put in or taken out, and when x-ray or the cut
 ## changes what a ray passes through, so an answer kept from before can
 ## tell it still holds (EditVerbs.brick_at). Hiding by hand clears that
@@ -136,6 +142,22 @@ static func to_cell(position: Vector3) -> Vector3i:
 		int(floor(position.x / CELL)),
 		int(floor(position.y / CELL)),
 		int(floor(position.z / CELL)))
+
+
+## How far short of a cell's low corner a point meant to be on it may be,
+## in LDU. LDraw writes a position to three decimals, so a part drawn on the
+## grid can come a thousandth short of it: 6542's container panels stand at
+## x 9.999, read as the cell below and named 2 LDU off their studs, and the
+## checker refused them there. Two cells' worth of float error is far less.
+const ON_GRID := 0.01
+
+
+## The cell whose low corner a point meant to be on the grid is: [method
+## to_cell] of the point, to within [constant ON_GRID] of the next corner up.
+## For a part's origin when a placement is named by it, never for where a
+## stud's tip or a ray lands, which is anywhere in a cell.
+static func grid_cell(position: Vector3) -> Vector3i:
+	return to_cell(position + Vector3.ONE * ON_GRID)
 
 
 static func to_ldu(cell: Vector3i) -> Vector3:
@@ -2444,6 +2466,8 @@ class Hit extends RefCounted:
 
 ## Whether a cell is on the far side of the cut, where nothing is drawn.
 func _cut_away(cell: Vector3i) -> bool:
+	if cut_shape != null:
+		return cut_shape.contains((Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * CELL)
 	if cut.normal == Vector3.ZERO:
 		return false
 	return cut.distance_to((Vector3(cell) + Vector3(0.5, 0.5, 0.5)) * CELL) > 0.0

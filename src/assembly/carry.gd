@@ -45,6 +45,12 @@ var lifted: bool = false
 ## a right click, as a part from the bin always has; a paste and a move go
 ## once. Five window bays took ten clicks (docs/APP_UX.md, A6).
 var repeats: bool = false
+## A model brought into this one whole (ModelStore.held_from): its parts
+## keep the steps its author gave them, and each copy of a sub-model in it,
+## by its path in hand, goes on in the step [member brought_units] says (the
+## whole's -1, put on where it is put down: Builder._put_carried).
+var brought: bool = false
+var brought_units: Dictionary = {}
 
 var _ghost: Node3D
 ## The ghost's one material: its "valid" says whether the group fits.
@@ -156,6 +162,8 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	items = parts.duplicate(true)
 	turns = 0
 	lifted = came_off_the_model
+	brought = false
+	brought_units = {}
 	_pinned = false
 	_base = []
 	var phase: float = phase_of(items[0].get("pivot", Vector3(10, 0, 10))) \
@@ -172,6 +180,8 @@ func drop() -> void:
 	items = []
 	lifted = false
 	repeats = false
+	brought = false
+	brought_units = {}
 	_pinned = false
 	_base = []
 	_covers.clear()
@@ -410,6 +420,15 @@ func _aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 		var level: int = BrickLattice._floor_div(hit.adjacent().y,
 			BrickLattice.CELLS_PER_PLATE) * BrickLattice.CELLS_PER_PLATE
 		rise = maxi(rise, level - _lowest(whole))
+	# Never down a stud past its foot, where a cover under it stops short of
+	# its top (a cone's): asked of the parts it rests on, whole cells up.
+	var resting: Array = []
+	var trial: Transform3D = _frame_at(Vector3(at.x, rise * BrickLattice.CELL, at.z))
+	for k: int in (covers[5] as PackedInt32Array):
+		resting.append([str(items[k]["part"]), trial * (items[k]["at"] as Transform3D)])
+	var lift: float = builder.stud_feet_lift(resting)
+	if lift > 0.0:
+		rise += ceili((lift - 0.01) / BrickLattice.CELL)
 	shift.y = rise
 
 	_frame = _frame_at(Vector3(at.x, rise * BrickLattice.CELL, at.z))
@@ -464,26 +483,32 @@ func _frame_at(origin: Vector3) -> Transform3D:
 ## item's cover, all of them together, their footing (the lowest box over
 ## each run of columns, which rests where all of them do: what
 ## BrickLattice.rise_onto reads of them), their bound, whether none of them
-## is empty along an axis]. The last three are what every aim asked of all
-## the boxes again, a quarter of a second a move for all of Orthanc in hand
-## (bigmodels, 2026-10-30).
+## is empty along an axis, the items the footing is of]. The bound and the
+## two after it are what every aim asked of all the boxes again, a quarter
+## of a second a move for all of Orthanc in hand (bigmodels, 2026-10-30).
 func _covers_for(builder: Builder) -> Array:
 	if _covers.has(turns):
 		return _covers[turns]
 	var frame: Transform3D = _frame_at(_reference)
 	var each: Array = []
 	var whole := PackedInt32Array()
-	for item: Dictionary in items:
+	var owner := PackedInt32Array()     ## each box's item
+	for k: int in items.size():
+		var item: Dictionary = items[k]
 		var packed: PackedInt32Array = builder.boxes_for(
 			library.mesh_for(str(item["part"])), frame * (item["at"] as Transform3D))
 		each.append(packed)
 		whole.append_array(packed)
+		for _box: int in packed.size() / 6:
+			owner.append(k)
 	var lowest: Dictionary = {}
+	var lowest_of: Dictionary = {}      ## key -> the item whose box it is
 	var n: int = 0
 	while n < whole.size():
 		var key := Vector4i(whole[n], whole[n + 2], whole[n + 3], whole[n + 5])
 		if whole[n + 1] < int(lowest.get(key, 1 << 30)):
 			lowest[key] = whole[n + 1]
+			lowest_of[key] = owner[n / 6]
 		n += 6
 	var footing := PackedInt32Array()
 	footing.resize(lowest.size() * 6)
@@ -497,8 +522,11 @@ func _covers_for(builder: Builder) -> Array:
 		footing[n + 4] = bottom + 1
 		footing[n + 5] = key.w
 		n += 6
+	var under: Dictionary = {}
+	for key: Vector4i in lowest_of:
+		under[lowest_of[key]] = true
 	var all: Array = [each, whole, footing, BrickLattice._bound_of(whole),
-		BrickLattice._plain(whole)]
+		BrickLattice._plain(whole), PackedInt32Array(under.keys())]
 	_covers[turns] = all
 	return all
 
@@ -518,11 +546,11 @@ func hide_ghost() -> void:
 		_ghost.visible = false
 
 
-## Where each part goes if put down now: [{part, color, at, group, unit}]
-## in the world, and the cover each occupies. The copy a part was in goes
-## with it: without it a part moved in a sub-model's second copy went into
-## its first, and one duplicated inside a copy within another into a new
-## copy of the outermost (keeptext2).
+## Where each part goes if put down now: [{part, color, at, group, unit,
+## step}] in the world, and the cover each occupies. The copy a part was in
+## goes with it: without it a part moved in a sub-model's second copy went
+## into its first, and one duplicated inside a copy within another into a
+## new copy of the outermost (keeptext2).
 func placements(builder: Builder) -> Array:
 	var covers: Array = _covers_for(builder)
 	var shift := Vector3i(

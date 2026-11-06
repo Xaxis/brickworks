@@ -922,8 +922,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and finds none, then moves off and back and finds it again; without the fix
   the tooltip was up over "Copied.".
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
-  the tool's hint when nothing was; then the parts count and stability, how
-  many are selected, the snap and turn step, and how big a stud is on screen.
+  the tool's hint when nothing was; then, while a part is in hand, where it
+  goes if put down now ("x 2½, z −1 studs · 3 plates up": its middle from the
+  middle of the floor, to the half stud, its foot over the ground, to the
+  quarter plate; several carried, the box round them all), as LeoCAD's says
+  where its preview stands (whatsthis, APP_UX4 10); then the parts count and
+  stability, how many are selected, the snap and turn step, and how big a
+  stud is on screen. `whatsthis_probe` puts a brick at four places on the
+  ground, one on another, a turned 1 x 2 plate, and two parts carried by
+  Ctrl+D, each read off the bar, clicked down and measured.
 - `accessibility` (`src/ui/access.gd`, `src/ui/focus_guard.gd`, Settings,
   2026-10-24; docs/COMPETITIVE.md item 14). A screen reader hears every
   control by its name (Godot 4.7's AccessKit: `accessibility_name`, or a
@@ -1191,8 +1198,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (APP_UX A12), a line in the strip along the top of the model, never over
   it. Offered once on a device (`first_build` in `user://shell.cfg`: offered,
   skipped or done), on a first visit, to a person in front of the window once
-  signed in, and only while the example car is untouched: never to a viewer,
+  signed in, and only while the baseplate holds nothing of theirs (the
+  example car untouched, or empty in a new window): never to a viewer,
   a model opened from a link, a phone, or someone whose own model came back.
+  An offer not taken goes by itself (APP_UX4 quiet) at the third part put
+  down by hand (`Builder.placed`, a person's only) or any model opened
+  (`ModelStore.loaded`: theirs or an example), however it was offered;
+  File, New and Clear keep it. `quiet probe` checks those.
   Nothing changes until **Start**, which takes the car off for "My first
   model" (`Main._make_room`), or over the person's own model runs File, New,
   which asks first when it is unsaved. **Skip** ends it in one click; Help,
@@ -1911,8 +1923,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   or a ball's turn), `settle` (a free joint down under its weight), `commit`
   (one undo step). `grab_probe` checks each on real sets.
 - `closed loops of joints` (`src/assembly/linkage.gd`, `Linkage`; MECHANISMS
-  §11): a part held at both ends (Bodies' closing links) moves as its loop
-  allows: the loop's joint angles (and slides, and a ball's three turns)
+  §11): a part held at both ends (Bodies' closing links; not a part that
+  only rests on a stud at a hinge's free end, `Bodies.rests`) moves as its
+  loop allows: the loop's joint angles (and slides, and a ball's three turns)
   solved by damped Gauss-Newton with exact derivatives, from the last pose,
   in steps sized by the fastest turning joint (0.5 rad), each started along
   the last step's slope, closed to 0.5 LDU on the way and 0.05 at the end; a
@@ -2097,7 +2110,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   rest where five times the 40's turn puts it), a picture mid-coast and at
   rest, one undo, move_part spin=720 against the hand form, and 4096's hinge
   flicked the same way staying where it was let go (spin= says it does not
-  coast). Each fails with its fix taken out.
+  coast). Each fails with its fix taken out. Before the flick, 4096's boom
+  on its rest by hand: dragged 10° down into its cones it stays, dragged up
+  it lifts 20°, one step (`Bodies.rests`).
 - `hoses follow a grab` (`src/assembly/flex_follow.gd`, `FlexFollow`;
   MECHANISMS §18): a pneumatic tube, a ribbed hose, a flex-system hose, a
   flexible axle or a string (Flex's swept kinds, and the same parts LDCad laid:
@@ -2921,7 +2936,10 @@ godot --headless --path . --script src/dev/snap_probe.gd
 # it, a beam onto two pins, a clip on a bar, a clip on 2540's handle (room
 # with its plate out, up or down, not into the plate) and a bar in a clip,
 # each aimed at, clicked, joined, and passed by check_design; the same pin a
-# stud off and the same clip or bar 2 LDU off the line refused by both
+# stud off and the same clip or bar 2 LDU off the line refused by both. And
+# cones (3942c, 4589, 59900), a round plate and a dome 2 x 2 on a cone's or
+# round plate's stud, clicked, dragged, swapped in, stood on by a figure and
+# sent over MCP, each at the stud's stop to 0.01 LDU
 godot --headless --path . --script src/dev/technic_hand_probe.gd
 # a pneumatic tube laid by clicking two pin holes, bent by a dragged ball,
 # refused past its bend, undone; Pose offering the laid tube no slider; a chain

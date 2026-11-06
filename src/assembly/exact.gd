@@ -1140,6 +1140,164 @@ static func _mates(table: Array, a: int, b: int) -> bool:
 	return false
 
 
+## How far past a stud's foot a part that takes the stud is looked for, LDU: a
+## plate. Further down over a stud than that, the part's shape is in the stud's
+## part's and says so itself.
+const SUNK_REACH := 8.0
+## How far off a stud's line a hole may be and take that stud, LDU: LDraw's
+## three decimals, not the next stud's.
+const SUNK_ACROSS := 1.0
+## How far past a stud's foot a part must stand to be in the stud's part,
+## LDU: further than BrickNet joins a hole to a stud (POS_THR), as
+## BrickBench's own check reads the two. Nearer, it is on the stud, a little
+## low, and the check seats it. Real sets put a round plate 2 LDU past a
+## half pin's foot, over its collar (42088's rear lights, 42105's cabin),
+## and past a door's stud handle's (7632).
+const SUNK_PAST := POS_THR
+## How much deeper two parts' shapes must meet where one is down the other's
+## stud than at the stud's stop, LDU, for it to be in that part: more than
+## the hundredths two parts touching meet by. A cone 2 LDU down a cone's
+## stud meets it 0.4 LDU deeper; a 2 x 2 cone 4 LDU down a 4589's, 0.8.
+const SUNK_SHOWN := 0.1
+
+
+## How far a hole of one part (a hole or a tube, where BrickNet frames it, at
+## its mouth: [param at], taking a stud along [param its_way]) stands
+## past the foot of a stud of another ([param foot], pointing [param way]): on
+## the stud's line and behind its foot, inside the stud's own part, in LDU; 0
+## when it is not. A stud stops what goes onto it at its foot, the top of the
+## part it stands on, so a hole past it is that far into that part, whatever
+## its cover says there: a 1 x 1 cone's narrows to its stud, and its cells
+## stop 4 LDU under its top (6 for 4589). The hand puts nothing past a foot
+## (Builder.stud_feet_lift) and the check refuses what is ([method sunk]).
+static func past_foot(foot: Vector3, way: Vector3, at: Vector3, its_way: Vector3) -> float:
+	if way.dot(its_way) < AXIS_THR:
+		return 0.0
+	var gap: Vector3 = at - foot
+	var along: float = gap.dot(way)
+	if along > -0.005 or along < -SUNK_REACH:
+		return 0.0
+	if (gap - way * along).length() > SUNK_ACROSS:
+		return 0.0
+	return -along
+
+
+## Every pair of [param items] where a hole or tube of one ([method
+## takes_on_top]) stands past the foot of a stud of the other that BrickNet
+## mates it with ([method past_foot], STUD_MATES) by more than [param beyond],
+## and their shapes meet deeper there than at the stud's stop ([constant
+## SUNK_SHOWN]): [the stud's item, the hole's, how far, the stud's way] each,
+## the furthest of a pair, with at least one of the two in [param of] (every
+## pair when it is empty). A 2 x 2 cone's tube pushed 4 LDU down a 4589's
+## stud meets the cone by 0.8 LDU round the stud's narrow top, inside the 1
+## LDU a build allows, and the lattice's cells, stopping short of the cone's
+## top, are clear of it; it is in the cone all the same. Asked
+## by the line each stud and hole is on, square to the axes, to the LDU and
+## the LDU either side, so a model of thousands of parts asks each stud once.
+static func sunk_pairs(items: Array, of: Dictionary = {}, beyond: float = SUNK_PAST) -> Array:
+	var lines: Dictionary = {}    ## line -> [item, connector, position, way] each
+	for i: int in items.size():
+		var item: Item = items[i]
+		if item == null:
+			continue
+		for one: Array in item.world():
+			if not takes_on_top(item.shape, int(one[0])):
+				continue
+			var key: Variant = _line_key(one[1], one[2])
+			if key == null:
+				continue
+			if not lines.has(key):
+				lines[key] = []
+			(lines[key] as Array).append([i, int(one[0]), one[1], one[2]])
+	var deepest: Dictionary = {}  ## Vector2i(stud's item, hole's) -> [how far, way]
+	if lines.is_empty():
+		return []
+	for i: int in items.size():
+		var item: Item = items[i]
+		if item == null:
+			continue
+		for one: Array in item.world():
+			var k: int = one[0]
+			if item.shape.kind[k] != STUD:
+				continue
+			var key: Variant = _line_key(one[1], one[2])
+			if key == null:
+				continue
+			var holes: Array = []
+			for dx: int in [-1, 0, 1]:
+				for dz: int in [-1, 0, 1]:
+					holes.append_array(lines.get((key as Vector4i) + Vector4i(0, 0, dx, dz), []))
+			for hole: Array in holes:
+				var j: int = hole[0]
+				if j == i or (not of.is_empty() and not of.has(i) and not of.has(j)):
+					continue
+				var other: Item = items[j]
+				if not _mates(STUD_MATES, item.shape.sub[k], other.shape.sub[int(hole[1])]):
+					continue
+				var past: float = past_foot(one[1], one[2], hole[2], hole[3])
+				if past <= beyond:
+					continue
+				var pair := Vector2i(i, j)
+				if past > float((deepest.get(pair, [0.0]) as Array)[0]):
+					deepest[pair] = [past, one[2]]
+	var out: Array = []
+	for pair: Vector2i in deepest:
+		var past: float = deepest[pair][0]
+		var way: Vector3 = deepest[pair][1]
+		var stud: Item = items[pair.x]
+		var hole: Item = items[pair.y]
+		# Into the stud's part by their shapes, deeper than at the stud's
+		# stop. A turntable's base (3680) has its holes 8 LDU under its top's
+		# (3679) studs, the two nested on their hinge, and in nothing.
+		if stud.shape.has_pieces() and hole.shape.has_pieces() \
+				and _deepest(stud, hole) - _deepest(stud, Item.new(hole.shape,
+					hole.at.translated(way * past))) <= SUNK_SHOWN:
+			continue
+		out.append([pair.x, pair.y, past, way])
+	return out
+
+
+## How deep the shapes of [param a] and [param b] meet: their deepest pair
+## of pieces, 0 where none meet.
+static func _deepest(a: Item, b: Item) -> float:
+	var most: float = 0.0
+	for hit: Array in _overlapping(a.shape, b.shape, a.at.affine_inverse() * b.at, 0.0, false):
+		most = maxf(most, float(hit[0]))
+	return most
+
+
+## Whether connector [param k] of [param shape] takes a stud on the face it
+## is on, at its mouth: a hole or a tube, whose part stands on the stud's
+## part round it. Not a post, which BrickNet frames at a bar's tip (30374's,
+## 80 LDU down a lightsaber blade) as well as at a plate's underside, and a
+## bar's end goes down a hollow stud past its foot.
+static func takes_on_top(shape: Shape, k: int) -> bool:
+	return shape.kind[k] == HOLE and (shape.sub[k] == S_HOLE or shape.sub[k] == S_TUBE)
+
+
+## How far [param upper] stands past the foot of a stud of [param lower] it
+## takes, as [method sunk_pairs] finds it: the furthest, LDU, 0 for none.
+static func sunk(lower: Item, upper: Item) -> float:
+	if lower == null or upper == null:
+		return 0.0
+	var found: Array = sunk_pairs([lower, upper], {}, 0.0)
+	for one: Array in found:
+		if int(one[0]) == 0:
+			return float(one[2])
+	return 0.0
+
+
+## The line a connector at [param at] pointing [param way] is on, as a key:
+## which axis and way, and where across it, to the LDU. Null for a way off the
+## axes, which a part turned in a section has.
+static func _line_key(at: Vector3, way: Vector3) -> Variant:
+	for axis: int in 3:
+		if absf(way[axis]) > 0.999:
+			var across: Vector2i = Vector2i(roundi(at[(axis + 1) % 3]), roundi(at[(axis + 2) % 3]))
+			return Vector4i(axis, 1 if way[axis] > 0.0 else -1, across.x, across.y)
+	return null
+
+
 ## Whether two connectors of different parts meet by BrickNet's rules.
 ## [param one] and [param other] are entries of [method _world_connectors].
 static func meets(items: Array, one: Array, other: Array) -> bool:

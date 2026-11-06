@@ -123,6 +123,8 @@ var _reach: int = 4
 var _lens: int = 0
 ## The cut as the mask last drew it.
 var _cut: Vector4 = Vector4.ZERO
+## ...or the box, sphere or cylinder it is: [kind, room], or none.
+var _cut_by: Array = []
 var _cut_on: bool = false
 ## A MultiMesh of the world's, drawn whole -> its instance in the mask; and
 ## a surface mesh -> the instance drawing the parts of it copied one by one.
@@ -372,15 +374,18 @@ func _follow_cut() -> bool:
 		return false
 	var on: bool = world.is_cut() and not world.cut_leaves_ghosts()
 	var plane: Plane = world.cut_plane()
+	var shape: CutShape = world.cut_shape()
 	var at := Vector4(plane.normal.x, plane.normal.y, plane.normal.z, plane.d)
-	if on == _cut_on and (not on or at == _cut):
+	var by: Array = [] if shape == null else [shape.kind, shape.room]
+	if on == _cut_on and (not on or (at == _cut and by == _cut_by)):
 		return false
 	if on != _cut_on:
 		for drawn: Node in _shapes.get_children():
 			(drawn as GeometryInstance3D).material_override = _paint_cut if on else _paint
 	_cut_on = on
 	_cut = at
-	_paint_cut.set_shader_parameter("cut_plane", at)
+	_cut_by = by
+	CutShape.set_into(_paint_cut, plane, shape)
 	return true
 
 

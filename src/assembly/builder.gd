@@ -149,7 +149,7 @@ func register(brick_id: int, part_id: String, at: Transform3D) -> bool:
 		cover = [packed, bound, BrickLattice._rows_of(packed, bound)
 			if packed.size() > BrickLattice.ROWS_FROM * 6 else []]
 		(by_basis as Dictionary)[at.basis] = cover
-	lattice.occupy_moved(brick_id, cover, BrickLattice.to_cell(at.origin))
+	lattice.occupy_moved(brick_id, cover, BrickLattice.grid_cell(at.origin))
 	return true
 
 
@@ -1216,7 +1216,7 @@ static func _cells_moved(from: Transform3D, to: Transform3D) -> Variant:
 	var off: Vector3 = (by - Vector3(cells)).abs()
 	if maxf(off.x, maxf(off.y, off.z)) > 0.001:
 		return null
-	if BrickLattice.to_cell(to.origin) != BrickLattice.to_cell(from.origin) + cells:
+	if BrickLattice.grid_cell(to.origin) != BrickLattice.grid_cell(from.origin) + cells:
 		return null
 	return cells
 
@@ -2210,16 +2210,18 @@ func _put_carried() -> int:
 		world.get_brick(brick_id).unit = unit
 		if not carrying.lifted and copy_group.is_valid():
 			set_path(world.get_brick(brick_id), path)
-		# Moved, a part keeps its build step; a copy goes in the step a
-		# placed part would.
-		world.get_brick(brick_id).step = int(item.get("step", -1)) if carrying.lifted \
-			else _new_step(world.get_brick(brick_id))
+		# Moved, a part keeps its build step, and so does a model brought
+		# in whole; a copy goes in the step a placed part would.
+		world.get_brick(brick_id).step = int(item.get("step", -1)) \
+			if carrying.lifted or carrying.brought else _new_step(world.get_brick(brick_id))
 		lattice.occupy_boxes(brick_id, item["boxes"])
 		steps.append({"undo": "remove", "brick": brick_id})
 		ids.append(brick_id)
 	if ids.is_empty():
 		return 0
 	var words: String = "pasted %s" % _many(ids.size())
+	if carrying.brought:
+		words = _bring_steps(steps, renamed, ids)
 	if carrying.lifted and _lift_on_top():
 		# One move: what picked it up and what put it down undo together.
 		steps.append_array(_history.pop_back()["steps"])
@@ -2241,6 +2243,55 @@ func _put_carried() -> int:
 	selection_changed.emit(selection.size())
 	placed.emit(ids[0], world.get_brick(ids[0]).part_id)
 	return ids[0]
+
+
+# -- a model brought into this one -------------------------------------------
+
+
+## The step a model brought into this one whole goes on in, within the
+## sub-assembly being edited ([member place_group]): the step showing, as a
+## part put down by hand goes in, else after that one's last step, built
+## last and put on last; -1, none, in a model nobody gave steps. Its own
+## parts, [param skip], are not counted.
+func _brought_step(skip: Dictionary) -> int:
+	var shown: int = int(place_step.call(place_group)) if place_step.is_valid() else -1
+	if shown >= 0:
+		return shown
+	var had: Array = AuthorSteps.steps_in(world, AuthorSteps.home(world, place_group), skip)
+	return int(had.max()) + 1 if not had.is_empty() else -1
+
+
+## A model brought in whole, its parts [param ids] down: each copy of a
+## sub-model in it (Carry.brought_units) put on in the step its author gave
+## it, under the path this put-down gave it ([param renamed]), and the whole
+## after the last step of the one it went into ([method _brought_step]).
+## Into a model nobody gave steps, one that has them makes the steps that
+## model was shown its own first (AuthorSteps.adopt_plan), as its first step
+## edit would: else its parts, numbered after the steps brought in, came
+## after them, every step one later than the person had read it. Each a
+## step of [param steps], so the one undo that takes its parts off takes
+## these too. What the history calls it.
+func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> String:
+	var skip: Dictionary = {}
+	for brick_id: int in ids:
+		skip[brick_id] = true
+	var stepped: bool = carrying.brought_units.values().any(
+		func(step: Variant) -> bool: return int(step) >= 0) or carrying.items.any(
+		func(item: Dictionary) -> bool: return int(item.get("step", -1)) >= 0)
+	if stepped:
+		steps.append_array(AuthorSteps.adopt_plan(world, library, skip))
+	var at: int = _brought_step(skip)
+	var whole: String = ""
+	for path: String in carrying.brought_units:
+		var now: String = str(renamed.get(path, path))
+		var step: int = int(carrying.brought_units[path])
+		if step == -1 and not path.contains("/"):
+			whole = now
+			step = at
+		if step != -1:
+			steps.append(_apply({"undo": "unitstep", "unit": now, "step": step}))
+	return "put in %s, %s" % [Assemblies.definition(Assemblies.leaf(whole)), _many(ids.size())] \
+		if not whole.is_empty() else "put in %s" % _many(ids.size())
 
 
 ## Work out where the held part would go, given a ray from the camera.
@@ -2315,7 +2366,79 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 	if seated != null:
 		_ghost_transform = seated
 		_ghost_valid = true
+	# Never down a stud past its foot: up to its stop where its cover put it
+	# lower (a cone's narrows to its stud).
+	var lift: float = stud_feet_lift([[held_part, _ghost_transform]]) if onto == null else 0.0
+	if lift > 0.0:
+		_ghost_transform.origin.y += lift
+		_ghost_valid = room_for(held_part, _ghost_transform, false, true)
 	_show_ghost(part)
+
+
+## How far parts in hand, [param parts] ([part id, where] each), are down
+## studs of the parts around them past the studs' feet, up the way those
+## studs point: what lifts them to the studs' stop, as the check reads it
+## (Exact.sunk_pairs). A part rests on the covers under it, and a cover is
+## the cells a part fills: a cone's (59900, 4589) stops 4 or 6 LDU under its
+## top, where it narrows to its stud, as a baseplate's (911) does under its
+## studs. Rested there, a cone, a round plate or a dome put on that stud went
+## 4 or 6 LDU down it, into the part below, and the check seated it there
+## (realjoints2, 2026-11-05). Studs that point up only, which what rests on
+## them stands on. 0 for none, and where a shape is still on its way (the
+## web fetches it; the aim after it arrives lifts it). [param skip]: bricks
+## that move with them.
+func stud_feet_lift(parts: Array, skip: Dictionary = {}) -> float:
+	if world == null or lattice == null:
+		return 0.0
+	var items: Array = []
+	var of: Dictionary = {}
+	var lo := Vector3(INF, INF, INF)
+	var hi := -lo
+	for one: Array in parts:
+		var shape: Exact.Shape = Exact.shape_for(library, str(one[0]))
+		if shape == null:
+			continue
+		var item := Exact.Item.new(shape, one[1])
+		var takes: bool = false
+		for connector: Array in item.world():
+			if Exact.takes_on_top(shape, int(connector[0])) and (connector[2] as Vector3).y > 0.99:
+				takes = true
+				lo = lo.min(connector[1])
+				hi = hi.max(connector[1])
+		if takes:
+			of[items.size()] = true
+			items.append(item)
+	if of.is_empty():
+		return 0.0
+	var across: float = Exact.SUNK_ACROSS + 1.0
+	var reach := PackedInt32Array([floori((lo.x - across) / BrickLattice.CELL),
+		floori((lo.y - 1.0) / BrickLattice.CELL), floori((lo.z - across) / BrickLattice.CELL),
+		ceili((hi.x + across) / BrickLattice.CELL),
+		ceili((hi.y + Exact.SUNK_REACH + 1.0) / BrickLattice.CELL),
+		ceili((hi.z + across) / BrickLattice.CELL)])
+	for other: int in lattice.near_bounds(reach):
+		var brick: BrickWorld.Brick = world.get_brick(other) if not skip.has(other) else null
+		var shape: Exact.Shape = Exact.shape_for(library, brick.part_id) if brick != null else null
+		if shape != null:
+			items.append(Exact.Item.new(shape, brick.transform))
+	if items.size() == of.size():
+		return 0.0
+	# Lifted off one stud, a part can be down another a little higher: asked
+	# again, a few times at most.
+	var lift: float = 0.0
+	for _round: int in 3:
+		var most: float = 0.0
+		for pair: Array in Exact.sunk_pairs(items, of, 0.0):
+			if of.has(int(pair[1])) and not of.has(int(pair[0])) \
+					and (pair[3] as Vector3).y > 0.99:
+				most = maxf(most, float(pair[2]))
+		if most <= 0.0:
+			break
+		lift += most
+		for i: Variant in of:
+			var item: Exact.Item = items[int(i)]
+			items[int(i)] = Exact.Item.new(item.shape, item.at.translated(Vector3(0.0, most, 0.0)))
+	return lift
 
 
 ## [param at], worked out against the lattice, put in the frame of the part
@@ -3752,7 +3875,7 @@ var _stretched_off_main: Dictionary = {}
 func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 	if part == null:
 		return PackedInt32Array()
-	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
 	var stretch := Vector3(at.basis.x.length(), at.basis.y.length(), at.basis.z.length())
 	if not stretch.is_equal_approx(Vector3.ONE) and at.basis.determinant() > 0.0:
 		# A part stretched, as LDraw lets a file do: a hose's one-LDU piece
@@ -3849,7 +3972,7 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 func turned_cover(part: Lbm.PartMesh, at: Transform3D) -> BrickLattice.TurnedCover:
 	if part == null:
 		return null
-	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
 	var on_main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
 	var stretch := Vector3(at.basis.x.length(), at.basis.y.length(), at.basis.z.length())
 	if not stretch.is_equal_approx(Vector3.ONE) and at.basis.determinant() > 0.0:
@@ -4032,7 +4155,7 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 	# else's .ldr need not be — and squaring it up first, which is what
 	# used to happen here, meant a brick turned thirty degrees reserved
 	# the cells of a brick turned none.
-	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
 	if BrickLattice.is_square_to_grid(at.basis):
 		return BrickLattice.cells_for(_cover_boxes(part), cell, at.basis)
 	return BrickLattice.cells_for_turned(_cover_boxes(part), cell, at.basis)
@@ -4068,7 +4191,7 @@ func _cell_span(part: Lbm.PartMesh, at: Transform3D) -> Array:
 		hi = hi.max(to - Vector3i.ONE)
 	if lo.x == 0x7FFFFFFF:
 		return []
-	var cell: Vector3i = BrickLattice.to_cell(at.origin)
+	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
 	return [lo + cell, hi + cell]
 
 
@@ -4432,8 +4555,10 @@ func is_holding_figure() -> bool:
 ## A figure stands on two studs side by side, one under each leg, so it
 ## snaps the way a 1 x 2 plate does — across a pair of studs, along a
 ## row of them — and rests on the highest surface under either foot.
+## Given its [param parts] (a figure's, "part" and "at" each), never down
+## a stud past its foot ([method stud_feet_lift]): legs on two cones.
 func settle_figure(target: Vector3, rotation: int,
-		hit: BrickLattice.Hit = null) -> Transform3D:
+		hit: BrickLattice.Hit = null, parts: Array = []) -> Transform3D:
 	var basis: Basis = BrickLattice.basis_for("up", rotation)
 	var footprint := Vector2i(1, 2) if posmod(rotation, 2) == 1 else Vector2i(2, 1)
 	var snapped: Vector3 = BrickLattice.snap_to_studs(target, footprint)
@@ -4443,8 +4568,18 @@ func settle_figure(target: Vector3, rotation: int,
 	var rest_cell: int = lattice.surface_under(from.x, from.z, to.x, to.z, GROUND_CELL)
 	if hit != null and hit.is_valid() and hit.normal.y == 0:
 		rest_cell = maxi(rest_cell, hit.adjacent().y)
-	return Transform3D(basis, Vector3(snapped.x, rest_cell * BrickLattice.CELL,
-		snapped.z))
+	var at := Transform3D(basis, Vector3(snapped.x, rest_cell * BrickLattice.CELL, snapped.z))
+	at.origin.y += figure_lift(parts, at)
+	return at
+
+
+## How far a figure's [param parts] standing at [param at] are down studs
+## past their feet ([method stud_feet_lift]).
+func figure_lift(parts: Array, at: Transform3D) -> float:
+	var placed: Array = []
+	for item: Dictionary in parts:
+		placed.append([str(item["part"]), at * (item["at"] as Transform3D)])
+	return stud_feet_lift(placed) if not placed.is_empty() else 0.0
 
 
 ## Whether a figure fits where it would stand: every part's geometry to
@@ -4606,7 +4741,7 @@ func _preview_figure(origin: Vector3, direction: Vector3) -> void:
 			_ghost_valid = false
 			return
 		target = landing
-	_ghost_transform = settle_figure(target, held_rotation, hit)
+	_ghost_transform = settle_figure(target, held_rotation, hit, held_figure)
 	_ghost_valid = figure_fits(held_figure, _ghost_transform)
 	for n: int in held_figure.size():
 		if n >= _figure_ghosts.size():

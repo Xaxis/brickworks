@@ -317,23 +317,98 @@ msgstr "Commencer les nouveaux modèles sur ce sol"
 msgid "Cut away"
 msgstr "Vue en coupe"
 
-msgid "Cut along"
-msgstr "Couper selon"
+msgid "Cut away by"
+msgstr "Couper par"
 
-msgid "Along X"
-msgstr "Selon X"
+msgid "A plane along X"
+msgstr "Un plan selon X"
 
-msgid "Along Y"
-msgstr "Selon Y"
+msgid "A plane along Y"
+msgstr "Un plan selon Y"
 
-msgid "Along Z"
-msgstr "Selon Z"
+msgid "A plane along Z"
+msgstr "Un plan selon Z"
 
 msgid "Cut away the other side"
 msgstr "Couper l'autre côté"
 
 msgid "Leave a ghost of what is cut away"
 msgstr "Laisser un fantôme de la partie coupée"
+
+msgid "A plane"
+msgstr "Un plan"
+
+msgid "A box"
+msgstr "Une boîte"
+
+msgid "A sphere"
+msgstr "Une sphère"
+
+msgid "A cylinder"
+msgstr "Un cylindre"
+
+msgid "Grow it a plate"
+msgstr "Agrandir d'une plaque"
+
+msgid "Shrink it a plate"
+msgstr "Réduire d'une plaque"
+
+msgid "Cut away what is inside a box round the selection; drag its knobs to push or pull a face a plate at a time"
+msgstr "Couper ce qui est dans une boîte autour de la sélection ; ses poignées poussent ou tirent une face d'une plaque à la fois"
+
+msgid "Cut away what is inside a sphere round the selection; drag its knobs to make it bigger or smaller a plate at a time"
+msgstr "Couper ce qui est dans une sphère autour de la sélection ; ses poignées l'agrandissent ou la réduisent d'une plaque à la fois"
+
+msgid "Cut away what is inside an upright cylinder round the selection; drag its knobs to push or pull a face a plate at a time"
+msgstr "Couper ce qui est dans un cylindre debout autour de la sélection ; ses poignées poussent ou tirent une face d'une plaque à la fois"
+
+msgid "Every face of the box, sphere or cylinder out a plate"
+msgstr "Chaque face de la boîte, de la sphère ou du cylindre d'une plaque vers l'extérieur"
+
+msgid "Every face of the box, sphere or cylinder in a plate"
+msgstr "Chaque face de la boîte, de la sphère ou du cylindre d'une plaque vers l'intérieur"
+
+msgid "Cut away by a box, a sphere or a cylinder first"
+msgstr "Couper d'abord par une boîte, une sphère ou un cylindre"
+
+msgid "Grow"
+msgstr "Agrandir"
+
+msgid "Shrink"
+msgstr "Réduire"
+
+msgid "What the cut takes away: what is past a plane, or what is inside a box, a sphere or a cylinder"
+msgstr "Ce que la coupe enlève : ce qui est au-delà d'un plan, ou ce qui est dans une boîte, une sphère ou un cylindre"
+
+msgid "Bring every face of the shape in a plate"
+msgstr "Chaque face de la forme d'une plaque vers l'intérieur"
+
+msgid "Take every face of the shape out a plate (drag a knob to move one face)"
+msgstr "Chaque face de la forme d'une plaque vers l'extérieur (glisser une poignée déplace une face)"
+
+msgid "%s × %s studs, %d plates high"
+msgstr "%s × %s tenons, %d plaques de haut"
+
+msgid "%s studs across, %d plates high"
+msgstr "%s tenons de diamètre, %d plaques de haut"
+
+msgid "cut away by a box"
+msgstr "coupé par une boîte"
+
+msgid "cut away by a sphere"
+msgstr "coupé par une sphère"
+
+msgid "cut away by a cylinder"
+msgstr "coupé par un cylindre"
+
+msgid "drag a knob to push or pull its face a plate at a time, %s puts the model back"
+msgstr "glisser une poignée pousse ou tire sa face d'une plaque à la fois, %s remet le modèle"
+
+msgid "grown to %s"
+msgstr "agrandi à %s"
+
+msgid "shrunk to %s"
+msgstr "réduit à %s"
 
 msgid "X-ray"
 msgstr "Rayons X"
@@ -816,8 +891,8 @@ msgstr "Comptée dans la liste des pièces et les listes d'achat, enregistrée a
 msgid "What New, and a model opened from a file that does not say, stand on"
 msgstr "Ce sur quoi reposent Nouveau et un modèle ouvert d'un fichier qui ne le précise pas"
 
-msgid "A plane through the model, dragged along X, Y or Z, to see and work inside it"
-msgstr "Un plan à travers le modèle, glissé selon X, Y ou Z, pour voir et travailler à l'intérieur"
+msgid "A plane through the model, dragged along X, Y or Z, or a box, a sphere or a cylinder, to see and work inside it"
+msgstr "Un plan à travers le modèle, glissé selon X, Y ou Z, ou une boîte, une sphère ou un cylindre, pour voir et travailler à l'intérieur"
 
 msgid "Everything but the selection, or the sub-assembly being edited, see-through"
 msgstr "Tout sauf la sélection, ou le sous-ensemble en cours de modification, transparent"
@@ -6116,6 +6191,100 @@ msgstr "Une liste de souhaits BrickLink (.xml), à téléverser sous Wanted › 
 msgid "A Rebrickable parts list (.csv), to import into a list of your own"
 msgstr "Une liste de pièces Rebrickable (.csv), à importer dans une liste à vous"
 
+# picklist: LEGO® Pick a Brick's list, and what BrickLink's wanted list asks of each part
+msgid "LEGO® Pick a Brick list (.csv)"
+msgstr "Liste LEGO® Pick a Brick (.csv)"
+
+msgid "LEGO® element numbers and how many of each, to upload at LEGO® Pick a Brick, 400 to a file; the parts with no number known are named"
+msgstr "Les numéros d'élément LEGO® et combien de chacun, à téléverser sur LEGO® Pick a Brick, 400 par fichier ; les pièces sans numéro connu sont nommées"
+
+msgid "Exporting the Pick a Brick list…"
+msgstr "Export de la liste Pick a Brick…"
+
+msgid "LEGO® Pick a Brick"
+msgstr "LEGO® Pick a Brick"
+
+msgid "A list of LEGO® element numbers (.csv), to upload at LEGO® Pick a Brick: the parts it has no number for are named"
+msgstr "Une liste de numéros d'élément LEGO® (.csv), à téléverser sur LEGO® Pick a Brick : les pièces sans numéro sont nommées"
+
+msgid "BrickLink wanted list: new or used, which of your wanted lists, and an email when one is listed"
+msgstr "Liste de souhaits BrickLink : neuf ou d'occasion, laquelle de vos listes, et un e-mail quand une pièce est mise en vente"
+
+msgid "Save the list"
+msgstr "Enregistrer la liste"
+
+msgid "Condition"
+msgstr "État"
+
+msgid "New or used"
+msgstr "Neuf ou d'occasion"
+
+msgid "New only"
+msgstr "Neuf uniquement"
+
+msgid "Used only"
+msgstr "D'occasion uniquement"
+
+msgid "The condition BrickLink looks for in each part"
+msgstr "L'état que BrickLink recherche pour chaque pièce"
+
+msgid "Wanted list"
+msgstr "Liste de souhaits"
+
+msgid "Main wanted list"
+msgstr "Liste de souhaits principale"
+
+msgid "Another of your wanted lists: its ID, the number after wantedMoreID= in its address on BrickLink. Empty for your main wanted list"
+msgstr "Une autre de vos listes de souhaits : son identifiant, le nombre après wantedMoreID= dans son adresse sur BrickLink. Vide pour votre liste principale"
+
+msgid "Empty for your main list. Another: the number after wantedMoreID= in its address on BrickLink"
+msgstr "Vide pour votre liste principale. Une autre : le nombre après wantedMoreID= dans son adresse sur BrickLink"
+
+msgid "Email me when one is listed for sale"
+msgstr "M'envoyer un e-mail quand une pièce est mise en vente"
+
+msgid "new only"
+msgstr "neuf uniquement"
+
+msgid "used only"
+msgstr "d'occasion uniquement"
+
+msgid "into wanted list %s"
+msgstr "dans la liste de souhaits %s"
+
+msgid "BrickLink emails when one is listed"
+msgstr "BrickLink envoie un e-mail quand une pièce est mise en vente"
+
+msgid "1 element"
+msgstr "1 élément"
+
+msgid "%d elements"
+msgstr "%d éléments"
+
+msgid "%s, %s, to upload at LEGO® Pick a Brick"
+msgstr "%s, %s, à téléverser sur LEGO® Pick a Brick"
+
+msgid "in %d files of %d lines at most, as Pick a Brick takes them"
+msgstr "en %d fichiers de %d lignes au plus, comme Pick a Brick les accepte"
+
+msgid "Pick a Brick takes %d of an element: add by hand %s"
+msgstr "Pick a Brick accepte %d par élément : à ajouter à la main %s"
+
+msgid "%d more of %s"
+msgstr "%d de plus de %s"
+
+msgid "not on it, with no LEGO® element number known: %s"
+msgstr "absentes, sans numéro d'élément LEGO® connu : %s"
+
+msgid "%d × %s in %s (%s)"
+msgstr "%d × %s en %s (%s)"
+
+msgid "and %s more"
+msgstr "et %s de plus"
+
+msgid "no LEGO® element number is known for any part of this model, so there is nothing for Pick a Brick"
+msgstr "aucun numéro d'élément LEGO® n'est connu pour les pièces de ce modèle, il n'y a donc rien pour Pick a Brick"
+
 msgid "Find in the model: a part's number, its name, a colour…"
 msgstr "Chercher dans le modèle : numéro de pièce, nom, couleur…"
 
@@ -10741,3 +10910,231 @@ msgstr "Automatique : le mode simplifié, dont ces graphismes ont besoin (%s). P
 
 msgid "From the next start."
 msgstr "À partir du prochain démarrage."
+
+# A model into this one (APP_UX4 intomodel): File, Import, Into this model…, the
+# library's Put in this model, and what the status bar says while it is in hand.
+
+msgid "Into this model…"
+msgstr "Dans ce modèle…"
+
+msgid "A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes"
+msgstr "Un modèle enregistré, un exemple, un fichier ou un modèle de la bibliothèque, mis dans ce modèle comme sous-ensemble avec ses propres étapes : choisissez-le, puis cliquez où il va"
+
+msgid "Put in this model, then click where it goes"
+msgstr "Mettre dans ce modèle, puis cliquer où il va"
+
+msgid "could not read “%s”: %s"
+msgstr "impossible de lire « %s » : %s"
+
+msgid "Reading %s…"
+msgstr "Lecture de %s…"
+
+msgid "could not put it in this model: %s"
+msgstr "impossible de le mettre dans ce modèle : %s"
+
+msgid "click where it goes, %s turns, Esc puts away"
+msgstr "cliquez où il va, %s tourne, Esc range"
+
+msgid "its 1 step kept"
+msgstr "son étape gardée"
+
+msgid "its %d steps kept"
+msgstr "ses %d étapes gardées"
+
+msgid "left out, not in the library: %s"
+msgstr "laissées de côté, absentes de la bibliothèque : %s"
+
+msgid "Put in this model"
+msgstr "Mettre dans ce modèle"
+
+msgid "In your hand in this model as one sub-assembly with its steps, then a click where it goes; credit its maker"
+msgstr "En main dans ce modèle, comme un seul sous-ensemble avec ses étapes, puis un clic où il va ; créditez son auteur"
+
+msgid "Its maker kept every right to it: Open builds it, and it cannot go into another model without their leave"
+msgstr "Son auteur en garde tous les droits : Ouvrir permet de le construire, et il ne peut aller dans un autre modèle sans son accord"
+
+msgid "Fetching %s from the library…"
+msgstr "Récupération de %s depuis la bibliothèque…"
+
+msgid "could not put %s in this model: %s"
+msgstr "impossible de mettre %s dans ce modèle : %s"
+
+msgid "credit %s"
+msgstr "crédit : %s"
+
+msgid "it is kept back while a design is scored"
+msgstr "il est mis de côté pendant qu'un design est évalué"
+
+msgid "its maker kept every right to it"
+msgstr "son auteur en garde tous les droits"
+
+msgid "it has no parts"
+msgstr "il n'a aucune pièce"
+
+msgid "none of the %d parts in it are in the library (%s)"
+msgstr "aucune de ses %d pièces n'est dans la bibliothèque (%s)"
+
+msgid "none of its parts could be drawn"
+msgstr "aucune de ses pièces n'a pu être dessinée"
+
+msgid "put in %s, %s"
+msgstr "%s ajouté, %s"
+
+msgid "put in %s"
+msgstr "%s ajouté"
+# View, Split: the room it makes at a laptop's size (APP_UX4, quiet)
+msgid "Short of room, the right-hand column folds to its tab while the second view is on"
+msgstr "Faute de place, la colonne de droite se replie sur son onglet tant que la seconde vue est affichée"
+
+# What's This (Help, Shift+F1), and where the part in hand goes, on the status bar (whatsthis).
+
+msgid "What's This?"
+msgstr "Qu'est-ce que c'est ?"
+
+msgid "Click any button, field or panel next to hear what it does, without doing it"
+msgstr "Cliquer ensuite sur un bouton, un champ ou un panneau : il dit ce qu'il fait, au lieu de le faire"
+
+msgid "What's This: click any button, field or panel to hear what it does · Esc to stop"
+msgstr "Qu'est-ce que c'est : cliquer sur un bouton, un champ ou un panneau pour savoir ce qu'il fait · Esc pour arrêter"
+
+msgid "Only the %s parts in the bin: %d of them"
+msgstr "Seulement les pièces de type %s dans le bac : %d en tout"
+
+msgid "Parts of every kind in the bin, not one kind alone; with a search typed, all it finds"
+msgstr "Des pièces de tous les types dans le bac, pas d'un seul ; avec une recherche, toutes celles qu'elle trouve"
+
+msgid "Greyed now: %s"
+msgstr "Indisponible pour l'instant : %s"
+
+msgid "Greyed now"
+msgstr "Indisponible pour l'instant"
+
+msgid "In use now"
+msgstr "En cours d'utilisation"
+
+msgid "On now"
+msgstr "Activé"
+
+msgid "Off now"
+msgstr "Désactivé"
+
+msgid "The model"
+msgstr "Le modèle"
+
+msgid "A click here does what the tool in use does:"
+msgstr "Un clic ici fait ce que fait l'outil en cours :"
+
+msgid "x %s, z %s studs"
+msgstr "x %s, z %s tenons"
+
+msgid "1 plate up"
+msgstr "1 plaque plus haut"
+
+msgid "%s plates down"
+msgstr "%s plaques plus bas"
+
+msgid "1 plate down"
+msgstr "1 plaque plus bas"
+
+msgid "on the ground"
+msgstr "au sol"
+
+msgid "Where the part in hand goes if put down now: studs across (x) and back (z) from the middle of the floor, and plates up from the ground"
+msgstr "Où irait la pièce en main, posée maintenant : tenons en travers (x) et vers l'arrière (z) depuis le milieu du sol, et plaques au-dessus du sol"
+
+msgid "Select a part first"
+msgstr "Sélectionner d'abord une pièce"
+
+msgid "Put a part on the baseplate first"
+msgstr "Poser d'abord une pièce sur la plaque de base"
+
+msgid "Choose a step on the timeline first"
+msgstr "Choisir d'abord une étape sur la chronologie"
+
+msgid "Stand the model on a baseplate first"
+msgstr "Poser d'abord le modèle sur une plaque de base"
+
+msgid "Nothing to undo yet"
+msgstr "Rien à annuler pour l'instant"
+
+msgid "Nothing to redo"
+msgstr "Rien à rétablir"
+
+msgid "Nothing is hidden"
+msgstr "Rien n'est masqué"
+
+msgid "Nothing is locked"
+msgstr "Rien n'est verrouillé"
+
+msgid "Select a sub-assembly first"
+msgstr "Sélectionner d'abord un sous-ensemble"
+
+msgid "Not editing inside a sub-assembly"
+msgstr "Pas en train de modifier un sous-ensemble"
+
+msgid "Select a section first"
+msgstr "Sélectionner d'abord une section"
+
+msgid "Turn on Cut away first"
+msgstr "Activer d'abord la vue en coupe"
+
+msgid "Not now"
+msgstr "Pas maintenant"
+
+msgid "This model is shared to look at"
+msgstr "Ce modèle est partagé pour être regardé"
+
+msgid "The model is still opening"
+msgstr "Le modèle est encore en cours d'ouverture"
+
+msgid "The assistant is off in Settings"
+msgstr "L'assistant est désactivé dans les Réglages"
+
+msgid "Folds the panel to this strip at its edge, giving the model its room; a click on the strip brings it back"
+msgstr "Replie le panneau sur cette bande à son bord, pour laisser la place au modèle ; un clic sur la bande le fait revenir"
+
+msgid "Opens the panel this strip stands for; one sharing its edge folds to its own strip"
+msgstr "Ouvre le panneau de cette bande ; celui qui partage son bord se replie sur sa propre bande"
+
+msgid "A panel of the window: click a control in it to hear what that does. The strip at its edge folds it away and brings it back"
+msgstr "Un panneau de la fenêtre : cliquer sur un élément pour savoir ce qu'il fait. La bande à son bord le replie et le fait revenir"
+
+msgid "In the %s panel; it says nothing of itself but its name"
+msgstr "Dans le panneau %s ; il ne dit de lui-même que son nom"
+
+msgid "Sends what is written above to the assistant, which designs it and builds it in the model; with parts chosen over the box, it works on those"
+msgstr "Envoie ce qui est écrit au-dessus à l'assistant, qui le conçoit et le construit dans le modèle ; avec des pièces choisies au-dessus du champ, il travaille sur celles-ci"
+
+msgid "Checks the key pasted above with Anthropic and keeps it, so the assistant designs on your own Anthropic account"
+msgstr "Vérifie la clé collée au-dessus auprès d'Anthropic et la garde, pour que l'assistant conçoive sur votre propre compte Anthropic"
+
+msgid "Opens Anthropic's Console in the browser, at the page where an account makes its keys"
+msgstr "Ouvre la Console d'Anthropic dans le navigateur, à la page où un compte crée ses clés"
+
+msgid "Shows how the Claude desktop and mobile apps add Brickworks, with the address to paste"
+msgstr "Montre comment les applications Claude pour ordinateur et mobile ajoutent Brickworks, avec l'adresse à coller"
+
+msgid "Shows this browser's own address, to add to Claude by hand: the way before Claude could sign in"
+msgstr "Montre l'adresse propre à ce navigateur, à ajouter à Claude à la main : la façon de faire avant que Claude puisse se connecter"
+# Build it a part at a time (partbypart, APP_UX4 7): the step player's choice.
+
+msgid "One part"
+msgstr "Une pièce"
+
+msgid "Whole step"
+msgstr "Étape entière"
+
+msgid "Build it a part at a time: the next part alone, in its colours"
+msgstr "Construire pièce par pièce : la pièce suivante seule, dans ses couleurs"
+
+msgid "Build it a step at a time, as the booklet shows it"
+msgstr "Construire étape par étape, comme la notice la montre"
+
+msgid "%d of %d in this step"
+msgstr "%d sur %d dans cette étape"
+
+msgid "The next part (right arrow, space)"
+msgstr "La pièce suivante (flèche droite, espace)"
+
+msgid "Take the last part off (left arrow)"
+msgstr "Retirer la dernière pièce (flèche gauche)"

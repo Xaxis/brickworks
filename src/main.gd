@@ -225,6 +225,13 @@ var _build_page: int = 0
 ## timeline is laid out for the player.
 var _build_faded: int = 0
 var _build_key: int = 0
+## Building a part at a time (BuildMode.by_part): the part of the page on
+## screen (BuildSteps.parts, from 1), and the part whose fading the world
+## draws; 0 for the page whole. The page the view was last framed on (-1:
+## none since Build it), so a part put down leaves a view turned by hand.
+var _build_part: int = 0
+var _build_faded_part: int = 0
+var _build_framed: int = -1
 ## Build it tapped while the steps were being worked out: the page it asked
 ## for (-1, where this device left it), taken up when they are.
 const NO_BUILD_WANTED := -2
@@ -2786,8 +2793,11 @@ func _enter_view() -> void:
 	_build_mode = BuildMode.new()
 	_build_mode.thumbnails = _thumbnails
 	$HUD.add_child(_build_mode)
-	_build_mode.next_wanted.connect(func() -> void: _build_go(_build_page + 1, true))
-	_build_mode.back_wanted.connect(func() -> void: _build_go(_build_page - 1))
+	_build_mode.next_wanted.connect(_build_next)
+	_build_mode.back_wanted.connect(_build_back)
+	# A part at a time or the step whole, chosen on the page: the step it is
+	# on, from its first part.
+	_build_mode.by_part_changed.connect(func(_on: bool) -> void: _build_go(_build_page))
 	_build_mode.close_wanted.connect(_leave_build)
 	_build_mode.page_wanted.connect(_build_go)
 	for view: StepComments in [_share_view.comments, _build_mode.comments]:
@@ -3248,6 +3258,7 @@ func _enter_build(page: int = -1) -> void:
 		page = int(BuildSteps.recall(_viewing).get("page", 0))
 	# A frame for the bars to be laid out, so the view is framed between them.
 	await get_tree().process_frame
+	_build_framed = -1
 	_build_go(page)
 	if changed > 0 and page >= changed:
 		_build_mode.tell_changed(changed)
@@ -3287,8 +3298,10 @@ func _ready_the_pages() -> void:
 ## parts along the bottom; the view the booklet would draw it from. And
 ## kept as where this device is on the link. [param stepped]: turned to
 ## by Next (the button, a swipe, the keys) from the page before, which on
-## the last page is the model built (_count_built).
-func _build_go(page: int, stepped: bool = false) -> void:
+## the last page is the model built (_count_built). Building a part at a
+## time, the page at its [param part] (a negative, its last): the parts
+## before it faded with what was built, it alone in its colours.
+func _build_go(page: int, stepped: bool = false, part: int = 1) -> void:
 	if _build_pages == null or not _build_mode.is_open():
 		return
 	if page > _build_pages.last():
@@ -3301,6 +3314,11 @@ func _build_go(page: int, stepped: bool = false) -> void:
 	page = _build_pages.clamped(page)
 	var from: int = _build_page
 	_build_page = page
+	part = _build_pages.clamped_part(page, part) if _build_mode.by_part else 0
+	# A part put down, or the way of building changed, on the page the view
+	# was framed on: the view as the builder left it.
+	var keep_view: bool = page == from and page == _build_framed and (part > 0 or _build_part > 0)
+	_build_part = part
 	# The last step reached from the one before it: built. Not a jump on
 	# the progress bar, nor coming back to a place kept on it.
 	if stepped and page >= 1 and page == _build_pages.last() and from == page - 1:
@@ -3311,27 +3329,31 @@ func _build_go(page: int, stepped: bool = false) -> void:
 	# every brick asked whether it was shown and faded, and every batch
 	# holding one that changed written again whole — on 4,000 parts most
 	# of a slowed phone's page turn.
-	if _world.reveal_upto(_build_pages.order, _build_pages.count(page), _build_key) \
-			and _world.set_faded_in_order(_build_pages.fading(_build_faded, page)):
+	if _world.reveal_upto(_build_pages.order, _build_pages.count(page, part), _build_key) \
+			and _world.set_faded_in_order(_build_pages.fading(_build_faded, page,
+				_build_faded_part, part)):
 		_build_faded = page
 	else:
 		# Under a cut or x-ray, which the world draws only from a set.
 		# Faded first: it only marks the batches, and showing them writes
 		# each once, faded and shown together, rather than once each.
-		_world.set_faded(_build_pages.faded(page))
-		_world.show_only(_build_pages.shown(page))
+		_world.set_faded(_build_pages.faded(page, part))
+		_world.show_only(_build_pages.shown(page, part))
 		_build_faded = page
+	_build_faded_part = part
 	lap = _lap(took, "world", lap)
-	_build_outline.show_selection(_build_pages.fresh(page))
+	_build_outline.show_selection(_build_pages.fresh(page, part))
 	lap = _lap(took, "outline", lap)
-	var view: Dictionary = _build_pages.view(page)
-	_camera.look_from(view["from"])
-	# The ball round a flat box is roomy already: a step on a baseplate
-	# framed at the usual 1.25 sat in the middle third of a phone.
-	_camera.frame(view["box"], 1.0)
+	if not keep_view:
+		var view: Dictionary = _build_pages.view(page)
+		_camera.look_from(view["from"])
+		# The ball round a flat box is roomy already: a step on a baseplate
+		# framed at the usual 1.25 sat in the middle third of a phone.
+		_camera.frame(view["box"], 1.0)
+		_build_framed = page
 	lap = _lap(took, "view", lap)
 	_build_mode.show_page(page, _build_pages.last(), _build_pages.caption(page),
-		_build_pages.note(page), _build_pages.lots(page))
+		_build_pages.note(page), _build_pages.lots(page, part), part, _build_pages.parts(page))
 	lap = _lap(took, "page", lap)
 	BuildSteps.remember(_viewing, page, true, _view_version)
 	_lap(took, "kept", lap)
@@ -3356,6 +3378,24 @@ func _build_go(page: int, stepped: bool = false) -> void:
 	# the tap to the frame (tools/web/share_steps_flow.mjs).
 	if OS.has_feature("web") and not RenderingServer.frame_post_draw.is_connected(_build_drawn):
 		RenderingServer.frame_post_draw.connect(_build_drawn, CONNECT_ONE_SHOT)
+
+
+## Next, by the button, a swipe or a key: the page's next part, building a
+## part at a time, and from its last part the next page's first.
+func _build_next() -> void:
+	if _build_pages != null and _build_part > 0 and _build_part < _build_pages.parts(_build_page):
+		_build_go(_build_page, true, _build_part + 1)
+	else:
+		_build_go(_build_page + 1, true)
+
+
+## Back: one part taken off, building a part at a time, and from a page's
+## first part the page before as finished, at its last.
+func _build_back() -> void:
+	if _build_part > 1:
+		_build_go(_build_page, false, _build_part - 1)
+	else:
+		_build_go(_build_page - 1, false, -1)
 
 
 func _build_drawn() -> void:
@@ -3452,9 +3492,11 @@ func _leave_build() -> void:
 		return
 	_build_mode.close()
 	_ahead_turn += 1
-	if not (_build_pages != null and _world.set_faded_in_order(_build_pages.fading(_build_faded, 0))):
+	if not (_build_pages != null and _world.set_faded_in_order(_build_pages.fading(_build_faded, 0,
+			_build_faded_part, 0))):
 		_world.set_faded({})
 	_build_faded = 0
+	_build_faded_part = 0
 	_build_outline.show_selection({})
 	_camera.seen = _model_rect
 	_share_view.show_bar(true)
@@ -3513,7 +3555,7 @@ func build_state() -> Dictionary:
 	if not _build_mode.is_open():
 		return said
 	said["faded"] = _world.faded_ids().size()
-	said["fresh"] = _build_pages.fresh(_build_page).size() if _build_pages != null else 0
+	said["fresh"] = _build_pages.fresh(_build_page, _build_part).size() if _build_pages != null else 0
 	said["turn_ms"] = roundi(_build_turned_us / 1000.0)
 	said["turn_most_ms"] = roundi(_build_turned_most_us / 1000.0)
 	said["turn_most"] = _build_turned_most
@@ -3521,7 +3563,7 @@ func build_state() -> Dictionary:
 	said["turn_frames"] = _turn_frames
 	said["told_laps"] = _told_laps
 	# Counted by the pages, not by asking every brick twice a second.
-	said["shown"] = _build_pages.standing(_build_page) if _build_pages != null else 0
+	said["shown"] = _build_pages.standing(_build_page, _build_part) if _build_pages != null else 0
 	# ...and "turned" where the step's designer turned it (BuildSteps.view).
 	var from: Vector3 = _build_pages.view(_build_page)["from"] if _build_pages != null \
 		else BookletStudio.FRONT
@@ -4391,13 +4433,13 @@ func _looking_key(key: InputEventKey) -> bool:
 	if _build_mode != null and _build_mode.is_open():
 		match key.keycode:
 			KEY_RIGHT, KEY_SPACE, KEY_PAGEDOWN, KEY_ENTER:
-				_build_go(_build_page + 1, true)
+				_build_next()
 			KEY_LEFT, KEY_PAGEUP, KEY_BACKSPACE:
-				_build_go(_build_page - 1)
+				_build_back()
 			KEY_HOME:
 				_build_go(0)
 			KEY_END:
-				_build_go(_build_pages.last() if _build_pages != null else 0)
+				_build_go(_build_pages.last() if _build_pages != null else 0, false, -1)
 			KEY_ESCAPE:
 				_leave_build()
 			KEY_F, KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, \
@@ -9854,6 +9896,13 @@ func _input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
+## File, Render queue…'s panel while it is up, else null: found by its group
+## (RenderQueue.GROUP), so its script loads only when it is first asked for.
+func _render_queue_up() -> Control:
+	var queue: Control = get_tree().get_first_node_in_group("render_queue") as Control
+	return queue if queue != null and queue.is_visible_in_tree() else null
+
+
 func _escape_closes_something() -> bool:
 	return _grabbing or (_marquee != null and _marquee.is_drawing()) \
 		or (_controls_made != null and _controls_made.visible) \
@@ -9865,6 +9914,7 @@ func _escape_closes_something() -> bool:
 		or (_elements_made != null and _elements_made.visible) \
 		or not _builder.selection.is_empty() \
 		or (_inventory_made != null and _inventory_made.is_showing()) \
+		or _render_queue_up() != null \
 		or (_steps != null and _steps.is_playing_back()) \
 		or (_build_mode != null and _build_mode.is_open()) \
 		or (_verbs != null and _verbs.mode != "select") \
@@ -10212,6 +10262,12 @@ func _key_pressed(key: InputEventKey) -> void:
 			# hides away and left the list up.
 			if _inventory_made != null and _inventory_made.is_showing():
 				_inventory_made.hide_list()
+				return
+			# File, Render queue…'s panel, over the model's corner as these
+			# are: Escape left it up (APP_UX4, quiet). What is queued goes on.
+			var queue: Control = _render_queue_up()
+			if queue != null:
+				queue.call("close")
 				return
 			# Back to Select with nothing in hand, from placing or any
 			# other tool — and on down the ladder in the same press, so

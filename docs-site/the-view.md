@@ -1,5 +1,5 @@
 ---
-tools: view_model, set_floor, in_view
+tools: view_model, set_floor, in_view, view_board
 ai: Turning, sliding and zooming the camera, navigation presets, cutting away and X-ray, stress colours, and the floor the model stands on. An assistant looks from a side with view_model and sets the floor with set_floor.
 rules:
   - view_model looks from corner, top, front, back, left or right; corner shows the shape best.
@@ -48,7 +48,7 @@ ui:view cube
 
 **View › Split** ([[F8]]) puts a second view of the model beside the first, square on from the front. **Front**, **Top**, **Side** and **Back** at its top turn it, **Fit** frames the whole model in it, and **×** goes back to one view. It starts looking where the main view looks, at the same size, and follows it until you move it: the wheel over it zooms it, and a drag over it slides it, without moving the main view. A right drag over it does nothing, since a view square on cannot turn. Once moved it keeps its own zoom and place, and the app remembers them with the split.
 
-The second view works like the first. A part in hand shows in both. A click there puts the part down or picks a part. A box drawn there selects what it surrounds. Connect's points and the rotate and move handles are drawn in both views and can be taken in either. A part for a side stud or under an overhang is easier to aim square on. The split takes its room from the model's, never from the parts bin or the panels, and the app keeps it on for next time. On a phone, a tablet held upright, or a window too small for two views, it is greyed.
+The second view works like the first. A part in hand shows in both. A click there puts the part down or picks a part. A box drawn there selects what it surrounds. Connect's points and the rotate and move handles are drawn in both views and can be taken in either. A part for a side stud or under an overhang is easier to aim square on. The split takes its room from the model's, never from the parts bin, and the app keeps it on for next time. Where the model's room is too narrow for two views, as on a laptop with the assistant open, the right-hand column (the assistant or Properties) folds to its tab while the split is on, and opens again when it goes. On a phone, a tablet held upright, or a window too small for two views even so, it is greyed.
 
 <!-- covers
 ui:split view
@@ -57,10 +57,13 @@ ui:split view
 ## Cut away and X-ray {#see-inside}
 
 - **View › Cut away** ([[K]]) puts a plane through the model. Drag the strip's slider to move it, choose **X**, **Y** or **Z**, **Flip** to cut the other side away, and **Ghost** to leave a faint copy of what is cut.
+- **View › Cut away by › A box**, **A sphere** or **A cylinder** takes a shape out of the model: round the selection, or with nothing selected the middle of the model from half way up. Drag the knob on any face to push or pull it a plate at a time, or turn the wheel over it. Shift-drag moves the whole shape, and Esc or a right-click puts a drag back. **Grow** and **Shrink** in the strip move every face at once, and its first list swaps the shape for another or for the plane. Where the cut goes through a part, the face it leaves is filled in the part's colour, so a wall reads as a wall.
+- The cut, a plane or a shape, is saved with the model and is there again when you open it. Other LDraw programs ignore it, and Render and the instructions always draw the model whole.
 - **View › X-ray** ([[I]] with a part selected, or inside a sub-assembly) shows the selection through everything in front of it.
 
 <!-- covers
 ui:cut-away
+ui:cut away by a shape
 ui:x-ray
 -->
 
@@ -98,6 +101,14 @@ An assistant sees it with `in_view`: the picture, where it lies, and the model d
 
 <!-- covers
 ui:reference picture
+-->
+
+## What an assistant sees {#assistant-sees}
+
+An assistant looks at the model as you do. `view_model` draws it from one side; `view_board` draws up to six sides (front, back, left, right, top and the corner) in one labelled picture, each as `view_model` draws it. It can edge parts it names in magenta and ghost the rest, draw parts see-through as X-ray does, or show the model as built to a step with that step's new parts edged. It changes nothing.
+
+<!-- covers
+lib:what a session sees over mcp
 -->
 
 ## Pointers and speed {#pointers}
