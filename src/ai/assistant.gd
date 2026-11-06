@@ -7534,8 +7534,7 @@ func _read_model(args: Dictionary) -> Model:
 				prisms.append(raw)
 			else:
 				plain.append(raw)
-		for raw: Variant in Patterns.expand(plain, written, trouble,
-				library):
+		for raw: Variant in _expanded_patterns(plain, written, trouble):
 			var one: Dictionary = raw
 			if one.has("dress"):
 				# A fill's 1x1 with a side stud, marked with the way out:
@@ -12402,7 +12401,93 @@ func _sculpt_ready(args: Dictionary) -> void:
 					_keep_sculpt(_sculpt_key(raw, feet), laid)
 			Brickify.end_laying(self)
 			job.end()
+	await _shapes_ready(args)
 	await Brickify.laid()
+
+
+## The shapes said, as the read will expand them (Patterns.expand), by what
+## they are expanded from ([method _patterns_key]): {"made", "trouble",
+## "said", "turned"}. Expanded in the read, on the main thread, the
+## Charger's body of 947 parts held the window 7.7 s on the desktop, every
+## check and submit of it, and a browser several times that: a page whose
+## thread is held that long says nothing to the relay, which then calls it
+## closed (bigedit, 2026-11-06).
+var _patterns_laid: Dictionary = {}
+
+
+## The patterns a read expands with Patterns.expand: all but a face of studs
+## turned out and a prism, which need the parts' own geometry (_read_model).
+static func _plain_patterns(patterns: Array) -> Array:
+	return patterns.filter(func(raw: Variant) -> bool:
+		var kind: String = str((raw as Dictionary).get("pattern", "")).to_lower() \
+			if raw is Dictionary else ""
+		return kind != "studs_out" and kind != "prism")
+
+
+static func _patterns_key(plain: Array, written: Array) -> String:
+	return JSON.stringify([plain, written]).sha256_text()
+
+
+## [param args]' shapes expanded on a worker, as the read will expand them,
+## so the read ([method _expanded_patterns]) finds them done: a coroutine,
+## called by [method _sculpt_ready] once its sculpts are laid. One laying at
+## a time with Brickify's, its tables filled first (Brickify.warm), and every
+## part a shape may lay here first, as a sculpt's are. A design with no
+## shape is read as it was: its patterns are quick.
+func _shapes_ready(args: Dictionary) -> void:
+	if library == null or OS.has_feature("nothreads"):
+		return
+	var read: Dictionary = _with_sculpts(_with_figures(_with_shells(args, [], []), [], []), [], [])
+	var patterns: Array = read.get("patterns", []) if read.get("patterns") is Array else []
+	var plain: Array = _plain_patterns(patterns)
+	if not plain.any(func(raw: Variant) -> bool:
+			return raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() \
+				== "shape"):
+		return
+	var written: Array = read.get("bricks", []) if read.get("bricks") is Array else []
+	var key: String = _patterns_key(plain, written)
+	if _patterns_laid.has(key):
+		return
+	var wanted := Model.new()
+	for id: String in Brickify.parts_needed(library):
+		wanted.placements.append(Placement.from_dict({"part": id}))
+	await _ensure_parts(wanted)
+	progress.emit("laying its shapes")
+	var job: Working.Job = Working.begin("Laying its shapes…")
+	await Brickify.begin_laying(self)
+	await Brickify.warm(library, job)
+	# Its own copies: the worker reads them while this frame goes on.
+	var own_plain: Array = plain.duplicate(true)
+	var own_written: Array = written.duplicate(true)
+	var parts: PartLibrary = library
+	var laid: Variant = await WorkerTasks.awaited(func() -> Variant:
+		var trouble: Array = []
+		var made: Array = Patterns.expand(own_plain, own_written, trouble, parts)
+		return {"made": made, "trouble": trouble, "said": Shapes.said.duplicate(true),
+			"turned": Shapes.turned}, "lay a design's shapes", library)
+	Brickify.end_laying(self)
+	job.end()
+	# A worker that failed leaves nothing: expanded in the read instead,
+	# slow, but an answer (as _checked does).
+	if laid is Dictionary and not (laid as Dictionary).is_empty():
+		if _patterns_laid.size() >= SCULPTS_KEPT:
+			_patterns_laid.erase(_patterns_laid.keys()[0])
+		_patterns_laid[key] = laid
+
+
+## What Patterns.expand makes of [param plain] over [param written], with
+## its trouble in [param trouble] and what its shapes said in Shapes.said and
+## Shapes.turned: as [method _shapes_ready] laid it, or expanded here.
+func _expanded_patterns(plain: Array, written: Array, trouble: Array) -> Array:
+	var laid: Variant = _patterns_laid.get(_patterns_key(plain, written)) \
+		if not _patterns_laid.is_empty() else null
+	if not laid is Dictionary:
+		return Patterns.expand(plain, written, trouble, library)
+	trouble.append_array(laid["trouble"])
+	Shapes.said = (laid["said"] as Array).duplicate(true)
+	Shapes.turned = int(laid["turned"])
+	# A copy: the read marks and takes keys off what it is given.
+	return (laid["made"] as Array).duplicate(true)
 
 
 ## The joint a shell's panels hang on, as [Shells] wants it: a clip on a

@@ -996,7 +996,7 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 		"set_floor":
 			return _set_floor(input)
 		"edit_steps":
-			return _edit_steps(input)
+			return await _edit_steps(input)
 		"booklet_layout":
 			return await _booklet_layout(input)
 		"edit_booklet":
@@ -1214,14 +1214,27 @@ func _one_undo_since(depth: int) -> void:
 # -- the build steps ------------------------------------------------------------
 
 
+## Parts from which edit_steps works its steps out paced (plan_paced).
+const STEPS_PACED_FROM := 300
+
+
 func _edit_steps(input: Dictionary) -> String:
 	var world: BrickWorld = app.get("_world")
 	var library: PartLibrary = app.get("_library")
 	var store: ModelStore = app.get("_store")
 	var shell: Shell = app.get("_shell")
 	var op: String = str(input.get("op", "list"))
-	var steps: Array[Instructions.Step] = Instructions.plan(world, library, store.scenery, {},
-		true)
+	var steps: Array[Instructions.Step] = []
+	# Worked out a slice a frame on a big model: in one go, the Charger's
+	# 1,083 parts held the window a second on the desktop and several in a
+	# browser, whose page says nothing to the relay meanwhile (bigedit).
+	if world.brick_count() >= STEPS_PACED_FROM:
+		var job: Working.Job = Working.begin("Setting out the steps…")
+		await job.shown()
+		steps = await Instructions.plan_paced(world, library, store.scenery, {}, job, true)
+		job.end()
+	else:
+		steps = Instructions.plan(world, library, store.scenery, {}, true)
 	if steps.is_empty():
 		return "There is nothing built to have steps."
 	match op:
