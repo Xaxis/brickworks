@@ -259,6 +259,10 @@ func show_for(mesh: MeshFile) -> void:
 	_status.text = ""
 	_set_landed(false)
 	_set_enabled(true)
+	# The first time, this makes My collection, a compile that has to come
+	# before Brickify's starts on the worker: Godot's script cache is held for
+	# the whole of that, and made a frame later the collection waited it out,
+	# 4 s (leaves3, 2026-11-06).
 	_tell_owned()
 	_show_model()
 	_on_up_changed()
