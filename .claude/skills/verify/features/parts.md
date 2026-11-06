@@ -229,7 +229,10 @@ geometry in front of them.
   within each, the most used. From the catalogue alone (connector counts,
   and a clip or a bar by its name, since the catalogue counts rounds, not
   their width), so it answers on the web before any geometry. What is typed
-  narrows it ("axle" among a beam's fits). It does not yet know which of
+  narrows it ("axle" among a beam's fits), said in its note ("What fits
+  Technic Beam 5, with “axle”"); chosen, it starts from no words, and the
+  words typed for the rest of the bin come back when it is left
+  (`PartsBin._words_for`, as Like this). It does not yet know which of
   the selection's connectors are taken. `fits_probe`: twelve pairs, each
   with a part that fits in the first five, about 140 ms an answer over
   29,668 parts (appux371 B5, 2026-10-30). A double-click on one of its
@@ -248,9 +251,16 @@ geometry in front of them.
   footprint by use alone, nearby kinds among them (brick, plate and tile
   beside each other: 3001's Plate 2 x 4 is 7th, not 36th behind rare
   moulds); its kind in other sizes, the nearest first; its footprint among
-  parts with studs. Within each, the most used (`commonness`). Prints and assemblies take
+  parts with studs. Within each, the most used (`commonness`); every part
+  alike ranked, none cut (cut at 300, a printed torso's were its own prints
+  alone). Prints and assemblies take
   their plain part's kind and fold under it; a print chosen opens its
-  fold. Typed words narrow it. A double-click on a tile swaps the
+  fold. Chosen, it starts from no words: what was typed for All stays out
+  of the box, which says "Narrow these parts…", and comes back when All or
+  a category is chosen; Fits and Like this each start empty
+  (`PartsBin._words_for`). Words typed in it narrow it, said in its note
+  ("Parts like Brick 2 x 4, with “curved”"; none: "No part like … has
+  “…”"). A double-click on a tile swaps the
   selection for it (`EditVerbs.replace`, one undo, pose, colour, step and
   sub-model kept; the list stays on the part it was asked about); with a
   finger a tap swaps it and the sheet stays open. Over MCP,
@@ -263,6 +273,13 @@ geometry in front of them.
   in one action and one undo. `likethis_phone_probe` (390 x 844) and
   `likethis_tablet_probe` (1024 x 768) do it with taps, the chip a
   fingertip, the sheet still open after the swap (likethis, B5).
+  `likewords_probe` (1280 x 720, PROBE_SIZE=1400x900 too): "1x4 brick" typed
+  and a wall of four put down by clicks, then a 2 x 4 brick on it clicked and
+  Like this chosen: the box empty, Plate 2 x 4 in the first 12, the 12 as on
+  an empty search, no two the same mould printed or not; "curved" typed:
+  every tile curved and like it, the curved slopes 93606 and 61068 among
+  them, said; All puts "1x4 brick" and its list back; Fits the same, "plate"
+  narrowing it, said (APP_UX4 likewords).
 - `previews` (`src/ui/part_thumbnails.gd`, `src/ui/thumb_tile.gd`): each cell is
   a `ThumbTile`. A colour picked points each tile at the new colour
   (`show_part(..., keep)`) and it keeps the picture it had until the new one
@@ -586,6 +603,7 @@ tools/probe.sh fits_probe                     # Fits: twelve pairs each in the f
 tools/probe.sh likethis_probe                 # Like this: ten parts each with its footprint and kind in the first five; 3001's Plate 2 x 4 in its first 12; a swap in 3 actions, one undo; shots/likethis/
 tools/probe.sh likethis_phone_probe           # the same with taps on a phone, the chip a fingertip
 tools/probe.sh likethis_tablet_probe          # and on a tablet
+tools/probe.sh likewords_probe                # Like this and Fits after a search start from no words, its list as on an empty one; "curved" narrows it, said; All gets its words back; shots/likewords/ (PROBE_SIZE=1400x900 too)
 tools/probe.sh bin2_probe                     # only parts made in Sand Green; Prints off; List rows; a double-click replaces three bricks, and puts two pins in a beam from Fits; "1x4 brick" bricks first; 8841-1's Balance booklet, each step's parts first; the toggles kept over a restart; shots/bin2/
 PROBE_SIZE=1400x900 tools/probe.sh bin2_probe
 # the tiles on the web, on a slow network: drawn as the bin opens, and from the first frame of a search typed (local only)
