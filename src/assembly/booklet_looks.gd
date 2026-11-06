@@ -111,6 +111,10 @@ const DATA := "|data"
 const ITEMS: Dictionary = {"picture": 4, "parts": 3, "callout": 4, "number": 2}
 ## The names a page's picture is kept under in the file, as LDraw's !DATA.
 const IMAGE_PREFIX := "brickworks-page-"
+## Base64 as RFC 4648 writes it and LDraw's !DATA asks for: its alphabet,
+## padded to whole quads at the end alone.
+const BASE64 := "^[A-Za-z0-9+/]*={0,2}$"
+const PNG_HEAD: PackedByteArray = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
 ## The colours an arrow of the designer's comes in: a booklet's red, which
 ## points where a part goes in, and the black of its callout arrows.
 const ARROW_COLOURS: Dictionary = {"red": "#d01012", "black": "#15191e"}
@@ -159,6 +163,36 @@ static func highlight_on(world: BrickWorld) -> bool:
 ## The pictures a booklet's pages show, name -> base64.
 static func images(world: BrickWorld) -> Dictionary:
 	return world.step_looks.get(DATA, {})
+
+
+## What a page's picture is, from its base64 [param data]: "png" or "jpeg",
+## or "" when it is neither or is not strict base64. A model file, or the
+## person across a Together session, gives these, and the booklet writes
+## each into its HTML: anything but base64 there could break out of the
+## page and run in it.
+static func picture_kind(data: String) -> String:
+	if data.length() % 4 != 0 or RegEx.create_from_string(BASE64).search(data) == null:
+		return ""
+	var head: PackedByteArray = Marshalls.base64_to_raw(data.substr(0, 12))
+	if head.size() >= 8 and head.slice(0, 8) == PNG_HEAD:
+		return "png"
+	if head.size() >= 3 and head[0] == 0xFF and head[1] == 0xD8 and head[2] == 0xFF:
+		return "jpeg"
+	return ""
+
+
+## [param pictures] (name -> base64) less any that is not a PNG or a JPEG
+## in base64 ([method picture_kind]), each said in the log. The words that
+## show it stay, and show nothing.
+static func kept_pictures(pictures: Dictionary) -> Dictionary:
+	var kept: Dictionary = {}
+	for name: Variant in pictures:
+		if picture_kind(str(pictures[name])).is_empty():
+			push_warning("left out a page's picture, %s: it is not a PNG or a JPEG in base64"
+				% str(name).c_escape())
+			continue
+		kept[name] = pictures[name]
+	return kept
 
 
 ## The guides dragged onto the booklet's pages: {"x": [mm], "y": [mm]}.
@@ -1169,6 +1203,7 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 					_put_in(out, BOOKLET, "sheet", sheet)
 	if not data_name.is_empty():
 		pictures[data_name] = "".join(data)
+	pictures = kept_pictures(pictures)
 	# Only the pictures a page shows, and the one behind every page.
 	var shown: Dictionary = {}
 	var behind: String = str(((out.get(BOOKLET, {}) as Dictionary).get("sheet", {}) as Dictionary)
@@ -1251,16 +1286,17 @@ static func typed(raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
 	return out
 
 
-## A page's picture by its name: its base64, or null.
+## A page's picture by its name, as a file's !DATA names one: its base64
+## when it is a PNG or a JPEG ([method picture_kind]), or null. With
+## [param data] null, whether the name is one.
 static func _typed_picture(name: Variant, data: Variant) -> Variant:
 	if not name is String or not (name as String).begins_with(IMAGE_PREFIX) \
 			or (name as String).contains("..") or (name as String).length() > 120 \
 			or RegEx.create_from_string("^[a-z0-9._-]+$").search(name) == null:
 		return null
-	if not data is String or (data as String).length() % 4 != 0 \
-			or RegEx.create_from_string("^[A-Za-z0-9+/]*={0,2}$").search(data) == null:
-		return null
-	return data
+	if data == null:
+		return name
+	return data if data is String and not picture_kind(data).is_empty() else null
 
 
 static func _typed_field(field: String, value: Variant) -> Variant:
@@ -1330,7 +1366,7 @@ static func _typed_field(field: String, value: Variant) -> Variant:
 				return null
 			var fields: Dictionary = {}
 			for key: Variant in value:
-				if key is String and (key != "picture" or _typed_picture(value[key], "") != null):
+				if key is String and (key != "picture" or _typed_picture(value[key], null) != null):
 					fields[key] = value[key]
 			return BookletSheet.from(fields).said()
 	return null
@@ -1351,7 +1387,7 @@ static func _typed_note(note: Dictionary) -> Variant:
 			if size == null:
 				return null
 			out["size"] = size
-	elif note.get("image") is String and _typed_picture(note["image"], "") != null:
+	elif note.get("image") is String and _typed_picture(note["image"], null) != null:
 		out["image"] = note["image"]
 	else:
 		return null
