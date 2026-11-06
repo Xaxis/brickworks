@@ -276,6 +276,10 @@ func _model() -> void:
 	picture.fill(Color(0.8, 0.7, 0.5))
 	(_main.get("_reference") as ReferenceImage).take(picture, "probe")
 	await _frames(6)
+	# Laid, its dialog opens and has the keys, as any dialog does: put away,
+	# as Done puts it, so the keys go to the model again.
+	((_main.get("_reference") as ReferenceImage).get("_dialog") as Window).hide()
+	await _frames(6)
 
 
 ## Each command's way to be tried: what is set first, what is read after, and
