@@ -16,6 +16,9 @@
 ##   second in) is made whole. It waits for the worker's compile to end:
 ##   Godot's script cache is held for the whole of a compile, so any first
 ##   use compiled while Brickify comes waits out the rest of it (printed);
+##   once it is in, the parts Brickify may lay are asked for off the frame
+##   (PartLibrary._read_soon), not read one after another in it, and no
+##   frame of the second after it is over 300 ms;
 ##   then the bunny is laid from the panel three times, as Brickify pressed
 ##   does: each lands, buildable in one piece, with no script error, and
 ##   what the worker reads its steps and stock with stays compiled between.
@@ -65,6 +68,8 @@ func _run() -> void:
 	if mesh == null:
 		_finish()
 		return
+	var library: Object = _main.get("_library")
+	var read_before: int = int(library.get("read_here"))
 	_dialog.call("show_for", mesh)
 	_check("the panel shows it while Brickify comes", _dialog.visible
 		and bool(_dialog.get("_making")) and not Later.loaded(&"Brickify"))
@@ -129,6 +134,22 @@ func _run() -> void:
 	_check("every class read as loaded meanwhile was whole: broken %s" % str(broken), broken.is_empty())
 	_check("the frames went on while it compiled: %d before the credits were asked for, the longest %.0f ms"
 		% [alone, longest], alone >= 10 and longest < 300.0)
+
+	# The second after it: the parts it may lay asked for.
+	var after := PackedFloat64Array()
+	last = Time.get_ticks_usec()
+	var until: int = last + 1000000
+	while Time.get_ticks_usec() < until:
+		await process_frame
+		var now: int = Time.get_ticks_usec()
+		after.append((now - last) / 1000.0)
+		last = now
+	var after_longest: float = 0.0
+	for ms: float in after:
+		after_longest = maxf(after_longest, ms)
+	var read_in_frame: int = int(library.get("read_here")) - read_before
+	_check("the parts it may lay were asked for off the frame: %d read in it, the longest frame of the second after %.0f ms"
+		% [read_in_frame, after_longest], read_in_frame <= 3 and after_longest < 300.0)
 
 	# Laid three times from the panel, as Brickify pressed lays it.
 	var world: Object = _main.get("_world")

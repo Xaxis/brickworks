@@ -929,16 +929,20 @@ func _ensure_parts() -> PackedStringArray:
 
 
 ## Ask for every part Brickify may lay that is not here, ahead of anything
-## else waiting. The ones still on their way.
+## else waiting, each read off the frame (PartLibrary.request_mesh). The ones
+## still on their way.
+##
+## Read here one after another (mesh_for), the 78 the bunny's panel asked
+## for held the frame Brickify came in (leaves3, 2026-11-06).
 func _fetch_parts() -> PackedStringArray:
 	var out := PackedStringArray()
 	if library == null:
 		return out
 	for id: String in _maker.parts_needed(library):
+		if library.is_resident(id) or not library.parts.has(id):
+			continue
+		library.request_mesh(id, true)
 		if not library.is_resident(id):
-			library.mesh_for(id)
-		if not library.is_resident(id) and library.parts.has(id):
-			library.request_mesh(id, true)
 			out.append(id)
 	return out
 
