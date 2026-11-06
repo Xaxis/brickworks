@@ -270,6 +270,15 @@ var unit_steps: Dictionary = {}
 ## "<sub-model>|<step>" -> {turn, zoom, size, page, parts}, and the
 ## sub-models' and the booklet's own. Changed only by the history's steps.
 var step_looks: Dictionary = {}
+## Whose a sub-model is and on what terms, where that is not the model's
+## own: definition name -> its section's header lines as its author wrote
+## them ("0 Author: A. Builder", "0 !LICENSE ..."), the way every file of an
+## LDraw multi-part document credits its own. A model brought into this one
+## whole keeps its maker's here (ModelStore.held_from), and a save writes
+## them into its sub-model's header (ModelStore._with_credits), where a
+## whole model's sections each said the one model's author. Changed only by
+## the history's steps.
+var credits: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
 var motions: Motions = null
@@ -511,6 +520,7 @@ func clear() -> void:
 	_out_of_order = false
 	unit_steps.clear()
 	step_looks.clear()
+	credits.clear()
 	motions = null
 	broken_out.clear()
 	_note({"op": "clear"})
@@ -711,6 +721,7 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 	copy.keeps_history = false
 	copy.unit_steps = unit_steps.duplicate()
 	copy.step_looks = step_looks.duplicate(true)
+	copy.credits = credits.duplicate(true)
 	copy.motions = motions
 	for brick_id: int in _bricks:
 		if _ghosts.has(brick_id):

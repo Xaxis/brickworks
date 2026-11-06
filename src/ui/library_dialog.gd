@@ -856,12 +856,14 @@ func put_card(card: Dictionary) -> int:
 	await job.shown()
 	var text: String = ""
 	var credit: String = ""
+	var credited: Dictionary = {}
 	var why: String = ""
 	if card["kind"] == "set":
 		var got: Dictionary = await books.model_text(card["entry"], job)
 		text = str(got["text"])
 		why = str(got["error"])
-		credit = "credit %s" % ModelBar.credit_words(ModelLibrary.credit_of(card["entry"]))
+		credited = ModelLibrary.credit_of(card["entry"])
+		credit = "credit %s" % ModelBar.credit_words(credited)
 	else:
 		var shared: SharedModels = app.get("_shared")
 		var answer: Dictionary = await shared.fetch(str(card["id"])) if shared != null \
@@ -875,15 +877,15 @@ func put_card(card: Dictionary) -> int:
 			why = "its maker kept every right to it"
 		else:
 			text = str(body.get("model", ""))
-			credit = "credit %s" % ModelBar.credit_words(SharedModels.credit_of(body,
-				str(card["id"])))
+			credited = SharedModels.credit_of(body, str(card["id"]))
+			credit = "credit %s" % ModelBar.credit_words(credited)
 	job.end()
 	if not why.is_empty() or text.is_empty():
 		bar.say("could not put %s in this model: %s" % [card["name"],
 			why if not why.is_empty() else "it has no parts"])
 		return 0
 	return await bar.hold_text(text, "%s.mpd" % card["id"], ModelLibrary.title_of(card["entry"])
-		if card["kind"] == "set" else str(card["name"]), credit)
+		if card["kind"] == "set" else str(card["name"]), credit, credited)
 
 
 func _say(text: String) -> void:

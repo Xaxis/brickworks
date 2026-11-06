@@ -236,6 +236,13 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	verbs.assemblies = assemblies
 	builder.unit_of = assemblies.unit_of
 	builder.copy_group = assemblies.group_for_copy
+	# A name is taken by a sub-model no part on the baseplate shows too (one
+	# of parts the library has not got): one answer everywhere a definition
+	# is named or a copy numbered (Assemblies.names_in).
+	assemblies.held_names = store.held_names
+	builder.names_taken = assemblies.taken.bind(false)
+	# What of a model brought in the app cannot show, kept by its put-down.
+	builder.unshown_hook = store.keep_brought
 	# A model put into this one comes in hand as a paste does (intomodel).
 	bar.hold_parts = verbs.hold
 	# Whatever replaces the model leaves no assembly being edited.
