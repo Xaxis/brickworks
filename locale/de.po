@@ -11235,3 +11235,107 @@ msgstr "%s legt sein nächstes Ende an die Verbindungsstelle"
 
 msgid "a sleeper goes under the joint with it"
 msgstr "eine Schwelle kommt mit unter die Verbindungsstelle"
+
+# The booklet's page set up (APP_UX5 #4, pagesetup): Build, Booklet page, Page setup…
+
+msgid "Page setup…"
+msgstr "Seite einrichten…"
+
+msgid "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another"
+msgstr "Das Papier der Anleitung (A4, US Letter, A5 oder ihr eigenes), hoch oder quer, die Ränder, eine Farbe oder ein Bild hinter jeder Seite, die Größe der Schrittnummern und Teile; mit dem Modell gespeichert und als Stil unter einem Namen für ein anderes"
+
+msgid "Page setup"
+msgstr "Seite einrichten"
+
+msgid "Booklet, 269 x 199 mm"
+msgstr "Anleitung, 269 x 199 mm"
+
+msgid "A4, 210 x 297 mm"
+msgstr "A4, 210 x 297 mm"
+
+msgid "US Letter, 8.5 x 11 in"
+msgstr "US Letter, 8,5 x 11 Zoll"
+
+msgid "A5, 148 x 210 mm"
+msgstr "A5, 148 x 210 mm"
+
+msgid "The paper the booklet is printed on, and its PDF's page"
+msgstr "Das Papier, auf das die Anleitung gedruckt wird, und die Seite ihres PDFs"
+
+msgid "Paper"
+msgstr "Papier"
+
+msgid "Landscape"
+msgstr "Querformat"
+
+msgid "Portrait"
+msgstr "Hochformat"
+
+msgid "On its side, or upright"
+msgstr "Quer oder hoch"
+
+msgid "Orientation"
+msgstr "Ausrichtung"
+
+msgid "How far from the paper's edge the steps keep"
+msgstr "Wie weit die Schritte vom Rand des Papiers bleiben"
+
+msgid "Margins"
+msgstr "Ränder"
+
+msgid "The colour of every page"
+msgstr "Die Farbe jeder Seite"
+
+msgid "Page colour"
+msgstr "Seitenfarbe"
+
+msgid "Choose…"
+msgstr "Auswählen…"
+
+msgid "A picture behind every page, covering it"
+msgstr "Ein Bild hinter jeder Seite, das sie ganz bedeckt"
+
+msgid "Take off"
+msgstr "Entfernen"
+
+msgid "The page's colour behind every page again"
+msgstr "Wieder die Seitenfarbe hinter jeder Seite"
+
+msgid "Picture behind"
+msgstr "Bild dahinter"
+
+msgid "How tall a step's number is printed"
+msgstr "Wie hoch die Nummer eines Schritts gedruckt wird"
+
+msgid "Step numbers"
+msgstr "Schrittnummern"
+
+msgid "How big the parts are drawn in each step's parts box and the parts list"
+msgstr "Wie groß die Teile im Teilekasten jedes Schritts und in der Teileliste gezeichnet werden"
+
+msgid "Parts pictures"
+msgstr "Teilebilder"
+
+msgid "A page set up and kept by a name, given to this model whole"
+msgstr "Eine eingerichtete und unter einem Namen gespeicherte Seite, ganz auf dieses Modell übertragen"
+
+msgid "Style"
+msgstr "Stil"
+
+msgid "Name this page"
+msgstr "Diese Seite benennen"
+
+msgid "Keep as a style"
+msgstr "Als Stil speichern"
+
+msgid "Keep this page by its name, to give another model in one choice"
+msgstr "Diese Seite unter ihrem Namen speichern, um sie mit einer Auswahl einem anderen Modell zu geben"
+
+msgid "A picture"
+msgstr "Ein Bild"
+
+msgid "Choose a style…"
+msgstr "Stil auswählen…"
+
+msgid "Name the page first"
+msgstr "Erst die Seite benennen"

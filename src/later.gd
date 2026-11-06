@@ -49,6 +49,7 @@ const PATHS: Dictionary[StringName, String] = {
 	&"MinifigDialog": "res://src/ui/minifig_dialog.gd",
 	&"MosaicDialog": "res://src/ui/mosaic_dialog.gd",
 	&"PageEditor": "res://src/ui/page_editor.gd",
+	&"PageSetupDialog": "res://src/ui/page_setup_dialog.gd",
 	&"PhoneShell": "res://src/ui/phone_shell.gd",
 	&"PinsDialog": "res://src/ui/pins_dialog.gd",
 	&"PosePanel": "res://src/ui/pose_panel.gd",

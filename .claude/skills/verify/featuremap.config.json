@@ -4394,6 +4394,20 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "the booklet's page setup",
+      "entry": "src/ui/page_setup_dialog.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Paper (the booklet's own 269 x 199, A4, US Letter, A5), Orientation, Margins, Page colour, Picture behind, Step numbers, Parts pictures, Style and Keep as a style; then Instructions, Save as PDF; page_setup over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "pagesetup probe",
+      "entry": "src/dev/pagesetup_probe.gd",
+      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "path tracer",
       "entry": "src/render/path_tracer.gd",
