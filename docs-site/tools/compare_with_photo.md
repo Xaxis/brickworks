@@ -1,9 +1,9 @@
 ---
 tool: compare_with_photo
-example: {"photo": "a red and white lighthouse on a cliff, from the side", "is_it": true, "silhouette": "the photograph's tower is six times as tall as it is wide and tapers to the lantern; mine is a straight stack three times as tall", "features": [{"name": "the lantern", "photo": "a glass room a fifth of the height, as wide as the top", "model": "two plates of trans-clear, narrower than the tower", "settle": "rebuild", "why": "it is what the lighthouse is known by"}, {"name": "the stripes", "photo": "three red bands, each a sixth of the height", "model": "three red bands of 3 bricks", "settle": "keep", "why": "they match"}]}
+example: {"photo": "a red and white lighthouse on a cliff, from the side", "is_it": true, "whole": {"length": 0.2, "width": 0.2, "height": 1}, "features": [{"name": "the lantern", "where": {"y_from": 60, "y_to": 72}, "length": 0.8, "width": 0.8, "height": 0.2}, {"name": "the gallery", "where": {"y_from": 57, "y_to": 60}, "length": 1, "width": 1, "height": 0.04}]}
 ---
 
 <!-- the tool list's words: tools/docs_site.py --write copies them here from tools/mcp_tools.json; --check fails while they differ -->
 ```text
-Answer the look beside a photograph of the real thing that a design's first whole review asks for: what the photograph shows, the silhouettes against each other, and each feature's form and size against the whole in the photograph and in your model, each settled rebuild or keep, and why. Only when a review asks.
+Answer each step of the look a design's first whole review asks for, measuring the model against a photograph of the real thing: real_thing (its own name, to search for the photograph), then photo, is_it and the shares read off the photograph (whole, and features each with where), then settled (each share over the line rebuild or keep, and why), then again (each rebuilt feature's box now). Only when a review asks.
 ```

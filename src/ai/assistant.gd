@@ -3354,7 +3354,6 @@ func _tool_answer(block: Dictionary) -> Variant:
 		"plan_scale":
 			progress.emit("working out how big it should be")
 			heard(str(args.get("subject", "")))
-			photo_look().heard_from(name, str(args.get("subject", "")))
 			# The official models' sizes, fetched on the web the first time.
 			await SetKnowledge.ensure(self)
 			return _plan_scale(args)
@@ -3367,7 +3366,6 @@ func _tool_answer(block: Dictionary) -> Variant:
 			var subject: String = str(args.get("subject", ""))
 			progress.emit("looking up how real sets build a %s" % subject)
 			heard(subject)
-			photo_look().heard_from(name, subject)
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
@@ -21439,13 +21437,13 @@ func review(assembly: String, feature: String = "", creative: bool = false) -> V
 		_detail_added.append([_outside_reviewing["name"], added])
 		_outside_reviewing = {}
 	if assembly.strip_edges().is_empty():
-		# A design's first whole review leads with its front and side beside a
-		# photograph of the real thing, the rest once it is answered: a session
-		# read its pictures against its memory of the thing (design17).
-		if photo_look().due():
-			var look: Variant = await photo_look().look()
-			if not (look is String and (look as String).is_empty()):
-				return look
+		# A design's first whole review leads with the look that measures it
+		# against a photograph of the real thing, a step a review: a session
+		# read its pictures against its memory of the thing (design17), then
+		# read the photograph and did not measure it (design18).
+		var look: Variant = await photo_look().at_review()
+		if not (look is String and (look as String).is_empty()):
+			return look
 		_outside_looked = true
 		# Every part this design placed is judged, not only what an edit adds:
 		# a design is handed over from here, and BrickBench refuses a build for

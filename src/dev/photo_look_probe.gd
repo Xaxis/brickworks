@@ -1,26 +1,34 @@
-## Is a new design's first whole review set beside a photograph of the real
-## thing, and is the photograph never a model built of bricks?
+## Is a new design measured against a photograph of the real thing, found
+## with the session's own name for it, and is the photograph never a model
+## built of bricks?
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/photo_look_probe.gd
 ##
 ## PhotoLook (src/ai/photo_look.gd): a connector chat's first whole review
-## (review_model with no assembly) of a new design leads with the look in
-## place of the rest of the review: a photograph of the real thing, the one
-## the chat's own find_reference brought or, when it asked for none, one
-## found for it with its own words for the subject (plan_scale's, the
-## design's name, how_real_sets_build_this's, cleaned of a set's words); then
-## the model from the view the photograph's title names (or the corner), the
-## front and the side; then the question, answered with compare_with_photo. A
-## subject with no photograph is told so; a model not drawn in time gets the
-## photograph alone, and is asked to take its own. Every change but the
-## answer, a save, a look at the model and another photograph is refused
-## until it answers (twice at most); the answer is kept, and the review or
-## save after it counts the parts added and taken off since. Once a subject;
-## never beside the person's own model, never about a selection. Never a
-## picture of anything built of bricks, by its title or by what Commons files
-## it under; while a set is held out, find_reference drops those too. Commons
-## is never asked here: the finder is the probe's. In a window, for the
-## pictures.
+## (review_model with no assembly) of a new design leads with the look, in
+## steps, each answered with compare_with_photo:
+## 1. name: the real thing's own name (make and model), or "none" (the look
+##    ends);
+## 2. find: the next whole review shows the photograph found with those words
+##    only (the chat's own find_reference's when it searched the same words;
+##    never one of bricks), beside the model from the view its title names
+##    (or the corner), the front and the side, and asks the shares, with the
+##    axes but none of the model's numbers; none found, said so;
+## 3. read: is_it false ends the look; else the whole's and each feature's
+##    length, width and height as shares, each feature with its box; the app
+##    measures the same off the model (the parts whose middle is in the box)
+##    and sets them side by side, marking each more than a quarter off and a
+##    stud or more;
+## 4. settle: each over the line rebuild or keep; rebuilds told their sizes;
+## 5. again: the rebuilt measured in their boxes now, beside the photograph's
+##    and what they were, the parts moved counted; the next whole review asks
+##    once if it was not given.
+## Every change but the answer, a save, a look at the model and another
+## photograph is refused while name, read or settle waits (twice at most);
+## clear_model lets it go. Once a subject; never beside the person's own
+## model, never about a selection. While a set is held out, find_reference
+## drops every picture of bricks too. Commons is never asked here: the
+## finder is the probe's. In a window, for the pictures.
 extends SceneTree
 
 var _failures: int = 0
@@ -79,37 +87,47 @@ func _run() -> void:
 	_assistant._finder = _finder
 
 	_served()
-	await _its_own_photo("c1")
-	await _found_for_it("c2")
-	await _no_photo("c3")
+	await _measured_and_rebuilt("c1")
+	await _asked_again("c2")
+	await _named_none("c3")
+	await _not_the_thing("c4")
+	await _no_photo("c5")
 	await _not_drawn("c7")
-	await _unanswered("c4")
-	await _beside_a_model("c5")
-	await _about_a_selection("c6")
+	await _unanswered("c6")
+	await _beside_a_model("c8")
+	await _about_a_selection("c9")
 
 	print("")
-	print("photo look: the first whole review beside a photograph of the real thing, never "
-		+ "one of bricks, once a subject" if _failures == 0
-		else "photo look: %d FAILED" % _failures)
+	print("photo look: the first whole review measured against a photograph found with the "
+		+ "session's own name for the thing, never one of bricks, once a subject"
+		if _failures == 0 else "photo look: %d FAILED" % _failures)
 	_finder.free()
 	_main.queue_free()
 	await process_frame
 	quit(1 if _failures > 0 else 0)
 
 
-## The words searched, the view matched, and the bricks kept out.
+## The words searched, the view matched, the shares read and measured, the
+## line, and the bricks kept out.
 func _unit() -> void:
-	print("── what is searched, which view, and nothing of bricks ──")
-	_check("a set's words come off the subject: %s | %s" % [
+	print("── what is searched, which view, the shares, and nothing of bricks ──")
+	_check("a set's words come off: %s | %s" % [
 		PhotoLook.cleaned("Burj Khalifa (LEGO Architecture style)"),
 		PhotoLook.cleaned("Air Mail, in the style of LEGO® City sets: fitting in 20 x 23 studs")],
 		PhotoLook.cleaned("Burj Khalifa (LEGO Architecture style)") == "Burj Khalifa"
 		and PhotoLook.cleaned("Air Mail, in the style of LEGO® City sets: fitting in 20 x 23 "
 			+ "studs") == "Air Mail")
-	var asked: PackedStringArray = PhotoLook.queries({"plan_scale": "single drum road roller",
-		"how_real_sets_build_this": "road roller"}, "Single drum road roller")
-	_check("the real thing plan_scale sized first, then the kind, once each: %s"
-		% ", ".join(asked), asked == PackedStringArray(["single drum road roller", "road roller"]))
+	var asked: PackedStringArray = PhotoLook.queries("a Hamm HD 10 tandem roller, such as "
+		+ "councils use")
+	_check("its own name, then the name alone: %s" % " | ".join(asked),
+		asked == PackedStringArray(["a Hamm HD 10 tandem roller, such as councils use",
+			"Hamm HD 10 tandem roller"]))
+	_check("...and a plain name searched once: %s" % " | ".join(PhotoLook.queries(
+		"Eiffel Tower")), PhotoLook.queries("Eiffel Tower") == PackedStringArray(
+			["Eiffel Tower"]) and PhotoLook.queries("").is_empty())
+	_check("none said: none, None., n/a; a name is not", PhotoLook.none_said("none")
+		and PhotoLook.none_said("None.") and PhotoLook.none_said("n/a")
+		and not PhotoLook.none_said("Nonesuch Palace"))
 	_check("a photograph's angle from its title, none when it names none: %s %s %s '%s'" % [
 		PhotoLook.view_for("Hamm HD10 roller (front).jpg"),
 		PhotoLook.view_for("1970 Dodge Charger side view.jpg"),
@@ -119,6 +137,43 @@ func _unit() -> void:
 		and PhotoLook.view_for("1970 Dodge Charger side view.jpg") == "right"
 		and PhotoLook.view_for("Burj Khalifa aerial view.jpg") == "top"
 		and PhotoLook.view_for("Burj Khalifa from Safa Park.jpg").is_empty())
+	_check("shares as fractions or percentages; a dimension left out is not there: %s"
+		% JSON.stringify(PhotoLook.shares_of({"length": 0.3, "width": "40%", "height": 55})),
+		PhotoLook.shares_of({"length": 0.3, "width": "40%", "height": 55})
+			== {"length": 0.3, "width": 0.4, "height": 0.55}
+		and PhotoLook.shares_of({"length": 0.3}) == {"length": 0.3}
+		and PhotoLook.shares_of("tall").is_empty())
+	# A machine 25 studs long, 10 wide, 30 plates (12 studs) high: its drum 4
+	# studs of the length, the photograph's 30%.
+	var whole := Vector3(25, 30, 10)
+	var shares: Dictionary = PhotoLook.whole_shares(whole)
+	_check("the whole's shares, of its longest, height in plates: %s" % JSON.stringify(shares),
+		is_equal_approx(float(shares["length"]), 1.0) and is_equal_approx(float(shares["width"]),
+			0.4) and is_equal_approx(float(shares["height"]), 0.48))
+	var drum: Dictionary = PhotoLook.feature_shares({"count": 9, "size": Vector3(4, 12, 10)},
+		whole)
+	_check("a feature's shares of the whole's: %s" % JSON.stringify(drum),
+		is_equal_approx(float(drum["length"]), 0.16) and is_equal_approx(float(drum["width"]),
+			1.0) and is_equal_approx(float(drum["height"]), 0.4))
+	var along_z: Dictionary = PhotoLook.feature_shares({"count": 1, "size": Vector3(10, 3, 4)},
+		Vector3(10, 30, 25))
+	_check("...the length the longer way across the ground, x or z: %s"
+		% JSON.stringify(along_z), is_equal_approx(float(along_z["length"]), 0.16)
+		and is_equal_approx(float(along_z["width"]), 1.0))
+	var rows: Array[Dictionary] = [{"name": "drum", "photo": {"length": 0.3, "width": 0.9,
+		"height": 0.47}, "model": drum}, {"name": "lamp", "photo": {"length": 0.06},
+		"model": {"length": 0.04}}]
+	var offs: Array[Dictionary] = PhotoLook.offs_of(rows, whole)
+	var said := PackedStringArray()
+	for off: Dictionary in offs:
+		said.append("%s %s" % [off["name"], off["dimension"]])
+	_check("over the line: more than a quarter off and a stud or more: %s" % ", ".join(said),
+		said == PackedStringArray(["drum length"]))
+	var table: String = PhotoLook.table(rows, offs, whole)
+	_check("...marked in the table, with the photograph's share as a size: %s"
+		% _line_with(table, "| drum"), table.contains("**30%, yours 16%: off**, the "
+			+ "photograph's is 7.5 studs") and table.contains("90%, yours 100%")
+		and table.contains("47%, yours 40%") and not table.contains("6%, yours 4%: off"))
 	_check("bricks by a title, or by what Commons files it under; Legolas is not LEGO",
 		ReferenceFinder.of_lego("Lego Burj Khalifa.jpg", "")
 		and ReferenceFinder.of_lego("A Wizard Is Never Late diorama.png",
@@ -162,142 +217,218 @@ func _searched(pages: Dictionary) -> PackedStringArray:
 func _served() -> void:
 	print("\n── the answer, as a session is served it ──")
 	var tool: Dictionary = _listed(PhotoLook.TOOL)
-	_check("compare_with_photo is served, read-only, each feature photo against model: %s"
-		% JSON.stringify(tool.get("inputSchema", {}).get("required", [])),
-		not tool.is_empty() and bool(tool["annotations"].get("readOnlyHint", false))
-		and tool["inputSchema"]["properties"]["features"]["items"]["required"]
-			== ["name", "photo", "model", "settle", "why"])
+	var properties: Dictionary = tool.get("inputSchema", {}).get("properties", {})
+	_check("compare_with_photo is served, read-only, a step a field: %s"
+		% ", ".join(properties.keys()), not tool.is_empty()
+		and bool(tool["annotations"].get("readOnlyHint", false))
+		and properties.keys() == ["real_thing", "photo", "is_it", "whole", "features", "settled",
+			"again"]
+		and properties["features"]["items"]["required"] == ["name", "where"])
 
 
-## Its own find_reference: the first photograph not of bricks, beside the
-## view its title names, the front and the side; nothing but the answer, a
-## save, a look and another photograph goes ahead; the answer kept, and the
-## rebuild counted at the review after it. Once a subject.
-func _its_own_photo(chat: String) -> void:
-	print("\n── its own photograph, beside the view its title names ──")
+## The whole way: the name asked; the session's own find_reference shown
+## (searched with the same words), not the one of bricks, beside the side its
+## title names; the shares read, measured, one over the line; settled
+## rebuild; rebuilt; measured again and within; the next review the review.
+func _measured_and_rebuilt(chat: String) -> void:
+	print("\n── named, shown, read, measured, settled, rebuilt, measured again ──")
 	await _call_as(chat, "clear_model", {})
+	_finder.asked = PackedStringArray()
 	_finder.answers = {"red lighthouse": [_picture("Lego red lighthouse.jpg", true),
 		_picture("Red lighthouse side view.jpg")]}
 	await _call_as(chat, "find_reference", {"subject": "red lighthouse"})
 	await _call_as(chat, "submit_design", _tower())
+	var text: String = _text(await _call_as(chat, "review_model", {}))
+	_check("the first whole review asks the real thing's own name: %s"
+		% text.left(60).replace("\n", " "), text.begins_with(PhotoLook.OPENING)
+		and text.contains(PhotoLook.ASK_NAME % PhotoLook.TOOL) and _look().step() == "name"
+		and text.contains("The features you named with the design: lantern."))
+	_check("...in place of the rest of the review, and no picture yet",
+		not text.contains("The whole model:"))
+	var refused: String = _text(await _call_as(chat, "edit_model", {"remove": [_first_brick()]}))
+	_check("an edit waits for the name: %s" % refused.left(60), refused.begins_with("Not yet")
+		and refused.contains("real_thing") and _parts() == 6)
+	var named: String = _text(await _call_as(chat, PhotoLook.TOOL, {"real_thing":
+		"Red lighthouse"}))
+	_check("named, it is sent to the review: %s" % named.left(60),
+		named.begins_with("Now review_model") and _look().step() == "find")
 	var said: Array = await _call_as(chat, "review_model", {})
-	var text: String = _text(said)
-	_check("the first whole review leads with the look: %s" % text.left(70).replace("\n", " "),
-		text.begins_with(PhotoLook.OPENING) and _look().waiting())
-	_check("...in place of the rest of the review", not text.contains("The whole model:"))
-	_check("...the photograph its find_reference brought, not the one of bricks: %s"
-		% _line_with(text, "The real thing"), text.contains("The real thing, from your "
-			+ "find_reference: Red lighthouse side view.jpg") and not text.contains("Lego red"))
-	_check("...with the whole's size and its features: %s" % _line_with(text, "features you"),
-		text.contains("Measured, in studs: the whole model is") and not text.contains(
-			"Its massing") and text.contains("The features you named with the design: lantern."))
+	text = _text(said)
 	var words: PackedStringArray = _captions(said)
-	_check("...the photograph, then the side its title names, then the front: %s"
-		% " | ".join(words.slice(1, 4)), _images(said) == 3 and words.size() == 5
-		and words[1].begins_with("The real thing") and words[2] == "Yours from the side (from "
-			+ "+x), the view its title names:" and words[3] == "Yours from the front "
-			+ "(from +z):")
+	_check("...which shows its own find_reference's photograph, the same words, not the one "
+		+ "of bricks, nothing searched again: %s" % words[0].left(80), words[0].begins_with(
+			"The real thing, from your find_reference: Red lighthouse side view.jpg")
+		and not text.contains("Lego red") and _finder.asked == PackedStringArray(
+			["red lighthouse"]) and _look().step() == "read")
+	_check("...the photograph, then the side its title names, the front, the corner none: %s"
+		% " | ".join(words.slice(1, 3)), _images(said) == 3 and words.size() == 4
+		and words[1] == "Yours from the side (from +x), the view its title names:"
+		and words[2] == "Yours from the front (from +z):")
 	_check("...each picture a PNG, the photograph its own bytes", _pngs(said)
 		and _image_data(said, 0) == Marshalls.raw_to_base64(
 			(_finder.answers["red lighthouse"][1] as Dictionary)["bytes"]))
-	_check("...and the question last, to answer with compare_with_photo",
-		words[4] == PhotoLook.ASK % PhotoLook.TOOL)
-	_check("...no real set shown or named", not text.contains("omr")
-		and not text.contains("real set"))
-	var refused: String = _text(await _call_as(chat, "edit_model", {"remove": [_first_brick()]}))
-	_check("an edit waits for the answer: %s" % refused.left(60), refused.begins_with("Not yet")
+	_check("...and the shares asked last, the axes said but none of the model's numbers: %s"
+		% _line_with(text, "length runs"), words[3].begins_with("Read the photograph first")
+		and text.contains("In your model the length runs along x, the width along z, and the "
+			+ "height up.") and not text.contains("studs long") and not text.contains("Measured"))
+	refused = _text(await _call_as(chat, "edit_model", {"remove": [_first_brick()]}))
+	_check("an edit waits for the shares: %s" % refused.left(50), refused.begins_with("Not yet")
 		and _parts() == 6)
-	var looked: Array = await _call_as(chat, "view_model", {"from": "corner"})
-	_check("...a look at the model goes ahead: %d picture" % _images(looked), _images(looked) == 1)
-	var half: String = _text(await _call_as(chat, PhotoLook.TOOL, {"photo": "a red lighthouse",
-		"is_it": true, "silhouette": "taller", "features": [{"name": "lantern",
-			"photo": "a fifth of its height", "model": "two plates", "settle": "rebuild"}]}))
-	_check("an answer with no why is asked in full: %s" % half.left(50),
-		half.begins_with("Answer in full") and _look().waiting())
-	var answer: String = _text(await _call_as(chat, PhotoLook.TOOL, {
-		"photo": "a red and white lighthouse on a cliff, from the side", "is_it": true,
-		"silhouette": "the photograph's tower is six times as tall as it is wide and tapers; "
-			+ "mine is a straight stack three times as tall", "features": [
-			{"name": "lantern", "photo": "a glass room a fifth of the height, as wide as the "
-				+ "top", "model": "not there: the stack ends flat", "settle": "rebuild",
-				"why": "it is what a lighthouse is known by"},
-			{"name": "colour", "photo": "red", "model": "red", "settle": "keep",
-				"why": "it matches"}]}))
-	_check("the answer is kept, and what it settled to rebuild is to be rebuilt: %s"
-		% answer.left(60), answer.begins_with("Now rebuild lantern") and not _look().waiting()
-		and (_look().last["answer"]["features"] as Array).size() == 2)
-	await _call_as(chat, "edit_model", {"add": [{"part": "3062b", "color": 47, "x": 10,
-		"y": 18, "z": 10}]})
+	var half: String = _text(await _call_as(chat, PhotoLook.TOOL, {"photo": "a lighthouse",
+		"is_it": true, "whole": {"height": 1}, "features": [{"name": "lantern", "height": 0.4}]}))
+	_check("an answer with no box and one share of the whole is asked in full: %s"
+		% half.left(40), half.begins_with("Answer in full") and _look().step() == "read")
+	# The tower: 2 x 2 studs, 18 plates. Its lantern the top brick, 3 plates:
+	# a sixth of the height to the photograph's 0.4, off; as long as the
+	# whole to the photograph's 0.6, but less than a stud from it, so not.
+	var table: String = _text(await _call_as(chat, PhotoLook.TOOL, {
+		"photo": "a red lighthouse on a cliff, from the side", "is_it": true,
+		"whole": {"length": 0.3, "width": 0.3, "height": 1},
+		"features": [
+			{"name": "lantern", "where": {"y_from": 15, "y_to": 18}, "length": 0.6, "width": 0.6,
+				"height": 0.4},
+			{"name": "plinth", "where": {"y_from": 0, "y_to": 3}, "height": 0.15},
+			{"name": "gallery", "where": {"x_from": 40, "x_to": 44}, "height": 0.05}]}))
+	_check("the shares measured beside the photograph's: %s" % _line_with(table, "| lantern"),
+		table.contains("| lantern (1 part) | 60%, yours 100% | 60%, yours 100% | **40%, yours "
+			+ "17%: off**, the photograph's is 7 plates |")
+		and table.contains("| the whole, of its longest | 30%, yours 28% | 30%, yours 28% | "
+			+ "100%, yours 100% |") and table.contains("| plinth (1 part) | — | — | 15%, yours "
+			+ "17% |"))
+	_check("...a box with no part in it said so, the whole's size said after: %s"
+		% _line_with(table, "No part"), table.contains("No part of yours has its middle inside "
+			+ "the box given for gallery") and table.contains("Your whole: 2 studs long, 2 wide, "
+			+ "18 plates high.") and table.contains(PhotoLook.ASK_SETTLE % PhotoLook.TOOL)
+		and _look().step() == "settle" and _look().off_names() == PackedStringArray(["lantern"]))
+	refused = _text(await _call_as(chat, "edit_model", {"remove": [_first_brick()]}))
+	_check("an edit waits for the settling: %s" % refused.left(50),
+		refused.begins_with("Not yet") and _parts() == 6)
+	var open: String = _text(await _call_as(chat, PhotoLook.TOOL, {"settled": []}))
+	_check("each over the line must be settled: %s" % open, open == "Settle each over the "
+		+ "line: lantern, each rebuild or keep, and why.")
+	var settled: String = _text(await _call_as(chat, PhotoLook.TOOL, {"settled": [{"name":
+		"Lantern", "settle": "rebuild", "why": "the lantern is what it is known by"}]}))
+	_check("settled rebuild, told its size: %s" % settled.left(110), settled.begins_with(
+		"Now rebuild Lantern, the most different first and before any detail, to these: "
+		+ "Lantern: height 7 plates (3 plates now).") and _look().step() == "rebuild")
+	var added: String = _text(await _call_as(chat, "edit_model", {"add": [
+		{"part": "3003", "color": 47, "x": 10, "y": 18, "z": 10},
+		{"part": "3003", "color": 47, "x": 10, "y": 21, "z": 10}]}))
+	_check("the rebuild goes ahead: %s" % added.left(40), not added.begins_with("Not yet")
+		and _parts() == 8)
+	var again: String = _text(await _call_as(chat, PhotoLook.TOOL, {"again": [{"name":
+		"lantern", "where": {"y_from": 15, "y_to": 24}}]}))
+	var rebuilt: Dictionary = _look().last.get("rebuilt", {})
+	_check("measured again, beside the photograph and what it was: %s"
+		% _line_with(again, "| lantern"), again.contains("| lantern (3 parts) | 60%, yours "
+			+ "100% (was 100%) | 60%, yours 100% (was 100%) | 40%, yours 38% (was 17%) |")
+		and again.contains("Each is now within a quarter") and _look().step() == "done")
+	_check("...and the rebuild counted: %s" % JSON.stringify(rebuilt),
+		int(rebuilt.get("added", -1)) == 2 and int(rebuilt.get("removed", -1)) == 0
+		and int(rebuilt.get("kept", -1)) == 6)
 	var rest: String = _text(await _call_as(chat, "review_model", {}))
 	_check("the next whole review is the review: %s" % rest.left(40),
-		rest.begins_with("The whole model:") and not rest.contains(PhotoLook.OPENING))
-	var rebuilt: Dictionary = _look().last.get("rebuilt", {})
-	_check("...and the rebuild was counted there: %s" % JSON.stringify(rebuilt),
-		int(rebuilt.get("added", -1)) == 1 and int(rebuilt.get("removed", -1)) == 0
-		and int(rebuilt.get("kept", -1)) == 6)
+		rest.begins_with("The whole model:"))
 	await _call_as(chat, "submit_design", _tower())
 	rest = _text(await _call_as(chat, "review_model", {}))
 	_check("...and a second design of the sitting is never looked at again",
 		rest.begins_with("The whole model:"))
 
 
-## No find_reference: one found with its own words, cleaned of the set's,
-## the bricks passed over; a three-quarter view first when the title names
-## no angle, said as no more than that. A photograph that is not the thing is
-## said to be.
-func _found_for_it(chat: String) -> void:
-	print("\n── a chat that asked for no photograph ──")
+## Rebuilt and never measured again: the next whole review asks it once,
+## then the review goes on. A photograph found with its own name, the one
+## of bricks passed over; the corner first when its title names no angle.
+func _asked_again(chat: String) -> void:
+	print("\n── rebuilt, and the next review asks it measured again ──")
 	await _call_as(chat, "clear_model", {})
 	_finder.asked = PackedStringArray()
-	_finder.answers = {"Red Tower": [_picture("Red Tower Lego set.jpg", true),
-		_picture("Red Tower from the park.jpg")]}
+	_finder.answers = {"Red Rock Light": [_picture("Red Rock Light Lego set.jpg", true),
+		_picture("Red Rock Light from the bay.jpg")]}
 	await _call_as(chat, "plan_scale", {"subject": "Red Tower (LEGO Architecture style)",
 		"longest_metres": 30})
 	await _call_as(chat, "submit_design", _tower())
+	await _call_as(chat, "review_model", {})
+	await _call_as(chat, PhotoLook.TOOL, {"real_thing": "Red Rock Light"})
 	var said: Array = await _call_as(chat, "review_model", {})
-	var text: String = _text(said)
 	var words: PackedStringArray = _captions(said)
-	_check("one is found for it with its own words: %s" % ", ".join(_finder.asked),
-		_finder.asked == PackedStringArray(["Red Tower"]) and text.contains("The real thing, "
-			+ "found for you with \"Red Tower\": Red Tower from the park.jpg"))
-	_check("...beside the corner, then the front and the side: %s" % " | ".join(words.slice(2, 5)),
-		_images(said) == 4 and words[2] == "Yours from the corner (a three-quarter view, as "
-			+ "most photographs are taken):"
-		and words[3] == "Yours from the front (from +z):"
-		and words[4] == "Yours from the side (from +x):")
-	var answer: String = _text(await _call_as(chat, PhotoLook.TOOL, {"photo": "a brick church "
-		+ "tower", "is_it": false, "silhouette": "not the thing", "features": [{"name": "spire",
-			"photo": "none", "model": "none", "settle": "keep", "why": "not the thing"}]}))
-	_check("none to rebuild, and the photograph not the thing: %s" % answer.right(70),
-		answer.begins_with("Then each reads") and answer.contains("find_reference with its "
-			+ "own name brings another"))
+	_check("searched with its own name only, never its design's or plan_scale's: %s"
+		% ", ".join(_finder.asked), _finder.asked == PackedStringArray(["Red Rock Light"])
+		and words[0].begins_with("The real thing, found for you with \"Red Rock Light\": Red "
+			+ "Rock Light from the bay.jpg"))
+	_check("...beside the corner, then the front and the side: %s" % " | ".join(words.slice(1, 4)),
+		_images(said) == 4 and words[1] == "Yours from the corner (a three-quarter view, as "
+			+ "most photographs are taken):" and words[2] == "Yours from the front (from +z):"
+		and words[3] == "Yours from the side (from +x):")
+	await _call_as(chat, PhotoLook.TOOL, {"photo": "a lighthouse", "is_it": true,
+		"whole": {"length": 0.3, "height": 1}, "features": [{"name": "lantern", "where":
+			{"y_from": 15}, "height": 0.4}]})
+	await _call_as(chat, PhotoLook.TOOL, {"settled": [{"name": "lantern", "settle": "rebuild",
+		"why": "too short"}]})
+	await _call_as(chat, "edit_model", {"add": [{"part": "3022", "color": 47, "x": 10, "y": 18,
+		"z": 10}]})
+	var asked: String = _text(await _call_as(chat, "review_model", {}))
+	_check("the next whole review asks the rebuilt measured again: %s" % asked.left(60),
+		asked.begins_with(PhotoLook.ASK_AGAIN % [PhotoLook.TOOL, "lantern"])
+		and _look().step() == "again"
+		and int((_look().last.get("rebuilt", {}) as Dictionary).get("added", -1)) == 1)
+	var still: String = _text(await _call_as(chat, PhotoLook.TOOL, {"again": [{"name": "lantern",
+		"where": {"y_from": 15}}]}))
+	_check("...and measured, still short of it, said so: %s" % _line_with(still, "Still"),
+		still.contains("**40%, yours 21% (was 17%): off**") and still.contains("Still over the "
+			+ "line: lantern's height.") and _look().step() == "done")
+	var rest: String = _text(await _call_as(chat, "review_model", {}))
+	_check("...then the review: %s" % rest.left(40), rest.begins_with("The whole model:"))
 
 
-## No photograph anywhere: the look says so and what it searched, and asks
-## all the same, against what it knows.
+## Nothing real to it: "none", and the look ends; the review goes on.
+func _named_none(chat: String) -> void:
+	print("\n── a subject with no real counterpart ──")
+	await _call_as(chat, "clear_model", {})
+	_finder.asked = PackedStringArray()
+	await _call_as(chat, "submit_design", _tower())
+	await _call_as(chat, "review_model", {})
+	var none: String = _text(await _call_as(chat, PhotoLook.TOOL, {"real_thing": "none"}))
+	var rest: String = _text(await _call_as(chat, "review_model", {}))
+	_check("none, nothing searched, and the review: %s | %s" % [none.left(40), rest.left(30)],
+		none.begins_with("Then there is no photograph") and _finder.asked.is_empty()
+		and rest.begins_with("The whole model:") and _look().step() == "done")
+
+
+## A photograph that is not the thing: said so, and none to measure against.
+func _not_the_thing(chat: String) -> void:
+	print("\n── a photograph that is not the thing ──")
+	await _call_as(chat, "clear_model", {})
+	_finder.answers = {"Gandalf": [_picture("G-20 Toronto June 2010.jpg")]}
+	await _call_as(chat, "submit_design", _tower())
+	await _call_as(chat, "review_model", {})
+	await _call_as(chat, PhotoLook.TOOL, {"real_thing": "Gandalf"})
+	await _call_as(chat, "review_model", {})
+	var answer: String = _text(await _call_as(chat, PhotoLook.TOOL, {"photo": "a crowd in a "
+		+ "street", "is_it": false}))
+	var rest: String = _text(await _call_as(chat, "review_model", {}))
+	_check("not the thing: the look ends, no table, then the review: %s" % answer.left(50),
+		answer.begins_with("Then there is no photograph to measure against, and the look ends")
+		and not answer.contains("|") and rest.begins_with("The whole model:")
+		and not bool(_look().last.get("is_it", true)))
+
+
+## No photograph for its name: each search said, and the review goes on.
 func _no_photo(chat: String) -> void:
-	print("\n── a subject with no photograph ──")
+	print("\n── a name with no photograph ──")
 	await _call_as(chat, "clear_model", {})
 	_finder.asked = PackedStringArray()
 	_finder.answers = {}
-	await _call_as(chat, "plan_scale", {"subject": "a glorp", "longest_metres": 3})
-	await _call_as(chat, "how_real_sets_build_this", {"subject": "space blob"})
 	await _call_as(chat, "submit_design", _tower())
+	await _call_as(chat, "review_model", {})
+	await _call_as(chat, PhotoLook.TOOL, {"real_thing": "a glorp, such as live in ponds"})
 	var said: Array = await _call_as(chat, "review_model", {})
 	var text: String = _text(said)
-	_check("two searches, then the look says none came: %s" % _line_with(text, "No photograph"),
-		_finder.asked == PackedStringArray(["a glorp", "A red tower"])
-		and text.contains("No photograph of the real thing came back from Wikimedia Commons "
-			+ "for \"a glorp\", \"A red tower\"") and _look().waiting())
-	_check("...the model alone, from the corner, the front and the side: %d pictures"
-		% _images(said), _images(said) == 3 and not text.contains("The real thing,")
-		and not text.contains("its title names"))
-	var answer: String = _text(await _call_as(chat, PhotoLook.TOOL, {"photo": "none",
-		"is_it": false, "silhouette": "a blob is round; mine is square", "features": [{"name":
-			"roundness", "photo": "none: from what I know, round", "model": "square",
-			"settle": "rebuild", "why": "a blob is round"}]}))
-	_check("...and answered all the same: %s" % answer.left(40), answer.begins_with(
-		"Now rebuild roundness") and not answer.contains("photograph was not the thing"))
+	_check("two searches, then none came, said: %s" % text.left(90),
+		_finder.asked == PackedStringArray(["a glorp, such as live in ponds", "glorp"])
+		and text.begins_with(PhotoLook.NO_PHOTO % "a glorp, such as live in ponds\", \"glorp")
+		and _images(said) == 0 and _look().step() == "done")
+	var rest: String = _text(await _call_as(chat, "review_model", {}))
+	_check("...and the review after: %s" % rest.left(30), rest.begins_with("The whole model:"))
 
 
 ## The model not drawn in time, as behind a busy graphics card: the
@@ -306,8 +437,9 @@ func _not_drawn(chat: String) -> void:
 	print("\n── the model not drawn in time ──")
 	await _call_as(chat, "clear_model", {})
 	_finder.answers = {"red lighthouse": [_picture("Red lighthouse on a cliff.jpg")]}
-	await _call_as(chat, "find_reference", {"subject": "red lighthouse"})
 	await _call_as(chat, "submit_design", _tower())
+	await _call_as(chat, "review_model", {})
+	await _call_as(chat, PhotoLook.TOOL, {"real_thing": "red lighthouse"})
 	var shot: ModelShot = _assistant._ensure_shot()
 	var was: float = shot.give_up_after
 	shot.give_up_after = 0.0
@@ -315,18 +447,13 @@ func _not_drawn(chat: String) -> void:
 	shot.give_up_after = was
 	var text: String = _text(said)
 	_check("the photograph still goes, alone: %d picture" % _images(said),
-		_images(said) == 1 and text.contains("The real thing, from your find_reference: Red "
-			+ "lighthouse on a cliff.jpg") and _look().waiting())
+		_images(said) == 1 and text.contains("The real thing, found for you with \"red "
+			+ "lighthouse\": Red lighthouse on a cliff.jpg") and _look().step() == "read")
 	_check("...and it is asked to take its own: %s" % _line_with(text, "drawn in time"),
 		text.contains(PhotoLook.UNDRAWN) and not text.contains("Yours from"))
 	var looked: Array = await _call_as(chat, "view_model", {"from": "front"})
 	_check("...which it can, the look waiting: %d picture" % _images(looked),
-		_images(looked) == 1 and _look().waiting())
-	var answer: String = _text(await _call_as(chat, PhotoLook.TOOL, {"photo": "a lighthouse",
-		"is_it": true, "silhouette": "taller and tapering", "features": [{"name": "lantern",
-			"photo": "a fifth of the height", "model": "none", "settle": "rebuild",
-			"why": "it is what it is known by"}]}))
-	_check("...and answered as ever: %s" % answer.left(30), answer.begins_with("Now rebuild"))
+		_images(looked) == 1 and _look().step() == "read")
 
 
 ## Never answered: two changes refused, then they go ahead; or the model
@@ -334,8 +461,6 @@ func _not_drawn(chat: String) -> void:
 func _unanswered(chat: String) -> void:
 	print("\n── a look never answered ──")
 	await _call_as(chat, "clear_model", {})
-	_finder.answers = {}
-	await _call_as(chat, "plan_scale", {"subject": "a red tower", "longest_metres": 30})
 	await _call_as(chat, "submit_design", _tower())
 	await _call_as(chat, "review_model", {})
 	var refused := PackedStringArray()
@@ -344,16 +469,16 @@ func _unanswered(chat: String) -> void:
 			"color": 4, "x": 10, "y": 18 + n, "z": 10}]})).left(20))
 	_check("two edits refused, the third goes ahead: %s" % " | ".join(refused),
 		refused[0].begins_with("Not yet") and refused[1].begins_with("Not yet")
-		and not refused[2].begins_with("Not yet") and bool(_look().last.get("unanswered", false)))
-	await _call_as("c4b", "clear_model", {})
-	await _call_as("c4b", "plan_scale", {"subject": "a red tower", "longest_metres": 30})
-	await _call_as("c4b", "submit_design", _tower())
-	await _call_as("c4b", "review_model", {})
-	var cleared: String = _text(await _call_as("c4b", "clear_model", {}))
-	var again: String = _text(await _call_as("c4b", "submit_design", _tower()))
+		and not refused[2].begins_with("Not yet")
+		and str(_look().last.get("unanswered", "")) == "name" and _look().step() == "done")
+	await _call_as("c6b", "clear_model", {})
+	await _call_as("c6b", "submit_design", _tower())
+	await _call_as("c6b", "review_model", {})
+	var cleared: String = _text(await _call_as("c6b", "clear_model", {}))
+	var again: String = _text(await _call_as("c6b", "submit_design", _tower()))
 	_check("taken off to start again, the look is let go: %s | %s" % [cleared.left(30),
 		again.left(30)], not cleared.begins_with("Not yet") and again.begins_with("Built.")
-		and bool(_look().last.get("unanswered", false)))
+		and str(_look().last.get("unanswered", "")) == "name")
 
 
 ## Beside the person's own model: no look, the review as before.
@@ -492,7 +617,7 @@ static func _pngs(blocks: Array) -> bool:
 static func _line_with(text: String, word: String) -> String:
 	for line: String in text.split("\n"):
 		if line.contains(word):
-			return line.strip_edges().left(110)
+			return line.strip_edges().left(130)
 	return "(none)"
 
 

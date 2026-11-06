@@ -129,35 +129,54 @@ fixing what it got wrong.
   `fresh eyes: the session's own final look (N refused): {...}`.
   `fresh_eyes_probe` chats c14 (Claude Code here, the pass a save hands over),
   c16 and c17 (none, the pass asked for, and before the first look).
-- `a new design beside a photograph of the real thing`: `src/ai/photo_look.gd`
-  (design18). A session from outside whose new design went down on a bare
-  baseplate gets, at its first whole review (`Assistant.review` with no
-  assembly, `PhotoLook.due`), the look in place of the rest of the review:
-  `OPENING`, the whole's size, the features `submit_design` named, a photograph
-  of the real thing with its caption (`photo_line`), the model from the view
-  the photograph's title names (`view_for`; the corner when it names none),
-  the front and the side, and `ASK`. The photograph is the first
-  not of bricks (`first_of`, `ReferenceFinder.of_lego`: title, categories,
-  description) of the session's own `find_reference` (`PhotoLook.found`, from
-  `Assistant._find_reference`); when it asked for none, one is searched for
-  (`Assistant.look_up`) with its own words (`queries`: `plan_scale`'s subject,
-  the design's name, `how_real_sets_build_this`'s, `cleaned` of a set's words),
-  at most `MOST_SEARCHES`; with none, the look says so and what it searched.
-  When the model is not drawn in time (a busy graphics card), the photograph
-  goes alone with `UNDRAWN`, asking the session to take its own views.
-  Every change but `compare_with_photo` (`PhotoLook.definition`, served by
-  `CommandSocket._own_tools`, read-only), a save, `view_model`, `look_at_model`
-  and `find_reference` is refused until it answers, at most `MOST_REFUSED`
-  times (`not_yet`, in `CommandSocket._call`); the next whole review is the
-  review, and the review or save after the answer counts the parts added and
-  taken off since (`follow`). Once a subject; never a chat about a selection
-  or beside the person's own model. While a set is held out, `find_reference`
-  drops every picture of bricks too (`ReferenceFinder._on_searched`). The log
-  says `photo look: asked, ... the model from corner, front, right`,
-  `photo look: answered (N refused), K to rebuild: {...}` and `photo look:
-  since the answer, at review_model: A added, R taken off, K kept of P`.
-  `photo_look_probe` (windowed, for the pictures; its own finder, never
-  Commons).
+- `a new design measured against a photograph of the real thing`:
+  `src/ai/photo_look.gd` (design18, measured in design19). A session from
+  outside whose new design went down on a bare baseplate gets, at its first
+  whole review (`Assistant.review` with no assembly, `PhotoLook.at_review`),
+  the look in place of the rest of the review, a step at a time, each answered
+  with `compare_with_photo` (`PhotoLook.definition`, served by
+  `CommandSocket._own_tools`, read-only; `answered`):
+  1. `name` (`ask_name`: `OPENING`, `ASK_NAME`, the features `submit_design`
+     named): `real_thing`, its own name (make and model), or "none" (`none_said`:
+     the look ends).
+  2. `find`: the next whole review (`look`) shows the first photograph not of
+     bricks (`first_of`, `ReferenceFinder.of_lego`: title, categories,
+     description), from the session's own `find_reference` when it searched
+     the same words (`PhotoLook.found`, from `Assistant._find_reference`), else
+     searched (`Assistant.look_up`) with `queries(real_thing)` only (its words
+     `cleaned`, then the name alone), at most `MOST_SEARCHES`; never the
+     design's name or a set's title. Beside it the model from the view the
+     photograph's title names (`view_for`; the corner when it names none), the
+     front and the side, then `ASK_READ` with `axes_line` (which way length and
+     width run, no sizes). None found: `NO_PHOTO`, the look ends. Not drawn in
+     time: the photograph alone with `UNDRAWN`.
+  3. `read` (`_read`): `is_it` false ends the look. Else `whole` (fractions of
+     its longest) and `features` (each with `where`, a look_at_model box, and
+     length, width, height as fractions of the whole's; `shares_of` reads
+     percentages too). The app measures the same (`measure`: the parts whose
+     middle is in the box, no baseplate; `whole_shares`, `feature_shares`, the
+     length the longer way across the ground) and answers the `table`, each
+     share over the line (`offs_of`: more than `OFF_BY` off the photograph's
+     and at least `OFF_LDU`, a stud) marked with the photograph's as a size.
+  4. `settle` (`_settled`): each over the line rebuild or keep, and why; the
+     rebuilds told their sizes (`targets`).
+  5. `rebuild`/`again` (`_again`): `again`, each rebuilt feature's box now,
+     measured beside the photograph's and what it was; the next whole review
+     asks it once (`ASK_AGAIN`) when it was not given.
+  While name, read or settle waits, every change but the answer, a save,
+  `view_model`, `look_at_model` and `find_reference` is refused, at most
+  `MOST_REFUSED` times (`not_yet`, in `CommandSocket._call`); clear_model lets
+  it go. The review or save after the settling, or `again`, counts the parts
+  added and taken off since and re-measures each rebuilt feature in its first
+  box (`follow`). Once a subject; never a chat about a selection or beside the
+  person's own model. While a set is held out, `find_reference` drops every
+  picture of bricks too (`ReferenceFinder._on_searched`). The log says
+  `photo look: named "..."`, `photo look: shown, ...`, `photo look: read N
+  features, K over the line: {...}`, `photo look: settled, K to rebuild:
+  [...]`, `photo look: since the settling, at T: A added, R taken off, K kept
+  of P`, `photo look: in their first boxes now: {...}` and `photo look:
+  measured again, K still over the line: {...}`. `photo_look_probe`
+  (windowed, for the pictures; its own finder, never Commons).
 - `designing with any provider on the person's key`: `src/ai/designer_loop.gd`
   (`DesignerLoop`), `src/ai/provider.gd` (the adapter's shape and the
   transcript), `src/ai/openai_chat.gd` (Chat Completions: every server that

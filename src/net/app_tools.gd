@@ -151,8 +151,8 @@ save_model writes it with the person's models, and a new design's first \
 save hands back its pictures for a fresh look, answered with fresh_eyes \
 before any other call, and the first save after the creative pass one \
 last look, answered with fresh_eyes_final; a new design's first whole \
-review_model sets its front and side beside a photo of the real thing, \
-answered with compare_with_photo; make_part makes a part the \
+review_model measures it against a photo of the real thing, a step at a \
+time answered with compare_with_photo; make_part makes a part the \
 LEGO Group has not made, when search_parts finds no real one that will do.
  - set_floor: what the model stands on — a baseplate 8 to 192 studs in \
 eights, in a colour baseplates come in, a grid floor, or nothing (a car \

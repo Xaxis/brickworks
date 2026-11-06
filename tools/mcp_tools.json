@@ -5926,23 +5926,125 @@
       "readOnlyHint": true,
       "title": "Compare it with a photo of the real thing"
     },
-    "description": "Answer the look beside a photograph of the real thing that a design's first whole review asks for: what the photograph shows, the silhouettes against each other, and each feature's form and size against the whole in the photograph and in your model, each settled rebuild or keep, and why. Only when a review asks.",
+    "description": "Answer each step of the look a design's first whole review asks for, measuring the model against a photograph of the real thing: real_thing (its own name, to search for the photograph), then photo, is_it and the shares read off the photograph (whole, and features each with where), then settled (each share over the line rebuild or keep, and why), then again (each rebuilt feature's box now). Only when a review asks.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "again": {
+          "items": {
+            "additionalProperties": false,
+            "description": "a feature you rebuilt, and its box as it is now",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "where": {
+                "additionalProperties": false,
+                "description": "its box in your model, in studs and plates, as look_at_model takes one",
+                "properties": {
+                  "x_from": {
+                    "type": "number"
+                  },
+                  "x_to": {
+                    "type": "number"
+                  },
+                  "y_from": {
+                    "type": "number"
+                  },
+                  "y_to": {
+                    "type": "number"
+                  },
+                  "z_from": {
+                    "type": "number"
+                  },
+                  "z_to": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
         "features": {
           "items": {
             "additionalProperties": false,
+            "description": "a feature the subject is known by: its length, width and height as fractions of the whole's, read off the photograph",
             "properties": {
-              "model": {
-                "description": "its form and its size against the whole in your model's pictures, in studs and plates",
-                "type": "string"
+              "height": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "length": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
               },
               "name": {
                 "type": "string"
               },
-              "photo": {
-                "description": "its form and its size against the whole, as the photograph shows it",
+              "where": {
+                "additionalProperties": false,
+                "description": "its box in your model, in studs and plates, as look_at_model takes one",
+                "properties": {
+                  "x_from": {
+                    "type": "number"
+                  },
+                  "x_to": {
+                    "type": "number"
+                  },
+                  "y_from": {
+                    "type": "number"
+                  },
+                  "y_to": {
+                    "type": "number"
+                  },
+                  "z_from": {
+                    "type": "number"
+                  },
+                  "z_to": {
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "width": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "where"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "is_it": {
+          "description": "true only when the photograph shows the thing itself",
+          "type": "boolean"
+        },
+        "photo": {
+          "description": "what the photograph shows",
+          "type": "string"
+        },
+        "real_thing": {
+          "description": "the real thing's own name in a few words, to search for its photograph: make and model, a building's name, a species; \"none\" when it has no real counterpart",
+          "type": "string"
+        },
+        "settled": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
                 "type": "string"
               },
               "settle": {
@@ -5959,35 +6061,36 @@
             },
             "required": [
               "name",
-              "photo",
-              "model",
               "settle",
               "why"
             ],
             "type": "object"
           },
-          "minItems": 1,
           "type": "array"
         },
-        "is_it": {
-          "description": "true when the photograph shows the thing you are building",
-          "type": "boolean"
-        },
-        "photo": {
-          "description": "what the photograph shows",
-          "type": "string"
-        },
-        "silhouette": {
-          "description": "the photograph's outline against your model's from the nearest view: length against height, where the mass sits, what stands out of it, and how yours differs",
-          "type": "string"
+        "whole": {
+          "additionalProperties": false,
+          "description": "the real thing's length, width and height as fractions of the longest of the three, read off the photograph",
+          "properties": {
+            "height": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "length": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "width": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            }
+          },
+          "type": "object"
         }
       },
-      "required": [
-        "photo",
-        "is_it",
-        "silhouette",
-        "features"
-      ],
       "type": "object"
     },
     "name": "compare_with_photo"
