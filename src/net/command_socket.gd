@@ -609,6 +609,9 @@ const HINTS := {
 	# In place of the model, and with discard_changes its unsaved changes.
 	"open_model": ["Open a model", "remove"],
 	"parts_list": ["List the parts", "look"],
+	# mybricks: adds loose lots to the person's collection, marked as the
+	# chat's; takes off only the chat's own.
+	"edit_collection": ["Add to the person's collection", "add"],
 	"render_model": ["Render a picture", "file"],
 	# Queued pictures, drawn in turn and written where Render writes.
 	"render_queue": ["Queue renders", "file"],

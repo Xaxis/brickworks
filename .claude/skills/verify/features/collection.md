@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project -->
+<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test -->
 
 ## Sub-features
 
@@ -29,6 +29,31 @@ which models they could build from what they have. Added 2026-10-12.
     owned in its own colour, then in any colour; Open puts one on the baseplate
     and shows its shortfall. An official model opens where `vendor/omr` is
     (a checkout); elsewhere See it links its page at library.ldraw.org.
+- `loose parts in my collection` (`src/ui/collection_dialog.gd`, APP_UX5 #2
+  mybricks, 2026-11-06): What I own's Loose parts row adds one lot at a time:
+  a part found by the bin's own search (`PartLibrary.search`, the family's
+  word first, `PartsBin._named_first`), a colour's name typed with it taken
+  as the colour ("red 2x4 brick", "Light Bluish Gray 3020"); from a photo of
+  the part (Photo…, the bin's Brickognize and the same notice first, the
+  photo's colour taken when Brickognize is sure); Like this (`PartLike`); or
+  a part chosen in the bin while the page is open, in the bin's colour. The
+  colour list has the colours the part was made in first. How many, Add (Enter
+  in the count adds). Each lot is listed under Loose parts with its count
+  changed in place (sent 0.6 s after the last change) and Remove; a lot of a
+  part and colour already there adds to it. Every change goes to the account
+  as `"from": "lots"` (`CollectionStore.change_lots`): only the lots named
+  change, so what another device changed stays.
+- `a session's loose parts over mcp` (`AppTools._edit_collection`):
+  `edit_collection {"add": [{part, color, count}], "remove": [...]}` in one
+  call, all or nothing; a part by its LDraw number or BrickLink's, a colour by
+  its code or name; a sticker or a ~ piece refused. Each lot added is marked
+  `by` (who the session is, "Claude") and `chat` (the relay's chat id), a lot
+  apart from the person's own of the same part and colour. remove= takes only
+  this chat's lots, and names the person's own as theirs. With neither it reads
+  the collection back, this chat's lots apart. My collection lists a session's
+  lots first, under "Added by Claude", with Keep them (they join the person's
+  own) and Take back what Claude added (exactly those lots out). Needs the
+  person signed in.
 - `build from a set's parts` (`src/collection/set_bin.gd`, `src/ui/parts_bin.gd`,
   docs/APP_UX.md B10, 2026-10-30): the parts bin as one set's parts, or
   several sets' added up, a tile for each part and colour in its own colour,
@@ -179,7 +204,11 @@ which models they could build from what they have. Added 2026-10-12.
   cards adding their box. Read it back with
   `curl -s <PARTS_URL>library/index.json | sha256sum` against the staged one.
 - `/api/collection` (`api/collection.js`, `supabase/collection.sql`): GET, POST
-  an import, PUT the whole collection, DELETE. Every import is parsed and
+  an import, PUT the whole collection, DELETE. POST `{"from": "lots", "set":
+  [...], "add": [...]}` (2026-11-06): each "set" lot at exactly its count (0
+  takes it out), then each "add" added; at most 2,000 a request; a lot's `by`
+  and `chat` kept (and kept by a PUT), the lot keyed by part, colour, by and
+  chat. No new column: `parts` is JSON already. Every import is parsed and
   mapped here (Rebrickable CSV with quoted fields, BrickLink XML, Rebrickable's
   API rows, typed set numbers) and nowhere else. Refuses: no sign-in (401),
   naming any account (`?owner=`, `?user_id=`, a body's `owner`: 403 — there is
@@ -221,6 +250,9 @@ node tools/web/collection_probe.mjs --url=http://127.0.0.1:8790
 BW_BYPASS=$VERCEL_BYPASS node tools/web/collection_probe.mjs --url=https://<a preview>
 # in a real browser, against a preview (tools/deploy.sh without --prod)
 BW_BYPASS=$VERCEL_BYPASS node tools/web/collection_flow.mjs --url=https://<a preview>/app --out=shots/collection_web
+# loose parts (mybricks): the endpoint's lots, then the app by hand and over MCP, on a relay
+node tools/web/mybricks_api.mjs --url=http://127.0.0.1:8790
+tools/relay_probe.sh mybricks                     # a window, 1280x720 (PROBE_SIZE=1400x900 too)
 # rebuilding the data, after tools/fetch_data.sh or a catalogue change
 python3 tools/collection_data.py
 python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json
@@ -264,6 +296,19 @@ Proves it when:
 - `collection_ui_probe` ends `the shortfall, the ranking and the collection on
   screen`; look at `shots/collection_need.png`, `collection_build.png`,
   `collection_own.png`.
+- `mybricks_api.mjs` ends `every check passed`: an old collection (two sets, a
+  CSV, an XML) as it was through twelve lots added, one changed, one taken out,
+  a session's twelve apart and a PUT keeping their marks, and taken back lot for
+  lot; six malformed changes refused with words and 2,001 lots with 413.
+- `mybricks_probe` (tools/relay_probe.sh mybricks, with `-- --shots=DIR`) ends
+  `all good`: 12 of the car's lots added by hand, each in 3 actions or fewer
+  (10 by search, 2 by a photo's answer); What do I need? short by exactly
+  their pieces and 12 lots fewer; What can I build? a model made of them at
+  100%; each changed and taken out by itself; the same 12 over MCP in 1 call,
+  `parts_list which="need"` agreeing in 1; the copy on this device and another
+  device's sign-in holding them; Take back leaving the old collection lot for
+  lot; Start over asking. Look at the pictures: `mybricks_row`, `_like`,
+  `_loose`, `_need`, `_build`, `_claude`, `_taken_back`.
 - `collection_probe.mjs` ends `every check passed` (44 checks): every import in
   LDraw's numbers, the other account refused by the endpoint, and straight at
   the database every session refused, the owner's too, and the anonymous key, the
