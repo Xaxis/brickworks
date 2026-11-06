@@ -1202,6 +1202,13 @@
       "area": "web"
     },
     {
+      "kind": "cli",
+      "label": "each thread's CPU in a browser",
+      "entry": "tools/web/thread_cpu.mjs",
+      "reach": "node tools/web/thread_cpu.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (with .env sourced; a local export served by tools/web/serve.py; --profile=phone; --idle=60 --build=60)",
+      "area": "web"
+    },
+    {
       "kind": "ui",
       "label": "drawing only what changed",
       "entry": "src/render/idle_draw.gd",
