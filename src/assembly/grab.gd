@@ -64,6 +64,12 @@ const ON_THE_LINE := 6.5
 ## A part may sink this far below the floor the model stands on, LDU, as
 ## Balance lets a pose: half a plate.
 const BELOW_FLOOR := 4.0
+## A part on a stud it only rests on (Bodies.rests) goes neither into it nor
+## across it until it is lifted this far off it, LDU: a stud's height. It
+## may go across it as far as it has gone up, and [constant REST_SLACK]
+## more: a boom lifted on its hinge goes up off its rest, and a little along.
+const REST_STUD := 4.0
+const REST_SLACK := 0.05
 ## A loop's driver is turned on a grid of this, degrees.
 const LOOP_GRID := 0.25
 ## A loop with no more moving parts than this has what they overlap where
@@ -1409,6 +1415,11 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 			frame_test_ms += test_ms
 			frame_tests += 1
 			return Vector2i(0, 0)
+	if from == 0 and not _rests_let(at):
+		test_ms = float(Time.get_ticks_usec() - started) / 1000.0
+		frame_test_ms += test_ms
+		frame_tests += 1
+		return Vector2i(0, 0)
 	var keys: Array = moving.keys()
 	if not followers.is_empty():
 		keys.append_array(followers.keys())
@@ -1515,6 +1526,46 @@ func _test(at: Dictionary, from: int, budget: float, ahead: bool = true, due: Di
 	frame_test_ms += test_ms
 	frame_tests += 1
 	return Vector2i(result, n if result == -1 else 0)
+
+
+## Whether each stud a part only rests on (Bodies.rests) lets the pose
+## [param at] be: the part on it lifted off it, not pushed into it, nor
+## across it while the stud is still in it ([constant REST_STUD]). Where one
+## does not, [member blocked_by] says the two. 4096's crane boom lies on two
+## cones' studs: neither joint nor cover holds it there (a stud is in no
+## cover), and it swung 3° down into them, and round with its turntable
+## across them.
+func _rests_let(at: Dictionary) -> bool:
+	for one: Array in bodies.rests:
+		var joined: Bodies.Link = one[0]
+		var pair: Array = joined.pairs[0]
+		var upper: int = int(pair[0])
+		var lower: int = int(pair[1])
+		if int(bodies.body_of.get(upper, -1)) != int(one[1]):
+			upper = int(pair[1])
+			lower = int(pair[0])
+		if not at.has(upper) and not at.has(lower):
+			continue
+		var lower_moved: Transform3D = _moved_at(lower, at)
+		var gone: Vector3 = _moved_at(upper, at) * joined.point - lower_moved * joined.point
+		var way: Vector3 = (lower_moved.basis * joined.axis).normalized()
+		var off: float = gone.dot(way)
+		var across: float = (gone - way * off).length()
+		if off < -REST_SLACK or off < REST_STUD and across > maxf(off, 0.0) + REST_SLACK:
+			blocked_by = [upper, lower] if at.has(upper) else [lower, upper]
+			met = int(blocked_by[0])
+			stretch_words = ""
+			return false
+	return true
+
+
+## How [param key] is moved from where it stood when grabbed to where
+## [param at] puts it: not at all where [param at] does not move it.
+func _moved_at(key: int, at: Dictionary) -> Transform3D:
+	if not at.has(key):
+		return Transform3D.IDENTITY
+	var was: Transform3D = rest.get(key, world.get_brick(key).transform)
+	return (at[key] as Transform3D) * was.affine_inverse()
 
 
 ## A loop's joints turn their own two parts against each other, and nothing
@@ -4225,6 +4276,8 @@ func _swing_inner(child: int, joined: Bodies.Link) -> float:
 ## that stands: nothing in the way but what moves with the grab or is
 ## joined to it, and not through the floor.
 func _room_for(at: Dictionary) -> bool:
+	if not _rests_let(at):
+		return false
 	for key: Variant in at:
 		var brick: BrickWorld.Brick = world.get_brick(int(key))
 		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null

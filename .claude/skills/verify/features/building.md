@@ -1911,8 +1911,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   or a ball's turn), `settle` (a free joint down under its weight), `commit`
   (one undo step). `grab_probe` checks each on real sets.
 - `closed loops of joints` (`src/assembly/linkage.gd`, `Linkage`; MECHANISMS
-  §11): a part held at both ends (Bodies' closing links) moves as its loop
-  allows: the loop's joint angles (and slides, and a ball's three turns)
+  §11): a part held at both ends (Bodies' closing links; not a part that
+  only rests on a stud at a hinge's free end, `Bodies.rests`) moves as its
+  loop allows: the loop's joint angles (and slides, and a ball's three turns)
   solved by damped Gauss-Newton with exact derivatives, from the last pose,
   in steps sized by the fastest turning joint (0.5 rad), each started along
   the last step's slope, closed to 0.5 LDU on the way and 0.05 at the end; a
@@ -2097,7 +2098,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   rest where five times the 40's turn puts it), a picture mid-coast and at
   rest, one undo, move_part spin=720 against the hand form, and 4096's hinge
   flicked the same way staying where it was let go (spin= says it does not
-  coast). Each fails with its fix taken out.
+  coast). Each fails with its fix taken out. Before the flick, 4096's boom
+  on its rest by hand: dragged 10° down into its cones it stays, dragged up
+  it lifts 20°, one step (`Bodies.rests`).
 - `hoses follow a grab` (`src/assembly/flex_follow.gd`, `FlexFollow`;
   MECHANISMS §18): a pneumatic tube, a ribbed hose, a flex-system hose, a
   flexible axle or a string (Flex's swept kinds, and the same parts LDCad laid:
@@ -2921,7 +2924,10 @@ godot --headless --path . --script src/dev/snap_probe.gd
 # it, a beam onto two pins, a clip on a bar, a clip on 2540's handle (room
 # with its plate out, up or down, not into the plate) and a bar in a clip,
 # each aimed at, clicked, joined, and passed by check_design; the same pin a
-# stud off and the same clip or bar 2 LDU off the line refused by both
+# stud off and the same clip or bar 2 LDU off the line refused by both. And
+# cones (3942c, 4589, 59900), a round plate and a dome 2 x 2 on a cone's or
+# round plate's stud, clicked, dragged, swapped in, stood on by a figure and
+# sent over MCP, each at the stud's stop to 0.01 LDU
 godot --headless --path . --script src/dev/technic_hand_probe.gd
 # a pneumatic tube laid by clicking two pin holes, bent by a dragged ball,
 # refused past its bend, undone; Pose offering the laid tube no slider; a chain

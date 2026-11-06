@@ -393,15 +393,51 @@ func pairs_near(of: Dictionary, by: float) -> Array:
 
 ## Every colliding pair the shapes find with at least one of the pair in
 ## [param of] (every pair when it is empty), i < j, items numbered as here.
+## A part down another's stud past the stud's foot is one too, whatever
+## their shapes meet by ([method sunk]): a cone 4 LDU down a cone's stud
+## meets it by 2 LDU, a 2 x 2 cone down 4589's by 0.8, and it is in that
+## part all the same. Nothing forgives it (a found pair with "sunk").
 func collisions(of: Dictionary) -> Array:
 	var began: int = Time.get_ticks_usec()
 	var out: Array = []
+	var down: Dictionary = sunk(of)
 	for pair: Vector2i in pairs_near(of, Exact.TAU):
+		if down.has(pair):
+			continue
 		var found: Variant = between(pair.x, pair.y)
 		if found is Dictionary and not (found as Dictionary).is_empty():
 			out.append(found)
+	for pair: Vector2i in down:
+		out.append(down[pair])
 	_spent("collisions", began)
 	return out
+
+
+## Each pair of items, one of them in [param of] (any when it is empty),
+## where one is down a stud of the other past the stud's foot, further than
+## BrickNet joins the two (Exact.sunk_pairs): Vector2i(a, b), a < b ->
+## the collision, as [method between] gives one, with "sunk": [the stud's
+## item, the one down it] and the stud's way as its axis.
+func sunk(of: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	for one: Array in Exact.sunk_pairs(items, of):
+		var a: int = mini(int(one[0]), int(one[1]))
+		var b: int = maxi(int(one[0]), int(one[1]))
+		out[Vector2i(a, b)] = {"a": a, "b": b, "depth": float(one[2]), "piece_a": -1,
+			"piece_b": -1, "axis": one[3], "sunk": [int(one[0]), int(one[1])]}
+	return out
+
+
+## Whether item [param i] is down a stud of one of [param others], or one of
+## theirs down its, past the stud's foot further than BrickNet joins them: no
+## seat moves it, as it is in that part (the check says so, [method
+## collisions]). Nearer, it is on the stud, low, and the seat puts it up.
+func _sunk_near(i: int, others: PackedInt32Array) -> bool:
+	for j: int in others:
+		if items[j] != null and (Exact.sunk(items[j], items[i]) > Exact.SUNK_PAST
+				or Exact.sunk(items[i], items[j]) > Exact.SUNK_PAST):
+			return true
+	return false
 
 
 ## BrickNet's pieces over everything with a shape (only the items in [param
@@ -1378,6 +1414,13 @@ func said(found: Dictionary, name: Callable) -> String:
 	var a: int = found["a"]
 	var b: int = found["b"]
 	var depth: float = snappedf(float(found["depth"]), 0.1)
+	if found.has("sunk"):
+		var stud: int = found["sunk"][0]
+		var down: int = found["sunk"][1]
+		return ("%s passes %s LDU into %s: it is down that part's stud %s LDU past the stud's "
+			% [name.call(down), _n(depth), name.call(stud), _n(depth)]
+			+ "foot, which stops what goes onto it. Move it %s."
+			% _direction(found["axis"] * float(found["depth"])))
 	var head: String = "%s and %s: their real shapes overlap by %s LDU, more than the 1 LDU a build allows" % [
 		name.call(a), name.call(b), _n(depth)]
 	var ia: Exact.Item = items[a]
@@ -1623,6 +1666,15 @@ func _seat_pieces(wanted: Dictionary, near: Dictionary, moved: Dictionary) -> vo
 		var mine: Dictionary = {}
 		for i: Variant in members:
 			mine[int(i)] = true
+		var down: bool = false
+		for i: Variant in members:
+			var outside := PackedInt32Array()
+			for j: int in (near.get(int(i), PackedInt32Array()) as PackedInt32Array):
+				if not mine.has(j):
+					outside.append(j)
+			down = down or _sunk_near(int(i), outside)
+		if down:
+			continue
 		var best: Dictionary = {}
 		for i: Variant in members:
 			var outside := PackedInt32Array()
@@ -1798,7 +1850,7 @@ func _seat(movable: Array) -> Dictionary:
 	var order: Array = wanted.keys()
 	order.sort_custom(func(a: int, b: int) -> bool: return _volume(a) < _volume(b))
 	for i: int in order:
-		if not near.has(i) or _meets_exactly(i, points):
+		if not near.has(i) or _meets_exactly(i, points) or _sunk_near(i, near[i]):
 			continue
 		var others: PackedInt32Array = near[i]
 		var found: Dictionary = Exact.seat_move(items, i, SEAT_REACH, 0.05, others)
