@@ -46,6 +46,7 @@ FILES = {
     "assets/ldraw/part_names.json": b'{"3001": "brick"}',
     "assets/ldraw/gears.json": b'{"gears": {"3647": {}}}',
     "assets/ldraw/known_fits.json": b'{"plain": {}}',
+    "assets/ldraw/track_ends.json": b'{"tracks": {"74746": {}}}',
     "assets/ldraw/stud.dat": b"0 Stud\n",
     "assets/ldraw/p/stud.dat": b"0 Stud (p)\n",
     "assets/ldraw/p/48/1-4cyli.dat": b"0 Cylinder 0.25\n" * 9,
@@ -117,10 +118,11 @@ def split(tmp_path: Path) -> Path:
 def test_the_engine_waits_for_the_code_alone(split: Path) -> None:
     code = read_pack(split / "index.pck")
     # With the tables read as their classes load, while the scripts are
-    # made and before the data pack is mounted (Mechanism, KnownFits).
+    # made and before the data pack is mounted (Mechanism, KnownFits, TrackSnap).
     assert sorted(code) == sorted(["project.binary", "src/main.gdc", "src/main.gd.remap", "src/ui/look.gdc",
                                    "assets/ui/tools/accept.svg.import", ".godot/imported/accept.svg-d7c.ctex",
-                                   "assets/ldraw/gears.json", "assets/ldraw/known_fits.json"])
+                                   "assets/ldraw/gears.json", "assets/ldraw/known_fits.json",
+                                   "assets/ldraw/track_ends.json"])
 
 
 def test_what_the_start_reads_is_a_pack_beside_it(split: Path) -> None:

@@ -11227,6 +11227,15 @@ msgstr "Lo que encaja con %s, con «%s», lo mejor primero"
 msgid "Nothing that fits %s has “%s”"
 msgstr "Nada de lo que encaja con %s tiene «%s»"
 
+msgid "Placing %s on the end of %s: click puts it there"
+msgstr "Colocando %s en el extremo de %s: un clic la deja ahí"
+
+msgid "%s puts its next end to the joint"
+msgstr "%s pone su siguiente extremo en la unión"
+
+msgid "a sleeper goes under the joint with it"
+msgstr "una traviesa va con ella bajo la unión"
+
 # View, Stud directions (APP_UX5 seeing2): each part coloured by where its studs point, its legend
 
 msgid "Stud directions"

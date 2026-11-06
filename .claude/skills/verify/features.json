@@ -631,6 +631,14 @@
       "tests": []
     },
     {
+      "id": "cli:buildturn probe",
+      "kind": "cli",
+      "entry": "src/dev/buildturn_probe.gd",
+      "reach": "tools/probe.sh buildturn_probe; PROBE_SIZE=1024x768, 1280x720 or 1400x900 tools/probe.sh buildturn_probe   (windowed, 390x844 by its header; pictures in shots/buildturn/)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:buildvideo probe",
       "kind": "cli",
       "entry": "src/dev/buildvideo_probe.gd",
@@ -746,6 +754,14 @@
         "tests/test_pck_split.py",
         "tests/test_release_train.py"
       ]
+    },
+    {
+      "id": "cli:check the track table",
+      "kind": "cli",
+      "entry": "tools/track_ends.py",
+      "reach": "tools/track_ends.py check   (assets/ldraw/track_ends.json is what the parts measure; straights' ends 320 apart, sixteen curves close a circle; tools/track_ends.py show ID: one part's ends and how they were found)",
+      "area": "pipeline",
+      "tests": []
     },
     {
       "id": "cli:cloud library browser flow",
@@ -5565,6 +5581,14 @@
       "kind": "ui",
       "entry": "src/ui/first_build.gd",
       "reach": "godot --path .  (Build your first model: offered once along the top of the model on a first visit; Help, Take the tour)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:train tracks end to end",
+      "kind": "ui",
+      "entry": "src/assembly/track_snap.gd",
+      "reach": "tools/probe.sh tracks_probe   (a 9V curve dragged near a straight's free end joins it in one drag; R puts its other end to the joint; two 12V curves get their sleeper, one undo takes both; sixteen curves by sixteen clicks close a circle; a session's oval of 16 curves and 4 straights in two calls, attach track[0] to track[1]. Windowed, pictures in shots/tracks/. By hand: a track in hand near a free end of one down sits on it; the status line says so and what R does)",
       "area": "building",
       "tests": []
     },

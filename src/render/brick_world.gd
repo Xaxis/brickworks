@@ -555,6 +555,28 @@ func show_only(visible_ids: Dictionary) -> void:
 var NO_KEYS: PackedStringArray = PackedStringArray()
 
 
+## What draws [param ids] and nothing else: each batch every brick of which
+## is one of them. Build it hides a floor's plates by them while it shows
+## the model turned over (main._turn_with_view), which every brick asked
+## again, and the batches written whole, would cost a page turn.
+func batches_only_of(ids: Dictionary) -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	if ids.is_empty():
+		return out
+	for key: String in _batches:
+		var batch: Batch = _batches[key]
+		if batch.brick_ids.is_empty() or batch.instance == null:
+			continue
+		var all_of: bool = true
+		for brick_id: int in batch.brick_ids:
+			if not ids.has(brick_id):
+				all_of = false
+				break
+		if all_of:
+			out.append(batch.instance)
+	return out
+
+
 ## Draw only the bricks numbered below [param upto], which, in a world
 ## filled in one go with nothing hidden or removed, are the first ones
 ## added. The booklet's stage is filled in the order the booklet builds,

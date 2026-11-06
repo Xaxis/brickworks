@@ -70,6 +70,16 @@ lib:placing a part by its connectors
 lib:round joints
 -->
 
+## Train tracks {#tracks}
+
+A track in hand (9V, 12V, 4.5V, RC, 6-wide or roller coaster) snaps to the free end of a track already down when the pointer is near it, and a click lays it on, end to end. [[R]] puts its next end to the joint, so a curve turns the other way or a point goes on by another of its ends. The 4.5V and 12V rails are held by a sleeper under each joint, and that sleeper goes down with the track, in the same undo. Sixteen curves laid this way close a circle.
+
+An assistant lays tracks with `attach`, by `"to": "c1.track[1]", "by": "track[0]"`: each track's ends are numbered as `attachment_points` lists them.
+
+<!-- covers
+ui:train tracks end to end
+-->
+
 ## Connect by a point {#connect}
 
 A long Technic beam has many holes, and the one you want is rarely the one the pointer finds first. With the part in hand press [[N]], or choose **Connect** on the toolbar: its pins, holes, axles, bars and clips light up in blue where it stands. Click the one it goes on by, then the pin, hole or bar it goes on: only that point snaps, so a 1 x 16 goes on its pins by its end hole at once. A pin or an axle goes in from the side you point from, and a wheel goes on an axle where you point along it. [[T]] puts it on the other way, [[R]] turns it about the joint, [[N]] again picks another point, and [[Esc]] goes back to placing as usual.
