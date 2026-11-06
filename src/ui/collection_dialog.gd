@@ -1376,8 +1376,11 @@ func _show_chosen() -> void:
 	_loose_picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_loose_found.add_child(_loose_picture)
 	if _loose_part.is_empty():
-		_loose_found.add_child(_label("Find a part above, by its number or words, from a photo, or "
-			+ "by choosing it in the parts bin; then how many, and Add.", 11, 0.55))
+		# Its own width, or a clipped label in a flowing row has none.
+		var hint: Label = _label("Find a part above, by its number or words, from a photo, or "
+			+ "by choosing it in the parts bin; then how many, and Add.", 11, 0.55)
+		hint.clip_text = false
+		_loose_found.add_child(hint)
 		return
 	var listed: Array[PartLibrary.PartInfo] = _loose_listed.duplicate()
 	if not listed.any(func(info: PartLibrary.PartInfo) -> bool: return info.id == _loose_part):
