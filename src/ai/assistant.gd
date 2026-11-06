@@ -13814,8 +13814,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		if not lopsided.is_empty():
 			advice.append(lopsided)
 
-	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds,
-		exact_joins, come_away)
+	var each_piece: Array = _pieces_of(cells_of, lattice, boxes_of, holds,
+		exact_joins, come_away, clutched_pairs)
 	var pieces: int = each_piece.size()
 	# What touches what, asked only of a model with a part of the design's
 	# in it: of one that is all the person's own nothing is asked, and for a
@@ -16228,11 +16228,12 @@ const NEAR: Array[int] = [5, 4, 5]
 
 
 ## The separate pieces the design is in, each the indices of its
-## placements, joined by the rules [method _check] says them by.
-func _pieces_of(model: Model, cells_of: Dictionary,
+## placements, joined by the rules [method _check] says them by. [param
+## studs] are the studs support read ([method _studs_reaching_in]).
+func _pieces_of(cells_of: Dictionary,
 		lattice: BrickLattice, boxes_of: Dictionary = {},
 		holds: Dictionary = {}, joins: Array = [],
-		come_away: Dictionary = {}) -> Array:
+		come_away: Dictionary = {}, studs: Array = []) -> Array:
 	if cells_of.size() <= 1:
 		return [cells_of.keys()] if cells_of.size() == 1 else []
 
@@ -16282,21 +16283,7 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 				joined[index].append(above - 1)
 				joined[above - 1].append(index)
 
-	for index: int in cells_of:
-		var placement: Placement = model.placements[index]
-		var part: Lbm.PartMesh = library.mesh_for(placement.part)
-		if part == null or come_away.has(index):
-			continue
-		var at: Transform3D = _joined_at(placement, part, model)
-		for connector: Lbm.Connector in part.connectors:
-			if connector.kind != "stud" or connector.gender != "male":
-				continue
-			var tip: Vector3 = at * (connector.position
-				+ connector.axis.normalized() * 5.0)
-			var reached: int = lattice.brick_but(BrickLattice.to_cell(tip), index + 1)
-			if reached != 0 and joined.has(reached - 1) and not come_away.has(reached - 1):
-				joined[index].append(reached - 1)
-				joined[reached - 1].append(index)
+	_join_studs(joined, studs, come_away)
 
 	var seen: Dictionary = {}
 	var pieces: Array = []
@@ -16315,6 +16302,24 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 					piece.append(next)
 		pieces.append(piece)
 	return pieces
+
+
+## Joins in [param joined] each stud's part and the part it reaches into,
+## as [param studs] gives them: support's own reading ([method
+## _studs_reaching_in], which is Joints.studs_in), not a copy of it. The
+## count read the tips by a copy, which a stud up a hollow its cover leaves
+## open (Joints._hollow_round) passed by: 10179-1's loudhailer, its bell on a
+## 2 x 12's stud, and two cones on a corner plate's were held and yet each a
+## piece of its own, and three of its sections two pieces (checks267). Not
+## for a part that comes away in the hand, as for the joints.
+static func _join_studs(joined: Dictionary, studs: Array, come_away: Dictionary) -> void:
+	for pair: Array in studs:
+		var owner: int = pair[0]
+		var into: int = pair[1]
+		if joined.has(owner) and joined.has(into) \
+				and not come_away.has(owner) and not come_away.has(into):
+			joined[owner].append(into)
+			joined[into].append(owner)
 
 
 ## What fills a cell, for [method Joints.pushed_in]: the placements whose

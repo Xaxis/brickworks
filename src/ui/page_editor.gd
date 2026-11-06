@@ -1778,7 +1778,7 @@ func add_image(image: Image) -> String:
 		wide *= 80.0 / high
 		high = 80.0
 	var said: String = _change("image", first, {
-		"data": Marshalls.raw_to_base64(bytes), "kind": "png" if clear else "jpg",
+		"data": Marshalls.raw_to_base64(bytes),
 		"at": [_sheet.size().x - _sheet.margin - wide, Booklet.content(_sheet).end.y - high, wide, high]})
 	_say(said)
 	_pictures.clear()
