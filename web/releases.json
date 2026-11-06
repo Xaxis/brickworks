@@ -1,7 +1,103 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.17.0",
+ "latest": "0.18.0",
  "releases": [
+  {
+   "version": "0.18.0",
+   "tag": "v0.18.0",
+   "date": "2026-11-06",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.18.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.18.0",
+   "summary": "Brickworks gives you more room and more ways in. At 1400 \u00d7 900 the parts bin shows 42 parts where it showed 30, every field of the part you select stays in sight, and the assistant opens beside the bin instead of folding it away. Select a part and choose Like this for the parts that could stand in its place, a 2 \u00d7 4 brick's plate and tile among the first, and double-click one to swap it in where it stands. Cut a box, a sphere or a cylinder out of a model to see inside it, and the cut is kept with the file. Pattern lays a whole grid of copies at once. A model's parts go to LEGO\u00ae Pick a Brick as a list it takes, or to BrickLink as a wanted list that says the condition you want. Find, Replace, Simulate, Motions and more have keys now, and Shift+F1 asks any control what it does. Build it can go a part at a time, a booklet's parts box shows a dish or an inverted slope turned over so it is not taken for a plate, and a step its author turned over stays turned over. Typing in the bin, a page of baseplates and a big design being checked no longer hold the window still, renaming or copying a sub-assembly keeps its steps, and Brickworks quits at once and cleanly with a dialog open, a booklet drawing, a model being read or an update on its way. When you build with your own Claude, it now sees what you see: several views in one picture, parts picked out, the model as built to a step, and a booklet's page.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "deb",
+     "name": "Brickworks-0.18.0-linux-amd64.deb",
+     "size": 453797276,
+     "sha256": "1a636622506f8abf5619c3eb15cabf92227bb9311205e10b1cb8b16bbb7a2b19",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.18.0/Brickworks-0.18.0-linux-amd64.deb",
+     "unpacked": 1542202368,
+     "glibc": "2.28"
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.18.0-linux-x86_64.AppImage",
+     "size": 606001656,
+     "sha256": "12e8e7a8387c98e0cabcdcdf100cb4de31a599b9bd22760123deefc2002bfe6d",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.18.0/Brickworks-0.18.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.18.0-linux-x86_64.tar.xz",
+     "size": 453783196,
+     "sha256": "42a69f5c778889c5de1b9760ca4332e096e4d223e0dee1d64281fb3f2b6f0f17",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.18.0/Brickworks-0.18.0-linux-x86_64.tar.xz",
+     "unpacked": 1542187906,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "dmg",
+     "name": "Brickworks-0.18.0-macos-universal.dmg",
+     "size": 765384351,
+     "sha256": "8c7f37f347d9e592e50c0f01dbb4e6a046bcf12dc92cefaadfb6a8d6e3a3713d",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.18.0/Brickworks-0.18.0-macos-universal.dmg",
+     "unpacked": 1652113408,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.18.0-macos-universal.zip",
+     "size": 787765243,
+     "sha256": "74dea8b51f789a0a3df5377f5ca37c4ae94dd648481b7f830cff1703bca109ec",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.18.0/Brickworks-0.18.0-macos-universal.zip",
+     "unpacked": 1639172861,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "installer",
+     "name": "Brickworks-0.18.0-windows-x86_64-setup.exe",
+     "size": 406572236,
+     "sha256": "6a1d1b7e352d255e71db1e0db0649088c2920a89c505a3d7fef91bfe76e65bd2",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.18.0/Brickworks-0.18.0-windows-x86_64-setup.exe",
+     "unpacked": null,
+     "signed": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.18.0-windows-x86_64.zip",
+     "size": 766079992,
+     "sha256": "b0f008c16fa35c8562002e10b1450de6bb249e6779417d9216c05db1cbdf835c",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.18.0/Brickworks-0.18.0-windows-x86_64.zip",
+     "unpacked": 1577885609,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.17.0",
    "tag": "v0.17.0",
