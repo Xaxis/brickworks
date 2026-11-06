@@ -609,7 +609,8 @@ const CHANGING_CALLS := ["look_at_model", "view_model", "in_view", "measure", "s
 	"edit_model", "edit_selection", "where_to_attach", "attachment_points", "move_part",
 	"mirror_parts", "split_parts", "merge_parts", "make_unique", "colour_hidden_parts",
 	"weakest_joints", "edit_steps", "make_sections", "suggest_sections", "break_out_section",
-	"evaluate_section", "parts_list", "undo", "restyle_model", "pose_model"]
+	"evaluate_section", "parts_list", "undo", "restyle_model", "pose_model",
+	"view_board"]
 
 
 func _sitting(request: Dictionary) -> Dictionary:

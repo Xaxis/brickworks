@@ -3823,6 +3823,14 @@
       "tests": []
     },
     {
+      "id": "lib:what a session sees over mcp",
+      "kind": "lib",
+      "entry": "src/net/see_tools.gd",
+      "reach": "PROBE_SIZE=1400x900 tools/probe.sh seeing   (view_board: six views in one labelled picture, highlight= edged with the rest see-through, xray=, step=N; booklet_page as the PDF prints it; split/merge/mirror pictured; render_model Best says how it was drawn)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "lib:what moves in a model",
       "kind": "lib",
       "entry": "src/assembly/playable.gd",

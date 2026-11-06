@@ -5837,6 +5837,250 @@ Why it fell short:
 - The change is taken back out on this branch (`53229a6a`; `1ade9709` holds
   it), so nothing of it ships.
 
+### Likeness: each feature's share of the whole, read off a photograph of the real thing and measured off the model (2026-11-05, design19, `b4f4c6bc`, NO-GO)
+
+**Why.** In design18, every session was shown a photograph of the real thing
+beside its own front and side, and won nothing back. 2 of 5 photographs,
+found with the set's title, were not the thing. Where the photograph was
+right, the session read it and did not measure it. The roller wrote that the
+real drum is "30% of the length" and kept its own, a sixth. The next lever:
+the session states each feature's length, width and height as shares of the
+whole, read off the photograph. Then it sees the same shares measured off its
+model, and settles each that is over the line.
+
+**The change** (`b4f4c6bc`, on design18's `a578bfc4` and `1ade9709`):
+
+- A new design's first whole review_model leads with a look in steps, each
+  answered with compare_with_photo (`src/ai/photo_look.gd`, `PhotoLook`):
+  1. **Name.** The session names the real thing by its make and model, or
+     "none" when it has no real counterpart. The photograph is searched for
+     with those words only, never the set's title. A picture from the
+     session's own find_reference is used when its words match.
+  2. **Find.** The photograph is shown beside the model from the corner, the
+     front and the side.
+  3. **Read.** The session says whether the photograph is the thing. If not,
+     the look ends with nothing to measure. If so, it states the whole's
+     shares, and each feature's shares of the whole with the feature's box in
+     the model. It does this before it sees any number from the model.
+  4. **Settle.** The app measures the same shares off the bricks whose middles
+     are in each box. It answers with a table, the photograph's share beside
+     the model's. A share more than 25% off the photograph's, and a stud or
+     more, is over the line. The session settles each: rebuild, or keep and
+     say why.
+  5. **Again.** After a rebuild, the next whole review asks for each rebuilt
+     feature's box and measures it again. The parts added and taken off since
+     the settling are logged.
+- The session decides throughout. While a step waits, other changes are
+  refused, twice at most, and clear_model lets the look go. Nothing is tuned
+  to a subject.
+- **The holdout.** No picture of bricks is shown, as in design18
+  (`ReferenceFinder.of_lego`, which refholdout has since landed on pre261 at
+  `9945c3fb`).
+
+**Proof in the app.**
+
+- `photo_look_probe` (windowed): all 53 passed at `b4f4c6bc`. It covers:
+  - the words cleaned and cut to a short form, and "none" read as no
+    counterpart;
+  - the shares parsed and measured, the table and its line;
+  - a rebuild measured again;
+  - a photograph that is not the thing, and none found;
+  - the model's pictures not drawn in time;
+  - never answered, then clear_model;
+  - beside the person's model, and a selection.
+- Also passed: `mcp_sync` 14, `holdout` 18, `reference` 10,
+  `reference_lookup` 12, `read_only` 42, `surface` 98, `connector_method` 12,
+  `docs_pages` 32, `fresh_eyes` 78 and `app_tools` 106. `docs_site.py
+  --check` passed (52 pages).
+
+**Smoke.** Two locked snapshots, each imported first. `snapd19base` is at
+`d42f167c` (pre261's code), and `snapd19lev` is at `b4f4c6bc`. One job each
+on the owner's path (`--via relay --no-claude-code`), on design16-18's 5
+subjects, beside a release train.
+
+- Both arms sat in heavy's queue behind the train's jobs for each audit, so
+  both were stopped and run again with `--audit-later`. The stages already
+  finished were kept.
+- The holdout held in all ten. `held_out_said` is true for every design, and
+  no picture of bricks was returned or shown. No session searched with a
+  set's number: the only hits on one are the bench's own save paths.
+- **The lever's Charger lost its model.**
+  - The look had worked (below).
+  - Then a save was refused for unsettled features (how_real_sets_build_this),
+    and the tab went away during an edit job, 15.7 min in.
+  - Just before, design.log has the gpu wrapper failing to find xvfb-run for
+    the leased shots. That traceback is in 3 of the 10 designs, in both arms
+    (d19base's Air Mail, d19lev's Burj and Charger). So it is the bench's,
+    not the lever's.
+  - Its 2 verdicts go to the set. The base's Charger won none either, so the
+    totals read the same without it.
+
+Verdicts won, of 10 a dimension:
+
+| dimension | d18base | d18lev2 | d19base | d19lev |
+|---|---|---|---|---|
+| likeness | 0 | 0 | 1 | 0 |
+| surface | 1 | 1 | 1 | 3 |
+| colour | 3 | 3 | 3 | 3 |
+| technique | 1 | 0 | 0 | 0 |
+| creativity | 4 | 4 | 4 | 3 |
+| overall | 1 | 0 | 1 | 0 |
+| lost likeness naming a defining feature wrong, by hand | 10 of 10 | 10 of 10 | 9 of 10 | 8 of 8 judged |
+
+The lever's other 2 verdicts were for the Charger, which had no model.
+
+By subject (likeness, overall, creativity), base then lever:
+
+| subject | d19base | d19lev |
+|---|---|---|
+| Gandalf | 1 1 2 | 0 0 0 |
+| the roller | 0 0 0 | 0 0 0 |
+| the Burj | 0 0 2 | 0 0 2 |
+| Air Mail | 0 0 0 | 0 0 1 |
+| the Charger | 0 0 0 | no model |
+
+The judge's shape words, lever:
+- Gandalf: "a generic townsperson and a wizard with a sword standing on a
+  cart deck"; "its horse has blocky bricks stacked on its back".
+- The roller: "small drum sits inside a boxy rectangular frame under a
+  flat-roofed open canopy"; "drum is small and hidden inside a boxy yellow
+  frame".
+- The Burj: "squat and wide, with big blocky tiers"; "squat and wide like a
+  stepped ziggurat".
+- Air Mail: "a tall, boxy brick stack with a squared-off nose that looks
+  heavy for its wings"; "a tall, boxy brick slab on chunky car wheels".
+
+The base's words:
+- Gandalf: its cart "a tall, boxy brown block". It won the other verdict.
+- The roller: "drum is small and mostly hidden under a boxy yellow front".
+- The Burj: "stubby and wide", "a stocky, wide stepped block".
+- Air Mail: "a boxy white van-like fuselage with flat plate wings".
+- The Charger: "a flat, boxy black slab", "no grille or front-end identity".
+
+**Reach** (scratch `py/reach19.py`):
+
+- **Named: 5 of 5.**
+  - Gandalf's session said "none". A fictional cart has no real
+    counterpart, so it got no photograph, as meant.
+  - The others: "single drum vibratory roller compactor", "Burj Khalifa
+    Dubai tower", "Cessna 208 Caravan cargo" and "1970 Dodge Charger". None
+    used the set's title.
+- **Photographs shown: 4, all 4 the thing.**
+  - They were: a red Dynapac single-drum roller; the Burj from the air in
+    2008; a Cessna 208B Cargomaster in flight; a purple 1970 Charger 500 from
+    the front corner.
+  - Each session said is_it true, and the pictures agree.
+  - Air Mail's set is a twin-prop. The session chose a single-engine Cessna
+    as its real thing, and the photograph is the thing it named.
+- **Shares stated: 4 of 4**, before the model's were shown: 4 wholes and 15
+  features.
+- **Over the line: 10.**
+
+  | subject | share | photograph | model |
+  |---|---|---|---|
+  | the roller | the whole's width | 0.40 | 0.54 |
+  | the roller | the rear tyres' length | 0.26 | 0.70 |
+  | the roller | the drum yoke's height | 0.32 | 0.46 |
+  | the Burj | the whole's length | 0.20 | 0.26 |
+  | the Burj | the whole's width | 0.20 | 0.26 |
+  | the Burj | the setback wings' width | 0.80 | 0.50 |
+  | Air Mail | the tail fin's length | 0.17 | 0.24 |
+  | Air Mail | the windscreen's width | 0.10 | 0.20 |
+  | Air Mail | the windscreen's height | 0.15 | 0.32 |
+  | the Charger | the greenhouse's length | 0.36 | 0.45 |
+- **Settled: 9 kept, 1 rebuilt.** The reasons for keeping:
+  - minifigure scale: the roller's width, Air Mail's fin and windscreen;
+  - the box took in more than the feature: the roller's tyres and yoke;
+  - the display base: the Burj's width;
+  - a Y plan on a grid: the Burj's wings.
+- **Rebuilt: 1, the Charger's greenhouse.**
+  - The session's words: "shorten it to x 21-40 so the long hood and long
+    deck read".
+  - It was a whole resubmit: 716 parts added, 646 taken off, 367 kept of
+    1,013.
+  - Measured again in its first box, its length went 0.45 → 0.44, toward the
+    photograph's 0.36 and inside the line. That is still about 23 of the
+    car's 53 studs, not the 19 it set out for.
+  - The model was then lost with the tab.
+
+Each subject: what I saw in its front and corner renders, beside the
+photograph the session saw:
+
+- **Gandalf Arrives** (no photograph).
+  - The lever's: a brown horse in front of a brown cart, with a grey-hatted
+    Gandalf standing in it, fireworks, and a white-shirted figure on the road.
+  - The base's: Gandalf seated with the fireworks, a curly-haired Frodo, the
+    horse beside, a fence and a "no admittance" sign.
+- **Single-Drum Roller.** The photograph is a red Dynapac with its big smooth
+  drum in an open yoke at the front, and the cab over the rear tyres.
+  - The lever's: a yellow machine with a flat canopy. Its grey drum sits low
+    inside a box frame whose sides rise to the drum's top.
+  - The base's front shows the drum as a grey disc in the side of a yellow
+    box hood.
+- **Burj Khalifa.** The photograph is an aerial view: a silver needle
+  tapering to a spire. Both models are grey stepped towers on a 12-stud base.
+  - The lever's front is full width for its lowest third, then steps in like
+    a ziggurat.
+  - The base's tapers more steadily, with a longer, slimmer top.
+- **Air Mail.** The photograph is a Cessna 208B in flight from the side: a
+  high wing and a single prop.
+  - The lever's: a red and white high-wing plane with a big 3-blade prop and
+    a tall fin, on car wheels.
+  - The base's: a white box fuselage with plate wings at ground level and a
+    tall white tail.
+- **Dom's Dodge Charger.** The photograph is a purple 1970 Charger 500 from
+  the front corner.
+  - The lever's, at the look: a long, low black slab with a stepped cabin and
+    a patch of bare grey plate on top.
+  - The base's: a long black slab with a raised roof block, red tail lights
+    and grey wheels.
+
+**NO-GO.** None of the three conditions held:
+- likeness went 1 → 0 and overall 1 → 0. Both base wins were Gandalf's, which
+  the look did not touch (it said none).
+- creativity went 4 → 3.
+- a defining feature was named wrong in 9 of 10 base verdicts, and 8 of 8
+  judged lever verdicts.
+
+So the paired 44 did not run.
+
+Why it fell short:
+- **The reach is there, and now the photographs are right.** 4 of 4 were the
+  thing, found with the session's own words, and a fictional subject got
+  none. Every session stated its shares and saw the model's.
+- **The measure found what the judge names, and the sessions kept it.**
+  - The roller's yoke stood 0.46 of the height against the photograph's
+    0.32. That is the yoke that hides the drum, which the judge named in both
+    verdicts.
+  - The Burj's whole was 30% wider than the photograph's: "squat and wide".
+  - Air Mail's whole height was 0.36 against 0.29, 24.8% off and just inside
+    the line, and its windscreen was twice as tall: "a tall, boxy brick
+    stack".
+  - 9 of 10 were kept, most of them for "minifigure scale".
+- **A box's share cannot see a silhouette.** Some keeps were right by the
+  numbers, and the model still lost:
+  - The Burj's tower without its base is 10 studs across on 46 tall: 0.22
+    against 0.20. Its trouble is how its width falls with height, full width
+    for its lowest third. A box has no taper.
+  - The roller's drum matched the photograph: length 0.26 to 0.27, height
+    0.46 to 0.50, width 0.97 to 0.85. Its trouble is that the yoke hides it.
+  - A box takes in its neighbours' parts, which 2 of the keeps rightly said.
+  - A line of a stud hides a plate. Air Mail's wings are 2 plates thick and
+    the photograph's 1 (0.105 to 0.05), and they never crossed the line.
+- **One rebuild moved 1,362 parts and the share 0.02.**
+- **Next.**
+  - Measure the silhouette, not boxes: the outline's width at each tenth of
+    the height (or height at each tenth of the length), read off the
+    photograph and measured off the model's front and side, side by side.
+  - Measure how much of each named feature shows in the front and side, not
+    only its box.
+  - Count height in plates.
+  - A keep that cites the scale must name the share the scale changes.
+- The change is taken back out on this branch (`2db1e373`), so nothing of it
+  ships. `b4f4c6bc` holds it, with design18's `a578bfc4` and `1ade9709` as
+  `ad4c2c42` and `fd409b69`. refholdout's `of_lego` stays as it landed on
+  pre261 (`9945c3fb`).
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the

@@ -622,7 +622,6 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 		made_with = "hand"
 	# Nobody's file: written whole, where it stands.
 	_source = null
-	_own_header = PackedStringArray()
 	_opened_in = -1
 	begun.emit(title)
 
@@ -1411,7 +1410,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_told_not_coming = false
 	_phase("clear")
 	_source = source
-	_own_header = read["header"]
 	_opened_in = world.generation()
 	_opens_in = world.generation()
 	# Whatever arrives from now is put down in this model (place_awaited).
@@ -1696,7 +1694,6 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"looks": BookletLooks.read(text, model._assembly_names(), LdrModel._key(model.main.name))
 			if authored else {},
 		"title": title_meta_in(text) if foreign else "",
-		"header": PackedStringArray() if foreign else SourceFile.header_of(text.split("\n")),
 		"share": share_in(text),
 		"remix": remix_in(text),
 		"remix_version": remix_version_in(text),
@@ -1967,12 +1964,6 @@ static func studio_part(part_id: String, library: PartLibrary) -> String:
 ## Only while the world is the one it was opened into ([member _opened_in]).
 var _source: SourceFile = null
 var _opened_in: int = -1
-## The header of the app's own file the model was opened from, the lines
-## it does not write itself (SourceFile.header_of): written back under its
-## own on every save, while the world is the one it was opened into. The
-## castle's "0 // Designed by the assistant from: ..." went with every save,
-## edited or not (keeptext).
-var _own_header: PackedStringArray = PackedStringArray()
 ## Parts the file holds that are not on the baseplate, by number, how many
 ## of each: not in the library, or a flexible part's skin. Kept in the file
 ## when it is someone else's, and said when it opens.
@@ -2061,16 +2052,13 @@ func _source_asked(title_now: String) -> Dictionary:
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
 			waiting["%d|%s" % [placement.line, placement.unit]] = true
-	# The copies' steps where the model has steps: the file's, or those a
-	# step edit gave a model whose file had none (SourceFile.write).
-	var authored: bool = AuthorSteps.any(world, scenery)
 	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting,
 		"library": library, "title": title_now,
-		"unit_steps": world.unit_steps.duplicate(true) if source.authored or authored else {},
+		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
 		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
 		"pins": pins.lines(world, _lift_now()),
-		"authored": authored, "set": from_set}
+		"authored": AuthorSteps.any(world, scenery), "set": from_set}
 
 
 ## The source file with the parts [method _source_asked] copied written into
@@ -2505,8 +2493,6 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		text = _live_source().carried_into(text, waiting)
 		# And LDCad's hoses keep their paths, where they now lie.
 		text = LdcadPath.written_into(text, _live_source(), library)
-	elif world.generation() == _opened_in and not _own_header.is_empty():
-		text = _with_header(text, _own_header, true)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
