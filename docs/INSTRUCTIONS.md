@@ -2671,6 +2671,116 @@ run skipped page 6. courses' `c1-gpu-stall` was likely the same.
 page_done's save waits through the same helper.
 
 
+## Each part drawn from the side that tells it apart (2026-11-05, partsbox)
+
+The third cause above: the builder took the wrong part. A part in a parts
+box (a step's or a callout's) is now drawn turned over when its underside
+shows what tells it from its look-alikes. Every other part is drawn as
+before, and so is every step picture.
+
+**Which parts builders mistook.** In booklettest's and blackedges' 25 runs,
+515 parts were lost, and 82 of them were the wrong part.
+
+| the part | taken for | times |
+|---|---|---|
+| dish 2654 | round plate 4032 | 52 |
+| dish 2654 | radar dish 4740 | 8 |
+| inverted slopes 3747, 4854 | inverted slopes 3660, 4871 | 3 |
+| plates 1 x 3 and 2 x 3, bricks 2 x 4 and 1 x 3 | one a size off, or a slope | 10 |
+| jumper 3794, tile 2431, hinge plate 4315, printed tile | plate 1 x 2, plate 1 x 4, grille tile | 6 |
+
+- The other 3 are a windscreen the scorer counts against its own part.
+- 60 of the 82 were the dish. Its dome is the one thing that tells it from
+  a round plate, and it sits dome down, facing away.
+- The inverted slopes are told apart by their slopes, which face down.
+- A size off is in every view alike: the studs show it.
+- A jumper's one stud, a tile's missing studs and a print are on top. The
+  usual view, thirty degrees above, already shows them.
+
+So what the usual view hides is the underside, and that is where the most
+mistaken part is told apart.
+
+**The rule**, for any part, with no list of parts
+(`BookletMaker.telling_view`):
+
+- Look-alikes share their flat faces (tops and bottoms) and their upright
+  sides. What tells them apart is their slanted and curved faces: a dome, a
+  slope, an arch.
+- For each part, the box measures how much of those faces is in view two
+  ways: the usual way, and turned over, seen from 15° below level. Hidden
+  faces do not count: the part's own triangles are drawn into a depth
+  buffer 40 pixels across. From above, a dish's dome is hidden by its
+  plate.
+- The part is drawn turned over when that shows at least twice as much,
+  and the gain is at least a twentieth of its picture. A dish's dome is a
+  tenth. A hinge's chamfer under a 1 x 4 plate is less, and stays.
+- Only those two ways. Turned a quarter round, the car's minifig seat
+  showed its back, worse than before. Turned over, a part keeps the same
+  side toward the reader as in the steps.
+- Why 15° below: a black part is drawn nearly flat, so it reads by its
+  outline. From 30° below, the dish's outline was the same blob as from
+  above. Near level it is a bowl.
+- Worked out once per part and kept. The castle's 121 parts take 0.33 s.
+
+Turned over: 7140's dish 2654, its inverted slopes 3660, 3665, 3747, 4287,
+4854, 4855 and 4871, and a minifig's hips 3815; the castle's inverted slopes
+3660, 3665 and 3676. Plain slopes (3039, 3298, 3040), the radar dish 4740,
+plates, tiles, jumpers and bricks are drawn as before.
+
+![7140's dish and inverted slope, page 9's box, and the castle's step 207,
+before and after](instructions/7140-partsbox.webp)
+
+**Beside a LEGO® booklet.** 76168's parts box on page 46 draws a 2 x 2 round
+plate with a rounded bottom beside a round plate, both from above, studs
+up. It is red, and its shading shows the rounded rim. A black part here
+has no shading to show it, so turned over is the way. The pictures are in
+`bench/results/partsbox-2026-11-05/pictures/`, the LEGO crops among them,
+not copied here.
+
+**Pages changed.** Car pages 1-9 came out the same byte for byte: none of
+its parts turns over, and its mistakes were sizes. So the car was not run;
+its runs would measure only the spread. 7140's pages 2, 3, 4, 6, 9, 10 and
+12 changed, and the castle's 172 and 173. Where a box got shorter, the step
+picture beside it is drawn the same, 6 pixels higher on the page (castle
+page 172).
+
+**What a builder did.** booklet_follow, 5 runs each way, from two locked
+snapshots imported first, whose apps differ only by this change. 7140's
+pages 6-8 are callouts, so the "page 9" runs built 6-9 and were scored on
+9.
+
+| page (parts) | before: right per run | after: right per run | before: wrong part | after: wrong part |
+|---|---|---|---|---|
+| 7140, 2-3 (16) | 8, 7, 16, 8, 16 | 16, 16, 16, 16, 16 | the 8 dishes, in 3 runs | none |
+| 7140, 9 (19) | 6, 14, 14, 0 (12 near), 12 | 12, 12, 10 (2 near), 6, 10 | 3020 as 3001, once | 3020 as 3001, once |
+| castle, 172 (16) | 9, 7, 5, 6, 9 | 5 (1 near), 7, 10, 12, 9 | 3665 as 3040; 18674 as 3676; 30136 as 2357 | 30136 as 2357, 3 runs; 18674 as 4032, 2 runs |
+
+- Pages 2-3: right parts 55 to 80 of 80. Wrong parts 24 to 0. On the old
+  picture, the dish was lost on these pages in 6 runs of 10 (booklettest 2
+  of 2, blackedges 1 of 3, here 3 of 5). Turned over, in none of 5. None
+  was swapped either way.
+- Page 9: the dish was right both ways. The losses are where the cart goes
+  on, the second cause: right or near 58 and 52 of 95, in a spread of 0 to
+  14 a run either way.
+- Castle page 172: right 36 and 43 of 80. The turned parts (3665, 3660)
+  were taken for the wrong part once before and never after, but are put
+  a stud off both ways. After's wrong parts are all in step 208's box,
+  which is the same byte for byte: noise between builders.
+
+So it is kept. The wrong part on these pages fell beyond the spread, and
+no page's right parts fell beyond it.
+
+**Checks.** booklet_probe draws ten parts' boxes and requires the dish
+and three inverted slopes turned over, and the round plate, slope, tile,
+jumper, seat and radar dish not; the dish's box is flatter than the round
+plate's (0.51 to 0.71 high for wide). booklet_pdf_probe (with
+tools/booklet_pdf_check.py), booklet3_probe, booklet_edit_probe,
+booklet_stream_probe, ci_gate and `tools/check.sh --lists` pass.
+
+`booklet_follow.py make --pages 170-174` photographs only those pages of the
+castle, not all 320.
+
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of

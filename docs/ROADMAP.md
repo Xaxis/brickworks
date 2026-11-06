@@ -212,6 +212,7 @@ plainer — see the first lever below.
        12 plates low.
      - 15%: which part. A black dish in the parts box is a silhouette, the
        same as a round plate, and it was read as one every time, unnoticed.
+       Now drawn turned over (partsbox, below).
      - Then colour, hidden parts, and parts carried off by an earlier page's
        mistake.
    - **Next**, a unit each:
@@ -236,9 +237,16 @@ plainer — see the first lever below.
        96. Wrong parts rose from 8 to 30. Drawn with its edges, the dish
        is plainly a round plate from above: that is what its top is, and
        its dome faces away. The silhouette had left builders unsure, so
-       they checked the box. Next: a parts box that shows what tells a part
-       from its look-alikes. It is in history (fe8e797b) to measure again
-       after that.
+       they checked the box. It is in history (fe8e797b) to measure again
+       now that the parts box shows the dish's dome;
+     - a parts box that shows what tells a part from its look-alikes.
+       **Kept** (partsbox, 2026-11-05). A part is drawn turned over when
+       that shows twice the slanted and curved faces, a twentieth of its
+       picture more: the dish's dome, an inverted slope's slope. No list of
+       parts. On 7140's pages 2-3, over 5 runs each way, the wrong part fell
+       from 24 to 0 and right parts rose from 55 to 80 of 80. The dish was
+       lost there in 6 of 10 runs on the old picture, 0 of 5 turned over.
+       Page 9 and the castle's page 172 did not move beyond their spread.
    - **The whole castle**, nine hours of builder, is a lead's run; the
      command is in the write-up.
 
