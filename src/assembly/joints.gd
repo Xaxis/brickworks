@@ -399,55 +399,11 @@ static func studs_in(entries: Array, filled: Callable) -> Array:
 				continue
 			var tip: Vector3 = at * (connector.position
 				+ connector.axis.normalized() * STUD_REACH)
-			var way: Vector3 = (at.basis * connector.axis).normalized()
 			var into: Variant = filled.call(tip, entry[0])
-			if into == null:
-				into = _hollow_round(tip, way, entry[0], filled)
 			if into != null:
-				out.append([entry[0], into, at * connector.position, way])
+				out.append([entry[0], into, at * connector.position,
+					(at.basis * connector.axis).normalized()])
 	return out
-
-
-## How far round a stud's tip the hollow it stands in is looked for, in LDU:
-## half a cell past a stud's radius (Stability.STUD_RADIUS).
-const HOLLOW_REACH := 7.5
-## Of the six points looked at round the tip, how many must be in one part:
-## a cell's coarseness leaves one side of a 1 x 1 cone's thin wall out.
-const HOLLOW_SIDES := 5
-
-
-## The part a stud whose tip is in no cover stands in, by its walls round
-## the tip: a hollow the cover leaves open, as a cone's, a round plate's or
-## a round brick's underside is where the bore up its middle is cleared.
-## In [param filled]'s terms (a key, or an Array of keys when it answers
-## so), or null. A stack of 1 x 1 cones in 5891's lamp, its stud up each
-## one's hollow, floated, as did 31038's table, a round plate on a cone,
-## and 9 more of the 1,056 sub-models real sets build (harvest_probe), each
-## of which Stability already read so.
-static func _hollow_round(tip: Vector3, way: Vector3, key: Variant,
-		filled: Callable) -> Variant:
-	var across: Vector3 = way.cross(Vector3.UP if absf(way.y) < 0.9 else Vector3.RIGHT).normalized()
-	var other: Vector3 = way.cross(across).normalized()
-	var sides: Dictionary = {}      ## key -> how many of the six it is at
-	var listed: bool = false
-	for n: int in 6:
-		var turn: float = TAU * float(n) / 6.0
-		var found: Variant = filled.call(
-			tip + (across * cos(turn) + other * sin(turn)) * HOLLOW_REACH, key)
-		if found is Array:
-			listed = true
-			for one: Variant in found:
-				sides[one] = int(sides.get(one, 0)) + 1
-		elif found != null:
-			sides[found] = int(sides.get(found, 0)) + 1
-		# Nothing at two of the six: no part can be at five. Most studs are
-		# in nothing, a model's top, and are asked twice, not six times.
-		if n == 1 and sides.is_empty():
-			return null
-	for one: Variant in sides:
-		if int(sides[one]) >= HOLLOW_SIDES:
-			return [one] if listed else one
-	return null
 
 
 ## Whether a plug at one place, pointing one way, is inside a socket.

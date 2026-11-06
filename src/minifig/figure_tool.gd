@@ -261,38 +261,6 @@ const SAID_AS: Dictionary = {
 }
 
 
-## The parts a foot standing at [param foot] (its middle, at its sole)
-## stands on: in the cells just under the stud square it fills, or with a
-## stud up at its sole within that square. Not the cell under its middle
-## alone: a cone's and a round plate's cover leaves its bore open there, and
-## stops 4 LDU under a cone's stud's foot, so a figure on two cones was
-## said to stand in the air.
-static func _under_foot(builder: Builder, library: PartLibrary, foot: Vector3) -> Array[int]:
-	var found: Array[int] = []
-	var lo: Vector3i = BrickLattice.to_cell(foot + Vector3(-9.0, -1.0, -9.0))
-	var hi: Vector3i = BrickLattice.to_cell(foot + Vector3(9.0, -1.0, 9.0))
-	for other: int in builder.lattice.blockers_boxes(PackedInt32Array([lo.x, lo.y, lo.z,
-			hi.x + 1, hi.y + 1, hi.z + 1])):
-		found.append(other)
-	if not found.is_empty():
-		return found
-	var deep: Vector3i = BrickLattice.to_cell(foot + Vector3(0.0, -1.0 - Exact.SUNK_REACH, 0.0))
-	for other: int in builder.lattice.blockers_boxes(PackedInt32Array([lo.x, deep.y, lo.z,
-			hi.x + 1, hi.y + 1, hi.z + 1])):
-		var brick: BrickWorld.Brick = builder.world.get_brick(other)
-		var shape: Exact.Shape = Exact.shape_for(library, brick.part_id) if brick != null else null
-		if shape == null:
-			continue
-		for one: Array in Exact.Item.new(shape, brick.transform).world():
-			var at: Vector3 = one[1]
-			if shape.kind[int(one[0])] == Exact.STUD and (one[2] as Vector3).y > 0.99 \
-					and absf(at.y - foot.y) <= 0.5 and absf(at.x - foot.x) <= 10.0 \
-					and absf(at.z - foot.z) <= 10.0:
-				found.append(other)
-				break
-	return found
-
-
 ## Stand the figure the arguments describe in the world. A coroutine: a
 ## part not yet to hand is fetched first. Returns {ok, text, ids, box}.
 static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
@@ -333,9 +301,10 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 	if args.has("y"):
 		at.origin.y = float(args["y"]) * PLATE
 	var resting_plates: float = at.origin.y / PLATE
-	var under_feet: Array[int] = [0]
+	var under_feet: Array[int] = []
 	for side: float in [-10.0, 10.0]:
-		under_feet.append_array(_under_foot(builder, library, at * Vector3(side, 0.0, 0.0)))
+		under_feet.append(builder.lattice.brick_at(
+			BrickLattice.to_cell(at * Vector3(side, -1.0, 0.0))))
 	if at.origin.y > 0.0 and under_feet.max() == 0:
 		return {"ok": false, "ids": PackedInt64Array(), "box": AABB(),
 			"text": ("Not placed: nothing to stand on at x %s, z %s, y %s — "
@@ -350,11 +319,6 @@ static func add(args: Dictionary, library: PartLibrary, world: BrickWorld,
 			return {"ok": false, "ids": PackedInt64Array(), "box": AABB(),
 				"text": "Not placed: %s is already standing at x %s, z %s."
 					% [world.get_brick(under).group, _n(x), _n(z)]}
-	# Stood on what is highest under its feet: never down a stud past its
-	# foot (legs on two cones).
-	if not args.has("y"):
-		at.origin.y += builder.figure_lift(parts, at)
-		resting_plates = at.origin.y / PLATE
 	# What it holds, clear of the model by its real shape as well as its cover:
 	# a rod 1.2 LDU into a bollard's cone fits the lattice and fails Tested.
 	var around: Array = _model_near(library, world, at)
