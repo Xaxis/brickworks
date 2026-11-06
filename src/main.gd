@@ -2812,6 +2812,7 @@ func _enter_view() -> void:
 	# Stepped, the step's new parts outlined and in view, as the step player
 	# shows its page; moved any other way, they are let go.
 	_steps.stepped.connect(_light_step)
+	_camera.frame_turned.connect(_turn_with_view)
 	_steps.reveal_upto.connect(func(_order: PackedInt64Array, _count: int, _key: int) -> void:
 		_unlight_step())
 	_steps.reveal.connect(func(_ids: Dictionary) -> void: _unlight_step())
@@ -2855,7 +2856,7 @@ func _light_step() -> void:
 	_build_outline.show_selection(_build_pages.fresh(page))
 	_step_lit = true
 	var view: Dictionary = _build_pages.view(page)
-	_camera.look_from(view["from"])
+	_camera.look_from(view["from"], view["up"])
 	_camera.frame(view["box"], 1.0)
 
 
@@ -2863,8 +2864,43 @@ func _unlight_step() -> void:
 	if not _step_lit:
 		return
 	_step_lit = false
+	# A step its booklet page turns over let go: the model the right way up
+	# again, seen from the same side.
+	if _camera.is_turned() and not (_build_mode != null and _build_mode.is_open()):
+		_camera.upright()
 	if _build_mode == null or not _build_mode.is_open():
 		_build_outline.show_selection({})
+
+
+## The lights and the sky turned with the view where Build it turns the
+## model (CadCamera.frame_turned), as the booklet turns its lights with a
+## model it draws turned over (BookletStudio._aim): the underside, up on the
+## screen, lit as a top is. And the floor put aside while it is turned,
+## its grid, its shadow and its plates: the model is lifted off it to be
+## turned over, and the booklet draws none. Seen from under the model, a
+## baseplate covered all of it.
+func _turn_with_view(frame: Basis) -> void:
+	if _upright_lights.is_empty():
+		for light: DirectionalLight3D in _rig_lights():
+			_upright_lights[light] = light.basis
+	for light: DirectionalLight3D in _upright_lights:
+		light.basis = frame * (_upright_lights[light] as Basis)
+	_look().sky_rotation = frame.get_euler()
+	var turned: bool = frame != Basis.IDENTITY
+	if turned != _floor_aside:
+		_floor_aside = turned
+		if _floor != null:
+			_floor.visible = not turned
+		for drawn: Node3D in _world.batches_only_of(_store.scenery):
+			drawn.visible = not turned
+	if not turned:
+		_upright_lights.clear()
+
+
+## The rig's lights as they stand for the model upright, while the view is
+## turned ([method _turn_with_view]); and whether the floor is put aside.
+var _upright_lights: Dictionary = {}
+var _floor_aside: bool = false
 
 
 ## The timeline's bricks on screen, as a set: the history's, and the end's
@@ -3285,6 +3321,11 @@ func _ready_the_pages() -> void:
 		return
 	_make_build_pages(_steps.steps())
 	await get_tree().process_frame
+	# Whether a page's parts go on from below, so its page is turned over,
+	# is the booklet's to say (BuildSteps.booklet_turn): its script compiled
+	# on a worker while the frames go on, not in a page turn's frame.
+	if _build_pages != null and _build_pages.asks_the_booklet():
+		await Later.script_in_background(&"BookletMaker", null)
 	if _build_pages != null and _build_pages.last() >= 1:
 		_build_pages.view(1)
 		# And the line round a page's new parts, made once unseen.
@@ -3346,7 +3387,9 @@ func _build_go(page: int, stepped: bool = false, part: int = 1) -> void:
 	lap = _lap(took, "outline", lap)
 	if not keep_view:
 		var view: Dictionary = _build_pages.view(page)
-		_camera.look_from(view["from"])
+		# Turned as its booklet page turns the model: over, where its parts go
+		# on from below, the eye under it and its underside up on the screen.
+		_camera.look_from(view["from"], view["up"])
 		# The ball round a flat box is roomy already: a step on a baseplate
 		# framed at the usual 1.25 sat in the middle third of a phone.
 		_camera.frame(view["box"], 1.0)
