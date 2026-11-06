@@ -3052,7 +3052,6 @@ func _open_into(input: Dictionary) -> String:
 	var text: String = ""
 	var called: String = ""
 	var credit: String = ""
-	var credited: Dictionary = {}
 	var file: String = ""
 	if not str(input.get("library", "")).strip_edges().is_empty():
 		var books: ModelLibrary = app.get("_model_library")
@@ -3076,8 +3075,7 @@ func _open_into(input: Dictionary) -> String:
 		text = str(got["text"])
 		called = ModelLibrary.title_of(entry)
 		file = str(entry["file"]).get_file()
-		credited = ModelLibrary.credit_of(entry)
-		credit = ModelBar.credit_words(credited) + (" (%s)" % entry["page"]
+		credit = ModelBar.credit_words(ModelLibrary.credit_of(entry)) + (" (%s)" % entry["page"]
 			if not str(entry["page"]).is_empty() else "")
 	elif not str(input.get("link", "")).strip_edges().is_empty():
 		var link: String = str(input["link"]).strip_edges()
@@ -3100,8 +3098,7 @@ func _open_into(input: Dictionary) -> String:
 				GalleryTool._licence_name(body.get("licence"))]
 		text = str(body.get("model", ""))
 		file = id + ".ldr"
-		credited = SharedModels.credit_of(body, id)
-		credit = ModelBar.credit_words(credited) + " (%s)" % str(
+		credit = ModelBar.credit_words(SharedModels.credit_of(body, id)) + " (%s)" % str(
 			body.get("url", SharedModels.link_for(id)))
 	else:
 		var chosen: ModelStore.Entry = null
@@ -3118,12 +3115,13 @@ func _open_into(input: Dictionary) -> String:
 			return "Could not read %s: %s." % [chosen.name, store.not_opened]
 		called = chosen.name
 		file = chosen.path.get_file()
-	var held: Dictionary = await store.held_from(text, file, null, called, credited)
+	var held: Dictionary = await store.held_from(text, file, null, called)
 	if not str(held["error"]).is_empty():
 		return "Could not put %s in this model: %s. The model is as it was." % [called, held["error"]]
 	builder.cancel_carry()
 	builder.hold_copy(held["items"])
-	builder.carrying.bring(held)
+	builder.carrying.brought = true
+	builder.carrying.brought_units = held["units"]
 	builder.carrying.turn(clampi(int(input.get("turn", 0)), 0, 3))
 	var spot: Variant = _into_spot(builder, input)
 	if spot == null:

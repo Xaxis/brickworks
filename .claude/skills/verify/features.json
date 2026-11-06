@@ -1221,14 +1221,6 @@
       "tests": []
     },
     {
-      "id": "cli:into kept probe",
-      "kind": "cli",
-      "entry": "src/dev/into_kept_probe.gd",
-      "reach": "tools/probe.sh into_kept_probe   (headless; 11 cases, -- unshown_name,rotstep for some: a model brought in, put down, undone, redone, saved and opened twice keeps every part of both, the app's unshown ones too, in place, colour, sub-model and step; a sub-model of parts the app cannot show never shadowed by a brought one's name; the brought model's ROTSTEP and its maker in its own sections, after a rename and a copy made its own too; an awaited part lands when it arrives)",
-      "area": "model-io",
-      "tests": []
-    },
-    {
       "id": "cli:intomodel probe",
       "kind": "cli",
       "entry": "src/dev/intomodel_probe.gd",

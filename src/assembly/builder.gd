@@ -80,14 +80,6 @@ var pins_hook: Callable = Callable()
 ## returns how it was, for the steps that lay, move, size, fade, lock,
 ## replace or take it away. Unset, the step does nothing.
 var reference_hook: Callable = Callable()
-## Every name the model gives a definition that a name a person gives must
-## not be (Assemblies.taken, without the gone), for [method unused_group];
-## unset, the world's own (Assemblies.names_in).
-var names_taken: Callable = Callable()
-## Keeps the parts of a model brought in whole that the app cannot show
-## (ModelStore.keep_brought), or lets them go, for the step that puts the
-## model down and its undo. Unset, the step does nothing.
-var unshown_hook: Callable = Callable()
 
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
@@ -544,22 +536,6 @@ func _apply(step: Dictionary) -> Dictionary:
 		var looked: Dictionary = world.step_looks.duplicate(true)
 		world.step_looks = (step["looks"] as Dictionary).duplicate(true)
 		return {"undo": "steplooks", "looks": looked}
-
-	# Whose each sub-model is (BrickWorld.credits): the whole table as it
-	# was, its own reverse.
-	if step.get("undo", "") == "credits":
-		var credited: Dictionary = world.credits.duplicate(true)
-		world.credits = (step["credits"] as Dictionary).duplicate(true)
-		return {"undo": "credits", "credits": credited}
-
-	# What of a model brought in the app cannot show (ModelStore.brought):
-	# kept, or let go; the reverse lets go what this kept, and keeps again
-	# what it let go.
-	if step.get("undo", "") == "unshown":
-		if unshown_hook.is_valid():
-			unshown_hook.call(step["parts"], bool(step["keep"]), step.get("files", {}))
-		return {"undo": "unshown", "parts": step["parts"], "keep": not bool(step["keep"]),
-			"files": step.get("files", {})}
 
 	if step.get("undo", "") == "unitstep":
 		var unit: String = str(step["unit"])
@@ -2216,8 +2192,6 @@ func _put_carried() -> int:
 	# A copy of a minifigure or a named assembly is another one, not more
 	# of the same: "Guard" pasted beside "Guard" is "Guard 2".
 	var renamed: Dictionary = {}
-	## What of a model brought in has nothing to draw: kept (_bring_steps).
-	var unshown: Array = []
 	for item: Dictionary in carrying.placements(self):
 		var group: String = str(item["group"])
 		var unit: String = str(item.get("unit", ""))
@@ -2231,15 +2205,6 @@ func _put_carried() -> int:
 		var brick_id: int = world.add_brick(str(item["part"]),
 			int(item["color"]), item["at"])
 		if brick_id == 0:
-			# A part of a model brought in that the app cannot show (one the
-			# library has not got, one not fetched): kept where it goes, in
-			# its sub-assembly and step, as an open keeps one.
-			if carrying.brought:
-				var kept := LdrModel.Placement.new(str(item["part"]), int(item["color"]),
-					item["at"], int(item.get("step", -1)))
-				kept.group = Assemblies.group_of(path) if copy_group.is_valid() else group
-				kept.unit = path if copy_group.is_valid() else unit
-				unshown.append(kept)
 			continue
 		world.get_brick(brick_id).group = group
 		world.get_brick(brick_id).unit = unit
@@ -2256,7 +2221,7 @@ func _put_carried() -> int:
 		return 0
 	var words: String = "pasted %s" % _many(ids.size())
 	if carrying.brought:
-		words = _bring_steps(steps, renamed, ids, unshown)
+		words = _bring_steps(steps, renamed, ids)
 	if carrying.lifted and _lift_on_top():
 		# One move: what picked it up and what put it down undo together.
 		steps.append_array(_history.pop_back()["steps"])
@@ -2303,45 +2268,13 @@ func _brought_step(skip: Dictionary) -> int:
 ## Into a model nobody gave steps, one that has them makes the steps that
 ## model was shown its own first (AuthorSteps.adopt_plan), as its first step
 ## edit would: else its parts, numbered after the steps brought in, came
-## after them, every step one later than the person had read it. With it,
-## what of it has nothing to draw ([param unshown], ModelStore.brought), how
-## its booklet shows its steps (BookletLooks: a ROTSTEP's turn) and whose
-## each sub-model of it is (BrickWorld.credits), under the names this
-## put-down gave them. Each a step of [param steps], so the one undo that
-## takes its parts off takes these too. What the history calls it.
-func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array,
-		unshown: Array = []) -> String:
+## after them, every step one later than the person had read it. Each a
+## step of [param steps], so the one undo that takes its parts off takes
+## these too. What the history calls it.
+func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> String:
 	var skip: Dictionary = {}
 	for brick_id: int in ids:
 		skip[brick_id] = true
-	if not unshown.is_empty():
-		steps.append(_apply({"undo": "unshown", "parts": unshown, "keep": true,
-			"files": carrying.brought_files}))
-	# Each definition in hand as named here: a figure's may be another.
-	var named: Dictionary = {}
-	for path: String in renamed:
-		named[Assemblies.definition(Assemblies.leaf(path))] = \
-			Assemblies.definition(Assemblies.leaf(str(renamed[path])))
-	if not carrying.brought_looks.is_empty():
-		var looks: Dictionary = world.step_looks.duplicate(true)
-		for key: String in carrying.brought_looks:
-			var look: Variant = carrying.brought_looks[key]
-			if key == BookletLooks.DATA:
-				var pictures: Dictionary = looks.get(key, {})
-				for picture: String in look:
-					if not pictures.has(picture):
-						pictures[picture] = look[picture]
-				looks[key] = pictures
-				continue
-			var kind: String = key.get_slice("|", 0)
-			looks[str(named.get(kind, kind)) + key.substr(kind.length())] = \
-				(look as Dictionary).duplicate(true)
-		steps.append(_apply({"undo": "steplooks", "looks": looks}))
-	if not carrying.brought_credits.is_empty():
-		var credits: Dictionary = world.credits.duplicate(true)
-		for kind: String in carrying.brought_credits:
-			credits[str(named.get(kind, kind))] = carrying.brought_credits[kind]
-		steps.append(_apply({"undo": "credits", "credits": credits}))
 	var stepped: bool = carrying.brought_units.values().any(
 		func(step: Variant) -> bool: return int(step) >= 0) or carrying.items.any(
 		func(item: Dictionary) -> bool: return int(item.get("step", -1)) >= 0)
@@ -4708,15 +4641,21 @@ func take_off(brick_id: int) -> bool:
 	return true
 
 
-## A group name no definition of the model has yet (Assemblies.names_in): a
-## second Guard is "Guard 2", so the two stay two figures in the file and in
-## a selection.
+## A group name no part of the model carries yet: a second Guard is
+## "Guard 2", so the two stay two figures in the file and in a selection.
 func unused_group(wanted: String) -> String:
+	var taken: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		taken[brick.group] = true
 	var base: String = wanted.strip_edges()
 	if base.is_empty():
 		base = "Minifig"
-	return Assemblies.free_name(base, names_taken.call() if names_taken.is_valid()
-		else Assemblies.names_in(world, {}, false))
+	if not taken.has(base):
+		return base
+	var n: int = 2
+	while taken.has("%s %d" % [base, n]):
+		n += 1
+	return "%s %d" % [base, n]
 
 
 ## The bricks of the figure a brick belongs to, or nothing when it is not

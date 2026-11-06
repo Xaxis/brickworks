@@ -27,10 +27,6 @@ var builder: Builder
 var library: PartLibrary
 ## The baseplate: never in an assembly.
 var scenery: Dictionary = {}
-## The names of the sub-models the model holds that no part on the baseplate
-## shows, and of the files it carries them in (ModelStore.held_names): taken
-## as surely as a shown one's ([method taken]). Unset, none.
-var held_names: Callable = Callable()
 
 ## The assembly being edited, by path; "" for the model itself. While one
 ## is entered a click picks out its own parts and the assemblies directly
@@ -332,14 +328,19 @@ func copies_of(path: String) -> PackedStringArray:
 
 
 ## A definition name no assembly uses yet: "Wing", else "Wing 2", "Wing 3".
-## A name only a copy taken off holds, for its undo, is free ([method taken]
-## without [param gone]): nothing the person sees has it, and what that copy
-## left under it goes (BookletLooks.renamed).
 func unused_name(wanted: String) -> String:
 	var base: String = wanted.strip_edges().replace("/", "-").replace("#", "")
 	if base.is_empty():
 		base = "Sub-assembly"
-	return free_name(base, taken(false))
+	var taken: Dictionary = {}
+	for path: String in paths():
+		taken[definition(leaf(path))] = true
+	if not taken.has(base):
+		return base
+	var n: int = 2
+	while taken.has("%s %d" % [base, n]):
+		n += 1
+	return "%s %d" % [base, n]
 
 
 ## The next copy of a definition, numbered across the whole model as an
@@ -348,76 +349,12 @@ func unused_name(wanted: String) -> String:
 ## kept for its undo) is not given again: a copy pasted would be put on in
 ## that step, or built in its parent's steps, as the one taken off was.
 func next_copy(name: String) -> String:
-	return "%s#%d" % [name, int(taken().get(name, 0)) + 1]
-
-
-## Every name this model gives a definition, each with the highest copy of
-## it: [method names_in] of the world, with the sub-models it holds that no
-## part on the baseplate shows ([member held_names]), and with [param gone]
-## the copies taken off that hold a step for their undo.
-func taken(gone: bool = true) -> Dictionary:
-	return names_in(world, held_names.call() if held_names.is_valid() else {}, gone)
-
-
-## Every name a definition of a sub-assembly has in [param world], each with
-## the highest copy of it there: the paths of its parts, the sub-models whose
-## maker it keeps (BrickWorld.credits: a new one of that name would be
-## credited to them), [param held], the sub-models the model holds that no
-## part on the baseplate shows, and the files it carries them in (ModelStore
-## .held_names), and with [param gone] each copy taken off that still holds a
-## step (BrickWorld.unit_steps, kept for its undo). The one answer to whether
-## a name is taken, wherever a definition is named or a copy numbered
-## (unused_name, next_copy, Builder.unused_group, ModelStore.held_from): two
-## definitions of one name are copies of each other, and a saved file writes
-## one definition once. Asked of the parts alone, a hut's Window that was a
-## part the library has not got was free, the gatehouse brought in kept its
-## own Window, and the saved hut drew the gatehouse's window in its own's
-## place (imreview, 2026-11-06). A copy's number counts the gone (a pasted
-## one would be put on in the step the one taken off was), and so does a
-## model brought in, whose names nobody typed and whose booklet looks would
-## join those the gone one left; a name a person gives does not (unused_name).
-static func names_in(world: BrickWorld, held: Dictionary = {}, gone: bool = true) -> Dictionary:
-	var paths: Dictionary = {}
-	for brick: BrickWorld.Brick in world.bricks():
-		paths[path_of(brick)] = true
-	if gone:
-		for path: Variant in world.unit_steps:
-			paths[str(path)] = true
-	var out: Dictionary = names_of(paths.keys())
-	for name: Variant in world.credits:
-		out[name] = int(out.get(name, 0))
-	for name: Variant in held:
-		out[name] = maxi(int(out.get(name, 0)), int(held[name]))
-	return out
-
-
-## The definitions [param paths] are copies of, each with its highest copy.
-static func names_of(paths: Array) -> Dictionary:
-	var out: Dictionary = {}
-	for path: Variant in paths:
-		for segment: String in segments(str(path)):
-			var name: String = definition(segment)
-			out[name] = maxi(int(out.get(name, 0)), copy_of(segment))
-	return out
-
-
-## Whether [param name] is one of [param names] ([method names_in]): as a
-## definition, or as the file a saved model writes it in, which is its name
-## in lower case with "_" for a space (LdrModel.write_tree), so a file the
-## model carries a sub-model in is not written over by another's.
-static func is_taken(names: Dictionary, name: String) -> bool:
-	return names.has(name) or names.has(name.to_snake_case())
-
-
-## [param base], or "base 2", "base 3", the first [param names] has not got
-## ([method is_taken]).
-static func free_name(base: String, names: Dictionary) -> String:
-	var free: String = base
-	var n: int = 2
-	while is_taken(names, free):
-		free = "%s %d" % [base, n]
-		n += 1
-	return free
+	var highest: int = 0
+	for path: String in paths() + PackedStringArray(world.unit_steps.keys()):
+		for segment: String in segments(path):
+			if definition(segment) == name:
+				highest = maxi(highest, copy_of(segment))
+	return "%s#%d" % [name, highest + 1]
 
 
 # -- changing the tree --------------------------------------------------------
@@ -503,29 +440,13 @@ func rename(path: String, wanted: String) -> String:
 		return old
 	var was_entered: String = entered
 	var carry: Callable = func(at: String) -> Array: return [_renamed_path(at, old, name)]
-	# Its steps' looks and its maker are kept by its name.
+	# Its steps' looks are kept by its name.
 	if builder.regroup(changes, "renamed %s to %s" % [old, name], carry) > 0:
-		builder.extend_last(BookletLooks.renamed(world, old, name, true)
-			+ credits_renamed(world, old, name, true))
+		builder.extend_last(BookletLooks.renamed(world, old, name, true))
 	if not was_entered.is_empty():
 		_set_entered(_renamed_path(was_entered, old, name))
 	changed.emit()
 	return name
-
-
-## Whose sub-model [param from] is (BrickWorld.credits) given to [param to]
-## as well, or with [param moved] in its place: renamed in every copy
-## ([method rename]) it is still its maker's, and so is a copy of it made a
-## sub-model of its own ([method make_unique]). Returns the undo, the whole
-## table as it was, or [] when it keeps no maker.
-static func credits_renamed(world: BrickWorld, from: String, to: String, moved: bool) -> Array:
-	if from.is_empty() or to.is_empty() or from == to or not world.credits.has(from):
-		return []
-	var was: Dictionary = world.credits.duplicate(true)
-	world.credits[to] = PackedStringArray(world.credits[from])
-	if moved:
-		world.credits.erase(from)
-	return [{"undo": "credits", "credits": was}]
 
 
 static func _renamed_path(path: String, old: String, name: String) -> String:
@@ -608,9 +529,6 @@ func make_unique(path: String) -> String:
 	# kept by the name it had, are its new name's too.
 	if own_steps and moved > 0:
 		builder.extend_last(BookletLooks.renamed(world, definition(leaf(path)), name, false))
-	# Made its own, it is still its maker's.
-	if moved > 0:
-		builder.extend_last(credits_renamed(world, definition(leaf(path)), name, false))
 	if within(entered, path):
 		_set_entered(fresh + entered.substr(path.length()))
 	changed.emit()

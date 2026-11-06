@@ -974,15 +974,13 @@ func _into_file() -> void:
 ## [param text], a model's file, in the person's hand whole, as one
 ## sub-assembly named [param called] (else as the file calls it), its
 ## author's steps kept, to put down by a click. [param credit] is said with
-## it: whose it is and on what terms; [param credited] ({by, licence, page})
-## is kept in it where the file does not say (ModelStore.held_from). How
-## many parts are in hand.
+## it: whose it is and on what terms. How many parts are in hand.
 func hold_text(text: String, file_name: String, called: String = "",
-		credit: String = "", credited: Dictionary = {}) -> int:
+		credit: String = "") -> int:
 	var job: Working.Job = Working.begin("Reading %s…" % (called if not called.is_empty()
 		else file_name.get_file()))
 	await job.shown()
-	var held: Dictionary = await store.held_from(text, file_name, job, called, credited)
+	var held: Dictionary = await store.held_from(text, file_name, job, called)
 	job.end()
 	if not str(held["error"]).is_empty():
 		_say("could not put it in this model: %s" % held["error"])
@@ -991,28 +989,24 @@ func hold_text(text: String, file_name: String, called: String = "",
 		if hold_parts.is_valid() else 0
 	if count == 0:
 		return 0
-	store.builder.carrying.bring(held)
+	store.builder.carrying.brought = true
+	store.builder.carrying.brought_units = held["units"]
 	_say(Keymap.filled("holding %s, %s — click where it goes, {rotate_held|turns}, Esc puts away")
 		% [held["name"], Builder._many(count)] + _held_words(held)
 		+ (" — " + credit if not credit.is_empty() else ""))
 	return count
 
 
-## What else a model brought in comes with: its steps, and what of it the
-## app cannot show, kept in the model as an open keeps a file's
-## ([method left_out_words]).
+## What else a model brought in comes with: its steps, and what of it
+## the library has not got.
 static func _held_words(held: Dictionary) -> String:
 	var said: String = ""
 	if int(held["steps"]) > 0:
 		said += " — " + ("its 1 step kept" if int(held["steps"]) == 1
 			else "its %d steps kept" % int(held["steps"]))
-	var unshown: Dictionary = held.get("unshown", {})
-	var count: int = 0
-	for id: String in unshown:
-		count += int(unshown[id])
-	if count > 0:
-		said += " — %d not shown, kept in the model (%s)" % [count,
-			ModelStore.named_counts(unshown)]
+	var missing: Dictionary = held["missing"]
+	if not missing.is_empty():
+		said += " — " + "left out, not in the library: %s" % ModelStore.named_counts(missing)
 	return said
 
 
