@@ -283,15 +283,13 @@ func turn(by: int) -> void:
 	_turns += by
 
 
-## What the ghost is on, in words, for the status line.
-func words(builder: Builder) -> String:
-	if not on_end or target == null:
-		return ""
-	var brick: BrickWorld.Brick = builder.world.get_brick(target.brick)
+## The track the ghost is on the end of, by its name, for the status line.
+func target_name(builder: Builder) -> String:
+	var brick: BrickWorld.Brick = builder.world.get_brick(target.brick) \
+		if on_end and target != null else null
 	var info: PartLibrary.PartInfo = builder.library.parts.get(brick.part_id) \
 		if brick != null else null
-	return "on the end of %s%s" % [Inventory._tidy(info.name) if info != null else "a track",
-		", with a sleeper" if not sleepers.is_empty() else ""]
+	return Inventory._tidy(info.name) if info != null else "a track"
 
 
 ## Every end of every track down that no other track's end meets.

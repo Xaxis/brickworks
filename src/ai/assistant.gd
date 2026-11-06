@@ -5122,6 +5122,9 @@ func _connectors_said(part_id: String, at: Transform3D, prefix: String = "",
 	for point: Attach.Point in points:
 		var frame: Transform3D = at * point.frame
 		var way: Vector3 = (-frame.basis.y).normalized()
+		# A train track's end points out of the track, along its frame's x.
+		if point.kind == TrackSnap.KIND:
+			way = frame.basis.x.normalized()
 		var line: bool = point.kind == Exact.AXLE or point.kind == Exact.HINGE
 		var spot: Vector3 = frame.origin
 		rows.append([spot.distance_to(where) if where != null else 0.0, point.type,
@@ -5155,7 +5158,8 @@ func _connectors_said(part_id: String, at: Transform3D, prefix: String = "",
 			% [prefix if not prefix.is_empty() else "<its name>.", (points[0] as Attach.Point).address()]
 		+ "\"by\": \"<that part's own connector>\", \"yaw\": <degrees about the joint>}}. A stud "
 		+ "takes a hole, tube or open stud; a clip or a hollow stud a bar; a pin a socket; an "
-		+ "axle a cross hole; a hinge, a ball or a fixed joint its other half (same sub, in to on).")
+		+ "axle a cross hole; a hinge, a ball or a fixed joint its other half (same sub, in to on); "
+		+ "a train track's end another track's end of its kind.")
 
 
 ## How many connectors attachment_points lists of a type, and near a point.
