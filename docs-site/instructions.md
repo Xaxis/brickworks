@@ -1,5 +1,5 @@
 ---
-tools: edit_steps, booklet_layout, edit_booklet
+tools: edit_steps, booklet_layout, edit_booklet, booklet_page
 panels: PageEditor#lay-out
 ai: Build steps, the timeline, the booklet laid out from them as a set's is, each step's page set by hand, and saving it as PDF or PNG pages. An assistant edits steps with edit_steps, reads the booklet's pages with booklet_layout, and sets a step's page with edit_booklet.
 rules:
@@ -75,7 +75,7 @@ On **Build › Booklet page**, for the step the timeline is on:
 - **1:1 guide** puts the selected parts at real size. On a step that has a guide, it takes the guide away.
 - **Sub-model preview** shows a sub-assembly that is built on its own pages finished, on the first of those pages. It is on until you turn it off.
 
-Press a command again to put the step back as it was. Each change is one Undo and is saved with the model. Claude can set each one with `edit_booklet`.
+Press a command again to put the step back as it was. Each change is one Undo and is saved with the model. Claude can set each one with `edit_booklet`. With `booklet_page` it sees a page as Instructions draws it and its PDF prints it.
 
 <!-- covers
 ui:the booklet's Studio extras

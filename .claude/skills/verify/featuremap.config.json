@@ -335,6 +335,13 @@
     },
     {
       "kind": "lib",
+      "label": "what a session sees over mcp",
+      "entry": "src/net/see_tools.gd",
+      "reach": "PROBE_SIZE=1400x900 tools/probe.sh seeing   (view_board: six views in one labelled picture, highlight= edged with the rest see-through, xray=, step=N; booklet_page as the PDF prints it; split/merge/mirror pictured; render_model Best says how it was drawn)",
+      "area": "mcp"
+    },
+    {
+      "kind": "lib",
       "label": "the window's commands over mcp",
       "entry": "src/net/app_tools.gd",
       "reach": "godot --headless --path . --script src/dev/app_tools_probe.gd   (over MCP: set_floor, edit_steps, lay_flex, pose_model, animate_model, simulate_mechanism, undo, open_model, parts_list, render_model, export_model)",

@@ -1,5 +1,5 @@
 ---
-tools: view_model, set_floor, in_view
+tools: view_model, set_floor, in_view, view_board
 ai: Turning, sliding and zooming the camera, navigation presets, cutting away and X-ray, stress colours, and the floor the model stands on. An assistant looks from a side with view_model and sets the floor with set_floor.
 rules:
   - view_model looks from corner, top, front, back, left or right; corner shows the shape best.
@@ -98,6 +98,14 @@ An assistant sees it with `in_view`: the picture, where it lies, and the model d
 
 <!-- covers
 ui:reference picture
+-->
+
+## What an assistant sees {#assistant-sees}
+
+An assistant looks at the model as you do. `view_model` draws it from one side; `view_board` draws up to six sides (front, back, left, right, top and the corner) in one labelled picture, each as `view_model` draws it. It can edge parts it names in magenta and ghost the rest, draw parts see-through as X-ray does, or show the model as built to a step with that step's new parts edged. It changes nothing.
+
+<!-- covers
+lib:what a session sees over mcp
 -->
 
 ## Pointers and speed {#pointers}

@@ -632,6 +632,10 @@ const HINTS := {
 	"merge_parts": ["Merge parts", "remove"],
 	"measure": ["Measure between connectors", "look"],
 	"in_view": ["What the person sees", "look"],
+	# What a session sees as a person does (SeeTools): boards of views, parts
+	# picked out or seen through, and a booklet page as a picture.
+	"view_board": ["Look from several sides", "look"],
+	"booklet_page": ["See a booklet page", "look"],
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],
