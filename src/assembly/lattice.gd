@@ -138,6 +138,22 @@ static func to_cell(position: Vector3) -> Vector3i:
 		int(floor(position.z / CELL)))
 
 
+## How far short of a cell's low corner a point meant to be on it may be,
+## in LDU. LDraw writes a position to three decimals, so a part drawn on the
+## grid can come a thousandth short of it: 6542's container panels stand at
+## x 9.999, read as the cell below and named 2 LDU off their studs, and the
+## checker refused them there. Two cells' worth of float error is far less.
+const ON_GRID := 0.01
+
+
+## The cell whose low corner a point meant to be on the grid is: [method
+## to_cell] of the point, to within [constant ON_GRID] of the next corner up.
+## For a part's origin when a placement is named by it, never for where a
+## stud's tip or a ray lands, which is anywhere in a cell.
+static func grid_cell(position: Vector3) -> Vector3i:
+	return to_cell(position + Vector3.ONE * ON_GRID)
+
+
 static func to_ldu(cell: Vector3i) -> Vector3:
 	return Vector3(cell.x * CELL, cell.y * CELL, cell.z * CELL)
 

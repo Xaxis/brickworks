@@ -263,6 +263,42 @@ func _initialize() -> void:
 		"1 14 20 -110 20 0 0 -1 -1 0 0 0 1 0 23948.dat\n", "")
 		+ "1 15 20 -232 20 1 0 0 0 1 0 0 0 1 30361d.dat", false, "held")
 
+	print("\na stud in a hollow the cover leaves open")
+	# A cone's, a round plate's and a round brick's cover is cleared up the
+	# bore through its middle, so a stud under one has its tip in nothing,
+	# and the parts on it floated: 5891's lamp, two cones each on the stud
+	# of the one under it, and 31038's table, a round plate on a cone. Read
+	# by the walls round the tip, as Stability reads it. Then the top cone
+	# a brick up, its hollow off the stud: in nothing, it floats (a plate
+	# up, the check seats it on the stud).
+	var lamp := """
+1 72 20 -24 20 1 0 0 0 1 0 0 0 1 59900.dat
+%s
+1 0 20 -56 20 1 0 0 0 1 0 0 0 1 6141.dat
+1 46 20 -80 20 1 0 0 0 1 0 0 0 1 3062b.dat
+1 0 20 -88 20 1 0 0 0 1 0 0 0 1 4740.dat
+"""
+	await _passes("5891's lamp: cones stacked, each stud up the hollow of the one on it",
+		lamp % "1 72 20 -48 20 1 0 0 0 1 0 0 0 1 59900.dat")
+	await _passes("31038's table: a round plate on a cone's stud", """
+1 0 20 -24 20 1 0 0 0 1 0 0 0 1 59900.dat
+1 0 20 -32 20 1 0 0 0 1 0 0 0 1 4032a.dat
+1 47 20 -56 20 1 0 0 0 1 0 0 0 1 3899.dat
+""")
+	await _refused("the lamp's top cone a brick up off the stud under it",
+		"1 72 20 -24 20 1 0 0 0 1 0 0 0 1 59900.dat\n"
+		+ "1 72 20 -72 20 1 0 0 0 1 0 0 0 1 59900.dat", false, "floating")
+	# And down the stud, past its foot: the hand stood a cone, a round plate
+	# and a dome 4 LDU down a cone's stud, where the cone's cover stops, and
+	# the check seated each back up. Each is in the cone below, and is
+	# refused saying so (ExactCheck.sunk), however little their shapes meet.
+	for sunk: Array in [["59900", -44, 20], ["6141", -28, 20], ["30367a", -44, 30],
+			["3942c", -68, 30]]:
+		await _refused_saying("%s 4 LDU down a cone's stud, as the hand once put it" % sunk[0],
+			"1 72 20 -24 20 1 0 0 0 1 0 0 0 1 59900.dat\n"
+			+ "1 0 %d %d %d 1 0 0 0 1 0 0 0 1 %s.dat" % [sunk[2], sunk[1], sunk[2], sunk[0]],
+			"passes 4 LDU into")
+
 	print("\nturned about the upright and read from a file, in a section of its own")
 	# A file keeps where a part is, not the section it was laid in, so a part
 	# turned off the square comes back in a section found for it
@@ -697,6 +733,16 @@ func _refused(said: String, ldraw: String, sections: bool = false,
 	var verdict: Dictionary = _assistant._check(model, true)
 	_ok(not bool(verdict["ok"]) and str(verdict["summary"]).contains(cause),
 		"%s: refused (%s)" % [said, verdict["summary"]])
+
+
+## Refused, its fault saying [param words].
+func _refused_saying(said: String, ldraw: String, words: String) -> void:
+	var model: Assistant.Model = await _design(ldraw)
+	var verdict: Dictionary = _assistant._check(model, true)
+	var feedback: String = str(verdict.get("feedback", ""))
+	var line: String = feedback.substr(maxi(0, feedback.find(words) - 60), 200).replace("\n", " ")
+	_ok(not bool(verdict["ok"]) and feedback.contains(words),
+		"%s: refused (%s): ...%s" % [said, verdict["summary"], line])
 
 
 ## Whether the hand has room for the last part of [param ldraw] where the
