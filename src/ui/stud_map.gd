@@ -264,7 +264,7 @@ static func said(facing: Dictionary, world: BrickWorld, library: PartLibrary) ->
 		if facing[brick_id] in ["up", "none"] or brick == null:
 			continue
 		if odd.size() < 24:
-			odd.append("#%d %s %s" % [brick_id, HandTools._part_name(library, brick.part_id),
+			odd.append("#%d %s %s" % [brick_id, _named(library, brick.part_id),
 				_short(facing[brick_id])])
 		else:
 			more += 1
@@ -272,6 +272,19 @@ static func said(facing: Dictionary, world: BrickWorld, library: PartLibrary) ->
 		lines.append("Studs not up: %s%s." % [", ".join(odd),
 			(", and %d more" % more) if more > 0 else ""])
 	return "\n".join(lines)
+
+
+## A part's name as the catalogue has it, tidied. Here rather than
+## HandTools': the window makes a StudMap, and what the first screen
+## compiles names nothing Later loads (tests/test_later.py).
+static func _named(library: PartLibrary, part_id: String) -> String:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	if info == null:
+		return part_id
+	var name: String = info.name.strip_edges()
+	while name.contains("  "):
+		name = name.replace("  ", " ")
+	return name
 
 
 static func _short(name: String) -> String:
