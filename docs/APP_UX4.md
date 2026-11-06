@@ -556,6 +556,38 @@ commit. None of the ten needs the owner.
     model whole;
   - check.sh's "see inside" (`see_inside_probe`), `command` and `outline`
     pass.
+- **Done** (unit cutshapes, 2026-11-06; `cutshapes` red on `pre261`, where
+  View › Cut away by offers no shapes, and `cutshapes_kept` red there too;
+  green at 1400 x 900 and 1280 x 720, 44 checks each, the pictures and
+  logs in `bench/results/cutshapes-2026-11-06/`):
+  - a box round the roof and windscreens, its floor dragged down two
+    plates (4.4 x 8.4 studs, 10 plates high): 30 parts whole, 18 cut
+    across, 14 not drawn; the seat clicked through it at 3 of 10 points
+    (0 with the car whole) and seen at 6,253 px (0 whole);
+  - the pixels that change: 56,413 of 82,860 inside the box's outline,
+    3 within the shading's reach of it, **0 further out**; a drum
+    (8.4 studs across) 54,397 inside and 0 out, a ball 49,367 and 0 out;
+    at 1280 x 720 29,879, 28,815 and 26,260 inside, 0 out each;
+  - its faces marked: 1,332 px of caps by the box, 1,086 by the drum,
+    1,291 by the ball (578, 531, 648 at 1280), **0 px of an inside face**
+    in all six; every part across it keeps its whole shadow;
+  - knobs dragged a plate at a time, the wheel a notch, Esc and a right
+    click put a drag back, Shift slides the whole box a plate at a time
+    with its size kept, Grow and Shrink; a knob lit only while the
+    pointer is on it (red on the first cut: it stayed lit over the strip);
+  - kept: a box, a sphere, a cylinder and the plane each saved as one
+    `0 !BRICKWORKS CUT_AWAY` line and back where they were, 61 parts
+    each; put away, no line; a step-free two-FILE `.mpd` opened from
+    disk saved with its lines in order, no STEP put in, cut again on
+    reopening; `pre261`, which knows no such line, opens all five whole,
+    61 of 61 parts, uncut;
+  - Render with the box on: 0 px unlike the car whole; the booklet the
+    same words and its 18 pictures 0 px unlike;
+  - `see_inside` (56 checks), `command` (259 commands, the cut ones 42 to
+    56 ms on Orthanc, each says so first) and `outline` pass, with
+    `cutshapes_kept`, `keys4`, `languages`, `finish`, `true_colour`,
+    `store` and `snap`; ci_gate, `check.sh --lists`, `featuremap check`
+    and `site_lang --check` clean.
 
 **10. whatsthis: what any control does, and where the part goes.**
 - **Change.** Help, What's This (Shift+F1): the next click on any control
