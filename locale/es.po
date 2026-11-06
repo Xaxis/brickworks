@@ -10774,19 +10774,19 @@ msgid "1 column"
 msgstr "1 columna"
 
 msgid "%d columns %s apart"
-msgstr "%d columnas separadas %s"
+msgstr "%d columnas a %s de distancia"
 
 msgid "1 row"
 msgstr "1 fila"
 
 msgid "%d rows %s apart"
-msgstr "%d filas separadas %s"
+msgstr "%d filas a %s de distancia"
 
 msgid "1 level"
 msgstr "1 nivel"
 
 msgid "%d levels %s apart"
-msgstr "%d niveles separados %s"
+msgstr "%d niveles a %s de distancia"
 
 msgid "1 stud"
 msgstr "1 espiga"

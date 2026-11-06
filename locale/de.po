@@ -10774,19 +10774,19 @@ msgid "1 column"
 msgstr "1 Spalte"
 
 msgid "%d columns %s apart"
-msgstr "%d Spalten im Abstand von %s"
+msgstr "%d Spalten, %s auseinander"
 
 msgid "1 row"
 msgstr "1 Reihe"
 
 msgid "%d rows %s apart"
-msgstr "%d Reihen im Abstand von %s"
+msgstr "%d Reihen, %s auseinander"
 
 msgid "1 level"
 msgstr "1 Ebene"
 
 msgid "%d levels %s apart"
-msgstr "%d Ebenen im Abstand von %s"
+msgstr "%d Ebenen, %s auseinander"
 
 msgid "1 stud"
 msgstr "1 Noppe"
