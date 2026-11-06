@@ -82,6 +82,8 @@ const PATHS: Dictionary[StringName, String] = {
 	&"GalleryTool": "res://src/net/gallery_tool.gd",
 	&"CollectionDialog": "res://src/ui/collection_dialog.gd",
 	&"Together": "res://src/net/together.gd",
+	# A build party: several phones build one shared model (buildparty).
+	&"BuildParty": "res://src/net/build_party.gd",
 	&"Updater": "res://src/net/updater.gd",
 	&"Updates": "res://src/net/updates.gd",
 	&"UpdateNotice": "res://src/ui/update_notice.gd",

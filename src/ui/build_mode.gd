@@ -703,4 +703,146 @@ func page_state() -> Dictionary:
 		"part_count": (counted as Label).text if counted != null else "",
 		"changed_from": changed_from, "changed": _changed_words.text if _changed.visible else "",
 		"caption_points": roundi(float(_caption.get_theme_font_size("font_size")) / _pt),
-		"comment_step": comments.step}.merged(comments.page_state())
+		"comment_step": comments.step, "party": _party_page_state()}.merged(comments.page_state())
+
+
+# -- A build party's page (APP_UX5 buildparty, 2026-11-06) --------------------
+#
+# Building one share of a model several phones build together (BuildParty):
+# under the progress bar, every phone's name in its seat's colour and how
+# far along it is ("Mia 4 of 9", "Leo is done"), current within a poll of the
+# relay. A phone done before the others waits on its last page, built,
+# saying for whom ("Waiting for Mia: 7 of 12"), Next held; once every phone
+# is done, each is shown the step that joins the shares, everybody else's
+# parts outlined where they go on. main.gd says which page, and when.
+
+var _party_row: HFlowContainer
+## Showing a party's page; waiting for the others on its last; on the step
+## that joins the shares.
+var party_on: bool = false
+var party_waiting: bool = false
+var party_joining: bool = false
+var _party_board: Array = []
+
+
+func _party_row_made() -> void:
+	if _party_row != null:
+		return
+	_party_row = HFlowContainer.new()
+	_party_row.name = "Party"
+	_party_row.alignment = FlowContainer.ALIGNMENT_CENTER
+	_party_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_party_row.visible = false
+	(_top.get_child(0) as VBoxContainer).add_child(_party_row)
+
+
+## The party on this page: [param board] each phone ({name, colour, done,
+## of, finished, left, me}); [param waiting] for the others, this phone's
+## share built; [param joining] the step that joins the shares. Called
+## after [method show_page], and again whenever someone's progress changes.
+func show_party(board: Array, waiting: bool, joining: bool) -> void:
+	_party_row_made()
+	party_on = true
+	party_waiting = waiting
+	party_joining = joining
+	_party_board = board
+	_party_row.visible = true
+	_party_row.add_theme_constant_override("h_separation", roundi(14.0 * _pt))
+	_party_row.add_theme_constant_override("v_separation", roundi(4.0 * _pt))
+	for child: Node in _party_row.get_children():
+		_party_row.remove_child(child)
+		child.queue_free()
+	for one: Variant in board:
+		var chip := HBoxContainer.new()
+		chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_theme_constant_override("separation", roundi(6.0 * _pt))
+		var dot := ColorRect.new()
+		dot.color = one.get("colour", Color.WHITE) if one.get("colour") is Color else Color.WHITE
+		dot.custom_minimum_size = Vector2.ONE * roundi(10.0 * _pt)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chip.add_child(dot)
+		var words := Label.new()
+		words.text = _chip_words(one)
+		words.add_theme_font_size_override("font_size", roundi(14.0 * _pt))
+		words.modulate = Color(1, 1, 1, 0.5 if bool(one.get("left", false)) else 0.92)
+		chip.add_child(words)
+		_party_row.add_child(chip)
+	if waiting:
+		_caption_text = "Your part is built"
+		_caption.text = _caption_text
+		_note.text = _waiting_words(board)
+		_note.visible = true
+		_next.text = "Waiting"
+		_next.disabled = true
+		_next.tooltip_text = "The step that puts everyone's parts together comes when everyone is done"
+		_lots = []
+		_told.visible = false
+		_lay_strip()
+	elif joining:
+		_caption_text = "Put it together"
+		_caption.text = _caption_text
+		_note.text = "Everyone is done. The others' parts go on where they are outlined."
+		_note.visible = true
+		_next.disabled = false
+		_lots = []
+		_told.visible = false
+		_lay_strip()
+	else:
+		_next.disabled = false
+
+
+## Whom this phone waits for: the one still building and how far along,
+## or how many are.
+static func _waiting_words(board: Array) -> String:
+	var others: Array = board.filter(func(one: Dictionary) -> bool:
+		return not bool(one.get("me", false)) and not bool(one.get("finished", false)))
+	if others.size() == 1:
+		return "Waiting for %s: %d of %d" % [str(others[0].get("name", "")), int(others[0].get("done", 0)),
+			int(others[0].get("of", 0))]
+	return "Waiting for %d others" % others.size() if others.size() > 1 else "Waiting for the others"
+
+
+## A phone along the top: "Mia 4 of 9", "Leo (you) is done", "Ana has left".
+static func _chip_words(one: Dictionary) -> String:
+	var who: String = str(one.get("name", ""))
+	if bool(one.get("me", false)):
+		who = "%s (you)" % who
+	if bool(one.get("left", false)):
+		return "%s has left" % who
+	if bool(one.get("finished", false)):
+		return "%s is done" % who
+	return "%s %d of %d" % [who, int(one.get("done", 0)), int(one.get("of", 0))]
+
+
+## A party's share is built a part at a time: chosen for it, not kept as
+## this device's own choice (a tap on Whole step still is).
+func party_by_part() -> void:
+	by_part = true
+	_one_part.set_pressed_no_signal(true)
+	_whole_step.set_pressed_no_signal(false)
+
+
+## A page of the model built alone again: no party along the top, and this
+## device's own way of building back.
+func end_party() -> void:
+	party_on = false
+	party_waiting = false
+	party_joining = false
+	_party_board = []
+	if _party_row != null:
+		_party_row.visible = false
+	if _next != null:
+		_next.disabled = false
+	by_part = recall_by_part()
+	_one_part.set_pressed_no_signal(by_part)
+	_whole_step.set_pressed_no_signal(not by_part)
+
+
+func _party_page_state() -> Dictionary:
+	var chips: Array = []
+	if _party_row != null and _party_row.visible:
+		for chip: Node in _party_row.get_children():
+			chips.append((chip.get_child(1) as Label).text)
+	return {"on": party_on, "waiting": party_waiting, "joining": party_joining, "chips": chips,
+		"next_held": _next.disabled if _next != null else false}
