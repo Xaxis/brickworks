@@ -11235,3 +11235,29 @@ msgstr "%s pone su siguiente extremo en la unión"
 
 msgid "a sleeper goes under the joint with it"
 msgstr "una traviesa va con ella bajo la unión"
+
+# modelinfo: the model's size and weight, on the status bar and in Properties
+# with nothing selected (ModelSize)
+msgid "%s × %s studs, %s plates high"
+msgstr "%s × %s espigas, %s placas de alto"
+
+msgid "%s × %s studs, 1 plate high"
+msgstr "%s × %s espigas, 1 placa de alto"
+
+msgid "%s × %s × %s cm"
+msgstr "%s × %s × %s cm"
+
+msgid "About %d g"
+msgstr "Unos %d g"
+
+msgid "1 part not in the library, not counted"
+msgstr "1 pieza que no está en la biblioteca, sin contar"
+
+msgid "%d parts not in the library, not counted"
+msgstr "%d piezas que no están en la biblioteca, sin contar"
+
+msgid "How big the model is, or the parts selected: studs across and deep, plates high without the studs on top, and centimetres each way with them"
+msgstr "El tamaño del modelo, o de las piezas seleccionadas: espigas de ancho y de fondo, placas de alto sin las espigas de arriba, y centímetros en cada sentido con ellas"
+
+msgid "How big the model is: studs across and deep, and plates high without the studs on its top; in centimetres with them, as a shelf needs. Its weight is worked out from each part's shape, within about 6% of the bricks weighed"
+msgstr "El tamaño del modelo: espigas de ancho y de fondo, y placas de alto sin las espigas de arriba; en centímetros con ellas, como necesita una estantería. Su peso se calcula a partir de la forma de cada pieza, con un margen de un 6 % en los ladrillos pesados"

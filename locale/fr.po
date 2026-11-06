@@ -11235,3 +11235,29 @@ msgstr "%s met son extrémité suivante à la jonction"
 
 msgid "a sleeper goes under the joint with it"
 msgstr "une traverse va avec elle sous la jonction"
+
+# modelinfo: the model's size and weight, on the status bar and in Properties
+# with nothing selected (ModelSize)
+msgid "%s × %s studs, %s plates high"
+msgstr "%s × %s tenons, %s plaques de haut"
+
+msgid "%s × %s studs, 1 plate high"
+msgstr "%s × %s tenons, 1 plaque de haut"
+
+msgid "%s × %s × %s cm"
+msgstr "%s × %s × %s cm"
+
+msgid "About %d g"
+msgstr "Environ %d g"
+
+msgid "1 part not in the library, not counted"
+msgstr "1 pièce absente de la bibliothèque, non comptée"
+
+msgid "%d parts not in the library, not counted"
+msgstr "%d pièces absentes de la bibliothèque, non comptées"
+
+msgid "How big the model is, or the parts selected: studs across and deep, plates high without the studs on top, and centimetres each way with them"
+msgstr "La taille du modèle, ou des pièces sélectionnées : tenons en largeur et en profondeur, plaques de haut sans les tenons du dessus, et centimètres dans chaque sens avec eux"
+
+msgid "How big the model is: studs across and deep, and plates high without the studs on its top; in centimetres with them, as a shelf needs. Its weight is worked out from each part's shape, within about 6% of the bricks weighed"
+msgstr "La taille du modèle : tenons en largeur et en profondeur, et plaques de haut sans les tenons du dessus ; en centimètres avec eux, comme il le faut pour une étagère. Son poids est calculé d'après la forme de chaque pièce, à environ 6 % près pour les briques pesées"

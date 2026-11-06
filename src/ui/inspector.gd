@@ -74,6 +74,8 @@ var _facts: Label
 var _actions: HBoxContainer
 ## What the model stands on, shown with nothing selected.
 var floor_picker: FloorPicker
+## And how big it is and what it weighs (ModelSize), under that.
+var _model_size: Label
 var _credit: VBoxContainer
 var _credit_words: Label
 var _credit_link: LinkButton
@@ -167,6 +169,15 @@ func _ready() -> void:
 		shell.app.call("floor_part_of_model", on))
 	if floor_layer != null and not compact:
 		floor_layer.changed.connect(_show_floor)
+	_model_size = Label.new()
+	_model_size.add_theme_font_size_override("font_size", 12)
+	_model_size.modulate = Color(1, 1, 1, 0.75)
+	_model_size.mouse_filter = Control.MOUSE_FILTER_PASS
+	_model_size.tooltip_text = ("How big the model is: studs across and deep, and plates high "
+		+ "without the studs on its top; in centimetres with them, as a shelf needs. Its weight "
+		+ "is worked out from each part's shape, within about 6% of the bricks weighed")
+	_model_size.visible = false
+	column.add_child(_model_size)
 	# And whose it is, when it is someone else's: who made it, its licence
 	# and its page (ModelStore.credit), as the library or the gallery said.
 	_credit = VBoxContainer.new()
@@ -442,6 +453,7 @@ func _refresh(_now: bool) -> void:
 			_show_floor()
 		idled.emit(_idle)
 	_show_credit()
+	_show_size()
 	if not _open:
 		return
 	var state: String = _state_of(bricks)
@@ -511,6 +523,25 @@ func _show_credit() -> void:
 		_credit_link.text = "Its LDraw page" if str(credit.get("from", "")) == ModelLibrary.FROM \
 			else "Its page"
 		_credit_link.tooltip_text = _credit_page
+
+
+## Nothing selected: how big the model is, in studs and plates and in
+## centimetres, and what it weighs, worked out once a change (ModelSize).
+func _show_size() -> void:
+	var words: String = ""
+	if _open and _idle and not compact and shell.world != null:
+		var measured: ModelSize = ModelSize.of_model(shell.world, shell.library,
+			shell.store.scenery if shell.store != null else {})
+		if not measured.is_empty():
+			var lines := PackedStringArray([measured.studs_words(), measured.centimetre_words(),
+				measured.weight_words()])
+			if measured.left_out > 0:
+				lines.append(measured.left_out_words())
+			words = "\n".join(lines)
+	if _model_size.text != words:
+		_model_size.text = words
+	if _model_size.visible != not words.is_empty():
+		_model_size.visible = not words.is_empty()
 
 
 ## The model's floor, in the picker.

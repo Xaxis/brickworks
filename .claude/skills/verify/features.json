@@ -4696,6 +4696,14 @@
       "tests": []
     },
     {
+      "id": "ui:model size and weight",
+      "kind": "ui",
+      "entry": "src/assembly/model_size.gd",
+      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"16 \u00d7 9 studs, 6 plates high \u00b7 12.8 \u00d7 7.2 \u00d7 2.08 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:model tree",
       "kind": "ui",
       "entry": "src/ui/outliner.gd",

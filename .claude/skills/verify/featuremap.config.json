@@ -4665,6 +4665,13 @@
       "entry": "src/dev/buildturn_probe.gd",
       "reach": "tools/probe.sh buildturn_probe; PROBE_SIZE=1024x768, 1280x720 or 1400x900 tools/probe.sh buildturn_probe   (windowed, 390x844 by its header; pictures in shots/buildturn/)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "model size and weight",
+      "entry": "src/assembly/model_size.gd",
+      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"16 × 9 studs, 6 plates high · 12.8 × 7.2 × 2.08 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/)",
+      "area": "building"
     }
   ]
 }

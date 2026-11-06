@@ -3,9 +3,10 @@
 ## On the left, what just happened — or, when nothing has, what the tool
 ## in use does. On the right, while a part is in hand, where it goes if put
 ## down now, in studs and plates, as LeoCAD's says where its preview stands;
-## then the model: how many parts and whether it stands up, how many are
-## selected, what a part snaps to and how far a turn goes, and how big a
-## stud is on screen. The counts were a pill over
+## then the model: how many parts and whether it stands up, how big it is
+## (ModelSize: studs and plates, and centimetres), how many are selected and,
+## while some are, how big they are; what a part snaps to and how far a turn
+## goes, and how big a stud is on screen. The counts were a pill over
 ## the top of the model and the messages a line in the bar beside the
 ## buttons; every other program keeps both down here.
 class_name StatusBar
@@ -24,6 +25,14 @@ var _place: Label
 ## file manager open on it.
 var show_folder: Button
 var _selected: Label
+## How big the model is, after its counts; while parts are selected, how big
+## they are, after "3 selected" (ModelSize).
+var _size: Label
+## What the size was worked out for: the model's revision and the selection.
+var _size_key: Array = []
+## How many times the selection changed, heard from the builder.
+var _selection_moves: int = 0
+var _hears_selection: bool = false
 var _settings: Label
 var _zoom: Label
 var _looked_at: int = 0
@@ -91,6 +100,8 @@ func _ready() -> void:
 		+ "from the middle of the floor, and plates up from the ground")
 	_show_place("")
 	counts = _cell(row, "How many parts the model has, and whether it would stand up as built")
+	_size = _cell(row, "How big the model is, or the parts selected: studs across and deep, "
+		+ "plates high without the studs on top, and centimetres each way with them")
 	_selected = _cell(row, "How many parts are selected")
 	_settings = _cell(row, "What a part snaps to, and how far a turn goes: both on the toolbar")
 	_zoom = _cell(row, "How big one stud is on the screen at the middle of the view")
@@ -110,7 +121,7 @@ func _label(row: Container, alpha: float) -> Label:
 ## there is some.
 func only_the_work() -> void:
 	work_only = true
-	for label: Label in [_place, counts, _selected, _settings, _zoom]:
+	for label: Label in [_place, counts, _size, _selected, _settings, _zoom]:
 		label.visible = false
 		(label.get_meta("line") as Control).visible = false
 	visible = Working.is_busy()
@@ -175,21 +186,98 @@ func _process(_delta: float) -> void:
 		_hint_asked_us = -1
 	# Where the part in hand goes, as it moves: every frame, as the ghost is.
 	_show_place(place_words())
+	# How big, in the frame the model or the selection changed.
+	_show_size()
 	var now: int = Time.get_ticks_msec()
-	if now - _looked_at < 150:
+	if now - _looked_at >= 150:
+		_looked_at = now
+		var count: int = shell.builder.selection.size()
+		_selected.text = "%d selected" % count if count > 0 else "nothing selected"
+		var snap: String = {"stud": "stud", "half": "½ stud", "half_plate": "½ plate",
+			"free": "free"}.get(shell.verbs.snap, shell.verbs.snap)
+		_settings.text = "snap %s · turn %d°" % [snap, roundi(shell.verbs.turn_step)]
+		_zoom.text = "1 stud ≈ %d px" % roundi(_stud_on_screen())
+	_fit()
+
+
+## Room the line on the left keeps, px, before a field on the right goes.
+const HINT_ROOM := 160.0
+
+
+## The fields on the right fitted to the bar, every frame, as what they say
+## changes: where they would not all fit beside the line on the left, the
+## least wanted goes first (how big a stud is on screen, then the snap and
+## turn, then the size), so none runs past the window's edge. On a narrow
+## screen the first two go whatever room is left, as before.
+func _fit() -> void:
+	var window: float = get_viewport().get_visible_rect().size.x
+	var narrow: bool = window < 900.0
+	# The bar's own width, or the window's past where it starts when the
+	# fields have already pushed the bar wider than that.
+	var room: float = minf(size.x, window - global_position.x)
+	var shown: Dictionary = {_zoom: not narrow, _settings: not narrow,
+		_size: not _size.text.is_empty()}
+	var needed: float = get_theme_stylebox("panel").get_minimum_size().x + HINT_ROOM
+	for label: Label in [_place, counts, _size, _selected, _settings, _zoom]:
+		if bool(shown.get(label, label.visible)):
+			needed += _width(label)
+	if show_folder.visible:
+		needed += show_folder.get_combined_minimum_size().x
+	for least: Label in [_zoom, _settings, _size]:
+		if needed > room and bool(shown[least]):
+			shown[least] = false
+			needed -= _width(least)
+	for label: Label in shown:
+		if label.visible != bool(shown[label]):
+			label.visible = shown[label]
+			(label.get_meta("line") as Control).visible = shown[label]
+
+
+## A field's width and the line before it.
+static func _width(label: Label) -> float:
+	return label.get_minimum_size().x + (label.get_meta("line") as Control).get_minimum_size().x
+
+
+## The model's size beside its counts, or the selection's beside "3
+## selected": worked out again in the frame either changes, and only then.
+func _show_size() -> void:
+	var builder: Builder = shell.builder
+	var world: BrickWorld = shell.world
+	if builder == null or world == null or shell.library == null:
 		return
-	_looked_at = now
-	var count: int = shell.builder.selection.size()
-	_selected.text = "%d selected" % count if count > 0 else "nothing selected"
-	var snap: String = {"stud": "stud", "half": "½ stud", "half_plate": "½ plate",
-		"free": "free"}.get(shell.verbs.snap, shell.verbs.snap)
-	_settings.text = "snap %s · turn %d°" % [snap, roundi(shell.verbs.turn_step)]
-	_zoom.text = "1 stud ≈ %d px" % roundi(_stud_on_screen())
-	# On a narrow screen the message and hint keep the room.
-	var narrow: bool = get_viewport().get_visible_rect().size.x < 900.0
-	for label: Label in [_settings, _zoom]:
-		label.visible = not narrow
-		(label.get_meta("line") as Control).visible = not narrow
+	if not _hears_selection:
+		_hears_selection = true
+		builder.selection_changed.connect(func(_count: int) -> void: _selection_moves += 1)
+	var scenery: Dictionary = shell.store.scenery if shell.store != null else {}
+	var picked: bool = not builder.selection.is_empty()
+	var key: Array = [world.get_instance_id(), world.revision, world.generation(), scenery.size(),
+		_selection_moves if picked else -1, builder.selection.size()]
+	if key == _size_key:
+		return
+	_size_key = key
+	var measured: ModelSize
+	if picked:
+		var bricks: Array = []
+		for brick_id: int in builder.selection:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick != null:
+				bricks.append(brick)
+		measured = ModelSize.of_bricks(bricks, shell.library)
+	else:
+		measured = ModelSize.of_model(world, shell.library, scenery)
+	_size.text = measured.words()
+	# Beside what it measures.
+	var after: Label = _selected if picked else counts
+	var row: Node = _size.get_parent()
+	var line: Control = _size.get_meta("line")
+	if line.get_index() != after.get_index() + 1:
+		row.remove_child(line)
+		row.remove_child(_size)
+		var at: int = after.get_index() + 1
+		row.add_child(line)
+		row.move_child(line, at)
+		row.add_child(_size)
+		row.move_child(_size, at + 1)
 
 
 ## Where the part in hand goes if put down now: "x 2½, z −1 studs · 3 plates
@@ -304,5 +392,7 @@ func _stud_on_screen() -> float:
 func fields() -> Dictionary:
 	return {"message": message.text, "hint": shell.verbs.hint(), "line": _hint.text,
 		"place": _place.text if _place.visible else "",
-		"counts": counts.text, "selected": _selected.text, "settings": _settings.text,
+		"counts": counts.text, "size": _size.text if _size.visible else "",
+		"size_after": "selected" if _size.get_index() > _selected.get_index() else "counts",
+		"selected": _selected.text, "settings": _settings.text,
 		"zoom": _zoom.text, "show_folder": show_folder.visible}
