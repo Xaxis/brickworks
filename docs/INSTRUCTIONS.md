@@ -3000,7 +3000,9 @@ Per page, told (right / near / wrong part or colour / misplaced / missing):
 - Neither moved beyond its spread. LEGO's fell, ours did not rise. **Telling
   the builder how to check does not make the measure a person's.** The
   builder sees the picture agree with a placement a person would never make,
-  because a person's hands find the studs.
+  because a person's hands find the studs. (Measured since: the builder's
+  misses are on real studs too, where hands could put them. A person would
+  not choose them from the picture; follower, below.)
 
 **What it means for judging booklet changes.**
 
@@ -3026,7 +3028,106 @@ Per page, told (right / near / wrong part or colour / misplaced / missing):
     step, black with light edges, sub-assemblies lifted with arrows) from one
     of the library's sets with its author's steps;
   - a builder that puts a sub-assembly on only where it connects, before any
-    attach step is judged again.
+    attach step is judged again. Measured since: it already does (follower,
+    below).
+
+## A builder with a person's hands (2026-11-05, follower): NO-GO
+
+bookletcal read the builder's misses as its hands: it put a sub-assembly
+whole plates off, "because nothing in the app stops a part floating or
+sinking". This unit was to give it a person's hands: a part or sub-assembly
+goes on only where it connects, snapped to the nearest place that does, or
+refused with what is wrong. Then calibrate on both booklets, and judge
+attachstep again.
+
+**The answer: its hands are already a person's.** Every sub-assembly the
+builder put on wrong sits on real studs, where a person's hands could put it
+too. Snapping to where a thing connects would leave each where it is. So no
+builder was run, and nothing changed in booklet_mcp.py or the app.
+
+**What the app already holds the builder to.** edit_model refuses a part
+that runs into another (more than 1 LDU into its real shape), a part held by
+nothing, a part resting where it would fall, and a piece apart that nothing
+names. It seats a part a few LDU off onto its stud. Over the 29 runs on 7140
+below, it refused 156 of 556 edits: 139 overlaps, 71 collisions, 33 not
+held, 22 floating (an edit can be refused for more than one).
+
+**Where each misplaced sub-assembly went, and what holds it.** Each run's
+final build was opened in the app and checked (check_design). Every stretch
+B build is in exactly as many pieces as the model the pages before it leave
+(ours 2, LEGO's 3), so nothing the builder put on stands apart: each piece
+it added is joined to the model. And each group of parts misplaced by one
+offset, taken off on a copy, never left the model in fewer pieces.
+
+| booklet, stretch B | runs | nose (22 parts) off | seat back (5) off | all joined |
+|---|---|---|---|---|
+| ours, bookletcal b1-b4 | 4 | right; 4 low; 4 high; right | right; right; 1 high, 3 along; right | yes |
+| ours, told to check c1-c4 | 4 | right; right; 4 low; 4 low | right; right; right; 5 low | yes |
+| ours, attachstep before m1, m2 | 2 | 4 high; 4 high | right; right | yes |
+| ours, attachstep after p1, p2 | 2 | 4 low; 4 low | 6 high; 2 low, 2.5 along | yes |
+| LEGO's, b1-b4 | 4 | built wrong; 4 high; built wrong; built wrong | 6 high in 3 (b3 right) | yes |
+| LEGO's, told to check c1-c4 | 4 | built wrong in 4 (c3: 4 low) | 6 high in 4 | yes |
+
+Offsets are plates up or down and studs along, a whole number of each every
+time: on the stud grid, where something takes the part. Two looked at
+closely:
+
+- **LEGO's seat back, 6 plates high** (7 runs of 8). Its bottom 1 x 4
+  plate's two middle holes are on the top studs of the two 2 x 1 slopes in
+  the cockpit (attachment_points: #250.stud[0] at x -0.5, y 24, z 1.5 is
+  #252.hole[1]). A joint of two studs. The builder said so: "across the two
+  2x1 slopes' top studs". The model has it on the cockpit floor, 6 plates
+  down and a stud back.
+- **Our nose, 4 plates high** (b3). Its 2 x 12 plate's front four holes are
+  on the black 2 x 4 brick's studs. The model has the nose's plate under
+  that brick, its studs up in the brick's tubes. The builder: "its bottom
+  plate fits the black 2x4's front studs. Neither page tells me the exact
+  spot."
+
+A person could press either on there; the parts click in. What a person
+would not do is choose it from the picture.
+
+**Stretch A's spread is not hands either.** On our pages 2-13 the six runs
+put 38-55 of 73 right. 12 of that 17 is the dish read as a round plate (0,
+12, 0, 8, 12 and 0 of its 12 parts): what a part is, which partsbox has
+since fixed. Without the dishes the runs put 38-47 right, and every miss is
+at a joint: cart 1 two plates high (attachstep's after a1), the tools a clip
+along, the hose's ends.
+
+**The one place hands are missing.** A sub-assembly built apart, named, and
+slid by coordinates to its joint can be let go short of it. LEGO's builders
+left cart 1 0.8 and 1.2 studs off its towball in 2 of 4 runs of stretch A
+(a1, a4). The builder slid the carts along by fractions of a stud. Where
+they would couple, the towball's plate overlapped the socket's and the edit
+was refused. A little short of it, each cart stood apart, named, and the app
+took that. A person's towball clicks into its socket. It costs about 18 of
+73 parts in each of those two runs, on LEGO's stretch A only. Ours put cart
+1 on within half a stud in five runs of six, and two plates high, on studs,
+in the sixth. Stretch B has no such miss.
+
+**What it means.**
+
+- **The bar cannot be met by hands.** On stretch B, every one of LEGO's
+  misses and ours is at a joint. On stretch A, our spread is the dish and
+  joints chosen wrong.
+- **The measure's placement half reads the builder's eyes.** It reads a
+  sub-assembly's height and depth off a flat picture wrong, then finds studs
+  that take it there. Telling it to check (bookletcal) did not help.
+- **attachstep's NO-GO stands for this builder.** Its after runs' seat back
+  (6 high, and 2 low) and nose (4 low) are on real studs too: a builder that
+  places as hands do would have placed them the same.
+- **Next levers**:
+  - eyes: the builder's model drawn over the step's picture from the page's
+    own camera and scale, so a sub-assembly 4 plates off shows as a doubled
+    edge, not a likeness;
+  - the hands gap, when a booklet that couples things is measured
+    (towballs, hinges, clips): edit_model's move taking attach's "to" and
+    "by" for a whole sub-assembly, so the app seats it as a hand does.
+    edit_selection already finds the nearest place a refused part fits and
+    holds.
+- The analysis is in `bench/results/follower-2026-11-05/`: the scripts
+  (each run's misplaced groups, checked in a headless app over MCP) and
+  each run's result.
 
 ## A step turned as its author turned it, and turned over for parts underneath (2026-11-05, rotroll)
 

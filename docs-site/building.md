@@ -132,7 +132,7 @@ ui:handles on the selection
 ## Mirror, replace and paint {#mirror}
 
 - **Edit › Mirror** ([[Shift+M]]) mirrors the selection, swapping each part for its left- or right-handed twin where there is one.
-- **Edit › Replace with the part in hand** swaps every selected part for the one you hold, keeping where each was.
+- **Edit › Replace with the part in hand** ([[Alt+R]]) swaps every selected part for the one you hold, keeping where each was.
 - [[C]] paints the selection in the current colour; the **Paint** tool paints each part you click.
 - An assistant mirrors parts by number with `mirror_parts`, in place as [[Shift+M]] does, or as a copy beside them: across the model's middle, a left half makes the right half.
 
@@ -146,7 +146,7 @@ ui:replace part
 - [[Alt+S]] splits the selection: a plate, brick or tile into 1 x 1s on the same studs, a 1 x 1 brick into three 1 x 1 plates, and a slope or curved slope into 1-wide slopes of the same angle and length.
 - [[Alt+M]] merges the selected plates, bricks and tiles of each colour into the fewest real parts made in that colour, in one press: five 1 x 2 plates in a 2 x 5 become a 2 x 4 and a 1 x 2, and three stacked plates become a brick.
 - Both are on the menu you get by right-clicking a part. Whatever was attached stays attached, and one undo takes the change back. When no real part is made of the selection, the status bar says so and nothing changes.
-- An assistant does the same to parts it names, with `split_parts` and `merge_parts`.
+- An assistant does the same to parts it names, with `split_parts` and `merge_parts`. Like `mirror_parts`, each answers with the change pictured, its new parts edged in magenta.
 
 <!-- covers
 ui:split and merge parts

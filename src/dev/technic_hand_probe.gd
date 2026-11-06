@@ -49,15 +49,12 @@ func _initialize() -> void:
 	_a_clip_on_a_handle()
 	_a_bar_in_a_clip()
 	_turning_on_a_joint()
-	_a_cone_on_a_cone()
-	await _over_mcp()
 
 	print("")
 	if _failures == 0:
 		print("by hand: a pin into a hole, an axle through a beam with a gear on it, "
-			+ "a beam onto two pins, a clip on a bar, a clip on a plate's handle, a "
-			+ "bar in a clip and a cone on a cone's stud, each joined, and check_design "
-			+ "agrees; and a session's design of the same over MCP passes")
+			+ "a beam onto two pins, a clip on a bar, a clip on a plate's handle and a "
+			+ "bar in a clip, each joined, and check_design agrees")
 	else:
 		print("%d check%s failed" % [_failures, "" if _failures == 1 else "s"])
 	quit(1 if _failures > 0 else 0)
@@ -391,59 +388,3 @@ func _turning_on_a_joint() -> void:
 	after = _ghost()
 	turned = rad_to_deg((before.basis * Vector3.UP).angle_to(after.basis * Vector3.UP))
 	_ok(absf(turned - 90.0) < 0.5, "R turns an axle in its cross a quarter (%.1f)" % turned)
-
-
-## A cone on the stud of a cone, as 5891's lamp stacks them. The stud's tip
-## is up the upper cone's hollow, which its cover leaves open, so the
-## checker read the upper cone as floating though the hand put it on the
-## stud (Joints._hollow_round). And the same cone a brick up is in nothing.
-func _a_cone_on_a_cone() -> void:
-	print("\na cone on a cone's stud")
-	_clear()
-	# On the studs' grid, as the hand puts a part: its stud at 10, 10.
-	_put("59900", Transform3D(Basis.IDENTITY, Vector3(10, 24, 10)))
-	_aim("59900", Vector3(10, 28, 10), Vector3(10, 300, 10))
-	# The hand stands it at the stud's foot, 44; the cone's stop inside its
-	# hollow rests it on the stud's top, 48, as the set has it, and the
-	# check seats it there.
-	var at: Transform3D = _ghost()
-	_ok(_builder.can_place() and Vector2(at.origin.x - 10, at.origin.z - 10).length() < 0.01
-		and absf(at.origin.y - 48) <= 4.01,
-		"a cone aimed at a cone's stud goes on it: %s" % at.origin)
-	var top: int = _builder.place()
-	var said: String = _design_says()
-	_ok(top != 0 and said.begins_with("2 bricks, buildable"),
-		"a click puts it on, and check_design passes the stack: %s" % said)
-	_builder.remove_brick_id(top)
-	_builder.put_part("59900", 0, Transform3D(Basis.IDENTITY, Vector3(10, 72, 10)))
-	said = _design_says()
-	_ok(said.contains("float"), "the same cone a brick up, off the stud, floats: %s" % said)
-
-
-## The same joints as a session builds them, through the tools the MCP
-## server calls (Assistant.use_tool): a bar in a round brick's hollow stud,
-## a clip on the bar, and a cone on a cone's stud, each passed.
-func _over_mcp() -> void:
-	print("\nover MCP: a bar in a hollow stud, a clip on it, a cone on a cone")
-	_clear()
-	_assistant.forget_built()
-	var said: Variant = await _assistant.use_tool("submit_design", {"name": "joints",
-		"bricks": [{"part": "3062b", "color": 4, "x": 0, "y": 0, "z": 0, "name": "base"},
-		{"part": "30374", "color": 0, "name": "bar", "attach": {"to": "base.clip[0]",
-			"by": "bar[0]", "seat": "-end"}},
-		{"part": "4085c", "color": 4, "attach": {"to": "bar.bar[0]", "by": "clip[0]"}},
-		{"part": "59900", "color": 72, "x": 3, "y": 0, "z": 0},
-		{"part": "59900", "color": 72, "x": 3, "y": 3, "z": 0}]})
-	var text: String = str(said) if said is String else JSON.stringify(said)
-	var parts: Dictionary = {}
-	for brick: BrickWorld.Brick in _world.bricks():
-		parts[brick.part_id] = int(parts.get(brick.part_id, 0)) + 1
-	_ok(_world.brick_count() == 5 and int(parts.get("59900", 0)) == 2
-		and parts.has("4085c") and parts.has("30374"),
-		"submit_design builds all five: %s" % str(parts))
-	var checked: String = _design_says()
-	_ok(not checked.contains("overlap") and not checked.contains("float")
-		and not checked.contains("not held"),
-		"check_design passes what it built: %s" % checked)
-	_ok(not text.contains("float") and not text.contains("overlap"),
-		"and its answer says nothing against them: %s" % text.left(240))

@@ -16,15 +16,17 @@
 // baseplate (the page says where the ghost stands).
 //
 // Fails past --most (1) frames drawn a second standing still, or a tenth of
-// the engine's frames, or where a change was not drawn or the page did not
-// go quiet again. Leaves idle.json
-// and idle.png in --out (shots/idle).
+// the engine's frames, or any of the page's workers over --worker-most (10)
+// % of a core standing still, as the kernel counts it (proc_cpu.mjs), or
+// where a change was not drawn or the page did not go quiet again. Leaves
+// idle.json and idle.png in --out (shots/idle).
 //
 // --floor=none (or grid) first puts the model on that floor, by View >
 // Floor and the menu's keys: with no baseplate the ground catches the
 // model's shadow, and that must cost nothing standing still either.
 import { controlsWith, launch, typeInMenu } from "./browser.mjs";
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { chromiumCpu, pageRenderer, snapshot, spent } from "./proc_cpu.mjs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 
@@ -37,6 +39,7 @@ mkdirSync(out, { recursive: true });
 const seconds = Number(args.seconds || 15);
 const most = Number(args.most || 1);
 const after = Number(args.after || 20000);
+const workerMost = Number(args["worker-most"] || 10);
 const bypass = process.env.BW_BYPASS || "";
 
 async function freePort() {
@@ -104,42 +107,6 @@ function instrument() {
   }
 }
 
-// CPU time of the browser and every process under it, in seconds, by the
-// kind of process: the page (renderer), and SwiftShader rasterising in the
-// GPU process.
-function chromiumCpu(root) {
-  const children = new Map();
-  const kind = (pid) => {
-    try {
-      const type = /--type=([a-z-]+)/.exec(readFileSync(`/proc/${pid}/cmdline`, "utf8"));
-      return type ? type[1] : "browser";
-    } catch { return "gone"; }
-  };
-  for (const name of readdirSync("/proc")) {
-    if (!/^\d+$/.test(name)) continue;
-    try {
-      const stat = readFileSync(`/proc/${name}/stat`, "utf8");
-      const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
-      const parent = Number(fields[1]);
-      if (!children.has(parent)) children.set(parent, []);
-      children.get(parent).push([Number(name), Number(fields[11]) + Number(fields[12])]);
-    } catch { /* gone */ }
-  }
-  const by = {};
-  const add = (pid, t) => { const k = kind(pid); by[k] = (by[k] || 0) + t / 100; };
-  const walk = (pid) => {
-    for (const [child, t] of children.get(pid) || []) { add(child, t); walk(child); }
-  };
-  try {
-    const stat = readFileSync(`/proc/${root}/stat`, "utf8");
-    const fields = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
-    add(root, Number(fields[11]) + Number(fields[12]));
-  } catch { /* gone */ }
-  walk(root);
-  by.all = Object.entries(by).reduce((sum, [, v]) => sum + v, 0);
-  return by;
-}
-
 browser = await launch();
 const context = await browser.newContext({ viewport: { width: 1280, height: 860 } });
 await context.addInitScript(instrument);
@@ -148,21 +115,6 @@ const cdp = await context.newCDPSession(page);
 await cdp.send("Performance.enable");
 const metric = async (name) => ((await cdp.send("Performance.getMetrics")).metrics
   .find((m) => m.name === name) || { value: 0 }).value;
-// The browser's own process, the root of the tree whose CPU is counted.
-const browserPid = (() => {
-  for (const name of readdirSync("/proc")) {
-    if (!/^\d+$/.test(name)) continue;
-    try {
-      const cmd = readFileSync(`/proc/${name}/cmdline`, "utf8");
-      if (cmd.includes("--remote-debugging-pipe") && !cmd.includes("--type=")
-          && Number(readFileSync(`/proc/${name}/stat`, "utf8").split(") ")[1].split(" ")[1]) === process.pid) {
-        return Number(name);
-      }
-    } catch { /* gone */ }
-  }
-  return 0;
-})();
-
 const first = bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
   : url;
@@ -240,13 +192,17 @@ await page.waitForTimeout(after);
 const t0 = await now();
 const named0 = await page.evaluate(() => ({ ...window.brickworksIdle.idleCalls }));
 const task0 = await metric("TaskDuration");
-const cpu0 = browserPid ? chromiumCpu(browserPid) : {};
+const cpu0 = chromiumCpu();
+const renderer = pageRenderer();
+const threads0 = snapshot(renderer);
 const wall0 = Date.now();
 await page.waitForTimeout(seconds * 1000);
 const span = (Date.now() - wall0) / 1000;
-const cpu1 = browserPid ? chromiumCpu(browserPid) : {};
+const cpu1 = chromiumCpu();
+const workers = spent(threads0, snapshot(renderer)).threads.filter((t) => t.comm === "DedicatedWorker")
+  .sort((x, y) => y.pct - x.pct);
 const cpuBy = Object.fromEntries(Object.keys(cpu1).map((k) => [k, (cpu1[k] - (cpu0[k] || 0)) / span]));
-const cpu = browserPid ? cpuBy.all : -1;
+const cpu = cpu1.all > 0 ? cpuBy.all : -1;
 const busy = (await metric("TaskDuration") - task0) / span;
 const idle = await frames(t0);
 const idleDrawn = drew(idle);
@@ -258,7 +214,7 @@ const inGl = idle.reduce((s, [, , gl]) => s + gl, 0) / 1000 / span;
 const row = {
   url, seconds: span, frames: idle.length, drawn: idleDrawn.length,
   framesPerSecond: idle.length / span, drawnPerSecond: idleDrawn.length / span,
-  mainThread: busy, inFrames, inWebGl: inGl, chromiumCpu: cpu, chromiumCpuBy: cpuBy,
+  mainThread: busy, inFrames, inWebGl: inGl, chromiumCpu: cpu, chromiumCpuBy: cpuBy, workers,
   webGlCalls: idleCalls, webGlCallsByName: named,
 };
 console.log(`standing still for ${span.toFixed(0)} s: ${idle.length} engine frames, ${idleDrawn.length} drawn (${row.drawnPerSecond.toFixed(1)} a second)`);
@@ -271,6 +227,13 @@ const check = (what, held) => {
   console.log(`${held ? "ok  " : "FAIL"} ${what}`);
   if (!held) failures += 1;
 };
+// No worker of the page's spins standing still: the engine's audio mix
+// thread took a whole core for every visit until 2026-11-05, unseen by every
+// check here, which counted the browser's CPU whole and put it down to
+// drawing in software (project.godot [audio]; thread_cpu.mjs names each
+// worker).
+check(`no worker over ${workerMost}% of a core standing still (${workers.length} workers, `
+  + `the busiest ${workers.length ? `${workers[0].pct}%` : "-"})`, workers.length > 0 && workers[0].pct <= workerMost);
 // And at most a tenth of the engine's frames: drawn in software a frame of
 // the old build took over a second, so it drew under one a second while
 // drawing every frame it had.
