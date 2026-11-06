@@ -508,19 +508,19 @@ func _place() -> void:
 		["aimed at the middle", Vector3(0, 0, 0)]]
 	var first: int = 0
 	for one: Array in cases:
-		var made: int = await _put(str(one[0]), _screen(one[1]))
+		var made: int = await _put(str(one[0]), one[1])
 		if first == 0:
 			first = made
 	# On top of the first.
 	if first != 0:
 		var top: Vector3 = _top_of(first)
-		await _put("aimed at the top of the first brick", _screen(top), "place_on_brick")
+		await _put("aimed at the top of the first brick", top, "place_on_brick")
 	# Turned a quarter, a 1 x 2 plate, half studs across.
 	await _hold("3023")
 	await _key(KEY_R)
-	await _put("a 1 x 2 plate turned, aimed at the ground in front and right", _screen(Vector3(80, 0, 60)))
+	await _put("a 1 x 2 plate turned, aimed at the ground in front and right", Vector3(80, 0, 60))
 	if first != 0:
-		await _put("a 1 x 2 plate turned, aimed at the top of the first brick", _screen(_top_of(first)))
+		await _put("a 1 x 2 plate turned, aimed at the top of the first brick", _top_of(first))
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
 	await _frames(6)
@@ -537,7 +537,7 @@ func _place() -> void:
 	await _frames(10)
 	_check("3: two parts in hand, carried (Ctrl+D)", _builder.is_carrying())
 	if _builder.is_carrying():
-		await _put("two bricks carried, aimed at the ground in front and left", _screen(Vector3(-100, 0, 100)), "place_carried", true)
+		await _put("two bricks carried, aimed at the ground in front and left", Vector3(-100, 0, 100), "place_carried", true)
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
 	_builder.selection.clear()
@@ -550,7 +550,12 @@ func _place() -> void:
 
 ## The pointer at [param at], the bar read, a click there, and what was put
 ## down measured against what the bar said. The id of the first part put.
-func _put(what: String, at: Vector2, picture: String = "", carried: bool = false) -> int:
+func _put(what: String, aim: Vector3, picture: String = "", carried: bool = false) -> int:
+	# Where [param aim] is on the screen once the view is still: a part
+	# taken in hand can swap the side panels in a window with room for one,
+	# which moves the view the model is seen in.
+	await _still()
+	var at: Vector2 = _screen(aim).floor()
 	await _move(at + Vector2(3, 0))
 	await _move(at)
 	await _frames(6)
@@ -561,6 +566,11 @@ func _put(what: String, at: Vector2, picture: String = "", carried: bool = false
 	var before: Dictionary = {}
 	for brick: BrickWorld.Brick in _world.bricks():
 		before[brick.id] = true
+	# The view held still from the aim to the click: a part put down with
+	# the view moving under the pointer is the probe's doing, not the bar's.
+	var drift: float = _screen(aim).distance_to(at)
+	if drift > 1.5:
+		print("      (the view moved %.1f px under the pointer before the click)" % drift)
 	await _click_whole(at)
 	await _frames(6)
 	var made: Array = []
@@ -638,17 +648,21 @@ func _screen(point: Vector3) -> Vector2:
 	return _camera.unproject_position(point)
 
 
-## Until the camera stops moving: a frame eases there over many frames, and
-## a point worked out while it moves is another point when the click lands.
+## Until the view stops moving: a frame eases there over many frames, a
+## side panel slides, and a point worked out while either moves is another
+## point when the click lands. Read off where two points of the floor are
+## drawn, which the camera and the room it is seen in both move.
 func _still() -> void:
-	var last: Transform3D = _camera.global_transform
+	var last: Array = [_screen(Vector3.ZERO), _screen(Vector3(100, 0, 100))]
 	var same: int = 0
 	for _n: int in 600:
 		await process_frame
-		var now: Transform3D = _camera.global_transform
-		same = same + 1 if now.is_equal_approx(last) else 0
+		var now: Array = [_screen(Vector3.ZERO), _screen(Vector3(100, 0, 100))]
+		var moved: bool = (now[0] as Vector2).distance_to(last[0]) > 0.01 \
+			or (now[1] as Vector2).distance_to(last[1]) > 0.01
+		same = 0 if moved else same + 1
 		last = now
-		if same >= 5:
+		if same >= 10:
 			return
 
 
