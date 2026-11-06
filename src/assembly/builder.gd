@@ -1606,12 +1606,12 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 	var plan: Array = []
 	for brick: BrickWorld.Brick in bricks:
 		var part: String = brick.part_id
-		var other: String = Mirror.counterpart(library, part)
+		var other: String = Later.script(&"Mirror").counterpart(library, part)
 		if not other.is_empty() and library.mesh_for(other) != null:
 			part = other
 		# A part not swapped for its other hand is turned to look reflected
 		# by its own shape.
-		var at: Transform3D = _tidy(Mirror.reflected(brick.transform, axis, across,
+		var at: Transform3D = _tidy(Later.script(&"Mirror").reflected(brick.transform, axis, across,
 			library.mesh_for(part) if part == brick.part_id else null),
 			BrickLattice.is_square_to_grid(brick.transform.basis))
 		plan.append({"brick": brick, "part": part, "at": at})
@@ -2299,7 +2299,7 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 		_ghost.visible = false
 		_ghost_valid = false
 		return
-	if Stickers.sticks(library, held_part):
+	if library.sticks(held_part):
 		_preview_sticker(part, origin, direction)
 		return
 
@@ -2462,14 +2462,15 @@ var view_up: Vector3 = Vector3.UP
 ## under it (Stickers.lies_on), and a sticker put down on the grid floated
 ## a plate over the brick it was for. R turns it about the face.
 func _preview_sticker(part: Lbm.PartMesh, origin: Vector3, direction: Vector3) -> void:
-	var face: Stickers.Face = Stickers.face_at(world, library, origin, direction, false, view_up)
+	var stickers: GDScript = Later.script(&"Stickers")
+	var face: RefCounted = stickers.face_at(world, library, origin, direction, false, view_up)
 	if face == null:
 		_ghost.visible = false
 		_ghost_valid = false
 		_hovered = 0
 		return
 	_hovered = face.bricks[0]
-	_ghost_transform = Stickers.laid_on(face, part.bounds, held_rotation)
+	_ghost_transform = stickers.laid_on(face, part.bounds, held_rotation)
 	_seated_on = 0
 	_ghost_valid = true
 	_show_ghost(part)

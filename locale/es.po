@@ -11261,3 +11261,107 @@ msgstr "El tamaño del modelo, o de las piezas seleccionadas: espigas de ancho y
 
 msgid "How big the model is: studs across and deep, and plates high without the studs on its top; in centimetres with them, as a shelf needs. Its weight is worked out from each part's shape, within about 6% of the bricks weighed"
 msgstr "El tamaño del modelo: espigas de ancho y de fondo, y placas de alto sin las espigas de arriba; en centímetros con ellas, como necesita una estantería. Su peso se calcula a partir de la forma de cada pieza, con un margen de un 6 % en los ladrillos pesados"
+
+# The booklet's page set up (APP_UX5 #4, pagesetup): Build, Booklet page, Page setup…
+
+msgid "Page setup…"
+msgstr "Configurar página…"
+
+msgid "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another"
+msgstr "El papel del folleto (A4, Carta, A5 o el suyo), en vertical u horizontal, los márgenes, un color o una imagen detrás de cada página, el tamaño de los números de paso y de las piezas; guardado con el modelo y como estilo con un nombre para otro"
+
+msgid "Page setup"
+msgstr "Configurar página"
+
+msgid "Booklet, 269 x 199 mm"
+msgstr "Folleto, 269 x 199 mm"
+
+msgid "A4, 210 x 297 mm"
+msgstr "A4, 210 x 297 mm"
+
+msgid "US Letter, 8.5 x 11 in"
+msgstr "Carta, 8,5 x 11 pulg."
+
+msgid "A5, 148 x 210 mm"
+msgstr "A5, 148 x 210 mm"
+
+msgid "The paper the booklet is printed on, and its PDF's page"
+msgstr "El papel en el que se imprime el folleto, y la página de su PDF"
+
+msgid "Paper"
+msgstr "Papel"
+
+msgid "Landscape"
+msgstr "Horizontal"
+
+msgid "Portrait"
+msgstr "Vertical"
+
+msgid "On its side, or upright"
+msgstr "Horizontal o vertical"
+
+msgid "Orientation"
+msgstr "Orientación"
+
+msgid "How far from the paper's edge the steps keep"
+msgstr "A qué distancia del borde del papel quedan los pasos"
+
+msgid "Margins"
+msgstr "Márgenes"
+
+msgid "The colour of every page"
+msgstr "El color de cada página"
+
+msgid "Page colour"
+msgstr "Color de página"
+
+msgid "Choose…"
+msgstr "Elegir…"
+
+msgid "A picture behind every page, covering it"
+msgstr "Una imagen detrás de cada página, que la cubre"
+
+msgid "Take off"
+msgstr "Quitar"
+
+msgid "The page's colour behind every page again"
+msgstr "De nuevo el color de página detrás de cada página"
+
+msgid "Picture behind"
+msgstr "Imagen de fondo"
+
+msgid "How tall a step's number is printed"
+msgstr "La altura con la que se imprime el número de un paso"
+
+msgid "Step numbers"
+msgstr "Números de paso"
+
+msgid "How big the parts are drawn in each step's parts box and the parts list"
+msgstr "El tamaño de las piezas en el recuadro de piezas de cada paso y en la lista de piezas"
+
+msgid "Parts pictures"
+msgstr "Imágenes de piezas"
+
+msgid "A page set up and kept by a name, given to this model whole"
+msgstr "Una página configurada y guardada con un nombre, dada entera a este modelo"
+
+msgid "Style"
+msgstr "Estilo"
+
+msgid "Name this page"
+msgstr "Nombrar esta página"
+
+msgid "Keep as a style"
+msgstr "Guardar como estilo"
+
+msgid "Keep this page by its name, to give another model in one choice"
+msgstr "Guardar esta página con su nombre, para darla a otro modelo con una sola elección"
+
+msgid "A picture"
+msgstr "Una imagen"
+
+msgid "Choose a style…"
+msgstr "Elegir un estilo…"
+
+msgid "Name the page first"
+msgstr "Primero nombra la página"

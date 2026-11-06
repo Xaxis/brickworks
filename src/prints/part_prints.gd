@@ -140,11 +140,12 @@ class Area extends RefCounted:
 	## The TEXMAP line for a part of the area, its points in that part's
 	## own frame.
 	func start_line(picture: String, shift: Vector3) -> String:
+		var editor: GDScript = Later.script(&"PartEditor")
 		var words := PackedStringArray(["0 !TEXMAP START", method])
 		for p: Vector3 in [p1 - shift, p2 - shift, p3 - shift]:
-			words.append_array([PartEditor._n(p.x), PartEditor._n(p.y), PartEditor._n(p.z)])
+			words.append_array([editor._n(p.x), editor._n(p.y), editor._n(p.z)])
 		if method == "CYLINDRICAL":
-			words.append(PartEditor._n(angle))
+			words.append(editor._n(angle))
 		words.append(picture)
 		return " ".join(words)
 
@@ -169,7 +170,8 @@ static func areas_for(library: PartLibrary, part_id: String, with: Dictionary = 
 	var mesh: Lbm.PartMesh = library.mesh_for(part_id)
 	if info == null or mesh == null:
 		return out
-	var shape: PartEditor.Shape = PartEditor.shape_of(mesh)
+	var editor: GDScript = Later.script(&"PartEditor")
+	var shape: RefCounted = editor.shape_of(mesh)
 	var slot: String = Minifig.slot_for(info)
 	if slot == "head":
 		out = _cylinder_areas(part_id, shape)
@@ -189,13 +191,13 @@ static func areas_for(library: PartLibrary, part_id: String, with: Dictionary = 
 		var hips: String = str(with.get("hips", ""))
 		var left: String = str(with.get("left", ""))
 		if not hips.is_empty() and library.mesh_for(hips) != null:
-			parts.append({"part": hips, "shape": PartEditor.shape_of(library.mesh_for(hips)),
+			parts.append({"part": hips, "shape": editor.shape_of(library.mesh_for(hips)),
 				"shift": Vector3.ZERO})
 		# The legs hang 12 under the hips' joint, as a figure has them.
 		var shift := Vector3(0, LEGS_UNDER_HIPS if not parts.is_empty() else 0.0, 0)
 		parts.append({"part": part_id, "shape": shape, "shift": shift})
 		if not left.is_empty() and library.mesh_for(left) != null:
-			parts.append({"part": left, "shape": PartEditor.shape_of(library.mesh_for(left)),
+			parts.append({"part": left, "shape": editor.shape_of(library.mesh_for(left)),
 				"shift": shift})
 		var legs: Area = _planar("legs", "Front", Vector3(0, 0, -1), parts)
 		if legs != null:
@@ -213,11 +215,12 @@ const LEGS_UNDER_HIPS := 12.0
 ## from a little above where the cylinder starts to a little below where it
 ## ends: the band a face is printed on, its rounded top and chin included.
 ## None for a head that is not round.
-static func _cylinder_areas(part_id: String, shape: PartEditor.Shape) -> Array[Area]:
+static func _cylinder_areas(part_id: String, shape: RefCounted) -> Array[Area]:
+	var tris: PackedFloat64Array = shape.tris
 	var out: Array[Area] = []
 	var widest: float = 0.0
-	for v: int in shape.tris.size() / 3:
-		widest = maxf(widest, Vector2(shape.tris[v * 3], shape.tris[v * 3 + 2]).length())
+	for v: int in tris.size() / 3:
+		widest = maxf(widest, Vector2(tris[v * 3], tris[v * 3 + 2]).length())
 	# To a hundredth: 3626c's widest corner is 13.0025 off its axis in the
 	# mesh's 64ths, and its cylinder is 13.
 	widest = snappedf(widest, 0.01)
@@ -229,9 +232,9 @@ static func _cylinder_areas(part_id: String, shape: PartEditor.Shape) -> Array[A
 	var all: float = 0.0
 	for t: int in shape.count():
 		var o: int = t * 9
-		var a := Vector3(shape.tris[o], shape.tris[o + 1], shape.tris[o + 2])
-		var b := Vector3(shape.tris[o + 3], shape.tris[o + 4], shape.tris[o + 5])
-		var c := Vector3(shape.tris[o + 6], shape.tris[o + 7], shape.tris[o + 8])
+		var a := Vector3(tris[o], tris[o + 1], tris[o + 2])
+		var b := Vector3(tris[o + 3], tris[o + 4], tris[o + 5])
+		var c := Vector3(tris[o + 6], tris[o + 7], tris[o + 8])
 		var area: float = (b - a).cross(c - a).length() * 0.5
 		all += area
 		var round_here: bool = true
@@ -288,7 +291,7 @@ static func _planar(key: String, title: String, normal: Vector3, parts: Array,
 	var shapes: Array = []
 	for index: int in parts.size():
 		var entry: Dictionary = parts[index]
-		var shape: PartEditor.Shape = entry["shape"]
+		var shape: RefCounted = entry["shape"]
 		var shift: Vector3 = entry["shift"]
 		var depths: Array = [] if any_depth else _depths(shape, area.normal, shift)
 		if depths.is_empty() and not any_depth:
@@ -311,7 +314,7 @@ static func _planar(key: String, title: String, normal: Vector3, parts: Array,
 	var hi := Vector2(-INF, -INF)
 	var outer: float = -INF
 	for index: int in area.parts.size():
-		var shape: PartEditor.Shape = shapes[index]
+		var shape: RefCounted = shapes[index]
 		var shift: Vector3 = area.parts[index]["shift"]
 		for t: int in shape.count():
 			var corners: Array[Vector3] = _corners(shape, t, shift)
@@ -338,7 +341,7 @@ static func _planar(key: String, title: String, normal: Vector3, parts: Array,
 
 ## The depths of the faces of a part a flat area takes: its largest face
 ## turned that way, and any as large as a third of it standing further out.
-static func _depths(shape: PartEditor.Shape, normal: Vector3, shift: Vector3) -> Array:
+static func _depths(shape: RefCounted, normal: Vector3, shift: Vector3) -> Array:
 	var by_depth: Dictionary = {}
 	for t: int in shape.count():
 		var corners: Array[Vector3] = _corners(shape, t, shift)
@@ -378,7 +381,7 @@ static func _faces(area: Area, index: int, corners: Array[Vector3]) -> bool:
 
 ## The biggest faces of any other part, turned out from it — a tile's top,
 ## a slope's face, a panel's front — at most four, the largest first.
-static func _largest_faces(part_id: String, shape: PartEditor.Shape) -> Array[Area]:
+static func _largest_faces(part_id: String, shape: RefCounted) -> Array[Area]:
 	var directions: Dictionary = {}
 	for t: int in shape.count():
 		var corners: Array[Vector3] = _corners(shape, t, Vector3.ZERO)
@@ -448,11 +451,12 @@ static func _named(n: Vector3) -> Array:
 	return ["right", "Right side"] if n.x > 0.0 else ["left", "Left side"]
 
 
-static func _corners(shape: PartEditor.Shape, t: int, shift: Vector3) -> Array[Vector3]:
+static func _corners(shape: RefCounted, t: int, shift: Vector3) -> Array[Vector3]:
 	var o: int = t * 9
-	return [Vector3(shape.tris[o], shape.tris[o + 1], shape.tris[o + 2]) + shift,
-		Vector3(shape.tris[o + 3], shape.tris[o + 4], shape.tris[o + 5]) + shift,
-		Vector3(shape.tris[o + 6], shape.tris[o + 7], shape.tris[o + 8]) + shift]
+	var tris: PackedFloat64Array = shape.tris
+	return [Vector3(tris[o], tris[o + 1], tris[o + 2]) + shift,
+		Vector3(tris[o + 3], tris[o + 4], tris[o + 5]) + shift,
+		Vector3(tris[o + 6], tris[o + 7], tris[o + 8]) + shift]
 
 
 ## A canvas for an area so many LDU across and down.
@@ -465,7 +469,7 @@ static func _canvas(across: float, down: float) -> Vector2i:
 static func _mask(area: Area, shapes: Array) -> Image:
 	var mask := Image.create_empty(area.size.x, area.size.y, false, Image.FORMAT_RGBA8)
 	for index: int in area.parts.size():
-		var shape: PartEditor.Shape = shapes[index]
+		var shape: RefCounted = shapes[index]
 		var shift: Vector3 = area.parts[index]["shift"]
 		for t: int in shape.count():
 			var corners: Array[Vector3] = _corners(shape, t, shift)
@@ -515,7 +519,7 @@ static func picture_of(library: PartLibrary, printed: String, area: Area, part_i
 	var mesh: Lbm.PartMesh = library.mesh_for(printed)
 	if mesh == null:
 		return picture
-	var shape: PartEditor.Shape = PartEditor.shape_of(mesh)
+	var shape: RefCounted = Later.script(&"PartEditor").shape_of(mesh)
 	var shift: Vector3 = area.parts[part_index]["shift"] if part_index < area.parts.size() \
 		else Vector3.ZERO
 	for t: int in shape.count():
@@ -620,7 +624,8 @@ static func part_text(library: PartLibrary, base: String, id: String, title: Str
 	var mesh: Lbm.PartMesh = library.mesh_for(base)
 	if info == null or mesh == null:
 		return ""
-	var shape: PartEditor.Shape = PartEditor.shape_of(mesh)
+	var editor: GDScript = Later.script(&"PartEditor")
+	var shape: RefCounted = editor.shape_of(mesh)
 	var name: String = Minifig._plain(info.name).trim_prefix("~").trim_prefix("=")
 	var words: String = title.strip_edges().replace("\n", " ")
 	var out := PackedStringArray()
@@ -645,15 +650,16 @@ static func part_text(library: PartLibrary, base: String, id: String, title: Str
 	out.append("")
 	out.append("0 // Connectors, for programs that read them")
 	for c: Array in shape.connectors:
-		var line: String = "0 %s CONNECTOR %s %s %s %s %s %s %s %s" % [PartEditor.CONNECTOR,
-			c[0], c[1], PartEditor._n(c[2]), PartEditor._n(c[3]), PartEditor._n(c[4]),
-			PartEditor._n(c[5]), PartEditor._n(c[6]), PartEditor._n(c[7])]
+		var line: String = "0 %s CONNECTOR %s %s %s %s %s %s %s %s" % [editor.CONNECTOR,
+			c[0], c[1], editor._n(c[2]), editor._n(c[3]), editor._n(c[4]),
+			editor._n(c[5]), editor._n(c[6]), editor._n(c[7])]
 		if float(c[8]) > 0.0:
-			line += " %s %s" % [PartEditor._n(c[8]), PartEditor._n(c[9])]
+			line += " %s %s" % [editor._n(c[8]), editor._n(c[9])]
 		out.append(line)
 	# Each face goes under the first picture that takes it.
 	var taken := PackedInt32Array()
-	taken.resize(shape.count())
+	var count: int = shape.count()
+	taken.resize(count)
 	taken.fill(-1)
 	for n: int in areas.size():
 		var area: Area = areas[n][0]
@@ -661,7 +667,7 @@ static func part_text(library: PartLibrary, base: String, id: String, title: Str
 		if part_index < 0:
 			continue
 		var shift: Vector3 = area.parts[part_index]["shift"]
-		for t: int in shape.count():
+		for t: int in count:
 			if taken[t] >= 0:
 				continue
 			var corners: Array[Vector3] = _corners(shape, t, shift)
@@ -675,18 +681,19 @@ static func part_text(library: PartLibrary, base: String, id: String, title: Str
 		out.append("")
 		out.append("0 // %s" % area.title)
 		out.append(area.start_line(str(areas[n][1]), area.parts[part_index]["shift"]))
-		_write_faces(out, shape, taken, n)
+		_write_faces(out, shape, taken, n, editor)
 		out.append("0 !TEXMAP END")
 	out.append("")
 	out.append("0 // Faces")
-	_write_faces(out, shape, taken, -1)
+	_write_faces(out, shape, taken, -1, editor)
 	out.append("0 // Edges")
-	for n: int in shape.lines.size() / 6:
+	var edges: PackedFloat64Array = shape.lines
+	for n: int in edges.size() / 6:
 		var o: int = n * 6
-		out.append("2 24 %s %s %s %s %s %s" % [PartEditor._n(shape.lines[o]),
-			PartEditor._n(shape.lines[o + 1]), PartEditor._n(shape.lines[o + 2]),
-			PartEditor._n(shape.lines[o + 3]), PartEditor._n(shape.lines[o + 4]),
-			PartEditor._n(shape.lines[o + 5])])
+		out.append("2 24 %s %s %s %s %s %s" % [editor._n(edges[o]),
+			editor._n(edges[o + 1]), editor._n(edges[o + 2]),
+			editor._n(edges[o + 3]), editor._n(edges[o + 4]),
+			editor._n(edges[o + 5])])
 	out.append("0")
 	return "\n".join(out) + "\n"
 
@@ -700,13 +707,16 @@ static func _part_index(area: Area, base: String, index: int) -> int:
 	return index if index < area.parts.size() else -1
 
 
-static func _write_faces(out: PackedStringArray, shape: PartEditor.Shape, taken: PackedInt32Array,
-		which: int) -> void:
+static func _write_faces(out: PackedStringArray, shape: RefCounted, taken: PackedInt32Array,
+		which: int, editor: GDScript) -> void:
 	var open: bool = false
-	for t: int in shape.count():
+	var tris: PackedFloat64Array = shape.tris
+	var colors: PackedInt32Array = shape.colors
+	var two_sided: PackedByteArray = shape.two_sided
+	for t: int in colors.size():
 		if taken[t] != which:
 			continue
-		var sided: bool = shape.two_sided[t] == 1
+		var sided: bool = two_sided[t] == 1
 		if sided and not open:
 			out.append("0 BFC NOCLIP")
 			open = true
@@ -714,9 +724,9 @@ static func _write_faces(out: PackedStringArray, shape: PartEditor.Shape, taken:
 			out.append("0 BFC CLIP")
 			open = false
 		var o: int = t * 9
-		var words := PackedStringArray(["3", str(shape.colors[t])])
+		var words := PackedStringArray(["3", str(colors[t])])
 		for k: int in 9:
-			words.append(PartEditor._n(shape.tris[o + k]))
+			words.append(editor._n(tris[o + k]))
 		out.append(" ".join(words))
 	if open:
 		out.append("0 BFC CLIP")
@@ -748,17 +758,23 @@ static func given_name(title: String) -> String:
 ## The parts bin's category for a made part: "My prints", "My stickers",
 ## or "Custom" for any other.
 static func bin_for(text: String) -> String:
-	if text.contains(Stickers.STICKER_BY):
+	if text.contains(STICKER_BY):
 		return MY_STICKERS
 	if is_print(text):
 		return MY_PRINTS
-	if text.contains(StudioDecor.FROM_STUDIO):
-		return StudioDecor.CATEGORY
+	if text.contains(FROM_STUDIO):
+		return STUDIO_BIN
 	return "Custom"
 
 
 const MY_PRINTS := "My prints"
 const MY_STICKERS := "My stickers"
+## The lines a sticker made here (Stickers) and a part read from Studio
+## (StudioDecor) carry, and the bin's place for the second: theirs, kept
+## here so that filing a made part loads neither (Later).
+const STICKER_BY := "0 // Sticker by Brickworks:"
+const FROM_STUDIO := "0 // From BrickLink Studio:"
+const STUDIO_BIN := "From Studio"
 
 
 ## The part a print or a mould was made from, from its header, or "".
@@ -807,7 +823,7 @@ static func alike(library: PartLibrary, world: BrickWorld, selection: Dictionary
 	var plain: String = ""
 	for key: Variant in selection.keys():
 		var brick: BrickWorld.Brick = world.get_brick(int(key))
-		if brick == null or Stickers.sticks(library, brick.part_id):
+		if brick == null or library.sticks(brick.part_id):
 			continue
 		if plain.is_empty():
 			plain = plain_of(library, brick.part_id)
@@ -851,7 +867,7 @@ static func pictures_named(text: String) -> PackedStringArray:
 ## has them. Without them 42058-1's 28884c01, a print whose faces are all in
 ## the subparts the file carries, was said not shown everywhere.
 static func build(text: String, id: String, pictures: Dictionary,
-		library: PartLibrary = null, others: Dictionary = {}) -> PartForge.Result:
+		library: PartLibrary = null, others: Dictionary = {}) -> RefCounted:
 	var blocks: Array = []        ## per block: {method, points, angle, picture}
 	var lines := PackedStringArray()
 	var block: int = -1
@@ -884,7 +900,7 @@ static func build(text: String, id: String, pictures: Dictionary,
 	var plain: Lbm.PartMesh = null
 	if library != null and is_print(text) and not base_in(text).is_empty():
 		plain = library.mesh_for(base_in(text))
-	var built: PartForge.Result = PartForge.build("\n".join(lines), id, others, true, plain)
+	var built: RefCounted = Later.script(&"PartForge").build("\n".join(lines), id, others, true, plain)
 	if not built.problem.is_empty() or built.mesh == null:
 		return built
 	var mesh: Lbm.PartMesh = built.mesh

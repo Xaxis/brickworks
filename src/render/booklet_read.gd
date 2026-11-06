@@ -15,6 +15,8 @@
 ## passed over. The looks are its stylesheet's (Booklet._head), as the
 ## browser draws them; a line of words is placed as the browser places it,
 ## with Helvetica's widths (the page's own font, or one the same width).
+## The page's size, colour and the picture behind it are its stylesheet's
+## too (BookletSheet): a booklet that says none has the booklet's own.
 class_name BookletRead
 extends RefCounted
 
@@ -37,11 +39,20 @@ class Page extends RefCounted:
 	## The step pictures' sources in the order they are on the page, for a
 	## check that the PDF has them as they are.
 	var pictures: PackedStringArray = PackedStringArray()
+	## Its size in mm, and its colour.
+	var size: Vector2 = Booklet.PAGE
+	var colour: Color = Color8(220, 236, 248)
 
 ## The booklet's title, as its <title> has it.
 var title: String = ""
 ## Each part's picture by its class (".p12"): a data URI.
 var parts: Dictionary = {}
+## The page as the booklet set it up: its size in mm, its colour, and the
+## picture behind it (a data URI, "" for none), laid on as a browser's
+## background-size: cover lays it.
+var size: Vector2 = Booklet.PAGE
+var colour: Color = Color8(220, 236, 248)
+var picture: String = ""
 var _section: String = ""
 var _inside: bool = false
 
@@ -67,6 +78,10 @@ static var _attribute := RegEx.create_from_string("([\\w:-]+)=\"([^\"]*)\"")
 static var _rule := RegEx.create_from_string("\\.(p\\d+)\\{background-image:url\\(([^)]*)\\)\\}")
 static var _number := RegEx.create_from_string("-?[0-9]*\\.?[0-9]+(?:e-?[0-9]+)?")
 static var _path_token := RegEx.create_from_string("[MLQAZmlqaz]|-?[0-9]*\\.?[0-9]+(?:e-?[0-9]+)?")
+static var _page_size := RegEx.create_from_string(
+	"\\.page \\{ position: relative; width: calc\\(([0-9.]+) \\* var\\(--mm\\)\\); height: calc\\(([0-9.]+) \\* var\\(--mm\\)\\)")
+static var _page_colour := RegEx.create_from_string("--page: (#[0-9a-fA-F]{6});")
+static var _page_picture := RegEx.create_from_string("section\\.page\\{background-image:url\\(([^)]*)\\)")
 
 
 ## Every page of the booklet [param from], the path of its file or the
@@ -152,15 +167,34 @@ func _head(text: String) -> void:
 		var end: int = text.find("</title>", at)
 		if end > at:
 			title = _unescaped(text.substr(at + 7, end - at - 7))
+	if text.contains(".page {"):
+		var found: RegExMatch = _page_size.search(text)
+		if found != null:
+			size = Vector2(found.get_string(1).to_float(), found.get_string(2).to_float())
+	if text.contains("--page:"):
+		var found: RegExMatch = _page_colour.search(text)
+		if found != null:
+			colour = Color.html(found.get_string(1))
 	if text.contains("background-image"):
+		if text.contains("section.page{"):
+			var found: RegExMatch = _page_picture.search(text)
+			if found != null:
+				picture = found.get_string(1)
 		for found: RegExMatch in _rule.search_all(text):
 			parts[found.get_string(1)] = found.get_string(2)
 
 
 func _page(html: String) -> Page:
 	var page := Page.new()
-	page.ops.append({"k": "rect", "at": Rect2(Vector2.ZERO, Booklet.PAGE), "fill": PAGE_COLOUR,
+	page.size = size
+	page.colour = colour
+	page.ops.append({"k": "rect", "at": Rect2(Vector2.ZERO, size), "fill": colour,
 		"line": Color(0, 0, 0, 0), "width": 0.0, "radius": 0.0})
+	# The picture behind every page, covering it: what is on the page lets
+	# it show through (_behind).
+	if not picture.is_empty():
+		page.ops.append({"k": "image", "at": Rect2(Vector2.ZERO, size), "src": picture, "part": "",
+			"on": colour, "cover": true})
 	var at: int = 0
 	## The line of words open: {kind, vars, style, runs}.
 	var words: Dictionary = {}
@@ -294,13 +328,16 @@ static func _colour(text: String) -> Color:
 
 ## The colour behind [param point]: the last box drawn under it, a picture
 ## laid on it (a part's on its parts box) taking that colour where it has
-## no colour of its own.
+## no colour of its own; none over the picture behind the page, which a
+## picture must let show through.
 static func _behind(page: Page, point: Vector2) -> Color:
 	for index: int in range(page.ops.size() - 1, -1, -1):
 		var op: Dictionary = page.ops[index]
 		if op["k"] == "rect" and (op["fill"] as Color).a > 0.0 and (op["at"] as Rect2).has_point(point):
 			return op["fill"]
-	return PAGE_COLOUR
+		if op["k"] == "image" and bool(op.get("cover", false)):
+			return Color(0, 0, 0, 0)
+	return page.colour
 
 
 func _box(page: Page, kind: PackedStringArray, style: Dictionary) -> void:

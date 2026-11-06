@@ -2253,8 +2253,21 @@ func home_of(brick: Brick) -> Transform3D:
 		var home: Dictionary = record.get("home", {})
 		if not home.has(brick.id) and not Assemblies.within(path, section):
 			continue
-		return Sections.home_for(brick.transform, record, brick.id)
+		return home_for(brick.transform, record, brick.id)
 	return brick.transform
+
+
+## Where a part of a section broken out goes back to: where it stood, to
+## the bit, when it has not moved since; its offset back otherwise.
+static func home_for(now: Transform3D, record: Dictionary, brick_id: int) -> Transform3D:
+	var offset: Vector3 = record.get("offset", Vector3.ZERO)
+	var home: Dictionary = record.get("home", {})
+	if home.has(brick_id):
+		var was: Transform3D = home[brick_id]
+		if now.basis.is_equal_approx(was.basis) \
+				and now.origin.distance_to(was.origin + offset) < 0.01:
+			return was
+	return now.translated(-offset)
 
 
 ## A colour as a faded brick is drawn in. Its alpha is kept: faded
