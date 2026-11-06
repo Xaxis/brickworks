@@ -558,6 +558,22 @@ above.
      the hose). The dialog's words are in German, French and Spanish, and
      it opens inside the window in each; `languages` (104), `tooltip_fit`
      and `typed_moves` (75) pass.
+  6. **The same grid over MCP**, as the owner's Claude lays it: the new
+     `pattern_parts` tool (columns, rows and levels, `column_studs`,
+     `row_studs` and `level_plates`, each spacing the parts' own size when
+     not given) runs the same `Pattern.grid`, room check and undo step as the
+     dialog. In `grid_probe`, the same 4 x 3 x 2 is **1 call**: 24 bricks,
+     each within 0.01 LDU of its place, none in another's room. It is **one
+     undo**: the session's `undo`, called once, takes all 23 copies back.
+     With the 1 x 4 brick in the way it is **refused with where**: "the copy
+     in column 3, row 2, level 1 has no room: Brick 1 x 4 is in the way
+     (#26). Nothing changed", and no step is added. Left to their own size,
+     2 x 2 bricks lay touching (40 LDU, 24 LDU). The person's selection is
+     left as it was. 40 checks at 1280 x 720 and at 1400 x 900; `mcp_sync`,
+     `mcp` (75), `mcp_lean` (27) and `patterns` (229) pass. The window's
+     default level spacing now rounds a 2 x 2 brick's 28 LDU height down to
+     3 plates rather than up to 4, so a level, or a row going up, touches
+     the one below.
 
 **7. partbypart: Build it a part at a time.**
 - **Change.** Build it, a part at a time: the next part alone highlighted
