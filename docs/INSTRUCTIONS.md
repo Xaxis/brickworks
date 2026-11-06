@@ -3256,6 +3256,7 @@ on the sports car, with tools/booklet_pdf_check.py) pass, as do ci_gate
 (1,453 Python tests) and `tools/check.sh --lists`. booklet_edit_probe
 failed the same 4 of 540 on this branch and on pre261 at e1bc8c04, where
 it began: the probe's own expectations, fixed in pre261 since (231ebb68).
+Merged with pre261, it passes 540 of 540, and booklet_probe 49.
 
 **Not done.** The app's step player turns to an author's direction but does
 not roll: its camera stays upright, so x 180 is seen from behind there, not
