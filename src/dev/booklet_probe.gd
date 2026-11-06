@@ -25,6 +25,9 @@
 ##   does every page fit its sheet (Booklet.PAGE inside A4 and Letter)?
 ##   is each part in a parts box drawn from the side that tells it from
 ##   its look-alikes: a dish and an inverted slope turned over?
+##   is each step turned as its author's ROTSTEP says: a roll, ABS, ADD,
+##   END and x 180, held for the steps after it, and in a callout? and in a
+##   file with none, a step whose parts go on from below turned over?
 extends SceneTree
 
 var _failures: int = 0
@@ -58,6 +61,8 @@ func _run() -> void:
 	await _apart()
 	await _authored()
 	await _telling()
+	await _rotsteps()
+	await _from_below()
 	await _the_button()
 
 	print("")
@@ -452,6 +457,78 @@ func _telling() -> void:
 		float(tall.get("2654a", 1.0)) < float(tall.get("4032a", 0.0)) * 0.85)
 
 
+## Every kind of LDraw ROTSTEP, drawn as its author wrote it: a roll (0 0
+## 180 REL, 7140's cart turned over for the dishes under it) held for the
+## step after it, ABS, ADD on it, END, and x 180 (turned over end to end,
+## the same as y 180 with z 180); a sub-model's own roll in its callout.
+## Until rotroll (2026-11-05) a turn was only a direction to look from: the
+## roll was lost, and x 180 was a view from nearly straight above.
+func _rotsteps() -> void:
+	var ldr: LdrModel = LdrModel.parse(_ROTSTEPS, "rotsteps.mpd")
+	var world: BrickWorld = _world_of(ldr, true)
+	world.step_looks = BookletLooks.read(_ROTSTEPS, ldr._assembly_names(),
+		LdrModel._key(ldr.main.name))
+	var made: Array = await _make(world, "rotsteps")
+	var maker: BookletMaker = made[0]
+	print("\n  every kind of ROTSTEP")
+	_pictures("rotsteps", maker)
+	var steps: Array[Booklet.Entry] = _entries(maker)
+	if steps.size() != 8:
+		_assert("the author's eight steps (%d)" % steps.size(), false)
+		return
+	var front: Vector3 = BookletStudio.FRONT.normalized()
+	var over: Basis = BookletMaker.OVER
+	var tilted := Vector3(sin(PI / 4.0) * cos(PI / 6.0), sin(PI / 6.0), cos(PI / 4.0) * cos(PI / 6.0))
+	var added := Vector3(sin(PI * 0.75) * cos(PI / 6.0), sin(PI / 6.0), cos(PI * 0.75) * cos(PI / 6.0))
+	# [from, turned over, turn sign] for each step.
+	var want: Array = [[front, false, false], [front, true, true], [front, true, false],
+		[tilted, false, true], [added, false, true], [front, false, true],
+		[BookletStudio.BACK.normalized(), true, true], [BookletStudio.BACK.normalized(), true, false]]
+	var said := PackedStringArray()
+	var right: int = 0
+	for at: int in steps.size():
+		var entry: Booklet.Entry = steps[at]
+		var is_over: bool = entry.turn.is_equal_approx(over)
+		var ok: bool = entry.from.normalized().distance_to(want[at][0]) < 0.01 \
+			and is_over == want[at][1] and (is_over or entry.turn == Basis.IDENTITY) \
+			and entry.turned == want[at][2]
+		right += 1 if ok else 0
+		said.append("%d%s%s%s" % [entry.number, " over" if is_over else "",
+			" sign" if entry.turned else "", "" if ok else " WRONG from %s" % entry.from])
+	_assert("REL 0 0 180 turns it over and holds; ABS; ADD on the ABS; END; 180 0 0 REL "
+		+ "turns it over end to end, seen from behind, and holds (%d of 8 right: %s)"
+		% [right, ", ".join(said)], right == 8)
+	var callout: Booklet.Callout = steps[7].callout
+	var rolled: bool = callout != null and callout.steps.size() == 2 \
+		and callout.steps[0].turn == Basis.IDENTITY \
+		and (callout.steps[1].turn * Vector3.UP).y < -0.99 and callout.steps[1].turned
+	_assert("the wing's own roll turns its callout's second step over, with the sign (%s)"
+		% ("%d steps" % callout.steps.size() if callout != null else "no callout"), rolled)
+
+
+## A file with steps and no ROTSTEP, as the app writes its own: plates
+## pressed up into a plate's underside are drawn turned over, and the brick
+## put on top after them the right way up, each with the turn sign. What
+## each part's stud joints face says which way it goes on (BookletMaker
+## _turn_over), as a LEGO® booklet turns the model for parts underneath.
+func _from_below() -> void:
+	var ldr: LdrModel = LdrModel.parse(_FROM_BELOW, "from_below.ldr")
+	var world: BrickWorld = _world_of(ldr, true)
+	var made: Array = await _make(world, "from_below")
+	var maker: BookletMaker = made[0]
+	print("\n  parts going on from below, in a file with no ROTSTEP")
+	var steps: Array[Booklet.Entry] = _entries(maker)
+	var said: Array = steps.map(func(entry: Booklet.Entry) -> String:
+		return "%d%s%s" % [entry.number, " over" if entry.turn.is_equal_approx(BookletMaker.OVER)
+			else "" if entry.turn == Basis.IDENTITY else " rolled",
+			" sign" if entry.turned else ""])
+	_assert("the plates under it turned over, the brick on top the right way up (%s)"
+		% ", ".join(said), said == ["1", "2 over sign", "3 sign"])
+	var layout: String = BookletLooks.layout_said(world, maker.document.pages, 1)
+	_assert("...and booklet_layout says so to a session",
+		layout.contains("drawn turned over, its parts going on from below"))
+
+
 ## Every step entry, main and (with [param callouts]) a callout's own.
 func _entries(maker: BookletMaker, callouts: bool = false) -> Array[Booklet.Entry]:
 	var out: Array[Booklet.Entry] = []
@@ -545,4 +622,48 @@ const _SHED := """0 FILE shed.ldr
 1 15 0 -72 1.25 1 0 0 0 1 0 0 0 1 973.dat
 1 14 0 -96 1.25 1 0 0 0 1 0 0 0 1 3626c.dat
 0 NOFILE
+"""
+
+
+## A 2x4 plate, then a turn of every kind (BookletLooks.read): plates under
+## it, plates on top, and two wings that roll themselves over.
+const _ROTSTEPS := """0 FILE rotsteps.mpd
+0 Rotsteps
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 ROTSTEP 0 0 180 REL
+1 14 -20 8 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+1 14 20 8 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 ROTSTEP 30 45 0 ABS
+1 1 -20 -8 -10 1 0 0 0 1 0 0 0 1 3023.dat
+0 ROTSTEP 0 90 0 ADD
+1 1 20 -8 -10 1 0 0 0 1 0 0 0 1 3023.dat
+0 ROTSTEP END
+1 1 -20 -8 10 1 0 0 0 1 0 0 0 1 3023.dat
+0 ROTSTEP 180 0 0 REL
+1 1 20 -8 10 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+1 16 -20 -24 -10 1 0 0 0 1 0 0 0 1 wing.ldr
+1 16 20 -24 10 1 0 0 0 1 0 0 0 1 wing.ldr
+0 STEP
+0 NOFILE
+0 FILE wing.ldr
+0 Wing
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 ROTSTEP 0 0 180 REL
+1 2 -10 8 0 1 0 0 0 1 0 0 0 1 3024.dat
+0 STEP
+0 NOFILE
+"""
+
+
+## A 2x4 plate, two 2x2 plates pressed up under it, a 2x4 brick on top.
+const _FROM_BELOW := """0 From below
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 14 -20 8 0 1 0 0 0 1 0 0 0 1 3022.dat
+1 14 20 8 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
 """

@@ -38,11 +38,43 @@
 ## xvfb-run (on the GPU) for the drawing; headless, the first two open and
 ## close Render with no draft, and the rest are left out. --runs=N runs
 ## each way N times, closing the draft a few frames later each time.
+##
+## And the app quit with work of its own still going, on the sample car:
+##   booklet-asking   Build, Instructions…, its Save dialog up 2 s, and File,
+##                    Quit;
+##   save-asking      File, Save as…, the same;
+##   booklet-drawing  Instructions answered, and the window closed while the
+##                    booklet is drawn;
+##   booklet          Instructions answered, the booklet written whole and
+##                    its job over, then the window closed, as a person does
+##                    after making one (with -- --windowed only: headless no
+##                    picture is drawn, and the booklet never ends);
+##   reading          a model of READ_PARTS parts opened, and the window
+##                    closed while it is read on a worker;
+##   updating         the window closed while the updater hashes a download
+##                    on a thread of its own (a sparse file of 16 GB here).
+## On pre261 (2026-11-06) the asking ways and booklet-drawing aborted as the
+## engine tore GDScript down, every run, headless and in a window: "corrupted
+## size vs. prev_size in fastbins" or "double free or corruption (!prev)",
+## exit 134. Shell.run handed Working a lambda of its own script, and the
+## coroutine Working runs a command in, still waiting on objects the scene
+## tree does not free, kept it into that teardown. What aborts is a command
+## still going: booklet, its job over, quit cleanly on pre261 (5 of 5). And
+## reading and updating dumped core, their task or thread left to the engine
+## (WorkerTasks).
+## Each exits 0 with no abort said (ABORTS).
 extends SceneTree
 
 const PARTS := 1000
 const WAYS := ["close", "menu", "brickify", "render", "render-again", "render-keep", "render-cut",
-	"render-turn"]
+	"render-turn", "booklet-asking", "save-asking", "booklet-drawing", "booklet", "reading",
+	"updating"]
+## A model this big is read on a worker for well over a frame (40,000 parts:
+## 1.7 MB of text).
+const READ_PARTS := 40000
+## What the C library and the engine say as a run dies on its way out.
+const ABORTS := ["corrupted size", "malloc", "free(): ", "double free", "Program crashed",
+	"terminate called"]
 const BRICKIFY_STUDS := 64
 const BRICKIFY_GONE := 8000
 
@@ -72,7 +104,7 @@ func _parent() -> void:
 			runs = maxi(int(argument.trim_prefix("--runs=")), 1)
 	var all: Array = []
 	for way: String in ways:
-		if way in ["render-keep", "render-cut", "render-turn"] and not windowed:
+		if way in ["render-keep", "render-cut", "render-turn", "booklet"] and not windowed:
 			print("  (%s: left out headless, where nothing is drawn; run -- --windowed)" % way)
 			continue
 		for run: int in runs:
@@ -94,6 +126,9 @@ func _parent() -> void:
 			continue
 		if way.begins_with("render"):
 			_judge_render(way, code, output, windowed)
+			continue
+		if way.begins_with("booklet") or way in ["save-asking", "reading", "updating"]:
+			_judge_going(way, code, output)
 			continue
 		if way == "brickify":
 			var asked: int = int(_said(output, "QUIT-AT "))
@@ -176,6 +211,34 @@ func _judge_render(way: String, code: int, output: String, windowed: bool) -> vo
 				% [way, written.size(), lines.size()], written.is_empty() and lines.is_empty())
 
 
+## What a run that quit with work going said, judged.
+func _judge_going(way: String, code: int, output: String) -> void:
+	match way:
+		"booklet-asking", "save-asking":
+			_check("%s: the Save dialog was up as the app quit (%s)" % [way, _said(output, "ASKED ")],
+				_said(output, "ASKED ") == "true")
+		"booklet-drawing":
+			_check("booklet-drawing: the window closed while the booklet was drawn (%s)"
+				% _said(output, "DRAWING "), _said(output, "DRAWING ").begins_with("true"))
+		"booklet":
+			_check("booklet: the booklet was written whole and its job was over before the close "
+				+ "(%s)" % _said(output, "BOOKLET "), _said(output, "BOOKLET ").begins_with("written"))
+		"reading":
+			_check("reading: the window closed while the model was read on a worker (%s)"
+				% _said(output, "READING "), _said(output, "READING ").begins_with("Reading"))
+		"updating":
+			_check("updating: the window closed while the updater hashed on its thread (%s)"
+				% _said(output, "HASHING "), _said(output, "HASHING ") == "true")
+	var said := PackedStringArray()
+	for line: String in output.split("\n"):
+		for abort: String in ABORTS:
+			if line.contains(abort):
+				said.append(line.strip_edges())
+	_check("%s: nothing aborted the exit (%s)" % [way, "; ".join(said) if not said.is_empty()
+		else "nothing said"], said.is_empty())
+	_check("%s: and exited 0 (%d)" % [way, code], code == 0)
+
+
 ## The app, the model, the edit, and the quit; the parent reads what it says.
 func _child() -> void:
 	await process_frame
@@ -195,6 +258,9 @@ func _child() -> void:
 		return
 	if way.begins_with("render"):
 		await _render_then_close(main, way)
+		return
+	if way.begins_with("booklet") or way in ["save-asking", "reading", "updating"]:
+		await _going_then_quit(main, way)
 		return
 	var store: ModelStore = main.get("_store")
 	var builder: Builder = main.get("_builder")
@@ -334,6 +400,102 @@ func _render_then_close(main: Node, way: String) -> void:
 	var step: String = str(dialog.renderer.get("_step")) if dialog.renderer != null else ""
 	print("DOING %s, %s, %s%s" % [busy, doing, (dialog.get("_status") as Label).text,
 		", " + step if not step.is_empty() else ""])
+	root.propagate_notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
+	root.close_requested.emit()
+	for _n: int in 600:
+		await process_frame
+	print("the app did not quit")
+	quit(3)
+
+
+## Work of the app's own going as it quits (see the ways at the top).
+func _going_then_quit(main: Node, way: String) -> void:
+	var shell: Shell = main.get("_shell")
+	if way == "reading":
+		var text: String = load("res://src/dev/bigmodel_probe.gd").call("_made", READ_PARTS)
+		(main.get("_bar") as ModelBar).open_text_with_progress(text, "quit_probe.ldr")
+		# Past the bar's line being shown (Job.shown: up to 3 frames), into the
+		# read on its worker, which takes a second or more at this size.
+		for _n: int in 6:
+			await process_frame
+		var reading: Working.Job = Working.current()
+		print("READING %s" % (reading.line() if reading != null else "nothing"))
+		_close()
+		return
+	if way == "updating":
+		# All but one byte a hole: read as zeros, seconds of hashing.
+		var big: String = ProjectSettings.globalize_path("user://quit_probe_download.bin")
+		var file: FileAccess = FileAccess.open(big, FileAccess.WRITE)
+		file.seek(16 << 30)
+		file.store_8(0)
+		file.close()
+		var hashed: Array = [false]
+		_hash_then(main.get("_updater"), big, hashed)
+		for _n: int in 3:
+			await process_frame
+		print("HASHING %s" % (not hashed[0]))
+		_close()
+		return
+	# Godot's own Save dialog, which this answers: the platform's would open
+	# on the desktop this shell's bus belongs to.
+	SaveTo.native = false
+	var path: String = ProjectSettings.globalize_path("user://quit_probe_booklet/car_instructions.html")
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	shell.run("save_as" if way == "save-asking" else "instructions")
+	await _until(func() -> bool: return SaveTo.showing != null, 600)
+	var dialog: FileDialog = SaveTo.showing
+	print("ASKED %s" % (dialog != null))
+	if dialog == null:
+		quit(3)
+		return
+	if way.ends_with("-asking"):
+		# A person reads the dialog a moment first. Quit within a frame or two
+		# of its showing and Working is still waiting on a frame for it
+		# (Working.GOES_ON_FRAMES), which the scene tree lets go of as it goes:
+		# pre261 quit cleanly then, 6 runs of 6.
+		var until: int = Time.get_ticks_msec() + 2000
+		while Time.get_ticks_msec() < until:
+			await process_frame
+		shell.run("quit")
+		for _n: int in 600:
+			await process_frame
+		print("the app did not quit")
+		quit(3)
+		return
+	dialog.file_selected.emit(path)
+	if way == "booklet-drawing":
+		# Its first pages written (BookletOut's NAME.part), its pictures being
+		# drawn and read on workers; headless, where none is ever drawn, 20 s
+		# into it. Then a second more.
+		var until: int = Time.get_ticks_msec() + 20000
+		while Time.get_ticks_msec() < until and not (FileAccess.file_exists(path + ".part")
+				and FileAccess.get_file_as_bytes(path + ".part").size() > 0):
+			await process_frame
+		until = Time.get_ticks_msec() + 1000
+		while Time.get_ticks_msec() < until:
+			await process_frame
+		print("DRAWING %s, %s, %d tasks out" % [bool(main.call("_booklet_busy")),
+			Working.current().line() if Working.current() != null else "no job", WorkerTasks.out()])
+	else:
+		var from: int = Time.get_ticks_msec()
+		await _until(func() -> bool: return Time.get_ticks_msec() - from > 2000 \
+			and not Working.is_busy() and not bool(main.call("_booklet_busy")), 60 * 60 * 10)
+		var pdf: String = path.get_basename() + ".pdf"
+		print("BOOKLET %s" % ("written, %d bytes, its PDF %d" % [FileAccess.get_file_as_bytes(path).size(),
+			FileAccess.get_file_as_bytes(pdf).size() if FileAccess.file_exists(pdf) else 0]
+			if FileAccess.file_exists(path) and not Working.is_busy() else "not written"))
+	_close()
+
+
+## [param file] hashed as the updater hashes a download, on its thread, and
+## [param hashed] told when the hash is back.
+func _hash_then(updater: Node, file: String, hashed: Array) -> void:
+	await updater.call("_off_thread", Callable(Updates, "sha256_file").bind(file))
+	hashed[0] = true
+
+
+## The window's close button pressed, and the app given time to go.
+func _close() -> void:
 	root.propagate_notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
 	root.close_requested.emit()
 	for _n: int in 600:

@@ -60,6 +60,48 @@ static func row(by: Vector3, count: int) -> Array[Transform3D]:
 	return out
 
 
+## A grid of [param places] (each a column, a row and a level, from 0, as
+## [method grid_places] gives them): each copy [param column] further on for
+## each column, [param row] for each row and [param level] for each level
+## (LDU). LeoCAD's Array: a block of copies in one go, not a row of rows.
+static func grid(column: Vector3, row: Vector3, level: Vector3,
+		places: Array[Vector3i]) -> Array[Transform3D]:
+	var out: Array[Transform3D] = []
+	for place: Vector3i in places:
+		out.append(Transform3D(Basis.IDENTITY, column * place.x + row * place.y + level * place.z))
+	return out
+
+
+## How far apart copies of parts filling [param box] stand touching: along
+## x (0) or z (1) in studs, or up (2) in plates. A part's studs go into the
+## one above, so a 2 x 2 brick, 28 LDU with its studs, is 3 plates up, not
+## 4 (rounded, it left a plate's gap between levels). The window's spacings
+## (PatternDialog) and a session's (PatternTool) start here.
+static func own_spacing(box: AABB, axis: int) -> float:
+	if axis == 2:
+		return maxf(1.0, floorf(box.size.y / BrickLattice.PLATE + 0.01))
+	var wide: float = box.size.x if axis == 0 else box.size.z
+	return maxf(1.0, snappedf(wide / BrickLattice.STUD, 0.5))
+
+
+## Every place in a grid of [param columns] by [param rows] by [param levels]
+## but the first, where the parts stand: (column, row, level) from 0, a row's
+## columns first, then the rows, then the levels. A copy's number is its
+## place in this list, so a refusal can say where it is. One more than
+## [constant MOST_COPIES] at most, enough to be refused as too many: 500
+## each way is not counted out to 125 million.
+static func grid_places(columns: int, rows: int, levels: int) -> Array[Vector3i]:
+	var out: Array[Vector3i] = []
+	for level: int in levels:
+		for row: int in rows:
+			for column: int in columns:
+				if column != 0 or row != 0 or level != 0:
+					out.append(Vector3i(column, row, level))
+					if out.size() > MOST_COPIES:
+						return out
+	return out
+
+
 ## [param count] copies, each [param degrees] further round [param axis]
 ## through [param point].
 static func ring(point: Vector3, axis: Vector3, degrees: float, count: int) -> Array[Transform3D]:
@@ -295,9 +337,10 @@ func check(ids: Array, moves: Array) -> bool:
 
 
 ## Show the copies where they would go, a copy with no room red, and say
-## why not: "" when every copy has room.
-func show_copies(ids: Array, moves: Array) -> String:
-	var why: String = refusal(ids, moves)
+## why not: "" when every copy has room. [param places], a grid's, says
+## where a copy with no room is (see [method refusal]).
+func show_copies(ids: Array, moves: Array, places: Array[Vector3i] = []) -> String:
+	var why: String = refusal(ids, moves, places)
 	if moves.size() * ids.size() <= MOST_PARTS:
 		_draw(ids, moves)
 	else:
@@ -305,8 +348,12 @@ func show_copies(ids: Array, moves: Array) -> String:
 	return why
 
 
-## In words, why these copies cannot go down: "" when they can.
-func refusal(ids: Array, moves: Array) -> String:
+## In words, why these copies cannot go down: "" when they can. Given a
+## grid's [param places] (one a copy, as [method grid_places] gives them),
+## the first copy with no room is said by its column, row and level, as a
+## person counts them from the parts copied: "copy 14" in a block of 24 is
+## somewhere in it.
+func refusal(ids: Array, moves: Array, places: Array[Vector3i] = []) -> String:
 	if moves.is_empty():
 		return "no copies"
 	if moves.size() > MOST_COPIES or moves.size() * ids.size() > MOST_PARTS:
@@ -317,6 +364,13 @@ func refusal(ids: Array, moves: Array) -> String:
 	var brick: BrickWorld.Brick = world.get_brick(blocker) if blocker != 0 else null
 	if brick != null:
 		what = _name_of(brick.part_id)
+	if places.size() == moves.size():
+		var at: Vector3i = places[first_refused] + Vector3i.ONE
+		if refused.size() == 1:
+			return "the copy in column %d, row %d, level %d has no room: %s is in the way" \
+				% [at.x, at.y, at.z, what]
+		return "%d copies have no room, the first in column %d, row %d, level %d: %s is in the way" \
+			% [refused.size(), at.x, at.y, at.z, what]
 	if refused.size() == 1:
 		return "copy %d has no room: %s is in the way" % [first_refused + 1, what]
 	return "%d copies have no room, the first copy %d: %s is in the way" \

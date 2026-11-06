@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe -->
 
 ## Sub-features
 
@@ -746,8 +746,21 @@ Whether what you built is still there tomorrow, and still means the same thing.
   browser, `share_flow.mjs` on a local export (2026-10-13) got a card
   (`og_image.png`) with the car's middle 0.0% off the picture's, filling 88%.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
-  wanted list / Rebrickable parts list): BrickLink's wanted-list XML (item, its
-  colour number, quantity) and Rebrickable's `Part,Color,Quantity` CSV. The
+  wanted list / Rebrickable parts list / LEGO® Pick a Brick list, and the same
+  three buttons on the parts list): BrickLink's wanted-list XML (item, its
+  colour number, quantity, and the parts list's choices beside its BrickLink
+  button: CONDITION N or U, WANTEDLISTID, NOTIFY Y, each left out when it asks
+  nothing, kept in ShellPrefs `bricklink_*` for File, Export too), Rebrickable's
+  `Part,Color,Quantity` CSV, and LEGO's Pick a Brick `elementId,quantity` CSV
+  (`ShopLists.pick_a_brick`, CRLF as LEGO's template, 400 lines a file:
+  NAME_pickabrick_1.csv, _2.csv beside the one chosen, one .zip on the web;
+  999 of an element at most; the lots with no element number named on the
+  status line and in the parts list's note). `export_model format=pickabrick`
+  and `format=bricklink condition= wanted_list= notify=` over MCP.
+  **Check:** `tools/probe.sh picklist_probe` (the car's list against its
+  Inventory, 450 lots as 400 + 50, the XML's every tag against BrickLink's
+  help, helpID=207, kept in `bench/results/picklist-2026-11-05/`), plus
+  `inventory_probe` for the lists' numbers. Nothing is uploaded. The
   BrickLink colour numbers are colors.json's `bricklink`, 197 colours from
   `tools/bricklink_colours.py` (see [parts](parts.md)); a lot in any other
   colour, or a made part, is left off and the status bar says how many and names

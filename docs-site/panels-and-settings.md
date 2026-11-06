@@ -18,6 +18,16 @@ ui:status bar
 ui:controls panel and hint
 -->
 
+## What's This? {#whats-this}
+
+Press [[Shift+F1]], or choose **Help › What's This?**, then click any button, field, chip or panel: instead of doing what it does, it says so, in a box beside it, with whether it is on and why it is greyed when it is. [[Esc]], a right click or [[Shift+F1]] again stops asking. Over the model, it says what the tool in use does there.
+
+With a part in hand, the status bar says where it goes if you click now: studs across (x) and back (z) from the middle of the floor, and plates up from the ground, such as "x 3, z 1 studs · 6 plates up".
+
+<!-- covers
+ui:what's this
+-->
+
 ## Your own keys {#keys}
 
 Every tool has a key: [[Shift+X]] Move, [[Shift+O]] Rotate, [[Shift+I]] Hinge, [[Shift+V]] Clone, [[Shift+P]] Paint, [[Shift+G]] Hide and [[Shift+Delete]] Delete. [[C]] paints what is selected; with nothing selected, it says how to paint.

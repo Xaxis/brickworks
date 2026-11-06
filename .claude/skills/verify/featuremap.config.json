@@ -771,7 +771,7 @@
       "kind": "ui",
       "label": "parts lists for shops",
       "entry": "src/assembly/shop_lists.gd",
-      "reach": "godot --path .  (File, Export, then BrickLink wanted list or Rebrickable parts list)",
+      "reach": "godot --path .  (File, Export, then BrickLink wanted list, Rebrickable parts list or LEGO® Pick a Brick list; or the parts list's BrickLink, its choices beside it, Rebrickable and LEGO® Pick a Brick)  /  export_model format=pickabrick, format=bricklink condition= wanted_list= notify=",
       "area": "model-io"
     },
     {
@@ -2290,7 +2290,7 @@
       "kind": "lib",
       "label": "quitting cleanly",
       "entry": "src/render/worker_tasks.gd",
-      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; by hand: open a big file, close the window at once)",
+      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)",
       "area": "view"
     },
     {
@@ -4206,6 +4206,13 @@
     },
     {
       "kind": "ui",
+      "label": "what's this",
+      "entry": "src/ui/whats_this.gd",
+      "reach": "tools/probe.sh whatsthis_probe   (Help, What's This?, or Shift+F1: the next click on any control answers in a bubble beside it and does nothing else; Esc, a right click or Shift+F1 again leave; a part in hand: the status bar's x, z and height are where it lands)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "keys of one's own",
       "entry": "src/ui/keymap.gd",
       "reach": "godot --path .  (F1: Keys like BrickLink Studio, Mecabricks or LDCad; click a key on the sheet and press another; kept on the device and, signed in, on the account: GET/POST /api/account?op=keys, supabase/keymap.sql)",
@@ -4222,7 +4229,7 @@
       "kind": "ui",
       "label": "patterns",
       "entry": "src/assembly/pattern.gd",
-      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
+      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, In a grid (columns, rows and levels, each so many studs or plates apart), Round or Along a hose, a count In all, the copies shown as they will go, a copy with no room red and named by its place; one Ctrl+Z takes them all back)  /  tools/probe.sh grid_probe",
       "area": "building"
     },
     {
@@ -4615,6 +4622,27 @@
       "label": "what a session sees over mcp",
       "entry": "src/net/see_tools.gd",
       "reach": "PROBE_SIZE=1400x900 tools/probe.sh seeing   (view_board: six views in one labelled picture, highlight= edged with the rest see-through, xray=, step=N; booklet_page as the PDF prints it; split/merge/mirror pictured; render_model Best says how it was drawn)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "picklist probe",
+      "entry": "src/dev/picklist_probe.gd",
+      "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "cut away by a shape",
+      "entry": "src/render/cut_shape.gd",
+      "reach": "tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes && tools/probe.sh cutshapes_kept   (by hand: View, Cut away by, A box; drag a knob, or the wheel over it; Grow, Shrink; A sphere or A cylinder in the strip; save, open)",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "pattern's grid over mcp",
+      "entry": "src/net/pattern_tool.gd",
+      "reach": "tools/probe.sh grid_probe   (pattern_parts: bricks= in columns, rows and levels, column_studs/row_studs/level_plates apart or touching; one call, one undo step, a copy with no room said by its column, row and level and the part in its way)",
       "area": "mcp"
     }
   ]

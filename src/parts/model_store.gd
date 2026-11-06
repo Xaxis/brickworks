@@ -1628,6 +1628,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	model_floor = said if said != null else ModelFloor.unsaid(foreign)
 	from_set = read["set"]
 	hidden_scheme = read["hidden"]
+	world.cut_kept = read["cut"]
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
@@ -1695,6 +1696,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"bin": SetBin.read(text),
 		"reference": ReferenceImage.read(text),
 		"hidden": HiddenColours.read(text),
+		"cut": CutShape.read(text),
 		"motions": Motions.read(text),
 		"pins": PinnedComments.read(text),
 	}
@@ -2047,6 +2049,7 @@ func _source_asked(title_now: String) -> Dictionary:
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
+		"cut": world.cut_kept.duplicate(true),
 		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
 		"pins": pins.lines(world, _lift_now()),
 		"authored": AuthorSteps.any(world, scenery), "set": from_set}
@@ -2082,6 +2085,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 	var ground: ModelFloor = asked["floor"]
 	kept = ground.written_into(kept) if ground != null else kept
 	kept = HiddenColours.written_into(kept, asked["hidden"])
+	kept = CutShape.written_into(kept, asked["cut"])
 	kept = Motions.written_into(kept, asked["motions"])
 	kept = PinnedComments.written_into(kept, asked["pins"])
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
@@ -2488,6 +2492,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# save, an export, a shared link. Another program reads past the line.
 	text = model_floor.written_into(text) if model_floor != null else text
 	text = HiddenColours.written_into(text, hidden_scheme)
+	text = CutShape.written_into(text, world.cut_kept)
 	text = Motions.written_into(text, _motion_lines())
 	text = PinnedComments.written_into(text, pins.lines(world, _lift_now()))
 	text = _with_looks(text, true)

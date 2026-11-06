@@ -17,6 +17,14 @@ extends MeshInstance3D
 ## same size on screen — a fixed marker is a speck across a baseplate
 ## and swallows the model when you are close to a stud.
 const REACH := 26.0
+## X, Y and Z as the app draws them: here, the move handles (Handles) and
+## the cut-away's knobs (SeeInside). With them the handle the pointer is on,
+## and the dark edge each is drawn on. Kept here, on the first screen, so
+## the knobs are drawn without compiling the handles.
+const AXIS_COLOURS: Array[Color] = [Color(0.91, 0.30, 0.34), Color(0.42, 0.76, 0.32),
+	Color(0.33, 0.58, 0.93)]
+const LIT := Color(1.0, 0.85, 0.3)
+const EDGE := Color(0.05, 0.07, 0.12, 0.85)
 
 var camera: CadCamera
 
@@ -59,9 +67,9 @@ func _process(_delta: float) -> void:
 	_lines.clear_surfaces()
 	_lines.surface_begin(Mesh.PRIMITIVE_LINES)
 	for axis: Array in [
-		[Vector3.RIGHT, Color(0.91, 0.30, 0.34)],
-		[Vector3.UP, Color(0.42, 0.76, 0.32)],
-		[Vector3.BACK, Color(0.33, 0.58, 0.93)],
+		[Vector3.RIGHT, AXIS_COLOURS[0]],
+		[Vector3.UP, AXIS_COLOURS[1]],
+		[Vector3.BACK, AXIS_COLOURS[2]],
 	]:
 		var way: Vector3 = axis[0]
 		_lines.surface_set_color(axis[1])

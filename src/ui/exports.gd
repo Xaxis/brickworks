@@ -1,7 +1,7 @@
 ## What Export writes besides the LDraw file: a picture of the model, its
-## parts list for BrickLink or Rebrickable, the model as a BrickLink Studio
-## file, and the model as a 3D file. See [Picture], [ShopLists], [StudioIo],
-## [MeshExport].
+## parts list for BrickLink, Rebrickable or LEGO® Pick a Brick, the model as a
+## BrickLink Studio file, and the model as a 3D file. See [Picture],
+## [ShopLists], [StudioIo], [MeshExport].
 class_name Exports
 extends Node
 
@@ -50,7 +50,11 @@ func take_picture(asking: bool = false) -> String:
 	return line
 
 
-func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false) -> String:
+## A shop's list of the model's parts: [param shop] "bricklink",
+## "rebrickable" or "pickabrick". [param wants]: what a BrickLink wanted list
+## asks of each item; the person's last choice when null (ShopLists.Wants).
+func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false,
+		wants: ShopLists.Wants = null) -> String:
 	# [param skip]: the bricks to leave off besides the baseplate, for the
 	# list of one part of what is built (a brickified model, from its panel).
 	var left: Dictionary = scenery
@@ -61,11 +65,15 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false) -> Str
 	if stock.lots.is_empty():
 		say.call("nothing to list yet")
 		return ""
+	if shop == "pickabrick":
+		return await _pick_a_brick(stock, asking)
 	var made: Dictionary
 	var file_name: String
 	var mime: String
 	if shop == "bricklink":
-		made = ShopLists.bricklink_xml(stock, library)
+		if wants == null:
+			wants = ShopLists.Wants.kept()
+		made = ShopLists.bricklink_xml(stock, library, wants)
 		file_name = _file("xml", "_bricklink")
 		mime = "application/xml"
 	else:
@@ -76,11 +84,80 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false) -> Str
 	if to.is_empty():
 		return ""
 	var line: String = _give(str(made["text"]), to.get_file(), mime, to.get_base_dir())
+	if shop == "bricklink" and not wants.words().is_empty():
+		line += " — " + wants.words()
 	if int(made["left_out"]) > 0:
 		line += " — %d of %s left off: %s" % [int(made["left_out"]), Counted.of(stock.lots.size(), "lot"),
 			ShopLists.why_left_off(made, shop)]
 	say.call(line)
 	return line
+
+
+## The parts LEGO's Pick a Brick sells, as its list upload takes them
+## (ShopLists.pick_a_brick): NAME_pickabrick.csv, or past 400 elements one
+## file a 400, NAME_pickabrick_1.csv, _2.csv… beside the one chosen (in a
+## browser, one .zip of them, as an OBJ and its colours come). What it says
+## names the parts not on it, for the person to find elsewhere.
+func _pick_a_brick(stock: Inventory, asking: bool) -> String:
+	var made: Dictionary = ShopLists.pick_a_brick(stock)
+	var files: PackedStringArray = made["files"]
+	if files.is_empty():
+		var none: String = ("no LEGO® element number is known for any part of this model, "
+			+ "so there is nothing for Pick a Brick")
+		say.call(none)
+		return none
+	var to: String = await _where(_file("csv", "_pickabrick"), asking)
+	if to.is_empty():
+		return ""
+	var line: String
+	if files.size() == 1:
+		line = _give(files[0], to.get_file(), "text/csv", to.get_base_dir())
+	else:
+		var base: String = to.get_file().get_basename()
+		var members: Array = []
+		for n: int in files.size():
+			members.append(["%s_%d.csv" % [base, n + 1], files[n].to_utf8_buffer()])
+		if OS.has_feature("web"):
+			line = _give_bytes(StudioIo.zip(members), base + ".zip", "application/zip")
+		else:
+			var paths := PackedStringArray()
+			for member: Array in members:
+				var one: String = _give_bytes(member[1], member[0], "text/csv", to.get_base_dir())
+				if not one.begins_with("wrote "):
+					say.call(one)
+					return one
+				paths.append(one.trim_prefix("wrote "))
+			# Show in folder shows the first.
+			SaveTo.wrote(paths[0])
+			line = "wrote %s" % " and ".join(paths)
+	if not line.begins_with("wrote ") and not line.begins_with("downloaded "):
+		say.call(line)
+		return line
+	line += " — %s, %s, to upload at LEGO® Pick a Brick" % [
+		Counted.of(int(made["lines"]), "element"), Counted.of(int(made["pieces"]), "piece")]
+	if files.size() > 1:
+		line += " — in %d files of %d lines at most, as Pick a Brick takes them" % [
+			files.size(), ShopLists.PICK_A_BRICK_LINES]
+	var over: Dictionary = made["over"]
+	if not over.is_empty():
+		var asked := PackedStringArray()
+		for element: String in over:
+			asked.append("%d more of %s" % [int(over[element]), element])
+		line += " — Pick a Brick takes %d of an element: add by hand %s" % [
+			ShopLists.PICK_A_BRICK_MOST, ", ".join(asked)]
+	var missing: Array[Inventory.Lot] = made["missing"]
+	if not missing.is_empty():
+		var named: PackedStringArray = ShopLists.named_lots(missing)
+		var shown: PackedStringArray = named.slice(0, MOST_NAMED)
+		line += " — not on it, with no LEGO® element number known: %s" % "; ".join(shown)
+		if named.size() > shown.size():
+			line += "; and %s more" % Counted.of(named.size() - shown.size(), "lot")
+	say.call(line)
+	return line
+
+
+## The most lots a Pick a Brick list's line names as not on it.
+const MOST_NAMED := 24
 
 
 ## The model as a BrickLink Studio file (.io): its LDraw, with the build

@@ -1,13 +1,95 @@
-## A model's parts list in the forms the two big shops read: a BrickLink
-## wanted list and a Rebrickable parts list.
+## A model's parts list in the forms the shops read: a BrickLink wanted
+## list, a Rebrickable parts list, and a LEGO® Pick a Brick list.
 ##
 ## Building by hand ends at a table with the bricks on it. The app's own
 ## CSV carries element numbers and every colour name, which a person can
 ## read and a shop cannot: BrickLink's wanted lists take an XML of its own
-## item and colour numbers, and Rebrickable's import takes three columns.
-## Studio exports both.
+## item and colour numbers, Rebrickable's import takes three columns, and
+## LEGO's own Pick a Brick takes element numbers and quantities. Studio
+## exports the first two; the third is the one shop that sells every part
+## new, at its own price.
 class_name ShopLists
 extends RefCounted
+
+## What a wanted list asks of each item beyond its number, colour and count,
+## as BrickLink's upload help documents them
+## (https://www.bricklink.com/help.asp?helpID=207, "Wanted List, Mass
+## Upload", updated 16 October 2025). Chosen on the parts list's BrickLink
+## button, and kept on the device for File, Export to use as well.
+class Wants extends RefCounted:
+	## CONDITION: "N" new or "U" used; "" for either, the tag left out.
+	var condition: String = ""
+	## WANTEDLISTID: an additional wanted list's ID, digits; "" for the main
+	## wanted list, the tag left out.
+	var wanted_list: String = ""
+	## NOTIFY Y: BrickLink emails when a lot of the item is listed for sale.
+	## Left out otherwise, as the help says it is needed only when wanted.
+	var notify: bool = false
+
+	## The choice kept on this device (ShellPrefs).
+	static func kept() -> Wants:
+		var wants := Wants.new()
+		var condition: String = str(ShellPrefs.value("bricklink_condition"))
+		wants.condition = condition if condition in ["N", "U"] else ""
+		var list: String = str(ShellPrefs.value("bricklink_list"))
+		wants.wanted_list = list if list.is_valid_int() and int(list) > 0 else ""
+		wants.notify = bool(ShellPrefs.value("bricklink_notify"))
+		return wants
+
+	func keep() -> void:
+		ShellPrefs.put("bricklink_condition", condition)
+		ShellPrefs.put("bricklink_list", wanted_list)
+		ShellPrefs.put("bricklink_notify", notify)
+
+	## A session's choice (export_model): condition "new", "used" or "any",
+	## wanted_list a wanted list's ID, notify true or false. What was not
+	## given is what the person chose last. A [Wants], or why not as a
+	## String.
+	static func from(input: Dictionary) -> Variant:
+		var wants: Wants = kept()
+		if input.has("condition"):
+			var said: String = str(input["condition"]).strip_edges().to_lower()
+			var code: Variant = {"new": "N", "n": "N", "used": "U", "u": "U", "any": "",
+				"either": "", "": ""}.get(said)
+			if code == null:
+				return "the condition is new, used or any, not \"%s\"" % said
+			wants.condition = str(code)
+		if input.has("wanted_list"):
+			# JSON's numbers come as floats: 1234567.0.
+			var given: Variant = input["wanted_list"]
+			var list: String = str(int(given)) if given is float or given is int \
+				else str(given).strip_edges().to_lower()
+			if list in ["", "0", "main"]:
+				wants.wanted_list = ""
+			elif not list.is_valid_int() or int(list) <= 0:
+				return ("the wanted_list is one of the person's BrickLink wanted lists by its ID, "
+					+ "the number after wantedMoreID= in its address; 0 is the main list")
+			else:
+				wants.wanted_list = str(int(list))
+		if input.has("notify"):
+			var notify: Variant = input["notify"]
+			wants.notify = bool(notify) if notify is bool or notify is int or notify is float \
+				else str(notify).strip_edges().to_lower() in ["true", "yes", "y", "1"]
+		return wants
+
+	## What it asks, in words, or "" when it asks nothing beyond the parts.
+	func words() -> String:
+		var said := PackedStringArray()
+		if condition == "N":
+			said.append("new only")
+		elif condition == "U":
+			said.append("used only")
+		if not wanted_list.is_empty():
+			said.append("into wanted list %s" % wanted_list)
+		if notify:
+			said.append("BrickLink emails when one is listed")
+		return "; ".join(said)
+
+## LEGO's Pick a Brick takes up to 400 lines a file, and up to 999 of an
+## element (its upload, New Elementary, 2024-10:
+## https://www.newelementary.com/2024/10/pick-brick-new-upload-feature-now-live.html).
+const PICK_A_BRICK_LINES := 400
+const PICK_A_BRICK_MOST := 999
 
 ## The wanted list, how many lots had to be left off it, and the colours
 ## that left them off.
@@ -20,7 +102,13 @@ extends RefCounted
 ## LDraw's otherwise, which are BrickLink's for nearly every plain part;
 ## BrickLink names the few it does not know when the list is uploaded, and
 ## they are on the app's own CSV to find by hand.
-static func bricklink_xml(stock: Inventory, library: PartLibrary) -> Dictionary:
+##
+## [param wants]: the condition, the wanted list and notify, each written
+## only where it asks something (the main list, either condition and no
+## email are BrickLink's own when the tag is left out), after MINQTY in the
+## order BrickLink's help lists its tags.
+static func bricklink_xml(stock: Inventory, library: PartLibrary,
+		wants: Wants = null) -> Dictionary:
 	var lines := PackedStringArray(["<INVENTORY>"])
 	var left: int = 0
 	var made: int = 0
@@ -40,6 +128,13 @@ static func bricklink_xml(stock: Inventory, library: PartLibrary) -> Dictionary:
 			lot.bricklink_id if not lot.bricklink_id.is_empty() else lot.part_id))
 		lines.append("    <COLOR>%d</COLOR>" % colour)
 		lines.append("    <MINQTY>%d</MINQTY>" % lot.count)
+		if wants != null:
+			if not wants.condition.is_empty():
+				lines.append("    <CONDITION>%s</CONDITION>" % wants.condition)
+			if wants.notify:
+				lines.append("    <NOTIFY>Y</NOTIFY>")
+			if not wants.wanted_list.is_empty():
+				lines.append("    <WANTEDLISTID>%s</WANTEDLISTID>" % wants.wanted_list)
 		lines.append("  </ITEM>")
 	lines.append("</INVENTORY>")
 	return {"text": "\n".join(lines) + "\n", "left_out": left,
@@ -75,6 +170,48 @@ static func rebrickable_csv(stock: Inventory) -> Dictionary:
 			else lot.part_id, lot.rebrickable_colour, lot.count])
 	return {"text": "\n".join(rows) + "\n", "left_out": left,
 		"lots": stock.lots.size() - left}
+
+
+## LEGO's Pick a Brick list: `elementId,quantity`, as LEGO's own template
+## writes it (line ends and all), a line an element, in files of
+## [constant PICK_A_BRICK_LINES] lines. A lot with no element number known
+## (Inventory.Lot.element), or a made part, is not on it and is named in
+## "missing", the lots themselves, for the person to find elsewhere. Two lots
+## of one element (a tyre in Rubber Black and one in Black) are one line.
+## An element wanted more than [constant PICK_A_BRICK_MOST] times is asked
+## for that many, and the rest named in "over": element -> how many more.
+static func pick_a_brick(stock: Inventory) -> Dictionary:
+	var wanted: Dictionary = {}
+	var missing: Array[Inventory.Lot] = []
+	var pieces: int = 0
+	for lot: Inventory.Lot in stock.lots:
+		if lot.custom or lot.element.is_empty():
+			missing.append(lot)
+			continue
+		wanted[lot.element] = int(wanted.get(lot.element, 0)) + lot.count
+		pieces += lot.count
+	var files := PackedStringArray()
+	var over: Dictionary = {}
+	var elements: Array = wanted.keys()
+	for start: int in range(0, elements.size(), PICK_A_BRICK_LINES):
+		var rows := PackedStringArray(["elementId,quantity"])
+		for element: String in elements.slice(start, start + PICK_A_BRICK_LINES):
+			var count: int = int(wanted[element])
+			if count > PICK_A_BRICK_MOST:
+				over[element] = count - PICK_A_BRICK_MOST
+			rows.append("%s,%d" % [element, mini(count, PICK_A_BRICK_MOST)])
+		files.append("\r\n".join(rows))
+	return {"files": files, "lines": elements.size(), "pieces": pieces,
+		"lots": stock.lots.size() - missing.size(), "missing": missing, "over": over}
+
+
+## The lots [method pick_a_brick] could not list, by name: "2 × Tile 1 x 2
+## Grille in Black (2412b)", each.
+static func named_lots(lots: Array[Inventory.Lot]) -> PackedStringArray:
+	var out := PackedStringArray()
+	for lot: Inventory.Lot in lots:
+		out.append("%d × %s in %s (%s)" % [lot.count, lot.name, lot.color_name, lot.part_id])
+	return out
 
 
 static func _xml(text: String) -> String:

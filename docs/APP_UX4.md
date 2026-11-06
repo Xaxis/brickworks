@@ -403,7 +403,7 @@ commit. None of the ten needs the owner.
 | 6 | **grid** | 7 | S | low | `src/ui/pattern_dialog.gd`; `src/assembly/pattern.gd`; new `src/dev/grid_probe.gd` | Pattern's "In a grid": 2 x 2 bricks in 4 columns, 3 rows and 2 layers, every 3 studs and 3 bricks up, in **one dialog**: 24 parts, each at its place to the LDU, one undo; a grid that would collide is refused with where; `patterns` passes |
 | 7 | **partbypart** | 8 | M | low | `src/ui/build_mode.gd`; new `src/dev/partbypart_probe.gd` | see below |
 | 8 | **cutshapes** | 9 | M | medium | `src/ui/see_inside.gd` and its shader; new `src/dev/cutshapes_probe.gd` | see below |
-| 9 | **quiet** | 10 | S | low | `src/ui/first_build.gd`; `src/ui/render_queue.gd`; `src/ui/split_view.gd`; new `src/dev/quiet_probe.gd` | the first build's offer gone once a person has put down 3 parts by hand, opened a model of theirs or the car, and still offered on a first empty baseplate; the render queue closes with Escape, and Settings, Cut away's strip and every dialog opened after it are drawn over it, at 1280 x 720 and 1400 x 900; at 1280 x 720 with the assistant open, View, Split shows two views of 320 points or more (the assistant folds to its tab while the split is on, or the split takes the bin's room; one choice, said in the menu's tooltip); `first_build`, `split`, `roomfit` pass |
+| 9 | **quiet** | 10 | S | low | `src/ui/first_build.gd`; `src/ui/render_queue.gd`; `src/ui/split_view.gd`; new `src/dev/quiet_probe.gd` | the first build's offer gone once a person has put down 3 parts by hand, opened a model of theirs or the car, and still offered on a first empty baseplate; the render queue closes with Escape, and Settings, Cut away's strip and every dialog opened after it are drawn over it, at 1280 x 720 and 1400 x 900; at 1280 x 720 with the assistant open, View, Split shows two views of 320 points or more (the assistant folds to its tab while the split is on, or the split takes the bin's room; one choice, said in the menu's tooltip); `first_build`, `split`, `roomfit` pass. **Met** (quiet, `quiet` probe; pre261 failed 13 checks at 1280 x 720 and 10 at 1400 x 900): the offer stays for parts 1 and 2 and goes at the 3rd, goes when a saved model (64 parts) or the car is opened, and stays for File, New and a new window's empty baseplate; Escape puts the queue away, before the selection; Settings opened after it changes 0.0% and 0.8% of the queue's corner (pre261 18.8% at 1280), Cut away's strip no longer lies under it (was 26.6% and 20.9% covered, its buttons hidden), and every dialog that reaches the queue is drawn over it, 21 at 1280 and 19 at 1400 (pre261 8 and 5 under it); the queue narrows to the model's room beside a tool's panel (380 to 329 units). Split with Stress's panel and the assistant open at 1280: two views of 450 and 451 points, the assistant folded to its tab and opened again after (pre261 greyed, 639 units of 696); 459 and 460 without Stress, 353 and 354 at 1400. The choice is the fold, said in View, Split's tooltip |
 | 10 | **whatsthis** | 11 | M | low | new `src/ui/whats_this.gd`; `src/ui/status_bar.gd`; new `src/dev/whatsthis_probe.gd` | see below |
 
 **1. seeing: a session sees what a person sees.**
@@ -481,6 +481,23 @@ commit. None of the ten needs the owner.
   - "curved" typed while in Like this: only curved parts like it, said;
   - Fits the same after a search;
   - `likethis`, `bin2` and `bin_fold` pass.
+- **Met** (likewords, `likewords` probe: 27 checks, none failed, at 1280 x
+  720 and 1400 x 900; pre261 failed 17 at 1280 x 720). After "1x4 brick" and
+  a wall of four 1 x 4 bricks put down by clicks, a 2 x 4 brick clicked and
+  Like this chosen starts from no words, the box saying "Narrow these
+  parts…": Plate 2 x 4 is 7th and the first 12 are the empty search's to the
+  tile, no two the same mould (pre261: eight 4744 prints each a tile of its
+  own, no plate). "curved" typed: 54 tiles, every one curved and like it, the
+  curved slopes 93606 and 61068 among them (pre261: 18, neither), said
+  "Parts like Brick 2×4, with “curved”". All puts "1x4 brick" and its first
+  8 back, and Like this chosen again starts empty. Fits after the search
+  lists its empty search's 12; "plate" narrows it to 88 plates, said. Over
+  MCP, `search_parts like=3001 query=curved` lists 50 curved parts with both
+  slopes (pre261: 18, neither). Like this ranks every alike part now
+  (`PartLike`): cut at 300, a printed torso's list was its own 299 prints.
+  `likethis` 25 checks, `bin2` 40, `bin_fold` 25, `fits` 18, `setbin` 26,
+  `likethis_phone` and `likethis_tablet` 5 each, `bin_keys` (longest frame
+  46.6 ms) and `bin_keys_phone` (40.9 ms) pass.
 
 **3. intomodel: a model into this one.**
 - **Change.**
@@ -515,6 +532,28 @@ commit. None of the ten needs the owner.
     each tag as BrickLink's wanted list help documents it (nothing
     uploaded: an upload is bricklink's, parked);
   - `inventory` passes.
+- **Done** (picklist, 2026-11-05; `picklist_probe`, red on pre261 with
+  20 failures, green at 1280 x 720, 1400 x 900 and on a phone):
+  - the car's list: 31 lines for its 31 elements, summing to the 59 of its
+    61 pieces that have one, as LEGO's template writes it
+    (`elementId,quantity`, CRLF); the one lot with none named on the status
+    line and in the parts list's note at its foot, where no row moves for
+    it ("2 × Windscreen 2 x 4 x 2 in Trans Very Light Blue (3823)"); the same from File, Export,
+    the parts list's LEGO® Pick a Brick button, and `export_model
+    {"format": "pickabrick"}` in 1 call;
+  - 450 lots, each an element of its own: `_1.csv` of 400 lines and
+    `_2.csv` of 50, every element on one;
+  - the arrow beside the parts list's BrickLink asks the condition, the
+    wanted list's ID and the email: new, list 1234567 and email put
+    CONDITION N, WANTEDLISTID 1234567 and NOTIFY Y in all 32 items, kept for
+    File, Export; used, the main list and no email put U and leave the other
+    two out; new or used leaves CONDITION out; over MCP `condition`,
+    `wanted_list` and `notify` do the same, and a condition or ID BrickLink
+    has not is refused with its choices. Every tag is one helpID=207 lists,
+    in its order, with a value it allows (its text kept in
+    `bench/results/picklist-2026-11-05/`). Nothing is uploaded;
+  - `inventory` passes, and `app_tools`, `mcp_sync`, `save_dialog`,
+    `share_view` and `languages`.
 
 **5. tracks: train tracks join end to end.**
 - **Change.**
@@ -533,6 +572,48 @@ commit. None of the ten needs the owner.
   - an oval of 16 curves and 4 straights by a session in 3 calls or fewer;
   - `snap`, `connect` and `attach` pass.
 
+**6. grid: a grid of copies in one dialog.** Its Change and Bar are its row
+above.
+- **Done** (grid, 2026-11-05; `grid_probe`, red on pre261, which has no In a
+  grid (only In a row, Round and Along a hose, so a 4 x 3 x 2 block was a
+  row, that row copied, then that layer copied up), green with 29 checks at
+  1280 x 720 and at 1400 x 900):
+  1. Pattern's **In a grid**: one 2 x 2 brick, a click, Ctrl+Shift+D, In a
+     grid, then 4 columns, 3 rows and 2 levels, every 3 studs, 3 studs and
+     9 plates, typed with Tab between them, and Enter: 15 actions in **one
+     dialog**, which says "23 copies · 4 columns 3 studs apart · 3 rows 3
+     studs apart · 2 levels 3 bricks apart · each has room" and draws the
+     copies before anything is put down;
+  2. **24 parts**, each within 0.01 LDU of its place (60 LDU a column and
+     a row, 72 a level), square to the grid, none in another's room;
+  3. **one undo**: one step; one Ctrl+Z takes the 23 copies back, and redo
+     puts each back at its place;
+  4. a 1 x 4 brick where column 3, row 2, level 1 would go is **refused with
+     where**: "the copy in column 3, row 2, level 1 has no room: Brick 1 x 4
+     is in the way", drawn red, Put them down greyed, and Enter puts nothing
+     down;
+  5. **`patterns` passes** (229 checks), and so does the dialog's own
+     `handbuild_probe -- only=patterns` (27: the fence, `/4`, the ring and
+     the hose). The dialog's words are in German, French and Spanish, and
+     it opens inside the window in each; `languages` (104), `tooltip_fit`
+     and `typed_moves` (75) pass.
+  6. **The same grid over MCP**, as the owner's Claude lays it: the new
+     `pattern_parts` tool (columns, rows and levels, `column_studs`,
+     `row_studs` and `level_plates`, each spacing the parts' own size when
+     not given) runs the same `Pattern.grid`, room check and undo step as the
+     dialog. In `grid_probe`, the same 4 x 3 x 2 is **1 call**: 24 bricks,
+     each within 0.01 LDU of its place, none in another's room. It is **one
+     undo**: the session's `undo`, called once, takes all 23 copies back.
+     With the 1 x 4 brick in the way it is **refused with where**: "the copy
+     in column 3, row 2, level 1 has no room: Brick 1 x 4 is in the way
+     (#26). Nothing changed", and no step is added. Left to their own size,
+     2 x 2 bricks lay touching (40 LDU, 24 LDU). The person's selection is
+     left as it was. 40 checks at 1280 x 720 and at 1400 x 900; `mcp_sync`,
+     `mcp` (75), `mcp_lean` (27) and `patterns` (229) pass. The window's
+     default level spacing now rounds a 2 x 2 brick's 28 LDU height down to
+     3 plates rather than up to 4, so a level, or a row going up, touches
+     the one below.
+
 **7. partbypart: Build it a part at a time.**
 - **Change.** Build it, a part at a time: the next part alone highlighted
   and the rest of the step faded, "3 of 8 in this step", Next and Back by
@@ -542,6 +623,29 @@ commit. None of the ten needs the owner.
     in full colour and its count;
   - Back undoes one part; the last part's Next goes to the next step;
   - the targets 44 points or more; `viewer_steps` and `step_link` pass.
+- **Done** (unit partbypart, 2026-11-05; `partbypart` red on `pre261`,
+  34 checks failed, where there is no choice and each tap turned a whole
+  step, 5, 4, 6, 4 and 4 parts in full colour; green on a phone's 390 x 844,
+  a tablet's 1024 x 768, 1280 x 720 and 1400 x 900, 48 checks each, the
+  pictures in `bench/results/partbypart-2026-11-05/`):
+  - **One part** and **Whole step** under the card, the step whole where a
+    person starts, as the booklet shows it; the choice kept on the device;
+  - the car's step 1, five parts, is **five taps**: each exactly one part
+    in full colour, read back from what the world draws (its own colour, the
+    part before it pale), outlined, the step's later parts not there, its
+    picture on the card with "k of 5 in this step" under it and its name and
+    colour beside;
+  - the fifth part's Next goes to step 2 at its first part; Back by a swipe
+    takes that part off, and Back tapped takes the fifth off;
+  - every target 44 points or more each way, on the phone Close 88 x 60,
+    Back 144 x 61, Next 216 x 61, One part 92 x 44, Whole step 110 x 44,
+    the comments 99 x 44 and Go to step 119 x 44 (the comments were 38 and
+    Go to step 40);
+  - Whole step shows the step whole again and Next turns a whole step; One
+    part is kept for the next Build it;
+  - `viewer_steps` (23) and `step_link` (4) pass, and `share_view` (181:
+    the player's step paging, swipes, keys and kept page) and `build_steps`
+    (58).
 
 **8. cutshapes: a box, a sphere or a cylinder cut away.**
 - **Change.** Cut away by a box, a sphere or a cylinder, with handles,
@@ -556,6 +660,38 @@ commit. None of the ten needs the owner.
     model whole;
   - check.sh's "see inside" (`see_inside_probe`), `command` and `outline`
     pass.
+- **Done** (unit cutshapes, 2026-11-06; `cutshapes` red on `pre261`, where
+  View › Cut away by offers no shapes, and `cutshapes_kept` red there too;
+  green at 1400 x 900 and 1280 x 720, 44 checks each, the pictures and
+  logs in `bench/results/cutshapes-2026-11-06/`):
+  - a box round the roof and windscreens, its floor dragged down two
+    plates (4.4 x 8.4 studs, 10 plates high): 30 parts whole, 18 cut
+    across, 14 not drawn; the seat clicked through it at 3 of 10 points
+    (0 with the car whole) and seen at 6,253 px (0 whole);
+  - the pixels that change: 56,413 of 82,860 inside the box's outline,
+    3 within the shading's reach of it, **0 further out**; a drum
+    (8.4 studs across) 54,397 inside and 0 out, a ball 49,367 and 0 out;
+    at 1280 x 720 29,879, 28,815 and 26,260 inside, 0 out each;
+  - its faces marked: 1,332 px of caps by the box, 1,086 by the drum,
+    1,291 by the ball (578, 531, 648 at 1280), **0 px of an inside face**
+    in all six; every part across it keeps its whole shadow;
+  - knobs dragged a plate at a time, the wheel a notch, Esc and a right
+    click put a drag back, Shift slides the whole box a plate at a time
+    with its size kept, Grow and Shrink; a knob lit only while the
+    pointer is on it (red on the first cut: it stayed lit over the strip);
+  - kept: a box, a sphere, a cylinder and the plane each saved as one
+    `0 !BRICKWORKS CUT_AWAY` line and back where they were, 61 parts
+    each; put away, no line; a step-free two-FILE `.mpd` opened from
+    disk saved with its lines in order, no STEP put in, cut again on
+    reopening; `pre261`, which knows no such line, opens all five whole,
+    61 of 61 parts, uncut;
+  - Render with the box on: 0 px unlike the car whole; the booklet the
+    same words and its 18 pictures 0 px unlike;
+  - `see_inside` (56 checks), `command` (259 commands, the cut ones 42 to
+    56 ms on Orthanc, each says so first) and `outline` pass, with
+    `cutshapes_kept`, `keys4`, `languages`, `finish`, `true_colour`,
+    `store` and `snap`; ci_gate, `check.sh --lists`, `featuremap check`
+    and `site_lang --check` clean.
 
 **10. whatsthis: what any control does, and where the part goes.**
 - **Change.** Help, What's This (Shift+F1): the next click on any control
@@ -567,6 +703,24 @@ commit. None of the ten needs the owner.
   - the click does nothing else;
   - while carrying, the status bar's x, z and height are where the part
     then lands, to the stud and plate.
+- **Done** (whatsthis, 2026-11-05; `whatsthis_probe` 34 checks, none
+  failed, at 1280 x 720 and at 1400 x 900; on pre261 it fails: there was no
+  way to ask). Help, What's This? is Shift+F1 under all four presets, kept
+  for itself as F1 is, so no preset can give the key away; Esc, a right
+  click or Shift+F1 again leave it.
+  - **1, met:** 168 controls asked at 1280 x 720 (33 toolbar buttons, 100
+    bin chips, 28 panel buttons, 7 Properties fields) and 173 at 1400 x 900
+    each answer in a bubble beside the control, no answer empty and no two
+    alike, none borrowing only its panel's words. Five buttons and links of
+    the assistant's and the connector's had no words at all; they now carry a
+    description a screen reader reads too.
+  - **2, met:** 168 of 168 clicks (173 at 1400) did nothing else; the same
+    check sees a click on Move with no question first act.
+  - **3, met:** a 2 x 4 brick at four places, on another brick, a turned
+    1 x 2 plate on the ground and on top, and two bricks carried: the bar's
+    x, z and height are where each landed, to the half stud and the plate
+    ("x 4½, z 3 studs · on the ground", "x 3, z 1 studs · 6 plates up").
+  - The new words in German, French and Spanish (29 checked).
 
 **Next, once those land:**
 - **Keys** for the 114: the lead's `keys` unit.

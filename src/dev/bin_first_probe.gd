@@ -334,10 +334,12 @@ func _remake(library: PartLibrary) -> void:
 
 
 ## Whether the bin lists what [param query] asks: its text, searched, and no
-## search of it waiting.
+## search of it waiting, nor one on a worker (PartsBin._seek) still to be
+## listed. Without the last, the list before the key was read as its answer.
 func _answered(bin: PartsBin, query: String) -> bool:
+	var seeking: Variant = bin.get("_seeking")
 	return bin._search.text == query and not bin._pending and bin.get("_waiting") != true \
-		and not bin.first_found(1).is_empty()
+		and not (seeking is int and int(seeking) >= 0) and not bin.first_found(1).is_empty()
 
 
 ## Whether the library's index is made, asked without waiting for it.

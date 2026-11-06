@@ -362,10 +362,12 @@ func _parts_of(query: String) -> void:
 	await _settled(20000)
 
 
-## Whether the bin lists what [param query] asks.
+## Whether the bin lists what [param query] asks: no search of it waiting,
+## nor one on a worker (PartsBin._seek) still to be listed.
 func _answered(query: String) -> bool:
+	var seeking: Variant = _bin.get("_seeking")
 	return _bin._search.text == query and not _bin._pending and _bin.get("_waiting") != true \
-		and not _bin.first_found(1).is_empty()
+		and not (seeking is int and int(seeking) >= 0) and not _bin.first_found(1).is_empty()
 
 
 ## Until every tile in sight has its picture and none is fading in, or

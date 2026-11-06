@@ -5207,10 +5207,19 @@
       "readOnlyHint": false,
       "title": "Export the model"
     },
-    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result.",
+    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and quantities, 400 lines a file; the answer names the parts with no element number known), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result. A bricklink wanted list takes condition, wanted_list and notify, as BrickLink's upload reads them; what is not given is what the person chose last on the parts list's BrickLink button. Nothing is uploaded: the person uploads the file.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "condition": {
+          "description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)",
+          "enum": [
+            "new",
+            "used",
+            "any"
+          ],
+          "type": "string"
+        },
         "format": {
           "enum": [
             "ldraw",
@@ -5223,9 +5232,18 @@
             "bricklink",
             "rebrickable",
             "instructions",
-            "all_models"
+            "all_models",
+            "pickabrick"
           ],
           "type": "string"
+        },
+        "notify": {
+          "description": "bricklink: BrickLink emails the person when a lot of a part is listed for sale (NOTIFY Y)",
+          "type": "boolean"
+        },
+        "wanted_list": {
+          "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list",
+          "type": "integer"
         }
       },
       "required": [
@@ -5679,6 +5697,61 @@
       "type": "object"
     },
     "name": "gallery"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Lay copies in a grid"
+    },
+    "description": "Lay copies of parts in a grid, as the window's Edit, Pattern…, In a grid does: columns along x, rows along z and levels up, each count with the parts given as the first (columns=4 rows=3 levels=2 is 24 in all, 23 copies). column_studs= and row_studs= how far apart, in studs (a whole or half number), and level_plates= in plates (9 is 3 bricks); each, when not given, the parts' own size that way, so copies touch (a 2 x 2 brick: 2, 2 and 3). Negative goes the other way. A row is one row and one level. Every copy is checked for room against the model and the copies before it; all or nothing, one undo step, and a copy with no room is said by its column, row and level and what is in its way. bricks= the parts, by their numbers in look_at_model.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "bricks": {
+          "description": "the parts, by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "column_studs": {
+          "description": "studs between columns",
+          "type": "number"
+        },
+        "columns": {
+          "description": "along x, counting the parts given; 1 when not given",
+          "type": "integer"
+        },
+        "level_plates": {
+          "description": "plates between levels",
+          "type": "integer"
+        },
+        "levels": {
+          "description": "up, counting the parts given; 1 when not given",
+          "type": "integer"
+        },
+        "picture": {
+          "description": "unset: a close look at the copies, edged in magenta; true: the whole model so; false: words alone",
+          "type": "boolean"
+        },
+        "row_studs": {
+          "description": "studs between rows",
+          "type": "number"
+        },
+        "rows": {
+          "description": "along z, counting the parts given; 1 when not given",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "bricks"
+      ],
+      "type": "object"
+    },
+    "name": "pattern_parts"
   },
   {
     "annotations": {

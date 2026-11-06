@@ -209,9 +209,14 @@ func setup(with: Node) -> void:
 		_open_only(_code_box))
 	_ways.add_child(_code_link)
 	_desktop_link = Look.link("Claude app", 11)
+	# Read out by a screen reader, and said by Help, What's This?.
+	_desktop_link.accessibility_description = ("Shows how the Claude desktop and mobile apps add "
+		+ "Brickworks, with the address to paste")
 	_desktop_link.pressed.connect(func() -> void: _open_only(_desktop_box))
 	_ways.add_child(_desktop_link)
 	_private_link = Look.link("Private address", 11)
+	_private_link.accessibility_description = ("Shows this browser's own address, to add to Claude "
+		+ "by hand: the way before Claude could sign in")
 	_private_link.pressed.connect(func() -> void: _open_only(_private_box))
 	_ways.add_child(_private_link)
 

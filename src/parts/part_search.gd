@@ -313,6 +313,63 @@ func made_for(budget_usec: int) -> bool:
 	return _stage == Making.MADE
 
 
+## Whether it is all let go of, after letting go of it for up to [param
+## budget_usec] more: a frame's share at a time, once nothing else holds it
+## (PartLibrary._index_frame). Let go of at once, a made index held the frame
+## for 60 to 80 ms, each of 34,000 words' parts an array of its own (bintiles,
+## 2026-11-05). Never the parts it is made from, which are the library's.
+func let_go_for(budget_usec: int) -> bool:
+	var began: int = Time.get_ticks_usec()
+	if not _going_began:
+		_going_began = true
+		_going = [_ids, _number_lines, _lead, _numbers, _also_words, _keyed_words, _named_words,
+			_sorting, _infos, _at, _by_letter, _by_height, _tall, _sized, _also, _keyed, _named]
+		_parts = {}
+		_ids = PackedStringArray()
+		_number_lines = PackedStringArray()
+		_lead = PackedStringArray()
+		_numbers = PackedStringArray()
+		_also_words = PackedStringArray()
+		_keyed_words = PackedStringArray()
+		_named_words = PackedStringArray()
+		_sorting = []
+		_infos = []
+		_at = {}
+		_by_letter = {}
+		_by_height = {}
+		_tall = {}
+		_sized = {}
+		_also = {}
+		_keyed = {}
+		_named = {}
+	while not _going.is_empty():
+		var last: Variant = _going.back()
+		if last is Dictionary and not (last as Dictionary).is_empty():
+			var held: Dictionary = last
+			var taken: Array = []
+			for key: Variant in held:
+				taken.append(key)
+				if taken.size() == GOING_AT_ONCE:
+					break
+			for key: Variant in taken:
+				held.erase(key)
+		elif last is Array and not (last as Array).is_empty():
+			(last as Array).resize(maxi((last as Array).size() - GOING_AT_ONCE, 0))
+		else:
+			_going.pop_back()
+		if budget_usec >= 0 and Time.get_ticks_usec() - began >= budget_usec:
+			break
+	return _going.is_empty()
+
+
+## What is being let go of (let_go_for): whether it is, and what it still
+## holds, last first. A Dictionary or an Array goes this many at a time;
+## anything else whole.
+var _going_began: bool = false
+var _going: Array = []
+const GOING_AT_ONCE := 256
+
+
 ## A step of the first of [member _sorting] not sorted yet: whether one was.
 func _sorted_some() -> bool:
 	for sorting: Sorting in _sorting:
