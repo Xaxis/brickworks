@@ -4,7 +4,7 @@ and what it built is compared with the model, part for part and page by page.
 
     tools/bench/booklet_follow.py make MODEL --out DIR [--app CHECKOUT]
     tools/bench/booklet_follow.py build DIR --run NAME --port N [--from P] [--to Q]
-        [--pages-a-session K] [--app CHECKOUT] [--minutes M]
+        [--pages-a-session K] [--app CHECKOUT] [--minutes M] [--reading FILE]
     tools/bench/booklet_follow.py score DIR --run NAME
     tools/bench/booklet_follow.py report DIR --run NAME [--run NAME2 ...]
 
@@ -22,7 +22,10 @@ never sees the model's file. A session builds a few pages and says, for each, wh
 page did not let it tell (booklet_mcp's page_done); the next session is handed the notes
 it left. The model is kept after every page (runs/NAME/snapshots/page-N.ldr). --from
 starts later in the book on the model as the pages before leave it, built right: the
-castle's 300 pages are measured a stretch at a time.
+castle's 300 pages are measured a stretch at a time. The builder is told how a Brickworks
+booklet's pages read; DIR/reading.json (or --reading) says how another's do, so a printed
+LEGO® booklet, its pages photographed into DIR/pages and its steps mapped onto truth.json,
+is built and scored the same way.
 
 `score` compares the last snapshot with the model (`compare`): the build is first turned
 and moved onto the model (the builder chooses where its first part goes), then each of
@@ -691,9 +694,8 @@ name, how many:
 {start}
 {notes}
 Now build pages {first} to {last}, a page at a time:
-1. booklet_page shows a page. Each step on it has its number, a box of the parts it adds \
-(with how many), and a picture of the model with those new parts outlined in orange. Look \
-at the page before or after when it helps.
+1. booklet_page shows a page. {step_reading} Look at the page before or after when it \
+helps.
 2. Find where each new part goes on what is built (look_at_model lists every part with its \
 coordinates; view_model shows the model from a side, as the booklet draws it from the \
 front-left corner unless the page shows a turn), and place it with edit_model's add, a step \
@@ -707,13 +709,30 @@ would put a part below y=0, or leave a part held by nothing. Where a person woul
 model to put a part under it, move every part up (edit_model's move, dy in plates) in the \
 same call that adds the part under it. A part held only by a part still to come goes in the \
 same call as that part. The ground is the app's rule, not the booklet's: say nothing of it \
-in page_done. A sub-assembly the booklet builds on pages of its own (a yellow page) is built \
-apart, as a person builds it in their hand: beside the model, named with edit_model's \
+in page_done. A sub-assembly the booklet builds on {apart} is built apart, as a person builds \
+it in their hand: beside the model, named with edit_model's \
 assemblies (the app refuses a piece apart that nothing names), then moved onto the model \
 (edit_model's move) on the page that puts it on. Building it where it goes from the start is \
 as good, when you can tell where that is.
 Keep going until page_done({last}) is said. Do not ask questions: decide as a person would, \
 and say in page_done what you were unsure of."""
+
+
+# How a Brickworks booklet's pages read, in the prompt. A booklet drawn another way says how
+# its own read in DIR/reading.json (or build's --reading): "step" for these, "apart" for
+# where it builds a sub-assembly, "page" for the page tool's (booklet_mcp.READING).
+READING = {
+    "step": "Each step on it has its number, a box of the parts it adds (with how many), and a "
+            "picture of the model with those new parts outlined in orange.",
+    "apart": "pages of its own (a yellow page)",
+}
+
+
+def reading(out: Path, given: Path | None = None) -> dict[str, str]:
+    """How DIR's pages read: READING, with what DIR/reading.json (or `given`) says."""
+    path = given or out / "reading.json"
+    said = json.loads(path.read_text()) if path.exists() else {}
+    return {**READING, **{k: str(v) for k, v in said.items() if k in ("step", "apart", "page")}}
 
 
 def _env() -> dict[str, str]:
@@ -753,8 +772,9 @@ def _said(run: Path) -> dict[int, dict]:
 
 
 def build(out: Path, name: str, port: int, first: int | None, last: int | None, each: int,
-          app: Path, minutes: int, scratch: Path) -> None:
+          app: Path, minutes: int, scratch: Path, read_as: Path | None = None) -> None:
     truth = Truth.load(out / "truth.json")
+    reads = reading(out, read_as)
     pages = truth.step_pages()
     first = first if first is not None else pages[0]
     last = last if last is not None else pages[-1]
@@ -771,7 +791,7 @@ def build(out: Path, name: str, port: int, first: int | None, last: int | None, 
         tail.insert(1, f"--model={(run / 'seed.ldr').resolve()}")
     record = {"model": truth.data["model"], "first": first, "last": last, "pages": todo,
               "seed_parts": len(seed), "each": each, "port": port,
-              "page_scale": page_scale(out),
+              "page_scale": page_scale(out), "reading": reads,
               "app": str(app), "commit": subprocess.run(
                   ["git", "rev-parse", "--short", "HEAD"], cwd=app, capture_output=True,
                   text=True).stdout.strip(), "started": time.strftime("%Y-%m-%d %H:%M:%S")}
@@ -796,10 +816,13 @@ def build(out: Path, name: str, port: int, first: int | None, last: int | None, 
         cwd = scratch / f"cwd-{out.name}-{name}"
         cwd.mkdir(parents=True, exist_ok=True)
         config = run / "mcp.json"
+        server = [str(MCP_SERVER), f"--port={port}", f"--pages={(out / 'pages').resolve()}",
+                  f"--run={run.resolve()}", f"--models={models.resolve()}"]
+        if "page" in reads:
+            (run / "reading-page.txt").write_text(reads["page"] + "\n")
+            server.append(f"--reading={(run / 'reading-page.txt').resolve()}")
         config.write_text(json.dumps({"mcpServers": {"booklet": {
-            "command": sys.executable,
-            "args": [str(MCP_SERVER), f"--port={port}", f"--pages={(out / 'pages').resolve()}",
-                     f"--run={run.resolve()}", f"--models={models.resolve()}"]}}}))
+            "command": sys.executable, "args": server}}}))
         tries: collections.Counter = collections.Counter()
         while True:
             done = _said(run)
@@ -826,7 +849,8 @@ def build(out: Path, name: str, port: int, first: int | None, last: int | None, 
                                    parts=parts, start=start,
                                    notes=("Your notes from the pages before:\n" +
                                           "\n".join(f"- {n}" for n in notes[-6:]) + "\n")
-                                   if notes else "", first=chunk[0], last=chunk[-1])
+                                   if notes else "", first=chunk[0], last=chunk[-1],
+                                   step_reading=reads["step"], apart=reads["apart"])
             stream = run / f"session-{chunk[0]}-{chunk[-1]}-{tries[chunk_first]}.jsonl"
             started = time.time()
             with stream.open("w") as said:
@@ -927,6 +951,7 @@ def main(argv: list[str]) -> int:
     b.add_argument("--app", type=Path, default=ROOT)
     b.add_argument("--minutes", type=int, default=30, help="a session's most")
     b.add_argument("--scratch", type=Path, default=Path(os.environ.get("TMPDIR", "/tmp")))
+    b.add_argument("--reading", type=Path, help="how the pages read, for DIR/reading.json")
     s = sub.add_parser("score")
     s.add_argument("out", type=Path)
     s.add_argument("--run", required=True)
@@ -938,7 +963,7 @@ def main(argv: list[str]) -> int:
         make(args.model, args.out, args.app.resolve(), args.pages)
     elif args.command == "build":
         build(args.out, args.run, args.port, args.first, args.last, args.each,
-              args.app.resolve(), args.minutes, args.scratch)
+              args.app.resolve(), args.minutes, args.scratch, args.reading)
         print(report([score_run(args.out, args.run)]))
     elif args.command == "score":
         print(report([score_run(args.out, args.run)]))
