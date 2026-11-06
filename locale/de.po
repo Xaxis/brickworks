@@ -10741,3 +10741,75 @@ msgstr "Automatisch: der einfachere Modus, den diese Grafik braucht (%s). Kein P
 
 msgid "From the next start."
 msgstr "Ab dem nächsten Start."
+
+# A model into this one (APP_UX4 intomodel): File, Import, Into this model…, the
+# library's Put in this model, and what the status bar says while it is in hand.
+
+msgid "Into this model…"
+msgstr "In dieses Modell…"
+
+msgid "A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes"
+msgstr "Ein gespeichertes Modell, ein Beispiel, eine Datei oder eines aus der Bibliothek, als Baugruppe mit eigenen Bauschritten in dieses Modell gesetzt: auswählen, dann dorthin klicken, wo es hin soll"
+
+msgid "Put in this model, then click where it goes"
+msgstr "In dieses Modell setzen, dann dorthin klicken, wo es hin soll"
+
+msgid "could not read “%s”: %s"
+msgstr "„%s“ konnte nicht gelesen werden: %s"
+
+msgid "Reading %s…"
+msgstr "%s wird gelesen…"
+
+msgid "could not put it in this model: %s"
+msgstr "konnte es nicht in dieses Modell setzen: %s"
+
+msgid "click where it goes, %s turns, Esc puts away"
+msgstr "Klicke dorthin, wo es hin soll, %s dreht, Esc legt weg"
+
+msgid "its 1 step kept"
+msgstr "sein 1 Bauschritt bleibt erhalten"
+
+msgid "its %d steps kept"
+msgstr "seine %d Bauschritte bleiben erhalten"
+
+msgid "left out, not in the library: %s"
+msgstr "weggelassen, nicht in der Bibliothek: %s"
+
+msgid "Put in this model"
+msgstr "In dieses Modell setzen"
+
+msgid "In your hand in this model as one sub-assembly with its steps, then a click where it goes; credit its maker"
+msgstr "In deiner Hand in diesem Modell, als eine Baugruppe mit ihren Bauschritten, dann ein Klick dorthin, wo sie hin soll; nenne ihren Urheber"
+
+msgid "Its maker kept every right to it: Open builds it, and it cannot go into another model without their leave"
+msgstr "Sein Urheber behält alle Rechte daran: Öffnen baut es, und ohne seine Erlaubnis kommt es in kein anderes Modell"
+
+msgid "Fetching %s from the library…"
+msgstr "%s wird aus der Bibliothek geladen…"
+
+msgid "could not put %s in this model: %s"
+msgstr "%s konnte nicht in dieses Modell gesetzt werden: %s"
+
+msgid "credit %s"
+msgstr "Nennung: %s"
+
+msgid "it is kept back while a design is scored"
+msgstr "es wird zurückgehalten, während ein Entwurf bewertet wird"
+
+msgid "its maker kept every right to it"
+msgstr "sein Urheber behält alle Rechte daran"
+
+msgid "it has no parts"
+msgstr "es hat keine Teile"
+
+msgid "none of the %d parts in it are in the library (%s)"
+msgstr "keines der %d Teile darin ist in der Bibliothek (%s)"
+
+msgid "none of its parts could be drawn"
+msgstr "keines seiner Teile ließ sich zeichnen"
+
+msgid "put in %s, %s"
+msgstr "%s eingesetzt, %s"
+
+msgid "put in %s"
+msgstr "%s eingesetzt"

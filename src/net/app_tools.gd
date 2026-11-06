@@ -80,6 +80,8 @@ const COMMANDS: Dictionary = {
 	# The window's hand tools on the parts a session names (HandTools).
 	"mirror": "mirror_parts", "split_parts": "split_parts", "merge_parts": "merge_parts",
 	"measure": "measure",
+	# A model put into this one whole (open_model into=true, intomodel).
+	"import_into": "open_model",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -201,6 +203,9 @@ versions=true with version=N opens nothing and says what changed since that \
 save, part by part, as File, Compare with… draws it. \
 link= opens a copy of a gallery model, as Open in Brickworks does; \
 library= opens LDraw's model of a real set (gallery library=true finds them).
+ - open_model into=true puts name= (or library=, link=) into the model open \
+now as one sub-assembly with its author's steps, beside the model or at x= \
+z=, in one call, as File, Import, Into this model… does; undo takes it out.
  - parts_list: the model's parts by part and colour with element ids; \
 which="need" what the person's collection is short of; "buildable" What \
 can I build?: saved models, examples and real sets' models by how much is owned.
@@ -678,6 +683,10 @@ func definitions() -> Array:
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
 				"version": {"type": "integer", "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it"},
 				"discard_changes": {"type": "boolean"},
+				"into": {"type": "boolean", "description": "put name= (or library=, link=) into the model open now as one sub-assembly with its own steps, as File, Import, Into this model… does, in place of opening it; nothing is replaced"},
+				"x": {"type": "number", "description": "with into: studs across to its low corner; beside the model when omitted"},
+				"z": {"type": "number", "description": "with into: studs deep to its low corner"},
+				"turn": {"type": "integer", "description": "with into: quarter turns about the vertical, 0 to 3"},
 			}},
 		},
 		{
@@ -2668,6 +2677,8 @@ func _undo(input: Dictionary) -> String:
 
 
 func _open(input: Dictionary) -> String:
+	if bool(input.get("into", false)):
+		return await _open_into(input)
 	var store: ModelStore = app.get("_store")
 	var bar: ModelBar = app.get("_bar")
 	var saved: Array[ModelStore.Entry] = store.list_saved()
@@ -2946,6 +2957,175 @@ func _open_library(id: String, discard: bool) -> String:
 		ModelBar.left_out_words(result, false), ModelBar.credit_words(store.credit), entry["page"],
 		str(entry["author"]) if not str(entry["author"]).is_empty() else "its maker"] \
 		+ _replaced_words(store, unsaved, was) + _opened_motions()
+
+
+# -- a model into this one ----------------------------------------------------------
+
+
+## open_model into=true: a saved model, an example (name=), LDraw's model of
+## a real set (library=) or a gallery model (link=) put into the model open
+## now as one sub-assembly with its author's steps, as File, Import, Into this
+## model… and the library's Put in this model do, in one call: put down
+## beside the model, or with its low corner at x= and z= studs, turned turn=
+## quarter turns, on whatever is under it there. Nothing is replaced, so
+## nothing unsaved is asked after; one undo takes it all out. A set or a
+## gallery model goes in only where its licence lets it be built on
+## (LibraryDialog.may_build_on), credited.
+func _open_into(input: Dictionary) -> String:
+	var store: ModelStore = app.get("_store")
+	var builder: Builder = app.get("_builder")
+	var name: String = str(input.get("name", "")).strip_edges().trim_suffix(".ldr")
+	var text: String = ""
+	var called: String = ""
+	var credit: String = ""
+	var file: String = ""
+	if not str(input.get("library", "")).strip_edges().is_empty():
+		var books: ModelLibrary = app.get("_model_library")
+		if books == null:
+			return "This app has no library."
+		var id: String = str(input["library"]).strip_edges()
+		if not ModelLibrary.is_id(id):
+			id = await _library_id_of(books, id)
+			if id.is_empty():
+				return "LDraw's library has no 3D model of %s. gallery library=true q= finds a set." \
+					% str(input["library"])
+		var entry: Dictionary = await books.find(id)
+		if entry.is_empty():
+			return books.trouble + " gallery library=true q= finds a set."
+		if not LibraryDialog.may_build_on(str(entry["licence"])):
+			return "%s's licence (%s) does not let it be put in another model." % [
+				ModelLibrary.title_of(entry), entry["licence"]]
+		var got: Dictionary = await books.model_text(entry)
+		if not str(got["error"]).is_empty():
+			return "Could not fetch %s: %s" % [ModelLibrary.title_of(entry), got["error"]]
+		text = str(got["text"])
+		called = ModelLibrary.title_of(entry)
+		file = str(entry["file"]).get_file()
+		credit = ModelBar.credit_words(ModelLibrary.credit_of(entry)) + (" (%s)" % entry["page"]
+			if not str(entry["page"]).is_empty() else "")
+	elif not str(input.get("link", "")).strip_edges().is_empty():
+		var link: String = str(input["link"]).strip_edges()
+		var id: String = link.get_slice("/m/", 1).get_slice("/", 0).get_slice("?", 0).get_slice(".", 0) \
+			if link.contains("/m/") else link
+		var shared: SharedModels = app.get("_shared")
+		if not SharedModels.is_id(id) or shared == null:
+			return ("link is a gallery model's link id, ten letters and digits (gallery lists them), "
+				+ "or its address, https://brickworks.diy/m/<id>.")
+		var answer: Dictionary = await shared.fetch(id)
+		if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
+			return "Could not fetch %s: %s." % [id, SharedModels.trouble(answer, "the gallery did not answer")]
+		var body: Dictionary = answer["body"]
+		if GalleryTool.held(body):
+			return GalleryTool.held_words(body, id)
+		called = str(body.get("name", "Shared model"))
+		if not LibraryDialog.may_build_on(str(body.get("licence", ""))):
+			return ("%s's builder kept every right to it (%s): open_model link= opens a copy to "
+				+ "build; it cannot go into another model without their leave.") % [called,
+				GalleryTool._licence_name(body.get("licence"))]
+		text = str(body.get("model", ""))
+		file = id + ".ldr"
+		credit = ModelBar.credit_words(SharedModels.credit_of(body, id)) + " (%s)" % str(
+			body.get("url", SharedModels.link_for(id)))
+	else:
+		var chosen: ModelStore.Entry = null
+		for entry: ModelStore.Entry in store.list_saved() + store.list_examples():
+			if chosen == null and not name.is_empty() and (entry.name.to_lower() == name.to_lower()
+					or entry.example and entry.path.get_file().get_basename() == name.to_lower()):
+				chosen = entry
+		if chosen == null:
+			return ("%s open_model with no name lists the saved models and the examples; "
+				+ "into=true with name= puts one in this model, library= a real set's.") % (
+				"No model called %s." % name if not name.is_empty() else "Which model? name= one.")
+		text = store._file_text(chosen.path)
+		if text.is_empty():
+			return "Could not read %s: %s." % [chosen.name, store.not_opened]
+		called = chosen.name
+		file = chosen.path.get_file()
+	var held: Dictionary = await store.held_from(text, file, null, called)
+	if not str(held["error"]).is_empty():
+		return "Could not put %s in this model: %s. The model is as it was." % [called, held["error"]]
+	builder.cancel_carry()
+	builder.hold_copy(held["items"])
+	builder.carrying.brought = true
+	builder.carrying.brought_units = held["units"]
+	builder.carrying.turn(clampi(int(input.get("turn", 0)), 0, 3))
+	var spot: Variant = _into_spot(builder, input)
+	if spot == null:
+		builder.cancel_carry()
+		return ("There is no room for %s %s. x= and z= put its low corner somewhere clear; the "
+			+ "model is as it was.") % [held["name"], "there" if input.has("x") or input.has("z")
+				else "beside the model"]
+	var first: int = builder.place()
+	if first == 0:
+		builder.cancel_carry()
+		return "Could not put %s down. The model is as it was." % held["name"]
+	var world: BrickWorld = app.get("_world")
+	var path: String = Assemblies.path_of(world.get_brick(first))
+	var whole: String = Assemblies.segments(path)[0] if not path.is_empty() else ""
+	var box := AABB()
+	var count: int = 0
+	for brick_id: int in builder.selection:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var mesh: Lbm.PartMesh = (app.get("_library") as PartLibrary).mesh_for(brick.part_id)
+		if mesh == null:
+			continue
+		var here: AABB = (brick.transform * mesh.bounds).abs()
+		box = here if count == 0 else box.merge(here)
+		count += 1
+	var said: String = ("Put %s in the model as one sub-assembly, %s: %s, its low corner at x=%s "
+		+ "y=%s z=%s, %s x %s studs and %s plates tall%s. Its parts are selected; undo takes it "
+		+ "all out.") % [held["name"], whole, Builder._many(builder.selection.size()),
+		_num(box.position.x / 20.0), _num(box.position.y / 8.0),
+		_num(box.position.z / 20.0), _num(box.size.x / 20.0), _num(box.size.z / 20.0),
+		_num(box.size.y / 8.0), ModelBar._held_words(held).replace(" — ", "; ")]
+	if not credit.is_empty():
+		said += " Credit %s in anything made from it." % credit
+	return said + " look_at_model to see it."
+
+
+## Where a model brought in goes down for a session: its low corner at the
+## studs [param input] gives, else beside the model, 2 studs clear of it on
+## its right, stepped further out until it fits; the group aimed there from
+## above, standing on whatever is under it (Carry.aim). Null where it
+## cannot go.
+func _into_spot(builder: Builder, input: Dictionary) -> Variant:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var store: ModelStore = app.get("_store")
+	var held := AABB()
+	var first: bool = true
+	for item: Dictionary in builder.carrying.items:
+		var mesh: Lbm.PartMesh = library.mesh_for(str(item["part"]))
+		if mesh == null:
+			continue
+		var turned := Transform3D(Basis(Vector3.UP, builder.carrying.turns * PI * 0.5), Vector3.ZERO)
+		var here: AABB = ((turned * (item["at"] as Transform3D)) * mesh.bounds).abs()
+		held = here if first else held.merge(here)
+		first = false
+	var model := AABB()
+	var any: bool = false
+	for brick: BrickWorld.Brick in world.bricks():
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if store.scenery.has(brick.id) or mesh == null:
+			continue
+		var here: AABB = (brick.transform * mesh.bounds).abs()
+		model = here if not any else model.merge(here)
+		any = true
+	var given: bool = input.has("x") or input.has("z")
+	var corner := Vector3(float(input.get("x", 0.0)) * 20.0, 0.0, float(input.get("z", 0.0)) * 20.0)
+	if not given and any:
+		corner = Vector3(model.end.x + 40.0, 0.0, model.position.z)
+	var top: float = (model.end.y if any else 0.0) + 400.0
+	for tries: int in (1 if given else 24):
+		var at: Vector3 = corner + Vector3(40.0 * tries, 0.0, 0.0) - held.position
+		builder.carrying.aim(builder.lattice, builder, Vector3(at.x, top, at.z), Vector3.DOWN)
+		if builder.carrying.can_place():
+			return at
+	return null
+
+
+static func _num(value: float) -> String:
+	return str(snappedf(value, 0.1)).trim_suffix(".0")
 
 
 # -- the parts list and the collection ------------------------------------------------

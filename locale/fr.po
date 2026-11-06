@@ -10741,3 +10741,75 @@ msgstr "Automatique : le mode simplifié, dont ces graphismes ont besoin (%s). P
 
 msgid "From the next start."
 msgstr "À partir du prochain démarrage."
+
+# A model into this one (APP_UX4 intomodel): File, Import, Into this model…, the
+# library's Put in this model, and what the status bar says while it is in hand.
+
+msgid "Into this model…"
+msgstr "Dans ce modèle…"
+
+msgid "A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes"
+msgstr "Un modèle enregistré, un exemple, un fichier ou un modèle de la bibliothèque, mis dans ce modèle comme sous-ensemble avec ses propres étapes : choisissez-le, puis cliquez où il va"
+
+msgid "Put in this model, then click where it goes"
+msgstr "Mettre dans ce modèle, puis cliquer où il va"
+
+msgid "could not read “%s”: %s"
+msgstr "impossible de lire « %s » : %s"
+
+msgid "Reading %s…"
+msgstr "Lecture de %s…"
+
+msgid "could not put it in this model: %s"
+msgstr "impossible de le mettre dans ce modèle : %s"
+
+msgid "click where it goes, %s turns, Esc puts away"
+msgstr "cliquez où il va, %s tourne, Esc range"
+
+msgid "its 1 step kept"
+msgstr "son étape gardée"
+
+msgid "its %d steps kept"
+msgstr "ses %d étapes gardées"
+
+msgid "left out, not in the library: %s"
+msgstr "laissées de côté, absentes de la bibliothèque : %s"
+
+msgid "Put in this model"
+msgstr "Mettre dans ce modèle"
+
+msgid "In your hand in this model as one sub-assembly with its steps, then a click where it goes; credit its maker"
+msgstr "En main dans ce modèle, comme un seul sous-ensemble avec ses étapes, puis un clic où il va ; créditez son auteur"
+
+msgid "Its maker kept every right to it: Open builds it, and it cannot go into another model without their leave"
+msgstr "Son auteur en garde tous les droits : Ouvrir permet de le construire, et il ne peut aller dans un autre modèle sans son accord"
+
+msgid "Fetching %s from the library…"
+msgstr "Récupération de %s depuis la bibliothèque…"
+
+msgid "could not put %s in this model: %s"
+msgstr "impossible de mettre %s dans ce modèle : %s"
+
+msgid "credit %s"
+msgstr "crédit : %s"
+
+msgid "it is kept back while a design is scored"
+msgstr "il est mis de côté pendant qu'un design est évalué"
+
+msgid "its maker kept every right to it"
+msgstr "son auteur en garde tous les droits"
+
+msgid "it has no parts"
+msgstr "il n'a aucune pièce"
+
+msgid "none of the %d parts in it are in the library (%s)"
+msgstr "aucune de ses %d pièces n'est dans la bibliothèque (%s)"
+
+msgid "none of its parts could be drawn"
+msgstr "aucune de ses pièces n'a pu être dessinée"
+
+msgid "put in %s, %s"
+msgstr "%s ajouté, %s"
+
+msgid "put in %s"
+msgstr "%s ajouté"
