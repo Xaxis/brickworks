@@ -119,7 +119,7 @@ await page.waitForTimeout(idleS * 1000);
 row.idle = spent(a, snapshot(renderer));
 
 // ----- building
-const PARTS = ["3001", "3020", "3023", "3010", "3039", "3004", "3068b", "3022"];
+const PARTS = ["3001", "3020", "3023b", "3010", "3039", "3004", "3068b", "3022"];
 async function search(id) {
   let c = await controls();
   // On a phone the bin is a sheet, opened by Parts and gone with the pick.
@@ -146,10 +146,12 @@ async function search(id) {
   await page.screenshot({ path: `${out}/search_${id}.png`, timeout: 120000 }).catch(() => {});
   return NaN;
 }
-async function pick(id) {
+// The first tile taken, whatever the search listed first (3023 lists 3023b).
+async function pick() {
   await page.waitForTimeout(1200); // a tile is told once it has stayed put a publish
   const tile = (await controls())["first part"];
-  if (!tile) return NaN;
+  const id = String(((await state()).found || [])[0] || "");
+  if (!tile || !id) return NaN;
   const t0 = await now();
   if (phone) await page.touchscreen.tap(tile.x, tile.y); else await page.mouse.click(tile.x, tile.y);
   if (!phone) await page.mouse.move(view.x, view.y, { steps: 4 });
@@ -192,7 +194,7 @@ let round = 0;
 while (Date.now() < until) {
   const id = PARTS[round % PARTS.length];
   const sought = await search(id);
-  const held = await pick(id);
+  const held = await pick();
   if (round === 0) { row.firsts.search_ms = Math.round(sought); row.firsts.part_ms = Math.round(held); }
   for (let n = 0; n < 3 && Date.now() < until; n++) await put(k++);
   const select = phone && (await controls()).phone_select;
