@@ -276,6 +276,18 @@ func _cut(arrangement: String, kind: int) -> void:
 	_check("...clear of the key strip and the timeline along the room's foot (%s)" % (
 		"clear" if foot.is_empty() else "over " + ", ".join(foot)), foot.is_empty())
 	if _phone:
+		# What the phone's layout lays over the model: the line saying what
+		# was just done (or what a finger does), and the button that fits
+		# the view. Drawn over the strip, they hid its slider and Grow.
+		var phone: PhoneShell = _main.get("_phone")
+		var over: Array[String] = []
+		for pair: Array in [["the hint line", phone.get("_pill")], ["Fit", phone.get("_fit")]]:
+			var laid: Control = pair[1]
+			if laid != null and laid.is_visible_in_tree() \
+					and laid.get_global_rect().grow(-SLACK).intersects(strip):
+				over.append(str(pair[0]))
+		_check("...nothing of the phone's laid over it (%s)" % ("nothing" if over.is_empty()
+			else ", ".join(over)), over.is_empty())
 		var finger: float = Phone.px(root, Phone.TARGET)
 		var small: Array[String] = []
 		for name: String in shown:

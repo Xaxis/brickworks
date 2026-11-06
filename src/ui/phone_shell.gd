@@ -701,6 +701,11 @@ func _lay_pill() -> void:
 	# sheet's last lines (Main._place_tool_column).
 	if tools_open and bool(app.get("_tool_sheet")):
 		at.y = minf(at.y, tools.get_global_rect().position.y - size_now.y - p(6))
+	# Above Cut away's strip, along the model's foot while a cut is on
+	# (SeeInside._place): over it, it hid the strip's slider and Grow.
+	var strip: Control = shell.see_inside.bar if shell != null and shell.see_inside != null else null
+	if strip != null and strip.is_visible_in_tree():
+		at.y = minf(at.y, strip.get_global_rect().position.y - size_now.y - p(6))
 	if _pill.position != at:
 		_pill.position = at
 	# A phone's sheets and drawers cover it; a tablet's panels stand beside
