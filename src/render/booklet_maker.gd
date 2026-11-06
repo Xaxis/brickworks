@@ -2116,10 +2116,6 @@ static func _data_uri(image: Image, on: Color = Color(0, 0, 0, 0)) -> String:
 	return "data:image/png;base64," + Marshalls.raw_to_base64(image.save_png_to_buffer())
 
 
-## The booklet's Print button's own handler, which only a file opened on
-## its own may run (Booklet's header).
-const PRINT_INLINE := " onclick=\"print()\""
-
 
 ## Put an Instructions button on the toolbar, after the button that says
 ## [param after]: the booklet where people are, not only behind B and a

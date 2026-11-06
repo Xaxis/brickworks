@@ -1219,10 +1219,10 @@ async function levelsOf(account, tests) {
 /// shape, so in columns (docs/SOCIAL.md D4).
 function stripHtml(photos, { by = false } = {}) {
   const at = langAt();
-  return photos.map((one) => `<figure class="build" id="photo-${one.id}"><a href="${at}/m/${one.model}#photo-${one.id}">`
-    + `<img src="/api/people?op=photo_file&amp;id=${one.id}" alt="${escapeHtml(say("A build of {name}", { name: one.model_name }))}" `
+  return photos.map((one) => `<figure class="build" id="photo-${escapeHtml(one.id)}"><a href="${at}/m/${escapeHtml(one.model)}#photo-${escapeHtml(one.id)}">`
+    + `<img src="/api/people?op=photo_file&amp;id=${encodeURIComponent(one.id)}" alt="${escapeHtml(say("A build of {name}", { name: one.model_name }))}" `
     + `width="${Number(one.width) || 1}" height="${Number(one.height) || 1}" loading="lazy" decoding="async"></a>`
-    + `<figcaption>${one.words ? `<q>${escapeHtml(one.words)}</q>` : ""}<a href="${at}/m/${one.model}">${escapeHtml(one.model_name)}</a>`
+    + `<figcaption>${one.words ? `<q>${escapeHtml(one.words)}</q>` : ""}<a href="${at}/m/${escapeHtml(one.model)}">${escapeHtml(one.model_name)}</a>`
     + `${by ? sayHtml(", built by {who}", { who: one.by ? `<a href="${at}/u/${escapeHtml(one.by.handle)}">${escapeHtml(one.by.name)}</a>`
       : asText(say("a builder")) }) : ""}`
     + "</figcaption></figure>").join("");
@@ -1410,8 +1410,8 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     const start = earned && first && first.builds > 0 ? first : null;
     panel = cards.length ? `${start ? `<p class="start-with">${sayHtml(start.tested
       ? "Start with their most built: {model}, {builds} finished, Tested." : "Start with their most built: {model}, {builds} finished.",
-    { model: `<a href="${at}/m/${start.id}">${escapeHtml(start.name)}</a>`, builds: escapeHtml(countedSaid(start.builds, "build")) })}
-      <a class="cta small" href="/app?view=${start.id}&amp;build">${asText(say("Build it"))}</a></p>` : ""}
+    { model: `<a href="${at}/m/${escapeHtml(start.id)}">${escapeHtml(start.name)}</a>`, builds: escapeHtml(countedSaid(start.builds, "build")) })}
+      <a class="cta small" href="/app?view=${escapeHtml(start.id)}&amp;build">${asText(say("Build it"))}</a></p>` : ""}
     ${earned && counts.models > 1 && earned.builds + earned.remixes > 0 ? `<p class="note">${asText(say("Most built first: a build finished counts most, then a remix and the Tested mark."))}</p>` : ""}
     ${pager.earlier}
     <div class="models" id="models" data-models data-page="${shown.page}">${cards.map((card, i) => cardHtml(card, { earned: Boolean(earned),
