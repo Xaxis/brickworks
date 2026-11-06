@@ -41,6 +41,9 @@ declare -A CMD=(
   # and /app still isolated; the server refusing nothing, junk and a GET.
   # A finished sign-in is tools/web/oc_live_flow.mjs, on brickworks.diy.
   [oc]="tools/web/oc_flow.mjs --url=$P --out=$S/${TAG}_oc"
+  # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
+  # which on a loaded box times the box, not the app; bin_keys_probe and
+  # bin_keys_phone_probe hold the bar in the suite (bintiles, 2026-11-06).
   # local only: oc_live_flow.mjs. It signs in with a new throwaway Bitcoin
   # key through orangecheck's real window, which makes a real orangecheck
   # account each run (the lead purges them), and orangecheck vouches for
