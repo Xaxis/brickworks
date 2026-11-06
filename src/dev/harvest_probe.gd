@@ -16,6 +16,14 @@
 ## ones were plates hung under an overhang, which led to support being
 ## walked out from the ground; 110 pass now. The overlaps left are clips
 ## on bars and hollow studs, which the parts pipeline gives no connector.
+##
+## 2026-11-05, over the whole repository (1,056 sub-models, each stood on
+## its lowest cell): 917 passed. A pane or a drawer in a frame its cover
+## fills, and a part held by a joint BrickNet has no label for, were most of
+## the rest; with the frame's air (ExactCheck.drop_in_air) and those joints
+## in the exact graph, 939, none newly refused. Each verdict's "met" says
+## which parts' overlaps and collisions refused it (docs/ROADMAP.md, "Round
+## joints again").
 extends SceneTree
 
 
@@ -66,6 +74,18 @@ func _initialize() -> void:
 			bricks.append({"part": put.part, "color": put.color,
 				"x": snappedf(put.x, 0.01), "y": snappedf(put.y, 0.01),
 				"z": snappedf(put.z, 0.01), "face": put.face, "rot": put.rot})
+		# Stood on its lowest cell. tools/omr.py lowers a sub-model onto its
+		# lowest point, which leaves it off the 2 LDU grid, and read back
+		# every part comes down to the cell under it: 61 of 1,056 stood a
+		# cell below the floor, refused for it and for what stood on them,
+		# and 10 hung above it (2026-11-05). The floor is the harvest's, not
+		# the set's: the set has no floor there.
+		var lowest: float = INF
+		for raw: Dictionary in bricks:
+			lowest = minf(lowest, float(raw["y"]))
+		if not bricks.is_empty() and lowest != 0.0:
+			for raw: Dictionary in bricks:
+				raw["y"] = snappedf(float(raw["y"]) - lowest, 0.01)
 		# Checked as a design on an empty baseplate. Read back from the
 		# world they are bricks that were already standing, and the check
 		# excuses those — every one of them passed that way.
@@ -80,10 +100,27 @@ func _initialize() -> void:
 		else:
 			var why: String = str(verdict["summary"]).get_slice("(", 1).get_slice(" ", 0)
 			refused[why] = int(refused.get(why, 0)) + 1
+		# What met what, as part numbers: an overlap in the lattice, then a
+		# collision of the exact shapes, [part, part it met] each, for the
+		# record to count refusals by the kind of joint they are.
+		var met: Array = []
+		var overlapping: Dictionary = verdict.get("overlapping", {})
+		for index: Variant in overlapping:
+			var other: int = int(overlapping[index]) - 1
+			if other >= 0 and other < bricks.size():
+				met.append(["overlap", bricks[int(index)]["part"], bricks[other]["part"]])
+		# The exact check says its pairs only in words: "brick 3 (3937 ...)
+		# and brick 4 (3938 ...): their real shapes overlap".
+		var pair := RegEx.create_from_string("^brick (\\d+) \\(\\S+ .*? and brick (\\d+) \\(")
+		for said: Variant in (verdict.get("exact", {}) as Dictionary).get("collision", []):
+			var found: RegExMatch = pair.search(str(said))
+			if found != null:
+				met.append(["collision", bricks[int(found.get_string(1))]["part"],
+					bricks[int(found.get_string(2))]["part"]])
 		out.store_line(JSON.stringify({"file": file, "placed": placed,
 			"ok": verdict["ok"], "summary": verdict["summary"],
 			"why": str(verdict.get("feedback", "")).substr(0, 600),
-			"bricks": bricks}))
+			"met": met, "bricks": bricks}))
 	out.close()
 	print("%d of %d build; refused: %s" % [passed, seen, str(refused)])
 	quit(0)

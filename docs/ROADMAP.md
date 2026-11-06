@@ -221,7 +221,16 @@ plainer — see the first lever below.
        41, 50 and 15. The misses shrank to a stud along a run, a course off,
        or the other column. So the next lever is the picture: the joints
        of the course below, or a run's length in studs;
-     - an attach step that shows where the sub-assembly meets the model;
+     - an attach step that shows where the sub-assembly meets the model.
+       **Tried, NO-GO** (attachstep, 2026-11-05). In place, a sub-assembly
+       hides the studs it lands on: 4% are in view over the proof sample.
+       Drawn lifted off its place with a red arrow down, 99% were, but
+       builders put it where it was drawn. The seat back fell from 5 of 6
+       right in three runs to 0 in two (6 plates high, "about how the
+       picture looks"). The nose stayed 0 of 22, now 4 plates low, not
+       high. Next: keep it drawn in place and show the landing another way,
+       see-through or marked the step before. The change is in
+       bench/results/attachstep-2026-11-05/lift.patch;
      - black parts drawn with their edges. **Tried, NO-GO** (blackedges,
        2026-11-05). Over 7 runs each way, right parts fell from 73 to 42 of
        96. Wrong parts rose from 8 to 30. Drawn with its edges, the dish
@@ -482,6 +491,33 @@ and gates whose cover fills the opening a clip passes through, 75937 (its
 cover is its bounding box), and a long tail of covers. The catalogue was rebuilt with the rounds the same day (29,587 parts; the
 16,360 meshes that changed uploaded for the web), so the checker forgives
 them everywhere. Not yet measured on an Orthanc run.
+
+Round joints again, 2026-11-05 (realjoints). The harvest was rebuilt from
+the whole repository (1,576 sets, 1,056 named sub-models of 3 to 30 parts)
+and each sub-model stood on its lowest cell: 61 had stood a cell below the
+floor and 10 above it, which `tools/omr.py` lowers onto its lowest point,
+off the grid. On that corpus the checker passed **917**, refusing 54 as not
+held, 50 floating, 48 for overlaps, 9 collisions and 6 off their studs; the
+overlaps by the joint that met were panes 14, bars and axles through holes
+13, hollow studs 4, clips 2, hinges 2 and 25 others. Two causes, each fixed
+by the parts' shapes. A frame's groove, a cupboard's inside and a window's
+opening are cover, since the cover fills each layer's holes, so a pane or a
+drawer with no exact shape overlapped its frame: where one of two parts has
+a shape and the other none, every cell their covers share must have its
+middle in the shaped one's air (`ExactCheck.drop_in_air`, and the hand's
+`Builder.room_for` the same). And BrickNet's connection graph, which the
+exact check counts pieces by, joins nothing it has no label for between
+two parts with shapes: 10261's drums on the axle up each pillar, 10272's
+bar in a plate's peg hole, each its own piece. The joints the lattice holds
+by (connector joins, rounds, glue) now join there too, but not what is only
+pushed in or worn round a post, which a beard on a headless neck is.
+**917 → 939, none newly refused**: not held 54 → 37, floating 50 → 45,
+overlaps 48 → 39; panes 6 of 14 pass. Still refused: panes whose frame's
+pieces fill the groove (57895 in 57894, 60601 in 61345), tyres with no
+shape, Technic pins in open-centre bricks, 32028's rail on 99781 (six
+collisions), and a lamp held only by an antenna's tip pushed into a round
+brick (`Joints.pushed_in`, which a toilet roll a stud off the studs also
+meets). No catalogue rebuild: the checker alone changed.
 
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety

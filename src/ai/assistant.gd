@@ -13348,8 +13348,11 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 			var near: PackedInt64Array = _joints_out(own.blockers_boxes(here),
 				index, model, placed_at, joined, rounds, here, own,
 				model.section_for(placement).placed(), true, meshing)
-			# Their exact shapes decide where both have one.
+			# Their exact shapes decide where both have one, and where one has,
+			# its air does (ExactCheck.drop_in_air).
 			near = exact.drop_cleared(near, index)
+			near = exact.drop_in_air(near, index, here, own,
+				model.section_for(placement).placed())
 			# Between two bricks standing, as outside a section: a file's
 			# tipped parts read into one ([method _adopted]) were refused for
 			# what the same parts read square were forgiven — 31 overlaps in
@@ -13413,8 +13416,11 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		blockers = _joints_out(blockers, index, model, placed_at, joined,
 			rounds, packed, lattice, Transform3D.IDENTITY, false, meshing)
 		# A cover is whole cells, and two parts it rounds into each other can
-		# be clear by their real shapes: where both have one, the shapes decide.
+		# be clear by their real shapes: where both have one, the shapes decide;
+		# where one has, the two meet only if a cell they share is in it: a pane
+		# in its frame's groove, a drawer in its cupboard.
 		blockers = exact.drop_cleared(blockers, index)
+		blockers = exact.drop_in_air(blockers, index, packed, lattice, Transform3D.IDENTITY)
 
 		_standing_overlaps(blockers, placement, index, model, collided)
 		blockers = _between_standing(blockers, placement, model)
@@ -13537,7 +13543,15 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 	var pushed: Dictionary = Joints.pushed_in(entries.filter(
 		func(entry: Array) -> bool: return cells_of.has(entry[0])),
 		_filled_by(cells_of, lattice))
-	for held: Dictionary in [rounds, Joints.held_otherwise(with_paths, library), pushed]:
+	## What a joint of the parts' own holds, which the exact check joins
+	## (_exact_unheld): the pins, rounds and glue, not what is only pushed in
+	## or worn on a post, which a head clamps or nothing does.
+	var jointed: Dictionary = {}
+	var holding: Array = [rounds, Joints.held_otherwise(with_paths, library), pushed]
+	for n: int in holding.size():
+		var held: Dictionary = holding[n]
+		if n == holding.size() - 1:
+			jointed = holds.duplicate(true)
 		for index: Variant in held:
 			if not holds.has(index):
 				holds[index] = {}
@@ -13584,7 +13598,7 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 	## reply says them (ExactCheck.resting_said).
 	var resting: Array = []
 	_exact_unheld(model, exact, issues, crowded, cells_of, floating, holds,
-		clutched_pairs, stuck, unheld, advice, come_away, exact_joins, resting)
+		clutched_pairs, stuck, unheld, advice, come_away, exact_joins, resting, jointed)
 
 	# And where each section that did not fit would have fitted, for as
 	# long as that is worth spending.
@@ -14222,7 +14236,7 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 		crowded: Dictionary, cells_of: Dictionary, floating: Dictionary,
 		holds: Dictionary, clutched_pairs: Array, stuck: Dictionary = {},
 		unheld: Dictionary = {}, advice: Array = [], apart: Dictionary = {},
-		joins: Array = [], resting: Array = []) -> void:
+		joins: Array = [], resting: Array = [], jointed: Dictionary = {}) -> void:
 	if not exact.any():
 		return
 	var count: int = model.placements.size()
@@ -14249,6 +14263,21 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 					and (exact.items[int(index)] == null or exact.items[int(other)] == null
 						or _in_a_prism(model, int(index)) or _in_a_prism(model, int(other))):
 				extra.append([int(index), int(other)])
+	# And what a joint of the parts' own holds with no label of BrickNet's to
+	# say so, between parts with shapes too: a bar in a hollow stud or a clip, a
+	# hinge's pin in its eye, a pin lined up in its hole, a sticker on its face
+	# ([param jointed]: Joints.rounds, both_ways, held_otherwise). The lattice
+	# held each and this said it came away: 10261's pillars each have a drum
+	# on the axle up their middle, which BrickNet's labels do not join.
+	# Not what is only pushed in or worn round a post (Joints.pushed_in): a
+	# beard on a neck falls once its head is off, as ExactCheck.clamped says.
+	# A run kept to BrickBench's parts (PartsOnly) keeps its verify.py's graph,
+	# which has none of them.
+	if not PartsOnly.active():
+		for index: Variant in jointed:
+			for other: Variant in jointed[index]:
+				if int(index) < count and int(other) < count:
+					extra.append([int(index), int(other)])
 	# Only what is near this design's parts: anything else that stands is held
 	# already, so a piece of them is held exactly when it reaches the ground or
 	# something beside them that stands. An edit to a 9,000 part model asks

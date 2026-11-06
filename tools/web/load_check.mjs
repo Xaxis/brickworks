@@ -14,6 +14,13 @@
 //                                 in them said: a compile put after the start
 //                                 (Later) holds the window a person sees
 //     --out=DIR                   each run's files and timeline as JSON
+//     --inspector-frames          the engine's frames left as the inspector has
+//                                 them, where each file the engine does not find
+//                                 costs 60x a person's (instrument)
+//     --trace=DIR                 a Chrome trace of each load (V8's CPU profile,
+//                                 its GC, wasm and compile events) to DIR/LABEL.json;
+//                                 tools/web/trace_window.py says where a stretch
+//                                 of the page's clock went
 //
 // A local export (tools/export.sh web), sent and cached as the deployment
 // sends it: without --cached every file is no-store, and a warm load timed
@@ -71,7 +78,7 @@
 import { chromium } from "playwright";
 import { SOFTWARE, START_MS, withAssistant } from "./browser.mjs";
 import { canSignIn, signInContext } from "./session.mjs";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, mkdtempSync, openSync, rmSync, writeFileSync, writeSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -112,11 +119,23 @@ const maxPick = args["max-pick"] ? Number(args["max-pick"]) * 1000 : 0;
 // compiled once the window is up holds the page as long as its compile,
 // which interactive alone never sees (lazystart c6, 2026-11-03).
 const watchMs = args.watch && args.watch !== true ? Number(args.watch) * 1000 : 0;
+const traceDir = args.trace && args.trace !== true ? String(args.trace) : "";
+// The engine's frames as a person's browser runs them (instrument), unless
+// --inspector-frames: as Playwright's inspector would have them, which is
+// how every load before lazycompile (2026-11-05) was timed.
+const asPerson = !args["inspector-frames"];
+if (traceDir) mkdirSync(traceDir, { recursive: true });
+// What a trace records: the page's tasks and console stamps (the page's
+// clock is found from load_check's own), V8's sampled CPU profile of every
+// thread (the engine's workers too), its GC, the wasm compiler's tiers.
+const TRACED = ["-*", "devtools.timeline", "disabled-by-default-devtools.timeline", "toplevel", "blink.user_timing",
+  "blink.console", "v8", "v8.execute", "disabled-by-default-v8.cpu_profiler", "v8.wasm", "disabled-by-default-v8.wasm.detailed",
+  "disabled-by-default-v8.gc", "disabled-by-default-v8.compile"];
 
 // In the page before anything of its own runs: long tasks, when the engine
 // started, and each frame drawn to the window (a draw, clear or blit with
 // no framebuffer of the app's bound) once the app has told the page it runs.
-function instrument(watching) {
+function instrument([watching, asPerson]) {
   const at = { started: 0, shown: 0, running: 0, firstFrame: 0, listed: 0, binDrawn: 0, longtasks: [], said: [], stalls: [] };
   window.__load = at;
   // With --watch, the page's heartbeat: each gap of over 100 ms between its
@@ -129,6 +148,22 @@ function instrument(watching) {
   }, 50);
   // The browser's own, before the app's connector steers the page's frames.
   const frame = window.requestAnimationFrame.bind(window);
+  // Each engine frame run as a promise reaction, so that it costs here what
+  // it costs a person. A page Playwright drives has the inspector's Runtime
+  // on, and V8 then records the stack at every throw a task's own code
+  // catches; emscripten's file system throws at every path it does not
+  // find, and the engine looks for a script's .gd and .gd.import beside its
+  // tokens each time compiled code names a global class. A miss cost about
+  // 300 us in a frame here and 5 us in a person's browser, and the grab's
+  // first use (1,112 misses) read 0.7-0.9 s for their 0.4-0.5 (lazycompile,
+  // 2026-11-05). In a promise reaction V8 makes no message of a caught
+  // throw: a miss there costs 7 us here. --inspector-frames leaves the
+  // frames as they were.
+  if (asPerson) {
+    window.requestAnimationFrame = (callback) => frame((time) => {
+      Promise.resolve(time).then(callback).catch((e) => setTimeout(() => { throw e; }));
+    });
+  }
   // What the engine says as it starts (its banner, the renderer), timed.
   for (const kind of ["log", "warn", "error"]) {
     const was = console[kind].bind(console);
@@ -252,6 +287,25 @@ async function pickFirst(page, id) {
   return { ms: NaN, at: t0, why: "never held with a ghost" };
 }
 
+// The trace begun before the load ended and written to [path], with the
+// page's own marks beside it ([extra], as DIR/LABEL.marks.json), streamed:
+// a load's trace is a few hundred MB.
+async function saveTrace(cdp, path, extra) {
+  const complete = new Promise((resolve) => cdp.once("Tracing.tracingComplete", resolve));
+  await cdp.send("Tracing.end");
+  const { stream } = await complete;
+  const out = openSync(path, "w");
+  for (;;) {
+    const { data, eof, base64Encoded } = await cdp.send("IO.read", { handle: stream, size: 1 << 22 });
+    if (data) writeSync(out, base64Encoded ? Buffer.from(data, "base64") : data);
+    if (eof) break;
+  }
+  closeSync(out);
+  await cdp.send("IO.close", { handle: stream }).catch(() => {});
+  writeFileSync(path.replace(/\.json$/, ".marks.json"), JSON.stringify(extra));
+  console.log(`    trace: ${path}`);
+}
+
 // One load of [url] in [context]: what came and when, and the marks.
 async function load(context, profile, label) {
   const page = await context.newPage();
@@ -303,9 +357,13 @@ async function load(context, profile, label) {
       url: request.url(), timing: request.timing(), headers: response ? response.headers() : {},
       bytes: sizes.responseBodySize + sizes.responseHeadersSize })).catch(() => null));
   });
-  await page.addInitScript(instrument, watchMs > 0);
+  await page.addInitScript(instrument, [watchMs > 0, asPerson]);
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e).slice(0, 200)));
+  if (traceDir) {
+    await cdp.send("Tracing.start", { transferMode: "ReturnAsStream", streamFormat: "json",
+      traceConfig: { recordMode: "recordAsMuchAsPossible", includedCategories: TRACED } });
+  }
   await page.goto(url, { waitUntil: "commit", timeout: 120000 });
   // Counted from the page's own process, which the navigation may have
   // changed: what it had spent as it began.
@@ -348,6 +406,11 @@ async function load(context, profile, label) {
   }
   // What the app loaded on first use (Later), by then: when and how long.
   const loaded = await page.evaluate(() => window.brickworksLoaded || null).catch(() => null);
+  if (traceDir) {
+    const { said = [], stalls = [] } = await page.evaluate(() => window.__load).catch(() => ({}));
+    await saveTrace(cdp, join(traceDir, `${label.replace(/\s+/g, "_")}.json`),
+      { label, marks: { ...marks, said, stalls, longtasks: undefined }, loaded });
+  }
   const cpuAll = cpu1 ? cpu1.all - cpu0.all : NaN;
   const busy = (marks?.longtasks || []).filter(([t]) => t <= (marks?.interactive ?? Infinity)).reduce((n, [, d]) => n + d, 0);
   // Request times to the page's clock: the document's request is its zero

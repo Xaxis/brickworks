@@ -673,6 +673,56 @@ static func clash_but(a: Item, b: Item, but: Forgiven) -> Dictionary:
 		"piece_b": int(verdict[2]), "axis": (a.at.basis * (verdict[3] as Vector3)).normalized()}
 
 
+## Whether two covers share a cell and every one they share has its middle in
+## [param item]'s air: outside each of its convex pieces. The covers are boxes
+## of lattice cells, six ints each, and [param to_world] carries a cell's
+## middle into the world, as in [method Joints.overlap_within].
+static func meet_in_air(mine: PackedInt32Array, theirs: PackedInt32Array,
+		item: Exact.Item, to_world: Transform3D) -> bool:
+	var meeting: Array = Joints._where_they_meet(mine, theirs)
+	mine = meeting[0]
+	theirs = meeting[1]
+	var local: Transform3D = item.at.affine_inverse() * to_world
+	var any: bool = false
+	var i: int = 0
+	while i < mine.size():
+		var j: int = 0
+		while j < theirs.size():
+			for x: int in range(maxi(mine[i], theirs[j]), mini(mine[i + 3], theirs[j + 3])):
+				for y: int in range(maxi(mine[i + 1], theirs[j + 1]), mini(mine[i + 4], theirs[j + 4])):
+					for z: int in range(maxi(mine[i + 2], theirs[j + 2]),
+							mini(mine[i + 5], theirs[j + 5])):
+						var middle: Vector3 = local * (
+							Vector3(x + 0.5, y + 0.5, z + 0.5) * BrickLattice.CELL)
+						if Exact.in_shape(item.shape, middle):
+							return false
+						any = true
+			j += 6
+		i += 6
+	return any
+
+
+## Whether [param point], in the part's own frame, is inside one of [param
+## shape]'s pieces: in every slab between its spans along its normals.
+static func in_shape(shape: Shape, point: Vector3) -> bool:
+	if point.x < shape.lo.x or point.y < shape.lo.y or point.z < shape.lo.z \
+			or point.x > shape.hi.x or point.y > shape.hi.y or point.z > shape.hi.z:
+		return false
+	for piece: Piece in shape.pieces:
+		if point.x < piece.lo.x or point.y < piece.lo.y or point.z < piece.lo.z \
+				or point.x > piece.hi.x or point.y > piece.hi.y or point.z > piece.hi.z:
+			continue
+		var inside: bool = not piece.normals.is_empty()
+		for k: int in piece.normals.size():
+			var at: float = piece.normals[k].dot(point)
+			if at < piece.spans[2 * k] or at > piece.spans[2 * k + 1]:
+				inside = false
+				break
+		if inside:
+			return true
+	return false
+
+
 ## Each piece of [param shape] the line through [param point] along [param
 ## way] (the part's own frame) goes through, or passes within [param slack]
 ## of: 1, else 0. A piece is the slabs between its spans along its normals,

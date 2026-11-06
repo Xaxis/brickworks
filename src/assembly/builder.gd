@@ -1691,10 +1691,15 @@ static func set_path(brick: BrickWorld.Brick, path: String) -> void:
 ## moved steps (unitsteps). [param numbers] are steps the change gives,
 ## {"bricks": id -> step, "units": path before the change -> step, -1 for
 ## none}: a copy's steps made its parent's as it is taken apart
-## (AuthorSteps.inlined), a sub-assembly made built in its parent's.
+## (AuthorSteps.inlined), a sub-assembly made built in its parent's. What it
+## put in a section other than the one it was stepped in, and numbers none
+## of, is numbered in the one it is in now (AuthorSteps.rehomed), each step's
+## look with its parts (BookletLooks.follow).
 func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 		numbers: Dictionary = {}) -> int:
 	var units: Dictionary = world.unit_steps.duplicate()
+	var looked: Dictionary = BookletLooks.items_by_step(world, scenery)
+	var was: Dictionary = {}
 	var steps: Array = []
 	for brick_id: int in changes:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
@@ -1703,6 +1708,7 @@ func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 			continue
 		steps.append({"undo": "regroup", "brick": brick_id, "group": brick.group,
 			"unit": brick.unit})
+		was[brick_id] = Assemblies.path_of(brick)
 		set_path(brick, path)
 	var moved: int = steps.size()
 	if moved == 0:
@@ -1710,10 +1716,12 @@ func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 	if carry.is_valid():
 		steps.append_array(_carry(carry))
 	var stepped: Dictionary = numbers.get("bricks", {})
+	var kept: Dictionary = {}       ## a part whose step an entry here puts back
 	for brick_id: int in stepped:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick != null and brick.step != int(stepped[brick_id]):
 			steps.append({"undo": "restep", "brick": brick_id, "step": brick.step})
+			kept[brick_id] = true
 			brick.step = int(stepped[brick_id])
 	var given: Dictionary = numbers.get("units", {})
 	for path: String in given:
@@ -1722,6 +1730,12 @@ func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 				world.unit_steps.erase(to)
 			else:
 				world.unit_steps[to] = int(given[path])
+	# Each part's step once, as it was before all of it, as the copies' below.
+	var rehomed: Array = AuthorSteps.rehomed(world, was, units, carry, numbers, scenery)
+	steps.append_array(rehomed.filter(func(entry: Dictionary) -> bool:
+		return str(entry["undo"]) == "restep" and not kept.has(int(entry["brick"]))))
+	if not rehomed.is_empty():
+		steps.append_array(BookletLooks.follow(world, looked, scenery))
 	# Each copy's step once, as it was before all of it: a group's entries
 	# are applied in the order kept, so one an entry carried and another
 	# numbered would be put back to the step between.
@@ -3015,6 +3029,13 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		# a saddle on a horse's back had no room where every set has it.
 		if _studded_clear(mine, at, theirs, there):
 			continue
+		# And where one of the two has an exact shape and the other none, as
+		# check_design judges them (ExactCheck.drop_in_air): a pane put in its
+		# frame's groove, a drawer in its cupboard, meet only in covers a layer
+		# filled shut, which the frame's shape has as air.
+		if _in_air_of_one(part_id, at, packed, str(entries[n][3]), there,
+				lattice.boxes_of(other)):
+			continue
 		if turning.has(other):
 			var square: bool = BrickLattice.is_square_to_grid(at.basis) \
 				and BrickLattice.is_square_to_grid(there.basis)
@@ -3062,6 +3083,20 @@ func _studded_clear(mine: String, at: Transform3D, theirs: String, there: Transf
 		if kinds.has(Exact.STUD) and kinds.has(Exact.HOLE):
 			return Exact.clash(items[0], items[1], true).is_empty()
 	return false
+
+
+## Whether two parts, one with an exact shape and the other with none, share
+## only cells whose middles are in the shaped one's air (Exact.meet_in_air).
+func _in_air_of_one(mine: String, at: Transform3D, my_boxes: PackedInt32Array,
+		theirs: String, there: Transform3D, their_boxes: PackedInt32Array) -> bool:
+	var one: Exact.Shape = Exact.shape_for(library, mine)
+	var other: Exact.Shape = Exact.shape_for(library, theirs)
+	var one_shaped: bool = one != null and one.has_pieces()
+	var other_shaped: bool = other != null and other.has_pieces()
+	if one_shaped == other_shaped:
+		return false
+	var item := Exact.Item.new(one, at) if one_shaped else Exact.Item.new(other, there)
+	return Exact.meet_in_air(my_boxes, their_boxes, item, Transform3D.IDENTITY)
 
 
 ## The part [method room_for] last found in the way, by its shapes; 0 when
