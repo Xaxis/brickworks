@@ -1062,6 +1062,13 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 
 ## Why [param tool] is not done now, before it begins, or "".
 func refusal(tool: String, input: Dictionary) -> String:
+	# A bench's run (DesignMemory.holding): a picture or a model from a link
+	# can be the answer a design is judged against, as one from Commons or
+	# the gallery can ([method _fetch] is reached only past here).
+	if DesignMemory.holding() and (tool == "brickify" and input.has("url")
+			or tool == "print_part" and input.has("picture_url")):
+		return ("While a design is being scored, no link is fetched: what it holds could be the "
+			+ "answer it is judged against.")
 	if app == null:
 		return "This app cannot do that from outside."
 	var shell: Shell = app.get("_shell")
@@ -2816,6 +2823,9 @@ func _open_link(link: String, discard: bool) -> String:
 	if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
 		return "Could not open %s: %s." % [id, SharedModels.trouble(answer, "the gallery did not answer")]
 	var body: Dictionary = answer["body"]
+	# What gallery open= will not show, this will not open (a bench's run).
+	if GalleryTool.held(body):
+		return GalleryTool.held_words(body, id)
 	var name: String = str(body.get("name", "Shared model"))
 	if assistant != null:
 		assistant.forget_built()

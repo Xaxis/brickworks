@@ -30,7 +30,7 @@ static func figures() -> Dictionary:
 ## plan_scale told 7242-1's session "7242 Street Sweeper 15" (2026-10-31).
 static func sizes() -> Array:
 	var models: Array = _load(SIZES).get("models", [])
-	if DesignMemory.held_out().is_empty() and DesignMemory.held_names().is_empty():
+	if not DesignMemory.holding():
 		return models
 	var held: String = ",".join(DesignMemory.held_out()) + "|" + "|".join(DesignMemory.held_names())
 	if _sized_for != held or _sized.is_empty():
