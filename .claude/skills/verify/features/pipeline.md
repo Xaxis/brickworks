@@ -2,7 +2,7 @@
 
 The Python side: LDraw in, mesh cache and catalogue out.
 
-<!-- covers: cli:build the meshes, cli:update the parts, cli:check the gear table, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:build the exact shapes, cli:export for linux, cli:export for windows, cli:export for macos -->
+<!-- covers: cli:build the meshes, cli:update the parts, cli:check the gear table, cli:check the track table, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:build the exact shapes, cli:export for linux, cli:export for windows, cli:export for macos -->
 
 ## Sub-features
 
@@ -63,6 +63,16 @@ The Python side: LDraw in, mesh cache and catalogue out.
   and `--out FILE` say which catalogue and where); `tools/export.sh` copies both beside the web
   build, which fetches them (`SetKnowledge.ensure`). Proves it when
   `part_choice_probe` reads them ("3938 parts", "1771").
+- `check the track table`: `assets/ldraw/track_ends.json`, each train track's
+  ends (place, direction, the joint's kind, a sleeper under a rails end) that
+  `src/assembly/track_snap.gd` joins tracks by, measured from the parts' own
+  geometry: a clip end (9V, 6 wide, 4 wide) by the face its tab reaches 6 to 12
+  LDU past, a rails end (12V, 4.5V) by two rails ending a gauge apart, a
+  roller coaster end by its flush face. `tools/track_ends.py check` measures
+  again and fails when the table differs, a straight's ends are not 320 apart,
+  or sixteen curves (four of the roller coaster's 90) do not close a circle;
+  `tools/track_ends.py show ID` says one part's ends and how each was found.
+  The parts no family takes are in its `left_out`, each with why.
 - `check the gear table`: `assets/ldraw/gears.json`, the tooth counts, kinds and
   holes `src/assembly/mechanism.gd` reads (the catalogue says how many teeth a
   gear has only in its name). `tools/gears.py check` proves four things: every
