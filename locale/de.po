@@ -10907,3 +10907,21 @@ msgstr "%s eingesetzt, %s"
 
 msgid "put in %s"
 msgstr "%s eingesetzt"
+
+msgid "Narrow these parts…"
+msgstr "Diese Teile eingrenzen…"
+
+msgid "Parts like %s, with “%s”: its size and kind first; a tap swaps the selection"
+msgstr "Teile wie %s, mit „%s“: zuerst seine Größe und Art; ein Tippen tauscht die Auswahl"
+
+msgid "Parts like %s, with “%s”: its size and kind first; a double-click swaps the selection"
+msgstr "Teile wie %s, mit „%s“: zuerst seine Größe und Art; ein Doppelklick tauscht die Auswahl"
+
+msgid "No part like %s has “%s”"
+msgstr "Kein Teil wie %s hat „%s“"
+
+msgid "What fits %s, with “%s”, the best fits first"
+msgstr "Was zu %s passt, mit „%s“, das Beste zuerst"
+
+msgid "Nothing that fits %s has “%s”"
+msgstr "Nichts, was zu %s passt, hat „%s“"
