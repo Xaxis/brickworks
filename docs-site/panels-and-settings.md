@@ -36,7 +36,7 @@ Select some parts and press [[Shift+1]] to [[Shift+0]] to paint them one of your
 
 The favourites start as the colours LEGO® sets use most: Black, Light Bluish Grey, White and so on. To change one, open the keys sheet ([[F1]]), find **Colours**, click a favourite's swatch and pick a colour. Your favourites are kept with your keys, so they follow your account. With Studio's keys they have no key at first, as in Studio; set any of them in the sheet.
 
-To select more like what is selected: [[Alt+C]] the same colour, [[Alt+P]] the same part, [[Alt+J]] everything joined to it, [[Alt+I]] everything else. With Studio's keys, [[Shift+V]] goes through the same colour, the same part, both and everything joined, a press each.
+To select more like what is selected: [[Alt+C]] the same colour, [[Alt+P]] the same part, [[Alt+A]] both, [[Alt+J]] everything joined to it, [[Alt+I]] everything else. With Studio's keys, [[Shift+V]] goes through the same colour, the same part, both and everything joined, a press each.
 
 <!-- covers
 ui:colour keys

@@ -132,7 +132,7 @@ ui:handles on the selection
 ## Mirror, replace and paint {#mirror}
 
 - **Edit › Mirror** ([[Shift+M]]) mirrors the selection, swapping each part for its left- or right-handed twin where there is one.
-- **Edit › Replace with the part in hand** swaps every selected part for the one you hold, keeping where each was.
+- **Edit › Replace with the part in hand** ([[Alt+R]]) swaps every selected part for the one you hold, keeping where each was.
 - [[C]] paints the selection in the current colour; the **Paint** tool paints each part you click.
 - An assistant mirrors parts by number with `mirror_parts`, in place as [[Shift+M]] does, or as a copy beside them: across the model's middle, a left half makes the right half.
 

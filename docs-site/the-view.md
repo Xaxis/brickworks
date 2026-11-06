@@ -74,7 +74,7 @@ ui:stress view
 
 ## Floor and stud grid {#floor}
 
-**View › Floor** sets what the model stands on: a baseplate 16, 32 or 48 studs (or any size in eights to 192), in a colour baseplates come in, a grid floor, or nothing at all, as a car or a ship stands on a table. With nothing selected, the properties panel has the same. **Settings › New models start on** chooses the floor a new model gets. **View › Stud grid** draws the studs' grid over the floor.
+**View › Floor** sets what the model stands on: a baseplate 16, 32 or 48 studs (or any size in eights to 192), in a colour baseplates come in, a grid floor, or nothing at all, as a car or a ship stands on a table. With nothing selected, the properties panel has the same. **Settings › New models start on** chooses the floor a new model gets. **View › Stud grid** ([[Alt+G]]) draws the studs' grid over the floor.
 
 <!-- covers
 ui:floor
@@ -83,7 +83,7 @@ ui:stud grid
 
 ## A picture to build over {#reference}
 
-**Make › Reference picture…** lays a photo, a plan or a drawing (PNG, JPEG, WebP, BMP or SVG) in the scene to build over: on the floor under the model, or standing behind it as the front or the side view sees it. It opens as wide as the model, half see-through, with its corners showing.
+**Make › Reference picture…** ([[Alt+N]]) lays a photo, a plan or a drawing (PNG, JPEG, WebP, BMP or SVG) in the scene to build over: on the floor under the model, or standing behind it as the front or the side view sees it. It opens as wide as the model, half see-through, with its corners showing.
 
 - **Width** is typed in studs, to a twentieth of a stud. Drag a corner to size it from the corner across; drag the picture to slide it.
 - **Opacity** fades it from 0 to 100%.

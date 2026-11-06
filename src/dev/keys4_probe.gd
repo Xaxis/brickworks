@@ -302,6 +302,8 @@ func _cases() -> Dictionary:
 			func(seen: Variant) -> bool: return seen == true],
 		"replace": [func() -> void:
 				(_main.get("_bin") as PartsBin).part_chosen.emit("3003")
+				# The yellow 2x4 found again: an undone replace puts back a part.
+				_b = _yellow()
 				_select([_b]),
 			func() -> Variant:
 				await _frames(20)
@@ -542,6 +544,13 @@ func _parts() -> Array:
 		return not _store.scenery.has(b.id)).map(func(b: BrickWorld.Brick) -> String: return b.part_id)
 	out.sort()
 	return out
+
+
+func _yellow() -> int:
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3001" and brick.color_code == 14:
+			return brick.id
+	return 0
 
 
 func _panel_up(field: String) -> bool:
