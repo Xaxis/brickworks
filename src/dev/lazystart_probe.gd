@@ -61,14 +61,15 @@ func _run() -> void:
 	_check("the window up and settled, still none loaded: %s" % ", ".join(_loaded()),
 		_loaded().is_empty())
 	_check("and nothing asked Later for one: %s" % str(_took()), _took().is_empty())
-	# A signed-in person's collection arrives a few seconds after My
-	# collection is made (Shell.collection): it told the assistant, and
-	# asking for it made one then, on the web 5 to 9 s of compiling under the
-	# person's first click (load_check, 2026-10-31).
-	_shell.collection.store.changed.emit()
+	# A signed-in person's collection arrives a few seconds after the window
+	# is made (Shell.collection_store): it told the assistant, and asking for
+	# it made one then, on the web 5 to 9 s of compiling under the person's
+	# first click (load_check, 2026-10-31). Nor does it make My collection's
+	# panel, which reads the same store once it is opened.
+	_shell.collection_store.changed.emit()
 	await _frames(3)
-	_check("their collection arriving makes no assistant: %s" % str(_took()),
-		_took().keys() == [&"CollectionDialog"] and _main.get("_assistant_made") == null)
+	_check("their collection arriving makes no assistant and no panel: %s" % str(_took()),
+		_took().is_empty() and _main.get("_assistant_made") == null)
 
 	await _a_model()
 	_made_where_they_were()

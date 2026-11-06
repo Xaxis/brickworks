@@ -40,12 +40,19 @@ var _sections: Node = null
 var grid: StudGrid
 ## Build your first model, along the top of the model: src/ui/first_build.gd.
 var first_build: FirstBuild
+## What the person owns, made with the window and fetched as they sign in,
+## as it was when My collection's panel was made with the window: Bring in a
+## 3D model's box, parts_list and the assistant read what is on hand here,
+## and none of them makes the panel to. With the panel made on first use
+## and fetching then, the first of them read nothing (leaves3, 2026-11-06).
+var collection_store: CollectionStore
 ## My collection: src/ui/collection_dialog.gd, made the first time it is asked
 ## for (Later): null in [member _collection] until then.
 var collection: Control:
 	get:
 		if _collection == null and app != null:
 			_collection = Later.make(&"CollectionDialog")
+			_collection.store = collection_store
 			_collection.said.connect(func(text: String) -> void: bar.say(text))
 			_collection.attach(app)
 			place_dialogs()
@@ -385,10 +392,23 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	first_build.shell = self
 	notices.add_child(first_build)
 
-	# What the person owns, what this model needs of it, what they could
-	# build ([member collection]); the parts list leads there too. Any of
-	# LDraw's models of real sets, or the community's, opened in a tab of its
-	# own ([member library_dialog]); File, Open leads there too.
+	# What the person owns, fetched as they sign in ([member collection_store]).
+	collection_store = CollectionStore.new()
+	collection_store.account = app.get("_account")
+	collection_store.library = library
+	add_child(collection_store)
+	collection_store.follow_account()
+	collection_store.changed.connect(func() -> void:
+		# The assistant prefers what is owned, for a brief that asks it to:
+		# told here once it is made, and told as it is made
+		# (Main._make_assistant). Never made for it.
+		var assistant: Variant = app.get("_assistant_made")
+		if assistant != null:
+			assistant.set("owned", collection_store.on_hand))
+	# What this model needs of it, what they could build ([member
+	# collection]); the parts list leads there too. Any of LDraw's models of
+	# real sets, or the community's, opened in a tab of its own ([member
+	# library_dialog]); File, Open leads there too.
 	bar.library_wanted.connect(func() -> void: library_dialog.open())
 
 	# Every text field gives the keys back, and Tab goes into the frame

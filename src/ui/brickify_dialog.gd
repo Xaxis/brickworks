@@ -211,7 +211,7 @@ func choose(asked: Dictionary) -> String:
 		if not asked.has("colours"):
 			_colours.select(2)
 	if asked.has("collection"):
-		_tell_owned()
+		tell_owned()
 		if bool(asked["collection"]) and _from_owned.disabled:
 			return ("there is no collection to lay it from: the person keeps none yet (My "
 				+ "collection, or parts_list which=need)")
@@ -259,11 +259,7 @@ func show_for(mesh: MeshFile) -> void:
 	_status.text = ""
 	_set_landed(false)
 	_set_enabled(true)
-	# The first time, this makes My collection, a compile that has to come
-	# before Brickify's starts on the worker: Godot's script cache is held for
-	# the whole of that, and made a frame later the collection waited it out,
-	# 4 s (leaves3, 2026-11-06).
-	_tell_owned()
+	tell_owned()
 	_show_model()
 	_on_up_changed()
 	_on_colours_changed()
@@ -542,8 +538,13 @@ func _set_landed(on: bool) -> void:
 		offset_bottom = _placed[7]
 
 
-## The box for laying from the collection, saying what is on hand.
-func _tell_owned() -> void:
+## The box for laying from the collection, saying what is on hand: as the
+## panel shows, and again as the collection arrives (Main). It reads the
+## window's collection (Shell.collection_store) and compiles nothing: My
+## collection's panel, made here before, held a browser's frame 303-476 ms,
+## and made a frame later it waited 4 s for Brickify's compile on the worker,
+## since the script cache is held for the whole of one (leaves3, 2026-11-06).
+func tell_owned() -> void:
 	var on_hand: Dictionary = owned.call()
 	var pieces: int = 0
 	for key: String in on_hand:

@@ -5497,9 +5497,9 @@ func _make_assistant() -> void:
 	# The picture a mosaic was asked of, for make_art.
 	if _mosaic_source != null:
 		_assistant_made.art_source = _mosaic_source
-	# What is owned, which a brief can ask it to prefer (CollectionDialog).
-	if _shell.collection != null and _shell.collection.store != null:
-		_assistant_made.owned = _shell.collection.store.on_hand
+	# What is owned, which a brief can ask it to prefer (Shell.collection_store).
+	if _shell != null and _shell.collection_store != null:
+		_assistant_made.owned = _shell.collection_store.on_hand
 	add_child(_assistant_made)
 	# Claude asking for more room than the selection waits on the person: the
 	# panel the question is in comes into view.
@@ -5903,8 +5903,11 @@ func _make_brickify() -> void:
 	# through the app's own exporters, of the build alone; and laid from the
 	# person's collection when they ask.
 	brickify.owned = func() -> Dictionary:
-		return _shell.collection.store.on_hand if _shell != null and _shell.collection != null \
-			and _shell.collection.store != null else {}
+		return _shell.collection_store.on_hand if _shell != null and _shell.collection_store != null \
+			else {}
+	# And told again as it arrives, once the person signs in.
+	if _shell != null and _shell.collection_store != null:
+		_shell.collection_store.changed.connect(brickify.tell_owned)
 	brickify.booklet_wanted.connect(_brickify_booklet)
 	brickify.shop_wanted.connect(func(shop: String, path: String) -> void:
 		brickify.tell(await _exports.shop_list(shop, _outside_of(path), true)))
