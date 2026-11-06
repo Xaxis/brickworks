@@ -228,21 +228,35 @@ plainer — see the first lever below.
      - So the measure reads what a part is, and what is new, about as a
        person would. It reads where a thing goes as the builder does. A
        placement change (an attach step, courses) can be judged by it only
-       once the builder puts a sub-assembly on where it connects.
+       once the builder reads where a thing goes as a person does. Its hands
+       are not the cause: it already puts things only where they connect
+       (follower, below).
      - On identical pages one builder to the next moves a stretch by 17 of
        73 parts, and the nose between right and 4 plates off.
      - The cheapest fix was tried: both builders told to check each
        placement against the page from its angle. They looked more and
        placed no better: ours 17 to 19 of 35, LEGO's 8 to 4. LEGO's seat
        back went 6 plates high in 4 of 4. The builder sees the picture agree
-       with a placement a person's hands would never make.
+       with a placement a person would not choose, though the parts click
+       in there.
    - **Next**, a unit each:
      - a step that puts parts underneath drawn turned over, as LEGO's is.
        The author's file asks for it (ROTSTEP's roll), and ours draws no
        roll. The parts box shows the dish now (partsbox); the turn would
        show where each part underneath goes;
      - a builder that puts a sub-assembly on only where it connects, as
-       hands do, before any placement change is judged again (bookletcal);
+       hands do. **Tried, NO-GO** (follower, 2026-11-05). Its hands are
+       already a person's: the app refuses a part that collides, floats or
+       would fall (156 of 556 edits over 29 runs on 7140). Every
+       sub-assembly put on wrong in those runs is on real studs: LEGO's
+       seat back 6 plates high is on the two slopes' top studs (7 of 8
+       runs), our nose 4 plates high on the black 2 x 4's studs. Each final
+       build is in as many pieces as its seed. Snapping to where a thing
+       connects would move none of them, so no builder was run. The one
+       gap is a sub-assembly let go a stud short of its joint, named and
+       apart: LEGO's cart 1 off its towball in 2 of 4 runs on stretch A.
+       The misses are the builder's eyes: it reads height and depth off a
+       flat picture wrong, then finds studs that take the part there;
      - a modern LEGO booklet (2015 or later: a parts list a step, black with
        light edges, sub-assemblies lifted with arrows) built the same way,
        from a library set with its author's steps. 7140's is from 1999;
@@ -262,8 +276,11 @@ plainer — see the first lever below.
        high. Next: keep it drawn in place and show the landing another way,
        see-through or marked the step before. The change is in
        bench/results/attachstep-2026-11-05/lift.patch. LEGO's own in-place
-       drawing lost the seat back in 7 runs of 8 (bookletcal), so this lever
-       waits for a builder that places as hands do;
+       drawing lost the seat back in 7 runs of 8 (bookletcal). Its NO-GO
+       stands for this builder: its after runs' seat back and nose sit on
+       real studs too (follower), so a builder that places as hands do
+       would not have changed them. This lever waits for a builder that
+       reads height from a picture;
      - black parts drawn with their edges. **Tried, NO-GO** (blackedges,
        2026-11-05). Over 7 runs each way, right parts fell from 73 to 42 of
        96. Wrong parts rose from 8 to 30. Drawn with its edges, the dish
