@@ -771,7 +771,7 @@
       "kind": "ui",
       "label": "parts lists for shops",
       "entry": "src/assembly/shop_lists.gd",
-      "reach": "godot --path .  (File, Export, then BrickLink wanted list or Rebrickable parts list)",
+      "reach": "godot --path .  (File, Export, then BrickLink wanted list, Rebrickable parts list or LEGO® Pick a Brick list; or the parts list's BrickLink, its choices beside it, Rebrickable and LEGO® Pick a Brick)  /  export_model format=pickabrick, format=bricklink condition= wanted_list= notify=",
       "area": "model-io"
     },
     {
@@ -3201,6 +3201,13 @@
       "label": "save dialog probe",
       "entry": "src/dev/save_dialog_probe.gd",
       "reach": "tools/probe.sh save_dialog_probe -- --shots=DIR",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "picklist probe",
+      "entry": "src/dev/picklist_probe.gd",
+      "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
       "area": "model-io"
     },
     {

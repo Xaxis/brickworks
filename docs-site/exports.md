@@ -1,10 +1,12 @@
 ---
 tools: render_model, render_queue, animate_model, render_motion, export_model, parts_list
 panels: RenderDialog#render, RenderQueue#render-queue
-ai: Every file Brickworks writes: LDraw, Studio, 3D models, pictures, BrickLink and Rebrickable parts lists, all models as a .zip, and photo-real renders, turntables, motion animations and building videos. An assistant renders with render_model or render_motion and exports with export_model; the long ones are jobs.
+ai: Every file Brickworks writes: LDraw, Studio, 3D models, pictures, BrickLink, Rebrickable and LEGO® Pick a Brick parts lists, all models as a .zip, and photo-real renders, turntables, motion animations and building videos. An assistant renders with render_model or render_motion and exports with export_model; the long ones are jobs.
 rules:
   - A render, a Studio file, a picture and the instructions answer with a job number; follow it with job.
   - On the desktop an export asks where to save; in a browser it downloads.
+  - export_model format=pickabrick names the parts with no LEGO® element number in its answer; tell the person, they buy those elsewhere.
+  - A BrickLink wanted list takes condition (new, used, any), wanted_list (an ID) and notify; nothing is uploaded, the person uploads the file.
 title: Exports and renders
 nav: Exports and renders
 description: Every file Brickworks saves, from LDraw and Studio files to 3D models, pictures, shopping lists and photo-real renders.
@@ -20,6 +22,7 @@ description: Every file Brickworks saves, from LDraw and Studio files to 3D mode
 | Picture of the model (`.png`) | A picture with nothing behind the model |
 | BrickLink wanted list (`.xml`) | Buy the parts on BrickLink |
 | Rebrickable parts list (`.csv`) | Buy the parts, or check them against your sets on Rebrickable |
+| LEGO® Pick a Brick list (`.csv`) | Buy the parts new from LEGO® Pick a Brick, by their element numbers |
 | All my models (`.zip`) | Every model saved here, as LDraw files: a copy of your own |
 
 <!-- covers
@@ -33,6 +36,10 @@ ui:picture of the model
 ## Parts lists for shops {#shop-lists}
 
 The parts list ([[P]], or **Build › Parts list**) counts every part by colour. The BrickLink and Rebrickable exports group them by lot, the way shops sell them; with [your collection](/docs/collection) set, what you own is taken off first.
+
+**LEGO® Pick a Brick** (on the parts list, or **File › Export**) writes the list LEGO® Pick a Brick uploads: each part's LEGO® element number and how many, up to 400 lines a file and 999 of an element, as its upload takes them. A bigger model comes as two files or more. A part with no element number known (a few prints, old moulds, parts you made) is not on it: the parts list names each one under its buttons, to buy elsewhere.
+
+The arrow beside **BrickLink** sets what the wanted list asks of each part, as BrickLink's upload reads it: new, used, or either; which of your wanted lists it goes into (its ID, the number after `wantedMoreID=` in its address; empty for your main list); and whether BrickLink emails you when one is listed for sale. **BrickLink** and **File › Export** then write it so, until you change it. Nothing is uploaded: you upload the file on BrickLink under **Wanted › Upload**.
 
 <!-- covers
 ui:parts lists for shops

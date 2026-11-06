@@ -46,7 +46,19 @@ var _title: String = "Model"
 var _need: Button
 var _csv: Button
 var _bricklink: Button
+## What BrickLink's wanted list asks of each part, beside its button
+## ([method ask_bricklink]).
+var _bricklink_wants: Button
+var _wants_dialog: ConfirmationDialog
+var _condition: OptionButton
+var _wanted_list: LineEdit
+var _notify: CheckBox
 var _rebrickable: Button
+## LEGO's own shop: a Pick a Brick list of element numbers.
+var _pickabrick: Button
+## What the last list written said: where it went, and the parts left off it
+## by name. Wrapped at the panel's foot, as many lines as it needs.
+var _note: Label
 var _done: Button
 
 signal closed
@@ -55,7 +67,7 @@ signal closed
 signal chosen(ids: PackedInt64Array, what: String)
 ## The parts against the person's collection: CollectionDialog.
 signal need_wanted
-## A shop's list was asked for: "bricklink" or "rebrickable".
+## A shop's list was asked for: "bricklink", "rebrickable" or "pickabrick".
 signal shop_wanted(shop: String)
 ## Where the CSV went, for the status bar too, with its Show in folder.
 signal said(line: String)
@@ -71,10 +83,12 @@ func _header_button(header: Container, words: String, tip: String) -> Button:
 	return button
 
 
-## What a shop's list came to, said where it was asked for.
+## What a shop's list came to, said where it was asked for: at the panel's
+## foot, wrapped, so a list's parts left off are all there to read.
 func tell(line: String) -> void:
 	if not line.is_empty():
-		_heading.text = line
+		_note.text = line
+		_note.visible = true
 
 
 ## Its controls, for the page to find.
@@ -84,6 +98,15 @@ func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"parts_need": _need, "parts_csv": _csv,
 		"parts_bricklink": _bricklink, "parts_rebrickable": _rebrickable, "parts_done": _done,
 		"parts_find": _find}
+	named["parts_bricklink_wants"] = _bricklink_wants
+	named["parts_pickabrick"] = _pickabrick
+	if _note.visible:
+		named["parts_note"] = _note
+	if _wants_dialog != null and _wants_dialog.visible:
+		named["bricklink_condition"] = _condition
+		named["bricklink_list"] = _wanted_list
+		named["bricklink_notify"] = _notify
+		named["bricklink_save"] = _wants_dialog.get_ok_button()
 	# The first row shown, which a click selects in the model.
 	if _rows.get_child_count() > 0:
 		named["parts_row"] = _rows.get_child(0)
@@ -136,9 +159,19 @@ func _build() -> void:
 	_bricklink = _header_button(header, "BrickLink",
 		"A BrickLink wanted list (.xml), to upload under Wanted › Upload")
 	_bricklink.pressed.connect(func() -> void: shop_wanted.emit("bricklink"))
+	# Its condition, wanted list and email, as BrickLink's upload reads them,
+	# beside it: the button itself writes the list as they were last chosen.
+	_bricklink_wants = _header_button(header, "",
+		"BrickLink wanted list: new or used, which of your wanted lists, and an email when one is listed")
+	# A drop-down's own arrow: the font has no small one.
+	_bricklink_wants.icon = get_theme_icon("arrow", "OptionButton")
+	_bricklink_wants.pressed.connect(ask_bricklink)
 	_rebrickable = _header_button(header, "Rebrickable",
 		"A Rebrickable parts list (.csv), to import into a list of your own")
 	_rebrickable.pressed.connect(func() -> void: shop_wanted.emit("rebrickable"))
+	_pickabrick = _header_button(header, "LEGO® Pick a Brick",
+		"A list of LEGO® element numbers (.csv), to upload at LEGO® Pick a Brick: the parts it has no number for are named")
+	_pickabrick.pressed.connect(func() -> void: shop_wanted.emit("pickabrick"))
 
 	_done = _header_button(header, "Done", "")
 	_done.pressed.connect(hide_list)
@@ -168,6 +201,15 @@ func _build() -> void:
 	_scroll.add_child(_rows)
 	_sight = ThumbTile.Sight.new(_scroll, _rows)
 
+	# At the foot, under the rows: a list written never moves the row under
+	# the pointer.
+	_note = Label.new()
+	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_note.add_theme_font_size_override("font_size", 12)
+	_note.modulate = Color(1, 1, 1, 0.8)
+	_note.visible = false
+	column.add_child(_note)
+
 
 func is_showing() -> bool:
 	return visible
@@ -183,6 +225,7 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 		return false
 
 	_heading.text = _counts()
+	_note.visible = false
 
 	for child: Node in _rows.get_children():
 		_rows.remove_child(child)
@@ -374,6 +417,88 @@ func _row(lot: Inventory.Lot) -> Button:
 	shade.clip_text = true
 	row.add_child(shade)
 	return button
+
+
+## The BrickLink wanted list's choices, as its upload help names them: the
+## condition (CONDITION), which wanted list (WANTEDLISTID) and an email when
+## a lot is listed (NOTIFY); kept on this device (ShopLists.Wants), and the
+## list written with them.
+func ask_bricklink() -> void:
+	if _wants_dialog == null:
+		_wants_dialog = ConfirmationDialog.new()
+		_wants_dialog.title = "BrickLink wanted list"
+		_wants_dialog.ok_button_text = "Save the list"
+		# Each word beside its field; on a phone above it, the screen being no
+		# wider than a field and its word (a sheet as wide as the screen).
+		var phone: bool = Phone.on()
+		var fields := GridContainer.new()
+		fields.columns = 1 if phone else 2
+		fields.add_theme_constant_override("h_separation", 12)
+		fields.add_theme_constant_override("v_separation", 8)
+		var condition := Label.new()
+		condition.text = "Condition"
+		fields.add_child(condition)
+		_condition = OptionButton.new()
+		for words: String in ["New or used", "New only", "Used only"]:
+			_condition.add_item(words)
+		_condition.tooltip_text = "The condition BrickLink looks for in each part"
+		fields.add_child(_condition)
+		var into := Label.new()
+		into.text = "Wanted list"
+		fields.add_child(into)
+		_wanted_list = LineEdit.new()
+		_wanted_list.placeholder_text = "Main wanted list"
+		_wanted_list.tooltip_text = ("Another of your wanted lists: its ID, the number after "
+			+ "wantedMoreID= in its address on BrickLink. Empty for your main wanted list")
+		_wanted_list.custom_minimum_size = Vector2(0 if phone else 240, 0)
+		_wanted_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_wanted_list.max_length = 12
+		# Digits only: any other key is not an ID.
+		_wanted_list.text_changed.connect(func(text: String) -> void:
+			var digits: String = ""
+			for character: String in text:
+				if character >= "0" and character <= "9":
+					digits += character
+			if digits != text:
+				var at: int = _wanted_list.caret_column
+				_wanted_list.text = digits
+				_wanted_list.caret_column = mini(at, digits.length()))
+		_wanted_list.text_submitted.connect(func(_text: String) -> void:
+			_wants_dialog.get_ok_button().pressed.emit())
+		fields.add_child(_wanted_list)
+		# Where its ID is, in sight: a tooltip is not read before a list goes
+		# to the wrong one.
+		if not phone:
+			fields.add_child(Control.new())
+		var where := Label.new()
+		where.text = ("Empty for your main list. Another: the number after wantedMoreID= "
+			+ "in its address on BrickLink")
+		where.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		where.custom_minimum_size = Vector2(0 if phone else 240, 0)
+		where.add_theme_font_size_override("font_size", 11)
+		where.modulate = Color(1, 1, 1, 0.65)
+		fields.add_child(where)
+		if not phone:
+			fields.add_child(Control.new())
+		_notify = CheckBox.new()
+		_notify.text = "Email me when one is listed for sale"
+		_notify.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		fields.add_child(_notify)
+		_wants_dialog.add_child(fields)
+		_wants_dialog.confirmed.connect(func() -> void:
+			var wants := ShopLists.Wants.new()
+			wants.condition = ["", "N", "U"][_condition.selected]
+			wants.wanted_list = _wanted_list.text.strip_edges().lstrip("0")
+			wants.notify = _notify.button_pressed
+			wants.keep()
+			shop_wanted.emit("bricklink"))
+		add_child(_wants_dialog)
+	var kept: ShopLists.Wants = ShopLists.Wants.kept()
+	_condition.select(["", "N", "U"].find(kept.condition))
+	_wanted_list.text = kept.wanted_list
+	_notify.button_pressed = kept.notify
+	_wants_dialog.popup_centered()
+	_condition.grab_focus()
 
 
 func _on_csv() -> void:
