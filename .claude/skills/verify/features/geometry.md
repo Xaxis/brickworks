@@ -427,7 +427,12 @@ can occupy the same millimetre.
   down it. `technic_hand_probe` has each by hand, dragged, swapped and over
   MCP at the stop to 0.01 LDU, and a figure on two cones by hand and by
   add_minifig; `joints_probe` four parts 4 LDU down a cone's stud from a
-  file, refused (conestop). A pose the LEGO Group's sets are built in
+  file, refused (conestop). The hand asks it on every aim of what is at each
+  hole only, the studs there read by place (`Exact.sunk_under`,
+  `Exact.studs_in`), never the parts in hand against each other: a figure's
+  own parts were weighed by their shapes whenever anything was near, and
+  `bigmodel_probe`'s figure aim grew 76x on the big model (figlift).
+  A pose the LEGO Group's sets are built in
   (`ExactCheck.known_fit`) no deeper than a stud reaches is not sunk
   (`ExactCheck._fit_sunk`): three sets' headlights put a 6141 4 LDU into a
   4740 dish's tube, and `tested_seeds` holds 42022-1 to the faults it had
