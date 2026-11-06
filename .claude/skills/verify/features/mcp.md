@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
 
 ## Sub-features
 
@@ -129,6 +129,22 @@ asking for an API key.
   `render_model` Best says how it was drawn (`AppTools._best_said`, read off
   `StudioRender.traced_last`). `src/dev/seeing_probe.gd` measures each picture
   against the app's own drawing of the same, windowed.
+  **Pattern's grid** (`src/net/pattern_tool.gd`, `PatternTool`, APP_UX4 grid,
+  2026-11-05): `pattern_parts` is Edit, Pattern…, In a grid on bricks= in one
+  call: `columns`, `rows`, `levels` (each counting the parts given; a row is
+  one row and one level), `column_studs`/`row_studs` in studs and
+  `level_plates` in plates, each the parts' own size when not given
+  (`Pattern.own_spacing`: a 2 x 2 brick is 2, 2 and 3, its studs not
+  counted). The window's own `Pattern.grid` over `Pattern.grid_places`, put
+  down by the dialog's `Pattern` node (`Pattern.put`: every copy checked by
+  `Builder.room_for`, all or nothing, one undo step), the person's selection
+  kept; a refusal is `Pattern.refusal` with the grid's places, the column, row
+  and level of the first copy with no room and the part in its way with its
+  number. Answered with the copies pictured (`SeeTools.pictured`).
+  `grid_probe`'s last section calls it as the connector does
+  (`CommandSocket.answer_rpc`): the 4 x 3 x 2 in 1 call, 24 to the LDU, the
+  session's undo once, the collision refused with where, and the copies
+  touching when no spacing is given.
   **CAD answers** (mcpcad, 2026-10-31): a `submit_design` from outside is a
   design (`Assistant.is_design`: features named, or `design_parts`, 20, parts
   or more) told the designer's method (`FROM_OUTSIDE_NEXT`), its save handed

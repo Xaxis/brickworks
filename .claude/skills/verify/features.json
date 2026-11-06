@@ -3388,6 +3388,14 @@
       "tests": []
     },
     {
+      "id": "lib:pattern's grid over mcp",
+      "kind": "lib",
+      "entry": "src/net/pattern_tool.gd",
+      "reach": "tools/probe.sh grid_probe   (pattern_parts: bricks= in columns, rows and levels, column_studs/row_studs/level_plates apart or touching; one call, one undo step, a copy with no room said by its column, row and level and the part in its way)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "lib:placing a part by its connectors",
       "kind": "lib",
       "entry": "src/assembly/attach.gd",
@@ -4859,7 +4867,7 @@
       "id": "ui:patterns",
       "kind": "ui",
       "entry": "src/assembly/pattern.gd",
-      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
+      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, In a grid (columns, rows and levels, each so many studs or plates apart), Round or Along a hose, a count In all, the copies shown as they will go, a copy with no room red and named by its place; one Ctrl+Z takes them all back)  /  tools/probe.sh grid_probe",
       "area": "building",
       "tests": [
         "tests/test_release.py"

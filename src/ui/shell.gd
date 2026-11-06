@@ -47,7 +47,7 @@ var versions: VersionsDialog
 ## Compare with a save, from Versions… or File, Compare with…:
 ## src/ui/compare_view.gd.
 var compare: CompareView
-## Edit, Pattern…: copies in a row, round, or along a hose (Pattern).
+## Edit, Pattern…: copies in a row, a grid, round, or along a hose (Pattern).
 var pattern_dialog: PatternDialog
 ## Help, Send feedback… (FeedbackDialog).
 var feedback: FeedbackDialog
@@ -1077,7 +1077,7 @@ func _define() -> void:
 		if builder.is_carrying():
 			verbs.put_away()
 		pattern_dialog.open(builder.selection.keys()), selected,
-		"Copies of the selection in a row, round, or along a hose, put down at once")
+		"Copies of the selection in a row, a grid, round, or along a hose, put down at once")
 	_add("delete", "Delete", KEY_DELETE, func() -> void: await verbs.press("delete"),
 		selected, "Take the selection off the model")
 	_add("select_all", "Select all", CTRL | KEY_A, func() -> void: verbs.select_by("all"),

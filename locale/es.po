@@ -10911,6 +10911,76 @@ msgstr "Automático: el modo más sencillo, que necesitan estos gráficos (%s). 
 msgid "From the next start."
 msgstr "Desde el próximo arranque."
 
+# Pattern's In a grid: columns, rows and levels in one dialog (APP_UX4 grid)
+msgid "In a grid"
+msgstr "En cuadrícula"
+
+msgid "Columns"
+msgstr "Columnas"
+
+msgid "Rows"
+msgstr "Filas"
+
+msgid "Levels"
+msgstr "Niveles"
+
+msgid "studs along x"
+msgstr "espigas a lo largo de x"
+
+msgid "studs along z"
+msgstr "espigas a lo largo de z"
+
+msgid "plates up"
+msgstr "placas hacia arriba"
+
+msgid "1 copy"
+msgstr "1 copia"
+
+msgid "%d copies"
+msgstr "%d copias"
+
+msgid "1 column"
+msgstr "1 columna"
+
+msgid "%d columns %s apart"
+msgstr "%d columnas a %s de distancia"
+
+msgid "1 row"
+msgstr "1 fila"
+
+msgid "%d rows %s apart"
+msgstr "%d filas a %s de distancia"
+
+msgid "1 level"
+msgstr "1 nivel"
+
+msgid "%d levels %s apart"
+msgstr "%d niveles a %s de distancia"
+
+msgid "1 stud"
+msgstr "1 espiga"
+
+msgid "each has room"
+msgstr "todas caben"
+
+msgid "the copy in column %d, row %d, level %d has no room: %s is in the way"
+msgstr "la copia en la columna %d, fila %d, nivel %d no cabe: %s estorba"
+
+msgid "%d copies have no room, the first in column %d, row %d, level %d: %s is in the way"
+msgstr "%d copias no caben, la primera en la columna %d, fila %d, nivel %d: %s estorba"
+
+msgid "%d copies have no room, the first copy %d: %s is in the way"
+msgstr "%d copias no caben, la primera es la copia %d: %s estorba"
+
+msgid "a grid of %d copies"
+msgstr "una cuadrícula de %d copias"
+
+msgid "one %s takes them all back"
+msgstr "un %s las deshace todas"
+
+msgid "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
+msgstr "Copias de la selección en fila, en cuadrícula, en círculo o a lo largo de una manguera, colocadas de una vez"
+
 # A model into this one (APP_UX4 intomodel): File, Import, Into this model…, the
 # library's Put in this model, and what the status bar says while it is in hand.
 

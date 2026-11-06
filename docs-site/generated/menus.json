@@ -330,7 +330,7 @@
 					"name": "pattern",
 					"words": "Pattern…",
 					"key": "Ctrl+Shift+D",
-					"tip": "Copies of the selection in a row, round, or along a hose, put down at once"
+					"tip": "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
 				},
 				{
 					"name": "delete",

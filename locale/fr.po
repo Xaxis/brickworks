@@ -10911,6 +10911,76 @@ msgstr "Automatique : le mode simplifié, dont ces graphismes ont besoin (%s). P
 msgid "From the next start."
 msgstr "À partir du prochain démarrage."
 
+# Pattern's In a grid: columns, rows and levels in one dialog (APP_UX4 grid)
+msgid "In a grid"
+msgstr "En grille"
+
+msgid "Columns"
+msgstr "Colonnes"
+
+msgid "Rows"
+msgstr "Rangées"
+
+msgid "Levels"
+msgstr "Niveaux"
+
+msgid "studs along x"
+msgstr "tenons le long de x"
+
+msgid "studs along z"
+msgstr "tenons le long de z"
+
+msgid "plates up"
+msgstr "plaques en hauteur"
+
+msgid "1 copy"
+msgstr "1 copie"
+
+msgid "%d copies"
+msgstr "%d copies"
+
+msgid "1 column"
+msgstr "1 colonne"
+
+msgid "%d columns %s apart"
+msgstr "%d colonnes espacées de %s"
+
+msgid "1 row"
+msgstr "1 rangée"
+
+msgid "%d rows %s apart"
+msgstr "%d rangées espacées de %s"
+
+msgid "1 level"
+msgstr "1 niveau"
+
+msgid "%d levels %s apart"
+msgstr "%d niveaux espacés de %s"
+
+msgid "1 stud"
+msgstr "1 tenon"
+
+msgid "each has room"
+msgstr "chacune a sa place"
+
+msgid "the copy in column %d, row %d, level %d has no room: %s is in the way"
+msgstr "la copie en colonne %d, rangée %d, niveau %d n'a pas de place : %s gêne"
+
+msgid "%d copies have no room, the first in column %d, row %d, level %d: %s is in the way"
+msgstr "%d copies n'ont pas de place, la première en colonne %d, rangée %d, niveau %d : %s gêne"
+
+msgid "%d copies have no room, the first copy %d: %s is in the way"
+msgstr "%d copies n'ont pas de place, la première étant la copie %d : %s gêne"
+
+msgid "a grid of %d copies"
+msgstr "une grille de %d copies"
+
+msgid "one %s takes them all back"
+msgstr "un %s les retire toutes"
+
+msgid "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
+msgstr "Des copies de la sélection en ligne, en grille, en cercle ou le long d'un tuyau, posées d'un coup"
+
 # A model into this one (APP_UX4 intomodel): File, Import, Into this model…, the
 # library's Put in this model, and what the status bar says while it is in hand.
 

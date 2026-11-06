@@ -579,6 +579,48 @@ commit. None of the ten needs the owner.
   - an oval of 16 curves and 4 straights by a session in 3 calls or fewer;
   - `snap`, `connect` and `attach` pass.
 
+**6. grid: a grid of copies in one dialog.** Its Change and Bar are its row
+above.
+- **Done** (grid, 2026-11-05; `grid_probe`, red on pre261, which has no In a
+  grid (only In a row, Round and Along a hose, so a 4 x 3 x 2 block was a
+  row, that row copied, then that layer copied up), green with 29 checks at
+  1280 x 720 and at 1400 x 900):
+  1. Pattern's **In a grid**: one 2 x 2 brick, a click, Ctrl+Shift+D, In a
+     grid, then 4 columns, 3 rows and 2 levels, every 3 studs, 3 studs and
+     9 plates, typed with Tab between them, and Enter: 15 actions in **one
+     dialog**, which says "23 copies · 4 columns 3 studs apart · 3 rows 3
+     studs apart · 2 levels 3 bricks apart · each has room" and draws the
+     copies before anything is put down;
+  2. **24 parts**, each within 0.01 LDU of its place (60 LDU a column and
+     a row, 72 a level), square to the grid, none in another's room;
+  3. **one undo**: one step; one Ctrl+Z takes the 23 copies back, and redo
+     puts each back at its place;
+  4. a 1 x 4 brick where column 3, row 2, level 1 would go is **refused with
+     where**: "the copy in column 3, row 2, level 1 has no room: Brick 1 x 4
+     is in the way", drawn red, Put them down greyed, and Enter puts nothing
+     down;
+  5. **`patterns` passes** (229 checks), and so does the dialog's own
+     `handbuild_probe -- only=patterns` (27: the fence, `/4`, the ring and
+     the hose). The dialog's words are in German, French and Spanish, and
+     it opens inside the window in each; `languages` (104), `tooltip_fit`
+     and `typed_moves` (75) pass.
+  6. **The same grid over MCP**, as the owner's Claude lays it: the new
+     `pattern_parts` tool (columns, rows and levels, `column_studs`,
+     `row_studs` and `level_plates`, each spacing the parts' own size when
+     not given) runs the same `Pattern.grid`, room check and undo step as the
+     dialog. In `grid_probe`, the same 4 x 3 x 2 is **1 call**: 24 bricks,
+     each within 0.01 LDU of its place, none in another's room. It is **one
+     undo**: the session's `undo`, called once, takes all 23 copies back.
+     With the 1 x 4 brick in the way it is **refused with where**: "the copy
+     in column 3, row 2, level 1 has no room: Brick 1 x 4 is in the way
+     (#26). Nothing changed", and no step is added. Left to their own size,
+     2 x 2 bricks lay touching (40 LDU, 24 LDU). The person's selection is
+     left as it was. 40 checks at 1280 x 720 and at 1400 x 900; `mcp_sync`,
+     `mcp` (75), `mcp_lean` (27) and `patterns` (229) pass. The window's
+     default level spacing now rounds a 2 x 2 brick's 28 LDU height down to
+     3 plates rather than up to 4, so a level, or a row going up, touches
+     the one below.
+
 **7. partbypart: Build it a part at a time.**
 - **Change.** Build it, a part at a time: the next part alone highlighted
   and the rest of the step faded, "3 of 8 in this step", Next and Back by

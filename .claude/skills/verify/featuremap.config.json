@@ -4229,7 +4229,7 @@
       "kind": "ui",
       "label": "patterns",
       "entry": "src/assembly/pattern.gd",
-      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
+      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, In a grid (columns, rows and levels, each so many studs or plates apart), Round or Along a hose, a count In all, the copies shown as they will go, a copy with no room red and named by its place; one Ctrl+Z takes them all back)  /  tools/probe.sh grid_probe",
       "area": "building"
     },
     {
@@ -4651,6 +4651,13 @@
       "entry": "src/render/cut_shape.gd",
       "reach": "tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes && tools/probe.sh cutshapes_kept   (by hand: View, Cut away by, A box; drag a knob, or the wheel over it; Grow, Shrink; A sphere or A cylinder in the strip; save, open)",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "pattern's grid over mcp",
+      "entry": "src/net/pattern_tool.gd",
+      "reach": "tools/probe.sh grid_probe   (pattern_parts: bricks= in columns, rows and levels, column_studs/row_studs/level_plates apart or touching; one call, one undo step, a copy with no room said by its column, row and level and the part in its way)",
+      "area": "mcp"
     }
   ]
 }

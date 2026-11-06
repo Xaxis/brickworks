@@ -218,7 +218,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   refusal says which copy and what is in the way; nothing is put down unless all
   fit. `handbuild_probe -- only=patterns`: a fence of 12 posts in 5 actions, `/4`,
   a row through a brick refused, a ring of 16 bricks on turntables in 6 actions,
-  four along a pneumatic tube, each one Ctrl+Z.
+  four along a pneumatic tube, each one Ctrl+Z. In a grid (APP_UX4 grid, LeoCAD's
+  Array): columns along x, rows along z and levels up, each a count from the
+  selection's own and a spacing in studs or plates (starting at the selection's
+  size), laid by `Pattern.grid` over `Pattern.grid_places` (capped at 501 so a huge
+  count is refused as too many, not counted out), and a copy with no room said by
+  its column, row and level (`Pattern.refusal`'s `places`). `grid_probe` (1400 x
+  900; `PROBE_SIZE=1280x720` too): a 2 x 2 brick in 4 columns, 3 rows and 2 levels,
+  3 studs, 3 studs and 9 plates apart, in one dialog by a click, Ctrl+Shift+D, In a
+  grid, six numbers with Tab and Enter: 24 bricks each at its place to the LDU, none
+  in another's room, one step to undo, redo; a 1 x 4 brick in column 3, row 2,
+  level 1's way refused with that place and its name, nothing put down.
 - `move and turn a selection`: `X` with a selection picks it up to follow the
   pointer; a click puts it down (lifting and putting down are one undo); `Esc`
   puts it back. `R` / `Shift-R` turn a selection where it stands, about the
