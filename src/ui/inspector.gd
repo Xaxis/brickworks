@@ -552,7 +552,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 		_ids.text = "Flexible part from the file, as LDCad drew it · %s" % brick.part_id
 	var versions: int = library.prints_of(PartPrints.plain_of(library, brick.part_id)).size() \
 		if shell.app != null else 0
-	_versions_button.visible = versions > 0 and not Stickers.sticks(library, brick.part_id)
+	_versions_button.visible = versions > 0 and not library.sticks(brick.part_id)
 	_versions_button.text = "Printed versions… (%d)" % versions
 	_show_colours([brick.color_code])
 	_place.visible = true
@@ -568,7 +568,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	if compact:
 		return
 	# Counted up to a point: on a big model all of it is joined to all of it.
-	var joined: int = SelectBy.connected(shell.world, shell.builder.lattice,
+	var joined: int = Later.script(&"SelectBy").connected(shell.world, shell.builder.lattice,
 		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
 	var lines := PackedStringArray()
 	lines.append("Joined to %s" % ("nothing" if joined <= 0 else (

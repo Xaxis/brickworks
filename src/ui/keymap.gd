@@ -198,6 +198,8 @@ const BROWSER_KEEPS: Array[int] = [CTRL | KEY_N, CTRL | KEY_T, CTRL | KEY_W,
 ## The keys a timeline being played answers, whatever the keymap: its own.
 const TIMELINE_KEYS: Array[int] = [KEY_LEFT, KEY_RIGHT, KEY_HOME, KEY_END, KEY_SPACE]
 
+## Between a menu and its submenu, as the docs and Find a command write it.
+const INTO := " › "
 ## What Shift makes of a key, as a browser names it: back to the key.
 const UNSHIFTED: Dictionary = {KEY_BRACELEFT: KEY_BRACKETLEFT, KEY_BRACERIGHT: KEY_BRACKETRIGHT,
 	KEY_PLUS: KEY_EQUAL, KEY_UNDERSCORE: KEY_MINUS, KEY_ASCIITILDE: KEY_QUOTELEFT,
@@ -579,11 +581,11 @@ static func menu_row(action: String) -> String:
 static func _row_in(items: Array, path: String, action: String) -> String:
 	for item: String in items:
 		if item == action:
-			return path + CommandPalette.INTO + words(action)
+			return path + INTO + words(action)
 		var kind: String = item.substr(1)
 		if item.begins_with(">") and Shell.SUBMENUS.has(kind):
 			var row: String = _row_in(Shell.SUBMENUS[kind],
-				path + CommandPalette.INTO + str(Shell.SUBMENU_WORDS.get(kind, kind)), action)
+				path + INTO + str(Shell.SUBMENU_WORDS.get(kind, kind)), action)
 			if not row.is_empty():
 				return row
 	return ""
