@@ -57,16 +57,30 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `!LDCAD` blocks, comments, the parts a file carries) are never touched. The
   lift that stands a model on the ground is the view's: taken off again on
   every save, so the file keeps its coordinates (whole-model saves too).
+  A step edit goes into the file as it is too (keeptext, 2026-11-05; probe
+  `keep_text`): steps given to a model that had none put its lines in steps,
+  a note with the part after it (`!LDCAD GROUP_NXT`, MLCAD's `BTG`/`HIDE`);
+  a copy built in its parent's steps (`AuthorSteps.IN_PARENT`) has its parts
+  written there under `0 !BRICKWORKS IN <copy>` lines, its own section kept;
+  sub-model copies reordered by steps keep their numbers with
+  `0 !BRICKWORKS COPY n`; a part moved a step in one copy of a sub-model
+  placed several times moves in every copy whose parts are the same
+  (`AuthorSteps._with_twins`), so 7140-1's four rear engines stay one
+  section. Before it, every step edit on a model with sub-model copies wrote
+  the file whole: 7140-1 lost 573 lines, 6780-1's helicopter 299.
   What cannot be one line is written whole (`write` returns null): a copy of
   a sub-model changed apart from its other copies, an assembly made or
-  renamed, steps given to a model that had none, a copy put in another step.
-  Then the author's header lines are kept in place of `0 Author: Brickworks`
-  (`SourceFile.header`, and `0 !BRICKWORKS WORKED_STEPS` when the steps are
-  the app's), and what the app could not show is carried in
-  (`SourceFile.carried_into`). Saved under another name, the name goes in a
-  `0 !BRICKWORKS TITLE` line, the author's first line untouched. The app's own
-  lines (floor, share, set) are the only lines added. A file Brickworks wrote
-  (`0 Author: Brickworks`) is written whole, as before.
+  renamed, a copy built in a parent placed more than once, a copy the file
+  built in its parent's steps given its own. Then the author's header lines
+  are kept in place of `0 Author: Brickworks` (`SourceFile.header`, and
+  `0 !BRICKWORKS WORKED_STEPS` when the steps are the app's), and what the
+  app could not show is carried in (`SourceFile.carried_into`). Saved under
+  another name, the name goes in a `0 !BRICKWORKS TITLE` line, the author's
+  first line untouched. The app's own lines (floor, share, set) are the only
+  lines added. A file Brickworks wrote (`0 Author: Brickworks`) is written
+  whole, as before, keeping the lines of its header it did not write
+  (`SourceFile.header_of`, `ModelStore._own_header`: the castle's
+  `0 // Designed by ...` went on every save).
 - `parts the app cannot show` (`ModelStore.unshown`, `SourceFile.unshown`):
   a part of the file the library has not got, a part the file carries that
   cannot be built (on the web, one drawn from an official part or subpart,
