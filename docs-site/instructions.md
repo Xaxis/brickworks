@@ -46,7 +46,7 @@ ui:the author's steps
 
 ## The booklet {#booklet}
 
-**Build › Instructions…** (or **Instructions** on the toolbar) lays out a booklet from the steps, as a set's is: a cover, each step's picture with the parts it adds in a box, sub-assemblies built in callouts beside the step they go on, and the parts list at the back. It opens in its own tab, ready to print.
+**Build › Instructions…** ([[Alt+B]], or **Instructions** on the toolbar) lays out a booklet from the steps, as a set's is: a cover, each step's picture with the parts it adds in a box, sub-assemblies built in callouts beside the step they go on, and the parts list at the back. It opens in its own tab, ready to print.
 
 <!-- covers
 ui:the booklet
