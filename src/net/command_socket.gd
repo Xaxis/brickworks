@@ -595,6 +595,8 @@ const HINTS := {
 	"edit_steps": ["Edit the build steps", "add"],
 	"booklet_layout": ["Read the booklet's pages", "look"],
 	"edit_booklet": ["Set how a booklet step is printed", "add"],
+	# pagesetup: the booklet's page, set the same again does nothing more.
+	"page_setup": ["Set up the booklet's page", "add", "again"],
 	"lay_flex": ["Lay a hose, tube or chain", "add"],
 	"pose_model": ["Pose a joint", "add", "again"],
 	"move_part": ["Move a part on its joint", "add", "again"],

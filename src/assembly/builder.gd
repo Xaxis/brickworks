@@ -1606,12 +1606,12 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 	var plan: Array = []
 	for brick: BrickWorld.Brick in bricks:
 		var part: String = brick.part_id
-		var other: String = Mirror.counterpart(library, part)
+		var other: String = Later.script(&"Mirror").counterpart(library, part)
 		if not other.is_empty() and library.mesh_for(other) != null:
 			part = other
 		# A part not swapped for its other hand is turned to look reflected
 		# by its own shape.
-		var at: Transform3D = _tidy(Mirror.reflected(brick.transform, axis, across,
+		var at: Transform3D = _tidy(Later.script(&"Mirror").reflected(brick.transform, axis, across,
 			library.mesh_for(part) if part == brick.part_id else null),
 			BrickLattice.is_square_to_grid(brick.transform.basis))
 		plan.append({"brick": brick, "part": part, "at": at})
@@ -2299,7 +2299,7 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 		_ghost.visible = false
 		_ghost_valid = false
 		return
-	if Stickers.sticks(library, held_part):
+	if library.sticks(held_part):
 		_preview_sticker(part, origin, direction)
 		return
 
@@ -2372,57 +2372,58 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 ## them stands on. 0 for none, and where a shape is still on its way (the
 ## web fetches it; the aim after it arrives lifts it). [param skip]: bricks
 ## that move with them.
+##
+## Asked on every aim, so it costs what is at the holes, never the model:
+## what is near each hole where a stud could take it, never one box the
+## figure's height, and of those only the studs that could take it
+## (Exact.sunk_under). Asked of the parts in hand and every part near all
+## together (Exact.sunk_pairs), a figure's own parts, held on each other's
+## studs, were weighed against each other by their shapes whenever anything
+## was near, 200 ms, and aiming a figure took 80 ms a move over a big model
+## (figlift, 2026-11-06).
 func stud_feet_lift(parts: Array, skip: Dictionary = {}) -> float:
 	if world == null or lattice == null:
 		return 0.0
-	var items: Array = []
-	var of: Dictionary = {}
-	var lo := Vector3(INF, INF, INF)
-	var hi := -lo
+	var held: Array = []  ## [shape, where] each
 	for one: Array in parts:
 		var shape: Exact.Shape = Exact.shape_for(library, str(one[0]))
-		if shape == null:
-			continue
-		var item := Exact.Item.new(shape, one[1])
-		var takes: bool = false
-		for connector: Array in item.world():
-			if Exact.takes_on_top(shape, int(connector[0])) and (connector[2] as Vector3).y > 0.99:
-				takes = true
-				lo = lo.min(connector[1])
-				hi = hi.max(connector[1])
-		if takes:
-			of[items.size()] = true
-			items.append(item)
-	if of.is_empty():
-		return 0.0
-	var across: float = Exact.SUNK_ACROSS + 1.0
-	var reach := PackedInt32Array([floori((lo.x - across) / BrickLattice.CELL),
-		floori((lo.y - 1.0) / BrickLattice.CELL), floori((lo.z - across) / BrickLattice.CELL),
-		ceili((hi.x + across) / BrickLattice.CELL),
-		ceili((hi.y + Exact.SUNK_REACH + 1.0) / BrickLattice.CELL),
-		ceili((hi.z + across) / BrickLattice.CELL)])
-	for other: int in lattice.near_bounds(reach):
-		var brick: BrickWorld.Brick = world.get_brick(other) if not skip.has(other) else null
-		var shape: Exact.Shape = Exact.shape_for(library, brick.part_id) if brick != null else null
 		if shape != null:
-			items.append(Exact.Item.new(shape, brick.transform))
-	if items.size() == of.size():
-		return 0.0
+			held.append([shape, one[1]])
+	var near: Dictionary = {}  ## brick id -> its Item, null without a shape
+	var across: float = Exact.SUNK_ACROSS + 1.0
 	# Lifted off one stud, a part can be down another a little higher: asked
 	# again, a few times at most.
 	var lift: float = 0.0
 	for _round: int in 3:
 		var most: float = 0.0
-		for pair: Array in Exact.sunk_pairs(items, of, 0.0):
-			if of.has(int(pair[1])) and not of.has(int(pair[0])) \
-					and (pair[3] as Vector3).y > 0.99:
-				most = maxf(most, float(pair[2]))
+		for one: Array in held:
+			var item := Exact.Item.new(one[0], one[1])
+			var holes: Array = Exact.up_holes(item)
+			var others: Dictionary = {}
+			for hole: Array in holes:
+				var at: Vector3 = hole[1]
+				for other: int in lattice.near_bounds(PackedInt32Array([
+						floori((at.x - across) / BrickLattice.CELL),
+						floori((at.y - 1.0) / BrickLattice.CELL),
+						floori((at.z - across) / BrickLattice.CELL),
+						ceili((at.x + across) / BrickLattice.CELL),
+						ceili((at.y + Exact.SUNK_REACH + 1.0) / BrickLattice.CELL),
+						ceili((at.z + across) / BrickLattice.CELL)])):
+					if not skip.has(other):
+						others[other] = true
+			for other: int in others:
+				if not near.has(other):
+					var brick: BrickWorld.Brick = world.get_brick(other)
+					var shape: Exact.Shape = Exact.shape_for(library, brick.part_id) \
+						if brick != null else null
+					near[other] = Exact.Item.new(shape, brick.transform) if shape != null else null
+				if near[other] != null:
+					most = maxf(most, Exact.sunk_under(near[other], item, holes))
 		if most <= 0.0:
 			break
 		lift += most
-		for i: Variant in of:
-			var item: Exact.Item = items[int(i)]
-			items[int(i)] = Exact.Item.new(item.shape, item.at.translated(Vector3(0.0, most, 0.0)))
+		for one: Array in held:
+			one[1] = (one[1] as Transform3D).translated(Vector3(0.0, most, 0.0))
 	return lift
 
 
@@ -2461,14 +2462,15 @@ var view_up: Vector3 = Vector3.UP
 ## under it (Stickers.lies_on), and a sticker put down on the grid floated
 ## a plate over the brick it was for. R turns it about the face.
 func _preview_sticker(part: Lbm.PartMesh, origin: Vector3, direction: Vector3) -> void:
-	var face: Stickers.Face = Stickers.face_at(world, library, origin, direction, false, view_up)
+	var stickers: GDScript = Later.script(&"Stickers")
+	var face: RefCounted = stickers.face_at(world, library, origin, direction, false, view_up)
 	if face == null:
 		_ghost.visible = false
 		_ghost_valid = false
 		_hovered = 0
 		return
 	_hovered = face.bricks[0]
-	_ghost_transform = Stickers.laid_on(face, part.bounds, held_rotation)
+	_ghost_transform = stickers.laid_on(face, part.bounds, held_rotation)
 	_seated_on = 0
 	_ghost_valid = true
 	_show_ghost(part)

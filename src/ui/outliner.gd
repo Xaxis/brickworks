@@ -29,7 +29,9 @@ const SUGGESTION := "#suggestion:"
 
 var shell: Shell
 var assemblies: Assemblies
-var sections: SectionsUi
+## Sections (SectionsUi), once the shell has made them (Shell.sections):
+## null until something asks for one, and the buttons say what they would do.
+var sections: Node = null
 
 var _open: bool = true
 var _header: Button
@@ -134,8 +136,6 @@ func _ready() -> void:
 		button.pressed.connect(func() -> void: _strip_pressed(id))
 		_strip.add_child(button)
 		_buttons[id] = button
-	if sections != null:
-		sections.sections.suggested_changed.connect(func() -> void: _refresh(true))
 
 	var density: float = Icons.density(self)
 	for name: String in ["show_all", "hide", "lock", "unlock", "accept"]:
@@ -185,7 +185,8 @@ func _chosen_suggestion() -> int:
 
 
 func _strip_pressed(id: String) -> void:
-	if sections == null:
+	# Made now if it was not (Shell.sections), and told to this tree.
+	if shell.sections == null:
 		return
 	var number: int = _chosen_suggestion()
 	match id:
@@ -215,11 +216,11 @@ func _strip_pressed(id: String) -> void:
 
 ## The buttons that would do something now.
 func _update_strip() -> void:
-	if _strip == null or sections == null:
+	if _strip == null:
 		return
-	var suggested: bool = not sections.sections.suggested.is_empty()
+	var suggested: bool = sections != null and not sections.sections.suggested.is_empty()
 	var number: int = _chosen_suggestion()
-	var target: bool = sections.can_target()
+	var target: bool = not shell.section_target().is_empty()
 	var out_any: bool = not shell.world.broken_out.is_empty()
 	# Only what would do something now, so the row fits under the tree.
 	var shown: Dictionary = {
@@ -242,16 +243,24 @@ func _update_strip() -> void:
 	(_buttons["sections_split"] as Button).disabled = number == 0
 	(_buttons["sections_evaluate"] as Button).disabled = number == 0 and not target
 	var out: bool = not shell.world.broken_out.is_empty()
-	var this_out: bool = target and not sections.sections.out_record(sections.target()).is_empty()
+	var this_out: bool = target and sections != null \
+		and not sections.sections.out_record(shell.section_target()).is_empty()
 	(_buttons["sections_break_out"] as Button).text = "Put back" if this_out \
 		or (not target and out) else "Break out"
 	(_buttons["sections_break_out"] as Button).disabled = not target and not out
-	(_buttons["sections_explode"] as Button).text = "Together" if sections.is_exploded() \
-		else "Exploded view"
+	(_buttons["sections_explode"] as Button).text = "Together" \
+		if sections != null and sections.is_exploded() else "Exploded view"
 
 
 func is_open() -> bool:
 	return _open
+
+
+## [param made] the shell's sections, made now: its suggestions shown here.
+func use_sections(made: Node) -> void:
+	sections = made
+	sections.sections.suggested_changed.connect(func() -> void: _refresh(true))
+	_update_strip()
 
 
 func set_open(open: bool) -> void:
@@ -361,7 +370,7 @@ func _suggested_state() -> String:
 	if sections == null:
 		return ""
 	var bits := PackedStringArray()
-	for made: Sections.Suggestion in sections.sections.suggested:
+	for made: RefCounted in sections.sections.suggested:
 		bits.append("%d:%s:%d" % [made.number, made.name, made.ids.size()])
 	return ",".join(bits)
 
@@ -384,7 +393,7 @@ func _fill_suggested(top: TreeItem, folded: Dictionary) -> void:
 		+ "Accept makes each a sub-assembly; drag one onto another to merge them")
 	head.set_custom_color(0, Color(0.55, 0.78, 1.0))
 	head.collapsed = folded.has(SUGGESTED)
-	for made: Sections.Suggestion in list:
+	for made: RefCounted in list:
 		var row: TreeItem = _tree.create_item(head)
 		row.set_text(0, "%d. %s" % [made.number, made.name])
 		row.set_metadata(0, SUGGESTION + str(made.number))
@@ -464,7 +473,7 @@ func _mark_selected() -> void:
 	# Merge, Split and Evaluate stay under the tree.
 	if row == null and sections != null:
 		var picked: Dictionary = shell.builder.selection
-		for made: Sections.Suggestion in sections.sections.suggested:
+		for made: RefCounted in sections.sections.suggested:
 			if made.ids.size() != picked.size() or picked.is_empty():
 				continue
 			if Array(made.ids).all(func(id: int) -> bool: return picked.has(id)):
@@ -538,7 +547,7 @@ func _choose(path: String) -> void:
 
 func _select_suggestion(number: int) -> void:
 	var builder: Builder = shell.builder
-	for made: Sections.Suggestion in sections.sections.suggested:
+	for made: RefCounted in sections.sections.suggested:
 		if made.number != number:
 			continue
 		if not assemblies.entered.is_empty() and not Assemblies.within(made.level,
@@ -610,7 +619,7 @@ func rename_selected() -> void:
 	var meta: String = str(row.get_metadata(0))
 	if meta.begins_with(SUGGESTION):
 		var number: int = meta.trim_prefix(SUGGESTION).to_int()
-		for made: Sections.Suggestion in sections.sections.suggested:
+		for made: RefCounted in sections.sections.suggested:
 			if made.number == number:
 				row.set_text(0, made.name)
 	else:

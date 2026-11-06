@@ -30,7 +30,12 @@ var _family_buttons: Dictionary = {}   ## family -> its Button
 ## "family", making a part of one of the maker's families; or "modify",
 ## changing a part that exists from its own geometry ([PartEditor]).
 var _mode: String = "family"
-var _edit: PartEditor.Edit = null
+## The change asked for, a [PartEditor.Edit]. The part maker ([PartEditor],
+## [PartForge]) is not named here, so opening the dialog compiles only
+## itself and [ElementMaker]; the maker's 190 KB compiles a frame of its own
+## before the first preview is built (_process). As one piece the dialog's
+## first use was 281 KB, 186-260 ms in a browser (leaves, 2026-11-05).
+var _edit: RefCounted = null
 ## The size of the part being changed, in studs, plates and studs.
 var _source_size := Vector3i.ONE
 var _modify_note: Label
@@ -63,7 +68,8 @@ var _view: SubViewport
 var _turntable: Node3D
 var _camera: Camera3D
 var _material: ShaderMaterial
-var _built: PartForge.Result = null
+## The part the preview shows, a [PartForge.Result].
+var _built: RefCounted = null
 var _dirty_at: int = -1
 var _filling: bool = false
 var _dragging: bool = false
@@ -510,9 +516,10 @@ func _start_modify(part_id: String) -> void:
 			_say("There is no geometry for %s here to change." % part_id, true)
 		return
 	_mode = "modify"
-	_edit = PartEditor.Edit.new()
+	var editor: GDScript = Later.script(&"PartEditor")
+	_edit = editor.Edit.new()
 	_edit.from = part_id
-	_source_size = PartEditor.size_of(mesh)
+	_source_size = editor.size_of(mesh)
 	_show_spec()
 
 
@@ -687,6 +694,11 @@ func _process(delta: float) -> void:
 	if not visible:
 		return
 	if _dirty_at >= 0 and Time.get_ticks_msec() - _dirty_at >= SETTLE_MS:
+		# The part maker, compiled in this frame the first time, and the
+		# part built with it in the next (Later).
+		if not Later.loaded(&"PartForge"):
+			Later.script(&"PartForge")
+			return
 		_dirty_at = -1
 		_rebuild_shown()
 	if not _dragging and _turntable != null:
@@ -722,7 +734,7 @@ func _rebuild() -> void:
 		_say("Not yet: " + problem + ".", true)
 		return
 	var id: String = ElementMaker.id_for(_spec)
-	_built = PartForge.build(ElementMaker.dat(_spec, id), id, {}, true)
+	_built = Later.script(&"PartForge").build(ElementMaker.dat(_spec, id), id, {}, true)
 	if not _built.problem.is_empty():
 		_say("It did not build: " + _built.problem, true)
 		_show_mesh(null)
@@ -739,16 +751,16 @@ func _rebuild_edit() -> void:
 		_show_mesh(null)
 		_say("Not yet: there is no geometry for %s here." % _edit.from, true)
 		return
-	var bare: PartEditor.Edit = _edit.duplicate()
+	var bare: RefCounted = _edit.duplicate()
 	bare.title = ""
-	_name.placeholder_text = PartEditor.title_for(bare, info.name, _source_size)
+	_name.placeholder_text = Later.script(&"PartEditor").title_for(bare, info.name, _source_size)
 	var made: Dictionary = CustomParts.modified_text(library, _edit)
 	if not str(made["problem"]).is_empty():
 		_built = null
 		_show_mesh(null)
 		_say("Not yet: " + str(made["problem"]) + ".", true)
 		return
-	_built = PartForge.build(made["text"], made["id"], {}, true)
+	_built = Later.script(&"PartForge").build(made["text"], made["id"], {}, true)
 	if not _built.problem.is_empty():
 		_say("It did not build: " + _built.problem, true)
 		_show_mesh(null)
@@ -758,7 +770,7 @@ func _rebuild_edit() -> void:
 
 
 ## What a changed part is, and what it kept.
-static func describe_modified(edit: PartEditor.Edit, built: PartForge.Result) -> String:
+static func describe_modified(edit: RefCounted, built: RefCounted) -> String:
 	var size := Vector3(built.bounds_max[0] - built.bounds_min[0],
 		built.bounds_max[1] - built.bounds_min[1], built.bounds_max[2] - built.bounds_min[2])
 	var counts: Dictionary = {}
@@ -794,7 +806,7 @@ func _without_title() -> ElementMaker.Spec:
 
 
 ## What the part is, in the units it will be checked in.
-static func describe(spec: ElementMaker.Spec, built: PartForge.Result) -> String:
+static func describe(spec: ElementMaker.Spec, built: RefCounted) -> String:
 	var size: Vector3 = Vector3(built.bounds_max[0] - built.bounds_min[0],
 		built.bounds_max[1] - built.bounds_min[1],
 		built.bounds_max[2] - built.bounds_min[2])
@@ -933,11 +945,11 @@ func spec() -> ElementMaker.Spec:
 
 
 ## What is being changed, when a part is ("modify" mode), else null.
-func edit() -> PartEditor.Edit:
+func edit() -> RefCounted:
 	return _edit if _mode == "modify" else null
 
 
-func built() -> PartForge.Result:
+func built() -> RefCounted:
 	return _built
 
 

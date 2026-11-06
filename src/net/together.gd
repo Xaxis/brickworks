@@ -177,7 +177,6 @@ const MARKER_COLOURS: Array[Color] = [Color("#e8590c"), Color("#1c7ed6"), Color(
 ## Whether this copy keeps the session it is in with the tab
 ## (TabSession.path), so a reload or a restart goes back into it by itself.
 var keeps_place: bool = true
-const KEPT_FILE := "together.txt"
 ## This side's changes on their way, kept with the tab's session
 ## (TabSession) as they are made: in a browser the site's localStorage under
 ## the session's id, which the page that takes the session up next reads,
@@ -525,7 +524,7 @@ func _snapshot_in_parts(token: String, count: int) -> Variant:
 ## restart, and what is on its baseplate is the session's). "" when joined,
 ## or why not.
 func join(address: String, rejoining: bool = false) -> String:
-	var token: String = secret_in(address)
+	var token: String = TogetherLink.secret_in(address)
 	if token.is_empty():
 		return "That is not a Build together link."
 	if live:
@@ -537,7 +536,7 @@ func join(address: String, rejoining: bool = false) -> String:
 	var got: Array = await _ask("join", {"s": token})
 	if int(got[0]) != 200:
 		# Ended, or this account taken out: not gone back into after a reload.
-		if int(got[0]) in [403, 404, 410] and secret_in(kept_secret()) == token:
+		if int(got[0]) in [403, 404, 410] and TogetherLink.secret_in(TogetherLink.kept_secret()) == token:
 			_forget_place()
 			_forget_pending()
 		return _trouble(got, "Could not join")
@@ -734,19 +733,6 @@ func _reset() -> void:
 	_catch_up_to = 0
 	_offline = false
 	round_trips.clear()
-
-
-## The secret from a Build together link (…/app?together=SECRET), or the
-## secret itself; "" when it is neither.
-static func secret_in(address: String) -> String:
-	var said: String = address.strip_edges()
-	var at: int = said.find("together=")
-	if at >= 0:
-		said = said.substr(at + 9)
-		for stop: String in ["&", "#", " "]:
-			if said.find(stop) >= 0:
-				said = said.substr(0, said.find(stop))
-	return said if RegEx.create_from_string("^[A-Za-z0-9_-]{32}$").search(said) != null else ""
 
 
 static func _new_client() -> String:
@@ -1984,15 +1970,15 @@ func stop_button() -> Button:
 func _keep_place() -> void:
 	if not keeps_place:
 		return
-	var file := FileAccess.open(TabSession.path(KEPT_FILE), FileAccess.WRITE)
+	var file := FileAccess.open(TabSession.path(TogetherLink.KEPT_FILE), FileAccess.WRITE)
 	if file != null:
 		file.store_string(_token)
 		file.close()
 
 
 func _forget_place() -> void:
-	if keeps_place and FileAccess.file_exists(TabSession.path(KEPT_FILE)):
-		DirAccess.remove_absolute(TabSession.path(KEPT_FILE))
+	if keeps_place and FileAccess.file_exists(TabSession.path(TogetherLink.KEPT_FILE)):
+		DirAccess.remove_absolute(TabSession.path(TogetherLink.KEPT_FILE))
 
 
 ## This side's changes on their way, kept with the tab (PENDING_KEY): every
@@ -2028,27 +2014,13 @@ func _keep_pending() -> void:
 		+ " if (!window.brickworksTogetherGoodbye) { window.brickworksTogetherGoodbye = true;"
 		+ " window.addEventListener('pagehide', () => { const going = window.brickworksTogetherLeaving;"
 		+ " if (going) try { fetch(going.url, {method: 'POST', headers: going.headers, body: going.body,"
-		+ " keepalive: true}); } catch (e) {} }); } })()") % [JSON.stringify(_page_key()), JSON.stringify(words),
+		+ " keepalive: true}); } catch (e) {} }); } })()") % [JSON.stringify(TogetherLink.page_key()), JSON.stringify(words),
 		JSON.stringify(going)], true)
-
-
-## Where a browser keeps this tab's changes on their way: by its session's
-## id, which the next page to take the session up reads.
-static func _page_key() -> String:
-	return "brickworks.together_pending." + TabSession.id()
-
-
-## What a browser kept of this tab's changes on their way, or "".
-static func _page_kept() -> String:
-	var got: Variant = JavaScriptBridge.eval(("(() => { const key = %s; try { return localStorage.getItem(key)"
-		+ " || sessionStorage.getItem(key) || ''; } catch (e) { return ''; } })()") % JSON.stringify(_page_key()),
-		true)
-	return str(got) if got != null else ""
 
 
 func _kept_pending_words() -> String:
 	if OS.has_feature("web"):
-		return _page_kept()
+		return TogetherLink.page_kept()
 	var path: String = TabSession.path(PENDING_KEY)
 	return FileAccess.get_file_as_string(path) if keeps_place and FileAccess.file_exists(path) else ""
 
@@ -2059,26 +2031,9 @@ func _forget_pending() -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval(("(() => { const key = %s; try { localStorage.removeItem(key); } catch (e) {}"
 			+ " try { sessionStorage.removeItem(key); } catch (e) {}"
-			+ " window.brickworksTogetherLeaving = undefined; })()") % JSON.stringify(_page_key()), true)
+			+ " window.brickworksTogetherLeaving = undefined; })()") % JSON.stringify(TogetherLink.page_key()), true)
 	elif FileAccess.file_exists(TabSession.path(PENDING_KEY)):
 		DirAccess.remove_absolute(TabSession.path(PENDING_KEY))
-
-
-## The session this tab was in when it was reloaded or closed, or "".
-static func kept_secret() -> String:
-	var path: String = TabSession.path(KEPT_FILE)
-	if FileAccess.file_exists(path):
-		return secret_in(FileAccess.get_file_as_string(path))
-	# A browser stores user:// on its own schedule, half a minute and more
-	# on a loaded machine (ModelStore._tell_page_wrote): a tab closed sooner
-	# has not this file, but its changes on their way, kept at once, name
-	# the session too.
-	if OS.has_feature("web"):
-		var words: String = _page_kept()
-		var kept: Variant = JSON.parse_string(words) if not words.is_empty() else null
-		if kept is Dictionary:
-			return secret_in(str((kept as Dictionary).get("s", "")))
-	return ""
 
 
 # -- each person's own undo ---------------------------------------------------

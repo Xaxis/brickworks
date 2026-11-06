@@ -1102,15 +1102,17 @@ static func held_otherwise(entries: Array, library: PartLibrary) -> Dictionary:
 		var part: Lbm.PartMesh = entry[2]
 		if part == null:
 			continue
-		if Stickers.sticks(library, str(entry[3])):
+		if library.sticks(str(entry[3])):
 			films.append(entry)
 			continue
 		solid.append([entry[0], entry[1], part.bounds])
 		var info: PartLibrary.PartInfo = library.parts.get(str(entry[3]))
 		if is_magnet(info):
 			magnets.append([entry[0], "", (entry[1] as Transform3D) * part.bounds])
+	# What a film is stuck to (Stickers, which Later loads: a model with one).
+	var stickers: GDScript = Later.script(&"Stickers") if not films.is_empty() else null
 	for film: Array in films:
-		var under: Array = Stickers.lies_on(film[1], (film[2] as Lbm.PartMesh).bounds,
+		var under: Array = stickers.lies_on(film[1], (film[2] as Lbm.PartMesh).bounds,
 			solid, film[0])
 		if not under.is_empty():
 			_add(held, film[0], under[0][0])

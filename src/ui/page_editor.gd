@@ -102,6 +102,11 @@ var _words: LineEdit
 var _said: Label
 var _picker: PickImage
 var _named: Dictionary = {}
+## The page as its designer set it up (BookletSheet), and the picture behind
+## it, drawn once.
+var _sheet: BookletSheet = BookletSheet.new()
+var _behind: Texture2D = null
+var _behind_uri: String = ""
 
 const PAGE_COLOUR := Color8(220, 236, 248)
 const PARTS_COLOUR := Color8(188, 218, 241)
@@ -367,6 +372,10 @@ func _lay_out(number: int) -> void:
 		return
 	_laying = true
 	_say_soft("Laying the page out…")
+	_sheet = BookletSheet.of(_world)
+	if _sheet.picture_uri != _behind_uri:
+		_behind_uri = _sheet.picture_uri
+		_behind = _texture_of(_behind_uri)
 	var store: ModelStore = app.get("_store")
 	var maker := BookletMaker.new()
 	maker.library = app.get("_library")
@@ -658,15 +667,15 @@ func _item_name(at: int) -> String:
 
 ## Pixels a millimetre of page, and where the page is on the canvas.
 func _scale() -> float:
-	return _canvas.size.x / Booklet.PAGE.x
+	return _canvas.size.x / _sheet.size().x
 
 
 func _fit() -> void:
 	var holder: Control = _canvas.get_parent()
 	# The rulers along the top and the left, the page in what they leave.
 	var room: Vector2 = holder.size - Vector2(RULER, RULER)
-	var k: float = minf(room.x / Booklet.PAGE.x, room.y / Booklet.PAGE.y)
-	_canvas.size = Booklet.PAGE * k
+	var k: float = minf(room.x / _sheet.size().x, room.y / _sheet.size().y)
+	_canvas.size = _sheet.size() * k
 	_canvas.position = Vector2(RULER, RULER) + (room - _canvas.size) * 0.5
 	_ruler_top.position = _canvas.position - Vector2(0.0, RULER)
 	_ruler_top.size = Vector2(_canvas.size.x, RULER)
@@ -768,8 +777,15 @@ static func _box_of(item: Dictionary) -> Rect2:
 func _draw_page() -> void:
 	var k: float = _scale()
 	var font: Font = ThemeDB.fallback_font
-	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), PAGE_COLOUR)
-	var area: Rect2 = Booklet.content()
+	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), _sheet.colour)
+	if _behind != null:
+		# Covering the page, as the booklet lays it (BookletRead).
+		var natural := Vector2(_behind.get_width(), _behind.get_height())
+		var covering: Vector2 = natural * maxf(_canvas.size.x / natural.x, _canvas.size.y / natural.y)
+		var seen: Rect2 = Rect2((covering - _canvas.size) * 0.5, _canvas.size)
+		_canvas.draw_texture_rect_region(_behind, Rect2(Vector2.ZERO, _canvas.size),
+			Rect2(seen.position / covering * natural, seen.size / covering * natural))
+	var area: Rect2 = Booklet.content(_sheet)
 	_canvas.draw_rect(Rect2(area.position * k, area.size * k), Color(0.24, 0.43, 0.59, 0.35),
 		false, 1.0)
 	if _at >= 0 and _at < _pages.size():
@@ -780,10 +796,10 @@ func _draw_page() -> void:
 			_canvas.draw_rect(Rect2(page.frame.position * k, page.frame.size * k), INK, false,
 				maxf(1.0, 0.5 * k))
 		if not page.banner.is_empty():
-			_canvas.draw_rect(Rect2(Vector2(Booklet.MARGIN, Booklet.MARGIN) * k,
+			_canvas.draw_rect(Rect2(Vector2(_sheet.margin, _sheet.margin) * k,
 				Vector2(area.size.x, Booklet.BANNER - 3.0) * k), Color8(35, 82, 124))
-		_canvas.draw_string(font, Vector2(Booklet.PAGE.x - Booklet.MARGIN - 8.0,
-			Booklet.PAGE.y - 5.0) * k, str(page.number), HORIZONTAL_ALIGNMENT_LEFT, -1,
+		_canvas.draw_string(font, Vector2(_sheet.size().x - _sheet.margin - 8.0,
+			_sheet.size().y - _sheet.margin + 4.0) * k, str(page.number), HORIZONTAL_ALIGNMENT_LEFT, -1,
 			int(3.6 * k), INK)
 	for at: int in _items.size():
 		_draw_item(_items[at], k, font)
@@ -982,7 +998,7 @@ func _draw_ruler(ruler: Control, axis: String) -> void:
 	var font: Font = ThemeDB.fallback_font
 	var along: bool = axis == "y"
 	ruler.draw_rect(Rect2(Vector2.ZERO, ruler.size), Color(0.15, 0.17, 0.2))
-	var length: float = Booklet.PAGE.x if along else Booklet.PAGE.y
+	var length: float = _sheet.size().x if along else _sheet.size().y
 	var ink := Color(0.78, 0.82, 0.88)
 	for mm: int in range(0, int(length) + 1, 5):
 		var tick: float = RULER * (0.6 if mm % 50 == 0 else (0.4 if mm % 10 == 0 else 0.22))
@@ -1025,7 +1041,7 @@ func _guide_moved(event: InputEventMouse) -> void:
 	var on: Vector2 = _on_canvas(event) / _scale()
 	var axis: String = str(_guide_drag["axis"])
 	var mm: float = on.x if axis == "x" else on.y
-	var most: float = Booklet.PAGE.x if axis == "x" else Booklet.PAGE.y
+	var most: float = _sheet.size().x if axis == "x" else _sheet.size().y
 	_guide_drag["at"] = snappedf(mm, 0.1) if mm >= 0.0 and mm <= most else null
 	_say_soft(("A guide %s at %s mm: let go to put it there." % ["upright" if axis == "x" else "across",
 		BookletLooks._number(float(_guide_drag["at"]))]) if _guide_drag["at"] != null
@@ -1161,7 +1177,8 @@ func _snap_point(at: Vector2) -> Vector2:
 	for item: Dictionary in _items:
 		if item["kind"] != "arrow":
 			others.append(item["rect"])
-	var snapped: Dictionary = Booklet.snapped_to(Rect2(at, Vector2.ZERO), others, false, _guide_lines)
+	var snapped: Dictionary = Booklet.snapped_to(Rect2(at, Vector2.ZERO), others, false, _guide_lines,
+		_sheet)
 	_guides = snapped["lines"]
 	return (snapped["rect"] as Rect2).position
 
@@ -1385,18 +1402,19 @@ func _dragged(event: InputEventMouse) -> void:
 		else:
 			item["rect"] = Rect2(was.position + by, was.size)
 			var box: Rect2 = _box_of(item)
-			var snapped: Dictionary = Booklet.snapped_to(box, others, false, _guide_lines)
-			var onto: Rect2 = _on_page(snapped["rect"], false)
+			var snapped: Dictionary = Booklet.snapped_to(box, others, false, _guide_lines, _sheet)
+			var onto: Rect2 = _on_page(snapped["rect"], false, _sheet.size())
 			item["rect"] = Rect2((item["rect"] as Rect2).position + onto.position - box.position, was.size)
 			_guides = snapped["lines"]
 	else:
 		var moved: Rect2 = Rect2(was.position + (Vector2.ZERO if resize else by),
 			was.size + (by if resize else Vector2.ZERO))
 		moved.size = moved.size.max(Vector2(6, 4))
-		var snapped: Dictionary = Booklet.snapped_to(_on_page(moved, resize), others, resize, _guide_lines)
+		var snapped: Dictionary = Booklet.snapped_to(_on_page(moved, resize, _sheet.size()), others, resize,
+			_guide_lines, _sheet)
 		# Kept on the page as the booklet keeps it (Booklet._on_page), so what is
 		# dragged is where it prints.
-		item["rect"] = _on_page(snapped["rect"], resize)
+		item["rect"] = _on_page(snapped["rect"], resize, _sheet.size())
 		_guides = snapped["lines"]
 	# Over another thing as it is dragged: said, and outlined, before it is
 	# let go (Booklet._settle moves one of them off the other when it is).
@@ -1418,13 +1436,25 @@ func _dragged(event: InputEventMouse) -> void:
 	_canvas.queue_redraw()
 
 
-## [param rect] on the page: moved onto it, or, [param resize]d by its far
-## corner, no larger than reaches the page's edge.
-static func _on_page(rect: Rect2, resize: bool) -> Rect2:
-	var size: Vector2 = rect.size.min(Booklet.PAGE)
+## [param rect] on the page, [param page] mm: moved onto it, or, [param
+## resize]d by its far corner, no larger than reaches the page's edge.
+static func _on_page(rect: Rect2, resize: bool, page: Vector2 = Booklet.PAGE) -> Rect2:
+	var size: Vector2 = rect.size.min(page)
 	if resize:
-		return Rect2(rect.position, size.min(Booklet.PAGE - rect.position))
-	return Rect2(rect.position.clamp(Vector2.ZERO, Booklet.PAGE - size), size)
+		return Rect2(rect.position, size.min(page - rect.position))
+	return Rect2(rect.position.clamp(Vector2.ZERO, page - size), size)
+
+
+## The picture of data URI [param uri] to draw, or null.
+static func _texture_of(uri: String) -> Texture2D:
+	var comma: int = uri.find(",")
+	if comma < 0:
+		return null
+	var image := Image.new()
+	var bytes: PackedByteArray = Marshalls.base64_to_raw(uri.substr(comma + 1))
+	var error: int = image.load_png_from_buffer(bytes) if uri.begins_with("data:image/png") \
+		else image.load_jpg_from_buffer(bytes)
+	return ImageTexture.create_from_image(image) if error == OK and not image.is_empty() else null
 
 
 ## The item dropped where it is: one undo.
@@ -1481,7 +1511,8 @@ func _pressed(name: String) -> void:
 			_selected = -1
 			_show_page()
 		"page_add_text":
-			add_text("Your words", Rect2(Vector2(Booklet.PAGE.x * 0.5 - 40.0, 150.0), Vector2(80, 12)))
+			add_text("Your words", Rect2(Vector2(_sheet.size().x * 0.5 - 40.0,
+				minf(150.0, _sheet.size().y - 40.0)), Vector2(80, 12)))
 		"page_add_image":
 			_picker.ask()
 		"page_apply_later":
@@ -1630,7 +1661,7 @@ static func later_layout(pages: Array[Booklet.Page], at: int,
 				var wide: float = maxf(Booklet._parts_size(to.lots, maxf(float(list[2]),
 					Booklet._parts_width(to, to.panel))).x, 12.0)
 				var x: float = float(list[0])
-				if x + float(list[2]) * 0.5 > Booklet.PAGE.x * 0.5:
+				if x + float(list[2]) * 0.5 > page.sheet.size().x * 0.5:
 					x += float(list[2]) - wide
 				place["parts"] = [snappedf(x, 0.1), list[1], snappedf(wide, 0.1)]
 			if to.callout == null or not to.callout.inline:
@@ -1748,7 +1779,7 @@ func add_image(image: Image) -> String:
 		high = 80.0
 	var said: String = _change("image", first, {
 		"data": Marshalls.raw_to_base64(bytes), "kind": "png" if clear else "jpg",
-		"at": [Booklet.PAGE.x - Booklet.MARGIN - wide, Booklet.content().end.y - high, wide, high]})
+		"at": [_sheet.size().x - _sheet.margin - wide, Booklet.content(_sheet).end.y - high, wide, high]})
 	_say(said)
 	_pictures.clear()
 	await _lay_out((first["entry"] as Booklet.Entry).number)

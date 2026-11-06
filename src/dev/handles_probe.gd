@@ -64,7 +64,11 @@ func _run() -> void:
 	_library = _main.get("_library")
 	_store = _main.get("_store")
 	_verbs = _main.get("_verbs")
+	# Made the first time the Move or Rotate tool is chosen (Later), as a
+	# person's are; each section starts at the Select tool (_rest).
+	_verbs.set_mode("move")
 	_handles = _verbs.handles
+	_verbs.set_mode("select")
 	print("  window %s" % DisplayServer.window_get_size())
 	var only: String = ""
 	for arg: String in OS.get_cmdline_user_args():

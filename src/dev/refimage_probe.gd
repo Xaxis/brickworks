@@ -188,7 +188,7 @@ func _add(file: String) -> void:
 	popup.id_pressed.emit(id)
 	popup.hide()
 	await _frames(6)
-	var chooser: FileDialog = (_fields["reference_files"] as PictureFile).get("_dialog")
+	var chooser: FileDialog = (_reference.controls_by_name()["reference_files"] as PictureFile).get("_dialog")
 	_check("...which asks for a picture", chooser != null and chooser.visible)
 	if chooser == null:
 		return
@@ -439,7 +439,7 @@ func _undo() -> void:
 		if button == null:
 			return
 		await _click(Vector2(settings.position) + button.get_global_rect().get_center())
-		var chooser: FileDialog = (_fields["reference_files"] as PictureFile).get("_dialog")
+		var chooser: FileDialog = (_reference.controls_by_name()["reference_files"] as PictureFile).get("_dialog")
 		if chooser == null or not chooser.visible:
 			return
 		chooser.current_path = other
@@ -710,7 +710,7 @@ func _unsaved(file: String) -> void:
 	_store.keeps = true
 	_reference.open()
 	await _frames(4)
-	var chooser: FileDialog = (_fields["reference_files"] as PictureFile).get("_dialog")
+	var chooser: FileDialog = (_reference.controls_by_name()["reference_files"] as PictureFile).get("_dialog")
 	if chooser != null and chooser.visible:
 		chooser.current_path = file
 		await _frames(2)

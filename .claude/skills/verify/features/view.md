@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, ui:stud directions, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions -->
 
 ## Sub-features
 
@@ -1898,6 +1898,34 @@ picture the assistant is shown.
   -r 300`, the colour guide's names in the HTML and `pdftotext`, the pod's
   preview with nothing on it, actual_size off/auto/[ids], and a save and
   reopen. Pages are kept in its `--into=` folder to look at.
+- `the booklet's page setup` and `pagesetup probe` (APP_UX5 #4 pagesetup;
+  `BookletSheet`, `PageSetupDialog`, `Shell.page_setup`, MCP `page_setup`):
+  Build, Booklet page, Page setup… sets the paper (`BookletSheet.PAPERS`:
+  the booklet's own 269 x 199, A4, US Letter, A5), which way up, margins
+  5-30 mm, a page colour or a picture behind every page (cover-fitted, kept
+  as `brickworks-page-behind.jpg|png` among the model's pictures), the step
+  numbers' height (`Entry.number_scale`) and the parts boxes' scale. Each
+  control applies as it is chosen, one undo each; the file says
+  `0 !BRICKWORKS PAGE_SETUP A4 PORTRAIT MARGIN 12 COLOUR #FFFFFF NUMBER 10
+  PICTURE ...`, nothing for the booklet's own page, whose HTML is byte for
+  byte what it was. `Booklet` lays every page out on `document.sheet`
+  (`content(sheet)`, `_best_page`, `_page`, `_cover`, `parts_pages`), its
+  CSS gives the page's size, `@page` and the colour or picture;
+  `BookletRead` reads the size and picture back for `BookletPdf` (MediaBox
+  per page; step pictures drawn clear over a picture, with an SMask) and
+  `BookletPng`. Keep as a style writes `user://page_styles.cfg`; Style gives
+  one to another model whole. `pagesetup_probe` (windowed, `gpu`): the
+  booklet's own page first (with `--against=` a run on the commit before:
+  its HTML the same but its pictures, every PNG page the same to the
+  pixel), then `page_setup size=A4 orientation=portrait` in one call (every
+  pdfinfo page 210 x 297 within 0.5, every plan step on a page, pictures and
+  parts boxes inside the margins, the axle's 1:1 guide 32.0 within 0.2 on
+  the PNG and the PDF, `tools/booklet_pdf_check.py` passing), US Letter on
+  its side and a colour in the dialog (279.4 x 215.9; the colour off both
+  page drawings), a picture behind (on every page, and through a step's
+  picture), a save and reopen and one undo, then a style kept and given to
+  the gatehouse in 2 actions. `--dialog-only` with `PROBE_SIZE=1400x900`
+  checks the dialog alone at that size.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
@@ -2449,6 +2477,7 @@ godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the rend
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
 godot --path . --resolution 1280x800 --script src/dev/booklet_stream_probe.gd  # the castle's booklet read as it is drawn
 godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --into=DIR  # the castle's booklet saved as a PDF and as PNG pages from its own Save buttons; --model=res://models/orthanc.ldr for the tower
+tools/probe.sh pagesetup -- --into=DIR --against=BEFORE_DIR   # the booklet's page set up: A4 upright over MCP, US Letter by the dialog, a colour, a picture behind, a style to the gatehouse; BEFORE_DIR a run on the commit before; PROBE_SIZE=1400x900 tools/probe.sh pagesetup -- --dialog-only
 #   every step pictured and framed on the model, new parts in frame, a parts box
 #   with a picture of every part, the shed's 2x callout with two arrows and its
 #   figure, the turn sign behind a wall (plates against its back), plates a hand's

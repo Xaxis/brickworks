@@ -104,6 +104,10 @@ func _run() -> void:
 	_check("tools/list: view_board takes studs=, and highlight= a part number as a string",
 		board_takes.has("studs") and board_takes.has("highlight")
 		and str((board_takes["highlight"] as Dictionary).get("type", "")) != "array")
+	# Made on first use through Later, as the dialogs are, so the first
+	# screen never compiles it (tests/test_later.py holds the source to it).
+	_check("Stud directions not made as the window started: made on first use, through Later",
+		_shell != null and _shell.get("_stud_map") == null and Later.PATHS.has(&"StudMap"))
 
 	await _open_car()
 	var model: Array = _signature()

@@ -52,8 +52,8 @@ class_name StudioDecor
 extends RefCounted
 
 ## The line a part read from Studio carries, and the parts bin's place for it.
-const FROM_STUDIO := "0 // From BrickLink Studio:"
-const CATEGORY := "From Studio"
+const FROM_STUDIO := PartPrints.FROM_STUDIO
+const CATEGORY := PartPrints.STUDIO_BIN
 ## How deep subfiles are followed, as PartForge does.
 const DEEPEST := 32
 
