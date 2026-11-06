@@ -1135,7 +1135,7 @@
       "kind": "api",
       "label": "/api/collection",
       "entry": "api/collection.js",
-      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an import, PUT, DELETE with a session)",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an op or an import, DELETE with a session; PUT refused 409)",
       "area": "collection"
     },
     {
@@ -4700,6 +4700,34 @@
       "entry": "tools/web/booklet_safe_flow.mjs",
       "reach": "node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts: a model whose page picture breaks out of its attribute opened, Instructions pressed; no flag set, the good picture shown, the policy first with script-src 'none', script put into the tab refused, Print prints)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "loose parts in my collection",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection…, What I own: the Loose parts row, a part by its number or words, a photo, Like this or the bin, its colour, how many, Add; each lot's count and Remove; Added by Claude with Keep them and Take back)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "a session's loose parts over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "edit_collection over MCP: add= lots marked as the chat's (a desktop session naming none, its connection's), remove= its own, nothing to read back   (tools/relay_probe.sh mybricks)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mybricks probe",
+      "entry": "src/dev/mybricks_probe.gd",
+      "reach": "tools/relay_probe.sh mybricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: 12 lots by hand, What do I need? and What can I build?, the same 12 over MCP, a restart and another device, Take back, nothing lost in the window)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mybricks api test",
+      "entry": "tools/web/mybricks_api.mjs",
+      "reach": "node tools/web/mybricks_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview: every change an op, sources kept, stale counts and a PUT refused 409, a session's apart, taken back lot for lot)",
+      "area": "collection"
     }
   ]
 }
