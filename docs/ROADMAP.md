@@ -562,10 +562,29 @@ Still refused, each needing the parts pipeline and a catalogue rebuild: 4595
 (five sub-models), whose side studs' bores open its inside to the cover's
 fill; the 60608 and 86210 panes' pin recesses; 4346's doors, which have no
 connector at all; and 3710 under 2582's lip, which BrickNet has no label
-for. By hand a cone goes on a cone's stud at the stud's foot, 4 LDU below
-where its stop rests it, and the check seats it (`technic_hand_probe`); over
-MCP a bar in a hollow stud, a clip on it and a cone stack pass as one design.
-No catalogue rebuild: the checker alone changed.
+for. By hand a cone went on a cone's stud 4 LDU down it, under the stud's
+foot, and the check seated it (`technic_hand_probe`; fixed by conestop,
+below); over MCP a bar in a hollow stud, a clip on it and a cone stack pass
+as one design. No catalogue rebuild: the checker alone changed.
+
+Parts at a stud's stop, 2026-11-05 (conestop). The hand rests a part on the
+covers under it, and a 1 x 1 cone's cover stops 4 LDU under its top (4589's
+6, a baseplate's 4), where it narrows to its stud: a cone, a round plate or
+a dome put on that stud went that far down it, into the cone, clicked or
+dragged, and the check seated it back up 4 LDU, saying it was fine. 53 of the
+7,928 parts with a stud on top have a cover short of a stud's foot. Now a
+stud stops what goes onto it at its foot, read from BrickNet's frames as the
+check reads them (`Exact.sunk_pairs`): a hole or tube past the foot of a stud
+it mates with, by more than TAU, with the two shapes meeting deeper there than
+at the stop, is in the stud's part. The check refuses it ("passes 4 LDU into")
+and never seats it; the hand lifts the ghost, a dragged group and a figure to
+the stop (`Builder.stud_feet_lift`). Posts are left out (a lightsaber blade's
+is at its tip, down a hollow stud), and so are parts nested on a hinge (a
+turntable's base, its holes 8 LDU under its top's studs, meets it no deeper).
+Cones (3942c, 4589, 59900), a round plate and a dome 2 x 2, each on 59900's,
+4589's and 6141's stud: 10 of the 15 went 4 or 6 LDU low by hand, all 15 at
+the stop now, clicked, dragged, swapped in and over MCP (`technic_hand_probe`);
+replace and Like this keep the old part's bottom and were right already.
 
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety

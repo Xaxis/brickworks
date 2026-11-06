@@ -13,7 +13,20 @@
 ## different answers about one placement.
 ##
 ## And the other way: the same pin a stud off is refused by both.
+##
+## And a part with a round hollow on a round stud, the ways a person puts
+## one down and a session does: cones (3942c, 4589, 59900), a round plate
+## 1 x 1 (6141) and a dome 2 x 2 (30367a), each on a cone's stud and on a
+## round plate's. A cone's cover stops 4 LDU under its top (4589's 6),
+## where it narrows to its stud, and the hand rested each part on it, that
+## far down the stud and into the cone; the check then seated it (conestop,
+## 2026-11-05). Each must stop at the stud's foot, to 0.01 LDU.
 extends SceneTree
+
+## The parts under, whose studs are round, and the parts with a round
+## hollow put on them.
+const UNDER: Array = ["59900", "4589", "6141"]
+const ON: Array = ["3942c", "4589", "59900", "6141", "30367a"]
 
 var _failures: int = 0
 var _library: PartLibrary
@@ -50,14 +63,20 @@ func _initialize() -> void:
 	_a_bar_in_a_clip()
 	_turning_on_a_joint()
 	_a_cone_on_a_cone()
+	_round_hollows_by_hand()
+	_round_hollows_swapped()
+	await _a_figure_on_two_cones()
 	await _over_mcp()
+	await _round_hollows_over_mcp()
 
 	print("")
 	if _failures == 0:
 		print("by hand: a pin into a hole, an axle through a beam with a gear on it, "
 			+ "a beam onto two pins, a clip on a bar, a clip on a plate's handle, a "
 			+ "bar in a clip and a cone on a cone's stud, each joined, and check_design "
-			+ "agrees; and a session's design of the same over MCP passes")
+			+ "agrees; and a session's design of the same over MCP passes; and cones, a "
+			+ "round plate and a dome on a cone's or round plate's stud, clicked, dragged "
+			+ "or sent over MCP, each at the stud's stop")
 	else:
 		print("%d check%s failed" % [_failures, "" if _failures == 1 else "s"])
 	quit(1 if _failures > 0 else 0)
@@ -403,13 +422,12 @@ func _a_cone_on_a_cone() -> void:
 	# On the studs' grid, as the hand puts a part: its stud at 10, 10.
 	_put("59900", Transform3D(Basis.IDENTITY, Vector3(10, 24, 10)))
 	_aim("59900", Vector3(10, 28, 10), Vector3(10, 300, 10))
-	# The hand stands it at the stud's foot, 44; the cone's stop inside its
-	# hollow rests it on the stud's top, 48, as the set has it, and the
-	# check seats it there.
+	# At the stud's foot, 48, as the set has it: the cone's cover stops at
+	# 44, and the hand stood it there once, 4 LDU down the stud.
 	var at: Transform3D = _ghost()
 	_ok(_builder.can_place() and Vector2(at.origin.x - 10, at.origin.z - 10).length() < 0.01
-		and absf(at.origin.y - 48) <= 4.01,
-		"a cone aimed at a cone's stud goes on it: %s" % at.origin)
+		and absf(at.origin.y - 48) <= 0.01,
+		"a cone aimed at a cone's stud goes on it, at the stud's stop: %s" % at.origin)
 	var top: int = _builder.place()
 	var said: String = _design_says()
 	_ok(top != 0 and said.begins_with("2 bricks, buildable"),
@@ -418,6 +436,157 @@ func _a_cone_on_a_cone() -> void:
 	_builder.put_part("59900", 0, Transform3D(Basis.IDENTITY, Vector3(10, 72, 10)))
 	said = _design_says()
 	_ok(said.contains("float"), "the same cone a brick up, off the stud, floats: %s" % said)
+
+
+## Where the stud of [param below] standing at [param at] stops a part:
+## its foot, the highest of its studs pointing up, by its exact shape.
+func _stud_foot(below: String, at: Transform3D) -> Vector3:
+	var item := Exact.Item.new(Exact.shape_for(_library, below), at)
+	var foot := Vector3(0, -INF, 0)
+	for one: Array in item.world():
+		if item.shape.kind[int(one[0])] == Exact.STUD and (one[2] as Vector3).y > 0.99 \
+				and (one[1] as Vector3).y > foot.y:
+			foot = one[1]
+	return foot
+
+
+## How far above its origin [param held] takes a stud: the mouth of its
+## lowest hole pointing up, by its exact shape. On a stud it stands this
+## far under the stud's foot.
+func _mouth(held: String) -> float:
+	var shape: Exact.Shape = Exact.shape_for(_library, held)
+	var lowest: float = INF
+	for k: int in shape.connector_count():
+		if shape.kind[k] == Exact.HOLE and (-shape.frames[k].basis.y).y > 0.99:
+			lowest = minf(lowest, shape.frames[k].origin.y)
+	return lowest
+
+
+## The part under, on the ground at 10, _, 10 (its stud there), and the
+## height the part in hand stops at on its stud: [where it stands, the
+## stud's foot, the height].
+func _stack(below: String, held: String) -> Array:
+	var under: Lbm.PartMesh = _library.mesh_for(below)
+	var at := Transform3D(Basis.IDENTITY, Vector3(10, -under.bounds.position.y, 10))
+	var foot: Vector3 = _stud_foot(below, at)
+	return [at, foot, foot.y - _mouth(held)]
+
+
+## The brick of [param part] in the world other than [param but].
+func _brick_of(part: String, but: int = 0) -> BrickWorld.Brick:
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == part and brick.id != but:
+			return brick
+	return null
+
+
+## Each part with a round hollow aimed at a round stud and clicked down, as
+## the pointer puts a part from the bin (Builder._aim_single); then the same
+## part standing on the ground beside it picked up and dragged onto the
+## stud (Builder.lift_selection, Carry). Each at the stud's stop, to 0.01
+## LDU, with a hollow on the stud's line, and check_design passes the two.
+func _round_hollows_by_hand() -> void:
+	print("\nround hollows on round studs by hand, clicked and dragged: at the stud's stop")
+	for below: String in UNDER:
+		for held: String in ON:
+			var stack: Array = _stack(below, held)
+			var foot: Vector3 = stack[1]
+			var want: float = stack[2]
+			_clear()
+			var base: int = _put(below, stack[0])
+			_aim(held, foot + Vector3(0, 2, 0), foot + Vector3(0, 300, 0))
+			var put: int = _builder.place()
+			var brick: BrickWorld.Brick = _world.get_brick(put)
+			var y: float = brick.transform.origin.y if brick != null else INF
+			var said: String = _design_says()
+			_ok(absf(y - want) <= 0.01 and _on_stud(held, brick, foot)
+				and said.begins_with("2 bricks, buildable"),
+				"%s clicked onto %s's stud: y %.2f, the stop %.2f; %s" % [held, below, y, want,
+					said.left(120)])
+			# The same part on the ground two studs off, dragged onto it.
+			_clear()
+			base = _put(below, stack[0])
+			var hm: Lbm.PartMesh = _library.mesh_for(held)
+			var aside: int = _put(held, Transform3D(Basis.IDENTITY,
+				Vector3(70 if hm.bounds.size.x > 30 else 50, -hm.bounds.position.y, 10)))
+			_builder.select_brick(aside, false)
+			_builder.lift_selection()
+			_builder.update_preview(foot + Vector3(0, 300, 0), Vector3.DOWN)
+			_builder.place()
+			brick = _brick_of(held, base)
+			y = brick.transform.origin.y if brick != null else INF
+			said = _design_says()
+			_ok(absf(y - want) <= 0.01 and _on_stud(held, brick, foot)
+				and said.begins_with("2 bricks, buildable"),
+				"%s dragged onto %s's stud: y %.2f, the stop %.2f; %s" % [held, below, y, want,
+					said.left(120)])
+
+
+## A part on a round stud swapped for another (Replace, and Like this's
+## swap, Builder._in_place_of): a round plate on each stud replaced by each
+## of the others, each at the stud's stop.
+func _round_hollows_swapped() -> void:
+	print("\nround hollows swapped on a round stud: at the stud's stop")
+	for below: String in UNDER:
+		var first: Array = _stack(below, "6141")
+		for held: String in ON:
+			if held == "6141":
+				continue
+			var stack: Array = _stack(below, held)
+			_clear()
+			var base: int = _put(below, stack[0])
+			var plate: int = _put("6141", Transform3D(Basis.IDENTITY,
+				Vector3(10, float(first[2]), 10)))
+			_builder.select_brick(plate, false)
+			var swapped: Vector2i = _builder.replace_selection(held)
+			var brick: BrickWorld.Brick = _brick_of(held, base)
+			var y: float = brick.transform.origin.y if brick != null else INF
+			_ok(swapped.x == 1 and absf(y - float(stack[2])) <= 0.01
+				and _on_stud(held, brick, stack[1]),
+				"a round plate on %s's stud replaced by %s: y %.2f, the stop %.2f" % [below, held,
+					y, float(stack[2])])
+
+
+## Whether a hollow of [param brick] (part [param held]) is on the stud at
+## [param foot]: its mouth within 0.01 LDU of it.
+func _on_stud(held: String, brick: BrickWorld.Brick, foot: Vector3) -> bool:
+	if brick == null:
+		return false
+	var item := Exact.Item.new(Exact.shape_for(_library, held), brick.transform)
+	for one: Array in item.world():
+		if item.shape.kind[int(one[0])] == Exact.HOLE and (one[1] as Vector3).distance_to(foot) <= 0.01:
+			return true
+	return false
+
+
+## A figure stood on two cones side by side, a leg on each stud, by hand
+## and by add_minifig (FigureTool.add): at the studs' foot, not down them
+## (Builder.settle_figure, figure_lift).
+func _a_figure_on_two_cones() -> void:
+	print("\na figure stood on two cones' studs, by hand and over MCP")
+	_clear()
+	var stack: Array = _stack("59900", "6141")
+	var left: Transform3D = stack[0]
+	_put("59900", left)
+	_put("59900", left.translated(Vector3(20, 0, 0)))
+	var figure := Minifig.new()
+	_builder.hold_figure(figure.assemble(_library), "Guard")
+	var foot: Vector3 = stack[1]
+	_builder.update_preview(foot + Vector3(10, 300, 0), Vector3.DOWN)
+	var at: Transform3D = _builder._ghost_transform
+	_ok(_builder.can_place() and absf(at.origin.y - foot.y) <= 0.01,
+		"by hand, its feet on the studs' foot, %.2f: at %s" % [foot.y, at.origin])
+	_builder.drop_figure()
+	_clear()
+	_put("59900", left)
+	_put("59900", left.translated(Vector3(20, 0, 0)))
+	var stood: Dictionary = await FigureTool.add({"name": "Guard", "x": 0, "z": 0},
+		_library, _world, _builder)
+	var box: AABB = stood.get("box", AABB())
+	_ok(bool(stood.get("ok", false)) and absf(box.position.y - foot.y) <= 0.01
+		and str(stood.get("text", "")).contains("y %s" % str(foot.y / 8.0).trim_suffix(".0")),
+		"add_minifig, its feet on the studs' foot, %.2f: from %.2f; %s" % [foot.y,
+			box.position.y, str(stood.get("text", "")).left(100)])
 
 
 ## The same joints as a session builds them, through the tools the MCP
@@ -447,3 +616,59 @@ func _over_mcp() -> void:
 		"check_design passes what it built: %s" % checked)
 	_ok(not text.contains("float") and not text.contains("overlap"),
 		"and its answer says nothing against them: %s" % text.left(240))
+
+
+## Each part with a round hollow on a round stud as a session puts it over
+## MCP (submit_design): attached to the stud by name, and at the height of
+## the stud's foot by number. Each at the stud's stop, to 0.01 LDU, and the
+## answer says nothing against it.
+func _round_hollows_over_mcp() -> void:
+	print("\nround hollows on round studs over MCP, attached and by number: at the stud's stop")
+	for below: String in UNDER:
+		for held: String in ON:
+			var foot_at: Vector3 = _stud_foot(below, Transform3D.IDENTITY)
+			var under: Lbm.PartMesh = _library.mesh_for(below)
+			var plates: float = (foot_at.y - under.bounds.position.y) / 8.0
+			for how: String in ["attached", "by number"]:
+				_clear()
+				_assistant.forget_built()
+				var top: Dictionary = {"part": held, "color": 0, "name": "top"}
+				if how == "attached":
+					top["attach"] = {"to": "base.%s" % _named(below, Exact.STUD),
+						"by": _named(held, Exact.HOLE)}
+				else:
+					top.merge({"x": 0, "y": plates, "z": 0})
+				var said: Variant = await _assistant.use_tool("submit_design", {"name": "stack",
+					"bricks": [{"part": below, "color": 4, "x": 0, "y": 0, "z": 0, "name": "base"},
+					top]})
+				var text: String = str(said) if said is String else JSON.stringify(said)
+				var base: BrickWorld.Brick = _brick_of(below)
+				var brick: BrickWorld.Brick = _brick_of(held, base.id if base != null else 0)
+				var foot: Vector3 = _stud_foot(below, base.transform) if base != null else Vector3.INF
+				var want: float = foot.y - _mouth(held)
+				var y: float = brick.transform.origin.y if brick != null else INF
+				_ok(absf(y - want) <= 0.01 and _on_stud(held, brick, foot)
+					and not text.contains("passes") and not text.contains("float")
+					and not text.contains("overlap"),
+					"%s %s to %s's stud: y %.2f, the stop %.2f; %s" % [held, how, below, y, want,
+						text.get_slice("\n", 0).left(120)])
+
+
+## The first connector of [param part] of [param kind] pointing up, by the
+## name submit_design's attach reads ("open[0]", "hole[2]"): the highest
+## stud, or the lowest hole.
+func _named(part: String, kind: int) -> String:
+	var shape: Exact.Shape = Exact.shape_for(_library, part)
+	var best: int = -1
+	for k: int in shape.connector_count():
+		if shape.kind[k] != kind or (-shape.frames[k].basis.y).y < 0.99:
+			continue
+		var y: float = shape.frames[k].origin.y
+		if best < 0 or (y > shape.frames[best].origin.y + 0.01 if kind == Exact.STUD
+				else y < shape.frames[best].origin.y - 0.01):
+			best = k
+	var n: int = 0
+	for k: int in best:
+		if shape.kind[k] == shape.kind[best] and shape.named(k) == shape.named(best):
+			n += 1
+	return "%s[%d]" % [shape.named(best), n]

@@ -2921,7 +2921,10 @@ godot --headless --path . --script src/dev/snap_probe.gd
 # it, a beam onto two pins, a clip on a bar, a clip on 2540's handle (room
 # with its plate out, up or down, not into the plate) and a bar in a clip,
 # each aimed at, clicked, joined, and passed by check_design; the same pin a
-# stud off and the same clip or bar 2 LDU off the line refused by both
+# stud off and the same clip or bar 2 LDU off the line refused by both. And
+# cones (3942c, 4589, 59900), a round plate and a dome 2 x 2 on a cone's or
+# round plate's stud, clicked, dragged, swapped in, stood on by a figure and
+# sent over MCP, each at the stud's stop to 0.01 LDU
 godot --headless --path . --script src/dev/technic_hand_probe.gd
 # a pneumatic tube laid by clicking two pin holes, bent by a dragged ball,
 # refused past its bend, undone; Pose offering the laid tube no slider; a chain

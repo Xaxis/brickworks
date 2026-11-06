@@ -14198,8 +14198,9 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 			continue
 		# A wheel drawn spun on its axle: in plastic the axle turns with it. A
 		# ball in its socket, a bar in its clip, a pin in its hole: real sets
-		# meet so by their shapes, and are built (ExactCheck.at_joint).
-		if exact.forgiven(a, b):
+		# meet so by their shapes, and are built (ExactCheck.at_joint). Not a
+		# part down a stud past its foot, whatever sets meet the two by.
+		if not found.has("sunk") and exact.forgiven(a, b):
 			continue
 		var mine: bool = _exact_subject(model, a) or _exact_subject(model, b)
 		if not mine:
