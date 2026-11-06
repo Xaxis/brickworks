@@ -63,6 +63,7 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `import_io` | File › Import › BrickLink Studio model (.io) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_lxf` | File › Import › LEGO® Digital Designer model (.lxf) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_mesh` | File › Import › 3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb) | — | — | — | once a model | all | a file chosen once, from File › Import |
+| `import_into` | File › Import › Into this model… | — | — | — | once a model | all | a model chosen once, then put where it goes |
 | `versions` | File › Versions | — | — | — | rarely | all | an older save, looked for now and then |
 | `compare` | File › Compare with | — | — | — | rarely | all | two versions side by side, now and then |
 | `export_ldraw` | File › Export › LDraw model (.ldr, or .mpd with its sub-models) | — | — | — | once a model | all | made once a model is done |
@@ -72,6 +73,7 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `export_bricklink` | File › Export › BrickLink wanted list (.xml) | — | — | — | once a model | all | made once a model is done |
 | `export_all` | File › Export › All my models (.zip) | — | — | — | once a model | all | made once a model is done |
 | `export_rebrickable` | File › Export › Rebrickable parts list (.csv) | — | — | — | once a model | all | made once a model is done |
+| `export_pickabrick` | File › Export › LEGO® Pick a Brick list (.csv) | — | — | — | once a model | all | made once a model is done |
 | `render` | File › Render | — | — (its POV-Ray and Blender Render have none) | — | once a model | all | a picture once a model is done; no field tool keys it |
 | `render_queue` | File › Render queue | — | — | — | rarely | all | pictures waiting, looked at after Render |
 | `share` | File › Share | — | — | — | once a model | all | a link once a model is done |
