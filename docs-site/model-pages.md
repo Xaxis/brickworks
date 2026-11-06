@@ -34,6 +34,18 @@ ui:build it step player
 ui:open a shared model at a step
 -->
 
+### Build together {#build-together}
+
+Up to four people can build one model at once, each on their own phone, tablet or computer, with no account. On the model's viewer, **Build together** opens a card: one person presses **Start a build** and is given a four-letter code; the others open the same model, press **Build together**, type the code and press **Join**. Each can give a name, or be *Builder 2*. When everyone is in, the one who started presses **Start building**.
+
+Brickworks deals the model out: each sub-assembly whole to one person, and the main build cut into runs of its steps when there are more people than parts to build. Each person's Build it then has only their own steps, a part at a time, and along its top everyone's progress (*Mia 4 of 9*). Done first, you wait on your last step, built, with who is still building. When everyone is done, everyone is shown the last step, which puts the parts together: the others' parts outlined where they go on.
+
+**Close** mid-build puts the card back, with **Back to building** and **Leave the build**. Join again with the same code, kept on that device, and you are back on your own share where you left it. A build lasts a day.
+
+<!-- covers
+ui:build party
+-->
+
 ### Play with it {#play}
 
 A model with something that moves says so under the bar (*Moves: steering, boom*): drag a part that moves, with the mouse or a finger, and it moves on its real joints. **Reset** puts it back. Its own motions are buttons to play.

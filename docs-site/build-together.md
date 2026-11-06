@@ -18,6 +18,8 @@ lib:building together
 api:POST /api/together
 -->
 
+To build a shared model with real bricks together, each of you on your own phone with your own share of it, use [Build together on its viewer](/docs/model-pages#build-together) instead: no account, a four-letter code.
+
 ## Start a session {#start}
 
 1. **File › Build together…**, then **Start a session**.
