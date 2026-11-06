@@ -3148,6 +3148,13 @@
       "area": "web"
     },
     {
+      "kind": "cli",
+      "label": "buildturn probe",
+      "entry": "src/dev/buildturn_probe.gd",
+      "reach": "tools/probe.sh buildturn_probe; PROBE_SIZE=1024x768, 1280x720 or 1400x900 tools/probe.sh buildturn_probe   (windowed, 390x844 by its header; pictures in shots/buildturn/)",
+      "area": "web"
+    },
+    {
       "kind": "ui",
       "label": "first steps after a first sign-in",
       "entry": "web/first-steps.js",
