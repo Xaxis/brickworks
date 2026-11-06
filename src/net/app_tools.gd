@@ -42,6 +42,8 @@ var _hands: HandTools
 ## What a session sees as a person does: boards of views, parts picked out,
 ## a booklet page (SeeTools, APP_UX4).
 var _see: SeeTools
+## Edit, Pattern…'s grid for a session (PatternTool, APP_UX4 grid).
+var _pattern: PatternTool
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -60,9 +62,10 @@ const COMMANDS: Dictionary = {
 	"undo": "undo", "redo": "undo",
 	"cut_parts": "edit_model", "copy": "edit_model", "paste": "edit_model",
 	"duplicate": "edit_model", "delete": "edit_model", "paint": "edit_model",
-	# A session repeats a named section stepped or round a centre
-	# (edit_model's repeat_section; submit_design's repeat pattern).
-	"pattern": "edit_model",
+	# Edit, Pattern…'s grid (and a row, a grid of one row) on parts by number
+	# (PatternTool); a named section repeats stepped or round a centre with
+	# edit_model's repeat_section, a design with submit_design's repeat.
+	"pattern": "pattern_parts",
 	"replace": "edit_model", "make_submodel": "edit_model",
 	"step_*": "edit_steps", "timeline": "edit_steps", "booklet_*": "edit_booklet",
 	"floor_*": "set_floor",
@@ -260,6 +263,12 @@ N with its new parts edged. booklet_page, read-only: a page of the booklet as \
 Instructions draws it and its PDF prints it, to see what edit_booklet did. \
 mirror_parts, split_parts and merge_parts answer with the change pictured, as \
 edit_model does (picture=true the whole model, false words alone).
+ - pattern_parts: Edit, Pattern…'s grid on parts by number, in one call: \
+columns along x, rows along z and levels up (a row is one row and one level), \
+column_studs= and row_studs= apart in studs, level_plates= in plates, each the \
+parts' own size when not given, so copies touch. Every copy checked for room, \
+all or nothing, one undo step; a copy with no room is said by its column, row \
+and level and the part in its way. Answered with the copies pictured.
  - weakest_joints: what gives first in the whole model as it stands, \
 read-only, as View, Stress weighs it: each joint that alone holds what is \
 past it, weakest first, with its margin against its studs' working load. \
@@ -975,6 +984,7 @@ func definitions() -> Array:
 			}},
 		},
 		GalleryTool.definition(),
+		PatternTool.definition(),
 	] + HandTools.definitions() + SeeTools.definitions()
 
 
@@ -1073,6 +1083,16 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return handled
 		"view_board", "booklet_page":
 			return await _seeing().run(tool, input, work)
+		# Edit, Pattern…'s grid (PatternTool), answered with the copies
+		# pictured as the hand tools' changes are.
+		"pattern_parts":
+			if _pattern == null:
+				_pattern = PatternTool.new()
+				_pattern.app = app
+			var laid: String = _pattern.run(input)
+			if not _pattern.changed.is_empty():
+				return await _seeing().pictured(laid, _pattern.changed, input.get("picture"))
+			return laid
 	return "No tool called %s." % tool
 
 
@@ -1116,7 +1136,9 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_
 	"define_motion", "play_motion",
 	"undo", "open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts",
 	"make_sections", "break_out_section",
-	"mirror_parts", "split_parts", "merge_parts"]
+	"mirror_parts", "split_parts", "merge_parts",
+	# Edit, Pattern…'s grid (PatternTool).
+	"pattern_parts"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the

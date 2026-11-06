@@ -636,6 +636,8 @@ const HINTS := {
 	# picked out or seen through, and a booklet page as a picture.
 	"view_board": ["Look from several sides", "look"],
 	"booklet_page": ["See a booklet page", "look"],
+	# Edit, Pattern…'s grid (PatternTool): copies added, nothing taken off.
+	"pattern_parts": ["Lay copies in a grid", "add"],
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],

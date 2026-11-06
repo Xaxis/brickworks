@@ -19,8 +19,17 @@
 ## * a 1 x 4 brick standing where column 3, row 2, level 1 would go: the
 ##   dialog says that copy has no room and what is in the way, draws it red,
 ##   and nothing is put down.
-## The dialog is inside the window, every field in sight. Pictures go to
-## shots/grid/.
+## The dialog is inside the window, every field in sight, in English, German,
+## French and Spanish.
+##
+## And the same over MCP, as the owner's own Claude does it, called the way the
+## connector and the desktop's MCP port call it (CommandSocket.answer_rpc,
+## tools/call): pattern_parts lays the same 4 x 3 x 2 in 1 call, 24 bricks
+## each at its place to the LDU, one undo step (the session's undo takes the
+## 23 back), the person's selection as it was; the 1 x 4 brick in the way
+## refused with its column, row and level and its number, nothing changed;
+## and with no spacing given the copies touch, a 2 x 2 brick's own 2 studs
+## and 3 plates, answered with a picture. Pictures go to shots/grid/.
 extends SceneTree
 
 const BRICK := "3003"     ## Brick 2 x 2
@@ -44,6 +53,8 @@ var _camera: CadCamera
 var _library: PartLibrary
 var _verbs: EditVerbs
 var _shell: Shell
+var _socket: CommandSocket
+var _next: int = 0
 var _tag: String = ""
 var _said: String = ""
 ## What the status bar said when the grid was put down.
@@ -91,9 +102,10 @@ func _run() -> void:
 	if await _a_grid():
 		await _one_undo()
 		await _in_the_way()
+	await _over_mcp()
 	_put_back_autosave()
 	print("")
-	print("grid probe: a block of copies in one dialog, one undo, a copy with no room said where"
+	print("grid probe: a block of copies in one dialog and in one call, one undo, a copy with no room said where"
 		if _failures == 0 else "grid probe: %d FAILED" % _failures)
 	quit(1 if _failures else 0)
 
@@ -293,6 +305,113 @@ func _words(dialog: PatternDialog, lines: Array) -> void:
 		await _shot("in_the_way_" + code)
 	Language.apply("en")
 	await _frames(4)
+
+
+## The same grid over MCP, in 1 call; its undo; the collision; the copies
+## touching when no spacing is given.
+func _over_mcp() -> void:
+	print("")
+	print("  over MCP, as the owner's Claude calls it")
+	_socket = CommandSocket.new()
+	_socket.assistant = _main.get("_assistant")
+	_socket.app = _main
+	_main.add_child(_socket)
+	await _frames(2)
+	var listed: Dictionary = await _rpc("tools/list", {})
+	var tool: Dictionary = {}
+	for one: Dictionary in listed.get("tools", []):
+		if str(one["name"]) == "pattern_parts":
+			tool = one
+	_check("tools/list offers pattern_parts, not read-only (%s)" % str(tool.get("annotations", {})),
+		not tool.is_empty() and not bool((tool.get("annotations", {}) as Dictionary)
+			.get("readOnlyHint", true)))
+	if tool.is_empty():
+		print("    a session cannot lay a grid in one call: it lays 23 copies a part at a time")
+		return
+	await _fresh()
+	var first: int = _put(BRICK, RED, AT)
+	await _look()
+	var depth: int = _builder.history_depth()
+	var calls: int = 0
+	var said: String = _text(await _rpc("tools/call", {"name": "pattern_parts", "arguments": {
+		"bricks": [first], "columns": COLUMNS, "rows": ROWS, "levels": LEVELS,
+		"column_studs": 3, "row_studs": 3, "level_plates": 9, "picture": false}}))
+	calls += 1
+	print("    said: %s" % said)
+	var bricks: Array = _of(BRICK)
+	_check("in %d call: %d bricks, each at its place to the LDU, square to the grid"
+		% [calls, bricks.size()], calls == 1 and bricks.size() == COLUMNS * ROWS * LEVELS
+		and _at_places(bricks))
+	_check("...none in another's room", _none_overlap(bricks))
+	_check("...said: 24 in all, 4 columns, 3 rows and 2 levels as asked, one undo step",
+		said.contains("24 in all") and said.contains("4 columns 3 studs apart")
+		and said.contains("3 rows 3 studs apart")
+		and said.contains("2 levels 9 plates (3 bricks) apart") and said.contains("One undo step"))
+	_check("...one step to undo (%d more)" % (_builder.history_depth() - depth),
+		_builder.history_depth() == depth + 1)
+	_check("...the person's selection as it was (%d selected)" % _builder.selection.size(),
+		_builder.selection.is_empty())
+	await _frames(4)
+	await _shot("mcp_after")
+	var undone: String = _text(await _rpc("tools/call", {"name": "undo", "arguments": {}}))
+	_check("the session's undo, once, takes all 23 copies back (%d bricks): %s"
+		% [_of(BRICK).size(), undone.left(90)], _of(BRICK).size() == 1
+		and _at(_of(BRICK)[0] as BrickWorld.Brick, Vector3i.ZERO))
+
+	# The 1 x 4 brick where column 3, row 2, level 1 would go.
+	var where: Vector3 = AT + Vector3(2 * APART.x, 0, 1 * APART.z)
+	var in_way: int = _put(IN_WAY, BLUE, where)
+	await _frames(2)
+	var before: int = _world.bricks().size()
+	depth = _builder.history_depth()
+	said = _text(await _rpc("tools/call", {"name": "pattern_parts", "arguments": {
+		"bricks": [first], "columns": COLUMNS, "rows": ROWS, "levels": LEVELS,
+		"column_studs": 3, "row_studs": 3, "level_plates": 9}}))
+	print("    said: %s" % said)
+	_check("a grid that would collide is refused with where: %s" % said,
+		said.contains("the copy in column 3, row 2, level 1 has no room")
+		and said.contains("%s is in the way (#%d)" % [_name(IN_WAY), in_way])
+		and said.contains("Nothing changed"))
+	_check("...nothing put down (%d parts, %d before), no step to undo (%d more)"
+		% [_world.bricks().size(), before, _builder.history_depth() - depth],
+		_world.bricks().size() == before and _builder.history_depth() == depth)
+
+	# No spacing given: the brick's own size, so the copies touch.
+	await _fresh()
+	first = _put(BRICK, RED, AT)
+	await _frames(2)
+	var answer: Dictionary = await _rpc("tools/call", {"name": "pattern_parts", "arguments": {
+		"bricks": [first], "columns": 2, "levels": 2}})
+	said = _text(answer)
+	var pictured: bool = (answer.get("content", []) as Array).any(func(block: Dictionary) -> bool:
+		return str(block.get("type", "")) == "image")
+	var origins: Array = _of(BRICK).map(func(b: BrickWorld.Brick) -> Vector3:
+		return b.transform.origin - AT)
+	var touching: bool = origins.size() == 4
+	for want: Vector3 in [Vector3(0, 0, 0), Vector3(40, 0, 0), Vector3(0, 24, 0),
+			Vector3(40, 24, 0)]:
+		touching = touching and origins.any(func(at: Vector3) -> bool:
+			return at.distance_to(want) < 0.01)
+	_check("with no spacing given, a 2 x 2 brick's own 2 studs and 3 plates: touching (%s)"
+		% str(origins), touching and said.contains("2 columns 2 studs apart")
+		and said.contains("2 levels 3 plates (1 brick) apart"))
+	_check("...answered with the copies pictured (%s)" % ("a picture" if pictured else "words alone"),
+		pictured or DisplayServer.get_name() == "headless")
+	_socket.queue_free()
+
+
+func _rpc(method: String, params: Dictionary) -> Dictionary:
+	_next += 1
+	var answer: Variant = await _socket.answer_rpc({"jsonrpc": "2.0", "id": _next,
+		"method": method, "params": params})
+	return (answer as Dictionary).get("result", {}) as Dictionary
+
+
+static func _text(result: Dictionary) -> String:
+	var text: String = ""
+	for block: Dictionary in result.get("content", []):
+		text += str(block.get("text", ""))
+	return text
 
 
 # -- the model -----------------------------------------------------------------

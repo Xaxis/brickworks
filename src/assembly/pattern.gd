@@ -72,6 +72,18 @@ static func grid(column: Vector3, row: Vector3, level: Vector3,
 	return out
 
 
+## How far apart copies of parts filling [param box] stand touching: along
+## x (0) or z (1) in studs, or up (2) in plates. A part's studs go into the
+## one above, so a 2 x 2 brick, 28 LDU with its studs, is 3 plates up, not
+## 4 (rounded, it left a plate's gap between levels). The window's spacings
+## (PatternDialog) and a session's (PatternTool) start here.
+static func own_spacing(box: AABB, axis: int) -> float:
+	if axis == 2:
+		return maxf(1.0, floorf(box.size.y / BrickLattice.PLATE + 0.01))
+	var wide: float = box.size.x if axis == 0 else box.size.z
+	return maxf(1.0, snappedf(wide / BrickLattice.STUD, 0.5))
+
+
 ## Every place in a grid of [param columns] by [param rows] by [param levels]
 ## but the first, where the parts stand: (column, row, level) from 0, a row's
 ## columns first, then the rows, then the levels. A copy's number is its

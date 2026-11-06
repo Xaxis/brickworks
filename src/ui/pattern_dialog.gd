@@ -272,11 +272,7 @@ func _own_size() -> float:
 ## The selection's size along x (0), z (1) or up (2): studs, or plates up.
 ## A grid's copies start this far apart, touching, as a row's do.
 func _size_along(axis: int) -> float:
-	var box: AABB = _box()
-	if axis == 2:
-		return maxf(1.0, roundf(box.size.y / BrickLattice.PLATE))
-	var wide: float = box.size.x if axis == 0 else box.size.z
-	return maxf(1.0, snappedf(wide / BrickLattice.STUD, 0.5))
+	return Pattern.own_spacing(_box(), axis)
 
 
 func _box() -> AABB:
