@@ -500,10 +500,10 @@ return {
     if got is None:
         return
     assert got["same"] and got["names"] and got["descriptions"] and got["readOnly"]
-    assert got["n"] == 74
+    assert got["n"] == 73
     # Claude's list keeps its arrays that say no items; nobody else's has one.
     assert got["bareClaude"] > 0 and got["bareOther"] == 0
-    assert got["hintsOther"] == 74 and got["hintsClaude"] < 74
+    assert got["hintsOther"] == 73 and got["hintsClaude"] < 73
 
 
 def test_the_tab_is_told_who_calls_by_the_connection_not_by_the_client() -> None:

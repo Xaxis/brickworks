@@ -1540,22 +1540,6 @@
       "tests": []
     },
     {
-      "id": "cli:mybricks api test",
-      "kind": "cli",
-      "entry": "tools/web/mybricks_api.mjs",
-      "reach": "node tools/web/mybricks_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview: loose lots set and added one at a time, a session's apart, taken back lot for lot)",
-      "area": "collection",
-      "tests": []
-    },
-    {
-      "id": "cli:mybricks probe",
-      "kind": "cli",
-      "entry": "src/dev/mybricks_probe.gd",
-      "reach": "tools/relay_probe.sh mybricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: 12 lots by hand, What do I need? and What can I build?, the same 12 over MCP, a restart and another device, Take back)",
-      "area": "collection",
-      "tests": []
-    },
-    {
       "id": "cli:needs backfill",
       "kind": "cli",
       "entry": "tools/web/needs_backfill.mjs",
@@ -2784,16 +2768,6 @@
       "reach": "node tools/web/relay_server.mjs 8790 --static=build/web, then node tools/web/tabs_flow.mjs --url=http://127.0.0.1:8790/app   (by hand: two tabs of /app, a different model in each, reload each)",
       "area": "model-io",
       "tests": []
-    },
-    {
-      "id": "lib:a session's loose parts over mcp",
-      "kind": "lib",
-      "entry": "src/net/app_tools.gd",
-      "reach": "edit_collection over MCP: add= lots marked as the chat's, remove= its own, nothing to read back   (tools/relay_probe.sh mybricks)",
-      "area": "collection",
-      "tests": [
-        "tests/test_docs_site.py"
-      ]
     },
     {
       "id": "lib:a set's picture drawn from its parts",
@@ -4644,14 +4618,6 @@
         "tests/fixtures/collection/fake_rebrickable.py",
         "tests/test_achievements.py"
       ]
-    },
-    {
-      "id": "ui:loose parts in my collection",
-      "kind": "ui",
-      "entry": "src/ui/collection_dialog.gd",
-      "reach": "godot --path .  (Build, My collection\u2026, What I own: the Loose parts row, a part by its number or words, a photo, Like this or the bin, its colour, how many, Add; each lot's count and Remove; Added by Claude with Keep them and Take back)",
-      "area": "collection",
-      "tests": []
     },
     {
       "id": "ui:make a part",

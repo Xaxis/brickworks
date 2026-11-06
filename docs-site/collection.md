@@ -1,7 +1,7 @@
 ---
-tools: parts_list, edit_collection
+tools: parts_list
 panels: CollectionDialog#my-collection
-ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots.
+ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build.
 rules:
   - The collection comes from Rebrickable (with the person's own key), a BrickLink or Rebrickable list, or typed in.
 title: My collection
@@ -20,19 +20,6 @@ lib:collection kept with the account
 lib:collection sums
 api:/api/collection
 -->
-
-## Loose parts {#loose}
-
-<!-- covers
-ui:loose parts in my collection
-lib:a session's loose parts over mcp
--->
-
-Most people own a tub of loose bricks as well as their sets. Under *What I own*, the **Loose parts** row adds them a lot at a time: type the part's number or a few words (*red 2x4 brick*, *3001*, or a BrickLink number), or choose **Photo…** to find it from a picture, or take a part in the parts bin; then pick its colour, say how many, and choose **Add**. **Like this** offers the parts that look like the one chosen. Each lot is listed under *Loose parts*, where you can change its count or remove it. Adding more of a part and colour you already have adds to that lot.
-
-What do I need? and What can I build? count your loose parts with your sets', and they are kept with your account like the rest.
-
-**From a photo, with Claude.** Show your own Claude a photo of your pile and ask it to add what it sees: it adds every lot in one go, each marked as that chat's. *What I own* then says what it added, so you can look the lots over: **Keep them** makes them your own, and **Take back what Claude added** takes exactly those lots off again. Claude never changes your sets or the lots you added yourself.
 
 ## What do I need? {#need}
 

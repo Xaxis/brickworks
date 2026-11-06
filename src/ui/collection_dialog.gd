@@ -5,9 +5,8 @@
 ## parts list (it is consulted and dismissed, and wants the room):
 ##
 ##   What I own        bring it in — a Rebrickable account, a Rebrickable
-##                     CSV export, a BrickLink XML, sets typed by number,
-##                     loose parts one lot at a time — and see it, with
-##                     Start over
+##                     CSV export, a BrickLink XML, sets typed by number —
+##                     and see it, with Start over
 ##   What do I need?   the open model's parts against the collection: what
 ##                     is short, by part and colour, with what could stand
 ##                     in (the part in a colour that is spare, two smaller
@@ -18,16 +17,6 @@
 ##   What can I build? the examples, the person's own saved models and the
 ##                     official LDraw set models, ranked by how much of each
 ##                     they own
-##
-## Loose parts (mybricks, APP_UX5 #2, 2026-11-06): most people own a tub
-## of loose bricks, not an inventory. A lot is added in one row — a part
-## found by the bin's own search (a colour's name typed with it is taken:
-## "red 2x4 brick"), by Like this, or from a photo of the part (the bin's
-## Brickognize, which says the colour too), or chosen in the bin itself
-## while this page is open; its colour; how many; Add — and listed under
-## Loose parts, each lot's count changed or the lot taken out by itself.
-## What a session added over MCP (edit_collection) is listed apart, under
-## who added it, with Keep them and Take back.
 ##
 ## The sums are Collection's; the keeping is CollectionStore's. Built by
 ## Shell, which reaches the app the way it does for its own parts, so
@@ -87,36 +76,6 @@ signal said(text: String)
 ## What happens to a Rebrickable key: [method _rebrickable_note].
 var _rb_note: Label
 
-# The row a loose lot is added in, and what it has chosen.
-var _loose_search: LineEdit
-var _loose_colour: OptionButton
-var _loose_count: SpinBox
-var _loose_found: HFlowContainer
-var _loose_picture: TextureRect
-var _picture_wait: Timer
-var _search_wait: Timer
-## The part chosen to add, "" for none; the parts listed beside it; and how
-## sure Brickognize was of each, while a photo's answer is listed.
-var _loose_part: String = ""
-var _loose_listed: Array[PartLibrary.PartInfo] = []
-var _loose_sure: Dictionary = {}
-## The colour codes the colour list holds, in its order.
-var _colour_codes: Array[int] = []
-var _photo: PickImage
-var _brickognize: Brickognize
-var _telling: ConfirmationDialog
-var _likeness: PartLike
-## Counts typed into the lots' rows, sent together a moment after the last:
-## lot key -> [lot, count].
-var _counts_typed: Dictionary = {}
-var _count_wait: Timer
-## A name -> LDraw code for every colour, as typed words say them
-## (_colour_words): LDraw's, the LEGO Group's and the language's own.
-var _colour_names: Dictionary = {}
-
-## The most parts listed beside the chosen one.
-const LISTED := 6
-
 
 ## Take the app's parts and put the panel on screen, hidden.
 func attach(main: Node) -> void:
@@ -139,13 +98,6 @@ func attach(main: Node) -> void:
 	_fit()
 	get_viewport().size_changed.connect(_fit)
 	store.changed.connect(_on_store_changed)
-	# A part chosen in the bin, by its search, Like this or a photo, while
-	# What I own is open, is the part the row adds, in the bin's colour.
-	var bin: PartsBin = main.get("_bin")
-	if bin != null:
-		bin.part_chosen.connect(func(id: String) -> void:
-			if visible and _page == "own":
-				choose_loose(id, int(bin.get("_selected_color"))))
 	var account: Account = main.get("_account")
 	if account != null:
 		account.changed.connect(_on_account)
@@ -374,91 +326,8 @@ func _own_page() -> Control:
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	page.add_child(note)
 
-	_loose_row(page)
 	_own_rows = _scrolled(page)
 	return page
-
-
-## The row a loose lot is added in: a part (searched for, from a photo, or
-## like the one chosen), its colour, how many, Add; and under it, the part
-## chosen and the others found.
-func _loose_row(page: Container) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	page.add_child(row)
-	# Its own width: a clipped label beside a field that fills the row had
-	# none, and the row went unnamed.
-	var named: Label = _label("Loose parts", 12, 0.75)
-	named.clip_text = false
-	row.add_child(named)
-	_loose_search = LineEdit.new()
-	_loose_search.placeholder_text = "A part: its number or words, like red 2x4 brick"
-	_loose_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_loose_search.add_theme_font_size_override("font_size", 12)
-	_loose_search.clear_button_enabled = true
-	_loose_search.text_submitted.connect(func(text: String) -> void:
-		_search_wait.stop()
-		search_loose(text)
-		if not _loose_part.is_empty():
-			_loose_count.get_line_edit().grab_focus()
-			_loose_count.get_line_edit().select_all())
-	_loose_search.text_changed.connect(func(_text: String) -> void: _search_wait.start())
-	row.add_child(_loose_search)
-	_controls["collection_loose_search"] = _loose_search
-	_search_wait = Timer.new()
-	_search_wait.one_shot = true
-	_search_wait.wait_time = 0.3
-	_search_wait.timeout.connect(func() -> void: search_loose(_loose_search.text))
-	add_child(_search_wait)
-	_button(row, "Photo…", _ask_photo, "collection_loose_photo",
-		"Find the part from a photo of it, as the parts bin's camera does")
-	_button(row, "Like this", like_loose, "collection_loose_like",
-		"Parts like the one chosen: its other sizes and kinds")
-	_loose_colour = OptionButton.new()
-	_loose_colour.add_theme_font_size_override("font_size", 12)
-	_loose_colour.custom_minimum_size = Vector2(170, 0)
-	_loose_colour.fit_to_longest_item = false
-	_loose_colour.clip_text = true
-	_loose_colour.tooltip_text = "Its colour: the colours the part was made in first"
-	_loose_colour.item_selected.connect(func(_at: int) -> void: _show_chosen())
-	row.add_child(_loose_colour)
-	_controls["collection_loose_colour"] = _loose_colour
-	_loose_count = SpinBox.new()
-	_loose_count.min_value = 1
-	_loose_count.max_value = 100000
-	_loose_count.step = 1
-	_loose_count.value = 1
-	_loose_count.select_all_on_focus = true
-	_loose_count.custom_minimum_size = Vector2(76, 0)
-	_loose_count.tooltip_text = "How many"
-	_loose_count.get_line_edit().add_theme_font_size_override("font_size", 12)
-	_loose_count.get_line_edit().text_submitted.connect(func(text: String) -> void:
-		if text.strip_edges().is_valid_int():
-			_loose_count.value = clampi(int(text), 1, 100000)
-		add_loose())
-	row.add_child(_loose_count)
-	_controls["collection_loose_count"] = _loose_count
-	_button(row, "Add", add_loose, "collection_loose_add",
-		"Add these to your loose parts, kept with your account")
-
-	# Flowing, so the parts found go onto a second line rather than widen
-	# the page: in one row, six of them pushed Add, Add sets and every
-	# Remove past the dialog's edge at 1280 x 720.
-	_loose_found = HFlowContainer.new()
-	_loose_found.add_theme_constant_override("h_separation", 4)
-	_loose_found.add_theme_constant_override("v_separation", 4)
-	_loose_found.custom_minimum_size = Vector2(0, 30)
-	page.add_child(_loose_found)
-	_picture_wait = Timer.new()
-	_picture_wait.wait_time = 0.25
-	_picture_wait.timeout.connect(_show_picture)
-	add_child(_picture_wait)
-	_count_wait = Timer.new()
-	_count_wait.one_shot = true
-	_count_wait.wait_time = 0.6
-	_count_wait.timeout.connect(_send_counts)
-	add_child(_count_wait)
-	_show_chosen()
 
 
 func _need_page() -> Control:
@@ -665,42 +534,16 @@ func _fill_own() -> void:
 		drop.pressed.connect(_remove_set.bind(number))
 		row.add_child(drop)
 		_own_rows.add_child(row)
-	# What a session added first, apart, to be looked over: kept as the
-	# person's own, or taken back, all at once.
-	var added: Array = mine.added_lots()
-	_controls.erase("collection_take_back")
-	_controls.erase("collection_keep_added")
-	if not added.is_empty():
-		var pieces: int = 0
-		var who: Dictionary = {}
-		for lot: Dictionary in added:
-			pieces += int(lot["qty"])
-			who[str(lot["by"])] = true
-		var named: String = str(who.keys()[0]) if who.size() == 1 else "your assistants"
-		var heading := HBoxContainer.new()
-		heading.add_theme_constant_override("separation", 8)
-		var said: Label = _label("Added by %s — %s, %s: look them over" % [named,
-			Counted.of(added.size(), "lot"), Counted.of(pieces, "piece")], 12, 0.85)
-		said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		said.add_theme_color_override("font_color", Look.ACCENT)
-		heading.add_child(said)
-		_small(_button(heading, "Keep them", _keep_added, "collection_keep_added",
-			"Keep these as your own loose parts"))
-		_small(_button(heading, "Take back what %s added" % named, _take_back,
-			"collection_take_back", "Take out exactly the lots listed here; nothing of yours"))
-		_own_rows.add_child(heading)
-		for lot: Dictionary in added.slice(0, MOST_ROWS):
-			_own_rows.add_child(_lot_row(lot))
-	var loose: Array = mine.own_lots()
-	if not loose.is_empty():
-		_own_rows.add_child(_label("Loose parts — %s" % Counted.of(loose.size(), "lot"), 12, 0.6))
+	if not mine.parts.is_empty():
+		_own_rows.add_child(_label("Loose parts — %d lots" % mine.parts.size(), 12, 0.6))
 	var shown: int = 0
-	for entry: Dictionary in loose:
+	for entry: Dictionary in mine.parts:
 		if shown >= MOST_ROWS:
-			_own_rows.add_child(_label("…and %d more lots" % (loose.size() - shown), 12, 0.5))
+			_own_rows.add_child(_label("…and %d more lots" % (mine.parts.size() - shown), 12, 0.5))
 			break
 		shown += 1
-		_own_rows.add_child(_lot_row(entry))
+		_own_rows.add_child(_part_row(str(entry["part"]), int(entry["colour"]),
+			"%d ×" % int(entry["qty"])))
 
 
 func _part_row(part: String, colour: int, count: String) -> HBoxContainer:
@@ -717,44 +560,6 @@ func _part_row(part: String, colour: int, count: String) -> HBoxContainer:
 	row.add_child(name)
 	row.add_child(_label(_colour(colour), 12, 0.6, 150.0))
 	return row
-
-
-## A loose lot on What I own: how many (changed in place), its part and
-## colour, and Remove.
-func _lot_row(lot: Dictionary) -> HBoxContainer:
-	var row: HBoxContainer = _part_row(str(lot["part"]), int(lot["colour"]), "")
-	var counted: Control = row.get_child(0)
-	row.remove_child(counted)
-	counted.queue_free()
-	var count := SpinBox.new()
-	count.min_value = 1
-	count.max_value = 100000
-	count.step = 1
-	count.value = int(lot["qty"])
-	count.select_all_on_focus = true
-	count.custom_minimum_size = Vector2(64, 0)
-	count.get_line_edit().add_theme_font_size_override("font_size", 12)
-	count.tooltip_text = "How many you have; changed here, kept with your account"
-	count.value_changed.connect(func(value: float) -> void: _count_typed(lot, int(value)))
-	row.add_child(count)
-	row.move_child(count, 0)
-	row.set_meta("lot", lot)
-	var drop := Button.new()
-	drop.text = "Remove"
-	drop.tooltip_text = "Take this lot out of your collection"
-	drop.add_theme_font_size_override("font_size", 11)
-	drop.pressed.connect(func() -> void: remove_lot(lot))
-	row.add_child(drop)
-	return row
-
-
-## The lots' rows on What I own, in order, each with its lot (meta "lot").
-func lot_rows() -> Array[HBoxContainer]:
-	var out: Array[HBoxContainer] = []
-	for child: Node in _own_rows.get_children():
-		if child is HBoxContainer and (child as HBoxContainer).has_meta("lot"):
-			out.append(child)
-	return out
 
 
 func _fill_need() -> void:
@@ -1056,380 +861,6 @@ func _build_from(numbers: PackedStringArray) -> void:
 		bar.say("building from the parts of %s" % bin.set_showing())
 
 
-# --- a loose part ---------------------------------------------------------
-
-## What is typed into the row: a part by the bin's own search (PartLibrary
-## .search, the words a family's first, PartsBin._named_first), the first
-## found chosen; a colour named with it ("red 2x4 brick", "3001 light bluish
-## grey") is taken as the colour.
-func search_loose(text: String) -> void:
-	var words: PackedStringArray = text.strip_edges().split(" ", false)
-	var named: Array = _colour_in(words)
-	var code: int = int(named[0])
-	var asked: String = " ".join(named[1] as PackedStringArray)
-	_loose_sure = {}
-	if asked.is_empty():
-		_loose_listed = []
-		if code >= 0:
-			_pick_colour(code)
-		_show_chosen()
-		return
-	var needles: PackedStringArray = PartLibrary.in_ldraw_words(asked).split(" ", false)
-	var found: Array[PartLibrary.PartInfo] = []
-	for info: PartLibrary.PartInfo in library.search(asked, 200, true, true,
-			PartWords.spoken(Language.current())):
-		if info.reachable and Collection.ownable(info.id, library):
-			found.append(info)
-	found = PartsBin._named_first(found, needles)
-	# The part named exactly as asked, first: the search put the Plate 1 x 1
-	# Round, used more, before the Plate 1 x 1 to "black plate 1 x 1", and a
-	# person counting their own pile then had a fourth action to choose it.
-	var said: String = " ".join(needles)
-	for n: int in found.size():
-		if " ".join(PartLibrary.in_ldraw_words(found[n].name).split(" ", false)) == said:
-			found.push_front(found.pop_at(n))
-			break
-	_loose_listed = found.slice(0, LISTED)
-	if found.is_empty():
-		_loose_part = ""
-		_say("no part answers “%s”" % asked)
-		_show_chosen()
-		return
-	choose_loose(found[0].id, code if code >= 0 else -1, false)
-
-
-## [param id] is the part the row adds, in [param colour] (-1 keeps the
-## colour chosen); with [param relist], the parts listed beside it are it
-## alone.
-func choose_loose(id: String, colour: int = -1, relist: bool = true) -> void:
-	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(id))
-	if info == null:
-		return
-	_loose_part = info.id
-	if relist:
-		_loose_listed = [info]
-		_loose_sure = {}
-	_fill_colours(info, colour if colour >= 0 else _chosen_colour())
-	_show_chosen()
-
-
-## Parts like the one chosen (PartLike, as the bin's Like this lists them),
-## listed beside it to choose from.
-func like_loose() -> void:
-	if _loose_part.is_empty():
-		_say("choose a part first, then Like this lists parts like it")
-		return
-	if _likeness == null:
-		_likeness = PartLike.new(library)
-	while not _likeness.ready():
-		_likeness.read_some(12.0)
-		await get_tree().process_frame
-	var subject: PartLibrary.PartInfo = library.parts.get(_loose_part)
-	var like: Array[PartLibrary.PartInfo] = [subject]
-	for info: PartLibrary.PartInfo in _likeness.like(_loose_part):
-		if like.size() > LISTED:
-			break
-		if info.reachable and info.id != _loose_part and Collection.ownable(info.id, library):
-			like.append(info)
-	_loose_listed = like
-	_loose_sure = {}
-	_say("parts like %s: choose one" % Inventory._tidy(subject.name))
-	_show_chosen()
-
-
-## The camera: the photo goes to Brickognize, a third party, which is said
-## before the first one, as the bin says it (the same choice, kept once).
-func _ask_photo() -> void:
-	if _photo == null:
-		_photo = PickImage.new()
-		_photo.picked.connect(func(image: Image) -> void:
-			_say("asking Brickognize what part this is…")
-			_brickognize.identify(image))
-		_photo.failed.connect(func(why: String) -> void:
-			if why != "no picture chosen":
-				_say(why))
-		add_child(_photo)
-		_brickognize = Brickognize.new()
-		_brickognize.answered.connect(show_guesses)
-		_brickognize.failed.connect(func(why: String) -> void: _say(why))
-		add_child(_brickognize)
-	if bool(ShellPrefs.value("photo_told")):
-		_photo.ask()
-		return
-	if _telling == null:
-		_telling = ConfirmationDialog.new()
-		_telling.title = "Find a part from a photo"
-		_telling.dialog_text = ("The photo you choose is sent to Brickognize "
-			+ "(brickognize.com), a third party that identifies LEGO® parts. Under its "
-			+ "terms it may keep the photo and use it to train its recognition, and it is "
-			+ "for personal, non-commercial use: Pro’s licence for commercial use does not "
-			+ "cover it.\n\n"
-			+ "Nothing is sent until you choose a photo.")
-		_telling.dialog_autowrap = true
-		_telling.ok_button_text = "Choose a photo"
-		_telling.confirmed.connect(func() -> void:
-			ShellPrefs.put("photo_told", true)
-			_photo.ask())
-		add_child(_telling)
-	_telling.popup_centered(Vector2i(420, 0))
-
-
-## A photo's answer: Brickognize's guesses, most likely first, as the part
-## here (PartLibrary.by_shop), the first chosen, in the colour the photo
-## shows where Brickognize is sure of it (PartsBin.COLOUR_LEAST).
-## [param seen] is its colour, {"bricklink", "score"}; the answer's own
-## when not given.
-func show_guesses(guesses: Array, seen: Dictionary = {}) -> void:
-	if seen.is_empty() and _brickognize != null:
-		seen = _brickognize.colour
-	var found: Array[PartLibrary.PartInfo] = []
-	var sure: Dictionary = {}
-	for guess: Dictionary in guesses:
-		var info: PartLibrary.PartInfo = library.parts.get(library.by_shop(str(guess["bricklink"])))
-		if info == null or not info.reachable or sure.has(info.id):
-			continue
-		sure[info.id] = float(guess["score"])
-		found.append(info)
-	if found.is_empty():
-		_say("Brickognize saw no part it knows in that photo: try another, the part alone on a plain background")
-		return
-	var code: int = int(PartLibrary.by_bricklink.get(int(seen.get("bricklink", -1)), -1)) \
-		if float(seen.get("score", 0.0)) >= PartsBin.COLOUR_LEAST else -1
-	_loose_listed = found.slice(0, LISTED)
-	choose_loose(found[0].id, code if library.colors.has(code) else -1, false)
-	_loose_sure = sure
-	_show_chosen()
-	_say("from your photo, most likely first, as Brickognize sees it")
-
-
-## Add the row's lot to the collection, at the account.
-func add_loose() -> void:
-	if _loose_part.is_empty():
-		_say("find the part first: its number or words, or a photo of it")
-		return
-	var colour: int = _chosen_colour()
-	var count: int = int(_loose_count.value)
-	var info: PartLibrary.PartInfo = library.parts.get(_loose_part)
-	_say("adding %d × %s…" % [count, Inventory._tidy(info.name)])
-	var trouble: String = await store.change_lots([],
-		[{"part": _loose_part, "colour": colour, "qty": count}])
-	if not trouble.is_empty():
-		_say(trouble)
-		return
-	_say("added %d × %s in %s" % [count, Inventory._tidy(info.name), _colour(colour)])
-	_loose_search.text = ""
-	_loose_count.value = 1
-	_loose_search.grab_focus()
-
-
-## A lot's count typed into its row: sent with any others typed a moment
-## after the last, as one change.
-func _count_typed(lot: Dictionary, count: int) -> void:
-	if count == int(lot["qty"]):
-		return
-	_counts_typed[_lot_key(lot)] = [lot, count]
-	_count_wait.start()
-
-
-func _send_counts() -> void:
-	var set_to: Array = []
-	for key: String in _counts_typed:
-		var lot: Dictionary = (_counts_typed[key][0] as Dictionary).duplicate()
-		lot["qty"] = int(_counts_typed[key][1])
-		set_to.append(lot)
-	_counts_typed.clear()
-	if set_to.is_empty():
-		return
-	var trouble: String = await store.change_lots(set_to, [])
-	_say(trouble if not trouble.is_empty() else "kept: %s" % ", ".join(set_to.map(
-		func(lot: Dictionary) -> String: return "%d × %s" % [int(lot["qty"]), str(lot["part"])])))
-
-
-## [param lot]'s count put at [param count], at once (a probe's, and
-## [method _count_typed]'s, way).
-func set_lot_count(lot: Dictionary, count: int) -> String:
-	var changed: Dictionary = lot.duplicate()
-	changed["qty"] = count
-	var trouble: String = await store.change_lots([changed], [])
-	_say(trouble if not trouble.is_empty() else "kept: %d × %s" % [count, str(lot["part"])])
-	return trouble
-
-
-func remove_lot(lot: Dictionary) -> String:
-	var gone: Dictionary = lot.duplicate()
-	gone["qty"] = 0
-	var trouble: String = await store.change_lots([gone], [])
-	var info: PartLibrary.PartInfo = library.parts.get(str(lot["part"]))
-	_say(trouble if not trouble.is_empty() else "took out %d × %s in %s" % [int(lot["qty"]),
-		Inventory._tidy(info.name) if info != null else str(lot["part"]), _colour(int(lot["colour"]))])
-	return trouble
-
-
-func _take_back() -> void:
-	var count: int = store.collection.added_lots().size()
-	var trouble: String = await store.take_back()
-	_say(trouble if not trouble.is_empty() else "took back the %s added" % Counted.of(count, "lot"))
-
-
-func _keep_added() -> void:
-	var count: int = store.collection.added_lots().size()
-	var trouble: String = await store.keep_added()
-	_say(trouble if not trouble.is_empty() else "kept the %s as your own" % Counted.of(count, "lot"))
-
-
-static func _lot_key(lot: Dictionary) -> String:
-	return "%s/%d/%s/%s" % [lot["part"], int(lot["colour"]), lot.get("by", ""), lot.get("chat", "")]
-
-
-## The colour the row has chosen: the list's, or the bin's while it has none.
-func _chosen_colour() -> int:
-	if _loose_colour != null and _loose_colour.selected >= 0 and _loose_colour.selected < _colour_codes.size() \
-			and _colour_codes[_loose_colour.selected] >= 0:
-		return _colour_codes[_loose_colour.selected]
-	var bin: Variant = app.get("_bin") if app != null else null
-	return int(bin.get("_selected_color")) if bin != null else 4
-
-
-func _pick_colour(code: int) -> void:
-	var at: int = _colour_codes.find(code)
-	if at < 0:
-		_fill_colours(library.parts.get(_loose_part), code)
-		at = _colour_codes.find(code)
-	if at >= 0:
-		_loose_colour.select(at)
-
-
-## The colour list: the colours [param info] was made in first, most used
-## first, then every other one in the bin's palette; [param keep] chosen.
-func _fill_colours(info: PartLibrary.PartInfo, keep: int) -> void:
-	var made: Array = []
-	var rest: Array = []
-	for code: int in library.colors:
-		var colour: PartLibrary.BrickColor = library.colors[code]
-		if code in PartsBin.NOT_A_COLOUR or not PartsBin._in_any_group(colour):
-			continue
-		if info != null and PartsBin.made_in(info, code):
-			made.append(colour)
-		else:
-			rest.append(colour)
-	var by_use := func(a: PartLibrary.BrickColor, b: PartLibrary.BrickColor) -> bool:
-		return a.sets > b.sets if a.sets != b.sets else a.code < b.code
-	made.sort_custom(by_use)
-	rest.sort_custom(by_use)
-	_loose_colour.clear()
-	_colour_codes.clear()
-	for colour: PartLibrary.BrickColor in made + rest:
-		if _colour_codes.size() == made.size() and not made.is_empty():
-			_loose_colour.add_separator()
-			_colour_codes.append(-1)
-		_loose_colour.add_icon_item(_swatch_icon(colour), colour.name.replace("_", " "))
-		_colour_codes.append(colour.code)
-	var at: int = _colour_codes.find(keep)
-	if at < 0:
-		at = _colour_codes.find(4)
-	_loose_colour.select(maxi(at, 0))
-
-
-static func _swatch_icon(colour: PartLibrary.BrickColor) -> ImageTexture:
-	var image := Image.create(14, 14, false, Image.FORMAT_RGBA8)
-	image.fill(Color(colour.shown, 1.0))
-	for n: int in 14:
-		for edge: Vector2i in [Vector2i(n, 0), Vector2i(n, 13), Vector2i(0, n), Vector2i(13, n)]:
-			image.set_pixelv(edge, Color(1, 1, 1, 0.35))
-	return ImageTexture.create_from_image(image)
-
-
-## The colour [param words] name at their start or end, longest first, as
-## [code, the words left]; -1 and the words when none does.
-func _colour_in(words: PackedStringArray) -> Array:
-	if _colour_names.is_empty():
-		for code: int in library.colors:
-			var colour: PartLibrary.BrickColor = library.colors[code]
-			if code in PartsBin.NOT_A_COLOUR or not PartsBin._in_any_group(colour):
-				continue
-			for name: String in [colour.name, colour.lego_name, PartWords.colour(colour.name, Language.current())]:
-				var said: String = PartWords.plain(PartsBin._colour_words(name))
-				if not said.is_empty() and not _colour_names.has(said):
-					_colour_names[said] = code
-	for size: int in range(mini(4, words.size()), 0, -1):
-		for from: int in [0, words.size() - size]:
-			var said: String = PartWords.plain(PartsBin._colour_words(" ".join(words.slice(from, from + size))))
-			if _colour_names.has(said):
-				var left := PackedStringArray()
-				left.append_array(words.slice(0, from))
-				left.append_array(words.slice(from + size))
-				return [int(_colour_names[said]), left]
-	return [-1, words]
-
-
-## The chosen part's picture, name and colour, and the others found beside
-## it, each a button that chooses it.
-func _show_chosen() -> void:
-	if _loose_found == null:
-		return
-	for child: Node in _loose_found.get_children():
-		_loose_found.remove_child(child)
-		child.queue_free()
-	_loose_picture = TextureRect.new()
-	_loose_picture.custom_minimum_size = Vector2(30, 30)
-	_loose_picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_loose_picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	_loose_found.add_child(_loose_picture)
-	if _loose_part.is_empty():
-		# Its own width, or a clipped label in a flowing row has none.
-		var hint: Label = _label("Find a part above, by its number or words, from a photo, or "
-			+ "by choosing it in the parts bin; then how many, and Add.", 11, 0.55)
-		hint.clip_text = false
-		_loose_found.add_child(hint)
-		return
-	var listed: Array[PartLibrary.PartInfo] = _loose_listed.duplicate()
-	if not listed.any(func(info: PartLibrary.PartInfo) -> bool: return info.id == _loose_part):
-		listed.push_front(library.parts.get(_loose_part))
-	for info: PartLibrary.PartInfo in listed:
-		var pick := Button.new()
-		pick.toggle_mode = true
-		pick.button_pressed = info.id == _loose_part
-		pick.focus_mode = Control.FOCUS_NONE
-		pick.add_theme_font_size_override("font_size", 11)
-		pick.text = "%s %s%s" % [info.id, Inventory._tidy(info.name).left(28),
-			" · %d%%" % roundi(100.0 * float(_loose_sure[info.id])) if _loose_sure.has(info.id) else ""]
-		pick.tooltip_text = "%s %s" % [info.id, Inventory._tidy(info.name)]
-		var lit := StyleBoxFlat.new()
-		lit.bg_color = Look.CHOSEN
-		lit.set_corner_radius_all(4)
-		lit.content_margin_left = 6
-		lit.content_margin_right = 6
-		pick.add_theme_stylebox_override("pressed", lit)
-		pick.add_theme_stylebox_override("hover_pressed", lit)
-		var id: String = info.id
-		pick.pressed.connect(func() -> void:
-			var sure: Dictionary = _loose_sure
-			choose_loose(id, -1, false)
-			_loose_sure = sure
-			_show_chosen())
-		_loose_found.add_child(pick)
-	_picture_wait.start()
-	_show_picture()
-
-
-func _show_picture() -> void:
-	var thumbs: Variant = app.get("_thumbnails") if app != null else null
-	if thumbs == null or _loose_picture == null or _loose_part.is_empty():
-		_picture_wait.stop()
-		return
-	var drawn: ImageTexture = (thumbs as PartThumbnails).request(_loose_part, _chosen_colour())
-	if drawn != null:
-		_loose_picture.texture = drawn
-		_picture_wait.stop()
-
-
-## What the row would add now: {"part", "colour", "qty"}, the part "" for
-## none, for a probe to read.
-func loose_chosen() -> Dictionary:
-	return {"part": _loose_part, "colour": _chosen_colour(), "qty": int(_loose_count.value),
-		"listed": _loose_listed.map(func(info: PartLibrary.PartInfo) -> String: return info.id)}
-
-
 func _remove_set(number: String) -> void:
 	var next := Collection.from_json(store.collection.to_json())
 	var kept: Array = []
@@ -1477,7 +908,6 @@ func _tell_page() -> void:
 	JavaScriptBridge.eval("window.brickworksCollection = %s" % JSON.stringify({
 		"open": visible, "page": _page, "status": _status.text if _status != null else "",
 		"sets": store.collection.sets.size(), "lots": store.collection.parts.size(),
-		"added": store.collection.added_lots().size(),
 		"pieces": store.pieces_on_hand(), "offline": store.offline,
 		"need": {"pieces": int(_need_cover.get("pieces", 0)), "owned": int(_need_cover.get("owned", 0)),
 			"short": short, "lots": _need_plan.size()},

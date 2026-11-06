@@ -15,21 +15,9 @@
 //   {"from": "rebrickable_api", "sets": [["10237-1", 1, true]],
 //                               "parts": [["3001", 4, 12]], "mode": "add"}
 //   {"from": "sets", "text": "10237-1, 6020"}          typed by number
-//   {"from": "lots", "add": [{"part": "3001", "colour": 4, "qty": 12}],
-//                    "set": [{"part": "3004", "colour": 0, "qty": 0}]}
 //
 // "replace" instead of "add" replaces what the import carries: a sets list
 // replaces the sets, a parts list the loose parts.
-//
-// "lots" are loose parts already in LDraw's numbers, one lot at a time, as
-// the app's My collection and a session over MCP give them (mybricks,
-// 2026-11-06): "set" puts a lot at exactly that many (0 takes it out),
-// then "add" adds to a lot, making it if new. Nothing else in the
-// collection is touched, so a lot changed on one device leaves what
-// another added meanwhile. A lot a session added carries "by" (who: the
-// name the session goes by, "Claude") and "chat" (which of its chats),
-// and is a lot apart from the person's own of the same part and colour,
-// so taking back what a session added takes back exactly that.
 //
 // The Rebrickable key is never sent here. The app calls Rebrickable's API
 // itself (its CORS allows any page) and sends on only what came back.
@@ -62,12 +50,6 @@ const MAX_QTY = 100000;
 
 const SET_NUMBER = /^[a-z0-9][a-z0-9._]{0,24}(-[0-9]{1,3})?$/;
 const PART_NUMBER = /^[a-z0-9][a-z0-9._-]{0,40}$/;
-/// Who added a lot, as the session names itself ("Claude"), and which of
-/// its chats: words a person reads, and an id.
-const WHO = /^[\p{L}\p{N}][\p{L}\p{N} ._()+-]{0,59}$/u;
-const CHAT = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/;
-/// The most lots one "lots" request changes.
-export const MOST_LOT_CHANGES = 2000;
 
 export class Refusal extends Error {
   constructor(status, message) {
@@ -269,88 +251,25 @@ function mapped(parsed, numbering, index) {
   return { sets, parts, leftOut };
 }
 
-/// One lot per part and colour of the person's own, and one per part,
-/// colour, session and chat of what a session added.
-export function lotKey(p) {
-  return p.by ? `${p.part}/${p.colour}/${p.by}/${p.chat || ""}` : `${p.part}/${p.colour}`;
-}
-
 function merged(have, add, mode) {
   const sets = new Map();
   const parts = new Map();
   const keepSets = !(mode === "replace" && add.sets.length > 0);
   const keepParts = !(mode === "replace" && add.parts.length > 0);
   for (const s of keepSets ? have.sets : []) sets.set(s.set, { ...s });
-  for (const p of keepParts ? have.parts : []) parts.set(lotKey(p), { ...p });
+  for (const p of keepParts ? have.parts : []) parts.set(`${p.part}/${p.colour}`, { ...p });
   for (const s of add.sets) {
     const held = sets.get(s.set);
     if (held) { held.qty = Math.min(MAX_QTY, held.qty + s.qty); held.spares = held.spares || s.spares; }
     else sets.set(s.set, { ...s });
   }
   for (const p of add.parts) {
-    const key = lotKey(p);
+    const key = `${p.part}/${p.colour}`;
     const held = parts.get(key);
     if (held) held.qty = Math.min(MAX_QTY, held.qty + p.qty);
     else parts.set(key, { ...p });
   }
   return { sets: [...sets.values()], parts: [...parts.values()] };
-}
-
-/// A lot as the app or a session sends it, checked field by field: its part,
-/// LDraw colour, count (0 allowed where [zero], a lot set to none), and who
-/// added it, if a session did.
-export function lotOf(p, where, zero = false) {
-  const part = partNumber(p?.part);
-  if (!part) throw new Refusal(400, `${where}: "${p?.part}" is not a part number`);
-  const colour = Number(p?.colour);
-  if (!Number.isInteger(colour) || colour < 0 || colour > 0x3ffffff) {
-    throw new Refusal(400, `${where}: the colour "${p?.colour}" is not an LDraw colour code`);
-  }
-  const qty = zero && String(p?.qty ?? "").trim() === "0" ? 0 : quantity(p?.qty, where);
-  const lot = { part, colour, qty };
-  const by = p?.by === undefined || p?.by === null ? "" : String(p.by).trim();
-  const chat = p?.chat === undefined || p?.chat === null ? "" : String(p.chat).trim();
-  if (by) {
-    if (!WHO.test(by)) throw new Refusal(400, `${where}: "${by}" is not who added it`);
-    lot.by = by;
-    if (chat) {
-      if (!CHAT.test(chat)) throw new Refusal(400, `${where}: "${chat}" is not a chat`);
-      lot.chat = chat;
-    }
-  } else if (chat) {
-    throw new Refusal(400, `${where}: a chat is said only with who added the lot`);
-  }
-  return lot;
-}
-
-/// A "lots" body: {"set": [...], "add": [...]}, each a lot (lotOf).
-export function lotChanges(body) {
-  const set = Array.isArray(body?.set) ? body.set : [];
-  const add = Array.isArray(body?.add) ? body.add : [];
-  if (set.length + add.length === 0) throw new Refusal(400, "no lots to set or add");
-  if (set.length + add.length > MOST_LOT_CHANGES) {
-    throw new Refusal(413, `that is ${set.length + add.length} lots; one change is at most ${MOST_LOT_CHANGES}`);
-  }
-  return {
-    set: set.map((p, n) => lotOf(p, `set ${n + 1}`, true)),
-    add: add.map((p, n) => lotOf(p, `add ${n + 1}`)),
-  };
-}
-
-/// [have] with [changes] made: each "set" lot at exactly its count (0 takes
-/// it out), then each "add" added. Every other lot and every set as it was,
-/// in its place; a new lot at the end.
-export function withLots(have, changes) {
-  const parts = new Map();
-  for (const p of have.parts) parts.set(lotKey(p), { ...p });
-  for (const p of changes.set) {
-    const key = lotKey(p);
-    if (p.qty === 0) parts.delete(key);
-    else if (parts.has(key)) parts.get(key).qty = p.qty;
-    else parts.set(key, { ...p });
-  }
-  const next = merged({ sets: have.sets, parts: [...parts.values()] }, { sets: [], parts: changes.add }, "add");
-  return next;
 }
 
 /// A whole collection sent by the app, already in LDraw numbers: checked
@@ -364,9 +283,15 @@ export function wholeCollection(body) {
     if (!set) throw new Refusal(400, `set ${n + 1}: "${s?.set}" is not a set number`);
     return { set, qty: quantity(s?.qty, `set ${n + 1}`), spares: Boolean(s?.spares) };
   });
-  // Who added a lot goes with it, so taking a set out keeps a session's
-  // lots its own.
-  const parts = body.parts.map((p, n) => lotOf(p, `part ${n + 1}`));
+  const parts = body.parts.map((p, n) => {
+    const part = partNumber(p?.part);
+    if (!part) throw new Refusal(400, `part ${n + 1}: "${p?.part}" is not a part number`);
+    const colour = Number(p?.colour);
+    if (!Number.isInteger(colour) || colour < 0 || colour > 0x3ffffff) {
+      throw new Refusal(400, `part ${n + 1}: the colour "${p?.colour}" is not an LDraw colour code`);
+    }
+    return { part, colour, qty: quantity(p?.qty, `part ${n + 1}`) };
+  });
   return merged({ sets: [], parts: [] }, { sets, parts }, "add");
 }
 
@@ -395,7 +320,7 @@ export function parseImport(body) {
     if (sets.length + parts.length === 0) throw new Refusal(400, "Rebrickable sent back no sets and no parts");
     parsed = { sets, parts };
   } else {
-    throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api, sets or lots");
+    throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api or sets");
   }
   return mapped(parsed, numbering, index);
 }
@@ -496,15 +421,6 @@ export default async function handler(request, response) {
       return response.status(200).json(await write(owner, whole));
     }
 
-    if (body?.from === "lots") {
-      const changes = lotChanges(body);
-      const next = withLots(await read(owner), changes);
-      within(next);
-      const saved = await write(owner, next);
-      return response.status(200).json({
-        ...saved, imported: { sets: 0, lots: changes.add.length, set: changes.set.length }, left_out: [],
-      });
-    }
     const mode = body?.mode === "replace" ? "replace" : "add";
     const imported = parseImport(body);
     const next = merged(await read(owner), imported, mode);

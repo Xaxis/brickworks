@@ -27,10 +27,7 @@ extends RefCounted
 
 ## [{"set": "10237-1", "qty": 1, "spares": false}, ...]
 var sets: Array = []
-## [{"part": "3001", "colour": 4, "qty": 12}, ...]; a lot a session added
-## also says who ("by": "Claude") and which of its chats ("chat"), and is a
-## lot apart from the person's own of the same part and colour, so taking
-## back what it added takes back exactly that (mybricks, 2026-11-06).
+## [{"part": "3001", "colour": 4, "qty": 12}, ...]
 var parts: Array = []
 ## When the account last kept it, as the server says; empty when never.
 var updated_at: String = ""
@@ -50,15 +47,8 @@ static func from_json(data: Variant) -> Collection:
 				"spares": bool(entry.get("spares", false))})
 	for entry: Variant in body.get("parts", []):
 		if typeof(entry) == TYPE_DICTIONARY and str((entry as Dictionary).get("part", "")) != "":
-			var lot: Dictionary = {"part": str(entry["part"]), "colour": int(entry.get("colour", 0)),
-				"qty": maxi(1, int(entry.get("qty", 1)))}
-			var by: String = str(entry.get("by", "")) if entry.get("by") != null else ""
-			if not by.is_empty():
-				lot["by"] = by
-				var chat: String = str(entry.get("chat", "")) if entry.get("chat") != null else ""
-				if not chat.is_empty():
-					lot["chat"] = chat
-			made.parts.append(lot)
+			made.parts.append({"part": str(entry["part"]), "colour": int(entry.get("colour", 0)),
+				"qty": maxi(1, int(entry.get("qty", 1)))})
 	var when: Variant = body.get("updated_at")
 	made.updated_at = str(when) if when != null else ""
 	return made
@@ -84,29 +74,6 @@ func loose_pieces() -> int:
 	for entry: Dictionary in parts:
 		total += int(entry["qty"])
 	return total
-
-
-## The loose lots the person gave themselves, in their order.
-func own_lots() -> Array:
-	return parts.filter(func(lot: Dictionary) -> bool: return str(lot.get("by", "")).is_empty())
-
-
-## The loose lots a session added, in their order; only [param chat]'s
-## when one is named.
-func added_lots(chat: String = "") -> Array:
-	return parts.filter(func(lot: Dictionary) -> bool:
-		return not str(lot.get("by", "")).is_empty() \
-			and (chat.is_empty() or str(lot.get("chat", "")) == chat))
-
-
-## The lot [param part] in [param colour] of [param by]'s and [param chat]'s
-## (the person's own when [param by] is empty), or {}.
-func lot_of(part: String, colour: int, by: String = "", chat: String = "") -> Dictionary:
-	for lot: Dictionary in parts:
-		if str(lot["part"]) == part and int(lot["colour"]) == colour \
-				and str(lot.get("by", "")) == by and str(lot.get("chat", "")) == chat:
-			return lot
-	return {}
 
 
 ## The one spelling of a part and a colour that both sides are compared by.
