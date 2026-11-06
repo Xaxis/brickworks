@@ -423,7 +423,11 @@ can occupy the same millimetre.
   down it. `technic_hand_probe` has each by hand, dragged, swapped and over
   MCP at the stop to 0.01 LDU, and a figure on two cones by hand and by
   add_minifig; `joints_probe` four parts 4 LDU down a cone's stud from a
-  file, refused (conestop).
+  file, refused (conestop). The hand asks it on every aim of what is at each
+  hole only, the studs there read by place (`Exact.sunk_under`,
+  `Exact.studs_in`), never the parts in hand against each other: a figure's
+  own parts were weighed by their shapes whenever anything was near, and
+  `bigmodel_probe`'s figure aim grew 76x on the big model (figlift).
   A part that only rests on a lone stud at a hinge's free end, its stud's
   part held to it another way round, is out of the joints (`Bodies.rests`,
   `_lift_rests`): its hinge lifts it off, and it goes neither down into the

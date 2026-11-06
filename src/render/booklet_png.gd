@@ -46,10 +46,10 @@ func at_density(density: float) -> void:
 	_fixed = true
 
 
-## Pixels a millimetre for [param pages] pages on the web: 300 dots an
-## inch, or as fine as WEB_MOST_PIXELS allows.
-static func web_density(pages: int) -> float:
-	var area: float = Booklet.PAGE.x * Booklet.PAGE.y * maxf(1.0, pages)
+## Pixels a millimetre for [param pages] pages of [param page] mm on the
+## web: 300 dots an inch, or as fine as WEB_MOST_PIXELS allows.
+static func web_density(pages: int, page: Vector2 = Booklet.PAGE) -> float:
+	var area: float = page.x * page.y * maxf(1.0, pages)
 	return minf(DPI / 25.4, sqrt(WEB_MOST_PIXELS / area))
 
 
@@ -68,7 +68,12 @@ func write(from: Variant, to: String, name: String, pace: int = 0) -> int:
 	_name = name
 	if from is JavaScriptObject and not _fixed:
 		var sections: JavaScriptObject = (from as JavaScriptObject).querySelectorAll("section.page")
-		px_per_mm = web_density(int(sections.length))
+		# The page's size, as its stylesheet says it (BookletRead).
+		var sizing := BookletRead.new()
+		var styles: JavaScriptObject = (from as JavaScriptObject).querySelectorAll("style")
+		for index: int in int(styles.length):
+			sizing.feed("<style>%s</style>" % str((styles.item(index) as JavaScriptObject).textContent))
+		px_per_mm = web_density(int(sections.length), sizing.size)
 	_fonts = []
 	for type: Array in BookletPdf.TYPE:
 		_fonts.append(load(str(type[0])) as Font)
@@ -177,7 +182,7 @@ func page_image(html: String, number: int, density: float) -> Image:
 func _drawn(page: BookletRead.Page) -> Image:
 	if _viewport == null:
 		_viewport = SubViewport.new()
-		_viewport.size = Vector2i((Booklet.PAGE * px_per_mm).round())
+		_viewport.size = Vector2i((page.size * px_per_mm).round())
 		_viewport.transparent_bg = false
 		_viewport.disable_3d = true
 		_viewport.msaa_2d = Viewport.MSAA_4X
@@ -185,6 +190,9 @@ func _drawn(page: BookletRead.Page) -> Image:
 		add_child(_viewport)
 		_canvas = RenderingServer.canvas_item_create()
 		RenderingServer.canvas_item_set_parent(_canvas, _viewport.find_world_2d().canvas)
+	# A page of its own size: the page as its designer set it up.
+	if _viewport.size != Vector2i((page.size * px_per_mm).round()):
+		_viewport.size = Vector2i((page.size * px_per_mm).round())
 	RenderingServer.canvas_item_clear(_canvas)
 	var kept: Array = []
 	for op: Dictionary in page.ops:
@@ -318,12 +326,17 @@ static func _decoded(uri: String) -> Texture2D:
 
 
 ## Where a picture goes in pixels: its box, or, for a part's, fitted
-## inside it and stood on its foot.
+## inside it and stood on its foot; the picture behind the page covering
+## it, the page cutting it.
 func _placed(op: Dictionary, texture: Texture2D) -> Rect2:
 	var at: Rect2 = op["at"]
+	var natural := Vector2(texture.get_width(), texture.get_height())
+	if bool(op.get("cover", false)):
+		var covering: Vector2 = natural * maxf(at.size.x / maxf(natural.x, 1.0),
+			at.size.y / maxf(natural.y, 1.0))
+		return Rect2(_px(at.get_center() - covering * 0.5), _px(covering))
 	if str(op["part"]).is_empty():
 		return Rect2(_px(at.position), _px(at.size))
-	var natural := Vector2(texture.get_width(), texture.get_height())
 	var scale: float = minf(at.size.x / maxf(natural.x, 1.0), at.size.y / maxf(natural.y, 1.0))
 	var fitted: Vector2 = natural * scale
 	return Rect2(_px(Vector2(at.position.x + (at.size.x - fitted.x) * 0.5, at.end.y - fitted.y)),

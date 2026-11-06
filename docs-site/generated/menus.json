@@ -1074,6 +1074,15 @@
 							"words": "Sub-model preview",
 							"key": "",
 							"tip": "The sub-assembly this step puts on shown finished on the first of its own pages, or not"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "booklet_page_setup",
+							"words": "Page setup…",
+							"key": "",
+							"tip": "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another"
 						}
 					]
 				},
@@ -1705,6 +1714,7 @@
 		"booklet_colours": "",
 		"booklet_actual_size": "",
 		"booklet_preview": "",
+		"booklet_page_setup": "",
 		"flex": "",
 		"reshape_flex": "",
 		"view_default": "0",
