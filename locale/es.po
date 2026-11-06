@@ -10741,3 +10741,107 @@ msgstr "Automático: el modo más sencillo, que necesitan estos gráficos (%s). 
 
 msgid "From the next start."
 msgstr "Desde el próximo arranque."
+
+# What's This (Help, Shift+F1), and where the part in hand goes, on the status bar (whatsthis).
+
+msgid "What's This?"
+msgstr "¿Qué es esto?"
+
+msgid "Click any button, field or panel next to hear what it does, without doing it"
+msgstr "Haz clic después en cualquier botón, campo o panel: dice lo que hace, en vez de hacerlo"
+
+msgid "What's This: click any button, field or panel to hear what it does · Esc to stop"
+msgstr "¿Qué es esto?: haz clic en un botón, un campo o un panel para saber qué hace · Esc para salir"
+
+msgid "Only the %s parts in the bin: %d of them"
+msgstr "Solo las piezas de tipo %s en la caja: %d en total"
+
+msgid "Parts of every kind in the bin, not one kind alone; with a search typed, all it finds"
+msgstr "Piezas de todos los tipos en la caja, no de uno solo; con una búsqueda, todas las que encuentra"
+
+msgid "Greyed now: %s"
+msgstr "No disponible ahora: %s"
+
+msgid "Greyed now"
+msgstr "No disponible ahora"
+
+msgid "In use now"
+msgstr "En uso ahora"
+
+msgid "On now"
+msgstr "Activado"
+
+msgid "Off now"
+msgstr "Desactivado"
+
+msgid "The model"
+msgstr "El modelo"
+
+msgid "A click here does what the tool in use does:"
+msgstr "Un clic aquí hace lo que hace la herramienta en uso:"
+
+msgid "x %s, z %s studs"
+msgstr "x %s, z %s espigas"
+
+msgid "1 plate up"
+msgstr "1 placa arriba"
+
+msgid "%s plates down"
+msgstr "%s placas abajo"
+
+msgid "1 plate down"
+msgstr "1 placa abajo"
+
+msgid "on the ground"
+msgstr "en el suelo"
+
+msgid "Where the part in hand goes if put down now: studs across (x) and back (z) from the middle of the floor, and plates up from the ground"
+msgstr "Dónde quedaría la pieza en la mano, si se suelta ahora: espigas a lo ancho (x) y hacia atrás (z) desde el centro del suelo, y placas sobre el suelo"
+
+msgid "Select a part first"
+msgstr "Selecciona antes una pieza"
+
+msgid "Put a part on the baseplate first"
+msgstr "Pon antes una pieza en la placa base"
+
+msgid "Choose a step on the timeline first"
+msgstr "Elige antes un paso en la línea de tiempo"
+
+msgid "Stand the model on a baseplate first"
+msgstr "Pon antes el modelo sobre una placa base"
+
+msgid "Nothing to undo yet"
+msgstr "Aún no hay nada que deshacer"
+
+msgid "Nothing to redo"
+msgstr "Nada que rehacer"
+
+msgid "Nothing is hidden"
+msgstr "No hay nada oculto"
+
+msgid "Nothing is locked"
+msgstr "No hay nada bloqueado"
+
+msgid "Select a sub-assembly first"
+msgstr "Selecciona antes un subconjunto"
+
+msgid "Not editing inside a sub-assembly"
+msgstr "No se está editando dentro de un subconjunto"
+
+msgid "Select a section first"
+msgstr "Selecciona antes una sección"
+
+msgid "Turn on Cut away first"
+msgstr "Activa antes la vista en corte"
+
+msgid "Not now"
+msgstr "Ahora no"
+
+msgid "This model is shared to look at"
+msgstr "Este modelo se comparte para verlo"
+
+msgid "The model is still opening"
+msgstr "El modelo aún se está abriendo"
+
+msgid "The assistant is off in Settings"
+msgstr "El asistente está desactivado en Ajustes"

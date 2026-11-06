@@ -248,7 +248,7 @@ func _found_in(item: CanvasItem, point: Vector2) -> Control:
 		return null
 	var control: Control = item as Control
 	var local: Vector2 = item.get_global_transform_with_canvas().affine_inverse() * point
-	if control == null or not control.clip_contents or control.has_point(local):
+	if control == null or not control.clip_contents or _has(control, local):
 		for n: int in range(item.get_child_count() - 1, -1, -1):
 			var child: CanvasItem = item.get_child(n) as CanvasItem
 			if child == null or child.top_level:
@@ -258,7 +258,15 @@ func _found_in(item: CanvasItem, point: Vector2) -> Control:
 				return found
 	if control == null or control.mouse_filter == Control.MOUSE_FILTER_IGNORE:
 		return null
-	return control if control.has_point(local) else null
+	return control if _has(control, local) else null
+
+
+## Whether [param local] is in [param control], as the window asks it: its
+## own answer where its script gives one (_has_point), else its rectangle.
+static func _has(control: Control, local: Vector2) -> bool:
+	if control.has_method(&"_has_point"):
+		return bool(control.call(&"_has_point", local))
+	return Rect2(Vector2.ZERO, control.size).has_point(local)
 
 
 ## [title, what it does, the control that says it] for a click at
@@ -325,7 +333,7 @@ func _chip(control: Control, title: String, words: String) -> String:
 	if words != category and not words.is_empty():
 		return words
 	if category == "All":
-		return "Every part in the library in the bin again, the search cleared"
+		return "Parts of every kind in the bin, not one kind alone; with a search typed, all it finds"
 	return "Only the %s parts in the bin: %d of them" % [category, int(control.get_meta(&"count", 0))]
 
 

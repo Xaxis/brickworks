@@ -87,8 +87,8 @@ func _ready() -> void:
 		show_folder.add_theme_stylebox_override(state, face)
 	show_folder.pressed.connect(func() -> void: SaveTo.show_in_folder(SaveTo.shown))
 	row.add_child(show_folder)
-	_place = _cell(row, "Where the part in hand goes if you put it down now: studs across (x) and "
-		+ "back (z) from the middle of the floor, and plates up from the ground")
+	_place = _cell(row, "Where the part in hand goes if put down now: studs across (x) and back (z) "
+		+ "from the middle of the floor, and plates up from the ground")
 	_show_place("")
 	counts = _cell(row, "How many parts the model has, and whether it would stand up as built")
 	_selected = _cell(row, "How many parts are selected")

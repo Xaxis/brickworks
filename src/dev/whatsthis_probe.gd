@@ -191,40 +191,43 @@ func _answers() -> void:
 		_check("2: the click does nothing else (no What's This to ask with)", false)
 		return
 	var bin_dock: SideDock = _main.get("_bin_dock")
-	bin_dock.set_open(true, false)
+	var props_dock: SideDock = SideDock.of(_shell.inspector)
 	var chat_dock: SideDock = _main.get("_chat_dock")
-	if chat_dock != null:
-		chat_dock.set_open(true, false)
-	SideDock.of(_shell.inspector).set_open(true, false)
-	_shell.inspector.set_open(true)
-	for brick: BrickWorld.Brick in _world.bricks():
-		if _builder.select_brick(brick.id, false):
-			break
-	await _frames(30)
-	var groups: Array = [
-		["toolbar button", _toolbar()],
-		["bin chip", _chips()],
-		["Properties field", _fields()],
-		["panel button", _panel_buttons()],
+	# Each panel open in turn, as a person opens it: in a window that shows
+	# one column at a time the others are their rails.
+	var phases: Array = [
+		["toolbar button", "", _toolbar],
+		["bin chip", "bin", _chips],
+		["panel button", "bin", _buttons_in.bind(bin_dock)],
+		["Properties field", "properties", _fields],
+		["panel button", "properties", _buttons_in.bind(props_dock)],
+		["panel button", "assistant", _buttons_in.bind(chat_dock)],
+		["panel button", "", _buttons_in.bind(_shell.status)],
 	]
 	var said: Dictionary = {}   ## answer -> what said it
+	var seen: Dictionary = {}   ## each control asked once
+	var counts: Dictionary = {}   ## kind -> [asked, answered]
 	var quiet: int = 0
 	var asked: int = 0
 	var bad: Array = []
 	var loud: Array = []
 	var shot_of: Dictionary = {"toolbar button": "answer_toolbar", "bin chip": "answer_chip",
 		"Properties field": "answer_field", "panel button": "answer_panel"}
-	for group: Array in groups:
-		var kind: String = group[0]
-		var controls: Array = group[1]
-		var answered: int = 0
-		var pictured: bool = false
+	var pictured: Dictionary = {}
+	for phase: Array in phases:
+		var kind: String = phase[0]
+		await _open_panel(str(phase[1]), bin_dock, props_dock, chat_dock)
+		var controls: Array = (phase[2] as Callable).call()
+		if not counts.has(kind):
+			counts[kind] = [0, 0]
 		for control: Control in controls:
-			if not is_instance_valid(control) or not control.is_visible_in_tree():
+			if seen.has(control) or not is_instance_valid(control) or not control.is_visible_in_tree():
 				continue
+			seen[control] = true
 			await _into_sight(control)
 			var answer: Dictionary = await _ask_about(control)
 			asked += 1
+			counts[kind][0] += 1
 			var named: String = _named(control)
 			if not answer["quiet"]:
 				loud.append("%s %s: %s" % [kind, named, answer["did"]])
@@ -239,14 +242,14 @@ func _answers() -> void:
 				bad.append("%s %s said what %s said: \"%s\"" % [kind, named, said[whole], whole.replace("\n", " / ")])
 				continue
 			said[whole] = "%s %s" % [kind, named]
-			answered += 1
-			if not pictured:
-				pictured = true
+			counts[kind][1] += 1
+			if not pictured.has(kind):
+				pictured[kind] = true
 				await _shot(shot_of[kind])
 			await _dismiss()
-		_check("1: %d %ss asked, %d answered with words of their own" % [controls.size(), kind, answered],
-			answered == controls.filter(func(c: Control) -> bool: return is_instance_valid(c)).size()
-			and answered > 0)
+	for kind: String in counts:
+		_check("1: %d %ss asked, each answered with words of its own: %d" % [counts[kind][0], kind,
+			counts[kind][1]], counts[kind][0] > 0 and counts[kind][0] == counts[kind][1])
 	for line: String in bad:
 		print("      %s" % line)
 	_check("1: none empty past its name, none the same as another's (%d asked, %d said alike or nothing)"
@@ -343,30 +346,47 @@ func _fields() -> Array:
 	return out
 
 
-## The panels' own buttons: everything pressable in them but the bin's
-## chips, part tiles and colour swatches.
-func _panel_buttons() -> Array:
-	var places: Array = []
-	for dock: String in ["_bin_dock", "_props_dock", "_chat_dock"]:
-		var found: Variant = _main.get(dock)
-		if found is SideDock:
-			places.append(found)
-	places.append(_shell.status)
+## One side panel open, as its rail opens it, and what it shows: the
+## properties with one part selected; "" for none in particular.
+func _open_panel(which: String, bin_dock: SideDock, props_dock: SideDock, chat_dock: SideDock) -> void:
+	await _dismiss()
+	match which:
+		"bin":
+			bin_dock.set_open(true, false)
+		"properties":
+			props_dock.set_open(true, false)
+			_shell.inspector.set_open(true)
+			if _builder.selection.is_empty():
+				for brick: BrickWorld.Brick in _world.bricks():
+					if _builder.select_brick(brick.id, false):
+						break
+		"assistant":
+			if chat_dock != null:
+				chat_dock.set_open(true, false)
+		_:
+			return
+	await _frames(30)
+
+
+## A panel's own buttons: everything pressable in it but the bin's chips,
+## part tiles and colour swatches, in sight.
+func _buttons_in(place: Node) -> Array:
+	var out: Array = []
+	if place == null:
+		return out
 	var grid: Node = _bin.get("_grid")
 	var chips: Node = _bin.get("_category_row")
-	var out: Array = []
-	for place: Node in places:
-		for node: Node in place.find_children("*", "BaseButton", true, false):
-			var button: BaseButton = node
-			if not button.is_visible_in_tree() or button.mouse_filter == Control.MOUSE_FILTER_IGNORE:
-				continue
-			if grid.is_ancestor_of(button) or chips.is_ancestor_of(button) or button is PartsBin.Swatch:
-				continue
-			if _rect(button).size.x < 4.0 or _rect(button).size.y < 4.0:
-				continue
-			if not root.get_visible_rect().encloses(_rect(button).grow(-1.0)):
-				continue
-			out.append(button)
+	for node: Node in place.find_children("*", "BaseButton", true, false):
+		var button: BaseButton = node
+		if not button.is_visible_in_tree() or button.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+			continue
+		if grid.is_ancestor_of(button) or chips.is_ancestor_of(button) or button is PartsBin.Swatch:
+			continue
+		if _rect(button).size.x < 4.0 or _rect(button).size.y < 4.0:
+			continue
+		if not root.get_visible_rect().encloses(_rect(button).grow(-1.0)):
+			continue
+		out.append(button)
 	return out
 
 
@@ -595,13 +615,14 @@ func _languages() -> void:
 		"What's This?", "Click any button, field or panel next to hear what it does, without doing it",
 		"What's This: click any button, field or panel to hear what it does · Esc to stop",
 		"Only the Brick parts in the bin: 12 of them",
-		"Every part in the library in the bin again, the search cleared",
+		"Parts of every kind in the bin, not one kind alone; with a search typed, all it finds",
 		"Greyed now: Select a part first", "Greyed now", "In use now", "On now", "Off now",
 		"The model", "A click here does what the tool in use does:",
 		"x 2½, z −1 studs · 3 plates up", "x 0, z 4 studs · on the ground",
 		"x −1, z ½ studs · 1 plate up", "x 1, z 1 studs · 2 plates down",
 		"x 1, z 1 studs · 1 plate down",
-		"Where the part in hand goes if you put it down now: studs across (x) and back (z) from the middle of the floor, and plates up from the ground",
+		"Where the part in hand goes if put down now: studs across (x) and back (z) from the middle of the floor, and plates up from the ground",
+		"Greyed now: Nothing to undo yet", "Greyed now: Nothing to redo",
 	]
 	for code: String in ["de", "fr", "es"]:
 		Language.apply(code)
