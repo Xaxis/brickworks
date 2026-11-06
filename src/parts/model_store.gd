@@ -1683,8 +1683,14 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 	return {
 		"source": SourceFile.make(text, model, known, mirrored_lines, authored, absent)
 			if foreign else null,
+		# A step's look is kept by its step's number, which means nothing
+		# where the steps are not the author's; the booklet's own, its page
+		# set up and guides with it, is the whole booklet's either way. Read
+		# only with the author's steps, a model of the app's own steps lost
+		# its page setup at every open (pagesetup2, 2026-11-06).
 		"looks": BookletLooks.read(text, model._assembly_names(), LdrModel._key(model.main.name))
-			if authored else {},
+			if authored else BookletLooks.booklet_wide(BookletLooks.read(text,
+				model._assembly_names(), LdrModel._key(model.main.name))),
 		"title": title_meta_in(text) if foreign else "",
 		"share": share_in(text),
 		"remix": remix_in(text),

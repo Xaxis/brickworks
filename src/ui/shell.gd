@@ -3147,11 +3147,23 @@ func open_page_setup() -> void:
 ## booklet's own page; "style" a style kept by that name, its page given
 ## whole; "picture_data" (base64) a picture behind every page, "picture"
 ## its name, or "picture" "" to take it off; "save_as" a name to keep the
-## page as a style for another model. One undo, saved with the model.
-## Returns what was done, or why nothing was.
+## page as a style for another model; "remove_style" a style's name, taken
+## away (the models given it keep their page). One undo, saved with the
+## model. Returns what was done, or why nothing was.
 func page_setup(fields: Dictionary) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
+	var removed: String = ""
+	if fields.has("remove_style"):
+		var gone: String = str(fields["remove_style"]).strip_edges()
+		var failed: String = BookletSheet.remove_style(gone)
+		if not failed.is_empty():
+			var left: Array = BookletSheet.styles().keys()
+			left.sort()
+			return failed + ("; kept: %s" % ", ".join(left) if not left.is_empty() else "")
+		removed = "the page style \"%s\" removed" % gone
+		if fields.keys().all(func(field: String) -> bool: return field == "remove_style"):
+			return removed
 	var was: BookletSheet = BookletSheet.of(world)
 	var sheet: BookletSheet = BookletSheet.of(world)
 	var pictures: Dictionary = BookletLooks.images(world).duplicate()
@@ -3160,19 +3172,23 @@ func page_setup(fields: Dictionary) -> String:
 	if bool(given.get("usual", false)):
 		sheet = BookletSheet.new()
 		words = "the booklet's own page"
+	var style_lost: bool = false
 	if given.has("style"):
-		var styles: Dictionary = BookletSheet.styles()
 		var name: String = str(given["style"])
-		if not styles.has(name):
-			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles.keys())]) \
+		var style: Dictionary = BookletSheet.style(name)
+		if style.is_empty():
+			var styles: Array = BookletSheet.styles().keys()
+			styles.sort()
+			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles)]) \
 				if not styles.is_empty() else "no page style is kept yet: save_as= keeps this page as one"
-		var style: Dictionary = (styles[name] as Dictionary).duplicate()
 		sheet = BookletSheet.new()
+		style_lost = bool(style.get("picture_lost", false))
 		if style.has("picture_data") and style.has("picture"):
 			pictures[str(style["picture"])] = str(style["picture_data"])
 		else:
 			style.erase("picture")
 		style.erase("picture_data")
+		style.erase("picture_lost")
 		sheet.change(style)
 		words = "the page style \"%s\"" % name
 	if given.has("picture_data"):
@@ -3181,16 +3197,19 @@ func page_setup(fields: Dictionary) -> String:
 			named = BookletSheet.PICTURE_NAME + "." + named.get_extension()
 		pictures[named] = str(given["picture_data"])
 		given["picture"] = named
-	for field: String in ["usual", "style", "save_as", "picture_data"]:
+	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style"]:
 		given.erase(field)
 	var wrong: String = sheet.change(given)
 	if not wrong.is_empty():
 		return wrong
-	if not sheet.picture.is_empty() and not pictures.has(sheet.picture):
+	# The picture its file names and does not carry stays named, as the file
+	# had it, until another is chosen or it is taken off (BookletSheet.of).
+	var still_missing: bool = was.missing and sheet.picture == was.picture \
+		and not pictures.has(sheet.picture)
+	if not sheet.picture.is_empty() and not pictures.has(sheet.picture) and not still_missing:
 		return "there is no picture called %s: picture_data= gives one" % sheet.picture
 	# Behind every page of the booklet's HTML as it is: a PNG or a JPEG in base64 only.
-	if not sheet.picture.is_empty() \
-			and BookletLooks.picture_kind(str(pictures[sheet.picture])).is_empty():
+	if pictures.has(sheet.picture) and BookletLooks.picture_kind(str(pictures[sheet.picture])).is_empty():
 		return "the picture behind the pages is a PNG or a JPEG, in base64"
 	# The picture that was behind the pages, gone with them.
 	if not was.picture.is_empty() and was.picture != sheet.picture:
@@ -3201,19 +3220,25 @@ func page_setup(fields: Dictionary) -> String:
 	var undo: Array = BookletLooks.set_images(world, pictures)
 	undo.append_array(BookletLooks.change(world, BookletLooks.BOOKLET, {"sheet": sheet.said()}))
 	undo = AuthorSteps.squash(undo)
-	var kept: String = ""
+	var also := PackedStringArray()
+	if not removed.is_empty():
+		also.append(removed)
+	if style_lost:
+		also.append("the style's picture could not be read, so the page has none")
 	if fields.has("save_as"):
-		var failed: String = BookletSheet.save_style(str(fields["save_as"]), sheet,
-			str(pictures.get(sheet.picture, "")))
-		kept = failed if not failed.is_empty() \
-			else "kept as the page style \"%s\"" % str(fields["save_as"]).strip_edges()
+		var keeping: String = str(fields["save_as"]).strip_edges()
+		var replaced: bool = BookletSheet.styles().has(keeping)
+		var failed: String = BookletSheet.save_style(keeping, sheet, str(pictures.get(sheet.picture, "")))
+		also.append(failed if not failed.is_empty() else "kept as the page style \"%s\"%s"
+			% [keeping, " in place of the one kept by that name" if replaced else ""])
+	var tail: String = ("; " + "; ".join(also)) if not also.is_empty() else ""
 	if undo.is_empty():
-		return "the page is as it was: %s%s" % [sheet.words(), ("; " + kept) if not kept.is_empty() else ""]
+		return "the page is as it was: %s%s" % [BookletSheet.of(world).words(), tail]
 	var said: String = "page set up%s: %s" % [(" as " + words) if not words.is_empty() else "",
-		sheet.words()]
+		BookletSheet.of(world).words()]
 	builder.record(undo, said)
 	store.touch()
-	return said + (("; " + kept) if not kept.is_empty() else "")
+	return said + tail
 
 
 ## Many steps' pages laid out at once, as one undo: the page editor's

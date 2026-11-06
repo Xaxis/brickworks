@@ -2,6 +2,7 @@
 ## Booklet page, Page setup… and page_setup over MCP.
 ##
 ##   godot --path . --resolution 1280x720 --script src/dev/pagesetup_probe.gd -- [--into=DIR] [--against=DIR] [--dialog-only]
+##   (--list-styles, headless: the styles kept, as a new start reads them, and quit)
 ##
 ## Windowed, on the GPU: the booklet's pictures are drawn, and its pages as
 ## PNGs. On booklet3's model (a Technic beam 7, an axle 4, bricks and a pod
@@ -28,6 +29,24 @@
 ##   setup…, the style): the same size, colour and step number size.
 ## - The dialog in the window, every control in sight: at this size, and
 ##   with --dialog-only alone (PROBE_SIZE=1400x900).
+##
+## And what pagesetup2 made of psreview's items 2-4:
+## - The app's own model, its steps worked out by the app: its page set up,
+##   picture and all, as it was when it is saved and opened again (lost at
+##   every open before).
+## - A file whose page names a picture it does not carry (another program
+##   saved it without, or it is not a PNG or a JPEG): said in Page setup…,
+##   by page_setup and booklet_layout; the page printed in its colour; a
+##   save and a change keep it named; Take off takes it off.
+## - A 4000 x 3000 photograph behind the booklet's own page kept as a JPEG
+##   of 1345 x 1009, that page at 5 px a mm; one for an upright A4 kept to
+##   its height; a see-through one a PNG of no more than 1 MB or 900 px; its
+##   size in the file said by page_setup and in Page setup….
+## - Two styles of one picture keep it once; one taken away in Page
+##   setup… (Remove…), the other by page_setup remove_style=, both gone in
+##   a new start of the app and their picture with them; the styles one
+##   file kept before moved into their own; that file left byte for byte
+##   when it cannot be read.
 ##
 ## The page setup is reached by name (load, call, get), so this runs on the
 ## commit before it too, and fails there where a person would.
@@ -72,6 +91,13 @@ func _frames(count: int) -> void:
 
 
 func _run() -> void:
+	# A new start of the app, for the styles it reads (_new_start).
+	if "--list-styles" in OS.get_cmdline_user_args():
+		var kept: Dictionary = (load(SHEET) as GDScript).call("styles") if ResourceLoader.exists(SHEET) else {}
+		for name: String in kept:
+			print("STYLE " + name)
+		quit(0)
+		return
 	if DisplayServer.get_name() == "headless":
 		print("  no rendering device — this probe needs a window")
 		quit(1)
@@ -127,6 +153,10 @@ func _run() -> void:
 	await _picture_behind()
 	await _kept()
 	await _style_to_gatehouse()
+	await _own_steps_worked()
+	await _missing_picture()
+	await _picture_bound()
+	await _styles_kept()
 	_quit()
 
 
@@ -590,8 +620,7 @@ func _kept() -> void:
 func _style_to_gatehouse() -> void:
 	print("")
 	print("a style kept, and given to the gatehouse in 2 actions")
-	if _sheet != null:
-		_sheet.call("forget_style", STYLE)
+	_forget(STYLE)
 	str(await _tools.run("page_setup", {"size": "A4", "orientation": "portrait", "colour": "#ffffff",
 		"number": 11}))
 	var dialog: Window = null
@@ -644,8 +673,299 @@ func _style_to_gatehouse() -> void:
 	_check("...its booklet's step numbers 11 mm, or 8.94 on a small panel (%s)" % str(sizes),
 		not sizes.is_empty() and sizes.all(func(size: float) -> bool:
 			return absf(size - 11.0) <= 0.011 or absf(size - 8.9375) <= 0.011))
-	if _sheet != null:
-		_sheet.call("forget_style", STYLE)
+	_forget(STYLE)
+
+
+# -- pagesetup2: kept, said, small, and styles taken away ---------------------------
+
+
+## A style taken away: remove_style where there is one, forget_style (the
+## probe's own, before it) where not.
+func _forget(name: String) -> void:
+	if _sheet == null:
+		return
+	if _has(_sheet, "remove_style"):
+		_sheet.call("remove_style", name)
+	elif _has(_sheet, "forget_style"):
+		_sheet.call("forget_style", name)
+
+
+## How many arguments [param script]'s [param method] takes, -1 when it has
+## none of that name.
+static func _arguments(script: GDScript, method: String) -> int:
+	if script == null:
+		return -1
+	for one: Dictionary in script.get_script_method_list():
+		if str(one["name"]) == method:
+			return (one["args"] as Array).size()
+	return -1
+
+
+static func _has(script: GDScript, method: String) -> bool:
+	return _arguments(script, method) >= 0
+
+
+func _write(path: String, text: String) -> void:
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+
+
+## booklet3 with [param lines] after its first author line.
+static func _b3_with(lines: String) -> String:
+	var at: int = B3.MODEL.find("0 Author: A. Builder\n") + "0 Author: A. Builder\n".length()
+	return B3.MODEL.substr(0, at) + lines + B3.MODEL.substr(at)
+
+
+func _page_dialog() -> Window:
+	if not _shell.run("booklet_page_setup"):
+		return null
+	await _frames(6)
+	return _shell.get("_page_setup_dialog")
+
+
+## The app's own model, its steps worked out by the app: its page set up,
+## picture and guide and all, saved and opened again.
+func _own_steps_worked() -> void:
+	print("")
+	print("the app's own model, its steps worked out by the app, saved and opened again")
+	var path: String = _out.path_join("own_worked.mpd")
+	_write(path, B3.MODEL.replace("0 Author: A. Builder", "0 Author: Brickworks"))
+	await _open(path, 18)
+	var image := Image.create(300, 400, false, Image.FORMAT_RGB8)
+	image.fill(Color8(200, 60, 40))
+	var said: String = str(await _tools.run("page_setup", {"size": "A4", "orientation": "portrait",
+		"margin": 12, "picture_data": Marshalls.raw_to_base64(image.save_png_to_buffer())}))
+	print("    page_setup: %s" % said)
+	var was: Dictionary = _page()
+	var saved: String = _out.path_join("own_worked_saved.mpd")
+	_check("set up (%s) and saved: %s" % [str(was["said"]).left(120), saved.get_file()],
+		not (was["said"] as Dictionary).is_empty() and _store.save_file(saved, "own_worked"))
+	var text: String = FileAccess.get_file_as_string(saved)
+	_check("...the file is the app's own, its steps not marked the author's, and says the page",
+		text.contains("0 Author: Brickworks") and not text.contains(LdrModel.AUTHORED_META)
+		and text.contains("PAGE_SETUP A4 PORTRAIT"))
+	await _open(saved, 18)
+	var now: Dictionary = _page()
+	_check("opened again, the page as it was set up (%s; was %s)" % [str(now["said"]).left(120),
+		str(was["said"]).left(120)], str(now["said"]) == str(was["said"]))
+	_check("...its picture with it", not str(now["picture"]).is_empty()
+		and BookletLooks.images(_world).has(now["picture"]))
+
+
+## A file whose page names a picture it does not carry.
+func _missing_picture() -> void:
+	print("")
+	print("a file naming a picture behind its pages that it does not carry")
+	var path: String = _out.path_join("missing.mpd")
+	_write(path, _b3_with("0 !BRICKWORKS PAGE_SETUP A4 PORTRAIT COLOUR #FFF6E0 PICTURE brickworks-page-behind.jpg\n"))
+	await _open(path, 18)
+	var status: String = str(await _tools.run("page_setup", {}))
+	print("    page_setup: %s" % status)
+	_check("page_setup says the picture is missing from the file", status.contains("missing from the file")
+		and status.contains("brickworks-page-behind.jpg"))
+	var dialog: Window = await _page_dialog()
+	var label: Label = dialog.get("_picture") if dialog != null else null
+	var take_off: Button = dialog.get("_take_off") if dialog != null else null
+	_check("Page setup… says so: \"%s\", and Take off can take it off" % (label.text if label else "?"),
+		label != null and label.text == "Missing from the file" and take_off != null and not take_off.disabled)
+	if dialog != null:
+		await _shot("page_setup_missing")
+		dialog.hide()
+	var layout: String = str(await _tools.run("booklet_layout", {}))
+	_check("booklet_layout says so", layout.contains("missing from the file"))
+	var printed: Dictionary = await _printed("missing")
+	if not printed.is_empty():
+		var on_png: Color = _at(_png(printed, 2), Vector2(4.0, 4.0))
+		_check("...its pages printed in the page's colour, #%s (#fff6e0)" % on_png.to_html(false),
+			_same(on_png, Color8(255, 246, 224)))
+	var margin: String = str(await _tools.run("page_setup", {"margin": 15}))
+	print("    page_setup margin=15: %s" % margin)
+	var text: String = _store.to_text("missing", true)
+	_check("a change (margin 15) is made, and a save still names the picture",
+		is_equal_approx(_page()["margin"], 15.0) and text.contains("PICTURE brickworks-page-behind.jpg"))
+	dialog = await _page_dialog()
+	take_off = dialog.get("_take_off") if dialog != null else null
+	if take_off != null:
+		take_off.pressed.emit()
+		await _frames(2)
+	if dialog != null:
+		dialog.hide()
+	var after: String = str(await _tools.run("page_setup", {}))
+	_check("Take off: no picture named, nothing said missing, none in the file",
+		str(_page()["picture"]).is_empty() and not after.contains("missing")
+		and not _store.to_text("missing", true).contains("PICTURE"))
+	# And one the file carries that is not a PNG or a JPEG, left out at the
+	# edge (BookletLooks.kept_pictures).
+	_write(path, _b3_with("0 !BRICKWORKS PAGE_SETUP A4 PORTRAIT PICTURE brickworks-page-behind.jpg\n")
+		+ "0 !DATA brickworks-page-behind.jpg\n0 !: PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==\n")
+	await _open(path, 18)
+	var edge: String = str(await _tools.run("page_setup", {}))
+	_check("one that is not a PNG or a JPEG: left out, and said missing too (%s)" % edge.left(140),
+		edge.contains("missing from the file") and BookletLooks.images(_world).is_empty())
+
+
+## The picture behind the pages, kept no bigger than its page needs.
+func _picture_bound() -> void:
+	print("")
+	print("a big picture behind the pages, kept to the page")
+	var path: String = _out.path_join("bound.mpd")
+	_write(path, B3.MODEL)
+	await _open(path, 18)
+	var photo := Image.create(4000, 3000, false, Image.FORMAT_RGB8)
+	photo.fill(Color8(90, 130, 200))
+	photo.fill_rect(Rect2i(0, 1500, 4000, 1500), Color8(70, 150, 80))
+	photo.fill_rect(Rect2i(1800, 900, 400, 1200), Color8(230, 220, 200))
+	var said: String = str(await _tools.run("page_setup", {"picture_data":
+		Marshalls.raw_to_base64(photo.save_jpg_to_buffer(0.9))}))
+	print("    page_setup picture_data= (4000 x 3000): %s" % said)
+	var data: String = str(BookletLooks.images(_world).get(_page()["picture"], ""))
+	var kept := Image.new()
+	var read: int = kept.load_jpg_from_buffer(Marshalls.base64_to_raw(data))
+	_check("a 4000 x 3000 photograph behind the booklet's own 269 x 199 mm page: a JPEG of %d x %d px (1345 x 1009, the page at 5 px a mm), %d KB"
+		% [kept.get_width(), kept.get_height(), data.length() / 1024],
+		read == OK and BookletLooks.picture_kind(data) == "jpeg" and absi(kept.get_width() - 1345) <= 1
+		and absi(kept.get_height() - 1009) <= 1)
+	_check("...page_setup says its size in the file (\"%s\")" % said.substr(said.find("a picture behind")).left(60),
+		said.contains("KB in the file"))
+	var dialog: Window = await _page_dialog()
+	var label: Label = dialog.get("_picture") if dialog != null else null
+	_check("...and Page setup…: \"%s\"" % (label.text if label else "?"), label != null
+		and label.text.begins_with("A JPEG, ") and label.text.ends_with("KB in the file"))
+	if dialog != null:
+		dialog.hide()
+	# Chosen for an upright A4 page in the same call: kept to its height.
+	var upright := Image.create(3000, 4000, false, Image.FORMAT_RGB8)
+	upright.fill(Color8(200, 180, 90))
+	await _tools.run("page_setup", {"size": "A4", "orientation": "portrait",
+		"picture_data": Marshalls.raw_to_base64(upright.save_jpg_to_buffer(0.9))})
+	data = str(BookletLooks.images(_world).get(_page()["picture"], ""))
+	kept.load_jpg_from_buffer(Marshalls.base64_to_raw(data))
+	_check("a 3000 x 4000 one for an upright A4 page in the same call: %d x %d (1114 x 1485, its 297 mm at 5 px a mm)"
+		% [kept.get_width(), kept.get_height()], absi(kept.get_width() - 1114) <= 1
+		and absi(kept.get_height() - 1485) <= 1)
+	# See-through: random colour and see-through in every pixel, a PNG's worst.
+	var noise := Image.create_from_data(1600, 1200, false, Image.FORMAT_RGBA8,
+		Crypto.new().generate_random_bytes(1600 * 1200 * 4))
+	var two: bool = _arguments(_sheet, "picture_of") == 2
+	var clear: Array = _sheet.call("picture_of", noise, Vector2(269.0, 199.0)) if two \
+		else _sheet.call("picture_of", noise)
+	var png := Image.new()
+	png.load_png_from_buffer(Marshalls.base64_to_raw(str(clear[1])))
+	var bytes: int = Marshalls.base64_to_raw(str(clear[1])).size()
+	_check("a see-through 1600 x 1200 photograph of noise: a PNG of %d x %d, %d KB (at most 1024 KB, or 900 px long)"
+		% [png.get_width(), png.get_height(), bytes / 1024], str(clear[0]).ends_with(".png")
+		and (bytes <= 1024 * 1024 or maxi(png.get_width(), png.get_height()) <= 900))
+	var opaque := Image.create_from_data(800, 600, false, Image.FORMAT_RGB8,
+		Crypto.new().generate_random_bytes(800 * 600 * 3))
+	opaque.convert(Image.FORMAT_RGBA8)
+	var solid: Array = _sheet.call("picture_of", opaque, Vector2(269.0, 199.0)) if two \
+		else _sheet.call("picture_of", opaque)
+	_check("one with a see-through channel that shows nothing through: a JPEG (%s)" % str(solid[0]),
+		str(solid[0]).ends_with(".jpg"))
+
+
+## The style files' folder's pictures, by name.
+func _style_pictures() -> PackedStringArray:
+	var folder: String = "user://page_styles/pictures"
+	return DirAccess.get_files_at(folder) if DirAccess.dir_exists_absolute(folder) else PackedStringArray()
+
+
+## The styles a new start of the app reads: this probe, run again headless
+## on the same user folder, saying them.
+func _new_start() -> PackedStringArray:
+	var said: Array = []
+	OS.execute(OS.get_executable_path(), ["--headless", "--path", ProjectSettings.globalize_path("res://"),
+		"--script", "res://src/dev/pagesetup_probe.gd", "--", "--list-styles"], said, true)
+	var names := PackedStringArray()
+	for line: String in "\n".join(said).split("\n"):
+		if line.begins_with("STYLE "):
+			names.append(line.trim_prefix("STYLE ").strip_edges())
+	return names
+
+
+## Styles: a picture two share kept once, taken away in Page setup… and
+## over MCP, gone in a new start; the styles one file kept before moved;
+## that file left as it was when it cannot be read.
+func _styles_kept() -> void:
+	print("")
+	print("styles: a picture kept once, styles taken away, and the styles kept before")
+	if not _check("BookletSheet is here", _sheet != null):
+		return
+	for name: String in (_sheet.call("styles") as Dictionary).keys():
+		_forget(name)
+	var image := Image.create(400, 300, false, Image.FORMAT_RGB8)
+	image.fill(Color8(120, 40, 160))
+	await _tools.run("page_setup", {"size": "A5", "picture_data":
+		Marshalls.raw_to_base64(image.save_jpg_to_buffer(0.9))})
+	await _tools.run("page_setup", {"save_as": "Probe one"})
+	await _tools.run("page_setup", {"colour": "#ffffff", "save_as": "Probe two"})
+	var styles: Dictionary = _sheet.call("styles")
+	_check("two styles kept with one picture (%s): the picture kept once (%d file)" % [
+		", ".join(styles.keys()), _style_pictures().size()], styles.has("Probe one")
+		and styles.has("Probe two") and _style_pictures().size() == 1)
+	var files: PackedStringArray = DirAccess.get_files_at("user://page_styles") \
+		if DirAccess.dir_exists_absolute("user://page_styles") else PackedStringArray()
+	var small: bool = files.size() == 2
+	for file_name: String in files:
+		small = small and FileAccess.get_file_as_bytes("user://page_styles".path_join(file_name)).size() < 2048
+	_check("...each style a small file of its own, its picture not in it (%s)" % ", ".join(files), small)
+	var dialog: Window = await _page_dialog()
+	var remove: MenuButton = dialog.get("_remove") if dialog != null else null
+	var confirm: ConfirmationDialog = dialog.get("_confirm") if dialog != null else null
+	var index: int = -1
+	if remove != null:
+		for at: int in remove.get_popup().item_count:
+			if remove.get_popup().get_item_text(at) == "Probe one":
+				index = at
+	if _check("Page setup…, Remove…: \"Probe one\" listed", index >= 0 and confirm != null):
+		remove.get_popup().index_pressed.emit(index)
+		await _frames(2)
+		await _shot("page_setup_remove")
+		_check("...asked first: \"%s\"" % confirm.dialog_text, confirm.visible
+			and confirm.dialog_text.contains("Probe one"))
+		confirm.confirmed.emit()
+		await _frames(2)
+		confirm.hide()
+	if dialog != null:
+		dialog.hide()
+	styles = _sheet.call("styles")
+	_check("...taken away: %s left; the picture \"Probe two\" shows still kept (%d)" % [
+		", ".join(styles.keys()), _style_pictures().size()], not styles.has("Probe one")
+		and styles.has("Probe two") and _style_pictures().size() == 1)
+	var said: String = str(await _tools.run("page_setup", {"remove_style": "Probe two"}))
+	print("    page_setup remove_style=\"Probe two\": %s" % said)
+	styles = _sheet.call("styles")
+	_check("page_setup remove_style=: taken away, and the picture no style shows with it (%d)"
+		% _style_pictures().size(), not styles.has("Probe two") and _style_pictures().is_empty())
+	var restart: PackedStringArray = _new_start()
+	_check("a new start of the app reads neither (%s)" % ", ".join(restart),
+		not restart.has("Probe one") and not restart.has("Probe two"))
+	# The styles one file kept, as pagesetup kept them.
+	var old := ConfigFile.new()
+	var picture: String = Marshalls.raw_to_base64(image.save_jpg_to_buffer(0.9))
+	old.set_value("Probe old", "style", {"paper": "a5", "portrait": true,
+		"picture": "brickworks-page-behind.jpg", "picture_data": picture})
+	old.save("user://page_styles.cfg")
+	styles = _sheet.call("styles")
+	_check("a style the one file kept: read (%s), moved into a file of its own, that file gone"
+		% ", ".join(styles.keys()), styles.has("Probe old")
+		and not FileAccess.file_exists("user://page_styles.cfg") and _style_pictures().size() == 1)
+	await _tools.run("page_setup", {"style": "Probe old"})
+	_check("...and given to the model whole, picture and all (%s)" % str(_page()["said"]).left(120),
+		_page()["size"] == Vector2(148, 210) and BookletLooks.images(_world).get(_page()["picture"], "") == picture)
+	var broken := PackedByteArray([0x5b, 0x62, 0x72, 0x6f, 0x6b, 0x65, 0x6e, 0x0a, 0x00, 0xff, 0x3d])
+	var file: FileAccess = FileAccess.open("user://page_styles.cfg", FileAccess.WRITE)
+	file.store_buffer(broken)
+	file.close()
+	var kept: String = str(await _tools.run("page_setup", {"save_as": "Probe new"}))
+	print("    page_setup save_as=\"Probe new\": %s" % kept)
+	_check("a one file of styles that cannot be read: left byte for byte, and a style kept beside it",
+		FileAccess.get_file_as_bytes("user://page_styles.cfg") == broken
+		and (_sheet.call("styles") as Dictionary).has("Probe new"))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://page_styles.cfg"))
+	for name: String in ["Probe old", "Probe new"]:
+		_forget(name)
 
 
 # -- the dialog in the window -----------------------------------------------------

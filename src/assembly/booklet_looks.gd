@@ -1033,6 +1033,21 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	return out
 
 
+## Of [param looks] ([method read]'s), the booklet's own (BOOKLET: its page
+## set up, guides, steps a page and the like) and the picture behind its
+## pages: what holds for the whole booklet whoever's its steps are.
+static func booklet_wide(looks: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if not looks.has(BOOKLET):
+		return out
+	out[BOOKLET] = looks[BOOKLET]
+	var behind: String = str(((looks[BOOKLET] as Dictionary).get("sheet", {}) as Dictionary)
+		.get("picture", ""))
+	if (looks.get(DATA, {}) as Dictionary).has(behind):
+		out[DATA] = {behind: looks[DATA][behind]}
+	return out
+
+
 ## The looks a model's file gives its steps, keyed as BrickWorld keeps them
 ## ([param names]: sub-model key -> the name its assembly goes by,
 ## LdrModel._assembly_names; the model's own section is "").
