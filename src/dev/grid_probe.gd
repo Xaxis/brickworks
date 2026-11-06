@@ -126,7 +126,8 @@ func _a_grid() -> bool:
 		print("    then that row copied in a row, then that layer copied up: three runs of Pattern")
 		await _key(KEY_ESCAPE)
 		return false
-	await _click(grid_button.get_global_rect().get_center())
+	# The dialog is a window of its own: its controls' places are its.
+	await _click(Vector2(dialog.position) + grid_button.get_global_rect().get_center())
 	acts += 1
 	_check("In a grid is chosen (%s)" % dialog.kind, dialog.kind == "grid")
 	var fields: Array = ["pattern_columns", "pattern_columns_every", "pattern_rows",
