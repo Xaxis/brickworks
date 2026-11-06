@@ -93,6 +93,23 @@ Whether what you built is still there tomorrow, and still means the same thing.
   a copy keeps it in that copy (`Carry.placements` carries `unit`): before,
   a part moved in Wing#2 went into Wing#1, and one duplicated in a copy
   within another went into a new copy of the outermost.
+  The review's findings fixed (keeptext3, 2026-11-06; same probe, now also
+  on ktreview's fixtures `src/dev/fixtures/kt_*`): every edit on every file
+  is checked against the model it should open as, not only its lines
+  (`_same_parts`: each part, shown or not, in place and in colour, plus the
+  edit's own change), and against its shape (`_shape_kept`: each line saying
+  what the next is still right above the same part, line endings, header).
+  A copy moved into its parent's steps carries the parts the app cannot show
+  (not in the library, a hose's skin, a part still downloading) into the
+  steps it is built in (`_carried`), with its group and INVERTNEXT
+  (`_lead_into`); a line that says what the next is (`!LDCAD GROUP_NXT`,
+  `MLCAD BTG`/`HIDE`, `BFC INVERTNEXT`) goes, comes out and moves with its
+  line and nothing is put between them (`_lead_of`, `before_run`,
+  `ModelFloor.head_end`); every line is split as `LdrModel._fields` splits it
+  (tabs); a file in CRLF is saved in CRLF (`SourceFile.ended`), whole too;
+  written whole, the lines before the first FILE line stay before it, a note
+  equal to a header line stays, a section of one part moved or of copies
+  renamed keeps its notes (`kept_in`, `_paired_lines`).
   What cannot be one line is written whole (`write` returns null): a part of
   a mirrored copy changed, a copy built in a parent placed more than once, a
   copy the file built in its parent's steps given its own. Then the author's

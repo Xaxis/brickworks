@@ -69,6 +69,14 @@ class Read extends RefCounted:
 
 
 var lines: PackedStringArray
+## Whether every line of the file ends in "\r\n", as Studio's and the LDraw
+## model repository's do: a save of it ends every line so, the lines the app
+## writes in it too. A whole write ended each in "\n" alone, and a save into
+## the file put the app's own lines in so (ktreview, keeptext3).
+var crlf: bool = false
+## The line of the first FILE line, before which the lines are the file's
+## and no section's (an exporter's comments): 0 for none.
+var lead: int = 0
 ## Line -> [Read], one per copy of the sub-model the line is in.
 var by_line: Dictionary = {}
 var count: int = 0
@@ -118,6 +126,11 @@ static func make(text: String, model: LdrModel, placements: Array,
 	var source := SourceFile.new()
 	source.not_shown = hidden_parts.duplicate()
 	source.lines = text.split("\n")
+	var ended: int = 0
+	for n: int in source.lines.size() - 1:
+		if source.lines[n].ends_with("\r"):
+			ended += 1
+	source.crlf = source.lines.size() > 1 and ended == source.lines.size() - 1
 	source.unit_frames = model.unit_frames.duplicate()
 	source.unit_sections = model.unit_sections.duplicate()
 	source.unit_colours = model.unit_colours.duplicate()
@@ -149,12 +162,13 @@ static func make(text: String, model: LdrModel, placements: Array,
 
 
 ## Where each FILE section's lines are; a file without any is one section.
+## What comes before the first FILE line is in none ([member lead]).
 func _read_sections() -> void:
 	var current: String = ""
 	var first: int = 0
 	var any_file: bool = false
 	for n: int in lines.size():
-		var words: PackedStringArray = lines[n].strip_edges().split(" ", false)
+		var words: PackedStringArray = _words(lines[n])
 		if words.size() < 2 or words[0] != "0":
 			continue
 		if words[1] == "!LDCAD" and words.size() > 2 \
@@ -171,6 +185,7 @@ func _read_sections() -> void:
 			first = n
 			if not any_file:
 				main_key = current
+				lead = n
 			any_file = true
 	if any_file and not current.is_empty() and not sections.has(current):
 		sections[current] = [first, lines.size()]
@@ -332,43 +347,52 @@ func carried_into(text: String, waiting: Array) -> String:
 ## before them), and each part's line byte for byte where the app's says
 ## the same thing. Written whole before keeptext2, a file with a note before
 ## every part lost 52 of its 64 lines.
+##
+## The file's lines before its first FILE line go before the app's; a line
+## that says what the next is (an LDCad group, an INVERTNEXT) goes right
+## above the app's line for it, or out with it where the app wrote none,
+## never above another; a section none of whose lines is the app's keeps
+## its notes under the app's header for it. A section of one part moved,
+## or of copies renamed, lost all its notes, a note the same as a header
+## line went, and lines before the first FILE line broke the header
+## (ktreview, keeptext3).
 func kept_in(text: String, library: PartLibrary) -> String:
 	var written: PackedStringArray = text.split("\n")
 	var model: LdrModel = LdrModel.parse(text, "model")
 	if model == null:
 		return text
-	var by_place: Dictionary = {}       ## colour and place -> [[unit, part, line]]
-	var part_on: Dictionary = {}        ## a line the app wrote -> the part it places
-	for item: Variant in model.flatten(library.parts if library != null else {}):
-		var placement: LdrModel.Placement = item
-		if placement.line < 0:
-			continue
-		part_on[placement.line] = placement.part_id
-		var key: String = _place_key(placement.color_code, placement.transform)
-		if not by_place.has(key):
-			by_place[key] = []
-		(by_place[key] as Array).append([placement.unit, placement.part_id, placement.line])
+	var paired: Array = _paired_lines(model, library)
+	var pair_of: Dictionary = paired[0]
+	var part_on: Dictionary = paired[1]
+	var unit_map: Dictionary = paired[2]
 	var placing: Dictionary = {}        ## a line of this file -> the copies it places
 	for unit: String in unit_lines:
 		var at: int = int(unit_lines[unit])
 		if not placing.has(at):
 			placing[at] = []
 		(placing[at] as Array).append(unit)
-	# The app's sections, and the lines each has, which are not put in twice.
+	var unshown_at: Dictionary = {}     ## a line of a part the app cannot show -> true
+	for item: Variant in not_shown:
+		unshown_at[(item as LdrModel.Placement).line] = true
+	# The app's sections, and how many of each line each has: a line of the
+	# file the app wrote already (its header, its BFC line) is not put in
+	# twice, but only as many times as the app wrote it. Kept by kind, a note
+	# the same as a header line was taken for it and lost (ktreview).
 	var span_of: PackedInt32Array = PackedInt32Array()
 	span_of.resize(written.size())
 	var heads: Array = [0]
 	var has: Array = [{}]
 	for n: int in written.size():
-		if written[n].strip_edges().to_upper().begins_with("0 FILE ") and n > 0:
+		if _keyword(written[n]) == "FILE" and n > 0:
 			heads.append(n)
 			has.append({})
 		span_of[n] = heads.size() - 1
-		(has[heads.size() - 1] as Dictionary)[written[n].strip_edges()] = true
+		var key: String = " ".join(_words(written[n]))
+		var counts: Dictionary = has[heads.size() - 1]
+		counts[key] = int(counts.get(key, 0)) + 1
 	var before: Dictionary = {}         ## a line the app wrote -> the file's put before it
 	var after: Dictionary = {}          ## ... and after it
 	var again: Dictionary = {}          ## ... and its line, the file's
-	var used: Dictionary = {}
 	for key: String in sections:
 		if flexible.has(key):
 			continue
@@ -376,7 +400,7 @@ func kept_in(text: String, library: PartLibrary) -> String:
 		# Its title: the app wrote its own.
 		var title: int = _title_line(key) if not key.is_empty() else -1
 		if key.is_empty() and not lines.is_empty():
-			var first: PackedStringArray = LdrModel._fields(lines[0].strip_edges())
+			var first: PackedStringArray = _words(lines[0])
 			if first.size() >= 2 and first[0] == "0" and not first[1].begins_with("!") \
 					and not first[1].begins_with("//"):
 				title = 0
@@ -387,26 +411,33 @@ func kept_in(text: String, library: PartLibrary) -> String:
 			tail -= 1
 		for n: int in range(int(span[0]) + (0 if key.is_empty() else 1), int(span[1])):
 			var line: String = lines[n].trim_suffix("\r")
-			var words: PackedStringArray = LdrModel._fields(line.strip_edges())
+			var words: PackedStringArray = _words(line)
 			if _is_step(line):
 				if last >= 0 and not waiting.is_empty():
 					_kept(after, last, waiting, has[span_of[last]])
 					waiting = []
 				continue
 			if not words.is_empty() and words[0] == "1":
-				var at: int = _written_at(n, placing, by_place, model, used)
+				# The lines right above it that say what it is go with it.
+				var run: Array = []
+				while not waiting.is_empty() and _binds_next(str(waiting[waiting.size() - 1])):
+					run.push_front(waiting.pop_back())
+				var at: int = int(pair_of.get(n, -1))
 				if at < 0:
 					continue
-				used[at] = true
 				if not waiting.is_empty():
 					# Before the line saying which copy the next is, too.
 					var put: int = at
-					while put > 0 and written[put - 1].strip_edges().begins_with(LdrModel.COPY_META):
+					while put > 0 and _says_next(written[put - 1]):
 						put -= 1
 					_kept(before, put, waiting, has[span_of[at]])
 					waiting = []
+				if not run.is_empty():
+					if not before.has(at):
+						before[at] = []
+					(before[at] as Array).append_array(run)
 				last = at
-				var same_part: bool = placing.has(n) or by_line.has(n) \
+				var same_part: bool = placing.has(n) or unshown_at.has(n) or by_line.has(n) \
 					and (by_line[n][0] as Read).part_id == str(part_on.get(at, ""))
 				if same_part and _says_same(line, written[at], placing.has(n)):
 					again[at] = line
@@ -418,9 +449,22 @@ func kept_in(text: String, library: PartLibrary) -> String:
 				if keyword in ["NOFILE", "FILE", "NAME:"] or keyword.begins_with("!BRICKWORKS"):
 					continue
 			waiting.append(line)
-		if not waiting.is_empty() and last >= 0:
+		if waiting.is_empty():
+			continue
+		if last >= 0:
 			_kept(after, last, waiting, has[span_of[last]])
+			continue
+		# None of its lines the app's: under the app's header for it.
+		var head: int = _app_head_end(key, model, written, unit_map)
+		if head >= 0:
+			_kept(after, head, waiting, has[span_of[head]])
 	_named_as_file(written, again, after)
+	# What comes before the first FILE line, before the app's.
+	if lead > 0 and not written.is_empty() and _keyword(written[0]) == "FILE":
+		var leading: Array = []
+		for n: int in lead:
+			leading.append(lines[n].trim_suffix("\r"))
+		before[0] = leading + (before.get(0, []) as Array)
 	var out := PackedStringArray()
 	for n: int in written.size():
 		for kept: String in before.get(n, []):
@@ -429,6 +473,180 @@ func kept_in(text: String, library: PartLibrary) -> String:
 		for kept: String in after.get(n, []):
 			out.append(kept)
 	return "\n".join(out)
+
+
+## Each line of this file that places a part or a copy paired with the line
+## the app wrote for it in [param model], the model written whole, read:
+## first where a part of its colour stands where it stood, of its copy if
+## one does, the parts the app cannot show among them (written in again,
+## carried_into); then the line placing its copy, by its path or, a copy
+## renamed, by where it stands and its number; and what is left (moved,
+## turned, recoloured) the nearest of its copy the app wrote that is left,
+## the same part first, then another within half an LDU, a part swapped.
+## Paired by place alone, a sub-model whose one part moved, or whose parts
+## were all recoloured, had no line of its own and lost every note
+## (ktreview). [{a line of this file -> the app's}, {the app's line -> the
+## part it places}, {a copy's path here -> its path in the app's}].
+func _paired_lines(model: LdrModel, library: PartLibrary) -> Array:
+	var app: Array = []                 ## [copy, part, line, place] the app wrote
+	var by_place: Dictionary = {}       ## colour and place -> [index into app]
+	var by_unit: Dictionary = {}        ## copy -> [index into app]
+	var part_on: Dictionary = {}
+	for item: Variant in model.flatten(library.parts if library != null else {}):
+		var placement: LdrModel.Placement = item
+		if placement.line < 0:
+			continue
+		part_on[placement.line] = placement.part_id
+		var key: String = _place_key(placement.color_code, placement.transform)
+		if not by_place.has(key):
+			by_place[key] = []
+		(by_place[key] as Array).append(app.size())
+		if not by_unit.has(placement.unit):
+			by_unit[placement.unit] = []
+		(by_unit[placement.unit] as Array).append(app.size())
+		app.append([placement.unit, placement.part_id, placement.line, placement.transform])
+	var parts_at: Dictionary = {}       ## a line here -> [[copy, part, colour, place]]
+	for line: int in by_line:
+		for origin: Read in by_line[line]:
+			if not parts_at.has(line):
+				parts_at[line] = []
+			(parts_at[line] as Array).append([origin.unit, origin.part_id, origin.colour, origin.at])
+	for item: Variant in not_shown:
+		var placement: LdrModel.Placement = item
+		if placement.line < 0:
+			continue
+		if not parts_at.has(placement.line):
+			parts_at[placement.line] = []
+		(parts_at[placement.line] as Array).append([placement.unit, placement.part_id,
+			placement.color_code, placement.transform])
+	var part_lines: Array = parts_at.keys()
+	part_lines.sort()
+	var pair_of: Dictionary = {}
+	var used: Dictionary = {}           ## the app's lines paired
+	for n: int in part_lines:
+		for mine: Array in parts_at[n]:
+			var best: int = -1
+			var score: int = -1
+			for k: int in by_place.get(_place_key(int(mine[2]), mine[3]), []):
+				var entry: Array = app[k]
+				if used.has(int(entry[2])):
+					continue
+				var points: int = (2 if str(entry[0]) == str(mine[0]) else 0) \
+					+ (1 if str(entry[1]) == str(mine[1]) else 0)
+				if points > score:
+					score = points
+					best = int(entry[2])
+			if best >= 0:
+				pair_of[n] = best
+				used[best] = true
+				break
+	# The copies, the outermost first.
+	var kinds: Dictionary = _kinds_in(unit_sections.keys())
+	var units: Array = unit_lines.keys()
+	units.sort_custom(func(a: String, b: String) -> bool:
+		return a.count("/") < b.count("/") or a.count("/") == b.count("/") and a < b)
+	var unit_map: Dictionary = {}
+	for unit: String in units:
+		var n: int = int(unit_lines[unit])
+		var allowed: int = int(pair_of.get(n, -1))
+		var mine: String = ""
+		if model.unit_lines.has(unit) and (not used.has(int(model.unit_lines[unit]))
+				or int(model.unit_lines[unit]) == allowed):
+			mine = unit
+		else:
+			mine = _renamed_unit(unit, model, unit_map, used, allowed, kinds)
+		if mine.is_empty():
+			continue
+		unit_map[unit] = mine
+		if not pair_of.has(n):
+			pair_of[n] = int(model.unit_lines[mine])
+			used[pair_of[n]] = true
+	# What is left, moved, turned or recoloured: the nearest of its copy.
+	for same_part: bool in [true, false]:
+		for n: int in part_lines:
+			if pair_of.has(n):
+				continue
+			var best: int = -1
+			var nearest: float = INF if same_part else 0.5
+			for mine: Array in parts_at[n]:
+				for k: int in by_unit.get(unit_map.get(mine[0], mine[0]), []):
+					var entry: Array = app[k]
+					if used.has(int(entry[2])) or same_part and str(entry[1]) != str(mine[1]):
+						continue
+					var d: float = (entry[3] as Transform3D).origin.distance_to(
+						(mine[3] as Transform3D).origin)
+					if d < nearest or d == nearest and best < 0:
+						nearest = d
+						best = int(entry[2])
+			if best >= 0:
+				pair_of[n] = best
+				used[best] = true
+	return [pair_of, part_on, unit_map]
+
+
+## The copy in [param model] that this file's copy [param unit] is, renamed:
+## in the copy its own parent is there, of its number, where it stands, a
+## sub-model of its own name or of one this file has not got
+## ([param kinds]). "" for none.
+func _renamed_unit(unit: String, model: LdrModel, unit_map: Dictionary, used: Dictionary,
+		allowed: int, kinds: Dictionary) -> String:
+	var parent: String = Assemblies.parent_of(unit)
+	var parent_now: String = str(unit_map.get(parent, parent))
+	var number: int = Assemblies.copy_of(Assemblies.leaf(unit))
+	var kind: String = Assemblies.definition(Assemblies.leaf(unit))
+	var frame: Transform3D = unit_frames.get(unit, Transform3D.IDENTITY)
+	var names: Array = model.unit_lines.keys()
+	names.sort()
+	for other: String in names:
+		if Assemblies.parent_of(other) != parent_now \
+				or Assemblies.copy_of(Assemblies.leaf(other)) != number:
+			continue
+		var at: int = int(model.unit_lines[other])
+		if used.has(at) and at != allowed:
+			continue
+		var other_kind: String = Assemblies.definition(Assemblies.leaf(other))
+		if other_kind != kind and kinds.has(other_kind):
+			continue
+		if _same(model.unit_frames.get(other, Transform3D.IDENTITY), frame):
+			return other
+	return ""
+
+
+## The last line of the header the app wrote the sub-model of section
+## [param key] under, in [param written] (its FILE, title, Name and author
+## lines): where the notes of a section none of whose lines is the app's
+## go. -1 when the app wrote it no section: its every part taken out.
+func _app_head_end(key: String, model: LdrModel, written: PackedStringArray,
+		unit_map: Dictionary) -> int:
+	var first: int = -1
+	if key == main_key:
+		first = 0
+	else:
+		var app_key: String = ""
+		for unit: String in unit_sections:
+			var mine: String = str(unit_map.get(unit, unit))
+			if str(unit_sections[unit]) == key and model.unit_sections.has(mine):
+				app_key = str(model.unit_sections[mine])
+				break
+		if app_key.is_empty():
+			return -1
+		for n: int in written.size():
+			var words: PackedStringArray = _words(written[n])
+			if words.size() >= 3 and words[0] == "0" and words[1].to_upper() == "FILE" \
+					and LdrModel._key(" ".join(words.slice(2))) == app_key:
+				first = n
+				break
+	if first < 0 or first >= written.size():
+		return -1
+	var at: int = first
+	while at + 1 < written.size():
+		var next: String = written[at + 1]
+		var keyword: String = _keyword(next)
+		if keyword.is_empty() or keyword in ["FILE", "NOFILE", "STEP", "ROTSTEP"] \
+				or _in_named(next) != null or _says_next(next):
+			break
+		at += 1
+	return at
 
 
 ## The model written whole ([param written]) called what this file calls
@@ -444,12 +662,11 @@ func _named_as_file(written: PackedStringArray, again: Dictionary, after: Dictio
 	var title: int = _title_line(main_key)
 	var name_at: int = -1
 	for n: int in range(int(span[0]) + 1, int(span[1])):
-		var words: PackedStringArray = lines[n].strip_edges().split(" ", false)
-		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() == "NAME:":
+		if _keyword(lines[n]) == "NAME:":
 			name_at = n
 			break
 	for n: int in range(1, written.size()):
-		var words: PackedStringArray = written[n].strip_edges().split(" ", false)
+		var words: PackedStringArray = _words(written[n])
 		if words.is_empty() or words[0] != "0" or words.size() >= 2 \
 				and words[1].to_upper() in ["FILE", "NOFILE", "STEP"]:
 			break
@@ -468,42 +685,22 @@ func _named_as_file(written: PackedStringArray, again: Dictionary, after: Dictio
 
 
 ## [param texts] put [param into] by line [param at], but those its section
-## has already (the header the app wrote it, its BFC line).
+## has already ([param has]: how many of each line the app wrote there, its
+## header, its BFC line), each such line of the app's standing for one.
 static func _kept(into: Dictionary, at: int, texts: Array, has: Dictionary) -> void:
 	if not into.has(at):
 		into[at] = []
 	for text: String in texts:
-		if text.strip_edges().is_empty() or not has.has(text.strip_edges()):
-			(into[at] as Array).append(text)
+		var key: String = " ".join(_words(text))
+		if not key.is_empty() and int(has.get(key, 0)) > 0:
+			has[key] = int(has[key]) - 1
+			continue
+		(into[at] as Array).append(text)
 
 
 static func _place_key(colour: int, at: Transform3D) -> String:
 	return "%d|%d,%d,%d" % [colour, roundi(at.origin.x * 8.0), roundi(at.origin.y * 8.0),
 		roundi(at.origin.z * 8.0)]
-
-
-## The line the app wrote for line [param n] of this file: its part, where
-## a part of its colour stands where it stood, of its copy if one does; or
-## the line placing its copy. -1 for none: taken out, or moved.
-func _written_at(n: int, placing: Dictionary, by_place: Dictionary, model: LdrModel,
-		used: Dictionary) -> int:
-	for origin: Read in by_line.get(n, []):
-		var best: int = -1
-		var score: int = -1
-		for entry: Array in by_place.get(_place_key(origin.colour, origin.at), []):
-			if used.has(int(entry[2])):
-				continue
-			var mine: int = (2 if str(entry[0]) == origin.unit else 0) \
-				+ (1 if str(entry[1]) == origin.part_id else 0)
-			if mine > score:
-				score = mine
-				best = int(entry[2])
-		if best >= 0:
-			return best
-	for unit: String in placing.get(n, []):
-		if model.unit_lines.has(unit) and not used.has(int(model.unit_lines[unit])):
-			return int(model.unit_lines[unit])
-	return -1
 
 
 ## Whether [param mine], a line of this file, and [param theirs], the app's
@@ -557,8 +754,9 @@ func _section_at(line: int) -> String:
 ## A section's name as its FILE line gives it.
 func _file_name(key: String) -> String:
 	var span: Array = sections[key]
-	var first: String = lines[int(span[0])].strip_edges()
-	return first.substr(7).strip_edges() if first.begins_with("0 FILE ") else key + ".ldr"
+	var words: PackedStringArray = _words(lines[int(span[0])])
+	return " ".join(words.slice(2)) if words.size() >= 3 and words[0] == "0" \
+		and words[1].to_upper() == "FILE" else key + ".ldr"
 
 
 ## The lines of the model's own header that a model written whole does not
@@ -574,16 +772,36 @@ func header() -> PackedStringArray:
 
 ## [method header] of the model [param text] holds, read from its lines:
 ## the app's own file keeps its header too (ModelStore._own_header).
+##
+## The model's header is its first FILE section's: what comes before that
+## line is no model's (an exporter's comments), and is kept before it
+## ([method kept_in]). Read from the top, those lines were the header and
+## the model's own author, licence and history went after its first part,
+## each sub-model's author "Brickworks" (ktreview, keeptext3). Nor is a line
+## that says what the first part is ([method _binds_next]) the header's: in
+## the header, it said it of whatever part the app wrote first.
 static func header_of(text_lines: PackedStringArray) -> PackedStringArray:
 	var out := PackedStringArray()
 	var titled: bool = false
 	var started: bool = false
-	for raw: String in text_lines:
+	var from: int = 0
+	for n: int in text_lines.size():
+		var words: PackedStringArray = _words(text_lines[n])
+		if words.is_empty():
+			continue
+		if words[0] != "0":
+			break
+		if words.size() >= 2 and words[1].to_upper() == "FILE":
+			from = n
+			break
+	var at_part: bool = false
+	for raw: String in text_lines.slice(from):
 		var line: String = raw.strip_edges()
-		var words: PackedStringArray = line.split(" ", false)
+		var words: PackedStringArray = _words(line)
 		if words.is_empty():
 			continue
 		if words[0] != "0" or _is_step(line):
+			at_part = words[0] != "0"
 			break
 		var keyword: String = words[1].to_upper() if words.size() > 1 else ""
 		if keyword == "FILE":
@@ -602,6 +820,8 @@ static func header_of(text_lines: PackedStringArray) -> PackedStringArray:
 			titled = true
 			continue
 		out.append(line)
+	while at_part and not out.is_empty() and _binds_next(out[out.size() - 1]):
+		out.remove_at(out.size() - 1)
 	return out
 
 
@@ -672,14 +892,33 @@ static func _in_paths(bricks: Array) -> Array:
 
 ## Every copy the model has now: each part's, each that waits for its part,
 ## and each holding a part the app cannot show, and every copy round them.
+## A part not on the baseplate (on its way, or one the app cannot show)
+## keeps its copy while the copy round it a person sees is there still: a
+## copy taken off goes with them. Counted present whatever the person did,
+## a copy taken off that held one was never taken off in the file, and the
+## model was written whole with that part where the copy had been.
 func _present(bricks: Array, waiting: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	for item: Variant in bricks:
 		_with_round(out, Assemblies.path_of(item as BrickWorld.Brick))
+	var seen: Dictionary = {}       ## every copy the file shows a part of, and round them
+	for line: int in by_line:
+		for origin: Read in by_line[line]:
+			if not waiting.has("%d|%s" % [line, origin.unit]):
+				_with_round(seen, origin.unit)
+	var kept: Callable = func(unit: String) -> bool:
+		var at: String = unit
+		while not at.is_empty() and not seen.has(at):
+			at = Assemblies.parent_of(at)
+		return at.is_empty() or out.has(at)
+	var held: Array = []
 	for key: String in waiting:
-		_with_round(out, key.substr(key.find("|") + 1))
+		held.append(key.substr(key.find("|") + 1))
 	for item: Variant in not_shown:
-		_with_round(out, (item as LdrModel.Placement).unit)
+		held.append((item as LdrModel.Placement).unit)
+	for unit: String in held:
+		if kept.call(unit):
+			_with_round(out, unit)
 	return out
 
 
@@ -859,12 +1098,19 @@ func _numbers_kept(library: PartLibrary) -> bool:
 			if unit != path and int(unit_lines[unit]) == wrong:
 				return false
 		var said: String = "%s %d" % [LdrModel.COPY_META, Assemblies.copy_of(Assemblies.leaf(path))]
-		if wrong > 0 and lines[wrong - 1].strip_edges().begins_with(LdrModel.COPY_META):
-			if lines[wrong - 1].strip_edges() == said:
+		# Above the lines that say what the reference is for another program:
+		# put between, a group or an INVERTNEXT was said of the COPY line.
+		var lead_at: int = _lead_of(wrong)
+		var meta: int = -1
+		for k: int in range(lead_at, wrong):
+			if _is_copy_meta(lines[k]):
+				meta = k
+		if meta >= 0:
+			if " ".join(_words(lines[meta])) == said:
 				return false
-			lines[wrong - 1] = said + _eol()
+			lines[meta] = said + _eol()
 		else:
-			_put_lines(wrong, [said])
+			_put_lines(lead_at, [said])
 	return false
 
 
@@ -937,8 +1183,8 @@ func _rename(old: String, kind: String) -> bool:
 ## Whether [param kind] is read back as a section's title: no line a reader
 ## takes for something else.
 static func _can_title(kind: String) -> bool:
-	var words: PackedStringArray = kind.strip_edges().split(" ", false)
-	if words.is_empty() or kind.contains("/") or kind.contains("#"):
+	var words: PackedStringArray = _words(kind)
+	if words.is_empty() or kind.contains("/") or kind.contains("#") or kind.contains("\t"):
 		return false
 	var keyword: String = words[0].to_upper()
 	return not keyword.begins_with("!") and not keyword.begins_with("//") \
@@ -990,8 +1236,7 @@ func _title_line(key: String) -> int:
 	var span: Array = sections[key]
 	var author: bool = false
 	for n: int in int(span[0]):
-		var words: PackedStringArray = lines[n].strip_edges().split(" ", false)
-		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() == "AUTHOR:":
+		if _keyword(lines[n]) == "AUTHOR:":
 			author = true
 			break
 	for n: int in range(int(span[0]) + 1, int(span[1])):
@@ -1090,7 +1335,7 @@ func _fork(was: String, path: String, kind: String, library: PartLibrary) -> boo
 	var into: Dictionary = {}       ## a line of the section -> its place in the copy
 	for n: int in range(start, stop):
 		var text: String = lines[n].trim_suffix("\r")
-		var words: PackedStringArray = text.strip_edges().split(" ", false)
+		var words: PackedStringArray = _words(text)
 		if n == start:
 			text = "0 FILE " + name
 		elif n == title:
@@ -1168,7 +1413,7 @@ func _free_name(file_name: String, library: PartLibrary) -> String:
 ## of this file then does.
 func _ends_nofile(key: String) -> bool:
 	var end: int = int((sections[key] as Array)[1])
-	return end < lines.size() and lines[end].strip_edges().to_upper().begins_with("0 NOFILE")
+	return end < lines.size() and _keyword(lines[end]) == "NOFILE"
 
 
 ## [param text], a line placing a sub-model or a part, placing
@@ -1472,10 +1717,12 @@ func _made(path: String, now: Dictionary, present: Dictionary, unit_steps_now: D
 				return false
 		taken.append(int(unit_lines[was]))
 	taken.sort()
-	# A line saying what the next is goes with it.
+	# The lines saying what the next is go with it, every one: left, an
+	# INVERTNEXT turned whatever came after it inside out.
 	for n: int in taken.duplicate():
-		if n > 0 and _says_next(lines[n - 1]) and not taken.has(n - 1):
-			taken.append(n - 1)
+		for k: int in range(_lead_of(n), n):
+			if not taken.has(k):
+				taken.append(k)
 	taken.sort()
 	if not _can_title(kind):
 		return false
@@ -1568,8 +1815,10 @@ func _uses_nofile() -> bool:
 
 
 ## The copy [param unit] of a sub-model placed more than once, taken off:
-## the line placing it, and the line before it saying which copy it was.
-## False when that line places other copies too.
+## the line placing it, and the lines above it saying which copy it was and
+## what it is for another program. Its parts go with it, those still on
+## their way and those the app cannot show among them: the line placed them
+## all. False when that line places other copies too.
 func _take_copy(unit: String) -> bool:
 	var line: int = int(unit_lines[unit])
 	for other: String in unit_lines:
@@ -1580,16 +1829,12 @@ func _take_copy(unit: String) -> bool:
 		if under != unit and not under.begins_with(unit + "/"):
 			continue
 		for origin: Read in reads[under]:
-			if origin.held:
-				return false
 			(by_line[origin.line] as Array).erase(origin)
 			if (by_line[origin.line] as Array).is_empty():
 				by_line.erase(origin.line)
 			count -= 1
-	for item: Variant in not_shown:
-		var placement: LdrModel.Placement = item
-		if placement.unit == unit or placement.unit.begins_with(unit + "/"):
-			return false
+	not_shown = not_shown.filter(func(placement: LdrModel.Placement) -> bool:
+		return placement.unit != unit and not placement.unit.begins_with(unit + "/"))
 	for other: String in unit_steps.keys():
 		if other == unit or other.begins_with(unit + "/"):
 			if unit_sections.has(other):
@@ -1599,13 +1844,20 @@ func _take_copy(unit: String) -> bool:
 			if other != unit:
 				unit_lines.erase(other)
 	unit_lines.erase(unit)
-	_take_line(line)
-	if line > 0 and lines[line - 1].strip_edges().begins_with(LdrModel.COPY_META):
-		_take_line(line - 1)
+	for k: int in range(line, _lead_of(line) - 1, -1):
+		_take_line(k)
 	return true
 
 
 # -- the lines and what says where they are --
+
+
+## [param text], written for this file, with its line endings: CRLF for a
+## file whose every line ended so. Its own lines keep theirs written into
+## it, but the app's went in with a newline alone, and a model written whole
+## had only those: kt_crlf saved whole came back LF (ktreview, keeptext3).
+func ended(text: String) -> String:
+	return text.replace("\r\n", "\n").replace("\n", "\r\n") if crlf else text
 
 
 ## This source, to change apart from it ([method _shaped]): its parts'
@@ -1653,6 +1905,8 @@ func _copied(waiting: Dictionary) -> SourceFile:
 		copy.within = placement.within
 		out.not_shown.append(copy)
 	out.own_title = own_title
+	out.crlf = crlf
+	out.lead = lead
 	return out
 
 
@@ -1934,20 +2188,29 @@ func _write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibr
 	var replace: Dictionary = {}    ## line -> its new text, or "" to take it out
 	var inserts: Dictionary = {}    ## line -> [lines to go before it]
 	var added: Dictionary = {}      ## restepped section -> [[step, line, within, order]]
+	## [line, copy, colour, home] for each part of a copy moved into its home's
+	## steps that is not on the baseplate: on its way, or one the app cannot
+	## show. Its line goes there as the file has it. Skipped, the copy's
+	## placing line went and nothing placed it any more: a step edit of the
+	## castle as someone else's file lost a part no library has (ktreview).
+	var carried: Array = []
 	for line: int in by_line:
 		var origins: Array = by_line[line]
 		var live: Array = []
 		var leaving: int = 0
 		for origin: Read in origins:
-			if waiting.has("%d|%s" % [line, origin.unit]):
-				continue
+			var held: bool = waiting.has("%d|%s" % [line, origin.unit])
 			var home: Variant = _moved_into(origin.unit, unit_steps_now, moved)
 			if home == null:
-				live.append(origin)
+				if not held:
+					live.append(origin)
 				continue
 			# Of a copy built in its home's steps now: written there, where its
 			# part is now, the line here left to the copies that still use it.
 			leaving += 1
+			if held:
+				carried.append([line, origin.unit, origin.colour, str(home)])
+				continue
 			if gone.has(origin):
 				continue
 			var now: Array = paired[origin]
@@ -1975,9 +2238,9 @@ func _write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibr
 			# A flexible part's skin stands for its GENERATED line and the
 			# lines under it (CustomParts.begin_skins): taking that line out
 			# is not taking the skin out.
-			if lines[line].strip_edges().begins_with("0 "):
+			if _words(lines[line])[0] == "0":
 				return null
-			replace[line] = ""
+			_out_with_lead(line, replace)
 			continue
 		if removed > 0:
 			# Some copies of a sub-model without this part and some with it.
@@ -1990,12 +2253,17 @@ func _write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibr
 		var first: Read = live[0]
 		var step_now: int = _now_step(paired, first)
 		if step_now != first.step and not restepped.has(_section_of(first.unit)):
-			# Into another step of its section: out of here, in there.
-			replace[line] = ""
+			# Into another step of its section, with what says what it is: out
+			# of here, in there.
+			var lead_lines: Array = []
+			for k: int in range(_lead_of(line), line):
+				lead_lines.append(lines[k].trim_suffix("\r"))
+			_out_with_lead(line, replace)
 			var to: Variant = _step_end(_section_of(first.unit), step_now)
 			if to == null:
 				return null
-			_insert(inserts, to, _step_lines(_section_of(first.unit), step_now) + [written])
+			_insert(inserts, to, _step_lines(_section_of(first.unit), step_now) + lead_lines
+				+ [written])
 		else:
 			replace[line] = written
 
@@ -2007,10 +2275,10 @@ func _write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibr
 	for unit: String in moved:
 		if _moved_into(Assemblies.parent_of(unit), unit_steps_now, moved) != null:
 			continue
-		var at: int = int(unit_lines[unit])
-		replace[at] = ""
-		if at > 0 and lines[at - 1].strip_edges().begins_with(LdrModel.COPY_META):
-			replace[at - 1] = ""
+		# And the lines saying which copy it was and what it is: a group, a
+		# part hidden, its faces turned in go before each of its lines there
+		# (_lead_into).
+		_out_with_lead(int(unit_lines[unit]), replace)
 	for unit: String in unit_lines:
 		var home: Variant = _moved_into(Assemblies.parent_of(unit), unit_steps_now, moved)
 		var step: int = int(unit_steps_now.get(unit, unit_steps.get(unit, -1)))
@@ -2021,6 +2289,23 @@ func _write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibr
 			return null
 		_add(added, _section_of(str(home)), [step, said,
 			_within(Assemblies.parent_of(unit), str(home)), int(unit_lines[unit]), unit])
+	# And the parts of those copies not on the baseplate, each in the step of
+	# the part of its copy the file has before it (after it, for the first).
+	for item: Variant in not_shown:
+		var placement: LdrModel.Placement = item
+		var home: Variant = _moved_into(placement.unit, unit_steps_now, moved)
+		if home != null and placement.line >= 0:
+			carried.append([placement.line, placement.unit, placement.color_code, str(home)])
+	for entry: Array in carried:
+		var home: String = entry[3]
+		var said: Variant = _carried(int(entry[0]), str(entry[1]), int(entry[2]), home)
+		if said == null:
+			return null
+		var within: String = _within(str(entry[1]), home)
+		var section: String = _section_of(home)
+		_add(added, section, [_step_beside(added.get(section, []), within, int(entry[0])),
+			"\n".join(_lead_into(int(entry[0]), str(entry[1]), home) + [said]), within,
+			int(entry[0])])
 
 	# Parts added: at the end of their step, in their copy's sub-model, or
 	# among the steps of the copy it is built in.
@@ -2126,6 +2411,10 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 				or _in_named(lines[head_end]) != null:
 			break
 		head_end += 1
+	# The lines right above the first part saying what it is go with it: left
+	# in the head, a group named whatever part a step edit put first (kt_runs).
+	while head_end > start and _says_next(lines[head_end - 1]):
+		head_end -= 1
 	for n: int in range(head_end, stop):
 		if _is_step(lines[n]):
 			own_steps = true
@@ -2324,10 +2613,21 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 				said = str(item[2])
 				out.append(_in_line(said))
 			var unit: String = str(item[3])
-			if numbered.has(unit) and (out.is_empty()
-					or not out[out.size() - 1].begins_with(LdrModel.COPY_META)):
-				out.append("%s %d" % [LdrModel.COPY_META, Assemblies.copy_of(Assemblies.leaf(unit))])
-			out.append(str(item[1]))
+			if numbered.has(unit):
+				# Which copy it is, above the lines saying what it is for another
+				# program (a group, its faces turned in): between them, they
+				# were said of this line (ktreview). The file's own goes.
+				var lead_at: int = out.size()
+				while lead_at > 0 and _says_next(out[lead_at - 1]):
+					lead_at -= 1
+				for k: int in range(out.size() - 1, lead_at - 1, -1):
+					if _is_copy_meta(out[k]):
+						out.remove_at(k)
+				out.insert(lead_at, "%s %d" % [LdrModel.COPY_META,
+					Assemblies.copy_of(Assemblies.leaf(unit))])
+			# An item of more than one line: a line put here with those saying
+			# what it is (_lead_into).
+			out.append_array(str(item[1]).split("\n"))
 		var ended: String = str(ending.get(step, ""))
 		if not ended.is_empty():
 			out.append(ended)
@@ -2392,24 +2692,113 @@ func _copies_of_kind(kind: String) -> int:
 
 
 ## Whether [param line] says what the line after it is: LDCad's and MLCad's
-## group of the next part, MLCad's part hidden, which copy this app's next
-## reference is (LdrModel.COPY_META).
+## group of the next part, MLCad's part hidden, BFC's INVERTNEXT (the next
+## part's faces turned in), or which copy this app's next reference is
+## (LdrModel.COPY_META).
 static func _says_next(line: String) -> bool:
-	var words: PackedStringArray = line.strip_edges().split(" ", false)
+	return _binds_next(line) or _is_copy_meta(line)
+
+
+## Whether [param line] says, for another program, what the line after it
+## is: LDCad's group of the next part, MLCad's group of the next and the
+## part it hides, BFC's INVERTNEXT. Each goes wherever that line goes, is
+## taken out with it, and nothing is put between them: put after a COPY_META
+## line, a group named its next line's copy line, and an INVERTNEXT left
+## where its part was taken out turned the next part inside out in every
+## other program (ktreview, keeptext3).
+static func _binds_next(line: String) -> bool:
+	var words: PackedStringArray = _words(line)
 	if words.size() < 3 or words[0] != "0":
 		return false
 	var said: String = (words[1] + " " + words[2]).to_upper()
 	return said == "!LDCAD GROUP_NXT" or said == "MLCAD BTG" or said == "MLCAD HIDE" \
-		or said == LdrModel.COPY_META.substr(2)
+		or said == "BFC INVERTNEXT"
+
+
+## [param at], or where the lines right above line [param at] of
+## [param text_lines] that say what it is for another program begin
+## ([method _binds_next]): where a line of the app's own goes that is to go
+## before line [param at].
+static func before_run(text_lines: PackedStringArray, at: int) -> int:
+	while at > 0 and _binds_next(text_lines[at - 1]):
+		at -= 1
+	return at
+
+
+static func _inverts_next(line: String) -> bool:
+	var words: PackedStringArray = _words(line)
+	return words.size() >= 3 and words[0] == "0" and words[1].to_upper() == "BFC" \
+		and words[2].to_upper() == "INVERTNEXT"
+
+
+static func _hides_next(line: String) -> bool:
+	var words: PackedStringArray = _words(line)
+	return words.size() >= 3 and words[0] == "0" and words[1].to_upper() == "MLCAD" \
+		and words[2].to_upper() == "HIDE"
+
+
+## The first of the lines right above line [param n] that say what it is
+## ([method _says_next]): [param n] where there are none.
+func _lead_of(n: int) -> int:
+	var at: int = n
+	while at > 0 and _says_next(lines[at - 1]):
+		at -= 1
+	return at
+
+
+## Line [param n] taken out with the lines above it that say what it is, in
+## [param replace].
+func _out_with_lead(n: int, replace: Dictionary) -> void:
+	for k: int in range(_lead_of(n), n + 1):
+		replace[k] = ""
+
+
+## The lines that say what a line of [param unit]'s is, written into the
+## steps of [param home] ([param line], a part's or the line placing a copy
+## in it): those above the line that placed the copy the home's section
+## places (its groups, which that section defines, and MLCad's hiding),
+## those above the line itself and above each line placing a copy between,
+## which hide it, and a BFC INVERTNEXT where they turn its faces in an odd
+## number of times. Groups of a section the home's is not are left in that
+## section.
+func _lead_into(line: int, unit: String, home: String) -> Array:
+	var placing: Array = [line]     ## the line, and each placing a copy between
+	var in_home: int = -1           ## the one of those the home's section has
+	var copy: String = unit
+	while not copy.is_empty() and copy != home:
+		if unit_lines.has(copy):
+			placing.append(int(unit_lines[copy]))
+			if _section_of(Assemblies.parent_of(copy)) == _section_of(home):
+				in_home = int(unit_lines[copy])
+		copy = Assemblies.parent_of(copy)
+	var turned: bool = false
+	var hidden: bool = false
+	for at: int in placing:
+		for k: int in range(_lead_of(at), at):
+			turned = turned != _inverts_next(lines[k])
+			hidden = hidden or _hides_next(lines[k])
+	var out: Array = []
+	if in_home >= 0:
+		for k: int in range(_lead_of(in_home), in_home):
+			if _binds_next(lines[k]) and not _inverts_next(lines[k]) and not _hides_next(lines[k]):
+				out.append(" ".join(_words(lines[k])))
+	if hidden:
+		out.append("0 MLCAD HIDE")
+	if turned:
+		out.append("0 BFC INVERTNEXT")
+	return out
 
 
 ## The copy an IN_META line names ("" for the section's own), or null for
-## any other line.
+## any other line: read as LdrModel.parse reads it.
 static func _in_named(line: String) -> Variant:
-	var text: String = line.strip_edges()
-	if text != LdrModel.IN_META and not text.begins_with(LdrModel.IN_META + " "):
+	var words: PackedStringArray = _words(line)
+	if words.size() < 3 or words[0] != "0" or words[1].to_upper() != "!BRICKWORKS" \
+			or words[2] != LdrModel.IN_META.get_slice(" ", 2):
 		return null
-	return text.substr(LdrModel.IN_META.length()).strip_edges()
+	var text: String = line.strip_edges()
+	return text.substr(text.to_upper().find("!BRICKWORKS") + 11).strip_edges() \
+		.substr(words[2].length()).strip_edges()
 
 
 ## The IN_META line naming [param within], or the bare one for the
@@ -2450,7 +2839,8 @@ func _placing_in(unit: String, home: String) -> Variant:
 	var colour: String = words[1]
 	if colour == "16" and int(unit_colours.get(unit, 0)) != _colour_in(home):
 		colour = _colour_token(int(unit_colours.get(unit, 0)))
-	return "1 %s %s %s" % [colour, LdrModel._line_numbers(at), " ".join(words.slice(14))]
+	return "\n".join(_lead_into(int(unit_lines[unit]), Assemblies.parent_of(unit), home)
+		+ ["1 %s %s %s" % [colour, LdrModel._line_numbers(at), " ".join(words.slice(14))]])
 
 
 ## The colour a part's 16 is in the copy at [param home]: the model's own,
@@ -2464,26 +2854,64 @@ func _colour_in(home: String) -> int:
 ## over, where nothing changed; else as [method _said] says it now.
 func _said_in(line: int, origin: Read, brick: BrickWorld.Brick, at: Transform3D, home: String,
 		library: PartLibrary) -> Variant:
-	var words: PackedStringArray = LdrModel._fields(lines[line].strip_edges())
-	if words.size() < 15:
+	if _words(lines[line]).size() < 15:
 		return null
-	var into: Transform3D = (unit_frames.get(home, Transform3D.IDENTITY) as Transform3D) \
-		.affine_inverse()
+	var said: Variant
 	if brick.part_id == origin.part_id and brick.color_code == origin.colour \
 			and _same(origin.at, at):
-		var numbers := PackedFloat64Array()
-		for n: int in range(2, 14):
-			if not words[n].is_valid_float():
-				return null
-			numbers.append(words[n].to_float())
-		var colour: String = words[1]
-		if colour == "16" and origin.colour != _colour_in(home):
-			colour = _colour_token(origin.colour)
-		return "1 %s %s %s" % [colour, LdrModel._line_numbers(into * _frame_of(origin.unit)
-			* LdrModel.to_transform(numbers)), " ".join(words.slice(14))]
-	if origin.mirrored:
+		said = _carried(line, origin.unit, origin.colour, home)
+	elif origin.mirrored:
 		return null
-	return _said(line, origin, brick, into * at, _colour_in(home), library)
+	else:
+		var into: Transform3D = (unit_frames.get(home, Transform3D.IDENTITY) as Transform3D) \
+			.affine_inverse()
+		said = _said(line, origin, brick, into * at, _colour_in(home), library)
+	if said == null:
+		return null
+	return "\n".join(_lead_into(line, origin.unit, home) + [said])
+
+
+## Line [param line], of a part in the copy [param unit] in [param colour],
+## as the file had it, written in the frame of [param home]: its numbers
+## carried over, and its colour said where a 16 there is another. Null for
+## a line that is not a part's.
+func _carried(line: int, unit: String, colour: int, home: String) -> Variant:
+	var words: PackedStringArray = _words(lines[line])
+	if words.size() < 15:
+		return null
+	var numbers := PackedFloat64Array()
+	for n: int in range(2, 14):
+		if not words[n].is_valid_float():
+			return null
+		numbers.append(words[n].to_float())
+	var said_colour: String = words[1]
+	if said_colour == "16" and colour != _colour_in(home):
+		said_colour = _colour_token(colour)
+	var into: Transform3D = (unit_frames.get(home, Transform3D.IDENTITY) as Transform3D) \
+		.affine_inverse()
+	return "1 %s %s %s" % [said_colour, LdrModel._line_numbers(into * _frame_of(unit)
+		* LdrModel.to_transform(numbers)), " ".join(words.slice(14))]
+
+
+## The step of the line of [param added] (a restepped section's) of the copy
+## [param within] the file has nearest before line [param line], or nearest
+## after it; -1 for none, the last step.
+static func _step_beside(added: Array, within: String, line: int) -> int:
+	var before: int = -1
+	var after: int = -1
+	var step_before: int = -1
+	var step_after: int = -1
+	for entry: Array in added:
+		if str(entry[2]) != within:
+			continue
+		var at: int = int(entry[3])
+		if at < line and (before < 0 or at > before):
+			before = at
+			step_before = int(entry[0])
+		elif at > line and (after < 0 or at < after):
+			after = at
+			step_after = int(entry[0])
+	return step_before if before >= 0 else step_after
 
 
 ## A sub-model whose every part was taken out goes with them: its FILE
@@ -2528,7 +2956,7 @@ func _drop_emptied(replace: Dictionary, left: Array) -> void:
 	for key: String in sections:
 		var span: Array = sections[key]
 		if emptied.has(key) and int(span[1]) < lines.size() \
-				and lines[int(span[1])].strip_edges().to_upper().begins_with("0 NOFILE"):
+				and _keyword(lines[int(span[1])]) == "NOFILE":
 			replace[int(span[1])] = ""
 		for n: int in range(int(span[0]), int(span[1])):
 			if emptied.has(key):
@@ -2537,7 +2965,7 @@ func _drop_emptied(replace: Dictionary, left: Array) -> void:
 			var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
 			if words.size() >= 15 and words[0] == "1" \
 					and emptied.has(LdrModel._key(" ".join(words.slice(14)))):
-				replace[n] = ""
+				_out_with_lead(n, replace)
 
 
 ## The line for a part changed in every copy alike, or null when the copies
@@ -2687,9 +3115,33 @@ func _step_lines(section: String, step: int) -> Array:
 
 
 static func _is_step(line: String) -> bool:
-	var words: PackedStringArray = line.strip_edges().split(" ", false)
-	return words.size() >= 2 and words[0] == "0" \
-		and (words[1].to_upper() == "STEP" or words[1].to_upper() == "ROTSTEP")
+	var keyword: String = _keyword(line)
+	return keyword == "STEP" or keyword == "ROTSTEP"
+
+
+## A line's fields as LdrModel reads them (LdrModel._fields): split on any
+## run of spaces, tabs and a "\r\n" file's carriage return. Split here on
+## spaces alone, a line some tool wrote with tabs was no STEP, no FILE line
+## and no note to this class while the model read it as one, and its parts
+## went into other steps: 6 of 23 in a file with tabs in one sub-model
+## (ktreview's kt_tabs, keeptext3).
+static func _words(line: String) -> PackedStringArray:
+	return LdrModel._fields(line.strip_edges())
+
+
+## The keyword of a line of type 0, upper case ("STEP", "FILE", "!LDCAD"),
+## or "" for any other line.
+static func _keyword(line: String) -> String:
+	var words: PackedStringArray = _words(line)
+	return words[1].to_upper() if words.size() >= 2 and words[0] == "0" else ""
+
+
+## Whether [param line] is this app's saying which copy the next reference
+## is (LdrModel.COPY_META), as LdrModel.parse reads one.
+static func _is_copy_meta(line: String) -> bool:
+	var words: PackedStringArray = _words(line)
+	return words.size() >= 4 and words[0] == "0" and words[1].to_upper() == "!BRICKWORKS" \
+		and words[2] == LdrModel.COPY_META.get_slice(" ", 2)
 
 
 static func _insert(inserts: Dictionary, at: int, added: Array) -> void:

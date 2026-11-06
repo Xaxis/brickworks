@@ -1234,11 +1234,15 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			step += 1
 			any_part = false
 			continue
-		if line.begins_with("1 "):
+		if line.begins_with("1 ") or line.begins_with("1\t"):
 			if step == 0 and not any_part:
 				var first: Dictionary = looks.get(key(definition, 0), {})
 				if first.has("turn") and str(first["turn"]) != "end":
-					out.append(_ending("0 STEP" + eol, looks, definition, 0, eol))
+					# Above the lines saying what the part is for another
+					# program (an LDCad group): between them, they were said
+					# of nothing (ktreview, keeptext3).
+					out.insert(SourceFile.before_run(out, out.size()),
+						_ending("0 STEP" + eol, looks, definition, 0, eol))
 			any_part = true
 		out.append(raw)
 	if section_open or first_file:
@@ -1260,6 +1264,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 				and not out[at].strip_edges().to_upper().begins_with("0 ROTSTEP") \
 				and at < 12:
 			at += 1
+		at = maxi(SourceFile.before_run(out, at), 1)
 		for n: int in head.size():
 			out.insert(at + n, head[n])
 	# The pictures the pages show, each as LDraw's embedded file, at the end.

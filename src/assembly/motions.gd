@@ -422,13 +422,7 @@ static func written_into(text: String, motion_lines: PackedStringArray) -> Strin
 			at = n + 1
 			break
 	if at < 0:
-		at = kept.size()
-		for n: int in kept.size():
-			var line: String = kept[n].strip_edges()
-			if n > 0 and (line.is_empty() or line.begins_with("1 ") or line.begins_with("0 FILE")
-					or line == "0 STEP" or line.to_upper().begins_with("0 ROTSTEP")):
-				at = n
-				break
+		at = ModelFloor.head_end(kept)
 	var head: PackedStringArray = kept.slice(0, at)
 	head.append_array(motion_lines)
 	head.append_array(kept.slice(at))

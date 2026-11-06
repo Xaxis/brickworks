@@ -1,0 +1,60 @@
+0 FILE runs.ldr
+0 Lines That Say What The Next Is
+0 Name: runs.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+0 BFC CERTIFY CCW
+0 !LDCAD GROUP_DEF [topLevel=true] [LID=1] [GID=Rb0SPNsyhmwHoIF] [name=Base] [center=0 0 0]
+0 // The base: two plates side by side, the second in the base's group
+1 4 0 0 -20 1 0 0 0 1 0 0 0 1 3020.dat
+0 !LDCAD GROUP_NXT [ids=1] [nrs=-1]
+1 4 0 0 20 1 0 0 0 1 0 0 0 1 3020.dat
+0 // Two bricks, the second in MLCad's group of bricks and its faces turned in
+1 1 0 -24 -20 1 0 0 0 1 0 0 0 1 3001.dat
+0 MLCAD BTG Bricks
+0 BFC INVERTNEXT
+1 1 0 -24 20 1 0 0 0 1 0 0 0 1 3001.dat
+0 // a 1 x 2 brick on top
+1 14 0 -48 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 // Three lamps along the side, two in MLCad's group of lamps, the third in the base's
+0 MLCAD BTG Lamps
+1 16 -40 -24 -60 1 0 0 0 1 0 0 0 1 runs - lamp.ldr
+0 MLCAD BTG Lamps
+1 16 0 -24 -60 1 0 0 0 1 0 0 0 1 runs - lamp.ldr
+0 !LDCAD GROUP_NXT [ids=1] [nrs=-1]
+1 16 40 -24 -60 1 0 0 0 1 0 0 0 1 runs - lamp.ldr
+0 // and the fin out in front, drawn once and mirrored
+1 16 0 -8 -120 -1 0 0 0 1 0 0 0 1 runs - fin.ldr
+0 // a last plate to finish it
+1 2 0 -72 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 NOFILE
+0 FILE runs - lamp.ldr
+0 Lamp
+0 Name: runs - lamp.ldr
+0 Author: Jane Builder [jbuilder]
+0 BFC CERTIFY CCW
+0 !LDCAD GROUP_DEF [topLevel=true] [LID=2] [GID=Lb0SPNsyhmwHoIF] [name=Post] [center=0 0 0]
+0 // A lamp: a 1 x 1 brick in the post's group
+0 !LDCAD GROUP_NXT [ids=2] [nrs=-1]
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 // a 1 x 1 plate on it, in MLCad's group of the lamp
+0 MLCAD BTG Lamp
+1 0 0 -24 0 1 0 0 0 1 0 0 0 1 3024.dat
+0 // and a round 1 x 1 on top, its faces turned in
+0 BFC INVERTNEXT
+1 14 0 -32 0 1 0 0 0 1 0 0 0 1 4073.dat
+0 NOFILE
+0 FILE runs - fin.ldr
+0 Fin
+0 Name: runs - fin.ldr
+0 Author: Jane Builder [jbuilder]
+0 BFC CERTIFY CCW
+0 // A fin: a 1 x 4 plate
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3710.dat
+0 // a 1 x 2 plate on it, in MLCad's group of the fin
+0 MLCAD BTG Fin
+1 4 -20 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 // and a 1 x 1 at its left end
+0 !LDCAD GROUP_NXT [ids=3] [nrs=-1]
+1 4 -30 -16 0 1 0 0 0 1 0 0 0 1 3024.dat
+0 NOFILE

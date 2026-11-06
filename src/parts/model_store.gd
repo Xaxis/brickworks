@@ -2098,7 +2098,8 @@ static func _source_written(asked: Dictionary) -> Variant:
 	kept = PinnedComments.written_into(kept, asked["pins"])
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
 	var number: String = asked["set"]
-	return kept if set_in(kept) == number else with_set(kept, number)
+	kept = kept if set_in(kept) == number else with_set(kept, number)
+	return (asked["source"] as SourceFile).ended(kept)
 
 
 ## [param text] without the lines this app writes again on every save.
@@ -2509,7 +2510,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	text = _with_looks(text, true)
 	if model != world:
 		model.free()
-	made.append(with_set(text, from_set))
+	text = with_set(text, from_set)
+	# Someone else's file in its own line endings.
+	made.append(_live_source().ended(text) if _live_source() != null else text)
 
 
 ## [param text] with how the booklet shows each step written into it
@@ -2550,7 +2553,7 @@ static func _with_header(text: String, header: PackedStringArray, authored: bool
 	var rest: String = text.substr(at + "\n0 Author: Brickworks\n".length())
 	# Each sub-model under the author's name too: the model is still theirs.
 	for line: String in header:
-		if line.begins_with("0 Author:"):
+		if SourceFile._keyword(line) == "AUTHOR:":
 			rest = rest.replace("\n0 Author: Brickworks\n", "\n" + line + "\n")
 			break
 	return text.substr(0, at + 1) + "\n".join(lines) + "\n" + rest

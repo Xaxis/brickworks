@@ -140,15 +140,27 @@ func written_into(text: String) -> String:
 	for line: String in lines:
 		if not line.begins_with(META):
 			kept.append(line)
-	var at: int = kept.size()
-	for n: int in kept.size():
-		var line: String = kept[n].strip_edges()
-		if n > 0 and (line.is_empty() or line.begins_with("1 ") or line.begins_with("0 FILE")
-				or line == "0 STEP" or line.to_upper().begins_with("0 ROTSTEP")):
+	kept.insert(head_end(kept), to_meta())
+	return "\n".join(kept)
+
+
+## Where the app's own lines go in the head of the model [param text_lines]
+## is: before its first blank line, part, step or next FILE line, and above
+## the lines right over that part that say what it is for another program
+## (SourceFile._binds_next). Put after them, the floor's line came between
+## an LDCad group and its first part, and LDCad put the part in no group; a
+## part line written with tabs was not seen as one (ktreview, keeptext3).
+static func head_end(text_lines: PackedStringArray) -> int:
+	var at: int = text_lines.size()
+	for n: int in range(1, text_lines.size()):
+		var words: PackedStringArray = SourceFile._words(text_lines[n])
+		var keyword: String = words[1].to_upper() if words.size() >= 2 and words[0] == "0" else ""
+		if words.is_empty() or words[0] == "1" or keyword in ["FILE", "STEP", "ROTSTEP"]:
 			at = n
 			break
-	kept.insert(at, to_meta())
-	return "\n".join(kept)
+	while at > 1 and SourceFile._binds_next(text_lines[at - 1]):
+		at -= 1
+	return at
 
 
 ## In words, for a menu or a line in the status bar.
