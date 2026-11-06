@@ -357,7 +357,7 @@ func _clips_on_studs() -> void:
 	var rested: PackedStringArray = []
 	for one: Array in bodies.rests:
 		for pair: Array in (one[0] as Bodies.Link).pairs:
-			rested.append("%s on %s" % [_name(int(pair[0])), _name(int(pair[1]))])
+			rested.append("%s with %s" % [_name(int(pair[0])), _name(int(pair[1]))])
 	_check("the domes' clip plates sit on their plates' studs, each a joint (%d of 8)" % on_studs, on_studs == 8)
 	_check("  and none is a rest a dome lifts it off (%s)" % (", ".join(rested) if not rested.is_empty()
 		else "none"), rested.is_empty())
