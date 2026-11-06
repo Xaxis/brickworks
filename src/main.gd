@@ -9854,6 +9854,13 @@ func _input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
+## File, Render queue…'s panel while it is up, else null: found by its group
+## (RenderQueue.GROUP), so its script loads only when it is first asked for.
+func _render_queue_up() -> Control:
+	var queue: Control = get_tree().get_first_node_in_group("render_queue") as Control
+	return queue if queue != null and queue.is_visible_in_tree() else null
+
+
 func _escape_closes_something() -> bool:
 	return _grabbing or (_marquee != null and _marquee.is_drawing()) \
 		or (_controls_made != null and _controls_made.visible) \
@@ -9865,6 +9872,7 @@ func _escape_closes_something() -> bool:
 		or (_elements_made != null and _elements_made.visible) \
 		or not _builder.selection.is_empty() \
 		or (_inventory_made != null and _inventory_made.is_showing()) \
+		or _render_queue_up() != null \
 		or (_steps != null and _steps.is_playing_back()) \
 		or (_build_mode != null and _build_mode.is_open()) \
 		or (_verbs != null and _verbs.mode != "select") \
@@ -10212,6 +10220,12 @@ func _key_pressed(key: InputEventKey) -> void:
 			# hides away and left the list up.
 			if _inventory_made != null and _inventory_made.is_showing():
 				_inventory_made.hide_list()
+				return
+			# File, Render queue…'s panel, over the model's corner as these
+			# are: Escape left it up (APP_UX4, quiet). What is queued goes on.
+			var queue: Control = _render_queue_up()
+			if queue != null:
+				queue.call("close")
 				return
 			# Back to Select with nothing in hand, from placing or any
 			# other tool — and on down the ladder in the same press, so

@@ -1319,7 +1319,9 @@ func _define() -> void:
 		func() -> bool:
 			var split: SplitView = app.get("_split")
 			return split != null and (split.is_showing() or split.fits()),
-		"A second view beside the model, square on from the front, top, side or back")
+		"A second view beside the model, square on from the front, top, side or back. "
+			+ "Short of room, the right-hand column folds to its tab "
+			+ "while the second view is on")
 	_ticked("split_view", func() -> bool:
 		var split: SplitView = app.get("_split")
 		return split != null and split.is_showing())

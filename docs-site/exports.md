@@ -82,7 +82,7 @@ lib:path tracer
 
 ### Render queue {#render-queue}
 
-**File › Render queue…** lines pictures up and draws them one after another while you go on building. **Add this view** queues the model and the view as they are now, with Render's settings; change the view, or the model, and add another. Each is drawn in turn, saved where Render saves under a name of its own, and shown in the status bar, whose **Cancel** stops the one being drawn and pauses the rest. **Finish now** keeps a path-traced picture as clean as it is so far. Claude can use the same queue over the connector (`render_queue`).
+**File › Render queue…** lines pictures up and draws them one after another while you go on building. **Add this view** queues the model and the view as they are now, with Render's settings; change the view, or the model, and add another. Each is drawn in turn, saved where Render saves under a name of its own, and shown in the status bar, whose **Cancel** stops the one being drawn and pauses the rest. **Finish now** keeps a path-traced picture as clean as it is so far. Claude can use the same queue over the connector (`render_queue`). The panel keeps out of the way: whatever you open after it is drawn over it, it sits above Cut away's strip, and [[Esc]] puts it away while what is queued goes on being drawn.
 
 <!-- covers
 ui:render queue
