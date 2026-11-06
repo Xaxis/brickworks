@@ -97,7 +97,18 @@ static func dictionary(words: String, what: String) -> Dictionary:
 
 ## Said in the log: the other side's [param what] was left out, and why.
 static func left_out(what: String, why: String) -> void:
-	push_warning("Build together: left out the other side's %s: %s" % [what, why.c_escape().left(200)])
+	var line: String = "Build together: left out the other side's %s: %s" % [what,
+		why.c_escape().left(200)]
+	# Once each: the same words are put again every few seconds (Together._heal).
+	if _said.has(line):
+		return
+	if _said.size() >= 64:
+		_said.clear()
+	_said[line] = true
+	push_warning(line)
+
+
+static var _said: Dictionary = {}
 
 
 ## [method left_out] for each of [param dropped], in one line; nothing for none.

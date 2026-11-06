@@ -761,10 +761,10 @@ static func transform_of(numbers: Array) -> Transform3D:
 		Vector3(n[6], n[7], n[8])), Vector3(n[9], n[10], n[11]))
 
 
-## [param state] as JSON gave it back: its numbers as numbers, so it
-## compares equal to one read off a part here.
-## Null for anything that is not a part's state: its part a name of the
-## library's, its colour and step whole numbers, its place 12 finite numbers.
+## [param given] as JSON gave it back: its numbers as numbers, so it
+## compares equal to one read off a part here. Null for anything that is
+## not a part's state: its part a name of the library's, its colour and step
+## numbers, its place 12 finite numbers.
 static func _as_state(given: Variant) -> Variant:
 	if not given is Array or (given as Array).size() != STATE_PARTS:
 		return null
@@ -1263,12 +1263,14 @@ func _take(ops: Array) -> void:
 	var shown_again: Dictionary = {}
 	var popped: bool = false
 	for item: Variant in ops:
+		if not item is Dictionary or not (item as Dictionary).get("changes", {}) is Dictionary:
+			continue
 		var op: Dictionary = item
 		var number: int = int(op.get("seq", 0))
 		if number <= seq:
 			continue
 		seq = number
-		var changes: Dictionary = op.get("changes", {}) as Dictionary
+		var changes: Dictionary = op.get("changes", {})
 		# A send taken twice: its second time is nothing, on every side.
 		var from: String = str(op.get("client", ""))
 		var cid_now: int = int(op.get("cid", -1))
@@ -1556,15 +1558,13 @@ func _broken_from(words: String) -> void:
 ## files named as a part's are (TogetherWords.made_part): never one of the
 ## library's own, and never a file whose name the other side chose.
 func _add_made(part: String, words: String) -> void:
-	if builder.library.parts.has(part):
-		return
-	var dropped := PackedStringArray()
-	var files: Dictionary = TogetherWords.made_part(part, TogetherWords.dictionary(words,
-		"made part"), dropped)
-	TogetherWords.left_out_each("made part %s" % part.left(80).c_escape(), dropped)
-	if files.is_empty():
-		return
-	CustomParts.add(builder.library, files[part + ".dat"], part, false, files)
+	if not builder.library.parts.has(part):
+		var dropped := PackedStringArray()
+		var files: Dictionary = TogetherWords.made_part(part, TogetherWords.dictionary(words,
+			"made part"), dropped)
+		TogetherWords.left_out_each("made part %s" % part.left(80).c_escape(), dropped)
+		if not files.is_empty():
+			CustomParts.add(builder.library, files[part + ".dat"], part, false, files)
 	for uid: String in _awaiting.keys():
 		_put(uid, _awaiting[uid])
 
