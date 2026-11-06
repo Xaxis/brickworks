@@ -481,6 +481,23 @@ commit. None of the ten needs the owner.
   - "curved" typed while in Like this: only curved parts like it, said;
   - Fits the same after a search;
   - `likethis`, `bin2` and `bin_fold` pass.
+- **Met** (likewords, `likewords` probe: 27 checks, none failed, at 1280 x
+  720 and 1400 x 900; pre261 failed 17 at 1280 x 720). After "1x4 brick" and
+  a wall of four 1 x 4 bricks put down by clicks, a 2 x 4 brick clicked and
+  Like this chosen starts from no words, the box saying "Narrow these
+  parts…": Plate 2 x 4 is 7th and the first 12 are the empty search's to the
+  tile, no two the same mould (pre261: eight 4744 prints each a tile of its
+  own, no plate). "curved" typed: 54 tiles, every one curved and like it, the
+  curved slopes 93606 and 61068 among them (pre261: 18, neither), said
+  "Parts like Brick 2×4, with “curved”". All puts "1x4 brick" and its first
+  8 back, and Like this chosen again starts empty. Fits after the search
+  lists its empty search's 12; "plate" narrows it to 88 plates, said. Over
+  MCP, `search_parts like=3001 query=curved` lists 50 curved parts with both
+  slopes (pre261: 18, neither). Like this ranks every alike part now
+  (`PartLike`): cut at 300, a printed torso's list was its own 299 prints.
+  `likethis` 25 checks, `bin2` 40, `bin_fold` 25, `fits` 18, `setbin` 26,
+  `likethis_phone` and `likethis_tablet` 5 each, `bin_keys` (longest frame
+  46.6 ms) and `bin_keys_phone` (40.9 ms) pass.
 
 **3. intomodel: a model into this one.**
 - **Change.**
