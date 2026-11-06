@@ -36,13 +36,19 @@ const PAGE_DENSITY := 5.2
 
 var app: Node
 var _shot: ModelShot
+## Each part's studs' ways in its own frame, kept between stud maps (StudMap).
+var _ways: Dictionary = {}
 ## The last whole booklet made for a page past the steps: [key, html].
 var _booklet: Array = []
 
 
 static func definitions() -> Array:
-	var parts: Dictionary = {"type": "array", "items": {"type": "integer"},
-		"description": "parts by their numbers in look_at_model"}
+	# A list or one of them: brick numbers, part numbers, colours or a step
+	# (APP_UX5 seeing2). Untyped, as edit_booklet's pull= is: a JSON schema
+	# of one type turned "3024" away.
+	var parts: Dictionary = {"description": ("parts, one or a list of: their numbers in "
+		+ "look_at_model (12), a part number as a string (\"3024\": every one of it), a colour "
+		+ "(\"red\"), or a step (\"step:3\": that step's new parts)")}
 	return [
 		{
 			"name": "view_board",
@@ -54,7 +60,10 @@ static func definitions() -> Array:
 				+ "colours with every other part drawn see-through, to find them in a big "
 				+ "model or inside it; xray= parts drawn see-through, so what they hide shows "
 				+ "(a roof, a shell, a hull); step=N the model as built to step N, that step's "
-				+ "new parts edged in magenta (edit_steps lists the steps). Changes nothing."),
+				+ "new parts edged in magenta (edit_steps lists the steps); studs=true every part "
+				+ "coloured by where its studs point (up, down, front, back, left, right), a "
+				+ "legend under the picture, to see which way a part offers studs before "
+				+ "building on it. Changes nothing."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"views": {"type": "array", "items": {"type": "string", "enum": VIEWS},
 					"description": "the sides, in the board's order"},
@@ -69,6 +78,8 @@ static func definitions() -> Array:
 				"highlight": parts,
 				"xray": parts,
 				"step": {"type": "integer", "description": "a step's number, from 1"},
+				"studs": {"type": "boolean", "description": ("each part coloured by where its "
+					+ "studs point, as View, Stud directions draws it")},
 			}},
 		},
 		{
@@ -118,14 +129,15 @@ func _view_board(input: Dictionary) -> Variant:
 			views.append(view)
 	if views.is_empty():
 		return "views= names at least one side: %s." % ", ".join(VIEWS)
-	var picked: Variant = _parts(input, "highlight")
+	var said := PackedStringArray()
+	var picked: Variant = _parts(input, "highlight", said)
 	if picked is String:
 		return picked
-	var through: Variant = _parts(input, "xray")
+	var through: Variant = _parts(input, "xray", said)
 	if through is String:
 		return through
+	var studs: bool = bool(input.get("studs", false))
 	var skip: Dictionary = store.scenery.duplicate()
-	var said := PackedStringArray()
 	var new_ids: Array = []
 	if input.has("step"):
 		var built: Variant = _as_built(int(input["step"]), skip)
@@ -134,13 +146,19 @@ func _view_board(input: Dictionary) -> Variant:
 		new_ids = built[0]
 		said.append(built[1])
 	if LeasedShots.in_use() and not ((picked as Array).is_empty()
-			and (through as Array).is_empty() and not input.has("step")):
+			and (through as Array).is_empty() and not input.has("step") and not studs):
 		return ("This app draws its pictures in a drawer of its own (a bench run), which "
-			+ "draws the model as view_model does and no more: highlight=, xray= and step= "
-			+ "are drawn in a window.")
+			+ "draws the model as view_model does and no more: highlight=, xray=, step= "
+			+ "and studs= are drawn in a window.")
 	var shot: ModelShot = _ensure_shot()
 	shot.edged = {}
 	shot.see_through = {}
+	shot.painted = {}
+	var facing: Dictionary = {}
+	if studs:
+		facing = StudMap.facings(world, library, skip, _ways)
+		shot.painted = StudMap.paints(facing)
+		said.append(StudMap.said(facing, world, library))
 	for brick_id: int in picked as Array:
 		shot.edged[brick_id] = true
 	for brick_id: int in new_ids:
@@ -167,11 +185,13 @@ func _view_board(input: Dictionary) -> Variant:
 		if image == null:
 			shot.edged = {}
 			shot.see_through = {}
+			shot.painted = {}
 			return ("No picture in time from the %s; ask again, or look_at_model reads the "
 				+ "model in words.") % view
 		pictures.append(image)
 	shot.edged = {}
 	shot.see_through = {}
+	shot.painted = {}
 	var picture: Image = pictures[0]
 	var labels := PackedStringArray()
 	for view: String in views:
@@ -186,8 +206,13 @@ func _view_board(input: Dictionary) -> Variant:
 	else:
 		said.insert(0, "The model from the %s%s, %d px a side:" % [views[0],
 			", close up" if close.size.length() > 0.0 else "", picture.get_width()])
+	if studs:
+		picture = await StudMap.with_legend(shot, picture, StudMap.counts(facing))
+		said.insert(1, "The stud map's legend is under the picture.")
 	if not (picked as Array).is_empty() or not new_ids.is_empty():
 		said.append("The magenta is only in the picture; the parts keep their colours.")
+	if studs:
+		said.append("The stud colours are only in the picture; the parts keep their own.")
 	return [{"type": "text", "text": "\n".join(said)}, AppTools._picture_block(picture)]
 
 
@@ -202,24 +227,120 @@ func _ensure_shot() -> ModelShot:
 	return _shot
 
 
-## [param field]'s part numbers, those in the model; or why not.
-func _parts(input: Dictionary, field: String) -> Variant:
+## [param field]'s parts, those in the model: a list of selectors, or one,
+## each a brick's number (look_at_model's), a part number ("3024": every
+## one of it), a colour ("red") or a step ("step:3": its new parts); or why
+## not. What each picked, when it was not a brick's number, said in
+## [param said]. A session that wanted the car's 1 x 1 plates listed ten
+## numbers it first had to find (APP_UX5 seeing2).
+func _parts(input: Dictionary, field: String, said: PackedStringArray = PackedStringArray()) -> Variant:
 	var given: Variant = input.get(field, [])
-	if not given is Array:
-		return "%s= is a list of part numbers, from look_at_model." % field
+	if not (given is Array):
+		given = [given]
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
+	var library: PartLibrary = app.get("_library")
 	var ids: Array = []
 	var unknown := PackedStringArray()
+	var by: PackedStringArray = PackedStringArray()
 	for raw: Variant in given:
-		var number: int = int(raw)
-		if store.scenery.has(number) or world.get_brick(number) == null:
-			unknown.append(str(number))
-		elif not ids.has(number):
-			ids.append(number)
+		var found: Variant = _selected(raw, world, store, library)
+		if found is String:
+			unknown.append(str(found))
+			continue
+		var picked: Array = found[0]
+		if not str(found[1]).is_empty():
+			by.append(str(found[1]))
+		for brick_id: int in picked:
+			if not ids.has(brick_id):
+				ids.append(brick_id)
 	if not unknown.is_empty():
-		return "No part numbered %s (look_at_model numbers them)." % ", ".join(unknown)
+		return ("%s= takes a part's number from look_at_model (12), a part number as a string "
+			% field + "(\"3024\"), a colour (\"red\") or a step (\"step:3\"): %s." % "; ".join(unknown))
+	if not by.is_empty():
+		said.append("%s %s." % ["Picked out:" if field == "highlight" else "Seen through:",
+			"; ".join(by)])
 	return ids
+
+
+## One selector's parts and what it picked, in words ("" for a brick's own
+## number); or why it picks none.
+func _selected(raw: Variant, world: BrickWorld, store: ModelStore, library: PartLibrary) -> Variant:
+	var standing: Callable = func(brick_id: int) -> bool:
+		return not store.scenery.has(brick_id) and world.get_brick(brick_id) != null
+	if raw is float or raw is int:
+		var number: int = int(raw)
+		if standing.call(number):
+			return [[number], ""]
+		# A part number given as a number: 3024 is no brick of the car's.
+		var as_part: Array = _of_part(str(number), world, store)
+		if not as_part.is_empty():
+			return [as_part, _part_said(str(number), as_part.size(), library)]
+		return "no part numbered %d (look_at_model numbers them)" % number
+	var text: String = str(raw).strip_edges()
+	var lower: String = text.to_lower()
+	var step: RegExMatch = RegEx.create_from_string("^step\\s*[:=#]?\\s*(\\d+)$").search(lower)
+	if step != null:
+		var built: Variant = _as_built(int(step.get_string(1)), {})
+		if built is String:
+			return "%s: %s" % [text, (built as String).trim_suffix(".")]
+		return [built[0], "step %d's %d new part%s" % [int(step.get_string(1)),
+			(built[0] as Array).size(), "" if (built[0] as Array).size() == 1 else "s"]]
+	if lower.begins_with("#") and lower.substr(1).is_valid_int():
+		if standing.call(int(lower.substr(1))):
+			return [[int(lower.substr(1))], ""]
+		return "no part numbered %s" % text
+	var part: String = lower.trim_suffix(".dat")
+	var of_part: Array = _of_part(part, world, store)
+	if not of_part.is_empty():
+		return [of_part, _part_said(part, of_part.size(), library)]
+	var codes: Array = _colour_codes(lower, library)
+	if not codes.is_empty():
+		var coloured: Array = []
+		for brick: BrickWorld.Brick in world.bricks():
+			if not store.scenery.has(brick.id) and brick.color_code in codes:
+				coloured.append(brick.id)
+		if coloured.is_empty():
+			return "no part of the model is %s" % text
+		return [coloured, "%d %s part%s" % [coloured.size(), library.color(int(codes[0])).name,
+			"" if coloured.size() == 1 else "s"]]
+	if lower.is_valid_int() and standing.call(int(lower)):
+		return [[int(lower)], ""]
+	if library != null and library.parts.has(part):
+		return "no %s in the model" % text
+	return "%s is no part's number, part number, colour or step here" % text
+
+
+## Every part of [param part_id] standing, by number.
+func _of_part(part_id: String, world: BrickWorld, store: ModelStore) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if not store.scenery.has(brick.id) and brick.part_id.to_lower() == part_id:
+			out.append(brick.id)
+	return out
+
+
+func _part_said(part_id: String, count: int, library: PartLibrary) -> String:
+	return "%s, every %s (%d)" % [part_id, HandTools._part_name(library, part_id), count]
+
+
+## The colour codes named [param words], LDraw's name or LEGO's ("red",
+## "Bright Red", "light bluish grey"), as a colour's code ("4") does not:
+## a number is a brick's.
+static func _colour_codes(words: String, library: PartLibrary) -> Array:
+	var asked: String = words.replace("_", " ").replace("-", " ").strip_edges()
+	while asked.contains("  "):
+		asked = asked.replace("  ", " ")
+	asked = asked.replace("gray", "grey")
+	var out: Array = []
+	if library == null or asked.is_empty():
+		return out
+	for code: int in library.colors:
+		var colour: PartLibrary.BrickColor = library.colors[code]
+		for name: String in [colour.name, colour.lego_name]:
+			if name.to_lower().replace("_", " ").replace("gray", "grey") == asked and not code in out:
+				out.append(code)
+	return out
 
 
 ## The model as built to step [param number]: what is not built yet left
@@ -326,6 +447,103 @@ func pictured(said: String, made: PackedInt64Array, wanted: Variant) -> Variant:
 		{"type": "text", "text": ("The whole model from the corner, the %d made edged in magenta:"
 			if whole else "Close up on what changed, from the corner, the %d made edged in "
 			+ "magenta (picture=true shows the whole model):") % made.size()},
+		AppTools._picture_block(image),
+		{"type": "text", "text": "The magenta is only in the picture; the parts keep their colours."}]
+
+
+# -- check_design's findings, pictured ------------------------------------------------
+
+## The most named parts edged in one picture.
+const FINDINGS_MOST := 40
+
+
+## check_design's [param answer] with the parts its findings name pictured
+## (APP_UX5 seeing2): a check of the model as it stands (edit=) names a part
+## "#14", or as its copy of the model lists it, "brick 49" from 0, which is
+## no number look_at_model gives. Each named part standing edged in magenta
+## in its own colours and every other part see-through, from the corner, as
+## view_board's highlight= draws them, the parts the change takes off left
+## out, and each "brick N" said by its own number. A check of a list of
+## bricks (bricks=) names parts that are not on the baseplate, and is
+## answered as it was; so is a check whose findings name none standing.
+func findings_pictured(answer: Variant, input: Dictionary) -> Variant:
+	if not (answer is String) or not (input.get("edit") is Dictionary) \
+			or not ModelShot.possible() or LeasedShots.in_use():
+		return answer
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var text: String = answer
+	# The findings: what comes before the weighing, past the line saying what
+	# was asked, which names the parts the change touches.
+	var findings: String = text.get_slice("\nBalance:", 0)
+	if findings.begins_with("What if"):
+		findings = findings.substr(findings.find("\n") + 1) if findings.contains("\n") else ""
+	var edit: Dictionary = input["edit"]
+	var gone: Dictionary = store.scenery.duplicate()
+	for raw: Variant in (edit["remove"] if edit.get("remove") is Array else []):
+		gone[int(raw)] = true
+	var named: Array = []
+	for found: RegExMatch in RegEx.create_from_string("#(\\d+)").search_all(findings):
+		var brick_id: int = int(found.get_string(1))
+		if not gone.has(brick_id) and world.get_brick(brick_id) != null \
+				and not named.has(brick_id):
+			named.append(brick_id)
+	# The check's copy lists the parts standing in the model's order, those
+	# the change takes off left out (Assistant._edit), then what it adds.
+	var library: PartLibrary = app.get("_library")
+	var listed: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if not gone.has(brick.id) and library.parts.has(brick.part_id):
+			listed.append(brick.id)
+	var as_listed := PackedStringArray()
+	var added := PackedStringArray()
+	for found: RegExMatch in RegEx.create_from_string(
+			"\\bbrick (\\d+)(?: \\(([^\\s,)]+))?").search_all(findings):
+		var index: int = int(found.get_string(1))
+		if index >= listed.size():
+			if not added.has("brick %d" % index):
+				added.append("brick %d" % index)
+			continue
+		var brick_id: int = listed[index]
+		var part: String = found.get_string(2).to_lower()
+		if not part.is_empty() and world.get_brick(brick_id).part_id.to_lower() != part:
+			continue
+		if not as_listed.has("brick %d is #%d" % [index, brick_id]):
+			as_listed.append("brick %d is #%d" % [index, brick_id])
+		if not named.has(brick_id):
+			named.append(brick_id)
+	if named.is_empty():
+		return answer
+	var shot: ModelShot = _ensure_shot()
+	shot.edged = {}
+	shot.see_through = {}
+	shot.painted = {}
+	for brick_id: int in named.slice(0, FINDINGS_MOST):
+		shot.edged[brick_id] = true
+	for brick: BrickWorld.Brick in world.bricks():
+		if not gone.has(brick.id) and not shot.edged.has(brick.id):
+			shot.see_through[brick.id] = true
+	var image: Image = await shot.take(world, "corner", gone)
+	shot.edged = {}
+	shot.see_through = {}
+	if image == null:
+		return answer
+	var moved: bool = not edit.keys().filter(func(key: String) -> bool:
+		return key != "remove").is_empty()
+	var said: String = ("The part%s the findings name, edged in magenta in %s own colours, every "
+		% ["" if named.size() == 1 else "s", "its" if named.size() == 1 else "their"]
+		+ "other part see-through, from the corner%s: %s." % [
+			", without the parts the change takes off" if gone.size() > store.scenery.size() else "",
+			_named(named)])
+	if not as_listed.is_empty():
+		said += " The check numbers its copy's parts from 0: %s." % ", ".join(as_listed)
+	if not added.is_empty():
+		said += " %s, which the change adds, %s not drawn." % [", ".join(added),
+			"is" if added.size() == 1 else "are"]
+	if moved:
+		said += (" Drawn as the model stands: the change was made to a copy, so a part it "
+			+ "moves, turns or adds is not drawn so.")
+	return [{"type": "text", "text": text}, {"type": "text", "text": said},
 		AppTools._picture_block(image),
 		{"type": "text", "text": "The magenta is only in the picture; the parts keep their colours."}]
 

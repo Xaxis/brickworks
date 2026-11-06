@@ -6607,11 +6607,11 @@ msgstr "Récupérer"
 msgid "Read your sets and parts lists from your Rebrickable account"
 msgstr "Lire vos sets et listes de pièces depuis votre compte Rebrickable"
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces the sets and loose parts in this collection."
-msgstr "Votre clé Rebrickable va d'ici à rebrickable.com et nulle part ailleurs, et n'est pas conservée ; ce qui revient remplace les sets et les pièces en vrac de cette collection."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay."
+msgstr "Votre clé Rebrickable va d'ici à rebrickable.com et nulle part ailleurs, et n'est pas conservée. Ce qui revient remplace ce qui venait de Rebrickable, récupéré ou exporté, et les pièces en vrac importées avant. Ce que vous comptez ici, un XML BrickLink et ce qu'un assistant a ajouté restent."
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces the sets and loose parts in this collection. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
-msgstr "Votre clé Rebrickable va d'ici à rebrickable.com et nulle part ailleurs, et n'est pas conservée ; ce qui revient remplace les sets et les pièces en vrac de cette collection. Demandez à l'assistant « une petite maison avec ma collection » et il construit avec ce que vous possédez."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
+msgstr "Votre clé Rebrickable va d'ici à rebrickable.com et nulle part ailleurs, et n'est pas conservée. Ce qui revient remplace ce qui venait de Rebrickable, récupéré ou exporté, et les pièces en vrac importées avant. Ce que vous comptez ici, un XML BrickLink et ce qu'un assistant a ajouté restent. Demandez à l'assistant « une petite maison avec ma collection » et il construit avec ce que vous possédez."
 
 msgid "BrickLink wanted list"
 msgstr "Liste de souhaits BrickLink"
@@ -11227,6 +11227,104 @@ msgstr "Ce qui va avec %s, avec « %s », le meilleur d'abord"
 msgid "Nothing that fits %s has “%s”"
 msgstr "Rien de ce qui va avec %s n'a « %s »"
 
+# mybricks: loose parts on My collection's What I own, and what a session added
+
+msgid "A part: its number or words, like red 2x4 brick"
+msgstr "Une pièce : son numéro ou des mots, comme brique 2x4 rouge"
+
+msgid "Photo…"
+msgstr "Photo…"
+
+msgid "Find the part from a photo of it, as the parts bin's camera does"
+msgstr "Trouver la pièce d'après une photo, comme le fait l'appareil photo du bac à pièces"
+
+msgid "Parts like the one chosen: its other sizes and kinds"
+msgstr "Des pièces comme celle choisie : ses autres tailles et sortes"
+
+msgid "Its colour: the colours the part was made in first"
+msgstr "Sa couleur : d'abord les couleurs dans lesquelles la pièce a été fabriquée"
+
+msgid "How many"
+msgstr "Combien"
+
+msgid "Add these to your loose parts, kept with your account"
+msgstr "Les ajouter à tes pièces en vrac, gardées avec ton compte"
+
+msgid "Find a part above, by its number or words, from a photo, or by choosing it in the parts bin; then how many, and Add."
+msgstr "Trouve une pièce ci-dessus, par son numéro ou des mots, d'après une photo, ou en la choisissant dans le bac à pièces ; puis combien, et Ajouter."
+
+msgid "Added by %s — %s, %s: look them over"
+msgstr "Ajouté par %s — %s, %s : vérifie-les"
+
+msgid "Keep them"
+msgstr "Les garder"
+
+msgid "Keep these as your own loose parts"
+msgstr "Les garder comme tes propres pièces en vrac"
+
+msgid "Take back what %s added"
+msgstr "Reprendre ce que %s a ajouté"
+
+msgid "Take out exactly the lots listed here; nothing of yours"
+msgstr "Retirer exactement les lots listés ici ; rien des tiens"
+
+msgid "your assistants"
+msgstr "tes assistants"
+
+msgid "Loose parts — %s"
+msgstr "Pièces en vrac — %s"
+
+msgid "How many you have; changed here, kept with your account"
+msgstr "Combien tu en as ; changé ici, gardé avec ton compte"
+
+msgid "Take this lot out of your collection"
+msgstr "Retirer ce lot de ta collection"
+
+msgid "no part answers “%s”"
+msgstr "aucune pièce ne répond à « %s »"
+
+msgid "choose a part first, then Like this lists parts like it"
+msgstr "choisis d'abord une pièce, puis Similaires liste des pièces comme elle"
+
+msgid "parts like %s: choose one"
+msgstr "des pièces comme %s : choisis-en une"
+
+msgid "asking Brickognize what part this is…"
+msgstr "on demande à Brickognize quelle pièce c'est…"
+
+msgid "Brickognize saw no part it knows in that photo: try another, the part alone on a plain background"
+msgstr "Brickognize n'a vu aucune pièce qu'il connaît sur cette photo : essaie une autre, la pièce seule sur un fond uni"
+
+msgid "from your photo, most likely first, as Brickognize sees it"
+msgstr "d'après ta photo, la plus probable d'abord, comme Brickognize la voit"
+
+msgid "find the part first: its number or words, or a photo of it"
+msgstr "trouve d'abord la pièce : son numéro ou des mots, ou une photo d'elle"
+
+msgid "adding %d × %s…"
+msgstr "ajout de %d × %s…"
+
+msgid "added %d × %s in %s"
+msgstr "%d × %s en %s ajouté"
+
+msgid "kept: %s"
+msgstr "gardé : %s"
+
+msgid "took out %d × %s in %s"
+msgstr "%d × %s en %s retiré"
+
+msgid "took back the %s added"
+msgstr "les %s ajoutés repris"
+
+msgid "kept the %s as your own"
+msgstr "les %s gardés comme les tiens"
+
+msgid "Find a part from a photo"
+msgstr "Trouver une pièce d'après une photo"
+
+msgid "Choose a photo"
+msgstr "Choisir une photo"
+
 msgid "Placing %s on the end of %s: click puts it there"
 msgstr "Pose de %s au bout de %s : un clic la pose là"
 
@@ -11235,6 +11333,25 @@ msgstr "%s met son extrémité suivante à la jonction"
 
 msgid "a sleeper goes under the joint with it"
 msgstr "une traverse va avec elle sous la jonction"
+
+# My collection: lots under where they came from (mybricks2)
+msgid "From Rebrickable"
+msgstr "De Rebrickable"
+
+msgid "From a BrickLink XML"
+msgstr "D'un XML BrickLink"
+
+msgid "Loose parts brought in before"
+msgstr "Pièces en vrac importées avant"
+
+msgid "from Rebrickable"
+msgstr "de Rebrickable"
+
+msgid "from a BrickLink XML"
+msgstr "d'un XML BrickLink"
+
+msgid "kept: %d × %s"
+msgstr "gardé : %d × %s"
 
 # The booklet's page set up (APP_UX5 #4, pagesetup): Build, Booklet page, Page setup…
 
@@ -11339,3 +11456,44 @@ msgstr "Choisir un style…"
 
 msgid "Name the page first"
 msgstr "Nommez d’abord la page"
+
+# View, Stud directions (APP_UX5 seeing2): each part coloured by where its studs point, its legend
+
+msgid "Stud directions"
+msgstr "Orientation des tenons"
+
+msgid "Every part coloured by where its studs point: up, down, or to the front, back, left or right"
+msgstr "Chaque pièce colorée selon l'orientation de ses tenons : vers le haut, vers le bas, ou vers l'avant, l'arrière, la gauche ou la droite"
+
+msgid "Turn Stud directions off"
+msgstr "Désactiver l'orientation des tenons"
+
+msgid "Studs up"
+msgstr "Tenons vers le haut"
+
+msgid "Studs down"
+msgstr "Tenons vers le bas"
+
+msgid "Studs to the front"
+msgstr "Tenons vers l'avant"
+
+msgid "Studs to the back"
+msgstr "Tenons vers l'arrière"
+
+msgid "Studs to the left"
+msgstr "Tenons vers la gauche"
+
+msgid "Studs to the right"
+msgstr "Tenons vers la droite"
+
+msgid "Studs on two sides or more"
+msgstr "Tenons sur deux côtés ou plus"
+
+msgid "No studs"
+msgstr "Sans tenons"
+
+msgid "stud directions: each part coloured by where its studs point"
+msgstr "orientation des tenons : chaque pièce colorée selon l'orientation de ses tenons"
+
+msgid "stud directions off"
+msgstr "orientation des tenons désactivée"

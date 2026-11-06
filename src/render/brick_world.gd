@@ -516,6 +516,7 @@ func clear() -> void:
 	_faded.clear()
 	_tinted.clear()
 	_stressed.clear()
+	_painted.clear()
 	_spans.clear()
 	_drawn.clear()
 	_next_id = 1
@@ -1193,6 +1194,8 @@ func _shown_colour(brick: Brick, color: PartLibrary.BrickColor) -> Color:
 		var tint: Variant = _stressed.get(brick.id)
 		return faded(color.shown) if tint == null \
 			else Color(color.shown.lerp(tint, STRESSING), color.shown.a)
+	if _painted.has(brick.id):
+		return _painted[brick.id]
 	var shown: Color = faded(color.shown) if _faded.has(brick.id) else color.shown
 	if _tinted.has(brick.id):
 		shown = Color(shown.lerp(_tinted[brick.id], TINTING), shown.a)
@@ -2158,6 +2161,38 @@ func tinted_ids() -> Dictionary:
 	return _tinted
 
 
+## View, Stud directions (StudMap, APP_UX5 seeing2): bricks drawn wholly in
+## a colour of their own, id -> Color, every surface of them, x-ray's ghosts
+## too, over faded and tinted; View, Stress draws over it. For the picture
+## only, as x-ray's ghosts are: a brick keeps its paint, the history no step
+## and [member revision] its count. An empty set is none.
+var _painted: Dictionary = {}
+
+
+func set_painted(ids: Dictionary) -> void:
+	var changed: Dictionary = {}
+	for brick_id: int in _painted:
+		if not ids.has(brick_id) or ids[brick_id] != _painted[brick_id]:
+			changed[brick_id] = true
+	for brick_id: int in ids:
+		if not _painted.has(brick_id):
+			changed[brick_id] = true
+	_painted = ids.duplicate()
+	var keys: Dictionary = {}
+	for brick_id: int in changed:
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			keys[key] = true
+	for key: String in keys:
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_touching(batch)
+			_mark_dirty(key)
+
+
+func painted_ids() -> Dictionary:
+	return _painted
+
+
 ## View, Stress (StressView): while it is on, every brick drawn in its own
 ## colour faded, but those it names (id -> Color), tinted towards that
 ## colour: red or amber, by how near its weakest joint is to letting go. For
@@ -2306,7 +2341,7 @@ func _write_xray(batch: Batch, ghosts: Array, surface_color: int) -> void:
 		multimesh.set_instance_transform(slot, drawn_at(brick))
 		var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT \
 			else surface_color
-		multimesh.set_instance_color(slot, library.color(code).shown)
+		multimesh.set_instance_color(slot, _painted.get(brick.id, library.color(code).shown))
 		var box: AABB = drawn_at(brick) * multimesh.mesh.get_aabb()
 		bounds = box if slot == 0 else bounds.merge(box)
 	batch.xray.custom_aabb = bounds
