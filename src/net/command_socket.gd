@@ -914,6 +914,9 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 		_the_app_tools().connection = ""
 	else:
 		answer = await assistant.use_tool(name, input)
+		# The parts its findings name, pictured (SeeTools, APP_UX5 seeing2).
+		if name == "check_design":
+			answer = await _the_app_tools().findings_pictured(answer, input)
 	assistant.chat = ""
 	assistant.who = CLAUDE
 	_at_work -= 1

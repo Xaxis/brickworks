@@ -129,6 +129,18 @@ asking for an API key.
   `render_model` Best says how it was drawn (`AppTools._best_said`, read off
   `StudioRender.traced_last`). `src/dev/seeing_probe.gd` measures each picture
   against the app's own drawing of the same, windowed.
+  APP_UX5 seeing2 (2026-11-06): `view_board studs=true` colours each part by
+  where its studs point, as View, Stud directions does (`StudMap`), with the
+  legend under the six views; `highlight=`/`xray=` take part numbers
+  ("3024"), colours ("red") and steps ("step:3") as well as brick numbers
+  (`SeeTools._parts`); `check_design` with `edit=` answers with the parts
+  its findings name edged (`SeeTools.findings_pictured`, from
+  `CommandSocket._run`); `render_model` turntable/build and `render_motion`
+  answer with six frames in one picture (`AppTools._with_frames`,
+  `PosePanel.sheet_of`), a build's last the whole model; `edit_booklet`'s
+  pull takes the step's brick numbers and refuses a part not in the step,
+  naming the step's parts (`AppTools._pulled_parts`).
+  `src/dev/seeing2_probe.gd` checks each, windowed.
   **Pattern's grid** (`src/net/pattern_tool.gd`, `PatternTool`, APP_UX4 grid,
   2026-11-05): `pattern_parts` is Edit, Pattern…, In a grid on bricks= in one
   call: `columns`, `rows`, `levels` (each counting the parts given; a row is
@@ -699,6 +711,7 @@ tools/probe.sh undo_ids_probe                                       # a part bac
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 godot --headless --path . --script src/dev/mcphand_probe.gd        # Mirror, Split, Merge, Measure and what the person sees, as the window does them
 PROBE_SIZE=1400x900 tools/probe.sh seeing                           # what a session sees: six views in one picture, highlight/xray/step, a booklet page against its PDF, hand tools pictured, how Best was drawn (also PROBE_SIZE=1280x720)
+PROBE_SIZE=1400x900 tools/probe.sh seeing2                          # how parts join and what it made: the stud map read part by part, View, Stud directions, highlight "3024"/"step:3"/"red", check_design's findings pictured, a pull by brick number, six frames of a build and a motion (also PROBE_SIZE=1280x720)
 godot --headless --path . --script src/dev/mcpcad_probe.gd         # CAD answers without the method, designs with it, the refusal's place, attachment_points parts=, in_view at step 4 of 9 with a part in hand
 node tools/web/in_view_flow.mjs --dir=build/web --out=shots/in_view [--size=1400x900]   # in_view in the browser: step 4 of 9, 3004 in hand turned once over the floor, a picture laid by the mouse and keys; nothing changed; step 4's bricks drawn in the picture, and again in --again=4 more openings with Next at once (a local export, .env loaded)
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running

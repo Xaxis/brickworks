@@ -5346,6 +5346,14 @@
       "tests": []
     },
     {
+      "id": "ui:stud directions",
+      "kind": "ui",
+      "entry": "src/ui/stud_map.gd",
+      "reach": "tools/probe.sh seeing2   (by hand: View, Stud directions; a session: view_board studs=true)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:stud grid",
       "kind": "ui",
       "entry": "src/ui/stud_grid.gd",

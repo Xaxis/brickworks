@@ -123,6 +123,9 @@ const PATHS: Dictionary[StringName, String] = {
 	&"Brickify": "res://src/assembly/brickify.gd",
 	&"BrickifySteps": "res://src/assembly/brickify_steps.gd",
 	&"BrickifyStock": "res://src/assembly/brickify_stock.gd",
+	# seeing2: View, Stud directions, made on its first use (Shell.stud_map)
+	# or a session's view_board studs (SeeTools).
+	&"StudMap": "res://src/ui/stud_map.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:

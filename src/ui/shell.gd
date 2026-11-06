@@ -72,6 +72,16 @@ var _library_dialog: Control = null
 var see_inside: SeeInside
 ## View, Stress: src/ui/stress_view.gd.
 var stress: StressView
+## View, Stud directions: src/ui/stud_map.gd (APP_UX5 seeing2), made the
+## first time something asks (Later), as the dialogs below are: by the
+## command, or a session's view_board studs. Null in [member _stud_map]
+## until then, so the first screen never compiles it.
+var stud_map: Node:
+	get:
+		if _stud_map == null and model_area != null:
+			_make_stud_map()
+		return _stud_map
+var _stud_map: Node = null
 # The dialogs below are each made the first time something asks for it
 # (Later), and null in its _ field until then: their 0.1 MB of code was
 # compiled before a first visit's window was drawn (leaves2, 2026-11-05).
@@ -193,7 +203,7 @@ const MENUS: Array = [
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-", "panel_parts",
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
@@ -1352,6 +1362,16 @@ func _define() -> void:
 		"Every part tinted by how near its weakest joint is to letting go: red past its "
 		+ "studs' working load, amber within twice it")
 	_ticked("stress", func() -> bool: return stress.on)
+	# View, Stud directions (APP_UX5 seeing2). It and Stress draw with one
+	# layer, so turning it on turns Stress off, and Stress on turns it off.
+	_add("stud_map", "Stud directions", 0, func() -> void:
+		var map: Node = stud_map
+		if not map.on and stress.on:
+			stress.set_on(false)
+		map.set_on(not map.on),
+		func() -> bool: return _stud_map_on() or world.brick_count() > store.scenery.size(),
+		"Every part coloured by where its studs point: up, down, or to the front, back, left or right")
+	_ticked("stud_map", _stud_map_on)
 	# Shift: Q alone takes the last part back into hand (Tools, Place).
 	_add("turn_left", "Turn the model left", SHIFT | KEY_Q,
 		func() -> void: app.call("_turn_model", -1), something)
@@ -3354,6 +3374,25 @@ func covers(point: Vector2) -> bool:
 				and panel.get_global_rect().has_point(point):
 			return true
 	return false
+
+
+## View, Stud directions (StudMap), made the first time something asks for
+## it: the command, or a session's view_board studs. Its legend goes over
+## the model's top left corner ([member model_area]), shown while it is on.
+func _make_stud_map() -> void:
+	var map: Node = Later.make(&"StudMap")
+	map.world = world
+	map.library = library
+	map.scenery = store.scenery
+	map.say = bar.say
+	_stud_map = map
+	add_child(map)
+	model_area.add_child(map.legend)
+
+
+## Whether Stud directions is on, asked by the menu without making it.
+func _stud_map_on() -> bool:
+	return _stud_map != null and _stud_map.on
 
 
 ## Sections (SectionsUi over Sections), made the first time something asks

@@ -97,6 +97,8 @@ const COMMANDS: Dictionary = {
 	"export_pickabrick": "export_model",
 	# pagesetup: Build, Booklet page, Page setup… (BookletSheet).
 	"booklet_page_setup": "page_setup",
+	# seeing2: View, Stud directions is view_board's studs=true.
+	"stud_map": "view_board",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -235,7 +237,8 @@ keep or take back; remove= takes the session's own lots off; with neither \
 it reads the collection back. Their sets and their own lots are never changed.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
-the model built up step by step as a video, saved where Render saves.
+the model built up step by step as a video, saved where Render saves; a \
+turntable or a build answers with six of its frames in one picture.
  - render_queue: pictures lined up with Render's settings and drawn one \
 after another while the person goes on working, as File, Render queue… \
 does; list says how far each has got and where it was saved.
@@ -281,8 +284,9 @@ the part in their hand, and the reference picture they build over, with a \
 picture of it.
  - view_board, read-only: up to six of view_model's views in one labelled \
 picture; highlight= parts edged in magenta with the rest see-through, xray= \
-parts see-through so what they hide shows, step=N the model as built to step \
-N with its new parts edged. booklet_page, read-only: a page of the booklet as \
+parts see-through so what they hide shows (each by number, part number \
+"3024", colour "red" or "step:3"), step=N the model as built to step N with \
+its new parts edged, studs=true each part coloured by where its studs point. booklet_page, read-only: a page of the booklet as \
 Instructions draws it and its PDF prints it, to see what edit_booklet did. \
 mirror_parts, split_parts and merge_parts answer with the change pictured, as \
 edit_model does (picture=true the whole model, false words alone).
@@ -459,7 +463,7 @@ func definitions() -> Array:
 				"callout": {"type": "boolean"},
 				"per_page": {"type": "integer", "enum": [0, 1, 2, 4]},
 				"follow": {"type": "boolean", "description": "true: the later pages laid out as step's page is"},
-				"pull": {"description": "studs to pull the step's parts out (true: 2; 0 or false: put back), or {studs, parts: [part ids]}"},
+				"pull": {"description": "studs to pull the step's parts out (true: 2; 0 or false: put back), or {studs, parts: [the step's brick numbers or part ids]}"},
 				"colours": {"type": "boolean", "description": "true: the step's colours listed under its number"},
 				"colours_all": {"type": "boolean", "description": "true: every step's colours listed"},
 				"actual_size": {"description": "the step's 1:1 guides: false none, true every axle and beam, [part ids] those parts, \"auto\" as the booklet does it"},
@@ -679,7 +683,8 @@ func definitions() -> Array:
 				+ "changing the model. reverse= and sequence= as play_motion; fps= 12 or 24; size= "
 				+ "480x300 or 720p; view= where the camera stands, hero (three-quarter from the front "
 				+ "left, the default) or back for what moves at the back. Needs the app in a window, "
-				+ "and is a job (job gives the result, with a picture of its frames)."),
+				+ "and is a job (job gives the result, with six of its frames in one picture, the "
+				+ "first and the last among them)."),
 			"input_schema": {"type": "object", "additionalProperties": false, "required": ["name"],
 				"properties": {
 				"name": {"type": "string"},
@@ -814,7 +819,8 @@ func definitions() -> Array:
 				+ "omitted). depth_of_field blurs what is nearer and farther than the "
 				+ "model's middle, as a lens at f/4 does, and is drawn at best. Saved where "
 				+ "Render saves. It is a job: the answer is a job number at once, and job "
-				+ "gives the result, a picture with it. Needs the app in a window."),
+				+ "gives the result: a picture with it, or a turntable's or a build's six frames "
+				+ "in one picture, the last its end. Needs the app in a window."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"kind": {"type": "string", "enum": ["picture", "turntable", "build"]},
 				"seconds": {"type": "integer", "description": "a build's length, 10 to 60; 20 when omitted"},
@@ -1203,6 +1209,12 @@ func _seeing() -> SeeTools:
 	return _see
 
 
+## check_design's answer from outside, the parts its findings name pictured
+## (SeeTools.findings_pictured, APP_UX5 seeing2).
+func findings_pictured(answer: Variant, input: Dictionary) -> Variant:
+	return await _seeing().findings_pictured(answer, input)
+
+
 ## Why [param tool] is not done now, before it begins, or "".
 func refusal(tool: String, input: Dictionary) -> String:
 	# A bench's run (DesignMemory.holding): a picture or a model from a link
@@ -1530,7 +1542,7 @@ func _edit_booklet(input: Dictionary) -> String:
 		if not int(input["per_page"]) in [0, 1, 2, 4]:
 			return "per_page= is 1, 2, 4, or 0 for as many as fit."
 		fields["per_page"] = int(input["per_page"])
-	var extras: Variant = _booklet_extras(input, world)
+	var extras: Variant = _booklet_extras(input, world, at)
 	if extras is String:
 		return extras
 	fields.merge(extras)
@@ -1549,28 +1561,36 @@ func _edit_booklet(input: Dictionary) -> String:
 				now = "seen as the callout faces"
 	var named: String = ("step %d's callout step %d" % [at.number, at.callout_step]) \
 		if at.in_callout() else "step %d" % at.number
-	return said + (("; %s is now: %s" % [named, now]) if not now.is_empty() else "")
+	return said + (("; %s is now: %s" % [named, now]) if not now.is_empty() else "") \
+		+ _extras_said
 
 
 ## edit_booklet's Studio extras (booklet3) as BookletLooks keeps them:
 ## pull=, colours=, colours_all=, actual_size= and preview=; or what is wrong
-## with one, said.
-func _booklet_extras(input: Dictionary, world: BrickWorld) -> Variant:
+## with one, said. What else to say of them goes in [member _extras_said].
+func _booklet_extras(input: Dictionary, world: BrickWorld, at: Instructions.Step) -> Variant:
 	var fields: Dictionary = {}
+	_extras_said = ""
 	if input.has("pull"):
 		var pull: Variant = input["pull"]
 		var studs: float = BookletLooks.PULL_STUDS
 		var parts: Array = []
 		if pull is Dictionary:
 			studs = float(pull.get("studs", BookletLooks.PULL_STUDS))
-			for part: Variant in pull.get("parts", []) if pull.get("parts") is Array else []:
-				parts.append(str(part).to_lower().trim_suffix(".dat"))
+			var asked: Variant = pull.get("parts", [])
+			if not (asked is Array):
+				asked = [asked]
+			var pulled: Variant = _pulled_parts(asked, at, world)
+			if pulled is String:
+				return pulled
+			parts = pulled
 		elif pull is bool:
 			studs = BookletLooks.PULL_STUDS if pull else 0.0
 		elif pull is float or pull is int:
 			studs = float(pull)
 		else:
-			return "pull= is studs (0 puts the parts back), true, or {studs, parts: [part ids]}."
+			return ("pull= is studs (0 puts the parts back), true, or {studs, parts: [the step's "
+				+ "brick numbers or part ids]}.")
 		if studs > BookletLooks.PULL_MOST:
 			return "pull= is at most %s studs." % BookletLooks._number(BookletLooks.PULL_MOST)
 		fields["pull"] = {"studs": maxf(0.5, studs), "parts": parts} if studs > 0.0 else null
@@ -1594,6 +1614,85 @@ func _booklet_extras(input: Dictionary, world: BrickWorld) -> Variant:
 	if input.has("preview"):
 		fields["preview"] = bool(input["preview"])
 	return fields
+
+
+## What _booklet_extras has to say beside the change: which parts a pull by
+## brick number pulls.
+var _extras_said: String = ""
+
+
+## The part ids a pull's [param asked] names in step [param at]: each the
+## step's brick number (look_at_model's, as view_board's highlight= takes)
+## or a part id; or why not, with the step's parts. A session pulled the
+## wing out by its brick number, parts: [3]: it became the part id "3.0",
+## matched nothing in the step, and was kept without a word, so the page drew
+## no pull (APP_UX5, MCP walk). The booklet keeps a pull by part id, so the
+## step's other parts of that id are pulled too, and said.
+func _pulled_parts(asked: Array, at: Instructions.Step, world: BrickWorld) -> Variant:
+	var library: PartLibrary = app.get("_library")
+	var of_brick: Dictionary = {}
+	var ids_of: Dictionary = {}
+	for brick_id: int in at.brick_ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var part: String = brick.part_id.to_lower().trim_suffix(".dat")
+		of_brick[brick_id] = part
+		if not ids_of.has(part):
+			ids_of[part] = []
+		(ids_of[part] as Array).append(brick_id)
+	var parts: Array = []
+	var by_number: Array = []
+	var unknown := PackedStringArray()
+	for raw: Variant in asked:
+		var part: String = ""
+		var number: int = 0
+		if raw is float or raw is int:
+			number = int(raw)
+		else:
+			var said: String = str(raw).strip_edges().to_lower().trim_prefix("#").trim_suffix(".dat")
+			if ids_of.has(said):
+				part = said
+			elif said.is_valid_int():
+				number = int(said)
+		if part.is_empty() and of_brick.has(number):
+			part = of_brick[number]
+			by_number.append(number)
+		elif part.is_empty() and ids_of.has(str(number)) and number != 0:
+			part = str(number)
+		if part.is_empty():
+			unknown.append(str(raw).trim_suffix(".0") if raw is float else str(raw))
+		elif not part in parts:
+			parts.append(part)
+	var named := PackedStringArray()
+	var listed: Array = of_brick.keys()
+	listed.sort()
+	for brick_id: int in listed.slice(0, 24):
+		named.append("#%d %s (%s)" % [brick_id, HandTools._part_name(library, of_brick[brick_id]),
+			of_brick[brick_id]])
+	if listed.size() > 24:
+		named.append("and %d more" % (listed.size() - 24))
+	var step: String = ("step %d's callout step %d" % [at.number, at.callout_step]) \
+		if at.in_callout() else "step %d" % at.number
+	if not unknown.is_empty():
+		return ("Nothing changed: %s %s not in %s. pull's parts= takes the step's brick numbers or "
+			% [", ".join(unknown), "is" if unknown.size() == 1 else "are", step]
+			+ "part ids; %s's parts are %s." % [step, ", ".join(named)])
+	var also := PackedStringArray()
+	for number: int in by_number:
+		for other: int in ids_of[of_brick[number]]:
+			if not other in by_number and not also.has("#%d" % other):
+				also.append("#%d" % other)
+	if not by_number.is_empty():
+		var which := PackedStringArray()
+		for number: int in by_number:
+			which.append("#%d is a %s (%s)" % [number, HandTools._part_name(library,
+				of_brick[number]), of_brick[number]])
+		_extras_said = "; pulled by part: %s" % ", ".join(which)
+		if not also.is_empty():
+			_extras_said += (", and the booklet keeps a pull by part, so %s, the same part in "
+				% ", ".join(also) + "this step, %s pulled too" % ("is" if also.size() == 1 else "are"))
+	return parts
 
 
 ## A guide on every page of the booklet (Shell.change_look "guide"), as
@@ -2728,9 +2827,7 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var settings: RenderSettings = panel.settings
 	var size_was: Vector2i = settings.size
 	settings.size = Vector2i(1280, 720) if str(input.get("size", "")) == "720p" else Vector2i(480, 300)
-	var sheet_at: Array = []
-	for k: int in PosePanel.SHEET_MOST:
-		sheet_at.append(roundi(float(k) * float(poses.size() - 1) / float(PosePanel.SHEET_MOST - 1)))
+	var sheet_at: Array = _six_of(poses.size())
 	var title: String = str(asked["title"]) + (" backwards" if reverse else "")
 	var view: String = str(input.get("view", "hero"))
 	if not view in MOTION_VIEWS:
@@ -2750,7 +2847,8 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var picture: Image = panel.sheet(times)
 	if picture == null:
 		return "\n".join(lines)
-	lines.append("The picture: its frames at %s, left to right and down." % _times_words(times))
+	lines.append("The picture: %d of its frames, at %s, left to right and down, the last its end."
+		% [times.size(), _times_words(times)])
 	return [{"type": "text", "text": "\n".join(lines)}, _picture_block(picture)]
 
 
@@ -3527,17 +3625,83 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 			return "seconds is %d to %d." % [BuildRender.SHORTEST, BuildRender.LONGEST]
 		chosen.frames = seconds * chosen.fps
 		kind = "building"
+	var was: Variant = dialog._last.get("output")
 	var said: String = await dialog.render_for(kind, chosen, work)
 	var how: String = _best_said(dialog, chosen)
 	if not how.is_empty():
 		said = "%s. %s" % [said.trim_suffix("."), how]
-	if kind != "picture" or dialog.last_picture() == null:
+	if kind != "picture":
+		return _with_frames(said, dialog, was, chosen.fps)
+	if dialog.last_picture() == null:
 		return said
 	var small: Image = dialog.last_picture().duplicate() as Image
 	small.resize(800, maxi(roundi(800.0 * small.get_height() / small.get_width()), 1),
 		Image.INTERPOLATE_BILINEAR)
 	return [{"type": "text", "text": said}, {"type": "image", "source": {"type": "base64",
 		"media_type": "image/png", "data": Marshalls.raw_to_base64(small.save_png_to_buffer())}}]
+
+
+# -- the render jobs' answers: six frames (APP_UX5 seeing2) ------------------------
+
+## How many frames a turntable's, a build's or a motion's answer shows.
+const FRAMES_SHOWN := 6
+
+
+## [param count] frames' numbers, [constant FRAMES_SHOWN] of them spread
+## evenly, the first and the last among them.
+static func _six_of(count: int) -> Array:
+	var out: Array = []
+	for k: int in FRAMES_SHOWN:
+		var n: int = roundi(float(k) * float(maxi(count - 1, 0)) / float(FRAMES_SHOWN - 1))
+		if not out.has(n):
+			out.append(n)
+	return out
+
+
+## A turntable's or a build's answer, [param said], with six of the frames
+## it made in one picture, the last its end: for a build, the whole model.
+## A session asked for the build video, had the files, and said "I haven't
+## watched it myself" (APP_UX5, MCP walk). The frames are the ones Render's
+## panel loops (RenderDialog), at most 48 of a long video, the last always
+## among them; [param was] is the render before this one's, so a render
+## cancelled part way shows nothing of the one before it. [param fps] is
+## the render's.
+func _with_frames(said: String, dialog: RenderDialog, was: Variant, fps: int) -> Variant:
+	var last: Dictionary = dialog._last
+	var loop: Array = dialog._loop
+	if loop.is_empty() or last.get("output") == was or not str(last.get("kind", "")) in [
+			"turntable", "building"]:
+		return said
+	var frames: int = int(last.get("frames", loop.size()))
+	var built: BuildRender = last.get("build") as BuildRender
+	fps = maxi(fps, 1)
+	# The loop keeps every frame of a turntable and every so many of a build,
+	# and its last: which frame each kept one is.
+	var every: int = 1 if loop.size() >= frames \
+		else ceili(float(frames) / float(RenderDialog.LOOP_MOST))
+	var images: Array = []
+	var times := PackedStringArray()
+	var shown := PackedStringArray()
+	for index: int in _six_of(loop.size()):
+		var texture: ImageTexture = loop[index]
+		var image: Image = texture.get_image() if texture != null else null
+		if image == null:
+			continue
+		images.append(image)
+		var n: int = frames - 1 if index == loop.size() - 1 else mini(index * every, frames - 1)
+		times.append(Motions.num(float(n) / float(fps), 1))
+		if built != null and n < built.shown.size():
+			shown.append(str(built.shown[n]))
+	var picture: Image = PosePanel.sheet_of(images)
+	if picture == null:
+		return said
+	var lines := PackedStringArray([said.strip_edges()])
+	lines.append("The picture: %d of its frames, at %s s, left to right and down, the last its end."
+		% [images.size(), ", ".join(times)])
+	if built != null and not shown.is_empty():
+		lines.append("Parts on show in each: %s of %d; the last is the whole model." % [
+			", ".join(shown), built.order.size()])
+	return [{"type": "text", "text": "\n".join(lines)}, _picture_block(picture)]
 
 
 ## How Best drew the render just made, in Render's words (RenderSettings
