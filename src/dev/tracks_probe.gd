@@ -123,6 +123,7 @@ func _one_drag() -> void:
 	print("── 1. a curve brought to a straight's free end, in one drag ──")
 	await _new_model()
 	await _hold(STRAIGHT)
+	await _grey()
 	await _click(_model_middle())
 	var straight: int = _newest()
 	_check("a straight is down", _is(straight, STRAIGHT))
@@ -145,6 +146,7 @@ func _one_drag() -> void:
 	var joint: Array = _joint(straight, curve)
 	_check("1: its end meets the straight's, %.3f LDU apart, facing within %.4f degrees" % [
 		joint[0], joint[1]], joint[0] <= MEET and joint[1] <= FACING)
+	await _aside()
 	await _shot("joined")
 
 
@@ -198,11 +200,12 @@ func _sleeper() -> void:
 		joint[0], joint[1], ", ".join(PackedStringArray(sleepers.map(func(id: int) -> String:
 			return _world.get_brick(id).part_id)))],
 		joint[0] <= MEET and joint[1] <= FACING and sleepers.size() == 1)
+	await _aside()
 	await _shot("sleeper")
 	await _key(KEY_ESCAPE)
 	await _key_of("undo")
-	_check("one undo takes the curve and its sleeper off (%d parts, were %d)" % [
-		_parts(), count], _parts() == count)
+	_check("one undo takes the curve and its sleeper off (%d parts, were %d, %d had gone down)" % [
+		_parts(), count, added.size()], added.size() == 2 and _parts() == count)
 
 
 ## 2: sixteen clicks, each on the free end of the curve last put down.
@@ -218,9 +221,13 @@ func _circle() -> void:
 		return
 	await _top_view(_circle_middle(first), 1900.0)
 	var clicks: int = 1
+	var view: Rect2 = _main.call("_model_rect")
 	for n: int in 15:
 		var free: Array = _free_of(_newest())
 		if free.is_empty():
+			break
+		if not view.has_point(_screen(free[0])):
+			print("    the newest curve's free end is out of sight, at %s" % _screen(free[0]))
 			break
 		await _click(_screen(free[0]))
 		clicks += 1
@@ -230,6 +237,7 @@ func _circle() -> void:
 	_check("2: %d curves by %d clicks (%d acts); the last meets the first %.3f LDU apart, facing within %.4f degrees; %d free ends" % [
 		curves.size(), clicks, _acts - acts, joint[0], joint[1], _free_ends().size()],
 		curves.size() == 16 and clicks == 16 and joint[0] <= 1.0 and _free_ends().is_empty())
+	await _aside()
 	await _shot("circle")
 
 
@@ -256,6 +264,15 @@ func _oval() -> void:
 		bricks.append(brick)
 	said = await _say("submit_design", {"name": "Oval", "bricks": bricks})
 	calls += 1
+	# A call still going after 20 s is a job (ToolJobs): asked about until
+	# it answers, each ask a call of the session's.
+	var job := RegEx.create_from_string("^Started job (\\d+)")
+	var started: RegExMatch = job.search(said)
+	while started != null and calls < 8:
+		said = await _say("job", {"id": int(started.get_string(1))})
+		calls += 1
+		if not said.contains("is still going"):
+			break
 	var tracks: Array = _bricks().filter(func(id: int) -> bool:
 		return _ends.has(_library.resolve(_world.get_brick(id).part_id)))
 	var worst: Array = [0.0, 0.0]
@@ -420,6 +437,27 @@ func _screen(end: Array) -> Vector2:
 
 func _model_middle() -> Vector2:
 	return (_main.call("_model_rect") as Rect2).get_center()
+
+
+## The pointer to a corner of the view, out of the way of what a picture
+## shows: the tile's tooltip that followed a drag goes with it.
+func _aside() -> void:
+	var view: Rect2 = _main.call("_model_rect")
+	await _move(view.position + Vector2(24.0, view.size.y - 24.0))
+	await _frames(10)
+
+
+## Dark bluish grey, as track is, clicked in the palette.
+func _grey() -> void:
+	var swatches: Dictionary = _bin.get("_swatches")
+	var palette: Rect2 = (_bin.controls_by_name()["palette"] as Control).get_global_rect()
+	for code: int in [72, 8, 71, 7]:
+		var swatch: Control = swatches.get(code)
+		if swatch != null and swatch.is_visible_in_tree() and palette.encloses(swatch.get_global_rect()):
+			await _click(swatch.get_global_rect().get_center())
+			_check("track grey (%d) in hand" % code, _builder.held_color == code)
+			return
+	print("    no grey in sight in the palette")
 
 
 # -- the bin ----------------------------------------------------------------------------
