@@ -4984,6 +4984,10 @@
         "discard_changes": {
           "type": "boolean"
         },
+        "into": {
+          "description": "put name= (or library=, link=) into the model open now as one sub-assembly with its own steps, as File, Import, Into this model… does, in place of opening it; nothing is replaced",
+          "type": "boolean"
+        },
         "library": {
           "description": "a library id from gallery library=true, like omr-10179-1, or a set's number or name",
           "type": "string"
@@ -4996,6 +5000,10 @@
           "description": "a model's name from the list",
           "type": "string"
         },
+        "turn": {
+          "description": "with into: quarter turns about the vertical, 0 to 3",
+          "type": "integer"
+        },
         "version": {
           "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it",
           "type": "integer"
@@ -5003,6 +5011,14 @@
         "versions": {
           "description": "list name='s saves kept as versions",
           "type": "boolean"
+        },
+        "x": {
+          "description": "with into: studs across to its low corner; beside the model when omitted",
+          "type": "number"
+        },
+        "z": {
+          "description": "with into: studs deep to its low corner",
+          "type": "number"
         }
       },
       "type": "object"

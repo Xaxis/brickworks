@@ -91,4 +91,16 @@ ui:open a studio model
 ui:open an ldd model
 -->
 
+## A model into this one {#into}
+
+**File › Import › Into this model…** puts a model you already have into the one open now: one of your saved models, an example, a file from this computer (`.ldr`, `.mpd`, `.io`, `.lxf`), or one from the library. It comes into your hand whole, as one sub-assembly named after it; click where it goes, [[R]] turns it first, [[Esc]] puts it away. One **Undo** takes it all out again.
+
+Every part keeps its place against the others, and its sub-models come in as sub-assemblies inside it. Its author's build steps stay its own, and it goes into the model's steps after the last one (or into the step the steps bar shows). The parts only a Studio file carries come in with it.
+
+In **File › Library…**, a set or a community model has **Put in this model** beside **Open**. The status bar names its maker for you to credit. A community model whose maker kept every right to it can be opened, but not put into another model.
+
+<!-- covers
+ui:a model into this one
+-->
+
 What Brickworks saves and exports is in [Exports and renders](/docs/exports).
