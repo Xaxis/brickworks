@@ -29,7 +29,7 @@ JSON
 timeout 3h ~/.claude/claude-core/bin/gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1600x900x24" \
   godot --path . --resolution 1600x900 -- --mcp="$PORT" > "$OUT/app.log" 2>&1 < /dev/null &
 app=$!
-timeout 1800 bash -c "until grep -q 'command socket: listening' '$OUT/app.log'; do sleep 2; done"
+timeout 10800 bash -c "until grep -q 'command socket: listening' '$OUT/app.log'; do sleep 2; done"
 python3 "$HERE/search_words.py" "$PORT" "$OUT/search.json" > "$OUT/search.txt" 2>&1
 sid=""
 while IFS='|' read -r name prompt; do
