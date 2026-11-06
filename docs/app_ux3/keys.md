@@ -14,18 +14,18 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 209 | 115 | 110 | 111 | 103 |
-| Studio | 209 | 118 | 113 | 114 | 106 |
-| Mecabricks | 209 | 116 | 111 | 112 | 104 |
-| LDCad | 209 | 118 | 114 | 115 | 107 |
+| Brickworks | 210 | 115 | 110 | 112 | 104 |
+| Studio | 210 | 118 | 113 | 115 | 107 |
+| Mecabricks | 210 | 116 | 111 | 113 | 105 |
+| LDCad | 210 | 118 | 114 | 116 | 108 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
 more with none, and What's This? one with Shift-F1 under every preset: 208 when keys was
-done, six more without a key after it. Page setup… (pagesetup) added one more with none:
-209, and 111 without a key under the app's keys, before keys2. keys2 gave eight a key
-under every preset, each one no command had: 103 without a key now, so 106 of the 209 have
-one (the walk's `counts`, APP_UX5).
+done, six more without a key after it. Page setup… (pagesetup) and Stud directions
+(seeing2) added one more each with none: 210, and 112 without a key under the app's keys,
+before keys2. keys2 gave eight a key under every preset, each one no command had: 104
+without a key now, so 106 of the 210 have one (the walk's `counts`, APP_UX5).
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -170,6 +170,7 @@ does, and so sits beside Ctrl-O, as a browser's own Library is Ctrl-Shift-O.
 | `cut_grow` | View › Cut away by › Grow it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Grow is the strip's button |
 | `cut_shrink` | View › Cut away by › Shrink it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Shrink is the strip's button |
 | `stress` | View › Stress | — | — | — | a few times a model | all | Alt-K checks stability; Stress is the colour of it, looked at after |
+| `stud_map` | View › Stud directions | — | — | — | once a design | all | a check of which way studs face, looked at once and put away; it shares Stress's layer, and Stress has none either |
 | `panel_parts` | View › Parts bin | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_assistant` | View › Assistant | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_properties` | View › Properties | — (Instruction Maker's inspector, Ctrl-Alt-2) | — | I, the information panel | once a session | all | a panel set once a session; I is X-ray here, used far more |

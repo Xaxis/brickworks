@@ -775,7 +775,7 @@ picture the assistant is shown.
   private window), File › Export › LEGO® Pick a Brick list Alt-L, File ›
   Library Ctrl-Shift-O (beside Open's Ctrl-O). `docs/app_ux3/keys.md`, "Given a
   key in round five", is their table, and its counts' After column the keyless
-  now (103 of 209 under the app's keys). `keys2_probe` (windowed, 1280 x 720;
+  now (104 of 210 under the app's keys). `keys2_probe` (windowed, 1280 x 720;
   `PROBE_SIZE=1400x900`) reads that table: each has its key under each preset
   and on the web, no layer of a preset's keys nor the app's own gives it to
   another action; the walk's count of commands with a key (APP_UX5 `counts`,

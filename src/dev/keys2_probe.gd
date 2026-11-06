@@ -13,7 +13,7 @@
 ##   one the table says, and no other action has it, nor did any before:
 ##   no preset's keys, nor the app's own, give it to another;
 ## - commands with a key, counted as APP_UX5's walk counts them (`counts`):
-##   98 of 209 before keys2, 106 or more after; and each preset's keyless
+##   98 of 210 before keys2, 106 or more after; and each preset's keyless
 ##   count is the table's;
 ## - each key is on its menu row, under each preset;
 ## - each does what its menu row does, under each preset: Render's panel,
