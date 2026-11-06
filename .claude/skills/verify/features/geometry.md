@@ -424,6 +424,16 @@ can occupy the same millimetre.
   MCP at the stop to 0.01 LDU, and a figure on two cones by hand and by
   add_minifig; `joints_probe` four parts 4 LDU down a cone's stud from a
   file, refused (conestop).
+  A part that only rests on a lone stud at a hinge's free end, its stud's
+  part held to it another way round, is out of the joints (`Bodies.rests`,
+  `_lift_rests`): its hinge lifts it off, and it goes neither down into the
+  stud nor across it while the stud is in it (`Grab._rests_let`, in the
+  room test). 4096's crane boom lies on two cones up a plate's studs: read
+  as held there it was locked with its turntable and Lift the boom was
+  gone. `motions_probe` lifts it (offered, kept, played, saved, opened
+  again); `grab_probe -- --only=mcp` lowers it into the cones and turns the
+  crane's top under it (each stops at once, not held at both ends) and
+  lifts it 30°, and `--only=coast` drags it down and up by hand.
 - `axles and gears on a line`: an axle or a pin is in every hole along its
   whole length (`Joints.through`, by Mechanism's own rule: on the line to
   1.5 LDU, the hole's middle no more than 2 LDU past an end; a pin not in an

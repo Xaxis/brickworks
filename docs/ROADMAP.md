@@ -641,6 +641,21 @@ this keep the old part's bottom and were right already. add_minifig refused
 a figure on two cones as standing in the air (a cone's bore is open under
 the middle of each foot), and stands it on their studs now.
 
+A boom on its rest is lifted off it by a person (conestop, 2026-11-05). With
+a stud up a cone's hollow read as in it (realjoints2), 4096's crane boom,
+which lies on two cones' studs, was held at both ends, its hinge and its
+rest, in a loop with its turntable: "Locked", list_motions no longer
+offered Lift the boom, and realjoints2 was taken out of pre261. Now a part
+that only rests on a lone stud at a hinge's free end, the stud's part held
+to it another way round, is out of the joints (`Bodies.rests`): the hinge
+lifts it off, and Grab keeps it from going down into the stud, or across it
+while the stud is in it (`Grab._rests_let`; a stud is in no cover, so
+nothing else did: read as nothing, the boom went 3° into the cones and
+turned with the crane's top across them). Lift the boom is offered, kept,
+played, saved and opened again (`motions_probe`); lowered into its rest or
+turned with the top, the boom stops at once where it meets a cone, and is
+lifted 30° over MCP and 20° by hand (`grab_probe`).
+
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety
 (shapes, colours) moved least of all. `add_rooms` lays a floor at each
