@@ -6607,11 +6607,11 @@ msgstr "Obtener"
 msgid "Read your sets and parts lists from your Rebrickable account"
 msgstr "Leer tus sets y listas de piezas de tu cuenta de Rebrickable"
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces the sets and loose parts in this collection."
-msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda; lo que vuelve sustituye los sets y las piezas sueltas de esta colección."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay."
+msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda. Lo que vuelve sustituye lo que vino antes de Rebrickable, descargado o exportado, y las piezas sueltas importadas antes. Lo que cuentas aquí, un XML de BrickLink y lo que añadió un asistente se quedan."
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces the sets and loose parts in this collection. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
-msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda; lo que vuelve sustituye los sets y las piezas sueltas de esta colección. Pide al asistente «una casita con mi colección» y construirá con lo que tienes."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
+msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda. Lo que vuelve sustituye lo que vino antes de Rebrickable, descargado o exportado, y las piezas sueltas importadas antes. Lo que cuentas aquí, un XML de BrickLink y lo que añadió un asistente se quedan. Pide al asistente «una casita con mi colección» y construirá con lo que tienes."
 
 msgid "BrickLink wanted list"
 msgstr "Lista de deseos de BrickLink"
@@ -11227,6 +11227,104 @@ msgstr "Lo que encaja con %s, con «%s», lo mejor primero"
 msgid "Nothing that fits %s has “%s”"
 msgstr "Nada de lo que encaja con %s tiene «%s»"
 
+# mybricks: loose parts on My collection's What I own, and what a session added
+
+msgid "A part: its number or words, like red 2x4 brick"
+msgstr "Una pieza: su número o palabras, como ladrillo 2x4 rojo"
+
+msgid "Photo…"
+msgstr "Foto…"
+
+msgid "Find the part from a photo of it, as the parts bin's camera does"
+msgstr "Encontrar la pieza a partir de una foto, como hace la cámara del cajón de piezas"
+
+msgid "Parts like the one chosen: its other sizes and kinds"
+msgstr "Piezas como la elegida: sus otros tamaños y tipos"
+
+msgid "Its colour: the colours the part was made in first"
+msgstr "Su color: primero los colores en que se fabricó la pieza"
+
+msgid "How many"
+msgstr "Cuántas"
+
+msgid "Add these to your loose parts, kept with your account"
+msgstr "Añadirlas a tus piezas sueltas, guardadas con tu cuenta"
+
+msgid "Find a part above, by its number or words, from a photo, or by choosing it in the parts bin; then how many, and Add."
+msgstr "Busca una pieza arriba, por su número o palabras, a partir de una foto, o eligiéndola en el cajón de piezas; luego cuántas, y Añadir."
+
+msgid "Added by %s — %s, %s: look them over"
+msgstr "Añadido por %s — %s, %s: revísalos"
+
+msgid "Keep them"
+msgstr "Conservarlos"
+
+msgid "Keep these as your own loose parts"
+msgstr "Conservarlas como tus propias piezas sueltas"
+
+msgid "Take back what %s added"
+msgstr "Retirar lo que añadió %s"
+
+msgid "Take out exactly the lots listed here; nothing of yours"
+msgstr "Quitar exactamente los lotes listados aquí; nada de lo tuyo"
+
+msgid "your assistants"
+msgstr "tus asistentes"
+
+msgid "Loose parts — %s"
+msgstr "Piezas sueltas — %s"
+
+msgid "How many you have; changed here, kept with your account"
+msgstr "Cuántas tienes; cambiado aquí, guardado con tu cuenta"
+
+msgid "Take this lot out of your collection"
+msgstr "Quitar este lote de tu colección"
+
+msgid "no part answers “%s”"
+msgstr "ninguna pieza responde a «%s»"
+
+msgid "choose a part first, then Like this lists parts like it"
+msgstr "elige primero una pieza, y Similares lista piezas como ella"
+
+msgid "parts like %s: choose one"
+msgstr "piezas como %s: elige una"
+
+msgid "asking Brickognize what part this is…"
+msgstr "preguntando a Brickognize qué pieza es…"
+
+msgid "Brickognize saw no part it knows in that photo: try another, the part alone on a plain background"
+msgstr "Brickognize no vio ninguna pieza que conozca en esa foto: prueba otra, la pieza sola sobre un fondo liso"
+
+msgid "from your photo, most likely first, as Brickognize sees it"
+msgstr "de tu foto, la más probable primero, como la ve Brickognize"
+
+msgid "find the part first: its number or words, or a photo of it"
+msgstr "busca primero la pieza: su número o palabras, o una foto de ella"
+
+msgid "adding %d × %s…"
+msgstr "añadiendo %d × %s…"
+
+msgid "added %d × %s in %s"
+msgstr "añadido %d × %s en %s"
+
+msgid "kept: %s"
+msgstr "guardado: %s"
+
+msgid "took out %d × %s in %s"
+msgstr "quitado %d × %s en %s"
+
+msgid "took back the %s added"
+msgstr "retirados los %s añadidos"
+
+msgid "kept the %s as your own"
+msgstr "conservados los %s como tuyos"
+
+msgid "Find a part from a photo"
+msgstr "Encontrar una pieza a partir de una foto"
+
+msgid "Choose a photo"
+msgstr "Elegir una foto"
+
 msgid "Placing %s on the end of %s: click puts it there"
 msgstr "Colocando %s en el extremo de %s: un clic la deja ahí"
 
@@ -11235,6 +11333,25 @@ msgstr "%s pone su siguiente extremo en la unión"
 
 msgid "a sleeper goes under the joint with it"
 msgstr "una traviesa va con ella bajo la unión"
+
+# My collection: lots under where they came from (mybricks2)
+msgid "From Rebrickable"
+msgstr "De Rebrickable"
+
+msgid "From a BrickLink XML"
+msgstr "De un XML de BrickLink"
+
+msgid "Loose parts brought in before"
+msgstr "Piezas sueltas importadas antes"
+
+msgid "from Rebrickable"
+msgstr "de Rebrickable"
+
+msgid "from a BrickLink XML"
+msgstr "de un XML de BrickLink"
+
+msgid "kept: %d × %s"
+msgstr "guardado: %d × %s"
 
 # The booklet's page set up (APP_UX5 #4, pagesetup): Build, Booklet page, Page setup…
 

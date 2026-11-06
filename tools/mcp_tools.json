@@ -5116,6 +5116,78 @@
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false,
+      "title": "Add to the person's collection"
+    },
+    "description": "The person's own bricks, as Build, My collection's What I own keeps them with their account: sets, and loose parts by part, colour and count. add=[{part, color, count}] adds loose lots, all in one call: given a photo of their pile, look at it closely, name each part (its LDraw number, as search_parts gives it; a BrickLink number is read too) and its LDraw colour code, count each, and add them together. Every lot added is marked as this chat's and listed for the person apart from their own, to keep or take back with one button. remove=[{part, color, count}] takes pieces off lots this chat added (count omitted: the whole lot). With neither, it reads the collection back, this chat's lots apart. Their sets and their own lots are theirs: this never changes them. parts_list which=\"need\" then measures the model against it, and which=\"buildable\" ranks what they can build.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "add": {
+          "description": "loose lots to add",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "description": "LDraw colour code, like 4 for Red",
+                "type": "integer"
+              },
+              "count": {
+                "description": "how many, 1 or more",
+                "type": "integer"
+              },
+              "part": {
+                "description": "the part's LDraw number, like 3001",
+                "type": "string"
+              }
+            },
+            "required": [
+              "part",
+              "color",
+              "count"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "description": "how many lots the read back lists; 60 when omitted",
+          "type": "integer"
+        },
+        "remove": {
+          "description": "pieces to take off lots this chat added",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "type": "integer"
+              },
+              "count": {
+                "description": "how many to take off; the whole lot when omitted",
+                "type": "integer"
+              },
+              "part": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "part",
+              "color"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "name": "edit_collection"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
       "title": "Render a picture"
     },
     "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result, a picture with it. Needs the app in a window.",
