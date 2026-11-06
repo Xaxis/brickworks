@@ -293,7 +293,7 @@ func _fits_after_a_search(plain: PackedStringArray) -> void:
 	var shown: Array = _bin.get("_display")
 	var others := PackedStringArray()
 	for info: PartLibrary.PartInfo in shown:
-		if not info.name.to_lower().contains("plate"):
+		if not _says(info, FITS_NARROWED):
 			others.append(info.id)
 	print("    \"%s\": %s" % [FITS_NARROWED, _rows(_bin.first_found(8))])
 	_check("\"%s\" typed narrows it to plates (%d tiles%s)" % [FITS_NARROWED, shown.size(),
@@ -442,11 +442,16 @@ func _rows(ids: PackedStringArray) -> String:
 	return "".join(out)
 
 
-## Whether [param info] is a curved part in LDraw's words or the sets': its
-## name, its keywords (716a, Brick 2 x 4 Half Round, is "curved" there) or
-## what set inventories call it.
+## Whether [param info] is a curved part in LDraw's words or the sets' (_says).
 func _curved(info: PartLibrary.PartInfo) -> bool:
-	return ("%s %s %s" % [info.name, " ".join(info.keywords), info.also_called]).to_lower().contains("curv")
+	return _says(info, "curv")
+
+
+## Whether [param info] is called [param word] in LDraw's words or the sets':
+## its name, its keywords (716a, Brick 2 x 4 Half Round, is "curved" there;
+## 43722a, Wing 2 x 3, a "wedge plate") or what set inventories call it.
+func _says(info: PartLibrary.PartInfo, word: String) -> bool:
+	return ("%s %s %s" % [info.name, " ".join(info.keywords), info.also_called]).to_lower().contains(word)
 
 
 ## The mould [param id] is: a print's or a stickered part's plain part, or its
