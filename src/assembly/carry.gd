@@ -518,8 +518,11 @@ func hide_ghost() -> void:
 		_ghost.visible = false
 
 
-## Where each part goes if put down now: [{part, color, at, group}] in the
-## world, and the cover each occupies.
+## Where each part goes if put down now: [{part, color, at, group, unit}]
+## in the world, and the cover each occupies. The copy a part was in goes
+## with it: without it a part moved in a sub-model's second copy went into
+## its first, and one duplicated inside a copy within another into a new
+## copy of the outermost (keeptext2).
 func placements(builder: Builder) -> Array:
 	var covers: Array = _covers_for(builder)
 	var shift := Vector3i(
@@ -532,6 +535,7 @@ func placements(builder: Builder) -> Array:
 		out.append({
 			"part": item["part"], "color": item["color"],
 			"group": item.get("group", ""),
+			"unit": item.get("unit", ""),
 			"step": item.get("step", -1),
 			"at": _frame * (item["at"] as Transform3D),
 			"boxes": BrickLattice.moved_by(covers[0][n], shift),
