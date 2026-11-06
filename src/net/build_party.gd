@@ -238,25 +238,42 @@ func _fold(ops: Array) -> void:
 		var seated: Dictionary = _seat_of(who)
 		if said.has("join"):
 			var given: Dictionary = said["join"] if said["join"] is Dictionary else {}
+			var called_so: String = clean_name(given["name"]) if given.get("name") is String else ""
 			# A name a person gave, drawn as it is in every language.
-			Language.keep_name(str(given.get("name", "")))
+			Language.keep_name(called_so)
 			if seated.is_empty():
-				seats.append({"who": who, "name": str(given.get("name", "")), "at": {}, "left": false})
+				seats.append({"who": who, "name": called_so, "at": {}, "left": false})
 			else:
-				seated["name"] = str(given.get("name", ""))
+				seated["name"] = called_so
 				seated["left"] = false
 		elif said.has("deal"):
-			if dealt == 0 and not seats.is_empty() and seats[0]["who"] == who:
+			if dealt == 0 and not seats.is_empty() and seats[0]["who"] == who and _whole(said["deal"]):
 				dealt = clampi(int(said["deal"]), 1, PHONES)
 		elif said.has("at") and not seated.is_empty() and said["at"] is Dictionary:
-			if seated["at"] != said["at"]:
-				seated["at"] = said["at"]
+			var at: Dictionary = _at_of(said["at"])
+			if seated["at"] != at:
+				seated["at"] = at
 				heard_at[who] = Time.get_ticks_msec()
 		elif said.has("left") and not seated.is_empty():
 			seated["left"] = true
 		any = true
 	if any:
 		changed.emit()
+
+
+## Where a phone says it is, as numbers and a yes or no whatever was sent:
+## a peer's words are data, read field by field (the relay checks them
+## too).
+static func _at_of(said: Dictionary) -> Dictionary:
+	var at: Dictionary = {}
+	for key: String in ["done", "of", "page", "part"]:
+		at[key] = clampi(int(said[key]), 0, 100000) if _whole(said.get(key)) else 0
+	at["finished"] = said.get("finished") is bool and bool(said["finished"])
+	return at
+
+
+static func _whole(value: Variant) -> bool:
+	return value is int or (value is float and is_finite(value) and float(value) == floorf(value))
 
 
 func _seat_of(who: String) -> Dictionary:
