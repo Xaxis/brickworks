@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow -->
 
 ## Sub-features
 
@@ -3018,6 +3018,37 @@ plan with Claude as the client.
   first step of five parts, do it with taps and a swipe, reading what the
   world draws: each tap exactly one part in full colour, in its own colour,
   the one before pale.
+- `build party` (`src/net/build_party.gd`, APP_UX5 buildparty, 2026-11-06):
+  **Build together** on a shared link's viewer (beside Build it on the bar;
+  on a phone a pill beside the big Build it, `view_together`) opens a card:
+  an optional name, **Start a build** (`party_start`) gives a four-letter
+  code ("Code: K7Q2"; no vowels, no 0/O/1/I), and the others, on the same
+  link, type it and **Join** (`party_code`, `party_join`); a link with
+  `?party=CODE` opens the card with it typed. No account. Up to four phones;
+  the one that started presses **Start building: N phones** (`party_deal`)
+  and every phone's Build it opens on its own share at once, a part at a
+  time (`BuildMode.party_by_part`, not kept as the device's choice). The
+  deal (`BuildParty.shares_of`, worked out on each phone from the steps and
+  N alone): sub-assemblies whole and the main build, the biggest cut at the
+  step that halves it while there are fewer than N, then biggest first to
+  the phone with fewest parts; shares numbered by first step.
+  `steps_for`: a phone's own steps renumbered, then the joining step with
+  everyone else's parts outlined. Along the top every phone in its colour,
+  "Mia 4 of 9", "Leo (you) is done", "Ana has left" (`build_party` row).
+  Done first, a phone waits on its last page ("Your part is built",
+  "Waiting for Mia: 7 of 12", Next held); when all are done each is shown
+  "Put it together". Close mid-build gives Back to building and Leave the
+  build; the code is kept, and Join again gives back the seat, the share and
+  the page and part. The server: `api/together.js` `?op=party_start`,
+  `party_join`, `party_send` (one word: `{deal}`, `{at}`, `{left}`),
+  `party_poll` (waits up to 15 s), on together.sql's tables under the
+  link owner's account (title `party:<link>`, 24 h, 40 live a link); phones
+  are random ids the others never see (`who` = a hash). The phone's id, name
+  and last code per link in `localStorage["brickworks.party"]`.
+  `brickworksShare.view.party` (card: `title`, `seats`, `code_typed`,
+  `targets`) and `brickworksShare.build.party` (`on`, `waiting`, `joining`,
+  `chips`, `next_held`), `build.party_share` (the dealt brick ids) and
+  `build.party_state`.
 - `build pages` (`src/assembly/build_steps.gd`): what each page shows —
   `shown`, `fresh`, `faded`, `lots` (by part and colour via `Inventory.key_of`,
   the most first), `caption`, `note` ("Build this on the side", "Put them on",
@@ -4930,6 +4961,45 @@ this step" under its picture; the last part's Next at the next step's first
 part; a swipe and a tap of Back each one part off; every target 44 points
 or more; Whole step shows the step whole again; One part kept for the next
 Build it. Pictures in `shots/partbypart/<size>_*.png`.
+
+A build party (`src/net/build_party.gd`), the car as a link, this window
+phone A and a second BuildParty phone B, the relay played in the probe
+(a window; `PROBE_SIZE` for a tablet's and a desktop's):
+
+```sh
+tools/probe.sh buildparty_probe                         # 390 x 844
+PROBE_SIZE=1024x768 tools/probe.sh buildparty_probe     # and 1280x720, 1400x900
+python3 tools/minitest.py tests/test_together_party.py  # the server's rules, no database
+```
+
+Proves it when it ends "buildparty_probe: all passed": in a build in 2 taps
+with a code; B's join named on A's card within 2 s; Start building opens
+A's Build it on its share, the car dealt in two with all 61 once and no
+page of either holding another's part; a part done on either shows on the
+other within 2 s; Close, Leave the build and Join again back on the same
+page and part; A's last page waits ("Your part is built", "Waiting for
+Leo…", Next held) and the joining step comes within 2 s of B finishing,
+every part on show, B's outlined, nothing to pick up; card targets 44
+points on a phone. Pictures in `shots/buildparty/<size>_*.png`.
+
+On two real phones (the build party browser flow,
+`tools/web/buildparty_flow.mjs`), the export served here with the
+deployment's functions and the party's tables held in memory, the car
+published from a throwaway account and deleted after:
+
+```sh
+tools/export.sh web
+set -a; . ./.env; set +a
+node tools/web/buildparty_flow.mjs --build=build/web --port=9921 --out=shots/buildparty_flow
+```
+
+Proves it when it ends "two phones built the car together, each its own
+share, and put it together" with no `FAIL`: the code in 2 taps on A, B in
+with 2 taps and the code typed, both cards naming both; both Build its open
+on their shares (61 between them, none on both); each phone's Next on the
+other within 2 s; B left (A told), back by Join on its page and part; A's
+End waits, B's End puts both on "Put it together" within 2 s with 61 parts
+on show. Pictures `a_*.png` and `b_*.png` in `--out`.
 
 Proves it when it ends "a shared model's steering turns by its wheel,
 nothing is kept, and Reset puts it back" with no `FAIL` (40 checks): the

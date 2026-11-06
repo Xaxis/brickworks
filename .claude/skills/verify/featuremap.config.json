@@ -1503,6 +1503,20 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "build party",
+      "entry": "src/net/build_party.gd",
+      "reach": "https://brickworks.diy/app?view=<id> on two to four phones, Build together beside Build it: Start a build on one, the code typed and Join on the others, then Start building  (no account; api/together.js ?op=party_*)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "build party browser flow",
+      "entry": "tools/web/buildparty_flow.mjs",
+      "reach": "node tools/web/buildparty_flow.mjs --build=build/web --port=9921 --out=shots/buildparty_flow   (with .env sourced; or --url=<deployment> with BW_BYPASS)",
+      "area": "web"
+    },
+    {
       "kind": "lib",
       "label": "build pages",
       "entry": "src/assembly/build_steps.gd",

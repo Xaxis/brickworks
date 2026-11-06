@@ -330,6 +330,12 @@ declare -A CMD=(
   # said so: "the API's database needs supabase/together_big.sql").
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # A build party (APP_UX5 buildparty): two phones on one shared link and
+  # no account, joined by a code in 2 taps each, the car dealt in two (all
+  # 61 parts once), a part done on either on the other within 2 s, a phone
+  # leaving and joining again in its place, the joining step on both. Its
+  # tables are together.sql's.
+  [buildparty]="tools/web/buildparty_flow.mjs --url=$P --out=$S/${TAG}_buildparty"
   # local only: typed_flow.mjs. A number typed with a part in hand, in the
   # web build (hand371): it runs against tools/web/serve.py's local build,
   # as its header says, and has no way past a preview's protection yet.
@@ -665,8 +671,9 @@ run() {
 # orangecheck asked that popup checks not run side by side (2026-10-24).
 # together measures how fast a change crosses between two browsers: with
 # placing beside it its plain p95 read 1,123 ms against 516-864 alone
-# (2026-10-24).
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together load "
+# (2026-10-24). buildparty times a part crossing between two phones the
+# same way, on the same relay.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

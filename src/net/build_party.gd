@@ -170,7 +170,9 @@ func tell(done: int, of: int, page: int, part: int, finished: bool) -> void:
 	if not mine.is_empty() and mine.get("at", {}) != at:
 		mine["at"] = at
 		heard_at[me] = Time.get_ticks_msec()
-		changed.emit()
+		# After the page that told it is shown: a change heard now would turn
+		# the page again inside its own turn (Main._build_go).
+		changed.emit.call_deferred()
 	_at_wanted = at
 	if _sending:
 		return

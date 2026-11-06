@@ -3681,6 +3681,8 @@ func build_state() -> Dictionary:
 	var said: Dictionary = _build_mode.page_state()
 	said["built"] = _built_said.duplicate()
 	said["party_state"] = _party.call("page_state") if _party != null else {}
+	# The bricks this phone was dealt, for a check across two phones.
+	said["party_share"] = _party_share.keys() if _party_pages else []
 	if not _build_mode.is_open():
 		return said
 	said["faded"] = _world.faded_ids().size()
@@ -10509,6 +10511,8 @@ var _party_code_wanted: String = ""
 ## The party was dealt when last heard: Build it opens on this phone's
 ## share the moment it is, with no press (and on joining again).
 var _party_was_dealt: bool = false
+## The bricks this phone was dealt (id -> true).
+var _party_share: Dictionary = {}
 
 
 func _party_made() -> Node:
@@ -10588,6 +10592,7 @@ func _party_build() -> void:
 	var shares: Array = script.call("shares_of", made, int(_party.get("dealt")), _store.scenery)
 	var seat: int = int(_party.call("seat"))
 	var share: Dictionary = shares[seat - 1] if seat >= 1 and seat <= shares.size() else {}
+	_party_share = share
 	var pages: Array[Instructions.Step] = []
 	pages.assign(script.call("steps_for", made, share, _store.scenery))
 	if _build_pages != null:
