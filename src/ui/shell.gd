@@ -65,17 +65,51 @@ var _library_dialog: Control = null
 var see_inside: SeeInside
 ## View, Stress: src/ui/stress_view.gd.
 var stress: StressView
+# The dialogs below are each made the first time something asks for it
+# (Later), and null in its _ field until then: their 0.1 MB of code was
+# compiled before a first visit's window was drawn (leaves2, 2026-11-05).
 ## File, Versions…: src/ui/versions_dialog.gd.
-var versions: VersionsDialog
+var versions: Window:
+	get:
+		if _versions == null and store != null:
+			_make_versions()
+		return _versions
+var _versions: Window = null
 ## Compare with a save, from Versions… or File, Compare with…:
 ## src/ui/compare_view.gd.
-var compare: CompareView
+var compare: Control:
+	get:
+		if _compare == null and model_area != null:
+			_make_compare()
+		return _compare
+var _compare: Control = null
 ## Edit, Pattern…: copies in a row, round, or along a hose (Pattern).
-var pattern_dialog: PatternDialog
+var pattern_dialog: Window:
+	get:
+		if _pattern_dialog == null and builder != null:
+			_make_pattern_dialog()
+		return _pattern_dialog
+var _pattern_dialog: Window = null
 ## Help, Send feedback… (FeedbackDialog).
-var feedback: FeedbackDialog
+var feedback: Window:
+	get:
+		if _feedback == null and store != null:
+			_feedback = Later.make(&"FeedbackDialog")
+			_feedback.store = store
+			_feedback.world = world
+			_feedback.library = library
+			add_child(_feedback)
+		return _feedback
+var _feedback: Window = null
 ## Find a command (Ctrl+/): src/ui/command_palette.gd.
-var palette: CommandPalette
+var palette: Window:
+	get:
+		if _palette == null and model_area != null:
+			_palette = Later.make(&"CommandPalette")
+			_palette.shell = self
+			add_child(_palette)
+		return _palette
+var _palette: Window = null
 ## The model's part of the window, which the palette opens over.
 var model_area: Control
 
@@ -91,6 +125,8 @@ var _about: AcceptDialog
 var _about_text: Label
 ## Its trademark notice, under the credits.
 var _about_marks: Label
+## About's words, where its credits go as it first shows (_show_about).
+var _about_column: VBoxContainer
 ## Its words, credits and notice, scrolled where the window is short.
 var _about_scroll: ScrollContainer
 ## A licence in full, opened from About, and its words.
@@ -382,54 +418,17 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 		attend("save", _save_named.bind(_save_as_name.text)))
 	add_child(_save_as)
 
-	versions = VersionsDialog.new()
-	versions.store = store
-	versions.bar = bar
-	add_child(versions)
-	# Compare with a save: its panel where View, Stress's is, the two never
-	# open at once (_define's stress).
-	compare = CompareView.new()
-	compare.world = world
-	compare.library = library
-	compare.store = store
-	compare.camera = camera
-	compare.assemblies = assemblies
-	compare.stress = stress
-	compare.say = bar.say
-	compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	compare.offset_right = -14.0
-	compare.offset_left = -14.0 - CompareView.WIDE
-	compare.offset_top = ViewCube.size_for().y + 26.0
-	over_model.add_child(compare)
-	versions.compare = func(version: ModelVersions.Version) -> void: compare.open_with(version)
+	# Versions…, Compare with…, Pattern…, Send feedback… and Find a command
+	# are made as they are first asked for ([member versions] and the rest).
 	# A save is of the model it was made of.
 	for replaced: Signal in [bar.started_new, bar.cleared]:
-		replaced.connect(func() -> void: compare.close(false))
-	bar.opened.connect(func(_n: int) -> void: compare.close(false))
-
-	pattern_dialog = PatternDialog.new()
-	pattern_dialog.builder = builder
-	pattern_dialog.world = world
-	pattern_dialog.library = library
-	pattern_dialog.say = bar.say
-	pattern_dialog.edited = func() -> void: verbs.edited.call()
-	pattern_dialog.pattern.builder = builder
-	pattern_dialog.pattern.world = world
-	pattern_dialog.pattern.library = library
-	# Its copies are drawn in the model's world, not the dialog's window.
-	add_child(pattern_dialog.pattern)
-	add_child(pattern_dialog)
-
-	feedback = FeedbackDialog.new()
-	feedback.store = store
-	feedback.world = world
-	feedback.library = library
-	add_child(feedback)
+		replaced.connect(func() -> void:
+			if _compare != null:
+				_compare.close(false))
+	bar.opened.connect(func(_n: int) -> void:
+		if _compare != null:
+			_compare.close(false))
 	model_area = over_model
-	palette = CommandPalette.new()
-	palette.shell = self
-	add_child(palette)
 
 	_about = AcceptDialog.new()
 	_about.title = "About Brickworks"
@@ -462,7 +461,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	_about_text.custom_minimum_size = Vector2(380, 0)
 	_about_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	about_column.add_child(_about_text)
-	about_column.add_child(_credits())
+	# Whose work is in it (Credits), added as About first shows.
+	_about_column = about_column
 	_about_marks = Label.new()
 	_about_marks.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_about_marks.add_theme_font_size_override("font_size", 12)
@@ -1271,8 +1271,8 @@ func _define() -> void:
 	_add("stress", "Stress", 0, func() -> void:
 		# The two draw with one layer (BrickWorld.set_stress): Stress, asked
 		# for while comparing, takes over where the comparison is.
-		if compare.is_open():
-			compare.close(false)
+		if _compare != null and _compare.is_open():
+			_compare.close(false)
 			stress.set_on(true)
 			return
 		stress.set_on(not stress.on),
@@ -2053,6 +2053,9 @@ func _show_feedback() -> void:
 
 
 func _show_about() -> void:
+	if _about_column.find_child("credits", false, false) == null:
+		_about_column.add_child(_credits())
+		_about_column.move_child(_about_marks, -1)
 	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, built by hand"
 		+ (" or with the assistant" if assistant_shown else "")
 		+ ", on the web or on your own computer.\n\n%s") % [
@@ -2101,7 +2104,7 @@ func _credits() -> VBoxContainer:
 	head.add_theme_font_size_override("font_size", 12)
 	head.modulate = Color(1, 1, 1, 0.75)
 	list.add_child(head)
-	for one: Dictionary in Credits.LIST:
+	for one: Dictionary in Later.script(&"Credits").LIST:
 		var id: String = one["id"]
 		var entry := VBoxContainer.new()
 		entry.name = "credit_" + id
@@ -2152,10 +2155,11 @@ func _read_licence(id: String) -> void:
 		_licence.add_child(_licence_text)
 		# Over About, which holds the keys while it shows.
 		_about.add_child(_licence)
-	var one: Dictionary = Credits.find(id)
+	var credits: GDScript = Later.script(&"Credits")
+	var one: Dictionary = credits.find(id)
 	_licence.title = str(one["full"])
 	_licence_text.accessibility_name = str(one["full"])
-	_licence_text.text = Credits.full_text(id)
+	_licence_text.text = credits.full_text(id)
 	_licence_text.set_caret_line(0)
 	_licence_text.scroll_vertical = 0
 	_licence.popup_centered()
@@ -3213,6 +3217,51 @@ func section_target() -> String:
 	return found
 
 
+## File, Versions…, made the first time it is asked for ([member versions]).
+func _make_versions() -> void:
+	_versions = Later.make(&"VersionsDialog")
+	_versions.store = store
+	_versions.bar = bar
+	_versions.compare = func(version: ModelVersions.Version) -> void: compare.open_with(version)
+	add_child(_versions)
+
+
+## Compare with a save: its panel where View, Stress's is, the two never open
+## at once (_define's stress). Made the first time it is asked for.
+func _make_compare() -> void:
+	var view: GDScript = Later.script(&"CompareView")
+	_compare = view.new()
+	_compare.world = world
+	_compare.library = library
+	_compare.store = store
+	_compare.camera = camera
+	_compare.assemblies = assemblies
+	_compare.stress = stress
+	_compare.say = bar.say
+	_compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_compare.offset_right = -14.0
+	_compare.offset_left = -14.0 - view.WIDE
+	_compare.offset_top = ViewCube.size_for().y + 26.0
+	model_area.add_child(_compare)
+
+
+## Edit, Pattern…, made the first time it is asked for, with the copies it
+## draws in the model's world rather than the dialog's window.
+func _make_pattern_dialog() -> void:
+	_pattern_dialog = Later.make(&"PatternDialog")
+	_pattern_dialog.builder = builder
+	_pattern_dialog.world = world
+	_pattern_dialog.library = library
+	_pattern_dialog.say = bar.say
+	_pattern_dialog.edited = func() -> void: verbs.edited.call()
+	_pattern_dialog.pattern.builder = builder
+	_pattern_dialog.pattern.world = world
+	_pattern_dialog.pattern.library = library
+	add_child(_pattern_dialog.pattern)
+	add_child(_pattern_dialog)
+
+
 ## The library and My collection placed for a finger as Main's panels are,
 ## once the app is dressed for one (Main._dress_for_phone) and as each is made.
 func place_dialogs() -> void:
@@ -3251,12 +3300,12 @@ func controls_by_name() -> Dictionary:
 		out.merge(see_inside.controls_by_name())
 	if stress != null and stress.panel != null:
 		out.merge(stress.panel.controls_by_name())
-	if versions != null:
-		out.merge(versions.controls_by_name())
-	if compare != null:
-		out.merge(compare.controls_by_name())
-	if palette != null:
-		out.merge(palette.controls_by_name())
+	if _versions != null:
+		out.merge(_versions.controls_by_name())
+	if _compare != null:
+		out.merge(_compare.controls_by_name())
+	if _palette != null:
+		out.merge(_palette.controls_by_name())
 	if first_build != null:
 		out.merge(first_build.controls_by_name())
 	# Save as's question, for tools/web/dialogs_flow.mjs.
@@ -3264,12 +3313,12 @@ func controls_by_name() -> Dictionary:
 		out["save_as_name"] = _save_as_name
 		out["save_as_ok"] = _save_as.get_ok_button()
 		out["save_as_cancel"] = _save_as.get_cancel_button()
-	if feedback != null:
-		out.merge(feedback.controls_by_name())
+	if _feedback != null:
+		out.merge(_feedback.controls_by_name())
 	# About's links to the licences in full, and the licence open.
 	if _about != null and _about.visible:
 		out["about_ok"] = _about.get_ok_button()
-		for one: Dictionary in Credits.LIST:
+		for one: Dictionary in Later.script(&"Credits").LIST:
 			var read: Node = _about.find_child("read_" + str(one["id"]), true, false)
 			if read != null:
 				out["about_" + read.name] = read

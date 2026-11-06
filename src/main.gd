@@ -214,7 +214,9 @@ var _log: RecentLog
 var _share_view: Control
 ## Build it, in the viewer: the step player, the pages it shows, the line
 ## round each page's new parts, and the page it is on (_enter_build).
-var _build_mode: BuildMode
+## A BuildMode (src/ui/build_mode.gd), a Later class: made as a shared
+## model's viewer opens, which the editor's first screen never is.
+var _build_mode: Control
 ## The booklet's page laid out by hand (Build, Booklet page, Lay out the page).
 var _page_editor: Control:
 	get:
@@ -511,8 +513,9 @@ var _exports: Node:
 			_make_exports()
 		return _exports_made
 var _exports_made: Node = null
-## The ruler: src/ui/measure.gd.
-var _measure: Measure
+## The ruler: src/ui/measure.gd, a Later class, made as it is first taken
+## out (_make_measure); null until then.
+var _measure: Node3D = null
 ## Laying a hose, a tube or a chain: src/ui/flex_tool.gd.
 var _flex: FlexTool
 ## The assistant (src/ai/assistant.gd, a Later class): made the first time
@@ -869,7 +872,7 @@ func _tell_page() -> void:
 		"app_menu": _open_rows(_bar.mark.get_popup()) if _bar != null and _bar.mark != null else [],
 		# Find a command, open or not, what is typed and its rows
 		# (tools/web/palette_flow.mjs).
-		"palette": _shell.palette.page_state() if _shell != null and _shell.palette != null else {},
+		"palette": _shell._palette.page_state() if _shell != null and _shell._palette != null else {},
 		# Who made the model and on what terms, when it is someone else's
 		# (ModelStore.credit): tools/web/library_flow.mjs reads it.
 		"credit": _store.credit,
@@ -961,7 +964,9 @@ func _tell_page() -> void:
 		"joints": _joint_places(to_window, per_css),
 		# ...and Connect's stage, the points of the part in hand it offers on
 		# the page and the one picked (ConnectTool).
-		"connect": _verbs.connect_tool.page_state(to_window, per_css) if _verbs != null else {},
+		"connect": _verbs._connect_tool.page_state(to_window, per_css)
+			if _verbs != null and _verbs._connect_tool != null
+			else {"stage": "", "points": [], "chosen": ""},
 		"on_joint": _builder.is_on_joint(),
 		"can_place": _builder.can_place(),
 		# Where the ghost stands, for tools/web/idle_check.mjs to know the
@@ -993,7 +998,7 @@ func _tell_page() -> void:
 		"storage": {"state": StorageKeep.state(), "words": StorageKeep.words(),
 			"account": _account_panel.storage_words() if _account_panel != null else "",
 			"warning": _storage_offer.words() if _storage_offer != null else "",
-			"versions": _shell.versions.page_state() if _shell != null else {},
+			"versions": _shell._versions.page_state() if _shell != null and _shell._versions != null else {},
 			"title": _store.title},
 		# The models kept with the account, as the last look found them
 		# (CloudModels, tools/web/cloud_library_flow.mjs).
@@ -1004,7 +1009,7 @@ func _tell_page() -> void:
 		"room_offer": _full_offer.words() if _full_offer != null else "",
 		# Help, Send feedback…: what is chosen, ticked and said
 		# (FeedbackDialog, tools/web/feedback_flow.mjs).
-		"feedback": _shell.feedback.page_state() if _shell != null and _shell.feedback != null else {},
+		"feedback": _shell._feedback.page_state() if _shell != null and _shell._feedback != null else {},
 		# What came into the feed since it was last opened: the count on
 		# Account and what its panel says (tools/web/follows_flow.mjs).
 		"feed": {"count": _account_panel.feed_count if _account_panel != null else 0,
@@ -2798,7 +2803,7 @@ func _enter_view() -> void:
 				bottom -= floorf(below.get_combined_minimum_size().y)
 		return bottom - floorf(_steps.get_combined_minimum_size().y)
 	_share_view.loading()
-	_build_mode = BuildMode.new()
+	_build_mode = Later.make(&"BuildMode")
 	_build_mode.thumbnails = _thumbnails
 	$HUD.add_child(_build_mode)
 	_build_mode.next_wanted.connect(func() -> void: _build_go(_build_page + 1, true))
@@ -5246,20 +5251,8 @@ func _build_ui() -> void:
 	_bin.column = _stack
 	_counts = _shell.status.counts
 
-	# The ruler, and what it says, under the counts.
-	_measure = Measure.new()
-	_measure.lattice = _builder.lattice
-	_measure.camera = _camera
-	_measure.world = _world
-	_measure.library = _library
-	_measure.label = _viewport_label(13)
-	_measure.label.visible = false
-	_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_measure.label.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_measure.label.offset_top = 10.0
-	spacer.add_child(_measure.label)
-	add_child(_measure)
-	_verbs.measure = _measure
+	# The ruler, made as it is first taken out.
+	_verbs.make_measure = _make_measure
 
 	# Make, Hose, tube or chain…: src/ui/flex_tool.gd, its panel in the
 	# column beside the model's, as Simulate's is.
@@ -6119,6 +6112,26 @@ func _make_page_editor() -> void:
 ## four units thick, which at twelve points filled in every letter's
 ## counters: over the pale sky on an ordinary screen "62 bricks" was a
 ## grey smudge, and smaller than 1040 points across it could not be read.
+## The ruler, and what it says, under the counts: made the first time it is
+## taken out (EditVerbs.ruler).
+func _make_measure() -> Node3D:
+	if _measure == null:
+		_measure = Later.make(&"Measure")
+		_measure.lattice = _builder.lattice
+		_measure.camera = _camera
+		_measure.world = _world
+		_measure.library = _library
+		_measure.label = _viewport_label(13)
+		_measure.label.visible = false
+		_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_measure.label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_measure.label.offset_top = 10.0
+		_over_model.add_child(_measure.label)
+		add_child(_measure)
+		_verbs.measure = _measure
+	return _measure
+
+
 static func _viewport_label(size: int) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", size)

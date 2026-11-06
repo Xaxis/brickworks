@@ -50,13 +50,20 @@ var owned: Callable = func() -> Dictionary: return {}
 
 var _mesh: MeshFile
 var _picker: MeshFilePicker
-var _checker: Assistant
+## The assistant that checks what is laid (Assistant, a Later class).
+var _checker: Node
+## Brickify (a Later class), compiled on a worker the first time a model is
+## shown, with the assistant it lays with: 4.3 MB of code, 91 scripts. Named
+## here it was compiled as the panel opened, 2.0 s in one frame in a browser
+## (leaves, 2026-11-05). Null until it is in; [member _making] while it comes.
+var _maker: GDScript = null
+var _making: bool = false
 var _busy: bool = false
 var _stopped: bool = false
 ## The run on its worker, or -1.
 var _task: int = -1
-## What tells the run to stop, while one is going.
-var _progress: Brickify.Progress = null
+## What tells the run to stop, while one is going (Brickify.Progress).
+var _progress: RefCounted = null
 ## A model's bounds in its own units, stood up as chosen, and its longest side.
 var _box := AABB()
 var _longest: float = 1.0
@@ -89,7 +96,7 @@ var last_summary: String = ""
 ## The sub-assembly the last one went down as ("bunny#1"), its steps
 ## (BrickifySteps), and what the collection gave it (BrickifyStock.draw).
 var last_path: String = ""
-var last_steps: BrickifySteps.Plan = null
+var last_steps: RefCounted = null
 var last_stock: Dictionary = {}
 ## Down, and the panel showing what to do with it: the booklet, the lists.
 var _landed: bool = false
@@ -170,16 +177,16 @@ func outcome() -> String:
 ## them cannot be, or "".
 func choose(asked: Dictionary) -> String:
 	if asked.has("up"):
-		var up: int = Brickify.UPS.find(str(asked["up"]).to_upper())
+		var up: int = BrickifySize.UPS.find(str(asked["up"]).to_upper())
 		if up < 0:
-			return "up is one of %s" % ", ".join(Brickify.UPS)
+			return "up is one of %s" % ", ".join(BrickifySize.UPS)
 		_up.select(up)
 		_on_up_changed()
 	if asked.has("studs"):
 		var studs: int = int(asked["studs"])
-		if studs < Brickify.LEAST_STUDS or studs > Brickify.MOST_STUDS:
-			return "studs is %d to %d along its longest side" % [Brickify.LEAST_STUDS,
-				Brickify.MOST_STUDS]
+		if studs < BrickifySize.LEAST_STUDS or studs > BrickifySize.MOST_STUDS:
+			return "studs is %d to %d along its longest side" % [BrickifySize.LEAST_STUDS,
+				BrickifySize.MOST_STUDS]
 		set_studs(studs)
 	if asked.has("hollow"):
 		_hollow.button_pressed = bool(asked["hollow"])
@@ -191,7 +198,7 @@ func choose(asked: Dictionary) -> String:
 		var at: int = _one.get_item_index(int(asked["colour"]))
 		if at < 0:
 			return "a one-colour model is laid in one of %s" % ", ".join(
-				PackedStringArray(Brickify.PALETTE.map(func(code: int) -> String: return str(code))))
+				PackedStringArray(BrickifySize.PALETTE.map(func(code: int) -> String: return str(code))))
 		_one.select(at)
 		_colours.select(1)
 	if asked.has("colours"):
@@ -243,10 +250,10 @@ func _on_picked(bytes: PackedByteArray, file_name: String, extras: Dictionary) -
 func show_for(mesh: MeshFile) -> void:
 	_mesh = mesh
 	_title.text = "Brickify “%s”" % mesh.name
-	_about.text = "%s triangles%s" % [Brickify._comma(mesh.triangle_count()),
+	_about.text = "%s triangles%s" % [Working.comma(mesh.triangle_count()),
 		", in colour" if mesh.coloured else ", no colour of its own"]
 	_syncing = true
-	_up.select(maxi(0, Brickify.UPS.find(mesh.up)))
+	_up.select(maxi(0, BrickifySize.UPS.find(mesh.up)))
 	_colours.select(0 if mesh.coloured else 1)
 	_syncing = false
 	_status.text = ""
@@ -257,7 +264,27 @@ func show_for(mesh: MeshFile) -> void:
 	_on_up_changed()
 	_on_colours_changed()
 	visible = true
-	# While the size is chosen, the parts are on their way.
+	# While the size is chosen, Brickify compiles on a worker and the parts
+	# are on their way.
+	_prefetch()
+
+
+## Brickify's script, compiled on a worker the first time while the frames
+## go on ([member _maker]; [param job]'s bar, when there is one).
+func _brickify_script(job: Working.Job = null) -> GDScript:
+	while _making:
+		await get_tree().process_frame
+	if _maker == null:
+		_making = true
+		_maker = await Later.script_in_background(&"Brickify", job)
+		_making = false
+	return _maker
+
+
+## The parts Brickify may lay asked for, once it is compiled. A coroutine
+## nothing waits for.
+func _prefetch() -> void:
+	await _brickify_script()
 	_fetch_parts()
 
 
@@ -321,8 +348,8 @@ func _build() -> void:
 	var size_row := _row(column, "Size")
 	_size = HSlider.new()
 	_size.accessibility_name = "Size"
-	_size.min_value = Brickify.LEAST_STUDS
-	_size.max_value = Brickify.MOST_STUDS
+	_size.min_value = BrickifySize.LEAST_STUDS
+	_size.max_value = BrickifySize.MOST_STUDS
 	_size.step = 1
 	_size.value = 24
 	_size.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -330,8 +357,8 @@ func _build() -> void:
 	_size.tooltip_text = "Studs along its longest side, its height counted in studs too"
 	size_row.add_child(_size)
 	_studs = SpinBox.new()
-	_studs.min_value = Brickify.LEAST_STUDS
-	_studs.max_value = Brickify.MOST_STUDS
+	_studs.min_value = BrickifySize.LEAST_STUDS
+	_studs.max_value = BrickifySize.MOST_STUDS
 	_studs.value = 24
 	_studs.suffix = "studs"
 	_studs.custom_minimum_size = Vector2(104, 0)
@@ -520,7 +547,7 @@ func _tell_owned() -> void:
 	_from_owned.disabled = pieces == 0
 	if pieces == 0:
 		_from_owned.button_pressed = false
-	_from_owned.text = ("Lay it from my collection (%s pieces)" % Brickify._comma(pieces)) \
+	_from_owned.text = ("Lay it from my collection (%s pieces)" % Working.comma(pieces)) \
 		if pieces > 0 else "Lay it from my collection (none kept yet: My collection)"
 
 
@@ -601,10 +628,11 @@ func _process(delta: float) -> void:
 # -- the choices --------------------------------------------------------------
 
 
-func options() -> Brickify.Options:
-	var out := Brickify.Options.new()
+## The choices as a Brickify.Options, Brickify compiled already.
+func options() -> RefCounted:
+	var out: RefCounted = Later.script(&"Brickify").Options.new()
 	out.studs = int(_studs.value)
-	out.up = Brickify.UPS[maxi(0, _up.selected)]
+	out.up = BrickifySize.UPS[maxi(0, _up.selected)]
 	out.hollow = _hollow.button_pressed
 	out.stand = _stand.button_pressed
 	out.smooth = _surface.selected == 0
@@ -638,8 +666,8 @@ func _set_studs(studs: int) -> void:
 func _on_scale_changed(mm: float) -> void:
 	if _syncing:
 		return
-	var studs: int = clampi(roundi(mm * _longest / STUD_MM), Brickify.LEAST_STUDS,
-		Brickify.MOST_STUDS)
+	var studs: int = clampi(roundi(mm * _longest / STUD_MM), BrickifySize.LEAST_STUDS,
+		BrickifySize.MOST_STUDS)
 	_syncing = true
 	_size.value = studs
 	_studs.value = studs
@@ -650,8 +678,8 @@ func _on_scale_changed(mm: float) -> void:
 func _on_up_changed() -> void:
 	if _mesh == null:
 		return
-	var turn: Basis = Brickify.turn_for(Brickify.UPS[maxi(0, _up.selected)])
-	_box = Brickify._turned_bounds(_mesh, turn)
+	var turn: Basis = BrickifySize.turn_for(BrickifySize.UPS[maxi(0, _up.selected)])
+	_box = BrickifySize.turned_bounds(_mesh, turn)
 	_longest = maxf(_box.size.x, maxf(_box.size.y, _box.size.z))
 	_place_model(turn, _box)
 	_set_studs(int(_studs.value))
@@ -659,14 +687,14 @@ func _on_up_changed() -> void:
 
 func _on_colours_changed() -> void:
 	if _one.item_count == 0 and library != null:
-		for code: int in Brickify.PALETTE:
+		for code: int in BrickifySize.PALETTE:
 			var colour: PartLibrary.BrickColor = library.color(code)
 			if colour == null:
 				continue
 			var swatch := Image.create(14, 14, false, Image.FORMAT_RGBA8)
 			swatch.fill(colour.rgb)
 			_one.add_icon_item(ImageTexture.create_from_image(swatch), colour.name, code)
-		_one.select(maxi(0, Brickify.PALETTE.find(71)))
+		_one.select(maxi(0, BrickifySize.PALETTE.find(71)))
 	_limit.visible = _colours.selected == 2
 	_one.visible = _colours.selected == 1
 
@@ -674,7 +702,7 @@ func _on_colours_changed() -> void:
 func _describe() -> void:
 	if _mesh == null:
 		return
-	var size: Vector3i = Brickify.size_in(_box, int(_studs.value))
+	var size: Vector3i = BrickifySize.size_in(_box, int(_studs.value))
 	_detail.text = "%d × %d studs and %d bricks tall (%d plates) — about %.0f × %.0f × %.0f cm" % [
 		size.x, size.z, ceili(size.y / 3.0), size.y, size.x * STUD_MM / 10.0,
 		size.z * STUD_MM / 10.0, size.y * PLATE_MM / 10.0]
@@ -744,7 +772,6 @@ func brickify(job: Working.Job = null) -> void:
 	_stopped = false
 	last_summary = ""
 	_set_enabled(false)
-	var choice: Brickify.Options = options()
 	var began: int = Time.get_ticks_msec()
 	# Said in the status bar too, as every slow thing is (Working), with its
 	# Cancel the same as the panel's.
@@ -756,34 +783,40 @@ func brickify(job: Working.Job = null) -> void:
 	job.cancel_wanted.connect(_stop)
 	_status.text = "getting the parts ready…"
 	await job.shown()
+	# Brickify, the assistant, and what the worker reads its steps and stock
+	# with, compiled on a worker under the bar the first time (Later).
+	var maker: GDScript = await _brickify_script(job)
+	await Later.script_in_background(&"BrickifySteps", job)
+	await Later.script_in_background(&"BrickifyStock", job)
+	var choice: RefCounted = options()
 	var missing: PackedStringArray = await _ensure_parts()
 	if _checker == null:
-		_checker = Assistant.new()
+		_checker = Later.make(&"Assistant")
 	_checker.library = library
 	_checker.builder = builder
 	_checker.world = world
 	job.say("Brickifying %s: getting its shapes ready…" % _mesh.name)
 	# One model laid at a time: a design's sculpt may be (Brickify.begin_laying).
-	await Brickify.begin_laying(self)
-	await Brickify.warm(library, job)
-	var progress := Brickify.Progress.new()
+	await maker.begin_laying(self)
+	await maker.warm(library, job)
+	var progress: RefCounted = maker.Progress.new()
 	_progress = progress
 	if _stopped:
 		progress.stop()
 	var result: Dictionary = {}
 	var mesh: MeshFile = _mesh
-	var checker: Assistant = _checker
+	var checker: Node = _checker
 	var on_hand: Dictionary = owned.call() if _from_owned.button_pressed else {}
 	if OS.has_feature("nothreads"):
 		await get_tree().process_frame
-		result = Brickify.build(mesh, choice, checker, progress)
+		result = maker.build(mesh, choice, checker, progress)
 		finish(result, on_hand, checker, progress)
 	else:
 		# A worker never loads a part, and the library keeps new arrivals
 		# aside while one reads it (PartLibrary.begin_reading).
 		library.begin_reading()
 		var task: int = WorkerTasks.add(func() -> void:
-			result.merge(Brickify.build(mesh, choice, checker, progress))
+			result.merge(maker.build(mesh, choice, checker, progress))
 			finish(result, on_hand, checker, progress), false, "brickify")
 		_task = task
 		# Stopped, rather than the window held until it ends, when the library
@@ -797,7 +830,7 @@ func brickify(job: Working.Job = null) -> void:
 		WorkerTasks.collect(task)
 		_task = -1
 		library.end_reading(task)
-	Brickify.end_laying(self)
+	maker.end_laying(self)
 	_progress = null
 	if _stopped:
 		_busy = false
@@ -817,12 +850,10 @@ func brickify(job: Working.Job = null) -> void:
 			set_studs(keeps)
 			_status.text += ". The size is set to %d studs: press Brickify to lay it." % keeps
 		return
-	_status.text = "putting %s parts down…" % Brickify._comma(
-		(result["model"] as Assistant.Model).placements.size())
+	_status.text = "putting %s parts down…" % Working.comma(result["model"].placements.size())
 	# Past stopping: what is going down goes down whole, as one undo.
 	job.can_cancel = false
-	job.say("Putting %s parts down…" % Brickify._comma(
-		(result["model"] as Assistant.Model).placements.size()))
+	job.say("Putting %s parts down…" % Working.comma(result["model"].placements.size()))
 	_put_job = job
 	var ids: PackedInt64Array = await _put_down(result, mesh.name)
 	# What follows it down (the camera, the model told it changed) in a frame
@@ -856,20 +887,23 @@ func _set_enabled(on: bool) -> void:
 ## What follows the build on its worker: laid from the collection when there
 ## is one to lay from ([param on_hand], BrickifyStock), then its own steps
 ## (BrickifySteps), into [param result] as "stock" and "steps".
-static func finish(result: Dictionary, on_hand: Dictionary, checker: Assistant,
-		progress: Brickify.Progress = null) -> void:
+##
+## Brickify's classes are named by name (Later): compiled already, since a
+## run is laid only once they are (brickify).
+static func finish(result: Dictionary, on_hand: Dictionary, checker: Node,
+		progress: RefCounted = null) -> void:
 	if not result.has("model") or (progress != null and progress.stopped()):
 		return
-	var model: Assistant.Model = result["model"]
+	var model: RefCounted = result["model"]
 	if not on_hand.is_empty():
 		if progress != null:
 			progress.say("laying it from your collection")
-		result["stock"] = BrickifyStock.draw(model, on_hand, checker)
+		result["stock"] = Later.script(&"BrickifyStock").draw(model, on_hand, checker)
 	if progress != null and progress.stopped():
 		return
 	if progress != null:
 		progress.say("working out its steps, a course at a time")
-	result["steps"] = BrickifySteps.of(model, checker)
+	result["steps"] = Later.script(&"BrickifySteps").of(model, checker)
 
 
 ## Every part Brickify may lay, here before the worker starts: on the web
@@ -900,7 +934,7 @@ func _fetch_parts() -> PackedStringArray:
 	var out := PackedStringArray()
 	if library == null:
 		return out
-	for id: String in Brickify.parts_needed(library):
+	for id: String in _maker.parts_needed(library):
 		if not library.is_resident(id):
 			library.mesh_for(id)
 		if not library.is_resident(id) and library.parts.has(id):
@@ -919,8 +953,8 @@ func _fetch_parts() -> PackedStringArray:
 ## one frame, two seconds of a browser's (progress_check, 2026-10-15).
 func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 	placing.emit(name)
-	var model: Assistant.Model = result["model"]
-	var grid: Brickify.Grid = result["grid"]
+	var model: RefCounted = result["model"]
+	var grid: RefCounted = result["grid"]
 	var top: String = assemblies.unused_name(name) if assemblies != null else name
 	var path: String = top + "#1"
 	last_path = path
@@ -928,7 +962,7 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 	# its course's, and each panel built on the side a sub-assembly of its
 	# own, named after the build so that no two builds' panels are taken for
 	# copies of one another (Assemblies.after_edit).
-	var plan: BrickifySteps.Plan = result.get("steps")
+	var plan: RefCounted = result.get("steps")
 	if plan != null and plan.step.size() != model.placements.size():
 		plan = null
 	var panel_paths := PackedStringArray()
@@ -944,7 +978,7 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 	var pace := FramePace.new()
 	var adds: Array = []
 	for index: int in model.placements.size():
-		var placement: Assistant.Placement = model.placements[index]
+		var placement: RefCounted = model.placements[index]
 		if pace.due():
 			await pace.next()
 		var part: Lbm.PartMesh = library.mesh_for(placement.part)
@@ -1003,7 +1037,7 @@ func _put_down(result: Dictionary, name: String) -> PackedInt64Array:
 
 ## Where its corner goes, in studs: in the middle of an empty baseplate, or
 ## beside what is built, two studs clear of it.
-func _clear_spot(grid: Brickify.Grid) -> Vector2i:
+func _clear_spot(grid: RefCounted) -> Vector2i:
 	var built := AABB()
 	var first: bool = true
 	for brick: BrickWorld.Brick in world.bricks():
@@ -1024,15 +1058,15 @@ func _clear_spot(grid: Brickify.Grid) -> Vector2i:
 ## What the panel says once it is down, in a few lines: the status bar has
 ## the whole of it.
 static func _landed_words(result: Dictionary) -> String:
-	var model: Assistant.Model = result["model"]
-	var lines := PackedStringArray(["%s parts, %s." % [Brickify._comma(model.placements.size()),
-		Brickify.said(result).get_slice(";", 0)]])
-	var plan: BrickifySteps.Plan = result.get("steps")
+	var model: RefCounted = result["model"]
+	var lines := PackedStringArray(["%s parts, %s." % [Working.comma(model.placements.size()),
+		Later.script(&"Brickify").said(result).get_slice(";", 0)]])
+	var plan: RefCounted = result.get("steps")
 	if plan != null:
 		lines.append(plan.said().left(1).to_upper() + plan.said().substr(1) + ".")
 	var stock: Dictionary = result.get("stock", {})
 	if not stock.is_empty():
-		var said: String = BrickifyStock.said(stock)
+		var said: String = Later.script(&"BrickifyStock").said(stock)
 		lines.append(said.left(1).to_upper() + said.substr(1) + ".")
 	return "
 ".join(lines)
@@ -1040,19 +1074,19 @@ static func _landed_words(result: Dictionary) -> String:
 
 func _summary(result: Dictionary, name: String, ms: int,
 		missing: PackedStringArray = PackedStringArray()) -> String:
-	var model: Assistant.Model = result["model"]
+	var model: RefCounted = result["model"]
 	var colours: Dictionary = {}
-	for placement: Assistant.Placement in model.placements:
+	for placement: RefCounted in model.placements:
 		colours[placement.color] = true
 	# Weighed before it says buildable, and saying what holds it, whether it
 	# needed a stand, and what went (Brickify.said).
 	var words: String = "brickified %s: %s parts in %d colour%s, %s" % [name,
-		Brickify._comma(model.placements.size()), colours.size(),
-		"" if colours.size() == 1 else "s", Brickify.said(result)]
+		Working.comma(model.placements.size()), colours.size(),
+		"" if colours.size() == 1 else "s", Later.script(&"Brickify").said(result)]
 	var stock: Dictionary = result.get("stock", {})
 	if not stock.is_empty():
-		words += "; " + BrickifyStock.said(stock)
-	var plan: BrickifySteps.Plan = result.get("steps")
+		words += "; " + Later.script(&"BrickifyStock").said(stock)
+	var plan: RefCounted = result.get("steps")
 	if plan != null:
 		words += "; " + plan.said()
 	if not missing.is_empty():

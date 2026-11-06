@@ -315,12 +315,16 @@ func mirror() -> int:
 	return count
 
 
-## The ruler (Measure), when the app has one.
-var measure: Measure
+## The ruler (Measure, a Later class), once it has been taken out.
+var measure: Node3D = null
+## Makes [member measure] the first time it is taken out, when the app has a ruler.
+var make_measure: Callable = Callable()
 
 
 ## Take the ruler out, or put it away.
 func ruler() -> void:
+	if measure == null and make_measure.is_valid():
+		make_measure.call()
 	if measure == null:
 		return
 	if measure.toggle():
@@ -549,12 +553,12 @@ func select_by(kind: String) -> int:
 			if seeds.is_empty():
 				say.call("select a brick first, then choose what to match")
 				return 0
-			found = SelectBy.matching_any(kind, world, seeds, scenery)
+			found = Later.script(&"SelectBy").matching_any(kind, world, seeds, scenery)
 		"submodel":
 			if seeds.is_empty():
 				say.call("select a brick of the sub-model first")
 				return 0
-			found = SelectBy.submodel(world, seeds, scenery)
+			found = Later.script(&"SelectBy").submodel(world, seeds, scenery)
 			if found.is_empty():
 				say.call(Keymap.filled("that is not in a sub-model — {make_submodel|makes one}"))
 				return 0
@@ -562,11 +566,11 @@ func select_by(kind: String) -> int:
 			if seeds.is_empty():
 				say.call("select a brick first, then take everything joined to it")
 				return 0
-			found = SelectBy.connected(world, builder.lattice, seeds, scenery)
+			found = Later.script(&"SelectBy").connected(world, builder.lattice, seeds, scenery)
 		"inverse":
-			found = SelectBy.inverse(world, builder.selection, scenery)
+			found = Later.script(&"SelectBy").inverse(world, builder.selection, scenery)
 		"all":
-			found = SelectBy.inverse(world, {}, scenery)
+			found = Later.script(&"SelectBy").inverse(world, {}, scenery)
 		"none":
 			builder.clear_selection()
 			return 0
@@ -596,7 +600,7 @@ func select_connected() -> int:
 	var job: Working.Job = Working.begin("Finding everything joined to %s…"
 		% _parts(seeds.size()), 0, true)
 	await job.shown()
-	var found: Array = await SelectBy.connected_paced(world, builder.lattice, seeds,
+	var found: Array = await Later.script(&"SelectBy").connected_paced(world, builder.lattice, seeds,
 		scenery, job)
 	job.end()
 	if job.cancelled:
@@ -1300,8 +1304,15 @@ func click(at: Vector2, shift: bool) -> bool:
 
 ## The field a number is typed into, at the pointer (TypedEntry).
 var typed: TypedEntry
-## A point on the part, then the point it goes on (ConnectTool).
-var connect_tool: ConnectTool
+## A point on the part, then the point it goes on (ConnectTool, a Later
+## class), made the first time Connect is chosen: null in
+## [member _connect_tool] until then.
+var connect_tool: Node:
+	get:
+		if _connect_tool == null and builder != null:
+			_make_connect_tool()
+		return _connect_tool
+var _connect_tool: Node = null
 ## Rings and arrows on the selection, with the Rotate and Move tools
 ## (Handles), made the first time either is chosen (Later): null until then.
 var handles: Node = null
@@ -1340,7 +1351,8 @@ func _ready() -> void:
 			return handles.typed_preview(what)
 		if what.has("copies"):
 			return _copies_shown(what)
-		pattern.hide_copies()
+		if _pattern != null:
+			_pattern.hide_copies()
 		return _typed_preview(what)
 	typed.apply = func(what: Dictionary) -> bool:
 		if _handles_typing():
@@ -1350,28 +1362,14 @@ func _ready() -> void:
 		if _handles_typing():
 			handles.typed_cancel()
 			return
-		pattern.hide_copies()
+		if _pattern != null:
+			_pattern.hide_copies()
 		_typed_cancel()
 	typed.still_held = func() -> bool:
 		return handles.is_dragging() if _handles_typing() else builder.is_pinned()
 	typed.clear_of = func() -> Rect2:
 		return handles.on_screen() if _handles_typing() else _hand_on_screen()
 	layer.add_child(typed)
-	connect_tool = ConnectTool.new()
-	connect_tool.builder = builder
-	connect_tool.world = world
-	connect_tool.library = library
-	connect_tool.camera = camera
-	connect_tool.say = func(line: String) -> void: say.call(line)
-	connect_tool.edited = func() -> void: edited.call()
-	connect_tool.aim_again = func() -> void: aim_again.call()
-	add_child(connect_tool)
-	pattern = Pattern.new()
-	pattern.builder = builder
-	pattern.world = world
-	pattern.library = library
-	pattern.keep = typed.is_open
-	add_child(pattern)
 	builder.placed.connect(func(_id: int, _part: String) -> void:
 		# A click put down what was being typed: the number is spent.
 		if typed.is_open():
@@ -1416,10 +1414,23 @@ func _pointer() -> Vector2:
 ## the number standing for them: in hand, what was held before them; on the
 ## model, the turn undone and the selection taken into hand where it was,
 ## so what is typed shows in hand and is put down with the turn's undo.
+## Connect's tool, as it is first chosen ([member connect_tool]).
+func _make_connect_tool() -> void:
+	_connect_tool = Later.make(&"ConnectTool")
+	_connect_tool.builder = builder
+	_connect_tool.world = world
+	_connect_tool.library = library
+	_connect_tool.camera = camera
+	_connect_tool.say = func(line: String) -> void: say.call(line)
+	_connect_tool.edited = func() -> void: edited.call()
+	_connect_tool.aim_again = func() -> void: aim_again.call()
+	add_child(_connect_tool)
+
+
 ## False when there is nothing to type for.
 func _begin_typing() -> bool:
 	if builder.is_holding_figure() or (measure != null and measure.active) \
-			or connect_tool.stage == "point":
+			or (_connect_tool != null and _connect_tool.stage == "point"):
 		return false
 	var armed: Dictionary = _armed
 	_armed = {}
@@ -1504,8 +1515,19 @@ func _typed_cancel() -> void:
 # -- "5x" and "/5" after a copy (Pattern) -----------------------------------------
 
 
-## Copies laid out at once, shown first (Pattern).
-var pattern: Pattern
+## Copies laid out at once, shown first (Pattern, a Later class), made the
+## first time a copy is put down: null in [member _pattern] until then.
+var pattern: Node:
+	get:
+		if _pattern == null and builder != null:
+			_pattern = Later.make(&"Pattern")
+			_pattern.builder = builder
+			_pattern.world = world
+			_pattern.library = library
+			_pattern.keep = typed.is_open
+			add_child(_pattern)
+		return _pattern
+var _pattern: Node = null
 ## The copy a clone or Ctrl-D last put down, for "5x" or "/5" typed next:
 ## {ids: its parts, at: where they stand, step: the move from where it was
 ## copied from (the original, or the copy put down before it), depth: the
@@ -1531,7 +1553,7 @@ func _note_copy() -> void:
 		for item: Dictionary in builder.carrying.items:
 			before.append(Transform3D(Basis.IDENTITY, item.get("pivot", Vector3.ZERO))
 				* (item["at"] as Transform3D))
-	var step: Variant = Pattern.step_between(before, now)
+	var step: Variant = Later.script(&"Pattern").step_between(before, now)
 	_copied = {} if step == null else {"ids": ids, "at": now, "step": step,
 		"depth": builder.history_depth()}
 
@@ -1544,7 +1566,7 @@ func _copies_read(text: String) -> Dictionary:
 	for brick_id: int in _copied["ids"]:
 		if world.get_brick(brick_id) == null:
 			return {}
-	return Pattern.read(text, _copied["step"])
+	return Later.script(&"Pattern").read(text, _copied["step"])
 
 
 ## The copies "5x" or "/5" makes, from the copy put down last.
@@ -1555,10 +1577,10 @@ func _copies_moves(what: Dictionary) -> Array[Transform3D]:
 		# the copy, which stands a whole step on.
 		var back: Transform3D = step.affine_inverse()
 		var out: Array[Transform3D] = []
-		for move: Transform3D in Pattern.divided(step, int(what["copies"]) + 1):
+		for move: Transform3D in Later.script(&"Pattern").divided(step, int(what["copies"]) + 1):
 			out.append(move * back)
 		return out
-	return Pattern.repeated(step, int(what["copies"]))
+	return Later.script(&"Pattern").repeated(step, int(what["copies"]))
 
 
 func _copies_shown(what: Dictionary) -> String:

@@ -568,7 +568,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	if compact:
 		return
 	# Counted up to a point: on a big model all of it is joined to all of it.
-	var joined: int = SelectBy.connected(shell.world, shell.builder.lattice,
+	var joined: int = Later.script(&"SelectBy").connected(shell.world, shell.builder.lattice,
 		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
 	var lines := PackedStringArray()
 	lines.append("Joined to %s" % ("nothing" if joined <= 0 else (

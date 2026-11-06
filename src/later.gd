@@ -97,6 +97,29 @@ const PATHS: Dictionary[StringName, String] = {
 	&"SvgText": "res://src/prints/svg_text.gd",
 	&"PictureFile": "res://src/prints/picture_file.gd",
 	&"Rays": "res://src/prints/rays.gd",
+	# The dialogs, each its menu: Versions…, Compare with…, Pattern…, Send
+	# feedback…, Find a command, About's credits, and Build it in a shared
+	# model's viewer. And the tools first chosen from a menu or a key: the
+	# ruler, Connect, Select connected or by colour, Mirror, and "5x" after
+	# a copy (leaves2, 2026-11-05).
+	&"VersionsDialog": "res://src/ui/versions_dialog.gd",
+	&"CompareView": "res://src/ui/compare_view.gd",
+	&"PatternDialog": "res://src/ui/pattern_dialog.gd",
+	&"FeedbackDialog": "res://src/ui/feedback_dialog.gd",
+	&"CommandPalette": "res://src/ui/command_palette.gd",
+	&"Credits": "res://src/ui/credits.gd",
+	&"BuildMode": "res://src/ui/build_mode.gd",
+	&"Measure": "res://src/ui/measure.gd",
+	&"ConnectTool": "res://src/ui/connect_tool.gd",
+	&"SelectBy": "res://src/assembly/select_by.gd",
+	&"Mirror": "res://src/assembly/mirror.gd",
+	&"Pattern": "res://src/assembly/pattern.gd",
+	# Bring in a 3D model: Brickify and what reads its steps and stock, which
+	# name the assistant, compiled on a worker as a model is shown or laid
+	# (BrickifyDialog), not as the panel opens.
+	&"Brickify": "res://src/assembly/brickify.gd",
+	&"BrickifySteps": "res://src/assembly/brickify_steps.gd",
+	&"BrickifyStock": "res://src/assembly/brickify_stock.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:

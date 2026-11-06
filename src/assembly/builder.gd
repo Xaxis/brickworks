@@ -1580,12 +1580,12 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 	var plan: Array = []
 	for brick: BrickWorld.Brick in bricks:
 		var part: String = brick.part_id
-		var other: String = Mirror.counterpart(library, part)
+		var other: String = Later.script(&"Mirror").counterpart(library, part)
 		if not other.is_empty() and library.mesh_for(other) != null:
 			part = other
 		# A part not swapped for its other hand is turned to look reflected
 		# by its own shape.
-		var at: Transform3D = _tidy(Mirror.reflected(brick.transform, axis, across,
+		var at: Transform3D = _tidy(Later.script(&"Mirror").reflected(brick.transform, axis, across,
 			library.mesh_for(part) if part == brick.part_id else null),
 			BrickLattice.is_square_to_grid(brick.transform.basis))
 		plan.append({"brick": brick, "part": part, "at": at})
