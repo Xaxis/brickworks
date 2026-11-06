@@ -24,15 +24,6 @@
 ##     hinge, hold the plate with a handle at their far end on one stud: it
 ##     turns on that stud, as a plate swung on one stud does, and is not
 ##     held there by clutch.
-##   the observatory of the third MCP walk hangs each quarter dome by its
-##     handle in two 1 x 1 clip plates, each on a 1 x 1 plate's stud: each
-##     sits on its stud, a joint, and none rests there for the dome it holds
-##     to lift it off (Bodies.rests): read so, the dome panel that opens
-##     carried a clip plate off its stud into the telescope's way.
-##   6534-1's driver sits with a leg on a stud of the car's bracket, and
-##     the other leg held in the car: the hips turn on the one line both
-##     legs hang on, so nothing lifts the car off that stud, and it is a
-##     joint, not a rest.
 extends SceneTree
 
 var _failures: int = 0
@@ -79,8 +70,6 @@ func _run() -> void:
 	await _tow_truck()
 	await _pivot_plate()
 	await _swung()
-	await _clips_on_studs()
-	await _driver_on_a_stud()
 	if _failures == 0:
 		print("seated: a part seated in another joins, side by side does not, studs into a part "
 			+ "turned to them hold only where it takes them, and one so taken turns")
@@ -334,57 +323,6 @@ func _swung() -> void:
 		str(other_kinds) if not other_kinds.is_empty() else "no other"],
 		turns.size() >= 4 and other_kinds.is_empty())
 	_check("  and none is held by it (held by studs: %s)" % str(held), held.is_empty())
-
-
-## The observatory's quarter domes, each by its bottom handle in two 1 x 1
-## clip plates on 1 x 1 plates' studs. A clip plate sits on its stud whole
-## (one socket): it is built there, and no dome it holds lifts it off. Read
-## as Grab reads them (Bodies), each is joined to its stud's plate and none
-## is a rest; the three domes the top holds close their loops as built.
-func _clips_on_studs() -> void:
-	print("the observatory (tests/fixtures/mcpwalk3):")
-	if not await _open("res://tests/fixtures/mcpwalk3/small-observatory.ldr"):
-		return
-	var bodies: Bodies = Bodies.read(_world, _library, _builder.lattice, _store.scenery, _builder.locked)
-	var clips: Dictionary = _ids_set(_of("61252"))
-	var plates: Dictionary = _ids_set(_of("3024"))
-	var on_studs: int = 0
-	for link: Bodies.Link in bodies.links:
-		for pair: Array in link.pairs:
-			if link.kind == "stud" and (clips.has(int(pair[0])) and plates.has(int(pair[1]))
-					or clips.has(int(pair[1])) and plates.has(int(pair[0]))):
-				on_studs += 1
-	var rested: PackedStringArray = []
-	for one: Array in bodies.rests:
-		for pair: Array in (one[0] as Bodies.Link).pairs:
-			rested.append("%s with %s" % [_name(int(pair[0])), _name(int(pair[1]))])
-	_check("the domes' clip plates sit on their plates' studs, each a joint (%d of 8)" % on_studs, on_studs == 8)
-	_check("  and none is a rest a dome lifts it off (%s)" % (", ".join(rested) if not rested.is_empty()
-		else "none"), rested.is_empty())
-	_check("  the domes the top holds close their loops as built (%d)" % bodies.closing.size(),
-		bodies.closing.size() == 7)
-
-
-## 6534-1's driver: the left leg (3817) on a stud of the car's bracket
-## (4732), the right leg held in the car, the hips between them on one
-## line. The hip the car holds would lift the car off the left leg's stud
-## only if the hips were held to that leg off the line; on it, the hips
-## turn, so the stud stays a joint (Bodies._reaches_without).
-func _driver_on_a_stud() -> void:
-	print("6534-1:")
-	if not await _open("res://vendor/omr/files/6534-1.mpd"):
-		return
-	var bodies: Bodies = Bodies.read(_world, _library, _builder.lattice, _store.scenery, _builder.locked)
-	var legs: Dictionary = _ids_set(_of("3817"))
-	var brackets: Dictionary = _ids_set(_of("4732"))
-	var joined: int = 0
-	for link: Bodies.Link in bodies.links:
-		for pair: Array in link.pairs:
-			if link.kind == "stud" and (legs.has(int(pair[0])) and brackets.has(int(pair[1]))
-					or legs.has(int(pair[1])) and brackets.has(int(pair[0]))):
-				joined += 1
-	_check("the driver's left leg on a stud of the car's bracket is a joint (%d), not a rest (%d)"
-		% [joined, bodies.rests.size()], joined == 1 and bodies.rests.is_empty())
 
 
 ## What [param path] reads: its seated pairs (beside or not) and pivots.

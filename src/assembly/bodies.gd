@@ -830,22 +830,14 @@ const LIFTS_OFF := 0.9
 ## was locked in a loop with its turntable and its hinge, and Lift the boom,
 ## the motion the set is made for, was gone. Two or more studs into one
 ## part hold it, as before.
-## Only a part that lies on the stud ([method _lies_on]), on a hinge whose
-## far side is held to the stud's part off the hinge's line: on its line
-## only, that side turns and the part on the stud stays. The observatory of
-## the third MCP walk hangs each quarter dome by its handle in two 1 x 1
-## clip plates, each on a 1 x 1 plate's stud: read as resting there, a clip
-## plate was carried off its stud by the dome panel it holds, into the
-## telescope's way, and Extend the telescope stopped at 176° of 675°.
 func _lift_rests(info_of: Dictionary) -> void:
 	rests.clear()
 	for link: Link in links.duplicate():
 		if link.kind != "stud" or link.pairs.size() != 1:
 			continue
-		var part: int = _part_on_stud(link, info_of)
-		if part < 0 or not _lies_on(part):
+		var on: int = _body_on_stud(link, info_of)
+		if on < 0:
 			continue
-		var on: int = int(body_of[part])
 		var under: int = link.other(on)
 		for hinge: Link in touching.get(on, []):
 			if hinge == link or not hinge.turns or hinge.axis == Vector3.ZERO:
@@ -853,7 +845,7 @@ func _lift_rests(info_of: Dictionary) -> void:
 			var goes: Vector3 = hinge.axis.normalized().cross(link.point - hinge.point)
 			if goes.length() <= SAME_LINE or absf(goes.normalized().dot(link.axis)) < LIFTS_OFF:
 				continue
-			if not _reaches_without(under, hinge.other(on), on, link, hinge):
+			if not _reaches_without(under, hinge.other(on), on, link):
 				continue
 			links.erase(link)
 			(touching[link.a] as Array).erase(link)
@@ -862,37 +854,24 @@ func _lift_rests(info_of: Dictionary) -> void:
 			break
 
 
-## Of a lone stud's two parts, the one on the stud: its middle the further
-## along the way the stud points. -1 where either part is unknown.
-func _part_on_stud(link: Link, info_of: Dictionary) -> int:
+## Of a lone stud's two bodies, the one on the stud: its part's middle the
+## further along the way the stud points. -1 where neither part is known.
+func _body_on_stud(link: Link, info_of: Dictionary) -> int:
 	var pair: Array = link.pairs[0]
 	var along: Array = []
 	for key: int in [int(pair[0]), int(pair[1])]:
 		var brick: BrickWorld.Brick = world.get_brick(key)
 		var info: PartLibrary.PartInfo = info_of.get(key)
-		if brick == null or info == null or not body_of.has(key):
+		if brick == null or info == null:
 			return -1
 		along.append(((brick.transform * info.bounds).get_center() - link.point).dot(link.axis))
-	return int(pair[0]) if float(along[0]) > float(along[1]) else int(pair[1])
-
-
-## Whether part [param key] lies on a lone stud with sockets to spare, as
-## 4096's boom plate, a 2 x 8, lies on a cone's stud. A part with one socket
-## sits on its stud whole (a 1 x 1 plate with a clip on a 1 x 1 plate): the
-## stud is what it is built on, not something it was laid down on, and
-## turned on what it holds it would be pulled off it.
-func _lies_on(key: int) -> bool:
-	var brick: BrickWorld.Brick = world.get_brick(key)
-	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
-	return mesh != null and mesh.sockets.size() > 1
+	var key: int = int(pair[0]) if float(along[0]) > float(along[1]) else int(pair[1])
+	return int(body_of.get(key, -1))
 
 
 ## Whether body [param from] reaches body [param to] by joints, through
-## neither [param not_through] nor [param but], nor across a joint that turns
-## on [param hinge]'s line. Past only such joints, [param to] turns on that
-## line with [param from] standing still: a dome panel in two clips on one
-## line turns in both, and neither clip plate leaves its stud.
-func _reaches_without(from: int, to: int, not_through: int, but: Link, hinge: Link) -> bool:
+## neither [param not_through] nor [param but].
+func _reaches_without(from: int, to: int, not_through: int, but: Link) -> bool:
 	var seen: Dictionary = {from: true, not_through: true}
 	var frontier: Array = [from]
 	while not frontier.is_empty():
@@ -901,13 +880,9 @@ func _reaches_without(from: int, to: int, not_through: int, but: Link, hinge: Li
 			return true
 		for link: Link in touching.get(at, []):
 			var next: int = link.other(at)
-			if link == but or seen.has(next):
-				continue
-			if link.turns and link.axis != Vector3.ZERO \
-					and _same_line(link.point, link.axis, hinge.point, hinge.axis):
-				continue
-			seen[next] = true
-			frontier.append(next)
+			if link != but and not seen.has(next):
+				seen[next] = true
+				frontier.append(next)
 	return false
 
 

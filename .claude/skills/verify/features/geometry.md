@@ -434,17 +434,6 @@ can occupy the same millimetre.
   again); `grab_probe -- --only=mcp` lowers it into the cones and turns the
   crane's top under it (each stops at once, not held at both ends) and
   lifts it 30°, and `--only=coast` drags it down and up by hand.
-  Only a part that lies on the stud with sockets to spare (`_lies_on`: the
-  boom's 2 x 8 on a cone; a part with one socket sits on its stud whole),
-  on a hinge whose far side reaches the stud's part off the hinge's line (on
-  its line only, the far side turns and the part stays). The observatory
-  of the third MCP walk hangs each quarter dome in two 1 x 1 clip plates on
-  1 x 1 plates' studs: read as rests, the panel that opens carried a clip
-  plate off its stud into the telescope, which stopped at 176° of 675°.
-  `seated_probe` reads all eight clip plates on their studs, none a rest,
-  the domes' 7 loops as built, and 6534-1's driver's leg on the car's stud
-  a joint (the hips turn on the line both legs hang on); `motions_probe`'s
-  Show it all puts the telescope out 675° clear (telescope).
 - `axles and gears on a line`: an axle or a pin is in every hole along its
   whole length (`Joints.through`, by Mechanism's own rule: on the line to
   1.5 LDU, the hole's middle no more than 2 LDU past an end; a pin not in an
