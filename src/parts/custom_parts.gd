@@ -114,7 +114,11 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 		info.reachable = false
 		info.keywords = PackedStringArray(["flexible", "ldcad"])
 	library.add_custom(info, built.mesh, text)
-	if keep and not skin:
+	if keep and not skin and not own_name(id + ".dat"):
+		# Its name came from a file or the other side of a session: kept
+		# nowhere it could choose (own_name), and built for now alone.
+		push_warning("custom part %s: not kept, its name is not a file's own" % id.c_escape())
+	elif keep and not skin:
 		DirAccess.make_dir_recursive_absolute(dir)
 		var file: FileAccess = FileAccess.open(dir + id + ".dat", FileAccess.WRITE)
 		if file == null:
@@ -124,7 +128,8 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 		file.close()
 		_keep_needs(id, needs(text, others))
 		for name: String in built.mesh.print_files:
-			var picture: FileAccess = FileAccess.open(dir + name, FileAccess.WRITE)
+			var picture: FileAccess = FileAccess.open(dir + name, FileAccess.WRITE) \
+				if own_name(name) else null
 			if picture != null:
 				picture.store_buffer(built.mesh.print_files[name])
 				picture.close()
@@ -425,6 +430,15 @@ static func read_as_copy(library: PartLibrary, info: PartLibrary.PartInfo,
 	return true
 
 
+## Whether [param name] names a file of [member dir]'s own: what a part and
+## its pictures are kept as, and the only files read back from it. A name a
+## model file or the other side of Build together gives (a part's id, a
+## print's picture as its TEXMAP line names it) never reaches past it.
+static func own_name(name: String) -> bool:
+	return not name.is_empty() and name.length() <= 160 and name == name.get_file() \
+		and not name.contains("..") and not name.contains(":") and not name.begins_with(".")
+
+
 ## A part built from its LDraw text, as [method add] builds it.
 static func _built(library: PartLibrary, text: String, id: String,
 		others: Dictionary) -> RefCounted:
@@ -440,7 +454,8 @@ static func _built(library: PartLibrary, text: String, id: String,
 	var built: RefCounted
 	if PartPrints.has_pictures(text):
 		for name: String in PartPrints.pictures_named(text):
-			if not pictures.has(name.to_lower()) and FileAccess.file_exists(dir + name):
+			if not pictures.has(name.to_lower()) and own_name(name) \
+					and FileAccess.file_exists(dir + name):
 				pictures[name.to_lower()] = FileAccess.get_file_as_bytes(dir + name)
 			if pictures.has(name.to_lower()):
 				pictures[name] = pictures[name.to_lower()]
