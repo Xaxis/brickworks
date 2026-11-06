@@ -19,6 +19,18 @@
 ## from step 3"), with that step a press away; one who had not got that far
 ## is not told anything (BuildSteps.changed_since).
 ##
+## A part at a time (APP_UX4 partbypart, as BUF3D builds on a phone): a
+## choice under the parts, One part or Whole step, kept on this device. One
+## part puts a step down a part at a time: the next part alone in its
+## colours and outlined, everything already on faded, the part's picture on
+## the card with "3 of 8 in this step" under it and its name beside; Next
+## (a tap, a swipe, the keys) puts the next part down and from the step's
+## last goes on to the next step, and Back takes one part off. Whole step
+## shows the step at once, as the booklet does, and is where a person starts:
+## a booklet's steps are how LEGO® sets are built, and a child, or anyone at
+## a busy step, chooses One part on the page they are on. Every target is
+## a fingertip, 44 points or more.
+##
 ## The page's comments (2026-10-18): a count at the right of the top bar,
 ## across from Close, for the step on the page ("2 comments", or Comment to
 ## add the first); tapped, the step's comments come up from the bottom of
@@ -35,10 +47,14 @@ signal back_wanted
 signal close_wanted
 ## A page tapped on the progress bar: the steps lie along it.
 signal page_wanted(page: int)
+## One part or Whole step chosen: main.gd shows the page again that way.
+signal by_part_changed(on: bool)
 
 ## Points.
 const BUTTON := 60.0
 const PICTURE := 64.0
+## The one part's picture, a part at a time: the card is its own.
+const PART_PICTURE := 96.0
 const SWIPE := 56.0
 ## Points a finger may move and still tap, and how far from the progress
 ## bar's middle a tap is on it.
@@ -46,11 +62,20 @@ const TAP := 12.0
 const BAR_REACH := 16.0
 ## The parts and the buttons are no wider than this.
 const WIDEST := 600.0
+## The least a target is, either way, in points: a fingertip (Apple's 44).
+const TARGET := 44.0
+## Where this device keeps One part or Whole step, in the browser.
+const BY_PART_KEPT := "brickworks.build.by_part"
 
 var thumbnails: PartThumbnails
 
 var page: int = 0
 var last: int = 0
+## Building a part at a time, and on this page the part put down (from 1)
+## of how many; both 0 on a page shown whole.
+var by_part: bool = false
+var part: int = 0
+var parts: int = 0
 var _caption_text: String = ""
 var _note_text: String = ""
 var _lots: Array[Dictionary] = []
@@ -71,6 +96,9 @@ var _bottom: PanelContainer
 var _callout: PanelContainer
 var _strip: HFlowContainer
 var _told: Label
+## One part or Whole step, the two halves of one choice.
+var _one_part: Button
+var _whole_step: Button
 var _back: Button
 var _next: Button
 var _tiles: Array[ThumbTile] = []
@@ -87,6 +115,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
+	by_part = recall_by_part()
 	comments = StepComments.new()
 	comments.prefix = "build"
 	comments.area = free_rect
@@ -175,11 +204,37 @@ func _build_bottom() -> void:
 	_strip.alignment = FlowContainer.ALIGNMENT_CENTER
 	_strip.mouse_filter = Control.MOUSE_FILTER_PASS
 	_callout.add_child(_strip)
+	# What is on the card said in words, and beside it how to build: a part
+	# at a time or the step whole.
+	var telling := HBoxContainer.new()
+	telling.name = "Telling"
+	# The words take the room beside the choice; with none, the choice sits
+	# in the middle, under the card.
+	telling.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_child(telling)
 	_told = Label.new()
 	_told.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_told.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_told.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_told.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_told.modulate = Color(1, 1, 1, 0.78)
-	column.add_child(_told)
+	telling.add_child(_told)
+	var way := HBoxContainer.new()
+	way.name = "Way"
+	way.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	way.add_theme_constant_override("separation", 0)
+	telling.add_child(way)
+	var choice := ButtonGroup.new()
+	_one_part = _button("One part", "Build it a part at a time: the next part alone, in its colours")
+	_whole_step = _button("Whole step", "Build it a step at a time, as the booklet shows it")
+	for button: Button in [_one_part, _whole_step]:
+		button.toggle_mode = true
+		button.button_group = choice
+		way.add_child(button)
+	_one_part.button_pressed = by_part
+	_whole_step.button_pressed = not by_part
+	_one_part.pressed.connect(choose_by_part.bind(true))
+	_whole_step.pressed.connect(choose_by_part.bind(false))
 	var row := HBoxContainer.new()
 	column.add_child(row)
 	_back = _button("Back", "The step before (left arrow)")
@@ -247,7 +302,7 @@ func _fit() -> void:
 	_note.add_theme_font_size_override("font_size", roundi(16.0 * pt))
 	_changed_words.add_theme_font_size_override("font_size", roundi(16.0 * pt))
 	_changed_go.add_theme_font_size_override("font_size", roundi(16.0 * pt))
-	_changed_go.custom_minimum_size = Vector2(0.0, 40.0 * pt)
+	_changed_go.custom_minimum_size = Vector2(0.0, TARGET * pt)
 	_changed.add_theme_constant_override("separation", roundi(10.0 * pt))
 	_face(_changed_go, false)
 	_told.add_theme_font_size_override("font_size", roundi(14.0 * pt))
@@ -267,6 +322,13 @@ func _fit() -> void:
 	_progress.add_theme_stylebox_override("background", track)
 	_progress.add_theme_stylebox_override("fill", fill)
 	comments.fit(pt, 16.0)
+	# Its words as they were, and a fingertip tall.
+	comments.pill.custom_minimum_size.y = maxf(comments.pill.custom_minimum_size.y, TARGET * pt)
+	(_told.get_parent() as HBoxContainer).add_theme_constant_override("separation", roundi(10.0 * pt))
+	for button: Button in [_one_part, _whole_step]:
+		_choice_face(button, button == _one_part)
+		button.add_theme_font_size_override("font_size", roundi(16.0 * pt))
+		button.custom_minimum_size = Vector2(0.0, TARGET * pt)
 	_lay_strip()
 
 
@@ -288,9 +350,72 @@ func _face(button: Button, bright: bool) -> void:
 	button.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.3))
 
 
+## One half of the choice: lit, pale with dark words, as a phone's
+## segmented control is; the other dark. Rounded on its outer side only, so
+## the two read as one control.
+func _choice_face(button: Button, first: bool) -> void:
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var face := StyleBoxFlat.new()
+		var lit: bool = state.contains("pressed")
+		face.bg_color = Color(0.95, 0.96, 0.98) if lit else Color(1, 1, 1,
+			0.2 if state == "hover" else 0.1)
+		face.border_color = Color(1, 1, 1, 0.3)
+		face.set_border_width_all(maxi(1, roundi(_pt)))
+		var corner: int = roundi(10.0 * _pt)
+		face.corner_radius_top_left = corner if first else 0
+		face.corner_radius_bottom_left = corner if first else 0
+		face.corner_radius_top_right = 0 if first else corner
+		face.corner_radius_bottom_right = 0 if first else corner
+		face.content_margin_left = 12.0 * _pt
+		face.content_margin_right = 12.0 * _pt
+		button.add_theme_stylebox_override(state, face)
+	for state: String in ["font_pressed_color", "font_hover_pressed_color"]:
+		button.add_theme_color_override(state, Color(0.06, 0.08, 0.12))
+	button.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
+	button.add_theme_color_override("font_hover_color", Color(1, 1, 1))
+
+
+## One part (true) or Whole step chosen, by a tap or a check: kept on this
+## device, and the page shown again that way.
+func choose_by_part(on: bool) -> void:
+	_one_part.set_pressed_no_signal(on)
+	_whole_step.set_pressed_no_signal(not on)
+	if on == by_part:
+		return
+	by_part = on
+	keep_by_part(on)
+	by_part_changed.emit(on)
+
+
+## Whether this device builds a part at a time: in the browser's
+## localStorage, as the page reached is kept (BuildSteps.remember); off the
+## web, for this run only, as the viewer writes nothing to disk.
+static var _by_part_here: bool = false
+
+
+static func recall_by_part() -> bool:
+	if OS.has_feature("web"):
+		var kept: Variant = JavaScriptBridge.eval(
+			"(function(){try{return localStorage.getItem(%s)||''}catch(e){return ''}})()"
+			% JSON.stringify(BY_PART_KEPT), true)
+		return kept is String and kept == "1"
+	return _by_part_here
+
+
+static func keep_by_part(on: bool) -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("(function(){try{localStorage.setItem(%s,%s)}catch(e){}})()"
+			% [JSON.stringify(BY_PART_KEPT), JSON.stringify("1" if on else "0")], true)
+	else:
+		_by_part_here = on
+
+
 ## Put a page up: its caption ("Step 3 of 24"), what else to say, and its
-## parts. [param of] is the last page.
-func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dictionary]) -> void:
+## parts. [param of] is the last page. A part at a time, [param at_part] of
+## [param of_parts] is the part put down, and [param lots] its one part (none
+## for a finished sub-assembly put on whole).
+func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dictionary],
+		at_part: int = 0, of_parts: int = 0) -> void:
 	# Told on one page and moved on from it: the builder has chosen.
 	if changed_from > 0 and at != _told_on:
 		_hide_changed()
@@ -299,13 +424,19 @@ func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dict
 	_caption_text = caption if at > 0 else "Ready to build"
 	_note_text = note
 	_lots = lots
+	part = at_part if at_part > 0 else 0
+	parts = of_parts if at_part > 0 else 0
 	_caption.text = _caption_text
 	_note.text = note if at > 0 else caption + ". Get the parts out, then press Start."
 	_note.visible = not _note.text.is_empty()
 	_progress.max_value = maxf(of, 1.0)
 	_progress.value = at
 	_back.disabled = at <= 0
-	_next.text = "Start" if at == 0 else ("Finish" if at >= of else "Next")
+	_next.text = "Start" if at == 0 else ("Finish" if at >= of and part >= parts else "Next")
+	_next.tooltip_text = "The next part (right arrow, space)" if by_part \
+		else "The next step (right arrow, space)"
+	_back.tooltip_text = "Take the last part off (left arrow)" if by_part \
+		else "The step before (left arrow)"
 	_told.text = _telling(at, lots)
 	_told.visible = not _told.text.is_empty()
 	comments.set_step(at)
@@ -347,6 +478,10 @@ func pictures_done() -> bool:
 func _telling(at: int, lots: Array[Dictionary]) -> String:
 	if at == 0:
 		return ""
+	if part > 0:
+		# The one part's name and colour; a sub-assembly put on whole is
+		# named by the note, "Put it on".
+		return "" if lots.is_empty() else "%s, %s" % [lots[0]["name"], lots[0]["colour_name"]]
 	if lots.is_empty():
 		return "No new parts"
 	var pieces: int = 0
@@ -365,29 +500,43 @@ func _lay_strip() -> void:
 		_strip.remove_child(child)
 		child.queue_free()
 	_tiles.clear()
-	_callout.visible = not _lots.is_empty()
+	_callout.visible = not _lots.is_empty() or part > 0
+	if part > 0 and _lots.is_empty():
+		_strip.add_child(_count_words())
 	for lot: Dictionary in _lots:
 		var cell := VBoxContainer.new()
 		cell.mouse_filter = Control.MOUSE_FILTER_PASS
 		cell.tooltip_text = "%d × %s, %s" % [int(lot["count"]), lot["name"], lot["colour_name"]]
 		cell.add_theme_constant_override("separation", 0)
 		var tile := ThumbTile.new(str(lot["part"]), int(lot["colour"]))
-		tile.custom_minimum_size = Vector2(PICTURE, PICTURE) * _pt
+		tile.custom_minimum_size = Vector2.ONE * (PART_PICTURE if part > 0 else PICTURE) * _pt
 		var ready: Texture2D = thumbnails.peek(tile.part_id, tile.color_code) \
 			if thumbnails != null else null
 		if ready != null:
 			tile.show_picture(ready, false)
 		cell.add_child(tile)
-		var count := Label.new()
-		count.text = "%dx" % int(lot["count"])
-		count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		count.add_theme_font_size_override("font_size", roundi(20.0 * _pt))
-		count.add_theme_color_override("font_color", Color(0.06, 0.08, 0.12))
+		var count: Label = _count_words() if part > 0 else Label.new()
+		if part == 0:
+			count.text = "%dx" % int(lot["count"])
+			count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			count.add_theme_font_size_override("font_size", roundi(20.0 * _pt))
+			count.add_theme_color_override("font_color", Color(0.06, 0.08, 0.12))
 		cell.add_child(count)
 		_strip.add_child(cell)
 		_tiles.append(tile)
 	if thumbnails != null:
 		_watch_after_this_frame()
+
+
+## "3 of 8 in this step", under the part's picture on the card.
+func _count_words() -> Label:
+	var count := Label.new()
+	count.name = "PartCount"
+	count.text = "%d of %d in this step" % [part, parts]
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	count.add_theme_font_size_override("font_size", roundi(18.0 * _pt))
+	count.add_theme_color_override("font_color", Color(0.06, 0.08, 0.12))
+	return count
 
 
 ## The parts' pictures asked for once the page itself is drawn: the frame a
@@ -521,7 +670,7 @@ func controls_by_name() -> Dictionary:
 		return {}
 	var named: Dictionary = {"build_next": _next, "build_back": _back, "build_close": _close,
 		"build_parts": _callout, "build_top": _top, "build_bottom": _bottom,
-		"build_progress": _progress}
+		"build_progress": _progress, "build_one_part": _one_part, "build_whole_step": _whole_step}
 	if _changed.is_visible_in_tree():
 		named["build_changed_go"] = _changed_go
 	named.merge(comments.controls_by_name())
@@ -531,16 +680,27 @@ func controls_by_name() -> Dictionary:
 ## What the page says, for a check to read.
 func page_state() -> Dictionary:
 	var sizes: Dictionary = {}
+	var named: Dictionary = controls_by_name()
 	for name: String in ["build_next", "build_back", "build_close"]:
-		var button: Button = controls_by_name().get(name)
+		var button: Button = named.get(name)
 		if button != null:
 			sizes[name] = [roundi(button.size.x / _pt), roundi(button.size.y / _pt)]
+	# Every target on the page, as a finger has it: what can be tapped.
+	var targets: Dictionary = {}
+	for name: String in named:
+		var control: Control = named[name]
+		if control is BaseButton and control.is_visible_in_tree():
+			var rect: Rect2 = control.get_global_rect()
+			targets[name] = [snappedf(rect.size.x / _pt, 0.1), snappedf(rect.size.y / _pt, 0.1)]
+	var counted: Node = _strip.find_child("PartCount", true, false) if _strip != null else null
 	return {"open": visible, "page": page, "last": last, "caption": _caption_text,
 		"note": _note.text if _note.visible else "", "told": _told.text if _told.visible else "",
 		"pictures_ms": _pictures_ms,
 		"lots": _lots.size(), "pictures": _tiles.filter(func(tile: ThumbTile) -> bool:
 			return tile.state == ThumbTile.State.READY).size(),
 		"next": _next.text, "back_enabled": not _back.disabled, "points": sizes,
+		"targets": targets, "by_part": by_part, "part": part, "parts": parts,
+		"part_count": (counted as Label).text if counted != null else "",
 		"changed_from": changed_from, "changed": _changed_words.text if _changed.visible else "",
 		"caption_points": roundi(float(_caption.get_theme_font_size("font_size")) / _pt),
 		"comment_step": comments.step}.merged(comments.page_state())

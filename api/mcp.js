@@ -38,7 +38,8 @@
 //   /api/mcp?t=T&op=state     the page is alive, and in or out of view
 //                             (?visible=0|1): sent by the page itself every
 //                             ten seconds and whenever it goes in or out of
-//                             view, whatever the app is busy with
+//                             view, whatever the app is busy with; and by
+//                             the desktop app's window every ten seconds
 //   /api/mcp?t=T&op=close     the tab stops listening, or the page has gone;
 //                             closed until it says hello again
 //   /api/mcp?t=T&op=chats     which Claude chats work in this tab
@@ -204,9 +205,21 @@ const POLL_MS = 350;
 const FIRST_POLL_MS = 40;
 const ACTIVE_POLL_MS = 100;
 const ACTIVE_MS = 60_000;
-// A page that has said nothing in this long — no request for work and no
-// word that it is alive, which it sends every ten seconds — has stopped.
+// A page that has said nothing in this long — no request for work, no
+// answer and no word that it is alive, which it sends every ten seconds —
+// has stopped answering: "quiet", not closed. Its call waits QUIET_WAIT_MS
+// for it to speak again, and it keeps its chats. Closed is a page that said
+// it has gone (op=close), or one silent for TAB_LOST_MS, which no working
+// tab is: a desktop window or a page whose thread was held up by its own
+// work, and one whose last word was a minute before. The Charger's 1,118
+// part edit was a job; its tab was asked how it went, waited the job's 45 s
+// for it, answered, and the session's next call, a second later, beat the
+// tab's next ask for work to the relay, found its last word 48 s old, and
+// was told the tab had closed with its whole build in it (bigedit,
+// 2026-11-06). Its window had no word of its own then; it has now.
 const TAB_GONE_MS = 45_000;
+const TAB_LOST_MS = 180_000;
+const QUIET_WAIT_MS = 30_000;
 // How long a call waits for a stopped tab out of view to come back, and
 // for any tab to take a call at all, before Claude is told why not.
 const HIDDEN_WAIT_MS = 20_000;
@@ -469,15 +482,46 @@ async function guidanceOf(tools) {
   return ownGuidance.text || "";
 }
 
-// "closed", "hidden" or "ready". Alive is ready, in view or not; a page
-// that has stopped is "hidden" when it was last out of view, which is a
-// browser that paused it, and "closed" when it was in view. A tab no
-// signed-in page has switched on is closed whatever it says: it is handed
+// "closed", "hidden", "quiet" or "ready". Alive is ready, in view or not; a
+// page that has stopped is "hidden" when it was last out of view, which is a
+// browser that paused it, and "quiet" when it was in view: busy, or stuck,
+// and not gone until TAB_LOST_MS. A tab no signed-in page has switched on,
+// or whose page said it has gone, is closed whatever it says: it is handed
 // no work, so a call waiting for it would wait four minutes for nothing.
 function stateOf(tab) {
   if (!tab || !tab.open || !tab.owner) return "closed";
-  if (Date.now() - Date.parse(tab.seen_at) <= TAB_GONE_MS) return "ready";
-  return tab.visible ? "closed" : "hidden";
+  const silent = Date.now() - Date.parse(tab.seen_at);
+  if (silent <= TAB_GONE_MS) return "ready";
+  if (!tab.visible) return "hidden";
+  return silent <= TAB_LOST_MS ? "quiet" : "closed";
+}
+
+// How long [tab] has said nothing, in words: "50 s".
+function silence(tab) {
+  const s = Math.max(0, Math.round((Date.now() - Date.parse(tab.seen_at || "")) / 1000));
+  return s < 90 ? `${s} s` : `${Math.round(s / 60)} min`;
+}
+
+// A call for a quiet tab: what it is told, nothing done and the chat still
+// in that tab.
+function quietSaying(tab) {
+  return `Nothing was done: tab ${idOf(tab)}${tab.model ? ` (${modelOf(tab)})` : ""} has not `
+    + `answered for ${silence(tab)}. It is still open: the app is busy with something long, or `
+    + "its page is held up. Call again in a minute; this chat stays in that tab. If it still does "
+    + "not answer, ask the person to look at the tab. Nothing it has built is lost: Brickworks "
+    + "keeps each tab's model as it goes, and reloading the tab brings it back.";
+}
+
+// Wait, up to QUIET_WAIT_MS, for a quiet [tab] to speak again: the tab as
+// it is then.
+async function untilHeard(tab) {
+  const until = Date.now() + QUIET_WAIT_MS;
+  let now = tab;
+  while (now && stateOf(now) === "quiet" && Date.now() < until) {
+    await sleep(1000);
+    now = await tabOf(now.channel);
+  }
+  return now;
 }
 
 // What a tab is called to Claude: the id it registered with, or, for a
@@ -559,7 +603,8 @@ function listing(tabs, current, picks = [], key = null) {
   return live.map((tab) => {
     const where = stateOf(tab) === "hidden"
       ? "paused out of view by the browser"
-      : tab.visible ? "in view" : "out of view";
+      : stateOf(tab) === "quiet" ? `busy: not answered for ${silence(tab)}`
+        : tab.visible ? "in view" : "out of view";
     const mine = current && tab.channel === current.channel ? " — this chat's" : "";
     const others = heldWords(heldBy(tab, picks, key));
     return `- ${idOf(tab)}: ${modelOf(tab)}, ${where}, used ${ago(usedAt(tab))}${mine}${others ? ` — ${others}` : ""}`;
@@ -946,6 +991,16 @@ async function relayTool(where, message, response, used) {
 const SAY_TARGET = (tab) => `While more than one tab is open, pass target: "${idOf(tab)}" on every `
   + "call in this chat too, so it stays here even if another chat shares this connection.";
 
+// What a closed tab leaves, said with it: the Charger's session, told only
+// that its tab had closed, ended "I didn't save the model before the tab
+// went away" (bigedit, 2026-11-06). The model was in the tab's autosave
+// (ModelStore, 2.5 s after each change), which the tab, or the app or site
+// opened again in its place (TabSession), reopens.
+const KEPT_WORDS = "What it built is not lost: Brickworks keeps each tab's model as it goes, "
+  + "a few seconds after each change, and when the person opens it again (reloads the tab, or "
+  + "opens the site or the app anew) that model comes back. A change made in the moments before "
+  + "it closed may need making again: look_at_model there says what came back. ";
+
 // A session's tab has closed: said once, with nothing done, and the
 // session let go of it, so its next call without a choice is treated as a
 // new chat's: in the one tab left, or, with several, after it chooses.
@@ -955,6 +1010,7 @@ async function closedSaying(where, tab, tabs, taken = false) {
   return `The tab this chat was working in, ${idOf(tab)}${tab.model ? ` (${modelOf(tab)})` : ""}, `
     + (taken ? "closed before it answered, so whether it was done is not known. "
       : "has closed, so nothing was done. ")
+    + KEPT_WORDS
     + (live.length > 1
       ? `Open now:\n${listing(live, null, await where.picks(), where.key)}\nAsk the person which tab to `
         + "work in, then call select_tab with its id or its model's name, or pass target."
@@ -1236,6 +1292,20 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       return send(toolTrouble(id, `${header(tab, null, tabs)} ${HIDDEN}`));
     }
   }
+  if (state === "quiet" && calling) {
+    // Busy, as a rule: its own work held the page up. Waited for as a
+    // paused tab is, and if it stays quiet the chat is told so and keeps it.
+    tab = (await untilHeard(tab)) || tab;
+    state = stateOf(tab);
+    if (state === "quiet") {
+      await where.used(message, null);
+      return send(toolTrouble(id, quietSaying(tab)));
+    }
+    if (state === "closed" && home && home.channel === tab.channel) {
+      await where.used(message, null);
+      return send(text(id, await closedSaying(where, tab, tabs), true));
+    }
+  }
   if (state !== "ready") {
     await where.used(message, null);
     // Enough to be added as a connector with the tab closed; nothing that
@@ -1292,6 +1362,9 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
         if (calling && now === "closed") {
           return send(text(id,
             await closedSaying(where, row_ || tab, tabs, Boolean(done.taken_at)), true));
+        }
+        if (now === "quiet") {
+          return send(calling ? toolTrouble(id, quietSaying(row_)) : rpcError(id, -32000, quietSaying(row_)));
         }
         const why = now === "hidden" ? HIDDEN : where.notOpen;
         return send(calling
@@ -1596,11 +1669,15 @@ export default async function handler(request, response) {
       }
       const at = new Date().toISOString();
       // The model's name as the call left it: a call can begin, open or
-      // name one, and the list of tabs should say so at once. And when the
-      // tab last answered, which keeps its asks for work looking often.
-      // Both written beside the answer, which wakes the call waiting on it.
+      // name one, and the list of tabs should say so at once. When the tab
+      // last answered, which keeps its asks for work looking often. And
+      // that it was seen: an answer is the tab speaking, and one given after
+      // a job's 45 s wait left the tab's last word, its ask for that call,
+      // older than TAB_GONE_MS as the session's next call came in (bigedit).
+      // All written beside the answer, which wakes the call waiting on it.
       const named = modelFrom(answer.result?._meta?.["brickworks/model"]);
       const tab = {
+        seen_at: at,
         ...(named !== null ? { model: named } : {}),
         ...((await columns()) ? { answered_at: at } : {}),
       };
@@ -1609,7 +1686,7 @@ export default async function handler(request, response) {
           method: "PATCH",
           body: { response: answer, answered_at: at },
         }).then(() => wake(`row:${id}`)),
-        Object.keys(tab).length ? db(`relay_tabs?channel=eq.${channel}`, { method: "PATCH", body: tab }) : null,
+        db(`relay_tabs?channel=eq.${channel}`, { method: "PATCH", body: tab }),
       ]);
       return response.status(204).end();
     }

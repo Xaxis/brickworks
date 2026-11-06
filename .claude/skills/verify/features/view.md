@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
 
 ## Sub-features
 
@@ -82,7 +82,14 @@ picture the assistant is shown.
   (it is square on and cannot turn). The handles and Connect's points are
   drawn in both views (`ViewOverlays`, a CanvasLayer with one clipped canvas
   per view); the pivot mark is on `SplitView.MAIN_ONLY` (render layer 19) and
-  the view cube stays in the main view. Off out of the box, kept per device
+  the view cube stays in the main view. Short of room with the right-hand
+  column open (the assistant or Properties) and the bin folded, Split folds
+  that column to its tab while the split is on (`SplitView.fits()` counts
+  what folding gives, `has_room()` is the room as it is, `set_on` makes it
+  and gives it back) and opens it again when Split goes off, unless a side
+  column was opened or folded meanwhile; the menu's tooltip says so (APP_UX4
+  quiet: 1280 x 720 with the assistant and Stress open had no second view).
+  Off out of the box, kept per device
   (ShellPrefs `split`, `split_side`); greyed with "The window is too small
   for two views" where the model's column cannot give each view 320 points
   (`Room`, not units: a phone at 3x lays 900 units across 390 points), on a
@@ -515,6 +522,26 @@ picture the assistant is shown.
   designed afresh) ends it. The booklet and the assistant's pictures are drawn
   from worlds of their own and never see it; Export's picture is the world on
   screen and does.
+<!-- covers: ui:cut away by a shape -->
+- `cut away by a shape` (`src/render/cut_shape.gd`,
+  `BrickWorld.set_cut_shape`, APP_UX4 8): View → Cut away by → A box, A sphere
+  or A cylinder, or the strip's first list. A shape goes round the selection,
+  or with none takes the middle of the model off from half way up; its faces
+  sit on odd LDU, whole plates apart, round where it is round. A knob on each
+  face (`SeeInside._draw_knobs`, the move handles' colours) is dragged to push
+  or pull that face a plate at a time, the wheel over it moves it one, Shift
+  drags the whole shape, Esc or a right click puts it back; the strip's Grow
+  and Shrink move every face. Parts are sorted by their box against the shape
+  (`CutShape.side_of`: outside drawn whole, across drawn by `Batch.through`,
+  inside not at all), and the cut faces are the plane's caps with the normal
+  of the shape's face where the eye's line leaves it
+  (`cut_shape.gdshaderinc`). Under a shape every part across or inside still
+  casts its whole shadow (`Batch.shade`, shadows only), so nothing outside
+  the hole changes. The cut, plane or shape, is kept with the model
+  (`CutShape.META`, `BrickWorld.cut_kept`, one line per file, in the file's
+  coordinates) and comes back when it opens; a shared model's viewer opens
+  it whole. `set_cut_marks` paints the cut's faces magenta and any other
+  inside face green, for `cutshapes_probe` to count.
 - `x-ray` (`src/ui/see_inside.gd`, `BrickWorld.set_xray`): `I`, View → X-ray, or
   the toolbar: everything but the selection — or, editing inside a
   sub-assembly, everything but it — is drawn see-through
@@ -704,6 +731,23 @@ picture the assistant is shown.
   sheet runs from Alt-W. `docs_menus.gd` now writes each row's key as the app's
   own keys have it, so the docs' menus and shortcuts pages list Alt-C and the
   rest.
+- `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
+  whatsthis unit, APP_UX4 10): the next click on any control says what it does
+  in a bubble beside it, and does nothing else, as LeoCAD's, Qt's and Windows'
+  own. A sheet over the window takes the click; the control under it is found
+  as the window finds it (`control_at`: by canvas layer, then the tree, through
+  clips, past what lets the pointer through), outlined while the pointer is
+  over it, and its words are its tooltip where the pointer is, what a screen
+  reader is told, or the nearest control round it with any; then whether it is
+  on, and why a greyed one is greyed (`Shell.why_not`). The bin's chips say
+  what a click shows; over the model, what the tool in use does there. Esc, a
+  right click or Shift+F1 again leave; the status bar asks while it waits.
+  Shift+F1 is the command's own key in every preset, kept for itself as F1 is
+  (`Keymap.FIXED`). `whatsthis_probe` (windowed, 1280 x 720; `PROBE_SIZE=1400x900`)
+  asks about every toolbar button, bin chip, Properties field and panel button
+  with each panel open in turn, as a person does, and fails on an empty answer,
+  two alike, or a click that a control heard or that changed anything; one
+  click on the Move tool with no question shows the check sees a click act.
 - `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
   do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
   and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the
@@ -2166,7 +2210,32 @@ picture the assistant is shown.
   Renders going at once share the window's vsync and frame-rate state
   (`StudioRender._quick_count`), put back when the last one ends. A traced
   render no longer raises the window's shadow atlas and SSAO, which would
-  slow the window it shares.
+  slow the window it shares. It gives way (APP_UX4 quiet): the first child
+  of the model's room (`Main._over_model`, group `render_queue`), so Cut
+  away's strip, Compare and every panel and dialog of the window are drawn
+  over it whenever they open; it sits above a strip along the room's foot
+  (`_foot`), so the strip and its own buttons are both in sight; it is
+  no wider than the room (`LEAST_WIDE` at least), its words wrapping and
+  its buttons going two rows, so it never lies over a tool's panel beside
+  the model; Escape puts it away as a rung of Main's ladder after the parts list, before the
+  tool and the selection (`Main._render_queue_up`).
+- `quiet probe` (`src/dev/quiet_probe.gd`, `tools/probe.sh quiet_probe`,
+  windowed at 1280 x 720, `PROBE_SIZE=1400x900`): APP_UX4 unit 9's bar.
+  The first build's offer on a first visit, gone at the third part put down
+  by hand (not the first two), gone on File, Open of a saved model and of
+  the car (from Help, as the walk met it), kept on File, New's empty
+  baseplate, and offered by itself on a first visit in a new window (a run
+  of its own, windowed, on a data folder of its own). Split at the size with
+  the assistant open, with Stress's panel and without: offered, two views of
+  320 points or more, the assistant folded to its tab while on and open
+  again after, the tooltip saying so. The render queue, made after Settings
+  was seen (as the walk had it): Escape closes it,
+  first even with a part selected; Settings, Cut away's strip and every
+  dialog of its `DIALOGS` list opened after it are drawn over it, read off
+  the window's picture with the queue up and hidden (at most 2% of the
+  pixels over its corner changed, a channel 0.15 apart); the queue's
+  buttons in sight beside the strip; each dialog it moved or narrowed for
+  (`2_gave_way_<name>`). Pictures in `shots/quiet/<W>x<H>/`.
 - `pathtrace probe` (`src/dev/pathtrace_probe.gd`, `tools/probe.sh
   pathtrace`, windowed on the GPU at 1400 x 900): the car at 1280 x 720 and
   256 samples within 60 s; its RMSE against 4,096 other samples at most
@@ -2423,6 +2492,19 @@ xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_pro
 #   inside a sub-assembly; clicks reaching it through both; the timeline with
 #   both on; the booklet made with both on = made with both off; Orthanc timed.
 #   Leaves shots/see_inside/*.png — look at the cut faces and the ghosts
+# Cut away by a box, a sphere or a cylinder (APP_UX4 8): the car's cab cut by
+# a box round its roof and windscreens, its lower knob dragged down two
+# plates, the wheel, Esc, Grow and Shrink; the pixels that change against the
+# car whole all inside the box's outline (or within the ambient occlusion's
+# reach of it), the seat seen and clicked through it; drawn with its faces
+# marked, caps and no inside face; the same for a sphere and a cylinder;
+# Render and the booklet with the box on = with it off. Pictures in
+# shots/cutshapes/<size>/: look at the cut faces, and changed_*.png (yellow
+# inside, blue near, red outside: none). Then kept: saved and opened, its own
+# file and someone else's step-free .mpd (headless), and --keep=DIR then
+# --older=DIR on an older checkout, which opens each whole.
+tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes
+tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied into an older checkout: tools/probe.sh cutshapes_kept -- --older=/tmp/cut_kept
 # View, Stress: a loaded 2x10 cantilever's root red on 1x1s, plain on 2x2s; a
 # bare one and a bonded wall not red; nothing painted; the shipped models none
 # red. Then in the window: the menu, the tint, what pointing says, Ask Claude

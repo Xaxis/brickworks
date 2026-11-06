@@ -7,6 +7,14 @@
 ## (drawn faded, BrickWorld.set_faded), the parts to pick up with how many
 ## of each in which colour, and which way to look.
 ##
+## A page can also be put down a part at a time (BuildMode.by_part, as BUF3D
+## does on a phone): its part k is the page's first k things on the
+## baseplate, the k-th alone in full colour and outlined and everything
+## else faded. The things are each part the page adds, in the order the step
+## lists them, and first, on a page that puts a finished sub-assembly on,
+## the whole of it. Every function here that takes a part takes 0 for the
+## page whole, as it was.
+##
 ## The steps are the timeline's (StepsBar.steps), worked out once when the
 ## model opened, so the player, the timeline and the booklet number them
 ## alike. A callout's steps are pages too: the world cannot build a window
@@ -67,6 +75,13 @@ var _upto := PackedInt64Array()
 ## baseplate by then, each once.
 var _added: Array[PackedInt64Array] = []
 var _standing := PackedInt64Array()
+## A part at a time: page -> where each brick it adds stands in [member
+## order], as _added lists them (a count of the order shows up to one);
+## page -> the finished sub-assembly it puts on, every copy, or none; and
+## brick id -> its place among the bricks its page adds.
+var _added_at: Array[PackedInt64Array] = []
+var _put_on: Array[Dictionary] = []
+var _place: Dictionary = {}
 
 
 ## The pages for the bricks in [param world], in the order of [param
@@ -91,20 +106,27 @@ func _read() -> void:
 	_upto.append(0)
 	_added.append(PackedInt64Array())
 	_standing.append(0)
+	_added_at.append(PackedInt64Array())
+	_put_on.append({})
 	var built := AABB()
 	var any: bool = false
 	for page: int in range(1, steps.size() + 1):
 		var step: Instructions.Step = steps[page - 1]
 		var fresh: Dictionary = {}
 		var added := PackedInt64Array()
+		var added_at := PackedInt64Array()
+		var base: int = order.size()
 		order.append_array(step.brick_ids)
 		_upto.append(order.size())
-		for brick_id: int in step.brick_ids:
+		for n: int in step.brick_ids.size():
+			var brick_id: int = step.brick_ids[n]
 			if _rank.has(brick_id):
 				continue
 			_rank[brick_id] = page
+			_place[brick_id] = added.size()
 			fresh[brick_id] = true
 			added.append(brick_id)
+			added_at.append(base + n)
 			var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 			if brick == null:
 				continue
@@ -115,14 +137,19 @@ func _read() -> void:
 			any = true
 		# Putting a finished sub-assembly on adds nothing new: it is the
 		# whole of it, every copy, that the page points at.
+		var put_on: Dictionary = {}
 		if step.attaches():
 			for copy: PackedInt64Array in step.copies:
 				for brick_id: int in copy:
 					fresh[brick_id] = true
+					if int(_rank.get(brick_id, page)) != page:
+						put_on[brick_id] = true
 		_fresh.append(fresh)
 		_built_box.append(built)
 		_added.append(added)
 		_standing.append(_standing[page - 1] + added.size())
+		_added_at.append(added_at)
+		_put_on.append(put_on)
 	_built_box[0] = built
 
 
@@ -148,75 +175,145 @@ func step_of(page: int) -> Instructions.Step:
 	return steps[page - 1] if page >= 1 and page <= steps.size() else null
 
 
-## Everything on the baseplate at [param page]: the ground, and what is
-## built by then. The cover is the whole model.
-func shown(page: int) -> Dictionary:
+## Everything on the baseplate at [param page] (at its [param part], a
+## part at a time): the ground, and what is built by then. The cover is the
+## whole model.
+func shown(page: int, part: int = 0) -> Dictionary:
 	page = clamped(page)
+	part = clamped_part(page, part)
+	var down: int = _down(page, part)
 	var out: Dictionary = scenery.duplicate()
 	for brick_id: int in _rank:
-		if page == 0 or int(_rank[brick_id]) <= page:
+		var rank: int = int(_rank[brick_id])
+		if page == 0 or rank < page or (rank == page and int(_place[brick_id]) < down):
 			out[brick_id] = true
 	return out
 
 
-## How much of [member order] is on the baseplate at [param page]: the
-## whole of it on the cover.
-func count(page: int) -> int:
+## How much of [member order] is on the baseplate at [param page] (at its
+## [param part]): the whole of it on the cover.
+func count(page: int, part: int = 0) -> int:
 	page = clamped(page)
-	return order.size() if page == 0 else int(_upto[page])
+	if page == 0:
+		return order.size()
+	part = clamped_part(page, part)
+	var down: int = _down(page, part)
+	if part == 0 or down >= _added[page].size():
+		return int(_upto[page])
+	return int(_upto[page - 1]) if down == 0 else int(_added_at[page][down - 1]) + 1
 
 
-## How many bricks are on the baseplate at [param page], the ground not
-## counted: what shown(page) holds, without gathering it.
-func standing(page: int) -> int:
+## How many bricks are on the baseplate at [param page] (at its [param
+## part]), the ground not counted: what shown() holds, without gathering it.
+func standing(page: int, part: int = 0) -> int:
 	page = clamped(page)
-	return _rank.size() if page == 0 else int(_standing[page])
+	if page == 0:
+		return _rank.size()
+	part = clamped_part(page, part)
+	return int(_standing[page]) if part == 0 \
+		else int(_standing[page - 1]) + _down(page, part)
 
 
 ## The bricks whose fading changes going from page [param from] to page
-## [param to], each to whether it is faded there: id -> bool. Only the
-## two pages' own parts and those of the pages between them, so the next
-## page is the page before's parts faded and nothing else — not every
-## brick in the model asked, as faded() asks.
-func fading(from: int, to: int) -> Dictionary:
+## [param to] (from part to part, a part at a time), each to whether it is
+## faded there: id -> bool. Only the two pages' own parts and those of the
+## pages between them, so the next page is the page before's parts faded
+## and nothing else — not every brick in the model asked, as faded() asks.
+func fading(from: int, to: int, from_part: int = 0, to_part: int = 0) -> Dictionary:
 	from = clamped(from)
 	to = clamped(to)
+	from_part = clamped_part(from, from_part)
+	to_part = clamped_part(to, to_part)
 	var out: Dictionary = {}
-	if from == to:
+	if from == to and from_part == to_part:
 		return out
 	var asked: Array = [_fresh[from], _fresh[to]]
 	for page: int in range(mini(from, to), maxi(from, to) + 1):
 		asked.append(_added[page])
 	for some: Variant in asked:
 		for brick_id: int in some:
-			var there: bool = _is_faded(brick_id, to)
-			if there != _is_faded(brick_id, from):
+			var there: bool = _is_faded(brick_id, to, to_part)
+			if there != _is_faded(brick_id, from, from_part):
 				out[brick_id] = there
 	return out
 
 
 ## Whether a brick is drawn faded on [param page]: built on a page before
-## it, and not one the page points at.
-func _is_faded(brick_id: int, page: int) -> bool:
-	return page > 0 and int(_rank.get(brick_id, page)) < page and not _fresh[page].has(brick_id)
+## it, and not one the page points at. A part at a time, at [param part]:
+## everything on the baseplate but the one thing it puts down.
+func _is_faded(brick_id: int, page: int, part: int = 0) -> bool:
+	if page <= 0:
+		return false
+	var rank: int = int(_rank.get(brick_id, page + 1))
+	if part == 0:
+		return rank < page and not _fresh[page].has(brick_id)
+	if rank > page or _lit(brick_id, page, part):
+		return false
+	return rank < page or int(_place[brick_id]) < _down(page, part)
 
 
-## What [param page] adds: drawn in full colour and outlined.
-func fresh(page: int) -> Dictionary:
-	return _fresh[clamped(page)]
-
-
-## What was built before [param page]: drawn faded. None on the cover.
-func faded(page: int) -> Dictionary:
+## What [param page] adds (at its [param part], the one thing put down):
+## drawn in full colour and outlined.
+func fresh(page: int, part: int = 0) -> Dictionary:
 	page = clamped(page)
+	part = clamped_part(page, part)
+	if part == 0:
+		return _fresh[page]
+	if part == 1 and not _put_on[page].is_empty():
+		return _put_on[page]
+	return {_added[page][_down(page, part) - 1]: true}
+
+
+## What was built before [param page] (and, at its [param part], the parts
+## put down before it): drawn faded. None on the cover.
+func faded(page: int, part: int = 0) -> Dictionary:
+	page = clamped(page)
+	part = clamped_part(page, part)
 	var out: Dictionary = {}
 	if page == 0:
 		return out
-	var fresh_now: Dictionary = _fresh[page]
 	for brick_id: int in _rank:
-		if int(_rank[brick_id]) < page and not fresh_now.has(brick_id):
+		if _is_faded(brick_id, page, part):
 			out[brick_id] = true
 	return out
+
+
+# -- a part at a time ------------------------------------------------------
+
+
+## How many things [param page] puts down a part at a time: each part it
+## adds, and first the finished sub-assembly on a page that puts one on.
+## None on the cover, nor on a page that adds nothing.
+func parts(page: int) -> int:
+	page = clamped(page)
+	if page == 0:
+		return 0
+	return (0 if _put_on[page].is_empty() else 1) + _added[page].size()
+
+
+## [param part] as [param page] can show it: from 1 to its parts, a
+## negative its last; 0, the page whole, when it is asked for or the page
+## has no parts to put down one by one.
+func clamped_part(page: int, part: int) -> int:
+	var most: int = parts(page)
+	if part == 0 or most == 0:
+		return 0
+	return most if part < 0 else clampi(part, 1, most)
+
+
+## How many of the bricks [param page] adds are down at [param part]: all
+## of them on the page whole.
+func _down(page: int, part: int) -> int:
+	if part == 0 or page == 0:
+		return _added[page].size()
+	return maxi(part - (0 if _put_on[page].is_empty() else 1), 0)
+
+
+## Whether [param brick_id] is the thing [param page] puts down at [param part].
+func _lit(brick_id: int, page: int, part: int) -> bool:
+	if part == 1 and not _put_on[page].is_empty():
+		return _put_on[page].has(brick_id)
+	return int(_rank.get(brick_id, -1)) == page and int(_place[brick_id]) == _down(page, part) - 1
 
 
 ## The parts to pick up for [param page], as a booklet's callout lists
@@ -224,17 +321,21 @@ func faded(page: int) -> Dictionary:
 ## {"part", "colour", "count", "name", "colour_name"}. A hose laid in a bend
 ## is the one hose (Inventory.key_of). None on the cover. On a page that
 ## puts a finished sub-assembly on, the parts that go on beside it: the
-## sub-assembly itself was picked up on its callout's pages.
-func lots(page: int) -> Array[Dictionary]:
+## sub-assembly itself was picked up on its callout's pages. At a [param
+## part], a part at a time, the one part put down, or none for the
+## sub-assembly.
+func lots(page: int, part: int = 0) -> Array[Dictionary]:
 	page = clamped(page)
+	part = clamped_part(page, part)
 	var counts: Dictionary = {}
 	var step: Instructions.Step = step_of(page)
 	# An attach step carries the loose parts that go on beside the
 	# sub-assembly, as an author's step does (Instructions.ATTACH_TAKES_PARTS).
 	if step == null:
 		return []
+	var only: Dictionary = fresh(page, part) if part > 0 else {}
 	for brick_id: int in step.brick_ids:
-		if int(_rank.get(brick_id, -1)) != page:
+		if int(_rank.get(brick_id, -1)) != page or (part > 0 and not only.has(brick_id)):
 			continue
 		var key: String = str(_lot_of.get(brick_id, ""))
 		if key.is_empty():

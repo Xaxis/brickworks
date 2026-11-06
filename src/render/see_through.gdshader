@@ -13,11 +13,11 @@ render_mode blend_mix, depth_draw_never, cull_back, unshaded, shadows_disabled;
 
 // As plastic_body's: whether the instance colour is sRGB to be made linear.
 uniform bool linearise = true;
-// The cut-away's plane (plastic_body's cut_plane), and which side of it
-// this draws: the near side for x-ray, the far side for the ghost of what
-// the cut takes away.
+// The cut-away (cut_shape.gdshaderinc, as the plastic has it), and which
+// side of it this draws: what it leaves for x-ray, what it takes away for
+// the ghost of that.
 uniform bool cut_on = false;
-uniform vec4 cut_plane = vec4(0.0, 1.0, 0.0, 1.0e9);
+#include "res://src/render/cut_shape.gdshaderinc"
 uniform bool beyond = false;
 
 varying vec3 tint;
@@ -34,7 +34,7 @@ void vertex() {
 void fragment() {
 	if (cut_on) {
 		vec3 world_at = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
-		bool past = dot(cut_plane.xyz, world_at) > cut_plane.w;
+		bool past = cut_away_at(world_at);
 		if (past != beyond) {
 			discard;
 		}

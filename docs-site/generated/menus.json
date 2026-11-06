@@ -330,7 +330,7 @@
 					"name": "pattern",
 					"words": "Pattern…",
 					"key": "Ctrl+Shift+D",
-					"tip": "Copies of the selection in a row, round, or along a hose, put down at once"
+					"tip": "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
 				},
 				{
 					"name": "delete",
@@ -722,29 +722,62 @@
 					"name": "cut",
 					"words": "Cut away",
 					"key": "K",
-					"tip": "A plane through the model, dragged along X, Y or Z, to see and work inside it"
+					"tip": "A plane through the model, dragged along X, Y or Z, or a box, a sphere or a cylinder, to see and work inside it"
 				},
 				{
 					"submenu": "cut_away",
-					"words": "Cut along",
+					"words": "Cut away by",
 					"items": [
 						{
 							"name": "cut_x",
-							"words": "Along X",
+							"words": "A plane along X",
 							"key": "",
 							"tip": ""
 						},
 						{
 							"name": "cut_y",
-							"words": "Along Y",
+							"words": "A plane along Y",
 							"key": "",
 							"tip": ""
 						},
 						{
 							"name": "cut_z",
-							"words": "Along Z",
+							"words": "A plane along Z",
 							"key": "",
 							"tip": ""
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "cut_box",
+							"words": "A box",
+							"key": "",
+							"tip": "Cut away what is inside a box round the selection; drag its knobs to push or pull a face a plate at a time"
+						},
+						{
+							"name": "cut_sphere",
+							"words": "A sphere",
+							"key": "",
+							"tip": "Cut away what is inside a sphere round the selection; drag its knobs to make it bigger or smaller a plate at a time"
+						},
+						{
+							"name": "cut_cylinder",
+							"words": "A cylinder",
+							"key": "",
+							"tip": "Cut away what is inside an upright cylinder round the selection; drag its knobs to push or pull a face a plate at a time"
+						},
+						{
+							"name": "cut_grow",
+							"words": "Grow it a plate",
+							"key": "",
+							"tip": "Every face of the box, sphere or cylinder out a plate"
+						},
+						{
+							"name": "cut_shrink",
+							"words": "Shrink it a plate",
+							"key": "",
+							"tip": "Every face of the box, sphere or cylinder in a plate"
 						},
 						{
 							"line": true
@@ -815,7 +848,7 @@
 					"name": "split_view",
 					"words": "Split",
 					"key": "F8",
-					"tip": "A second view beside the model, square on from the front, top, side or back"
+					"tip": "A second view beside the model, square on from the front, top, side or back. Short of room, the right-hand column folds to its tab while the second view is on"
 				},
 				{
 					"name": "full_screen",
@@ -1354,6 +1387,12 @@
 					"tip": "What every button and key does"
 				},
 				{
+					"name": "whats_this",
+					"words": "What's This?",
+					"key": "Shift+F1",
+					"tip": "Click any button, field or panel next to hear what it does, without doing it"
+				},
+				{
 					"name": "tour",
 					"words": "Take the tour",
 					"key": "",
@@ -1718,6 +1757,11 @@
 		"cut_z": "",
 		"cut_flip": "shift-K",
 		"cut_ghosts": "",
+		"cut_box": "",
+		"cut_sphere": "",
+		"cut_cylinder": "",
+		"cut_grow": "",
+		"cut_shrink": "",
 		"xray": "I",
 		"stress": "",
 		"turn_left": "shift-Q",
@@ -1776,6 +1820,7 @@
 		"settings": ",",
 		"keys": "F1",
 		"tour": "",
+		"whats_this": "shift-F1",
 		"check_updates": "",
 		"reinstall": "",
 		"restart": "",

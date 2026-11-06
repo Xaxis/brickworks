@@ -105,18 +105,20 @@ func _init(library: PartLibrary) -> void:
 	_library = library
 
 
-## The parts like [param id], best first, at most [param most]: [param id]'s
-## own plain part first. Empty for a part the catalogue does not have.
-func like(id: String, most: int = 300) -> Array[PartLibrary.PartInfo]:
+## The parts like [param id], best first: [param id]'s own plain part first.
+## Empty for a part the catalogue does not have. Every one: cut at 300, a
+## printed torso's were its own prints alone, 973 and 299 of them, and a 2 x 4
+## brick's had no curved slope for "curved" to find (likewords, 2026-11-06).
+func like(id: String) -> Array[PartLibrary.PartInfo]:
 	var out: Array[PartLibrary.PartInfo] = []
-	for row: Array in ranked(id, most):
+	for row: Array in ranked(id):
 		out.append(row[1])
 	return out
 
 
 ## [method like] with how alike each is: [[how (ITSELF..ON_STUDS), info]].
 ## Read whole first, if [method read_some] has not.
-func ranked(id: String, most: int = 300) -> Array:
+func ranked(id: String) -> Array:
 	read_some(INF)
 	var info: PartLibrary.PartInfo = _library.parts.get(id)
 	if info == null:
@@ -185,8 +187,6 @@ func ranked(id: String, most: int = 300) -> Array:
 	# A print after its plain part, before the other prints of it.
 	var out: Array = [[ITSELF, base]] if base == info else [[ITSELF, base], [ITSELF, info]]
 	for row: Array in rows:
-		if out.size() >= most:
-			break
 		if row[5] != info:
 			out.append([row[0], row[5]])
 	return out

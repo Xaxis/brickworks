@@ -56,6 +56,11 @@ var give_up_after: float = 20.0
 ## graphics card, and in a browser drawing in software, tens of seconds. A
 ## frame that waited on drawing has not been doing this app's work.
 static var gpu_wait_us: int = 0
+## Pictures being taken now, by any ModelShot: a call that became a job
+## while one is drawn says so (CommandSocket's doing words). The Charger's
+## edit waited two minutes on its picture, and its job said "Changed it:
+## 1118 bricks" every time it was asked (bigedit, 2026-11-06).
+static var drawing: int = 0
 
 ## Where each named view looks from, as a direction the camera sits
 ## along. The default is a three-quarter view, because an elevation
@@ -300,8 +305,11 @@ func take(world: BrickWorld, from: String,
 		skip: Dictionary = {}, only: AABB = AABB()) -> Image:
 	if not possible() or world == null or world.brick_count() == 0:
 		return null
+	drawing += 1
 	if LeasedShots.in_use():
-		return await LeasedShots.shared().take(self, world, from, skip, only)
+		var leased: Image = await LeasedShots.shared().take(self, world, from, skip, only)
+		drawing -= 1
+		return leased
 	# A picture is a handful of frames of waiting, and how long a frame
 	# takes is not this program's business until it is. Measured on this
 	# machine: 989 ms a frame with vsync as shipped, 20 ms with it off.
@@ -318,6 +326,7 @@ func take(world: BrickWorld, from: String,
 	_quicken()
 	var image: Image = await _take(world, from, skip, only)
 	_settle()
+	drawing -= 1
 	return image
 
 

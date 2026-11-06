@@ -317,23 +317,98 @@ msgstr "Neue Modelle auf diesem Boden beginnen"
 msgid "Cut away"
 msgstr "Schnittansicht"
 
-msgid "Cut along"
-msgstr "Schneiden entlang"
+msgid "Cut away by"
+msgstr "Schnittform"
 
-msgid "Along X"
-msgstr "Entlang X"
+msgid "A plane along X"
+msgstr "Ebene entlang X"
 
-msgid "Along Y"
-msgstr "Entlang Y"
+msgid "A plane along Y"
+msgstr "Ebene entlang Y"
 
-msgid "Along Z"
-msgstr "Entlang Z"
+msgid "A plane along Z"
+msgstr "Ebene entlang Z"
 
 msgid "Cut away the other side"
 msgstr "Die andere Seite wegschneiden"
 
 msgid "Leave a ghost of what is cut away"
 msgstr "Weggeschnittenes blass zeigen"
+
+msgid "A plane"
+msgstr "Ebene"
+
+msgid "A box"
+msgstr "Quader"
+
+msgid "A sphere"
+msgstr "Kugel"
+
+msgid "A cylinder"
+msgstr "Zylinder"
+
+msgid "Grow it a plate"
+msgstr "Eine Platte größer"
+
+msgid "Shrink it a plate"
+msgstr "Eine Platte kleiner"
+
+msgid "Cut away what is inside a box round the selection; drag its knobs to push or pull a face a plate at a time"
+msgstr "Wegschneiden, was in einem Quader um die Auswahl liegt; seine Griffe schieben eine Fläche plattenweise hinein oder ziehen sie heraus"
+
+msgid "Cut away what is inside a sphere round the selection; drag its knobs to make it bigger or smaller a plate at a time"
+msgstr "Wegschneiden, was in einer Kugel um die Auswahl liegt; ihre Griffe machen sie plattenweise größer oder kleiner"
+
+msgid "Cut away what is inside an upright cylinder round the selection; drag its knobs to push or pull a face a plate at a time"
+msgstr "Wegschneiden, was in einem stehenden Zylinder um die Auswahl liegt; seine Griffe schieben eine Fläche plattenweise hinein oder ziehen sie heraus"
+
+msgid "Every face of the box, sphere or cylinder out a plate"
+msgstr "Jede Fläche des Quaders, der Kugel oder des Zylinders eine Platte nach außen"
+
+msgid "Every face of the box, sphere or cylinder in a plate"
+msgstr "Jede Fläche des Quaders, der Kugel oder des Zylinders eine Platte nach innen"
+
+msgid "Cut away by a box, a sphere or a cylinder first"
+msgstr "Erst mit einem Quader, einer Kugel oder einem Zylinder wegschneiden"
+
+msgid "Grow"
+msgstr "Größer"
+
+msgid "Shrink"
+msgstr "Kleiner"
+
+msgid "What the cut takes away: what is past a plane, or what is inside a box, a sphere or a cylinder"
+msgstr "Was der Schnitt wegnimmt: was hinter einer Ebene liegt, oder was in einem Quader, einer Kugel oder einem Zylinder liegt"
+
+msgid "Bring every face of the shape in a plate"
+msgstr "Jede Fläche der Form eine Platte nach innen"
+
+msgid "Take every face of the shape out a plate (drag a knob to move one face)"
+msgstr "Jede Fläche der Form eine Platte nach außen (ein gezogener Griff verschiebt eine Fläche)"
+
+msgid "%s × %s studs, %d plates high"
+msgstr "%s × %s Noppen, %d Platten hoch"
+
+msgid "%s studs across, %d plates high"
+msgstr "%s Noppen Durchmesser, %d Platten hoch"
+
+msgid "cut away by a box"
+msgstr "mit einem Quader weggeschnitten"
+
+msgid "cut away by a sphere"
+msgstr "mit einer Kugel weggeschnitten"
+
+msgid "cut away by a cylinder"
+msgstr "mit einem Zylinder weggeschnitten"
+
+msgid "drag a knob to push or pull its face a plate at a time, %s puts the model back"
+msgstr "ein gezogener Griff schiebt oder zieht seine Fläche plattenweise, %s stellt das Modell wieder her"
+
+msgid "grown to %s"
+msgstr "vergrößert auf %s"
+
+msgid "shrunk to %s"
+msgstr "verkleinert auf %s"
 
 msgid "X-ray"
 msgstr "Röntgenblick"
@@ -816,8 +891,8 @@ msgstr "In der Teileliste und den Einkaufslisten mitgezählt, mit dem Modell ges
 msgid "What New, and a model opened from a file that does not say, stand on"
 msgstr "Worauf Neu und ein Modell aus einer Datei, die es nicht angibt, stehen"
 
-msgid "A plane through the model, dragged along X, Y or Z, to see and work inside it"
-msgstr "Eine Ebene durch das Modell, entlang X, Y oder Z gezogen, um hineinzusehen und darin zu arbeiten"
+msgid "A plane through the model, dragged along X, Y or Z, or a box, a sphere or a cylinder, to see and work inside it"
+msgstr "Eine Ebene durch das Modell, entlang X, Y oder Z gezogen, oder ein Quader, eine Kugel oder ein Zylinder, um hineinzusehen und darin zu arbeiten"
 
 msgid "Everything but the selection, or the sub-assembly being edited, see-through"
 msgstr "Alles außer der Auswahl, oder der Baugruppe in Bearbeitung, durchsichtig"
@@ -10836,6 +10911,76 @@ msgstr "Automatisch: der einfachere Modus, den diese Grafik braucht (%s). Kein P
 msgid "From the next start."
 msgstr "Ab dem nächsten Start."
 
+# Pattern's In a grid: columns, rows and levels in one dialog (APP_UX4 grid)
+msgid "In a grid"
+msgstr "Im Raster"
+
+msgid "Columns"
+msgstr "Spalten"
+
+msgid "Rows"
+msgstr "Reihen"
+
+msgid "Levels"
+msgstr "Ebenen"
+
+msgid "studs along x"
+msgstr "Noppen entlang x"
+
+msgid "studs along z"
+msgstr "Noppen entlang z"
+
+msgid "plates up"
+msgstr "Platten nach oben"
+
+msgid "1 copy"
+msgstr "1 Kopie"
+
+msgid "%d copies"
+msgstr "%d Kopien"
+
+msgid "1 column"
+msgstr "1 Spalte"
+
+msgid "%d columns %s apart"
+msgstr "%d Spalten, %s auseinander"
+
+msgid "1 row"
+msgstr "1 Reihe"
+
+msgid "%d rows %s apart"
+msgstr "%d Reihen, %s auseinander"
+
+msgid "1 level"
+msgstr "1 Ebene"
+
+msgid "%d levels %s apart"
+msgstr "%d Ebenen, %s auseinander"
+
+msgid "1 stud"
+msgstr "1 Noppe"
+
+msgid "each has room"
+msgstr "jede hat Platz"
+
+msgid "the copy in column %d, row %d, level %d has no room: %s is in the way"
+msgstr "die Kopie in Spalte %d, Reihe %d, Ebene %d hat keinen Platz: %s ist im Weg"
+
+msgid "%d copies have no room, the first in column %d, row %d, level %d: %s is in the way"
+msgstr "%d Kopien haben keinen Platz, die erste in Spalte %d, Reihe %d, Ebene %d: %s ist im Weg"
+
+msgid "%d copies have no room, the first copy %d: %s is in the way"
+msgstr "%d Kopien haben keinen Platz, die erste ist Kopie %d: %s ist im Weg"
+
+msgid "a grid of %d copies"
+msgstr "ein Raster aus %d Kopien"
+
+msgid "one %s takes them all back"
+msgstr "ein %s nimmt sie alle zurück"
+
+msgid "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
+msgstr "Kopien der Auswahl in einer Reihe, im Raster, im Kreis oder entlang eines Schlauchs, auf einmal abgesetzt"
+
 # A model into this one (APP_UX4 intomodel): File, Import, Into this model…, the
 # library's Put in this model, and what the status bar says while it is in hand.
 
@@ -10907,3 +11052,177 @@ msgstr "%s eingesetzt, %s"
 
 msgid "put in %s"
 msgstr "%s eingesetzt"
+# View, Split: the room it makes at a laptop's size (APP_UX4, quiet)
+msgid "Short of room, the right-hand column folds to its tab while the second view is on"
+msgstr "Fehlt der Platz, wird die rechte Spalte zu ihrem Reiter eingeklappt, solange die zweite Ansicht an ist"
+
+# What's This (Help, Shift+F1), and where the part in hand goes, on the status bar (whatsthis).
+
+msgid "What's This?"
+msgstr "Was ist das?"
+
+msgid "Click any button, field or panel next to hear what it does, without doing it"
+msgstr "Als Nächstes einen Knopf, ein Feld oder ein Bedienfeld anklicken: Es sagt, was es tut, statt es zu tun"
+
+msgid "What's This: click any button, field or panel to hear what it does · Esc to stop"
+msgstr "Was ist das: einen Knopf, ein Feld oder ein Bedienfeld anklicken, um zu erfahren, was es tut · Esc zum Beenden"
+
+msgid "Only the %s parts in the bin: %d of them"
+msgstr "Nur die Teile der Art %s im Teilekasten: %d Stück"
+
+msgid "Parts of every kind in the bin, not one kind alone; with a search typed, all it finds"
+msgstr "Teile jeder Art im Teilekasten, nicht nur einer; mit einer Suche alle, die sie findet"
+
+msgid "Greyed now: %s"
+msgstr "Gerade nicht verfügbar: %s"
+
+msgid "Greyed now"
+msgstr "Gerade nicht verfügbar"
+
+msgid "In use now"
+msgstr "Gerade in Gebrauch"
+
+msgid "On now"
+msgstr "Gerade an"
+
+msgid "Off now"
+msgstr "Gerade aus"
+
+msgid "The model"
+msgstr "Das Modell"
+
+msgid "A click here does what the tool in use does:"
+msgstr "Ein Klick hier tut, was das gewählte Werkzeug tut:"
+
+msgid "x %s, z %s studs"
+msgstr "x %s, z %s Noppen"
+
+msgid "1 plate up"
+msgstr "1 Platte hoch"
+
+msgid "%s plates down"
+msgstr "%s Platten tiefer"
+
+msgid "1 plate down"
+msgstr "1 Platte tiefer"
+
+msgid "on the ground"
+msgstr "auf dem Boden"
+
+msgid "Where the part in hand goes if put down now: studs across (x) and back (z) from the middle of the floor, and plates up from the ground"
+msgstr "Wohin das Teil in der Hand käme, jetzt abgesetzt: Noppen quer (x) und nach hinten (z) von der Mitte des Bodens, und Platten über dem Boden"
+
+msgid "Select a part first"
+msgstr "Zuerst ein Teil auswählen"
+
+msgid "Put a part on the baseplate first"
+msgstr "Zuerst ein Teil auf die Grundplatte setzen"
+
+msgid "Choose a step on the timeline first"
+msgstr "Zuerst einen Bauschritt auf der Zeitleiste wählen"
+
+msgid "Stand the model on a baseplate first"
+msgstr "Das Modell zuerst auf eine Grundplatte stellen"
+
+msgid "Nothing to undo yet"
+msgstr "Noch nichts zurückzunehmen"
+
+msgid "Nothing to redo"
+msgstr "Nichts zu wiederholen"
+
+msgid "Nothing is hidden"
+msgstr "Nichts ist ausgeblendet"
+
+msgid "Nothing is locked"
+msgstr "Nichts ist gesperrt"
+
+msgid "Select a sub-assembly first"
+msgstr "Zuerst eine Baugruppe auswählen"
+
+msgid "Not editing inside a sub-assembly"
+msgstr "Gerade nicht in einer Baugruppe"
+
+msgid "Select a section first"
+msgstr "Zuerst einen Abschnitt auswählen"
+
+msgid "Turn on Cut away first"
+msgstr "Zuerst die Schnittansicht einschalten"
+
+msgid "Not now"
+msgstr "Gerade nicht"
+
+msgid "This model is shared to look at"
+msgstr "Dieses Modell ist zum Ansehen geteilt"
+
+msgid "The model is still opening"
+msgstr "Das Modell öffnet noch"
+
+msgid "The assistant is off in Settings"
+msgstr "Der Assistent ist in den Einstellungen aus"
+
+msgid "Folds the panel to this strip at its edge, giving the model its room; a click on the strip brings it back"
+msgstr "Klappt das Bedienfeld zu dieser Leiste an seinem Rand zusammen, damit das Modell Platz hat; ein Klick auf die Leiste holt es zurück"
+
+msgid "Opens the panel this strip stands for; one sharing its edge folds to its own strip"
+msgstr "Öffnet das Bedienfeld dieser Leiste; eines am selben Rand klappt zu seiner eigenen Leiste zusammen"
+
+msgid "A panel of the window: click a control in it to hear what that does. The strip at its edge folds it away and brings it back"
+msgstr "Ein Bedienfeld des Fensters: ein Element darin anklicken, um zu erfahren, was es tut. Die Leiste an seinem Rand klappt es weg und holt es zurück"
+
+msgid "In the %s panel; it says nothing of itself but its name"
+msgstr "Im Bedienfeld %s; es sagt von sich nichts als seinen Namen"
+
+msgid "Sends what is written above to the assistant, which designs it and builds it in the model; with parts chosen over the box, it works on those"
+msgstr "Schickt das oben Geschriebene an den Assistenten, der es entwirft und im Modell baut; mit Teilen über dem Feld gewählt, arbeitet er an diesen"
+
+msgid "Checks the key pasted above with Anthropic and keeps it, so the assistant designs on your own Anthropic account"
+msgstr "Prüft den oben eingefügten Schlüssel bei Anthropic und behält ihn, damit der Assistent auf deinem eigenen Anthropic-Konto entwirft"
+
+msgid "Opens Anthropic's Console in the browser, at the page where an account makes its keys"
+msgstr "Öffnet die Console von Anthropic im Browser, auf der Seite, wo ein Konto seine Schlüssel erstellt"
+
+msgid "Shows how the Claude desktop and mobile apps add Brickworks, with the address to paste"
+msgstr "Zeigt, wie die Claude-Apps für Desktop und Handy Brickworks hinzufügen, mit der Adresse zum Einfügen"
+
+msgid "Shows this browser's own address, to add to Claude by hand: the way before Claude could sign in"
+msgstr "Zeigt die eigene Adresse dieses Browsers, um sie Claude von Hand hinzuzufügen: der Weg, bevor Claude sich anmelden konnte"
+# Build it a part at a time (partbypart, APP_UX4 7): the step player's choice.
+
+msgid "One part"
+msgstr "Ein Teil"
+
+msgid "Whole step"
+msgstr "Ganzer Bauschritt"
+
+msgid "Build it a part at a time: the next part alone, in its colours"
+msgstr "Teil für Teil bauen: das nächste Teil allein, in seinen Farben"
+
+msgid "Build it a step at a time, as the booklet shows it"
+msgstr "Bauschritt für Bauschritt bauen, wie die Bauanleitung ihn zeigt"
+
+msgid "%d of %d in this step"
+msgstr "%d von %d in diesem Bauschritt"
+
+msgid "The next part (right arrow, space)"
+msgstr "Das nächste Teil (Pfeil nach rechts, Leertaste)"
+
+msgid "Take the last part off (left arrow)"
+msgstr "Das letzte Teil wieder abnehmen (Pfeil nach links)"
+
+msgid "Narrow these parts…"
+msgstr "Diese Teile eingrenzen…"
+
+msgid "Parts like %s, with “%s”: its size and kind first; a tap swaps the selection"
+msgstr "Teile wie %s, mit „%s“: zuerst seine Größe und Art; ein Tippen tauscht die Auswahl"
+
+msgid "Parts like %s, with “%s”: its size and kind first; a double-click swaps the selection"
+msgstr "Teile wie %s, mit „%s“: zuerst seine Größe und Art; ein Doppelklick tauscht die Auswahl"
+
+msgid "No part like %s has “%s”"
+msgstr "Kein Teil wie %s hat „%s“"
+
+msgid "What fits %s, with “%s”, the best fits first"
+msgstr "Was zu %s passt, mit „%s“, das Beste zuerst"
+
+msgid "Nothing that fits %s has “%s”"
+msgstr "Nichts, was zu %s passt, hat „%s“"
