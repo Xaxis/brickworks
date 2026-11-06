@@ -965,6 +965,14 @@
       "tests": []
     },
     {
+      "id": "cli:each thread's CPU in a browser",
+      "kind": "cli",
+      "entry": "tools/web/thread_cpu.mjs",
+      "reach": "node tools/web/thread_cpu.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (with .env sourced; a local export served by tools/web/serve.py; --profile=phone; --idle=60 --build=60)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:embed browser flow",
       "kind": "cli",
       "entry": "tools/web/embed_flow.mjs",

@@ -99,3 +99,12 @@ textures/default_filters/anisotropic_filtering_level=3
 ; got two AbortErrors in the console about worklets that were never
 ; going to be used. A dummy driver removes the attempt and the files.
 driver/driver="Dummy"
+; The dummy driver still runs a thread that mixes 4,096 frames of silence
+; and sleeps for as long as they would play: 4096 / mix rate seconds. The
+; web's mix rate is 0 by default (the browser's own, which a dummy has
+; none of), so that sleep was infinite; it reached nanosleep as 0xFFFFFFFF
+; microseconds, which a 32-bit long turns into a negative nanosecond count,
+; nanosleep refused it at once, and the thread mixed without pause: a whole
+; core for as long as the tab was open (spinworker, 2026-11-05). Any rate
+; above 1 gives it a real sleep; this is the engine's own default elsewhere.
+driver/mix_rate.web=44100
