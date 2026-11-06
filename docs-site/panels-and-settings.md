@@ -28,6 +28,14 @@ With a part in hand, the status bar says where it goes if you click now: studs a
 ui:what's this
 -->
 
+## How big, and how heavy {#size}
+
+The status bar says how big the model is, beside how many parts it has: studs across and deep and plates high, then centimetres each way, such as the car's "4½ × 10.8 studs, 15 plates high · 3.6 × 8.64 × 4.96 cm". The plates count the height as a wall's is counted, without the studs on top; the centimetres take the studs in, as a shelf has to. The baseplate it stands on is left out. Select some parts and it says how big they are instead, after how many are selected. **Properties** with nothing selected says the same size and about how much the model weighs, worked out from each part's shape. Claude reads both with `in_view`.
+
+<!-- covers
+ui:model size and weight
+-->
+
 ## Your own keys {#keys}
 
 Every tool has a key: [[Shift+X]] Move, [[Shift+O]] Rotate, [[Shift+I]] Hinge, [[Shift+V]] Clone, [[Shift+P]] Paint, [[Shift+G]] Hide and [[Shift+Delete]] Delete. [[C]] paints what is selected; with nothing selected, it says how to paint.

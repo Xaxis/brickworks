@@ -12,9 +12,10 @@
 ## to fix.
 ##
 ## in_view reads what the person sees and a session did not: the step the
-## timeline is at, the part in their hand, and the reference picture they
-## laid to build over, with a picture of it and the model's parts drawn on
-## it where they stand over it. It changes nothing.
+## timeline is at, the part in their hand, how big the model is and what it
+## weighs (the status bar's and Properties' words, ModelSize), and the
+## reference picture they laid to build over, with a picture of it and the
+## model's parts drawn on it where they stand over it. It changes nothing.
 ##
 ## Tools of AppTools, served wherever the app's tools are: the desktop's MCP
 ## port, My Claude and the connector.
@@ -118,7 +119,9 @@ static func definitions() -> Array:
 				+ "the step the timeline is at and its parts, the part in their hand (the Place "
 				+ "tool's, its colour, which way it points as face and rot, and the span its ghost "
 				+ "takes under the pointer; or the parts they are carrying), how many parts they "
-				+ "have selected, "
+				+ "have selected and how big those are, "
+				+ "the model's size (in studs and plates, and in centimetres: will it fit a shelf) "
+				+ "and its weight in grams, as the status bar says them, "
 				+ "and the reference picture they laid to build over: its file, size and place "
 				+ "in studs, and with picture=true (the default) the picture itself, the "
 				+ "model's parts drawn on it where they stand over it. Changes nothing."),
@@ -429,7 +432,8 @@ func _in_view(input: Dictionary) -> Variant:
 		if builder.world.get_brick(brick_id) != null:
 			selected += 1
 	lines.append(" - Selected: %s." % ("nothing" if selected == 0
-		else "%s (selection reads them)" % _many(selected)))
+		else "%s (selection reads them)%s" % [_many(selected), _selection_size(builder, library)]))
+	lines.append(" - " + _model_size(builder, library))
 	var reference: ReferenceImage = app.get("_reference")
 	if reference == null or not reference.has_picture():
 		lines.append(" - No reference picture is laid in the scene.")
@@ -445,6 +449,40 @@ func _in_view(input: Dictionary) -> Variant:
 		% [picture.get_width(), picture.get_height()]
 		+ "drawn on it in its colour where it stands over it, outlined.")
 	return [{"type": "text", "text": "\n".join(lines)}, AppTools._picture_block(picture)]
+
+
+## How big the model is and what it weighs, as the status bar and Properties
+## say them (ModelSize), the baseplate it stands on left out.
+func _model_size(builder: Builder, library: PartLibrary) -> String:
+	var store: ModelStore = app.get("_store")
+	var model: ModelSize = ModelSize.of_model(builder.world, library,
+		store.scenery if store != null else {})
+	if model.is_empty():
+		return "The model: nothing built yet, so no size and no weight."
+	var cm: Vector3 = model.centimetres()
+	var said: String = ("The model's size: %s cm across (x), %s cm deep (z) and %s cm high, the "
+		+ "studs on its top included; %s without them. Its weight: about %s g, each part "
+		+ "weighed by its shape (within about 6%% of real bricks on a scale)") % [
+		ModelSize.cm(cm.x), ModelSize.cm(cm.z), ModelSize.cm(cm.y), model.studs_words(),
+		"%.0f" % model.grams]
+	if model.left_out > 0:
+		said += "; %s not in the parts library %s in neither" % [_many(model.left_out),
+			"is" if model.left_out == 1 else "are"]
+	return said + "."
+
+
+## ", together 2 × 4 studs, 3 plates high, 1.6 × 3.2 × 1.12 cm": the parts
+## selected, as the status bar says them.
+static func _selection_size(builder: Builder, library: PartLibrary) -> String:
+	var bricks: Array = []
+	for brick_id: int in builder.selection:
+		var brick: BrickWorld.Brick = builder.world.get_brick(brick_id)
+		if brick != null:
+			bricks.append(brick)
+	var picked: ModelSize = ModelSize.of_bricks(bricks, library)
+	if picked.is_empty():
+		return ""
+	return ", together %s, %s" % [picked.studs_words(), picked.centimetre_words()]
 
 
 func _timeline_words() -> String:

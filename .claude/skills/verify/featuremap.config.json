@@ -4728,6 +4728,13 @@
       "entry": "tools/web/mybricks_api.mjs",
       "reach": "node tools/web/mybricks_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview: every change an op, sources kept, stale counts and a PUT refused 409, a session's apart, taken back lot for lot)",
       "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "model size and weight",
+      "entry": "src/assembly/model_size.gd",
+      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4½ × 10.8 studs, 15 plates high · 3.6 × 8.64 × 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/)",
+      "area": "building"
     }
   ]
 }

@@ -281,7 +281,8 @@ measure, read-only: the distance and the angle between two connectors \
 joint with the turn between them as attach's yaw. in_view, read-only: what \
 the person sees and a session is not told — the step the timeline is at, \
 the part in their hand, and the reference picture they build over, with a \
-picture of it.
+picture of it; and the model's size in studs and centimetres and its weight \
+in grams, as the status bar says them.
  - view_board, read-only: up to six of view_model's views in one labelled \
 picture; highlight= parts edged in magenta with the rest see-through, xray= \
 parts see-through so what they hide shows (each by number, part number \
