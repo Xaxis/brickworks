@@ -317,23 +317,98 @@ msgstr "Empezar los modelos nuevos sobre este suelo"
 msgid "Cut away"
 msgstr "Vista en corte"
 
-msgid "Cut along"
-msgstr "Cortar a lo largo de"
+msgid "Cut away by"
+msgstr "Cortar con"
 
-msgid "Along X"
-msgstr "A lo largo de X"
+msgid "A plane along X"
+msgstr "Un plano a lo largo de X"
 
-msgid "Along Y"
-msgstr "A lo largo de Y"
+msgid "A plane along Y"
+msgstr "Un plano a lo largo de Y"
 
-msgid "Along Z"
-msgstr "A lo largo de Z"
+msgid "A plane along Z"
+msgstr "Un plano a lo largo de Z"
 
 msgid "Cut away the other side"
 msgstr "Cortar el otro lado"
 
 msgid "Leave a ghost of what is cut away"
 msgstr "Dejar un fantasma de lo cortado"
+
+msgid "A plane"
+msgstr "Un plano"
+
+msgid "A box"
+msgstr "Una caja"
+
+msgid "A sphere"
+msgstr "Una esfera"
+
+msgid "A cylinder"
+msgstr "Un cilindro"
+
+msgid "Grow it a plate"
+msgstr "Agrandar una placa"
+
+msgid "Shrink it a plate"
+msgstr "Reducir una placa"
+
+msgid "Cut away what is inside a box round the selection; drag its knobs to push or pull a face a plate at a time"
+msgstr "Cortar lo que hay dentro de una caja alrededor de la selección; sus tiradores empujan o tiran de una cara una placa cada vez"
+
+msgid "Cut away what is inside a sphere round the selection; drag its knobs to make it bigger or smaller a plate at a time"
+msgstr "Cortar lo que hay dentro de una esfera alrededor de la selección; sus tiradores la agrandan o la reducen una placa cada vez"
+
+msgid "Cut away what is inside an upright cylinder round the selection; drag its knobs to push or pull a face a plate at a time"
+msgstr "Cortar lo que hay dentro de un cilindro vertical alrededor de la selección; sus tiradores empujan o tiran de una cara una placa cada vez"
+
+msgid "Every face of the box, sphere or cylinder out a plate"
+msgstr "Cada cara de la caja, la esfera o el cilindro una placa hacia fuera"
+
+msgid "Every face of the box, sphere or cylinder in a plate"
+msgstr "Cada cara de la caja, la esfera o el cilindro una placa hacia dentro"
+
+msgid "Cut away by a box, a sphere or a cylinder first"
+msgstr "Corta primero con una caja, una esfera o un cilindro"
+
+msgid "Grow"
+msgstr "Agrandar"
+
+msgid "Shrink"
+msgstr "Reducir"
+
+msgid "What the cut takes away: what is past a plane, or what is inside a box, a sphere or a cylinder"
+msgstr "Lo que quita el corte: lo que queda más allá de un plano, o lo que hay dentro de una caja, una esfera o un cilindro"
+
+msgid "Bring every face of the shape in a plate"
+msgstr "Cada cara de la forma una placa hacia dentro"
+
+msgid "Take every face of the shape out a plate (drag a knob to move one face)"
+msgstr "Cada cara de la forma una placa hacia fuera (arrastrar un tirador mueve una cara)"
+
+msgid "%s × %s studs, %d plates high"
+msgstr "%s × %s espigas, %d placas de alto"
+
+msgid "%s studs across, %d plates high"
+msgstr "%s espigas de diámetro, %d placas de alto"
+
+msgid "cut away by a box"
+msgstr "cortado con una caja"
+
+msgid "cut away by a sphere"
+msgstr "cortado con una esfera"
+
+msgid "cut away by a cylinder"
+msgstr "cortado con un cilindro"
+
+msgid "drag a knob to push or pull its face a plate at a time, %s puts the model back"
+msgstr "arrastra un tirador para empujar o tirar de su cara una placa cada vez, %s devuelve el modelo"
+
+msgid "grown to %s"
+msgstr "agrandado a %s"
+
+msgid "shrunk to %s"
+msgstr "reducido a %s"
 
 msgid "X-ray"
 msgstr "Rayos X"
@@ -816,8 +891,8 @@ msgstr "Se cuenta en la lista de piezas y en las listas de compra, se guarda con
 msgid "What New, and a model opened from a file that does not say, stand on"
 msgstr "Sobre qué se apoyan Nuevo y un modelo abierto desde un archivo que no lo indica"
 
-msgid "A plane through the model, dragged along X, Y or Z, to see and work inside it"
-msgstr "Un plano a través del modelo, arrastrado a lo largo de X, Y o Z, para ver y trabajar dentro"
+msgid "A plane through the model, dragged along X, Y or Z, or a box, a sphere or a cylinder, to see and work inside it"
+msgstr "Un plano a través del modelo, arrastrado a lo largo de X, Y o Z, o una caja, una esfera o un cilindro, para ver y trabajar dentro"
 
 msgid "Everything but the selection, or the sub-assembly being edited, see-through"
 msgstr "Todo menos la selección, o el subconjunto que se edita, transparente"

@@ -185,7 +185,8 @@ const SUBMENUS: Dictionary = {
 		"select_connected", "select_submodel", "select_inverse"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right"],
-	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
+	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_box", "cut_sphere", "cut_cylinder",
+		"cut_grow", "cut_shrink", "-", "cut_flip", "cut_ghosts"],
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_to", "step_new", "-", "step_earlier", "step_later",
 		"step_merge", "step_delete"],
@@ -206,7 +207,7 @@ const SUBMENUS: Dictionary = {
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
-	"viewpoint": "Viewpoint", "cut_away": "Cut along",
+	"viewpoint": "Viewpoint", "cut_away": "Cut away by",
 	"steps": "Build steps", "booklet": "Booklet page", "floor": "Floor",
 	"floor_colour": "Baseplate colour"}
 
@@ -245,6 +246,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	see_inside.camera = camera
 	see_inside.scenery = store.scenery
 	see_inside.say = bar.say
+	see_inside.store = store
 	see_inside.bounds_of_model = func() -> AABB: return app.call("_built_bounds")
 	add_child(see_inside)
 	stress = StressView.new()
@@ -729,6 +731,7 @@ const SLOW_FROM: Dictionary = {
 	# and 247 by its keys), Print on a part (228), the tour (212) and its
 	# picture (250).
 	"versions": 2000, "cut": 3000, "cut_x": 3000, "cut_y": 3000, "cut_z": 3000,
+	"cut_box": 3000, "cut_sphere": 3000, "cut_cylinder": 3000, "cut_grow": 3000, "cut_shrink": 3000,
 	"make_submodel": 2000, "select_submodel": 2000, "copy": 2000, "settings": 3000,
 	"keys": 3000, "print_part": 3000, "tour": 3000, "export_picture": 3000,
 }
@@ -763,6 +766,8 @@ const DOING: Dictionary = {
 	"collection": "Opening My collection…", "collection_need": "Working out what you need…",
 	"minifig": "Opening the minifigure builder…", "versions": "Opening the versions…",
 	"cut_x": "Cutting away…", "cut_y": "Cutting away…", "cut_z": "Cutting away…",
+	"cut_box": "Cutting away…", "cut_sphere": "Cutting away…", "cut_cylinder": "Cutting away…",
+	"cut_grow": "Cutting away…", "cut_shrink": "Cutting away…",
 	"settings": "Opening Settings…", "keys": "Opening the keys and controls…",
 	"print_part": "Opening Print on a part…", "tour": "Starting the tour…",
 	"collection_build": "Working out what you can build…",
@@ -853,6 +858,8 @@ const NEEDS: Dictionary = {
 	"evaluate_section": "Select a section first", "break_out": "Select a section first",
 	"put_back": "No section is broken out",
 	"xray": "Select a part first", "cut_flip": "Turn on Cut away first",
+	"cut_grow": "Cut away by a box, a sphere or a cylinder first",
+	"cut_shrink": "Cut away by a box, a sphere or a cylinder first",
 	"stress": "Put a part on the baseplate first",
 	"split_view": "The window is too small for two views",
 	"compare": "Save the model first: each save is kept to compare with",
@@ -1242,11 +1249,11 @@ func _define() -> void:
 		(app.get("_reference") as ReferenceImage).open(), Callable(),
 		"A photo, plan or drawing laid on the floor or stood behind the model, to build over")
 	_add("cut", "Cut away", KEY_K, func() -> void: see_inside.set_cut(not see_inside.cutting),
-		something, "A plane through the model, dragged along X, Y or Z, to see and work inside it")
+		something, "A plane through the model, dragged along X, Y or Z, or a box, a sphere or a cylinder, to see and work inside it")
 	_ticked("cut", func() -> bool: return see_inside.cutting)
 	for along: int in 3:
 		var which: int = along
-		_add("cut_" + SeeInside.AXES[along].to_lower(), "Along %s" % SeeInside.AXES[along], 0,
+		_add("cut_" + SeeInside.AXES[along].to_lower(), "A plane along %s" % SeeInside.AXES[along], 0,
 			func() -> void: see_inside.cut_along(which), something)
 		_ticked("cut_" + SeeInside.AXES[along].to_lower(), func() -> bool:
 			return see_inside.cutting and see_inside.axis == which)
@@ -1255,6 +1262,23 @@ func _define() -> void:
 	_add("cut_ghosts", "Leave a ghost of what is cut away", 0,
 		func() -> void: see_inside.set_ghosts(not see_inside.leaves_ghosts), Callable())
 	_ticked("cut_ghosts", func() -> bool: return see_inside.leaves_ghosts)
+	# A box, a sphere or a cylinder cut away, as StudWorx cuts (APP_UX4 8):
+	# its knobs push and pull its faces a plate at a time.
+	_add("cut_box", "A box", 0, func() -> void: see_inside.cut_by(CutShape.BOX), something,
+		"Cut away what is inside a box round the selection; drag its knobs to push or pull a face a plate at a time")
+	_ticked("cut_box", func() -> bool: return see_inside.shape_on() and see_inside.shape == CutShape.BOX)
+	_add("cut_sphere", "A sphere", 0, func() -> void: see_inside.cut_by(CutShape.SPHERE), something,
+		"Cut away what is inside a sphere round the selection; drag its knobs to make it bigger or smaller a plate at a time")
+	_ticked("cut_sphere", func() -> bool:
+		return see_inside.shape_on() and see_inside.shape == CutShape.SPHERE)
+	_add("cut_cylinder", "A cylinder", 0, func() -> void: see_inside.cut_by(CutShape.CYLINDER),
+		something, "Cut away what is inside an upright cylinder round the selection; drag its knobs to push or pull a face a plate at a time")
+	_ticked("cut_cylinder", func() -> bool:
+		return see_inside.shape_on() and see_inside.shape == CutShape.CYLINDER)
+	_add("cut_grow", "Grow it a plate", 0, func() -> void: see_inside.grow(1),
+		func() -> bool: return see_inside.shape_on(), "Every face of the box, sphere or cylinder out a plate")
+	_add("cut_shrink", "Shrink it a plate", 0, func() -> void: see_inside.grow(-1),
+		func() -> bool: return see_inside.shape_on(), "Every face of the box, sphere or cylinder in a plate")
 	_add("xray", "X-ray", KEY_I, func() -> void: see_inside.set_xray(not see_inside.seeing_through),
 		func() -> bool: return (see_inside.seeing_through or not builder.selection.is_empty()
 			or not assemblies.entered.is_empty()),

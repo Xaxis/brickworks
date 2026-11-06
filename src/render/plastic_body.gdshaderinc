@@ -93,12 +93,13 @@ uniform sampler2D print_texture : filter_linear_mipmap, repeat_disable;
 #endif
 
 #ifdef PLASTIC_CUT
-// The section plane of a cut-away (SeeInside), in the world: whatever is
-// past it, where dot(xyz, p) > w, is not drawn, so the inside of a model
-// can be seen and worked in. Set per batch by BrickWorld.set_cut; only the
-// _cut variants of these shaders read it, so a model with no cut draws
-// with no discard and keeps its early depth test.
-uniform vec4 cut_plane = vec4(0.0, 1.0, 0.0, 1.0e9);
+// The cut-away (SeeInside), in the world: a plane, or a box, a sphere or a
+// cylinder (cut_shape.gdshaderinc). What it takes off is not drawn, so the
+// inside of a model can be seen and worked in. Set per batch by
+// BrickWorld.set_cut and set_cut_shape; only the _cut variants of these
+// shaders read it, so a model with no cut draws with no discard and keeps
+// its early depth test.
+#include "res://src/render/cut_shape.gdshaderinc"
 #endif
 
 #ifdef PLASTIC_PRODUCT
@@ -361,7 +362,7 @@ vec3 stud_rim(vec3 at, vec3 n, float width, float small) {
 void fragment() {
 #ifdef PLASTIC_CUT
 	vec3 world_at = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	if (dot(cut_plane.xyz, world_at) > cut_plane.w) {
+	if (cut_away_at(world_at)) {
 		discard;
 	}
 #endif
@@ -373,11 +374,12 @@ void fragment() {
 	vec4 ink = texture(print_texture, UV);
 #endif
 #ifdef PLASTIC_CAP
-	// Where the plane cuts through plastic. A part's surfaces are closed,
-	// so an eye looking past the plane meets a back face exactly where the
-	// plane is inside the plastic, and a front face where it is in air:
-	// the back faces are the cut. Drawn as a flat face square to the
-	// plane, in the part's own colour, hatched the way a section is drawn
+	// Where the cut goes through plastic. A part's surfaces are closed, so
+	// an eye looking past the plane, or through the box, sphere or
+	// cylinder, meets a back face exactly where the cut's surface is inside
+	// the plastic, and a front face where it is in air: the back faces are
+	// the cut. Drawn as a flat face on the cut's surface, in the part's own
+	// colour, hatched the way a section is drawn
 	// on paper, so a wall cut through reads as a wall and not as a hole
 	// into the back of the brick. And drawn first and alone: with a discard
 	// in the shader nothing is rejected before it runs, and about half of
@@ -393,7 +395,14 @@ void fragment() {
 		SPECULAR = 0.0;
 		BACKLIGHT = vec3(0.0);
 		EMISSION = vec3(0.0);
-		NORMAL = normalize((VIEW_MATRIX * vec4(cut_plane.xyz, 0.0)).xyz);
+		// Square to the plane, or to the box's, sphere's or cylinder's face
+		// where the eye's line came out of it.
+		vec3 toward_eye = (INV_VIEW_MATRIX * vec4(VIEW, 0.0)).xyz;
+		NORMAL = normalize((VIEW_MATRIX * vec4(cut_face_normal(world_at, toward_eye), 0.0)).xyz);
+		if (cut_marks == 1) {
+			ALBEDO = vec3(0.0);
+			EMISSION = vec3(4.0, 0.0, 4.0);
+		}
 	} else {
 #endif
 	int finish = int(floor(instance_finish.w + 0.001));
@@ -684,6 +693,16 @@ void fragment() {
 	}
 #endif
 
+#if defined(PLASTIC_CUT) && !defined(PLASTIC_CAP) && !defined(PLASTIC_TRANSPARENT)
+	// For a probe: the inside of a part drawn as a surface where the cut
+	// goes through it. A surface with no dependable outside draws its back
+	// faces as surfaces, so a cut through one shows them (cutshapes_probe
+	// counts them).
+	if (cut_marks == 1 && !FRONT_FACING) {
+		ALBEDO = vec3(0.0);
+		EMISSION = vec3(0.0, 4.0, 0.0);
+	}
+#endif
 #ifdef PLASTIC_CAP
 	}
 #endif

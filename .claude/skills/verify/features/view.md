@@ -515,6 +515,25 @@ picture the assistant is shown.
   designed afresh) ends it. The booklet and the assistant's pictures are drawn
   from worlds of their own and never see it; Export's picture is the world on
   screen and does.
+- `cut away by a box, a sphere or a cylinder` (`src/render/cut_shape.gd`,
+  `BrickWorld.set_cut_shape`, APP_UX4 8): View → Cut away by → A box, A sphere
+  or A cylinder, or the strip's first list. A shape goes round the selection,
+  or with none takes the middle of the model off from half way up; its faces
+  sit on odd LDU, whole plates apart, round where it is round. A knob on each
+  face (`SeeInside._draw_knobs`, the move handles' colours) is dragged to push
+  or pull that face a plate at a time, the wheel over it moves it one, Shift
+  drags the whole shape, Esc or a right click puts it back; the strip's Grow
+  and Shrink move every face. Parts are sorted by their box against the shape
+  (`CutShape.side_of`: outside drawn whole, across drawn by `Batch.through`,
+  inside not at all), and the cut faces are the plane's caps with the normal
+  of the shape's face where the eye's line leaves it
+  (`cut_shape.gdshaderinc`). Under a shape every part across or inside still
+  casts its whole shadow (`Batch.shade`, shadows only), so nothing outside
+  the hole changes. The cut, plane or shape, is kept with the model
+  (`CutShape.META`, `BrickWorld.cut_kept`, one line per file, in the file's
+  coordinates) and comes back when it opens; a shared model's viewer opens
+  it whole. `set_cut_marks` paints the cut's faces magenta and any other
+  inside face green, for `cutshapes_probe` to count.
 - `x-ray` (`src/ui/see_inside.gd`, `BrickWorld.set_xray`): `I`, View → X-ray, or
   the toolbar: everything but the selection — or, editing inside a
   sub-assembly, everything but it — is drawn see-through
@@ -2417,6 +2436,19 @@ xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_pro
 #   inside a sub-assembly; clicks reaching it through both; the timeline with
 #   both on; the booklet made with both on = made with both off; Orthanc timed.
 #   Leaves shots/see_inside/*.png — look at the cut faces and the ghosts
+# Cut away by a box, a sphere or a cylinder (APP_UX4 8): the car's cab cut by
+# a box round its roof and windscreens, its lower knob dragged down two
+# plates, the wheel, Esc, Grow and Shrink; the pixels that change against the
+# car whole all inside the box's outline (or within the ambient occlusion's
+# reach of it), the seat seen and clicked through it; drawn with its faces
+# marked, caps and no inside face; the same for a sphere and a cylinder;
+# Render and the booklet with the box on = with it off. Pictures in
+# shots/cutshapes/<size>/: look at the cut faces, and changed_*.png (yellow
+# inside, blue near, red outside: none). Then kept: saved and opened, its own
+# file and someone else's step-free .mpd (headless), and --keep=DIR then
+# --older=DIR on an older checkout, which opens each whole.
+tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes
+tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied into an older checkout: tools/probe.sh cutshapes_kept -- --older=/tmp/cut_kept
 # View, Stress: a loaded 2x10 cantilever's root red on 1x1s, plain on 2x2s; a
 # bare one and a bonded wall not red; nothing painted; the shipped models none
 # red. Then in the window: the menu, the tint, what pointing says, Ask Claude
