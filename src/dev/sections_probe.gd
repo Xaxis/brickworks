@@ -334,6 +334,11 @@ func _one_set(name: String) -> void:
 	# edge side by side, their turned covers overlapping, read as 6 studs
 	# between them, and the studs they are on, pointing sideways, not read
 	# at all. Read from the studs' tips, 10,073 stud pairs (2026-10-20).
+	# A stud up a hollow its cover leaves open (Joints._hollow_round) joins
+	# 14 of its loose parts to the sections they are on, 61 to 47; three, a
+	# loudhailer's bell on a 2 x 12's stud and two cones on corner plates',
+	# left Back 4, Right side 4 and Left side 11 in two pieces while the
+	# count read studs by a copy of the rule without it (checks267).
 	_check("%s: each of %d one piece by the build check on it alone%s" % [name, checked,
 		"" if not_one.is_empty() else " but %d, %s: %s" % [not_one.size(),
 			"each only for parts nothing in the model holds" if unexplained.is_empty()
