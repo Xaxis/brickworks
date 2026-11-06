@@ -588,6 +588,29 @@ commit. None of the ten needs the owner.
     in full colour and its count;
   - Back undoes one part; the last part's Next goes to the next step;
   - the targets 44 points or more; `viewer_steps` and `step_link` pass.
+- **Done** (unit partbypart, 2026-11-05; `partbypart` red on `pre261`,
+  34 checks failed, where there is no choice and each tap turned a whole
+  step, 5, 4, 6, 4 and 4 parts in full colour; green on a phone's 390 x 844,
+  a tablet's 1024 x 768, 1280 x 720 and 1400 x 900, 48 checks each, the
+  pictures in `bench/results/partbypart-2026-11-05/`):
+  - **One part** and **Whole step** under the card, the step whole where a
+    person starts, as the booklet shows it; the choice kept on the device;
+  - the car's step 1, five parts, is **five taps**: each exactly one part
+    in full colour, read back from what the world draws (its own colour, the
+    part before it pale), outlined, the step's later parts not there, its
+    picture on the card with "k of 5 in this step" under it and its name and
+    colour beside;
+  - the fifth part's Next goes to step 2 at its first part; Back by a swipe
+    takes that part off, and Back tapped takes the fifth off;
+  - every target 44 points or more each way, on the phone Close 88 x 60,
+    Back 144 x 61, Next 216 x 61, One part 92 x 44, Whole step 110 x 44,
+    the comments 99 x 44 and Go to step 119 x 44 (the comments were 38 and
+    Go to step 40);
+  - Whole step shows the step whole again and Next turns a whole step; One
+    part is kept for the next Build it;
+  - `viewer_steps` (23) and `step_link` (4) pass, and `share_view` (181:
+    the player's step paging, swipes, keys and kept page) and `build_steps`
+    (58).
 
 **8. cutshapes: a box, a sphere or a cylinder cut away.**
 - **Change.** Cut away by a box, a sphere or a cylinder, with handles,

@@ -11116,3 +11116,25 @@ msgstr "Montre comment les applications Claude pour ordinateur et mobile ajouten
 
 msgid "Shows this browser's own address, to add to Claude by hand: the way before Claude could sign in"
 msgstr "Montre l'adresse propre à ce navigateur, à ajouter à Claude à la main : la façon de faire avant que Claude puisse se connecter"
+# Build it a part at a time (partbypart, APP_UX4 7): the step player's choice.
+
+msgid "One part"
+msgstr "Une pièce"
+
+msgid "Whole step"
+msgstr "Étape entière"
+
+msgid "Build it a part at a time: the next part alone, in its colours"
+msgstr "Construire pièce par pièce : la pièce suivante seule, dans ses couleurs"
+
+msgid "Build it a step at a time, as the booklet shows it"
+msgstr "Construire étape par étape, comme la notice la montre"
+
+msgid "%d of %d in this step"
+msgstr "%d sur %d dans cette étape"
+
+msgid "The next part (right arrow, space)"
+msgstr "La pièce suivante (flèche droite, espace)"
+
+msgid "Take the last part off (left arrow)"
+msgstr "Retirer la dernière pièce (flèche gauche)"
