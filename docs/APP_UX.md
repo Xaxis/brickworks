@@ -565,6 +565,77 @@ waits on a stepped warm-up (above), proved by a drag that comes first as
 well as by the stall. Line 5 needs splitting the same way. Lines 2, 6
 and 9 together are 1.28 MB, 0.47 s of the start.
 
+**Lines 2 and 3, cut: NO-GO** (leaves, 2026-11-05,
+`bench/results/leaves-2026-11-05`). The start compiles less, but the
+usable times stay inside the base's own spread. The code is kept on
+branch `leaves` (1964f118).
+- The closure fell from 6.22 MB (229 scripts) to 5.39 MB (202): 0.83 MB
+  of the plan's 1.03. Minifig stays (0.15 MB). Main warms its index a
+  second after every start, and Joints reads its pivots for every part,
+  so it would compile in the first frames anyway. The first screen named
+  some of the moved classes for small things. Those moved to classes it
+  keeps: the sticker flag to PartLibrary, the sticker and Studio
+  constants to PartPrints, `child_of` to Assemblies, `home_for` to
+  BrickWorld, and Build together's saved link to a new TogetherLink.
+- The ABBA ran as one `heavy --solo` job: 16 loads, B C C B four times,
+  at load 11-22, with a person's frames (`abba/summary.txt`). The cold
+  compile lap fell from 2.50 s to 2.25 s (medians). C's median is under
+  B's lowest run, 2.47. The warm lap fell from 2.57 s to 2.48 s, inside B's
+  2.35-3.79. Paired by block, they fell 0.45 s and 0.32 s: about 0.83 MB
+  at 0.5 s a MB. The usable times did not move: cold went from 10.95 s to
+  11.02 s (B 10.78-14.87), and warm from 6.72 s to 7.03 s (B 6.15-9.45).
+  At this load the base's spread is 4 s, and no cut of this size shows
+  beyond it.
+- First uses were measured with the results' `tools/firstuse.mjs`. Each
+  piece is the first thing done after a load of its own, run from Find a
+  command, with a person's frames, on the final export at load 17 and
+  42. The times are:
+  - Library 133-171 ms;
+  - My collection 57-72 ms;
+  - Build together 90-92 ms (the base's 12, before Together moved into it);
+  - Suggest sections 90-125 ms;
+  - Move's handles 31 ms;
+  - Split 17 ms;
+  - Reference picture 19-29 ms;
+  - Print on a part 195-206 ms, then the part maker 121-136 ms a frame
+    later (the base's studio 174-190 ms);
+  - a sticker 213-233 ms, then 139-182 ms as it is made;
+  - the part maker 186-260 ms (base 80-85 ms);
+  - Export 171-394 ms.
+
+  Export's first use is 307 KB, and it ran over 300 ms in 6 of 12 runs
+  (load 16-42). The part maker's is 281 KB, and it ran over in 1 of 5,
+  at load 41. Making a part, a print and a sticker worked, and so did a
+  section and the dialogs. A model's own parts still open:
+  `carried_at_once` passed. A model with figures loads nothing new,
+  since Minifig stays. A together session was not started, because that
+  needs the relay; the dialog's first use is the class's.
+- Three first uses were over 300 ms, and each was fixed:
+  - Suggest sections compiled Export's chain, 325 KB at 308-468 ms. A
+    section's list reaches Export through Main now: 98 KB.
+  - Print and Put a sticker on compiled the part maker for one number
+    formatter, 378 KB at 296-302 ms. Now the studio is 189 KB, and the
+    part maker compiles when a sticker is made.
+  - The first Print on a part then read the part's areas with the part
+    maker in the same frame, 395-450 ms in all. Now each takes a frame
+    of its own.
+- Probes: lazystart (it reads the desktop updater, made at a desktop
+  start by design), sections, handles (Move is chosen before the handles
+  are read), together_pins, sticker, print, element_files,
+  carried_at_once, and studio_ui for Print's frame. On a phone and a
+  tablet, `dialogs_flow` has the library and My collection placed for a
+  finger, and the library's search on the live parts. Also ci_gate (1451
+  passed), test_later and `check.sh --lists`.
+- Asides:
+  - Bring in a 3D model's first use is 2.0 s. BrickifyDialog compiles
+    4.3 MB, 91 scripts, because it names the assistant.
+  - The Render dialog, made in the idle after the start, compiles in
+    309-541 ms and can land under a person's first use.
+
+So lines 2 and 3 go in only with others. This cut's 0.83 MB and lines 6
+and 9 come to about 1.4 MB, 0.7 s of the compile. Measure them as one
+cut, with Export and the part maker split the way Print is.
+
 **Beside it, the rest of a warm start** (base laps, abba1, medians at
 load 15-17): the engine 1.05 s (its banner 0.65, its own start 0.4), the
 compile 2.9, the catalogue 1.15 (its JSON parse about half), the
