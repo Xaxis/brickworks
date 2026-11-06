@@ -3342,8 +3342,10 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
         public = {name: "https://github.com/%s/releases/download/%s/%s" % (REPO, tag, name)
                   for name in urls}
         write_manifest(manifest_entry(version, tag, facts["files"], date, public), MANIFEST)
-        say("next: commit web/releases.json, push, then tools/deploy.sh --prod so the "
-            "download page offers %s" % version)
+        say("next: tools/site_lang.py, commit web/releases.json and the download pages, and send "
+            "the lead `ready: <sha>`: the page ships on the next release train "
+            "(docs/RELEASING.md), never by a push to main or a deploy by hand, so it offers %s"
+            % version)
     return 0
 
 
