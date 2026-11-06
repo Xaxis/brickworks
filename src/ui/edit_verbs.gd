@@ -1128,6 +1128,10 @@ func hint() -> String:
 			var info: PartLibrary.PartInfo = library.parts.get(builder.held_part) \
 				if library != null else null
 			var named: String = Inventory._tidy(info.name) if info != null else builder.held_part
+			# On a train track's end, what R does there (TrackSnap).
+			if builder.tracks.on_end:
+				return Keymap.filled("Placing %s %s: click puts it there · {rotate_held|puts its next end to the joint} · Esc lets go") % [
+					named, builder.tracks.words(builder)]
 			# On a joint, what it is on and what R and T do there instead.
 			if builder.is_on_joint():
 				return Keymap.filled("Placing %s on %s: click puts it there · {rotate_held|turns it about the joint} · {tip_held|the other way on} · Esc lets go") % [

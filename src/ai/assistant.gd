@@ -17180,6 +17180,12 @@ func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 			if placed_at.has(other) and _seated(model.placements[index].part, at,
 					model.placements[other].part, placed_at[other]):
 				continue
+			# Two train tracks joined end to end: a tab in the other's slot
+			# (TrackSnap).
+			if placed_at.has(other) and TrackSnap.joined(
+					library.resolve(model.placements[index].part), at,
+					library.resolve(model.placements[other].part), placed_at[other]):
+				continue
 			if turning.has(other) and placed_at.has(other):
 				var slack: float = Joints.ROUND_SLACK
 				var own: Array = []
@@ -22970,8 +22976,9 @@ func _tools() -> Array:
 						+ "that part's connector: \"torso.hinge[0]\" (a part named so "
 						+ "before this one) or \"#41.stud[3]\" (a brick standing, by its "
 						+ "number). Types: stud, open, hole, tube, post, axle, cross, pin, "
-						+ "socket, bar, clip, hinge, ball, fixed; numbered from 0 in each "
-						+ "type, as attachment_points lists them"},
+						+ "socket, bar, clip, hinge, ball, fixed, track (a train track's "
+						+ "end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered "
+						+ "from 0 in each type, as attachment_points lists them"},
 					"by": {"type": "string", "description": "this part's own connector "
 						+ "that goes there, as \"hinge[0]\"; leave out when only one fits"},
 					"yaw": {"type": "number", "description": "degrees about the joint's "
