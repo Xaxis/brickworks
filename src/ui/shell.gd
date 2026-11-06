@@ -140,7 +140,7 @@ const MENUS: Array = [
 		"mode_connect", "mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "rotate_held",
 		"tip_held", "-", "measure", "stability", "simulate", "hidden_colours", "reseat", "-",
 		"ask_claude", "connector", "settings"]],
-	["Help", ["keys", "tour", "-", "check_updates", "reinstall", "restart"]],
+	["Help", ["keys", "whats_this", "tour", "-", "check_updates", "reinstall", "restart"]],
 ]
 
 ## The app's own menu, opened from the mark at the far left of the menu
@@ -1319,7 +1319,9 @@ func _define() -> void:
 		func() -> bool:
 			var split: SplitView = app.get("_split")
 			return split != null and (split.is_showing() or split.fits()),
-		"A second view beside the model, square on from the front, top, side or back")
+		"A second view beside the model, square on from the front, top, side or back. "
+			+ "Short of room, the right-hand column folds to its tab "
+			+ "while the second view is on")
 	_ticked("split_view", func() -> bool:
 		var split: SplitView = app.get("_split")
 		return split != null and split.is_showing())
@@ -1453,6 +1455,11 @@ func _define() -> void:
 		"What every button and key does")
 	_add("tour", "Take the tour", 0, func() -> void: first_build.start(), Callable(),
 		"Build your first model, seven short steps done in the app")
+	# src/ui/whats_this.gd (APP_UX4 whatsthis): the next click on any control
+	# says what it does instead of doing it, as LeoCAD's, Qt's and Windows'
+	# own. Shift+F1 there and here, kept for itself as F1 is (Keymap.FIXED).
+	_add("whats_this", "What's This?", SHIFT | KEY_F1, func() -> void: WhatsThis.ask(self),
+		Callable(), "Click any button, field or panel next to hear what it does, without doing it")
 	# src/net/updater.gd, src/ui/update_dialog.gd: the desktop app's own.
 	var desktop: Callable = func() -> bool: return not OS.has_feature("web")
 	_add("check_updates", "Check for updates…", 0, func() -> void: app.call("check_updates"),
@@ -2324,7 +2331,8 @@ func handle_key(key: InputEventKey) -> bool:
 			if not held and not key.shift_pressed and not key.alt_pressed:
 				return run("split_view")
 		KEY_F1:
-			run("keys")
+			# Shift+F1, What's This, as every desktop has it.
+			run("whats_this" if key.shift_pressed else "keys")
 			return true
 		KEY_K:
 			if not held:

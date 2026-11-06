@@ -76,6 +76,9 @@ func setup() -> void:
 	_use = Button.new()
 	_use.text = "Use this key"
 	_use.custom_minimum_size = Vector2(0, 34)
+	# Read out by a screen reader, and said by Help, What's This?.
+	_use.accessibility_description = ("Checks the key pasted above with Anthropic and keeps it, "
+		+ "so the assistant designs on your own Anthropic account")
 	_use.pressed.connect(_keep)
 	add_child(_use)
 
@@ -101,6 +104,7 @@ func setup() -> void:
 
 	var where := Look.link("No key yet? Get one at console.anthropic.com", 12)
 	where.uri = "https://console.anthropic.com/settings/keys"
+	where.accessibility_description = "Opens Anthropic's Console in the browser, at the page where an account makes its keys"
 	add_child(where)
 
 

@@ -10977,3 +10977,137 @@ msgstr "%s añadido, %s"
 
 msgid "put in %s"
 msgstr "%s añadido"
+# View, Split: the room it makes at a laptop's size (APP_UX4, quiet)
+msgid "Short of room, the right-hand column folds to its tab while the second view is on"
+msgstr "Si falta espacio, la columna derecha se pliega a su pestaña mientras la segunda vista está activa"
+
+# What's This (Help, Shift+F1), and where the part in hand goes, on the status bar (whatsthis).
+
+msgid "What's This?"
+msgstr "¿Qué es esto?"
+
+msgid "Click any button, field or panel next to hear what it does, without doing it"
+msgstr "Haz clic después en cualquier botón, campo o panel: dice lo que hace, en vez de hacerlo"
+
+msgid "What's This: click any button, field or panel to hear what it does · Esc to stop"
+msgstr "¿Qué es esto?: haz clic en un botón, un campo o un panel para saber qué hace · Esc para salir"
+
+msgid "Only the %s parts in the bin: %d of them"
+msgstr "Solo las piezas de tipo %s en la caja: %d en total"
+
+msgid "Parts of every kind in the bin, not one kind alone; with a search typed, all it finds"
+msgstr "Piezas de todos los tipos en la caja, no de uno solo; con una búsqueda, todas las que encuentra"
+
+msgid "Greyed now: %s"
+msgstr "No disponible ahora: %s"
+
+msgid "Greyed now"
+msgstr "No disponible ahora"
+
+msgid "In use now"
+msgstr "En uso ahora"
+
+msgid "On now"
+msgstr "Activado"
+
+msgid "Off now"
+msgstr "Desactivado"
+
+msgid "The model"
+msgstr "El modelo"
+
+msgid "A click here does what the tool in use does:"
+msgstr "Un clic aquí hace lo que hace la herramienta en uso:"
+
+msgid "x %s, z %s studs"
+msgstr "x %s, z %s espigas"
+
+msgid "1 plate up"
+msgstr "1 placa arriba"
+
+msgid "%s plates down"
+msgstr "%s placas abajo"
+
+msgid "1 plate down"
+msgstr "1 placa abajo"
+
+msgid "on the ground"
+msgstr "en el suelo"
+
+msgid "Where the part in hand goes if put down now: studs across (x) and back (z) from the middle of the floor, and plates up from the ground"
+msgstr "Dónde quedaría la pieza en la mano, si se suelta ahora: espigas a lo ancho (x) y hacia atrás (z) desde el centro del suelo, y placas sobre el suelo"
+
+msgid "Select a part first"
+msgstr "Selecciona antes una pieza"
+
+msgid "Put a part on the baseplate first"
+msgstr "Pon antes una pieza en la placa base"
+
+msgid "Choose a step on the timeline first"
+msgstr "Elige antes un paso en la línea de tiempo"
+
+msgid "Stand the model on a baseplate first"
+msgstr "Pon antes el modelo sobre una placa base"
+
+msgid "Nothing to undo yet"
+msgstr "Aún no hay nada que deshacer"
+
+msgid "Nothing to redo"
+msgstr "Nada que rehacer"
+
+msgid "Nothing is hidden"
+msgstr "No hay nada oculto"
+
+msgid "Nothing is locked"
+msgstr "No hay nada bloqueado"
+
+msgid "Select a sub-assembly first"
+msgstr "Selecciona antes un subconjunto"
+
+msgid "Not editing inside a sub-assembly"
+msgstr "No se está editando dentro de un subconjunto"
+
+msgid "Select a section first"
+msgstr "Selecciona antes una sección"
+
+msgid "Turn on Cut away first"
+msgstr "Activa antes la vista en corte"
+
+msgid "Not now"
+msgstr "Ahora no"
+
+msgid "This model is shared to look at"
+msgstr "Este modelo se comparte para verlo"
+
+msgid "The model is still opening"
+msgstr "El modelo aún se está abriendo"
+
+msgid "The assistant is off in Settings"
+msgstr "El asistente está desactivado en Ajustes"
+
+msgid "Folds the panel to this strip at its edge, giving the model its room; a click on the strip brings it back"
+msgstr "Pliega el panel a esta franja de su borde y deja sitio al modelo; un clic en la franja lo trae de vuelta"
+
+msgid "Opens the panel this strip stands for; one sharing its edge folds to its own strip"
+msgstr "Abre el panel de esta franja; el que comparte su borde se pliega a su propia franja"
+
+msgid "A panel of the window: click a control in it to hear what that does. The strip at its edge folds it away and brings it back"
+msgstr "Un panel de la ventana: haz clic en un control para saber qué hace. La franja de su borde lo pliega y lo trae de vuelta"
+
+msgid "In the %s panel; it says nothing of itself but its name"
+msgstr "En el panel %s; no dice de sí más que su nombre"
+
+msgid "Sends what is written above to the assistant, which designs it and builds it in the model; with parts chosen over the box, it works on those"
+msgstr "Envía lo escrito arriba al asistente, que lo diseña y lo construye en el modelo; con piezas elegidas sobre el cuadro, trabaja en ellas"
+
+msgid "Checks the key pasted above with Anthropic and keeps it, so the assistant designs on your own Anthropic account"
+msgstr "Comprueba con Anthropic la clave pegada arriba y la guarda, para que el asistente diseñe con tu propia cuenta de Anthropic"
+
+msgid "Opens Anthropic's Console in the browser, at the page where an account makes its keys"
+msgstr "Abre la Console de Anthropic en el navegador, en la página donde una cuenta crea sus claves"
+
+msgid "Shows how the Claude desktop and mobile apps add Brickworks, with the address to paste"
+msgstr "Muestra cómo las apps de Claude para escritorio y móvil añaden Brickworks, con la dirección que pegar"
+
+msgid "Shows this browser's own address, to add to Claude by hand: the way before Claude could sign in"
+msgstr "Muestra la dirección propia de este navegador, para añadirla a Claude a mano: la forma de antes de que Claude pudiera iniciar sesión"

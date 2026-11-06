@@ -99,6 +99,10 @@ class Entry extends RefCounted:
 	## What the picture must show, on the view plane, in LDU.
 	var subject: Rect2 = Rect2()
 	var from: Vector3 = BookletStudio.FRONT
+	## How the model is turned before it is looked at from [member from]
+	## (BookletStudio.View.turn): turned over, as its author's ROTSTEP rolls
+	## it or for a step whose parts all go on from below.
+	var turn: Basis = Basis.IDENTITY
 	## Drawn from the other side to the step before: the turn sign.
 	var turned: bool = false
 	var awkward: bool = false
@@ -185,7 +189,7 @@ class Entry extends RefCounted:
 		var centre := Vector2(
 			middle.x - (target.x - size.x * 0.5) / k,
 			middle.y + (target.y - size.y * 0.5) / k)
-		return BookletStudio.View.new(from, centre, k)
+		return BookletStudio.View.new(from, centre, k, turn)
 
 	func pixels(px_per_mm: float) -> Vector2i:
 		return Vector2i(rect.size * px_per_mm)
@@ -236,7 +240,8 @@ class Callout extends RefCounted:
 		var middle: Vector2 = (seen.subject if seen != null else subject).get_center()
 		return BookletStudio.View.new(seen.from if seen != null else from, Vector2(
 			middle.x - (target.x - size.x * 0.5) / k,
-			middle.y + (target.y - size.y * 0.5) / k), k)
+			middle.y + (target.y - size.y * 0.5) / k), k,
+			seen.turn if seen != null else Basis.IDENTITY)
 
 	## The preview's view: the finished assembly as the callout faces it,
 	## centred in [member preview_cell].

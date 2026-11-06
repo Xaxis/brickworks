@@ -932,8 +932,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and finds none, then moves off and back and finds it again; without the fix
   the tooltip was up over "Copied.".
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
-  the tool's hint when nothing was; then the parts count and stability, how
-  many are selected, the snap and turn step, and how big a stud is on screen.
+  the tool's hint when nothing was; then, while a part is in hand, where it
+  goes if put down now ("x 2½, z −1 studs · 3 plates up": its middle from the
+  middle of the floor, to the half stud, its foot over the ground, to the
+  quarter plate; several carried, the box round them all), as LeoCAD's says
+  where its preview stands (whatsthis, APP_UX4 10); then the parts count and
+  stability, how many are selected, the snap and turn step, and how big a
+  stud is on screen. `whatsthis_probe` puts a brick at four places on the
+  ground, one on another, a turned 1 x 2 plate, and two parts carried by
+  Ctrl+D, each read off the bar, clicked down and measured.
 - `accessibility` (`src/ui/access.gd`, `src/ui/focus_guard.gd`, Settings,
   2026-10-24; docs/COMPETITIVE.md item 14). A screen reader hears every
   control by its name (Godot 4.7's AccessKit: `accessibility_name`, or a
@@ -1201,8 +1208,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (APP_UX A12), a line in the strip along the top of the model, never over
   it. Offered once on a device (`first_build` in `user://shell.cfg`: offered,
   skipped or done), on a first visit, to a person in front of the window once
-  signed in, and only while the example car is untouched: never to a viewer,
+  signed in, and only while the baseplate holds nothing of theirs (the
+  example car untouched, or empty in a new window): never to a viewer,
   a model opened from a link, a phone, or someone whose own model came back.
+  An offer not taken goes by itself (APP_UX4 quiet) at the third part put
+  down by hand (`Builder.placed`, a person's only) or any model opened
+  (`ModelStore.loaded`: theirs or an example), however it was offered;
+  File, New and Clear keep it. `quiet probe` checks those.
   Nothing changes until **Start**, which takes the car off for "My first
   model" (`Main._make_room`), or over the person's own model runs File, New,
   which asks first when it is unsaved. **Skip** ends it in one click; Help,

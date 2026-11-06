@@ -4644,6 +4644,13 @@
       "entry": "src/dev/picklist_probe.gd",
       "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "what's this",
+      "entry": "src/ui/whats_this.gd",
+      "reach": "tools/probe.sh whatsthis_probe   (Help, What's This?, or Shift+F1: the next click on any control answers in a bubble beside it and does nothing else; Esc, a right click or Shift+F1 again leave; a part in hand: the status bar's x, z and height are where it lands)",
+      "area": "view"
     }
   ]
 }

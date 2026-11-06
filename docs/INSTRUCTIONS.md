@@ -3129,15 +3129,148 @@ in the sixth. Stretch B has no such miss.
   (each run's misplaced groups, checked in a headless app over MCP) and
   each run's result.
 
+## A step turned as its author turned it, and turned over for parts underneath (2026-11-05, rotroll)
+
+LEGO's 7140 booklet draws the cart turned over for the dishes that go under
+it, and builders read the dish 48 times in 48 there (bookletcal, above). The
+file asks for that turn: `0 ROTSTEP 0 0 180 REL`, a roll. Ours drew none.
+
+**Why the roll was lost.** A step's turn was read only as a direction to
+look from (`Booklet.Entry.from`), and the booklet's cameras always stand
+upright (`BookletStudio.basis_for`). A direction cannot say a roll, so
+`BookletLooks.direction` read x and y and dropped z. And x 180, the other
+way files write "turned over", was clamped to a tilt of 80 degrees: a view
+from nearly straight above, with what goes underneath out of sight.
+
+**The author's turn.**
+
+- A step carries the turn of the model itself (`Entry.turn`, `View.turn`),
+  made before it is looked at, as LPub turns it: the roll first, then the
+  view. The cameras are the upright ones turned by its inverse. The key and
+  fill lights turn with them, so an underside is lit as a top is.
+- A turn is read upright first (`BookletLooks.upright`). x + 180, 180 - y,
+  z + 180 is always the same turn, so x 180 is drawn as y 180 with z 180:
+  seen from behind, rolled over.
+- REL, ABS, ADD and END hold for the steps after them as before. ADD keeps
+  the ABS or REL of the turn it adds to, as MLCad reads it; it had become
+  REL. A callout's step rolls about the axis the callout is seen along.
+- The turn sign marks a step whose picture's up turns, not only its
+  direction, in callouts too. booklet_layout says "turned over" or
+  "rolled N°".
+
+**A model with no ROTSTEP.** The app's own designs, and a file the app
+stepped, have no turns of an author's. There a step is drawn turned over
+when one of its new parts goes on from below what was built before it and
+none from above. The next step that does not is drawn upright again.
+
+- Which way a part goes on is what its stud joints face
+  (`BookletMaker._stud_way`, on Exact's connections; studs and the holes
+  and tubes they go in, not pins, axles, clips or bars). A stud and its
+  hole share an axis pointing out of the stud's part. A part whose stud
+  goes up into an earlier part, or whose hole takes an earlier part's stud
+  from below, hangs from it: it goes on from below. A part standing on an
+  earlier part, or on a new part it does not hang from, goes on from above.
+- Only where the model has no turn of its author's anywhere
+  (`BookletLooks.any_turn`). One ROTSTEP says where its author wants it
+  turned, and the rest is theirs.
+- **How long to hold the turn was measured against authors.** 44 files of
+  LDraw's model repository whose authors turn the model over were opened
+  with their ROTSTEPs taken out, and the steps the rule turns compared with
+  the steps the authors turned over (`bench/results/rotroll-2026-11-05/
+  validation/`):
+
+| a turn holds through steps with no stud joints | turned by both | by the author only | by the rule only | of the rule's, the author's too |
+|---|---:|---:|---:|---:|
+| until a step builds on top | 135 | 241 | 551 | 20% |
+| for at most 16 such steps | 103 | 273 | 212 | 33% |
+| for at most 3 | 88 | 288 | 127 | 41% |
+| for at most 1 | 86 | 290 | 99 | 46% |
+| not at all (kept) | 80 | 296 | 73 | 52% |
+
+  - Held until the next step that builds on top, the turn ran on through a
+    Technic model's pins and axles: 8274's Dragstar was drawn turned over
+    for 338 steps its author drew upright. Every shorter hold agreed with
+    the authors less often than none. So a turn is not held.
+  - On 7140 the rule turns 24 of the author's 25 turned-over steps, and one
+    more.
+  - Most turns the rule does not make are an author's own choice: a
+    Technic model drawn turned over for long stretches (8258's, 163 steps;
+    42084 and 8273), where pins and axles say nothing of up and down.
+- **In the app's own designs** (models/, a dry layout): the sports car's step
+  6, two 1 x 8 plates under the chassis with a 1 x 1 brick and a grille;
+  21 of Orthanc's 642 steps (508 to 529, columns hung from the floor above
+  them); and one callout step of the orrery, a Technic plate put on from
+  below, drawn on two pages. The castle and the other 13 designs have none.
+
+![7140's step 2 and its wing's steps 3 and 5, before and after: the dishes,
+an inverted slope and two more drawn going into the underside, where before
+they were under it out of sight](instructions/7140-turned-over.webp)
+
+**What a builder did.** booklet_follow, 4 runs each way, before and after
+alternated, from two locked snapshots imported first (pre261 e1bc8c04 and
+rotroll 42765062), at most two builders at once. Right or near, a run:
+
+| stretch (parts) | before | after |
+|---|---|---|
+| 7140, pages 2-3 (16): the dishes | 8, 16, 8, 16 | 16, 16, 8, 16 |
+| 7140, pages 38-41 (12): the lower left wing, as built | 7, 4, 5, 5 | 4, 5, 5, 6 |
+| ...its 6 parts underneath | 2, 3, 0, 3 | 1, 5, 2, 6 |
+| sports car, steps 3-8 (23) | 11, 11, 11, 11 | 17, 18, 14, 18 |
+| ...its step 6 underneath (4) | 3, 3, 3, 3 | 4, 4, 4, 4 |
+
+- **7140 pages 2-3.** No part was put in the wrong place either way. The
+  dish was taken for a round plate in 2 runs of 4 before and 1 after,
+  inside the spread: since partsbox the box draws its dome, and turned over
+  the step draws the dome as a disc from above.
+- **The wing**, judged laid on itself (`scripts/inhand.py`): booklet_follow
+  lays the build on the whole model, and every builder put the wing on its
+  hinges a stud or two off, so it scores 0-4 of 12 either way. Its parts
+  underneath were put in the wrong place 15 times before (4, 2, 6, 3 a run)
+  and 7 after (2, 1, 4, 0): halved, but inside the runs' spread. Before, the
+  inverted slope of step 3 is not in the picture at all.
+- **A cost on the wing.** Turned over, a left wing looks like a right one,
+  and 3 builders of 4 built it on 30356, the right wing, where 1 of 4 did
+  before. A person turns the model in their hands. The builder cannot: its
+  view_model has no view from below, so it compares a model standing upright
+  with a picture of one turned over (APP_UX4's six views would give it one).
+- **The sports car** moved beyond its spread. Before, every builder put one
+  of step 6's 1 x 8 plates 3 studs off under the chassis, and then steps 7
+  and 8, which stand on it, a stud off: 11 of 23 in all 4 runs. Turned
+  over, every builder put step 6 right, and 14 to 18 of 23. Its pages fell
+  differently: step 6 turned takes page 4 with step 5 (one more page), so
+  the stretch is pages 3-4 before and 3-5 after, the same parts.
+
+Per page and per run, with the wrong parts, are in
+`bench/results/rotroll-2026-11-05/` (`per_page.txt`, `wing_steps.txt`,
+`per_step_sports_car.txt`).
+
+**The steps score** on the proof sample is the same to the last figure:
+nothing here moves a step.
+
+**Checks.** booklet_probe draws every kind of ROTSTEP (REL 0 0 180 held for
+the next step, ABS, ADD on it, END, x 180 seen from behind and held, and a
+sub-model's own roll in its callout) and a file with no ROTSTEP whose
+plates go under a plate, each step's turn and sign checked: 49 pass.
+booklet3_probe (49), booklet_stream_probe (11) and booklet_pdf_probe (29,
+on the sports car, with tools/booklet_pdf_check.py) pass, as do ci_gate
+(1,453 Python tests) and `tools/check.sh --lists`. booklet_edit_probe
+failed the same 4 of 540 on this branch and on pre261 at e1bc8c04, where
+it began: the probe's own expectations, fixed in pre261 since (231ebb68).
+Merged with pre261, it passes 540 of 540, and booklet_probe 49.
+
+**Not done.** The app's step player turns to an author's direction but does
+not roll: its camera stays upright, so x 180 is seen from behind there, not
+from nearly above.
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of
   the designer's own, which Studio has. A callout's own page is laid out
   by hand, but its steps cannot be turned or zoomed apart from the callout,
   and a callout box beside its step shows its steps' pictures as the
-  booklet lays them, not as placed. A step's turn is a
-  turn round and a tilt; LDraw's third angle (a roll) is kept in the file
-  but not drawn. A thing moved off another goes to the nearest free room on
+  booklet lays them, not as placed. A step's turn is drawn whole, its roll
+  too (rotroll, above), but the app's step player turns round and tilts
+  only. A thing moved off another goes to the nearest free room on
   its page, which can be across the page from its step; a picture is
   judged by the rectangle round its model, so a thing in an empty corner of
   that rectangle is moved though it touches nothing; and a placed thing
@@ -3237,7 +3370,7 @@ in the sixth. Stretch B has no such miss.
     over (Each part drawn from the side that tells it apart, above). LEGO
     turns the cart over for that step instead, and builders read the dish
     48 times in 48: the file asks for that turn (ROTSTEP's roll), and ours
-    does not draw it.
+    now draws it (rotroll, above).
   - **The whole castle**, nine hours of builder.
 
 ## Sources

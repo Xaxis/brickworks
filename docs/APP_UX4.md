@@ -403,7 +403,7 @@ commit. None of the ten needs the owner.
 | 6 | **grid** | 7 | S | low | `src/ui/pattern_dialog.gd`; `src/assembly/pattern.gd`; new `src/dev/grid_probe.gd` | Pattern's "In a grid": 2 x 2 bricks in 4 columns, 3 rows and 2 layers, every 3 studs and 3 bricks up, in **one dialog**: 24 parts, each at its place to the LDU, one undo; a grid that would collide is refused with where; `patterns` passes |
 | 7 | **partbypart** | 8 | M | low | `src/ui/build_mode.gd`; new `src/dev/partbypart_probe.gd` | see below |
 | 8 | **cutshapes** | 9 | M | medium | `src/ui/see_inside.gd` and its shader; new `src/dev/cutshapes_probe.gd` | see below |
-| 9 | **quiet** | 10 | S | low | `src/ui/first_build.gd`; `src/ui/render_queue.gd`; `src/ui/split_view.gd`; new `src/dev/quiet_probe.gd` | the first build's offer gone once a person has put down 3 parts by hand, opened a model of theirs or the car, and still offered on a first empty baseplate; the render queue closes with Escape, and Settings, Cut away's strip and every dialog opened after it are drawn over it, at 1280 x 720 and 1400 x 900; at 1280 x 720 with the assistant open, View, Split shows two views of 320 points or more (the assistant folds to its tab while the split is on, or the split takes the bin's room; one choice, said in the menu's tooltip); `first_build`, `split`, `roomfit` pass |
+| 9 | **quiet** | 10 | S | low | `src/ui/first_build.gd`; `src/ui/render_queue.gd`; `src/ui/split_view.gd`; new `src/dev/quiet_probe.gd` | the first build's offer gone once a person has put down 3 parts by hand, opened a model of theirs or the car, and still offered on a first empty baseplate; the render queue closes with Escape, and Settings, Cut away's strip and every dialog opened after it are drawn over it, at 1280 x 720 and 1400 x 900; at 1280 x 720 with the assistant open, View, Split shows two views of 320 points or more (the assistant folds to its tab while the split is on, or the split takes the bin's room; one choice, said in the menu's tooltip); `first_build`, `split`, `roomfit` pass. **Met** (quiet, `quiet` probe; pre261 failed 13 checks at 1280 x 720 and 10 at 1400 x 900): the offer stays for parts 1 and 2 and goes at the 3rd, goes when a saved model (64 parts) or the car is opened, and stays for File, New and a new window's empty baseplate; Escape puts the queue away, before the selection; Settings opened after it changes 0.0% and 0.8% of the queue's corner (pre261 18.8% at 1280), Cut away's strip no longer lies under it (was 26.6% and 20.9% covered, its buttons hidden), and every dialog that reaches the queue is drawn over it, 21 at 1280 and 19 at 1400 (pre261 8 and 5 under it); the queue narrows to the model's room beside a tool's panel (380 to 329 units). Split with Stress's panel and the assistant open at 1280: two views of 450 and 451 points, the assistant folded to its tab and opened again after (pre261 greyed, 639 units of 696); 459 and 460 without Stress, 353 and 354 at 1400. The choice is the fold, said in View, Split's tooltip |
 | 10 | **whatsthis** | 11 | M | low | new `src/ui/whats_this.gd`; `src/ui/status_bar.gd`; new `src/dev/whatsthis_probe.gd` | see below |
 
 **1. seeing: a session sees what a person sees.**
@@ -655,6 +655,24 @@ above.
   - the click does nothing else;
   - while carrying, the status bar's x, z and height are where the part
     then lands, to the stud and plate.
+- **Done** (whatsthis, 2026-11-05; `whatsthis_probe` 34 checks, none
+  failed, at 1280 x 720 and at 1400 x 900; on pre261 it fails: there was no
+  way to ask). Help, What's This? is Shift+F1 under all four presets, kept
+  for itself as F1 is, so no preset can give the key away; Esc, a right
+  click or Shift+F1 again leave it.
+  - **1, met:** 168 controls asked at 1280 x 720 (33 toolbar buttons, 100
+    bin chips, 28 panel buttons, 7 Properties fields) and 173 at 1400 x 900
+    each answer in a bubble beside the control, no answer empty and no two
+    alike, none borrowing only its panel's words. Five buttons and links of
+    the assistant's and the connector's had no words at all; they now carry a
+    description a screen reader reads too.
+  - **2, met:** 168 of 168 clicks (173 at 1400) did nothing else; the same
+    check sees a click on Move with no question first act.
+  - **3, met:** a 2 x 4 brick at four places, on another brick, a turned
+    1 x 2 plate on the ground and on top, and two bricks carried: the bar's
+    x, z and height are where each landed, to the half stud and the plate
+    ("x 4½, z 3 studs · on the ground", "x 3, z 1 studs · 6 plates up").
+  - The new words in German, French and Spanish (29 checked).
 
 **Next, once those land:**
 - **Keys** for the 114: the lead's `keys` unit.
