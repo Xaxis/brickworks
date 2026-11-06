@@ -49,6 +49,12 @@ if [ $merged = 0 ]; then
   for f in $(git diff --name-only --diff-filter=U | grep -E '\.md$'); do
     out=$(python3 "$HERE/resolve_docs.py" "$f") && { echo "$out" | grep DOUBLED; git add "$f"; }
   done
+  # The languages' word lists: each unit appends its block at the end, so two units
+  # conflict there every time (quiet, then whatsthis, 2026-11-06). Both blocks are
+  # kept when no entry is then twice (resolve_po.py); otherwise it stays a conflict.
+  for f in $(git diff --name-only --diff-filter=U | grep -E '^locale/.*\.po$'); do
+    python3 "$HERE/resolve_po.py" "$f" && git add "$f"
+  done
   if git diff --name-only --diff-filter=U | grep -qx .claude/skills/verify/features.json; then
     git checkout --theirs .claude/skills/verify/features.json && git add .claude/skills/verify/features.json
   fi
