@@ -41,7 +41,8 @@ const UID := "^[a-z0-9]{1,16}\\.[0-9]{1,9}$"
 ## A person's id in the session (api/together.js WHO).
 const WHO := "^[0-9a-f]{8}$"
 ## A part made in the app, by its id: the library's own form, lowercase, as
-## the relay lets one through (api/together.js MADE_PART), no "..".
+## every maker here names one (the relay's MADE_PART in api/together.js lets
+## capitals through too), no "..".
 const MADE_ID := "^[a-z0-9][a-z0-9_.-]{0,79}$"
 ## The files that come with it: an LDraw file it is drawn from, by the name it
 ## is referred to by (in one folder at most, "s\\3001s01.dat"), and its
