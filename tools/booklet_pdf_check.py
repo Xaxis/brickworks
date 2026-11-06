@@ -8,7 +8,8 @@ The PDF is read by poppler (pdfinfo, pdftotext, pdftoppm), which every Linux
 desktop has, and by pypdf where it can be imported (PYTHONPATH, or a folder
 named by BOOKLET_PYPDF). Checked against the booklet's own file:
 
-  the PDF opens, has the booklet's pages, each 269 x 199 mm
+  the PDF opens, has the booklet's pages, each the booklet's page: 269 x 199
+    mm, or the paper its Page setup chose (its file's .page rule)
   each page's step pictures are the booklet's own JPEGs, byte for byte
     (pypdf; with poppler alone, the first and the last page)
   the title is words on the first page, and the last page's element numbers
@@ -38,6 +39,9 @@ SECTION = re.compile(r'<section class="page[^"]*" id="page-(\d+)"')
 JPEG = re.compile(r'src="data:image/jpeg;base64,([^"]+)"')
 TITLE = re.compile(r"<title>(.*?)</title>")
 TEXT = re.compile(r'<div class="t[^"]*"[^>]*>(.*?)</div>')
+# The page's size in mm, as the booklet's styles set it (Booklet._head).
+PAGE = re.compile(r"\.page \{ position: relative; width: calc\(([0-9.]+) \* var\(--mm\)\); "
+                  r"height: calc\(([0-9.]+) \* var\(--mm\)\)")
 
 failures = 0
 
@@ -51,8 +55,9 @@ def check(what, ok):
 
 
 def booklet(path):
-    """Each page's number, its JPEGs' digests, and its words, a page at a time."""
-    pages, title = [], ""
+    """Each page's number, its JPEGs' digests, and its words, a page at a time;
+    and the page's size in mm."""
+    pages, title, paper = [], "", None
     current = None
     with open(path, encoding="utf-8", errors="replace") as file:
         for line in file:
@@ -60,6 +65,10 @@ def booklet(path):
                 found = TITLE.search(line)
                 if found:
                     title = found.group(1)
+            if paper is None:
+                found = PAGE.search(line)
+                if found:
+                    paper = (float(found.group(1)), float(found.group(2)))
             found = SECTION.search(line)
             if found:
                 current = {"number": int(found.group(1)), "jpegs": [], "words": []}
@@ -70,7 +79,7 @@ def booklet(path):
                 current["jpegs"].append(hashlib.sha1(base64.b64decode(data)).hexdigest())
             for words in TEXT.findall(line):
                 current["words"].append(re.sub(r"<[^>]*>", "", words).replace("&amp;", "&"))
-    return title, pages
+    return title, pages, paper or (269.0, 199.0)
 
 
 def run(*command):
@@ -127,7 +136,7 @@ def main():
     out = args.out or tempfile.mkdtemp()
     os.makedirs(out, exist_ok=True)
 
-    title, pages = booklet(args.html)
+    title, pages, paper = booklet(args.html)
     count = len(pages)
     print("the booklet: %d pages, %d step pictures, %s" % (
         count, sum(len(p["jpegs"]) for p in pages), title))
@@ -137,8 +146,15 @@ def main():
     said = dict(line.split(":", 1) for line in info.stdout.splitlines() if ":" in line)
     pdf_pages = int(said.get("Pages", "0").strip() or 0)
     check("...with the booklet's %d pages (%d)" % (count, pdf_pages), pdf_pages == count > 0)
-    size = said.get("Page size", "").strip()
-    check("...each 269 x 199 mm (%s)" % size, size.startswith("762.52 x 564.09"))
+    # Every page, as poppler reads each one's size, in points.
+    sizes = re.findall(r"Page\s+\d+ size:\s+([0-9.]+) x ([0-9.]+) pts",
+                       run("pdfinfo", "-f", "1", "-l", str(max(pdf_pages, 1)), args.pdf).stdout)
+    want = (paper[0] * 72 / 25.4, paper[1] * 72 / 25.4)
+    off = [n + 1 for n, (w, h) in enumerate(sizes) if abs(float(w) - want[0]) > 0.02
+           or abs(float(h) - want[1]) > 0.02]
+    check("...each %g x %g mm, %.2f x %.2f pts (%s)" % (paper[0], paper[1], want[0], want[1],
+          "pages %s are not" % off[:5] if off else "the first %s x %s" % sizes[0] if sizes else "none read"),
+          len(sizes) == pdf_pages > 0 and not off)
     check("...and its title (%s)" % said.get("Title", "").strip(),
           said.get("Title", "").strip() == title.replace("&amp;", "&"))
     fonts = embedded(args.pdf)
@@ -209,7 +225,7 @@ def main():
                 from PIL import Image
                 picture = Image.open(ours)
                 wide = picture.size[0]
-                dpi = round(wide / (269 / 25.4))
+                dpi = round(wide / (paper[0] / 25.4))
                 says = picture.info.get("dpi", (0, 0))
                 check("page %d's PNG is 300 dots an inch: %d x %d px, and says %.0f x %.0f" % (
                     number, wide, picture.size[1], says[0], says[1]),

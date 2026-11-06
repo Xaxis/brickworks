@@ -27,7 +27,9 @@ signal progress(said: String)
 ## after another are the file. See [method _make].
 signal wrote(piece: String)
 
-## The colours the pictures are laid on: see Booklet's stylesheet.
+## The colours the pictures are laid on: see Booklet's stylesheet. A step's
+## picture is laid on its page's colour as its designer set it up
+## (BookletSheet.behind), this one unless they did.
 const PAGE_COLOUR := Color8(220, 236, 248)
 const CALLOUT_COLOUR := Color8(255, 243, 200)
 const CALLOUT_PAGE_COLOUR := Color8(255, 248, 222)
@@ -78,6 +80,8 @@ var _wanted_lots: Dictionary = {}
 ## go on which page, read in a moment where the pictures take minutes.
 var dry: bool = false
 var _world: BrickWorld
+## The page the booklet is laid out on (BookletSheet.of the model).
+var _sheet: BookletSheet = BookletSheet.new()
 ## The parts list the booklet ends with, which its steps' parts boxes agree
 ## with.
 var _stock: Inventory
@@ -168,6 +172,7 @@ func _stage(order: Array) -> BookletStudio.Stage:
 
 func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_world = world
+	_sheet = BookletSheet.of(world)
 	measured.clear()
 	_apart.clear()
 	_near_grid.clear()
@@ -229,6 +234,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 
 	document = Booklet.Document.new()
 	document.title = title
+	document.sheet = _sheet
 	# As the timeline and the model's page count them (Instructions.count):
 	# two sub-assemblies put on in one step are two entries of one number.
 	document.steps = int(Instructions.count(steps)["steps"])
@@ -276,7 +282,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	_find_apart(entries)
 	_pull_out(entries)
 	var layout := Booklet.Layout.new(entries, 2,
-		int(BookletLooks.booklet(world).get("per_page", 0)))
+		int(BookletLooks.booklet(world).get("per_page", 0)), _sheet)
 	var pages: Array[Booklet.Page] = []
 	var decided: int = 0
 	var drawn: int = 0
@@ -333,7 +339,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	var finished: Booklet.Page = await _finished(pages.size() + 2)
 	document.pages.append(finished)
 	document.lots = _inventory(stock, lots)
-	document.pages.append_array(Booklet.parts_pages(document.lots, finished.number + 1))
+	document.pages.append_array(Booklet.parts_pages(document.lots, finished.number + 1, _sheet))
 
 	_forget_all()
 	_say("Writing the booklet…", 0)
@@ -461,7 +467,7 @@ func _part_pictures(stock: Inventory) -> Dictionary:
 			continue
 		var from: Vector3 = telling_view(lot.part_id, part)
 		var extent: Rect2 = BookletStudio.extent([part.bounds], from)
-		made.size = Booklet.part_size(extent.size)
+		made.size = Booklet.part_size(extent.size, _sheet.parts)
 		if dry or not only.is_empty() and not _wanted_lots.has(key):
 			made.size += Vector2(1.0, 1.0)
 			_soon_then(func() -> void: lots[key] = made)
@@ -719,6 +725,7 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 			continue
 		var entry := Booklet.Entry.new()
 		entry.number = step.number
+		entry.number_scale = _sheet.number_scale()
 		entry.awkward = step.unsupported
 		entry.section = step.section
 		entry.set_meta("step", index)
@@ -859,7 +866,7 @@ func _actual_guides(entries: Array[Booklet.Entry]) -> void:
 	var seen: Dictionary = {}
 	for entry: Booklet.Entry in entries:
 		if entry.callout != null and (entry.callout.own_pages
-				or not Booklet._fits_inline(entry.callout)):
+				or not Booklet._fits_inline(entry.callout, _sheet)):
 			for sub: Booklet.Entry in entry.callout.steps:
 				_actual_for(sub, seen)
 		_actual_for(entry, seen)
@@ -1049,6 +1056,7 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 	for at: int in built.size():
 		var entry := Booklet.Entry.new()
 		entry.number = at + 1
+		entry.number_scale = _sheet.number_scale()
 		entry.in_callout = true
 		entry.from = callout.from
 		entry.subject = callout.subject
@@ -1741,7 +1749,7 @@ static func _cells_of(box: AABB, size: float) -> Array[Vector3i]:
 ## before them, as [method _choose_views].
 func _subjects(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 	if from == 0:
-		var area: Vector2 = Booklet.content().size
+		var area: Vector2 = Booklet.content(_sheet).size
 		var whole: Rect2 = BookletStudio.extent(_main.boxes, BookletStudio.FRONT)
 		_fits = minf(area.x / maxf(whole.size.x, 1.0),
 			area.y / maxf(whole.size.y, 1.0)) >= 0.2
@@ -1841,7 +1849,7 @@ func _draw(into: Array, entry: Booklet.Entry) -> void:
 	# in the picture's box and must not be painted over.
 	var shot: BookletStudio.Shot = await _studio.shoot(where[0], int(where[2]),
 		int(where[1]), view, size,
-		_encoded.bind(Color(0, 0, 0, 0) if entry.clear else PAGE_COLOUR),
+		_encoded.bind(Color(0, 0, 0, 0) if entry.clear else _sheet.behind()),
 		(5.0 * px_per_mm) if entry.cropped else 0.0)
 	_later([shot], func() -> void:
 		entry.image = _uri(shot)
@@ -2047,7 +2055,8 @@ func _cover() -> Booklet.Page:
 	var page := Booklet.Page.new()
 	page.kind = "cover"
 	page.number = 1
-	var area := Rect2(Vector2(Booklet.MARGIN, 36.0), Vector2(Booklet.PAGE.x - Booklet.MARGIN * 2.0, 136.0))
+	page.sheet = _sheet
+	var area: Rect2 = Booklet.cover_area(_sheet)
 	page.pictures.append([await _whole(BookletStudio.FRONT, area, 0.96), area])
 	return page
 
@@ -2057,7 +2066,8 @@ func _finished(number: int) -> Booklet.Page:
 	page.kind = "finished"
 	page.number = number
 	page.progress = 1.0
-	var area: Rect2 = Booklet.content()
+	page.sheet = _sheet
+	var area: Rect2 = Booklet.content(_sheet)
 	area = Rect2(area.position + Vector2(0.0, 12.0), area.size - Vector2(0.0, 12.0))
 	var corner := Rect2(Vector2(area.end.x - 70.0, area.end.y - 52.0), Vector2(70.0, 52.0))
 	area.size.x -= 40.0
@@ -2075,7 +2085,7 @@ func _whole(from: Vector3, area: Rect2, fill: float) -> String:
 	scale = minf(scale, Booklet.MOST_SCALE * 1.5 * px_per_mm)
 	var view := BookletStudio.View.new(from, extent.get_center(), scale)
 	var shot: BookletStudio.Shot = await _studio.shoot(_main, _main.count,
-		_main.count + 1, view, size, _encoded.bind(PAGE_COLOUR
+		_main.count + 1, view, size, _encoded.bind(_sheet.behind()
 			if from == BookletStudio.FRONT and area.size.x > 100.0 else Color.WHITE))
 	await _studio.finished(shot)
 	return _uri(shot)
