@@ -1191,8 +1191,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (APP_UX A12), a line in the strip along the top of the model, never over
   it. Offered once on a device (`first_build` in `user://shell.cfg`: offered,
   skipped or done), on a first visit, to a person in front of the window once
-  signed in, and only while the example car is untouched: never to a viewer,
+  signed in, and only while the baseplate holds nothing of theirs (the
+  example car untouched, or empty in a new window): never to a viewer,
   a model opened from a link, a phone, or someone whose own model came back.
+  An offer not taken goes by itself (APP_UX4 quiet) at the third part put
+  down by hand (`Builder.placed`, a person's only) or any model opened
+  (`ModelStore.loaded`: theirs or an example), however it was offered;
+  File, New and Clear keep it. `quiet probe` checks those.
   Nothing changes until **Start**, which takes the car off for "My first
   model" (`Main._make_room`), or over the person's own model runs File, New,
   which asks first when it is unsaved. **Skip** ends it in one click; Help,

@@ -82,7 +82,14 @@ picture the assistant is shown.
   (it is square on and cannot turn). The handles and Connect's points are
   drawn in both views (`ViewOverlays`, a CanvasLayer with one clipped canvas
   per view); the pivot mark is on `SplitView.MAIN_ONLY` (render layer 19) and
-  the view cube stays in the main view. Off out of the box, kept per device
+  the view cube stays in the main view. Short of room with the right-hand
+  column open (the assistant or Properties) and the bin folded, Split folds
+  that column to its tab while the split is on (`SplitView.fits()` counts
+  what folding gives, `has_room()` is the room as it is, `set_on` makes it
+  and gives it back) and opens it again when Split goes off, unless a side
+  column was opened or folded meanwhile; the menu's tooltip says so (APP_UX4
+  quiet: 1280 x 720 with the assistant and Stress open had no second view).
+  Off out of the box, kept per device
   (ShellPrefs `split`, `split_side`); greyed with "The window is too small
   for two views" where the model's column cannot give each view 320 points
   (`Room`, not units: a phone at 3x lays 900 units across 390 points), on a
@@ -2144,7 +2151,32 @@ picture the assistant is shown.
   Renders going at once share the window's vsync and frame-rate state
   (`StudioRender._quick_count`), put back when the last one ends. A traced
   render no longer raises the window's shadow atlas and SSAO, which would
-  slow the window it shares.
+  slow the window it shares. It gives way (APP_UX4 quiet): the first child
+  of the model's room (`Main._over_model`, group `render_queue`), so Cut
+  away's strip, Compare and every panel and dialog of the window are drawn
+  over it whenever they open; it sits above a strip along the room's foot
+  (`_foot`), so the strip and its own buttons are both in sight; it is
+  no wider than the room (`LEAST_WIDE` at least), its words wrapping and
+  its buttons going two rows, so it never lies over a tool's panel beside
+  the model; Escape puts it away as a rung of Main's ladder after the parts list, before the
+  tool and the selection (`Main._render_queue_up`).
+- `quiet probe` (`src/dev/quiet_probe.gd`, `tools/probe.sh quiet_probe`,
+  windowed at 1280 x 720, `PROBE_SIZE=1400x900`): APP_UX4 unit 9's bar.
+  The first build's offer on a first visit, gone at the third part put down
+  by hand (not the first two), gone on File, Open of a saved model and of
+  the car (from Help, as the walk met it), kept on File, New's empty
+  baseplate, and offered by itself on a first visit in a new window (a run
+  of its own, windowed, on a data folder of its own). Split at the size with
+  the assistant open, with Stress's panel and without: offered, two views of
+  320 points or more, the assistant folded to its tab while on and open
+  again after, the tooltip saying so. The render queue, made after Settings
+  was seen (as the walk had it): Escape closes it,
+  first even with a part selected; Settings, Cut away's strip and every
+  dialog of its `DIALOGS` list opened after it are drawn over it, read off
+  the window's picture with the queue up and hidden (at most 2% of the
+  pixels over its corner changed, a channel 0.15 apart); the queue's
+  buttons in sight beside the strip; each dialog it moved or narrowed for
+  (`2_gave_way_<name>`). Pictures in `shots/quiet/<W>x<H>/`.
 - `pathtrace probe` (`src/dev/pathtrace_probe.gd`, `tools/probe.sh
   pathtrace`, windowed on the GPU at 1400 x 900): the car at 1280 x 720 and
   256 samples within 60 s; its RMSE against 4,096 other samples at most

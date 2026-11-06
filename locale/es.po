@@ -10741,3 +10741,7 @@ msgstr "Automático: el modo más sencillo, que necesitan estos gráficos (%s). 
 
 msgid "From the next start."
 msgstr "Desde el próximo arranque."
+
+# View, Split: the room it makes at a laptop's size (APP_UX4, quiet)
+msgid "Short of room, the right-hand column folds to its tab while the second view is on"
+msgstr "Si falta espacio, la columna derecha se pliega a su pestaña mientras la segunda vista está activa"

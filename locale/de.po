@@ -10741,3 +10741,7 @@ msgstr "Automatisch: der einfachere Modus, den diese Grafik braucht (%s). Kein P
 
 msgid "From the next start."
 msgstr "Ab dem nächsten Start."
+
+# View, Split: the room it makes at a laptop's size (APP_UX4, quiet)
+msgid "Short of room, the right-hand column folds to its tab while the second view is on"
+msgstr "Fehlt der Platz, wird die rechte Spalte zu ihrem Reiter eingeklappt, solange die zweite Ansicht an ist"

@@ -14,11 +14,27 @@
 ## Over MCP, render_queue (AppTools) adds, lists and pauses the same queue.
 ## Opened by name ([method of]) so the shell and main need not load it
 ## before it is first asked for.
+##
+## It gives way. It lies in the model's room under everything else there
+## and over it: Cut away's strip, Compare, and every panel and dialog of
+## the window, whenever they were opened, are drawn over it and take the
+## clicks first. Made last and laid over the window, it stood over Settings'
+## Done and Cut away's X, Y and Z (APP_UX4, quiet). It sits clear of the
+## strips along the room's foot, and Escape puts it away as it does the
+## other panels over the model (Main's Escape, [constant GROUP]).
 class_name RenderQueue
 extends PanelContainer
 
+## Main's Escape finds it by this group, without loading this script.
+const GROUP := "render_queue"
+## Room kept between it and a strip along the foot of the model's room.
+const CLEAR := 8.0
+
 ## The panel's width, its words wrapped inside it.
 const WIDE := 380.0
+## The narrowest it goes to stay in a narrow room (a tool's panel beside the
+## model at a laptop's size): its words wrap and its buttons go two rows.
+const LEAST_WIDE := 250.0
 ## Rows shown before the list scrolls.
 const MOST_ROWS := 5
 const ROW_TALL := 46.0
@@ -81,21 +97,31 @@ var _pause_button: Button
 var _finish_button: Button
 var _clear_button: Button
 var _close_button: Button
-var _placed_in := Rect2()
+## What it was last placed by: the model's room, and the top of what lies
+## along its foot.
+var _placed_by: Array = []
 
 
 ## The app's queue, made the first time it is asked for: the shell's
-## command and render_queue reach it by name through this.
+## command and render_queue reach it through this.
+##
+## In the model's room (Main._over_model), first of what is there, so all
+## of it and all that is over the model is drawn over this; where the app
+## has no such room (a check's bare scene), in the HUD.
 static func of(app: Node) -> RenderQueue:
+	for node: Node in app.get_tree().get_nodes_in_group(GROUP):
+		if node is RenderQueue and (node as RenderQueue)._app == app:
+			return node as RenderQueue
+	var room: Node = app.get("_over_model") as Node
 	var hud: Node = app.get_node_or_null("HUD")
-	var holder: Node = hud if hud != null else app
-	var found: RenderQueue = holder.get_node_or_null("RenderQueue") as RenderQueue
-	if found != null:
-		return found
+	var holder: Node = room if room != null else (hud if hud != null else app)
 	var queue := RenderQueue.new()
 	queue.name = "RenderQueue"
 	queue._app = app
+	queue.add_to_group(GROUP)
 	holder.add_child(queue)
+	if holder == room:
+		holder.move_child(queue, 0)
 	return queue
 
 
@@ -438,8 +464,9 @@ func _build() -> void:
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(_rows)
 	_status = _words(column, 11, 0.65)
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 6)
+	var buttons := HFlowContainer.new()
+	buttons.add_theme_constant_override("h_separation", 6)
+	buttons.add_theme_constant_override("v_separation", 6)
 	column.add_child(buttons)
 	_add_button = _button(buttons, "Add this view", func() -> void:
 		if add() == null:
@@ -563,24 +590,61 @@ func _refresh_current() -> void:
 			state.text = state_words(_current)
 
 
-## In the bottom right corner of the model's room, clear of the status bar.
+## In the bottom right corner of the model's room, clear of the status bar,
+## and above what lies along the room's foot beneath it (Cut away's strip),
+## so the strip and the queue's own buttons are both in sight. As wide as
+## the room has, so it never lies over a panel beside the model: one opened
+## after it (Colour the hidden parts…) would be drawn under it.
 func _place() -> void:
 	if not visible or _app == null:
 		return
-	var room: Rect2 = _app.call("_model_rect") if _app.has_method("_model_rect") \
-		else get_viewport().get_visible_rect()
-	var wide: float = minf(WIDE, room.size.x - 24.0)
+	var room: Rect2 = _room()
+	var wide: float = clampf(room.size.x - 24.0, LEAST_WIDE, WIDE)
+	for words: Label in [_note, _status]:
+		words.custom_minimum_size.x = wide - 28.0
 	custom_minimum_size.x = wide
 	size = Vector2(wide, get_combined_minimum_size().y)
-	position = Vector2(room.end.x - size.x - 12.0, room.end.y - size.y - 12.0)
-	_placed_in = room
+	var at := Vector2(room.end.x - size.x - 12.0, room.end.y - size.y - 12.0)
+	var foot: float = _foot(Rect2(at, size))
+	if foot < room.end.y:
+		at.y = maxf(room.position.y + 12.0, minf(at.y, foot - CLEAR - size.y))
+	global_position = at
+	_placed_by = [room, foot, get_combined_minimum_size()]
+
+
+func _room() -> Rect2:
+	return _app.call("_model_rect") if _app.has_method("_model_rect") \
+		else get_viewport().get_visible_rect()
+
+
+## The top of the highest panel in the model's room that lies along its foot
+## and under [param rect] (one whose top is below the queue's): Cut away's
+## strip. The room's foot when there is none.
+func _foot(rect: Rect2) -> float:
+	var foot: float = _room().end.y
+	var holder: Control = get_parent() as Control
+	if holder == null:
+		return foot
+	for child: Node in holder.get_children():
+		var other: Control = child as Control
+		if other == null or other == self or not other.is_visible_in_tree() \
+				or other.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+			continue
+		var there: Rect2 = other.get_global_rect()
+		if there.position.y > rect.position.y and there.position.x < rect.end.x \
+				and there.end.x > rect.position.x:
+			foot = minf(foot, there.position.y)
+	return foot
 
 
 func _process(_delta: float) -> void:
-	# The model's room changes as the side panels open and close.
-	if visible and _app != null and _app.has_method("_model_rect"):
-		var room: Rect2 = _app.call("_model_rect")
-		if room != _placed_in:
+	# The model's room changes as the side panels open and close, and a
+	# strip comes up along its foot.
+	if visible and _app != null:
+		var room: Rect2 = _room()
+		var at := Vector2(room.end.x - size.x - 12.0, room.end.y - size.y - 12.0)
+		# And as its words and buttons settle at a new width.
+		if [room, _foot(Rect2(at, size)), get_combined_minimum_size()] != _placed_by:
 			_place()
 
 
