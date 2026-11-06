@@ -4646,20 +4646,6 @@
       "area": "mcp"
     },
     {
-      "kind": "ui",
-      "label": "a model into this one",
-      "entry": "src/ui/model_bar.gd",
-      "reach": "godot --path .  (File, Import, Into this model…: a saved model, an example, a file or the library's; in hand as one sub-assembly with its steps, a click puts it down, one undo takes it out; the library's Put in this model; open_model into=true over MCP)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "intomodel probe",
-      "entry": "src/dev/intomodel_probe.gd",
-      "reach": "tools/probe.sh intomodel_probe   (a window, 1280 x 720 or PROBE_SIZE=1400x900; starts tools/web/serve.py --library tests/fixtures/library on 9801 and stops it)",
-      "area": "model-io"
-    },
-    {
       "kind": "lib",
       "label": "what a session sees over mcp",
       "entry": "src/net/see_tools.gd",
@@ -4686,13 +4672,6 @@
       "entry": "src/net/pattern_tool.gd",
       "reach": "tools/probe.sh grid_probe   (pattern_parts: bricks= in columns, rows and levels, column_studs/row_studs/level_plates apart or touching; one call, one undo step, a copy with no room said by its column, row and level and the part in its way)",
       "area": "mcp"
-    },
-    {
-      "kind": "cli",
-      "label": "into kept probe",
-      "entry": "src/dev/into_kept_probe.gd",
-      "reach": "tools/probe.sh into_kept_probe   (headless; 11 cases, -- unshown_name,rotstep for some: a model brought in, put down, undone, redone, saved and opened twice keeps every part of both, the app's unshown ones too, in place, colour, sub-model and step; a sub-model of parts the app cannot show never shadowed by a brought one's name; the brought model's ROTSTEP and its maker in its own sections, after a rename and a copy made its own too; an awaited part lands when it arrives)",
-      "area": "model-io"
     }
   ]
 }

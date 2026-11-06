@@ -111,15 +111,6 @@
 					"words": "Import",
 					"items": [
 						{
-							"name": "import_into",
-							"words": "Into this model…",
-							"key": "",
-							"tip": "A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes"
-						},
-						{
-							"line": true
-						},
-						{
 							"name": "import_ldraw",
 							"words": "LDraw model (.ldr, .mpd)…",
 							"key": "",
@@ -1630,7 +1621,6 @@
 		"import_io": "",
 		"import_lxf": "",
 		"import_mesh": "",
-		"import_into": "",
 		"save": "Ctrl-S",
 		"save_as": "Ctrl-shift-S",
 		"versions": "",

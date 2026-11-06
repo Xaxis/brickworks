@@ -45,19 +45,6 @@ var lifted: bool = false
 ## a right click, as a part from the bin always has; a paste and a move go
 ## once. Five window bays took ten clicks (docs/APP_UX.md, A6).
 var repeats: bool = false
-## A model brought into this one whole (ModelStore.held_from): its parts
-## keep the steps its author gave them, and each copy of a sub-model in it,
-## by its path in hand, goes on in the step [member brought_units] says (the
-## whole's -1, put on where it is put down: Builder._put_carried).
-var brought: bool = false
-var brought_units: Dictionary = {}
-## And how its booklet shows its steps (BookletLooks, by its definitions'
-## names in hand) and whose each sub-model of it is (BrickWorld.credits):
-## the model's own, put down with it.
-var brought_looks: Dictionary = {}
-var brought_credits: Dictionary = {}
-## The files it carries for its parts the app could not build: name -> text.
-var brought_files: Dictionary = {}
 
 var _ghost: Node3D
 ## The ghost's one material: its "valid" says whether the group fits.
@@ -169,11 +156,6 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	items = parts.duplicate(true)
 	turns = 0
 	lifted = came_off_the_model
-	brought = false
-	brought_units = {}
-	brought_looks = {}
-	brought_credits = {}
-	brought_files = {}
 	_pinned = false
 	_base = []
 	var phase: float = phase_of(items[0].get("pivot", Vector3(10, 0, 10))) \
@@ -185,27 +167,11 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	_build_ghost()
 
 
-## What is in hand is a model brought in whole, [param held] as
-## ModelStore.held_from read it: put down, it keeps its author's steps, its
-## booklet's looks and its makers' credit (Builder._bring_steps).
-func bring(held: Dictionary) -> void:
-	brought = true
-	brought_units = held.get("units", {})
-	brought_looks = held.get("looks", {})
-	brought_credits = held.get("credits", {})
-	brought_files = held.get("files", {})
-
-
 ## Let go of whatever is held, without putting it anywhere.
 func drop() -> void:
 	items = []
 	lifted = false
 	repeats = false
-	brought = false
-	brought_units = {}
-	brought_looks = {}
-	brought_credits = {}
-	brought_files = {}
 	_pinned = false
 	_base = []
 	_covers.clear()
@@ -570,8 +536,8 @@ func hide_ghost() -> void:
 		_ghost.visible = false
 
 
-## Where each part goes if put down now: [{part, color, at, group, unit,
-## step}] in the world, and the cover each occupies.
+## Where each part goes if put down now: [{part, color, at, group}] in the
+## world, and the cover each occupies.
 func placements(builder: Builder) -> Array:
 	var covers: Array = _covers_for(builder)
 	var shift := Vector3i(
@@ -584,7 +550,6 @@ func placements(builder: Builder) -> Array:
 		out.append({
 			"part": item["part"], "color": item["color"],
 			"group": item.get("group", ""),
-			"unit": item.get("unit", ""),
 			"step": item.get("step", -1),
 			"at": _frame * (item["at"] as Transform3D),
 			"boxes": BrickLattice.moved_by(covers[0][n], shift),
