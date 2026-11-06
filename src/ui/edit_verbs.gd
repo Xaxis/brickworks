@@ -1409,11 +1409,6 @@ func _pointer() -> Vector2:
 	return get_viewport().get_mouse_position() if is_inside_tree() else Vector2.ZERO
 
 
-## The first digit: what is in hand kept where it stands for the number to
-## move it from (Builder.pin_hand). After R or T, they are taken back first,
-## the number standing for them: in hand, what was held before them; on the
-## model, the turn undone and the selection taken into hand where it was,
-## so what is typed shows in hand and is put down with the turn's undo.
 ## Connect's tool, as it is first chosen ([member connect_tool]).
 func _make_connect_tool() -> void:
 	_connect_tool = Later.make(&"ConnectTool")
@@ -1427,6 +1422,11 @@ func _make_connect_tool() -> void:
 	add_child(_connect_tool)
 
 
+## The first digit: what is in hand kept where it stands for the number to
+## move it from (Builder.pin_hand). After R or T, they are taken back first,
+## the number standing for them: in hand, what was held before them; on the
+## model, the turn undone and the selection taken into hand where it was,
+## so what is typed shows in hand and is put down with the turn's undo.
 ## False when there is nothing to type for.
 func _begin_typing() -> bool:
 	if builder.is_holding_figure() or (measure != null and measure.active) \

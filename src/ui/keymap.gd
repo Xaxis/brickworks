@@ -182,9 +182,9 @@ const BROWSER_KEEPS: Array[int] = [CTRL | KEY_N, CTRL | KEY_T, CTRL | KEY_W,
 ## The keys a timeline being played answers, whatever the keymap: its own.
 const TIMELINE_KEYS: Array[int] = [KEY_LEFT, KEY_RIGHT, KEY_HOME, KEY_END, KEY_SPACE]
 
-## What Shift makes of a key, as a browser names it: back to the key.
 ## Between a menu and its submenu, as the docs and Find a command write it.
 const INTO := " › "
+## What Shift makes of a key, as a browser names it: back to the key.
 const UNSHIFTED: Dictionary = {KEY_BRACELEFT: KEY_BRACKETLEFT, KEY_BRACERIGHT: KEY_BRACKETRIGHT,
 	KEY_PLUS: KEY_EQUAL, KEY_UNDERSCORE: KEY_MINUS, KEY_ASCIITILDE: KEY_QUOTELEFT,
 	KEY_EXCLAM: KEY_1, KEY_AT: KEY_2, KEY_NUMBERSIGN: KEY_3, KEY_DOLLAR: KEY_4,

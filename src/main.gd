@@ -6106,12 +6106,6 @@ func _make_page_editor() -> void:
 	_add_to_hud(editor)
 
 
-## A label that reads over the 3D behind it, whatever colour that is.
-##
-## On a dark pill as wide as its words. It was white with a black outline
-## four units thick, which at twelve points filled in every letter's
-## counters: over the pale sky on an ordinary screen "62 bricks" was a
-## grey smudge, and smaller than 1040 points across it could not be read.
 ## The ruler, and what it says, under the counts: made the first time it is
 ## taken out (EditVerbs.ruler).
 func _make_measure() -> Node3D:
@@ -6132,6 +6126,12 @@ func _make_measure() -> Node3D:
 	return _measure
 
 
+## A label that reads over the 3D behind it, whatever colour that is.
+##
+## On a dark pill as wide as its words. It was white with a black outline
+## four units thick, which at twelve points filled in every letter's
+## counters: over the pale sky on an ordinary screen "62 bricks" was a
+## grey smudge, and smaller than 1040 points across it could not be read.
 static func _viewport_label(size: int) -> Label:
 	var label := Label.new()
 	label.add_theme_font_size_override("font_size", size)
