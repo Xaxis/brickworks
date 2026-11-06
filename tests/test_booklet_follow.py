@@ -368,3 +368,9 @@ def test_a_layer_laid_on_a_wrong_one_is_carried_and_a_wrong_one_alone_is_not():
     assert [w.get("carried", False) for w in rows[4]["wrong"]].count(True) == 1
     assert result["totals"]["carried"] == 1
     assert result["said_causes"] == {"unsaid": 2.0, "carried": 1.0}
+
+
+def test_make_photographs_only_the_pages_asked_for():
+    # The castle's 324 pages take most of an hour; a stretch needs a dozen.
+    assert bf._page_list("2-5,9") == [2, 3, 4, 5, 9]
+    assert bf._page_list("172") == [172]

@@ -1493,7 +1493,11 @@ picture the assistant is shown.
   stage in the order the plan builds them, so a step's picture is a prefix
   (`BrickWorld.show_first`). What a page has: a cover with the model, steps
   with a big number and a parts box above it (a picture of each part at one
-  scale, `Booklet.PART_SCALE`, and its "2x"), one to four steps a page — the
+  scale, `Booklet.PART_SCALE`, and its "2x"; a part whose slanted and curved
+  faces show twice as much turned over is drawn so, from 15 degrees under
+  its side, `BookletMaker.telling_view`: a dish's dome, an inverted slope's
+  slope, never a slope, plate, tile, jumper or seat; booklet_probe's
+  `_telling`), one to four steps a page — the
   fullest page whose shared scale is still readable (`FOUR_UP` 6 mm a stud,
   `TWO_UP` 5), never more than `MOST_SCALE` (10 mm a stud) — and every step
   on a page at the same scale; a step whose new parts are hidden from the
