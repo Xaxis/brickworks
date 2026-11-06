@@ -1229,22 +1229,6 @@
       "tests": []
     },
     {
-      "id": "cli:into kept probe",
-      "kind": "cli",
-      "entry": "src/dev/into_kept_probe.gd",
-      "reach": "tools/probe.sh into_kept_probe   (headless; 11 cases, -- unshown_name,rotstep for some: a model brought in, put down, undone, redone, saved and opened twice keeps every part of both, the app's unshown ones too, in place, colour, sub-model and step; a sub-model of parts the app cannot show never shadowed by a brought one's name; the brought model's ROTSTEP and its maker in its own sections, after a rename and a copy made its own too; an awaited part lands when it arrives)",
-      "area": "model-io",
-      "tests": []
-    },
-    {
-      "id": "cli:intomodel probe",
-      "kind": "cli",
-      "entry": "src/dev/intomodel_probe.gd",
-      "reach": "tools/probe.sh intomodel_probe   (a window, 1280 x 720 or PROBE_SIZE=1400x900; starts tools/web/serve.py --library tests/fixtures/library on 9801 and stops it)",
-      "area": "model-io",
-      "tests": []
-    },
-    {
       "id": "cli:judge design rounds in pairs",
       "kind": "cli",
       "entry": "tools/bench/pairwise.py",
@@ -4012,14 +3996,6 @@
       "entry": "tools/viewer/inline.js",
       "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/start3d.js imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
       "area": "web",
-      "tests": []
-    },
-    {
-      "id": "ui:a model into this one",
-      "kind": "ui",
-      "entry": "src/ui/model_bar.gd",
-      "reach": "godot --path .  (File, Import, Into this model\u2026: a saved model, an example, a file or the library's; in hand as one sub-assembly with its steps, a click puts it down, one undo takes it out; the library's Put in this model; open_model into=true over MCP)",
-      "area": "model-io",
       "tests": []
     },
     {
