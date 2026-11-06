@@ -303,6 +303,22 @@ picture the assistant is shown.
   goes with the node (planted, the check names the first and the run exits
   134; it passes the second). Results in
   `bench/results/renderquit-2026-10-17/`.
+  And with work of the app's own still going as it quits (2026-11-06,
+  `bench/results/quitabort-2026-11-06/`): `booklet-asking` (Build,
+  Instructions…, its Save dialog up, File, Quit), `save-asking` (Save as…, the
+  same), `booklet-drawing` (the window closed while the booklet is drawn),
+  `booklet` (windowed only: the booklet written whole, its job over, then the
+  window closed), `reading` (a 40,000-part model read on a worker) and
+  `updating` (the updater hashing a 16 GB sparse file on its thread). Each must
+  exit 0 with none of the C library's or the engine's abort lines in its
+  output. On pre261 the first three aborted, "corrupted size vs. prev_size in
+  fastbins", every run: `Shell.run` handed `Working.attend` a lambda of its own
+  script, and the coroutine a command runs in, still waiting, let go of it after
+  that script was freed (a node's lambda holds no reference to its script). A
+  command is handed on as `Shell._run_now` bound to its name now. `reading` and
+  `updating` dumped core, their task or thread left to the engine: every task,
+  group and thread the app sets going goes through `WorkerTasks` (`add`,
+  `add_group`, `start`) and is collected as the tree goes.
 - `text fields give the keys back` (`src/ui/focus_guard.gd`): Enter, Tab,
   Escape or a press anywhere outside a text field ends the typing, in every
   field — the model's name, the part search, the brief, the properties'

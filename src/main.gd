@@ -6415,13 +6415,13 @@ func _pdf_file(from: String, to: String) -> int:
 	var read: RefCounted = (await Later.script_in_background(&"BookletRead", null)).new()
 	var out: RefCounted = (await Later.script_in_background(&"BookletPdf", null)).new()
 	var part: String = to + ".part"
-	var task: int = WorkerThreadPool.add_task(func() -> void:
+	var task: int = WorkerTasks.add(func() -> void:
 		if out.begin(part, read):
 			read.read_file(from, out.page)
 			out.finish(read.title), false, "booklet pdf")
 	while not WorkerThreadPool.is_task_completed(task):
 		await get_tree().process_frame
-	WorkerThreadPool.wait_for_task_completion(task)
+	WorkerTasks.collect(task)
 	var pages: int = out.pages
 	return pages if _into_place(part, to, pages > 0 and out.ok()) else -1
 

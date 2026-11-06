@@ -16,6 +16,15 @@
 ## reads must outlive it: a node that frees what its task uses lets the task
 ## end first (BrickifyDialog._exit_tree).
 ##
+## Six more were added to the engine straight, each waited for over frames:
+## the booklet's pictures and its PDF, a model read as it opens, a set's
+## booklet in the bin, a file's flexible parts and the parts it carries. One
+## out as the app quit dumped core the same way, every time (a model read on
+## a worker, 3 of 3, quitabort, 2026-11-06). Every task the app sets going
+## comes here now, the groups too. So does a thread of the app's own
+## ([method start]), for work that waits on something outside the engine: the
+## updater's, hashing a download, quit under it the same way (2 of 2).
+##
 ##   var task: int = WorkerTasks.add(func() -> void: ..., false, "weigh the model")
 ##   while not WorkerThreadPool.is_task_completed(task):
 ##       await get_tree().process_frame
@@ -25,6 +34,11 @@ extends RefCounted
 
 ## Tasks added and not collected yet: id -> true.
 static var _out: Dictionary = {}
+## Group tasks ([method add_group]) the same: their ids are numbered apart.
+static var _groups: Dictionary = {}
+## Threads [method start] made and [method finish] has not waited for:
+## Thread -> true.
+static var _threads: Dictionary = {}
 static var _lock := Mutex.new()
 static var _watching: bool = false
 ## Kinds of work [method first_here] has run: kind -> true.
@@ -72,6 +86,39 @@ static func add(work: Callable, high_priority: bool = false, description: String
 	return task
 
 
+## [method WorkerThreadPool.add_group_task], kept until [method collect_group].
+static func add_group(work: Callable, elements: int, tasks_needed: int = -1,
+		high_priority: bool = false, description: String = "") -> int:
+	var group: int = WorkerThreadPool.add_group_task(work, elements, tasks_needed, high_priority,
+		description)
+	_lock.lock()
+	_groups[group] = true
+	_lock.unlock()
+	_watch()
+	return group
+
+
+## [param work] on a thread of its own, kept until [method finish]: work
+## that waits on something outside the engine (a process's answer, a file
+## hashed), which would hold one of the pool's workers that long.
+static func start(work: Callable) -> Thread:
+	var thread := Thread.new()
+	thread.start(work)
+	_lock.lock()
+	_threads[thread] = true
+	_lock.unlock()
+	_watch()
+	return thread
+
+
+## Wait for [param thread] ([method start]'s) to end: what its work returned.
+static func finish(thread: Thread) -> Variant:
+	_lock.lock()
+	_threads.erase(thread)
+	_lock.unlock()
+	return thread.wait_to_finish()
+
+
 ## [param work] run on a worker and waited for a frame at a time, so the
 ## window draws and a session's call can become a job meanwhile (ToolJobs):
 ## what it returns. Here and now where there are no threads. Given
@@ -107,19 +154,35 @@ static func collect(task: int) -> void:
 		WorkerThreadPool.wait_for_task_completion(task)
 
 
-## Every task not collected yet, collected.
+## Wait for group [param group] to end, and let the engine let go of it.
+## Nothing when it has been already.
+static func collect_group(group: int) -> void:
+	_lock.lock()
+	var out: bool = _groups.erase(group)
+	_lock.unlock()
+	if out:
+		WorkerThreadPool.wait_for_group_task_completion(group)
+
+
+## Every task, group and thread not collected yet, collected.
 static func collect_all() -> void:
 	_lock.lock()
 	var tasks: Array = _out.keys()
+	var groups: Array = _groups.keys()
+	var threads: Array = _threads.keys()
 	_lock.unlock()
 	for task: int in tasks:
 		collect(task)
+	for group: int in groups:
+		collect_group(group)
+	for thread: Thread in threads:
+		finish(thread)
 
 
-## How many tasks are out.
+## How many tasks, groups and threads are out.
 static func out() -> int:
 	_lock.lock()
-	var count: int = _out.size()
+	var count: int = _out.size() + _groups.size() + _threads.size()
 	_lock.unlock()
 	return count
 
