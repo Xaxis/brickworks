@@ -269,7 +269,8 @@ func _initialize() -> void:
 	# and the parts on it floated: 5891's lamp, two cones each on the stud
 	# of the one under it, and 31038's table, a round plate on a cone. Read
 	# by the walls round the tip, as Stability reads it. Then the top cone
-	# a plate up, its hollow off the stud: in nothing, it floats.
+	# a brick up, its hollow off the stud: in nothing, it floats (a plate
+	# up, the check seats it on the stud).
 	var lamp := """
 1 72 20 -24 20 1 0 0 0 1 0 0 0 1 59900.dat
 %s
@@ -284,9 +285,9 @@ func _initialize() -> void:
 1 0 20 -32 20 1 0 0 0 1 0 0 0 1 4032a.dat
 1 47 20 -56 20 1 0 0 0 1 0 0 0 1 3899.dat
 """)
-	await _refused("the lamp's top cone a plate up off the stud under it",
+	await _refused("the lamp's top cone a brick up off the stud under it",
 		"1 72 20 -24 20 1 0 0 0 1 0 0 0 1 59900.dat\n"
-		+ "1 72 20 -56 20 1 0 0 0 1 0 0 0 1 59900.dat", false, "floating")
+		+ "1 72 20 -72 20 1 0 0 0 1 0 0 0 1 59900.dat", false, "floating")
 
 	print("\nturned about the upright and read from a file, in a section of its own")
 	# A file keeps where a part is, not the section it was laid in, so a part
