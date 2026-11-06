@@ -62,10 +62,15 @@ var _was: Texture2D
 var _shown: float = 1.0
 ## The sketch's own canvas item, drawn behind the tile's and under its
 ## material (the shimmer); what it was drawn for, [part, colour, square];
-## and what its studs are stood with, kept while it is drawn so.
+## and what it is drawn with, its mesh and its studs', kept while it is drawn
+## so.
 var _sketch_item: RID
 var _sketched: Array = []
-var _sketch_studs: MultiMesh
+var _sketch_held: Array = []
+## The sketch worked out ahead (PartSketch.plan, [method plan_sketch]), and
+## what for, [part, colour, square]: drawn as it is when the tile draws that.
+var _plan: Array = []
+var _plan_for: Array = []
 
 ## Whether the tile can be seen, which a grid's [ThumbTile.Sight] says;
 ## a tile outside a grid is taken to be. Waiting out of sight it is the
@@ -164,8 +169,21 @@ static func _shimmer_material() -> ShaderMaterial:
 ## The square the picture is drawn in: the previews are square, kept
 ## square and centred, as the TextureRect that used to hold them did.
 func _square() -> Rect2:
-	var side: float = minf(size.x, size.y)
-	return Rect2((size - Vector2(side, side)) * 0.5, Vector2(side, side))
+	return square_of(size)
+
+
+## The square a tile [param tall] draws its picture in (_square).
+static func square_of(tall: Vector2) -> Rect2:
+	var side: float = minf(tall.x, tall.y)
+	return Rect2((tall - Vector2(side, side)) * 0.5, Vector2(side, side))
+
+
+## The sketch of [member sketch], worked out ahead in [param square] in
+## [param colour] (PartSketch.plan): drawn as it is if the tile draws that
+## sketch there in that colour, and otherwise worked out again as it is drawn.
+func plan_sketch(steps: Array, square: Rect2, colour: Color) -> void:
+	_plan = steps
+	_plan_for = [sketch, colour, square]
 
 
 func _notification(what: int) -> void:
@@ -235,8 +253,12 @@ func _show_sketch(square: Rect2, strength: float) -> void:
 	var wanted: Array = [sketch, sketch_colour, square]
 	if wanted != _sketched:
 		RenderingServer.canvas_item_clear(_sketch_item)
-		_sketch_studs = PartSketch.draw(_sketch_item, square, sketch, sketch_colour)
+		_sketch_held = PartSketch.draw_plan(_sketch_item, _plan) \
+			if not _plan.is_empty() and wanted == _plan_for \
+			else PartSketch.draw(_sketch_item, square, sketch, sketch_colour)
 		_sketched = wanted
+		_plan = []
+		_plan_for = []
 	RenderingServer.canvas_item_set_modulate(_sketch_item, Color(1, 1, 1, strength))
 	RenderingServer.canvas_item_set_visible(_sketch_item, strength > 0.0)
 

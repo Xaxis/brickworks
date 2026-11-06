@@ -80,6 +80,10 @@ func _run() -> void:
 	print("  the parts bin in a %d x %d window" % [size.x, size.y])
 
 	# Waiting: every picture forgotten and none drawn, as on a slow network.
+	# The tiles another list's first: a part listed again keeps its tile and
+	# its picture (PartsBin._keep_tiles), so the same list again waits for none.
+	bin._run_search("technic")
+	await _frames(4)
 	_forget_pictures()
 	_thumbs.set_process(false)
 	bin._run_search("")

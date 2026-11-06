@@ -140,7 +140,7 @@ func _badge_of(number: String) -> Button:
 		if str(cell.get_meta("part", "")) != number:
 			continue
 		for inner: Node in cell.get_children():
-			if inner is Button:
+			if inner is Button and (inner as Button).visible:
 				return inner
 	return null
 
