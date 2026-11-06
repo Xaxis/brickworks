@@ -113,6 +113,18 @@ const PRESET_KEYS: Dictionary = {
 		# the selection to any step, its number typed (steps3).
 		"step_earlier": ALT | KEY_BRACKETLEFT, "step_later": ALT | KEY_BRACKETRIGHT,
 		"step_merge": ALT | KEY_E, "step_delete": ALT | KEY_DELETE, "step_to": ALT | KEY_T,
+		# The commands a builder reaches for often that had no key
+		# (docs/app_ux3/keys.md, 2026-11-05). The field's key where it has
+		# one: LDCad's Ctrl-Shift-A selects nothing, LeoCAD's Ctrl-F finds a
+		# part in the model. The rest Alt and a letter of the menu row, the
+		# word's first that is free: Alt-A the same part And colour, Alt-R
+		# Replace, Alt-G the stud Grid, Alt-K checK stability, Alt-U simUlate,
+		# Alt-O mOtions, Alt-N the refereNce picture, and Alt-B Instructions,
+		# the booklet, beside B, the timeline of its steps.
+		"select_none": CTRL | SHIFT | KEY_A, "select_alike": ALT | KEY_A,
+		"select_find": CTRL | KEY_F, "replace": ALT | KEY_R, "grid": ALT | KEY_G,
+		"stability": ALT | KEY_K, "simulate": ALT | KEY_U, "pose": ALT | KEY_O,
+		"reference": ALT | KEY_N, "instructions": ALT | KEY_B,
 	},
 	"studio": {
 		"mode_select": KEY_V, "mode_hinge": KEY_H, "mode_clone": KEY_C, "mode_hide": KEY_L,
@@ -126,6 +138,9 @@ const PRESET_KEYS: Dictionary = {
 		"fit_model": CTRL | KEY_0, "zoom_in": CTRL | KEY_EQUAL, "zoom_out": CTRL | KEY_MINUS,
 		"search": CTRL | KEY_F,
 		"paint": 0,
+		# Studio's Ctrl-F searches its palette, so finding a part in the
+		# model takes Shift with it.
+		"select_find": CTRL | SHIFT | KEY_F,
 	},
 	"mecabricks": {
 		"mode_select": KEY_W, "mode_clone": KEY_D, "mode_move": KEY_M, "reshape_flex": KEY_F,
