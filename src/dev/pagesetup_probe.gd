@@ -288,6 +288,18 @@ func _on_paper(printed: Dictionary, want: Vector2, words: String) -> void:
 	_check("...each step's picture and parts box inside the page's %s mm margins (%s)" % [
 		str(page["margin"]), str(outside.slice(0, 3)) if not outside.is_empty() else "all"],
 		outside.is_empty())
+	# The foot of every page, the parts list's credits with it: inside the
+	# margins, on the PNG page and the PDF's. (Its line ran off an upright
+	# A4 page, the trademark notice with it.)
+	var off_edge: Array = []
+	for number: int in range(1, int(printed["pages"]) + 1):
+		for drawn: Image in [_png(printed, number), _pdf_page(printed, number)]:
+			var right: float = _rightmost_ink(drawn, want.y - float(page["margin"]) - 16.0,
+				want.y - float(page["margin"]) + 2.0)
+			if right > want.x - float(page["margin"]) + 0.5:
+				off_edge.append("page %d: ink to %.1f mm" % [number, right])
+	_check("...every page's foot, the credits too, inside the right margin (%s)" % (
+		str(off_edge.slice(0, 3)) if not off_edge.is_empty() else "all"), off_edge.is_empty())
 	await _axle(printed, words)
 	# A reader of PDFs not this one: the pages that size, the step pictures
 	# byte for byte, the fonts in it, the PNGs poppler's drawing of the PDF.
@@ -318,6 +330,20 @@ func _axle(printed: Dictionary, words: String) -> void:
 						and absf(on_pdf - 32.0) <= 0.2)
 				return
 	_check("%s: the axle 4 has its 1:1 guide on a page" % words, false)
+
+
+## How far across [param image] its rightmost ink is (darker than half
+## white), in mm, between [param top] and [param bottom] mm down.
+static func _rightmost_ink(image: Image, top: float, bottom: float) -> float:
+	if image == null:
+		return INF
+	var from: int = clampi(roundi(top * DENSITY), 0, image.get_height() - 1)
+	var to: int = clampi(roundi(bottom * DENSITY), 0, image.get_height() - 1)
+	for x: int in range(image.get_width() - 1, -1, -1):
+		for y: int in range(from, to, 2):
+			if image.get_pixel(x, y).get_luminance() < 0.5:
+				return x / DENSITY
+	return 0.0
 
 
 ## The colour of [param image] at [param mm] on the page, as 0-255 each.
@@ -479,23 +505,44 @@ func _picture_behind() -> void:
 	var pdf: Image = _pdf_page(printed, 3)
 	_check("...and the PDF's (page 3: #%s)" % _at(pdf, Vector2(4.0, 40.0)).to_html(false),
 		pdf != null and _same(_at(pdf, Vector2(4.0, 40.0)), green, 6.0 / 255.0))
-	# Inside a step's picture, at its corner, where the model is not: the
-	# picture behind, not the page's colour laid on it.
+	# Inside a step's picture, at its corners, where the model is not and
+	# nothing is laid over it (its parts box, number, 1:1 guides, callout):
+	# the picture behind, not the page's colour laid on it.
 	var document: Booklet.Document = printed["document"]
+	var seen_through: Array = []
+	var not_through: Array = []
+	var page_colour: Color = _page()["colour"]
 	for laid: Booklet.Page in document.pages:
-		if laid.kind != "steps" or laid.entries.is_empty():
+		if laid.kind != "steps":
 			continue
-		var rect: Rect2 = laid.entries[0].rect
-		var spot: Vector2 = rect.position + Vector2(1.0, 1.0)
-		var png: Image = _png(printed, laid.number)
-		var seen: Color = _at(png, spot)
-		var pdf_seen: Color = _at(_pdf_page(printed, laid.number), spot)
-		var behind: Color = green if spot.y < (_page()["size"] as Vector2).y * 0.5 \
-			else Color8(40, 90, 160)
-		_check("...and through step %d's picture at its corner, %s mm: #%s on the PNG, #%s in the PDF"
-			% [laid.entries[0].number, str(spot), seen.to_html(false), pdf_seen.to_html(false)],
-			_same(seen, behind, 8.0 / 255.0) and _same(pdf_seen, behind, 8.0 / 255.0))
-		break
+		for entry: Booklet.Entry in laid.entries:
+			var over: Array = [entry.parts_rect, Booklet.number_rect(entry)]
+			over.append_array(Booklet.actual_rects(entry))
+			if entry.callout != null:
+				over.append(entry.callout.box)
+			var inner: Rect2 = entry.rect.grow(-1.5)
+			for spot: Vector2 in [inner.position, Vector2(inner.end.x, inner.position.y),
+					Vector2(inner.position.x, inner.end.y), inner.end]:
+				if over.any(func(rect: Rect2) -> bool: return rect.grow(1.0).has_point(spot)):
+					continue
+				var behind: Color = green if spot.y < (_page()["size"] as Vector2).y * 0.5 \
+					else Color8(40, 90, 160)
+				var seen: Color = _at(_png(printed, laid.number), spot)
+				var pdf_seen: Color = _at(_pdf_page(printed, laid.number), spot)
+				var where: String = "page %d step %d at %s: #%s, #%s" % [laid.number, entry.number,
+					str(spot), seen.to_html(false), pdf_seen.to_html(false)]
+				if _same(seen, behind, 8.0 / 255.0) and _same(pdf_seen, behind, 8.0 / 255.0):
+					seen_through.append(where)
+				# The page's colour laid over the picture where the step's
+				# picture is: what must not be. (A spot on the model is
+				# neither.)
+				elif _same(seen, page_colour, 8.0 / 255.0) or _same(pdf_seen, page_colour, 8.0 / 255.0) \
+						or not _same(seen, pdf_seen, 24.0 / 255.0):
+					not_through.append(where)
+	_check("...and through the steps' pictures, at their corners clear of what is laid on them: %d spots show it on the PNG and the PDF, %d the page's colour instead (%s)"
+		% [seen_through.size(), not_through.size(),
+			str(not_through.slice(0, 3)) if not not_through.is_empty() else str(seen_through.slice(0, 2))],
+		seen_through.size() >= 4 and not_through.is_empty())
 	await _shot_file(_out.path_join("behind-page-002.png"), "behind_page")
 
 

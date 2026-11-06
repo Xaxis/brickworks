@@ -11250,14 +11250,14 @@ msgstr "Mise en page"
 msgid "Booklet, 269 x 199 mm"
 msgstr "Livret, 269 x 199 mm"
 
-msgid "A4, 297 x 210 mm"
-msgstr "A4, 297 x 210 mm"
+msgid "A4, 210 x 297 mm"
+msgstr "A4, 210 x 297 mm"
 
-msgid "US Letter, 11 x 8.5 in"
-msgstr "US Letter, 11 x 8,5 po"
+msgid "US Letter, 8.5 x 11 in"
+msgstr "US Letter, 8,5 x 11 po"
 
-msgid "A5, 210 x 148 mm"
-msgstr "A5, 210 x 148 mm"
+msgid "A5, 148 x 210 mm"
+msgstr "A5, 148 x 210 mm"
 
 msgid "The paper the booklet is printed on, and its PDF's page"
 msgstr "Le papier sur lequel le livret est imprimé, et la page de son PDF"

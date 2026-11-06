@@ -1148,10 +1148,13 @@ static func _preview_size(callout: Callout, area: Rect2) -> Vector2:
 
 ## The parts list at the end: every part, by colour, a column at a time.
 static func parts_pages(lots: Array[Lot], first_page: int,
-		sheet: BookletSheet = null) -> Array[Page]:
+		sheet: BookletSheet = null, credits: String = "") -> Array[Page]:
 	var pages: Array[Page] = []
 	var area: Rect2 = content(sheet)
-	area = Rect2(area.position + Vector2(0.0, 10.0), area.size - Vector2(0.0, 10.0))
+	# The credits' lines past the first, where they wrap on a narrow page.
+	var over: float = (credit_lines(credits, sheet) - 1) * CREDIT_SIZE * 1.2 \
+		if sheet != null and not credits.is_empty() else 0.0
+	area = Rect2(area.position + Vector2(0.0, 10.0), area.size - Vector2(0.0, 10.0 + over))
 	const COLUMN := 24.5
 	var columns: int = int((area.size.x + 2.0) / COLUMN)
 	var page := Page.new()
@@ -1326,10 +1329,10 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
 </style>
 <div class="bar"><span>%s</span><button onclick="print()">Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="saved" role="status" hidden></span></div>
 %s
-<main>""" % [_escape(document.title), sheet.colour.to_html(false), _n(size.x),
+<main>""" % [_escape(document.title), sheet.colour.to_html(false), _whole(size.x),
 		("portrait" if sheet.portrait else "landscape") if own
-			else "%smm %smm" % [_n(size.x), _n(size.y)],
-		"5mm auto 0" if own else "0 auto", _n(size.x), _n(size.y), "\n".join(parts),
+			else "%smm %smm" % [_whole(size.x), _whole(size.y)],
+		"5mm auto 0" if own else "0 auto", _whole(size.x), _whole(size.y), "\n".join(parts),
 		_escape(document.title), SAVE_SCRIPT]
 
 
@@ -1628,7 +1631,39 @@ static func _parts_page(page: Page, document: Document, out: PackedStringArray) 
 		out.append(_text(Vector2(at.position.x, at.end.y + 0.8), 3.0, "%dx" % lot.count, "q"))
 		var label: String = lot.element if not lot.element.is_empty() else lot.part_id
 		out.append(_text(Vector2(at.position.x, at.end.y + 4.4), 2.5, _escape(label), "e"))
-	out.append(_text(Vector2(margin, document.sheet.size().y - margin - 4.0), 2.3, document.credits, "e"))
+	var foot: float = document.sheet.size().y - margin - 4.0
+	var lines: int = credit_lines(document.credits, document.sheet)
+	if lines <= 1:
+		out.append(_text(Vector2(margin, foot), CREDIT_SIZE, document.credits, "e"))
+	else:
+		# Too long for one line across a narrow page (A4 or A5 upright): it
+		# ran off the page's edge, the trademark notice with it. Wrapped to
+		# the page's width, its last line where the one line goes.
+		out.append(_text(Vector2(margin, foot - (lines - 1) * CREDIT_SIZE * 1.2), CREDIT_SIZE,
+			document.credits, "e tx", "width:calc(%s * var(--mm))"
+			% _n(document.sheet.size().x - margin * 2.0)))
+
+
+## The parts list's credits' size, in mm.
+const CREDIT_SIZE := 2.3
+
+
+## How many lines [param credits] take across [param sheet]'s page between
+## its margins, wrapped between words as the page sets them.
+static func credit_lines(credits: String, sheet: BookletSheet) -> int:
+	var room: float = sheet.size().x - sheet.margin * 2.0
+	if Helvetica.text_width(credits, CREDIT_SIZE, false) <= room:
+		return 1
+	var lines: int = 1
+	var line: String = ""
+	for word: String in credits.split(" ", false):
+		var longer: String = word if line.is_empty() else line + " " + word
+		if not line.is_empty() and Helvetica.text_width(longer, CREDIT_SIZE, false) > room:
+			lines += 1
+			line = word
+		else:
+			line = longer
+	return lines
 
 
 static func _part(at: Rect2, lot: Lot, document: Document) -> String:
@@ -1817,6 +1852,12 @@ static func _n3(value: float) -> String:
 
 static func _n(value: float) -> String:
 	return String.num(value, 2)
+
+
+## A page's side in mm as its styles say it: 269, not 269.0, as the booklet's
+## own page always said it; 279.4 as it is.
+static func _whole(value: float) -> String:
+	return str(roundi(value)) if is_equal_approx(value, roundf(value)) else _n(value)
 
 
 ## Text going into HTML. The part library has ampersands and quotes in

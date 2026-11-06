@@ -185,8 +185,9 @@ func fill() -> void:
 func _apply(fields: Dictionary) -> void:
 	if _filling:
 		return
-	_said.text = shell.page_setup(fields)
-	shell.bar.say(_said.text)
+	var said: String = shell.page_setup(fields)
+	shell.bar.say(said)
+	_said.text = said.left(1).to_upper() + said.substr(1)
 	fill()
 
 

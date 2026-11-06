@@ -339,7 +339,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 	var finished: Booklet.Page = await _finished(pages.size() + 2)
 	document.pages.append(finished)
 	document.lots = _inventory(stock, lots)
-	document.pages.append_array(Booklet.parts_pages(document.lots, finished.number + 1, _sheet))
+	document.pages.append_array(Booklet.parts_pages(document.lots, finished.number + 1, _sheet, document.credits))
 
 	_forget_all()
 	_say("Writing the booklet…", 0)

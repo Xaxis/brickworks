@@ -19,12 +19,13 @@
 class_name BookletSheet
 extends RefCounted
 
-## The papers, each on its side, in mm, and how it is said.
+## The papers, each on its side, in mm, and how it is said: as the paper is
+## named, its short side first, the booklet's own as it is printed.
 const PAPERS: Dictionary = {
 	"booklet": [Vector2(269.0, 199.0), "Booklet, 269 x 199 mm"],
-	"a4": [Vector2(297.0, 210.0), "A4, 297 x 210 mm"],
-	"letter": [Vector2(279.4, 215.9), "US Letter, 11 x 8.5 in"],
-	"a5": [Vector2(210.0, 148.0), "A5, 210 x 148 mm"],
+	"a4": [Vector2(297.0, 210.0), "A4, 210 x 297 mm"],
+	"letter": [Vector2(279.4, 215.9), "US Letter, 8.5 x 11 in"],
+	"a5": [Vector2(210.0, 148.0), "A5, 148 x 210 mm"],
 }
 ## The longest side any paper has: where a place on a page is kept to.
 const LONGEST := 297.0
