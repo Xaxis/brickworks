@@ -151,7 +151,9 @@ func _run() -> void:
 				"changes": ["one", "two", "three"]}], ["fresh_eyes_final", {"landed": "both",
 				"reads_as": "a house", "generic": "nothing", "done": true, "change": ""}],
 			# The window's hand tools that only look (mcphand).
-			["measure", {"from": "0 0 0", "to": "2 3 1"}], ["in_view", {}]]:
+			["measure", {"from": "0 0 0", "to": "2 3 1"}], ["in_view", {}],
+			# What a session sees as a person does (seeing).
+			["view_board", {}], ["view_board", {"step": 2}], ["booklet_page", {"page": 2}]]:
 		_called[str(call[0])] = true
 		var was: String = _standing(app_world)
 		sent += 1

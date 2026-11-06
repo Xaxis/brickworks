@@ -39,6 +39,9 @@ var chat: String = ""
 var _gallery: GalleryTool
 ## The window's hand tools, for a session (HandTools, APP_UX3).
 var _hands: HandTools
+## What a session sees as a person does: boards of views, parts picked out,
+## a booklet page (SeeTools, APP_UX4).
+var _see: SeeTools
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -250,6 +253,13 @@ joint with the turn between them as attach's yaw. in_view, read-only: what \
 the person sees and a session is not told — the step the timeline is at, \
 the part in their hand, and the reference picture they build over, with a \
 picture of it.
+ - view_board, read-only: up to six of view_model's views in one labelled \
+picture; highlight= parts edged in magenta with the rest see-through, xray= \
+parts see-through so what they hide shows, step=N the model as built to step \
+N with its new parts edged. booklet_page, read-only: a page of the booklet as \
+Instructions draws it and its PDF prints it, to see what edit_booklet did. \
+mirror_parts, split_parts and merge_parts answer with the change pictured, as \
+edit_model does (picture=true the whole model, false words alone).
  - weakest_joints: what gives first in the whole model as it stands, \
 read-only, as View, Stress weighs it: each joint that alone holds what is \
 past it, weakest first, with its margin against its studs' working load. \
@@ -965,7 +975,7 @@ func definitions() -> Array:
 			}},
 		},
 		GalleryTool.definition(),
-	] + HandTools.definitions()
+	] + HandTools.definitions() + SeeTools.definitions()
 
 
 func has(tool: String) -> bool:
@@ -1056,8 +1066,21 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			if _hands == null:
 				_hands = HandTools.new()
 				_hands.app = app
-			return await _hands.run(tool, input)
+			var handled: Variant = await _hands.run(tool, input)
+			# A change answered with it pictured, as edit_model's is (SeeTools).
+			if handled is String and not _hands.changed.is_empty():
+				return await _seeing().pictured(handled, _hands.changed, input.get("picture"))
+			return handled
+		"view_board", "booklet_page":
+			return await _seeing().run(tool, input, work)
 	return "No tool called %s." % tool
+
+
+func _seeing() -> SeeTools:
+	if _see == null:
+		_see = SeeTools.new()
+		_see.app = app
+	return _see
 
 
 ## Why [param tool] is not done now, before it begins, or "".
@@ -1118,6 +1141,8 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions", "weakest_joints":
 			return true
 		"measure", "in_view":
+			return true
+		"view_board", "booklet_page":
 			return true
 	return false
 
@@ -3094,6 +3119,9 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		chosen.frames = seconds * chosen.fps
 		kind = "building"
 	var said: String = await dialog.render_for(kind, chosen, work)
+	var how: String = _best_said(dialog, chosen)
+	if not how.is_empty():
+		said = "%s. %s" % [said.trim_suffix("."), how]
 	if kind != "picture" or dialog.last_picture() == null:
 		return said
 	var small: Image = dialog.last_picture().duplicate() as Image
@@ -3101,6 +3129,22 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		Image.INTERPOLATE_BILINEAR)
 	return [{"type": "text", "text": said}, {"type": "image", "source": {"type": "base64",
 		"media_type": "image/png", "data": Marshalls.raw_to_base64(small.save_png_to_buffer())}}]
+
+
+## How Best drew the render just made, in Render's words (RenderSettings
+## .best_words), read off what drew it: a session asked for Best with the
+## product look and guessed from its 4 seconds whether it was path traced
+## (APP_UX4, seeing). "" when it was not Best.
+static func _best_said(dialog: RenderDialog, chosen: RenderSettings) -> String:
+	if chosen.quality != RenderSettings.Quality.BEST:
+		return ""
+	var traced: bool = dialog.renderer != null and dialog.renderer.traced_last()
+	if traced == chosen.traced_here():
+		return "Best was drawn so: " + chosen.best_words()
+	# Asked to trace and drawn without, or the other way: what it was drawn as.
+	var drawn: RenderSettings = chosen.copy()
+	drawn.traced = traced
+	return "Best was drawn so: " + drawn.best_words()
 
 
 ## File, Render queue…, for a session: the window's own queue (RenderQueue).

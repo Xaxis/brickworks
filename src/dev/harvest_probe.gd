@@ -24,15 +24,6 @@
 ## in the exact graph, 939, none newly refused. Each verdict's "met" says
 ## which parts' overlaps and collisions refused it (docs/ROADMAP.md, "Round
 ## joints again").
-##
-## Then 957 of the same 1,056, none newly refused (realjoints2): a stud up a
-## cone's or a round plate's hollow, which the cover leaves open, is read by
-## the walls round its tip (Joints._hollow_round), 11; and a part a thousandth
-## short of the grid, as LDraw's three decimals write one, is named by the
-## cell it is on (BrickLattice.grid_cell), 7. Floating 39 → 27, off its
-## studs 4 → 0, overlaps 33 → 31, collisions 9 → 8, not held 32 → 33 (a
-## grille no longer floating, now said to be not held). The verdicts are in
-## bench/results/realjoints2-2026-11-05.
 extends SceneTree
 
 

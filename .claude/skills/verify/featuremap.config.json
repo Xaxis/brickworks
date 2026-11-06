@@ -4609,6 +4609,13 @@
       "entry": "src/net/fetch_words.gd",
       "reach": "tools/probe.sh app_tools_probe   (a site that will not connect, one that is not there, and every HTTPRequest result in words, never a code)",
       "area": "mcp"
+    },
+    {
+      "kind": "lib",
+      "label": "what a session sees over mcp",
+      "entry": "src/net/see_tools.gd",
+      "reach": "PROBE_SIZE=1400x900 tools/probe.sh seeing   (view_board: six views in one labelled picture, highlight= edged with the rest see-through, xray=, step=N; booklet_page as the PDF prints it; split/merge/mirror pictured; render_model Best says how it was drawn)",
+      "area": "mcp"
     }
   ]
 }
