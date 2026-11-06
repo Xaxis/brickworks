@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
 
 ## Sub-features
 
@@ -1847,6 +1847,32 @@ picture the assistant is shown.
   first, the cap, nothing on anything or off the page, the callouts where
   the booklet lays them, Ctrl-Z byte for byte, `follow=true` the same file,
   and a reopen laid out the same.
+- `booklet safe probe` and `a file's booklet runs nothing in a browser`
+  (booksafe, 2026-11-06): a booklet is HTML, on the web written into a tab
+  of the site's own, and its words and pictures come from a model file that
+  anyone may have made. **The edge:** a page's picture is kept only when
+  `BookletLooks.picture_kind` finds a PNG or a JPEG in strict base64
+  (`BookletLooks.read` through `kept_pictures`, `Shell.change_look` "image",
+  Together's `~looks`); anything else is left out with a warning and the rest
+  of the file read as before. **The sinks** (`Booklet`): words and
+  attributes through `_escape`, every picture's address through `_url`
+  (base64 image data or left out, `src=""` and the stylesheet's `url()`
+  alike), colours through `_colour` (hex or grey). **The policy:**
+  `Booklet.policy()` is the first meta after the charset: no script but
+  `SAVE_JS` by its hash (Print's click, and Save on the desktop), images as
+  data, no base or form; `BookletOut.take` writes the web's tab with no
+  script and `script-src 'none'`. `tools/probe.sh booklet_safe` (headless)
+  sends strings made to break out of each place through the reader and the
+  HTML builder. In a browser, on a local export served with `--parts`:
+  ```sh
+  node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR
+  ```
+  writes a two-step model whose page carries a good PNG and a picture whose
+  data ends its attribute to set a flag, opens it, presses Instructions and
+  reads the tab: no flag, the good picture shown and every picture decoded,
+  the policy first, script put into the tab afterwards refused (the policy
+  honoured in a document.write tab), Print prints. Red on 04e44b6d (the flag
+  set, no policy), green on booksafe.
 - `the booklet's Studio extras` and `booklet3 probe` (APP_UX3 booklet3;
   `BookletMaker`, `Booklet`, `BookletLooks`): Studio's buffer exchange, 1:1
   guide, colour guide and sub-model preview. **Pulled out**

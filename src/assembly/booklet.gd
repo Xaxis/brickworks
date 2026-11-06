@@ -1245,8 +1245,9 @@ static func page_html(page: Page, document: Document) -> String:
 static func _part_rules(document: Document) -> PackedStringArray:
 	var parts := PackedStringArray()
 	for key: String in document.parts:
-		parts.append(".%s{background-image:url(%s)}" % [_class_of(key, document),
-			document.parts[key]])
+		var source: String = _url(str(document.parts[key]))
+		if not source.is_empty():
+			parts.append(".%s{background-image:url(%s)}" % [_class_of(key, document), source])
 	return parts
 
 
@@ -1264,6 +1265,7 @@ static func _head(document: Document, with_parts: bool = true) -> String:
 	return """<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="%s">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%s — building instructions</title>
 <style>
@@ -1327,9 +1329,9 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
   margin-right: calc(1 * var(--mm)); box-shadow: inset 0 0 0 calc(.2 * var(--mm)) rgba(0,0,0,.3); }
 %s
 </style>
-<div class="bar"><span>%s</span><button onclick="print()">Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="saved" role="status" hidden></span></div>
+<div class="bar"><span>%s</span><button>Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="saved" role="status" hidden></span></div>
 %s
-<main>""" % [_escape(document.title), sheet.colour.to_html(false), _whole(size.x),
+<main>""" % [policy(), _escape(document.title), sheet.colour.to_html(false), _whole(size.x),
 		("portrait" if sheet.portrait else "landscape") if own
 			else "%smm %smm" % [_whole(size.x), _whole(size.y)],
 		"5mm auto 0" if own else "0 auto", _whole(size.x), _whole(size.y), "\n".join(parts),
@@ -1342,7 +1344,11 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
 ## (BookletPdf, BookletPng); on the web the app shows and answers them in
 ## its tab itself (BookletOut.finish), where this does not run. A booklet
 ## opened from its file has no Brickworks to ask, and shows Print alone.
-const SAVE_SCRIPT := """<script>
+const SAVE_SCRIPT := "<script>" + SAVE_JS + "</script>"
+## Print, and the Save buttons on the desktop: the one script the
+## booklet may run (policy).
+const SAVE_JS := """
+document.querySelector(".bar button").addEventListener("click", () => print());
 if (location.protocol == "http:" && location.hostname == "127.0.0.1") addEventListener("DOMContentLoaded", () => {
   const said = document.getElementById("saved");
   for (const [id, kind] of [["save-pdf", "pdf"], ["save-png", "png"]]) {
@@ -1362,7 +1368,24 @@ if (location.protocol == "http:" && location.hostname == "127.0.0.1") addEventLi
     };
   }
 });
-</script>"""
+"""
+
+
+## The booklet's Content-Security-Policy, the first thing in it: no script
+## but its own Print and Save (SAVE_JS, by its hash), pictures only as
+## data, its own styles, nothing fetched but its Save from Brickworks. A
+## page's words and pictures come from a model file, which is anyone's;
+## were one ever to break out of the HTML, it still runs nothing. On the
+## web the tab gets no script at all (BookletOut.take: SCRIPT_ALLOWED to
+## 'none').
+static func policy() -> String:
+	return ("default-src 'none'; script-src %s; style-src 'unsafe-inline'; img-src data:; "
+		+ "connect-src 'self'; base-uri 'none'; form-action 'none'") % script_allowed()
+
+
+## The script the booklet's policy allows: its own, by its hash.
+static func script_allowed() -> String:
+	return "'sha256-%s'" % Marshalls.raw_to_base64(SAVE_JS.sha256_buffer())
 
 
 static func _class_of(key: String, document: Document) -> String:
@@ -1527,7 +1550,7 @@ static func _guides(entry: Entry, out: PackedStringArray, svg: PackedStringArray
 		for index: int in entry.colours.size():
 			var colour: Dictionary = entry.colours[index]
 			out.append(_text(colours.position + Vector2(GUIDE_PAD, GUIDE_PAD + MARK_LINE * index),
-				2.6, "<i class=\"chip\" style=\"background:%s\"></i>%s" % [str(colour["rgb"]),
+				2.6, "<i class=\"chip\" style=\"background:%s\"></i>%s" % [_colour(str(colour["rgb"])),
 					_escape(str(colour["name"]))], "q cg"))
 	var pictures: Array[Rect2] = actual_rects(entry)
 	for index: int in pictures.size():
@@ -1546,7 +1569,7 @@ static func _guides(entry: Entry, out: PackedStringArray, svg: PackedStringArray
 		var said: String = str(guide["studs"])
 		var size: float = 3.2 if said.length() < 2 else 2.8
 		var wide: float = Helvetica.text_width(said, size, true, -0.02 * size)
-		out.append(_text(ring.get_center() - Vector2(wide * 0.5, size * 0.488), size, said, "n"))
+		out.append(_text(ring.get_center() - Vector2(wide * 0.5, size * 0.488), size, _escape(said), "n"))
 
 
 ## The words and pictures a designer put on [param entry]'s page
@@ -1588,7 +1611,7 @@ static func note_style(note: Dictionary, at: Rect2) -> String:
 ## section's banner, "■ inside: Bright Green".
 static func _mark_words(mark: Dictionary, with_label: bool = true) -> String:
 	return "<i class=\"chip\" style=\"background:%s\"></i>%s: %s" % [
-		str(mark.get("rgb", "#888")),
+		_colour(str(mark.get("rgb", "#888"))),
 		_escape(str(mark.get("label", ""))) if with_label else "inside",
 		_escape(str(mark.get("name", "")))]
 
@@ -1634,13 +1657,13 @@ static func _parts_page(page: Page, document: Document, out: PackedStringArray) 
 	var foot: float = document.sheet.size().y - margin - 4.0
 	var lines: int = credit_lines(document.credits, document.sheet)
 	if lines <= 1:
-		out.append(_text(Vector2(margin, foot), CREDIT_SIZE, document.credits, "e"))
+		out.append(_text(Vector2(margin, foot), CREDIT_SIZE, _escape(document.credits), "e"))
 	else:
 		# Too long for one line across a narrow page (A4 or A5 upright): it
 		# ran off the page's edge, the trademark notice with it. Wrapped to
 		# the page's width, its last line where the one line goes.
 		out.append(_text(Vector2(margin, foot - (lines - 1) * CREDIT_SIZE * 1.2), CREDIT_SIZE,
-			document.credits, "e tx", "width:calc(%s * var(--mm))"
+			_escape(document.credits), "e tx", "width:calc(%s * var(--mm))"
 			% _n(document.sheet.size().x - margin * 2.0)))
 
 
@@ -1676,6 +1699,9 @@ static func _part(at: Rect2, lot: Lot, document: Document) -> String:
 
 static func _image(out: PackedStringArray, source: String, at: Rect2, alt: String,
 		how: String = "") -> void:
+	source = _url(source)
+	if source.is_empty():
+		return
 	out.append("<img class=\"a\" style=\"--x:%s;--y:%s;--w:%s;--h:%s%s\" src=\"%s\" alt=\"%s\">"
 		% [_n(at.position.x), _n(at.position.y), _n(at.size.x), _n(at.size.y), how, source,
 			_escape(alt)])
@@ -1860,9 +1886,29 @@ static func _whole(value: float) -> String:
 	return str(roundi(value)) if is_equal_approx(value, roundf(value)) else _n(value)
 
 
-## Text going into HTML. The part library has ampersands and quotes in
-## its names — "Brick 1 x 4 with 4 Studs on Side & Groove" — and a name
-## written straight into markup is a name that breaks the page.
+## Text going into HTML, between tags or in a double-quoted attribute,
+## which is every attribute the booklet writes. The part library has
+## ampersands and quotes in its names — "Brick 1 x 4 with 4 Studs on Side
+## & Groove" — and a name written straight into markup is a name that
+## breaks the page. A model file's words are anyone's.
 static func _escape(raw: String) -> String:
 	return (raw.replace("&", "&amp;").replace("<", "&lt;")
 		.replace(">", "&gt;").replace("\"", "&quot;"))
+
+
+## A picture's address going into HTML, in src="" or a stylesheet's url():
+## a PNG, JPEG or WebP as base64 data, which has nothing in it that ends
+## either; "" for anything else, which is left out. The pictures a model
+## file carries are checked as it is read (BookletLooks.picture_kind);
+## this holds every picture the booklet writes to the same.
+static func _url(source: String) -> String:
+	return source if RegEx.create_from_string(PICTURE_URL).search(source) != null else ""
+
+
+const PICTURE_URL := "^data:image/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]*={0,2}$"
+
+
+## A colour going into a style: # and hex digits; grey for anything else.
+static func _colour(raw: String) -> String:
+	return raw if RegEx.create_from_string("^#[0-9a-fA-F]{3,8}$").search(raw) != null \
+		else "#888888"

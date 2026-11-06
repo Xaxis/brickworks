@@ -2976,12 +2976,17 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 				if data.is_empty():
 					_take_back(undo)
 					return "a picture to put on the page"
+				# Into the booklet's HTML as it is: a PNG or a JPEG in base64 only.
+				var kind: String = BookletLooks.picture_kind(data)
+				if kind.is_empty():
+					_take_back(undo)
+					return "a page's picture is a PNG or a JPEG, in base64"
 				var pictures: Dictionary = BookletLooks.images(world).duplicate()
 				var made: int = pictures.size() + 1
 				var file: String = ""
 				while file.is_empty() or pictures.has(file):
 					file = "%s%d.%s" % [BookletLooks.IMAGE_PREFIX, made,
-						"png" if str(fields.get("kind", "png")) == "png" else "jpg"]
+						"png" if kind == "png" else "jpg"]
 					made += 1
 				pictures[file] = data
 				undo.append_array(BookletLooks.set_images(world, pictures))
