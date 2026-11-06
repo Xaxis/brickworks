@@ -688,6 +688,22 @@ picture the assistant is shown.
   `--url=http://127.0.0.1:PORT/`) selects all, presses Shift-2 and Ctrl+Z.
   Not proven: Cmd-Shift-3, 4 and 5 on a Mac are the system's screenshot keys,
   so those three most-used keys need setting there.
+- `keys for often-used commands` (`src/ui/keymap.gd` `PRESET_KEYS`, the keys
+  unit, 2026-11-05): ten commands a builder reaches for often got keys, under
+  every preset: Select nothing Ctrl-Shift-A (LDCad's), Find a part by number or
+  name Ctrl-F (LeoCAD's; Ctrl-Shift-F under Studio's, whose Ctrl-F searches the
+  bin), Same part and colour Alt-A, Replace Alt-R, Stud grid Alt-G, Check
+  stability Alt-K, Simulate Alt-U, Motions Alt-O, Reference picture Alt-N,
+  Instructions Alt-B. `docs/app_ux3/keys.md` is the table: each command with
+  none under each preset and why, with Studio's, LeoCAD's and LDCad's keys
+  cited. `keys4_probe` (windowed, 1280 x 720) reads that table and fails when a
+  command has no key and no row there, or a preset's count differs; checks no
+  two actions share a key, each key is on its menu row, and each does what its
+  row does under each preset (pictures: the menus, the sheet filtered `alt-`);
+  none runs while the parts' search is typed in; Replace set to Alt-W in the
+  sheet runs from Alt-W. `docs_menus.gd` now writes each row's key as the app's
+  own keys have it, so the docs' menus and shortcuts pages list Alt-C and the
+  rest.
 - `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
   do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
   and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the
@@ -1037,14 +1053,18 @@ picture the assistant is shown.
   - `build` runs a Claude Code session with no API key and
     `--strict-mcp-config --tools "" --restricted`. Its one server hands it
     pages and the app's hands and eyes, never the model. It builds in a
-    headless app on its own port; `--from` seeds a long book's stretch.
+    headless app on its own port; `--from` seeds a long book's stretch. It is
+    told how a Brickworks page reads; a booklet drawn another way (a printed
+    LEGO® one, photographed into DIR/pages, its steps mapped onto truth.json)
+    says how its pages read in `DIR/reading.json` or `--reading FILE`.
   - `score` compares the build part for part and page by page: right, near,
     colour, place (carried), part, missing, extra. Each wrong part is put to
     what the builder said of its step.
-  - Check: `python3 tools/minitest.py tests/test_booklet_follow.py` (13
+  - Check: `python3 tools/minitest.py tests/test_booklet_follow.py` (17
     tests). They pin each kind on a known build, a callout counted on its
-    attach page, hose segments never judged, carried layers, and a server
-    that refuses open_model.
+    attach page, hose segments never judged, carried layers, a server that
+    refuses open_model, and a reading.json that changes what the builder is
+    told while ours stays word for word.
   - Real runs take 15-30 minutes for 6-12 pages, at most two at once on ports
     9890-9899, from a locked snapshot.
 - `score the steps against real sets' authors` (`tools/steps_score.py`,
@@ -1493,7 +1513,11 @@ picture the assistant is shown.
   stage in the order the plan builds them, so a step's picture is a prefix
   (`BrickWorld.show_first`). What a page has: a cover with the model, steps
   with a big number and a parts box above it (a picture of each part at one
-  scale, `Booklet.PART_SCALE`, and its "2x"), one to four steps a page — the
+  scale, `Booklet.PART_SCALE`, and its "2x"; a part whose slanted and curved
+  faces show twice as much turned over is drawn so, from 15 degrees under
+  its side, `BookletMaker.telling_view`: a dish's dome, an inverted slope's
+  slope, never a slope, plate, tile, jumper or seat; booklet_probe's
+  `_telling`), one to four steps a page — the
   fullest page whose shared scale is still readable (`FOUR_UP` 6 mm a stud,
   `TWO_UP` 5), never more than `MOST_SCALE` (10 mm a stud) — and every step
   on a page at the same scale; a step whose new parts are hidden from the

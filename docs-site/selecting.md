@@ -11,7 +11,7 @@ description: Choose one part, many, or every part like it, and what you can do t
 
 ## Click, add and take away {#click}
 
-Click a part to select it; it is outlined in yellow, and a part under the pointer is outlined faintly (where the view is slow to draw, as in a browser with no graphics card to draw with, once the pointer stops). [[Shift]]-click or [[Ctrl]]-click adds a part to the selection or takes it away. [[Ctrl+A]] selects everything, and [[Esc]] lets go of whatever is open, then of the selection.
+Click a part to select it; it is outlined in yellow, and a part under the pointer is outlined faintly (where the view is slow to draw, as in a browser with no graphics card to draw with, once the pointer stops). [[Shift]]-click or [[Ctrl]]-click adds a part to the selection or takes it away. [[Ctrl+A]] selects everything and [[Ctrl+Shift+A]] nothing, and [[Esc]] lets go of whatever is open, then of the selection.
 
 <!-- covers
 ui:selection outline
@@ -31,10 +31,10 @@ ui:box select
 
 Select a part, then **Select by** on the toolbar or **Edit › Select by**:
 
-- **Same colour**, **Same part**, or **Same part and colour**: every part that matches it. [[Shift]]-double-click picks every part like it at once.
+- **Same colour** ([[Alt+C]]), **Same part** ([[Alt+P]]), or **Same part and colour** ([[Alt+A]]): every part that matches it. [[Shift]]-double-click picks every part like it at once.
 - **Everything connected**: everything held to it, through studs and joints.
 - **Same sub-model**: the sub-assembly it belongs to.
-- **Part number or name…**: find parts in the model by number, name or colour.
+- **Part number or name…** ([[Ctrl+F]]): find parts in the model by number, name or colour.
 - **The opposite**: everything that is not selected.
 
 <!-- covers

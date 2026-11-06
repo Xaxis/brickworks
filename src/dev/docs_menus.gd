@@ -90,6 +90,8 @@ func _items(names: Array, commands: Dictionary, titles: Dictionary) -> Array:
 			if command == null:
 				out.append({"name": item, "words": item})
 				continue
-			out.append({"name": item, "words": command.words, "key": Shell.key_text(command.accel),
+			# Its key as the app's own keys have it, as its row shows it: Alt-C
+			# for Same colour is the app's preset's, not the command's own.
+			out.append({"name": item, "words": command.words, "key": Shell.key_text(Keymap.key_of(item)),
 				"tip": command.tip})
 	return out

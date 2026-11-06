@@ -89,8 +89,7 @@ static func _take(read_in: Dictionary) -> void:
 	_document = read_in
 	_subject_of.clear()
 	_by_id.clear()
-	if not (DesignMemory.held_out().is_empty() and DesignMemory.held_names().is_empty()) \
-			and _document.has("entries"):
+	if DesignMemory.holding() and _document.has("entries"):
 		var kept: Array = []
 		var hidden: Dictionary = {}
 		# Asked once a set, not once a piece.
