@@ -5115,8 +5115,8 @@ func _build_ui() -> void:
 		_elements.open(_builder.held_part))
 
 	# Prints and stickers for any part of the model (src/prints).
-	_bin.print_wanted.connect(func() -> void: _studio.print_part(_builder.held_part))
-	_bin.stickers_wanted.connect(func() -> void: _studio.open_sheet())
+	_bin.print_wanted.connect(func() -> void: (await _studio_ready()).print_part(_builder.held_part))
+	_bin.stickers_wanted.connect(func() -> void: (await _studio_ready()).open_sheet())
 
 	# Panels sized to the window, and folded away when there is no room
 	# for them beside the model. On a phone a panel that takes its
@@ -5931,6 +5931,21 @@ func _make_elements() -> void:
 		var info: PartLibrary.PartInfo = _library.parts.get(part_id)
 		_bar.say("made %s — it is in the parts bin under Custom" % (
 			Inventory._tidy(info.name) if info != null else part_id)))
+
+
+## [member _studio], its scripts compiled a few frames apart the first time
+## (Later.warm), for a person's Print…, sticker or Printed versions. In one
+## frame they held a browser's 331-414 ms at load 24-35 (leaves3,
+## 2026-11-06): the picture reader and the stickers left the first screen
+## (leaves), so the studio's first use compiled 189 KB, not 137.
+func _studio_ready() -> Node:
+	if _studio_made == null:
+		await Later.warm(STUDIO_FIRST)
+	return _studio
+
+
+## What the studio names, deepest first, a frame each (_studio_ready).
+const STUDIO_FIRST: Array[StringName] = [&"PictureFile", &"Stickers", &"PrintPaint", &"PrintEditor"]
 
 
 ## Prints and stickers for any part of the model (src/prints).

@@ -97,6 +97,8 @@ const PATHS: Dictionary[StringName, String] = {
 	&"SvgText": "res://src/prints/svg_text.gd",
 	&"PictureFile": "res://src/prints/picture_file.gd",
 	&"Rays": "res://src/prints/rays.gd",
+	&"PrintPaint": "res://src/prints/print_paint.gd",
+	&"PrintEditor": "res://src/prints/print_editor.gd",
 	# The dialogs, each its menu: Versions…, Compare with…, Pattern…, Send
 	# feedback…, Find a command, About's credits, and Build it in a shared
 	# model's viewer. And the tools first chosen from a menu or a key: the
@@ -185,6 +187,18 @@ static func _note(name: StringName, started: int) -> void:
 	if first and OS.has_feature("web") and OS.get_thread_caller_id() == OS.get_main_thread_id():
 		JavaScriptBridge.eval("(window.brickworksLoaded = window.brickworksLoaded || {})[%s] = [performance.now() - %d, %d]"
 			% [JSON.stringify(String(name)), took[name], took[name]], true)
+
+
+## [param names] compiled a frame each, those not loaded yet, in the order
+## given (what the later ones name first): a first use whose scripts held
+## one frame too long, split. Awaited, it ends once the last is in.
+static func warm(names: Array[StringName]) -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	for name: StringName in names:
+		if loaded(name):
+			continue
+		script(name)
+		await tree.process_frame
 
 
 ## A new [param name], made with no arguments.

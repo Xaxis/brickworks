@@ -1125,7 +1125,7 @@ func _define() -> void:
 		selected, "Swap the selection for the part you hold, each in its own colour")
 	# src/prints/printed_versions.gd: the prints the LEGO Group made of it.
 	_add("printed_versions", "Printed versions…", 0, func() -> void:
-		var studio: Node = app.get("_studio")
+		var studio: Node = await app.call("_studio_ready")
 		if studio != null:
 			studio.open_versions(),
 		func() -> bool:
@@ -1410,10 +1410,12 @@ func _define() -> void:
 	# The parts bin's Print… and its sticker sheet's Draw a sticker, in the
 	# menus too: every command a session can match is one the menus have.
 	_add("print_part", "Print on a part…", 0, func() -> void:
-		(app.get("_studio") as Node).print_part(builder.held_part), Callable(),
+		var studio: Node = await app.call("_studio_ready")
+		studio.print_part(builder.held_part), Callable(),
 		"Draw a print on the part selected, printed where it stands, or on the part in hand")
 	_add("sticker", "Put a sticker on…", 0, func() -> void:
-		(app.get("_studio") as Node).sticker(), Callable(),
+		var studio: Node = await app.call("_studio_ready")
+		studio.sticker(), Callable(),
 		"Click a face of the model, then draw the sticker that goes on it")
 	_add("rotate_held", "Turn the part in hand", KEY_R, func() -> void:
 		builder.rotate_held(1)
