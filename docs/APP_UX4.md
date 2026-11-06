@@ -595,6 +595,42 @@ commit. None of the ten needs the owner.
   - R on a curve in hand puts its other end to the joint;
   - an oval of 16 curves and 4 straights by a session in 3 calls or fewer;
   - `snap`, `connect` and `attach` pass.
+- **Done** (tracks, 2026-11-06; `tracks_probe` red on `pre261`, where a
+  track in hand has no end to go to (8 checks failed), green with 25
+  checks, none failed, at 1280 x 720 and at 1400 x 900):
+  1. A 9V curve dragged from the bin to a straight's free end joins it in
+     **1 drag**: the ends **0.000 LDU** apart, facing within **0.0000°**
+     (pre261: 139.0 LDU and 11.25° off);
+  2. **sixteen curves by sixteen clicks** close a circle: the last meets the
+     first **0.001 LDU** apart, no end left free (pre261: 9 curves down,
+     995 LDU apart, 18 free ends);
+  3. **R** on a curve in hand puts its other end to the joint (its end 0,
+     then its end 1, each 0.000 LDU), and a click puts it there. Two 12V
+     curves bring the sleeper (4166a) under their joint, and one undo takes
+     both off;
+  4. **the oval** of 16 curves and 4 straights by a session in **2 calls**:
+     `submit_design`, each track `attach`ed by `{"to": "t3.track[1]", "by":
+     "track[0]"}`, and the `job` it became. 20 tracks, every end on the
+     next's within 0.001 LDU, no end free (pre261: none down);
+  5. `snap` (18 checks), `attach` (10) and `connect` (37) pass, and so do
+     `placing` (49), `first_build` (51), `mcp_sync` (14),
+     `design_undo` (20) and `mcp` (75). `tested_models` fails one check, as
+     it does on `pre261` without this change: 6680-1's two plates overlap by
+     8 LDU where it expects 4.
+  - **The table** (`assets/ldraw/track_ends.json`, which
+    `tools/track_ends.py check` measures again) has 94 tracks, each end
+    measured from the part's own LDraw geometry: 9V 9, 12V 38, 4.5V 24,
+    6 studs wide 11 (the RC trains' plastic track and every city train's
+    since), 4 studs wide 3 and roller coaster 9. A 9V and a 6 wide track
+    join, as real ones do. The 9V switch's ends match LeoCAD's hand-made
+    table. 68 parts are left out, each with why: monorail 14, Duplo 13,
+    single rails 7, flexible 5, rack railway 2, 22 that are no length of
+    track (levers, sleepers, inserts), 4 whose files draw none of the
+    track, and the 6 wide ramp 53834, where only one end measures.
+  - A circle laid by hand on the 32 x 32 baseplate runs off it, and the
+    status bar says "1 weak joint (leaning)": the baseplate is what holds a
+    part, as for a brick laid on the ground beside it. Over MCP the
+    baseplate grows to the oval, which stands.
 
 **6. grid: a grid of copies in one dialog.** Its Change and Bar are its row
 above.
