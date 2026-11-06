@@ -1,7 +1,8 @@
 # The app against the best tools, round four
 
-Written 2026-11-05 by appux4 against `pre261` at `c48180cf` (rel-m264 is
-live, `e0ed0018`). [APP_UX.md](APP_UX.md), [APP_UX2.md](APP_UX2.md) and
+Written 2026-11-05 by appux4 against `pre261` at `c48180cf`. The web was
+measured on rel-m264 (`e0ed0018`), live then; rel-m265 went live from the
+same `c48180cf` afterwards. [APP_UX.md](APP_UX.md), [APP_UX2.md](APP_UX2.md) and
 [APP_UX3.md](APP_UX3.md) planned rounds one to three. Every unit of round
 three is in `pre261` except bricklink and studioside, which wait on the
 owner. Since then A10 (the bin and Properties get room), B5 (Like this),
@@ -199,14 +200,14 @@ Where a session still needed more than the window, or guessed:
 | unit | its bar | where it stands on `pre261` | proof |
 |---|---|---|---|
 | webstart | cold to working 40% less than live, warm 50% less; the app ready half of live's; the pick no slower; no more bytes (15.9 MB) | **cold met** against appux3's live (24.9 to 13.1 s, 47% less); **app ready met** (15.1 to 17.3 s, now 7.8 to 9.0); **pick met**; **warm missed** (12.0 to 8.0 s, 33% less); **bytes missed** by 0.6 MB (16.49). Measured on another day, not in the same hour | `load_check` on live, above |
-| steps3 | step 3 to 17 in 2 actions or fewer; `edit_steps {"op": "to"}` in 1 call; a key for each step command | ⟨steps3⟩ | `steps3` today |
+| steps3 | step 3 to 17 in 2 actions or fewer; `edit_steps {"op": "to"}` in 1 call; a key for each step command | **met**, 35 checks, none failed: step 3 to 17 in **one drag** on the timeline's row, or **2 actions** by Alt+T and the number, one undo each; `edit_steps {"op": "to"}` in 1 call, a step not there refused with the range; Alt+[, Alt+], Alt+E and Alt+Delete each do what its menu row does; LDCad's Page Up and Down and Studio's Ctrl+A and D on the timeline | `steps3` today |
 | mcphand | the car's half mirrored in 1 call as Shift+M; split and merge in 1 call; a hinge at 37° read as 37.0°; `in_view` changes nothing | **met**, every check; and used unprompted by the MCP walk's sessions | `mcphand` (rel-m264); MCP walk |
 | bricklink | prices and a wanted list in 3 clicks | **parked**: BrickLink's keys and terms are the owner's | |
-| buildvideo | the car's 61 parts in a 20 s WebP at 720p, each frame a prefix of the order; 3 actions; 1 call over MCP | ⟨buildvideo⟩ | `buildvideo` today; MCP walk (2 calls) |
-| booklet3 | a 4-long axle's 1:1 guide 32.0 mm within 0.2 mm in the PNG and PDF; a part pulled 2 studs out; a colour guide | ⟨booklet3⟩ | `booklet3` today; MCP walk (5 calls) |
-| bigmodels2 | on Orthanc: Instructions 15 s or less to the first page, suggest sections 3 s, stability 2 s, replace 1.0 s, hidden colours 2.0 s | ⟨bigmodels2⟩ | `bigmodels2`, `command` today |
-| pathtrace | the car at 1280 x 720, 256 samples, 60 s or less; noise against 4,096 samples; soft shadows and bounced light; three queued renders | ⟨pathtrace⟩ | `pathtrace` today |
-| languages | every menu row, tooltip and panel title in German, French and Spanish; German within the menus' bars; the choice kept | ⟨languages⟩ | `languages` today; walk `round3` |
+| buildvideo | the car's 61 parts in a 20 s WebP at 720p, each frame a prefix of the order; 3 actions; 1 call over MCP | **met**, 20 checks, none failed: the car's 61 parts in a 20 s WebP of 480 frames at 1280 x 720, every frame the first so many of the timeline's order, the last the whole model to 0.00 grey levels; 3 actions (Render, Building's 20 s, Return), 33 s; 1 call and its job over MCP, 35 s; written in the app's own folder, the model and its undo untouched | `buildvideo` today; MCP walk (2 calls) |
+| booklet3 | a 4-long axle's 1:1 guide 32.0 mm within 0.2 mm in the PNG and PDF; a part pulled 2 studs out; a colour guide | **met**, 49 checks, none failed: the 4-long axle's 1:1 guide 32.09 mm on the 300 dpi PNG and 32.00 mm in the PDF, the beam's 56.0 mm within 0.2; the axle pulled 2 studs (40 LDU) along its own line, its arrow pointing back in; a step's colours, each once, on the page and in the PDF's words; the pod shown finished on its first page; each one undo, and kept over a save | `booklet3` today; MCP walk (5 calls) |
+| bigmodels2 | on Orthanc: Instructions 15 s or less to the first page, suggest sections 3 s, stability 2 s, replace 1.0 s, hidden colours 2.0 s | **partly met**, at a load of 29 to 34 on 24 cores. **Met:** Instructions' first page of steps **8.3 s** (the bar 15; the whole booklet, 568 steps, 57 s); stability **0.75 s** (2; was 5.8), though 2.4 s the first time on a model just opened. **Just over:** suggest sections **3.09 s** (3; was 12.6), replace **1.09 s** (1.0; was 2.18). **Over:** hidden colours **2.65 s** (2.0; was 2.30). Each spends 80 to 570 ms of its own; the rest is the frames and workers it waits on. `bigmodels2`'s 18 checks and `command` passed; `instructions` and `booklet_pdf` were not run here | `bigmodels2`, `command` today |
+| pathtrace | the car at 1280 x 720, 256 samples, 60 s or less; noise against 4,096 samples; soft shadows and bounced light; three queued renders | **met**, 20 checks, none failed: the car at 1280 x 720, 256 samples, path traced in **2.8 s** of its own on the RX 6700 XT (the bar 60 s); its noise against 4,096 samples 0.0084 (at most 0.02); a shadow that softens from 4.0 to 11.0 LDU; light off an orange floor on the car's underside at 3 of 3 points; three renders queued and made one after the other in 27.3 s, each its own view, while the window turned at a median 24 ms a frame | `pathtrace` today |
+| languages | every menu row, tooltip and panel title in German, French and Spanish; German within the menus' bars; the choice kept | **met**, 104 checks, none failed: in German, French and Spanish every one of 217 menu rows, 135 menu tooltips, 37 toolbar tooltips, 19 panel titles, 437 panels' words and 1,248 dialogs' translated; the bin's first 48 tiles named in the language; German's menus within 25 rows and 60% of the height (Ansicht 482 of 783), the widest 353 px, the menu bar inside the window; Deutsch kept over a restart | `languages` today; walk `round3` |
 | studioside | three .io files open in Studio | **parked**: Studio's Wine install is the owner's | |
 
 **Built since round three's plan, beyond it:**
@@ -224,8 +225,8 @@ Where a session still needed more than the window, or guessed:
 |---|---|
 | Studio's Move To and its step drag | **met**: Alt+T and a number, the menu on a part, a drag onto the step row; over MCP in one call |
 | Studio's building video | **met**: Render, Building; `render_model {"kind": "build"}` |
-| Studio's booklet extras (buffer exchange, 1:1 guide, colour guide, sub-model preview) | ⟨booklet3 short⟩ |
-| Studio's Eyesight; Mecabricks' render farm | ⟨pathtrace short⟩ a queue; no farm (a browser on a weak GPU still draws Best by averaged frames) |
+| Studio's booklet extras (buffer exchange, 1:1 guide, colour guide, sub-model preview) | **met** (`booklet3`): in the Build menu with no key, and over MCP in 5 calls, whose session could not see the page it made |
+| Studio's Eyesight; Mecabricks' render farm | **met for Eyesight** (`pathtrace`): path traced, with a queue; no farm, so a browser on a weak GPU still draws Best by averaged frames, and a session is not told which (above) |
 | Mecabricks' eight languages, LeoCAD's six | four (English, German, French, Spanish), by choice |
 | LDCad's step keys | **met**: Page Up and Down under its preset |
 | ldraw-mcp's render of a candidate | partly: `check_design` answers a candidate in words |
@@ -523,8 +524,8 @@ commit. None of the ten needs the owner.
     behind, never a back face);
   - the cut kept over a save and an open; Render and the booklet draw the
     model whole;
-  - `command` and `outline` pass, and `see_inside_probe`, which no suite
-    list names today, goes on `windowed.txt`.
+  - check.sh's "see inside" (`see_inside_probe`), `command` and `outline`
+    pass.
 
 **10. whatsthis: what any control does, and where the part goes.**
 - **Change.** Help, What's This (Shift+F1): the next click on any control
@@ -539,6 +540,9 @@ commit. None of the ten needs the owner.
 
 **Next, once those land:**
 - **Keys** for the 114: the lead's `keys` unit.
+- **Orthanc's three:** suggest sections, replace and hidden colours, 0.09,
+  0.09 and 0.65 s over their bars at a load of 34; measured again at a
+  quiet hour first, and a small unit only if they stay over.
 - **A link that plays a motion** on opening (Kinebrick Play):
   `?motion=NAME` on a share link.
 - **Thumbnails in the file manager** for .ldr, .mpd and .io (StudWorx):
