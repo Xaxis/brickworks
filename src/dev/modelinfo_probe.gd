@@ -15,8 +15,9 @@
 ##    without the studs on its top, as a wall's height is counted; the
 ##    centimetres with them);
 ## 2. with parts selected, the selection's size, after "N selected": one
-##    2 x 4 plate, and the car's eight 1 x 2 plates together; nothing
-##    selected, the model's again, after its counts;
+##    2 x 4 plate, the car's eight 1 x 2 plates together, and a tyre on its
+##    edge (4½ plates: no studs to leave off); nothing selected, the model's
+##    again, after its counts;
 ## 3. current within a frame of an edit: the right-most part deleted, then
 ##    Ctrl+Z and Ctrl+Shift+Z pressed, each read every frame until the bar is
 ##    the new box, at most one frame after the model changed;
@@ -163,23 +164,24 @@ func _the_car() -> void:
 	_check("1: the status bar says the car's size: \"%s\"" % said, not said.is_empty())
 	_check("1: ...beside its counts (\"%s\")" % _shell.status.fields().get("counts", ""),
 		str(_shell.status.fields().get("size_after", "")) == "counts")
-	_judge("1: the car", said, truth)
+	_judge("1: the car", said, _model())
 	await _shot_bar("the_car")
 
 
-## Each of [param said]'s numbers against [param truth], within 0.1 mm.
-func _judge(what: String, said: String, truth: AABB) -> bool:
+## Each of [param said]'s numbers against [param bricks]' vertices, within
+## 0.1 mm.
+func _judge(what: String, said: String, bricks: Array) -> bool:
 	var read: Variant = _read(said)
 	if read == null:
 		_check("%s: \"%s\" reads as studs, plates and centimetres" % [what, said], false)
 		return false
 	var got: Dictionary = read
-	var top: float = STUD_TOP if is_equal_approx(fposmod(truth.size.y, 8.0), STUD_TOP) else 0.0
+	var truth: AABB = _truth(bricks)
 	var off: Array = [
 		["width in studs", float(got["x"]) * 20.0 * LDU_MM, truth.size.x * LDU_MM],
 		["depth in studs", float(got["z"]) * 20.0 * LDU_MM, truth.size.z * LDU_MM],
 		["height in plates (its top's studs not counted)", float(got["y"]) * 8.0 * LDU_MM,
-			(truth.size.y - top) * LDU_MM],
+			(_body_top(bricks) - truth.position.y) * LDU_MM],
 		["width in cm", float(got["cx"]) * 10.0, truth.size.x * LDU_MM],
 		["depth in cm", float(got["cz"]) * 10.0, truth.size.z * LDU_MM],
 		["height in cm (studs and all)", float(got["cy"]) * 10.0, truth.size.y * LDU_MM]]
@@ -212,7 +214,7 @@ func _selected() -> void:
 		said, _shell.status.fields().get("selected", "")],
 		not said.is_empty() and str(_shell.status.fields().get("size_after", "")) == "selected")
 	if plate != 0:
-		_judge("2: the 2 x 4 plate", said, _truth([_world.get_brick(plate)]))
+		_judge("2: the 2 x 4 plate", said, [_world.get_brick(plate)])
 	await _shot_bar("one_plate")
 	_builder.clear_selection()
 	for brick: BrickWorld.Brick in plates:
@@ -222,7 +224,23 @@ func _selected() -> void:
 	_said["plates"] = said
 	_check("2: the car's %d 1 x 2 plates selected: \"%s\"" % [plates.size(), said],
 		plates.size() == 8 and not said.is_empty())
-	_judge("2: the eight 1 x 2 plates", said, _truth(plates))
+	_judge("2: the eight 1 x 2 plates", said, plates)
+	# A wheel's tyre, stood on its edge: no studs, so its whole height, 4½
+	# plates. "4 over a whole plate is a stud" read it as 4.
+	var tyre: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _model():
+		if brick.part_id == "3641":
+			tyre = brick
+			break
+	_builder.clear_selection()
+	if tyre != null:
+		_builder.select_brick(tyre.id, false)
+	await _frames(2)
+	said = _bar()
+	_check("2: a tyre selected: \"%s\", 4½ plates high, no studs taken off" % said,
+		tyre != null and said.contains("4½ plates high"))
+	if tyre != null:
+		_judge("2: the tyre", said, [tyre])
 	_builder.clear_selection()
 	await _frames(2)
 	_check("2: nothing selected: the car's again, after its counts (\"%s\")" % _bar(),
@@ -272,7 +290,7 @@ func _edit(what: String, act: Callable) -> void:
 		if changed < 0 and _world.revision != revision:
 			changed = frame
 		last = _bar()
-		if changed >= 0 and _matches(last, _truth(_measured())):
+		if changed >= 0 and _matches(last, _measured()):
 			right = frame
 			break
 		await process_frame
@@ -292,15 +310,16 @@ func _measured() -> Array:
 	return bricks
 
 
-func _matches(said: String, truth: AABB) -> bool:
+func _matches(said: String, bricks: Array) -> bool:
 	var read: Variant = _read(said)
 	if read == null:
 		return false
 	var got: Dictionary = read
-	var top: float = STUD_TOP if is_equal_approx(fposmod(truth.size.y, 8.0), STUD_TOP) else 0.0
+	var truth: AABB = _truth(bricks)
+	var high: float = _body_top(bricks) - truth.position.y
 	return absf(float(got["x"]) * 20.0 - truth.size.x) * LDU_MM <= NEAR_MM \
 		and absf(float(got["z"]) * 20.0 - truth.size.z) * LDU_MM <= NEAR_MM \
-		and absf(float(got["y"]) * 8.0 - (truth.size.y - top)) * LDU_MM <= NEAR_MM \
+		and absf(float(got["y"]) * 8.0 - high) * LDU_MM <= NEAR_MM \
 		and absf(float(got["cx"]) * 10.0 - truth.size.x * LDU_MM) <= NEAR_MM \
 		and absf(float(got["cz"]) * 10.0 - truth.size.z * LDU_MM) <= NEAR_MM \
 		and absf(float(got["cy"]) * 10.0 - truth.size.y * LDU_MM) <= NEAR_MM
@@ -480,7 +499,7 @@ func _in_view() -> void:
 	_check("6: with the 1 x 2 plates selected, in_view says their size: %s" % (
 		"\"%s\"" % together.get_string(1) if together != null else "nothing"),
 		together != null and _matches(together.get_string(1).replace("high, ", "high · "),
-			_truth(plates)))
+			plates))
 	_builder.clear_selection()
 	await _frames(3)
 
@@ -572,7 +591,7 @@ func _bar() -> String:
 	return str(_shell.status.fields().get("size", ""))
 
 
-## "16 × 9 studs, 6 plates high · 12.8 × 7.2 × 2.08 cm" as its numbers; null
+## "4½ × 10.8 studs, 15 plates high · 3.6 × 8.64 × 4.96 cm" as its numbers; null
 ## when it is not that.
 func _read(said: String) -> Variant:
 	var found: RegExMatch = RegEx.create_from_string(
@@ -618,6 +637,28 @@ func _truth(bricks: Array) -> AABB:
 			else:
 				box = box.expand(here)
 	return box
+
+
+## The highest of [param bricks]' bodies, as a wall's height is counted: a
+## part standing upright whose mesh reaches a stud's height over its origin,
+## and which has studs, to its top face (no vertex of it above its origin
+## but its studs'), any other to its highest vertex.
+func _body_top(bricks: Array) -> float:
+	var top: float = -INF
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		var points: PackedVector3Array = _vertices(brick.part_id)
+		var highest: float = -INF
+		for point: Vector3 in points:
+			highest = maxf(highest, point.y)
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id)
+		var studded: bool = info != null and info.stud_count > 0 \
+			and absf(highest - STUD_TOP) < 0.01 and brick.transform.basis.y.y > 0.999
+		for point: Vector3 in points:
+			if studded and point.y > 0.01:
+				continue
+			top = maxf(top, (brick.transform * point).y)
+	return top
 
 
 func _vertices(part_id: String) -> PackedVector3Array:
@@ -722,9 +763,12 @@ func _shot_bar(name: String) -> void:
 	await _frames(6)
 	await RenderingServer.frame_post_draw
 	var image: Image = root.get_texture().get_image()
-	var rect: Rect2i = Rect2i(_rect(_shell.status)).intersection(
-		Rect2i(Vector2i.ZERO, image.get_size()))
-	var strip: Image = image.get_region(rect)
+	var bar: Rect2 = _rect(_shell.status)
+	var top: int = clampi(floori(bar.position.y), 0, image.get_height() - 1)
+	var strip: Image = image.get_region(Rect2i(0, top, image.get_width(), image.get_height() - top))
+	if strip.is_empty():
+		print("    (no picture of the bar: it is at %s in a picture %s)" % [bar, image.get_size()])
+		return
 	strip.resize(strip.get_width() * 2, strip.get_height() * 2, Image.INTERPOLATE_NEAREST)
 	strip.save_png(_shots.path_join("%s_bar_%s.png" % [name, _size]))
 

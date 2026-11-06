@@ -4,11 +4,15 @@
 ##
 ## The size is the box round the parts as they stand: across (x), deep (z)
 ## and high, in studs and plates, and in centimetres at LDraw's 0.4 mm an
-## LDU. The plates count a model's height as a wall's is counted, without the
-## studs on its top (Inspector's selection says it so); the centimetres take
-## them in, since a shelf has to. Each part's box is its shape's own, turned
-## with it: exact for every part at a right angle, and for one at another
-## angle the box round its turned box.
+## LDU. Each part's box is its shape's own, turned with it: exact for every
+## part at a right angle, and for one at another angle the box round its
+## turned box. The centimetres take in everything, the studs on top too, as
+## a shelf has to. The plates count the height as a wall's is counted, without
+## the studs on its top: the highest of each part's body, a part standing
+## upright with studs on its top (its box 4 LDU over its origin, as LDraw
+## draws a stud) counted to its top face, any other to its top. Read off the
+## height alone ("4 over a whole plate is a stud"), a wheel 36 LDU tall was
+## 4 plates.
 ##
 ## The weight is each part's grams from its shape (Stability.grams): the
 ## catalogue lists no part's weight (BrickLink's catalogue does, behind its
@@ -33,6 +37,9 @@ var parts: int = 0
 ## Parts the library has no entry for: in no size and no weight.
 var left_out: int = 0
 var grams: float = 0.0
+## The highest of the parts' bodies, the studs on an upright part's top left
+## off, LDU.
+var body_top: float = 0.0
 
 ## The model's, kept for its revision: [world's id, revision, generation,
 ## the floor's parts] and what they gave. On the window's own thread only.
@@ -50,27 +57,44 @@ static func of_model(world: BrickWorld, library: PartLibrary, scenery: Dictionar
 	return _kept
 
 
-## [param bricks]' size and weight, those in [param skip] left out.
+## [param bricks]' size and weight, those in [param skip] left out. Kept in
+## locals, a part's numbers looked up once: 10,101 of Orthanc's parts are
+## measured on every change of it.
 static func of_bricks(bricks: Array, library: PartLibrary, skip: Dictionary = {}) -> ModelSize:
-	var size := ModelSize.new()
-	## part id -> [its box, its grams], or null when the library has none.
+	## part id -> [its box, its grams, whether its studs are its top], or
+	## null when the library has none.
 	var known: Dictionary = {}
-	for item: Variant in bricks:
-		var brick: BrickWorld.Brick = item
+	var box := AABB()
+	var top: float = -INF
+	var count: int = 0
+	var missing: int = 0
+	var grams: float = 0.0
+	for brick: BrickWorld.Brick in bricks:
 		if brick == null or skip.has(brick.id):
 			continue
 		var part: Variant = known.get(brick.part_id, false)
 		if part is bool:
 			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
-			part = [info.bounds, Stability.grams(info)] if info != null else null
+			part = null if info == null else [info.bounds, Stability.grams(info),
+				info.stud_count > 0 and is_equal_approx(info.bounds.end.y, STUD_TOP)]
 			known[brick.part_id] = part
 		if part == null:
-			size.left_out += 1
+			missing += 1
 			continue
 		var here: AABB = brick.transform * (part[0] as AABB)
-		size.box = here if size.parts == 0 else size.box.merge(here)
-		size.parts += 1
-		size.grams += float(part[1])
+		box = here if count == 0 else box.merge(here)
+		var body: float = here.end.y
+		if part[2] and brick.transform.basis.y.y > 0.999:
+			body -= STUD_TOP
+		top = maxf(top, body)
+		count += 1
+		grams += float(part[1])
+	var size := ModelSize.new()
+	size.box = box
+	size.parts = count
+	size.left_out = missing
+	size.grams = grams
+	size.body_top = top if count > 0 else 0.0
 	return size
 
 
@@ -78,14 +102,10 @@ func is_empty() -> bool:
 	return parts == 0
 
 
-## The height in plates, without the studs on the top: a part's box takes
-## them in, standing half a plate proud, and nobody counts them in how tall a
-## wall is (Inspector._plates).
+## The height in plates, without the studs on the top (body_top): nobody
+## counts them in how tall a wall is.
 func plates_high() -> float:
-	var high: float = box.size.y
-	if is_equal_approx(fposmod(high, BrickLattice.PLATE), STUD_TOP):
-		high -= STUD_TOP
-	return high / BrickLattice.PLATE
+	return (body_top - box.position.y) / BrickLattice.PLATE
 
 
 ## Across (x), deep (z) and high, in centimetres, the studs on top in.
@@ -93,7 +113,7 @@ func centimetres() -> Vector3:
 	return box.size * LDU_MM / 10.0
 
 
-## "16 × 9 studs, 6 plates high": across, deep, and high without the top's
+## "4½ × 10.8 studs, 15 plates high" (the car): across, deep, and high without the top's
 ## studs. "" for nothing measured.
 func studs_words() -> String:
 	if is_empty():
@@ -106,7 +126,7 @@ func studs_words() -> String:
 	return across + ", %s plates high" % StatusBar.amount(high)
 
 
-## "12.8 × 7.2 × 2.08 cm", to the tenth of a millimetre. "" for nothing.
+## "3.6 × 8.64 × 4.96 cm", to the tenth of a millimetre. "" for nothing.
 func centimetre_words() -> String:
 	if is_empty():
 		return ""

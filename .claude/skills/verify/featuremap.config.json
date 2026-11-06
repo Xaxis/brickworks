@@ -4670,7 +4670,7 @@
       "kind": "ui",
       "label": "model size and weight",
       "entry": "src/assembly/model_size.gd",
-      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"16 × 9 studs, 6 plates high · 12.8 × 7.2 × 2.08 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/)",
+      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4½ × 10.8 studs, 15 plates high · 3.6 × 8.64 × 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/)",
       "area": "building"
     }
   ]

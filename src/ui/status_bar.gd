@@ -186,13 +186,14 @@ func _process(_delta: float) -> void:
 		_hint_asked_us = -1
 	# Where the part in hand goes, as it moves: every frame, as the ghost is.
 	_show_place(place_words())
-	# How big, in the frame the model or the selection changed.
+	# How big, and how many selected, in the frame the model or the
+	# selection changed: the two stand side by side and say one selection.
+	var count: int = shell.builder.selection.size()
+	_selected.text = "%d selected" % count if count > 0 else "nothing selected"
 	_show_size()
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at >= 150:
 		_looked_at = now
-		var count: int = shell.builder.selection.size()
-		_selected.text = "%d selected" % count if count > 0 else "nothing selected"
 		var snap: String = {"stud": "stud", "half": "½ stud", "half_plate": "½ plate",
 			"free": "free"}.get(shell.verbs.snap, shell.verbs.snap)
 		_settings.text = "snap %s · turn %d°" % [snap, roundi(shell.verbs.turn_step)]

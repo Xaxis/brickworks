@@ -945,10 +945,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the snap and turn, then the size (`StatusBar._fit`), so none runs past the
   window's edge.
 - `model size and weight` (`src/assembly/model_size.gd`, APP_UX5 modelinfo):
-  the model's size beside its counts on the status bar, "16 × 9 studs, 6
-  plates high · 12.8 × 7.2 × 2.08 cm" (the plates without the studs on its
-  top, as a wall's height is counted; the centimetres with them, as a shelf
-  needs), the baseplate left out; with parts selected, theirs, after "N
+  the model's size beside its counts on the status bar, the car's "4½ ×
+  10.8 studs, 15 plates high · 3.6 × 8.64 × 4.96 cm" (the plates to the
+  highest part's body, an upright part's top studs left off, as a wall's
+  height is counted, so a tyre on its edge is 4½; the centimetres with
+  them, as a shelf needs), the baseplate left out; with parts selected, theirs, after "N
   selected"; worked out again in the frame the model or the selection
   changes, and only then. Properties with nothing selected says the same
   size and "About 52 g", the status bar's grams; `in_view` says the size in

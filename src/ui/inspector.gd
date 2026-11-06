@@ -658,8 +658,11 @@ func _show_many(bricks: Array[BrickWorld.Brick]) -> void:
 	_show_meet(bricks.size() == 2)
 	_yaw.editable = true
 	var facts := PackedStringArray()
-	facts.append("%s × %s studs, %s tall" % [_studs(box.size.x), _studs(box.size.z),
-		_plates(box.size.y)])
+	# Measured as the status bar measures them (ModelSize), so the two say
+	# one height: a wheel on its side is its whole height, not studs.
+	var measured: ModelSize = ModelSize.of_bricks(bricks, library)
+	facts.append("%s × %s studs, %s tall" % [_studs(measured.box.size.x),
+		_studs(measured.box.size.z), _plates(measured.plates_high())])
 	# The sub-assembly they are all in, when they are; a sub-assembly
 	# selected whole says so itself (_show_assembly).
 	var shared: String = _shared_path(bricks)
@@ -931,11 +934,9 @@ static func _studs(ldu: float) -> String:
 	return str(roundi(studs)) if is_equal_approx(studs, roundf(studs)) else "%.1f" % studs
 
 
-static func _plates(ldu: float) -> String:
-	# A part's box takes in the studs on its top, four LDU proud of it, and
-	# nobody counts those in how tall a wall is.
-	var body: float = ldu - 4.0 if is_equal_approx(fposmod(ldu, 8.0), 4.0) else ldu
-	var plates: float = body / 8.0
+## [param plates] high, without the studs on the top (ModelSize.plates_high):
+## "1 brick", "2 plates", "4.5 plates".
+static func _plates(plates: float) -> String:
 	if is_equal_approx(fposmod(plates, 3.0), 0.0) and plates >= 3.0:
 		var bricks: int = roundi(plates / 3.0)
 		return "1 brick" if bricks == 1 else "%d bricks" % bricks
