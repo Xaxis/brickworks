@@ -629,16 +629,21 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 
 ## The steps of the copy at [param path], built in steps of its own, made
 ## steps of the section that puts it on, as taking it apart leaves its parts
-## there (Assemblies.ungroup): each of its steps in turn where the copy was
-## put on, then the rest of that step, and every step after it as many
-## later, numbered with no gaps. The build goes in the order it did. Left
-## as they were, its parts were numbered in steps of a sub-model that was
-## gone, and went in among the first steps of the one they were now in.
-## {"bricks": id -> step, "units": path -> step} of what moves, and "steps"
+## there (Assemblies.ungroup): where the copy was put on, after the copies
+## that step built before it, each of its steps in turn, then the rest of
+## that step, and every step after it as many later, numbered with no gaps.
+## The build goes in the order it did. Left as they were, its parts were
+## numbered in steps of a sub-model that was gone, and went in among the
+## first steps of the one they were now in; put first in the step, 7140-1's
+## Biggs, taken apart, was built before the ship and the support vehicle the
+## step puts on beside him, which the booklet had built first (stepsiblings).
+## {"bricks": id -> step, "units": path -> step} of what it holds, and "steps"
 ## {"section": the one it is put on in, "at": the step that put it on,
-## "outer": each of that one's steps -> the step it is now, "inner": each of
-## the copy's -> the step it is now}; empty for a copy built in its
-## parent's steps already, or a model with no steps.
+## "outer": each of that one's steps -> the step it is now (the one that put
+## it on, the step after its last), "inner": each of the copy's -> the step
+## it is now, and "before": the step the copies built before it are now in,
+## when there are any}; empty for a copy built in its parent's steps
+## already, or a model with no steps.
 static func inlined(world: BrickWorld, path: String, skip: Dictionary = {}) -> Dictionary:
 	if path.is_empty() or in_parent(world, path) or not any(world, skip):
 		return {}
@@ -651,14 +656,45 @@ static func inlined(world: BrickWorld, path: String, skip: Dictionary = {}) -> D
 	var own: Array = steps_of(read[path])
 	if at < 0 or own.is_empty():
 		return {}
+	# Where the step built it among the sub-models it puts on, as the
+	# booklet builds them (Instructions._authored_from): those it builds
+	# first, the sections the step puts on and the callouts ahead of it, stay
+	# in the step; it, and the rest of the step, after them.
+	var others: Dictionary = {}     ## a copy the step puts on -> true
+	for item: Dictionary in read[outer]:
+		if item.has("unit") and int(item["step"]) == at and str(item["unit"]) != path:
+			others[str(item["unit"])] = true
+	var first_at: Dictionary = {}   ## a copy -> the plan's first step with a part of it
+	if not others.is_empty() and world.library != null:
+		var watched: Array = others.keys()
+		watched.append(path)
+		var steps: Array[Instructions.Step] = Instructions.plan(world, world.library, skip,
+			{}, true)
+		for index: int in steps.size():
+			for brick_id: int in steps[index].brick_ids:
+				var brick: BrickWorld.Brick = world.get_brick(brick_id)
+				var brick_path: String = Assemblies.path_of(brick) if brick != null else ""
+				for unit: String in watched:
+					if not first_at.has(unit) and Assemblies.within(brick_path, unit):
+						first_at[unit] = index
+	var mine: int = int(first_at.get(path, -1))
+	var built_before := func(item: Dictionary) -> bool:
+		return item.has("unit") and others.has(str(item["unit"])) and mine >= 0 \
+			and int(first_at.get(str(item["unit"]), mine)) < mine
+	var outer_at := func(item: Dictionary) -> int:
+		var step: int = int(item["step"])
+		if step < at or built_before.call(item):
+			return step
+		return step + own.size() + 1
 	var inner: Dictionary = {}      ## its step -> where it goes
 	for index: int in own.size():
-		inner[own[index]] = at + index
+		inner[own[index]] = at + 1 + index
 	var numbered: Array = []        ## [item, its step before the gaps are closed]
+	var before: bool = false
 	for item: Dictionary in read[outer]:
 		if str(item.get("unit", "")) != path:
-			var step: int = int(item["step"])
-			numbered.append([item, step + own.size() if step >= at else step])
+			numbered.append([item, outer_at.call(item)])
+			before = before or built_before.call(item)
 	for item: Dictionary in read[path]:
 		numbered.append([item, int(inner[int(item["step"])])])
 	var used: Dictionary = {}
@@ -674,21 +710,126 @@ static func inlined(world: BrickWorld, path: String, skip: Dictionary = {}) -> D
 	for one: Array in numbered:
 		var item: Dictionary = one[0]
 		var to: int = int(place[int(one[1])])
+		# Every part, its step changed or not: the change takes these as the
+		# steps it gives, and numbers no other (rehomed).
 		if item.has("brick"):
-			if to != int(item["step"]):
-				bricks[int(item["brick"])] = to
+			bricks[int(item["brick"])] = to
 		else:
 			units[str(item["unit"])] = to
 	var outer_steps: Dictionary = {}
 	for item: Dictionary in read[outer]:
-		if str(item.get("unit", "")) != path:
-			var step: int = int(item["step"])
-			outer_steps[step] = int(place[step + own.size() if step >= at else step])
+		var step: int = int(item["step"])
+		if str(item.get("unit", "")) != path and not built_before.call(item):
+			outer_steps[step] = int(place[step if step < at else step + own.size() + 1])
 	var inner_steps: Dictionary = {}
 	for step: int in own:
 		inner_steps[step] = int(place[int(inner[step])])
-	return {"bricks": bricks, "units": units, "steps": {"section": outer, "at": at,
-		"outer": outer_steps, "inner": inner_steps}}
+	var steps: Dictionary = {"section": outer, "at": at, "outer": outer_steps,
+		"inner": inner_steps}
+	if before:
+		steps["before"] = int(place[at])
+	return {"bricks": bricks, "units": units, "steps": steps}
+
+
+## What a change to the tree (Builder.regroup) put in a section other than
+## the one it was stepped in, numbered in the one it is in now: a part, and a
+## copy built in steps of its own, put on in a step. Taken out to a section
+## round the one it was in, it goes in the step that section put that one on
+## in; put into another, after that one's last step, in the order it was
+## built. Then each section it left or went to is numbered 0, 1, 2… again.
+## Left with their numbers, they were numbered in the steps of a section they
+## were no longer in: Ungroup on two parts of 7140-1's upper left wing, put on
+## in a step of the ship's, left them in the ship's step of the wing's number
+## for them, and the wing dragged out of the ship went on in a step of the
+## model's that the model has none of (stepsiblings).
+## [param was] is brick id -> its path before the change, [param units] the
+## copies' steps before it, [param carry] where it put each assembly (as
+## regroup's: unset, none), [param given] the steps it gave itself (regroup's
+## numbers), left as given. Returns the undo, each part and copy once, as
+## the edits here do: nothing when nothing changed section.
+static func rehomed(world: BrickWorld, was: Dictionary, units: Dictionary, carry: Callable,
+		given: Dictionary, skip: Dictionary = {}) -> Array:
+	var undo: Array = []
+	if not any(world, skip):
+		return undo
+	var to_of := func(path: String) -> Array:
+		return carry.call(path) if carry.is_valid() else [path]
+	var numbered: Dictionary = {}
+	for path: String in given.get("units", {}):
+		for to: String in to_of.call(path):
+			numbered[to] = true
+	var stepped: Dictionary = given.get("bricks", {})
+	# [item, the section it is in now, the one it was in, the path its own
+	# copies are read up from], for each part and copy whose section changed.
+	var moving: Array = []
+	for brick_id: int in was:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null or brick.step < 0 or skip.has(brick_id) or stepped.has(brick_id):
+			continue
+		var from: String = home(world, str(was[brick_id]), units)
+		var now: String = home(world, Assemblies.path_of(brick))
+		if from != now and not (to_of.call(from) as Array).has(now):
+			moving.append([{"brick": brick_id, "step": brick.step}, now, from, str(was[brick_id])])
+	for path: String in units:
+		var step: int = int(units[path])
+		if step < 0:
+			continue
+		for to: String in to_of.call(path):
+			if numbered.has(to) or int(world.unit_steps.get(to, -1)) != step:
+				continue
+			var from: String = home(world, Assemblies.parent_of(path), units)
+			var now: String = home(world, Assemblies.parent_of(to))
+			if from != now and not (to_of.call(from) as Array).has(now):
+				moving.append([{"unit": to, "step": step}, now, from, Assemblies.parent_of(path)])
+	if moving.is_empty():
+		return undo
+	var going: Dictionary = {}      ## an item's name -> true
+	for one: Array in moving:
+		going[_name_of(one[0])] = true
+	var into: Dictionary = {}       ## a section -> [[the order it was built in, item]]
+	var touched: Dictionary = {}
+	for one: Array in moving:
+		var item: Dictionary = one[0]
+		var now: String = one[1]
+		touched[now] = true
+		for left: String in to_of.call(str(one[2])):
+			touched[left] = true
+		# Out to a section round it: the step that put on the copy it was in.
+		var at: int = -1
+		var path: String = one[3]
+		while not path.is_empty():
+			if home(world, Assemblies.parent_of(path), units) == now:
+				at = int(units.get(path, -1))
+				break
+			path = Assemblies.parent_of(path)
+		if at >= 0:
+			_put(world, item, at, undo)
+			continue
+		if not into.has(now):
+			into[now] = []
+		(into[now] as Array).append([key_of(world, str(one[2]), int(item["step"]), {}, {}, units),
+			item])
+	for now: String in into:
+		var last: int = -1
+		for item: Dictionary in items_of(world, now, skip):
+			if not going.has(_name_of(item)):
+				last = maxi(last, int(item["step"]))
+		var order: Array = into[now]
+		order.sort_custom(func(a: Array, b: Array) -> bool: return before(a[0], b[0]))
+		var step: int = last
+		var key: Array = []
+		for one: Array in order:
+			if one[0] != key:
+				step += 1
+				key = one[0]
+			_put(world, one[1], step, undo)
+	for section: String in touched:
+		_tidy(world, section, skip, undo)
+	return squash(undo)
+
+
+static func _name_of(item: Dictionary) -> String:
+	return ("u" + str(item["unit"])) if item.has("unit") else str(item["brick"])
 
 
 # -- the edits ---------------------------------------------------------------

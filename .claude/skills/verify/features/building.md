@@ -1436,9 +1436,19 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   its own is built in its parent's steps, so no part changes step, and the
   booklet makes no callout of a copy built so however well it holds together
   (`Instructions._authored_from`); one built in steps of its own taken apart has them made its parent's in the order
-  they were built (`AuthorSteps.inlined`, its looks by `BookletLooks
-  .inlined`). Probe: `unit_steps_probe` (headless; `UNIT_STEPS_ONLY=castle`,
-  `copies` or `7140` for one) renames, ungroups, makes and cuts loose copies
+  they were built, after the copies its step built before it
+  (`AuthorSteps.inlined`, its looks by `BookletLooks.inlined`, a figure's
+  callout's facing kept as a turn). What any other edit of the tree moves
+  into another section goes in the step that one built it in, or after its
+  last (`AuthorSteps.rehomed`, from `Builder.regroup`): a sub-model dragged
+  out of its parent, parts taken out by Ungroup. A copy following an edit of
+  its twin keeps each part's step by its place (`Assemblies.realize`), and a
+  sub-model renamed to a gone one's name drops that one's looks
+  (`BookletLooks.renamed`). Probe: `unit_steps_probe` (headless;
+  `UNIT_STEPS_ONLY=castle`, `copies`, `7140` or `siblings` for one; siblings
+  drives the seven edits that reach a sibling's steps: a twin painted, a
+  rename, a drag in the tree, a partway Ungroup, Ctrl-G, a reused name's
+  looks, a figure taken apart) renames, ungroups, makes and cuts loose copies
   of the castle (its steps made its own) and 7140-1 (as its author stepped
   it) by the menu and over MCP: no part in another step by the plan and
   `edit_steps`, the steps test as before, undo and redo exact, and the save
