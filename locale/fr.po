@@ -11226,3 +11226,101 @@ msgstr "Ce qui va avec %s, avec « %s », le meilleur d'abord"
 
 msgid "Nothing that fits %s has “%s”"
 msgstr "Rien de ce qui va avec %s n'a « %s »"
+
+# mybricks: loose parts on My collection's What I own, and what a session added
+
+msgid "A part: its number or words, like red 2x4 brick"
+msgstr "Une pièce : son numéro ou des mots, comme brique 2x4 rouge"
+
+msgid "Photo…"
+msgstr "Photo…"
+
+msgid "Find the part from a photo of it, as the parts bin's camera does"
+msgstr "Trouver la pièce d'après une photo, comme le fait l'appareil photo du bac à pièces"
+
+msgid "Parts like the one chosen: its other sizes and kinds"
+msgstr "Des pièces comme celle choisie : ses autres tailles et sortes"
+
+msgid "Its colour: the colours the part was made in first"
+msgstr "Sa couleur : d'abord les couleurs dans lesquelles la pièce a été fabriquée"
+
+msgid "How many"
+msgstr "Combien"
+
+msgid "Add these to your loose parts, kept with your account"
+msgstr "Les ajouter à tes pièces en vrac, gardées avec ton compte"
+
+msgid "Find a part above, by its number or words, from a photo, or by choosing it in the parts bin; then how many, and Add."
+msgstr "Trouve une pièce ci-dessus, par son numéro ou des mots, d'après une photo, ou en la choisissant dans le bac à pièces ; puis combien, et Ajouter."
+
+msgid "Added by %s — %s, %s: look them over"
+msgstr "Ajouté par %s — %s, %s : vérifie-les"
+
+msgid "Keep them"
+msgstr "Les garder"
+
+msgid "Keep these as your own loose parts"
+msgstr "Les garder comme tes propres pièces en vrac"
+
+msgid "Take back what %s added"
+msgstr "Reprendre ce que %s a ajouté"
+
+msgid "Take out exactly the lots listed here; nothing of yours"
+msgstr "Retirer exactement les lots listés ici ; rien des tiens"
+
+msgid "your assistants"
+msgstr "tes assistants"
+
+msgid "Loose parts — %s"
+msgstr "Pièces en vrac — %s"
+
+msgid "How many you have; changed here, kept with your account"
+msgstr "Combien tu en as ; changé ici, gardé avec ton compte"
+
+msgid "Take this lot out of your collection"
+msgstr "Retirer ce lot de ta collection"
+
+msgid "no part answers “%s”"
+msgstr "aucune pièce ne répond à « %s »"
+
+msgid "choose a part first, then Like this lists parts like it"
+msgstr "choisis d'abord une pièce, puis Similaires liste des pièces comme elle"
+
+msgid "parts like %s: choose one"
+msgstr "des pièces comme %s : choisis-en une"
+
+msgid "asking Brickognize what part this is…"
+msgstr "on demande à Brickognize quelle pièce c'est…"
+
+msgid "Brickognize saw no part it knows in that photo: try another, the part alone on a plain background"
+msgstr "Brickognize n'a vu aucune pièce qu'il connaît sur cette photo : essaie une autre, la pièce seule sur un fond uni"
+
+msgid "from your photo, most likely first, as Brickognize sees it"
+msgstr "d'après ta photo, la plus probable d'abord, comme Brickognize la voit"
+
+msgid "find the part first: its number or words, or a photo of it"
+msgstr "trouve d'abord la pièce : son numéro ou des mots, ou une photo d'elle"
+
+msgid "adding %d × %s…"
+msgstr "ajout de %d × %s…"
+
+msgid "added %d × %s in %s"
+msgstr "%d × %s en %s ajouté"
+
+msgid "kept: %s"
+msgstr "gardé : %s"
+
+msgid "took out %d × %s in %s"
+msgstr "%d × %s en %s retiré"
+
+msgid "took back the %s added"
+msgstr "les %s ajoutés repris"
+
+msgid "kept the %s as your own"
+msgstr "les %s gardés comme les tiens"
+
+msgid "Find a part from a photo"
+msgstr "Trouver une pièce d'après une photo"
+
+msgid "Choose a photo"
+msgstr "Choisir une photo"
