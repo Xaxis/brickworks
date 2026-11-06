@@ -35,6 +35,11 @@ var fetch_near: bool = false
 ## The Claude chat whose call is running, as the relay names it, or "":
 ## set by CommandSocket around each call (undo keeps to its own changes).
 var chat: String = ""
+## The session a call came on when it names no chat (the desktop's MCP
+## port, by its session; the line protocol, by its connection), or "": set
+## by CommandSocket beside [member chat]. A collection's lots are marked by
+## it, so two such sessions' lots stay apart (mbreview finding 8).
+var connection: String = ""
 ## The gallery, read for a session (GalleryTool, 2026-10-13).
 var _gallery: GalleryTool
 ## The window's hand tools, for a session (HandTools, APP_UX3).
@@ -3166,8 +3171,9 @@ const MOST_LOTS := 500
 
 
 ## edit_collection: lots added, marked as this chat's, or taken off its own,
-## all or nothing, through the account as My collection's Add does
-## (CollectionStore.change_lots); with neither, the collection read back.
+## all or nothing, as one change at the account (CollectionStore
+## .change_lots, api/collection.js op "lots"); with neither, the collection
+## read back afresh.
 func _edit_collection(input: Dictionary) -> String:
 	var shell: Shell = app.get("_shell")
 	var dialog: CollectionDialog = shell.collection if shell != null else null
@@ -3184,11 +3190,13 @@ func _edit_collection(input: Dictionary) -> String:
 	if not adding is Array or not removing is Array:
 		return "add and remove are lists of {part, color, count}."
 	if (adding as Array).is_empty() and (removing as Array).is_empty():
-		return _collection_said(mine, library, clampi(int(input.get("limit", 60)), 1, 2000))
+		var trouble_read: String = await mine.load_collection()
+		return _collection_said(mine, library, clampi(int(input.get("limit", 60)), 1, 2000)) \
+			+ ("" if trouble_read.is_empty() else "\n(" + trouble_read + ")")
 	if (adding as Array).size() + (removing as Array).size() > MOST_LOTS:
 		return "At most %d lots a call; send the rest in another." % MOST_LOTS
-	var who: String = assistant.who if assistant != null and not str(assistant.who).is_empty() \
-		else CommandSocket.CLAUDE
+	var who: String = _collection_who()
+	var mark: String = _collection_chat()
 	var refused := PackedStringArray()
 	var added: Dictionary = {}   ## part/colour -> lot, counts of one part and colour together
 	var order: Array = []
@@ -3202,34 +3210,49 @@ func _edit_collection(input: Dictionary) -> String:
 			added[key]["qty"] = mini(100000, int(added[key]["qty"]) + int(lot["qty"]))
 		else:
 			added[key] = {"part": lot["part"], "colour": lot["colour"], "qty": lot["qty"], "by": who}
-			if not chat.is_empty():
-				added[key]["chat"] = chat
+			if not mark.is_empty():
+				added[key]["chat"] = mark
 			order.append(key)
-	var set_to: Array = []
+	# Taken down by what was asked, at the account: several of one lot add
+	# up, and a count of none takes all of it (mbreview finding 9).
+	var down: Dictionary = {}
+	var down_order: Array = []
 	for n: int in (removing as Array).size():
 		var lot: Variant = _collection_lot(removing[n], library, false)
 		if lot is String:
 			refused.append("remove %d: %s" % [n + 1, lot])
 			continue
-		var held: Dictionary = mine.collection.lot_of(str(lot["part"]), int(lot["colour"]), who, chat)
-		if held.is_empty():
-			var own: bool = not mine.collection.lot_of(str(lot["part"]), int(lot["colour"])).is_empty()
-			refused.append("remove %d: %s in colour %d is %s" % [n + 1, lot["part"], int(lot["colour"]),
-				"the person's own lot, which only they change (My collection)" if own
-				else "not a lot this chat added"])
-			continue
-		var gone: Dictionary = held.duplicate()
-		gone["qty"] = maxi(0, int(held["qty"]) - int(lot["qty"])) if int(lot["qty"]) > 0 else 0
-		set_to.append(gone)
+		var key: String = "%s/%d" % [lot["part"], int(lot["colour"])]
+		if not down.has(key):
+			down[key] = {"part": lot["part"], "colour": lot["colour"], "qty": 0, "by": who}
+			if not mark.is_empty():
+				down[key]["chat"] = mark
+			down_order.append(key)
+		if int(down[key]["qty"]) >= 0:
+			down[key]["qty"] = -1 if int(lot["qty"]) == 0 else int(down[key]["qty"]) + int(lot["qty"])
 	if not refused.is_empty():
 		return ("Nothing was changed: " + "; ".join(refused)
 			+ ". search_parts finds a part's LDraw number; colours are LDraw codes.")
 	var add_lots: Array = []
 	for key: String in order:
 		add_lots.append(added[key])
-	var trouble: String = await mine.change_lots(set_to, add_lots)
-	if not trouble.is_empty():
-		return "Nothing was changed: %s." % trouble
+	var down_lots: Array = []
+	for key: String in down_order:
+		var one: Dictionary = (down[key] as Dictionary).duplicate()
+		one["qty"] = maxi(0, int(one["qty"]))
+		down_lots.append(one)
+	var done: Dictionary = await mine.change_lots(add_lots, down_lots)
+	if done["kind"] == CollectionStore.UNREACHED:
+		return ("Could not tell whether that was kept (%s). edit_collection with nothing reads back "
+			+ "what is there: read it before sending this again.") % done["said"]
+	if done["kind"] != CollectionStore.DONE:
+		var own: PackedStringArray = PackedStringArray()
+		for lot: Dictionary in down_lots:
+			if mine.collection.lot_of(str(lot["part"]), int(lot["colour"]), who, mark).is_empty() \
+					and not mine.collection.lot_of(str(lot["part"]), int(lot["colour"])).is_empty():
+				own.append("%s in colour %d is the person's own lot, which only they change (My collection)"
+					% [lot["part"], int(lot["colour"])])
+		return "Nothing was changed: %s." % ("; ".join(own) if not own.is_empty() else str(done["said"]))
 	var said := PackedStringArray()
 	if not add_lots.is_empty():
 		var pieces: int = 0
@@ -3240,15 +3263,27 @@ func _edit_collection(input: Dictionary) -> String:
 		said.append("Added %s, %s, to the person's collection, each marked as this chat's:"
 			% [Counted.of(add_lots.size(), "lot"), Counted.of(pieces, "piece")])
 		said.append_array(lines)
-	if not set_to.is_empty():
-		said.append("Took off %s of this chat's lots." % Counted.of(set_to.size(), "change"))
+	if not down_lots.is_empty():
+		said.append("Took down %s of this chat's." % Counted.of(down_lots.size(), "lot"))
 	var theirs: Array = mine.collection.added_lots().filter(func(lot: Dictionary) -> bool:
-		return _chats(lot, who, chat))
+		return _chats(lot, who, mark))
 	said.append(("The person sees what this chat added under My collection, Added by %s (%s now), "
 		+ "and keeps it or takes it back with one button. parts_list which=\"need\" measures the "
 		+ "model against the collection now; edit_collection with nothing reads it back.")
 		% [who, Counted.of(theirs.size(), "lot")])
 	return "\n".join(said)
+
+
+## The name this session's lots are marked with, as the account keeps it.
+func _collection_who() -> String:
+	var named: String = Collection.who_name(str(assistant.who) if assistant != null else "")
+	return named if not named.is_empty() else CommandSocket.CLAUDE
+
+
+## Which chat this session's lots are marked as: the relay's, or the
+## session's own connection when it names none.
+func _collection_chat() -> String:
+	return chat if not chat.is_empty() else connection
 
 
 ## Whether [param lot] is one [param who]'s chat [param chat] added.
@@ -3300,12 +3335,12 @@ static func _lot_words(lot: Dictionary, library: PartLibrary) -> String:
 ## The collection read back: its sets, this chat's lots, the person's own.
 func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -> String:
 	var held: Collection = mine.collection
-	var who: String = assistant.who if assistant != null and not str(assistant.who).is_empty() \
-		else CommandSocket.CLAUDE
+	var who: String = _collection_who()
+	var mark: String = _collection_chat()
 	var ours: Array = held.added_lots().filter(func(lot: Dictionary) -> bool:
-		return _chats(lot, who, chat))
+		return _chats(lot, who, mark))
 	var others: Array = held.added_lots().filter(func(lot: Dictionary) -> bool:
-		return not _chats(lot, who, chat))
+		return not _chats(lot, who, mark))
 	var own: Array = held.own_lots()
 	var said := PackedStringArray()
 	var sets := PackedStringArray()

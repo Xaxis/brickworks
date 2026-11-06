@@ -32,9 +32,21 @@
 ##      with the kept session) and over a sign-in on another device
 ##   7. Take back what Claude added: exactly those 12 gone, the old
 ##      collection lot for lot as it was; Start over still asks first
+##   8. nothing lost as a person uses it (mybricks2): a count typed then
+##      Remove pressed at once takes the lot out; a session's count typed
+##      then Keep pressed at once keeps the count typed; a reply that comes
+##      for an account no longer signed in is dropped; two MCP sessions that
+##      name no chat (the desktop's port, by their Mcp-Session-Id) each keep
+##      their own lots; the old collection lot for lot as it was after
+##   9. the build before (rel-m266, its own Collection and CollectionStore
+##      read from git at a209f558) against this server: it reads every lot,
+##      its import adds to its own source's lot, and its set Remove (a PUT
+##      of the whole collection as it keeps it, every lot's source and
+##      session dropped) is refused with words to update: no lot lost, no
+##      mark stripped
 ##
 ## On pre261 there is no row to add a loose lot in, no "lots" at the
-## account and no edit_collection: 2 to 7 fail with words. Writes nothing in
+## account and no edit_collection: 2 to 9 fail with words. Writes nothing in
 ## the app's own directory: the copy on this device and the session go to
 ## the probe's own data folder (probe.sh's XDG_DATA_HOME).
 extends SceneTree
@@ -142,7 +154,8 @@ func _steps() -> void:
 
 	print("\n2. 12 loose lots by hand, on What I own")
 	_dialog.call("open", "own")
-	await _frames(10)
+	# Opened, it reads the account's afresh (mybricks2).
+	await _changed()
 	var row: bool = _dialog.has_method("search_loose") and _dialog.has_method("add_loose")
 	_check("What I own has a row to add a loose part in", row)
 	if row:
@@ -289,7 +302,222 @@ func _steps() -> void:
 	asking.get_cancel_button().pressed.emit()
 	await _frames(5)
 	_check("...and cancelled, nothing is", not asking.visible and _same(_kept(), before))
+	await _lossless(before)
+	await _older_app(before)
 	_dialog.call("close")
+
+
+## mbreview's findings as a person meets them, in the window (mybricks2).
+func _lossless(before: Dictionary) -> void:
+	print("\n8. nothing lost as a person uses it")
+	_dialog.call("_show", "own")
+	# A count typed into a row, then its Remove pressed before the count
+	# is sent (finding 5, R6): the count goes first, then the lot out.
+	await _store.change_lots([{"part": "3005", "colour": 1, "qty": 5}])
+	await _frames(5)
+	var row: HBoxContainer = _row_of("3005", 1, "")
+	if row != null:
+		(row.get_child(0) as SpinBox).value = 6
+		(row.get_child(row.get_child_count() - 1) as Button).pressed.emit()
+		await _settled()
+	_check("a count typed (5 -> 6), then Remove pressed at once: the lot is out%s"
+		% ("" if row != null else " (no row for it)"),
+		row != null and _store.collection.lot_of("3005", 1).is_empty() and _same(_kept(), before))
+	# A session's lot's count typed, then Keep pressed before it is sent
+	# (finding 5, R11): kept at the count typed.
+	await _call("edit_collection", {"add": [{"part": "3005", "color": 1, "count": 5}]})
+	await _frames(5)
+	var theirs: HBoxContainer = _row_of("3005", 1, "Claude")
+	if theirs != null:
+		(theirs.get_child(0) as SpinBox).value = 3
+		((_dialog.call("controls_by_name") as Dictionary)["collection_keep_added"] as Button).pressed.emit()
+		await _settled()
+	var kept: Dictionary = _store.collection.lot_of("3005", 1, "", "", "hand")
+	_check("a session's count typed (5 -> 3), then Keep pressed at once: 3 kept as the person's own, none left marked: %s"
+		% JSON.stringify(_store.collection.parts.filter(func(lot: Dictionary) -> bool: return str(lot["part"]) == "3005")),
+		theirs != null and int(kept.get("qty", 0)) == 3 and _store.collection.added_lots().is_empty())
+	if not kept.is_empty():
+		var asked: Dictionary = kept.duplicate()
+		asked["to"] = 0
+		await _store.set_counts([asked])
+	# A reply that comes back after the account changed (finding 13): the
+	# last person's, dropped, never put in the next person's copy.
+	var mine_id: String = _account.user_id
+	var heard: Array = [0]
+	var hear := func() -> void: heard[0] += 1
+	_store.changed.connect(hear)
+	var reading: Array = [true]
+	var read := func() -> void:
+		await _store.load_collection()
+		reading[0] = false
+	read.call()
+	await process_frame
+	_account.user_id = "00000000-0000-4000-8000-00000000d1ff"
+	var waited: int = Time.get_ticks_msec()
+	while reading[0] and Time.get_ticks_msec() - waited < 15000:
+		await process_frame
+	_account.user_id = mine_id
+	_store.changed.disconnect(hear)
+	_check("a reply for an account no longer signed in is dropped: nothing taken, nothing said (%d changes)" % heard[0],
+		not reading[0] and heard[0] == 0 and _same(_kept(), before))
+	# Two sessions on the desktop's MCP port that name no chat (finding 8):
+	# each by its Mcp-Session-Id, so one's lots are not the other's.
+	var listening: bool = _socket.listen(MCP_PORT)
+	var one: String = await _over_http("sessionone.x", {"add": [{"part": "3005", "color": 1, "count": 2}]})
+	var two: String = await _over_http("sessiontwo.x", {"add": [{"part": "3005", "color": 1, "count": 4}]})
+	var chats: Array = _store.collection.added_lots().map(func(lot: Dictionary) -> String:
+		return "%s:%d" % [str(lot.get("chat", "")), int(lot["qty"])])
+	_check("two MCP sessions naming no chat keep their lots apart (port %d %s): %s"
+		% [MCP_PORT, "listening" if listening else "taken", ", ".join(chats)],
+		listening and one.begins_with("Added 1 lot") and two.begins_with("Added 1 lot")
+		and chats == ["mcp-sessionone:2", "mcp-sessiontwo:4"])
+	var took: String = await _over_http("sessiontwo.x", {"remove": [{"part": "3005", "color": 1}]})
+	chats = _store.collection.added_lots().map(func(lot: Dictionary) -> String:
+		return "%s:%d" % [str(lot.get("chat", "")), int(lot["qty"])])
+	_check("...and one's remove takes down its own lot, not the other's: %s" % ", ".join(chats),
+		took.begins_with("Took down") and chats == ["mcp-sessionone:2"])
+	_socket.stop()
+	await _store.take_back()
+	_check("...the old collection lot for lot as it was after all of it", _same(_kept(), before))
+
+
+## The build before this one, whose collection code is still out there
+## (rel-m266; desktop 0.17.0 is older still and the same here).
+const OLD_BUILD := "a209f558"
+
+
+## The build before's collection code against this server (mybricks2).
+func _older_app(before: Dictionary) -> void:
+	print("\n9. the build before (rel-m266's own collection code) against this server")
+	var old_code: GDScript = _old_build()
+	_check("rel-m266's Collection and CollectionStore, read from git (%s) and compiled" % OLD_BUILD, old_code != null)
+	if old_code == null:
+		return
+	# A lot by hand and a session's, so there are marks to strip.
+	await _store.change_lots([{"part": "3005", "colour": 1, "qty": 2}])
+	await _call("edit_collection", {"add": [{"part": "3005", "color": 1, "count": 4}]})
+	await _store.load_collection()
+	var marked: Dictionary = _kept()
+	var store_class: GDScript = old_code.get("Store266")
+	store_class.set("where", "user://probe_old_collection.json")
+	var old: Node = store_class.new()
+	old.set("account", _account)
+	old.set("library", _library)
+	root.add_child(old)
+	var said: String = str(await old.call("load_collection"))
+	var read: Array = (old.get("collection") as Object).get("parts")
+	_check("it reads every lot (%d of %d)%s" % [read.size(), (marked["parts"] as Array).size(),
+		"" if said.is_empty() else ": " + said], said.is_empty() and read.size() == (marked["parts"] as Array).size())
+	# Its import, as its dialog sends one: adds to that source's lot only.
+	var got: Dictionary = await old.call("add", {"from": "rebrickable_csv", "text": "Part,Color,Quantity\n3001,4,2\n",
+		"mode": "add"})
+	await _store.load_collection()
+	var grown: Dictionary = marked.duplicate(true)
+	for lot: Dictionary in grown["parts"]:
+		if str(lot["part"]) == "3001" and int(lot["colour"]) == 4 and str(lot.get("src", "")) == "rebrickable_csv":
+			lot["qty"] = int(lot["qty"]) + 2
+	_check("its import adds 2 to the CSV's lot, nothing else moved, every mark kept%s"
+		% ("" if str(got["error"]).is_empty() else ": " + str(got["error"])),
+		str(got["error"]).is_empty() and _same(_kept(), grown))
+	# Its set Remove, as its dialog makes one (a209f558 collection_dialog.gd
+	# _remove_set): the whole collection as it keeps it, PUT.
+	var collection_class: GDScript = old_code.get("Collection266")
+	var next: Object = collection_class.call("from_json", (old.get("collection") as Object).call("to_json"))
+	var sets: Array = []
+	for entry: Dictionary in next.get("sets"):
+		if str(entry["set"]) != "6020-1":
+			sets.append(entry)
+	next.set("sets", sets)
+	var stripped: bool = (next.get("parts") as Array).all(func(lot: Dictionary) -> bool:
+		return not lot.has("src") and not lot.has("by"))
+	var trouble: String = str(await old.call("put", next))
+	await _store.load_collection()
+	_check("its set Remove (every lot's source and session dropped: %s) refused with words: \"%s\"; nothing changed"
+		% [stripped, trouble], stripped and trouble.contains("Update Brickworks") and _same(_kept(), grown))
+	old.queue_free()
+	# Back as it was.
+	var csv: Dictionary = _store.collection.lot_of("3001", 4, "", "", "rebrickable_csv")
+	var hand: Dictionary = _store.collection.lot_of("3005", 1, "", "", "hand")
+	var back: Array = []
+	for lot: Dictionary in [csv, hand]:
+		if not lot.is_empty():
+			var asked: Dictionary = lot.duplicate()
+			asked["to"] = int(lot["qty"]) - (2 if lot == csv else int(lot["qty"]))
+			back.append(asked)
+	await _store.set_counts(back)
+	await _store.take_back()
+	_check("...the old collection lot for lot as it was after", _same(_kept(), before))
+
+
+## The build before's Collection and CollectionStore as it has them, read
+## from git and compiled as two inner classes of one script (Collection266,
+## Store266), so neither takes a global class's name.
+func _old_build() -> GDScript:
+	var text: String = "extends RefCounted\n"
+	var renamed := RegEx.create_from_string("\\bCollection\\b")
+	for pair: Array in [["src/collection/collection.gd", "Collection266"], ["src/collection/collection_store.gd", "Store266"]]:
+		var out: Array = []
+		if OS.execute("git", ["-C", ProjectSettings.globalize_path("res://"), "show",
+				"%s:%s" % [OLD_BUILD, pair[0]]], out) != 0 or out.is_empty():
+			return null
+		var head: String = ""
+		var body: PackedStringArray = []
+		for line: String in renamed.sub(str(out[0]), "Collection266", true).split("\n"):
+			if line.begins_with("class_name "):
+				continue
+			if line.begins_with("extends "):
+				head = "class %s %s:" % [pair[1], line]
+				continue
+			body.append("\t" + line if not line.is_empty() else "")
+		text += head + "\n" + "\n".join(body) + "\n"
+	var script := GDScript.new()
+	script.source_code = text
+	return script if script.reload() == OK else null
+
+
+## The port a session reaches the app's MCP on, in this probe: one of the
+## unit's own (9910-9919).
+const MCP_PORT := 9913
+
+
+## edit_collection over HTTP as an MCP client calls it on the desktop's
+## port: a session id of its own, no chat named.
+func _over_http(session: String, arguments: Dictionary) -> String:
+	_next += 1
+	var http := HTTPRequest.new()
+	root.add_child(http)
+	http.request("http://127.0.0.1:%d/mcp" % MCP_PORT, PackedStringArray(["content-type: application/json",
+		"accept: application/json", "mcp-session-id: " + session]), HTTPClient.METHOD_POST,
+		JSON.stringify({"jsonrpc": "2.0", "id": _next, "method": "tools/call",
+			"params": {"name": "edit_collection", "arguments": arguments}}))
+	var got: Array = await http.request_completed
+	http.queue_free()
+	var answer: Variant = JSON.parse_string((got[3] as PackedByteArray).get_string_from_utf8())
+	var text: String = ""
+	if answer is Dictionary:
+		for block: Variant in ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []):
+			text += str((block as Dictionary).get("text", ""))
+	return text
+
+
+## The row of the lot [param part] in [param colour] of [param by]'s (the
+## person's own when empty) on What I own, or null.
+func _row_of(part: String, colour: int, by: String) -> HBoxContainer:
+	for row: HBoxContainer in _dialog.call("lot_rows"):
+		var lot: Dictionary = row.get_meta("lot")
+		if str(lot["part"]) == part and int(lot["colour"]) == colour and str(lot.get("by", "")) == by:
+			return row
+	return null
+
+
+## Every change the window has in hand made: none being written, none typed.
+func _settled() -> void:
+	var waited: int = Time.get_ticks_msec()
+	await _frames(3)
+	while (bool(_dialog.get("_writing")) or not (_dialog.get("_counts_typed") as Dictionary).is_empty()) \
+			and Time.get_ticks_msec() - waited < 30000:
+		await process_frame
+	await _frames(3)
 
 
 ## 12 lots by hand, each counted in actions as a person makes them: the

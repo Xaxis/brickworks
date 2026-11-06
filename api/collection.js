@@ -1,13 +1,23 @@
 // My collection: what a person owns, kept with their account.
 //
-//   GET    /api/collection   the caller's collection
-//   POST   /api/collection   an import, parsed and mapped here, added to it
-//   PUT    /api/collection   the whole collection, already in LDraw numbers
-//   DELETE /api/collection   all of it gone
+//   GET    /api/collection   the caller's collection, and its rev
+//   POST   /api/collection   one change: an import, or an op
+//   DELETE /api/collection   all of it gone (an older app's Start over)
+//   PUT    /api/collection   refused: an older app's whole collection
 //
-// Every import is parsed here and nowhere else, so a Rebrickable export, a
-// BrickLink XML and a list fetched from Rebrickable's API with the
-// person's own key all land in one shape and one numbering, LDraw's
+// Every change is one op, made on the row as it is in the database and
+// written only if the row is still that row (mybricks2, 2026-11-06). A
+// collection is never written from a copy an app holds: the app says what
+// to change, and what it saw where that matters, and the change is made
+// here on what is kept. supabase/collection_ops.sql gives the row its rev,
+// which moves on every write by anyone; a write here is a PATCH held to the
+// rev it read, and when another write came first it reads again and makes
+// the change again on what that one left (TRIES times). So two changes at
+// once both land, and a change never brings back what another took out.
+//
+// Imports, parsed and mapped here and nowhere else, so a Rebrickable
+// export, a BrickLink XML and a list fetched from Rebrickable's API with
+// the person's own key all land in one shape and one numbering, LDraw's
 // (supabase/collection.sql says what that shape is):
 //
 //   {"from": "rebrickable_csv", "text": "<the file>", "mode": "add"}
@@ -15,21 +25,47 @@
 //   {"from": "rebrickable_api", "sets": [["10237-1", 1, true]],
 //                               "parts": [["3001", 4, 12]], "mode": "add"}
 //   {"from": "sets", "text": "10237-1, 6020"}          typed by number
-//   {"from": "lots", "add": [{"part": "3001", "colour": 4, "qty": 12}],
-//                    "set": [{"part": "3004", "colour": 0, "qty": 0}]}
 //
-// "replace" instead of "add" replaces what the import carries: a sets list
-// replaces the sets, a parts list the loose parts.
+// Every lot and set keeps where it came from ("src"): "hand" (added in My
+// collection, a set typed by number), "rebrickable", "rebrickable_csv" or
+// "bricklink_xml"; a lot a session added says who instead ("by", the name
+// the session goes by, "Claude") and which of its chats ("chat"). Each is
+// its own lot, apart from the same part and colour from anywhere else, so
+// "replace" (a Rebrickable fetch) replaces only what that source brought
+// before: a sets list its sets, a parts list its lots. What was kept before
+// sources were (no src, no by) came from imports, and a replace takes it as
+// it always did; a lot counted by hand or a session's is never touched by
+// an import.
 //
-// "lots" are loose parts already in LDraw's numbers, one lot at a time, as
-// the app's My collection and a session over MCP give them (mybricks,
-// 2026-11-06): "set" puts a lot at exactly that many (0 takes it out),
-// then "add" adds to a lot, making it if new. Nothing else in the
-// collection is touched, so a lot changed on one device leaves what
-// another added meanwhile. A lot a session added carries "by" (who: the
-// name the session goes by, "Claude") and "chat" (which of its chats),
-// and is a lot apart from the person's own of the same part and colour,
-// so taking back what a session added takes back exactly that.
+// Ops, each with an "id" the app makes per action and sends again as it was
+// when the network fails: an id already applied is not applied again.
+//
+//   {"op": "lots", "add": [{part, colour, qty, by?, chat?}],
+//                  "remove": [{part, colour, qty?, by, chat?}]}
+//       added to the lot (made if new: the person's own, src "hand", or the
+//       session's); a session's own lot taken down by qty (all of it when
+//       qty is 0 or none), never below none. Several removes of one lot add
+//       up. Only a session's lots are taken down this way.
+//   {"op": "set", "lots": [{part, colour, src?, by?, chat?, was, qty}]}
+//       each lot from the count the person saw ("was") to qty (0 takes it
+//       out)
+//   {"op": "keep", "lots": [{part, colour, by, chat?, was}]}
+//       a session's lots, at the counts the person saw, made their own
+//   {"op": "take_back", "lots": [{part, colour, by, chat?, was}]}
+//       a session's lots, at the counts the person saw, taken out
+//   {"op": "remove_set", "set": "6020-1", "src"?, "was": 1}
+//       a set, at the count the person saw, taken out
+//   {"op": "start_over", "rev": <the rev the person saw>}
+//
+// What was seen and is no longer so (a count moved on, a lot gone, the rev
+// moved on) is refused with 409 and the collection as it is now, changing
+// nothing: the app shows it and the person asks again.
+//
+// An older app (rel-m266, desktop 0.17.0) takes a set out by PUT of its
+// whole copy, which says nothing of when it was read: a copy read before
+// another device took a set out and added another names the one added as
+// the one to take out. So a PUT is refused with 409 and words that say to
+// update, changing nothing; its imports and its DELETE are ops as above.
 //
 // The Rebrickable key is never sent here. The app calls Rebrickable's API
 // itself (its CORS allows any page) and sends on only what came back.
@@ -42,37 +78,61 @@
 // numbers the app exports wanted lists with (colors.json's bricklink, from
 // tools/bricklink_colours.py), read into the same index. A colour neither
 // knows is left out and said so, never guessed: a guessed colour is the
-// wrong plastic.
+// wrong plastic. A lot given in LDraw's numbers is an LDConfig colour code
+// (COLOUR_NAMES), never 16 or 24, and never null, "", false or a word.
 //
 // Refused, with words: no sign-in (401), naming another account's
 // collection (403 — a collection is only ever its owner's, and there is no
-// way to ask for anyone else's), a body over MAX_BYTES or a collection over
-// MAX_SETS sets or MAX_LOTS lots (413), and a file that is not what it says
-// it is (400, with the line). The database's own row security is the
-// second lock (supabase/collection.sql).
+// way to ask for anyone else's), a body over MAX_BYTES (MAX_KEEP_BYTES for
+// Keep them and Take back) or a collection over MAX_SETS sets or MAX_LOTS
+// lots (413), and a file that is not what it says it is (400, with the
+// line). The database's own row security is the second lock
+// (supabase/collection.sql).
 
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
+import { COLOUR_NAMES } from "./_colours.js";
 import { db, dbConfigured } from "./_db.js";
 
 export const MAX_BYTES = 1_000_000;
+/// Keep them and Take back name every lot a session added, up to MAX_LOTS.
+export const MAX_KEEP_BYTES = 4_000_000;
 export const MAX_SETS = 5000;
 export const MAX_LOTS = 20000;
 const MAX_QTY = 100000;
 
 const SET_NUMBER = /^[a-z0-9][a-z0-9._]{0,24}(-[0-9]{1,3})?$/;
 const PART_NUMBER = /^[a-z0-9][a-z0-9._-]{0,40}$/;
-/// Who added a lot, as the session names itself ("Claude"), and which of
-/// its chats: words a person reads, and an id.
-const WHO = /^[\p{L}\p{N}][\p{L}\p{N} ._()+-]{0,59}$/u;
+/// Which of a session's chats added a lot: an id.
 const CHAT = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/;
-/// The most lots one "lots" request changes.
+/// A request's id: the app's, one per action.
+const REQUEST = /^[A-Za-z0-9._:-]{8,64}$/;
+/// The most lots one "lots" or "set" op changes.
 export const MOST_LOT_CHANGES = 2000;
+/// How many request ids a collection remembers.
+export const MOST_REMEMBERED = 100;
+/// How many times a change is made again on what another write left.
+const TRIES = 12;
+
+/// Where each import's lots and sets come from; "hand" is My collection's.
+export const HAND = "hand";
+export const SOURCE_OF = {
+  sets: HAND, rebrickable_api: "rebrickable", rebrickable_csv: "rebrickable_csv", bricklink_xml: "bricklink_xml",
+};
+const SOURCES = new Set(Object.values(SOURCE_OF));
 
 export class Refusal extends Error {
   constructor(status, message) {
     super(message);
     this.status = status;
+  }
+}
+
+/// What the person saw is no longer so: 409, with the collection as it is.
+export class Conflict extends Refusal {
+  constructor(message, row) {
+    super(409, message);
+    this.row = row;
   }
 }
 
@@ -96,6 +156,7 @@ export function joins() {
   }
   throw new Refusal(503, "the parts index is not on this deployment");
 }
+
 
 /// "10237" is "10237-1": Rebrickable's and BrickLink's first version.
 export function setNumber(raw) {
@@ -269,106 +330,291 @@ function mapped(parsed, numbering, index) {
   return { sets, parts, leftOut };
 }
 
-/// One lot per part and colour of the person's own, and one per part,
-/// colour, session and chat of what a session added.
+// --- lots and sets, as kept ---------------------------------------------------
+
+/// One lot per part, colour and where it came from: the person's own by
+/// source, a session's by who and which chat. Keyed as a list, so no name
+/// can be read as another's.
 export function lotKey(p) {
-  return p.by ? `${p.part}/${p.colour}/${p.by}/${p.chat || ""}` : `${p.part}/${p.colour}`;
+  return JSON.stringify([p.part, p.colour, p.src || "", p.by || "", p.chat || ""]);
 }
 
-function merged(have, add, mode) {
-  const sets = new Map();
-  const parts = new Map();
-  const keepSets = !(mode === "replace" && add.sets.length > 0);
-  const keepParts = !(mode === "replace" && add.parts.length > 0);
-  for (const s of keepSets ? have.sets : []) sets.set(s.set, { ...s });
-  for (const p of keepParts ? have.parts : []) parts.set(lotKey(p), { ...p });
-  for (const s of add.sets) {
-    const held = sets.get(s.set);
-    if (held) { held.qty = Math.min(MAX_QTY, held.qty + s.qty); held.spares = held.spares || s.spares; }
-    else sets.set(s.set, { ...s });
-  }
-  for (const p of add.parts) {
-    const key = lotKey(p);
-    const held = parts.get(key);
-    if (held) held.qty = Math.min(MAX_QTY, held.qty + p.qty);
-    else parts.set(key, { ...p });
-  }
-  return { sets: [...sets.values()], parts: [...parts.values()] };
+/// One set entry per set number and source.
+export function setKey(s) {
+  return JSON.stringify([s.set, s.src || ""]);
 }
 
-/// A lot as the app or a session sends it, checked field by field: its part,
-/// LDraw colour, count (0 allowed where [zero], a lot set to none), and who
-/// added it, if a session did.
-export function lotOf(p, where, zero = false) {
+/// A session's name as a person reads it: any printable name, with control
+/// characters, line breaks and the marks that turn text round made spaces,
+/// spaces run together, trimmed, 60 characters at most. Collection.who_name
+/// in the app is the same, so a lot the app marks is found by its name.
+export function whoName(raw) {
+  const text = String(raw ?? "")
+    .replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g, " ")
+    .replace(/ {2,}/g, " ")
+    .replace(/^ +| +$/g, "");
+  return [...text].slice(0, 60).join("").replace(/ +$/, "");
+}
+
+/// An LDraw colour code as LDConfig has it: a whole number, never 16 (the
+/// colour a part is placed in) or 24 (its edges), and never null, "",
+/// false or a word, which Number() would have made Black.
+export function colourOf(raw, where) {
+  const text = typeof raw === "number" ? String(raw) : typeof raw === "string" ? raw.trim() : "";
+  const code = /^[0-9]{1,9}$/.test(text) ? Number(text) : NaN;
+  if (!Number.isInteger(code) || !Object.hasOwn(COLOUR_NAMES, code) || code === 16 || code === 24) {
+    throw new Refusal(400, `${where}: the colour ${JSON.stringify(raw ?? null)} is not an LDraw colour code`);
+  }
+  return code;
+}
+
+/// A whole number from [least] to MAX_QTY, given as a number or its digits.
+function counted(raw, where, least = 1, what = "count") {
+  const text = typeof raw === "number" ? String(raw) : typeof raw === "string" ? raw.trim() : "";
+  if (!/^[0-9]{1,9}$/.test(text)) {
+    throw new Refusal(400, `${where}: the ${what} ${JSON.stringify(raw ?? null)} is not a whole number`);
+  }
+  const n = Number(text);
+  if (n < least || n > MAX_QTY) throw new Refusal(400, `${where}: a ${what} of ${n} is outside ${least} to ${MAX_QTY}`);
+  return n;
+}
+
+/// A lot as an op names it: its part, its LDraw colour, and whose it is:
+/// where it came from (src; none for one kept before sources were), or
+/// the session that added it (by, chat). [session] "must" refuses the
+/// person's own.
+export function lotId(p, where, session = "may") {
   const part = partNumber(p?.part);
   if (!part) throw new Refusal(400, `${where}: "${p?.part}" is not a part number`);
-  const colour = Number(p?.colour);
-  if (!Number.isInteger(colour) || colour < 0 || colour > 0x3ffffff) {
-    throw new Refusal(400, `${where}: the colour "${p?.colour}" is not an LDraw colour code`);
+  const lot = { part, colour: colourOf(p?.colour, where) };
+  if (p?.by !== undefined && p?.by !== null && typeof p.by !== "string") {
+    throw new Refusal(400, `${where}: who added it is a name`);
   }
-  const qty = zero && String(p?.qty ?? "").trim() === "0" ? 0 : quantity(p?.qty, where);
-  const lot = { part, colour, qty };
-  const by = p?.by === undefined || p?.by === null ? "" : String(p.by).trim();
+  const by = whoName(p?.by);
+  if (!by && String(p?.by ?? "") !== "") throw new Refusal(400, `${where}: ${JSON.stringify(p.by)} is not a name`);
   const chat = p?.chat === undefined || p?.chat === null ? "" : String(p.chat).trim();
+  const src = p?.src === undefined || p?.src === null ? "" : String(p.src);
   if (by) {
-    if (!WHO.test(by)) throw new Refusal(400, `${where}: "${by}" is not who added it`);
+    if (src) throw new Refusal(400, `${where}: a lot a session added comes from that session, not from ${src}`);
     lot.by = by;
     if (chat) {
       if (!CHAT.test(chat)) throw new Refusal(400, `${where}: "${chat}" is not a chat`);
       lot.chat = chat;
     }
-  } else if (chat) {
-    throw new Refusal(400, `${where}: a chat is said only with who added the lot`);
+    return lot;
+  }
+  if (chat) throw new Refusal(400, `${where}: a chat is said only with who added the lot`);
+  if (session === "must") {
+    throw new Refusal(400, `${where}: only a lot a session added is taken down, kept or taken back this way`);
+  }
+  if (src) {
+    if (!SOURCES.has(src)) throw new Refusal(400, `${where}: "${src}" is not where a lot comes from`);
+    lot.src = src;
   }
   return lot;
 }
 
-/// A "lots" body: {"set": [...], "add": [...]}, each a lot (lotOf).
-export function lotChanges(body) {
-  const set = Array.isArray(body?.set) ? body.set : [];
-  const add = Array.isArray(body?.add) ? body.add : [];
-  if (set.length + add.length === 0) throw new Refusal(400, "no lots to set or add");
-  if (set.length + add.length > MOST_LOT_CHANGES) {
-    throw new Refusal(413, `that is ${set.length + add.length} lots; one change is at most ${MOST_LOT_CHANGES}`);
+function said(lot) {
+  return `${lot.part} in colour ${lot.colour}${lot.by ? ` that ${lot.by} added` : ""}`;
+}
+
+/// Lots or sets by key, in their order; one added to the end when new.
+class Keyed {
+  constructor(keyOf, list = []) {
+    this.keyOf = keyOf;
+    this.list = [];
+    this.at = new Map();
+    for (const one of list) this.keep({ ...one });
   }
+
+  keep(one) {
+    const key = this.keyOf(one);
+    if (this.at.has(key)) return this.add(one, one.qty);
+    this.at.set(key, one);
+    this.list.push(one);
+    return one;
+  }
+
+  get(one) {
+    return this.at.get(this.keyOf(one));
+  }
+
+  /// [qty] more of [one], made at the end if new.
+  add(one, qty) {
+    const held = this.get(one);
+    if (held) {
+      held.qty = Math.min(MAX_QTY, held.qty + qty);
+      if (one.spares) held.spares = true;
+      return held;
+    }
+    return this.keep({ ...one, qty });
+  }
+
+  take(one) {
+    const held = this.get(one);
+    if (!held) return;
+    this.at.delete(this.keyOf(one));
+    this.list = this.list.filter((other) => other !== held);
+  }
+}
+
+/// [have] with an import added: each lot and set marked with [src]. In a
+/// replace, what [src] brought before (and what was kept before sources
+/// were) goes first: its sets when the import has sets, its lots when it
+/// has parts. Nothing of another source's, the person's own counting or a
+/// session's is touched.
+function merged(have, add, mode, src) {
+  const replaceSets = mode === "replace" && add.sets.length > 0;
+  const replaceParts = mode === "replace" && add.parts.length > 0;
+  const brought = (one) => !one.by && (one.src === src || !one.src);
+  const sets = new Keyed(setKey, have.sets.filter((s) => !(replaceSets && brought(s))));
+  const parts = new Keyed(lotKey, have.parts.filter((p) => !(replaceParts && brought(p))));
+  for (const s of add.sets) sets.add({ ...s, src }, s.qty);
+  for (const p of add.parts) parts.add({ ...p, src }, p.qty);
+  return { sets: sets.list, parts: parts.list };
+}
+
+function listed(body, field, most, where = field) {
+  const list = body?.[field] === undefined ? [] : body[field];
+  if (!Array.isArray(list)) throw new Refusal(400, `${where} is a list of lots`);
+  if (list.length > most) throw new Refusal(413, `that is ${list.length} lots; one change is at most ${most}`);
+  return list;
+}
+
+/// Lots named once each: an op that names one twice is refused.
+function once(ids, where) {
+  const seen = new Set();
+  ids.forEach((id, n) => {
+    const key = lotKey(id);
+    if (seen.has(key)) throw new Refusal(400, `${where} ${n + 1}: ${said(id)} is named twice`);
+    seen.add(key);
+  });
+}
+
+/// [have] changed by one op: {next: {sets, parts} or null for no change,
+/// done: what was done}. Refuses with words (400, 413) or, when what the
+/// person saw is no longer so, a Conflict carrying [have]; either way
+/// nothing is changed. Pure: made again on a fresh [have] when another
+/// write came first.
+export function applyOp(have, body) {
+  const op = String(body?.op || "");
+  const parts = new Keyed(lotKey, have.parts);
+  const sets = new Keyed(setKey, have.sets);
+  const next = () => ({ sets: sets.list, parts: parts.list });
+
+  if (op === "lots") {
+    const adding = listed(body, "add", MOST_LOT_CHANGES);
+    const removing = listed(body, "remove", MOST_LOT_CHANGES);
+    if (adding.length + removing.length === 0) throw new Refusal(400, "no lots to add or take off");
+    if (adding.length + removing.length > MOST_LOT_CHANGES) {
+      throw new Refusal(413, `that is ${adding.length + removing.length} lots; one change is at most ${MOST_LOT_CHANGES}`);
+    }
+    const adds = adding.map((p, n) => {
+      const id = lotId(p, `add ${n + 1}`);
+      if (!id.by) {
+        if (id.src && id.src !== HAND) throw new Refusal(400, `add ${n + 1}: a lot added here is the person's own (hand)`);
+        id.src = HAND;
+      }
+      return [id, counted(p?.qty, `add ${n + 1}`)];
+    });
+    const removes = removing.map((p, n) => [lotId(p, `remove ${n + 1}`, "must"),
+      p?.qty === undefined || p?.qty === null ? 0 : counted(p.qty, `remove ${n + 1}`, 0)]);
+    // A lot taken down all the way by one remove is not missing for the next.
+    const gone = new Set();
+    removes.forEach(([id, qty], n) => {
+      const held = parts.get(id);
+      if (!held) {
+        if (gone.has(lotKey(id))) return;
+        throw new Conflict(`remove ${n + 1}: ${id.part} in colour ${id.colour} is not a lot ${id.by} added`
+          + `${id.chat ? " in this chat" : ""} (the person may have kept it or taken it back)`, have);
+      }
+      if (qty === 0 || qty >= held.qty) {
+        parts.take(id);
+        gone.add(lotKey(id));
+      } else {
+        held.qty -= qty;
+      }
+    });
+    for (const [id, qty] of adds) parts.add(id, qty);
+    return { next: next(), done: { added: adds.length, taken_down: removes.length } };
+  }
+
+  if (op === "set") {
+    const changes = listed(body, "lots", MOST_LOT_CHANGES);
+    if (changes.length === 0) throw new Refusal(400, "no lots to set");
+    const ids = changes.map((p, n) => lotId(p, `lot ${n + 1}`));
+    once(ids, "lot");
+    const counts = changes.map((p, n) => [counted(p?.was, `lot ${n + 1}`, 1, "count seen"),
+      counted(p?.qty, `lot ${n + 1}`, 0)]);
+    ids.forEach((id, n) => {
+      const held = parts.get(id);
+      if (!held) throw new Conflict(`lot ${n + 1}: ${said(id)} is not there any more`, have);
+      if (held.qty !== counts[n][0]) {
+        throw new Conflict(`lot ${n + 1}: ${said(id)} is ${held.qty} now, not the ${counts[n][0]} shown`, have);
+      }
+    });
+    ids.forEach((id, n) => {
+      if (counts[n][1] === 0) parts.take(id);
+      else parts.get(id).qty = counts[n][1];
+    });
+    return { next: next(), done: { set: ids.length } };
+  }
+
+  if (op === "keep" || op === "take_back") {
+    const named = listed(body, "lots", MAX_LOTS);
+    if (named.length === 0) throw new Refusal(400, "no lots named");
+    const ids = named.map((p, n) => lotId(p, `lot ${n + 1}`, "must"));
+    once(ids, "lot");
+    const was = named.map((p, n) => counted(p?.was, `lot ${n + 1}`, 1, "count seen"));
+    ids.forEach((id, n) => {
+      const held = parts.get(id);
+      if (!held) throw new Conflict(`lot ${n + 1}: ${said(id)} is not there any more`, have);
+      if (held.qty !== was[n]) throw new Conflict(`lot ${n + 1}: ${said(id)} is ${held.qty} now, not the ${was[n]} shown`, have);
+    });
+    ids.forEach((id, n) => {
+      parts.take(id);
+      if (op === "keep") parts.add({ part: id.part, colour: id.colour, src: HAND }, was[n]);
+    });
+    return { next: next(), done: { [op === "keep" ? "kept" : "taken_back"]: ids.length } };
+  }
+
+  if (op === "remove_set") {
+    const set = setNumber(body?.set);
+    if (!set) throw new Refusal(400, `"${body?.set}" is not a set number`);
+    const src = body?.src === undefined || body?.src === null ? "" : String(body.src);
+    if (src && !SOURCES.has(src)) throw new Refusal(400, `"${src}" is not where a set comes from`);
+    const was = counted(body?.was, set, 1, "count seen");
+    const id = src ? { set, src } : { set };
+    const held = sets.get(id);
+    // Taken out already, elsewhere: what the person asked for is so.
+    if (!held) return { next: null, done: { removed_sets: 0 } };
+    if (held.qty !== was) throw new Conflict(`${set} is ${held.qty} now, not the ${was} shown`, have);
+    sets.take(id);
+    return { next: next(), done: { removed_sets: 1 } };
+  }
+
+  if (op === "start_over") {
+    const seen = body?.rev === undefined || body?.rev === null ? null : Number(body.rev);
+    const now = have.rev === undefined || have.rev === null ? null : Number(have.rev);
+    if (seen !== now) throw new Conflict("your collection changed since it was shown; here it is now", have);
+    if (have.sets.length + have.parts.length === 0) return { next: null, done: {} };
+    return { next: { sets: [], parts: [] }, done: { started_over: true } };
+  }
+
+  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set or start_over, "
+    + "or from rebrickable_csv, bricklink_xml, rebrickable_api or sets");
+}
+
+/// An import, as a change: {next, done}.
+function importing(have, body, imported) {
+  const mode = body?.mode === "replace" ? "replace" : "add";
   return {
-    set: set.map((p, n) => lotOf(p, `set ${n + 1}`, true)),
-    add: add.map((p, n) => lotOf(p, `add ${n + 1}`)),
+    next: merged(have, imported, mode, SOURCE_OF[String(body.from)]),
+    done: { imported: { sets: imported.sets.length, lots: imported.parts.length } },
   };
 }
 
-/// [have] with [changes] made: each "set" lot at exactly its count (0 takes
-/// it out), then each "add" added. Every other lot and every set as it was,
-/// in its place; a new lot at the end.
-export function withLots(have, changes) {
-  const parts = new Map();
-  for (const p of have.parts) parts.set(lotKey(p), { ...p });
-  for (const p of changes.set) {
-    const key = lotKey(p);
-    if (p.qty === 0) parts.delete(key);
-    else if (parts.has(key)) parts.get(key).qty = p.qty;
-    else parts.set(key, { ...p });
-  }
-  const next = merged({ sets: have.sets, parts: [...parts.values()] }, { sets: [], parts: changes.add }, "add");
-  return next;
-}
-
-/// A whole collection sent by the app, already in LDraw numbers: checked
-/// field by field, because it goes into the database as it is.
-export function wholeCollection(body) {
-  if (!body || !Array.isArray(body.sets) || !Array.isArray(body.parts)) {
-    throw new Refusal(400, "a collection is {sets: [...], parts: [...]}");
-  }
-  const sets = body.sets.map((s, n) => {
-    const set = setNumber(s?.set);
-    if (!set) throw new Refusal(400, `set ${n + 1}: "${s?.set}" is not a set number`);
-    return { set, qty: quantity(s?.qty, `set ${n + 1}`), spares: Boolean(s?.spares) };
-  });
-  // Who added a lot goes with it, so taking a set out keeps a session's
-  // lots its own.
-  const parts = body.parts.map((p, n) => lotOf(p, `part ${n + 1}`));
-  return merged({ sets: [], parts: [] }, { sets, parts }, "add");
-}
+// --- imports ----------------------------------------------------------------------
 
 /// An import, parsed and mapped. Exported for the probe, which checks the
 /// parsing without a database.
@@ -395,7 +641,7 @@ export function parseImport(body) {
     if (sets.length + parts.length === 0) throw new Refusal(400, "Rebrickable sent back no sets and no parts");
     parsed = { sets, parts };
   } else {
-    throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api, sets or lots");
+    throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api or sets");
   }
   return mapped(parsed, numbering, index);
 }
@@ -409,22 +655,69 @@ function within(collection) {
   }
 }
 
-async function read(owner) {
-  const rows = await db(`collections?owner=eq.${owner}&select=sets,parts,updated_at`);
+// --- the row ----------------------------------------------------------------------
+
+/// The row as kept, or an empty one ("there": false) when there is none.
+async function readRow(owner) {
+  const rows = await db(`collections?owner=eq.${owner}&select=sets,parts,updated_at,rev,recent`);
   const row = rows && rows[0];
-  return row
-    ? { sets: row.sets || [], parts: row.parts || [], updated_at: row.updated_at }
-    : { sets: [], parts: [], updated_at: null };
+  if (!row) return { there: false, sets: [], parts: [], updated_at: null, rev: null, recent: [] };
+  return {
+    there: true,
+    sets: Array.isArray(row.sets) ? row.sets : [],
+    parts: Array.isArray(row.parts) ? row.parts : [],
+    updated_at: row.updated_at ?? null,
+    rev: row.rev ?? null,
+    recent: Array.isArray(row.recent) ? row.recent : [],
+  };
 }
 
-async function write(owner, collection) {
-  const rows = await db("collections?on_conflict=owner", {
-    method: "POST",
-    prefer: "resolution=merge-duplicates,return=representation",
-    body: [{ owner, sets: collection.sets, parts: collection.parts, updated_at: new Date().toISOString() }],
-  });
-  const row = rows && rows[0];
-  return { sets: row.sets, parts: row.parts, updated_at: row.updated_at };
+/// What the app is sent of a row: never the request ids.
+function shown(row) {
+  return { sets: row.sets || [], parts: row.parts || [], updated_at: row.updated_at ?? null, rev: row.rev ?? null };
+}
+
+const pause = (attempt) => new Promise((done) => setTimeout(done, 15 + Math.random() * 40 * (attempt + 1)));
+
+/// [make] made on the row as kept and written only over that row: the rev
+/// it was made on is the PATCH's condition (a new row's, that there is
+/// none). When another write came first, nothing is written, and it is
+/// made again on what that one left. [id], when given, is remembered with
+/// the write, and a change whose id is remembered is not made again.
+/// Returns {row, done}; throws what [make] refuses.
+async function change(owner, make, id = "") {
+  for (let attempt = 0; attempt < TRIES; attempt++) {
+    const have = await readRow(owner);
+    if (id && have.recent.includes(id)) return { row: have, done: { again: true } };
+    const made = make(have);
+    if (!made.next) return { row: have, done: made.done };
+    within(made.next);
+    const kept = {
+      sets: made.next.sets,
+      parts: made.next.parts,
+      recent: id ? [...have.recent.filter((one) => one !== id), id].slice(-MOST_REMEMBERED) : have.recent,
+      updated_at: new Date().toISOString(),
+    };
+    let saved = null;
+    if (have.there) {
+      const held = have.rev === null ? "is.null" : `eq.${have.rev}`;
+      const rows = await db(`collections?owner=eq.${owner}&rev=${held}`,
+        { method: "PATCH", prefer: "return=representation", body: kept });
+      saved = rows && rows[0];
+    } else {
+      try {
+        const rows = await db("collections", { method: "POST", prefer: "return=representation", body: [{ owner, ...kept }] });
+        saved = rows && rows[0];
+      } catch (error) {
+        // Made by another write since it was read: read again.
+        if (!/: 409$/.test(String(error?.message))) throw error;
+      }
+    }
+    if (saved) return { row: saved, done: made.done };
+    await pause(attempt);
+  }
+  throw new Refusal(503, "your collection was being changed from elsewhere at that moment, so nothing was changed: "
+    + "try again");
 }
 
 function bodyOf(request) {
@@ -435,6 +728,12 @@ function bodyOf(request) {
     throw new Refusal(400, "the request is not JSON");
   }
 }
+
+/// What an older app's PUT is told: it would write a copy that may be days
+/// old over what another device changed since.
+export const UPDATE_WORDS = "This copy of Brickworks is older than the way collections are kept now: taking a "
+  + "set out from it could undo what you changed on another device, so nothing was changed. Update "
+  + "Brickworks (on the web, reload the page), then take the set out again.";
 
 export default async function handler(request, response) {
   response.setHeader("Access-Control-Allow-Origin", "*");
@@ -470,17 +769,21 @@ export default async function handler(request, response) {
     }
 
     const declared = Number(request.headers?.["content-length"] || 0);
-    if (declared > MAX_BYTES) throw new Refusal(413, `that is ${declared} bytes; an import is at most ${MAX_BYTES}`);
+    if (declared > MAX_KEEP_BYTES) throw new Refusal(413, `that is ${declared} bytes; a change is at most ${MAX_KEEP_BYTES}`);
 
     if (request.method === "GET") {
-      return response.status(200).json(await read(owner));
+      return response.status(200).json(shown(await readRow(owner)));
     }
     if (request.method === "DELETE") {
-      await db(`collections?owner=eq.${owner}`, { method: "DELETE" });
-      return response.status(200).json({ sets: [], parts: [], updated_at: null });
+      // An older app's Start over, asked first there: everything out, the
+      // row kept with the ids it remembers.
+      const { row } = await change(owner, (have) => ({
+        next: have.sets.length + have.parts.length ? { sets: [], parts: [] } : null, done: {},
+      }));
+      return response.status(200).json(shown(row));
     }
     if (request.method !== "POST" && request.method !== "PUT") {
-      throw new Refusal(405, "GET, POST, PUT or DELETE");
+      throw new Refusal(405, "GET, POST or DELETE");
     }
 
     const body = bodyOf(request);
@@ -488,34 +791,36 @@ export default async function handler(request, response) {
       throw new Refusal(403, "a collection is only ever its owner's");
     }
     const size = JSON.stringify(body ?? null).length;
-    if (size > MAX_BYTES) throw new Refusal(413, `that is ${size} bytes; an import is at most ${MAX_BYTES}`);
-
-    if (request.method === "PUT") {
-      const whole = wholeCollection(body);
-      within(whole);
-      return response.status(200).json(await write(owner, whole));
+    const most = ["keep", "take_back"].includes(body?.op) ? MAX_KEEP_BYTES : MAX_BYTES;
+    if (size > most) {
+      throw new Refusal(413, `that is ${size} bytes; ${body?.op ? "a change" : "an import"} is at most ${most}`);
     }
 
-    if (body?.from === "lots") {
-      const changes = lotChanges(body);
-      const next = withLots(await read(owner), changes);
-      within(next);
-      const saved = await write(owner, next);
-      return response.status(200).json({
-        ...saved, imported: { sets: 0, lots: changes.add.length, set: changes.set.length }, left_out: [],
-      });
+    if (request.method === "PUT") throw new Conflict(UPDATE_WORDS, await readRow(owner));
+
+    const id = body?.id === undefined || body?.id === null ? "" : String(body.id);
+    if (id && !REQUEST.test(id)) throw new Refusal(400, `"${id.slice(0, 80)}" is not a request id`);
+    if (body?.op !== undefined) {
+      // A change of lots adds and takes down: said again as it was, it is
+      // never made twice, so it says which it is.
+      if (body.op === "lots" && !id) throw new Refusal(400, "a change of lots says its id");
+      const { row, done } = await change(owner, (have) => applyOp(have, body), id);
+      return response.status(200).json({ ...shown(row), done });
     }
-    const mode = body?.mode === "replace" ? "replace" : "add";
+    if (!Object.hasOwn(SOURCE_OF, String(body?.from || ""))) {
+      throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api or sets, "
+        + "or op lots, set, keep, take_back, remove_set or start_over");
+    }
     const imported = parseImport(body);
-    const next = merged(await read(owner), imported, mode);
-    within(next);
-    const saved = await write(owner, next);
+    const { row, done } = await change(owner, (have) => importing(have, body, imported), id);
     return response.status(200).json({
-      ...saved,
-      imported: { sets: imported.sets.length, lots: imported.parts.length },
+      ...shown(row),
+      done,
+      imported: done.again ? { sets: 0, lots: 0 } : done.imported,
       left_out: Object.entries(imported.leftOut).map(([why, count]) => ({ why, count })),
     });
   } catch (error) {
+    if (error instanceof Conflict) return response.status(409).json({ error: error.message, ...shown(error.row) });
     if (error instanceof Refusal) return response.status(error.status).json({ error: error.message });
     // A database failure names the table and the status and nothing else.
     return response.status(502).json({ error: String(error.message || error).slice(0, 200) });

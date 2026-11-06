@@ -107,9 +107,13 @@ var _brickognize: Brickognize
 var _telling: ConfirmationDialog
 var _likeness: PartLike
 ## Counts typed into the lots' rows, sent together a moment after the last:
-## lot key -> [lot, count].
+## lot key -> [lot, the count its row shows as kept ({"qty"}), the count
+## typed]. Sent, or dropped, before any other change is (mybricks2).
 var _counts_typed: Dictionary = {}
 var _count_wait: Timer
+## A change at the account is being made: the next waits its turn, so each
+## says what was shown after the one before it.
+var _writing: bool = false
 ## A name -> LDraw code for every colour, as typed words say them
 ## (_colour_words): LDraw's, the LEGO Group's and the language's own.
 var _colour_names: Dictionary = {}
@@ -162,13 +166,18 @@ func open(page: String = "own") -> void:
 	visible = true
 	_rb_note.text = _rebrickable_note()
 	_show(page)
+	# What another device or a session changed since is shown, not a copy
+	# read at sign-in (mbreview finding 1).
+	if store.account != null and store.account.signed_in():
+		store.load_collection()
 
 
 ## What happens to a Rebrickable key, and, with the assistant in the window
 ## (Settings, Assistant (AI)), what it can do with the collection.
 static func _rebrickable_note() -> String:
 	return ("Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is "
-		+ "not kept; what comes back replaces the sets and loose parts in this collection."
+		+ "not kept; what comes back replaces what Rebrickable brought before. What you count here, "
+		+ "and what an assistant added, stay."
 		+ (" Ask the assistant for \"a small house from my collection\" and it builds from what you own."
 			if ShellPrefs.assistant_shown() else ""))
 
@@ -643,7 +652,8 @@ func _fill_own() -> void:
 		row.add_child(_label("%d ×" % int(entry["qty"]), 12, 1.0, 40.0))
 		row.add_child(_label(number, 12, 0.55, 90.0))
 		var name: Label = _label(str(record.get("n", "no inventory known for this set"))
-			+ (" (%d)" % int(record["y"]) if record.has("y") else ""), 12,
+			+ (" (%d)" % int(record["y"]) if record.has("y") else "")
+			+ _from_words(str(entry.get("src", ""))), 12,
 			1.0 if not record.is_empty() else 0.5)
 		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(name)
@@ -662,7 +672,7 @@ func _fill_own() -> void:
 		var drop := Button.new()
 		drop.text = "Remove"
 		drop.add_theme_font_size_override("font_size", 11)
-		drop.pressed.connect(_remove_set.bind(number))
+		drop.pressed.connect(_remove_set.bind(entry))
 		row.add_child(drop)
 		_own_rows.add_child(row)
 	# What a session added first, apart, to be looked over: kept as the
@@ -691,16 +701,20 @@ func _fill_own() -> void:
 		_own_rows.add_child(heading)
 		for lot: Dictionary in added.slice(0, MOST_ROWS):
 			_own_rows.add_child(_lot_row(lot))
-	var loose: Array = mine.own_lots()
-	if not loose.is_empty():
-		_own_rows.add_child(_label("Loose parts — %s" % Counted.of(loose.size(), "lot"), 12, 0.6))
+	# The person's own, under where each came from: what they counted here
+	# first, then each import's (a Rebrickable fetch replaces only its own).
 	var shown: int = 0
-	for entry: Dictionary in loose:
-		if shown >= MOST_ROWS:
-			_own_rows.add_child(_label("…and %d more lots" % (loose.size() - shown), 12, 0.5))
-			break
-		shown += 1
-		_own_rows.add_child(_lot_row(entry))
+	for from: String in Collection.SOURCES:
+		var loose: Array = mine.own_lots(from)
+		if loose.is_empty():
+			continue
+		_own_rows.add_child(_label("%s — %s" % [Collection.SOURCES[from], Counted.of(loose.size(), "lot")], 12, 0.6))
+		for n: int in loose.size():
+			if shown >= MOST_ROWS:
+				_own_rows.add_child(_label("…and %d more lots" % (loose.size() - n), 12, 0.5))
+				break
+			shown += 1
+			_own_rows.add_child(_lot_row(loose[n]))
 
 
 func _part_row(part: String, colour: int, count: String) -> HBoxContainer:
@@ -735,7 +749,9 @@ func _lot_row(lot: Dictionary) -> HBoxContainer:
 	count.custom_minimum_size = Vector2(64, 0)
 	count.get_line_edit().add_theme_font_size_override("font_size", 12)
 	count.tooltip_text = "How many you have; changed here, kept with your account"
-	count.value_changed.connect(func(value: float) -> void: _count_typed(lot, int(value)))
+	# The count this row shows as kept: what a change typed here says it saw.
+	var kept: Dictionary = {"qty": int(lot["qty"])}
+	count.value_changed.connect(func(value: float) -> void: _count_typed(lot, kept, int(value)))
 	row.add_child(count)
 	row.move_child(count, 0)
 	row.set_meta("lot", lot)
@@ -743,7 +759,7 @@ func _lot_row(lot: Dictionary) -> HBoxContainer:
 	drop.text = "Remove"
 	drop.tooltip_text = "Take this lot out of your collection"
 	drop.add_theme_font_size_override("font_size", 11)
-	drop.pressed.connect(func() -> void: remove_lot(lot))
+	drop.pressed.connect(func() -> void: remove_lot(lot, kept))
 	row.add_child(drop)
 	return row
 
@@ -983,7 +999,9 @@ func _add_typed() -> void:
 		_say("type a set number first, like 10237-1")
 		return
 	_say("adding %s…" % text)
+	await _begin()
 	var result: Dictionary = await store.add({"from": "sets", "text": text, "mode": "add"})
+	_end()
 	if not str(result["error"]).is_empty():
 		_say(str(result["error"]))
 		return
@@ -995,7 +1013,9 @@ func _add_typed() -> void:
 
 func _on_file(text: String, file_name: String) -> void:
 	_say("reading %s…" % file_name)
+	await _begin()
 	var result: Dictionary = await store.add({"from": _picking, "text": text, "mode": "add"})
+	_end()
 	_report(result, file_name)
 
 
@@ -1010,8 +1030,10 @@ func _fetch_rebrickable() -> void:
 	if (got["sets"] as Array).is_empty() and (got["parts"] as Array).is_empty():
 		_say("Rebrickable has no sets or parts lists for that account")
 		return
+	await _begin()
 	var result: Dictionary = await store.add({"from": "rebrickable_api", "sets": got["sets"],
 		"parts": got["parts"], "mode": "replace"})
+	_end()
 	_report(result, "your Rebrickable account")
 
 
@@ -1211,10 +1233,11 @@ func add_loose() -> void:
 	var count: int = int(_loose_count.value)
 	var info: PartLibrary.PartInfo = library.parts.get(_loose_part)
 	_say("adding %d × %s…" % [count, Inventory._tidy(info.name)])
-	var trouble: String = await store.change_lots([],
-		[{"part": _loose_part, "colour": colour, "qty": count}])
-	if not trouble.is_empty():
-		_say(trouble)
+	await _begin()
+	var done: Dictionary = await store.change_lots([{"part": _loose_part, "colour": colour, "qty": count}])
+	_end()
+	if done["kind"] != CollectionStore.DONE:
+		_say(str(done["said"]))
 		return
 	_say("added %d × %s in %s" % [count, Inventory._tidy(info.name), _colour(colour)])
 	_loose_search.text = ""
@@ -1222,63 +1245,108 @@ func add_loose() -> void:
 	_loose_search.grab_focus()
 
 
+## A change's turn: after the one being made, and after any count still
+## being typed is sent, so what it says it saw is what is shown.
+func _begin() -> void:
+	while _writing:
+		await get_tree().process_frame
+	_writing = true
+	_count_wait.stop()
+	await _send_typed()
+
+
+func _end() -> void:
+	_writing = false
+
+
 ## A lot's count typed into its row: sent with any others typed a moment
-## after the last, as one change.
-func _count_typed(lot: Dictionary, count: int) -> void:
-	if count == int(lot["qty"]):
+## after the last, as one change, from the count the row showed.
+func _count_typed(lot: Dictionary, kept: Dictionary, count: int) -> void:
+	var key: String = _lot_key(lot)
+	if count == int(kept["qty"]) and not _counts_typed.has(key):
 		return
-	_counts_typed[_lot_key(lot)] = [lot, count]
+	_counts_typed[key] = [lot, kept, count]
 	_count_wait.start()
 
 
 func _send_counts() -> void:
-	var set_to: Array = []
+	await _begin()
+	_end()
+
+
+## The counts typed, sent: each from the count its row showed as kept.
+## Refused when any is no longer that, and the collection shown as it is.
+func _send_typed() -> void:
+	var asked: Array = []
+	var rows: Array = []
 	for key: String in _counts_typed:
-		var lot: Dictionary = (_counts_typed[key][0] as Dictionary).duplicate()
-		lot["qty"] = int(_counts_typed[key][1])
-		set_to.append(lot)
+		var entry: Array = _counts_typed[key]
+		if int(entry[2]) == int((entry[1] as Dictionary)["qty"]):
+			continue
+		var one: Dictionary = (entry[0] as Dictionary).duplicate()
+		one["qty"] = int((entry[1] as Dictionary)["qty"])
+		one["to"] = int(entry[2])
+		asked.append(one)
+		rows.append(entry)
 	_counts_typed.clear()
-	if set_to.is_empty():
+	if asked.is_empty():
 		return
-	var trouble: String = await store.change_lots(set_to, [])
-	_say(trouble if not trouble.is_empty() else "kept: %s" % ", ".join(set_to.map(
-		func(lot: Dictionary) -> String: return "%d × %s" % [int(lot["qty"]), str(lot["part"])])))
+	var done: Dictionary = await store.set_counts(asked)
+	if done["kind"] == CollectionStore.DONE:
+		for entry: Array in rows:
+			(entry[1] as Dictionary)["qty"] = int(entry[2])
+	_say(str(done["said"]) if done["kind"] != CollectionStore.DONE else "kept: %s" % ", ".join(asked.map(
+		func(lot: Dictionary) -> String: return "%d × %s" % [int(lot["to"]), str(lot["part"])])))
 
 
-## [param lot]'s count put at [param count], at once (a probe's, and
-## [method _count_typed]'s, way).
+## [param lot]'s count, as shown, put at [param count] at once (a probe's
+## way; a row's own goes by [method _count_typed]). Returns what went wrong.
 func set_lot_count(lot: Dictionary, count: int) -> String:
-	var changed: Dictionary = lot.duplicate()
-	changed["qty"] = count
-	var trouble: String = await store.change_lots([changed], [])
-	_say(trouble if not trouble.is_empty() else "kept: %d × %s" % [count, str(lot["part"])])
-	return trouble
+	await _begin()
+	var asked: Dictionary = lot.duplicate()
+	asked["to"] = count
+	var done: Dictionary = await store.set_counts([asked])
+	_end()
+	_say(str(done["said"]) if done["kind"] != CollectionStore.DONE else "kept: %d × %s" % [count, str(lot["part"])])
+	return str(done["said"])
 
 
-func remove_lot(lot: Dictionary) -> String:
-	var gone: Dictionary = lot.duplicate()
-	gone["qty"] = 0
-	var trouble: String = await store.change_lots([gone], [])
+## [param lot] taken out, at the count its row shows ([param kept], once a
+## count typed there is sent; the lot's own when none). Returns what went
+## wrong.
+func remove_lot(lot: Dictionary, kept: Dictionary = {}) -> String:
+	await _begin()
+	var asked: Dictionary = lot.duplicate()
+	asked["qty"] = int(kept.get("qty", lot["qty"]))
+	asked["to"] = 0
+	var done: Dictionary = await store.set_counts([asked])
+	_end()
 	var info: PartLibrary.PartInfo = library.parts.get(str(lot["part"]))
-	_say(trouble if not trouble.is_empty() else "took out %d × %s in %s" % [int(lot["qty"]),
+	_say(str(done["said"]) if done["kind"] != CollectionStore.DONE else "took out %d × %s in %s" % [int(asked["qty"]),
 		Inventory._tidy(info.name) if info != null else str(lot["part"]), _colour(int(lot["colour"]))])
-	return trouble
+	return str(done["said"])
 
 
 func _take_back() -> void:
+	await _begin()
 	var count: int = store.collection.added_lots().size()
-	var trouble: String = await store.take_back()
-	_say(trouble if not trouble.is_empty() else "took back the %s added" % Counted.of(count, "lot"))
+	var done: Dictionary = await store.take_back()
+	_end()
+	_say(str(done["said"]) if done["kind"] != CollectionStore.DONE
+		else "took back the %s added" % Counted.of(count, "lot"))
 
 
 func _keep_added() -> void:
+	await _begin()
 	var count: int = store.collection.added_lots().size()
-	var trouble: String = await store.keep_added()
-	_say(trouble if not trouble.is_empty() else "kept the %s as your own" % Counted.of(count, "lot"))
+	var done: Dictionary = await store.keep_added()
+	_end()
+	_say(str(done["said"]) if done["kind"] != CollectionStore.DONE
+		else "kept the %s as your own" % Counted.of(count, "lot"))
 
 
 static func _lot_key(lot: Dictionary) -> String:
-	return "%s/%d/%s/%s" % [lot["part"], int(lot["colour"]), lot.get("by", ""), lot.get("chat", "")]
+	return JSON.stringify([lot["part"], int(lot["colour"]), lot.get("src", ""), lot.get("by", ""), lot.get("chat", "")])
 
 
 ## The colour the row has chosen: the list's, or the bin's while it has none.
@@ -1430,20 +1498,34 @@ func loose_chosen() -> Dictionary:
 		"listed": _loose_listed.map(func(info: PartLibrary.PartInfo) -> String: return info.id)}
 
 
-func _remove_set(number: String) -> void:
-	var next := Collection.from_json(store.collection.to_json())
-	var kept: Array = []
-	for entry: Dictionary in next.sets:
-		if str(entry["set"]) != number:
-			kept.append(entry)
-	next.sets = kept
-	var trouble: String = await store.put(next)
-	_say(trouble if not trouble.is_empty() else "took %s out" % number)
+## A set taken out, at the count shown: nothing else in the collection is
+## written (mbreview finding 1: the whole collection, from a copy read at
+## sign-in, was).
+func _remove_set(entry: Dictionary) -> void:
+	await _begin()
+	var done: Dictionary = await store.remove_set(entry)
+	_end()
+	_say(str(done["said"]) if done["kind"] != CollectionStore.DONE else "took %s out" % str(entry["set"]))
 
 
 func _on_clear() -> void:
-	var trouble: String = await store.clear()
-	_say(trouble if not trouble.is_empty() else "your collection is empty")
+	await _begin()
+	var done: Dictionary = await store.clear()
+	_end()
+	_say(str(done["said"]) + (": Start over again to forget it all" if done["kind"] == CollectionStore.CONFLICT else "")
+		if done["kind"] != CollectionStore.DONE else "your collection is empty")
+
+
+## Where a set came from, as its row says it: nothing for one typed here.
+static func _from_words(from: String) -> String:
+	match from:
+		"rebrickable":
+			return " · from Rebrickable"
+		"rebrickable_csv":
+			return " · from a Rebrickable export"
+		"bricklink_xml":
+			return " · from a BrickLink XML"
+	return ""
 
 
 # --- words --------------------------------------------------------------

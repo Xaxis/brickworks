@@ -13,6 +13,8 @@ description: Tell Brickworks the sets and parts you own, then see what a model n
 
 **File › My collection…** keeps the sets and loose parts you own. Bring them in from your Rebrickable account (with your own Rebrickable key), from a BrickLink or Rebrickable list, or type them in. Each set is counted out into its parts. Your collection is kept with your account, so it is there on every device you sign in on.
 
+Each change you make is made on your collection as your account keeps it, so a change made at the same moment on another device, or by Claude, is kept as well as yours. If a count you change was changed somewhere else since you looked, nothing is changed: My collection says so and shows the collection as it is now, for you to change it again. Fetching from your Rebrickable account again replaces only what came from Rebrickable before; the parts you count by hand and the lists you brought in stay. A copy of Brickworks from before this asks you to update it (on the web, reload the page) before it takes a set out.
+
 <!-- covers
 ui:my collection
 lib:a rebrickable account
@@ -28,7 +30,7 @@ ui:loose parts in my collection
 lib:a session's loose parts over mcp
 -->
 
-Most people own a tub of loose bricks as well as their sets. Under *What I own*, the **Loose parts** row adds them a lot at a time: type the part's number or a few words (*red 2x4 brick*, *3001*, or a BrickLink number), or choose **Photo…** to find it from a picture, or take a part in the parts bin; then pick its colour, say how many, and choose **Add**. **Like this** offers the parts that look like the one chosen. Each lot is listed under *Loose parts*, where you can change its count or remove it. Adding more of a part and colour you already have adds to that lot.
+Most people own a tub of loose bricks as well as their sets. Under *What I own*, the **Loose parts** row adds them a lot at a time: type the part's number or a few words (*red 2x4 brick*, *3001*, or a BrickLink number), or choose **Photo…** to find it from a picture, or take a part in the parts bin; then pick its colour, say how many, and choose **Add**. **Like this** offers the parts that look like the one chosen. Each lot is listed under *Loose parts* (lots brought in from a list are listed under where they came from), where you can change its count or remove it. Adding more of a part and colour you already have adds to that lot.
 
 What do I need? and What can I build? count your loose parts with your sets', and they are kept with your account like the rest.
 

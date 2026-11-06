@@ -86,6 +86,9 @@ class Client extends RefCounted:
 	## Set when the connection has gone, so a tool that finishes after
 	## that has something to check rather than writing into nothing.
 	var gone: bool = false
+	## This connection's own name, for what a call on it marks as its
+	## session's when it names no chat (AppTools.connection).
+	var id: String = "line-" + Crypto.new().generate_random_bytes(8).hex_encode()
 
 
 var _server := TCPServer.new()
@@ -296,7 +299,10 @@ func _serve_http(client: Client, head: String, body: String) -> void:
 		return
 	var request: Dictionary = parsed
 	var method: String = str(request.get("method", ""))
-	var answer: Variant = await answer_rpc(request)
+	# The session a call came on, by the id it was handed at initialize, or
+	# this connection when it keeps none.
+	var answer: Variant = await answer_rpc(request,
+		"mcp-" + session.get_slice(".", 0).left(32) if not session.is_empty() else "http-" + client.id)
 	if answer == null:
 		# A notification has no id and wants no answer.
 		_http(client, 202, "")
@@ -356,7 +362,7 @@ static func _from_a_web_page(head: String) -> bool:
 ## none. The desktop's HTTP port and the web's connector relay
 ## (src/net/claude_connector.gd) both come here, so the two cannot answer the
 ## protocol differently.
-func answer_rpc(request: Dictionary) -> Variant:
+func answer_rpc(request: Dictionary, connection: String = "") -> Variant:
 	var method: String = str(request.get("method", ""))
 	var sent_id: Variant = request.get("id")
 	var params: Dictionary = request.get("params", {}) as Dictionary
@@ -397,7 +403,7 @@ func answer_rpc(request: Dictionary) -> Variant:
 				jobs.running() != null or _in_hand > 0))
 		asked.emit(name)
 		var call := ToolJobs.Entry.new()
-		var called: Array = await _call(name, input, call, chat_of(params), who_of(params))
+		var called: Array = await _call(name, input, call, chat_of(params), who_of(params), connection)
 		if not bool(called[1]):
 			return _result(sent_id, {"isError": true, "content": [
 				{"type": "text", "text": QUEUED_OUT}]})
@@ -779,7 +785,7 @@ func _answer(client: Client, line: String) -> void:
 		return
 
 	asked.emit(tool)
-	var called: Array = await _call(tool, input)
+	var called: Array = await _call(tool, input, null, "", CLAUDE, client.id)
 	if not bool(called[1]):
 		_reply(client, id, false, QUEUED_OUT)
 		return
@@ -805,7 +811,7 @@ var jobs := ToolJobs.new()
 ## the app until the work ends. While a job holds the app every other call
 ## is told so at once, and [code]job[/code] says how it is going.
 func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: String = "",
-		who: String = CLAUDE) -> Array:
+		who: String = CLAUDE, connection: String = "") -> Array:
 	if name == ToolJobs.TOOL:
 		return [await jobs.answer(input), true]
 	# The fresh look a new design's first save asked for, and the final look
@@ -868,7 +874,7 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 		var answer: Variant = "Cancelled before it began: nothing was done."
 		await _until_whole()
 		if work == null or not work.cancelled:
-			answer = await _run(name, input, work, chat, who)
+			answer = await _run(name, input, work, chat, who, connection)
 		_hand_back()
 		return answer, doing, entry), true]
 
@@ -886,7 +892,7 @@ func _heard(note: String) -> void:
 ## the Working job it reports to when it is a job, or the assistant's. What
 ## it changes is one step of the history (see [method _one_step]).
 func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
-		who: String = CLAUDE) -> Variant:
+		who: String = CLAUDE, connection: String = "") -> Variant:
 	# A design going down on the example a first visit opens on: the example
 	# off first, before the call's step begins (Assistant.make_room), so the
 	# design is a model of its own and its Undo leaves that model empty.
@@ -900,8 +906,10 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	assistant.who = who
 	if _the_app_tools().has(name):
 		_the_app_tools().chat = chat
+		_the_app_tools().connection = connection
 		answer = await _the_app_tools().run(name, input, work)
 		_the_app_tools().chat = ""
+		_the_app_tools().connection = ""
 	else:
 		answer = await assistant.use_tool(name, input)
 	assistant.chat = ""

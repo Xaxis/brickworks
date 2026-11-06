@@ -25,15 +25,32 @@
 class_name Collection
 extends RefCounted
 
-## [{"set": "10237-1", "qty": 1, "spares": false}, ...]
+## [{"set": "10237-1", "qty": 1, "spares": false, "src": "hand"}, ...]
 var sets: Array = []
-## [{"part": "3001", "colour": 4, "qty": 12}, ...]; a lot a session added
-## also says who ("by": "Claude") and which of its chats ("chat"), and is a
-## lot apart from the person's own of the same part and colour, so taking
-## back what it added takes back exactly that (mybricks, 2026-11-06).
+## [{"part": "3001", "colour": 4, "qty": 12, "src": "hand"}, ...]. Each lot
+## and set says where it came from ("src", [constant SOURCES]; none for one
+## kept before sources were), and a lot a session added says who instead
+## ("by": "Claude") and which of its chats ("chat"). Each is a lot apart
+## from the same part and colour from anywhere else, so a Rebrickable fetch
+## replaces only what Rebrickable brought, and taking back what a session
+## added takes back exactly that (mybricks, mybricks2, 2026-11-06).
 var parts: Array = []
 ## When the account last kept it, as the server says; empty when never.
 var updated_at: String = ""
+## The account's rev of it (supabase/collection_ops.sql): what Start over
+## says it saw. Null when the account keeps none, or for a copy from
+## before revs were.
+var rev: Variant = null
+
+## Where a lot or a set came from, and the words My collection heads it
+## with. "hand" is My collection's own: a lot added there, a set typed.
+const SOURCES := {
+	"hand": "Loose parts",
+	"rebrickable": "From your Rebrickable account",
+	"rebrickable_csv": "From a Rebrickable export",
+	"bricklink_xml": "From a BrickLink XML",
+	"": "Loose parts brought in before",
+}
 
 ## Set numbers [method pool] was given no inventory for, last time.
 var unknown_sets: PackedStringArray = PackedStringArray()
@@ -46,26 +63,67 @@ static func from_json(data: Variant) -> Collection:
 	var body: Dictionary = data
 	for entry: Variant in body.get("sets", []):
 		if typeof(entry) == TYPE_DICTIONARY and str((entry as Dictionary).get("set", "")) != "":
-			made.sets.append({"set": str(entry["set"]), "qty": maxi(1, int(entry.get("qty", 1))),
-				"spares": bool(entry.get("spares", false))})
+			var kept: Dictionary = {"set": str(entry["set"]), "qty": maxi(1, int(entry.get("qty", 1))),
+				"spares": bool(entry.get("spares", false))}
+			var from: String = _text(entry, "src")
+			if not from.is_empty():
+				kept["src"] = from
+			made.sets.append(kept)
 	for entry: Variant in body.get("parts", []):
 		if typeof(entry) == TYPE_DICTIONARY and str((entry as Dictionary).get("part", "")) != "":
 			var lot: Dictionary = {"part": str(entry["part"]), "colour": int(entry.get("colour", 0)),
 				"qty": maxi(1, int(entry.get("qty", 1)))}
-			var by: String = str(entry.get("by", "")) if entry.get("by") != null else ""
+			var by: String = _text(entry, "by")
 			if not by.is_empty():
 				lot["by"] = by
-				var chat: String = str(entry.get("chat", "")) if entry.get("chat") != null else ""
+				var chat: String = _text(entry, "chat")
 				if not chat.is_empty():
 					lot["chat"] = chat
+			else:
+				var from: String = _text(entry, "src")
+				if not from.is_empty():
+					lot["src"] = from
 			made.parts.append(lot)
 	var when: Variant = body.get("updated_at")
 	made.updated_at = str(when) if when != null else ""
+	var kept_rev: Variant = body.get("rev")
+	made.rev = int(kept_rev) if kept_rev is float or kept_rev is int else null
 	return made
 
 
+static func _text(entry: Dictionary, field: String) -> String:
+	return str(entry.get(field, "")) if entry.get(field) != null else ""
+
+
 func to_json() -> Dictionary:
-	return {"sets": sets, "parts": parts, "updated_at": updated_at}
+	return {"sets": sets, "parts": parts, "updated_at": updated_at, "rev": rev}
+
+
+## A lot or a set as an op names it (api/collection.js lotId): its part and
+## colour, or its set number, and whose it is. No count.
+static func named(entry: Dictionary) -> Dictionary:
+	var out: Dictionary = {"set": entry["set"]} if entry.has("set") \
+		else {"part": entry["part"], "colour": int(entry["colour"])}
+	for field: String in ["src", "by", "chat"]:
+		if not str(entry.get(field, "")).is_empty():
+			out[field] = entry[field]
+	return out
+
+
+## A session's name as a person reads it, the account's way
+## (api/collection.js whoName): any printable name, with control
+## characters, line breaks and the marks that turn text round made spaces,
+## spaces run together, trimmed, 60 characters at most.
+static func who_name(raw: String) -> String:
+	var out := ""
+	for at: int in raw.length():
+		var c: int = raw.unicode_at(at)
+		var gone: bool = c < 32 or (c >= 127 and c <= 159) or c == 0x2028 or c == 0x2029 \
+			or (c >= 0x202A and c <= 0x202E) or (c >= 0x2066 and c <= 0x2069)
+		out += " " if gone else String.chr(c)
+	while out.contains("  "):
+		out = out.replace("  ", " ")
+	return out.lstrip(" ").rstrip(" ").left(60).rstrip(" ")
 
 
 func is_empty() -> bool:
@@ -86,9 +144,11 @@ func loose_pieces() -> int:
 	return total
 
 
-## The loose lots the person gave themselves, in their order.
-func own_lots() -> Array:
-	return parts.filter(func(lot: Dictionary) -> bool: return str(lot.get("by", "")).is_empty())
+## The loose lots the person gave themselves, in their order; only those
+## from [param from] when it is given ("" for those kept before sources).
+func own_lots(from: Variant = null) -> Array:
+	return parts.filter(func(lot: Dictionary) -> bool:
+		return str(lot.get("by", "")).is_empty() and (from == null or str(lot.get("src", "")) == str(from)))
 
 
 ## The loose lots a session added, in their order; only [param chat]'s
@@ -99,12 +159,14 @@ func added_lots(chat: String = "") -> Array:
 			and (chat.is_empty() or str(lot.get("chat", "")) == chat))
 
 
-## The lot [param part] in [param colour] of [param by]'s and [param chat]'s
-## (the person's own when [param by] is empty), or {}.
-func lot_of(part: String, colour: int, by: String = "", chat: String = "") -> Dictionary:
+## The lot [param part] in [param colour] of [param by]'s and [param chat]'s,
+## or, when [param by] is empty, the person's own from [param from] (any
+## source when null); {} when there is none.
+func lot_of(part: String, colour: int, by: String = "", chat: String = "", from: Variant = null) -> Dictionary:
 	for lot: Dictionary in parts:
 		if str(lot["part"]) == part and int(lot["colour"]) == colour \
-				and str(lot.get("by", "")) == by and str(lot.get("chat", "")) == chat:
+				and str(lot.get("by", "")) == by and str(lot.get("chat", "")) == chat \
+				and (not by.is_empty() or from == null or str(lot.get("src", "")) == str(from)):
 			return lot
 	return {}
 

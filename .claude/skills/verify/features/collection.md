@@ -38,22 +38,34 @@ which models they could build from what they have. Added 2026-10-12.
   photo's colour taken when Brickognize is sure); Like this (`PartLike`); or
   a part chosen in the bin while the page is open, in the bin's colour. The
   colour list has the colours the part was made in first. How many, Add (Enter
-  in the count adds). Each lot is listed under Loose parts with its count
-  changed in place (sent 0.6 s after the last change) and Remove; a lot of a
-  part and colour already there adds to it. Every change goes to the account
-  as `"from": "lots"` (`CollectionStore.change_lots`): only the lots named
-  change, so what another device changed stays.
+  in the count adds). Each lot is listed under where it came from (By hand,
+  Rebrickable, a Rebrickable CSV, a BrickLink XML) with its count changed in
+  place (sent 0.6 s after the last change, or at once before any other
+  press) and Remove; a lot of a part and colour already there adds to it.
+  Written so nothing is lost (mybricks2, 2026-11-06): every change is one op
+  made on the server (`CollectionStore.change`), never a whole collection
+  sent. An add is a difference with a request id (sent again as it was when
+  the network failed, made once); a count, a removal, Keep them, Take back
+  and a set's Remove carry the count the panel showed, and when that changed
+  meanwhile the server refuses (409) with the collection as it is, which the
+  panel shows, saying so. Opening the panel reads the account's afresh;
+  offline it shows this device's copy and writes nothing from it; a reply
+  for an account no longer signed in is dropped.
 - `a session's loose parts over mcp` (`AppTools._edit_collection`):
   `edit_collection {"add": [{part, color, count}], "remove": [...]}` in one
   call, all or nothing; a part by its LDraw number or BrickLink's, a colour by
   its code or name; a sticker or a ~ piece refused. Each lot added is marked
-  `by` (who the session is, "Claude") and `chat` (the relay's chat id), a lot
-  apart from the person's own of the same part and colour. remove= takes only
-  this chat's lots, and names the person's own as theirs. With neither it reads
-  the collection back, this chat's lots apart. My collection lists a session's
-  lots first, under "Added by Claude", with Keep them (they join the person's
-  own) and Take back what Claude added (exactly those lots out). Needs the
-  person signed in.
+  `by` (who the session is, "Claude"; any printable name, trimmed, 60
+  characters at most) and `chat` (the relay's chat id; a session on the
+  desktop's MCP port that names none has its connection's, `mcp-<its
+  Mcp-Session-Id>` or `line-<n>` on the line protocol), a lot apart from the
+  person's own of the same part and colour. remove= takes only this chat's
+  lots (one lot named twice sums; a count of 0 or none takes all of it), and
+  names the person's own as theirs. With neither it reads the collection
+  back, this chat's lots apart. My collection lists a session's lots first,
+  under "Added by Claude", with Keep them (they join the person's own, by
+  hand) and Take back what Claude added (exactly those lots out, at the
+  counts shown, any number of them). Needs the person signed in.
 - `build from a set's parts` (`src/collection/set_bin.gd`, `src/ui/parts_bin.gd`,
   docs/APP_UX.md B10, 2026-10-30): the parts bin as one set's parts, or
   several sets' added up, a tile for each part and colour in its own colour,
@@ -203,12 +215,26 @@ which models they could build from what they have. Added 2026-10-12.
   already left: the D11's card 2,183 to 3,868, 1,032 counts changed, 687
   cards adding their box. Read it back with
   `curl -s <PARTS_URL>library/index.json | sha256sum` against the staged one.
-- `/api/collection` (`api/collection.js`, `supabase/collection.sql`): GET, POST
-  an import, PUT the whole collection, DELETE. POST `{"from": "lots", "set":
-  [...], "add": [...]}` (2026-11-06): each "set" lot at exactly its count (0
-  takes it out), then each "add" added; at most 2,000 a request; a lot's `by`
-  and `chat` kept (and kept by a PUT), the lot keyed by part, colour, by and
-  chat. No new column: `parts` is JSON already. Every import is parsed and
+- `/api/collection` (`api/collection.js`, `supabase/collection.sql`,
+  `supabase/collection_ops.sql`): GET, POST an op or an import, DELETE.
+  Since mybricks2 (2026-11-06) every change is one op made on the row as it
+  is kept and written only over the rev it read (a PATCH held to `rev`,
+  which a trigger moves on at every write, the older api's too); when
+  another write came first it reads again and makes it again, 12 tries. Ops
+  (`{"op": ..., "id": ...}`; an id already in `recent`, the last 100, is not
+  made again): `lots` (`add` and `remove` as differences, 2,000 lots at
+  most, an id required), `set` (`was` → `to`), `keep` and `take_back` (a
+  session's lots at the counts shown, any number), `remove_set` (at the
+  count shown), `start_over` (at the rev shown). A `set`, `keep`,
+  `take_back`, `remove_set` or `start_over` whose count or rev moved on is
+  refused 409 with the collection as it is. Each lot and set keeps its
+  source (`src`: hand, rebrickable, rebrickable_csv, bricklink_xml) and a
+  session's lots `by` and `chat`; the lot keyed by part, colour, source, by
+  and chat. An import in replace mode replaces only its own source's lots
+  and sets (and those from before sources were kept). A PUT (the whole
+  collection, as rel-m266 and desktop 0.17.0 send it) is refused 409 with
+  words to update: it carries no read time, so no difference made from it is
+  safe. Colours must be a real colour code. Every import is parsed and
   mapped here (Rebrickable CSV with quoted fields, BrickLink XML, Rebrickable's
   API rows, typed set numbers) and nowhere else. Refuses: no sign-in (401),
   naming any account (`?owner=`, `?user_id=`, a body's `owner`: 403 — there is
@@ -224,7 +250,10 @@ which models they could build from what they have. Added 2026-10-12.
   `public.collections`, its four check constraints, policies
   `collections_read_own`, `collections_insert_own`, `collections_update_own`,
   `collections_delete_own`; grants: `authenticated` SELECT, INSERT, UPDATE,
-  DELETE; `anon` none. Nothing existing changed.
+  DELETE; `anon` none. Nothing existing changed. `supabase/collection_ops.sql`
+  (sequence `collections_rev`, columns `rev` and `recent`, trigger
+  `collections_next_rev`, additive only; tried first with `--dry
+  --try=tools/collection_ops_try.sql`) **applied 2026-11-06** the same way.
 
 ## How to reach it
 
@@ -297,9 +326,15 @@ Proves it when:
   screen`; look at `shots/collection_need.png`, `collection_build.png`,
   `collection_own.png`.
 - `mybricks_api.mjs` ends `every check passed`: an old collection (two sets, a
-  CSV, an XML) as it was through twelve lots added, one changed, one taken out,
-  a session's twelve apart and a PUT keeping their marks, and taken back lot for
-  lot; six malformed changes refused with words and 2,001 lots with 413.
+  CSV, an XML) kept with its sources through twelve lots added, one changed,
+  one taken out, a stale count refused 409; a session's twelve apart, an older
+  app's PUT refused with every mark kept; taken back lot for lot; a
+  Rebrickable replace touching only Rebrickable's lots; five writes at once
+  all kept; one id sent twice made once; malformed changes refused with words;
+  Start over from a stale rev refused.
+- the review's repros (`bench/results/mybricks2-2026-11-06/harness/run.sh`):
+  R1-R13 against the api before (92043506) and after, at 0 and 80 ms a
+  database call, three times each; the last line is `0 LOST` after (24 before).
 - `mybricks_probe` (tools/relay_probe.sh mybricks, with `-- --shots=DIR`) ends
   `all good`: 12 of the car's lots added by hand, each in 3 actions or fewer
   (10 by search, 2 by a photo's answer); What do I need? short by exactly
@@ -307,7 +342,10 @@ Proves it when:
   100%; each changed and taken out by itself; the same 12 over MCP in 1 call,
   `parts_list which="need"` agreeing in 1; the copy on this device and another
   device's sign-in holding them; Take back leaving the old collection lot for
-  lot; Start over asking. Look at the pictures: `mybricks_row`, `_like`,
+  lot; Start over asking; then, nothing lost in the window: a count typed then
+  Remove pressed at once, a session's count typed then Keep pressed at once, a
+  reply for an account signed out dropped, two MCP sessions naming no chat
+  kept apart. Look at the pictures: `mybricks_row`, `_like`,
   `_loose`, `_need`, `_build`, `_claude`, `_taken_back`.
 - `collection_probe.mjs` ends `every check passed` (44 checks): every import in
   LDraw's numbers, the other account refused by the endpoint, and straight at
