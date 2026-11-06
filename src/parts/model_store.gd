@@ -1425,6 +1425,10 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# The app's own file carries them itself (_text_into).
 	_absent = absent if source == null else []
 
+	# Which copy of the file each copy is, by its path, wherever an edit
+	# takes it (SourceFile).
+	if source != null:
+		world.unit_chains = model.unit_chains.duplicate()
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
@@ -1490,6 +1494,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
 			world.get_brick(brick_id).step = placement.step
+			world.get_brick(brick_id).origin = placement.origin
 			placed += 1
 		if paced and job.due():
 			job.count(down.size())
@@ -1561,6 +1566,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 				world.get_brick(brick_id).group = placement.group
 				world.get_brick(brick_id).unit = placement.unit
 				world.get_brick(brick_id).step = placement.step
+				world.get_brick(brick_id).origin = placement.origin
 				builder.register(brick_id, placement.part_id, placement.transform)
 				placed += 1
 				landing = true
@@ -1632,11 +1638,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		"unbuilt": unbuilt})
 
 
-## Why [param text], which places no part, is not a model to open: "" for
-## an LDraw model with nothing in it, every line of it a comment or a meta
-## line as a model saved empty is, here or by any LDraw tool. A file of
-## anything else places nothing because it is not a model, and opening it
-## would put an empty baseplate where the person's model was.
 ## A file's placements made what this library puts down, in place: Studio's
 ## names as LDraw's, a retired number as the part it became, a part drawn
 ## in one colour only as the part it draws, and a mirrored copy's parts each
@@ -1670,6 +1671,13 @@ static func _as_placed(flattened: Array, library: PartLibrary, authored: bool) -
 	return mirrored_lines
 
 
+## Why [param text], which places no part, is not a model to open: "" for
+## an LDraw model with nothing in it, every line of it a comment or a meta
+## line as a model saved empty is, here or by any LDraw tool, or its parts
+## all in sub-models nothing places, as someone else's file is saved with
+## its every copy taken off (keeptext4). A file that draws lines of its own
+## (types 2 to 5) is a part, not a model, and opening it would put an empty
+## baseplate where the person's model was.
 static func _why_not_a_model(text: String) -> String:
 	var lines: int = 0
 	var drawn: bool = false
@@ -1680,7 +1688,7 @@ static func _why_not_a_model(text: String) -> String:
 		lines += 1
 		if line[0] not in "012345" or (line.length() > 1 and line[1] not in " \t"):
 			return "that is not an LDraw file"
-		drawn = drawn or line[0] != "0"
+		drawn = drawn or line[0] in "2345"
 	if lines == 0:
 		return "it is empty"
 	return "there are no parts in that file" if drawn else ""
@@ -2054,38 +2062,54 @@ func _source_asked(title_now: String) -> Dictionary:
 		home.unit = brick.unit
 		home.step = brick.step
 		home.hidden = brick.hidden
+		home.origin = brick.origin
 		bricks.append(home)
-	# In an order of their own, not the world's: which line a part is paired
-	# with and where a part put down goes in the file follow it, and two
-	# copies of a model built in another order (Together) wrote two files.
+	# In an order of their own, not the world's: where a part put down goes
+	# in the file follows it, and two copies of a model built in another
+	# order (Together) wrote two files.
 	bricks = _in_brick_order(bricks)
 	var waiting: Dictionary = {}
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
-			waiting["%d|%s" % [placement.line, placement.unit]] = true
+			waiting[placement.origin] = true
 	# The copies' steps where the model has steps: the file's, or those a
 	# step edit gave a model whose file had none (SourceFile.write).
 	var authored: bool = AuthorSteps.any(world, scenery)
-	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting,
-		"library": library, "title": title_now,
+	# A copy placed mirrored asks Mirror for a part's other hand, whose index
+	# is built once and not for two threads: built here, on the main one.
+	if source.mirrored and library != null:
+		Mirror._index(library)
+	# A part made here that a line may name (a skin pasted, a part from the
+	# element maker) goes out inside the file: its sources read here, on the
+	# main thread, where the library is (SourceFile._made_lines).
+	var made: Dictionary = {}
+	if library != null:
+		for brick: BrickWorld.Brick in bricks:
+			var id: String = brick.part_id
+			if made.has(id) or source.carries(id) or source.drawn_at(brick.origin):
+				continue
+			var info: PartLibrary.PartInfo = library.parts.get(id)
+			if info != null and (info.custom or library.custom.has(id)):
+				made[id] = CustomParts.sources_for(library, [id])
+	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting, "made": made,
+		"library": library, "title": title_now, "chains": world.unit_chains.duplicate(),
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored or authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
 		"cut": world.cut_kept.duplicate(true),
 		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
 		"pins": pins.lines(world, _lift_now()),
-		"authored": authored, "set": from_set}
+		"authored": authored, "stepped": source.authored or authored, "set": from_set}
 
 
 ## The source file with the parts [method _source_asked] copied written into
-## it, or null when the change cannot be written into it as it is. Reads
-## only what it is given, so on any thread.
-static func _source_text_of(asked: Dictionary) -> Variant:
+## it (SourceFile.write, which never writes it whole). Reads only what it is
+## given, so on any thread.
+static func _source_text_of(asked: Dictionary) -> String:
 	var source: SourceFile = asked["source"]
-	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting"],
-		asked["library"], asked["unit_steps"])
-	if written == null:
-		return null
-	var text: String = _without_app_lines(str(written))
+	var written: String = source.write(asked["bricks"], asked["lift"], asked["waiting"],
+		asked["library"], asked["unit_steps"], asked["chains"], asked["stepped"],
+		asked.get("made", {}))
+	var text: String = _without_app_lines(written)
 	var title_now: String = asked["title"]
 	if title_now != source.own_title and not title_now.is_empty():
 		text = _after_first_line(text, TITLE_META + title_now)
@@ -2096,11 +2120,8 @@ static func _source_text_of(asked: Dictionary) -> Variant:
 ## file written into it: a hose's path, the floor, the hidden colours, the
 ## motions, the booklet's looks and the set it is. On any thread: the
 ## autosave makes it on a worker ([method _text_into]).
-static func _source_written(asked: Dictionary) -> Variant:
-	var from_source: Variant = _source_text_of(asked)
-	if from_source == null:
-		return null
-	var kept: String = str(from_source)
+static func _source_written(asked: Dictionary) -> String:
+	var kept: String = _source_text_of(asked)
 	# A hose LDCad laid, bent by a grab: its path where it now lies.
 	kept = LdcadPath.written_into(kept, asked["source"], asked["library"])
 	var ground: ModelFloor = asked["floor"]
@@ -2206,6 +2227,7 @@ func place_awaited(part_id: String) -> int:
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
 			world.get_brick(brick_id).step = placement.step
+			world.get_brick(brick_id).origin = placement.origin
 			builder.register(brick_id, placement.part_id, placement.transform)
 			landed += 1
 	awaited = still
@@ -2383,9 +2405,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 				return ModelStore._source_written(asked), "write the model's file", library)
 		else:
 			kept = _source_written(asked)
-		if kept != null:
-			made.append(kept)
-			return
+		made.append(str(kept))
+		return
 	# A section broken out is written where it was pulled from: the whole
 	# file, frames and steps, from the model as built (BrickWorld.home_of).
 	var model: BrickWorld = world if world.broken_out.is_empty() else world.copy_at_home()
@@ -2462,7 +2483,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			entry["first"] = int(first[path])
 	# What has not arrived, or could not be fetched, goes out last, where the
 	# file had it, and so does what the catalogue has not got. Someone else's
-	# file carries them below (carried_into); the app's own was saved without
+	# file keeps their lines (SourceFile); the app's own was saved without
 	# them: a model saved on a phone that lost a part's fetch lost the part
 	# (fetch_retry_probe, 2026-10-20).
 	if _live_source() == null and world.generation() == _awaited_in:
@@ -2493,26 +2514,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known)
 	if authored:
 		text = with_authored_steps(text)
-	# Someone else's model written whole: still theirs, under their terms,
-	# its steps still no one's when Brickworks worked them out.
-	if _live_source() != null:
-		text = _with_header(text, _live_source().header(), authored)
-		# And what it holds that is not on the baseplate, kept.
-		var waiting: Array = []
-		if world.generation() == _awaited_in:
-			for placement: LdrModel.Placement in awaited:
-				var held := LdrModel.Placement.new(placement.part_id, placement.color_code,
-					Transform3D(Basis.IDENTITY, -_lift_now()) * placement.transform,
-					placement.step)
-				held.unit = placement.unit
-				held.line = placement.line
-				waiting.append(held)
-		text = _live_source().carried_into(text, waiting)
-		# And LDCad's hoses keep their paths, where they now lie.
-		text = LdcadPath.written_into(text, _live_source(), library)
-		# And its own lines, beside the parts they stood with.
-		text = _live_source().kept_in(text, library)
-	elif world.generation() == _opened_in and not _own_header.is_empty():
+	# The app's own file keeps its header's own lines (someone else's is
+	# never written whole: SourceFile).
+	if world.generation() == _opened_in and not _own_header.is_empty():
 		text = _with_header(text, _own_header, true)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
 	# save, an export, a shared link. Another program reads past the line.
@@ -2630,7 +2634,7 @@ const PACED_FROM := 300
 func paces() -> bool:
 	return not AuthorSteps.any(world, scenery) and world.library != null \
 		and world.brick_count() - scenery.size() >= PACED_FROM \
-		and _source_text(title) == null
+		and _live_source() == null
 
 
 ## Whether writing this model (a save, an export, a share) is said on the
@@ -3108,6 +3112,10 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	Language.keep_name(whole)
 	for kind: String in renamed.values():
 		Language.keep_name(kind)
+	# Put into someone else's file, it goes in as its own file had it, placed
+	# by one line, while its parts are where they were put (SourceFile).
+	if _live_source() != null:
+		_live_source().bring(text, file_name, whole, renamed, placed)
 	out.merge({"items": Carry.framed(placed, library), "units": units, "root": root,
 		"name": whole, "parts": placed.size(), "steps": own_steps.size()}, true)
 	return out

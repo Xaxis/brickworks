@@ -80,6 +80,12 @@ class Brick extends RefCounted:
 	## (Instructions.plan). A file's "0 STEP" lines were read and dropped,
 	## so a Studio model opened and saved here lost its designer's steps.
 	var step: int = -1
+	## The line of someone else's file it was read from, and the copies
+	## round it there (LdrModel.Placement.origin): kept through a move, a
+	## turn, a new colour, a step edit and any change to the tree of
+	## sub-models, so a save writes it back on its own line (SourceFile).
+	## "" for a part put down here, copied or pasted.
+	var origin: String = ""
 
 	func _init(brick_id: int, part: String, color: int, at: Transform3D) -> void:
 		id = brick_id
@@ -272,6 +278,14 @@ var history: Array = []
 ## step. Kept here and not on the bricks, so it outlives taking a copy's
 ## parts off and putting them back. See [member Brick.step].
 var unit_steps: Dictionary = {}
+## Each copy of a sub-model of someone else's file by its path now -> its
+## place in the file (LdrModel.unit_chains): carried wherever a change to
+## the tree takes the path (Builder.regroup), so a save knows which copy
+## a renamed, ungrouped or moved one was (SourceFile).
+var unit_chains: Dictionary = {}
+## The origins of bricks taken off, by id: one put back under its number
+## (Builder's undo) is the line it was again.
+var _gone_origins: Dictionary = {}
 ## How the booklet shows each step, as its designer set it (BookletLooks):
 ## "<sub-model>|<step>" -> {turn, zoom, size, page, parts}, and the
 ## sub-models' and the booklet's own. Changed only by the history's steps.
@@ -392,6 +406,7 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 		_next_id += 1
 	else:
 		_out_of_order = true
+		brick.origin = _gone_origins.get(number, "")
 	_bricks[brick.id] = brick
 
 	var keys := PackedStringArray()
@@ -420,6 +435,9 @@ func remove_brick(brick_id: int) -> bool:
 
 
 func _unplace(brick_id: int) -> void:
+	var going: Brick = _bricks.get(brick_id)
+	if going != null and not going.origin.is_empty():
+		_gone_origins[brick_id] = going.origin
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		var batch: Batch = _batches.get(key)
 		if batch == null:
@@ -433,6 +451,11 @@ func _unplace(brick_id: int) -> void:
 	_bricks.erase(brick_id)
 	_spans.erase(brick_id)
 	_drawn.erase(brick_id)
+
+
+## The origin a brick taken off had (Brick.origin), "" for none.
+func gone_origin(brick_id: int) -> String:
+	return str(_gone_origins.get(brick_id, ""))
 
 
 func move_brick(brick_id: int, to: Transform3D) -> bool:
@@ -521,6 +544,8 @@ func clear() -> void:
 	_next_id = 1
 	_out_of_order = false
 	unit_steps.clear()
+	unit_chains.clear()
+	_gone_origins.clear()
 	step_looks.clear()
 	motions = null
 	cut_kept = {}
@@ -734,8 +759,10 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 		twin.unit = brick.unit
 		twin.step = brick.step
 		twin.hidden = brick.hidden
+		twin.origin = brick.origin
 		copy._bricks[brick_id] = twin
 	copy._next_id = _next_id
+	copy.unit_chains = unit_chains.duplicate()
 	return copy
 
 

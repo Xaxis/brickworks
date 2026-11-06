@@ -253,13 +253,32 @@ static func _changes(world: BrickWorld, entry: Dictionary) -> bool:
 	return true
 
 
-## Number a section's steps 0, 1, 2… in the order they were, with no gaps:
-## after an edit has emptied one, or made one between two.
+## Number a section's steps 0, 1, 2… in the order they were: after an edit
+## has emptied one, or made one between two. A step the section had empty
+## before the edit ([param undo] says what each item had) stays: an
+## author's page for a note or a turn of the model, which a file keeps as
+## a STEP line of its own and a booklet's looks by its number
+## (BookletLooks). Taken out, the turn after it went on the step before it
+## and the note ended the step before (kt3review #4).
 static func _tidy(world: BrickWorld, section: String, skip: Dictionary, undo: Array) -> void:
 	var items: Array = items_of(world, section, skip)
+	var was: Dictionary = {}
+	for entry: Dictionary in undo:
+		if entry.has("step") and (entry.has("brick") or entry.has("unit")):
+			var named: String = _name_of(entry)
+			if not was.has(named):
+				was[named] = int(entry["step"])
 	var used: Dictionary = {}
+	var had: Dictionary = {}
 	for item: Dictionary in items:
 		used[int(item["step"])] = true
+		had[int(was.get(_name_of(item), item["step"]))] = true
+	var last: int = -1
+	for step: int in had:
+		last = maxi(last, step)
+	for step: int in last:
+		if not had.has(step):
+			used[step] = true
 	var order: Array = used.keys()
 	order.sort()
 	var place: Dictionary = {}

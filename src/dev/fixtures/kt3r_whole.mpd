@@ -1,0 +1,34 @@
+0 FILE runs.ldr
+0 Lines That Say What The Next Is
+0 Name: runs.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+0 BFC CERTIFY CCW
+0 // The base
+1 4 0 0 -20 1 0 0 0 1 0 0 0 1 3020.dat
+1 4 0 0 20 1 0 0 0 1 0 0 0 1 3020.dat
+0 // and the fin out in front, drawn once and mirrored
+1 16 0 -8 -120 -1 0 0 0 1 0 0 0 1 runs - fin.ldr
+0 // a last plate to finish it
+1 2 0 -72 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 NOFILE
+0 FILE runs - fin.ldr
+0 Fin
+0 Name: runs - fin.ldr
+0 Author: Jane Builder [jbuilder]
+0 BFC CERTIFY CCW
+0 // A fin: a 1 x 4 plate
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3710.dat
+0 // a 1 x 2 plate on it
+1 4 -20 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 NOFILE
+0 FILE runs - spare.ldr
+0 Spare Parts Kept For Later
+0 Name: runs - spare.ldr
+0 Author: Jane Builder [jbuilder]
+0 // not placed yet: the author's spare wing
+1 7 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 7 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 NOFILE
+0 !DATA runs_logo.png
+0 !: iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==

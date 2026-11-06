@@ -299,12 +299,18 @@ func _copies_apart() -> void:
 	var saved: String = _store.to_text(_store.title, true)
 	_expect(saved.contains("0 Author: Somebody Else [someone]") and saved.contains(
 		"0 !LICENSE Redistributable under CCAL version 2.0"),
-		"written whole, still under its author's name and licence")
+		"still under its author's name and licence")
+	# Until keeptext4 written whole; now the copy moved is a section of its
+	# own and the other keeps the file's.
+	_expect(saved.contains("0 FILE fidelity - twice.ldr\n0 Twice\n")
+		and saved.count("0 FILE fidelity - twice") == 2,
+		"the copy changed a sub-model of its own, the other the file's")
 	_expect(not saved.contains("0 Author: Brickworks"), "not claimed as Brickworks's")
 	_expect(saved.contains("\n1 14 40 0 -60 1 0 0 0 1 0 0 0 1 nopart9x.dat\n"),
 		"the part it could not show carried, where it was, in its colour")
-	_expect(saved.contains("0 FILE fidelity - band-flex.dat") and saved.contains(
-		"0 !LDCAD PATH_SKIN"), "the band carried as a part, its path with it")
+	_expect(saved.contains("\n1 71 0 -96 200 1 0 0 0 1 0 0 0 1 fidelity - band.ldr\n")
+		and saved.contains("0 FILE fidelity - band.ldr\n0 Band\n0 Name: fidelity - band.ldr\n"
+		+ "0 !LDCAD PATH_SKIN"), "the band as the file has it, its path with it")
 	var again: Dictionary = _open(saved)
 	_expect(_model() == model, "opened again, the model as edited, the band in it")
 	_expect(again.get("unshown", {}) == {"nopart9x": 1},

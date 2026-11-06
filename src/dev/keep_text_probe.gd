@@ -39,9 +39,8 @@
 ## (in the second copy of a sub-model placed more than once, where there is
 ## one, else in its smallest sub-model), a
 ## copy taken off, a part taken out of one copy (the others follow), and a
-## sub-assembly made of parts; and a part of a copy placed mirrored moved,
-## which is still written whole, the file's own lines put back beside their
-## parts (SourceFile.kept_in). Each saved, undone and opened again: the
+## sub-assembly made of parts; and a part of a copy placed mirrored moved
+## (until keeptext4 written whole). Each saved, undone and opened again: the
 ## lines of the file's own text lost, but those the edit itself changes (a
 ## sub-model's title, the line placing a copy taken off or made unique, a
 ## part taken out) and those it moves (the parts of a sub-assembly made,
@@ -98,12 +97,24 @@ const MODELS: Array = [
 	["lines that say what the next is, no steps", "res://src/dev/fixtures/kt_runs.mpd"],
 	["names in another case, Unicode", "res://src/dev/fixtures/kt_names.mpd"],
 	["no NOFILE, no last line break", "res://src/dev/fixtures/kt_nonl.mpd"],
+	# kt3review's (keeptext4), each a file a save lost lines of once.
+	["the castle as another's file", "res://models/castle.ldr", "foreign"],
+	["the castle with a copy placed mirrored", "res://models/castle.ldr", "mirror"],
+	["a sub-model titled by its Author line", "res://src/dev/fixtures/kt3r_title_author.mpd"],
+	["a sub-model nothing places, a picture", "res://src/dev/fixtures/kt3r_whole.mpd"],
+	["an empty step with a ROTSTEP", "res://src/dev/fixtures/kt3r_emptystep.ldr"],
+	["an empty step with a note", "res://src/dev/fixtures/kt3r_emptystep2.ldr"],
+	["LeoCAD's and Studio's lines", "res://src/dev/fixtures/kt3r_leocad.ldr"],
+	["a sub-model with notes and old numbers", "res://src/dev/fixtures/kt3r_ungroup.mpd"],
+	["the only copy holding an unshown part", "res://src/dev/fixtures/kt3r_unshown_copy.mpd"],
+	["two sections of one name", "res://src/dev/fixtures/kt3r_dupfile.mpd"],
+	["a part after NOFILE", "res://src/dev/fixtures/kt3r_afternofile.mpd"],
 ]
 
 ## The edits to a model's sub-models, in the order a person meets them.
 const EDITS: Array = ["rename", "copy", "make unique", "add a part", "take off a copy",
 	"take a part out of one copy", "make a sub-assembly", "move a part of a mirrored copy",
-	"put a saved model in"]
+	"put a saved model in", "move a copy", "ungroup", "delete a part", "take off the only copy"]
 
 ## The saved model put in each (intomodel_probe's): five sub-models in five
 ## steps, 14 parts.
@@ -140,6 +151,11 @@ var _built_in: int = 0
 ## Each edit's lines lost, for the summary: [file, edit, lost saved, lost
 ## saved again, lost undone, "whole"/"into the file"].
 var _edit_summary: Array = []
+## Each file's row of the table: what it is called, and each edit's ok,
+## FAIL or -- (not made: the file has nothing it applies to).
+var _row: String = ""
+var _matrix: Dictionary = {}
+var _rows: Array = []
 
 
 func _initialize() -> void:
@@ -184,9 +200,10 @@ func _run() -> void:
 		for word: String in only.split(",", false):
 			wanted = wanted or str(model[1]).contains(word) or str(model[0]).contains(word)
 		if wanted:
+			var made: String = str(model[2]) if model.size() > 2 else ""
 			if steps:
-				await _model(str(model[0]), str(model[1]), model.size() > 2)
-			await _edits(str(model[0]), str(model[1]), model.size() > 2, edits)
+				await _model(str(model[0]), str(model[1]), made)
+			await _edits(str(model[0]), str(model[1]), made, edits)
 	if only.is_empty() or only.contains("crlf") or only.contains("metas"):
 		await _metas_crlf()
 	print("\nlines lost by one step edit and a save:")
@@ -196,6 +213,15 @@ func _run() -> void:
 		+ "anywhere), saved again once opened, undone")
 	for row: Array in _edit_summary:
 		print("  %-36s %-28s %4d %4d %4d %4d  %s" % row)
+	print("\neach file and edit: saved, opened again, undone and saved again, every untouched "
+		+ "line in order and the file never written whole (ok), or not (FAIL); -- not made")
+	var columns: Array = ["step edit"] + edits
+	print("  %-44s %s" % ["", " ".join(columns.map(func(edit: String) -> String:
+		return _abbreviation(edit)))])
+	for row: String in _rows:
+		var marks: Dictionary = _matrix[row]
+		print("  %-44s %s" % [row.left(44), " ".join(columns.map(func(edit: String) -> String:
+			return str(marks.get(edit, "")).rpad(_abbreviation(edit).length())))])
 	if _failures == 0:
 		print("keep_text probe: all checks passed")
 	else:
@@ -205,11 +231,16 @@ func _run() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
-func _model(name: String, path: String, anothers: bool = false) -> void:
+func _model(name: String, path: String, made: String = "") -> void:
 	print("\n%s" % name)
-	var text: String = FileAccess.get_file_as_string(path)
-	if anothers:
-		text = _as_anothers(text)
+	var failed: int = _failures
+	await _step_edit(name, path, made)
+	_mark(name, "step edit", "ok" if _failures == failed else "FAIL")
+
+
+func _step_edit(name: String, path: String, made: String = "") -> void:
+	var text: String = _made(FileAccess.get_file_as_string(path), made)
+	var anothers: bool = made == "another's"
 	if not _check("%s read (%d lines)" % [path, text.split("\n").size()], not text.is_empty()):
 		return
 	await _open(text, name)
@@ -223,9 +254,12 @@ func _model(name: String, path: String, anothers: bool = false) -> void:
 			+ "to go to the next step", part > 0):
 		return
 	var depth: int = _builder.history_depth()
+	var touched: Array = _lines_of_parts(text, [part])
+	var stepped: bool = _has_steps(text)
 	var by_menu: String = _shell.change_steps("next", [part], _step_holding(part))
 	await _frames(4)
 	var whole: bool = _store.call("_source_text", name) == null
+	var foreign: bool = _store.get("_source") != null
 	var edited: Dictionary = _state()
 	var parented: int = _world.unit_steps.values().filter(func(step: int) -> bool:
 		return step == AuthorSteps.IN_PARENT).size()
@@ -249,6 +283,12 @@ func _model(name: String, path: String, anothers: bool = false) -> void:
 		% [_lost(text, saved).size() - lost.size(), _first(lost)], lost.is_empty())
 	_same_parts("...saved", parts, saved)
 	_shape_kept("...saved", text, saved)
+	if foreign:
+		_check("...written into the file, never whole", not whole)
+		# A first step edit of a file with no steps gives every part its
+		# step: the lines go in their order.
+		if stepped:
+			_in_order("...", text, saved, [], touched)
 	await _reopened("...opened again", saved, name, edited)
 	await _open(text, name)
 	part = _chosen()
@@ -306,6 +346,27 @@ func _model(name: String, path: String, anothers: bool = false) -> void:
 		await _reopened("...that opened again", second, name, state)
 
 
+## [param text] made as [param made] says: "another's", the app's own file
+## as someone else's with no steps of its own; "foreign", as someone else's,
+## stepped; "mirror", that with a sub-model of its own placed mirrored
+## (kt3review's castle_mirror).
+static func _made(text: String, made: String) -> String:
+	match made:
+		"another's":
+			return _as_anothers(text)
+		"foreign", "mirror":
+			text = text.replace("0 Author: Brickworks", "0 Author: A. Builder [abuilder]")
+			if made == "mirror":
+				text = text.replace("1 16 0 -8 0 1 0 0 0 1 0 0 0 1 gatehouse.ldr\n",
+					"1 16 0 -8 0 1 0 0 0 1 0 0 0 1 gatehouse.ldr\n"
+					+ "1 16 0 -400 0 -1 0 0 0 1 0 0 0 1 mirror_fin.ldr\n")
+				text = text.trim_suffix("\n") + "\n0 NOFILE\n0 FILE mirror_fin.ldr\n0 Mirror Fin\n" \
+					+ "0 Name: mirror_fin.ldr\n0 Author: A. Builder [abuilder]\n" \
+					+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3710.dat\n" \
+					+ "1 4 -20 -8 0 1 0 0 0 1 0 0 0 1 3023.dat\n0 NOFILE\n"
+	return text
+
+
 ## [param text], the app's own file, as someone else's with no steps of its
 ## own: its first step edit builds its copies in the model's steps.
 static func _as_anothers(text: String) -> String:
@@ -341,21 +402,21 @@ func _reopened(what: String, saved: String, name: String, was: Dictionary,
 
 ## [param edits] of [constant EDITS], each on the file at [param path] opened
 ## afresh.
-func _edits(name: String, path: String, anothers: bool, edits: Array) -> void:
-	var text: String = FileAccess.get_file_as_string(path)
-	if anothers:
-		text = _as_anothers(text)
+func _edits(name: String, path: String, made: String, edits: Array) -> void:
+	var text: String = _made(FileAccess.get_file_as_string(path), made)
 	_built_in = 0
 	print("\n%s, its sub-models edited" % name)
 	for edit: String in EDITS:
 		if edits.has(edit):
-			await _edit(name, text, edit)
+			var failed: int = _failures
+			var made_it: bool = await _edit(name, text, edit)
+			_mark(name, edit, "--" if not made_it else ("ok" if _failures == failed else "FAIL"))
 
 
 ## [param text] opened, given [param edit] as a person gives it, saved; the
 ## lines of the file's own text lost, but those the edit changes; undone,
 ## the file again; opened again, the same model, and saved again, itself.
-func _edit(name: String, text: String, edit: String) -> void:
+func _edit(name: String, text: String, edit: String) -> bool:
 	await _open(text, name)
 	var depth: int = _builder.history_depth()
 	var parts: Array = _parts_of(text)
@@ -365,7 +426,7 @@ func _edit(name: String, text: String, edit: String) -> void:
 	_shell.assemblies.leave_to("")
 	if done.has("skip"):
 		print("  --    %s: %s" % [edit, done["skip"]])
-		return
+		return false
 	# The model as the edit leaves it: the file's parts, but those the edit
 	# took or moved, and those it put down.
 	var expected: Array = _after_edit(parts, was, _world_parts(), done)
@@ -373,21 +434,28 @@ func _edit(name: String, text: String, edit: String) -> void:
 	if not _check("%s: %s" % [edit, said.get_slice("\n", 0).left(110)],
 			_builder.history_depth() > depth and bool(done.get("ok", true))):
 		_edit_summary.append([_short(name), edit, -1, -1, -1, -1, "not made"])
-		return
+		return true
 	var whole: bool = _store.call("_source_text", name) == null
-	var why: String = "" if not whole else SourceFile.why_whole \
+	var why: String = "" if not whole else "a file with text of its own" \
 		if _store.get("_source") != null else "the app's own file"
 	var edited: Dictionary = _state()
 	_saves += 1
 	var file_name: String = "keep edit %d" % _saves
 	var saved_ok: bool = _store.save_as(file_name)
 	var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(file_name))
+	# A model with steps put into a file of none gives the file the steps
+	# it was shown (Builder._bring_steps, AuthorSteps.adopt_plan), as its
+	# first step edit would: its parts' lines go into their steps, and the
+	# lines placing the copies built in their parent's steps are the edit's,
+	# as for a step edit ([method _step_edit]).
+	var adopted: bool = not _has_steps(text) and _has_steps(saved)
+	_built_in = 0 if not adopted else _world.unit_steps.values().filter(
+		func(step: int) -> bool: return step == AuthorSteps.IN_PARENT).size()
 	var allowed: Array = _with_runs(text, done.get("lines", []))
 	var moving: Array = done.get("moving", [])
 	var lost: Array = _edit_lost(text, saved, allowed, moving)
-	# Written whole, someone else's file keeps its comments, notes and meta
-	# lines beside their parts (SourceFile.kept_in); its parts' and FILE
-	# lines are the app's.
+	# Written whole (the app's own file only, since keeptext4), the file
+	# keeps its comments, notes and meta lines: counted alone.
 	var carried: bool = whole and _store.get("_source") != null
 	var notes: Array = _edit_lost(text, saved, allowed, moving, false).filter(_is_note)
 	_check("...saved %s: %d lines of the file's own text lost (%d the edit's)%s%s" % [
@@ -398,6 +466,10 @@ func _edit(name: String, text: String, edit: String) -> void:
 		saved_ok and (notes.is_empty() if carried else lost.is_empty()))
 	_same_parts("...saved", expected, saved)
 	_shape_kept("...saved", text, saved)
+	if _store.get("_source") != null:
+		_check("...written into the file, never whole", not whole)
+		if not adopted:
+			_in_order("...", text, saved, moving, allowed)
 	await _back_to(depth)
 	var undone: String = _store.to_text(name, true)
 	var back: Array = _lost(text, undone)
@@ -420,6 +492,7 @@ func _edit(name: String, text: String, edit: String) -> void:
 		_edit_lost(text, saved, allowed, moving, false).size(), lost_again.size(),
 		back.size() + extra.size(), "into the file" if not whole else "whole: " + why
 			+ (", %d comments, notes, meta" % notes.size() if carried else "")])
+	return true
 
 
 ## [method _lost] but for the lines the edit itself changes ([param allowed],
@@ -447,23 +520,28 @@ func _edit_lost(was: String, now: String, allowed: Array, moving: Array,
 
 ## [param entries] ("section: line", as [method _lost] says them), the lines
 ## an edit takes out or moves, and the lines right above each in
-## [param text] that say what it is for another program ([method _binds]):
-## they go where it goes.
+## [param text] that may say what it is ([method _run_above]): they go
+## where it goes.
 static func _with_runs(text: String, entries: Array) -> Array:
 	var out: Array = entries.duplicate()
 	var wanted: Dictionary = {}
 	for entry: Variant in entries:
 		wanted[str(entry)] = int(wanted.get(str(entry), 0)) + 1
-	var lines: Array = _lines_of(text)
+	var lines: PackedStringArray = text.split("\n")
+	var section: String = ""
+	var files: int = 0
 	for n: int in lines.size():
-		var entry: String = "%s: %s" % [lines[n][0], str(lines[n][1]).strip_edges()]
+		var line: String = lines[n].trim_suffix("\r")
+		var words: PackedStringArray = LdrModel._fields(line.strip_edges())
+		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() == "FILE":
+			section = "" if files == 0 else _file_name_of(line)
+			files += 1
+		var entry: String = "%s: %s" % [section, line.strip_edges()]
 		if int(wanted.get(entry, 0)) <= 0:
 			continue
 		wanted[entry] = int(wanted[entry]) - 1
-		var k: int = n - 1
-		while k >= 0 and lines[k][0] == lines[n][0] and _binds(str(lines[k][1])):
-			out.append("%s: %s" % [lines[k][0], str(lines[k][1]).strip_edges()])
-			k -= 1
+		for k: int in _run_above(lines, n):
+			out.append("%s: %s" % [section, lines[k].strip_edges()])
 	return out
 
 
@@ -480,6 +558,99 @@ static func _is_note(entry: String) -> bool:
 
 static func _short(name: String) -> String:
 	return name.get_slice(" (", 0).get_slice(",", 0).get_slice(" with ", 0).left(36)
+
+
+func _mark(name: String, edit: String, mark: String) -> void:
+	if not _matrix.has(name):
+		_matrix[name] = {}
+		_rows.append(name)
+	(_matrix[name] as Dictionary)[edit] = mark
+
+
+## A column's heading in the table: the edit's first letters.
+static func _abbreviation(edit: String) -> String:
+	var out: String = ""
+	for word: String in edit.split(" "):
+		if word.length() > 1 or out.is_empty():
+			out += word.left(1)
+	return out.to_upper().rpad(4)
+
+
+static func _has_steps(text: String) -> bool:
+	for line: String in text.split("\n"):
+		if LdrModel._fields(line.strip_edges()) == PackedStringArray(["0", "STEP"]) \
+				or line.strip_edges().to_upper().begins_with("0 ROTSTEP"):
+			return true
+	return false
+
+
+## Whether every line of [param was] but [param touched] (their text) and
+## [param said] (each "section: line", as [method _said_line] says it, so
+## a line one section has and another too is the one in its own), the
+## lines right above each that say what it is, and its STEP lines (an
+## edit's to take out with a step it empties) is in [param now] in its
+## order, byte for byte.
+func _in_order(what: String, was: String, now: String, touched: Array,
+		said: Array = []) -> bool:
+	var lines: PackedStringArray = was.split("\n")
+	var named: PackedStringArray = _said_all(was)
+	var skip: Dictionary = {}
+	var wanted: Dictionary = {}
+	for line: Variant in touched:
+		var key: String = str(line).strip_edges()
+		wanted[key] = int(wanted.get(key, 0)) + 1
+	var wanted_in: Dictionary = {}
+	for line: Variant in said:
+		wanted_in[str(line)] = int(wanted_in.get(str(line), 0)) + 1
+	for n: int in lines.size():
+		var key: String = lines[n].strip_edges()
+		if int(wanted_in.get(named[n], 0)) > 0:
+			wanted_in[named[n]] = int(wanted_in[named[n]]) - 1
+		elif int(wanted.get(key, 0)) > 0:
+			wanted[key] = int(wanted[key]) - 1
+		else:
+			continue
+		skip[n] = true
+		for k: int in _run_above(lines, n):
+			skip[k] = true
+	var have: PackedStringArray = now.split("\n")
+	var at: int = 0
+	var out: Array = []
+	for n: int in lines.size():
+		var line: String = lines[n].trim_suffix("\r")
+		if skip.has(n) or line.begins_with("0 !BRICKWORKS") \
+				or LdrModel._fields(line.strip_edges()) == PackedStringArray(["0", "STEP"]) \
+				or (n == lines.size() - 1 and line.is_empty()):
+			continue
+		var found: int = -1
+		for k: int in range(at, have.size()):
+			if have[k].trim_suffix("\r") == line:
+				found = k
+				break
+		if found >= 0:
+			at = found + 1
+		else:
+			out.append("%d: %s" % [n, line.strip_edges()])
+	return _check("%s every line the edit did not touch still in the file, in order: %d not%s"
+		% [what, out.size(), _first(out)], out.is_empty())
+
+
+## The lines right above line [param n] of [param lines] that say what it
+## is, by where they are: type 0, unbroken by an empty line, a part, a STEP
+## line or a section's header.
+static func _run_above(lines: PackedStringArray, n: int) -> Array:
+	var out: Array = []
+	var k: int = n - 1
+	while k >= 0:
+		var words: PackedStringArray = LdrModel._fields(lines[k].strip_edges())
+		if words.size() < 2 or words[0] != "0" or words[1].to_upper() in ["STEP", "ROTSTEP",
+				"FILE", "NOFILE", "NAME:", "AUTHOR:", "!LICENSE", "!LDRAW_ORG", "!HISTORY"] \
+				or (words[1].to_upper() == "BFC" and words.size() > 2
+					and words[2].to_upper() in ["CERTIFY", "NOCERTIFY"]):
+			break
+		out.append(k)
+		k -= 1
+	return out
 
 
 ## [param edit] given the model as a person gives it: {"said": what the app
@@ -584,8 +755,8 @@ func _do(edit: String, text: String) -> Dictionary:
 				level if not level.is_empty() else "the model", _name_it("Made Here")],
 				"moving": moving}
 		"move a part of a mirrored copy":
-			# Written whole still (SourceFile.why_whole): its own lines kept
-			# beside their parts all the same (SourceFile.kept_in).
+			# Its line written again in the copy's mirrored frame; until
+			# keeptext4 the file was written whole.
 			var path: String = _mirrored_copy()
 			if path.is_empty():
 				return {"skip": "no copy placed mirrored"}
@@ -610,6 +781,65 @@ func _do(edit: String, text: String) -> Dictionary:
 			var said: String = await _say("open_model", {"into": true, "name": "Gatehouse"})
 			await _frames(4)
 			return {"said": said, "ok": said.begins_with("Put Gatehouse in the model")}
+		"move a copy":
+			# One copy of several moved whole (kt3review #1): only the line
+			# placing it changes.
+			if twice.is_empty():
+				return {"skip": "no sub-model placed more than once"}
+			var path: String = twice[1]
+			var placing: Array = _placing(text, path)
+			_select_assembly(path)
+			var moved: int = 0
+			# Clear of what is beside it: a train's wheels are under its car.
+			for by: Vector3i in [Vector3i(0, 0, 10), Vector3i(10, 0, 0), Vector3i(0, 0, -10),
+					Vector3i(-10, 0, 0), Vector3i(0, 12, 0), Vector3i(0, 0, 60), Vector3i(60, 0, 0),
+					Vector3i(0, 60, 0), Vector3i(0, -60, 0)]:
+				moved = _builder.move_selection(by)
+				if moved > 0:
+					break
+			await _frames(2)
+			return {"said": "moved %s, %d parts" % [path, moved], "ok": moved > 0,
+				"lines": placing}
+		"ungroup":
+			# A copy taken apart, its parts its parent's (kt3review #2): its
+			# parts' lines go with them, under their numbers; its sub-model
+			# stays in the file, placed by its other copies or by nothing.
+			var path: String = _smallest()
+			if path.is_empty():
+				return {"skip": "no sub-model"}
+			var placing: Array = _placing(text, path)
+			var lines: Array = _lines_of_parts(text, Array(_shell.assemblies.ids_under(path)))
+			_select_assembly(path)
+			_shell.run("leave_submodel")
+			await _frames(2)
+			return {"said": "ungrouped %s" % path, "lines": placing,
+				"moving": lines.map(func(entry: String) -> String:
+					return entry.substr(entry.find(": ") + 2)),
+				"ok": not _shell.assemblies.paths().has(path)}
+		"delete a part":
+			# A part of the model's own taken off, the lines about it with
+			# it (LeoCAD's, Studio's: kt3review #3).
+			var part: int = _part_in("")
+			if part <= 0:
+				return {"skip": "no part of the model's own"}
+			var line: Array = _lines_of_parts(text, [part])
+			_select_only([part])
+			_shell.run("delete")
+			await _frames(2)
+			return {"said": "took a %s off" % (line[0] if not line.is_empty() else "?"),
+				"lines": line, "removed": true}
+		"take off the only copy":
+			# A sub-model placed once taken off (kt3review #8): its line
+			# goes, and the sub-model with it, its parts the app cannot
+			# show among them (SourceFile._gone_sections).
+			var path: String = _placed_once()
+			if path.is_empty():
+				return {"skip": "no sub-model placed once"}
+			var placing: Array = _placing(text, path) + _gone_with(text, path)
+			_select_assembly(path)
+			_shell.run("delete")
+			await _frames(2)
+			return {"said": "took %s off" % path, "lines": placing, "taken": path}
 	return {"skip": "no such edit"}
 
 
@@ -766,16 +996,51 @@ func _placed_twice() -> Array:
 	return []
 
 
+## The model's own copy, the one placed once with the most parts, of the
+## model's own sub-models (not inside another), or "".
+func _placed_once() -> String:
+	var best: String = ""
+	var most: int = 0
+	for path: String in _shell.assemblies.paths():
+		if path.contains("/") or not _shell.assemblies.copies_of(path).is_empty():
+			continue
+		var count: int = _shell.assemblies.ids_under(path).size()
+		if count > most:
+			most = count
+			best = path
+	return best
+
+
 ## The sub-model copy with the fewest parts, of those with a part of their own.
 func _smallest() -> String:
 	var best: String = ""
 	var fewest: int = 1 << 30
 	for path: String in _shell.assemblies.paths():
 		var count: int = _shell.assemblies.ids_under(path).size()
-		if count > 0 and count < fewest and _parts_at(path, 1).size() > 0:
+		if count > 0 and count < fewest and _parts_at(path, 1).size() > 0 and not _flexible(path):
 			fewest = count
 			best = path
 	return best
+
+
+## Whether the copy at [param path] is a flexible part's (LDCad's rope):
+## its parts drawn from its sub-model, no line of their own to edit or
+## take out of it (SourceFile keeps such a copy placed by its line).
+func _flexible(path: String) -> bool:
+	var source: Variant = _store.get("_source")
+	if source == null:
+		return false
+	var lines: PackedStringArray = (source as Object).get("lines")
+	for brick_id: int in _parts_at(path, 1 << 20):
+		# Read by name: the same probe runs on a build before origins (red).
+		var got: Variant = _world.get_brick(brick_id).get("origin")
+		if got == null:
+			return false
+		var origin: String = str(got)
+		var line: int = origin.get_slice("/", origin.get_slice_count("/") - 1).to_int()
+		if origin.is_empty() or (line < lines.size() and lines[line].strip_edges().begins_with("1")):
+			return false
+	return true
 
 
 ## The sub-model copy with the most parts of its own that the model places
@@ -868,11 +1133,13 @@ func _name_it(name: String) -> String:
 static func _title_of(text: String, kind: String) -> Array:
 	var section: String = ""
 	var titled: bool = true
+	var files: int = 0
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
 		var words: PackedStringArray = LdrModel._fields(line)
 		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() == "FILE":
-			section = _file_name_of(line)
+			section = "" if files == 0 else _file_name_of(line)
+			files += 1
 			titled = false
 			continue
 		if titled or words.size() < 2 or words[0] != "0":
@@ -898,30 +1165,95 @@ func _placing(text: String, path: String) -> Array:
 	return [_said_line(text, int(source.unit_lines[path]))]
 
 
-## The lines of [param text] the parts [param ids] were read from, as
-## [method _lost] says them.
-func _lines_of_parts(text: String, ids: Array) -> Array:
+## The lines of the sub-models only the copy at [param path] places, its
+## own and those only they place, as [method _said_line] says them: taken
+## off, they go with it. A flexible part's stays, its part's own.
+func _gone_with(text: String, path: String) -> Array:
 	var source: SourceFile = _store.get("_source")
-	if source == null:
+	if source == null or not source.unit_lines.has(path):
 		return []
-	var lift: Vector3 = _store.lift()
+	var taken: int = int(source.unit_lines[path])
+	var lines: PackedStringArray = text.split("\n")
+	var section_at: Array = []        # line -> its section's key
+	var spans: Dictionary = {}        # key -> [lines]
+	var key: String = ""
+	var first: bool = true
+	for n: int in lines.size():
+		var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
+		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() == "FILE":
+			key = "" if first else LdrModel._key(_file_name_of(lines[n]))
+			first = false
+		section_at.append(key)
+		if not spans.has(key):
+			spans[key] = []
+		(spans[key] as Array).append(n)
+	var placings: Dictionary = {}     # key -> [lines placing it]
+	for n: int in lines.size():
+		var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
+		if words.size() >= 15 and words[0] == "1":
+			var named: String = LdrModel._key(" ".join(words.slice(14)))
+			if not placings.has(named):
+				placings[named] = []
+			(placings[named] as Array).append(n)
+	var gone: Dictionary = {}
+	var more: bool = true
+	while more:
+		more = false
+		for named: String in placings:
+			if gone.has(named) or named.is_empty() or not spans.has(named) or source.flexible.has(named):
+				continue
+			var all: bool = true
+			for n: int in placings[named]:
+				all = all and (n == taken or gone.has(section_at[n]))
+			if all:
+				gone[named] = true
+				more = true
 	var out: Array = []
-	var used: Dictionary = {}
+	for named: String in gone:
+		for n: int in spans[named]:
+			out.append(_said_line(text, n))
+	return out
+
+
+## The lines of [param text] the parts [param ids] were read from, as
+## [method _lost] says them: by each part's origin (BrickWorld.Brick), or,
+## before keeptext4 kept one, by the nearest line of its part in its copy
+## (SourceFile.by_line).
+func _lines_of_parts(text: String, ids: Array) -> Array:
+	var out: Array = []
+	var olds: Array = []
 	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		var origin: Variant = brick.get("origin") if brick != null else null
+		if origin == null:
+			olds.append(brick_id)
+		elif not str(origin).is_empty():
+			var said: String = str(origin)
+			out.append(_said_line(text, said.get_slice("/", said.get_slice_count("/") - 1).to_int()))
+	var source: Variant = _store.get("_source")
+	if olds.is_empty() or source == null or (source as Object).get("by_line") == null:
+		return out
+	var by_line: Dictionary = (source as Object).get("by_line")
+	var lift: Vector3 = _store.lift()
+	var used: Dictionary = {}
+	for brick_id: int in olds:
 		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 		var at: Vector3 = brick.transform.origin - lift
 		# The nearest line of its part in its copy: a part opened on the
 		# lattice stands a little off where its line says.
 		var best: int = -1
 		var nearest: float = INF
-		for line: int in source.by_line:
+		for line: int in by_line:
 			if used.has(line):
 				continue
-			for origin: SourceFile.Read in source.by_line[line]:
-				if origin.unit == Assemblies.path_of(brick) and origin.part_id == brick.part_id \
-						and origin.colour == brick.color_code \
-						and origin.at.origin.distance_to(at) < nearest:
-					nearest = origin.at.origin.distance_to(at)
+			for item: Variant in by_line[line]:
+				var read: Object = item
+				var place: Transform3D = read.get("at")
+				if str(read.get("unit")) == Assemblies.path_of(brick) \
+						and str(read.get("part_id")) == brick.part_id \
+						and int(read.get("colour")) == brick.color_code \
+						and place.origin.distance_to(at) < nearest:
+					nearest = place.origin.distance_to(at)
 					best = line
 		if best >= 0:
 			used[best] = true
@@ -940,6 +1272,20 @@ static func _file_name_of(line: String) -> String:
 
 
 ## Line [param n] of [param text] as [method _lost] says it.
+## Each line of [param text] as [method _said_line] says it, in one pass.
+static func _said_all(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var files: int = 0
+	var section: String = ""
+	for line: String in text.split("\n"):
+		var words: PackedStringArray = LdrModel._fields(line.strip_edges())
+		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() == "FILE":
+			files += 1
+			section = _file_name_of(line) if files > 1 else ""
+		out.append("%s: %s" % [section, line.strip_edges()])
+	return out
+
+
 static func _said_line(text: String, n: int) -> String:
 	var lines: PackedStringArray = text.split("\n")
 	var section: String = ""
@@ -947,6 +1293,12 @@ static func _said_line(text: String, n: int) -> String:
 		var words: PackedStringArray = LdrModel._fields(lines[k].strip_edges())
 		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() == "FILE":
 			section = _file_name_of(lines[k])
+			# The model's own section, the first, as [method _lines_of] says it.
+			for j: int in k:
+				var before: PackedStringArray = LdrModel._fields(lines[j].strip_edges())
+				if before.size() >= 2 and before[0] == "0" and before[1].to_upper() == "FILE":
+					return "%s: %s" % [section, lines[n].strip_edges()]
+			section = ""
 			break
 	return "%s: %s" % [section, lines[n].strip_edges()]
 
@@ -978,9 +1330,12 @@ static func _lost(was: String, now: String, by_section: bool = true) -> Array:
 
 ## [section, line] for each line of [param text] but its STEP lines, the
 ## lines the app writes again on every save, and the file's last empty one.
+## The model's own section, the first, is "": a file of no FILE lines is
+## given one when a sub-model goes into it (a model put in).
 static func _lines_of(text: String) -> Array:
 	var out: Array = []
 	var section: String = ""
+	var files: int = 0
 	var lines: PackedStringArray = text.split("\n")
 	for n: int in lines.size():
 		# Its ending is [method _endings_wrong]'s: a CRLF file's last line,
@@ -988,7 +1343,8 @@ static func _lines_of(text: String) -> Array:
 		var line: String = lines[n].trim_suffix("\r")
 		var words: PackedStringArray = LdrModel._fields(line.strip_edges())
 		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() == "FILE":
-			section = _file_name_of(line)
+			section = "" if files == 0 else _file_name_of(line)
+			files += 1
 		if words.size() == 2 and words[0] == "0" and words[1].to_upper() == "STEP":
 			continue
 		if line.begins_with("0 !BRICKWORKS "):
@@ -1396,34 +1752,75 @@ static func _head_of(text: String) -> Array:
 # -- the model -----------------------------------------------------------------
 
 
-## Every part, its colour, copy, place and step, and every copy's step and
-## the tree: what a file opened again must give back.
+## Every part, its colour, copy, place (in the file's coordinates) and step,
+## and every copy's step and the tree: what a file opened again must give
+## back. A step as its place among the steps it is in: a file's empty step
+## numbers the steps after it one on, and a step edit numbers them again.
 func _state() -> Dictionary:
-	var parts: Array = []
+	var lift: Vector3 = _store.lift()
 	var tree: Dictionary = {}
+	var spaces: Dictionary = {}
+	var bricks: Array = []
 	for brick: BrickWorld.Brick in _world.bricks():
 		if _store.scenery.has(brick.id):
 			continue
-		var t: Transform3D = brick.transform
+		bricks.append(brick)
+		var path: String = Assemblies.path_of(brick)
+		var at: String = ""
+		for segment: String in Assemblies.segments(path):
+			at = Assemblies.join(at, segment)
+			tree[at] = true
+		_step_in(spaces, _home(path), brick.step)
+	for unit: String in tree:
+		var step: int = int(_world.unit_steps.get(unit, -1))
+		if step != AuthorSteps.IN_PARENT:
+			_step_in(spaces, _home(Assemblies.parent_of(unit)), step)
+	var ranks: Dictionary = {}
+	for home: String in spaces:
+		var steps: Array = (spaces[home] as Dictionary).keys()
+		steps.sort()
+		var rank: Dictionary = {}
+		var next: int = 0
+		for step: int in steps:
+			rank[step] = step if step < 0 else next
+			next += 0 if step < 0 else 1
+		ranks[home] = rank
+	var parts: Array = []
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		var t := Transform3D(brick.transform.basis, brick.transform.origin - lift)
 		var place := PackedStringArray()
 		for v: Vector3 in [t.origin / 10.0, t.basis.x, t.basis.y, t.basis.z]:
 			for n: float in [v.x, v.y, v.z]:
 				place.append("%.3f" % (snappedf(n, 0.001) + 0.0))
 		var path: String = Assemblies.path_of(brick)
 		parts.append("%s %d %s step %d at %s" % [brick.part_id, brick.color_code, path,
-			brick.step, " ".join(place)])
-		var at: String = ""
-		for segment: String in Assemblies.segments(path):
-			at = Assemblies.join(at, segment)
-			tree[at] = true
+			int(ranks[_home(path)][brick.step]), " ".join(place)])
 	parts.sort()
 	var paths: Array = tree.keys()
 	paths.sort()
 	var units: Dictionary = {}
 	for unit: String in _world.unit_steps:
 		if tree.has(unit):
-			units[unit] = int(_world.unit_steps[unit])
+			var step: int = int(_world.unit_steps[unit])
+			units[unit] = step if step == AuthorSteps.IN_PARENT \
+				else int((ranks[_home(Assemblies.parent_of(unit))] as Dictionary).get(step, step))
 	return {"parts": parts, "tree": paths, "units": units}
+
+
+static func _step_in(spaces: Dictionary, home: String, step: int) -> void:
+	if not spaces.has(home):
+		spaces[home] = {}
+	(spaces[home] as Dictionary)[step] = true
+
+
+## The copy whose steps [param path]'s parts are in: itself, or the nearest
+## round it built in steps of its own.
+func _home(path: String) -> String:
+	while not path.is_empty() \
+			and int(_world.unit_steps.get(path, -1)) == AuthorSteps.IN_PARENT:
+		path = Assemblies.parent_of(path)
+	return path
 
 
 static func _unlike(a: Array, b: Array, loose: bool = false) -> Array:
@@ -1503,6 +1900,10 @@ func _chosen() -> int:
 	for index: int in range(steps.size() / 3, steps.size() - 1):
 		if steps[index].brick_ids.size() >= 2:
 			return steps[index].brick_ids[0]
+	# A file of a few parts (kt3review's): the first part of its first step.
+	for step: Instructions.Step in steps:
+		if not step.brick_ids.is_empty():
+			return step.brick_ids[0]
 	return -1
 
 

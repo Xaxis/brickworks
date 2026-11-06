@@ -927,7 +927,7 @@ func content(path: String) -> Array:
 	for brick: BrickWorld.Brick in bricks_under(path):
 		out.append({"part": brick.part_id, "color": brick.color_code,
 			"at": brick.transform, "rest": path_of(brick).substr(path.length()).trim_prefix("/"),
-			"id": brick.id, "step": brick.step})
+			"id": brick.id, "step": brick.step, "origin": brick.origin})
 	return out
 
 
@@ -949,6 +949,24 @@ func realize(from: String, to: String, at: Transform3D, mirrored: bool) -> Array
 	var own: bool = (AuthorSteps.in_parent(world, from) or AuthorSteps.in_parent(world, to)) \
 		and AuthorSteps.any(world, scenery)
 	var stood: Dictionary = _steps_where(content(to)) if own else {}
+	# Each part of someone else's file on its own line in this copy: the
+	# line of the part it follows, in the copy this one is (SourceFile).
+	# Built again with none, a copy's parts were all new to a save, and the
+	# copy came back as another sub-model of its own (keeptext4).
+	var from_chain: String = str(world.unit_chains.get(from, ""))
+	var to_chain: String = str(world.unit_chains.get(to, ""))
+	var chained: bool = not from_chain.is_empty() and not to_chain.is_empty() \
+		and not from_chain.contains("|") and not to_chain.contains("|")
+	# And a part put back where the same part of this copy stood is that
+	# part, on its line: a copy following one with no lines of its own (put
+	# down new) lost every line it had.
+	var lined: Dictionary = {}      ## place -> [[part, origin], ...] of to's
+	for item: Dictionary in content(to):
+		if not str(item.get("origin", "")).is_empty():
+			var key: String = _place_key(str(item["rest"]), (item["at"] as Transform3D).origin)
+			if not lined.has(key):
+				lined[key] = []
+			(lined[key] as Array).append([str(item["part"]), str(item["origin"])])
 	var votes: Dictionary = {}      ## a step of from's -> {the step of to's it is: how many}
 	var unplaced: Array = []        ## [an add with none where it goes, its step in from]
 	var adds: Array = []
@@ -959,6 +977,16 @@ func realize(from: String, to: String, at: Transform3D, mirrored: bool) -> Array
 			BrickLattice.is_square_to_grid((at * (placed["at"] as Transform3D)).basis))
 		var add: Dictionary = {"part": placed["part"], "color": item["color"], "at": laid,
 			"path": to if rest.is_empty() else to + "/" + rest, "step": item["step"]}
+		var origin: String = str(item.get("origin", ""))
+		if chained and origin.begins_with(from_chain + "/"):
+			add["origin"] = to_chain + origin.substr(from_chain.length())
+		else:
+			var stood_here: Array = lined.get(_place_key(rest, laid.origin), [])
+			for n: int in stood_here.size():
+				if str(stood_here[n][0]) == str(placed["part"]):
+					add["origin"] = str(stood_here[n][1])
+					stood_here.remove_at(n)
+					break
 		adds.append(add)
 		if not own or int(item["step"]) < 0:
 			continue
@@ -1168,6 +1196,12 @@ func counterparts(from: String, to: String) -> Dictionary:
 
 func _same_place(part: String, here: Transform3D, there: Transform3D) -> bool:
 	if here.basis.is_equal_approx(there.basis):
+		return true
+	# A file's turn written to its precision (31037-1's lights at 0.707, a
+	# hair short of a true 45 degrees) is the turn a part put down has:
+	# taken for another, a copy put down rebuilt every other copy of its
+	# sub-model, and their lines were written again (keeptext4).
+	if here.basis.orthonormalized().is_equal_approx(there.basis.orthonormalized()):
 		return true
 	var mesh: Lbm.PartMesh = library.mesh_for(part)
 	if mesh == null:

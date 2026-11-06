@@ -1,0 +1,18 @@
+0 Stepped With A Page Of Its Own
+0 Name: stepped2.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 40 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+0 // Page 2: check that both bricks sit flat before going on
+0 STEP
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 40 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 40 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 14 0 -72 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 14 40 -72 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP

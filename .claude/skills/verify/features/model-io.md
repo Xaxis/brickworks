@@ -45,102 +45,66 @@ Whether what you built is still there tomorrow, and still means the same thing.
   Brickworks (the LDraw model repository, Studio, LDCad, LeoCAD, an `.io`)
   is kept when it opens, and every save of it (Save, the autosave, Export,
   `.io`, a share link, `save_model` over MCP: all `ModelStore._text_into`) is
-  that file again with only what changed. Each part on the baseplate is paired
-  with the line it was read from by what it is (number, colour, place in the
-  file's coordinates, sub-model copy), never by id, so undo, a move by picking
-  up and an edit over MCP pair alike. A part as it was keeps its line byte for
-  byte; moved, turned, recoloured or swapped, its line is rewritten in place,
-  in its sub-model's frame, under the number the file used when it is the same
-  part (`30028` stays `30028`, placed where its stub puts `30028b`); taken
-  away, its line goes; added, a line at the end of its step in its sub-model.
-  Lines the app does not read (author, `!LICENSE`, `!HISTORY`, `BFC`, LDCad's
-  `!LDCAD` blocks, comments, the parts a file carries) are never touched. The
-  lift that stands a model on the ground is the view's: taken off again on
-  every save, so the file keeps its coordinates (whole-model saves too).
-  A step edit goes into the file as it is too (keeptext, 2026-11-05; probe
-  `keep_text`): steps given to a model that had none put its lines in steps,
-  a note with the part after it (`!LDCAD GROUP_NXT`, MLCAD's `BTG`/`HIDE`);
-  a copy built in its parent's steps (`AuthorSteps.IN_PARENT`) has its parts
-  written there under `0 !BRICKWORKS IN <copy>` lines, its own section kept;
-  sub-model copies reordered by steps keep their numbers with
-  `0 !BRICKWORKS COPY n`; a part moved a step in one copy of a sub-model
-  placed several times moves in every copy whose parts are the same
-  (`AuthorSteps._with_twins`), so 7140-1's four rear engines stay one
-  section. Before it, every step edit on a model with sub-model copies wrote
-  the file whole: 7140-1 lost 573 lines, 6780-1's helicopter 299.
-  The edits a person makes to sub-models go in as it is too (keeptext2,
-  2026-11-05; same probe, each edit on each file): a sub-model renamed
-  retitles its section (its FILE name and references stay the file's); a
-  copy duplicated is a line placing that sub-model again, `0 !BRICKWORKS
-  COPY n` before it; made unique, its section again under a free name
-  ("x 2.ldr") and the line placing that copy naming it; a part added to a
-  sub-model placed several times is one line in its section; a copy taken
-  off is its line, and a copy after one gone says its number (`COPY n`) so
-  7140-1's third rear engine still opens as its third; an assembly made is
-  its parts' lines under `0 !BRICKWORKS IN <copy>` in a stepped model, or a
-  section of its own made of those lines in one without steps. Each is read
-  back before it is written (`_reads_as`); `SourceFile.why_whole` names why
-  one could not be. Before it every one of these wrote 7140-1 whole (572
-  lines lost) and the notes file (`src/dev/fixtures/keep_text_notes.mpd`,
-  87 lines) lost 71-74, 27 of them its comments, notes and meta. Moving a
-  part of a copy placed mirrored is still written whole (`_rewritten`); then
-  `SourceFile.kept_in` puts each comment, note, meta and empty line back
-  beside the part it stood before, each unchanged part's line byte for byte
-  where the app's says the same, and the model's FILE, title and Name lines
-  (the name it was saved under in `0 !BRICKWORKS TITLE`): 0 of the 27 lost,
-  21 lines still (its sub-models' parts, which a whole write puts in the
-  model's frame, under the app's names). Moving or duplicating a part inside
-  a copy keeps it in that copy (`Carry.placements` carries `unit`): before,
-  a part moved in Wing#2 went into Wing#1, and one duplicated in a copy
-  within another went into a new copy of the outermost.
-  The review's findings fixed (keeptext3, 2026-11-06; same probe, now also
-  on ktreview's fixtures `src/dev/fixtures/kt_*`): every edit on every file
-  is checked against the model it should open as, not only its lines
-  (`_same_parts`: each part, shown or not, in place and in colour, plus the
-  edit's own change), and against its shape (`_shape_kept`: each line saying
-  what the next is still right above the same part, line endings, header).
-  A copy moved into its parent's steps carries the parts the app cannot show
-  (not in the library, a hose's skin, a part still downloading) into the
-  steps it is built in (`_carried`), with its group and INVERTNEXT
-  (`_lead_into`); a line that says what the next is (`!LDCAD GROUP_NXT`,
-  `MLCAD BTG`/`HIDE`, `BFC INVERTNEXT`) goes, comes out and moves with its
-  line and nothing is put between them (`_lead_of`, `before_run`,
-  `ModelFloor.head_end`); every line is split as `LdrModel._fields` splits it
-  (tabs); a file in CRLF is saved in CRLF (`SourceFile.ended`), whole too;
-  written whole, the lines before the first FILE line stay before it, a note
-  equal to a header line stays, a section of one part moved or of copies
-  renamed keeps its notes (`kept_in`, `_paired_lines`).
-  Every line the app writes of its own into a model's text ends as the
-  file's lines do (`SourceFile.eol_of`, `lines_put`): the floor, hidden
-  colours, cut-away, motions and pins, and the share link, bin sets, picture
-  to trace and set that `_write` adds after `ended()`; before, a shared CRLF
-  file was saved with its endings mixed. The probe writes each into kt_crlf,
-  then all, opens, saves and opens again: CRLF throughout, each read again.
-  A saved model put down by File, Import, Into this model… (`open_model`
-  with `into`) is a ninth edit on every file: saved, opened again and undone,
-  the file's parts and the gatehouse's 14 and nothing else (a rope written
-  whole as its skin part counted as the pieces it draws). SourceFile.write
-  cannot say a new copy of a new kind ("made:"), so it is written whole, the
-  first whole write of the repository's files here; written whole, a note
-  "0" is no longer taken for the "0" the app ends each section with, header
-  lines and sub-model titles are kept byte for byte, and an LDCad rope with
-  no pieces is carried with its donor section (`kept_in`, `header_of`,
-  `carried_into`). Still lost written whole (the writer's design): a rope's
-  own header under its skin's, copies built in their parent's steps written
-  inline (the castle's sub-model sections), and the author's empty steps
-  (6650-1, 7140-1 reopen a step out).
-  What cannot be one line is written whole (`write` returns null): a part of
-  a mirrored copy changed, a copy built in a parent placed more than once, a
-  copy the file built in its parent's steps given its own. Then the author's
-  header lines are kept in place of `0 Author: Brickworks` (`SourceFile.header`, and
-  `0 !BRICKWORKS WORKED_STEPS` when the steps are the app's), and what the
-  app could not show is carried in (`SourceFile.carried_into`). Saved under
-  another name, the name goes in a `0 !BRICKWORKS TITLE` line, the author's
-  first line untouched. The app's own lines (floor, share, set) are the only
-  lines added. A file Brickworks wrote (`0 Author: Brickworks`) is written
-  whole, as before, keeping the lines of its header it did not write
-  (`SourceFile.header_of`, `ModelStore._own_header`: the castle's
-  `0 // Designed by ...` went on every save).
+  that file again with only what changed, written by identity (keeptext4,
+  2026-11-06). Each part read knows its line (`LdrModel.Placement.origin`,
+  `BrickWorld.Brick.origin`: the lines placing the copies round it, then its
+  own), kept through undo, the autosave, the session's model, move, turn,
+  recolour, swap, step edits, Ungroup, a sub-assembly made, rename and a copy
+  following another (`Assemblies.realize`); a copy, a paste, a part put down
+  and a model put in have none. Each copy of a sub-model knows the lines
+  placing it (`BrickWorld.unit_chains`). A save (`SourceFile.write`) walks the
+  file section by section, line by line: a part as it was, its line byte for
+  byte; moved, turned or recoloured, only those fields written again, in its
+  sub-model's frame, under the number the file used (`4073` stays `4073`;
+  `30028` stays `30028`, placed where its stub puts `30028b`); gone, its line
+  out with the lines bound to it (right above it, unbroken by a STEP or
+  another part, of a kind the file puts right above its parts:
+  `SourceFile._run_of`, `_family`); a copy moved whole, the line placing it
+  written again; a part or copy with no line, a line at the end of its step,
+  with a section of its own for a sub-model it needs; a model put in
+  (`open_model` with `into`, `SourceFile.bring`), its own file's text placed
+  by one line; copies of one sub-model that no longer agree, the changed one
+  a section of its own ("x 2.ldr"), its placing line pointed at it, as Studio
+  and LDCad do; a step edit, the parts it moved at the end of the step they
+  are in now (each step the block in its place where the steps and blocks
+  agree in number, an author's empty page too; a step emptied loses its
+  STEP line, or, ended by a ROTSTEP, the one before, unless the app still
+  numbers it, as after its parts were deleted; new steps in order),
+  `0 !BRICKWORKS IN <copy>` before the lines of a copy built in
+  its parent's steps (`AuthorSteps.IN_PARENT`) and `0 !BRICKWORKS COPY n`
+  where a copy's number is not its order; every other line where it was
+  (notes, metas, empty steps, ROTSTEP, the author, `!DATA`, sub-models
+  nothing places, FILE names). A part made here that a new line names (a
+  skin pasted, a part from the element maker) is carried in a section at
+  the end (`SourceFile._made_lines`). A sub-model nothing places now whose
+  title a copy is written under (the rear engines named as the section
+  taken apart was) is titled anew, "x 2" (`SourceFile._yield_titles`): two
+  sections of one title open as neither. A sub-model the model placed that
+  no copy places now and none of whose parts is left (each taken away, or
+  its only copy taken off) goes, its block and its end with it, and any
+  sub-model only it placed (`SourceFile._gone_sections`; fidelity, kt3r's
+  delete_unshown_copy, keep_text's "take off the only copy"); one Ungrouped
+  keeps its text, placed by nothing. A file opened from text is never
+  written whole. Before keeptext4 each save paired the parts with the lines
+  again by place, path and nearness and wrote the model whole where that
+  failed; two reviews found 16 losses
+  (bench/results/keeptext3-2026-11-06/kt3review/report.md).
+  The lift that stands a model on the ground is the view's: taken off again
+  on every save, so the file keeps its coordinates. A file in CRLF is saved
+  in CRLF (`SourceFile.ended`), and every line the app writes of its own
+  into it ends as the file's lines do (`SourceFile.eol_of`, `lines_put`):
+  the floor, hidden colours, cut-away, motions and pins, the share link, bin
+  sets, picture to trace and set. Saved under another name, the name goes in
+  a `0 !BRICKWORKS TITLE` line, the author's first line untouched. A file
+  Brickworks wrote (`0 Author: Brickworks`) is written whole, as before,
+  keeping the lines of its header it did not write (`SourceFile.header_of`,
+  `ModelStore._own_header`: the castle's `0 // Designed by ...`).
+  Probes: `keep_text` (14 edits on 30 files, `src/dev/fixtures/kt_*` among
+  them: each saved, opened again, undone and saved again, and each time
+  every part in place and step, every line the edit did not touch in order
+  byte for byte, never written whole; each file also given a step edit,
+  saved, opened, given another and opened again) and `kt3r_probe`
+  (kt3review's findings, `src/dev/fixtures/kt3r_*`).
 - `parts the app cannot show` (`ModelStore.unshown`, `SourceFile.unshown`):
   a part of the file the library has not got, a part the file carries that
   cannot be built (on the web, one drawn from an official part or subpart,
@@ -164,9 +128,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   put in the sub-model as one piece paired with the GENERATED line: one
   piece a copy, in the copy's colour, in its step, selectable and hideable
   (a cover of 4-LDU blocks along its surface), its end parts parts still.
-  Saved untouched the file is itself; the piece moved, recoloured, taken
-  away or added writes the model whole (`SourceFile.write` returns null),
-  the skin carried as `0 FILE <sub-model>-flex.dat` with its donors, which
+  Saved untouched the file is itself; the piece moved or taken away is the
+  line placing its sub-model written again or taken out, every other line
+  kept; a piece pasted is one line, its skin carried as
+  `0 FILE <sub-model>-flex.dat` at the end (`SourceFile._made_lines`), which
   opens again as a skin (`0 !CATEGORY Flexible`). A generated copy of only
   parts (a pneumatic hose of 166 segments, a chain) has no skin: its parts
   were drawn already, and `Flex.items_in` reads it as one hose. Every build

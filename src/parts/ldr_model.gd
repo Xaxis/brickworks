@@ -61,6 +61,11 @@ class Placement extends RefCounted:
 	## is part of, by its path within that sub-model ("tower#1"), as the
 	## file says (IN_META); "" for the sub-model's own.
 	var within: String = ""
+	## Where in the file it came from, which no edit changes: the line of
+	## every reference placing the copies round it, outermost first, and its
+	## own line, joined by "/" ("12/40/7"), so each copy of a sub-model's
+	## part has its own. "" for one not read from a file (SourceFile).
+	var origin: String = ""
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id
@@ -127,6 +132,12 @@ var unit_colours: Dictionary = {}
 ## And the line of the file that places each copy (Placement.line): a save
 ## that changes the steps writes it into the step its copy is in now.
 var unit_lines: Dictionary = {}
+## And each copy's place in the file, which no edit changes: the lines of
+## the references placing it, outermost first, joined by "/" (its parts'
+## Placement.origin but their own line). A copy the file builds in the
+## steps of the one round it (IN_META) is that one's chain, "|" and its path
+## as the file says it there.
+var unit_chains: Dictionary = {}
 
 ## The line Brickworks writes into a model whose steps are somebody's own,
 ## so they are kept when it is opened again. Other LDraw readers skip a
@@ -508,9 +519,10 @@ func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	unit_sections.clear()
 	unit_colours.clear()
 	unit_lines.clear()
+	unit_chains.clear()
 	if main != null:
 		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "", "",
-			{})
+			{}, "")
 	return out
 
 
@@ -554,7 +566,8 @@ func _inline(
 	depth: int,
 	group: String,
 	unit: String,
-	copies: Dictionary
+	copies: Dictionary,
+	chain: String
 ) -> void:
 	if depth > 32 or visiting.has(_key(sub.name)):
 		push_warning("ldr: %s contains itself; not expanding further" % sub.name)
@@ -570,7 +583,7 @@ func _inline(
 		var own_group: String = group
 		var own_unit: String = unit
 		if not placement.within.is_empty():
-			own_unit = _built_within(placement.within, unit, copies, made)
+			own_unit = _built_within(placement.within, unit, copies, made, chain)
 			if depth == 0:
 				own_group = own_unit.get_slice("/", 0).get_slice("#", 0)
 
@@ -604,12 +617,14 @@ func _inline(
 			unit_sections[inside] = _key(nested.name)
 			unit_colours[inside] = placement.color_code if placement.color_code != 16 else color
 			unit_lines[inside] = placement.line
+			var placed_by: String = _origin(chain, placement.line)
+			unit_chains[inside] = placed_by
 			_inline(
 				nested,
 				at * placement.transform,
 				placement.color_code if placement.color_code != 16 else color,
 				out, known_parts, visiting.duplicate(), depth + 1, named,
-				inside, copies)
+				inside, copies, placed_by)
 			continue
 
 		var resolved: int = placement.color_code
@@ -620,6 +635,7 @@ func _inline(
 		placed.group = own_group
 		placed.unit = own_unit
 		placed.line = placement.line
+		placed.origin = _origin(chain, placement.line)
 		if at.basis.determinant() < 0.0:
 			placed.mirrored = true
 			placed.local = placement.transform
@@ -635,7 +651,8 @@ func _inline(
 ## the highest, as a reference's is ([method _inline]); the same path for
 ## every line of one copy in one reading of [param unit] ([param made]).
 ## Each is a copy built in its parent's steps (AuthorSteps.IN_PARENT).
-func _built_within(within: String, unit: String, copies: Dictionary, made: Dictionary) -> String:
+func _built_within(within: String, unit: String, copies: Dictionary, made: Dictionary,
+		chain: String) -> String:
 	var path: String = unit
 	var said: String = ""
 	for segment: String in within.split("/", false):
@@ -654,7 +671,14 @@ func _built_within(within: String, unit: String, copies: Dictionary, made: Dicti
 		path = copy if path.is_empty() else "%s/%s" % [path, copy]
 		made[said] = path
 		unit_steps[path] = AuthorSteps.IN_PARENT
+		unit_chains[path] = chain + "|" + said
 	return path
+
+
+## A line [param line] read within the copy [param chain] places, as
+## Placement.origin says it.
+static func _origin(chain: String, line: int) -> String:
+	return str(line) if chain.is_empty() else "%s/%d" % [chain, line]
 
 
 ## Serialise placements back to .ldr text.
