@@ -350,6 +350,9 @@ func _press_each(arrangement: String, kind: int) -> void:
 			if (after - before) * way <= 0.0:
 				missed.append("%s (%.0f to %.0f)" % ["Shrink" if way < 0 else "Grow", before, after])
 	var ghost: CheckBox = named["cut_ghosts"]
+	# Ghost is kept between cuts: one press missed in an arrangement before
+	# would leave it on, and every press after would read backwards.
+	_see.set_ghosts(false)
 	for on: bool in [true, false]:
 		if not await _press_on(ghost) or _see.leaves_ghosts != on:
 			missed.append("Ghost %s" % ("on" if on else "off"))
