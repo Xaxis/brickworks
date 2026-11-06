@@ -20,10 +20,11 @@
 ## the booklet's pictures and its PDF, a model read as it opens, a set's
 ## booklet in the bin, a file's flexible parts and the parts it carries. One
 ## out as the app quit dumped core the same way, every time (a model read on
-## a worker, 3 of 3, quitabort, 2026-11-06). Every task the app sets going
-## comes here now, the groups too. So does a thread of the app's own
-## ([method start]), for work that waits on something outside the engine: the
-## updater's, hashing a download, quit under it the same way (2 of 2).
+## a worker, quit_probe's reading, 5 of 5 on pre261, 2026-11-06). Every task
+## the app sets going comes here now, the groups too. So does a thread of the
+## app's own ([method start]), for work that waits on something outside the
+## engine: the updater's, hashing a download, quit under it the same way
+## (quit_probe's updating, 5 of 5).
 ##
 ##   var task: int = WorkerTasks.add(func() -> void: ..., false, "weigh the model")
 ##   while not WorkerThreadPool.is_task_completed(task):

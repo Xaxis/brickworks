@@ -40,9 +40,9 @@
 ## each way N times, closing the draft a few frames later each time.
 ##
 ## And the app quit with work of its own still going, on the sample car:
-##   booklet-asking   Build, Instructions…, its Save dialog up, and File, Quit
-##                    (what Ctrl+Q runs);
-##   save-asking      File, Save as…, its Save dialog up, and File, Quit;
+##   booklet-asking   Build, Instructions…, its Save dialog up 2 s, and File,
+##                    Quit;
+##   save-asking      File, Save as…, the same;
 ##   booklet-drawing  Instructions answered, and the window closed while the
 ##                    booklet is drawn;
 ##   booklet          Instructions answered, the booklet written whole and
@@ -53,11 +53,15 @@
 ##                    closed while it is read on a worker;
 ##   updating         the window closed while the updater hashes a download
 ##                    on a thread of its own (a sparse file of 16 GB here).
-## Until 2026-11-06 the first three aborted as the engine freed GDScript:
-## "corrupted size vs. prev_size in fastbins", exit 250, every time. Shell.run
-## handed Working a lambda of its own script, and the coroutine Working runs a
-## command in, still waiting, let go of it after that script was gone. The
-## last two dumped core, the task or thread left to the engine (WorkerTasks).
+## On pre261 (2026-11-06) the asking ways and booklet-drawing aborted as the
+## engine tore GDScript down, every run, headless and in a window: "corrupted
+## size vs. prev_size in fastbins" or "double free or corruption (!prev)",
+## exit 134. Shell.run handed Working a lambda of its own script, and the
+## coroutine Working runs a command in, still waiting on objects the scene
+## tree does not free, kept it into that teardown. What aborts is a command
+## still going: booklet, its job over, quit cleanly on pre261 (5 of 5). And
+## reading and updating dumped core, their task or thread left to the engine
+## (WorkerTasks).
 ## Each exits 0 with no abort said (ABORTS).
 extends SceneTree
 
@@ -221,7 +225,7 @@ func _judge_going(way: String, code: int, output: String) -> void:
 				+ "(%s)" % _said(output, "BOOKLET "), _said(output, "BOOKLET ").begins_with("written"))
 		"reading":
 			_check("reading: the window closed while the model was read on a worker (%s)"
-				% _said(output, "READING "), int(_said(output, "READING ")) > 0)
+				% _said(output, "READING "), _said(output, "READING ").begins_with("Reading"))
 		"updating":
 			_check("updating: the window closed while the updater hashed on its thread (%s)"
 				% _said(output, "HASHING "), _said(output, "HASHING ") == "true")
@@ -410,8 +414,12 @@ func _going_then_quit(main: Node, way: String) -> void:
 	if way == "reading":
 		var text: String = load("res://src/dev/bigmodel_probe.gd").call("_made", READ_PARTS)
 		(main.get("_bar") as ModelBar).open_text_with_progress(text, "quit_probe.ldr")
-		await process_frame
-		print("READING %d" % WorkerTasks.out())
+		# Past the bar's line being shown (Job.shown: up to 3 frames), into the
+		# read on its worker, which takes a second or more at this size.
+		for _n: int in 6:
+			await process_frame
+		var reading: Working.Job = Working.current()
+		print("READING %s" % (reading.line() if reading != null else "nothing"))
 		_close()
 		return
 	if way == "updating":
@@ -441,6 +449,13 @@ func _going_then_quit(main: Node, way: String) -> void:
 		quit(3)
 		return
 	if way.ends_with("-asking"):
+		# A person reads the dialog a moment first. Quit within a frame or two
+		# of its showing and Working is still waiting on a frame for it
+		# (Working.GOES_ON_FRAMES), which the scene tree lets go of as it goes:
+		# pre261 quit cleanly then, 6 runs of 6.
+		var until: int = Time.get_ticks_msec() + 2000
+		while Time.get_ticks_msec() < until:
+			await process_frame
 		shell.run("quit")
 		for _n: int in 600:
 			await process_frame

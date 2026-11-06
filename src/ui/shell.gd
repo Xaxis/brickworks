@@ -528,10 +528,10 @@ func command(name: String) -> Command:
 ## Working.attend and the coroutine it runs the command in wait on objects of
 ## their own, which the scene tree does not free: a command still going as
 ## the app quits (Instructions or Save as… with its Save dialog up, a booklet
-## being drawn) keeps what it was handed until the engine frees GDScript, and
-## a lambda of a node's script is let go of after its script is gone, which
-## writes into freed memory: "corrupted size vs. prev_size in fastbins",
-## exit 250, every time (quitabort, 2026-11-06).
+## being drawn) keeps what it was handed until the engine tears GDScript down,
+## and a lambda of this node's script let go of then writes into memory
+## already freed: "corrupted size vs. prev_size in fastbins", exit 250, every
+## time (quitabort, 2026-11-06). A bound method holds nothing of GDScript.
 func run(name: String) -> bool:
 	var found: Command = _commands.get(name)
 	if found == null or not can(name):
