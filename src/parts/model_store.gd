@@ -2496,6 +2496,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		text = _live_source().carried_into(text, waiting)
 		# And LDCad's hoses keep their paths, where they now lie.
 		text = LdcadPath.written_into(text, _live_source(), library)
+		# And its own lines, beside the parts they stood with.
+		text = _live_source().kept_in(text, library)
 	elif world.generation() == _opened_in and not _own_header.is_empty():
 		text = _with_header(text, _own_header, true)
 	# What it stands on goes with it, everywhere it goes: the autosave, a

@@ -68,11 +68,35 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`AuthorSteps._with_twins`), so 7140-1's four rear engines stay one
   section. Before it, every step edit on a model with sub-model copies wrote
   the file whole: 7140-1 lost 573 lines, 6780-1's helicopter 299.
-  What cannot be one line is written whole (`write` returns null): a copy of
-  a sub-model changed apart from its other copies, an assembly made or
-  renamed, a copy built in a parent placed more than once, a copy the file
-  built in its parent's steps given its own. Then the author's header lines
-  are kept in place of `0 Author: Brickworks` (`SourceFile.header`, and
+  The edits a person makes to sub-models go in as it is too (keeptext2,
+  2026-11-05; same probe, each edit on each file): a sub-model renamed
+  retitles its section (its FILE name and references stay the file's); a
+  copy duplicated is a line placing that sub-model again, `0 !BRICKWORKS
+  COPY n` before it; made unique, its section again under a free name
+  ("x 2.ldr") and the line placing that copy naming it; a part added to a
+  sub-model placed several times is one line in its section; a copy taken
+  off is its line, and a copy after one gone says its number (`COPY n`) so
+  7140-1's third rear engine still opens as its third; an assembly made is
+  its parts' lines under `0 !BRICKWORKS IN <copy>` in a stepped model, or a
+  section of its own made of those lines in one without steps. Each is read
+  back before it is written (`_reads_as`); `SourceFile.why_whole` names why
+  one could not be. Before it every one of these wrote 7140-1 whole (572
+  lines lost) and the notes file (`src/dev/fixtures/keep_text_notes.mpd`,
+  87 lines) lost 71-74, 27 of them its comments, notes and meta. Moving a
+  part of a copy placed mirrored is still written whole (`_rewritten`); then
+  `SourceFile.kept_in` puts each comment, note, meta and empty line back
+  beside the part it stood before, each unchanged part's line byte for byte
+  where the app's says the same, and the model's FILE, title and Name lines
+  (the name it was saved under in `0 !BRICKWORKS TITLE`): 0 of the 27 lost,
+  21 lines still (its sub-models' parts, which a whole write puts in the
+  model's frame, under the app's names). Moving or duplicating a part inside
+  a copy keeps it in that copy (`Carry.placements` carries `unit`): before,
+  a part moved in Wing#2 went into Wing#1, and one duplicated in a copy
+  within another went into a new copy of the outermost.
+  What cannot be one line is written whole (`write` returns null): a part of
+  a mirrored copy changed, a copy built in a parent placed more than once, a
+  copy the file built in its parent's steps given its own. Then the author's
+  header lines are kept in place of `0 Author: Brickworks` (`SourceFile.header`, and
   `0 !BRICKWORKS WORKED_STEPS` when the steps are the app's), and what the
   app could not show is carried in (`SourceFile.carried_into`). Saved under
   another name, the name goes in a `0 !BRICKWORKS TITLE` line, the author's
