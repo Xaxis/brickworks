@@ -766,6 +766,28 @@ picture the assistant is shown.
   sheet runs from Alt-W. `docs_menus.gd` now writes each row's key as the app's
   own keys have it, so the docs' menus and shortcuts pages list Alt-C and the
   rest.
+- `keys for render, the cut shapes and the lists` (`src/ui/keymap.gd`
+  `PRESET_KEYS`, its keys2 block, APP_UX5 9, 2026-11-06): eight more commands
+  got a key, the same under every preset: Render F9 (3ds Max's, LightWave's and
+  Modo's render key; Blender's F12 is a browser's), Render queue Shift-F9, Cut
+  away by a box Alt-X, a sphere Alt-Z, a cylinder Alt-Y, Build › Booklet page ›
+  Page setup Ctrl-Shift-B (beside Alt-B; the Mac's Cmd-Shift-P is Firefox's
+  private window), File › Export › LEGO® Pick a Brick list Alt-L, File ›
+  Library Ctrl-Shift-O (beside Open's Ctrl-O). `docs/app_ux3/keys.md`, "Given a
+  key in round five", is their table, and its counts' After column the keyless
+  now (104 of 210 under the app's keys). `keys2_probe` (windowed, 1280 x 720;
+  `PROBE_SIZE=1400x900`) reads that table: each has its key under each preset
+  and on the web, no layer of a preset's keys nor the app's own gives it to
+  another action; the walk's count of commands with a key (APP_UX5 `counts`,
+  98 before) is 106 or more; each key is on its row and does what the row does
+  under each preset (Render's panel, the queue, the three shapes cut away, Page
+  setup, the Pick a Brick Save dialog cancelled, the Library); Render in one
+  key press; none runs while the parts' search is typed in; the sheet lists
+  them, its rows keeping a name's capitals ("LEGO® Pick a Brick list",
+  "BrickLink wanted list", never "lEGO®"; `ControlsDialog.bindings`)
+  (pictures: File, File › Export, View › Cut away by, Build › Booklet page
+  opened, the sheet filtered "F9", "cut away", "list"). `keys4_probe` still
+  checks the counts and the keyless rows.
 - `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
   whatsthis unit, APP_UX4 10): the next click on any control says what it does
   in a bubble beside it, and does nothing else, as LeoCAD's, Qt's and Windows'
