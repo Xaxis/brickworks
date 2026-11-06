@@ -110,11 +110,12 @@ func take(piece: String) -> void:
 			shown = true
 			document.open()
 		# The tab was opened from the app, so it is under the app's security
-		# policy, which runs no inline handler: Print did nothing in a browser
-		# (share_flow, 2026-10-12). The app gives the button its click at the
-		# end instead; the file the desktop writes keeps its own. So with
-		# the desktop's Save script, which the policy refuses aloud.
-		document.write(piece.replace(BookletMaker.PRINT_INLINE, "").replace(Booklet.SAVE_SCRIPT, ""))
+		# policy, which runs no inline script: Print did nothing in a browser
+		# (share_flow, 2026-10-12). The app gives Print and Save their clicks
+		# at the end instead (finish), and the tab is written with no script
+		# and a policy that allows none (Booklet.policy).
+		document.write(piece.replace(Booklet.SAVE_SCRIPT, "")
+			.replace(Booklet.script_allowed(), "'none'"))
 		return
 	if _file != null:
 		_file.store_string(piece)

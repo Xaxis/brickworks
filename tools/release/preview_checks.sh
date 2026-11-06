@@ -157,6 +157,10 @@ declare -A CMD=(
   # are applied).
   [play]="tools/web/play_flow.mjs --url=$P --publish --out=$S/${TAG}_play"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
+  # A model whose note and page pictures try to break out of the booklet
+  # HTML, opened and Instructions pressed: no script runs in the tab, the
+  # policy is first, the good picture still shows (booksafe).
+  [booklet_safe]="tools/web/booklet_safe_flow.mjs --url=$P/app $B --out=$S/${TAG}_booklet_safe_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
   # and undone by the timeline's buttons and keys, a page laid out by the
   # mouse (a picture dragged onto the margin, a parts list's corner, words

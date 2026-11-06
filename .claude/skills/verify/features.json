@@ -311,6 +311,14 @@
       "tests": []
     },
     {
+      "id": "cli:a file's booklet runs nothing in a browser",
+      "kind": "cli",
+      "entry": "tools/web/booklet_safe_flow.mjs",
+      "reach": "node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts: a model whose page picture breaks out of its attribute opened, Instructions pressed; no flag set, the good picture shown, the policy first with script-src 'none', script put into the tab refused, Print prints)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:a keyring of a run's own",
       "kind": "cli",
       "entry": "tools/keyring_session.sh",
@@ -502,6 +510,14 @@
       "entry": "tools/web/billing_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/billing_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in, or plans off: nothing answers; --stand-in=<tools/web/admission_stand_in.mjs> on this machine also pays and cancels; preview check [billing])",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:booklet safe probe",
+      "kind": "cli",
+      "entry": "src/dev/booklet_safe_probe.gd",
+      "reach": "tools/probe.sh booklet_safe   (headless: a page's picture from a file kept only as a PNG or a JPEG in strict base64, the rest of the file read as before; strings made to break out of each place the booklet writes a file's or a person's text, escaped or left out; its Content-Security-Policy first, allowing its own script by hash and nothing else)",
+      "area": "view",
       "tests": []
     },
     {

@@ -4693,6 +4693,20 @@
       "entry": "src/dev/buildturn_probe.gd",
       "reach": "tools/probe.sh buildturn_probe; PROBE_SIZE=1024x768, 1280x720 or 1400x900 tools/probe.sh buildturn_probe   (windowed, 390x844 by its header; pictures in shots/buildturn/)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "booklet safe probe",
+      "entry": "src/dev/booklet_safe_probe.gd",
+      "reach": "tools/probe.sh booklet_safe   (headless: a page's picture from a file kept only as a PNG or a JPEG in strict base64, the rest of the file read as before; strings made to break out of each place the booklet writes a file's or a person's text, escaped or left out; its Content-Security-Policy first, allowing its own script by hash and nothing else)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "a file's booklet runs nothing in a browser",
+      "entry": "tools/web/booklet_safe_flow.mjs",
+      "reach": "node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts: a model whose page picture breaks out of its attribute opened, Instructions pressed; no flag set, the good picture shown, the policy first with script-src 'none', script put into the tab refused, Print prints)",
+      "area": "view"
     }
   ]
 }
