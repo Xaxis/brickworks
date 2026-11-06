@@ -71,6 +71,58 @@ const PATHS: Dictionary[StringName, String] = {
 	&"MosaicArt": "res://src/assembly/mosaic_art.gd",
 	&"MotionPlayer": "res://src/assembly/motion_player.gd",
 	&"Tested": "res://src/assembly/tested.gd",
+	# The leaves, each its own menu or tool: sections, the Move and Rotate
+	# tools' handles, Split and Merge, the library and the collection, Build
+	# together, the desktop's updater and Export (leaves, 2026-11-05).
+	&"Sections": "res://src/assembly/sections.gd",
+	&"SectionsUi": "res://src/ui/sections_ui.gd",
+	&"Handles": "res://src/ui/handles.gd",
+	&"SplitMerge": "res://src/assembly/split_merge.gd",
+	&"LibraryDialog": "res://src/ui/library_dialog.gd",
+	&"GalleryTool": "res://src/net/gallery_tool.gd",
+	&"CollectionDialog": "res://src/ui/collection_dialog.gd",
+	&"Together": "res://src/net/together.gd",
+	&"Updater": "res://src/net/updater.gd",
+	&"Updates": "res://src/net/updates.gd",
+	&"UpdateNotice": "res://src/ui/update_notice.gd",
+	&"UpdateDialog": "res://src/ui/update_dialog.gd",
+	&"Exports": "res://src/ui/exports.gd",
+	&"MeshExport": "res://src/parts/mesh_export.gd",
+	# Making parts: Make, a print or a sticker, a model with parts of its
+	# own, a Studio file read.
+	&"PartForge": "res://src/parts/part_forge.gd",
+	&"PartEditor": "res://src/parts/part_editor.gd",
+	&"ElementMaker": "res://src/parts/element_maker.gd",
+	&"StudioDecor": "res://src/parts/studio_decor.gd",
+	&"Stickers": "res://src/prints/stickers.gd",
+	&"SvgText": "res://src/prints/svg_text.gd",
+	&"PictureFile": "res://src/prints/picture_file.gd",
+	&"Rays": "res://src/prints/rays.gd",
+	&"PrintPaint": "res://src/prints/print_paint.gd",
+	&"PrintEditor": "res://src/prints/print_editor.gd",
+	# The dialogs, each its menu: Versions…, Compare with…, Pattern…, Send
+	# feedback…, Find a command, About's credits, and Build it in a shared
+	# model's viewer. And the tools first chosen from a menu or a key: the
+	# ruler, Connect, Select connected or by colour, Mirror, and "5x" after
+	# a copy (leaves2, 2026-11-05).
+	&"VersionsDialog": "res://src/ui/versions_dialog.gd",
+	&"CompareView": "res://src/ui/compare_view.gd",
+	&"PatternDialog": "res://src/ui/pattern_dialog.gd",
+	&"FeedbackDialog": "res://src/ui/feedback_dialog.gd",
+	&"CommandPalette": "res://src/ui/command_palette.gd",
+	&"Credits": "res://src/ui/credits.gd",
+	&"BuildMode": "res://src/ui/build_mode.gd",
+	&"Measure": "res://src/ui/measure.gd",
+	&"ConnectTool": "res://src/ui/connect_tool.gd",
+	&"SelectBy": "res://src/assembly/select_by.gd",
+	&"Mirror": "res://src/assembly/mirror.gd",
+	&"Pattern": "res://src/assembly/pattern.gd",
+	# Bring in a 3D model: Brickify and what reads its steps and stock, which
+	# name the assistant, compiled on a worker as a model is shown or laid
+	# (BrickifyDialog), not as the panel opens.
+	&"Brickify": "res://src/assembly/brickify.gd",
+	&"BrickifySteps": "res://src/assembly/brickify_steps.gd",
+	&"BrickifyStock": "res://src/assembly/brickify_stock.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:
@@ -136,6 +188,18 @@ static func _note(name: StringName, started: int) -> void:
 	if first and OS.has_feature("web") and OS.get_thread_caller_id() == OS.get_main_thread_id():
 		JavaScriptBridge.eval("(window.brickworksLoaded = window.brickworksLoaded || {})[%s] = [performance.now() - %d, %d]"
 			% [JSON.stringify(String(name)), took[name], took[name]], true)
+
+
+## [param names] compiled a frame each, those not loaded yet, in the order
+## given (what the later ones name first): a first use whose scripts held
+## one frame too long, split. Awaited, it ends once the last is in.
+static func warm(names: Array[StringName]) -> void:
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	for name: StringName in names:
+		if loaded(name):
+			continue
+		script(name)
+		await tree.process_frame
 
 
 ## A new [param name], made with no arguments.

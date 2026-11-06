@@ -46,6 +46,34 @@ func _ensure_inventories() -> void:
 		add_child(inventories)
 
 
+## From now on, fetched as each person signs in ([member account]'s).
+func follow_account() -> void:
+	if account != null:
+		account.changed.connect(_on_account)
+		_on_account()
+
+
+## Fetched once per person signing in, not on every change the account
+## reports (a renewal, going offline); forgotten on signing out, so the next
+## person on this machine starts from their own.
+func _on_account() -> void:
+	var who: String = _who()
+	if who == _loaded_for:
+		return
+	_loaded_for = who
+	if who.is_empty():
+		collection = Collection.new()
+		on_hand = {}
+		records = {}
+		changed.emit()
+		return
+	load_collection()
+
+
+## Whose collection was last fetched: the account's id, empty for nobody.
+var _loaded_for: String = ""
+
+
 ## Fetch the account's copy, or fall back to the one on this device.
 ## Returns what to say: empty when all went well.
 func load_collection() -> String:

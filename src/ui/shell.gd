@@ -29,30 +29,94 @@ var inspector: Inspector
 var assemblies: Assemblies
 var outliner: Outliner
 var banner: AssemblyBanner
-## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd.
-var sections: SectionsUi
+## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd,
+## made the first time something asks (Later): null in [member _sections] until then.
+var sections: Node:
+	get:
+		if _sections == null and world != null:
+			_make_sections()
+		return _sections
+var _sections: Node = null
 var grid: StudGrid
 ## Build your first model, along the top of the model: src/ui/first_build.gd.
 var first_build: FirstBuild
-## My collection: src/ui/collection_dialog.gd.
-var collection: CollectionDialog
-## File, Library…: src/ui/library_dialog.gd.
-var library_dialog: LibraryDialog
+## What the person owns, made with the window and fetched as they sign in,
+## as it was when My collection's panel was made with the window: Bring in a
+## 3D model's box, parts_list and the assistant read what is on hand here,
+## and none of them makes the panel to. With the panel made on first use
+## and fetching then, the first of them read nothing (leaves3, 2026-11-06).
+var collection_store: CollectionStore
+## My collection: src/ui/collection_dialog.gd, made the first time it is asked
+## for (Later): null in [member _collection] until then.
+var collection: Control:
+	get:
+		if _collection == null and app != null:
+			_collection = Later.make(&"CollectionDialog")
+			_collection.store = collection_store
+			_collection.said.connect(func(text: String) -> void: bar.say(text))
+			_collection.attach(app)
+			place_dialogs()
+		return _collection
+var _collection: Control = null
+## File, Library…: src/ui/library_dialog.gd, made as [member collection] is.
+var library_dialog: Control:
+	get:
+		if _library_dialog == null and app != null:
+			_library_dialog = Later.make(&"LibraryDialog")
+			_library_dialog.said.connect(func(text: String) -> void: bar.say(text))
+			_library_dialog.attach(app)
+			place_dialogs()
+		return _library_dialog
+var _library_dialog: Control = null
 ## The cut-away and x-ray: src/ui/see_inside.gd.
 var see_inside: SeeInside
 ## View, Stress: src/ui/stress_view.gd.
 var stress: StressView
+# The dialogs below are each made the first time something asks for it
+# (Later), and null in its _ field until then: their 0.1 MB of code was
+# compiled before a first visit's window was drawn (leaves2, 2026-11-05).
 ## File, Versions…: src/ui/versions_dialog.gd.
-var versions: VersionsDialog
+var versions: Window:
+	get:
+		if _versions == null and store != null:
+			_make_versions()
+		return _versions
+var _versions: Window = null
 ## Compare with a save, from Versions… or File, Compare with…:
 ## src/ui/compare_view.gd.
-var compare: CompareView
+var compare: Control:
+	get:
+		if _compare == null and model_area != null:
+			_make_compare()
+		return _compare
+var _compare: Control = null
 ## Edit, Pattern…: copies in a row, a grid, round, or along a hose (Pattern).
-var pattern_dialog: PatternDialog
+var pattern_dialog: Window:
+	get:
+		if _pattern_dialog == null and builder != null:
+			_make_pattern_dialog()
+		return _pattern_dialog
+var _pattern_dialog: Window = null
 ## Help, Send feedback… (FeedbackDialog).
-var feedback: FeedbackDialog
+var feedback: Window:
+	get:
+		if _feedback == null and store != null:
+			_feedback = Later.make(&"FeedbackDialog")
+			_feedback.store = store
+			_feedback.world = world
+			_feedback.library = library
+			add_child(_feedback)
+		return _feedback
+var _feedback: Window = null
 ## Find a command (Ctrl+/): src/ui/command_palette.gd.
-var palette: CommandPalette
+var palette: Window:
+	get:
+		if _palette == null and model_area != null:
+			_palette = Later.make(&"CommandPalette")
+			_palette.shell = self
+			add_child(_palette)
+		return _palette
+var _palette: Window = null
 ## The model's part of the window, which the palette opens over.
 var model_area: Control
 
@@ -68,6 +132,8 @@ var _about: AcceptDialog
 var _about_text: Label
 ## Its trademark notice, under the credits.
 var _about_marks: Label
+## About's words, where its credits go as it first shows (_show_about).
+var _about_column: VBoxContainer
 ## Its words, credits and notice, scrolled where the window is short.
 var _about_scroll: ScrollContainer
 ## A licence in full, opened from About, and its words.
@@ -261,21 +327,14 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	stress.panel = StressPanel.new()
 	stress.panel.view = stress
 	add_child(stress)
-	# Sections: suggested, broken out, exploded, evaluated (src/assembly/sections.gd).
-	sections = SectionsUi.new()
-	sections.shell = self
-	sections.sections = Sections.new()
-	sections.sections.world = world
-	sections.sections.library = library
-	sections.sections.builder = builder
-	sections.sections.assemblies = assemblies
-	sections.sections.scenery = store.scenery
-	add_child(sections)
-	verbs.drawn_pick = sections.pick_drawn
-	# A suggestion is of the model it was made for.
+	# A suggestion of sections is of the model it was made for.
 	for replaced: Signal in [bar.started_new, bar.cleared]:
-		replaced.connect(func() -> void: sections.sections.dismiss())
-	bar.opened.connect(func(_n: int) -> void: sections.sections.dismiss())
+		replaced.connect(func() -> void:
+			if _sections != null:
+				_sections.sections.dismiss())
+	bar.opened.connect(func(_n: int) -> void:
+		if _sections != null:
+			_sections.sections.dismiss())
 	_define()
 
 	for menu: Array in MENUS:
@@ -309,7 +368,6 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	outliner = Outliner.new()
 	outliner.shell = self
 	outliner.assemblies = assemblies
-	outliner.sections = sections
 	stack.add_section(outliner, "tree_height")
 
 	inspector = Inspector.new()
@@ -340,17 +398,23 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	first_build.shell = self
 	notices.add_child(first_build)
 
-	# What the person owns, what this model needs of it, what they could
-	# build: src/ui/collection_dialog.gd. The parts list leads there too.
-	collection = CollectionDialog.new()
-	collection.said.connect(func(text: String) -> void: bar.say(text))
-	collection.attach(app)
-
-	# Any of LDraw's models of real sets, or the community's, opened in a
-	# tab of its own: src/ui/library_dialog.gd. File, Open leads there too.
-	library_dialog = LibraryDialog.new()
-	library_dialog.said.connect(func(text: String) -> void: bar.say(text))
-	library_dialog.attach(app)
+	# What the person owns, fetched as they sign in ([member collection_store]).
+	collection_store = CollectionStore.new()
+	collection_store.account = app.get("_account")
+	collection_store.library = library
+	add_child(collection_store)
+	collection_store.follow_account()
+	collection_store.changed.connect(func() -> void:
+		# The assistant prefers what is owned, for a brief that asks it to:
+		# told here once it is made, and told as it is made
+		# (Main._make_assistant). Never made for it.
+		var assistant: Variant = app.get("_assistant_made")
+		if assistant != null:
+			assistant.set("owned", collection_store.on_hand))
+	# What this model needs of it, what they could build ([member
+	# collection]); the parts list leads there too. Any of LDraw's models of
+	# real sets, or the community's, opened in a tab of its own ([member
+	# library_dialog]); File, Open leads there too.
 	bar.library_wanted.connect(func() -> void: library_dialog.open())
 
 	# Every text field gives the keys back, and Tab goes into the frame
@@ -380,54 +444,17 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 		attend("save", _save_named.bind(_save_as_name.text)))
 	add_child(_save_as)
 
-	versions = VersionsDialog.new()
-	versions.store = store
-	versions.bar = bar
-	add_child(versions)
-	# Compare with a save: its panel where View, Stress's is, the two never
-	# open at once (_define's stress).
-	compare = CompareView.new()
-	compare.world = world
-	compare.library = library
-	compare.store = store
-	compare.camera = camera
-	compare.assemblies = assemblies
-	compare.stress = stress
-	compare.say = bar.say
-	compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	compare.offset_right = -14.0
-	compare.offset_left = -14.0 - CompareView.WIDE
-	compare.offset_top = ViewCube.size_for().y + 26.0
-	over_model.add_child(compare)
-	versions.compare = func(version: ModelVersions.Version) -> void: compare.open_with(version)
+	# Versions…, Compare with…, Pattern…, Send feedback… and Find a command
+	# are made as they are first asked for ([member versions] and the rest).
 	# A save is of the model it was made of.
 	for replaced: Signal in [bar.started_new, bar.cleared]:
-		replaced.connect(func() -> void: compare.close(false))
-	bar.opened.connect(func(_n: int) -> void: compare.close(false))
-
-	pattern_dialog = PatternDialog.new()
-	pattern_dialog.builder = builder
-	pattern_dialog.world = world
-	pattern_dialog.library = library
-	pattern_dialog.say = bar.say
-	pattern_dialog.edited = func() -> void: verbs.edited.call()
-	pattern_dialog.pattern.builder = builder
-	pattern_dialog.pattern.world = world
-	pattern_dialog.pattern.library = library
-	# Its copies are drawn in the model's world, not the dialog's window.
-	add_child(pattern_dialog.pattern)
-	add_child(pattern_dialog)
-
-	feedback = FeedbackDialog.new()
-	feedback.store = store
-	feedback.world = world
-	feedback.library = library
-	add_child(feedback)
+		replaced.connect(func() -> void:
+			if _compare != null:
+				_compare.close(false))
+	bar.opened.connect(func(_n: int) -> void:
+		if _compare != null:
+			_compare.close(false))
 	model_area = over_model
-	palette = CommandPalette.new()
-	palette.shell = self
-	add_child(palette)
 
 	_about = AcceptDialog.new()
 	_about.title = "About Brickworks"
@@ -460,7 +487,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	_about_text.custom_minimum_size = Vector2(380, 0)
 	_about_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	about_column.add_child(_about_text)
-	about_column.add_child(_credits())
+	# Whose work is in it (Credits), added as About first shows.
+	_about_column = about_column
 	_about_marks = Label.new()
 	_about_marks.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_about_marks.add_theme_font_size_override("font_size", 12)
@@ -1013,26 +1041,26 @@ func _define() -> void:
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
-		func() -> void: await (app.get("_exports") as Exports).studio_io(true), something)
+		func() -> void: await app.get("_exports").studio_io(true), something)
 	# src/ui/exports.gd, src/parts/mesh_export.gd.
 	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
-		func() -> void: (app.get("_exports") as Exports).ask_model_3d(), something,
+		func() -> void: app.get("_exports").ask_model_3d(), something,
 		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
-		func() -> void: await (app.get("_exports") as Exports).take_picture(true), something)
+		func() -> void: await app.get("_exports").take_picture(true), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,
-		func() -> void: await (app.get("_exports") as Exports).shop_list("bricklink", {}, true),
+		func() -> void: await app.get("_exports").shop_list("bricklink", {}, true),
 		something)
 	_add("export_all", "All my models (.zip)", 0,
-		func() -> void: await (app.get("_exports") as Exports).all_models(true),
+		func() -> void: await app.get("_exports").all_models(true),
 		func() -> bool: return ModelStore.any_saved(),
 		"Every model saved here, as LDraw files in one .zip: a copy of your own")
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
-		func() -> void: await (app.get("_exports") as Exports).shop_list("rebrickable", {}, true),
+		func() -> void: await app.get("_exports").shop_list("rebrickable", {}, true),
 		something)
 	# picklist: LEGO's own shop (src/ui/exports.gd, ShopLists.pick_a_brick).
 	_add("export_pickabrick", "LEGO® Pick a Brick list (.csv)", 0,
-		func() -> void: await (app.get("_exports") as Exports).shop_list("pickabrick", {}, true),
+		func() -> void: await app.get("_exports").shop_list("pickabrick", {}, true),
 		something, "LEGO® element numbers and how many of each, to upload at LEGO® Pick a "
 			+ "Brick, 400 to a file; the parts with no number known are named")
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
@@ -1128,7 +1156,7 @@ func _define() -> void:
 		selected, "Swap the selection for the part you hold, each in its own colour")
 	# src/prints/printed_versions.gd: the prints the LEGO Group made of it.
 	_add("printed_versions", "Printed versions…", 0, func() -> void:
-		var studio: Node = app.get("_studio")
+		var studio: Node = await app.call("_studio_ready")
 		if studio != null:
 			studio.open_versions(),
 		func() -> bool:
@@ -1138,10 +1166,10 @@ func _define() -> void:
 		"Make the selection its mirror image, left to right as you see it")
 	# src/assembly/split_merge.gd: Studio's Split and Merge, on its keys.
 	_add("split_parts", "Split into smaller parts", ALT | KEY_S,
-		func() -> void: SplitMerge.split(verbs), selected,
+		func() -> void: Later.script(&"SplitMerge").split(verbs), selected,
 		"Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs")
 	_add("merge_parts", "Merge into bigger parts", ALT | KEY_M,
-		func() -> void: SplitMerge.merge(verbs), selected,
+		func() -> void: Later.script(&"SplitMerge").merge(verbs), selected,
 		"The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick")
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
@@ -1315,8 +1343,8 @@ func _define() -> void:
 	_add("stress", "Stress", 0, func() -> void:
 		# The two draw with one layer (BrickWorld.set_stress): Stress, asked
 		# for while comparing, takes over where the comparison is.
-		if compare.is_open():
-			compare.close(false)
+		if _compare != null and _compare.is_open():
+			_compare.close(false)
 			stress.set_on(true)
 			return
 		stress.set_on(not stress.on),
@@ -1403,13 +1431,14 @@ func _define() -> void:
 	_add("suggest_sections", "Suggest sections", 0, func() -> void: await sections.suggest(),
 		something, "How a builder would split this into sections, as a set into bags: "
 		+ "shown in the model tree to accept, rename, merge or split")
+	var targets: Callable = func() -> bool: return not section_target().is_empty()
 	_add("evaluate_section", "Evaluate the section…", 0,
-		func() -> void: await sections.show_evaluation(), sections.can_target,
+		func() -> void: await sections.show_evaluation(), targets,
 		"The selected section on its own: parts, weight, whether it holds together and "
 		+ "stands, what joins it to the rest, its own steps")
 	_add("break_out", "Break out the section", KEY_Y,
 		func() -> void: sections.break_out_or_back(),
-		func() -> bool: return sections.can_target() or not world.broken_out.is_empty(),
+		func() -> bool: return targets.call() or not world.broken_out.is_empty(),
 		"Pull the selected section away from the model to work on it, or put it back "
 		+ "exactly where it was ({break_out} again)")
 	_add("put_back", "Put every section back", 0, func() -> void: sections.put_back_all(),
@@ -1417,7 +1446,7 @@ func _define() -> void:
 		"Every section broken out back exactly where it was")
 	_add("explode", "Exploded view", SHIFT | KEY_Y, func() -> void: sections.toggle_explode(),
 		something, "Every section drawn apart, and back together ({explode} again)")
-	_ticked("explode", func() -> bool: return sections.is_exploded())
+	_ticked("explode", func() -> bool: return _sections != null and _sections.is_exploded())
 	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
 		Callable(), "The model's sub-assemblies by name, inside one another")
 	_ticked("panel_outliner", func() -> bool: return _section_shown(outliner))
@@ -1435,10 +1464,12 @@ func _define() -> void:
 	# The parts bin's Print… and its sticker sheet's Draw a sticker, in the
 	# menus too: every command a session can match is one the menus have.
 	_add("print_part", "Print on a part…", 0, func() -> void:
-		(app.get("_studio") as Node).print_part(builder.held_part), Callable(),
+		var studio: Node = await app.call("_studio_ready")
+		studio.print_part(builder.held_part), Callable(),
 		"Draw a print on the part selected, printed where it stands, or on the part in hand")
 	_add("sticker", "Put a sticker on…", 0, func() -> void:
-		(app.get("_studio") as Node).sticker(), Callable(),
+		var studio: Node = await app.call("_studio_ready")
+		studio.sticker(), Callable(),
 		"Click a face of the model, then draw the sticker that goes on it")
 	_add("rotate_held", "Turn the part in hand", KEY_R, func() -> void:
 		builder.rotate_held(1)
@@ -2103,6 +2134,9 @@ func _show_feedback() -> void:
 
 
 func _show_about() -> void:
+	if _about_column.find_child("credits", false, false) == null:
+		_about_column.add_child(_credits())
+		_about_column.move_child(_about_marks, -1)
 	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, built by hand"
 		+ (" or with the assistant" if assistant_shown else "")
 		+ ", on the web or on your own computer.\n\n%s") % [
@@ -2151,7 +2185,7 @@ func _credits() -> VBoxContainer:
 	head.add_theme_font_size_override("font_size", 12)
 	head.modulate = Color(1, 1, 1, 0.75)
 	list.add_child(head)
-	for one: Dictionary in Credits.LIST:
+	for one: Dictionary in Later.script(&"Credits").LIST:
 		var id: String = one["id"]
 		var entry := VBoxContainer.new()
 		entry.name = "credit_" + id
@@ -2202,10 +2236,11 @@ func _read_licence(id: String) -> void:
 		_licence.add_child(_licence_text)
 		# Over About, which holds the keys while it shows.
 		_about.add_child(_licence)
-	var one: Dictionary = Credits.find(id)
+	var credits: GDScript = Later.script(&"Credits")
+	var one: Dictionary = credits.find(id)
 	_licence.title = str(one["full"])
 	_licence_text.accessibility_name = str(one["full"])
-	_licence_text.text = Credits.full_text(id)
+	_licence_text.text = credits.full_text(id)
 	_licence_text.set_caret_line(0)
 	_licence_text.scroll_vertical = 0
 	_licence.popup_centered()
@@ -3312,6 +3347,105 @@ func covers(point: Vector2) -> bool:
 	return false
 
 
+## Sections (SectionsUi over Sections), made the first time something asks
+## for them: Suggest sections, Break out, Exploded view, the model tree's
+## buttons, a session's suggest_sections. Their 0.1 MB of code was compiled
+## before a first visit's window was drawn (leaves, 2026-11-05).
+func _make_sections() -> void:
+	var found: RefCounted = Later.make(&"Sections")
+	found.world = world
+	found.library = library
+	found.builder = builder
+	found.assemblies = assemblies
+	found.scenery = store.scenery
+	var ui: Node = Later.make(&"SectionsUi")
+	ui.shell = self
+	ui.sections = found
+	_sections = ui
+	add_child(ui)
+	verbs.drawn_pick = ui.pick_drawn
+	outliner.use_sections(ui)
+
+
+## The section a section's command works on: the sub-assembly chosen in the
+## model tree, or the one directly inside the assembly entered that all the
+## selected parts are in; "" for none. Asked by the menus and the model
+## tree's buttons without making [member sections].
+func section_target() -> String:
+	var chosen: String = assemblies.selected_assembly()
+	if not chosen.is_empty():
+		return chosen
+	var found: String = ""
+	for brick_id: int in builder.selection:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var child: String = Assemblies.child_of(assemblies.entered, Assemblies.path_of(brick))
+		if child.is_empty() or (not found.is_empty() and child != found):
+			return ""
+		found = child
+	return found
+
+
+## File, Versions…, made the first time it is asked for ([member versions]).
+func _make_versions() -> void:
+	_versions = Later.make(&"VersionsDialog")
+	_versions.store = store
+	_versions.bar = bar
+	_versions.compare = func(version: ModelVersions.Version) -> void: compare.open_with(version)
+	add_child(_versions)
+
+
+## Compare with a save: its panel where View, Stress's is, the two never open
+## at once (_define's stress). Made the first time it is asked for.
+func _make_compare() -> void:
+	var view: GDScript = Later.script(&"CompareView")
+	_compare = view.new()
+	_compare.world = world
+	_compare.library = library
+	_compare.store = store
+	_compare.camera = camera
+	_compare.assemblies = assemblies
+	_compare.stress = stress
+	_compare.say = bar.say
+	_compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_compare.offset_right = -14.0
+	_compare.offset_left = -14.0 - view.WIDE
+	_compare.offset_top = ViewCube.size_for().y + 26.0
+	model_area.add_child(_compare)
+
+
+## Edit, Pattern…, made the first time it is asked for, with the copies it
+## draws in the model's world rather than the dialog's window.
+func _make_pattern_dialog() -> void:
+	_pattern_dialog = Later.make(&"PatternDialog")
+	_pattern_dialog.builder = builder
+	_pattern_dialog.world = world
+	_pattern_dialog.library = library
+	_pattern_dialog.say = bar.say
+	_pattern_dialog.edited = func() -> void: verbs.edited.call()
+	_pattern_dialog.pattern.builder = builder
+	_pattern_dialog.pattern.world = world
+	_pattern_dialog.pattern.library = library
+	add_child(_pattern_dialog.pattern)
+	add_child(_pattern_dialog)
+
+
+## The library and My collection placed for a finger as Main's panels are,
+## once the app is dressed for one (Main._dress_for_phone) and as each is made.
+func place_dialogs() -> void:
+	var touch: Object = app.get("_touch") if app != null else null
+	if touch == null:
+		return
+	if _library_dialog != null:
+		var library: GDScript = Later.script(&"LibraryDialog")
+		touch.place_panel(_library_dialog, Vector2(library.WIDE, library.TALL))
+	if _collection != null:
+		var mine: GDScript = Later.script(&"CollectionDialog")
+		touch.place_panel(_collection, Vector2(mine.WIDE, mine.TALL))
+
+
 ## Where each control is, for a browser test to press it as a person does.
 func controls_by_name() -> Dictionary:
 	var out: Dictionary = {}
@@ -3325,10 +3459,10 @@ func controls_by_name() -> Dictionary:
 		out.merge(outliner.controls_by_name())
 	if banner != null:
 		out.merge(banner.controls_by_name())
-	if collection != null:
-		out.merge(collection.controls_by_name())
-	if library_dialog != null:
-		out.merge(library_dialog.controls_by_name())
+	if _collection != null:
+		out.merge(_collection.controls_by_name())
+	if _library_dialog != null:
+		out.merge(_library_dialog.controls_by_name())
 	var parts_list: Control = app.get("_inventory_made") if app != null else null
 	if parts_list != null:
 		out.merge(parts_list.controls_by_name())
@@ -3336,12 +3470,12 @@ func controls_by_name() -> Dictionary:
 		out.merge(see_inside.controls_by_name())
 	if stress != null and stress.panel != null:
 		out.merge(stress.panel.controls_by_name())
-	if versions != null:
-		out.merge(versions.controls_by_name())
-	if compare != null:
-		out.merge(compare.controls_by_name())
-	if palette != null:
-		out.merge(palette.controls_by_name())
+	if _versions != null:
+		out.merge(_versions.controls_by_name())
+	if _compare != null:
+		out.merge(_compare.controls_by_name())
+	if _palette != null:
+		out.merge(_palette.controls_by_name())
 	if first_build != null:
 		out.merge(first_build.controls_by_name())
 	# Save as's question, for tools/web/dialogs_flow.mjs.
@@ -3349,12 +3483,12 @@ func controls_by_name() -> Dictionary:
 		out["save_as_name"] = _save_as_name
 		out["save_as_ok"] = _save_as.get_ok_button()
 		out["save_as_cancel"] = _save_as.get_cancel_button()
-	if feedback != null:
-		out.merge(feedback.controls_by_name())
+	if _feedback != null:
+		out.merge(_feedback.controls_by_name())
 	# About's links to the licences in full, and the licence open.
 	if _about != null and _about.visible:
 		out["about_ok"] = _about.get_ok_button()
-		for one: Dictionary in Credits.LIST:
+		for one: Dictionary in Later.script(&"Credits").LIST:
 			var read: Node = _about.find_child("read_" + str(one["id"]), true, false)
 			if read != null:
 				out["about_" + read.name] = read

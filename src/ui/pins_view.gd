@@ -18,8 +18,11 @@ var world: BrickWorld
 var camera: Camera3D
 ## For a session's rule (Together.comment_words) and the actions, which
 ## record their undo. An account under 13 is sent no one else's comments in
-## a session (api/together.js), so what is here is its own to read.
-var together: Together
+## a session (api/together.js), so what is here is its own to read. Null
+## until the session is made (Main._together, Later): then nobody is in one.
+var together: Node = null
+## Main's session, made now if it was not: what resolves a pin.
+var make_together: Callable = Callable()
 ## All comments… on the card: Main opens the Comments panel.
 signal list_wanted
 
@@ -167,6 +170,8 @@ func open_card(id: String) -> void:
 
 
 func _resolve_shown() -> void:
+	if together == null and make_together.is_valid():
+		together = make_together.call()
 	if together != null and together.resolve_comment(_card_pin):
 		_card.hide()
 

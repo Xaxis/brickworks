@@ -17,7 +17,7 @@
 class_name Stickers
 extends RefCounted
 
-const STICKER_BY := "0 // Sticker by Brickworks:"
+const STICKER_BY := PartPrints.STICKER_BY
 const AUTHOR := "Brickworks sticker designer"
 ## How thick the film is, how much a real brick is shy of its pitch on
 ## each side, and how far in from the face's edge a sticker stands, LDU.
@@ -252,8 +252,7 @@ static func is_sticker(library: PartLibrary, part_id: String) -> bool:
 ## one LDraw files as a Sticker (PartLibrary.decor_of). What it is stuck to
 ## is [method lies_on]'s.
 static func sticks(library: PartLibrary, part_id: String) -> bool:
-	var info: PartLibrary.PartInfo = library.parts.get(part_id)
-	return info != null and (info.decor() & PartLibrary.PartInfo.STICKER) != 0
+	return library.sticks(part_id)
 
 
 ## Points a little behind a film at [param at], across it, [param film] its
@@ -335,8 +334,11 @@ static func text_for(id: String, title: String, size: Vector2, picture_name: Str
 	out.append("0 !CATEGORY Sticker")
 	out.append("0 !KEYWORDS Brickworks, custom sticker")
 	out.append("")
-	out.append("%s w=%s h=%s" % [STICKER_BY, PartEditor._n(size.x), PartEditor._n(size.y)])
-	out.append("0 // A film %s LDU thick; its printed face is its top." % PartEditor._n(t))
+	# LDraw's numbers as the part maker writes them, compiled when a sticker
+	# is made rather than when the Print studio opens (Later).
+	var editor: GDScript = Later.script(&"PartEditor")
+	out.append("%s w=%s h=%s" % [STICKER_BY, editor._n(size.x), editor._n(size.y)])
+	out.append("0 // A film %s LDU thick; its printed face is its top." % editor._n(t))
 	out.append("")
 	# LDraw's axes: the top is at -t, the back at +z.
 	var top: Array[Vector3] = [Vector3(-w, -t, h), Vector3(w, -t, h), Vector3(w, -t, -h),
@@ -344,30 +346,30 @@ static func text_for(id: String, title: String, size: Vector2, picture_name: Str
 	var bottom: Array[Vector3] = [Vector3(-w, 0, h), Vector3(w, 0, h), Vector3(w, 0, -h),
 		Vector3(-w, 0, -h)]
 	out.append("0 !TEXMAP START PLANAR %s %s %s %s %s %s %s %s %s %s" % [
-		PartEditor._n(-w), PartEditor._n(-t), PartEditor._n(h),
-		PartEditor._n(w), PartEditor._n(-t), PartEditor._n(h),
-		PartEditor._n(-w), PartEditor._n(-t), PartEditor._n(-h), picture_name])
-	out.append(_quad(top, Vector3(0, -1, 0)))
+		editor._n(-w), editor._n(-t), editor._n(h),
+		editor._n(w), editor._n(-t), editor._n(h),
+		editor._n(-w), editor._n(-t), editor._n(-h), picture_name])
+	out.append(_quad(top, Vector3(0, -1, 0), editor))
 	out.append("0 !TEXMAP END")
-	out.append(_quad(bottom, Vector3(0, 1, 0)))
+	out.append(_quad(bottom, Vector3(0, 1, 0), editor))
 	for n: int in 4:
 		var m: int = (n + 1) % 4
 		var side: Array[Vector3] = [top[n], top[m], bottom[m], bottom[n]]
 		var outward: Vector3 = ((top[n] + top[m]) * 0.5) * Vector3(1, 0, 1)
-		out.append(_quad(side, outward))
+		out.append(_quad(side, outward, editor))
 	out.append("0")
 	return "\n".join(out) + "\n"
 
 
 ## A quad line wound so its front faces [param outward].
-static func _quad(corners: Array[Vector3], outward: Vector3) -> String:
+static func _quad(corners: Array[Vector3], outward: Vector3, editor: GDScript) -> String:
 	var a: Vector3 = corners[0]
 	var points: Array[Vector3] = corners.duplicate()
 	if (corners[1] - a).cross(corners[2] - a).dot(outward) < 0.0:
 		points.reverse()
 	var words := PackedStringArray(["4", "16"])
 	for p: Vector3 in points:
-		words.append_array([PartEditor._n(p.x), PartEditor._n(p.y), PartEditor._n(p.z)])
+		words.append_array([editor._n(p.x), editor._n(p.y), editor._n(p.z)])
 	return " ".join(words)
 
 
