@@ -6116,6 +6116,100 @@ msgstr "Una lista de deseos de BrickLink (.xml), para subir en Wanted › Upload
 msgid "A Rebrickable parts list (.csv), to import into a list of your own"
 msgstr "Una lista de piezas de Rebrickable (.csv), para importar en una lista propia"
 
+# picklist: LEGO® Pick a Brick's list, and what BrickLink's wanted list asks of each part
+msgid "LEGO® Pick a Brick list (.csv)"
+msgstr "Lista de LEGO® Pick a Brick (.csv)"
+
+msgid "LEGO® element numbers and how many of each, to upload at LEGO® Pick a Brick, 400 to a file; the parts with no number known are named"
+msgstr "Los números de elemento LEGO® y cuántos de cada uno, para subir a LEGO® Pick a Brick, 400 por archivo; se nombran las piezas sin número conocido"
+
+msgid "Exporting the Pick a Brick list…"
+msgstr "Exportando la lista de Pick a Brick…"
+
+msgid "LEGO® Pick a Brick"
+msgstr "LEGO® Pick a Brick"
+
+msgid "A list of LEGO® element numbers (.csv), to upload at LEGO® Pick a Brick: the parts it has no number for are named"
+msgstr "Una lista de números de elemento LEGO® (.csv), para subir a LEGO® Pick a Brick: se nombran las piezas sin número"
+
+msgid "BrickLink wanted list: new or used, which of your wanted lists, and an email when one is listed"
+msgstr "Lista de deseos de BrickLink: nuevo o usado, cuál de tus listas y un correo cuando se ponga una a la venta"
+
+msgid "Save the list"
+msgstr "Guardar la lista"
+
+msgid "Condition"
+msgstr "Estado"
+
+msgid "New or used"
+msgstr "Nuevo o usado"
+
+msgid "New only"
+msgstr "Solo nuevo"
+
+msgid "Used only"
+msgstr "Solo usado"
+
+msgid "The condition BrickLink looks for in each part"
+msgstr "El estado que BrickLink busca en cada pieza"
+
+msgid "Wanted list"
+msgstr "Lista de deseos"
+
+msgid "Main wanted list"
+msgstr "Lista de deseos principal"
+
+msgid "Another of your wanted lists: its ID, the number after wantedMoreID= in its address on BrickLink. Empty for your main wanted list"
+msgstr "Otra de tus listas de deseos: su ID, el número tras wantedMoreID= en su dirección de BrickLink. Vacío para tu lista principal"
+
+msgid "Empty for your main list. Another: the number after wantedMoreID= in its address on BrickLink"
+msgstr "Vacío para tu lista principal. Otra: el número tras wantedMoreID= en su dirección de BrickLink"
+
+msgid "Email me when one is listed for sale"
+msgstr "Enviarme un correo cuando se ponga una a la venta"
+
+msgid "new only"
+msgstr "solo nuevo"
+
+msgid "used only"
+msgstr "solo usado"
+
+msgid "into wanted list %s"
+msgstr "en la lista de deseos %s"
+
+msgid "BrickLink emails when one is listed"
+msgstr "BrickLink envía un correo cuando se ponga una a la venta"
+
+msgid "1 element"
+msgstr "1 elemento"
+
+msgid "%d elements"
+msgstr "%d elementos"
+
+msgid "%s, %s, to upload at LEGO® Pick a Brick"
+msgstr "%s, %s, para subir a LEGO® Pick a Brick"
+
+msgid "in %d files of %d lines at most, as Pick a Brick takes them"
+msgstr "en %d archivos de %d líneas como máximo, como los acepta Pick a Brick"
+
+msgid "Pick a Brick takes %d of an element: add by hand %s"
+msgstr "Pick a Brick acepta %d por elemento: añade a mano %s"
+
+msgid "%d more of %s"
+msgstr "%d más de %s"
+
+msgid "not on it, with no LEGO® element number known: %s"
+msgstr "no incluidas, sin número de elemento LEGO® conocido: %s"
+
+msgid "%d × %s in %s (%s)"
+msgstr "%d × %s en %s (%s)"
+
+msgid "and %s more"
+msgstr "y %s más"
+
+msgid "no LEGO® element number is known for any part of this model, so there is nothing for Pick a Brick"
+msgstr "no se conoce ningún número de elemento LEGO® para las piezas de este modelo, así que no hay nada para Pick a Brick"
+
 msgid "Find in the model: a part's number, its name, a colour…"
 msgstr "Buscar en el modelo: número de pieza, nombre, color…"
 

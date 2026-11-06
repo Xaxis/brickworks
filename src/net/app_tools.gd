@@ -85,6 +85,8 @@ const COMMANDS: Dictionary = {
 	"measure": "measure",
 	# A model put into this one whole (open_model into=true, intomodel).
 	"import_into": "open_model",
+	# picklist: LEGO's Pick a Brick list (export_model format=pickabrick).
+	"export_pickabrick": "export_model",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -220,8 +222,8 @@ after another while the person goes on working, as File, Render queue… \
 does; list says how far each has got and where it was saved.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
-parts list, or the building instructions as a booklet, written where \
-Export writes; all_models is every saved model in one .zip.
+parts list, a LEGO® Pick a Brick list, or the building instructions as a \
+booklet, written where Export writes; all_models is every saved model in one .zip.
  - brickify: a 3D model (OBJ, STL, glTF, PLY, 3MF, VOX, FBX) laid in LEGO® bricks at the size asked, \
 as one sub-assembly: file= its path on this computer, url= a link the app \
 fetches, or pick=true opens the window's file dialog for the person, after \
@@ -782,14 +784,24 @@ func definitions() -> Array:
 				+ "model), gltf (the same as text), obj (with an .mtl of its colours) or stl "
 				+ "(one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are "
 				+ "capped — picture (.png), bricklink (a wanted list), rebrickable (a parts "
-				+ "list .csv), or instructions (the building instructions as a booklet to "
+				+ "list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and "
+				+ "quantities, 400 lines a file; the answer names the parts with no element "
+				+ "number known), or instructions (the building instructions as a booklet to "
 				+ "print); all_models is every model the person saved, as LDraw in one .zip "
 				+ "(File, Export, All my models). studio, picture and instructions are jobs: "
-				+ "the answer is a job number at once, and job gives the result."),
+				+ "the answer is a job number at once, and job gives the result. A bricklink "
+				+ "wanted list takes condition, wanted_list and notify, as BrickLink's upload "
+				+ "reads them; what is not given is what the person chose last on the parts "
+				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
-					"stl", "picture", "bricklink", "rebrickable", "instructions", "all_models"]},
+					"stl", "picture", "bricklink", "rebrickable", "instructions", "all_models",
+					"pickabrick"]},
+				"condition": {"type": "string", "enum": ["new", "used", "any"],
+					"description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)"},
+				"wanted_list": {"type": "integer", "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list"},
+				"notify": {"type": "boolean", "description": "bricklink: BrickLink emails the person when a lot of a part is listed for sale (NOTIFY Y)"},
 			}},
 		},
 		{
@@ -3411,9 +3423,14 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 				return "A picture needs something to draw with, and this app is running without a window."
 			said = await exports.take_picture()
 		"bricklink":
-			said = await exports.shop_list("bricklink")
+			var wants: Variant = ShopLists.Wants.from(input)
+			if wants is String:
+				return str(wants).left(1).to_upper() + str(wants).substr(1) + "."
+			said = await exports.shop_list("bricklink", {}, false, wants)
 		"rebrickable":
 			said = await exports.shop_list("rebrickable")
+		"pickabrick":
+			said = await exports.shop_list("pickabrick")
 		"instructions":
 			if DisplayServer.get_name() == "headless":
 				return "The booklet's pictures need something to draw with, and this app is running without a window."
@@ -3425,7 +3442,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
 		_:
 			return ("format is ldraw, studio, glb, gltf, obj, stl, picture, bricklink, rebrickable, "
-				+ "instructions or all_models.")
+				+ "pickabrick, instructions or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
 
 

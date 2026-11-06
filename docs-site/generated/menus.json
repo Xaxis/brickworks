@@ -234,6 +234,12 @@
 							"tip": ""
 						},
 						{
+							"name": "export_pickabrick",
+							"words": "LEGO® Pick a Brick list (.csv)",
+							"key": "",
+							"tip": "LEGO® element numbers and how many of each, to upload at LEGO® Pick a Brick, 400 to a file; the parts with no number known are named"
+						},
+						{
 							"line": true
 						},
 						{
@@ -1597,6 +1603,7 @@
 		"export_bricklink": "",
 		"export_all": "",
 		"export_rebrickable": "",
+		"export_pickabrick": "",
 		"render": "",
 		"render_queue": "",
 		"pose": "alt-O",

@@ -180,7 +180,9 @@ var early: Array[String] = []
 const SUBMENUS: Dictionary = {
 	"import": ["import_into", "-", "import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
-		"export_rebrickable", "-", "export_all"],
+		"export_rebrickable",
+		"export_pickabrick",
+		"-", "export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
@@ -722,6 +724,7 @@ const SLOW_FROM: Dictionary = {
 	"select_alike": 2000, "select_inverse": 2000, "parts_list": 2000, "select_find": 2000,
 	"reseat": 2000,
 	"export_bricklink": 3000, "export_rebrickable": 3000, "pose": 3000,
+	"export_pickabrick": 3000,
 	# New first asks whether the model on the baseplate is saved as it is.
 	"new": 2000,
 	# And the rest command_probe found holding a frame a fifth of a second or
@@ -745,6 +748,7 @@ const DOING: Dictionary = {
 	"export_picture": "Taking a picture of the model…",
 	"export_bricklink": "Exporting the BrickLink wanted list…",
 	"export_rebrickable": "Exporting the parts list…",
+	"export_pickabrick": "Exporting the Pick a Brick list…",
 	"render": "Opening Render…", "pose": "Opening Motions…",
 	"instructions": "Making the instructions…", "share": "Opening Share…",
 	"undo": "Undoing…", "redo": "Redoing…", "history": "Going back…",
@@ -1011,6 +1015,11 @@ func _define() -> void:
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
 		func() -> void: await (app.get("_exports") as Exports).shop_list("rebrickable", {}, true),
 		something)
+	# picklist: LEGO's own shop (src/ui/exports.gd, ShopLists.pick_a_brick).
+	_add("export_pickabrick", "LEGO® Pick a Brick list (.csv)", 0,
+		func() -> void: await (app.get("_exports") as Exports).shop_list("pickabrick", {}, true),
+		something, "LEGO® element numbers and how many of each, to upload at LEGO® Pick a "
+			+ "Brick, 400 to a file; the parts with no number known are named")
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	# src/ui/render_queue.gd, loaded the first time it is asked for.

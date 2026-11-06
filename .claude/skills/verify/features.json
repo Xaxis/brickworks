@@ -1772,6 +1772,14 @@
       "tests": []
     },
     {
+      "id": "cli:picklist probe",
+      "kind": "cli",
+      "entry": "src/dev/picklist_probe.gd",
+      "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:picture themes check",
       "kind": "cli",
       "entry": "tools/web/picture_themes.mjs",
@@ -4835,7 +4843,7 @@
       "id": "ui:parts lists for shops",
       "kind": "ui",
       "entry": "src/assembly/shop_lists.gd",
-      "reach": "godot --path .  (File, Export, then BrickLink wanted list or Rebrickable parts list)",
+      "reach": "godot --path .  (File, Export, then BrickLink wanted list, Rebrickable parts list or LEGO\u00ae Pick a Brick list; or the parts list's BrickLink, its choices beside it, Rebrickable and LEGO\u00ae Pick a Brick)  /  export_model format=pickabrick, format=bricklink condition= wanted_list= notify=",
       "area": "model-io",
       "tests": []
     },

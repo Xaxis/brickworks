@@ -539,6 +539,28 @@ commit. None of the ten needs the owner.
     each tag as BrickLink's wanted list help documents it (nothing
     uploaded: an upload is bricklink's, parked);
   - `inventory` passes.
+- **Done** (picklist, 2026-11-05; `picklist_probe`, red on pre261 with
+  20 failures, green at 1280 x 720, 1400 x 900 and on a phone):
+  - the car's list: 31 lines for its 31 elements, summing to the 59 of its
+    61 pieces that have one, as LEGO's template writes it
+    (`elementId,quantity`, CRLF); the one lot with none named on the status
+    line and in the parts list's note at its foot, where no row moves for
+    it ("2 × Windscreen 2 x 4 x 2 in Trans Very Light Blue (3823)"); the same from File, Export,
+    the parts list's LEGO® Pick a Brick button, and `export_model
+    {"format": "pickabrick"}` in 1 call;
+  - 450 lots, each an element of its own: `_1.csv` of 400 lines and
+    `_2.csv` of 50, every element on one;
+  - the arrow beside the parts list's BrickLink asks the condition, the
+    wanted list's ID and the email: new, list 1234567 and email put
+    CONDITION N, WANTEDLISTID 1234567 and NOTIFY Y in all 32 items, kept for
+    File, Export; used, the main list and no email put U and leave the other
+    two out; new or used leaves CONDITION out; over MCP `condition`,
+    `wanted_list` and `notify` do the same, and a condition or ID BrickLink
+    has not is refused with its choices. Every tag is one helpID=207 lists,
+    in its order, with a value it allows (its text kept in
+    `bench/results/picklist-2026-11-05/`). Nothing is uploaded;
+  - `inventory` passes, and `app_tools`, `mcp_sync`, `save_dialog`,
+    `share_view` and `languages`.
 
 **5. tracks: train tracks join end to end.**
 - **Change.**
