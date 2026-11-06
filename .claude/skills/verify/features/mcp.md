@@ -175,11 +175,17 @@ asking for an API key.
   2026-11-06). Its window keeps drawing meanwhile: a design's shapes are
   laid on a worker before its read (`Assistant._shapes_ready`, as sculpts
   are), which held the window 7.0-8.6 s on every check of the Charger's 947
-  shape parts. A worker reads a part not loaded as empty, so a shape or
-  sculpt laid ahead is laid again with the parts it missed loaded
-  (`PartLibrary.unread_by_readers`, `Assistant._laid_whole`): laid with them
-  missing, the Charger came to 1,019 bricks for the read's 1,013, and
-  `shapes_probe` holds the worker's parts to the read's. And
+  shape parts (68-405 ms after, on a loaded box), and the web page's
+  7.9-12.6 s in view, 10.3-16.0 s out of view (102-244 ms after). A
+  worker reads a part not loaded as empty, and Shapes keeps what it read
+  off a part: laid so, the
+  Charger's windscreens were none for every read after, 1,124 parts for the
+  read's 1,127 (built, 1,019 bricks for 1,013). So the parts it is known to
+  read are loaded first (Brickify's, `Shapes.SCREENS`, the design's own
+  bricks), and one it still misses is loaded, the tables read empty read
+  again (`Brickify.warm`) and the shapes laid again
+  (`PartLibrary.unread_by_readers`, `Assistant._laid_whole`). `shapes_probe`
+  holds a worker's parts to a read's from cleared tables. And
   `edit_steps` on 300 parts or more works its steps out a slice a frame
   (`Instructions.plan_paced`; 1,029 ms in one go on the Charger). The job **is** the
   `Working` job the person sees along the foot of the window — its words, its
