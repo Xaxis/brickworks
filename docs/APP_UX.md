@@ -457,25 +457,27 @@ there. MB is what leaves the closure (the classes and what only they
 name), measured after the line above it. "Names" are the references left
 to rewrite; the bracket counts those in main.gd, parts_bin.gd,
 inspector.gd, shell_prefs.gd and assistant.gd. The start's seconds are
-at 0.37 s a MB. A first use compiles the piece it needs at the rate cut 1
-measured on the web after the start, about 1.7 s a MB (below); "first
-use" is that piece's cost.
+at 0.37 s a MB. A first use compiles the piece it needs at about 0.6 s a
+MB, the rate a person's browser has after the start (lazycompile, below;
+cut 1's 1.7 s a MB was mostly the test's own); "first use" is that
+piece's cost.
 
 | # | line | MB | names | start | first use | when | risk |
 |---|---|---|---|---|---|---|---|
-| 1 | The grab: GrabDrag, Grab, GrabChain, Linkage, HingeAlign, Bodies, Playable (Swing, FlexFollow and Topple go with them) | 0.63 | 18 (14) | 0.23 s | 1.06 s, measured | a drag on a part, the viewer's play, Meet, Motions, Simulate, move_part | one piece; GrabDrag reads the joints ahead from the start. **Landed and measured: NO-GO**, below |
-| 2 | The leaves: Sections, SectionsUi, Handles, SplitMerge, LibraryDialog, GalleryTool, CollectionDialog, Together, the updater (5), Exports (6), Minifig, MinifigData | 0.70 | 66 (21) | 0.26 s | 0.05-0.26 s a piece | each its own menu; a selection's handles; a together link; a model with figures | low: ten pieces, the largest the figures (0.15 MB) |
-| 3 | Making parts: PartForge, PartEditor, ElementMaker, StudioDecor, Stickers, SvgText, PictureFile, Rays | 0.33 | 91 (2) | 0.12 s | 0.42 s for Make (0.25 MB) | Make; a print or a sticker; a model with parts of its own | medium: CustomParts reads a model's own parts as it opens |
-| 4 | The rest of what moves: Mechanism, Balance, Stability, Flex, FlexTool, GearMesh, Racks, Stress, Poser, PoseAnimation, Bands, LdcadPath | 0.43 | 107 (14) | 0.16 s | up to 0.7 s | placing a gear, chain or hose; Stress; Stability is made at the start | high: Builder and Joints read gears' specs and Flex's kinds while placing, so those tables move to a core class first |
-| 5 | Steps and the booklet: Instructions, BookletLooks, Booklet, BookletStudio, AuthorSteps, StepsBar, BuildSteps, SharedPages, SeenParts, HiddenColours, BuildPlayback, Helvetica | 0.57 | 195 (28) | 0.21 s | about 1 s | the timeline; Instructions; a shared model's steps | high: Shell's 770 lines of step edits (135 of the names) move out whole; the timeline is on the first screen and ModelStore reads a model's steps as it opens |
-| 6 | Dialogs and the account: CompareView, ModelDiff, Versions, Feedback, Credits, CommandPalette, FirstBuild, Pattern, ReferenceImage, BuildMode; Account, CloudModels, AccountPanel, SignInForm, OrangecheckSignIn, KeymapSync; CustomParts | 0.35 | 98 (25) | 0.13 s | under 0.1 s a dialog | each its menu; the sign-in gate is on the first screen | medium: the account is read as the window is built, so its part saves nothing until the gate is a piece of its own |
-| 7 | The assistant's providers: ProviderSettings, Provider, the four APIs, Streamer, KeyStore, OwnKey, ClaudeCode, CopilotCli, Brain, DesignMemory, RealSnippets | 0.19 | 52 (46) | 0.07 s | 0.32 s | the first design, which takes seconds already, or the assistant's settings | most of the names are in main.gd and assistant.gd |
-| 8 | Placing: Joints, JointSnap, Exact, Carry, Attach, PartFits | 0.20 | 140 (14) | 0.07 s | 0.34 s | **the first part put down** | fails the rule |
-| 9 | Editing and the bin's search: EditVerbs, TypedEntry, ConnectTool, SelectBy, Mirror, Measure; PartSearch, PartWords, SubjectWords | 0.23 | 46 (19) | 0.09 s | 0.2 s a piece | the first edit; the first letter typed in the search | both come early in a visit |
+| 1 | The grab: GrabDrag, Grab, GrabChain, Linkage, HingeAlign, Bodies, Playable (Swing, FlexFollow and Topple go with them) | 0.63 | 18 (14) | 0.23 s | 0.35-0.41 s, measured | a drag on a part, the viewer's play, Meet, Motions, Simulate, move_part | one piece; GrabDrag reads the joints ahead from the start. **Landed and measured: NO-GO**, below |
+| 2 | The leaves: Sections, SectionsUi, Handles, SplitMerge, LibraryDialog, GalleryTool, CollectionDialog, Together, the updater (5), Exports (6), Minifig, MinifigData | 0.70 | 66 (21) | 0.26 s | 0.02-0.09 s a piece | each its own menu; a selection's handles; a together link; a model with figures | low: ten pieces, the largest the figures (0.15 MB) |
+| 3 | Making parts: PartForge, PartEditor, ElementMaker, StudioDecor, Stickers, SvgText, PictureFile, Rays | 0.33 | 91 (2) | 0.12 s | 0.15 s for Make (0.25 MB) | Make; a print or a sticker; a model with parts of its own | medium: CustomParts reads a model's own parts as it opens |
+| 4 | The rest of what moves: Mechanism, Balance, Stability, Flex, FlexTool, GearMesh, Racks, Stress, Poser, PoseAnimation, Bands, LdcadPath | 0.43 | 107 (14) | 0.16 s | up to 0.26 s | placing a gear, chain or hose; Stress; Stability is made at the start | high: Builder and Joints read gears' specs and Flex's kinds while placing, so those tables move to a core class first |
+| 5 | Steps and the booklet: Instructions, BookletLooks, Booklet, BookletStudio, AuthorSteps, StepsBar, BuildSteps, SharedPages, SeenParts, HiddenColours, BuildPlayback, Helvetica | 0.57 | 195 (28) | 0.21 s | about 0.34 s | the timeline; Instructions; a shared model's steps | high: Shell's 770 lines of step edits (135 of the names) move out whole; the timeline is on the first screen and ModelStore reads a model's steps as it opens |
+| 6 | Dialogs and the account: CompareView, ModelDiff, Versions, Feedback, Credits, CommandPalette, FirstBuild, Pattern, ReferenceImage, BuildMode; Account, CloudModels, AccountPanel, SignInForm, OrangecheckSignIn, KeymapSync; CustomParts | 0.35 | 98 (25) | 0.13 s | under 0.04 s a dialog | each its menu; the sign-in gate is on the first screen | medium: the account is read as the window is built, so its part saves nothing until the gate is a piece of its own |
+| 7 | The assistant's providers: ProviderSettings, Provider, the four APIs, Streamer, KeyStore, OwnKey, ClaudeCode, CopilotCli, Brain, DesignMemory, RealSnippets | 0.19 | 52 (46) | 0.07 s | 0.11 s | the first design, which takes seconds already, or the assistant's settings | most of the names are in main.gd and assistant.gd |
+| 8 | Placing: Joints, JointSnap, Exact, Carry, Attach, PartFits | 0.20 | 140 (14) | 0.07 s | 0.12 s | **the first part put down** | passes the rule (it failed at cut 1's rate) |
+| 9 | Editing and the bin's search: EditVerbs, TypedEntry, ConnectTool, SelectBy, Mirror, Measure; PartSearch, PartWords, SubjectWords | 0.23 | 46 (19) | 0.09 s | under 0.1 s a piece | the first edit; the first letter typed in the search | both come early in a visit |
 
 Ranked by the start's seconds for the risk, with a first use under
-300 ms: **2**, then 6 and 9. Lines 1, 3, 4, 5, 7 and 8 come over it, and
-wait on the penalty below being found and fixed.
+300 ms: **2**, then 6 and 9. At the rate lazycompile measured, 3, 4, 7
+and 8 come under it too. Lines 1 and 5 still come over it, each made as
+one piece.
 
 Lines 1 to 9 take the closure to 2.56 MB (41%), about 1.3 s off the
 start's compile. A third, 2.06 MB, needs 0.5 MB more of main.gd's own
@@ -499,7 +501,8 @@ once if it came first.
 - Natively (the editor's build, scripts as text) the same cut is in
   proportion: main's compile fell 0.59 s (4.26 to 3.67, medians of three),
   and the grab compiled after it took 0.44.
-  The penalty belongs to the web. It is not what the grab names: a script
+  The penalty looked like the web's (it was the test's: below). It is not
+  what the grab names: a script
   typed with Builder, BrickWorld, PartLibrary, BrickLattice, Shell and
   ModelStore loads in 1-2 ms after the start (arms2). Nor is it the code's
   density: 57% of the grab's source is code, and 56% of the rest. Per MB
@@ -511,15 +514,56 @@ once if it came first.
   3 s idle) waiting for the compile to let go of the scripts' cache.
 - The code is kept on branch `firstscreen-grab` (cee27de8).
 
-**Next.** Line 2, the leaves: ten pieces, each first use 0.05 to 0.26 s
-at the rate the grab was measured at, 0.26 s off the start. It is no
-bigger than cut 1, so its ABBA needs two sets at a calm load, or the
-compile lap's paired medians, to show beyond the noise. Beside it: find
-why a script compiled after the start costs 3x on the web, in a Chrome
-trace of the grab's load (the allocator's lock with workers busy, the
-file reads, the compiler). Until then lines 1, 3, 4, 5, 7 and 8 fail the
-300 ms rule, and at parity line 1 would still add 0.4 s to a first drag.
-Lines 2, 6 and 9 together are 1.28 MB, 0.47 s of the start.
+**The 3x, traced** (lazycompile, 2026-11-05,
+`bench/results/lazycompile-2026-11-05`). Two thirds of it was the test's
+own. A person's grab takes 0.35-0.41 s, about 0.6 s a MB, as natively
+(0.44 s). There is no web penalty to fix in the app.
+- Chrome traces (`load_check --trace`, read with
+  `tools/web/trace_window.py`). The start compiles at 0.47-0.54 s a MB
+  (base 3.34 s for 6.18 MB, the cut 2.62-2.73 s for 5.56), 96% of it in
+  wasm. The grab took 0.85 s, and only 0.45 s of it was wasm: 0.37 s was
+  emscripten's file system in JS (`lookup`, `lookupPath`).
+- The compiler asks for the type of each global class it names by its .gd
+  path (`ResourceLoader::get_resource_type`). The export ships .gdc and
+  .remap, so the .gd and its .import are missing: four failing file calls
+  a name. The grab makes 1,112 of them, the start 10,223.
+- Each missing path is a caught JS throw. In the start, which runs in a
+  promise reaction, one costs 4 µs. The grab ran in an engine frame, and
+  there, under Playwright's inspector, one cost 300 µs: V8 makes a message
+  and the inspector a stack trace for every throw in a frame or a timer.
+  Only a promise reaction skips that. With no inspector the same 1,112
+  cost 5.4 µs each, 8.5 ms in all. A person has no inspector.
+- So `load_check` now runs the engine's frames as promise reactions, which
+  is what they cost in a person's browser (`--inspector-frames` keeps the
+  old way). A miss in a frame then costs 6.7 µs. Every load timed before
+  2026-11-05 had the inspector's frames. The start's compile never did, so
+  the start's numbers stand.
+- The grab's first use, cut 1's way against the new one, ten loads each,
+  interleaved at load 11-30 (`firstuse/runs.txt`). As cut 1 timed it:
+  0.96 s median (0.65-1.25), longest stall 0.94. With a person's frames,
+  made once the parts' search index was built: 0.35 s (0.31-0.48), stall
+  0.40. With no inspector at all, five loads each: 0.38 s made at 0.4 s
+  idle, 0.41 made once the index was built.
+- The rest, 1.2-1.3x the start's rate, is the grab's own. The start's
+  parse trees are let go once it is done, so the grab parses again the
+  core classes it names: Flex, Mechanism, Exact, CustomParts, Joints,
+  GearMesh, Racks, 0.33 MB. And the search index (a 4 s worker task) holds
+  the allocator's lock while it runs: in the trace the same functions ran
+  about 20% slower beside it. Made before the first screen, the grab took
+  0.28-0.29 s, but that puts it back in the start.
+- No ABBA: the grab, made as one piece, is still over 300 ms. Its largest
+  class, Grab, is 0.2 MB, so a warm-up made a class a frame, deepest
+  first, could keep each step near 0.15 s.
+- Aside: one of the engine's workers polls the clock on a whole core for
+  the entire visit (wasm $9528 with `_emscripten_get_now`).
+
+**Next.** Line 2, the leaves: ten pieces, each first use 0.02 to 0.09 s,
+0.26 s off the start. It is no bigger than cut 1, so its ABBA needs two
+sets at a calm load, or the compile lap's paired medians, to show beyond
+the noise. Lines 3, 4, 7 and 8 now pass the 300 ms rule as well. Line 1
+waits on a stepped warm-up (above), proved by a drag that comes first as
+well as by the stall. Line 5 needs splitting the same way. Lines 2, 6
+and 9 together are 1.28 MB, 0.47 s of the start.
 
 **Beside it, the rest of a warm start** (base laps, abba1, medians at
 load 15-17): the engine 1.05 s (its banner 0.65, its own start 0.4), the

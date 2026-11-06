@@ -229,6 +229,17 @@ plan with Claude as the client.
   `--max-interactive`. Not a flow's incognito context: its cache keeps no
   file over a few MB, so a warm load there fetched the pack again; and the
   visit counter is blocked, not routed, since a route turns the cache off.
+  Each engine frame runs as a promise reaction (`instrument`), so a file the
+  engine does not find costs what it costs a person: under Playwright's
+  inspector V8 records the stack at every caught throw, and a miss in a
+  frame cost 300 us against a person's 5 (lazycompile, 2026-11-05);
+  `--inspector-frames` times frames as every load before that was timed.
+  `--trace=DIR` writes a Chrome trace of each load (V8's sampled CPU
+  profile of every thread, GC, wasm tiers) with its marks beside it, and
+  `tools/web/trace_window.py TRACE --compile` (or `--later=NAME`, or
+  `--from=MS --to=MS` on the page's clock) says where that stretch went:
+  by thread, wasm against the engine's JS against GC, the functions with
+  the most self time, and the trace's events in it.
   Measured live m167 against load250's preview, three cold loads each
   taken in turn (2026-10-24, load 12-35): 31.1 MB before interactive
   against 17.0 (14.4 to start, the later parts 2.6 during it); net 14.5 s
