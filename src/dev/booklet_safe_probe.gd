@@ -74,9 +74,10 @@ func _read(png: String, jpeg: String) -> void:
 		"0 !BRICKWORKS IMAGE 60 10 40 30 brickworks-page-2.png",
 		"0 !BRICKWORKS IMAGE 110 10 40 30 brickworks-page-3.jpg",
 		"0 !BRICKWORKS TEXT 10 60 80 10 4 " + A_TAG,
+		"0 !BRICKWORKS PAGE_SETUP PICTURE brickworks-page-behind.png",
 		"0 STEP"])
 	for named: Array in [["brickworks-page-1.png", png], ["brickworks-page-2.png", png + OUT_OF_QUOTES],
-			["brickworks-page-3.jpg", jpeg]]:
+			["brickworks-page-3.jpg", jpeg], ["brickworks-page-behind.png", png + OUT_OF_URL]]:
 		lines.append("0 !DATA " + named[0])
 		var data: String = named[1]
 		for at: int in range(0, data.length(), 76):
@@ -93,6 +94,11 @@ func _read(png: String, jpeg: String) -> void:
 			notes.append_array((looks[name] as Dictionary).get("notes", []))
 	_check("the rest read as before: three pictures' places and the words (%d notes)" % notes.size(),
 		notes.size() == 4)
+	var sheet: Dictionary = (looks.get(BookletLooks.BOOKLET, {}) as Dictionary).get("sheet", {})
+	_check("the page set up as the file says, its picture's name kept (%s)" % [sheet],
+		str(sheet.get("picture", "")) == "brickworks-page-behind.png")
+	_check("...and the picture behind the pages that broke out of its url() left out",
+		not pictures.has("brickworks-page-behind.png"))
 
 
 ## The sinks: every place the booklet writes a file's or a person's text,
@@ -122,6 +128,7 @@ func _written(png: String) -> void:
 	document.parts[plain.key] = "data:image/png;base64," + png
 	document.images["good.png"] = "data:image/png;base64," + png
 	document.images["bad.png"] = "data:image/png;base64," + png + OUT_OF_QUOTES
+	document.sheet.picture_uri = "data:image/png;base64," + png + OUT_OF_URL
 	var page := Booklet.Page.new()
 	page.number = 2
 	page.banner = A_TAG
@@ -170,6 +177,11 @@ func _written(png: String) -> void:
 		not written.contains(".p0{background-image"))
 	_check("...and the good one's kept", written.contains(
 		".p1{background-image:url(data:image/png;base64,%s)}" % png))
+	_check("the picture behind the pages that broke out left out of the stylesheet",
+		not written.contains("section.page{background-image"))
+	document.sheet.picture_uri = "data:image/png;base64," + png
+	_check("...and a good one kept", Booklet.head(document).contains(
+		"section.page{background-image:url(data:image/png;base64,%s);" % png))
 
 
 func _check(what: String, ok: bool) -> void:

@@ -11,9 +11,12 @@
 //
 // This writes a model of two steps whose page carries two pictures of its
 // designer's: a good PNG, and one whose data breaks out of the attribute to
-// set a harmless flag. It opens the model (Open > From a file), presses
-// Instructions and reads the tab. Fails if the flag is set, if the good
-// picture is not shown or any picture does not decode, if the booklet's
+// set a harmless flag; and whose page is set up with a picture behind it
+// (pagesetup) whose data breaks out of the stylesheet's url() to do the
+// same. It opens the model (Open > From a file), presses Instructions and
+// reads the tab. Fails if the flag is set, if the picture behind the pages
+// is drawn, if the good picture is not shown or any picture does not
+// decode, if the booklet's
 // security policy is not the first thing in it, if script put into the tab
 // afterwards runs (the policy honoured in a document.write tab), or if
 // Print does not print.
@@ -37,6 +40,7 @@ mkdirSync(out, { recursive: true });
 // attribute and adds a handler setting a flag.
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 const BROKEN = PNG + "x\" onerror=\"window.__booksafe=1\" x=\"";
+const BEHIND = PNG + "x);}</style><img src=x onerror=\"window.__booksafe=4\"><style>{";
 const model = path.resolve(out, "booksafe.ldr");
 writeFileSync(model, [
   "0 Booklet safe",
@@ -45,6 +49,7 @@ writeFileSync(model, [
   "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
   "0 !BRICKWORKS IMAGE 150 30 40 30 brickworks-page-1.png",
   "0 !BRICKWORKS IMAGE 150 70 40 30 brickworks-page-2.png",
+  "0 !BRICKWORKS PAGE_SETUP PICTURE brickworks-page-behind.png",
   "0 STEP",
   "1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat",
   "0 STEP",
@@ -52,6 +57,8 @@ writeFileSync(model, [
   `0 !: ${PNG}`,
   "0 !DATA brickworks-page-2.png",
   `0 !: ${BROKEN}`,
+  "0 !DATA brickworks-page-behind.png",
+  `0 !: ${BEHIND}`,
   "",
 ].join("\n"));
 
@@ -121,6 +128,8 @@ try {
         first: first ? first.outerHTML.slice(0, 80) : "",
         policy: policy ? policy.content : "",
         policyFirst: Boolean(policy) && [...document.head.children].indexOf(policy) <= 1,
+        styles: document.querySelectorAll("style").length,
+        behind: getComputedStyle(document.querySelector("section.page")).backgroundImage,
       };
     });
     writeFileSync(path.join(out, "booklet.html"),
@@ -128,6 +137,8 @@ try {
     check(`the file's picture data ran nothing (flag ${facts.flag}, in the app ${facts.opener})`,
       facts.flag === undefined && facts.opener === undefined);
     check(`no element has a handler of the file's (${facts.handlers})`, facts.handlers === 0);
+    check(`the picture behind the pages that broke out of its url() left out (${facts.styles} styles, `
+      + `behind the page: ${facts.behind.slice(0, 40)})`, facts.behind === "none");
     check(`the good picture of the designer's shown (${facts.shown} of ${facts.designers})`,
       facts.designers === 1 && facts.shown === 1);
     check(`every picture decodes (${facts.pictures - facts.broken} of ${facts.pictures})`,

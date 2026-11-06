@@ -1853,11 +1853,13 @@ picture the assistant is shown.
   anyone may have made. **The edge:** a page's picture is kept only when
   `BookletLooks.picture_kind` finds a PNG or a JPEG in strict base64
   (`BookletLooks.read` through `kept_pictures`, `Shell.change_look` "image",
-  Together's `~looks`); anything else is left out with a warning and the rest
-  of the file read as before. **The sinks** (`Booklet`): words and
+  `Shell.page_setup`'s picture behind the pages, Together's `~looks`);
+  anything else is left out with a warning and the rest of the file read as
+  before. **The sinks** (`Booklet`): words and
   attributes through `_escape`, every picture's address through `_url`
   (base64 image data or left out, `src=""` and the stylesheet's `url()`
-  alike), colours through `_colour` (hex or grey). **The policy:**
+  alike, the parts' pictures and `BookletSheet.picture_uri` behind the
+  pages), colours through `_colour` (hex or grey). **The policy:**
   `Booklet.policy()` is the first meta after the charset: no script but
   `SAVE_JS` by its hash (Print's click, and Save on the desktop), images as
   data, no base or form; `BookletOut.take` writes the web's tab with no
@@ -1868,8 +1870,10 @@ picture the assistant is shown.
   node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR
   ```
   writes a two-step model whose page carries a good PNG and a picture whose
-  data ends its attribute to set a flag, opens it, presses Instructions and
-  reads the tab: no flag, the good picture shown and every picture decoded,
+  data ends its attribute to set a flag, and a picture behind the pages
+  whose data ends its `url()` and the stylesheet, opens it, presses
+  Instructions and reads the tab: no flag, nothing behind the pages, the
+  good picture shown and every picture decoded,
   the policy first, script put into the tab afterwards refused (the policy
   honoured in a document.write tab), Print prints. Red on 04e44b6d (the flag
   set, no policy), green on booksafe.

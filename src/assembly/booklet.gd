@@ -1259,9 +1259,10 @@ static func _head(document: Document, with_parts: bool = true) -> String:
 	var sheet: BookletSheet = document.sheet
 	var size: Vector2 = sheet.size()
 	var own: bool = sheet.paper == "booklet"
-	if not sheet.picture_uri.is_empty():
+	var behind: String = _url(sheet.picture_uri)
+	if not behind.is_empty():
 		parts.insert(0, "section.page{background-image:url(%s);background-size:cover;background-position:center}"
-			% sheet.picture_uri)
+			% behind)
 	return """<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
