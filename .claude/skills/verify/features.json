@@ -965,6 +965,14 @@
       "tests": []
     },
     {
+      "id": "cli:each thread's CPU in a browser",
+      "kind": "cli",
+      "entry": "tools/web/thread_cpu.mjs",
+      "reach": "node tools/web/thread_cpu.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (with .env sourced; a local export served by tools/web/serve.py; --profile=phone; --idle=60 --build=60)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:embed browser flow",
       "kind": "cli",
       "entry": "tools/web/embed_flow.mjs",
@@ -3804,6 +3812,14 @@
       "entry": "api/_bases.js",
       "reach": "node tools/web/based_on_flow.mjs --out=DIR   (the stand-in: Say what it is based on on a model's page, a set and a link said, refused in words, its page's lines, structured data and JSON, the set's page's Based on this set, taken away; supabase/model_bases.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/model_bases.sql --dry --try=tools/model_bases_try.sql --table=model_bases; tests/test_model_bases.py)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:what a session sees over mcp",
+      "kind": "lib",
+      "entry": "src/net/see_tools.gd",
+      "reach": "PROBE_SIZE=1400x900 tools/probe.sh seeing   (view_board: six views in one labelled picture, highlight= edged with the rest see-through, xray=, step=N; booklet_page as the PDF prints it; split/merge/mirror pictured; render_model Best says how it was drawn)",
+      "area": "mcp",
       "tests": []
     },
     {

@@ -37,6 +37,9 @@ const MOST_WAIT_S := 120.0
 ## started again.
 const MOST_STARTS := 3
 
+## Starts a program to be sent SIGTERM when this app ends (util-linux).
+const SETPRIV := "/usr/bin/setpriv"
+
 static var _words: Array = []
 static var _read: bool = false
 static var _one: LeasedShots = null
@@ -162,7 +165,19 @@ func take(shot: ModelShot, world: BrickWorld, from: String, skip: Dictionary,
 
 func _start() -> void:
 	var words: Array = command()
+	var program: String = str(words[0])
 	var arguments := PackedStringArray()
+	# Ended with the app, however the app ends: a drawer still in the lease's
+	# queue when the app has gone would take a slot when its turn came, on the
+	# brief lane ahead of every windowed job, for nobody. Godot starts it in a
+	# session of its own, out of reach of the bench's signal to the app's
+	# group, and an app ended by a signal never reaches _stop, so drawers
+	# outlived their apps (44 relay designs' logs end on one that failed, the
+	# tab's PATH gone with its home, 2026-10-29 to 11-05). The kernel sends it
+	# SIGTERM as this app ends, and `gpu` leaves the queue or stops its drawer.
+	if OS.get_name() == "Linux" and FileAccess.file_exists(SETPRIV):
+		arguments.append_array(["--pdeathsig", "TERM", program])
+		program = SETPRIV
 	for word: Variant in words.slice(1):
 		arguments.append(str(word))
 	# The script first, so the lease's log and `gpu --status`, which keep a
@@ -171,12 +186,11 @@ func _start() -> void:
 		ProjectSettings.globalize_path("res://"), "--log-file", _dir.path_join("drawer.log"),
 		"--", "--dir=" + _dir,
 		"--app-pid=%d" % OS.get_process_id(), "--linger=%.1f" % LINGER_S])
-	_pid = OS.create_process(str(words[0]), arguments)
+	_pid = OS.create_process(program, arguments)
 	if _pid < 0:
-		push_warning("leased shots: could not start %s" % str(words[0]))
+		push_warning("leased shots: could not start %s" % program)
 		return
-	# Stopped with the app: a drawer still in the lease's queue when the app
-	# ends would take a slot when its turn came, for nobody.
+	# And at once when the app quits as it should.
 	var root: Window = (Engine.get_main_loop() as SceneTree).root
 	if not root.tree_exiting.is_connected(_stop):
 		root.tree_exiting.connect(_stop)

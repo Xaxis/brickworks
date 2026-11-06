@@ -1,0 +1,10 @@
+t1|Clear the baseplate and build a small wall of eight red 1x4 bricks: four in a row, and four more on top of them, set half a brick along like a real bond.
+t2|Turn the second brick of the top row 15 degrees where it stands, about the vertical, as if it were knocked askew.
+t3|Paint three bricks of the bottom row blue.
+t4|Put a red 2x4 plate on the baseplate beside the wall, then split it into eight 1x1 plates on the same studs.
+t5|Stack three yellow 1x4 plates beside that, then merge them into one 1x4 brick.
+t6|Put a light grey 3x6 wing plate, the left-hand one, flat on the baseplate in front of the wall, then add its mirror image beside it so the two make a pair.
+t7|Stand a black Technic beam 7 upright next to the wall, and push a blue Technic pin into its second hole.
+t8|What is the angle, in degrees, between the axis of the beam's holes and the wall's long side?
+t9|Move the wall's top row three build steps later than it is now.
+t10|Render a picture of the model.

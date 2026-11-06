@@ -1874,7 +1874,7 @@ static func _contacts_of(nodes: Array[Node2], world: BrickWorld, library: PartLi
 			if part.boxes.is_empty():
 				mine = _cells_round(at * part.bounds)
 			elif BrickLattice.is_square_to_grid(at.basis):
-				from = BrickLattice.grid_cell(at.origin)
+				from = BrickLattice.to_cell(at.origin)
 				if not shapes.has(node.part_id):
 					shapes[node.part_id] = {}
 				var turns: Dictionary = shapes[node.part_id]

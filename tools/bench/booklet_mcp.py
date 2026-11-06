@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """The one MCP server a booklet builder's session has (tools/bench/booklet_follow.py).
 
-    booklet_mcp.py --port=N --pages=DIR --run=DIR --models=DIR
+    booklet_mcp.py --port=N --pages=DIR --run=DIR --models=DIR [--reading=FILE]
 
 A builder is a Claude Code session that builds a model from its booklet as a
 person at a table does: it sees the pages and what it has built, and never the
 model's file. So the session is given this server alone (--strict-mcp-config,
 no built-in tools) and this server gives it:
 
-  booklet_page   a page of the booklet as its picture (DIR/page-N.png)
+  booklet_page   a page of the booklet as its picture (DIR/page-N.png); how its pages
+                 read is a Brickworks booklet's (READING) or FILE's
   page_done      the builder's word that a page is built, and what the page did
                  not let it tell; the app's model is saved as it stands then
                  (run/snapshots/page-N.ldr)
@@ -49,15 +50,18 @@ JOB = re.compile(r"(Started job|The app is busy with job) (\d+)")
 JOB_WAIT = 600.0
 WHY = ("hidden", "position", "too_many", "callout", "turn", "part", "colour", "count", "other")
 
+# How a Brickworks booklet's pages read. A booklet drawn another way (a printed LEGO® one,
+# measured against ours) says how its own read: booklet_follow's reading.json, "page".
+READING = (
+    "Page 1 is the cover; the steps begin on page 2; the finished model and the parts list "
+    "come last. Each step on a page has its number, a box of the parts it adds with how many "
+    "of each (2x), and a picture of the model with the step's new parts outlined. A yellow "
+    "box is a sub-assembly built on the side, put on whole in the step its arrow points to.")
 PAGE_TOOL = {
     "name": "booklet_page",
     "description": (
-        "One page of the booklet, as its picture. Page 1 is the cover; the steps begin on "
-        "page 2; the finished model and the parts list come last. Each step on a page has "
-        "its number, a box of the parts it adds with how many of each (2x), and a picture "
-        "of the model with the step's new parts outlined. A yellow box is a sub-assembly "
-        "built on the side, put on whole in the step its arrow points to. Look at any page "
-        "you like, before or after the one you are building."),
+        f"One page of the booklet, as its picture. {READING} Look at any page you like, "
+        "before or after the one you are building."),
     "inputSchema": {"type": "object", "additionalProperties": False,
                     "properties": {"page": {"type": "integer"}}, "required": ["page"]},
     "annotations": {"readOnlyHint": True},
@@ -112,9 +116,11 @@ class Server:
     """What one session may reach: the pages, its run's records, the relayed tools."""
 
     def __init__(self, port: int, pages: Path, run: Path, models: Path,
-                 app: brickworks_mcp.App | None = None) -> None:
+                 app: brickworks_mcp.App | None = None, reading: str | None = None) -> None:
         self.app = app or brickworks_mcp.App(port)
         self.pages = pages
+        self.page_tool = PAGE_TOOL if reading is None else {
+            **PAGE_TOOL, "description": PAGE_TOOL["description"].replace(READING, reading)}
         self.run = run
         self.models = models
         (run / "snapshots").mkdir(parents=True, exist_ok=True)
@@ -130,7 +136,7 @@ class Server:
         except ConnectionError:
             listed = json.loads(brickworks_mcp.CACHED_TOOLS.read_text())
         relayed = [t for t in brickworks_mcp._as_mcp(listed) if t["name"] in RELAYED]
-        return [PAGE_TOOL, DONE_TOOL, *relayed]
+        return [self.page_tool, DONE_TOOL, *relayed]
 
     def _log(self, name: str, record: dict) -> None:
         with (self.run / name).open("a") as out:
@@ -262,8 +268,9 @@ def main(argv: list[str]) -> int:
     if not {"port", "pages", "run", "models"} <= options.keys():
         print(__doc__, file=sys.stderr)
         return 2
+    reading = Path(options["reading"]).read_text().strip() if "reading" in options else None
     server = Server(int(options["port"]), Path(options["pages"]), Path(options["run"]),
-                    Path(options["models"]))
+                    Path(options["models"]), reading=reading)
     out = sys.stdout
     for line in sys.stdin:
         line = line.strip()

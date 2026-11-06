@@ -36,11 +36,18 @@ const SAID: Dictionary = {"socket": "pin hole", "cross": "axle hole", "open": "o
 const HELD_MODES: Dictionary = {"place": "the Place tool", "connect": "Connect"}
 
 var app: Node
+## The parts the last mirror, split or merge made, for its answer's picture
+## (SeeTools.pictured); empty when it changed nothing.
+var changed: PackedInt64Array = PackedInt64Array()
 
 
 static func definitions() -> Array:
 	var bricks: Dictionary = {"type": "array", "items": {"type": "integer"},
 		"description": "the parts, by their numbers in look_at_model"}
+	# Answered with the change pictured, as edit_model is (SeeTools.pictured).
+	var pictured: Dictionary = {"type": "boolean", "description": ("unset: a close look at "
+		+ "what changed, its new parts edged in magenta; true: the whole model so; false: "
+		+ "words alone")}
 	return [
 		{
 			"name": "mirror_parts",
@@ -60,6 +67,7 @@ static func definitions() -> Array:
 					"axis": {"type": "string", "enum": ["x", "z"]},
 					"copy": {"type": "boolean"},
 					"across": {"type": "number", "description": "the mirror's plane, x= (or z=) in studs"},
+					"picture": pictured,
 				}},
 		},
 		{
@@ -72,7 +80,7 @@ static func definitions() -> Array:
 				+ "the pieces. bricks= the parts. One undo step; a part that does not split, or "
 				+ "has no room for its pieces, is said and left as it was."),
 			"input_schema": {"type": "object", "additionalProperties": false,
-				"required": ["bricks"], "properties": {"bricks": bricks}},
+				"required": ["bricks"], "properties": {"bricks": bricks, "picture": pictured}},
 		},
 		{
 			"name": "merge_parts",
@@ -84,7 +92,7 @@ static func definitions() -> Array:
 				+ "bricks= the parts. One undo step; where no real part would be fewer, they "
 				+ "are left as they were."),
 			"input_schema": {"type": "object", "additionalProperties": false,
-				"required": ["bricks"], "properties": {"bricks": bricks}},
+				"required": ["bricks"], "properties": {"bricks": bricks, "picture": pictured}},
 		},
 		{
 			"name": "measure",
@@ -123,6 +131,7 @@ static func definitions() -> Array:
 
 ## A coroutine, as AppTools.run is.
 func run(tool: String, input: Dictionary) -> Variant:
+	changed = PackedInt64Array()
 	match tool:
 		"mirror_parts":
 			return _mirror(input)
@@ -173,6 +182,7 @@ func _mirror(input: Dictionary) -> String:
 				_part_name(library, other)]
 			swaps[key] = int(swaps.get(key, 0)) + 1
 	var made: PackedInt64Array = builder.mirror_bricks(alive, axis, across, copy)
+	changed = made
 	var way: String = "left to right" if axis == 0 else "front to back"
 	var plane: String = "%s = %s" % [axis_said, _n(across / STUD)]
 	if made.is_empty():
@@ -218,6 +228,7 @@ func _split(input: Dictionary) -> String:
 		return "Nothing split: no room for the pieces there (nothing changed)."
 	_edited()
 	var made: PackedInt64Array = done["made"]
+	changed = made
 	var said := PackedStringArray(["Split %s into %d (%s): %s." % [_many(int(done["changed"])),
 		made.size(), _kinds(made), _numbers(made)]])
 	if not whole.is_empty():
@@ -239,6 +250,7 @@ func _merge(input: Dictionary) -> String:
 		return "Nothing merged: %s (nothing changed)." % why
 	_edited()
 	var made: PackedInt64Array = done["made"]
+	changed = made
 	var world: BrickWorld = app.get("_world")
 	var left := PackedInt64Array()
 	for brick_id: int in ids:

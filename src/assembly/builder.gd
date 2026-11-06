@@ -149,7 +149,7 @@ func register(brick_id: int, part_id: String, at: Transform3D) -> bool:
 		cover = [packed, bound, BrickLattice._rows_of(packed, bound)
 			if packed.size() > BrickLattice.ROWS_FROM * 6 else []]
 		(by_basis as Dictionary)[at.basis] = cover
-	lattice.occupy_moved(brick_id, cover, BrickLattice.grid_cell(at.origin))
+	lattice.occupy_moved(brick_id, cover, BrickLattice.to_cell(at.origin))
 	return true
 
 
@@ -1216,7 +1216,7 @@ static func _cells_moved(from: Transform3D, to: Transform3D) -> Variant:
 	var off: Vector3 = (by - Vector3(cells)).abs()
 	if maxf(off.x, maxf(off.y, off.z)) > 0.001:
 		return null
-	if BrickLattice.grid_cell(to.origin) != BrickLattice.grid_cell(from.origin) + cells:
+	if BrickLattice.to_cell(to.origin) != BrickLattice.to_cell(from.origin) + cells:
 		return null
 	return cells
 
@@ -3824,7 +3824,7 @@ var _stretched_off_main: Dictionary = {}
 func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 	if part == null:
 		return PackedInt32Array()
-	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
 	var stretch := Vector3(at.basis.x.length(), at.basis.y.length(), at.basis.z.length())
 	if not stretch.is_equal_approx(Vector3.ONE) and at.basis.determinant() > 0.0:
 		# A part stretched, as LDraw lets a file do: a hose's one-LDU piece
@@ -3921,7 +3921,7 @@ func boxes_for(part: Lbm.PartMesh, at: Transform3D) -> PackedInt32Array:
 func turned_cover(part: Lbm.PartMesh, at: Transform3D) -> BrickLattice.TurnedCover:
 	if part == null:
 		return null
-	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
 	var on_main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
 	var stretch := Vector3(at.basis.x.length(), at.basis.y.length(), at.basis.z.length())
 	if not stretch.is_equal_approx(Vector3.ONE) and at.basis.determinant() > 0.0:
@@ -4104,7 +4104,7 @@ func _cells_for(part: Lbm.PartMesh, at: Transform3D) -> Array[Vector3i]:
 	# else's .ldr need not be — and squaring it up first, which is what
 	# used to happen here, meant a brick turned thirty degrees reserved
 	# the cells of a brick turned none.
-	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
 	if BrickLattice.is_square_to_grid(at.basis):
 		return BrickLattice.cells_for(_cover_boxes(part), cell, at.basis)
 	return BrickLattice.cells_for_turned(_cover_boxes(part), cell, at.basis)
@@ -4140,7 +4140,7 @@ func _cell_span(part: Lbm.PartMesh, at: Transform3D) -> Array:
 		hi = hi.max(to - Vector3i.ONE)
 	if lo.x == 0x7FFFFFFF:
 		return []
-	var cell: Vector3i = BrickLattice.grid_cell(at.origin)
+	var cell: Vector3i = BrickLattice.to_cell(at.origin)
 	return [lo + cell, hi + cell]
 
 

@@ -11,7 +11,9 @@ function that returns nothing) fails a test rather than a round.
 from __future__ import annotations
 
 import json
+import os
 import random
+import shutil
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -423,3 +425,52 @@ def test_a_session_that_reached_none_of_the_apps_tools_is_designed_again_once(tm
     assert realset.one(c, args, None) == {}
     assert sessions == ["21023-1", "21023-1"]         # once more, not on and on
     assert not (tmp_path / "twice" / "21023-1" / "record.json").exists()
+
+
+# -- the tab's tools ------------------------------------------------------------
+
+TAB_TOOLS = ("claude", "xvfb-run", "godot", "gpu")
+
+
+def _found(env: dict[str, str]) -> dict[str, bool]:
+    return {name: shutil.which(name, path=env["PATH"]) is not None for name in TAB_TOOLS}
+
+
+def _tab_finds_its_tools_for_as_long_as_it_runs(env: dict[str, str], data: Path) -> None:
+    home = data / "relay-7732-1-9871"
+    (home / "godot" / "app_userdata" / "Brickworks").mkdir(parents=True)  # as design_via_relay
+    tab = realset._tab_env(env, home, claude_code=False)
+    every = {"claude": False, "xvfb-run": True, "godot": True, "gpu": True}
+    assert tab["HOME"] == str(home)
+    assert _found(tab) == every, "while the tab runs"
+    # As design_via_relay ends a design. Its drawers (`gpu --brief xvfb-run ... godot`)
+    # are found on this PATH when the lease's queue lets them start, and one still
+    # queued when the tab ended failed on 'xvfb-run' (d19base 7732-1, d19lev 21031-1
+    # and 42111-1, 2026-11-05, and 41 relay designs before them).
+    shutil.rmtree(home)
+    assert _found(tab) == every, "after the tab's home is removed"
+    # The next tab of the run finds the same, and its stand-ins are the first's.
+    second = realset._tab_env(env, data / "relay-21031-1-9873", claude_code=False)
+    assert _found(second) == every and second["PATH"] == tab["PATH"]
+    assert realset._tab_env(env, home, claude_code=True) is env
+
+
+def test_a_tab_without_claude_code_finds_every_other_tool_for_as_long_as_it_runs(tmp_path):
+    # Laid out as the box has them: claude beside xvfb-run and godot, gpu in a folder
+    # of its own.
+    local, core = tmp_path / "local-bin", tmp_path / "core-bin"
+    for folder, names in ((local, ("claude", "xvfb-run", "Xvfb", "godot")), (core, ("gpu",))):
+        folder.mkdir()
+        for name in names:
+            (folder / name).write_text("#!/bin/sh\n")
+            (folder / name).chmod(0o755)
+    env = {"PATH": os.pathsep.join([str(local), str(core), "/usr/bin", "/bin"]),
+           "HOME": str(tmp_path / "person")}
+    _tab_finds_its_tools_for_as_long_as_it_runs(env, tmp_path / "data")
+
+
+@pytest.mark.skipif(not all(shutil.which(name) for name in TAB_TOOLS),
+                    reason="this machine has not claude, xvfb-run, godot and gpu on its PATH")
+def test_a_tab_without_claude_code_on_this_box_finds_every_other_tool(tmp_path):
+    _tab_finds_its_tools_for_as_long_as_it_runs(
+        {"PATH": os.environ["PATH"], "HOME": str(Path.home())}, tmp_path / "data")

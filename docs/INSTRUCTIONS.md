@@ -2781,6 +2781,354 @@ booklet_stream_probe, ci_gate and `tools/check.sh --lists` pass.
 castle, not all 320.
 
 
+## LEGO's own booklet, built the same way (2026-11-05, bookletcal)
+
+Three booklet changes judged by booklet_follow were NO-GO, and two of them
+are what printed LEGO® booklets do. People follow LEGO's booklets every day.
+So either ours differ from LEGO's in a way that matters, or the measure reads
+the AI builder's eyes and not a person's. This unit ran LEGO's own booklet
+through the same builder to find out.
+
+**The answer: mostly the builder's.** LEGO's booklet for 7140 scored no
+better than ours, and lower on both stretches. Where it beat ours, it was
+one thing LEGO draws that we drop. Where it lost, it lacked what ours adds.
+The losses the two share are where a sub-assembly goes, and a person would
+not make them.
+
+**What was built.**
+
+- LEGO's booklet for 7140-1 (1999, 32 pages), as LEGO's building
+  instructions site hosts it: a PDF whose drawings are line art over a
+  scanned background. It is LEGO's copyright, so it stays in
+  `bench/results/bookletcal-2026-11-05/` (git ignores it) and is described
+  here, never shown.
+- Its pages were drawn at 7.6 px a millimetre (2255 x 1595), the print scale
+  of ours at SCALE 2 (2036 x 1506).
+- Its steps were mapped onto the same 340 parts
+  (`bench/results/bookletcal-2026-11-05/scripts/lego7140_dir.py`). The LDraw
+  file's steps are LEGO's, one for one, except that LEGO splits the file's
+  hull step 16 in two. Same box, same builder, same scorer.
+- The builder was told how LEGO's pages read: no parts box; new parts drawn
+  lifted above their place with arrows, or drawn in place; a yellow box for a
+  part or a small sub-assembly; step numbers that start again for each thing
+  built. booklet_follow now takes this from a booklet's `reading.json`. Ours
+  were told ours, word for word what every earlier run was told.
+- Two stretches, each the same parts in both booklets:
+  - **A**: LEGO's pages 2-6, ours 2-13. The three carts, the hose, the tools
+    and the hull's first four steps: 73 parts. LEGO's page 2 also has the four
+    figures (34 parts). They are counted on its own page rows and left out of
+    the comparison; two of its four builders skipped them.
+  - **B**: LEGO's pages 12-15, ours 30-37. The nose, the seat back and the
+    plates that go on them: 35 parts, built on the model as the pages before
+    leave it. Earlier runs built ours to 36, so B compares 28 parts.
+- LEGO's: 4 runs of each, and 4 more of B told to check (below). Ours: 2 new
+  runs of A, 4 of B and 4 of B told to check, beside the earlier runs on
+  byte-identical pages: booklettest a2x, attachstep b2, b3 and its
+  after a1 for A (pages 2-13 did not change there); attachstep m1 and m2 for
+  B. One locked snapshot of pre261 (935a7dda plus the reading.json change)
+  drew ours and ran every builder. The scripts and runs are in
+  `bench/results/bookletcal-2026-11-05/`.
+
+**How LEGO's 1999 pages differ from ours.** I looked at the pages that
+differ most, both versions.
+
+- **No parts list.** A step's new parts are drawn lifted just above their
+  place with black arrows, or drawn in place with nothing to mark them new.
+  Ours has a box of the parts with their counts, and outlines new parts in
+  orange.
+- **Turned over for parts that go underneath.** The steps that put the dishes
+  under each cart draw the cart upside down, the dishes lifted above its
+  underside with arrows into it. The LDraw file carries that turn (`ROTSTEP 0
+  0 180`, a roll). Ours does not draw a roll, so our dishes are drawn under
+  the plate, a sliver of each in view.
+- **Only the thing being built, drawn large.** The hull fills the page's
+  width, drawn almost side-on. Ours draws the whole model in every step
+  picture, the support vehicle beside the ship, from the front-left corner,
+  so our hull is about half the size of LEGO's.
+- **Sub-assemblies drawn in place, as ours are.** The nose is drawn on the
+  hull, with a thin line from its last step's picture to where it meets the
+  hull. The seat back is built in a yellow box of three small steps, with an
+  arrow to its place. Neither is lifted off its place.
+- **Colours of their day.** Black is drawn a dark grey with black lines, not
+  light edges. The old dark grey is drawn a brownish beige, and one builder
+  read it as tan.
+
+![Our step 2: the dishes under the plate, not turned over](instructions/7140-dish-not-turned.webp)
+
+**What a builder built.** Right or near, of the parts both booklets put on:
+
+| stretch | ours, each run | mean | LEGO's, each run | mean |
+|---|---|---|---|---|
+| A (73 parts) | 38, 44, 47, 51, 52, 55 | 47.8 | 37, 38, 43, 47 | 41.2 |
+| B (28 parts) | 0, 5, 5, 5, 25, 25 | 10.8 | 0, 2, 10, 11 | 5.8 |
+
+**Per page, every run** (right / near / wrong part or colour / misplaced /
+missing). Each booklet's own pages, counted as booklet_follow counts them: a
+sub-assembly's parts on the page that puts it on.
+
+Ours, pages 2-13 (pages 6-8 are cart 1's callout, counted on 9):
+
+| page | parts | a1 | a2 | a2x | b2 | b3 | after a1 | right+near |
+|---|---|---|---|---|---|---|---|---|
+| 2 | 8 | 4/0/4/0/0 | 8/0/0/0/0 | 4/0/4/0/0 | 4/0/4/0/0 | 8/0/0/0/0 | 4/0/4/0/0 | 4-8 |
+| 3 | 8 | 4/0/4/0/0 | 8/0/0/0/0 | 4/0/4/0/0 | 8/0/0/0/0 | 8/0/0/0/0 | 4/0/4/0/0 | 4-8 |
+| 4 | 11 | 11/0/0/0/0 | 11/0/0/0/0 | 10/0/1/0/0 | 7/0/0/4/0 | 11/0/0/0/0 | 11/0/0/0/0 | 7-11 |
+| 5 | 13 | 4/1/0/8/0 | 5/0/0/7/1 | 5/1/0/6/1 | 4/0/0/8/1 | 6/0/0/6/1 | 6/0/0/7/0 | 4-6 |
+| 9 | 19 | 0/12/4/3/0 | 0/10/0/7/2 | 1/5/5/5/3 | 0/17/0/2/0 | 0/14/0/5/0 | 0/2/5/12/0 | 2-17 |
+| 10 | 3 | 3/0/0/0/0 | 3/0/0/0/0 | 3/0/0/0/0 | 3/0/0/0/0 | 0/0/2/1/0 | 3/0/0/0/0 | 0-3 |
+| 11 | 4 | 2/0/0/2/0 | 4/0/0/0/0 | 4/0/0/0/0 | 2/0/0/2/0 | 2/0/0/2/0 | 2/0/0/2/0 | 2-4 |
+| 12 | 6 | 6/0/0/0/0 | 3/0/0/3/0 | 6/0/0/0/0 | 6/0/0/0/0 | 6/0/0/0/0 | 6/0/0/0/0 | 3-6 |
+| 13 | 1 | 0/0/0/0/1 | 0/0/1/0/0 | 1/0/0/0/0 | 0/0/0/1/0 | 0/0/0/0/1 | 0/0/0/0/1 | 0-1 |
+
+LEGO's, pages 2-6 (page 2: the four figures, 34 parts, and cart 1's first
+four steps, 8):
+
+| page | parts | a1 | a2 | a3 | a4 | right+near |
+|---|---|---|---|---|---|---|
+| 2 | 42 | 3/12/0/23/4 | 8/0/0/0/34 | 0/8/0/0/34 | 2/7/1/32/0 | 8-15 |
+| 3 | 18 | 0/7/0/11/0 | 12/1/1/4/0 | 7/3/0/8/0 | 5/0/0/13/0 | 5-13 |
+| 4 | 11 | 6/3/2/0/0 | 10/0/1/0/0 | 10/0/1/0/0 | 8/0/2/0/1 | 8-10 |
+| 5 | 22 | 11/0/2/7/2 | 9/2/0/10/1 | 10/0/0/6/6 | 11/0/2/8/1 | 10-11 |
+| 6 | 14 | 11/0/1/1/1 | 5/0/2/2/5 | 5/0/1/3/5 | 13/0/1/0/0 | 5-13 |
+
+Ours, pages 30-37 (the nose is built on 30-34 and counts on 35; earlier
+runs stopped at 36):
+
+| page | parts | b1 | b2 | b3 | b4 | m1 | m2 | right+near |
+|---|---|---|---|---|---|---|---|---|
+| 35 | 22 | 20/0/2/0/0 | 0/0/0/21/1 | 0/0/2/17/3 | 20/0/0/1/1 | 0/0/0/20/2 | 0/0/0/21/1 | 0-20 |
+| 36 | 6 | 5/0/0/1/0 | 5/0/0/1/0 | 0/0/0/6/0 | 5/0/0/1/0 | 5/0/0/1/0 | 5/0/0/1/0 | 0-5 |
+| 37 | 7 | 5/0/0/2/0 | 3/0/0/4/0 | 2/0/0/5/0 | 3/0/1/2/1 | - | - | 2-5 |
+
+LEGO's, pages 12-15 (the nose built on 12-14, put on in step 22 on 14):
+
+| page | parts | b1 | b2 | b3 | b4 | right+near |
+|---|---|---|---|---|---|---|
+| 14 | 22 | 11/0/2/5/4 | 0/0/0/17/5 | 5/0/0/9/8 | 2/0/1/12/7 | 0-11 |
+| 15 | 13 | 2/0/0/11/0 | 2/0/0/10/1 | 8/0/0/4/1 | 2/0/0/11/0 | 2-8 |
+
+**Where they differ.**
+
+- **The dishes: LEGO's wins.** Read as dishes in 48 of 48 on LEGO's pages
+  (4 runs), 32 of 72 on ours (6 runs: 0, 12, 0, 8, 12, 0). Turned over, the
+  dish plugs into the plate's underside by its one stud, which a round plate
+  cannot. Ours showed a sliver under the plate, and the parts box showed the
+  dish from above, where it is a round plate. Since these runs, partsbox
+  draws it turned over in its parts box (above), and builders read it right
+  on pages 2-3 in 5 runs of 5.
+- **Parts drawn in place: ours wins.** The hull's step 3 adds six dark grey
+  inverted slopes. Ours lists them (6x) and outlines them: 33 of 36 right.
+  LEGO draws them in place, dark grey beside dark grey, with no list: 12 of
+  24. "The real parts and how many were hard to tell." The same on the nose's
+  pages: the nose built right, wherever it went, was 10-21 of 22 from ours,
+  4-13 from LEGO's, whose inverted slopes under the deck are hidden and listed
+  nowhere.
+- **The seat back put on: ours wins.** Both draw it in place with an arrow
+  from its box. Put on right in 5 of 6 runs of ours, 1 of 4 of LEGO's. LEGO's
+  builders put it 6 plates high, "on the studs of the two slopes", three
+  times. Built right, alone, in every run of both.
+- **The nose put on: both lose.** Put on whole and right in 2 of 6 runs of
+  ours, 0 of 4 of LEGO's. Ours went on 4 plates high three times and 4 low
+  once, a stud or two along. LEGO's went on 4 plates high once; its other
+  three builders built it wrong (4-13 of 22 right, wherever it went).
+  attachstep's after runs put it 4 low, which its before runs never did;
+  today a before page did too. That part of its result was within the
+  spread, as it said.
+- **A cart put on: LEGO's loses.** Two of LEGO's four builders left cart 1
+  0.8 and 1.2 studs off its towball, so all 19 of its parts count misplaced.
+  LEGO draws the three carts joined, small, the towball hidden.
+
+**The verdict: both, and mostly the builder.**
+
+- LEGO's booklet, which children built 7140 from, scored lower than ours with
+  this builder: 41 against 48 of 73, and 6 against 11 of 28.
+- Where a booklet showed what a part is and what is new, the builder read it
+  well: the dish turned over, the parts box. That half of the measure reads
+  something like a person.
+- The losses both booklets share are where a thing goes in depth and height:
+  a sub-assembly a whole number of plates off, a cart off its towball. A
+  person does not make them. A sub-assembly only goes on where its studs
+  meet, a towball snaps into its socket, and a person sees how far a thing
+  stands above its neighbours. The builder places by coordinates and reads
+  height off a flat picture. That half of the measure reads the builder.
+
+**What would make it a person's.**
+
+- A builder whose placing is a person's: a sub-assembly put on only where it
+  connects, the way edit_model already refuses a part held by nothing. The
+  app has the connections (Exact.connections). Then a page is judged on
+  where its picture puts things, not on the CAD's coordinates.
+- More of the page: a zoom on part of a page. LEGO's hull fills its width;
+  ours shares the picture with the support vehicle.
+- A better reading prompt: told how to check a placement against the
+  picture. That is the cheapest, so it was tried (below).
+
+**The cheapest, tried: the builder told to check a placement against the
+picture.** Both booklets' prompts gained the same lines: before placing a
+part or a sub-assembly, note what it lines up with on the page (an edge it is
+flush with, how many plates it stands above its neighbours, which studs it
+covers); after placing it, view the model from the page's angle and move it
+until they match. Stretch B, 4 runs a side, all 35 parts:
+
+| stretch B (35 parts) | ours, each run | mean | LEGO's, each run | mean |
+|---|---|---|---|---|
+| as before | 2, 8, 28, 30 | 17.0 | 2, 4, 13, 13 | 8.0 |
+| told to check | 4, 10, 30, 31 | 18.8 | 2, 2, 4, 7 | 3.8 |
+
+Per page, told (right / near / wrong part or colour / misplaced / missing):
+
+| page | parts | ours c1 | c2 | c3 | c4 | right+near |
+|---|---|---|---|---|---|---|
+| 35 | 22 | 21/0/1/0/0 | 22/0/0/0/0 | 0/0/0/19/3 | 0/0/0/22/0 | 0-22 |
+| 36 | 6 | 5/0/0/1/0 | 5/0/0/1/0 | 5/0/0/1/0 | 0/0/0/6/0 | 0-5 |
+| 37 | 7 | 5/0/0/2/0 | 3/0/0/4/0 | 5/0/0/2/0 | 4/0/0/3/0 | 3-5 |
+
+| page | parts | LEGO's c1 | c2 | c3 | c4 | right+near |
+|---|---|---|---|---|---|---|
+| 14 | 22 | 2/0/1/8/11 | 0/0/1/11/10 | 0/0/0/15/7 | 5/0/0/10/7 | 0-5 |
+| 15 | 13 | 2/0/0/9/2 | 2/0/0/10/1 | 2/0/0/10/1 | 2/0/0/10/1 | 2-2 |
+
+- The builders did look more: 7-10 views of the model a run on ours, against
+  5-6 before. They placed no better.
+- Ours: the nose went on right in 2 of 4 (before, 2 of 6), and 4 plates low,
+  2-3 studs along, in the other two. The seat back went on right in 3 of 4;
+  the fourth was read as sitting on the cockpit floor, 5 plates low.
+- LEGO's: the seat back went on 6 plates high, a stud along, in all 4 (before,
+  3 of 4). One builder said why: "across the two 2x1 slopes' top studs". It
+  checked, and the picture agreed with it. The nose was built wrong in all 4
+  (3-8 of 22 right, wherever it went).
+- Neither moved beyond its spread. LEGO's fell, ours did not rise. **Telling
+  the builder how to check does not make the measure a person's.** The
+  builder sees the picture agree with a placement a person would never make,
+  because a person's hands find the studs. (Measured since: the builder's
+  misses are on real studs too, where hands could put them. A person would
+  not choose them from the picture; follower, below.)
+
+**What it means for judging booklet changes.**
+
+- **A change to where things go cannot be judged by booklet_follow.** LEGO's
+  own in-place drawing lost the seat back in 7 runs of 8, told to check or
+  not, and the nose in all 8. attachstep's NO-GO stands for this builder, and says nothing of
+  people. A course a step (courses) is a placement change too.
+- **A change to what a part is, or what is new, can be**, with 4 runs or more
+  a side. The dish shows it: LEGO's turned-over view read it 48 of 48.
+- **The spread is large.** On byte-identical pages ours put 38-55 of 73 right
+  (A), and 0-25 of 28 (B): one builder puts the nose on right, the next 4
+  plates low. Two runs a side say nothing. A difference must be wider than
+  either side's range over 4 runs.
+- **blackedges is not calibrated here.** LEGO's 1999 booklet draws black dark
+  grey with black lines. Its NO-GO stands on its own measure: what a part is,
+  which this half reads.
+- **Next levers**, ranked by this:
+  - draw the turn the file asks for: a step that puts parts underneath drawn
+    turned over, as LEGO did. The file already says so (ROTSTEP's roll). The
+    parts box now shows the dish's dome (partsbox); the turn would also show
+    where each part underneath goes;
+  - calibrate on a modern LEGO booklet (2015 or later: a parts list on each
+    step, black with light edges, sub-assemblies lifted with arrows) from one
+    of the library's sets with its author's steps;
+  - a builder that puts a sub-assembly on only where it connects, before any
+    attach step is judged again. Measured since: it already does (follower,
+    below).
+
+## A builder with a person's hands (2026-11-05, follower): NO-GO
+
+bookletcal read the builder's misses as its hands: it put a sub-assembly
+whole plates off, "because nothing in the app stops a part floating or
+sinking". This unit was to give it a person's hands: a part or sub-assembly
+goes on only where it connects, snapped to the nearest place that does, or
+refused with what is wrong. Then calibrate on both booklets, and judge
+attachstep again.
+
+**The answer: its hands are already a person's.** Every sub-assembly the
+builder put on wrong sits on real studs, where a person's hands could put it
+too. Snapping to where a thing connects would leave each where it is. So no
+builder was run, and nothing changed in booklet_mcp.py or the app.
+
+**What the app already holds the builder to.** edit_model refuses a part
+that runs into another (more than 1 LDU into its real shape), a part held by
+nothing, a part resting where it would fall, and a piece apart that nothing
+names. It seats a part a few LDU off onto its stud. Over the 29 runs on 7140
+below, it refused 156 of 556 edits: 139 overlaps, 71 collisions, 33 not
+held, 22 floating (an edit can be refused for more than one).
+
+**Where each misplaced sub-assembly went, and what holds it.** Each run's
+final build was opened in the app and checked (check_design). Every stretch
+B build is in exactly as many pieces as the model the pages before it leave
+(ours 2, LEGO's 3), so nothing the builder put on stands apart: each piece
+it added is joined to the model. And each group of parts misplaced by one
+offset, taken off on a copy, never left the model in fewer pieces.
+
+| booklet, stretch B | runs | nose (22 parts) off | seat back (5) off | all joined |
+|---|---|---|---|---|
+| ours, bookletcal b1-b4 | 4 | right; 4 low; 4 high; right | right; right; 1 high, 3 along; right | yes |
+| ours, told to check c1-c4 | 4 | right; right; 4 low; 4 low | right; right; right; 5 low | yes |
+| ours, attachstep before m1, m2 | 2 | 4 high; 4 high | right; right | yes |
+| ours, attachstep after p1, p2 | 2 | 4 low; 4 low | 6 high; 2 low, 2.5 along | yes |
+| LEGO's, b1-b4 | 4 | built wrong; 4 high; built wrong; built wrong | 6 high in 3 (b3 right) | yes |
+| LEGO's, told to check c1-c4 | 4 | built wrong in 4 (c3: 4 low) | 6 high in 4 | yes |
+
+Offsets are plates up or down and studs along, a whole number of each every
+time: on the stud grid, where something takes the part. Two looked at
+closely:
+
+- **LEGO's seat back, 6 plates high** (7 runs of 8). Its bottom 1 x 4
+  plate's two middle holes are on the top studs of the two 2 x 1 slopes in
+  the cockpit (attachment_points: #250.stud[0] at x -0.5, y 24, z 1.5 is
+  #252.hole[1]). A joint of two studs. The builder said so: "across the two
+  2x1 slopes' top studs". The model has it on the cockpit floor, 6 plates
+  down and a stud back.
+- **Our nose, 4 plates high** (b3). Its 2 x 12 plate's front four holes are
+  on the black 2 x 4 brick's studs. The model has the nose's plate under
+  that brick, its studs up in the brick's tubes. The builder: "its bottom
+  plate fits the black 2x4's front studs. Neither page tells me the exact
+  spot."
+
+A person could press either on there; the parts click in. What a person
+would not do is choose it from the picture.
+
+**Stretch A's spread is not hands either.** On our pages 2-13 the six runs
+put 38-55 of 73 right. 12 of that 17 is the dish read as a round plate (0,
+12, 0, 8, 12 and 0 of its 12 parts): what a part is, which partsbox has
+since fixed. Without the dishes the runs put 38-47 right, and every miss is
+at a joint: cart 1 two plates high (attachstep's after a1), the tools a clip
+along, the hose's ends.
+
+**The one place hands are missing.** A sub-assembly built apart, named, and
+slid by coordinates to its joint can be let go short of it. LEGO's builders
+left cart 1 0.8 and 1.2 studs off its towball in 2 of 4 runs of stretch A
+(a1, a4). The builder slid the carts along by fractions of a stud. Where
+they would couple, the towball's plate overlapped the socket's and the edit
+was refused. A little short of it, each cart stood apart, named, and the app
+took that. A person's towball clicks into its socket. It costs about 18 of
+73 parts in each of those two runs, on LEGO's stretch A only. Ours put cart
+1 on within half a stud in five runs of six, and two plates high, on studs,
+in the sixth. Stretch B has no such miss.
+
+**What it means.**
+
+- **The bar cannot be met by hands.** On stretch B, every one of LEGO's
+  misses and ours is at a joint. On stretch A, our spread is the dish and
+  joints chosen wrong.
+- **The measure's placement half reads the builder's eyes.** It reads a
+  sub-assembly's height and depth off a flat picture wrong, then finds studs
+  that take it there. Telling it to check (bookletcal) did not help.
+- **attachstep's NO-GO stands for this builder.** Its after runs' seat back
+  (6 high, and 2 low) and nose (4 low) are on real studs too: a builder that
+  places as hands do would have placed them the same.
+- **Next levers**:
+  - eyes: the builder's model drawn over the step's picture from the page's
+    own camera and scale, so a sub-assembly 4 plates off shows as a doubled
+    edge, not a likeness;
+  - the hands gap, when a booklet that couples things is measured
+    (towballs, hinges, clips): edit_model's move taking attach's "to" and
+    "by" for a whole sub-assembly, so the app seats it as a hand does.
+    edit_selection already finds the nearest place a refused part fits and
+    holds.
+- The analysis is in `bench/results/follower-2026-11-05/`: the scripts
+  (each run's misplaced groups, checked in a headless app over MCP) and
+  each run's result.
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of
@@ -2866,6 +3214,11 @@ castle, not all 320.
   own build), because only small sub-models become callouts.
 
 - **Following the booklet** (Building from the booklet, above):
+  - **The measure, calibrated** (LEGO's own booklet, above). It reads what a
+    part is and what is new about as a person would. It does not read where
+    a thing goes: LEGO's own pages lost the same placements. Judge a change
+    to placement by it only once its builder puts a sub-assembly on where it
+    connects, as hands do.
   - **A mass of alike parts.** This cost 47% of the parts lost. Laying one
     course a step was tried and did not help (A course a step, above). The
     misses then were a stud along a run, so the next lever is the picture:
@@ -2874,12 +3227,17 @@ castle, not all 320.
     place, it hides the studs it lands on. Drawing it lifted off its place
     with an arrow down was tried and made it worse (NO-GO, above): builders
     put it where it was drawn. Next: keep it drawn in place and show the
-    landing another way, see-through or marked the step before.
+    landing another way, see-through or marked the step before. LEGO's own
+    in-place drawing lost the seat back in 7 runs of 8 and the nose in all
+    8, so measure it with a builder that places as hands do.
   - **Parts told from their look-alikes.** 15% were parts misread, 12 of
     them one black dish read as a round plate. Drawing black with its edges
     was tried and made it worse (NO-GO, above). The dish's top is a round
-    plate's, and its dome faces away. The parts box should show what tells
-    it apart.
+    plate's, and its dome faces away. The parts box now draws it turned
+    over (Each part drawn from the side that tells it apart, above). LEGO
+    turns the cart over for that step instead, and builders read the dish
+    48 times in 48: the file asks for that turn (ROTSTEP's roll), and ours
+    does not draw it.
   - **The whole castle**, nine hours of builder.
 
 ## Sources

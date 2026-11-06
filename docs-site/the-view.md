@@ -1,5 +1,5 @@
 ---
-tools: view_model, set_floor, in_view
+tools: view_model, set_floor, in_view, view_board
 ai: Turning, sliding and zooming the camera, navigation presets, cutting away and X-ray, stress colours, and the floor the model stands on. An assistant looks from a side with view_model and sets the floor with set_floor.
 rules:
   - view_model looks from corner, top, front, back, left or right; corner shows the shape best.
@@ -74,7 +74,7 @@ ui:stress view
 
 ## Floor and stud grid {#floor}
 
-**View › Floor** sets what the model stands on: a baseplate 16, 32 or 48 studs (or any size in eights to 192), in a colour baseplates come in, a grid floor, or nothing at all, as a car or a ship stands on a table. With nothing selected, the properties panel has the same. **Settings › New models start on** chooses the floor a new model gets. **View › Stud grid** draws the studs' grid over the floor.
+**View › Floor** sets what the model stands on: a baseplate 16, 32 or 48 studs (or any size in eights to 192), in a colour baseplates come in, a grid floor, or nothing at all, as a car or a ship stands on a table. With nothing selected, the properties panel has the same. **Settings › New models start on** chooses the floor a new model gets. **View › Stud grid** ([[Alt+G]]) draws the studs' grid over the floor.
 
 <!-- covers
 ui:floor
@@ -83,7 +83,7 @@ ui:stud grid
 
 ## A picture to build over {#reference}
 
-**Make › Reference picture…** lays a photo, a plan or a drawing (PNG, JPEG, WebP, BMP or SVG) in the scene to build over: on the floor under the model, or standing behind it as the front or the side view sees it. It opens as wide as the model, half see-through, with its corners showing.
+**Make › Reference picture…** ([[Alt+N]]) lays a photo, a plan or a drawing (PNG, JPEG, WebP, BMP or SVG) in the scene to build over: on the floor under the model, or standing behind it as the front or the side view sees it. It opens as wide as the model, half see-through, with its corners showing.
 
 - **Width** is typed in studs, to a twentieth of a stud. Drag a corner to size it from the corner across; drag the picture to slide it.
 - **Opacity** fades it from 0 to 100%.
@@ -98,6 +98,14 @@ An assistant sees it with `in_view`: the picture, where it lies, and the model d
 
 <!-- covers
 ui:reference picture
+-->
+
+## What an assistant sees {#assistant-sees}
+
+An assistant looks at the model as you do. `view_model` draws it from one side; `view_board` draws up to six sides (front, back, left, right, top and the corner) in one labelled picture, each as `view_model` draws it. It can edge parts it names in magenta and ghost the rest, draw parts see-through as X-ray does, or show the model as built to a step with that step's new parts edged. It changes nothing.
+
+<!-- covers
+lib:what a session sees over mcp
 -->
 
 ## Pointers and speed {#pointers}

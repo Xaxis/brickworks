@@ -1202,6 +1202,13 @@
       "area": "web"
     },
     {
+      "kind": "cli",
+      "label": "each thread's CPU in a browser",
+      "entry": "tools/web/thread_cpu.mjs",
+      "reach": "node tools/web/thread_cpu.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (with .env sourced; a local export served by tools/web/serve.py; --profile=phone; --idle=60 --build=60)",
+      "area": "web"
+    },
+    {
       "kind": "ui",
       "label": "drawing only what changed",
       "entry": "src/render/idle_draw.gd",
@@ -4601,6 +4608,13 @@
       "label": "words for a failed request",
       "entry": "src/net/fetch_words.gd",
       "reach": "tools/probe.sh app_tools_probe   (a site that will not connect, one that is not there, and every HTTPRequest result in words, never a code)",
+      "area": "mcp"
+    },
+    {
+      "kind": "lib",
+      "label": "what a session sees over mcp",
+      "entry": "src/net/see_tools.gd",
+      "reach": "PROBE_SIZE=1400x900 tools/probe.sh seeing   (view_board: six views in one labelled picture, highlight= edged with the rest see-through, xray=, step=N; booklet_page as the PDF prints it; split/merge/mirror pictured; render_model Best says how it was drawn)",
       "area": "mcp"
     }
   ]
