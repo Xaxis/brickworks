@@ -344,7 +344,7 @@
 				{
 					"name": "select_none",
 					"words": "Select nothing",
-					"key": "",
+					"key": "Ctrl+Shift+A",
 					"tip": ""
 				},
 				{
@@ -354,31 +354,31 @@
 						{
 							"name": "select_colour",
 							"words": "Same colour",
-							"key": "",
+							"key": "Alt+C",
 							"tip": ""
 						},
 						{
 							"name": "select_part",
 							"words": "Same part",
-							"key": "",
+							"key": "Alt+P",
 							"tip": ""
 						},
 						{
 							"name": "select_alike",
 							"words": "Same part and colour",
-							"key": "",
+							"key": "Alt+A",
 							"tip": ""
 						},
 						{
 							"name": "select_find",
 							"words": "Part number or name…",
-							"key": "",
+							"key": "Ctrl+F",
 							"tip": "Find a part in the model by its number, its name or its colour"
 						},
 						{
 							"name": "select_connected",
 							"words": "Everything connected",
-							"key": "",
+							"key": "Alt+J",
 							"tip": ""
 						},
 						{
@@ -390,7 +390,7 @@
 						{
 							"name": "select_inverse",
 							"words": "The opposite",
-							"key": "",
+							"key": "Alt+I",
 							"tip": ""
 						}
 					]
@@ -440,7 +440,7 @@
 				{
 					"name": "replace",
 					"words": "Replace with the part in hand",
-					"key": "",
+					"key": "Alt+R",
 					"tip": "Swap the selection for the part you hold, each in its own colour"
 				},
 				{
@@ -568,7 +568,7 @@
 				{
 					"name": "grid",
 					"words": "Stud grid",
-					"key": "",
+					"key": "Alt+G",
 					"tip": "Lines between the studs of the baseplate, for counting them"
 				},
 				{
@@ -853,7 +853,7 @@
 						{
 							"name": "step_to",
 							"words": "Move to step…",
-							"key": "",
+							"key": "Alt+T",
 							"tip": "The selected parts into any step, its number typed"
 						},
 						{
@@ -868,25 +868,25 @@
 						{
 							"name": "step_earlier",
 							"words": "Step earlier",
-							"key": "",
+							"key": "Alt+[",
 							"tip": "The step the timeline is on, before the one ahead of it"
 						},
 						{
 							"name": "step_later",
 							"words": "Step later",
-							"key": "",
+							"key": "Alt+]",
 							"tip": "The step the timeline is on, after the one that follows it"
 						},
 						{
 							"name": "step_merge",
 							"words": "Merge with the next step",
-							"key": "",
+							"key": "Alt+E",
 							"tip": "The step the timeline is on and the next made one"
 						},
 						{
 							"name": "step_delete",
 							"words": "Delete the step",
-							"key": "",
+							"key": "Alt+Delete",
 							"tip": "Take out the step the timeline is on; its parts join the step before"
 						}
 					]
@@ -894,13 +894,13 @@
 				{
 					"name": "pose",
 					"words": "Motions…",
-					"key": "",
+					"key": "Alt+O",
 					"tip": "The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered"
 				},
 				{
 					"name": "instructions",
 					"words": "Instructions…",
-					"key": "",
+					"key": "Alt+B",
 					"tip": "Building instructions for this model, step by step"
 				},
 				{
@@ -1157,7 +1157,7 @@
 				{
 					"name": "reference",
 					"words": "Reference picture…",
-					"key": "",
+					"key": "Alt+N",
 					"tip": "A photo, plan or drawing laid on the floor or stood behind the model, to build over"
 				},
 				{
@@ -1222,19 +1222,19 @@
 				{
 					"name": "mode_move",
 					"words": "Move tool",
-					"key": "",
+					"key": "Shift+X",
 					"tip": ""
 				},
 				{
 					"name": "mode_rotate",
 					"words": "Rotate tool",
-					"key": "",
+					"key": "Shift+O",
 					"tip": ""
 				},
 				{
 					"name": "mode_hinge",
 					"words": "Hinge tool",
-					"key": "",
+					"key": "Shift+I",
 					"tip": ""
 				},
 				{
@@ -1246,25 +1246,25 @@
 				{
 					"name": "mode_clone",
 					"words": "Clone tool",
-					"key": "",
+					"key": "Shift+V",
 					"tip": ""
 				},
 				{
 					"name": "mode_paint",
 					"words": "Paint tool",
-					"key": "",
+					"key": "Shift+P",
 					"tip": ""
 				},
 				{
 					"name": "mode_hide",
 					"words": "Hide tool",
-					"key": "",
+					"key": "Shift+G",
 					"tip": ""
 				},
 				{
 					"name": "mode_delete",
 					"words": "Delete tool",
-					"key": "",
+					"key": "Shift+Delete",
 					"tip": ""
 				},
 				{
@@ -1294,13 +1294,13 @@
 				{
 					"name": "stability",
 					"words": "Check stability",
-					"key": "",
+					"key": "Alt+K",
 					"tip": "Find the joints that would give way, and select the parts on them"
 				},
 				{
 					"name": "simulate",
 					"words": "Simulate mechanism…",
-					"key": "",
+					"key": "Alt+U",
 					"tip": "Turn a gear train from a crank or an axle: how fast each part goes, each arm's period, what locks it, and whether it stays standing as it turns"
 				},
 				{
@@ -1402,19 +1402,19 @@
 		{
 			"name": "select_connected",
 			"words": "Everything connected",
-			"key": "",
+			"key": "Alt+J",
 			"tip": ""
 		},
 		{
 			"name": "select_part",
 			"words": "Same part",
-			"key": "",
+			"key": "Alt+P",
 			"tip": ""
 		},
 		{
 			"name": "select_colour",
 			"words": "Same colour",
-			"key": "",
+			"key": "Alt+C",
 			"tip": ""
 		},
 		{
@@ -1477,7 +1477,7 @@
 		{
 			"name": "replace",
 			"words": "Replace with the part in hand",
-			"key": "",
+			"key": "Alt+R",
 			"tip": "Swap the selection for the part you hold, each in its own colour"
 		},
 		{
@@ -1510,7 +1510,7 @@
 		{
 			"name": "step_to",
 			"words": "Move to step…",
-			"key": "",
+			"key": "Alt+T",
 			"tip": "The selected parts into any step, its number typed"
 		},
 		{
@@ -1599,8 +1599,8 @@
 		"export_rebrickable": "",
 		"render": "",
 		"render_queue": "",
-		"pose": "",
-		"instructions": "",
+		"pose": "alt-O",
+		"instructions": "alt-B",
 		"share": "",
 		"together": "",
 		"comments": "",
@@ -1616,11 +1616,11 @@
 		"pattern": "Ctrl-shift-D",
 		"delete": "Delete",
 		"select_all": "Ctrl-A",
-		"select_none": "",
+		"select_none": "Ctrl-shift-A",
 		"select_colour": "alt-C",
 		"select_part": "alt-P",
-		"select_alike": "",
-		"select_find": "",
+		"select_alike": "alt-A",
+		"select_find": "Ctrl-F",
 		"select_connected": "alt-J",
 		"select_submodel": "",
 		"select_inverse": "alt-I",
@@ -1631,7 +1631,7 @@
 		"unlock": "shift-L",
 		"find_colour": "shift-C",
 		"paint": "C",
-		"replace": "",
+		"replace": "alt-R",
 		"printed_versions": "",
 		"mirror": "shift-M",
 		"split_parts": "alt-S",
@@ -1683,7 +1683,7 @@
 		"fit_selection": "",
 		"fit": "F",
 		"ortho": "`",
-		"grid": "",
+		"grid": "alt-G",
 		"floor_16": "",
 		"floor_32": "",
 		"floor_48": "",
@@ -1704,7 +1704,7 @@
 		"floor_colour_7": "",
 		"floor_part": "",
 		"floor_default": "",
-		"reference": "",
+		"reference": "alt-N",
 		"cut": "K",
 		"cut_x": "",
 		"cut_y": "",
@@ -1761,8 +1761,8 @@
 		"mode_pan": "H",
 		"mode_zoom": "Z",
 		"measure": "U",
-		"stability": "",
-		"simulate": "",
+		"stability": "alt-K",
+		"simulate": "alt-U",
 		"hidden_colours": "",
 		"reseat": "",
 		"connector": "",

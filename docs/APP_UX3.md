@@ -564,8 +564,8 @@ owner.
 **7. bigmodels2 and 10. studioside** have their bars in the table.
 
 **Next, once those land:**
-- **Keys:** 110 commands have none; the reference picture, Simulate and
-  Motions among them. A key each where a builder uses it often.
+- **Keys:** ten more keyed on 2026-11-05, 114 commands without one to 104,
+  and why each of the rest has none: [app_ux3/keys.md](app_ux3/keys.md).
 - **Pattern's grid** in one go (LeoCAD's Array), and a part from an OBJ
   or STL with its connectors (Studio's Part Designer).
 - **An originality score** (BricksChat) from the real sets' sub-assemblies

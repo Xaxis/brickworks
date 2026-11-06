@@ -30,6 +30,9 @@ EXCUSED = {
     # (Main reads the keymap only while no shared model is being viewed).
     ("src/ui/share_view.gd", "Step through the build (B)"),
     ("src/ui/share_view.gd", "Every part, with BrickLink and Rebrickable lists (P)"),
+    # The library takes Ctrl-F to its own search while it shows, before the
+    # keymap has it (LibraryDialog._input); over the model, Ctrl-F is Find.
+    ("src/ui/library_dialog.gd", "%s+F comes here; Escape clears it; Enter opens the first "),
 }
 # Not shown to a person: the keymap itself, the probes, and what the
 # assistant is told (src/ai), which names parts like "Saturn V"...

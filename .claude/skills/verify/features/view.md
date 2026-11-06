@@ -688,6 +688,22 @@ picture the assistant is shown.
   `--url=http://127.0.0.1:PORT/`) selects all, presses Shift-2 and Ctrl+Z.
   Not proven: Cmd-Shift-3, 4 and 5 on a Mac are the system's screenshot keys,
   so those three most-used keys need setting there.
+- `keys for often-used commands` (`src/ui/keymap.gd` `PRESET_KEYS`, the keys
+  unit, 2026-11-05): ten commands a builder reaches for often got keys, under
+  every preset: Select nothing Ctrl-Shift-A (LDCad's), Find a part by number or
+  name Ctrl-F (LeoCAD's; Ctrl-Shift-F under Studio's, whose Ctrl-F searches the
+  bin), Same part and colour Alt-A, Replace Alt-R, Stud grid Alt-G, Check
+  stability Alt-K, Simulate Alt-U, Motions Alt-O, Reference picture Alt-N,
+  Instructions Alt-B. `docs/app_ux3/keys.md` is the table: each command with
+  none under each preset and why, with Studio's, LeoCAD's and LDCad's keys
+  cited. `keys4_probe` (windowed, 1280 x 720) reads that table and fails when a
+  command has no key and no row there, or a preset's count differs; checks no
+  two actions share a key, each key is on its menu row, and each does what its
+  row does under each preset (pictures: the menus, the sheet filtered `alt-`);
+  none runs while the parts' search is typed in; Replace set to Alt-W in the
+  sheet runs from Alt-W. `docs_menus.gd` now writes each row's key as the app's
+  own keys have it, so the docs' menus and shortcuts pages list Alt-C and the
+  rest.
 - `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
   do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
   and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the
