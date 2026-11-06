@@ -636,7 +636,6 @@ const HINTS := {
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],
 	"fresh_eyes_final": ["Say what it reads as now", "look"],
-	"compare_with_photo": ["Compare it with a photo of the real thing", "look"],
 }
 const KINDS: Array[String] = ["look", "file", "add", "remove"]
 
@@ -807,17 +806,11 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			return [assistant.fresh_eyes().answered(input), true]
 		if name == FreshEyes.FINAL_TOOL:
 			return [assistant.fresh_eyes().final_answered(input), true]
-		# And the look beside a photograph the first whole review asked for.
-		if name == PhotoLook.TOOL:
-			return [assistant.photo_look().answered(input), true]
 		var not_yet: String = assistant.fresh_eyes().not_yet(name)
 		if not_yet.is_empty():
 			not_yet = assistant.fresh_eyes().final_not_yet(name)
-		if not_yet.is_empty():
-			not_yet = assistant.photo_look().not_yet(name)
 		if not not_yet.is_empty():
 			return [not_yet, true]
-		assistant.photo_look().follow(name)
 	if entry == null:
 		entry = ToolJobs.Entry.new()
 	entry.input = input
@@ -1087,7 +1080,7 @@ func _the_app_tools() -> AppTools:
 ## posing, undo, opening, the parts list, rendering, exporting.
 func _own_tools() -> Array:
 	return _socket_tools() + _the_app_tools().definitions() + [ToolJobs.definition(),
-		FreshEyes.definition(), FreshEyes.final_definition(), PhotoLook.definition()]
+		FreshEyes.definition(), FreshEyes.final_definition()]
 
 
 func _socket_tools() -> Array:

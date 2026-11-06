@@ -150,9 +150,6 @@ func _run() -> void:
 			["weakest_joints", {}], ["fresh_eyes", {"reads_as": "a house", "generic": "its walls",
 				"changes": ["one", "two", "three"]}], ["fresh_eyes_final", {"landed": "both",
 				"reads_as": "a house", "generic": "nothing", "done": true, "change": ""}],
-			["compare_with_photo", {"photo": "a house", "is_it": true, "whole": {"length": 1,
-				"width": 0.6, "height": 0.5}, "features": [{"name": "the roof", "where": {"y_from": 6},
-					"height": 0.4}]}],
 			# The window's hand tools that only look (mcphand).
 			["measure", {"from": "0 0 0", "to": "2 3 1"}], ["in_view", {}]]:
 		_called[str(call[0])] = true
