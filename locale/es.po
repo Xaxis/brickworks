@@ -11256,6 +11256,11 @@ msgstr "1 pieza que no está en la biblioteca, sin contar"
 msgid "%d parts not in the library, not counted"
 msgstr "%d piezas que no están en la biblioteca, sin contar"
 
+# Properties' selection, a height of half a plate: "4.5 plates" (a tyre on
+# its edge is 4½)
+msgid "%s plates"
+msgstr "%s placas"
+
 msgid "How big the model is, or the parts selected: studs across and deep, plates high without the studs on top, and centimetres each way with them"
 msgstr "El tamaño del modelo, o de las piezas seleccionadas: espigas de ancho y de fondo, placas de alto sin las espigas de arriba, y centímetros en cada sentido con ellas"
 
