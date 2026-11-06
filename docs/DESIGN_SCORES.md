@@ -5600,6 +5600,243 @@ Why it fell short:
 - The change is taken back out on this branch (`73adcf6d`; `860827ad` holds
   it), so nothing of it ships.
 
+### Likeness: a new design's own front and side set beside a photograph of the real thing (2026-11-05, design18, `1ade9709`, NO-GO)
+
+**Why.** In design17, every session looked at its named features in its own
+front and side, named one off and rebuilt it. The judge still named the
+same feature's form wrong in 8 of 10 verdicts. The sessions read their
+pictures against their memory of the thing, and that memory was wrong: the
+roller's drum remembered as black and narrow, Air Mail's wings that "read
+as right" in studs while the judge saw slabs. Only 2 of 5 had called
+find_reference. The next lever: set the session's own views beside a
+photograph of the real thing, so it compares form with form.
+
+**The change** (`a578bfc4`, with `1ade9709`):
+
+- A new design's first whole review_model, once the model stands, leads
+  with the look (`src/ai/photo_look.gd`, `PhotoLook`). It shows:
+  - a photograph of the real thing from Wikimedia Commons;
+  - the model from the view the photograph's title names, or a
+    three-quarter view when it names none;
+  - the model from the front (+z) and from the side (+x), with rulers in
+    studs.
+
+  Before them come the whole's size and the features submit_design named.
+- **Where the photograph comes from.** It is the first picture from the
+  session's own find_reference that is not of bricks. A session that asked
+  for none gets one found with its own words, in this order: plan_scale's
+  subject, the design's name, then how_real_sets_build_this's subject. A
+  set's words come off first ("in the style of LEGO® City sets", "(LEGO
+  Architecture style)"). It searches twice at most. A subject with no
+  photograph is told so, and what was searched.
+- It asks the session to answer with `compare_with_photo`:
+  - what the photograph shows, and whether it is the thing;
+  - the two silhouettes against each other;
+  - each feature the subject is known by: its form and its size against
+    the whole, in the photograph and in the model, settled rebuild or keep,
+    and why.
+
+  Then it rebuilds what it settled to rebuild, to the photograph's form and
+  proportion, before any detail. If the photograph is not the thing, the
+  session is pointed at find_reference with the real thing's own name.
+- The session decides what differs and what to do. Until it answers, other
+  changes are refused, twice at most. A save, view_model, look_at_model and
+  find_reference go ahead, and clear_model lets the look go.
+- The review or save after the answer logs how many parts were added and
+  taken off since. That is the rebuild's size.
+- `1ade9709`: when the model's pictures cannot be drawn in time, the
+  photograph goes alone. The session is asked to take its own corner, front
+  and side with view_model and set each beside it.
+- **The holdout.** The look never shows a picture of anything built of
+  bricks. `ReferenceFinder.of_lego` reads a picture's title, and what
+  Commons files it under and says about it. While a set is held out,
+  find_reference drops those pictures too.
+  - The gap it closes: a Commons search for "Gandalf Arrives" returns "A
+    Wizard Is Never Late Lego diorama by Flounder's Bricks, 2020.png".
+  - Its title names neither the held set nor its number. Only its category,
+    "Lego models of Middle-earth", says what it is.
+  - find_reference's title check alone (`_of_a_held_set`) would show it to
+    any session that asked with the set's name. No arm before this one did:
+    none of design16's or design17's Gandalf sessions called find_reference.
+
+**Proof in the app.**
+
+- `photo_look_probe` (windowed): all 38 passed at `1ade9709`. It covers:
+  - the unit tests: words cleaned, the search order, the view a title
+    names, a picture of bricks known and skipped, and the bench dropping it
+    from find_reference;
+  - the tool served read-only;
+  - a look with the session's own photo, one with a photo found for it,
+    and one with none;
+  - the model's pictures not drawn in time;
+  - never answered, refused twice, then clear_model;
+  - beside the person's model;
+  - a selection.
+- Also passed: `holdout` 18, `reference` 10, `mcp_sync` 14, `mcp` 75,
+  `read_only` 42, `app_tools` 106, `connector_method` 12, `surface` 98,
+  `fresh_eyes` 78 and `freeze` 10. `docs_site.py --check` passed (52 pages).
+
+**Smoke.** Two locked snapshots, each imported first. `snapd18base` is at
+`43707985` (pre261's code), and `snapd18lev2` is at `1ade9709`. One job
+each on the owner's path, on design16's 5 subjects, beside a release train.
+
+A first lever arm (`d18lev`, at `a578bfc4`) was stopped after its third
+session. A release train held the GPU, and two of its three looks were lost
+to "leased shots: no picture within 120 s", so no photograph was shown at
+all. `1ade9709` makes the photograph go alone in that case, and the arm was
+run again whole. Its results are kept in `realset-2026-11-05-d18lev`. The
+base roller also had 3 picture timeouts. Its loss reads as d17base's did
+("a small drum hidden inside a boxy body"), so it was not rerun.
+
+There was no login lapse, and the holdout held in all ten:
+- `held_out_said` is true for every design.
+- The only hits on a set's number were the sessions' own searches of LDraw's
+  models of real sets ("9469 Gandalf Arrives", "42111"), which found nothing.
+- The other hits on its name: the Burj's Commons photos, printed tiles and
+  the part 3069bp1h's own name.
+- No picture of bricks was shown.
+- The lever's Gandalf cited "set 9469" in its answer, from its own memory.
+
+Verdicts won, of 10 a dimension:
+
+| dimension | d17base | d17lev | d18base | d18lev2 |
+|---|---|---|---|---|
+| likeness | 0 | 1 | 0 | 0 |
+| surface | 3 | 3 | 1 | 1 |
+| colour | 3 | 3 | 3 | 3 |
+| technique | 0 | 1 | 1 | 0 |
+| creativity | 3 | 4 | 4 | 4 |
+| overall | 0 | 1 | 1 | 0 |
+| lost likeness naming a defining feature wrong, by hand | 10 of 10 | 8 of 10 | 10 of 10 | 10 of 10 |
+
+By subject (likeness, overall, creativity), base then lever:
+
+| subject | d18base | d18lev2 |
+|---|---|---|
+| Gandalf | 0 1 2 | 0 0 0 |
+| the roller | 0 0 0 | 0 0 0 |
+| the Burj | 0 0 2 | 0 0 2 |
+| Air Mail | 0 0 0 | 0 0 2 |
+| the Charger | 0 0 0 | 0 0 0 |
+
+The judge's shape words, lever:
+- Gandalf: "a generic white horse, a plain cart and a peasant figure"; "the
+  cart shafts running through its body".
+- The roller: "small drum is half-hidden inside a yellow frame"; "buried
+  inside a boxy frame".
+- The Burj: "a stubby, boxy stack of square blocks"; "a squat, square stack".
+- Air Mail: "biplane has oversized, chunky wings on a stubby fuselage".
+- The Charger: "a long flat black slab with a stepped roofline"; "flat slab
+  body and brick-built windows".
+
+The base's words: Gandalf "a generic yellow-faced wizard", the roller's
+"small drum inside a boxy body", the Burj "chunky", "stocky and blocky",
+Air Mail's "oversized billboard tail and stubby wings", the Charger's
+"slab-sided black box".
+
+**Reach** (scratch `py/reach18.py`):
+
+- **A photograph reached 5 of 5.** Three came from the session's own
+  find_reference: the roller ("CASE 1110 EX-D Single Drum Roller"), the
+  Burj ("Burj dubai 3.11.08", from the air) and the Charger ("1970 Dodge
+  Charger 500 440", front three-quarter). Two were found for the session.
+  All 5 answered, and none was refused a call. The roller's own views were
+  not drawn in time, so it took them itself (corner and front).
+- **2 of the 5 photographs were not the thing.**
+  - Gandalf's, found with "Gandalf Arrives", is a G-20 crowd in Toronto. It
+    matched on its photographer's name, Gandalf Cunningham. The session said
+    so, kept all 3 features against its memory of the set, and did not search
+    again.
+  - Air Mail's, found with "Air Mail Plane", is a 1918 Curtiss JN-4H biplane
+    at the US Air Mail's opening. The session took it for the thing and added
+    a second wing on struts. The set is a modern twin-prop City plane, and
+    the judge named the biplane both ways.
+- **Differences named.** 9 of 23 features were settled rebuild: Gandalf 0
+  of 3, the roller 3 of 6, the Burj 1 of 4, Air Mail 2 of 5, the Charger 3
+  of 5. Every silhouette named one difference, except Gandalf's.
+- **Features rebuilt.** 4 of 5 sessions rebuilt. Parts moved (added and
+  taken off) by the next review:
+
+  | subject | added | taken off | kept |
+  |---|---|---|---|
+  | Gandalf | 0 | 0 | 59 of 59 |
+  | the roller | 17 | 11 | 84 of 95 |
+  | the Burj | 200 | 76 | 34 of 110 |
+  | Air Mail | 15 | 0 | 51 of 51 |
+  | the Charger | 738 | 716 | 428 of 1,144 |
+- **Where the photograph was right, the session read one proportion and
+  missed the one the judge named.**
+  - The roller read the real drum as "about 30% of the length, nearly as
+    tall as the tyres", saw its own hidden, and opened the yoke. It never
+    measured its own drum against the length. That drum is 4 studs across on
+    a machine 25 studs long, a sixth of it, and it was kept, with tyres to
+    match.
+    The judge: "small drum", "car-sized wheels".
+  - The Burj named its T plan against the photograph's Y, then kept it. It
+    spent its rebuild on vertical fins over every face.
+  - The Charger measured its length against its height, 4.0 to the
+    photograph's 3.9, and called it a match. It rebuilt the sills, glass and
+    grille, and stayed a flat-sided black slab.
+
+Each subject: what I saw in its front and corner renders, beside the
+photograph the session saw:
+
+- **Gandalf Arrives.** The photograph is a rooftop over a street of riot
+  police. The lever's model is a white moulded horse in front of a brown
+  two-wheeled cart, with a grey Gandalf standing in it, fireworks, and a
+  green-vested figure on the road. The base's is a brown horse head-on in
+  front of the cart, with a yellow-faced, bearded Gandalf in glasses and a
+  red-shirted figure.
+- **Single-Drum Roller.** The photograph is a black drum as tall as the
+  tyres and as wide as the machine, half above an open orange frame. The
+  lever's drum is grey, 4 studs across and 10 wide, about as tall as its
+  tyres. It sits low in a yellow box frame whose walls hide it in the corner
+  view. The base's drum is a black barrel under a flat deck.
+- **Burj Khalifa.** The photograph is an aerial view: a tall silver needle
+  with a long spire. Both models are slender grey stepped towers on a
+  square plan. The lever's faces are ribbed all over; the base's spire is
+  longer.
+- **Air Mail.** The photograph is a fabric biplane with a crowd. The lever's
+  model is a white fuselage with two red wings on white struts, a tall white
+  fin and a 3-blade prop. The base's is a white box fuselage with a
+  windscreen, low red wings and a huge printed "AIR MAIL" tail.
+- **Dom's Dodge Charger.** The photograph is a purple 1970 Charger from the
+  front corner: a long low body, a chrome-framed grille and a thin sill. Both
+  models are long, flat, black brick slabs with a blower, seen from the rear
+  corner. The lever's has light-blue side glass and a grey sill stripe; the
+  base's has dark tan side windows.
+
+**NO-GO.** Of the three conditions, only creativity held (4 → 4):
+- likeness stayed at 0 of 10, and overall went 1 → 0;
+- a defining feature was named wrong in 10 of 10 verdicts in both arms.
+
+So the paired 44 did not run.
+
+Why it fell short:
+- **The reach is there.** Every session was shown a photograph and answered
+  it, and 4 of 5 rebuilt, two of them nearly whole.
+- **A photograph found by name can share only the name.** 2 of 5 were not
+  the thing. One misled the session into a biplane, and a "check it is the
+  thing" line did not stop it. A fictional subject (Gandalf's cart) has no
+  photograph on Commons at all.
+- **A right photograph is read, not measured.** Each session read one
+  proportion and missed the one the judge named: the drum's size against
+  the machine, the tower's plan, the car's flat sides. The roller wrote the
+  real drum's share of the length and never measured its own. Two big
+  rebuilds went to surface (the Burj's fins) or kept the slab (the Charger).
+- **Next.** Measure, don't read. For each feature, ask for its width, depth
+  and height as fractions of the whole, read off the photograph, and set
+  them against the same fractions measured off the model. Search only with
+  the session's own name for the real thing (its make and model), never the
+  set's title, and show nothing for a subject that has no real counterpart.
+- **The holdout gap stands without the lever.** While a set is held out,
+  find_reference still shows Commons pictures of brick models of the subject
+  whose titles name neither the set nor its number. `of_lego` and its use in
+  `ReferenceFinder._on_searched` (in `a578bfc4`) close it, and can land on
+  their own.
+- The change is taken back out on this branch (`53229a6a`; `1ade9709` holds
+  it), so nothing of it ships.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
