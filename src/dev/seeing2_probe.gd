@@ -381,14 +381,15 @@ func _window_map() -> void:
 	painted = _world.call("painted_ids")
 	_check("...a part put down while it is on painted its facing's colour",
 		painted.get(plate) == _colours["up"])
-	_shell.call("run", "undo")
+	_builder.undo()
 	await _frames(2)
+	var gone: bool = _world.get_brick(plate) == null
 	_shell.call("run", "stud_map")
 	await _frames(8)
 	painted = _world.call("painted_ids")
 	var red_after: float = await _red_share("1_window_after.png")
-	_check("...and turned off, every part its own colour again (red %.1f%%)" % (red_after * 100.0),
-		painted.is_empty() and red_after > red_off * 0.5)
+	_check("...and turned off, every part its own colour again (red %.1f%%), the part put down undone"
+		% (red_after * 100.0), painted.is_empty() and red_after > red_off * 0.5 and gone)
 
 
 ## How much of the model's room in the window is the car's red, and the
