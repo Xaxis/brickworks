@@ -12,17 +12,19 @@
 ##    and panel button (the parts bin's, Properties', the model tree's, the
 ##    assistant's, the status bar's and the side panels' rails) answers with
 ##    words, in the bubble beside it: none empty past its name, none the
-##    same as another's. The bin's part tiles and colour swatches are its
-##    contents, each named by its part or colour, not its buttons;
+##    same as another's, each its own or those of what it is part of, never
+##    only the panel's it is in. The bin's part tiles and colour swatches
+##    are its contents, each named by its part or colour, not its buttons;
 ## 2. the click does nothing else: the control under it never hears the
 ##    press or the release, and nothing of the model, the selection, the
 ##    tool, the part in hand, the bin's chip, the panels, the camera, the
 ##    keys' focus or the windows open changes. One click with no question
 ##    first, on the Move tool, shows the check sees a click that does;
 ## 3. while a part is in hand, the status bar's x, z and height are where it
-##    then lands, to the stud and plate: a 2 x 4 brick on the ground at four
-##    places either side of the middle, on another brick, turned, a 1 x 2
-##    plate on that, and two parts carried as a copy (Ctrl+D), each read off
+##    then lands, to the stud and plate: a 2 x 4 brick aimed at four places
+##    either side of the middle, on the ground or on what is in the way, and
+##    at another brick's top, a 1 x 2 plate turned, aimed at the ground and
+##    at that top, and two parts carried as a copy (Ctrl+D), each read off
 ##    the bar, put down with a click and measured; nothing in hand, nothing
 ##    said.
 ## And: Help, What's This? is a row of the Help menu with Shift+F1, under
@@ -238,6 +240,15 @@ func _answers() -> void:
 			if words.strip_edges().is_empty():
 				bad.append("%s %s said nothing past its name (\"%s\")" % [kind, named, whole])
 				continue
+			# Its own words, or those of what it is part of: not the panel's,
+			# which say only where it is.
+			var about: Variant = answer["about"]
+			if about == null or about is SideDock or not (about == control
+					or (about as Node).is_ancestor_of(control) or control.is_ancestor_of(about)):
+				bad.append("%s %s answered for %s, not itself: \"%s\"" % [kind, named,
+					"nothing" if about == null else (about as Node).get_class() + " " + str((about as Node).name),
+					whole.replace("\n", " / ")])
+				continue
 			if said.has(whole):
 				bad.append("%s %s said what %s said: \"%s\"" % [kind, named, said[whole], whole.replace("\n", " / ")])
 				continue
@@ -287,13 +298,16 @@ func _ask_about(control: Control) -> Dictionary:
 	_unlisten(control)
 	var asker: Node = _asker()
 	var said: String = str(asker.get("said")) if bool(asker.call("answering")) else ""
+	var about: Variant = asker.get("said_of") if bool(asker.call("answering")) else null
+	if about != null and not is_instance_valid(about):
+		about = null
 	var changed: Array = _changes(before, _state())
 	if not _heard.is_empty():
 		changed.push_front("it heard %s" % ", ".join(_heard))
 	var lines: PackedStringArray = said.split("\n")
 	# The words past its name: a one-line answer is a name alone.
 	var words: String = "\n".join(lines.slice(1)) if lines.size() > 1 else ""
-	return {"said": said, "words": words, "quiet": changed.is_empty(),
+	return {"said": said, "words": words, "about": about, "quiet": changed.is_empty(),
 		"did": ", ".join(changed)}
 
 
@@ -464,14 +478,16 @@ func _place() -> void:
 	_main.call("clear_model")
 	_verbs.set_mode("select")
 	_camera.frame(AABB(Vector3(-120, 0, -120), Vector3(240, 60, 240)))
-	await _frames(30)
+	await _still()
 	_check("3: nothing in hand, nothing said (\"%s\")" % _shell.status.fields()["place"],
 		str(_shell.status.fields()["place"]).is_empty())
 	await _hold("3001")
-	var cases: Array = [["on the ground, right of the middle", Vector3(60, 0, 20)],
-		["on the ground, behind and left", Vector3(-80, 0, -40)],
-		["on the ground, in front", Vector3(0, 0, 100)],
-		["on the ground, at the middle", Vector3(0, 0, 0)]]
+	# Where the pointer is aimed: the part goes where the builder puts it
+	# from there, on what is in the way or beside it, and that is measured.
+	var cases: Array = [["aimed at the ground right of the middle", Vector3(60, 0, 20)],
+		["aimed at the ground behind and left", Vector3(-80, 0, -40)],
+		["aimed at the ground in front", Vector3(0, 0, 100)],
+		["aimed at the middle", Vector3(0, 0, 0)]]
 	var first: int = 0
 	for one: Array in cases:
 		var made: int = await _put(str(one[0]), _screen(one[1]))
@@ -480,13 +496,13 @@ func _place() -> void:
 	# On top of the first.
 	if first != 0:
 		var top: Vector3 = _top_of(first)
-		await _put("on top of the first brick", _screen(top), "place_on_brick")
+		await _put("aimed at the top of the first brick", _screen(top), "place_on_brick")
 	# Turned a quarter, a 1 x 2 plate, half studs across.
 	await _hold("3023")
 	await _key(KEY_R)
-	await _put("a 1 x 2 plate turned, on the ground", _screen(Vector3(30, 0, -100)))
+	await _put("a 1 x 2 plate turned, aimed at the ground in front and right", _screen(Vector3(80, 0, 60)))
 	if first != 0:
-		await _put("a 1 x 2 plate turned, on the two bricks", _screen(_top_of(first)))
+		await _put("a 1 x 2 plate turned, aimed at the top of the first brick", _screen(_top_of(first)))
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
 	await _frames(6)
@@ -503,7 +519,7 @@ func _place() -> void:
 	await _frames(10)
 	_check("3: two parts in hand, carried (Ctrl+D)", _builder.is_carrying())
 	if _builder.is_carrying():
-		await _put("two bricks carried", _screen(Vector3(-100, 0, 100)), "place_carried", true)
+		await _put("two bricks carried, aimed at the ground in front and left", _screen(Vector3(-100, 0, 100)), "place_carried", true)
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
 	_builder.selection.clear()
@@ -521,7 +537,7 @@ func _put(what: String, at: Vector2, picture: String = "", carried: bool = false
 	await _move(at)
 	await _frames(6)
 	var said: String = str(_shell.status.fields()["place"])
-	if not picture.is_empty() or what.begins_with("on the ground, right"):
+	if not picture.is_empty() or what.begins_with("aimed at the ground right"):
 		await _shot(picture if not picture.is_empty() else "place_ground")
 	var told: Variant = _read(said)
 	var before: Dictionary = {}
@@ -604,6 +620,20 @@ func _screen(point: Vector3) -> Vector2:
 	return _camera.unproject_position(point)
 
 
+## Until the camera stops moving: a frame eases there over many frames, and
+## a point worked out while it moves is another point when the click lands.
+func _still() -> void:
+	var last: Transform3D = _camera.global_transform
+	var same: int = 0
+	for _n: int in 600:
+		await process_frame
+		var now: Transform3D = _camera.global_transform
+		same = same + 1 if now.is_equal_approx(last) else 0
+		last = now
+		if same >= 5:
+			return
+
+
 # -- the new words in each language --------------------------------------------------
 
 func _languages() -> void:
@@ -623,6 +653,11 @@ func _languages() -> void:
 		"x 1, z 1 studs · 1 plate down",
 		"Where the part in hand goes if put down now: studs across (x) and back (z) from the middle of the floor, and plates up from the ground",
 		"Greyed now: Nothing to undo yet", "Greyed now: Nothing to redo",
+		WhatsThis.RAIL_OPEN, WhatsThis.RAIL_FOLDED, WhatsThis.PANEL,
+		WhatsThis.NAMED_ONLY % "Assistant",
+		"Sends what is written above to the assistant, which designs it and builds it in the model; with parts chosen over the box, it works on those",
+		"Checks the key pasted above with Anthropic and keeps it, so the assistant designs on your own Anthropic account",
+		"Opens Anthropic's Console in the browser, at the page where an account makes its keys",
 	]
 	for code: String in ["de", "fr", "es"]:
 		Language.apply(code)

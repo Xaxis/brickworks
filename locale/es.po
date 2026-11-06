@@ -10845,3 +10845,24 @@ msgstr "El modelo aún se está abriendo"
 
 msgid "The assistant is off in Settings"
 msgstr "El asistente está desactivado en Ajustes"
+
+msgid "Folds the panel to this strip at its edge, giving the model its room; a click on the strip brings it back"
+msgstr "Pliega el panel a esta franja de su borde y deja sitio al modelo; un clic en la franja lo trae de vuelta"
+
+msgid "Opens the panel this strip stands for; one sharing its edge folds to its own strip"
+msgstr "Abre el panel de esta franja; el que comparte su borde se pliega a su propia franja"
+
+msgid "A panel of the window: click a control in it to hear what that does. The strip at its edge folds it away and brings it back"
+msgstr "Un panel de la ventana: haz clic en un control para saber qué hace. La franja de su borde lo pliega y lo trae de vuelta"
+
+msgid "In the %s panel; it says nothing of itself but its name"
+msgstr "En el panel %s; no dice de sí más que su nombre"
+
+msgid "Sends what is written above to the assistant, which designs it and builds it in the model; with parts chosen over the box, it works on those"
+msgstr "Envía lo escrito arriba al asistente, que lo diseña y lo construye en el modelo; con piezas elegidas sobre el cuadro, trabaja en ellas"
+
+msgid "Checks the key pasted above with Anthropic and keeps it, so the assistant designs on your own Anthropic account"
+msgstr "Comprueba con Anthropic la clave pegada arriba y la guarda, para que el asistente diseñe con tu propia cuenta de Anthropic"
+
+msgid "Opens Anthropic's Console in the browser, at the page where an account makes its keys"
+msgstr "Abre la Console de Anthropic en el navegador, en la página donde una cuenta crea sus claves"

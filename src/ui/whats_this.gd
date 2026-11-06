@@ -27,6 +27,12 @@ const EDGE := 8.0
 
 ## What the status bar says while the next click is a question.
 const ASKING := "What's This: click any button, field or panel to hear what it does · Esc to stop"
+## A side panel's strip, whose tooltip is only what a click does to it.
+const RAIL_OPEN := "Folds the panel to this strip at its edge, giving the model its room; a click on the strip brings it back"
+const RAIL_FOLDED := "Opens the panel this strip stands for; one sharing its edge folds to its own strip"
+## A side panel where nothing round the pointer says anything.
+const PANEL := "A panel of the window: click a control in it to hear what that does. The strip at its edge folds it away and brings it back"
+const NAMED_ONLY := "In the %s panel; it says nothing of itself but its name"
 
 ## The one, made at the first ask.
 static var one: WhatsThis = null
@@ -295,6 +301,10 @@ func words_at(hit: Control, point: Vector2) -> Array:
 		# Its name again, and its key: no more than the name says.
 		title = words
 		words = ""
+	var rail: String = _rail(source)
+	if not rail.is_empty():
+		title = tip.strip_edges()
+		words = rail
 	words = _chip(source, title, words)
 	var now: String = _state_of(source)
 	if not now.is_empty():
@@ -322,6 +332,24 @@ func _name_of(control: Control) -> String:
 	if control is Button and not (control is OptionButton) \
 			and not (control as Button).text.strip_edges().is_empty():
 		return (control as Button).text.strip_edges()
+	if control is LinkButton and not (control as LinkButton).text.strip_edges().is_empty():
+		return (control as LinkButton).text.strip_edges()
+	return ""
+
+
+## A side panel's strip, whose tooltip says only "Hide the parts bin": what
+## that does to the window.
+func _rail(control: Control) -> String:
+	var node: Node = control
+	while node != null and not (node is SideDock):
+		node = node.get_parent()
+	if node == null:
+		return ""
+	var docks: Array = [node]
+	docks.append_array(node.get("_edge_mates") as Array)
+	for dock: SideDock in docks:
+		if dock.rail() == control:
+			return RAIL_OPEN if dock.is_open() else RAIL_FOLDED
 	return ""
 
 
@@ -365,15 +393,19 @@ func _command_of(control: Control) -> String:
 
 
 ## Where nothing round the pointer says anything: in a side panel, the
-## panel, as its rail says; else the model, and what the tool in use does
-## with a click there.
+## control's name and the panel it is in, or the panel; else the model, and
+## what the tool in use does with a click there.
 func _no_words(hit: Control) -> Array:
 	var node: Node = hit
+	var its_name: String = ""
 	while node != null:
 		if node is SideDock:
 			var dock: SideDock = node
-			var rail: Control = dock.get("_rail")
-			return [dock.title, rail.tooltip_text.strip_edges() if rail != null else "", dock]
+			if not its_name.is_empty():
+				return [its_name, NAMED_ONLY % dock.title, dock]
+			return [dock.title, PANEL, dock]
+		if its_name.is_empty() and node is Control:
+			its_name = _name_of(node)
 		node = node.get_parent()
 	var named: Dictionary = shell.toolbar.controls_by_name() if shell.toolbar != null else {}
 	var button: Control = named.get("tool_mode_" + shell.verbs.mode)

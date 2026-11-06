@@ -922,8 +922,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and finds none, then moves off and back and finds it again; without the fix
   the tooltip was up over "Copied.".
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
-  the tool's hint when nothing was; then the parts count and stability, how
-  many are selected, the snap and turn step, and how big a stud is on screen.
+  the tool's hint when nothing was; then, while a part is in hand, where it
+  goes if put down now ("x 2½, z −1 studs · 3 plates up": its middle from the
+  middle of the floor, to the half stud, its foot over the ground, to the
+  quarter plate; several carried, the box round them all), as LeoCAD's says
+  where its preview stands (whatsthis, APP_UX4 10); then the parts count and
+  stability, how many are selected, the snap and turn step, and how big a
+  stud is on screen. `whatsthis_probe` puts a brick at four places on the
+  ground, one on another, a turned 1 x 2 plate, and two parts carried by
+  Ctrl+D, each read off the bar, clicked down and measured.
 - `accessibility` (`src/ui/access.gd`, `src/ui/focus_guard.gd`, Settings,
   2026-10-24; docs/COMPETITIVE.md item 14). A screen reader hears every
   control by its name (Godot 4.7's AccessKit: `accessibility_name`, or a
