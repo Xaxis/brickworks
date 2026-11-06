@@ -860,13 +860,9 @@ func _open_car() -> void:
 	await _frames(20)
 
 
+## A part put down as one step the window's Undo takes back.
 func _put(part: String, colour: int, at: Vector3) -> int:
-	var where := Transform3D(Basis.IDENTITY, at)
-	var depth: int = _builder.history_depth()
-	var brick_id: int = _world.add_brick(part, colour, where)
-	_builder.register(brick_id, part, where)
-	_builder.fold_since(depth)
-	return brick_id
+	return _builder.put_part(part, colour, Transform3D(Basis.IDENTITY, at))
 
 
 func _signature() -> Array:
