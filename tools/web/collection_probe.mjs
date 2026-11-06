@@ -65,6 +65,10 @@ const set = (collection, number) => {
   return all.length ? { ...all[0], qty: all.reduce((n, s) => n + s.qty, 0), spares: all.some((s) => s.spares) } : undefined;
 };
 const numbers = (collection) => new Set((collection?.sets || []).map((s) => s.set)).size;
+// The same JSON whatever order its keys are in: the database (jsonb) keeps
+// keys shortest first, not in the order they were written.
+const canon = (value) => JSON.stringify(value, (_, v) => (v && typeof v === "object" && !Array.isArray(v)
+  ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : v));
 
 async function database(token, path, { method = "GET", body } = {}) {
   const headers = { apikey: process.env.SUPABASE_PUBLISHABLE_KEY || "", "content-type": "application/json" };
@@ -144,11 +148,11 @@ try {
     "read back: three sets (four Magic Shops), twelve red 2 x 4s, and when");
   const replaced = await call(a.access_token, { method: "POST", body: {
     from: "rebrickable_csv", mode: "replace", text: "Set Number,Quantity\n6020-1,1\n" } });
-  check(replaced.status === 200 && JSON.stringify(replaced.body.sets.filter((s) => s.src === "rebrickable_csv"))
-    === JSON.stringify([{ set: "6020-1", qty: 1, spares: false, src: "rebrickable_csv" }])
-    && JSON.stringify(replaced.body.sets.filter((s) => s.src !== "rebrickable_csv"))
-    === JSON.stringify(back.body.sets.filter((s) => s.src !== "rebrickable_csv"))
-    && JSON.stringify(replaced.body.parts) === JSON.stringify(back.body.parts),
+  check(replaced.status === 200 && canon(replaced.body.sets.filter((s) => s.src === "rebrickable_csv"))
+    === canon([{ set: "6020-1", qty: 1, spares: false, src: "rebrickable_csv" }])
+    && canon(replaced.body.sets.filter((s) => s.src !== "rebrickable_csv"))
+    === canon(back.body.sets.filter((s) => s.src !== "rebrickable_csv"))
+    && canon(replaced.body.parts) === canon(back.body.parts),
     "replace with a sets list replaces that export's sets, and keeps the sets typed and fetched and the loose parts");
 
   console.log("\nanother account");
