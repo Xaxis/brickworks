@@ -24,7 +24,9 @@
 ##   again starts from no words;
 ## * Fits the same: chosen after the search, the box empty and the first 12 as
 ##   on an empty search; "plate" typed narrows it to plates, said; All puts
-##   "1x4 brick" back.
+##   "1x4 brick" back;
+## * over MCP, search_parts like=3001 query=curved: only curved parts, the
+##   curved slopes among them.
 ## At 1280 x 720, and at 1400 x 900 with PROBE_SIZE=1400x900. Pictures go to
 ## shots/likewords/.
 extends SceneTree
@@ -110,6 +112,7 @@ func _run() -> void:
 		await _narrowed()
 		await _back_to_all()
 		await _fits_after_a_search(plain_fits)
+	await _over_mcp()
 	_put_back_autosave()
 	print("")
 	print("likewords probe: Like this and Fits are about the part, not the last search"
@@ -131,7 +134,8 @@ func _on_an_empty_search(shelf: String) -> PackedStringArray:
 	await _listed(shelf)
 	var twelve: PackedStringArray = _bin.first_found(12)
 	print("    its first 12: %s" % _rows(twelve))
-	_check("...listed (%d)" % twelve.size(), twelve.size() == 12)
+	_check("a click on %s chooses it, and it lists 12 or more (%s, %d)" % [shelf,
+		_bin.get("_category"), twelve.size()], str(_bin.get("_category")) == shelf and twelve.size() == 12)
 	await _click(_chip("All").get_global_rect().get_center())
 	await _frames(6)
 	return twelve
@@ -223,7 +227,7 @@ func _narrowed() -> void:
 	var not_curved := PackedStringArray()
 	var not_like := PackedStringArray()
 	for info: PartLibrary.PartInfo in shown:
-		if not ("%s %s" % [info.name, info.also_called]).to_lower().contains("curv"):
+		if not _curved(info):
 			not_curved.append(info.id)
 		if not like.has(info.id):
 			not_like.append(info.id)
@@ -300,6 +304,39 @@ func _fits_after_a_search(plain: PackedStringArray) -> void:
 	await _click(_chip("All").get_global_rect().get_center())
 	await _frames(10)
 	_check("All puts \"%s\" back (\"%s\")" % [SEARCHED, _search.text], _search.text == SEARCHED)
+
+
+## The same words over MCP, as a session asks (CommandSocket.answer_rpc,
+## tools/call): search_parts like= with a query lists only the parts like it
+## that have its words, the curved slopes among a 2 x 4 brick's "curved".
+func _over_mcp() -> void:
+	print("")
+	print("  over MCP: search_parts like=%s query=%s" % [BRICK, NARROWED])
+	var socket := CommandSocket.new()
+	socket.assistant = _main.get("_assistant")
+	socket.app = _main
+	_main.add_child(socket)
+	var answer: Variant = await socket.answer_rpc({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": {"name": "search_parts", "arguments": {"like": BRICK, "query": NARROWED, "limit": 100}}})
+	var text: String = ""
+	for block: Dictionary in ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []):
+		text += str(block.get("text", ""))
+	var listed := PackedStringArray()
+	var not_curved := PackedStringArray()
+	for line: String in text.split("\n"):
+		if line.begins_with("  ") and line.contains(":"):
+			var id: String = line.strip_edges().get_slice(":", 0)
+			listed.append(id)
+			if not _library.parts.has(id) or not _curved(_library.parts[id]):
+				not_curved.append(id)
+	print("    %s" % text.replace("\n", "\n    "))
+	var slopes: Array = SLOPES.filter(func(id: String) -> bool: return listed.has(id))
+	_check("search_parts like=%s query=%s: %d parts, each curved%s" % [BRICK, NARROWED, listed.size(),
+		"" if not_curved.is_empty() else "; not: " + ", ".join(not_curved)],
+		listed.size() >= 5 and not_curved.is_empty())
+	_check("...the curved slopes of its footprint among them (%s of %s)" % [", ".join(slopes),
+		", ".join(SLOPES)], slopes.size() == SLOPES.size())
+	socket.queue_free()
 
 
 # -- the window, as a person uses it --------------------------------------------
@@ -405,6 +442,13 @@ func _rows(ids: PackedStringArray) -> String:
 	return "".join(out)
 
 
+## Whether [param info] is a curved part in LDraw's words or the sets': its
+## name, its keywords (716a, Brick 2 x 4 Half Round, is "curved" there) or
+## what set inventories call it.
+func _curved(info: PartLibrary.PartInfo) -> bool:
+	return ("%s %s %s" % [info.name, " ".join(info.keywords), info.also_called]).to_lower().contains("curv")
+
+
 ## The mould [param id] is: a print's or a stickered part's plain part, or its
 ## number less its print's; any other part its own.
 func _mould(id: String) -> String:
@@ -473,6 +517,8 @@ func _frames(count: int) -> void:
 
 
 func _shot(name: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
 	await _frames(10)
 	await RenderingServer.frame_post_draw
 	var path: String = ProjectSettings.globalize_path("res://shots/likewords/%s_%s.png" % [name, _tag])
