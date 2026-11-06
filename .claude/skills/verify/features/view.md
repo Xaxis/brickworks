@@ -1037,14 +1037,18 @@ picture the assistant is shown.
   - `build` runs a Claude Code session with no API key and
     `--strict-mcp-config --tools "" --restricted`. Its one server hands it
     pages and the app's hands and eyes, never the model. It builds in a
-    headless app on its own port; `--from` seeds a long book's stretch.
+    headless app on its own port; `--from` seeds a long book's stretch. It is
+    told how a Brickworks page reads; a booklet drawn another way (a printed
+    LEGO® one, photographed into DIR/pages, its steps mapped onto truth.json)
+    says how its pages read in `DIR/reading.json` or `--reading FILE`.
   - `score` compares the build part for part and page by page: right, near,
     colour, place (carried), part, missing, extra. Each wrong part is put to
     what the builder said of its step.
-  - Check: `python3 tools/minitest.py tests/test_booklet_follow.py` (13
+  - Check: `python3 tools/minitest.py tests/test_booklet_follow.py` (17
     tests). They pin each kind on a known build, a callout counted on its
-    attach page, hose segments never judged, carried layers, and a server
-    that refuses open_model.
+    attach page, hose segments never judged, carried layers, a server that
+    refuses open_model, and a reading.json that changes what the builder is
+    told while ours stays word for word.
   - Real runs take 15-30 minutes for 6-12 pages, at most two at once on ports
     9890-9899, from a locked snapshot.
 - `score the steps against real sets' authors` (`tools/steps_score.py`,
