@@ -164,6 +164,12 @@
 					"tip": "What changed since one of this model's saves: added green, removed red, moved amber"
 				},
 				{
+					"name": "compare_sets",
+					"words": "Compare two sets or models…",
+					"key": "",
+					"tip": "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+				},
+				{
 					"line": true
 				},
 				{
@@ -1721,6 +1727,7 @@
 		"save_as": "Ctrl-shift-S",
 		"versions": "",
 		"compare": "",
+		"compare_sets": "",
 		"export_ldraw": "",
 		"export_io": "",
 		"export_3d": "",
