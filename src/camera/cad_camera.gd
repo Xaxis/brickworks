@@ -3,6 +3,7 @@
 ## What moves it:
 ##
 ##   turn    middle-drag · right-drag · two fingers
+##           · two fingers turned about each other (round the up)
 ##   slide   shift-middle-drag · shift and two fingers
 ##   zoom    wheel · pinch
 ##   fit     F for the selection, shift-F or Home for all of it
@@ -388,6 +389,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_spread = 0.0
 			if _touches.is_empty():
 				_end(_doing_with)
+		_fingers_changed()
 		return
 
 	if event is InputEventScreenDrag:
@@ -401,8 +403,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		# drawn level across the model turned it to look from under the
 		# baseplate (tablet247). A finger not seen coming down has not moved.
 		var moved: Vector2 = drag.position - (_touches.get(drag.index, drag.position) as Vector2)
+		var unseen: bool = not _touches.has(drag.index)
 		_touches[drag.index] = drag.position
 		_touch_travel += drag.relative.length()
+		if unseen:
+			_fingers_changed()
 
 		if _touches.size() == 1 and phone:
 			if _left_to_app == 0:
@@ -436,11 +441,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_spread = now
 
 			# On a phone two fingers turn it, about the point between
-			# them, and one finger is for building.
+			# them, and one finger is for building: as the point between
+			# them moves, once a frame (_two_fingers).
 			if phone:
 				if _doing != Doing.ORBIT:
 					_begin(Doing.ORBIT, MOUSE_BUTTON_LEFT, _between())
-				_turn_by(moved * 0.5, 0.006)
 				return
 
 			# Halved: with two fingers down each contributes a drag
@@ -1101,6 +1106,94 @@ func _distance_between() -> float:
 	return (points[0] as Vector2).distance_to(points[1] as Vector2)
 
 
+# -- two fingers, a frame at a time -------------------------------------------
+
+
+## How far two fingers must turn about each other before the view turns
+## with them. A pinch and a slide turn the line between real fingers by a
+## few degrees, and a model that turned under a zoom would be a turn nobody
+## asked for; a map waits the same way. Each finger must also have gone
+## [constant TAP_SLOP] round, so fingers close together, whose line a
+## tremor turns a long way, are not read as turning.
+const TWIST_START := deg_to_rad(10.0)
+
+## Where the point between the first two fingers was last frame, for a
+## phone's turn; not finite with fewer than two down.
+var _middle_was: Vector2 = Vector2.INF
+## Which way the line from the first finger to the second pointed last
+## frame, in radians on the screen; NAN with fewer than two down.
+var _twist_was: float = NAN
+## How far it has turned since the fingers came down, before it is a twist.
+var _twist_total: float = 0.0
+var _twisting: bool = false
+## What the view turns round: what was between the fingers as they began
+## to turn, so it stays between them, as a map's place does.
+var _twist_about: Vector3 = Vector3.ZERO
+## +1 seen from above, -1 from below: the model turns the way the fingers
+## do on the screen either way.
+var _twist_way: float = 1.0
+
+
+## A finger came down or lifted: what two fingers do is measured from here.
+func _fingers_changed() -> void:
+	var two: bool = _touches.size() >= 2
+	_middle_was = _between() if two else Vector2.INF
+	_twist_was = _line_between() if two else NAN
+	_twist_total = 0.0
+	_twisting = false
+
+
+## Which way the first finger to the second points on the screen.
+func _line_between() -> float:
+	var points: Array = _touches.values()
+	return ((points[1] as Vector2) - (points[0] as Vector2)).angle()
+
+
+## What two fingers do together, once a frame from where both are, rather
+## than at each finger's event: one finger moved before the other has moved
+## the point between them by half its way, and turned the line between them
+## by as much as the fingers are quick. Applied a finger at a time, a
+## phone's turn tipped a view from straight above that the fingers only
+## twisted: the half that would tip it past straight down was stopped there,
+## and the half that tipped it back was not. The pinch is a ratio, the same
+## whichever finger comes first, and stays with the events.
+func _two_fingers() -> void:
+	var middle: Vector2 = _between()
+	if phone and _doing == Doing.ORBIT and _middle_was.is_finite():
+		_turn_by(middle - _middle_was, 0.006)
+	_middle_was = middle
+	_twist()
+
+
+## Two fingers turned about each other turn the view round the up, by as
+## much as they turned: the turntable turned by hand. The pinch and the
+## turn the fingers make together go on beside it, as a map's do.
+func _twist() -> void:
+	if is_nan(_twist_was):
+		return
+	var now: float = _line_between()
+	var by: float = angle_difference(_twist_was, now)
+	_twist_was = now
+	# The second view is square on and cannot turn.
+	if by == 0.0 or _second_drag or view_at(_between()) == SECOND:
+		return
+	if not _twisting:
+		_twist_total += by
+		if absf(_twist_total) < TWIST_START \
+				or absf(_twist_total) * _distance_between() * 0.5 < TAP_SLOP:
+			return
+		# All of the turn so far, so the model is as far round as the
+		# fingers are: two fingers turned a quarter turn the model a quarter.
+		_twisting = true
+		by = _twist_total
+		_twist_about = _under(_between())
+		_twist_way = 1.0 if _target_pitch >= 0.0 else -1.0
+	var angle: float = by * _twist_way
+	_target_yaw += angle
+	_target_focus = _twist_about + Basis(_target_frame * Vector3.UP, angle) \
+		* (_target_focus - _twist_about)
+
+
 func _process(delta: float) -> void:
 	# A drag ends when its button comes up, and sometimes that never
 	# happens: let go outside the window, or over something that
@@ -1113,6 +1206,8 @@ func _process(delta: float) -> void:
 		_end(_doing_with)
 	if _dragging_right and not Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT):
 		_dragging_right = false
+	if _touches.size() >= 2:
+		_two_fingers()
 
 	# An exponential approach, framerate independent: the same fraction of
 	# the remaining distance per second whatever the frame time. Under
