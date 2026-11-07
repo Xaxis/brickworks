@@ -46,9 +46,10 @@ const MOST := 8
 ## a sun added nothing in the window's light (lreview, 2026-11-07), and the
 ## tracer drew what the raster did not.
 const SUNS := 4
-## How many of a file's light lines are read at most: past them the rest are
-## kept as they are, unread. A file of 200,000 lines that were no lights took
-## twice as long to open as one of comments, each tried as JSON.
+## How many of a file's lines of a light's words are read at most: past
+## them the rest are kept as they are, unread. A file of 200,000 lines that
+## were no lights took twice as long to open as one of comments, each tried
+## as JSON (lreview, 2026-11-07).
 const TRIES := 64
 ## Strength 1 lights a face this far from a lamp as the window's key does.
 const REACH := 100.0
@@ -77,90 +78,132 @@ const WARM := "#fff1d6"
 ## The lights [param text] keeps, in its order, as [method written_into] wrote
 ## them (the file's coordinates): those of its main model's lines ([method
 ## main_end]) it can read, up to [constant MOST] of them and [constant SUNS]
-## suns. The rest are kept in the file as they are ([method sorted]).
+## suns. The rest are kept in the file as they are ([method unread]).
 static func read(text: String) -> Array:
 	return sorted(text)["lights"]
 
 
 ## [param text]'s light lines, sorted: "lights" those it keeps ([method read]),
-## "unread" every other light line of its main model word for word, to be
-## written back as it was ([method written_into]), and "why" how many were
-## not read for each reason. Only the main model's lines: a sub-model's are
-## its own, and stay in it.
+## and "why" how many it could not read for each reason; those lines are
+## [method unread]'s, to be written back as they were. Only the main model's
+## lines: a sub-model's are its own, and stay in it.
 static func sorted(text: String) -> Dictionary:
 	if not text.contains(META):
-		return {"lights": [], "unread": PackedStringArray(), "why": {}}
-	var lines: PackedStringArray = text.split("\n")
-	var sorting: Dictionary = _sorting(lines)
-	# Gathered here and then put in: a packed array taken out of a Dictionary
-	# is a copy, and what is appended to it never reaches the Dictionary.
-	var unread := PackedStringArray()
-	for n: int in sorting["unread"]:
-		unread.append(lines[n].trim_suffix("\r"))
-	return {"lights": sorting["lights"], "unread": unread, "why": sorting["why"]}
+		return {"lights": [], "why": {}}
+	var sorting: Dictionary = _sorting(text)
+	return {"lights": sorting["lights"], "why": sorting["why"]}
 
 
-## Which of [param lines] are light lines read ("taken", by their index,
-## and "lights") and which not ("unread", by index, and "why"), as [method
-## read] and [method written_into] both decide it: the one rule, so a save
-## takes out exactly the lines an open read.
-static func _sorting(lines: PackedStringArray) -> Dictionary:
+## A light line whose words begin as a light's do, "{": the words from it to
+## the line's end. Made once, as the class loads: an open reads on a worker.
+static var _BODIES: RegEx = RegEx.create_from_string(
+	"(?m)^0 !BRICKWORKS LIGHT [ \\t]*(\\{[^\\n]*)")
+## A section an MPD opens, as LdrModel._is_file_line reads one: 0 FILE,
+## NOFILE or !DATA, in any case, words apart by spaces.
+static var _SECTIONS: RegEx = RegEx.create_from_string(
+	"(?mi)^[ \\t\\r]*0 +(FILE|NOFILE|!DATA)(?= |[ \\t\\r]*$)")
+
+
+## Which of [param text]'s light lines are read ("lights", and "taken", each
+## line's start and end in it) and how many not, by reason ("why"), as
+## [method read] and [method written_into] both decide it: the one rule, so a
+## save takes out exactly the lines an open read. Found by the engine's own
+## searches, not line by line: only a line of a light's words is looked at
+## here, and only the first [constant TRIES] of them, so 200,000 light lines
+## that are no lights cost an open what the search costs.
+static func _sorting(text: String) -> Dictionary:
+	var end: int = main_end(text)
 	var lights: Array = []
-	var taken: Dictionary = {}
-	var unread: Array[int] = []
+	var taken: Array[Vector2i] = []
 	var why: Dictionary = {}
 	var tries: int = 0
-	var past: String = "past the first %d light lines, which are all that are read" % TRIES
-	for n: int in main_end(lines):
-		var line: String = lines[n]
-		if not line.begins_with(META):
-			continue
-		var body: String = line.substr(META.length()).strip_edges()
-		var reason: String = ""
-		var light: Dictionary = {}
-		if not body.begins_with("{"):
-			reason = "not a light's words"
-		elif tries >= TRIES:
-			reason = past
-		else:
-			tries += 1
-			var found: Array = checked(body)
-			light = found[0]
-			reason = found[1]
-			if reason.is_empty():
-				reason = joins(lights, light)
+	var at: int = 0
+	while tries < TRIES:
+		var found: RegExMatch = _BODIES.search(text, at, end)
+		if found == null:
+			break
+		at = found.get_end()
+		tries += 1
+		var said: Array = checked(found.get_string(1).strip_edges())
+		var reason: String = said[1]
 		if reason.is_empty():
-			lights.append(light)
-			taken[n] = true
+			reason = joins(lights, said[0])
+		if reason.is_empty():
+			lights.append(said[0])
+			taken.append(Vector2i(found.get_start(), found.get_end()))
 		else:
-			unread.append(n)
 			why[reason] = int(why.get(reason, 0)) + 1
-	return {"lights": lights, "taken": taken, "unread": unread, "why": why}
+	# Every other light line: the words of none before the last tried, and,
+	# once TRIES are tried, all after it.
+	var past: int = _light_lines(text, at, end) if tries >= TRIES else 0
+	var none: int = _light_lines(text, 0, end) - past - tries
+	if none > 0:
+		why["not a light's words"] = none
+	if past > 0:
+		why["past the first %d light lines, which are all that are read" % TRIES] = past
+	return {"lights": lights, "taken": taken, "why": why}
 
 
-## Where the main model's lines end in [param lines]: at the second section
-## an MPD opens (another 0 FILE, or an embedded picture's 0 !DATA) or its
-## first 0 NOFILE; all of them when there is none. What a sub-model holds
-## is its own (a model brought into this one keeps its lights and views).
-static func main_end(lines: PackedStringArray) -> int:
+## How many lines of [param text] that begin [constant META] begin from
+## [param from] up to [param to].
+static func _light_lines(text: String, from: int, to: int) -> int:
+	if to <= from:
+		return 0
+	var count: int = text.count("\n" + META, from, to) if to - from > META.length() else 0
+	if from == 0 and text.begins_with(META):
+		count += 1
+	return count
+
+
+## The light lines of [param text]'s main model it could not read (as [method
+## sorted] counts them), word for word, without their line ends: what a save
+## that writes the model whole writes back ([method written_into]). Line by
+## line, so asked only when that save comes.
+static func unread(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	if not text.contains(META):
+		return out
+	var sorting: Dictionary = _sorting(text)
+	var read: Dictionary = {}
+	for span: Vector2i in sorting["taken"]:
+		read[span.x] = true
+	var end: int = main_end(text)
+	var at: int = 0 if text.begins_with(META) else _next_light_line(text, 0)
+	while at >= 0 and at < end:
+		var stop: int = text.find("\n", at)
+		if not read.has(at):
+			out.append(text.substr(at, (stop if stop >= 0 else text.length()) - at)
+				.trim_suffix("\r"))
+		if stop < 0:
+			break
+		at = _next_light_line(text, stop)
+	return out
+
+
+## Where the next line of [param text] that begins [constant META] begins,
+## from [param from]; -1 for none.
+static func _next_light_line(text: String, from: int) -> int:
+	var found: int = text.find("\n" + META, from)
+	return found + 1 if found >= 0 else -1
+
+
+## Where [param text]'s main model ends: at the second section an MPD opens
+## (another 0 FILE, or an embedded picture's 0 !DATA) or its first 0 NOFILE;
+## its length when there is none. What a sub-model holds is its own (a model
+## brought into this one keeps its lights and views).
+static func main_end(text: String) -> int:
 	var opened: bool = false
-	for n: int in lines.size():
-		if not lines[n].begins_with("0 "):
-			continue
-		# Most lines start no section: only those whose word after the 0
-		# begins as one does, in any case, are split to be sure.
-		var head: String = lines[n].substr(2).strip_edges(true, false).left(6).to_upper()
-		if not (head.begins_with("FILE") or head.begins_with("NOFILE")
-				or head.begins_with("!DATA")):
-			continue
-		var line: String = lines[n].strip_edges()
-		if not LdrModel._is_file_line(line):
-			continue
-		if line.split(" ", false)[1].to_upper() == "FILE" and not opened:
+	var at: int = 0
+	while true:
+		var found: RegExMatch = _SECTIONS.search(text, at)
+		if found == null:
+			return text.length()
+		if found.get_string(1).to_upper() == "FILE" and not opened:
 			opened = true
+			at = found.get_end()
 			continue
-		return n
-	return lines.size()
+		return found.get_start()
+	return text.length()
 
 
 ## Why [param light] cannot join [param lights] in a model, or "": a model
@@ -199,21 +242,32 @@ static func unread_words(why: Dictionary) -> String:
 ## after its first line, in their order, in place of the light lines it
 ## read ([method sorted]); every other light line stays where it is, and
 ## those of [param carried] it lacks (the lines an open could not read, when
-## the text is written whole) go in after the lights, word for word. Its
-## sub-models' lines are left as they are, and the file's line ends kept.
+## the text is written whole: [method unread]) go in after the lights, word
+## for word. Its sub-models' lines are left as they are, and the file's line
+## ends kept.
 static func written_into(text: String, lights: Array,
 		carried: PackedStringArray = PackedStringArray()) -> String:
 	if lights.is_empty() and carried.is_empty() and not text.contains(META):
 		return text
-	var lines: PackedStringArray = text.split("\n")
-	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
-	var sorting: Dictionary = _sorting(lines)
-	var taken: Dictionary = sorting["taken"]
+	var first: int = text.find("\n")
+	var eol: String = "\r" if first > 0 and text[first - 1] == "\r" else ""
+	# The text without the lines it read, each with its line end.
+	var pieces := PackedStringArray()
+	var from: int = 0
+	for span: Vector2i in (_sorting(text)["taken"] as Array[Vector2i]):
+		pieces.append(text.substr(from, span.x - from))
+		from = span.y + 1
+	pieces.append(text.substr(from))
+	var rest: String = "".join(pieces)
+	# Its last lines read: the line end before them goes too, as the text
+	# had none at its end.
+	if rest.ends_with("\n") and not text.ends_with("\n"):
+		rest = rest.left(-1)
 	# The unread lines it still has, so a carried one is not written twice.
 	var has: Dictionary = {}
-	for n: int in sorting["unread"]:
-		var line: String = lines[n].trim_suffix("\r")
-		has[line] = int(has.get(line, 0)) + 1
+	if not carried.is_empty():
+		for line: String in unread(text):
+			has[line] = int(has.get(line, 0)) + 1
 	var adding := PackedStringArray()
 	for n: int in mini(lights.size(), MOST):
 		adding.append(META + JSON.stringify(lights[n]) + eol)
@@ -222,16 +276,14 @@ static func written_into(text: String, lights: Array,
 			has[line] = int(has[line]) - 1
 		else:
 			adding.append(line + eol)
-	var out := PackedStringArray()
-	for n: int in lines.size():
-		if taken.has(n):
-			continue
-		out.append(lines[n])
-		if out.size() == 1:
-			out.append_array(adding)
-			adding = PackedStringArray()
-	out.append_array(adding)
-	return "\n".join(out)
+	if adding.is_empty():
+		return rest
+	if rest.is_empty():
+		return "\n".join(adding)
+	var cut: int = rest.find("\n")
+	if cut < 0:
+		return rest + "\n" + "\n".join(adding)
+	return rest.substr(0, cut + 1) + "\n".join(adding) + "\n" + rest.substr(cut + 1)
 
 
 ## [param lights] as the window holds them, in the file's coordinates: the

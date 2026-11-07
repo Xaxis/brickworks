@@ -2487,13 +2487,17 @@ picture the assistant is shown.
   each answered "nothing changed"; Render's Which never changing a light it
   no longer shows; op list let through the designer's gate, add not; a file
   of 200,000 light lines that are no lights opening within 20% of one of
-  comments. Then the car under 0 to 4 suns (each adding light) and the neon
+  200,000 lines of another meta command (`0 !BRICKWORKS FOO x`), its time
+  against comments said beside it (every `0 !BRICKWORKS` line costs the
+  open's other readers more than a comment does). Then the car under 0 to 4 suns (each adding light) and the neon
   and white grids under 8 bulbs in the Dark light (the floor rising), on
   either renderer; `PROBE_COMPAT=1` runs it on Compatibility through zink,
   and `-- --means=FILE` (Forward+ first) holds Compatibility's Dark under 1
   and 4 suns within 15% of Forward+'s. Pictures in `shots/lights/`: look at
   Render's, the spot's pictures and maps (red would be a pixel changed
-  outside), the glowing brick's, `suns_*` and `grid_*`.
+  outside: on Compatibility a level apart is the bar, as it adds a shadowed
+  light in a pass of its own and that rounds, as many down as up), the
+  glowing brick's, `suns_*` and `grid_*`.
 - `quiet probe` (`src/dev/quiet_probe.gd`, `tools/probe.sh quiet_probe`,
   windowed at 1280 x 720, `PROBE_SIZE=1400x900`): APP_UX4 unit 9's bar.
   The first build's offer on a first visit, gone at the third part put down

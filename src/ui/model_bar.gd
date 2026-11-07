@@ -820,15 +820,15 @@ static func left_out_words(result: Dictionary, again: bool = true) -> String:
 	return note
 
 
-## What the open just made left off the baseplate (ModelStore.unshown), as
-## [method left_out_words] says a file's; "" for nothing. Kept in the file
-## either way: the app's own writes them back (ModelStore._absent), someone
-## else's carries them (SourceFile).
+## What the open just made left off the baseplate (ModelStore.unshown), and
+## the light lines it could not read, as [method left_out_words] says a
+## file's; "" for nothing. Kept in the file either way: the app's own writes
+## them back (ModelStore._absent), someone else's carries them (SourceFile).
 static func unshown_words(store: ModelStore) -> String:
 	if not store.not_opened.is_empty():
 		return ""
 	return left_out_words({"missing": store.unshown.size(), "unshown": store.unshown,
-		"kept": true}, false)
+		"kept": true, "lights_unread": store.lights_unread_words}, false)
 
 
 ## Who made a model and on what terms, in a line: "LDraw model by Roland

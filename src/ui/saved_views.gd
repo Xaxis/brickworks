@@ -56,9 +56,7 @@ static func read(text: String) -> Array:
 	if not text.contains(META):
 		return out
 	var taken: Dictionary = {}
-	var lines: PackedStringArray = text.split("\n")
-	for n: int in SceneLights.main_end(lines):
-		var line: String = lines[n]
+	for line: String in text.substr(0, SceneLights.main_end(text)).split("\n"):
 		if not line.begins_with(META):
 			continue
 		var view: Dictionary = _parsed(line.substr(META.length()).strip_edges())
@@ -77,16 +75,15 @@ static func read(text: String) -> Array:
 static func written_into(text: String, views: Array) -> String:
 	if views.is_empty() and not text.contains(META):
 		return text
+	# The main model's lines, and its sub-models' after them as they are.
+	var end: int = SceneLights.main_end(text)
 	var kept := PackedStringArray()
-	var lines: PackedStringArray = text.split("\n")
-	var end: int = SceneLights.main_end(lines)
-	for n: int in lines.size():
-		var line: String = lines[n]
-		if n >= end or not line.begins_with(META):
+	for line: String in text.substr(0, end).split("\n"):
+		if not line.begins_with(META):
 			kept.append(line)
 	for n: int in views.size():
 		kept.insert(mini(1 + n, kept.size()), META + JSON.stringify(views[n]))
-	return "\n".join(kept)
+	return "\n".join(kept) + text.substr(end)
 
 
 ## [param views] as the window holds them, in the file's coordinates: the

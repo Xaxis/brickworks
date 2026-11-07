@@ -642,7 +642,10 @@ Pictures, `bench/results/render353-2026-10-29/`:
   24.0, 33.7, 41.7, 48.8). No exposure and lamp energy alone brought one
   sun and four within 15% (24 pairs tried).
 - **Measured** (`tools/probe.sh lights`): see the probe's numbers in its
-  run log; the bar is 0 px changed outside the cone both ways and the
+  run log; the bar is 0 px changed outside the cone both ways (on
+  Compatibility, which adds a shadowed light in a pass of its own, none
+  more than a level apart and none lighter on the whole: 92,700 px came
+  out a level apart, as many down as up) and the
   floor the spot lights beside the car 15% and 10 levels lighter, on a grey
   sweep (the car's roof is black), and the plate round a neon 1 x 1 three
   times as light as round a Trans Green one.

@@ -523,10 +523,14 @@ var _views_kept: Array = []
 ## The lights placed in the model (SceneLights) as it was opened or last saved
 ## to its file, in the window's coordinates: others now are work not saved.
 var _lights_kept: Array = []
-## The light lines its file has that this could not read (SceneLights.sorted),
-## word for word: written back with the lights, wherever the model is written
-## whole. Someone else's file still has them where they were.
-var _lights_unread := PackedStringArray()
+## The text it was opened from when that has light lines this could not read
+## (SceneLights.sorted), "" when it has none: they are written back word for
+## word with the lights wherever the model is written whole (SceneLights.unread,
+## asked only then). Someone else's file still has them where they were.
+var _lights_from: String = ""
+## Those lines in words, as the last open said them (SceneLights.unread_words),
+## for every way of opening to say: "" for none.
+var lights_unread_words: String = ""
 
 
 ## The saved file the model on the baseplate is, as this tab or window last
@@ -632,7 +636,8 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	bin_sets = PackedStringArray()
 	_views_kept = []
 	_lights_kept = []
-	_lights_unread = PackedStringArray()
+	_lights_from = ""
+	lights_unread_words = ""
 	reference = picture
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
@@ -1669,7 +1674,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	var lit: Dictionary = read["lights"]
 	world.scene_lights = SceneLights.placed(lit["lights"], _lift_now())
 	_lights_kept = world.scene_lights
-	_lights_unread = lit["unread"]
+	_lights_from = text if not (lit["why"] as Dictionary).is_empty() else ""
+	lights_unread_words = SceneLights.unread_words(lit["why"])
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
@@ -1692,7 +1698,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "",
 		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
-		"unbuilt": unbuilt, "lights_unread": SceneLights.unread_words(lit["why"])})
+		"unbuilt": unbuilt, "lights_unread": lights_unread_words})
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
@@ -2101,7 +2107,7 @@ func _source_asked(title_now: String) -> Dictionary:
 		"cut": world.cut_kept.duplicate(true),
 		"views": SavedViews.in_file(world.saved_views, _lift_now()),
 		"lights": SceneLights.in_file(world.scene_lights, _lift_now()),
-		"lights_unread": _lights_unread,
+		"lights_unread": SceneLights.unread(_lights_from),
 		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
 		"pins": pins.lines(world, _lift_now()),
 		"authored": AuthorSteps.any(world, scenery), "set": from_set}
@@ -2556,7 +2562,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	text = CutShape.written_into(text, world.cut_kept)
 	text = SavedViews.written_into(text, SavedViews.in_file(world.saved_views, _lift_now()))
 	text = SceneLights.written_into(text, SceneLights.in_file(world.scene_lights, _lift_now()),
-		_lights_unread)
+		SceneLights.unread(_lights_from))
 	text = Motions.written_into(text, _motion_lines())
 	text = PinnedComments.written_into(text, pins.lines(world, _lift_now()))
 	text = _with_looks(text, true)
