@@ -623,6 +623,9 @@ const HINTS := {
 	"render_model": ["Render a picture", "file"],
 	# Queued pictures, drawn in turn and written where Render writes.
 	"render_queue": ["Queue renders", "file"],
+	# mcpsee3: a view kept with the model, as View › Viewpoint › Save this
+	# view… keeps it; the same name again replaces it.
+	"save_view": ["Save the view", "add", "again"],
 	"export_model": ["Export the model", "file"],
 	"brickify": ["Brickify a 3D model", "add", "world"],
 	"print_part": ["Print on a part", "add", "world"],

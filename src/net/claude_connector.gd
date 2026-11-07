@@ -645,7 +645,9 @@ const CHANGING_CALLS := ["look_at_model", "view_model", "in_view", "measure", "s
 	"evaluate_section", "parts_list", "undo", "restyle_model", "pose_model",
 	"view_board",
 	# Edit, Pattern…'s grid on the parts standing (PatternTool).
-	"pattern_parts"]
+	"pattern_parts",
+	# mcpsee3: a view of the model standing kept with it.
+	"save_view"]
 
 
 func _sitting(request: Dictionary) -> Dictionary:

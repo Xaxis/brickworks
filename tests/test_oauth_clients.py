@@ -491,7 +491,9 @@ const hints = (list) => list.filter((t) => ['readOnlyHint', 'destructiveHint', '
   .every((h) => typeof t.annotations?.[h] === 'boolean')).length;
 const strip = (list) => JSON.stringify(list.map((t) => t.name));
 return {
-  same: JSON.stringify(claude) === JSON.stringify(asBefore), n: claude.length, names: strip(claude) === strip(other),
+  same: JSON.stringify(claude) === JSON.stringify(asBefore), n: claude.length, app: app.length,
+  relay: toolsWithTabs([], false).length,
+  names: strip(claude) === strip(other),
   bareClaude: count(claude), bareOther: count(other), hintsClaude: hints(claude), hintsOther: hints(other),
   descriptions: JSON.stringify(claude.map((t) => t.description)) === JSON.stringify(other.map((t) => t.description)),
   readOnly: other.filter((t) => t.annotations.readOnlyHint).every((t) => t.annotations.destructiveHint === false),
@@ -500,10 +502,12 @@ return {
     if got is None:
         return
     assert got["same"] and got["names"] and got["descriptions"] and got["readOnly"]
-    assert got["n"] == 75
+    # The app's tools and the relay's own (the tabs): counted from the list,
+    # not written here, so a unit adding a tool need not change this test.
+    assert got["relay"] > 0 and got["n"] == got["app"] + got["relay"]
     # Claude's list keeps its arrays that say no items; nobody else's has one.
     assert got["bareClaude"] > 0 and got["bareOther"] == 0
-    assert got["hintsOther"] == 75 and got["hintsClaude"] < 75
+    assert got["hintsOther"] == got["n"] and got["hintsClaude"] < got["n"]
 
 
 def test_the_tab_is_told_who_calls_by_the_connection_not_by_the_client() -> None:

@@ -131,12 +131,14 @@ static func same(a: Array, b: Array) -> bool:
 
 
 ## Where [param name] is among [param views], whatever its capitals; -1 when
-## it is not one of them.
+## it is not one of them. A name a session sent in quotes, as a refusal or
+## in_view writes them (“Plan”), is that name when no view has the quotes
+## in its own (Quotes.off, APP_UX6 mcpsee3).
 static func index_of(views: Array, name: String) -> int:
-	var wanted: String = _key(name)
-	for n: int in views.size():
-		if _key((views[n] as Dictionary)["name"]) == wanted:
-			return n
+	for wanted: String in [_key(name), _key(Quotes.off(name))]:
+		for n: int in views.size():
+			if _key((views[n] as Dictionary)["name"]) == wanted:
+				return n
 	return -1
 
 
@@ -146,6 +148,22 @@ static func names(views: Array) -> PackedStringArray:
 	for view: Dictionary in views:
 		out.append(str(view["name"]))
 	return out
+
+
+## [param views] in words for a session (in_view, APP_UX6 mcpsee3): each by
+## its name, with its key, in their order; or that the model keeps none.
+static func listed(views: Array) -> String:
+	if views.is_empty():
+		return ("No views are saved with the model; save_view keeps the window's view by a "
+			+ "name, as %s does." % Keymap.menu_row("save_view"))
+	var each := PackedStringArray()
+	for n: int in views.size():
+		var key: String = Keymap.written(COMMAND + str(n + 1)) if n < KEYED else ""
+		each.append("“%s”%s" % [str((views[n] as Dictionary)["name"]),
+			" (%s)" % key if not key.is_empty() else ""])
+	return ("%s saved with the model: %s. view_model, render_model and render_queue take each "
+		% ["One view is" if views.size() == 1 else "%d views are" % views.size(), ", ".join(each)]
+		+ "by its name as view=; save_view keeps the window's view by a name.")
 
 
 ## Why [param name] was looked for among [param views] and not found, in

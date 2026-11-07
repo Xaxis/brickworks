@@ -45,10 +45,11 @@ var _booklet: Array = []
 static func definitions() -> Array:
 	# A list or one of them: brick numbers, part numbers, colours or a step
 	# (APP_UX5 seeing2). Untyped, as edit_booklet's pull= is: a JSON schema
-	# of one type turned "3024" away.
-	var parts: Dictionary = {"description": ("parts, one or a list of: their numbers in "
-		+ "look_at_model (12), a part number as a string (\"3024\": every one of it), a colour "
-		+ "(\"red\"), or a step (\"step:3\": that step's new parts)")}
+	# of one type turned "3024" away. Each example bare: shown in quotes, the
+	# quotes were sent too and refused, twice (APP_UX6 mcpsee3).
+	var parts: Dictionary = {"description": ("parts, one or a list of: a part's number in "
+		+ "look_at_model (12); a part number, as text: 3024 (every one of it); a colour: red; "
+		+ "or a step: step:3 (that step's new parts)")}
 	return [
 		{
 			"name": "view_board",
@@ -255,8 +256,8 @@ func _parts(input: Dictionary, field: String, said: PackedStringArray = PackedSt
 			if not ids.has(brick_id):
 				ids.append(brick_id)
 	if not unknown.is_empty():
-		return ("%s= takes a part's number from look_at_model (12), a part number as a string "
-			% field + "(\"3024\"), a colour (\"red\") or a step (\"step:3\"): %s." % "; ".join(unknown))
+		return ("%s= takes a part's number from look_at_model (12), a part number as text "
+			% field + "(3024), a colour (red) or a step (step:3): %s." % "; ".join(unknown))
 	if not by.is_empty():
 		said.append("%s %s." % ["Picked out:" if field == "highlight" else "Seen through:",
 			"; ".join(by)])
@@ -264,7 +265,9 @@ func _parts(input: Dictionary, field: String, said: PackedStringArray = PackedSt
 
 
 ## One selector's parts and what it picked, in words ("" for a brick's own
-## number); or why it picks none.
+## number); or why it picks none, echoing what was sent as it was sent.
+## Quotes round it are a session's, not the part's: "\"4070\"" and "'4070'"
+## are 4070 (Quotes.off).
 func _selected(raw: Variant, world: BrickWorld, store: ModelStore, library: PartLibrary) -> Variant:
 	var standing: Callable = func(brick_id: int) -> bool:
 		return not store.scenery.has(brick_id) and world.get_brick(brick_id) != null
@@ -278,7 +281,7 @@ func _selected(raw: Variant, world: BrickWorld, store: ModelStore, library: Part
 			return [as_part, _part_said(str(number), as_part.size(), library)]
 		return "no part numbered %d (look_at_model numbers them)" % number
 	var text: String = str(raw).strip_edges()
-	var lower: String = text.to_lower()
+	var lower: String = Quotes.off(text).to_lower()
 	var step: RegExMatch = RegEx.create_from_string("^step\\s*[:=#]?\\s*(\\d+)$").search(lower)
 	if step != null:
 		var built: Variant = _as_built(int(step.get_string(1)), {})

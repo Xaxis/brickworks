@@ -13,7 +13,8 @@
 ##
 ## in_view reads what the person sees and a session did not: the step the
 ## timeline is at, the part in their hand, how big the model is and what it
-## weighs (the status bar's and Properties' words, ModelSize), and the
+## weighs (the status bar's and Properties' words, ModelSize), the views
+## saved with the model by name (SavedViews.listed), and the
 ## reference picture they laid to build over, with a picture of it and the
 ## model's parts drawn on it where they stand over it. It changes nothing.
 ##
@@ -123,6 +124,7 @@ static func definitions() -> Array:
 				+ "have selected and how big those are, "
 				+ "the model's size (in studs and plates, and in centimetres: will it fit a shelf) "
 				+ "and its weight in grams, as the status bar says them, "
+				+ "the views saved with the model by name (save_view keeps one), "
 				+ "and the reference picture they laid to build over: its file, size and place "
 				+ "in studs, and with picture=true (the default) the picture itself, the "
 				+ "model's parts drawn on it where they stand over it. Changes nothing."),
@@ -440,6 +442,8 @@ func _in_view(input: Dictionary) -> Variant:
 	lines.append(" - Selected: %s." % ("nothing" if selected == 0
 		else "%s (selection reads them)%s" % [_many(selected), _selection_size(builder, library)]))
 	lines.append(" - " + _model_size(builder, library))
+	# mcpsee3: the views saved with the model, by name, as view= takes them.
+	lines.append(" - " + SavedViews.listed(builder.world.saved_views))
 	var reference: ReferenceImage = app.get("_reference")
 	if reference == null or not reference.has_picture():
 		lines.append(" - No reference picture is laid in the scene.")
