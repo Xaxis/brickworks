@@ -11882,6 +11882,11 @@ msgstr "Dieses Modell hat keine Bewegung namens „%s“, darum wurde es stillst
 msgid "No such motion"
 msgstr "Keine solche Bewegung"
 
+# weighsure (APP_UX6 #4): the model's weight on the status bar, after its counts,
+# the model as it is in that frame (StatusBar._weight)
+msgid "What the model weighs, each part by its shape: within about 6% of real bricks on a scale. The baseplate is left out"
+msgstr "Was das Modell wiegt, jedes Teil nach seiner Form: auf etwa 6 % genau wie echte Steine auf einer Waage. Die Grundplatte zählt nicht mit"
+
 # The words a person means find the part (words6, APP_UX6 14): the keys sheet's rows for the
 # cut shapes, said whole; and a part tile's size, the studs on top and then those on its sides.
 
