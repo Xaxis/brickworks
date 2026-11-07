@@ -512,7 +512,7 @@ func definitions() -> Array:
 				+ "\"none\" takes it off; number= the step numbers' height in mm (8 usual); parts= "
 				+ "the parts boxes' pictures' size (1 usual, 0.5 to 2); usual=true the booklet's own "
 				+ "page again. save_as= keeps the page as a style by that name, style= gives "
-				+ "this model a kept style whole, and remove_style= takes a kept style away. One "
+				+ "this model a kept style, and remove_style= takes a kept style away. One "
 				+ "undo step, saved with the model. With nothing, says how the page is set up, "
 				+ "its picture's size in the file, and the styles kept. "
 				# booklook: the booklet the designer's way.
