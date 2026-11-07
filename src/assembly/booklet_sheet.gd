@@ -28,7 +28,13 @@
 ## "0 !BRICKWORKS PAGE_TEXT TITLE The Gatehouse", SUBTITLE, COVER_LINE,
 ## HEADER and FOOTER. A build before these reads none of them and is not
 ## misled by any: its PAGE_SETUP's words are none of theirs, and PAGE_TEXT
-## is a line it passes over.
+## is a line it passes over. But the live build and desktop 0.19.0 drop
+## both on any save, as they drop any app line they do not write (old
+## builds drop app lines). They are the main model's alone: a sub-model's
+## are its own, left in it as they are (BookletLooks). A later build's
+## words this one does not read, a PAGE_SETUP word and the word after it or
+## a PAGE_TEXT of a kind it does not know, are kept as they were and written
+## back ([member unread], [member unread_text]).
 class_name BookletSheet
 extends RefCounted
 
@@ -149,6 +155,12 @@ var box_fill: Color = BOX_FILL
 var box_corners: float = BOX_CORNERS
 var number_colour: Color = NUMBER_COLOUR
 var outline_colour: Color = OUTLINE_COLOUR
+## What a later build wrote that this one does not read, kept to be written
+## back as it was: its PAGE_SETUP's words ("SPINE_COLOUR #445566", a word and
+## the one after it), and its PAGE_TEXT lines of other kinds ("BACK_COVER
+## Words"). Up to 2026-11-07 any save dropped them (blreview).
+var unread := PackedStringArray()
+var unread_text := PackedStringArray()
 
 
 ## The page, in mm, as it is printed.
@@ -200,6 +212,10 @@ func said() -> Dictionary:
 			out[field] = "#" + (get(field) as Color).to_html(false)
 	if not is_equal_approx(box_corners, BOX_CORNERS):
 		out["box_corners"] = box_corners
+	if not unread.is_empty():
+		out["unread"] = Array(unread)
+	if not unread_text.is_empty():
+		out["unread_text"] = Array(unread_text)
 	return out
 
 
@@ -318,17 +334,37 @@ func change(fields: Dictionary) -> String:
 				else:
 					wrong.append("box_corners= is how round the parts box's corners are, in mm, %d to %d"
 						% [CORNERS_RANGE.x, CORNERS_RANGE.y])
+			"unread", "unread_text":
+				var kept := PackedStringArray()
+				# Not this build's words to cut: one line each, as long as they were.
+				for one: Variant in value if value is Array or value is PackedStringArray else []:
+					if not _spaced(one).is_empty():
+						kept.append(_spaced(one))
+				set(field, kept)
 	return "; ".join(wrong)
 
 
 ## [param value] as a line of a person's words: one line, as typed but for
-## its breaks and tabs (each a space) and the spaces round it, and no longer
-## than [constant TEXT_MOST].
+## its breaks and tabs and the other letters that break or control a line
+## (C0 and C1, U+2028 and U+2029, each a space, which a reader splitting
+## lines on them split the file's line at: blreview) and the spaces round
+## it, and no longer than [constant TEXT_MOST] ([method cut] says when it
+## was longer).
 static func one_line(value: Variant) -> String:
+	return _spaced(value).left(TEXT_MOST).strip_edges()
+
+
+## Whether [param value] is longer than [constant TEXT_MOST] as one line,
+## so [method one_line] cuts it.
+static func cut(value: Variant) -> bool:
+	return _spaced(value).length() > TEXT_MOST
+
+
+static func _spaced(value: Variant) -> String:
 	if value == null:
 		return ""
-	var text: String = RegEx.create_from_string("[\\x{00}-\\x{1f}\\x{7f}]").sub(str(value), " ", true)
-	return text.strip_edges().left(TEXT_MOST).strip_edges()
+	return RegEx.create_from_string("[\\x{00}-\\x{1f}\\x{7f}-\\x{9f}\\x{2028}\\x{2029}]").sub(
+		str(value), " ", true).strip_edges()
 
 
 static func _number(value: Variant) -> bool:
@@ -460,6 +496,7 @@ func line_words() -> String:
 		words.append("BOX_CORNERS %s" % BookletLooks._number(box_corners))
 	if not cover_picture.is_empty():
 		words.append("COVER_PICTURE %s" % cover_picture)
+	words.append_array(unread)
 	return " ".join(words)
 
 
@@ -471,6 +508,7 @@ func text_lines() -> PackedStringArray:
 	for field: String in TEXTS:
 		if not str(get(field)).is_empty():
 			out.append("%s %s" % [field.to_upper(), str(get(field))])
+	out.append_array(unread_text)
 	return out
 
 
@@ -492,6 +530,9 @@ static func read_line(kind: String, words: PackedStringArray, rest: String,
 	if kind == "PAGE_TEXT":
 		if not words.is_empty() and words[0].to_lower() in TEXTS:
 			out.change({words[0].to_lower(): rest})
+		elif not words.is_empty():
+			# A later build's kind of words: kept as it was written.
+			out.unread_text.append(_spaced("%s %s" % [words[0], rest]))
 	else:
 		out._read_words(words)
 	return out.said()
@@ -501,6 +542,9 @@ func _read_words(words: PackedStringArray) -> void:
 	var at: int = 0
 	var named: Array = ["MARGIN", "COLOUR", "NUMBER", "PARTS", "PICTURE", "BOX_CORNERS",
 		"COVER_PICTURE"] + COLOURS.keys().map(func(field: String) -> String: return field.to_upper())
+	var read := func(word: String) -> bool:
+		return not paper_of(word).is_empty() or word.to_upper() in ["PORTRAIT", "LANDSCAPE"] \
+			or word.to_upper() in named
 	while at < words.size():
 		var word: String = words[at].to_upper()
 		var next: String = words[at + 1] if at + 1 < words.size() else ""
@@ -511,6 +555,12 @@ func _read_words(words: PackedStringArray) -> void:
 		elif word in named and not next.is_empty():
 			change({word.to_lower(): next})
 			at += 1
+		elif not next.is_empty() and not read.call(next):
+			# A later build's word, and the word it says: kept together.
+			unread.append(words[at] + " " + next)
+			at += 1
+		else:
+			unread.append(words[at])
 		at += 1
 
 
@@ -568,6 +618,11 @@ func words() -> String:
 		out.append("step numbers in #%s" % number_colour.to_html(false))
 	if not same_colour(outline_colour, OUTLINE_COLOUR):
 		out.append("new parts outlined in #%s" % outline_colour.to_html(false))
+	if not (unread.is_empty() and unread_text.is_empty()):
+		var kinds := PackedStringArray()
+		for line: String in Array(unread) + Array(unread_text):
+			kinds.append(line.get_slice(" ", 0))
+		out.append("and a later build's %s, kept as it wrote them" % ", ".join(kinds))
 	return ", ".join(out)
 
 
@@ -589,13 +644,15 @@ static func styles() -> Dictionary:
 	return out
 
 
-## The cover's words that are the model's own: a style is a look, so it
-## never keeps them and giving one never changes them, and a model with
-## none shows its own name (booklook, the lead's call, 2026-11-07).
-const OWN: Array[String] = ["title", "subtitle"]
+## What is the model's own and no part of a look: the cover's title and the
+## line under it, and what a later build wrote that this one does not read.
+## A style never keeps them, and giving one (or the booklet's own page,
+## usual=true) never changes them; a model with no title shows its own name
+## (booklook, the lead's call, 2026-11-07).
+const OWN: Array[String] = ["title", "subtitle", "unread", "unread_text"]
 
 
-## [param page]'s said fields without the model's own words ([constant OWN]).
+## [param page]'s said fields without the model's own ([constant OWN]).
 static func _look(page: Dictionary) -> Dictionary:
 	for field: String in OWN:
 		page.erase(field)

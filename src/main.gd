@@ -6814,7 +6814,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 				if pages > 0:
 					pdf = beside
 					SaveTo.wrote(pdf)
-					note += ", and as a PDF in %s" % pdf
+					note += ", and as a PDF in %s%s" % [pdf, _pdf_missed]
 			if show:
 				note = _open_booklet(to, steps, _booklet_out, pdf)
 	elif _booklet_out.shown:
@@ -6875,6 +6875,7 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 	# A frame for the window every few pages on the desktop; none on the
 	# web, where the app's tab is out of view (BookletRead.read_all).
 	var pace: int = 0 if web else 8
+	_pdf_missed = ""
 	if pdf and not web:
 		pages = await _pdf_file(_booklet_out.source(), written)
 		ok = pages > 0
@@ -6885,6 +6886,7 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 			pages = await read.read_all(_booklet_out.source(), out.page, pace)
 			var bytes: PackedByteArray = out.finish(read.title)
 			ok = pages > 0 and out.ok()
+			_pdf_missed = out.missed_said()
 			if ok:
 				JavaScriptBridge.download_buffer(bytes, name, "application/pdf")
 	else:
@@ -6903,7 +6905,7 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 	var seconds: float = (Time.get_ticks_msec() - started) / 1000.0
 	if web:
 		DirAccess.remove_absolute(part)
-		var said: String = ("downloaded %s, %d pages" % [name, pages]) if ok \
+		var said: String = ("downloaded %s, %d pages%s" % [name, pages, _pdf_missed]) if ok \
 			else "could not save the booklet"
 		_bar.say(said)
 		return said
@@ -6911,13 +6913,16 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 		_bar.say("could not write %s" % written)
 		return "could not write %s" % written
 	SaveTo.wrote(written)
-	var line: String = "wrote %s, %d pages in %.1f s: %s" % [written.get_file(), pages, seconds,
-		written]
+	var line: String = "wrote %s, %d pages in %.1f s: %s%s" % [written.get_file(), pages, seconds,
+		written, _pdf_missed]
 	_bar.say(line)
 	return line
 
 
 var _booklet_writing: bool = false
+## What the last PDF written said of the letters its type could not print
+## (BookletPdf.missed_said), "" when none.
+var _pdf_missed: String = ""
 
 
 ## The booklet's file [param from] read again a page at a time into a PDF
@@ -6938,6 +6943,7 @@ func _pdf_file(from: String, to: String) -> int:
 		await get_tree().process_frame
 	WorkerTasks.collect(task)
 	var pages: int = out.pages
+	_pdf_missed = out.missed_said()
 	return pages if _into_place(part, to, pages > 0 and out.ok()) else -1
 
 

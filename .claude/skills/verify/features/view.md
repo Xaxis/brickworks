@@ -2148,13 +2148,29 @@ picture the assistant is shown.
   `new_colour`. The file keeps them as `COVER_PICTURE`, `BOX_FRAME`,
   `BOX_FILL`, `BOX_CORNERS`, `NUMBER_COLOUR` and `OUTLINE_COLOUR` words on
   `0 !BRICKWORKS PAGE_SETUP` and one `0 !BRICKWORKS PAGE_TEXT TITLE|SUBTITLE|
-  COVER_LINE|HEADER|FOOTER words` line each, which older builds read past
-  and keep raw; words are one line of at most 120 characters, control
-  characters made spaces. Nothing set writes nothing new: the booklet's own
-  HTML is byte for byte what it was. A style is the look: it carries every
-  field and the cover's picture (`cover_file` beside `picture_file`) but
-  the model's own title and subtitle (`BookletSheet.OWN`), which it never
-  keeps and giving it never changes.
+  COVER_LINE|HEADER|FOOTER words` line each, the main model's alone (a
+  sub-model's are read past and written back where they are). The live
+  build before booklook and desktop 0.19.0 drop both lines on any save.
+  A later build's words are kept and written back as they were
+  (`BookletSheet.unread`: an unknown PAGE_SETUP word and the one after
+  it; `unread_text`: a PAGE_TEXT of an unknown kind). Words are one line
+  of at most 120 characters, cut said in the answer and the status, C0
+  and C1 controls and U+2028/U+2029 made spaces. Every line these write
+  goes in by `BookletLooks._put_lines`, which ends the line before with
+  the file's break where the file had none at its end. Nothing set writes
+  nothing new: the booklet's own HTML is byte for byte what it was. A
+  style is the look: it carries every field and the cover's picture
+  (`cover_file` beside `picture_file`) but the model's own
+  (`BookletSheet.OWN`: title, subtitle and a later build's words), which
+  it never keeps and giving it (or usual=true) never changes. Page setup…
+  is the model's it opened on (`BrickWorld.generation`): it sends only the
+  fields the person changed from what it showed (`_filled`), closes
+  sending nothing when another model is opened or the model cleared, and
+  refills every untouched field when an undo, a redo, MCP or a peer
+  changes the page. `Helvetica.text_width` gives East Asian wide letters
+  and emoji a whole em; `BookletPdf.missed` names the letters its type
+  cannot print, said by Save as PDF; `BookletRead.title_line` escapes the
+  web tab's title.
   `booklook_probe` (windowed, `gpu`): the gatehouse's booklet first as its
   own (with `--against=` a run on the commit before: its HTML the same but
   its pictures, every PNG page and every page of its PDF as `pdftoppm -r
@@ -2172,7 +2188,19 @@ picture the assistant is shown.
   kept with no title or subtitle, then given to booklet3's model (its own
   title and subtitle set first) in 2 actions: every other field and the
   picture's bytes the same, its title and subtitle unchanged and on its
-  cover, not the gatehouse's. Its pictures are kept in `--into=`.
+  cover, not the gatehouse's. Then blreview's findings on its own files
+  (`tests/fixtures/booklook`): Page setup… left open while MCP sets the
+  title (refilled, a typed header kept), while the person undoes, and
+  while another model is opened or the model cleared (it closes, nothing
+  sent); `sub_meta.mpd`'s sub-model lines kept in it and not the
+  booklet's; two CRLF files with no break at their end saved with every
+  line CRLF but FLOOR's; `later_build.ldr`'s SPINE_COLOUR and BACK_COVER
+  kept through a footer and usual=true; a 121-letter footer cut and said;
+  U+0085/U+2028/U+2029/U+009F made spaces; usual=true keeping the title
+  and subtitle; a 30-letter CJK title within its page at an em a letter;
+  Save as PDF naming the letters it cannot print; a title of "Gate
+  <section> Hill" read back from the web's tab with every page. Its
+  pictures are kept in `--into=`.
   `--dialog-only` with `PROBE_SIZE=1400x900` checks the tabs alone.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set

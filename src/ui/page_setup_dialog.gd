@@ -16,6 +16,15 @@
 ## Steps (the step numbers' size and colour, the parts pictures, the parts
 ## box's frame, fill and corners, the colour round the new parts). A word
 ## typed is set as it is entered or left; a colour as its picker closes.
+##
+## It is the model's it opened on: what it sends is only what the person
+## changed from what it showed ([member _filled]), and it closes, sending
+## nothing, when another model is opened or the model cleared. What its
+## model's page becomes while it is open (an undo, a redo, page_setup over
+## MCP, a Together peer's) is shown at once in every field the person has
+## not touched. Up to 2026-11-07 closing it set every field it showed on
+## whatever model was open then: one model's title in another's file, an
+## undo undone again, a Claude's title put back (blreview).
 class_name PageSetupDialog
 extends AcceptDialog
 
@@ -62,6 +71,13 @@ var _usual_colours: Button
 var _picking: String = "behind"
 ## The words' fields by what each sets ([constant BookletSheet.TEXTS]).
 var _texts: Dictionary = {}
+## The words each field showed when it was last filled from the model: a
+## field whose words (as one line) are not these is one the person changed.
+var _filled: Dictionary = {}
+## The model it was opened on (BrickWorld.generation, which every open and
+## Clear moves on), and its page as last filled (_page_now).
+var _generation: int = -1
+var _shown_page: String = ""
 ## The colours' buttons by what each sets ([constant BookletSheet.COLOURS]).
 var _colours: Dictionary = {}
 
@@ -241,8 +257,51 @@ func _ready() -> void:
 	_picker.failed.connect(func(why: String) -> void: _said.text = why)
 	# Words typed and not entered are set as the dialog closes.
 	visibility_changed.connect(func() -> void:
+		set_process(visible)
 		if not visible:
 			_set_texts())
+	set_process(false)
+
+
+## While open: closed when its model is gone, and filled again when its
+## model's page changes under it.
+func _process(_delta: float) -> void:
+	if shell == null or shell.world == null:
+		return
+	if _moved():
+		hide()
+	elif _page_now() != _shown_page:
+		_refill()
+
+
+## Whether the model it was opened on is no longer the one open.
+func _moved() -> bool:
+	return shell == null or shell.world == null or shell.world.generation() != _generation
+
+
+## The model's page as it is kept, and the size of each of its pictures:
+## what the fields show.
+func _page_now() -> String:
+	var kept: Variant = BookletLooks.booklet(shell.world).get("sheet", {})
+	var images: Dictionary = BookletLooks.images(shell.world)
+	var sizes := PackedStringArray()
+	for name: String in BookletSheet.pictures_named(kept):
+		sizes.append("%s %d" % [name, str(images.get(name, "")).length()])
+	return str(kept) + " " + " ".join(sizes)
+
+
+## The fields as the model's page is now, but each of words the person has
+## changed and not yet set, which keeps their words.
+func _refill() -> void:
+	var touched: Dictionary = {}
+	for field: String in _texts:
+		var text: String = (_texts[field] as LineEdit).text
+		if BookletSheet.one_line(text) != str(_filled.get(field, "")):
+			touched[field] = text
+	fill()
+	for field: String in touched:
+		if BookletSheet.one_line(touched[field]) != str(_filled.get(field, "")):
+			(_texts[field] as LineEdit).text = touched[field]
 
 
 ## A tab of rows, titled [param words].
@@ -272,14 +331,14 @@ func _text_field(field: String, empty: String, tip: String) -> LineEdit:
 	return edit
 
 
-## Each line of words that differs from the page's, set: one undo for them.
+## Each line of words the person changed from what it showed, set: one
+## undo for them. Nothing on a model it was not opened on.
 func _set_texts() -> void:
-	if _filling or shell == null or shell.world == null:
+	if _filling or _moved():
 		return
-	var sheet: BookletSheet = BookletSheet.of(shell.world)
 	var changed: Dictionary = {}
 	for field: String in _texts:
-		if BookletSheet.one_line((_texts[field] as LineEdit).text) != str(sheet.get(field)):
+		if BookletSheet.one_line((_texts[field] as LineEdit).text) != str(_filled.get(field, "")):
 			changed[field] = (_texts[field] as LineEdit).text
 	if not changed.is_empty():
 		_apply(changed)
@@ -333,8 +392,9 @@ func _spin(bounds: Vector2, step: float, suffix: String, tip: String, field: Str
 	return spin
 
 
-## Open, showing the model's page as it is set up.
+## Open, showing the model's page as it is set up: the open model's.
 func open() -> void:
+	_generation = shell.world.generation()
 	fill()
 	_said.text = ""
 	popup_centered()
@@ -368,6 +428,8 @@ func fill() -> void:
 	# booklook: the words, the cover's picture and the colours.
 	for field: String in _texts:
 		(_texts[field] as LineEdit).text = str(sheet.get(field))
+		_filled[field] = str(sheet.get(field))
+	_shown_page = _page_now()
 	var model: String = shell.bar.model_name() if shell.bar != null else ""
 	_title.placeholder_text = model if not model.is_empty() else "The model's name"
 	if sheet.cover_missing:
@@ -405,10 +467,13 @@ func fill() -> void:
 func _apply(fields: Dictionary) -> void:
 	if _filling:
 		return
+	if _moved():
+		hide()
+		return
 	var said: String = shell.page_setup(fields)
 	shell.bar.say(said)
 	_said.text = said.left(1).to_upper() + said.substr(1)
-	fill()
+	_refill()
 
 
 ## A style chosen: the model's page set up as it was kept, but for the

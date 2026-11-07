@@ -1234,6 +1234,11 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 						0.0, BookletSheet.LONGEST), 0.1))
 					_put_in(out, BOOKLET, "guides", kept)
 			"PAGE_SETUP", "PAGE_TEXT":
+				# The booklet's page is the main model's: a sub-model's own
+				# lines are its, passed through as they are (written_into).
+				# Up to 2026-11-07 a pod's TITLE titled the booklet (blreview).
+				if not definition.is_empty():
+					continue
 				var sheet: Dictionary = BookletSheet.read_line(words[2], words.slice(3),
 					_rest_after(line, 4), (out.get(BOOKLET, {}) as Dictionary).get("sheet", {}))
 				if not sheet.is_empty():
@@ -1549,6 +1554,10 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			out.append(raw)
 			continue
 		if keyword == "!BRICKWORKS" and words.size() >= 3 and words[2] in WORDS:
+			# The page's lines are the main model's, written again from the
+			# looks; a sub-model's are left where they are, as they are.
+			if not definition.is_empty() and words[2] in ["PAGE_SETUP", "PAGE_TEXT"]:
+				out.append(raw)
 			continue
 		if keyword == "STEP" or keyword == "ROTSTEP":
 			_step_lines(out, looks, definition, step, any_part, eol, wrote)
@@ -1582,8 +1591,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 				and not out[at].strip_edges().to_upper().begins_with("0 ROTSTEP") \
 				and at < 12:
 			at += 1
-		for n: int in head.size():
-			out.insert(at + n, head[n])
+		_put_lines(out, at, head, eol)
 	# The pictures the pages show, each as LDraw's embedded file, at the end.
 	var pictures: Dictionary = looks.get(DATA, {})
 	var shown: Dictionary = {}
@@ -1611,11 +1619,29 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			var encoded: String = str(pictures[name])
 			for at: int in range(0, encoded.length(), 76):
 				block.append("0 !: " + encoded.substr(at, 76) + eol)
-		for n: int in block.size():
-			out.insert(end + n, block[n])
-		if end + block.size() == out.size():
-			out.append("")
+		_put_lines(out, end, block, eol)
 	return "\n".join(out)
+
+
+## [param block], lines each ending [param eol], put into [param out] (a
+## file's lines split at "\n") at [param at]: the one way every line of
+## these goes in. Past a last line with no break of its own (a file that
+## ends without one), that line is given the file's first, and the file
+## then ends with one: in a CRLF file the line before ours ended LF alone,
+## and the last of ours CR alone (blreview, 2026-11-07).
+static func _put_lines(out: PackedStringArray, at: int, block: PackedStringArray, eol: String) -> void:
+	if block.is_empty():
+		return
+	if at >= out.size() and at > 0 and out[at - 1].is_empty():
+		# After the break the file ends with: before the nothing after it.
+		at -= 1
+	var tail: bool = at >= out.size()
+	if tail and at > 0 and not out[at - 1].ends_with(eol):
+		out[at - 1] += eol
+	for n: int in block.size():
+		out.insert(at + n, block[n])
+	if tail:
+		out.append("")
 
 
 ## The booklet's own lines, said once at the head of the model.
@@ -1657,8 +1683,7 @@ static func _close_section(out: PackedStringArray, looks: Dictionary, definition
 			and not wrote.has(definition + "|*"):
 		extra.append(META + "CALLOUT OFF" + eol)
 		wrote[definition + "|*"] = true
-	for n: int in extra.size():
-		out.insert(trailing + n, extra[n])
+	_put_lines(out, trailing, extra, eol)
 
 
 ## The app's own lines for one step, before the line that ends it. A

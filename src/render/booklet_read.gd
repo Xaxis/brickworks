@@ -94,6 +94,14 @@ static var _box_frame := RegEx.create_from_string("--box-line: (#[0-9a-fA-F]{6})
 static var _box_corners := RegEx.create_from_string("\\.box\\{border-radius:calc\\(([0-9.]+) \\* var\\(--mm\\)\\)\\}")
 
 
+## The tab's title ([param title], as a browser gives document.title,
+## decoded) as the booklet's file has it, for [method feed]: its "&" and
+## "<" escaped again. Up to 2026-11-07 a "<" went in as it was, and a title
+## of "Gate <section> Hill" read as a page of its own (blreview).
+static func title_line(title: String) -> String:
+	return "<title>%s</title>" % title.replace("&", "&amp;").replace("<", "&lt;")
+
+
 ## Every page of the booklet [param from], the path of its file or the
 ## document of the browser tab it is in, handed to [param each] as it is
 ## read: one page held at a time. A frame for the window every [param pace]
@@ -107,7 +115,7 @@ func read_all(from: Variant, each: Callable, pace: int = 0) -> int:
 		var styles: JavaScriptObject = document.querySelectorAll("style")
 		for index: int in int(styles.length):
 			feed("<style>%s</style>" % str((styles.item(index) as JavaScriptObject).textContent))
-		feed("<title>%s</title>" % str(document.title).replace("&", "&amp;"))
+		feed(title_line(str(document.title)))
 		var sections: JavaScriptObject = document.querySelectorAll("section.page")
 		for index: int in int(sections.length):
 			for page: Page in feed(str((sections.item(index) as JavaScriptObject).outerHTML)):

@@ -1143,10 +1143,12 @@ func _wide_letters() -> void:
 		str(printed["html"]))
 	var wide: float = 0.0
 	if found != null:
-		# As a browser draws CJK: a whole em a letter.
+		# As a browser draws CJK: a whole em a letter, less the title's
+		# letter-spacing (.n, -.02em).
 		var size: float = found.get_string(1).to_float()
 		for letter: String in found.get_string(2):
-			wide += size if letter.unicode_at(0) >= 0x2E80 else Helvetica.text_width(letter, size, true)
+			wide += (size if letter.unicode_at(0) >= 0x2E80 else Helvetica.text_width(letter, size, true)) \
+				- 0.02 * size
 	_check("the CJK title fits across its page as a browser draws it, an em a letter: %.1f mm of %.1f"
 		% [wide, room], found != null and wide > 0.0 and wide <= room + 0.5)
 	var html: String = _out.path_join("wide_instructions.html")

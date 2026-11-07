@@ -3256,7 +3256,11 @@ func page_setup(fields: Dictionary) -> String:
 	var given: Dictionary = fields.duplicate()
 	var words: String = ""
 	if bool(given.get("usual", false)):
+		# The booklet's own look; the model's own title and the line under
+		# it stay, as they do when a style is given (BookletSheet.OWN).
 		sheet = BookletSheet.new()
+		for field: String in BookletSheet.OWN:
+			sheet.set(field, was.get(field))
 		words = "the booklet's own page"
 	var style_lost: bool = false
 	if given.has("style"):
@@ -3328,6 +3332,11 @@ func page_setup(fields: Dictionary) -> String:
 				or name.begins_with(BookletSheet.COVER_NAME) and name != sheet.cover_picture:
 			pictures.erase(name)
 	var also := PackedStringArray()
+	# Words longer than a line holds, said: cut in silence, a footer lost its
+	# end unseen (blreview, 2026-11-07).
+	for field: String in BookletSheet.TEXTS:
+		if given.has(field) and BookletSheet.cut(given[field]):
+			also.append("the %s cut to %d letters" % [field.replace("_", " "), BookletSheet.TEXT_MOST])
 	if fields.has("remove_style"):
 		var failed: String = BookletSheet.remove_style(gone)
 		if not failed.is_empty():
@@ -3352,6 +3361,8 @@ func page_setup(fields: Dictionary) -> String:
 		BookletSheet.of(world).words()]
 	builder.record(undo, said)
 	store.touch()
+	if tail.contains(" cut to "):
+		bar.say(said + tail)
 	return said + tail
 
 
