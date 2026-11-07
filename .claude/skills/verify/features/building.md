@@ -2372,7 +2372,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   clip alone is no seat while a stud or hole stands short of its mate
   (`ExactCheck._meets_exactly`), and a seat may take a part as far into
   another as it was into anything (a barding into its rider's leg, an LDU, as
-  it was into its horse). Run it from a checkout whose catalogue was built
+  it was into its horse). The seat leaves a part a bar holds where its set
+  has it: no seat onto a part one that slides is seated in, and none where
+  one that does not slide is seated already (`Exact._seating_most`); seating
+  10267-1's candle (37762), its bar down a flower plate's hollow stud, lifted
+  it 3 LDU into its flame and refused one of the 957 real sub-models, and the
+  probe builds it. Run it from a checkout whose catalogue was built
   with on_receivers: on an older one the scorpion's three fail. `handbuild_probe -- only=build_from_a_booklet`
   99 of 140 across the grid, worse for none; `placing_probe` keeps 8643-1's
   bracket under its plate and 5762-1's clip plates on theirs.
