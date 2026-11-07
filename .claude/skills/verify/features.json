@@ -100,6 +100,7 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -127,6 +128,7 @@
       "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
@@ -195,6 +197,7 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -234,6 +237,7 @@
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
@@ -251,6 +255,7 @@
         "tests/test_beta.py",
         "tests/test_billing_pay.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -264,6 +269,7 @@
       "tests": [
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -279,9 +285,18 @@
         "tests/test_account_erase.py",
         "tests/test_billing_pay.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
+    },
+    {
+      "id": "cli:3mf strict reader",
+      "kind": "cli",
+      "entry": "tools/print3mf/check_3mf.py",
+      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
+      "area": "model-io",
+      "tests": []
     },
     {
       "id": "cli:ChatGPT connector flow",
@@ -329,6 +344,14 @@
       "entry": "tools/keyring_session.sh",
       "reach": "tools/keyring_session.sh CMD...   (CMD in a fresh, unlocked GNOME Keyring on a D-Bus session of its own, removed after; fetches libsecret-tools into ~/.cache/brickworks/secret-tool where secret-tool is not installed)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:a line placing a part at no size",
+      "kind": "cli",
+      "entry": "src/dev/no_size_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/no_size_probe.gd   (a type-1 line whose matrix has no size, as Studio and LDCad write where a flexible part doubles back, places nothing (LdrModel.has_size): the 653 such lines of 7 OMR sets counted from their text and none read; 42125-1 opened with every part's place invertible, its gears read, its 4 such lines saved back byte for byte; a Build together state at no size refused)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -843,6 +866,14 @@
       "tests": []
     },
     {
+      "id": "cli:coming soon check",
+      "kind": "cli",
+      "entry": "tools/web/coming_soon_check.mjs",
+      "reach": "node tools/web/coming_soon_check.mjs [--static] [--url=DEPLOYMENT] [--shots=DIR]",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:comments browser flow",
       "kind": "cli",
       "entry": "tools/web/comments_flow.mjs",
@@ -858,6 +889,14 @@
       "entry": "tools/web/compare_media.mjs",
       "reach": "heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --out=shots/compare, then --encode",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:comparesets probe",
+      "kind": "cli",
+      "entry": "src/dev/comparesets_probe.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR",
+      "area": "collection",
       "tests": []
     },
     {
@@ -1003,7 +1042,7 @@
       "id": "cli:download page check",
       "kind": "cli",
       "entry": "tools/web/download_check.mjs",
-      "reach": "node tools/web/download_check.mjs --manifest=FILE --shots=shots",
+      "reach": "node tools/web/download_check.mjs --shots=shots",
       "area": "release",
       "tests": []
     },
@@ -1941,6 +1980,14 @@
       "tests": []
     },
     {
+      "id": "cli:print3mf probe",
+      "kind": "cli",
+      "entry": "src/dev/print3mf_probe.gd",
+      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model\u2026 and export_model, read by tools/print3mf/check_3mf.py; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:prints and stickers in a browser",
       "kind": "cli",
       "entry": "tools/web/studio_flow.mjs",
@@ -2023,6 +2070,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_coming_soon.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]
@@ -2601,6 +2649,14 @@
       "entry": "tools/web/together_timing.mjs",
       "reach": "tools/export.sh web; node tools/web/relay_server.mjs 9011 --static=build/web --hold=together_sessions,together_ops,together_people, then node tools/web/together_timing.mjs --url=http://127.0.0.1:9011 --out=DIR [--rounds=10] [--only=floor,print]   (with .env sourced)",
       "area": "together",
+      "tests": []
+    },
+    {
+      "id": "cli:twist probe",
+      "kind": "cli",
+      "entry": "src/dev/twist_probe.gd",
+      "reach": "tools/probe.sh twist_probe; PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet; PROBE_SIZE=1280x720 or 1400x900 tools/probe.sh twist_probe   (windowed, 390x844 by its header; pictures in shots/twist/)",
+      "area": "view",
       "tests": []
     },
     {
@@ -3451,6 +3507,7 @@
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
@@ -3527,6 +3584,14 @@
       "entry": "src/parts/part_library.gd",
       "reach": "godot --headless --path . --script src/dev/vocab_probe.gd",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "lib:parts compare",
+      "kind": "lib",
+      "entry": "src/parts/parts_compare.gd",
+      "reach": "tools/probe.sh comparesets_probe   (PartsCompare.between: Collection.allocate's matching, own part and colour then another moulding; a set's spares and the open model's stickers and made parts not counted; a set under test refused)",
+      "area": "collection",
       "tests": []
     },
     {
@@ -4483,6 +4548,14 @@
       "tests": []
     },
     {
+      "id": "ui:compare two sets or models",
+      "kind": "ui",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare two sets or models\u2026: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO\u00ae Pick a Brick)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "ui:compare with a save",
       "kind": "ui",
       "entry": "src/ui/compare_view.gd",
@@ -4582,6 +4655,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_coming_soon.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]
@@ -4615,6 +4689,7 @@
       "area": "release",
       "tests": [
         "tests/test_billing.py",
+        "tests/test_coming_soon.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
@@ -5126,6 +5201,7 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -5822,6 +5898,14 @@
       "entry": "src/assembly/track_snap.gd",
       "reach": "tools/probe.sh tracks_probe   (a 9V curve dragged near a straight's free end joins it in one drag; R puts its other end to the joint; two 12V curves get their sleeper, one undo takes both; sixteen curves by sixteen clicks close a circle; a session's oval of 16 curves and 4 straights in two calls, attach track[0] to track[1]. Windowed, pictures in shots/tracks/. By hand: a track in hand near a free end of one down sits on it; the status line says so and what R does)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:two fingers' twist",
+      "kind": "ui",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "on a phone, a tablet or a touchscreen: two fingers turned about each other turn the view round the up by as much, about what is between them, once they have turned 10 degrees; a pinch and a slide as before  (CadCamera._twist, _two_fingers; tools/probe.sh twist_probe)",
+      "area": "view",
       "tests": []
     },
     {

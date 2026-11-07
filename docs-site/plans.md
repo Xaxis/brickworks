@@ -1,9 +1,9 @@
 ---
-ai: Two plans. Free, for personal and educational use: the web app and the desktop app, AI never limited, and up to 25 models kept with the account. Pro, coming soon at $8 a month or $80 a year: any number of models kept with the account, and a licence for commercial use. Nothing takes money yet.
+ai: Two plans. Free, for personal and educational use: the web app (and the desktop app, coming soon), AI never limited, and up to 25 models kept with the account. Pro, coming soon at $8 a month or $80 a year: any number of models kept with the account, and a licence for commercial use. Nothing takes money yet.
 rules:
   - AI is never limited on any plan: people bring their own, so Brickworks never counts it or bills for it.
   - Accounts made before 29 October 2026 keep Pro, free, with no end date.
-  - The desktop app is free, like the web app; selling what you make (instructions, kits, renders, builds made to order) comes with Pro, under terms that come with it.
+  - The desktop app is coming soon, and free like the web app; until it is out, Brickworks runs at brickworks.diy/app. Selling what you make (instructions, kits, renders, builds made to order) comes with Pro, under terms that come with it.
   - Saving to the device and exporting are never limited, and models are never deleted or locked.
 title: Plans and billing
 nav: Plans and billing
@@ -25,7 +25,7 @@ lib:a plan's limit on models kept with the account
 The whole of Brickworks, for personal and educational use:
 
 - the web app, in any browser, with nothing to install;
-- **the desktop app** for Windows, macOS and Linux, which works offline with every part on disk;
+- **the desktop app** for Windows, macOS and Linux, which works offline with every part on disk, coming soon;
 - **AI without a limit**: you bring your own, so nothing is counted;
 - up to **25 models kept with your account**;
 - saving to your device and exporting, without a limit;
@@ -62,4 +62,4 @@ Students and teachers can have Pro free, a year at a time, once Pro opens: see t
 
 ## What stays free {#stays-free}
 
-Pro takes nothing out of Free. AI is never limited, and saving to your device and exporting never are. Your models are never deleted or locked: on any plan, or none, the app opens, edits and exports everything you made. The desktop app is free, and every version you download keeps working.
+Pro takes nothing out of Free. AI is never limited, and saving to your device and exporting never are. Your models are never deleted or locked: on any plan, or none, the app opens, edits and exports everything you made. The desktop app, coming soon, will be free too.

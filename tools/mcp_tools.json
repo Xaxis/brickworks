@@ -5094,19 +5094,37 @@
       "readOnlyHint": true,
       "title": "List the parts"
     },
-    "description": "The model's parts, as Build, Parts list shows them: by part and colour, with counts and LEGO® element ids. which=\"need\" measures it against the person's collection (My collection): how much they own and what they are short of; which=\"buildable\" is What can I build?: their saved models, the examples and the official models of real sets, ranked by how much of each they own.",
+    "description": "The model's parts, as Build, Parts list shows them: by part and colour, with counts and LEGO® element ids. which=\"need\" measures it against the person's collection (My collection): how much they own and what they are short of; which=\"buildable\" is What can I build?: their saved models, the examples and the official models of real sets, ranked by how much of each they own. which=\"compare\" is File, Compare two sets or models…: a= and b= each a set number (\"7140\"), a saved model's or an example's name, or \"open\" for the model open now; it says the parts in both and in only one, by part and colour, each side's pieces counted once, and what to buy to build b from a. shop= bricklink, rebrickable or pickabrick also writes that list to buy for the shop, as export_model writes the model's.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "a": {
+          "description": "compare: what is had, a set number, a saved model's or example's name, or \"open\"; \"set 1234\" or \"model 1234\" where a name is a number",
+          "type": "string"
+        },
+        "b": {
+          "description": "compare: what is to be built, as a=",
+          "type": "string"
+        },
         "limit": {
-          "description": "how many rows; 60 when omitted",
+          "description": "how many rows; 60 when omitted (compare: 30 a list)",
           "type": "integer"
+        },
+        "shop": {
+          "description": "compare: write the list to buy to build b from a for this shop, where export_model writes",
+          "enum": [
+            "bricklink",
+            "rebrickable",
+            "pickabrick"
+          ],
+          "type": "string"
         },
         "which": {
           "enum": [
             "model",
             "need",
-            "buildable"
+            "buildable",
+            "compare"
           ],
           "type": "string"
         }
@@ -5375,7 +5393,7 @@
       "readOnlyHint": false,
       "title": "Export the model"
     },
-    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and quantities, 400 lines a file; the answer names the parts with no element number known), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result. A bricklink wanted list takes condition, wanted_list and notify, as BrickLink's upload reads them; what is not given is what the person chose last on the parts list's BrickLink button. Nothing is uploaded: the person uploads the file.",
+    "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print) or 3mf (to 3D print in colour: an object a colour, in mm on the bed); obj, stl and 3mf hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and quantities, 400 lines a file; the answer names the parts with no element number known), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result. A bricklink wanted list takes condition, wanted_list and notify, as BrickLink's upload reads them; what is not given is what the person chose last on the parts list's BrickLink button. Nothing is uploaded: the person uploads the file.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5396,6 +5414,7 @@
             "gltf",
             "obj",
             "stl",
+            "3mf",
             "picture",
             "bricklink",
             "rebrickable",

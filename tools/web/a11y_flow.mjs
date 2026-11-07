@@ -146,7 +146,8 @@ const NAMES = {
   feed: { in: [["button", /^Follow/]] },
   account: { in: [["button", /^Edit profile$/], ["link", /^Settings$/]], out: [["button", /^Sign in/]] },
   settings: { in: [["button", /^Sign out$/], ["button", /^System$/], ["button", /^Light$/], ["button", /^Dark$/]] },
-  download: { any: [["link", /download|\.dmg|\.exe|\.AppImage|Windows|macOS|Linux/i]] },
+  // The desktop app is coming soon (2026-11-07): its page's one button is the app.
+  download: { any: [["link", /^Open Brickworks/]] },
 };
 
 // --- axe ----------------------------------------------------------------------

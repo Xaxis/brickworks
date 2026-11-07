@@ -20,7 +20,7 @@ Then `/mcp` in Claude Code and **Authenticate** (or `claude mcp login brickworks
 
 ## Into a desktop window {#desktop}
 
-Start the desktop app with its local port open, then add the bridge that ships with Brickworks' source:
+The desktop app is coming soon; until it is out, [the connector](#connector) reaches Brickworks in your browser. If you have the desktop app already, start it with its local port open, then add the bridge that ships with Brickworks' source:
 
 ```sh
 ./brickworks.x86_64 -- --mcp
