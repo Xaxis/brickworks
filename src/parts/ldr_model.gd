@@ -414,9 +414,7 @@ static func _colour(token: String) -> int:
 		return text.to_int()
 	if text.to_lower().begins_with("0x2") and text.length() == 9:
 		# Kept as the number it is, so it survives being written out
-		# again. The palette has no entry for it and whatever draws it
-		# will fall back, which is a visible approximation rather than a
-		# silent one.
+		# again; whatever draws or writes it takes its RGB (direct_rgb).
 		return text.hex_to_int()
 	return UNREADABLE_COLOUR
 
@@ -425,6 +423,14 @@ static func _colour(token: String) -> int:
 ## than an index into the palette.
 static func is_direct_colour(code: int) -> bool:
 	return code >= 0x2000000
+
+
+## The colour a direct colour is: 0x2RRGGBB's RGB, opaque. Every drawing and
+## every writer takes it from here (PartLibrary.color, ModelThumbnail). It is
+## only ever opaque: LDraw 0.27's other direct forms (0x3RRGGBB see-through,
+## 0x4 to 0x7 dithered) are not read at all (_colour), so none is ever held.
+static func direct_rgb(code: int) -> Color:
+	return Color.hex((code & 0xFFFFFF) << 8 | 0xFF)
 
 
 ## The name a reference and a FILE line have in common: no directory, no

@@ -107,14 +107,20 @@ const PICK_A_BRICK_MOST := 999
 ## only where it asks something (the main list, either condition and no
 ## email are BrickLink's own when the tag is left out), after MINQTY in the
 ## order BrickLink's help lists its tags.
+##
+## A part in a direct colour is listed in the colour it stands in as
+## (Inventory.Lot.stand_in), with a REMARKS saying so, which BrickLink keeps
+## on the wanted list beside the item; "stand_ins" names each.
 static func bricklink_xml(stock: Inventory, library: PartLibrary,
 		wants: Wants = null) -> Dictionary:
 	var lines := PackedStringArray(["<INVENTORY>"])
 	var left: int = 0
 	var made: int = 0
 	var unnumbered := PackedStringArray()
+	var stand_ins := PackedStringArray()
 	for lot: Inventory.Lot in stock.lots:
-		var colour: int = library.bricklink_colour(lot.color_code)
+		var colour: int = library.bricklink_colour(
+			lot.stand_in if lot.stand_in >= 0 else lot.color_code)
 		if lot.custom or colour < 0:
 			left += 1
 			if lot.custom:
@@ -128,17 +134,44 @@ static func bricklink_xml(stock: Inventory, library: PartLibrary,
 			lot.bricklink_id if not lot.bricklink_id.is_empty() else lot.part_id))
 		lines.append("    <COLOR>%d</COLOR>" % colour)
 		lines.append("    <MINQTY>%d</MINQTY>" % lot.count)
-		if wants != null:
-			if not wants.condition.is_empty():
-				lines.append("    <CONDITION>%s</CONDITION>" % wants.condition)
-			if wants.notify:
-				lines.append("    <NOTIFY>Y</NOTIFY>")
-			if not wants.wanted_list.is_empty():
-				lines.append("    <WANTEDLISTID>%s</WANTEDLISTID>" % wants.wanted_list)
+		if wants != null and not wants.condition.is_empty():
+			lines.append("    <CONDITION>%s</CONDITION>" % wants.condition)
+		if lot.stand_in >= 0:
+			lines.append("    <REMARKS>%s</REMARKS>" % _xml(_remark(lot)))
+			_note(stand_ins, lot)
+		if wants != null and wants.notify:
+			lines.append("    <NOTIFY>Y</NOTIFY>")
+		if wants != null and not wants.wanted_list.is_empty():
+			lines.append("    <WANTEDLISTID>%s</WANTEDLISTID>" % wants.wanted_list)
 		lines.append("  </ITEM>")
 	lines.append("</INVENTORY>")
 	return {"text": "\n".join(lines) + "\n", "left_out": left,
-		"lots": stock.lots.size() - left, "colours_left": unnumbered, "made_parts": made}
+		"lots": stock.lots.size() - left, "colours_left": unnumbered, "made_parts": made,
+		"stand_ins": stand_ins}
+
+
+## What a list says of the parts it lists in a colour standing in for a
+## direct colour ([param made]'s "stand_ins"), for the status line: ""
+## when there are none.
+static func stand_in_words(made: Dictionary) -> String:
+	var stand_ins: PackedStringArray = made.get("stand_ins", PackedStringArray())
+	if stand_ins.is_empty():
+		return ""
+	return "no shop sells a direct colour, so %s in the nearest colour LEGO makes: %s" % [
+		"it is" if stand_ins.size() == 1 else "they are", ", ".join(stand_ins)]
+
+
+## A lot in a direct colour as a list names it: "#FF0000 as Reddish Orange".
+static func _note(stand_ins: PackedStringArray, lot: Inventory.Lot) -> void:
+	var said: String = "%s as %s" % [lot.color_name, lot.stand_in_name]
+	if not stand_ins.has(said):
+		stand_ins.append(said)
+
+
+## A wanted list item's REMARKS for a lot in a direct colour.
+static func _remark(lot: Inventory.Lot) -> String:
+	return "Brickworks: drawn in %s, an LDraw direct colour no shop sells; listed in the nearest, %s" % [
+		lot.color_name, lot.stand_in_name]
 
 
 ## Why a list made here left lots off, in words for the status line:
@@ -159,17 +192,25 @@ static func why_left_off(made: Dictionary, shop: String) -> String:
 ## Rebrickable's parts-list import: part, Rebrickable colour, quantity. The
 ## part by Rebrickable's number where LDraw records it (a 9L pneumatic tube
 ## is 5102c09.375 there and 21826-f1 here).
+##
+## A part in a direct colour is listed in the colour it stands in as
+## (Inventory.Lot.stand_in): the import has no column to say so in, so
+## "stand_ins" names each for the status line.
 static func rebrickable_csv(stock: Inventory) -> Dictionary:
 	var rows := PackedStringArray(["Part,Color,Quantity"])
 	var left: int = 0
+	var stand_ins := PackedStringArray()
 	for lot: Inventory.Lot in stock.lots:
-		if lot.custom or lot.rebrickable_colour < 0:
+		var colour: int = lot.stand_in_rebrickable if lot.stand_in >= 0 else lot.rebrickable_colour
+		if lot.custom or colour < 0:
 			left += 1
 			continue
+		if lot.stand_in >= 0:
+			_note(stand_ins, lot)
 		rows.append("%s,%d,%d" % [lot.rebrickable_id if not lot.rebrickable_id.is_empty()
-			else lot.part_id, lot.rebrickable_colour, lot.count])
+			else lot.part_id, colour, lot.count])
 	return {"text": "\n".join(rows) + "\n", "left_out": left,
-		"lots": stock.lots.size() - left}
+		"lots": stock.lots.size() - left, "stand_ins": stand_ins}
 
 
 ## LEGO's Pick a Brick list: `elementId,quantity`, as LEGO's own template
@@ -180,15 +221,22 @@ static func rebrickable_csv(stock: Inventory) -> Dictionary:
 ## of one element (a tyre in Rubber Black and one in Black) are one line.
 ## An element wanted more than [constant PICK_A_BRICK_MOST] times is asked
 ## for that many, and the rest named in "over": element -> how many more.
+## A part in a direct colour is the element of the part in the colour it
+## stands in as (Inventory.Lot.stand_in), named in "stand_ins", as LEGO's
+## two columns have nowhere to say so.
 static func pick_a_brick(stock: Inventory) -> Dictionary:
 	var wanted: Dictionary = {}
 	var missing: Array[Inventory.Lot] = []
+	var stand_ins := PackedStringArray()
 	var pieces: int = 0
 	for lot: Inventory.Lot in stock.lots:
-		if lot.custom or lot.element.is_empty():
+		var element: String = lot.stand_in_element if lot.stand_in >= 0 else lot.element
+		if lot.custom or element.is_empty():
 			missing.append(lot)
 			continue
-		wanted[lot.element] = int(wanted.get(lot.element, 0)) + lot.count
+		if lot.stand_in >= 0:
+			_note(stand_ins, lot)
+		wanted[element] = int(wanted.get(element, 0)) + lot.count
 		pieces += lot.count
 	var files := PackedStringArray()
 	var over: Dictionary = {}
@@ -202,7 +250,8 @@ static func pick_a_brick(stock: Inventory) -> Dictionary:
 			rows.append("%s,%d" % [element, mini(count, PICK_A_BRICK_MOST)])
 		files.append("\r\n".join(rows))
 	return {"files": files, "lines": elements.size(), "pieces": pieces,
-		"lots": stock.lots.size() - missing.size(), "missing": missing, "over": over}
+		"lots": stock.lots.size() - missing.size(), "missing": missing, "over": over,
+		"stand_ins": stand_ins}
 
 
 ## The lots [method pick_a_brick] could not list, by name: "2 × Tile 1 x 2

@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe -->
 
 ## Sub-features
 
@@ -769,6 +769,29 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`PartLibrary.shop_part`, `Inventory.Lot.bricklink_id` / `rebrickable_id`:
   3069b is BrickLink's 3069, 3711 Rebrickable's 3711a), else LDraw's, less a
   formed shape's `-f1`.
+- `direct colours in every writer` (2026-11-07, directcolour): LDraw's direct
+  colour, `0x2RRGGBB` (`LdrModel.is_direct_colour`), is its own RGB everywhere
+  a colour code becomes a colour, through one helper, `LdrModel.direct_rgb`:
+  `PartLibrary.color` gives it as `PartLibrary.direct_color` (opaque plain
+  plastic named by its hex, "#FF0000", no shop or LEGO number), so the 3D view,
+  its pictures, the booklet, the parts list, the viewer's scene
+  (`ModelScene`) and Export's GLB, glTF and OBJ (MTL name `rgb_FF0000`: a "#"
+  may open a comment there) have it; `ModelThumbnail` takes `direct_rgb`
+  itself, as it names no `PartLibrary`; the site's `api/_parts.js` names and
+  colours it by `api/_colours.js` `directOf`. Only 0x2 is read: LDraw 0.27's
+  0x3 to 0x7 forms are refused as unreadable (`LdrModel._colour`), so no
+  direct colour is ever see-through. No shop sells one, so a shop list orders
+  the part in the nearest colour LEGO makes now
+  (`PartLibrary.catalogue_nearest`: CIEDE2000 over `stand_in_codes`, LDConfig's
+  solid section, opaque, own plain colour, a BrickLink number, `current`;
+  `Inventory.Lot.stand_in*`) and says so: BrickLink's XML item carries a
+  `REMARKS`, every list's result a `stand_ins` the status line reads out
+  (`ShopLists.stand_in_words`), a Pick a Brick lot whose stand-in has no
+  element named as before. The site's lists choose by the same rule
+  (`api/_parts.js standIn`, the table's `stand_ins`). The lot's own element
+  and numbers stay empty. **Check:** `tools/probe.sh direct_colour_probe`
+  (headless, about a minute; red on pre261 at 57cdee7c, green after: see
+  `bench/results/directcolour-2026-11-07/`).
 - `save dialog on the desktop` (`src/ui/save_to.gd` `SaveTo.ask`; 2026-10-23,
   walk180 found .io and Instructions written straight into ~/Downloads with no
   dialog): on the desktop every File, Export (LDraw, Studio .io, 3D, picture,

@@ -24,7 +24,7 @@
 // Everything here is pure: text in, facts out.
 
 import { createHash } from "node:crypto";
-import { COLOUR_NAMES } from "./_colours.js";
+import { COLOUR_NAMES, directOf, isDirect } from "./_colours.js";
 import { counted, number, say } from "./_card.js";
 
 const HEAD = "0 !BRICKWORKS PAGES ";
@@ -371,7 +371,7 @@ export function changedOf(n, given) {
 /// A lot as a page says it: "2 × 3001 in Red"; with [colours] (api/_parts.js
 /// partNames), its colour as the page's language names it.
 export function lotSaid(lot, colours = null) {
-  const colour = colours?.[lot.colour] || COLOUR_NAMES[lot.colour] || (lot.colour >= 0x2000000
-    ? `#${(lot.colour & 0xffffff).toString(16).padStart(6, "0")}` : say("colour {n}", { n: lot.colour }));
+  const colour = colours?.[lot.colour] || COLOUR_NAMES[lot.colour] || (isDirect(lot.colour)
+    ? directOf(lot.colour).name : say("colour {n}", { n: lot.colour }));
   return say("{count} × {part} in {colour}", { count: lot.count, part: lot.part, colour });
 }

@@ -843,11 +843,12 @@ func _export(shop: String) -> void:
 		line = await Download.save(str(made["text"]), title + "_wanted.csv", "text/csv")
 	if line.is_empty():
 		return
+	var notes: String = ""
 	if int(made["left_out"]) > 0:
-		line += " — %d lots left off: %s" % [int(made["left_out"]),
-			ShopLists.why_left_off(made, shop)]
-	_say("%s: %d pieces in %d lots%s" % [line.get_slice(" —", 0), short.pieces,
-		int(made["lots"]), "" if int(made["left_out"]) == 0 else " —" + line.get_slice(" —", 1)])
+		notes += " — %d lots left off: %s" % [int(made["left_out"]), ShopLists.why_left_off(made, shop)]
+	if not ShopLists.stand_in_words(made).is_empty():
+		notes += " — " + ShopLists.stand_in_words(made)
+	_say("%s: %d pieces in %d lots%s" % [line.get_slice(" —", 0), short.pieces, int(made["lots"]), notes])
 
 
 func _fill_build() -> void:
