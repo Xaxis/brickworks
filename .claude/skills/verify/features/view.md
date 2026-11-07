@@ -1305,8 +1305,14 @@ picture the assistant is shown.
   one after the other, judged on that pair (`..., timed again`). A load
   spike on the big model's sweep alone read as aiming a figure growing 3.4x
   on rel-m271's train (1.19 ms -> 4.11 ms; m270 0.7x, m268 1.1x), and a CPU
-  whose other thread is busy slows even the thread's own time (1.75x under
-  40 busy threads). And that what the aiming asks,
+  sharing its core and memory with other work slows even the thread's own
+  time. Proved 2026-11-07 (`bench/results/aimflake-2026-11-07/` of the main
+  checkout): 32 busy processes from the big model's open to its end failed
+  pre261 3 of 3 (aiming a figure 3.4x, 0.76 -> 3.42 ms; the move 13.3x), and
+  this 5 of 5 (64 of them 2 of 2, 24 streaming memory 5 of 5); a loop over
+  every part's box planted in `Main._refresh_preview` failed it 10 of 10,
+  quiet and under load all the run (aiming a figure 3.3x-5.7x timed again).
+  And that what the aiming asks,
   the parts near the line kept by where they are (`BrickGrid`), finds what
   asking every one did: the builder's connectors are `JointSnap.sites_in`'s
   in its order, the end a pin is aimed at with and without the grid the

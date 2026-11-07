@@ -350,9 +350,10 @@ func _unread(model: String) -> bool:
 ## other work holding it back. rel-m271's train read a load spike on the
 ## big model's sweep as aiming a figure growing 3.4x (1.19 ms -> 4.11 ms),
 ## where rel-m270 had run the same code at 0.7x and rel-m268 at 1.1x.
-## The clock is read first, so a wait while the file is read falls inside
-## the span it ends, or after it. Opened anew each time: read again after a
-## seek, it gave the same numbers (glibc's buffer).
+## The clock is read before the file: a wait while a span's first reading
+## is made is inside the span and left out by its last, and one while the
+## last is made is past the span. Opened anew each time: read again after
+## a seek, it gave the same numbers (glibc's buffer).
 func _clock() -> int:
 	var now: int = Time.get_ticks_usec()
 	if not _own_clock:
@@ -1330,10 +1331,10 @@ func _ratio(what: String, small_ms: float, big_ms: float, most: float,
 ## made, or both real sets, opened and timed once more, one after the other,
 ## and the ratio judged on that pair. The thread's own time (_clock) leaves
 ## out its waits for a CPU, but not a CPU slowed by the other work on its
-## core: forty busy threads on this 24-thread box slowed a fixed loop's own
-## time 1.75x (0.83 ms -> 1.45 ms, 2026-11-07), so a load that lands on one
-## model's timing alone can still put a ratio over. A real slowdown is in
-## both pairs; a load is seldom on the same one of the two twice.
+## core and its memory: with 16 programs streaming memory beside the big
+## model's timing alone, the move grew 8.9x of its 9x, and at load 76 a
+## step of the timeline read 6.6x (17 ms -> 166 ms), 1.0x timed again
+## (aimflake, 2026-11-07). A real slowdown is in both pairs.
 func _again() -> void:
 	if _over.is_empty():
 		return
