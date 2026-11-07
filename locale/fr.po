@@ -11881,3 +11881,8 @@ msgstr "Ce modèle n’a aucun mouvement nommé « %s », il s’est donc ouvert
 
 msgid "No such motion"
 msgstr "Mouvement introuvable"
+
+# weighsure (APP_UX6 #4): the model's weight on the status bar, after its counts,
+# the model as it is in that frame (StatusBar._weight)
+msgid "What the model weighs, each part by its shape: within about 6% of real bricks on a scale. The baseplate is left out"
+msgstr "Ce que pèse le modèle, chaque pièce d'après sa forme : à environ 6 % près des vraies briques sur une balance. La plaque de base n'est pas comptée"
