@@ -196,8 +196,9 @@ def summary(part_id: str, blob: bytes) -> dict:
     mesh = flatten(library, name)
     part = meshfile.build(mesh)
     connections = extract(library, name)
+    raw = occ.voxelise(mesh)
     solid = occ.clear_bores(mesh, occ.fill_cavities(
-        occ.remove_studs(occ.voxelise(mesh), connections), connections), connections)
+        occ.remove_studs(raw, connections), connections), connections)
     if not connections:
         solid, ring = occ.open_ring(mesh, solid)
         if ring is not None:
@@ -216,8 +217,8 @@ def summary(part_id: str, blob: bytes) -> dict:
         "triangles": part.triangle_count,
         "connectors": connectors,
         "boxes": sorted([int(v) for v in box] for box in occ.to_boxes(solid, connections)),
-        "sockets": sorted([_r(x), _r(z)] for x, z in occ.bottom_sockets(
-            solid, connections, (part.size_ldu()[0], part.size_ldu()[2]))),
+        "sockets": sorted([_r(x), _r(z)] for x, z in occ.on_receivers(occ.bottom_sockets(
+            solid, connections, (part.size_ldu()[0], part.size_ldu()[2])), connections, raw)),
         "cells": solid.cell_count,
         "lbm_sha256": hashlib.sha256(blob).hexdigest(),
     }

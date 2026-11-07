@@ -2353,9 +2353,26 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   clear (`room_for`, as check_design clears them): a saddle on a horse's back
   had none where every set has it. `moulded_in_sets_probe -- all` by hand,
   upright animals that take a stud from underneath put where their sets have
-  them: 59 of 63 (7 before); the four left are the scorpion (30169), whose
+  them: 59 of 63 (7 before); the four left were the scorpion (30169), whose
   one receiver is a tube, and 10176-1's wolf, 4 LDU off its studs in the
-  file (the probe's `ACROSS`). `handbuild_probe -- only=build_from_a_booklet`
+  file (the probe's `ACROSS`). `animals_probe` (2026-11-06) is all 63 by
+  hand, 63 of 63: a creature whose every stud square stands in the wall of
+  an open tube it draws down to its underside takes its studs in the tube
+  (`occupancy.on_receivers`, in the mesh build: the scorpion, the Friends
+  foal, a spider; 53 parts' sockets moved, the rest already where the app
+  moved them, `Lbm.on_receivers`), and a set whose file stands an animal off
+  its studs (the wolf) counts the ghost on the studs it stands over. And every
+  saddle and barding on its horse, written as a session writes it (an LDU
+  low: a horse's back is an odd number of LDU up), is seated where its set
+  has it, 27 of 27 to 0.05 LDU (9 before), refused for nothing the check
+  does not refuse it for where its set has it: the seat takes the move that
+  seats the most of a part's connectors, not the nearest, which was the
+  sword's bar sliding in the saddle's clip (`Exact.seat_move`), a bar in its
+  clip alone is no seat while a stud or hole stands short of its mate
+  (`ExactCheck._meets_exactly`), and a seat may take a part as far into
+  another as it was into anything (a barding into its rider's leg, an LDU, as
+  it was into its horse). Run it from a checkout whose catalogue was built
+  with on_receivers: on an older one the scorpion's three fail. `handbuild_probe -- only=build_from_a_booklet`
   99 of 140 across the grid, worse for none; `placing_probe` keeps 8643-1's
   bracket under its plate and 5762-1's clip plates on theirs.
 - `rests by its own shape` (`Builder._sinks_by`, 2026-10-17): a part

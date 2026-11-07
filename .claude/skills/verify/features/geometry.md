@@ -333,7 +333,14 @@ can occupy the same millimetre.
   that, on the plate's (10509p02, which 9469 stands on a plate). Its sockets
   are the receivers it draws (`Lbm.on_receivers`, `PartMesh.sockets_drawn`:
   each socket onto the one downward tube within 8 LDU of it, for a part with
-  studs on top), and `_underside_of` leaves those where they are. Probes:
+  studs on top), and `_underside_of` leaves those where they are. The mesh
+  build does the same for a part whose every stud square stands in the wall
+  of an open tube it draws down to its underside (`occupancy.on_receivers`,
+  2026-11-06): the scorpion's two squares 10 LDU either side of its one tube
+  are that tube, the Friends foal's down its middle are its four hooves';
+  `tests/test_ldraw.py` holds the scorpion, the foal, and what stays (a 2 x 2
+  brick's tube between four, a helmet's and a minifigure's tube up inside).
+  `animals_probe` puts all 63 by hand. Probes:
   `moulded_animal_probe` (the horse put by edit_model at whole studs, by its
   hoof's connector and moved, each standing with every hoof on a stud and
   nothing saying it is off them) and `moulded_in_sets_probe` (every moulded

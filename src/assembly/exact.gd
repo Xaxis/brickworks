@@ -1586,11 +1586,26 @@ static func _find(root: PackedInt32Array, i: int) -> int:
 
 
 ## For item [param i]: how far its connectors are from meeting another part's
-## exactly, as the move that would seat the nearest one, {move, mine, other,
-## item, residual}; {} when one already meets exactly (within [param exact])
-## or none comes within [param reach]. Only connectors that would meet once
-## moved: a stud and a hole pointing the same way, a hinge and its other
-## half, a clip and a bar along one line (whose move is across the line).
+## exactly, as a move that would seat them, {move, mine, other, item,
+## residual}; {} when none comes within [param reach], or when no move seats
+## more of them than staying puts (within [param exact]). Only connectors
+## that would meet once moved: a stud and a hole pointing the same way, a
+## hinge and its other half, a clip and a bar along one line (whose move is
+## across the line).
+##
+## Of the moves, the one that seats the most of its connectors at once, the
+## shortest of those. The nearest alone let a bar decide where a part goes,
+## and a bar slides in its clip: a saddle written an LDU low and an LDU along
+## on its horse (a horse's back is an odd number of LDU up, which a placement
+## in whole cells cannot say) was moved the LDU along that put its clip on the
+## sword's bar, and left the LDU low that its holes were short of the horse's
+## studs. Its lattice cover then ran into the horse's, and 18 of the 27 saddles
+## and bardings on horses in the library's sets were refused (animals_probe).
+## Seating its holes on the studs moves it up as well, and the clip stays on
+## the bar it slides along.
+##
+## [param exact] 0 asks for the nearest miss instead, and {} only where one
+## meets already: a fault's advice says how far to move a part to join it.
 static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 		among: PackedInt32Array = PackedInt32Array()) -> Dictionary:
 	var item: Item = items[i]
@@ -1609,6 +1624,9 @@ static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 		list.append(entry)
 		grid[cell] = list
 	var best: Dictionary = {}
+	## Each pairing: [move, the line it may still slide along or zero, mine,
+	## other, item].
+	var pairs: Array = []
 	for one: Array in mine:
 		var cell := Vector3i(((one[2] as Vector3) / reach).floor())
 		for dx: int in range(-1, 2):
@@ -1619,12 +1637,57 @@ static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 						if move == null:
 							continue
 						var residual: float = (move as Vector3).length()
+						if exact > 0.0:
+							var slides: bool = item.shape.kind[one[1]] == AXLE
+							pairs.append([move, (other[3] as Vector3) if slides else Vector3.ZERO,
+								int(one[1]), int(other[1]), int(other[0])])
+							continue
 						if residual <= exact:
 							return {}
 						if best.is_empty() or residual < float(best["residual"]):
 							best = {"move": move, "mine": int(one[1]), "other": int(other[1]),
 								"item": int(other[0]), "residual": residual}
+	return best if exact <= 0.0 else _seating_most(pairs, exact)
+
+
+## Of [param pairs] (as [method seat_move] gathers them), the move that seats
+## more of the part's connectors than staying does, the most and then the
+## shortest: {move, mine, other, item, residual}, or {}.
+static func _seating_most(pairs: Array, exact: float) -> Dictionary:
+	var most: int = _seated_by(pairs, Vector3.ZERO, exact)
+	var best: Dictionary = {}
+	var tried: Dictionary = {}
+	for pair: Array in pairs:
+		var move: Vector3 = pair[0]
+		var residual: float = move.length()
+		var key := Vector3i((move / exact).round())
+		if residual <= exact or tried.has(key):
+			continue
+		tried[key] = true
+		var seated: int = _seated_by(pairs, move, exact)
+		if seated > most or (seated == most and not best.is_empty()
+				and residual < float(best["residual"])):
+			most = seated
+			best = {"move": move, "mine": pair[2], "other": pair[3], "item": pair[4],
+				"residual": residual}
 	return best
+
+
+## How many of a part's connectors [param move] seats, of those [param
+## pairs] pair: a pairing is seated where what is left of its own move is
+## within [param exact], along the line it slides on not counted.
+static func _seated_by(pairs: Array, move: Vector3, exact: float) -> int:
+	var seated: Dictionary = {}
+	for pair: Array in pairs:
+		if seated.has(pair[2]):
+			continue
+		var left: Vector3 = (pair[0] as Vector3) - move
+		var line: Vector3 = pair[1]
+		if line != Vector3.ZERO:
+			left -= line * left.dot(line)
+		if left.length() <= exact:
+			seated[pair[2]] = true
+	return seated.size()
 
 
 ## The items of [param among] (every item when it is empty) whose boxes come
