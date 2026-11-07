@@ -1450,9 +1450,10 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
-		# And how its booklet shows them: ROTSTEP's turns and the app's own
-		# lines (BookletLooks).
-		world.step_looks = read["looks"]
+	# And how its booklet shows them: ROTSTEP's turns and the app's own
+	# lines (BookletLooks); where the steps are not the author's, only the
+	# whole booklet's, its page set up and guides (_read_text).
+	world.step_looks = read["looks"]
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
