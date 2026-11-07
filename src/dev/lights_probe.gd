@@ -209,12 +209,14 @@ func _in_render() -> void:
 	await _frames(3)
 
 
+## Until the draft asked for is drawn and shown: Render asks for it a moment
+## after a choice (RenderDialog._ask_preview) and draws it when nothing else
+## is drawing. (Waiting until the renderer was idle, at 1280 x 720 the shot
+## came before the draft was begun, and showed the one before.)
 func _drafted(dialog: Node) -> void:
-	await _frames(20)
-	var renderer: Node = dialog.get("renderer")
-	for _n: int in 900:
+	for _n: int in 1800:
 		await process_frame
-		if renderer == null or not bool(renderer.call("is_busy")):
+		if int(dialog.get("_preview_due")) < 0 and str(dialog.get("_working")).is_empty():
 			break
 	await _frames(10)
 
@@ -376,6 +378,7 @@ func _sessions() -> void:
 		+ "lights cannot be changed", not refused.is_empty() and looked.is_empty()
 		and (controls["render_lamp_add_spot"] as Button).disabled
 		and (controls["render_lamp_remove"] as Button).disabled)
+	await _drafted(dialog)
 	await _shoot("render_shared")
 	_shell.set("read_only", false)
 	(controls["render_close"] as Button).pressed.emit()
