@@ -223,9 +223,10 @@ func _answers() -> void:
 		var controls: Array = (phase[2] as Callable).call()
 		if not counts.has(kind):
 			counts[kind] = [0, 0]
-		for control: Control in controls:
-			if seen.has(control) or not is_instance_valid(control) or not control.is_visible_in_tree():
+		for item: Variant in controls:
+			if not is_instance_valid(item) or seen.has(item) or not (item as Control).is_visible_in_tree():
 				continue
+			var control: Control = item
 			seen[control] = true
 			await _into_sight(control)
 			var answer: Dictionary = await _ask_about(control)
