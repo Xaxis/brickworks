@@ -54,6 +54,9 @@ const DENSITY := 300.0 / 25.4
 
 const TITLE := "The Gatehouse of Probe Hill"
 const SUBTITLE := "A gate for a small castle"
+## booklet3's own, which a style given to it leaves as they are.
+const OTHER_TITLE := "Booklet Three, Its Own"
+const OTHER_SUBTITLE := "The extras model's own line"
 const LINE := "Designed by A. Builder, 2026"
 const HEADER := "The Gatehouse: building instructions"
 const FOOTER := "© 2026 Probe Builds. Not for resale."
@@ -817,15 +820,21 @@ func _style_to_other() -> void:
 	(dialog.get("_keep") as Button).pressed.emit()
 	await _frames(2)
 	var style: Dictionary = BookletSheet.style(STYLE)
-	_check("Keep as a style: \"%s\" kept with every field and the cover's picture (%d fields, %s)" % [
-		STYLE, style.size(), "its picture" if style.has("cover_picture_data") else "no picture"],
-		BookletSheet.styles().has(STYLE) and style.has("cover_picture_data") and style.has("footer"))
+	_check("Keep as a style: \"%s\" kept with the look and the cover's picture, not the title or the line under it (%d fields, %s: %s)" % [
+		STYLE, style.size(), "its picture" if style.has("cover_picture_data") else "no picture",
+		str(style.keys())], BookletSheet.styles().has(STYLE) and style.has("cover_picture_data")
+		and style.has("footer") and style.has("cover_line") and not style.has("title")
+		and not style.has("subtitle"))
 	dialog.hide()
 	var path: String = _out.path_join("booklet3.mpd")
 	_write(path, B3.MODEL)
 	await _open(path, 18)
 	_check("booklet3's model opens on the booklet's own page (%s)" % str(_sheet().said()),
 		_sheet().said().is_empty())
+	# Its own title and the line under it, over MCP, before the style.
+	await _tools.run("page_setup", {"title": OTHER_TITLE, "subtitle": OTHER_SUBTITLE})
+	_check("...given its own title and line under it (%s / %s)" % [_field("title"), _field("subtitle")],
+		_field("title") == OTHER_TITLE and _field("subtitle") == OTHER_SUBTITLE)
 	var actions: int = 0
 	if _shell.run("booklet_page_setup"):
 		actions += 1
@@ -840,8 +849,16 @@ func _style_to_other() -> void:
 	dialog.hide()
 	var now: Dictionary = _sheet().said()
 	var cover: String = str(now.get("cover_picture", ""))
-	_check("in %d actions (Page setup…, the style): every field the gatehouse's (%s)" % [actions,
-		str(now).left(200)], actions == 2 and str(now) == str(kept))
+	var look: Dictionary = now.duplicate()
+	var wanted: Dictionary = kept.duplicate()
+	for own: String in ["title", "subtitle"]:
+		look.erase(own)
+		wanted.erase(own)
+	_check("in %d actions (Page setup…, the style): every field but the title and the line under it the gatehouse's (%s)"
+		% [actions, str(look).left(200)], actions == 2 and str(look) == str(wanted)
+		and wanted.has("cover_line") and wanted.has("footer"))
+	_check("...its own title and line under it unchanged (%s / %s)" % [now.get("title"), now.get("subtitle")],
+		now.get("title") == OTHER_TITLE and now.get("subtitle") == OTHER_SUBTITLE)
 	_check("...and its cover's picture, byte for byte",
 		not cover.is_empty() and str(BookletLooks.images(_world).get(cover, "")) == str(pictures.get(cover, "-")))
 	var printed: Dictionary = await _printed("other")
@@ -852,8 +869,9 @@ func _style_to_other() -> void:
 	for number: int in range(1, int(printed["pages"]) + 1):
 		if not _pdf_words(printed, number).contains(FOOTER):
 			without.append(number)
-	_check("...its booklet's cover says its title and line, and the footer is on all %d pages (%s without)"
-		% [int(printed["pages"]), str(without)], first.contains(TITLE) and first.contains(LINE)
-		and without.is_empty())
+	_check("...its booklet's cover says its own title and line under it, not the gatehouse's, the style's line of words, and the footer is on all %d pages (%s without)"
+		% [int(printed["pages"]), str(without)], first.contains(OTHER_TITLE)
+		and first.contains(OTHER_SUBTITLE) and not first.contains(TITLE) and not first.contains(SUBTITLE)
+		and first.contains(LINE) and without.is_empty())
 	_numbers_and_outline(printed)
 	_pdf_check(printed, "booklet3's booklet")

@@ -3260,6 +3260,9 @@ func page_setup(fields: Dictionary) -> String:
 			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles)]) \
 				if not styles.is_empty() else "no page style is kept yet: save_as= keeps this page as one"
 		sheet = BookletSheet.new()
+		# A style is a look: the model's own title and the line under it stay.
+		for field: String in BookletSheet.OWN:
+			sheet.set(field, was.get(field))
 		style_lost = bool(style.get("picture_lost", false)) or bool(style.get("cover_lost", false))
 		for kept: Array in [["picture", "picture_data"], ["cover_picture", "cover_picture_data"]]:
 			if style.has(kept[1]) and style.has(kept[0]):

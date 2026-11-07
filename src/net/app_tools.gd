@@ -202,7 +202,8 @@ name, style= gives a kept one to this model, remove_style= takes one away.
  - page_setup's title=, subtitle=, cover_line= and cover_picture_data= make \
 the cover the designer's own; header= and footer= go on every page; \
 box_frame=, box_fill=, box_corners=, number_colour= and outline_colour= are \
-the booklet's colours. A style keeps them all.
+the booklet's colours. A style keeps them all but the model's own title= \
+and subtitle=.
  - lay_flex: a hose, a pneumatic tube, a flexible axle, a string or a \
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.
@@ -516,7 +517,8 @@ func definitions() -> Array:
 				+ "model drawn again). header= and footer= words on every page (\"\" none). "
 				+ "box_frame=, box_fill= and box_corners= (mm) the parts box, number_colour= "
 				+ "the step numbers, outline_colour= the band round the new parts; a colour "
-				+ "\"usual\" is the booklet's own. A style keeps all of these."),
+				+ "\"usual\" is the booklet's own. A style keeps all of these but title= and "
+				+ "subtitle=, which stay each model's own: style= never changes them."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"size": {"type": "string", "enum": ["booklet", "A4", "letter", "A5"]},
 				"orientation": {"type": "string", "enum": ["portrait", "landscape"]},
@@ -528,7 +530,7 @@ func definitions() -> Array:
 				"number": {"type": "number", "description": "mm, 4 to 20"},
 				"parts": {"type": "number", "description": "0.5 to 2"},
 				"usual": {"type": "boolean"},
-				"style": {"type": "string", "description": "a style kept by save_as=, given whole"},
+				"style": {"type": "string", "description": "a style kept by save_as=, given whole but the model's own title and subtitle"},
 				"save_as": {"type": "string", "description": "keep the page as a style by this name"},
 				"remove_style": {"type": "string", "description": "a style kept by save_as=, taken away"},
 				# booklook: the cover, the words on every page, the booklet's colours.

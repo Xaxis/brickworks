@@ -411,7 +411,8 @@ func _apply(fields: Dictionary) -> void:
 	fill()
 
 
-## A style chosen: the model's page set up as it was kept, whole.
+## A style chosen: the model's page set up as it was kept, but for the
+## model's own title and the line under it (BookletSheet.OWN).
 func _pick_style(index: int) -> void:
 	if _filling or index <= 0:
 		return

@@ -2111,8 +2111,10 @@ picture the assistant is shown.
   COVER_LINE|HEADER|FOOTER words` line each, which older builds read past
   and keep raw; words are one line of at most 120 characters, control
   characters made spaces. Nothing set writes nothing new: the booklet's own
-  HTML is byte for byte what it was. A style carries every field and the
-  cover's picture (`cover_file` beside `picture_file`).
+  HTML is byte for byte what it was. A style is the look: it carries every
+  field and the cover's picture (`cover_file` beside `picture_file`) but
+  the model's own title and subtitle (`BookletSheet.OWN`), which it never
+  keeps and giving it never changes.
   `booklook_probe` (windowed, `gpu`): the gatehouse's booklet first as its
   own (with `--against=` a run on the commit before: its HTML the same but
   its pictures, every PNG page and every page of its PDF as `pdftoppm -r
@@ -2127,8 +2129,10 @@ picture the assistant is shown.
   corner, 0 px of the old frame or fill; every number in its colour and
   the new parts outlined in theirs with 0 px of the old orange;
   `booklet_pdf_check.py` passing; a save and reopen and one undo; a style
-  kept and given to booklet3's model in 2 actions, every field and the
-  picture's bytes the same. Its pictures are kept in `--into=`.
+  kept with no title or subtitle, then given to booklet3's model (its own
+  title and subtitle set first) in 2 actions: every other field and the
+  picture's bytes the same, its title and subtitle unchanged and on its
+  cover, not the gatehouse's. Its pictures are kept in `--into=`.
   `--dialog-only` with `PROBE_SIZE=1400x900` checks the tabs alone.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set

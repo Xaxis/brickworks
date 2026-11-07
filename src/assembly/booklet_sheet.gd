@@ -583,13 +583,27 @@ static func styles() -> Dictionary:
 	var out: Dictionary = {}
 	var old: Variant = _old_styles()
 	for name: String in (old as Dictionary if old is Dictionary else {}):
-		out[name] = (old[name][0] as Dictionary).duplicate()
+		out[name] = _look((old[name][0] as Dictionary).duplicate())
 	for record: Dictionary in _style_records():
-		out[str(record["name"])] = (record["page"] as Dictionary).duplicate()
+		out[str(record["name"])] = _look((record["page"] as Dictionary).duplicate())
 	return out
 
 
-## The style [param name] as it is given to a model: its said fields, and
+## The cover's words that are the model's own: a style is a look, so it
+## never keeps them and giving one never changes them, and a model with
+## none shows its own name (booklook, the lead's call, 2026-11-07).
+const OWN: Array[String] = ["title", "subtitle"]
+
+
+## [param page]'s said fields without the model's own words ([constant OWN]).
+static func _look(page: Dictionary) -> Dictionary:
+	for field: String in OWN:
+		page.erase(field)
+	return page
+
+
+## The style [param name] as it is given to a model: its said fields but the
+## model's own words ([constant OWN]), and
 ## with a picture its bytes as "picture_data" (base64); "picture_lost" true
 ## when its picture could not be read; the cover's picture the same, as
 ## "cover_picture_data" and "cover_lost". {} when there is no such style.
@@ -601,11 +615,11 @@ static func style(name: String) -> Dictionary:
 		if not old is Dictionary or not (old as Dictionary).has(name.strip_edges()):
 			return {}
 		var kept: Array = old[name.strip_edges()]
-		var page: Dictionary = (kept[0] as Dictionary).duplicate()
+		var page: Dictionary = _look((kept[0] as Dictionary).duplicate())
 		if not str(kept[1]).is_empty():
 			page["picture_data"] = kept[1]
 		return page
-	var out: Dictionary = (record["page"] as Dictionary).duplicate()
+	var out: Dictionary = _look((record["page"] as Dictionary).duplicate())
 	for kept: Array in [["picture_file", "picture_data", "picture_lost"],
 			["cover_file", "cover_picture_data", "cover_lost"]]:
 		var picture_file: String = str(record.get(kept[0], ""))
@@ -619,7 +633,8 @@ static func style(name: String) -> Dictionary:
 	return out
 
 
-## [param sheet] kept as the style [param name], its picture's bytes
+## [param sheet]'s look kept as the style [param name] (not the model's own
+## words, [constant OWN]), its picture's bytes
 ## [param picture_data] with it (base64) so another model can have it too:
 ## one small file for the style, the picture once beside the others by
 ## what it is, so styles sharing a picture keep it once. A style of that
@@ -632,7 +647,7 @@ static func save_style(name: String, sheet: BookletSheet, picture_data: String,
 	if name.is_empty():
 		return "a style needs a name"
 	_move_old_styles()
-	var failed: String = _write_style(name, sheet.said(), picture_data if not sheet.picture.is_empty() else "",
+	var failed: String = _write_style(name, _look(sheet.said()), picture_data if not sheet.picture.is_empty() else "",
 		cover_data if not sheet.cover_picture.is_empty() else "")
 	_drop_unshown_pictures()
 	return failed
