@@ -144,6 +144,9 @@ def test_only_the_scripts_the_first_screen_compiles_stay_with_the_engine() -> No
     stay; Later's classes, and what only they name, go with the data pack."""
     later = pck_split.later_scripts()
     assert "src/main.gd" not in later and "src/ui/parts_bin.gd" not in later
+    # The main loop is made before the main scene loads: in the data pack it
+    # is not there yet, and the web app never starts (BrickworksLoop).
+    assert pck_split.where("src/boot/brickworks_loop.gdc", later) == "index.pck"
     assert {"src/ai/assistant.gd", "src/ui/chat_panel.gd", "src/ai/shapes.gd"} <= later
     assert pck_split.where("src/main.gdc", later) == "index.pck"
     assert pck_split.where("src/ai/assistant.gdc", later) == "index.data.pck"
