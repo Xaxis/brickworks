@@ -12,7 +12,7 @@
 // Everything is put on the page as text, in the page's language (say: a
 // person's page in German at /de/u/<you>).
 import { call, signedIn } from "/account.js";
-import { counted, number as said, photoSrc, say } from "/card.js";
+import { counted, number as said, say, setPhoto, sharpPhotos } from "/card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -74,12 +74,12 @@ function builders(model) {
   strip.setAttribute("aria-label", say("Builds of {name}", { name: model.name }));
   for (const one of photos) {
     const picture = document.createElement("img");
-    picture.src = photoSrc(one.id, { card: true });
     picture.alt = say("A build of {name}", { name: model.name });
     picture.width = Number(one.width) || 1;
     picture.height = Number(one.height) || 1;
     picture.loading = "lazy";
     picture.decoding = "async";
+    setPhoto(picture, one, "builders");
     const who = one.by && HANDLE.test(String(one.by.handle)) ? link(`${AT}/u/${one.by.handle}`, String(one.by.name))
       : make("span", "", say("A builder with no profile"));
     const figure = make("figure", "build", link(`${AT}/m/${model.id}#photo-${one.id}`, picture),
@@ -181,13 +181,15 @@ export async function showDesigns(box, { handle = null, heading = say("Your mode
   const list = make("ol", "design-rows", ...models.map(row));
   box.replaceChildren(title, only, totals, counting, list);
   box.hidden = false;
-  // The pictures on the first screen asked for at once: a lazy one there
-  // came last (the first row at 1280 and 1920, site277). Which they are is
-  // known once they are laid out.
-  for (const img of list.querySelectorAll("img")) {
+  // The models' pictures on the first screen asked for at once: a lazy one
+  // there came last (the first row at 1280 and 1920, site277). Which they
+  // are is known once they are laid out. The builds' photos stay lazy, so
+  // each is measured as it is drawn (web/card.js photoPicture).
+  for (const img of list.querySelectorAll(".pic img")) {
     const at = img.getBoundingClientRect();
     if (at.top < innerHeight && at.bottom > 0) img.loading = "eager";
   }
+  sharpPhotos(list);
   return said("ready");
 }
 

@@ -43,13 +43,13 @@
         "tests/test_cadtask.py",
         "tests/test_collection.py",
         "tests/test_designers.py",
+        "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
         "tests/test_model_page.py",
         "tests/test_refresh_catalogue.py",
-        "tests/test_release.py",
-        "tests/test_saved_models_plan.py"
+        "tests/test_release.py"
       ]
     },
     {
@@ -112,6 +112,7 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
+        "tests/test_comment_mentions.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -181,7 +182,9 @@
       "entry": "api/otp.js",
       "reach": "curl -s -X POST https://brickworks.diy/api/otp -H 'content-type: application/json' -d '{\"email\":\"not-an-email\"}'",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_comment_mentions.py"
+      ]
     },
     {
       "id": "api:POST /api/plans",
@@ -4041,6 +4044,7 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
+        "tests/test_comment_mentions.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -4122,6 +4126,7 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
+        "tests/test_comment_mentions.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -5074,6 +5079,7 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
+        "tests/test_comment_mentions.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -5163,6 +5169,7 @@
       "reach": "https://brickworks.diy/m/<id>, /u/<handle>, /c/<id>   (Report it opens a dialog; /api/people?op=report)",
       "area": "web",
       "tests": [
+        "tests/test_comment_mentions.py",
         "tests/test_feedback.py"
       ]
     },
@@ -5821,6 +5828,7 @@
       "reach": "https://brickworks.diy/feed   (feed.js: signed in, what the people you follow made, newest first, each a post with its picture: the model's card or the photo; opening it clears its count; Notifications a tab beside it; signed out, following nobody or nothing new: Latest on Brickworks; designers to follow beside it)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_builds.py",
         "tests/test_site_lang.py"
       ]
     },

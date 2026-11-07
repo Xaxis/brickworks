@@ -746,7 +746,13 @@ plan with Claude as the client.
   caller's. Rows (and the publish log) go with the account. Its files cannot
   (Supabase refuses to delete storage objects from SQL), so Vercel's cron calls
   `/api/share/sweep` (`op=sweep`) at 04:17 UTC daily with `CRON_SECRET`, and it
-  removes every file an hour old or more that no published row owns.
+  removes every file an hour old or more that no published row owns, and
+  every `build-photos` file (a photo or its card copy) whose id has no row
+  or a removed one (`api/_builds.js` `sweepPhotos`, a failure logged,
+  `photos` in its answer). `?only=<id,...>&photos=<id,...>` scopes it to
+  those models' and photos' files alone (views, `act_log` and uploads left
+  for the cron): a hand-run check always scopes it, never the whole
+  sweep.
   **The gallery** (2026-10-13, `supabase/gallery.sql`, applied to the live
   project that day with `tools/apply_sql.mjs`: columns `listed` boolean not
   null default false, `listed_at`, `remixed_from` → `shared_models(id)` on
@@ -2296,8 +2302,16 @@ plan with Claude as the client.
   named, then anybody whose profile may be named from `GET
   /api/people?op=people_find&q=P` (`api/people.js` `peopleFound` /
   `peopleRanked`: a handle typed whole, one it starts, a name, a word of a
-  name; shown in public only; at most 6; CDN 30 s), asked 150 ms after
-  typing pauses; arrows, Enter or Tab, Escape closes it alone). Before the file a comment names nobody and posts as
+  name; at most 6; signed in only (401), each look counted by `may_act`
+  `people_find` (600 an hour, 3,000 a day), `q` lower-cased and cut to 23
+  characters, under 2 answered [] uncounted; the handles it starts asked
+  first (8), the names beside them (40), so a handle typed whole is never
+  crowded out; only a profile `shownPublicly`, `trust_may_go_public` and,
+  unless `tests=1`, not `trust_is_test_account` (`api/_trust.js`
+  `mayBeNamed`, as `comment_mentions.sql` names nobody else); `private,
+  no-store`; the stand-in's mirrors it), asked 150 ms after typing pauses
+  from 2 characters (`tests=1` passed on when the page has it); arrows,
+  Enter or Tab, Escape closes it alone). Before the file a comment names nobody and posts as
   ever. Dry run: `PG_MODULE=<pg>/lib/index.js node --env-file=.env
   tools/apply_sql.mjs supabase/achievements.sql
   --again=supabase/challenge_notices.sql,supabase/comment_mentions.sql --dry
@@ -2309,7 +2323,9 @@ plan with Claude as the client.
   typing, Escape, Enter), the reply's answer naming her, "@mi" in a new
   comment offering Mika (nowhere on the page) and Enter putting him in, a
   mention in Notifications at 390 px dark. With `--url`, throwaway Pia, Max
-  and Lia (`?op=people_find` finds Max by his handle):
+  and Lia (`?op=people_find` refused signed out, no `bwm-` test account
+  offered without `tests=1`, one letter finds nobody, with `tests=1` finds
+  Max by his handle):
   Lia names Max with the picker and a handle nobody has; Max is told (390
   dark), Pia hears a comment and no mention, Lia's reply in their thread
   tells Max once, as a reply. Before the file it proves the comment posts
@@ -2322,8 +2338,9 @@ plan with Claude as the client.
   name has every word (`?q=`), no filters but a line saying what a build
   is. Everybody's
   photos of real builds as `article.model.build-card[data-id][data-model]`:
-  the photo's copy at most 480 px wide (`/api/people?op=photo_file&id=X&size=card`,
-  `web/card.js` `photoSrc`, cut to 4:3), `a.open` to
+  the photo's copy (`/api/people?op=photo_file&id=X&size=card`, `web/card.js`
+  `photoAttrs` "card": the copy and the whole photo in a `srcset`, cut to
+  4:3), `a.open` to
   `/m/<model>#photo-<id>`, `a.who` "Built by <name>" to `/u/<handle>` (a
   span "Built by a builder" with no profile shown), `time.when`, and
   `q.said`. Its name line keeps clear of the designer's link under it
@@ -2346,22 +2363,48 @@ plan with Claude as the client.
 - `a build photo's card copy` (`api/_photo.js` `cardOf` / `cardPhoto`,
   `api/_builds.js` `photoName` / `cardName` / `cardFile`, `api/people.js`
   `?op=photo_file&id=X&size=card`): each photo kept as `build-photos/<id>.jpg`
-  (1,600 px long side at most) and `<id>.card.jpg` beside it, at most 480
-  px wide, its shape kept, never larger, made from the kept pixels when it
-  is posted, or the first time a card asks for one posted before, and
-  never outliving it (made as the photo is taken out or its account's files
-  deleted, the copy is deleted too: `tests/test_gallery_builds.py`
-  `test_a_copy_is_made_once_and_never_outlives_its_photo`); served
-  under the same rules as the photo (hidden, taken out, its builder not
-  shown: 404). Taking a photo out, a failed keep, and an account's deletion
-  (`api/account.js`, by name) delete both. The cards that show it small ask
-  for the copy: the Builds tab, a model's strip thumbs and its Builds
-  figures (`api/share.js` `mediaStrip` / `buildFigure`; a thumb's
-  `data-picture`, the picture's place, stays the whole photo), a profile's
-  builds (`api/people.js` `stripHtml`, `web/profile.js`), Your models'
-  builders (`web/designs.js`). `tests/test_gallery_builds.py`,
+  (1,600 px long side at most) and `<id>.card.jpg` beside it, covering a
+  480 x 360 card (`web/card.js` `cardSize`: 1,600 x 1,200 gives 480 x 360,
+  1,600 x 840 gives 686 x 360, 1,200 x 1,600 gives 480 x 640; never
+  larger than the photo), made from the kept pixels when it is posted, or
+  the first time a card asks for one posted before or of another size
+  (`cardFile` remakes it), and never outliving it: taking a photo out, a
+  failed keep, and an account's deletion (`api/account.js`, by name)
+  delete both, every failure logged, and the daily sweep takes a
+  `build-photos` file whose id has no row or a removed one, an hour old
+  or more (`api/_builds.js` `photosGone` / `sweepPhotos`;
+  `tests/test_gallery_builds.py`
+  `test_a_copy_is_made_once_and_never_outlives_its_photo`,
+  `test_the_sweep_deletes_a_photos_files_once_it_is_gone`). Served under
+  the same rules as the photo (hidden, taken out, its builder not shown:
+  404). Every JSON that names a photo says `url` and `card`
+  (`photoUrls`). Every place a photo is drawn offers both
+  (`web/card.js` `PHOTO_PLACES` / `photoPicture` / `photoAttrs` /
+  `setPhoto`: `srcset "<copy> Nw, <whole> Mw"`, each described by its
+  width once cut to the place's shape, `sizes` the place's box, `auto,`
+  first only on a lazy image, since Chrome takes `auto` on an eager one as
+  100vw), and `sharpPhotos` (a ResizeObserver) gives an image the whole
+  photo when the copy would be drawn larger than its pixels (Chrome keeps
+  the smaller of two up to their geometric mean): the Builds tab's cards,
+  a model's strip thumbs and its Builds figures (`api/share.js`
+  `mediaStrip` / `buildFigure`, `web/model-page.js`; a thumb's
+  `data-picture` stays the whole photo), a profile's Builds tab
+  (`api/people.js` `stripHtml` with `web/photos.js`, `web/profile.js`),
+  the feed's photos and Latest (`web/feed.js`), Your models' builders
+  (`web/designs.js`). `tests/test_gallery_builds.py`
+  `test_every_place_a_photo_is_drawn_offers_the_copy_and_the_whole`,
   `tests/test_account_erase.py`; `builds_flow` checks the copy kept, clean
-  and taken out with its photo.
+  and taken out with its photo; `photo_sizes_flow` how large each is
+  drawn.
+- `photo sizes browser flow` (`tools/web/photo_sizes_flow.mjs`, stand-in
+  only, `node tools/web/photo_sizes_flow.mjs --out=DIR`, about 2 min): at
+  390 px 3x and 1280 px 2x the Builds tab, a profile's Builds tab, a
+  model's page, the feed's Latest (signed out), the feed's photos and Your
+  models' builders (signed in as Sam): every photo's real pixels (its
+  `currentSrc` decoded apart) against its box, none drawn larger than its
+  picture unless that is the whole photo; at 1280 px 1x the Builds cards
+  and a model's thumbs still take the copy; no page error. streview
+  (2026-11-07) measured 1.5 to 2.26 before the fix.
 - `gallery builds browser flow` (`tools/web/gallery_builds_flow.mjs`,
   preview check `gallery_builds`): needs `--url` (a preview or a local
   relay; it seeds the live tables). Throwaway Ann lists a model; Bo, Cy and
@@ -2371,8 +2414,11 @@ plan with Claude as the client.
   each card's photo the copy, 480 x 360 of the 1,600 x 1,200 posted, kept
   beside it in storage; the model link opens the photo on its page (its
   strip thumb the copy, its picture the whole photo); a copy taken away is
-  made again by the first card to ask; the empty tab (its answer emptied
-  in the browser); Builds before Collections on `/gallery` and
+  made again by the first card to ask; with `CRON_SECRET` the sweep
+  asked of two photos alone (`?only=<none>&photos=<orphan>,<live>`) takes
+  a copy whose photo has no row and leaves the live photo's two files; the
+  empty tab (its answer emptied in the browser); Builds before Collections
+  on `/gallery` and
   `/library`. Accounts deleted as a person deletes theirs (`?op=delete`),
   and no photo's file nor copy is left.
 - `more like a designer` (`api/_alike.js` `closestDesigners` / `alikeSaid` /

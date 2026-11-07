@@ -89,9 +89,10 @@
 //                                 them and may (api/_follows.js)
 //   POST ?op=follow               (session) {handle, on}: follow, or let go
 //   GET  ?op=following&handle=X   whom X follows, when they chose to show it
-//   GET  ?op=people_find&q=P      up to six profiles that may be named in a
-//                                 comment whose handle or name starts with
-//                                 P, for @ in a comment's box (peopleFound)
+//   GET  ?op=people_find&q=P      (session) up to six profiles that may be
+//                                 named in a comment whose handle or name
+//                                 starts with P (2 to 23 characters), for @
+//                                 in a comment's box (peopleFound); counted
 //   GET  ?op=alike&handle=X       up to six designers whose work is closest
 //                                 to X's, to follow; with the session never
 //                                 the caller nor whom they follow, and
@@ -198,7 +199,7 @@ import {
   summary, testsAsked, visitorKey,
 } from "./_directory.js";
 import { handleTrouble, namesTrouble } from "./_names.js";
-import { publicTrouble, sendDigest, shownPublicly } from "./_trust.js";
+import { mayBeNamed, publicTrouble, sendDigest, shownPublicly } from "./_trust.js";
 import { PICTURE_CACHE } from "./_photo.js";
 import {
   BuildRefusal, MAX_WORDS, galleryBuilds, hidePhoto, keepPhoto, photoFile, photoRow, photosWhere, reportPhoto,
@@ -226,7 +227,7 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoSrc, shareSheetHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml } from "./_card.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
@@ -244,7 +245,7 @@ export const MOST_FAVOURITES = 2000;
 // How often a person may do each thing: [an hour, a day].
 export const LIMITS = { profile: [20, 60], like: [300, 2000], favourite: [300, 2000],
   collection: [20, 60], collect: [300, 3000], report: [6, 20], photo: [12, 40], photo_hide: [60, 300],
-  showcase: [20, 60], avatar: [12, 40], likes_choice: [20, 60] };
+  showcase: [20, 60], avatar: [12, 40], likes_choice: [20, 60], people_find: [600, 3000] };
 // What a profile shows besides its name (supabase/profile_shows.sql).
 export const MOST_LINKS = 2;
 export const MOST_PINS = 3;
@@ -928,7 +929,7 @@ async function knock(request, response) {
 /// they show, if they made a profile.
 export function photoSaid(origin, photo) {
   return { id: photo.id, model: photo.model, words: photo.words, width: photo.width, height: photo.height,
-    at: photo.at, by: photo.by, url: `${origin}/api/people?op=photo_file&id=${photo.id}`,
+    at: photo.at, by: photo.by, ...photoUrls(origin, photo.id),
     page: `${origin}/m/${photo.model}#photo-${photo.id}`, ...(photo.hidden ? { hidden: true } : {}) };
 }
 
@@ -1010,8 +1011,16 @@ async function alike(request, response) {
 // first (web/model-page.js pickMentions), then anybody whose profile may be
 // named, as Behance and Sketchfab offer, found by what follows the @.
 
-/// What may follow an @: a handle's letters, digits and hyphens.
-export const NAMED = /^[a-z0-9-]{1,23}$/;
+/// What may follow an @ to be looked for beyond the page: 2 to 23 of a
+/// handle's letters, digits and hyphens. One letter would list a good part
+/// of everybody, a page of 40 at a time.
+export const NAMED = /^[a-z0-9-]{2,23}$/;
+/// [q] as people_find looks for it, cut to a handle's 23 characters and in
+/// lower case; null for one it does not look for.
+export function namedOf(q) {
+  const asked = String(q || "").toLowerCase().slice(0, 23);
+  return NAMED.test(asked) ? asked : null;
+}
 /// How many people the box offers.
 export const NAMED_MOST = 6;
 
@@ -1034,32 +1043,44 @@ export function peopleRanked(rows, q) {
     .map(({ one }) => one);
 }
 
-/// The profiles [q] may mean that may be named (shown in public: 13 or
-/// over, not taken out; [shown] asks, api/_trust.js shownPublicly), at most
-/// NAMED_MOST: [{handle, name}].
-export async function peopleFound(q, shown) {
-  const asked = String(q || "").toLowerCase();
-  if (!NAMED.test(asked)) return [];
-  const any = `(handle.like.${asked}*,name.ilike.${asked}*,name.ilike."* ${asked}*")`;
-  const rows = await db(`people?or=${encodeURIComponent(any)}&select=account,handle,name&order=handle&limit=40`);
+/// The profiles [q] may mean that may be named, at most NAMED_MOST:
+/// [{handle, name}]. [may] says whether an account may be (api/_trust.js
+/// mayBeNamed). The handles it starts are asked apart and first, eight at
+/// most, so a handle typed whole is never crowded out by names that sort
+/// before it; then the names.
+export async function peopleFound(q, may) {
+  const asked = namedOf(q);
+  if (!asked) return [];
+  const names = `(name.ilike.${asked}*,name.ilike."* ${asked}*")`;
+  const [handles, named] = await Promise.all([
+    db(`people?handle=like.${asked}*&select=account,handle,name&order=handle&limit=8`),
+    db(`people?or=${encodeURIComponent(names)}&select=account,handle,name&order=handle&limit=40`),
+  ]);
+  const rows = [...handles, ...named.filter((one) => !handles.some((own) => own.account === one.account))];
   const out = [];
-  // In order, a few at a time, asked together, until six may be shown.
+  // In order, a few at a time, asked together, until six may be named.
   const waiting = peopleRanked(rows, asked);
   while (out.length < NAMED_MOST && waiting.length) {
     const batch = waiting.splice(0, NAMED_MOST - out.length + 2);
-    const may = await Promise.all(batch.map((one) => shown(one.account)));
+    const allowed = await Promise.all(batch.map((one) => may(one.account)));
     batch.forEach((one, i) => {
-      if (may[i] && out.length < NAMED_MOST) out.push({ handle: one.handle, name: one.name });
+      if (allowed[i] && out.length < NAMED_MOST) out.push({ handle: one.handle, name: one.name });
     });
   }
   return out;
 }
 
-/// GET ?op=people_find&q=P: the same for everybody, so kept briefly by the CDN.
+/// GET ?op=people_find&q=P: asked by somebody signed in, each look counted
+/// (a page of profiles is not for anybody to read through), and each answer
+/// theirs alone; a probe's (tests=1) offers test accounts too.
 async function peopleFind(request, response) {
-  const q = String(request.query?.q || "").slice(0, 23);
-  response.setHeader("Cache-Control", SHARED_CACHE);
-  return response.status(200).json({ q, people: await peopleFound(q, shownPublicly) });
+  response.setHeader("Cache-Control", "private, no-store");
+  const who = await signedIn(request);
+  const tests = testsAsked(request.query);
+  const q = String(request.query?.q || "").toLowerCase().slice(0, 23);
+  if (!namedOf(q)) return response.status(200).json({ q, people: [] });
+  await counted(who, "people_find");
+  return response.status(200).json({ q, people: await peopleFound(q, (account) => mayBeNamed(account, { tests })) });
 }
 
 /// The gallery's Builds tab, page N: the same for everybody, so kept briefly
@@ -1136,7 +1157,7 @@ function html(response, status, body, { tests = false } = {}) {
 /// A page's <head>; in a language, [lang], with [words] for its scripts
 /// (web/card.js say), and [alternates], the links to its copies.
 function head(origin, { title, about, url, image, robots = "", mine = false, share = false, paged = "", lang = "en", words = null,
-  alternates = "" }) {
+  alternates = "", photos = false }) {
   const scriptWords = words ? `<script type="application/json" id="site-words">${JSON.stringify(words).replace(/</g, "\\u003c")}</script>\n` : "";
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -1162,7 +1183,8 @@ ${paged}${scriptWords}${siteChrome(lang).head}
 <script src="/follow.js" type="module"></script>${paged ? `
 <script src="/pager.js" type="module"></script>` : ""}${mine ? `
 <script src="/designs.js" type="module"></script>` : ""}${mine || share ? `
-<script src="/person.js" type="module"></script>` : ""}`;
+<script src="/person.js" type="module"></script>` : ""}${photos ? `
+<script src="/photos.js" type="module"></script>` : ""}`;
 }
 
 /// A page of the directory. [cards]: the models its cards are drawn for,
@@ -1173,13 +1195,13 @@ ${paged}${scriptWords}${siteChrome(lang).head}
 /// In German, French or Spanish ([lang]) as a person's page is (/de/u/X),
 /// with that copy's header and footer and [words] for its scripts.
 function page(origin, { title, about, url, image, robots, main, mine = false, share = false, cards = [], paged = "", lang = "en",
-  words = null, alternates = "" }) {
+  words = null, alternates = "", photos = false }) {
   const { header, footer } = siteChrome(lang);
   const quiet = quietMarks(cards.map(marksOf));
   return `<!doctype html>
 <html lang="${lang}">
 <head>
-${head(origin, { title, about, url, image, robots, mine, share, paged, lang, words, alternates })}
+${head(origin, { title, about, url, image, robots, mine, share, paged, lang, words, alternates, photos })}
 </head>
 <body${quiet ? ` data-quiet="${quiet}"` : ""}>
 <a class="skip" href="#main">${asText(say("Skip to content"))}</a>
@@ -1286,7 +1308,7 @@ async function levelsOf(account, tests) {
 function stripHtml(photos, { by = false } = {}) {
   const at = langAt();
   return photos.map((one) => `<figure class="build" id="photo-${escapeHtml(one.id)}"><a href="${at}/m/${escapeHtml(one.model)}#photo-${escapeHtml(one.id)}">`
-    + `<img src="${escapeHtml(photoSrc(one.id, { card: true }))}" alt="${escapeHtml(say("A build of {name}", { name: one.model_name }))}" `
+    + `<img ${photoAttrs(one, "columns")} alt="${escapeHtml(say("A build of {name}", { name: one.model_name }))}" `
     + `width="${Number(one.width) || 1}" height="${Number(one.height) || 1}" loading="lazy" decoding="async"></a>`
     + `<figcaption>${one.words ? `<q>${escapeHtml(one.words)}</q>` : ""}<a href="${at}/m/${escapeHtml(one.model)}">${escapeHtml(one.model_name)}</a>`
     + `${by ? sayHtml(", built by {who}", { who: one.by ? `<a href="${at}/u/${escapeHtml(one.by.handle)}">${escapeHtml(one.by.name)}</a>`
@@ -1552,7 +1574,7 @@ ${shareSheetHtml({ url, name: person.name, text: say("{name} on Brickworks", { n
     title: earned ? say("{name} (@{handle}) — a designer in Brickworks", { name: person.name, handle: person.handle })
       : say("{name} (@{handle}) — models built in Brickworks", { name: person.name, handle: person.handle }),
     about: person.bio ? summary(person.bio) : told,
-    url, image: picture, main, mine: true, cards: drawn, paged, lang, words, alternates,
+    url, image: picture, main, mine: true, cards: drawn, paged, lang, words, alternates, photos: tab === "builds",
   });
 }
 

@@ -36,7 +36,8 @@
 
 import { createHmac, randomBytes } from "node:crypto";
 import { db, orUnknown, reach } from "./_db.js";
-import { cardPhoto, cleanPhoto, MAX_PHOTO_BYTES, PhotoTrouble, TYPES } from "./_photo.js";
+import { cardSize, photoUrls } from "./_card.js";
+import { cardPhoto, cleanPhoto, jpegSize, MAX_PHOTO_BYTES, PhotoTrouble, TYPES } from "./_photo.js";
 
 export const UPLOADS = "build-photo-uploads";
 export const PHOTOS = "build-photos";
@@ -168,6 +169,65 @@ async function signUpload(name) {
   return /^https?:\/\//.test(url) ? url : `${project()}/storage/v1${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
+// ---------------------------------------------------------------------------
+// The daily sweep's share (api/share.js sweep): a photo's files outlive it
+// when a delete fails (keeping it, taking it out, a copy put as it went),
+// or when a deployment's code deleted only the photo and not its copy.
+
+/// A file of PHOTOS: a photo, or its copy for the cards.
+const PHOTO_FILE = /^([A-Za-z0-9]{10})\.(?:card\.)?jpg$/;
+
+/// Every file in PHOTOS: [{name, at}], a thousand a page.
+export async function photosLeft() {
+  const out = [];
+  for (let offset = 0; ; offset += 1000) {
+    const answer = await reach(`storage list ${PHOTOS}`, 20, `${project()}/storage/v1/object/list/${PHOTOS}`, {
+      method: "POST", headers: storageHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({ prefix: "", limit: 1000, offset, sortBy: { column: "name", order: "asc" } }) });
+    if (answer.status === 400 || answer.status === 404) return out;
+    if (!answer.ok) throw new Error(`storage list ${PHOTOS}: ${answer.status}`);
+    const page = await answer.json();
+    for (const file of page) if (file.id !== null) out.push({ name: file.name, at: file.updated_at || file.created_at });
+    if (page.length < 1000) return out;
+  }
+}
+
+/// Of [files] in PHOTOS ({name, at}), those to delete: a photo's or its
+/// copy's whose photo has no row in [rows] ({id, removed_at}) or was taken
+/// out. Never one younger than [age] ms at [now] (a photo's files are put a
+/// moment before its row), unless [only] names its photo; with [only],
+/// those photos' alone. Never a name no photo here has. Pure.
+export function photosGone(files, rows, { now, age, only = [] }) {
+  const live = new Set(rows.filter((row) => !row.removed_at).map((row) => row.id));
+  return files.filter((file) => {
+    const id = PHOTO_FILE.exec(file.name)?.[1];
+    if (!id || live.has(id)) return false;
+    return only.length ? only.includes(id) : now - Date.parse(file.at || 0) > age;
+  }).map((file) => file.name);
+}
+
+/// Delete the files photosGone names: {looked_at, removed}. Before
+/// builds.sql there are no rows to go by, and nothing is deleted.
+export async function sweepPhotos({ now, age, only = [] }) {
+  const files = (await photosLeft()).filter((file) => {
+    const id = PHOTO_FILE.exec(file.name)?.[1];
+    return id && (!only.length || only.includes(id));
+  });
+  const ids = [...new Set(files.map((file) => PHOTO_FILE.exec(file.name)[1]))];
+  const rows = [];
+  try {
+    for (let at = 0; at < ids.length; at += 100) {
+      rows.push(...await db(`build_photos?id=in.(${ids.slice(at, at + 100).join(",")})&select=id,removed_at`));
+    }
+  } catch (trouble) {
+    if (notYet(trouble)) return { looked_at: files.length, removed: [] };
+    throw trouble;
+  }
+  const gone = photosGone(files, rows, { now, age, only });
+  for (let at = 0; at < gone.length; at += 100) await deleteFiles(PHOTOS, gone.slice(at, at + 100));
+  return { looked_at: files.length, removed: gone };
+}
+
 /// Every file in the uploads bucket, by account folder: [{name, at}].
 export async function uploadsLeft() {
   const out = [];
@@ -236,21 +296,35 @@ async function photosBy(account, model) {
 
 /// The photo's file, for whoever may see it: null when it may not be shown
 /// (hidden, taken out, its model down, its builder not shown) or is gone.
-/// With [card], its copy at most 480 px wide.
+/// With [card], its copy for the cards (web/card.js cardSize).
 export async function photoFile(id, shown, { owner = false, card = false } = {}) {
   const row = await photoRow(id);
   if (!row || row.removed_at || (row.hidden_at && !owner)) return null;
   const models = await db(`shared_models?id=eq.${row.model}&published=is.true&barred=is.false&select=id`);
   if (!models.length || !(await shown(row.account))) return null;
-  return card ? cardFile(id) : getFile(PHOTOS, photoName(id));
+  return card ? cardFile(row) : getFile(PHOTOS, photoName(id));
 }
 
-/// A photo's copy for the cards: kept beside it, or made from it and kept
-/// the first time it is asked for (a photo kept before there were copies).
-/// The whole photo when no copy can be made of it; null when it is gone.
-async function cardFile(id) {
+/// Whether the JPEG [bytes] is [want] ({width, height}) in size.
+function sized(bytes, want) {
+  try {
+    const got = jpegSize(bytes);
+    return got.width === want.width && got.height === want.height;
+  } catch {
+    return false;
+  }
+}
+
+/// A photo's copy for the cards, of its [row]: kept beside it, or made from
+/// it and kept the first time it is asked for (a photo kept before there
+/// were copies, or one whose copy is not the size the pages describe it by,
+/// as a copy made before copies covered a 4:3 card). The whole photo when
+/// no copy can be made of it; null when it is gone.
+async function cardFile(row) {
+  const { id } = row;
   const kept = await getFile(PHOTOS, cardName(id));
-  if (kept) return kept;
+  const want = cardSize(row.width, row.height);
+  if (kept && (!want.width || sized(kept, want))) return kept;
   const whole = await getFile(PHOTOS, photoName(id));
   if (!whole) return null;
   let made;
@@ -268,7 +342,8 @@ async function cardFile(id) {
   // one gone (an account's rows go only after its files).
   const now = await photoRow(id);
   if (!now || now.removed_at || !(await stillThere(photoName(id)))) {
-    await deleteFiles(PHOTOS, [cardName(id)]).catch(() => {});
+    await deleteFiles(PHOTOS, [cardName(id)]).catch((trouble) => console.error(`builds: the card copy of ${id} outlived `
+      + `its photo and was not deleted (the daily sweep takes it): ${String(trouble?.message || trouble).slice(0, 120)}`));
     return null;
   }
   return made;
@@ -343,12 +418,14 @@ export async function keepPhoto(account, model, ticket, words, check) {
     const id = newPhotoId();
     await putFile(PHOTOS, photoName(id), made.bytes, "image/jpeg");
     // Its card's copy: if it does not go, the first card to ask makes it.
-    await putFile(PHOTOS, cardName(id), made.card.bytes, "image/jpeg").catch(() => {});
+    await putFile(PHOTOS, cardName(id), made.card.bytes, "image/jpeg").catch((trouble) =>
+      console.error(`builds: the card copy of ${id} was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`));
     try {
       await db("build_photos", { method: "POST", body: { id, model, account, words, width: made.width,
         height: made.height, bytes: made.bytes.length, was: made.was } });
     } catch (trouble) {
-      await deleteFiles(PHOTOS, [photoName(id), cardName(id)]).catch(() => {});
+      await deleteFiles(PHOTOS, [photoName(id), cardName(id)]).catch((gone) => console.error(`builds: the files of ${id}, `
+        + `not kept, were not deleted (the daily sweep takes them): ${String(gone?.message || gone).slice(0, 120)}`));
       if (/: 400$/.test(trouble.message)) {
         throw new BuildRefusal("that photo could not be kept: the most is three on a model, by accounts 13 or over", 422);
       }
@@ -470,7 +547,7 @@ export function buildsPage(rows, { origin = "", people = {}, unshown = [] }) {
     photos: shown.map((row) => ({ id: row.id, model: row.model, model_name: String(row.shared_models?.name || ""),
       words: lineOf(row.words), width: Number(row.width) || null, height: Number(row.height) || null, at: row.at,
       by: people[row.account] ? { handle: people[row.account].handle, name: people[row.account].name } : null,
-      url: `${origin}/api/people?op=photo_file&id=${row.id}`, page: `${origin}/m/${row.model}#photo-${row.id}` })),
+      ...photoUrls(origin, row.id), page: `${origin}/m/${row.model}#photo-${row.id}` })),
     more: rows.length > BUILDS_PAGE,
   };
 }

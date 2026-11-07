@@ -155,36 +155,151 @@ def test_the_api_and_the_page_go_together() -> None:
     assert '[mentions]="tools/web/mentions_flow.mjs --url=$P --out=$S/${TAG}_mentions"' in checks
 
 
+# A people table as PostgREST reads it for peopleFound: handle=like.X*, the
+# names' or=(...), order=handle and limit, with each account's trust as
+# supabase/trust.sql says it.
+PEOPLE_DB = r"""
+process.env.SUPABASE_URL = "https://db.test";
+process.env.SUPABASE_SECRET_KEY = "secret";
+process.env.SUPABASE_PUBLISHABLE_KEY = "publishable";
+const asked = [];
+const acts = [];
+let people = [];
+const person = (account) => people.find((one) => one.account === account) || {};
+const like = (text, pattern) => new RegExp(`^${pattern.split("*").map((part) => part.replace(/[.?+^$()[\]{}|\\-]/g, "\\$&")).join(".*")}$`, "i").test(text);
+const reply = (value) => new Response(JSON.stringify(value), { status: 200 });
+let token = "";
+const { webcrypto } = await import("node:crypto");
+const pair = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+const jwk = { ...(await webcrypto.subtle.exportKey("jwk", pair.publicKey)), kid: "mentions", alg: "ES256" };
+globalThis.fetch = async (input, init = {}) => {
+  const url = new URL(String(input));
+  if (url.pathname === "/auth/v1/.well-known/jwks.json") return reply({ keys: [jwk] });
+  const body = init.body ? JSON.parse(init.body) : {};
+  if (url.pathname === "/rest/v1/rpc/may_act") { acts.push(body); return reply(true); }
+  if (url.pathname === "/rest/v1/rpc/shown_publicly") return reply(!person(body.account).barred && person(body.account).over_13 !== false);
+  if (url.pathname === "/rest/v1/rpc/trust_may_go_public") return reply(person(body.account).over_13 === true);
+  if (url.pathname === "/rest/v1/rpc/trust_is_test_account") return reply(/@resend\.dev$/i.test(person(body.account).email || ""));
+  if (url.pathname !== "/rest/v1/people") return new Response("{}", { status: 404 });
+  asked.push(decodeURIComponent(url.search));
+  let rows = people;
+  const handle = url.searchParams.get("handle");
+  if (handle) rows = rows.filter((one) => like(one.handle, handle.replace(/^like\./, "")));
+  const or = url.searchParams.get("or");
+  if (or) {
+    const names = or.slice(1, -1).split(/,(?=name)/).map((one) => one.replace(/^name\.ilike\./, "").replace(/^"|"$/g, ""));
+    rows = rows.filter((one) => names.some((pattern) => like(one.name, pattern)));
+  }
+  rows = [...rows].sort((a, b) => (a.handle < b.handle ? -1 : 1)).slice(0, Number(url.searchParams.get("limit") || 1000));
+  return reply(rows.map(({ account, handle: h, name }) => ({ account, handle: h, name })));
+};
+const b64 = (v) => Buffer.from(JSON.stringify(v)).toString("base64url");
+const head = b64({ alg: "ES256", kid: "mentions", typ: "JWT" });
+const claims = b64({ sub: "11111111-1111-4111-8111-111111111111", aud: "authenticated", iss: "https://db.test/auth/v1",
+  exp: Math.floor(Date.now() / 1000) + 3600, amr: [{ method: "otp" }] });
+const signature = await webcrypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, pair.privateKey, new TextEncoder().encode(`${head}.${claims}`));
+token = `${head}.${claims}.${Buffer.from(signature).toString("base64url")}`;
+const handler = (await import("./api/people.js")).default;
+const find = async (query, { signed = true } = {}) => {
+  const headers = {};
+  const response = { statusCode: 200, body: null, setHeader(name, value) { headers[name.toLowerCase()] = value; return this; },
+    status(code) { this.statusCode = code; return this; }, json(value) { this.body = value; return this; }, end() { return this; } };
+  await handler({ method: "GET", query: { op: "people_find", ...query },
+    headers: { host: "x.test", ...(signed ? { authorization: `Bearer ${token}` } : {}) } }, response);
+  return { status: response.statusCode, body: response.body, cache: headers["cache-control"] };
+};
+"""
+
+
 def test_anybody_who_may_be_named_is_offered() -> None:
     # @ offers the people on the page first, then anybody whose profile may
     # be named (socialtails): a handle typed whole, then one it starts, then
-    # a name it starts, then a word of a name; only a profile shown in public.
-    got = node("""
-process.env.SUPABASE_URL = "https://db.test";
-process.env.SUPABASE_SECRET_KEY = "secret";
-const rows = [
-  { account: "a1", handle: "mika-mocs", name: "Mika Tanaka" },
-  { account: "a2", handle: "mi", name: "Mi" },
-  { account: "a3", handle: "jo-bricks", name: "Mia Lindqvist" },
-  { account: "a4", handle: "sam-builds", name: "Sam Mikkelsen" },
-  { account: "a5", handle: "milo-young", name: "Milo" },
-  { account: "a6", handle: "robin", name: "Robin Castell" },
+    # a name it starts, then a word of a name; only a profile shown in public
+    # and said 13 or over (comment_mentions.sql names nobody else), and a
+    # test account only to a probe (streview: @resend.dev was offered to all).
+    got = node(PEOPLE_DB + """
+people = [
+  { account: "a1", handle: "mika-mocs", name: "Mika Tanaka", over_13: true },
+  { account: "a2", handle: "mi", name: "Mi", over_13: true },
+  { account: "a3", handle: "jo-bricks", name: "Mia Lindqvist", over_13: true },
+  { account: "a4", handle: "sam-builds", name: "Sam Mikkelsen", over_13: true },
+  { account: "a5", handle: "milo-young", name: "Milo", over_13: false },
+  { account: "a6", handle: "robin", name: "Robin Castell", over_13: true },
+  { account: "a7", handle: "mint-new", name: "Mint", over_13: null },
+  { account: "a8", handle: "mila-taken", name: "Mila", over_13: true, barred: true },
+  { account: "a9", handle: "mio-probe", name: "Mio Probe", over_13: true, email: "probe+mio@resend.dev" },
 ];
-const asked = [];
-globalThis.fetch = async (input) => {
-  asked.push(decodeURIComponent(String(input)));
-  return new Response(JSON.stringify(rows), { status: 200 });
-};
 const { peopleFound, peopleRanked } = await import("./api/people.js");
-const ranked = peopleRanked(rows, "mi").map((one) => one.handle);
-const found = await peopleFound("Mi", async (account) => account !== "a5");
-const refused = await peopleFound("mi,handle.eq.x", async () => true);
-console.log(JSON.stringify({ ranked, found, refused, asked }));
+const ranked = peopleRanked(people, "mi").map((one) => one.handle);
+const out = { ranked };
+out.found = (await find({ q: "Mi" })).body.people;
+out.asked = asked.splice(0);
+out.probe = (await find({ q: "mi", tests: "1" })).body.people.map((one) => one.handle);
+asked.splice(0);
+out.refused = await peopleFound("mi,handle.eq.x", async () => true);
+out.refusedAsked = asked.splice(0);
+console.log(JSON.stringify(out));
 """)
-    assert got["ranked"] == ["mi", "mika-mocs", "milo-young", "jo-bricks", "sam-builds"]
-    # Milo is under 13: never offered. Robin's name has no word starting "mi".
+    assert got["ranked"] == ["mi", "mint-new", "mika-mocs", "mio-probe", "mila-taken", "milo-young", "jo-bricks", "sam-builds"]
+    # Milo said under 13, Mint was never asked, Mila was taken out, Mio is a
+    # probe's: none offered. Robin's name has no word starting "mi".
     assert [one["handle"] for one in got["found"]] == ["mi", "mika-mocs", "jo-bricks", "sam-builds"]
     assert got["found"][1] == {"handle": "mika-mocs", "name": "Mika Tanaka"}
+    assert got["probe"] == ["mi", "mika-mocs", "mio-probe", "jo-bricks", "sam-builds"]
+    # The handles it starts first, 8 at most, then the names.
+    assert got["asked"][0] == "?handle=like.mi*&select=account,handle,name&order=handle&limit=8"
+    assert got["asked"][1] == '?or=(name.ilike.mi*,name.ilike."* mi*")&select=account,handle,name&order=handle&limit=40'
     # What may follow an @ only: anything else asks nothing.
-    assert got["refused"] == [] and len(got["asked"]) == 1
-    assert 'or=(handle.like.mi*,name.ilike.mi*,name.ilike."* mi*")' in got["asked"][0]
+    assert got["refused"] == [] and got["refusedAsked"] == []
+
+
+def test_a_handle_typed_whole_is_found_however_many_names_come_first() -> None:
+    # peopleFound read 40 rows by handle before ranking, so with 40 names
+    # starting "mi" whose handles sort before it, the handle "mi" typed
+    # whole was never offered (streview).
+    got = node(PEOPLE_DB + """
+people = Array.from({ length: 45 }, (_, n) => ({ account: `n${n}`, handle: `a-${String(n).padStart(2, "0")}`, name: `Mi ${n}`, over_13: true }));
+people.push({ account: "me", handle: "mi", name: "Zed", over_13: true });
+console.log(JSON.stringify((await find({ q: "mi" })).body.people));
+""")
+    assert got[0] == {"handle": "mi", "name": "Zed"} and len(got) == 6
+
+
+def test_finding_people_needs_the_session_and_is_counted() -> None:
+    # Anybody could list every profile: no session, one letter, and a cache
+    # miss per letter (streview). Now: signed in, from two letters, each
+    # look counted, each answer the asker's own; q cut to a handle's 23.
+    got = node(PEOPLE_DB + """
+people = [{ account: "a1", handle: "mika-mocs", name: "Mika Tanaka", over_13: true }];
+const out = {};
+out.out = await find({ q: "mi" }, { signed: false });
+out.one = await find({ q: "m" });
+out.oneAsked = [asked.splice(0), acts.splice(0)];
+out.two = await find({ q: "mi" });
+out.acts = acts.splice(0);
+out.long = (await find({ q: "mika-mocs-and-a-great-deal-more" })).body.q;
+console.log(JSON.stringify(out));
+""")
+    assert got["out"]["status"] == 401 and not got["out"]["body"].get("people")
+    assert got["one"]["status"] == 200 and got["one"]["body"]["people"] == [] and got["oneAsked"] == [[], []]
+    assert got["two"]["status"] == 200 and got["two"]["body"]["people"] == [{"handle": "mika-mocs", "name": "Mika Tanaka"}]
+    assert got["two"]["cache"] == "private, no-store"
+    assert got["acts"] == [{"actor": "11111111-1111-4111-8111-111111111111", "act": "people_find", "per_hour": 600, "per_day": 3000}]
+    assert got["long"] == "mika-mocs-and-a-great-d"
+    people_js = (ROOT / "api/people.js").read_text()
+    # The docstring says what it checks: not "13 or over" alone.
+    assert "(shown in public: 13 or\n/// over" not in people_js
+    page = (ROOT / "web/model-page.js").read_text()
+    picker = page[page.index("function pickMentions("):]
+    assert "asked.length < 2" in picker and 'call(`/api/people?op=people_find&q=' in picker and '"&tests=1"' in picker
+
+
+def test_the_stand_in_finds_people_as_the_server_does() -> None:
+    stand = (ROOT / "tools/web/design_stand_in.mjs").read_text()
+    found = stand[stand.index('if (op === "people_find") {'):]
+    found = found[:found.index("\n    }\n") + 6]
+    for rule in ('.slice(0, 23)', "namedOf(q)", "slice(0, 8)", "RPC.shown_publicly({ account })",
+                 "RPC.trust_may_go_public({ account })", "tests || !RPC.trust_is_test_account({ account })"):
+        assert rule in found, rule
+    opened = stand[stand.index("const open = method === \"GET\""):stand.index('    : ["report", "digest"];')]
+    assert '"people_find"' not in opened

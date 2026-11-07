@@ -32,6 +32,7 @@
 // photo, 1,600 pixels for a card a third of a laptop's width.
 
 import { inflateSync } from "node:zlib";
+import { cardSize } from "./_card.js";
 import { decode as decodeJpeg, encode as encodeJpeg } from "./_jpeg.js";
 
 export { encodeJpeg };
@@ -42,8 +43,7 @@ export const MOST_SIDE = 12000;
 export const LEAST_SIDE = 120;
 export const LONG_SIDE = 1600;
 export const QUALITY = 85;
-/// A card's copy: at most this wide, its shape kept.
-export const CARD_WIDTH = 480;
+/// A card's copy: its JPEG quality.
 const CARD_QUALITY = 82;
 export const TYPES = { "image/jpeg": "jpeg", "image/png": "png", "image/webp": "webp" };
 
@@ -89,7 +89,7 @@ function checkSize(width, height) {
 // JPEG.
 
 /// A JPEG's size, from its frame header, without decoding it.
-function jpegSize(bytes) {
+export function jpegSize(bytes) {
   let at = 2;
   while (at + 4 <= bytes.length) {
     if (bytes[at] !== 0xff) throw new PhotoTrouble(NOT_A_PICTURE);
@@ -438,13 +438,13 @@ export async function cleanPhoto(given, declared = "") {
   return { bytes: Buffer.from(jpeg), width: made.width, height: made.height, was: image.was, card: cardOf(made) };
 }
 
-/// [image] (upright, decoded) as a card shows it: a JPEG at most
-/// CARD_WIDTH wide, its shape kept, never made larger: {bytes, width,
+/// [image] (upright, decoded) as the cards show it: a JPEG just large
+/// enough to cover a 4:3 card at 480 px, its shape kept, never made larger
+/// (web/card.js cardSize, which the pages describe it by): {bytes, width,
 /// height}.
 export function cardOf(image) {
-  const width = Math.min(image.width, CARD_WIDTH);
-  const height = Math.max(1, Math.round((image.height * width) / image.width));
-  const made = width === image.width ? image
+  const { width, height } = cardSize(image.width, image.height);
+  const made = width === image.width && height === image.height ? image
     : resample(image, { left: 0, top: 0, width: image.width, height: image.height }, width, height);
   const jpeg = encodeJpeg({ data: made.data, width: made.width, height: made.height }, CARD_QUALITY).data;
   return { bytes: Buffer.from(jpeg), width: made.width, height: made.height };

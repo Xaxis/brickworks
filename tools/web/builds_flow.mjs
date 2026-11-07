@@ -54,6 +54,7 @@
 import { clickStill, launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { placed } from "./gallery_order.mjs";
+import { cardSize } from "../../web/card.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -521,14 +522,15 @@ try {
   check(`the original is gone from storage (${uploads.length} of the builder's left in the uploads bucket)`, uploads.length === 0);
   const kept = await stored("build-photos", `${photo}.jpg`);
   check(`what is kept is build-photos/${photo}.jpg, ${kept[0]?.bytes} bytes`, kept.length === 1);
-  // And its copy for the cards, at most 480 px wide, made from the kept
-  // photo's pixels alone, so nothing of the original's file is in it either.
+  // And its copy for the cards, covering a 480 x 360 card (web/card.js
+  // cardSize), made from the kept photo's pixels alone, so nothing of the
+  // original's file is in it either.
   const cardKept = await stored("build-photos", `${photo}.card.jpg`);
   const small = Buffer.from(await (await fetch(`${site}/api/people?op=photo_file&id=${photo}&size=card`, { headers })).arrayBuffer());
   const cardSeen = decode(small, { useTArray: true });
   check(`beside it build-photos/${photo}.card.jpg, ${cardSeen.width} x ${cardSeen.height}, markers ${markers(small).join(",")}`,
-    cardKept.length === 1 && cardSeen.width <= 480 && cardSeen.width === Math.min(480, seen.width)
-    && Math.abs(cardSeen.height - Math.round((seen.height * cardSeen.width) / seen.width)) <= 1
+    cardKept.length === 1 && cardSeen.width === cardSize(seen.width, seen.height).width
+    && cardSeen.height === cardSize(seen.width, seen.height).height
     && markers(small).join(",") === "e0,db,c0,c4,da" && whereFrom(small) === "");
   const { value: strip, waited: stripWaited } = await fresh(async () => {
     await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });

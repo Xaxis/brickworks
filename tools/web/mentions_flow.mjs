@@ -242,8 +242,19 @@ try {
       body: { model: tower, version: 1, body: "Lovely tower." } });
     const maxComment = maxSaid.body.comment?.id;
     check(`Max's comment: ${maxSaid.status}`, maxSaid.status === 201 && Boolean(maxComment));
-    // Anybody whose profile may be named is found by what follows the @.
-    const anybody = await api(`/api/people?op=people_find&q=${handles.max}`);
+    // Anybody whose profile may be named is found by what follows the @:
+    // asked signed in, from two letters, a test account (Max is one) only
+    // by a probe (tests=1). Anybody could list every profile, test
+    // accounts and all (streview).
+    const find = (q, token) => api(`/api/people?op=people_find&q=${q}`, { token });
+    const nobody = await find(`${handles.max}&tests=1`);
+    check(`asked signed out, people_find is refused: ${nobody.status}`, nobody.status === 401 && !nobody.body.people);
+    const plain = await find(handles.max, people.lia.access_token);
+    check(`signed in, no test account is offered: ${JSON.stringify(plain.body.people)}`, plain.status === 200
+      && Array.isArray(plain.body.people) && !plain.body.people.some((one) => /^bwm-/.test(one.handle)));
+    const one = await find("b", people.lia.access_token);
+    check(`one letter looks for nobody: ${JSON.stringify(one.body.people)}`, one.status === 200 && one.body.people?.length === 0);
+    const anybody = await find(`${handles.max}&tests=1`, people.lia.access_token);
     check(`the profiles that may be named, by his handle: ${JSON.stringify(anybody.body.people)}`, anybody.status === 200
       && (anybody.body.people || []).some((one) => one.handle === handles.max && one.name === names.max));
 

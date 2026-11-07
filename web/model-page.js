@@ -23,7 +23,8 @@
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { avatarHtml } from "/kit.js";
-import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, rulesSaid, say, themeSaid, told } from "/card.js";
+import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, rulesSaid, say, setPhoto, sharpPhotos, themeSaid,
+  told } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 
@@ -63,7 +64,13 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) basesOwn();
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
+// Its photos of real builds, the whole one where a copy would be drawn
+// larger than it is (web/card.js sharpPhotos).
+sharpPhotos(document);
 
+// A page a probe opened with ?tests=1: the people @ offers include test
+// accounts, which nobody else is offered.
+const TESTS = new URLSearchParams(location.search).get("tests") === "1";
 // Where the picture's frame is square (directory.css): a phone's.
 const PHONE = matchMedia("(width < 600px)");
 // Its picture: the frame says it is coming until it is drawn, and one that
@@ -1022,10 +1029,10 @@ function buildPhotos(box) {
     figure.id = `photo-${photo.id}`;
     figure.dataset.photo = photo.id;
     const img = document.createElement("img");
-    img.src = photoSrc(photo.id, { card: true });
     img.alt = say("Your build");
     img.width = photo.width;
     img.height = photo.height;
+    setPhoto(img, photo, "strip");
     const caption = document.createElement("figcaption");
     if (photo.words) {
       const line = document.createElement("q");
@@ -1038,6 +1045,7 @@ function buildPhotos(box) {
     caption.append(by);
     figure.append(img, caption);
     row.prepend(figure);
+    sharpPhotos(figure);
     // And in the strip under the picture: the owner's with theirs, first.
     if (pictures) {
       const thumb = document.createElement("a");
@@ -1047,8 +1055,8 @@ function buildPhotos(box) {
       thumb.dataset.picture = photoSrc(photo.id);
       if (state?.owner) thumb.dataset.own = "";
       const small = document.createElement("img");
-      small.src = img.src;
       small.alt = state?.owner ? say("Your picture of it") : say("Your build");
+      setPhoto(small, photo, "thumb");
       thumb.append(small);
       const own = pictures.querySelectorAll("a.thumb[data-own]");
       const after = state?.owner ? pictures.querySelector("a.thumb:not([href^='#'])") : own[own.length - 1]
@@ -1056,6 +1064,7 @@ function buildPhotos(box) {
       if (after) after.after(thumb);
       else pictures.prepend(thumb);
       pictures.hidden = false;
+      sharpPhotos(thumb);
     }
   }
 
@@ -2072,11 +2081,11 @@ function pickMentions(field, people) {
     const there = (found.get(asked) || []).filter((one) => !here.some((own) => own.handle === one.handle));
     draw([...here, ...there].slice(0, 6), now);
     clearTimeout(waiting);
-    if (!asked || found.has(asked) || here.length >= 6) return;
+    // From two letters (api/people.js peopleFind), signed in, each asked once.
+    if (asked.length < 2 || found.has(asked) || here.length >= 6) return;
     waiting = setTimeout(async () => {
-      const reply = await fetch(`/api/people?op=people_find&q=${encodeURIComponent(asked)}`, { headers: { accept: "application/json" } })
-        .catch(() => null);
-      const body = reply && reply.ok ? await reply.json().catch(() => null) : null;
+      const reply = await call(`/api/people?op=people_find&q=${encodeURIComponent(asked)}${TESTS ? "&tests=1" : ""}`).catch(() => null);
+      const body = reply && reply.status === 200 ? reply.body : null;
       found.set(asked, (Array.isArray(body?.people) ? body.people : [])
         .filter((one) => one && HANDLE.test(String(one.handle)) && typeof one.name === "string"));
       // Still where it was asked: drawn again with them.

@@ -17,7 +17,7 @@
 import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followsSent, showFeedCount } from "/follow.js";
 import { avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
-import { counted, langAt, number, photoSrc, say, told } from "/card.js";
+import { counted, langAt, number, say, setPhoto, sharpPhotos, told } from "/card.js";
 import { openShare, sheetFor } from "/share-sheet.js";
 
 // A date as the page's language writes one: "October 2026".
@@ -248,12 +248,12 @@ async function showModels({ focus = false, first = false } = {}) {
 /// A photo of a real build, as a person's page shows one.
 function buildFigure(photo, { by = false } = {}) {
   const img = make("img");
-  img.src = photoSrc(photo.id, { card: true });
   img.alt = say("A build of {name}", { name: String(photo.model_name || say("a model")) });
   img.width = Number(photo.width) || 1;
   img.height = Number(photo.height) || 1;
   img.loading = "lazy";
   img.decoding = "async";
+  setPhoto(img, photo, "columns");
   const open = make("a", "", img);
   open.href = `${langAt()}/m/${photo.model}#photo-${photo.id}`;
   const model = make("a", "", String(photo.model_name || say("The model")));
@@ -285,6 +285,8 @@ function drawBuilds() {
       : "{n} people posted photos of their real builds of your models.", { n: number(people) });
   }
   $("builds-said").hidden = built.length + theirs.length > 0;
+  sharpPhotos($("builds-strip"));
+  sharpPhotos($("builds-of-strip"));
 }
 
 /// The models you liked, as your profile shows them: a page at a time.

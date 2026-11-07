@@ -28,12 +28,17 @@
 //     empty tab says what a build is, I built it, and links to the gallery;
 //   - the gallery's tabs and the LDraw library's have Builds, before
 //     Collections.
-//   - each card loads its photo's copy at most 480 px wide (socialtails,
-//     2026-11-06), not the whole kept photo: the photos are 1,600 x 1,200,
-//     their cards 480 x 360 at 1280 px and on the phone alike; the copy is
-//     kept beside the photo when it is posted, and one taken away is made
-//     again the first time a card asks; the model's page still shows the
-//     photo whole.
+//   - each card loads its photo's copy (socialtails, 2026-11-06), not the
+//     whole kept photo: the photos are 1,600 x 1,200, their copies 480 x
+//     360, enough for a card at 1280 px 1x and on the phone at 2x (each
+//     card offered both, web/card.js photoPicture; the copy's own pixels
+//     read apart, since an <img> with a srcset says its size over the
+//     density it took); the copy is kept beside the photo when it is
+//     posted, and one taken away is made again the first time a card asks;
+//     the model's page still shows the photo whole.
+//   - with CRON_SECRET, the daily sweep, asked of two photos alone
+//     (?photos=), takes a copy whose photo has no row and leaves a live
+//     photo's two files (streview, 2026-11-07);
 //   - each throwaway account is deleted as a person deletes theirs
 //     (api/account.js ?op=delete): every photo's file and its copy go.
 // Pictures in --out. Without the tab (an older checkout) /builds is not
@@ -175,19 +180,25 @@ async function until(page, test, what, seconds = 30, arg = null) {
   }
 }
 
-/// The Builds tab's cards of model [id] as drawn: each one's photo, links,
-/// words and whether its picture loaded.
-const cardsOf = (page, id) => page.evaluate((model) => [...document.querySelectorAll(`#models .build-card[data-model="${model}"]`)]
-  .map((card) => {
+/// The Builds tab's cards of model [id] as drawn: each one's photo (the
+/// picture it took and that picture's own pixels), links, words and
+/// whether its picture loaded.
+const cardsOf = (page, id) => page.evaluate(async (model) => Promise.all([...document.querySelectorAll(`#models .build-card[data-model="${model}"]`)]
+  .map(async (card) => {
     const img = card.querySelector(".frame img");
+    const own = new Image();
+    if (img?.currentSrc) {
+      own.src = img.currentSrc;
+      await own.decode().catch(() => null);
+    }
     return { id: card.dataset.id, open: card.querySelector("a.open")?.getAttribute("href") || "",
       name: card.querySelector("a.open")?.textContent.trim() || "", who: card.querySelector("a.who")?.getAttribute("href") || "",
       // Its words, as a screen reader has them: the avatar's letter is hidden.
       by: (card.querySelector(".who > span:not(.avatar)") || card.querySelector(".who"))?.textContent.trim() || "",
       said: card.querySelector(".said")?.textContent.trim() || "",
       loaded: Boolean(img && img.complete && img.naturalWidth > 0), alt: img?.alt || "",
-      src: img?.getAttribute("src") || "", natural: img ? [img.naturalWidth, img.naturalHeight] : [0, 0] };
-  }), id);
+      src: img?.currentSrc || "", natural: [own.naturalWidth, own.naturalHeight] };
+  })), id);
 
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 
@@ -261,9 +272,8 @@ try {
     check(`what they said, as words (${JSON.stringify(cards[0]?.said)})`, cards[0]?.said === "Cy's second: \"the moat\" <b>works</b>.");
     check(`their photos loaded, each named (${cards.map((one) => `${one.loaded} "${one.alt}"`).join(", ")})`,
       cards.every((one) => one.loaded && one.alt === `A build of ${KEEP} by ${one.id === photos.cyShown ? names.cy : names.bo}`));
-    check(`each card loads the photo's copy, 480 px wide or less: ${cards.map((one) => `${one.natural.join(" x ")} (${one.src})`).join(", ")}`,
-      cards.length === 2 && cards.every((one) => one.src.endsWith("&size=card") && one.natural[0] > 0 && one.natural[0] <= 480
-        && one.natural[0] === 480 && one.natural[1] === 360));
+    check(`each card loads the photo's copy, 480 x 360: ${cards.map((one) => `${one.natural.join(" x ")} (${one.src})`).join(", ")}`,
+      cards.length === 2 && cards.every((one) => one.src.endsWith("&size=card") && one.natural[0] === 480 && one.natural[1] === 360));
     const tab = await page.evaluate(() => document.querySelector('#tabs [aria-current="page"]')?.textContent.trim());
     check(`the Builds tab is marked (${tab})`, tab === "Builds");
     await shot(page, "1_builds_1280_light_in.png");
@@ -349,6 +359,38 @@ try {
   const back = await stored(photos.boFirst);
   check(`the first card to ask has a copy made, ${remade.width} x ${remade.height}, and kept (${back.join(", ")})`,
     remade.width === 480 && remade.height === 360 && back.includes(`${photos.boFirst}.card.jpg`));
+
+  // --- the daily sweep ---------------------------------------------------------
+  // A copy left with no photo (its cleanup failed, or a rollback took the
+  // photo alone): the cron's sweep takes it, and a live photo's two files
+  // stay. Asked of these two photos alone (?photos=) and a model nobody has
+  // (?only=), so a sweep that knows no ?photos= looks at nothing.
+  console.log("the daily sweep");
+  const CRON = process.env.CRON_SECRET || "";
+  if (!CRON) console.log("  (no CRON_SECRET: the sweep not asked)");
+  else {
+    const orphan = randomBytes(5).toString("hex");
+    const nobody = randomBytes(5).toString("hex");
+    const tiny = encode({ width: 8, height: 6, data: Buffer.alloc(8 * 6 * 4, 200) }, 85).data;
+    const put = await fetch(`${SUPABASE}/storage/v1/object/build-photos/${orphan}.card.jpg`, { method: "POST",
+      headers: { apikey: SECRET, authorization: `Bearer ${SECRET}`, "content-type": "image/jpeg" }, body: tiny });
+    const before = await stored(orphan);
+    const swept = await api(`/api/share/sweep?only=${nobody}&photos=${orphan},${photos.cyShown}`, { token: CRON });
+    const left = await stored(orphan);
+    const live = await stored(photos.cyShown);
+    check(`a copy whose photo has no row (${put.status}: ${before.join(", ")}) is taken by the sweep `
+      + `(${swept.status}: ${JSON.stringify(swept.body?.photos ?? null)}); left: ${left.join(", ") || "nothing"}`,
+      put.ok && before.length === 1 && swept.status === 200 && left.length === 0
+      && JSON.stringify(swept.body?.photos?.removed) === JSON.stringify([`${orphan}.card.jpg`]));
+    check(`and a live photo's two files stay (${live.join(", ")})`,
+      live.includes(`${photos.cyShown}.jpg`) && live.includes(`${photos.cyShown}.card.jpg`));
+    // A sweep that left it: the flow's own file, taken away here.
+    if (left.length) {
+      await fetch(`${SUPABASE}/storage/v1/object/build-photos`, { method: "DELETE",
+        headers: { apikey: SECRET, authorization: `Bearer ${SECRET}`, "content-type": "application/json" },
+        body: JSON.stringify({ prefixes: left }) });
+    }
+  }
 
   // --- a tab of the gallery ---------------------------------------------------
   console.log("a tab of the gallery");
