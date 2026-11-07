@@ -2,7 +2,9 @@
 // (tools/ldraw/meshfile.py has the layout; src/parts/lbm.gd reads it in the
 // app). Only what drawing needs: each surface's positions, normals and
 // triangles, its colour (16 is the colour the part is placed in) and
-// whether it is two-sided. Connectors, boxes and sockets are passed over.
+// whether it is two-sided; and the boxes it fills, in cells of [cell] LDU,
+// which the app stands a turned part on the ground by (Lbm.PartMesh
+// lowest_at; web/glb.js). Connectors and sockets are passed over.
 // Read by the viewer Claude shows (tools/viewer/card.js, bundled) and by a
 // model page's Parts list, which draws each lot from it (web/part-pictures.js).
 //
@@ -16,6 +18,8 @@ export const INHERIT = 16;
 const MAGIC = 0x334d424c; // "LBM3", little-endian
 const HEADER = 44;
 const VERTEX = 10;
+const CONNECTOR = 26;
+const BOX = 12;
 const I16 = 32767;
 
 export function parseLbm(buffer) {
@@ -29,6 +33,9 @@ export function parseLbm(buffer) {
   const step = 1 / scale;
   const bounds = [];
   for (let k = 0; k < 6; k++) bounds.push(view.getFloat32(12 + k * 4, true));
+  const connectors = view.getUint16(36, true);
+  const boxCount = view.getUint16(38, true);
+  const cell = view.getUint16(42, true) / 16;
   const surfaces = [];
   let at = HEADER;
   for (let s = 0; s < count; s++) {
@@ -73,5 +80,13 @@ export function parseLbm(buffer) {
     at += indices * (wide ? 4 : 2);
     surfaces.push({ colour, twoSided: (flags & 1) !== 0, position, normal, index });
   }
-  return { bounds, surfaces };
+  // Each box a corner and a size, in cells, after the connectors.
+  const boxes = [];
+  at += connectors * CONNECTOR;
+  for (let b = 0; b < boxCount && at + BOX <= buffer.byteLength; b++, at += BOX) {
+    const six = [];
+    for (let k = 0; k < 6; k++) six.push(view.getInt16(at + k * 2, true));
+    boxes.push(six);
+  }
+  return { bounds, surfaces, boxes, cell };
 }

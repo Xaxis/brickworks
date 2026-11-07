@@ -247,6 +247,13 @@ declare -A CMD=(
   # its own; on a phone the blog scrolls until the model is taken hold of,
   # and a model past the phone's budget asks first. Signed out, reads only.
   [embed]="tools/web/embed_flow.mjs --url=$P --out=$S/${TAG}_embed"
+  # In your room (APP_UX5 #13, arview), the deployment's first model: not
+  # offered on a computer; on an Android phone (a WebXR stub), an iPhone (a
+  # Quick Look stub) and an iPad offered, nothing of it asked before the
+  # tap, then the model shown, its GLB byte for byte web/glb.js's of the
+  # store's geometry, under 32 MB; the session asked for, the USDZ handed
+  # over; a plan over the size refused before a shape. Signed out, reads only.
+  [arview]="tools/web/arview_flow.mjs --url=$P --out=$S/${TAG}_arview"
   # The LDraw library on the site (library333): /library at 390 and 1400 px,
   # light and dark, the whole shelf with every card's cover, number and
   # modeller; found by a set's number, 10179, and by a theme's pill; the

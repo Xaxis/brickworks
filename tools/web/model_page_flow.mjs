@@ -328,7 +328,7 @@ async function partsChecks(page, label, seen, one) {
   check(`${label}: the list its own request, once the page has loaded (asked at ${before.asked === null ? "none yet"
     : Math.round(before.asked)} ms, loaded at ${Math.round(before.loaded)} ms, first paint at ${Math.round(before.painted)} ms)`,
   before.loaded !== null && (before.asked === null ? before.busy === "true" : before.asked >= before.loaded));
-  await page.evaluate(() => document.getElementById("parts").scrollIntoView({ block: "start" }));
+  await page.evaluate(() => document.getElementById("parts").scrollIntoView({ block: "start", behavior: "instant" }));
   const drawn = await until(page, () => document.documentElement.dataset.parts === "drawn", null, 20000);
   check(`${label}: the list drawn once it nears the screen`, drawn);
   if (!drawn) return;
@@ -345,12 +345,13 @@ async function partsChecks(page, label, seen, one) {
   check(`${label}: ${after.shown} rows shown, a colour's row first, no picture loaded from anywhere (${after.pictures})`,
     after.shown > 0 && after.shown <= 12 && after.firstGroup && after.pictures === 0);
   // Each lot's picture, drawn on the page (site304): only images from the
-  // site itself, and a fetch only to it and its own Supabase project.
+  // site itself, and a fetch only to it, its own Supabase project and what
+  // the page made itself (blob:, the GLB In your room writes, arview).
   const sources = (name) => (new RegExp(`(?:^|;)\\s*${name}\\s+([^;]*)`).exec(seen.policy || "") || [])[1]?.trim().split(/\s+/) || [];
   const project = remote ? remoteDb : stand.DB;
-  check(`${label}: its policy lets in pictures from itself alone (img-src ${sources("img-src").join(" ")}) and talks to itself and its project (connect-src ${sources("connect-src").join(" ")})`,
+  check(`${label}: its policy lets in pictures from itself alone (img-src ${sources("img-src").join(" ")}) and talks to itself, its project and what it made (connect-src ${sources("connect-src").join(" ")})`,
     JSON.stringify(sources("img-src")) === JSON.stringify(["'self'"])
-      && sources("connect-src").every((one) => one === "'self'" || one === project) && sources("connect-src").includes("'self'"));
+      && sources("connect-src").every((one) => one === "'self'" || one === project || one === "blob:") && sources("connect-src").includes("'self'"));
   await lotPictures(page, label, "drawn from its geometry");
   if (after.all) await page.click("#parts [data-all]");
   const counted = await page.evaluate(() => {
@@ -364,7 +365,7 @@ async function partsChecks(page, label, seen, one) {
     first: document.querySelector("#parts .lot-list li.group span")?.textContent || "" }));
   check(`${label}: Kind groups them by kind (first: ${kind.first})`, kind.pressed === "true" && Boolean(kind.first));
   await page.click('#parts [data-group="colour"]');
-  await page.evaluate(() => document.getElementById("parts").scrollIntoView({ block: "start" }));
+  await page.evaluate(() => document.getElementById("parts").scrollIntoView({ block: "start", behavior: "instant" }));
   await lotPictures(page, label, "again by Colour, from what was drawn");
   // The shops' lists and the file, as a visitor's browser fetches them.
   const got = await page.evaluate(async ({ at, download }) => {
@@ -410,7 +411,7 @@ async function partsChecks(page, label, seen, one) {
       && rows.length === counted.lots - got.left.rebrickable && /attachment; filename="[a-z0-9-]+-rebrickable\.csv"/.test(got.csv.named));
   check(`${label}: Download is the stored file byte for byte, signed out (${got.file.length} bytes, ${got.file.named})`,
     got.file.status === 200 && got.file.same && got.file.length > 0 && /attachment; filename="[a-z0-9-]+(-v\d+)?\.mpd"/.test(got.file.named));
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
 }
 
 /// 17. The model in 3D, here, on [page] (the picture on screen).
@@ -508,7 +509,7 @@ async function threeD(page, label, stem, phone) {
     const swiped = await page.evaluate(frameOf);
     check(`${label}: before it is taken hold of (touch-action ${after.touch}), a swipe up it scrolls the page (${swiped.y} px) and leaves the model as it was`,
       after.touch === "pan-y" && after.engaged === false && swiped.y > 100 && near(swiped.angle, home));
-    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
     await page.waitForTimeout(200);
     await drag([middle[0] + 80, middle[1]], [middle[0] - 80, middle[1]]);
     await page.waitForTimeout(300);
@@ -644,7 +645,7 @@ try {
             } else {
               check(`${label}: the picture and the column beside it on the first screen`,
                 onScreen(seen.picture) && seen.side && seen.side.left >= seen.picture.right && onScreen(seen.title) && onScreen(seen.bar));
-              await page.evaluate(() => window.scrollTo(0, 1200));
+              await page.evaluate(() => window.scrollTo({ top: 1200, behavior: "instant" }));
               await page.waitForTimeout(200);
               const later = await page.evaluate(() => {
                 const r = document.querySelector(".model-page .side").getBoundingClientRect();
@@ -654,7 +655,7 @@ try {
               // Only while there is page beside it: a short page ends first.
               check(`${label}: the column stays on screen as the page scrolls (top at ${Math.round(later.top)} px after ${later.scrolled} px)`,
                 later.restBottom <= later.bottom + 1 || (later.top >= 0 && later.top < 120));
-              await page.evaluate(() => window.scrollTo(0, 0));
+              await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
             }
             check(`${label}: nothing sideways`, !seen.sideways);
 
@@ -829,7 +830,7 @@ try {
                 check(`${label}: signed in, the reply goes ("Replied.") and its box closes`, went);
               }
             }
-            await page.evaluate(() => window.scrollTo(0, 0));
+            await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
             await page.waitForTimeout(150);
             if (out) await page.screenshot({ path: path.join(out, `${stem}.png`), fullPage: true, timeout: 60000 }).catch(() => {});
 
@@ -917,7 +918,7 @@ try {
               await settled(page);
               const at = await page.evaluate(() => Math.round(document.getElementById("collections").getBoundingClientRect().top));
               check(`${label}: the pill brings its collections into view (${at} px down)`, at >= 0 && at < 300);
-              await page.evaluate(() => window.scrollTo(0, 0));
+              await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
             }
 
             // 4. Save.

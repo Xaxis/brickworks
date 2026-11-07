@@ -82,6 +82,13 @@ if (frame) startPicture(frame);
 // has it). Drawn by /viewer3d.js (tools/viewer/inline.js), asked for only
 // then.
 const close3d = frame && frame.dataset.scene ? start3d(frame).close : null;
+// In your room (APP_UX5 #13, arview): where this browser can place a model
+// in a room through the camera (AR Quick Look on an iPhone or iPad, WebXR's
+// immersive AR on an Android phone or a headset), a button on the picture's
+// foot, opposite View in 3D, that places its model there at its real size
+// (web/room.js, with <model-viewer>, both asked for only on the tap). Never
+// on a computer, which has no camera on a room.
+if (frame && frame.dataset.scene) roomWay().then((how) => { if (how) offerRoom(frame, how); });
 
 // The strip of its pictures (api/share.js mediaStrip): the one chosen is
 // shown in the picture's place, whole, and edged in the strip. The picture
@@ -95,6 +102,50 @@ if (tabs) startTabs(tabs);
 // screen, so a visit that never gets there asks for nothing.
 const partsPart = document.getElementById("parts");
 if (partsPart && partsPart.dataset.parts) startParts(partsPart);
+
+/// How this browser places a model in a room, as <model-viewer> judges it
+/// (its IS_AR_QUICKLOOK_CANDIDATE and IS_WEBXR_AR_CANDIDATE): "quick-look"
+/// on an iPhone or iPad (an iPad says it is a Mac with a touch screen),
+/// where Safari, or a browser on it, opens AR Quick Look (not the Google
+/// app's, which does not); "webxr" where WebXR has immersive AR with hit
+/// tests; else "".
+function roomWay() {
+  const agent = navigator.userAgent;
+  if (/iPad|iPhone|iPod/.test(agent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) {
+    if (/GSA\//.test(agent)) return Promise.resolve("");
+    if (/CriOS\/|EdgiOS\/|FxiOS\/|DuckDuckGo\//.test(agent)) return Promise.resolve("quick-look");
+    const link = document.createElement("a");
+    return Promise.resolve(link.relList && link.relList.supports && link.relList.supports("ar") ? "quick-look" : "");
+  }
+  if (!navigator.xr || !navigator.xr.isSessionSupported || !globalThis.XRSession || !XRSession.prototype.requestHitTestSource) {
+    return Promise.resolve("");
+  }
+  return navigator.xr.isSessionSupported("immersive-ar").then((yes) => (yes ? "webxr" : ""), () => "");
+}
+
+/// In your room on [big], the picture: a button on its foot that opens the
+/// model in a room over it (web/room.js), and opens it again as it was.
+function offerRoom(big, how) {
+  const name = big.querySelector("img")?.getAttribute("alt") || document.querySelector(".model-page h1")?.textContent || "";
+  const over = document.createElement("div");
+  over.className = "room-over";
+  // A brick on a floor before its words.
+  over.innerHTML = '<button type="button" class="room-go"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">'
+    + '<path d="M12 4 18 7 12 10 6 7zM6 7v6.5l6 3V10M18 7v6.5l-6 3M3 20.5h18"/></svg><span></span></button>';
+  const go = over.querySelector(".room-go");
+  go.querySelector("span").textContent = say("In your room");
+  go.setAttribute("aria-label", say("Place {name} in your room, at its real size", { name }));
+  go.dataset.how = how;
+  big.after(over);
+  let room = null;
+  go.addEventListener("click", () => {
+    if (close3d) close3d();
+    if (!room) {
+      // Not even the code came: asked again on the next tap.
+      room = import("/room.js").then((made) => made.openRoom(big, { name })).catch(() => { room = null; return null; });
+    } else room.then((one) => one && one.open());
+  });
+}
 
 function startPicture(big) {
   const img = big.querySelector("img");

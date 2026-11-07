@@ -1043,6 +1043,13 @@ const PIXEL_WEBP = "UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=
 export const BRICKS = "0 FILE model.ldr\n0 Author: Brickworks\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n"
   + "1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n1 1 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat\n0 STEP\n";
 
+// What every shared model's file is: the three bricks, or a real model a
+// flow names (tools/web/arview_flow.mjs, the room's GLB of the example car).
+let modelText = BRICKS;
+export function useModelFile(text) {
+  modelText = String(text || BRICKS);
+}
+
 // The LDraw library's shelf as the store keeps it (api/_omr_credit.js
 // storeIndex): one set, King's Castle, modelled for LDraw's Official Model
 // Repository, its file the three bricks, its pictures a pixel.
@@ -1071,7 +1078,7 @@ function storage(where, init) {
   const [, , id, kind] = found;
   const m = modelOf(id);
   if ((kind === "png" && !m.has_image) || (kind === "webp" && !m.has_thumb)) return reply(400, { error: "not_found" });
-  const bytes = kind === "mpd" ? Buffer.from(BRICKS) : Buffer.from(kind === "png" ? PIXEL_PNG : PIXEL_WEBP, "base64");
+  const bytes = kind === "mpd" ? Buffer.from(modelText) : Buffer.from(kind === "png" ? PIXEL_PNG : PIXEL_WEBP, "base64");
   return new Response(bytes, { status: 200, headers: { "content-type": { png: "image/png", webp: "image/webp", mpd: "text/plain" }[kind] } });
 }
 
@@ -1109,6 +1116,8 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/parts[.](json|xml|csv)$/, "share", "parts"],
   [/^\/m\/([A-Za-z0-9]{10})\/scene[.]json$/, "share", "scene"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/scene[.]json$/, "share", "scene"],
+  [/^\/m\/([A-Za-z0-9]{10})\/room[.]json$/, "share", "room"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/room[.]json$/, "share", "room"],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
   // A challenge's link (/challenge?id=N), its head the challenge's own.
@@ -1141,6 +1150,7 @@ const PAGES = [
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]mpd$/, "share", "set_file"],
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/parts[.](json|xml|csv)$/, "share", "set_parts"],
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/scene[.]json$/, "share", "set_scene"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/room[.]json$/, "share", "set_room"],
 ];
 
 /// Which handler makes [pathname], and what it is asked. A path under /m/,
