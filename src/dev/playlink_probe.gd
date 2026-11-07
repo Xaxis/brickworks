@@ -41,7 +41,9 @@ extends SceneTree
 const SHOTS := "res://shots/playlink/"
 const CRANE := "res://vendor/omr/files/4096-1_Crane.mpd"
 const MOTION := "Lift the boom"
-const ID := "Pl4yL1nk01"
+## The link's id. Not ID: inside FakeShared, SharedModels' own ID (the
+## pattern an id matches) would be the one meant.
+const LINK_ID := "Pl4yL1nk01"
 const FIRST_MS := 2000
 
 var _failures: int = 0
@@ -60,7 +62,7 @@ class FakeShared extends SharedModels:
 	func publish(_token: String, body: Dictionary) -> Dictionary:
 		published.append(body.duplicate())
 		await (Engine.get_main_loop() as SceneTree).process_frame
-		return {"code": 201, "body": {"id": ID, "url": "https://brickworks.diy/m/" + ID,
+		return {"code": 201, "body": {"id": LINK_ID, "url": "https://brickworks.diy/m/" + LINK_ID,
 			"parts": 0, "listed": false, "version": 1}}
 
 	func mine(_token: String) -> Dictionary:
@@ -132,7 +134,10 @@ func _share(text: String) -> String:
 			break
 	await _settle()
 	var panel: SharePanel = _main.get("_share_panel")
-	_ok(shell.can("share") and shell.run("share") and panel.visible, "File › Share… opens the panel")
+	# Run as a menu runs it (Shell.attend may put it off a frame).
+	var ran: bool = shell.can("share") and shell.run("share")
+	await _settle()
+	_ok(ran and panel.visible, "File › Share… opens the panel")
 	await panel.publish()
 	await _settle()
 	# A model with no motions of its own: no choice to make.
@@ -152,7 +157,9 @@ func _share(text: String) -> String:
 	if boom == null:
 		return ""
 	player.motions().put(boom)
-	_ok(shell.run("share") and panel.visible, "File › Share… again")
+	ran = shell.run("share")
+	await _settle()
+	_ok(ran and panel.visible, "File › Share… again")
 	await panel.publish()
 	await _settle()
 	var opens: OptionButton = panel.controls_by_name().get("share_opens")
@@ -160,7 +167,7 @@ func _share(text: String) -> String:
 		and opens.get_item_text(0) == "Still" and opens.get_item_text(1) == "Playing “%s”" % MOTION,
 		"published, Opens offers Still and Playing “%s” (%s)" % [MOTION,
 			[] if opens == null else range(opens.item_count).map(func(n: int) -> String: return opens.get_item_text(n))])
-	_ok(panel.url.ends_with("/m/" + ID) and _link(panel) == panel.url, "the link opens still at first: %s" % _link(panel))
+	_ok(panel.url.ends_with("/m/" + LINK_ID) and _link(panel) == panel.url, "the link opens still at first: %s" % _link(panel))
 	if opens != null:
 		opens.select(1)
 		opens.item_selected.emit(1)
@@ -188,10 +195,10 @@ func _share(text: String) -> String:
 ## text], asked to play [param asked].
 func _open_link(text: String, asked: String) -> FakeShared:
 	var fake := FakeShared.new()
-	fake.answer = {"code": 200, "body": {"id": ID, "name": "Probe Crane", "author": "Probe Builder",
-		"parts": 0, "url": "https://brickworks.diy/m/" + ID, "model": text}}
+	fake.answer = {"code": 200, "body": {"id": LINK_ID, "name": "Probe Crane", "author": "Probe Builder",
+		"parts": 0, "url": "https://brickworks.diy/m/" + LINK_ID, "model": text}}
 	_main = load("res://src/main.tscn").instantiate()
-	_main.set("_viewing", ID)
+	_main.set("_viewing", LINK_ID)
 	_main.set("_shared", fake)
 	# As main reads the link's ?motion= at the edge (Motions.link_words, which
 	# _words checks; asked for by name here, as a build from before has none).
