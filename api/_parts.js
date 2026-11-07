@@ -23,10 +23,12 @@
 // BrickLink wanted list (BrickLink's XML: ITEMTYPE, ITEMID, COLOR, MINQTY in
 // <INVENTORY>) and a Rebrickable parts list (its CSV import: Part, Color,
 // Quantity), a lot left off where the shop has no number for its colour, and
-// a made part, which no shop sells.
+// a made part, which no shop sells; a part in a direct colour (0x2RRGGBB)
+// listed in the nearest colour still made, as the app lists it (standIn).
 
 import { existsSync, readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
+import { directOf, isDirect } from "./_colours.js";
 
 let table = null;
 
@@ -170,7 +172,95 @@ export function deriveTable(catalogue, colours, elements = {}) {
     found.sort((a, b) => (Math.abs(a[1] - b[1]) > 1e-5 ? a[1] - b[1] : a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     flex[kind] = found;
   }
-  return { categories, parts, colours: colourRows, elements: elements.pairs || {}, flex };
+  // The colours a direct colour stands in as on a shop's list
+  // (PartLibrary.stand_in_codes): solid, opaque, its own plain colour, with
+  // a BrickLink number, made now. In code order.
+  const standIns = (Array.isArray(colours) ? colours : [])
+    .filter((colour) => colour.group === "solid" && (colour.alpha ?? 255) === 255
+      && (colour.plain_code ?? colour.code) === colour.code && Number.isInteger(colour.bricklink)
+      && colour.bricklink >= 0 && colour.current === true)
+    .map((colour) => colour.code).sort((a, b) => a - b);
+  return { categories, parts, colours: colourRows, elements: elements.pairs || {}, flex, stand_ins: standIns };
+}
+
+/// CIE L*a*b* of "rrggbb" (D65), as HiddenColours.lab works it.
+function labOf(hex) {
+  const linear = [0, 2, 4].map((at) => {
+    const c = Number.parseInt(hex.slice(at, at + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const x = (0.4124 * linear[0] + 0.3576 * linear[1] + 0.1805 * linear[2]) / 0.95047;
+  const y = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  const z = (0.0193 * linear[0] + 0.1192 * linear[1] + 0.9505 * linear[2]) / 1.08883;
+  const f = (t) => (t > 0.008856 ? t ** (1 / 3) : 7.787 * t + 16 / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+
+/// CIEDE2000 between two L*a*b* colours, as HiddenColours.de2000 works it.
+function de2000(one, two) {
+  const POW25_7 = 6103515625;
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const deg = (r) => (r * 180) / Math.PI;
+  const posmod = (v, m) => ((v % m) + m) % m;
+  const c1 = Math.sqrt(one[1] * one[1] + one[2] * one[2]);
+  const c2 = Math.sqrt(two[1] * two[1] + two[2] * two[2]);
+  const cm = ((c1 + c2) / 2) ** 7;
+  const g = 0.5 * (1 - Math.sqrt(cm / (cm + POW25_7)));
+  const a1 = (1 + g) * one[1];
+  const a2 = (1 + g) * two[1];
+  const c1p = Math.sqrt(a1 * a1 + one[2] * one[2]);
+  const c2p = Math.sqrt(a2 * a2 + two[2] * two[2]);
+  const h1 = posmod(deg(Math.atan2(one[2], a1)), 360);
+  const h2 = posmod(deg(Math.atan2(two[2], a2)), 360);
+  const both = c1p * c2p !== 0;
+  let dh = 0;
+  if (both) {
+    dh = h2 - h1;
+    if (dh > 180) dh -= 360;
+    else if (dh < -180) dh += 360;
+  }
+  const dl = two[0] - one[0];
+  const dc = c2p - c1p;
+  const dhh = 2 * Math.sqrt(c1p * c2p) * Math.sin(rad(dh) / 2);
+  const lm = (one[0] + two[0]) / 2;
+  const cpm = (c1p + c2p) / 2;
+  let hm = h1 + h2;
+  if (both) {
+    if (Math.abs(h1 - h2) <= 180) hm = (h1 + h2) / 2;
+    else if (h1 + h2 < 360) hm = (h1 + h2 + 360) / 2;
+    else hm = (h1 + h2 - 360) / 2;
+  }
+  const t = 1 - 0.17 * Math.cos(rad(hm - 30)) + 0.24 * Math.cos(rad(2 * hm))
+    + 0.32 * Math.cos(rad(3 * hm + 6)) - 0.2 * Math.cos(rad(4 * hm - 63));
+  const theta = 30 * Math.exp(-(((hm - 275) / 25) ** 2));
+  const cp7 = cpm ** 7;
+  const rc = 2 * Math.sqrt(cp7 / (cp7 + POW25_7));
+  const l50 = (lm - 50) * (lm - 50);
+  const x = dl / (1 + 0.015 * l50 / Math.sqrt(20 + l50));
+  const y = dc / (1 + 0.045 * cpm);
+  const z = dhh / (1 + 0.015 * cpm * t);
+  return Math.sqrt(Math.max(0, x * x + y * y + z * z - Math.sin(rad(2 * theta)) * rc * y * z));
+}
+
+/// The catalogue colour a shop's list orders a part of direct colour [code]
+/// in, as the app chooses it (PartLibrary.catalogue_nearest): the nearest by
+/// CIEDE2000 of the table's stand_ins, the lowest code of two as near; -1
+/// for a palette code or a table with none.
+export function standIn(code, given = partsTable()) {
+  if (!isDirect(code) || !given) return -1;
+  const here = labOf(directOf(code).hex);
+  let best = -1;
+  let gap = Infinity;
+  for (const choice of given.stand_ins || []) {
+    const row = given.colours[choice];
+    if (!row) continue;
+    const apart = de2000(here, labOf(row[1]));
+    if (apart < gap) {
+      gap = apart;
+      best = choice;
+    }
+  }
+  return best;
 }
 
 /// How a colour's plastic is drawn, as the app's number for it
@@ -339,8 +429,10 @@ function makeLibrary(given) {
   };
   const colour = (code) => {
     const row = given.colours[code];
-    return row ? { name: row[0], hex: row[1], lego: row[2], rebrickable: row[3], bricklink: row[4], plain: row[5] }
-      : { name: `Unknown ${code}`, hex: "ff00ff", lego: "", rebrickable: -1, bricklink: -1, plain: code };
+    if (row) return { name: row[0], hex: row[1], lego: row[2], rebrickable: row[3], bricklink: row[4], plain: row[5] };
+    // A direct colour is its own RGB, in no shop's or palette's numbers.
+    if (isDirect(code)) return { ...directOf(code), lego: "", rebrickable: -1, bricklink: -1, plain: code };
+    return { name: `Unknown ${code}`, hex: "ff00ff", lego: "", rebrickable: -1, bricklink: -1, plain: code };
   };
   return { custom, info, has, resolve, colour };
 }
@@ -602,8 +694,15 @@ function lotMaker(library, given) {
         lego_colour: plain.lego, count: 0, element, custom: Boolean(info && info.custom), copy_of: (info && info.copy_of) || "",
         bricklink: shopPart(info, part, "bricklink"), bricklink_colour: plain.bricklink,
         rebrickable: shopPart(info, part, "rebrickable"), rebrickable_colour: plain.rebrickable,
-        mesh: (info && info.mesh) || "",
+        mesh: (info && info.mesh) || "", stand_in: null,
       };
+      // A direct colour no shop sells: the colour a shop's list orders the
+      // part in instead (Inventory.Lot.stand_in), and says so.
+      const instead = standIn(code, given);
+      if (instead >= 0) {
+        const stood = library.colour(instead);
+        lot.stand_in = { colour: instead, name: stood.name, bricklink: stood.bricklink, rebrickable: stood.rebrickable };
+      }
       byKey.set(key, lot);
       lots.push(lot);
     }
@@ -646,37 +745,57 @@ export function inventoryOfLots(rows, given = partsTable()) {
 
 const xml = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/// A lot in a direct colour as a list names it: "#FF0000 as Reddish Orange"
+/// (ShopLists._note), each once.
+function noteStandIn(standIns, lot) {
+  const said = `${lot.colour_name} as ${lot.stand_in.name}`;
+  if (!standIns.includes(said)) standIns.push(said);
+}
+
 /// A BrickLink wanted list, to upload under Wanted › Upload: {text, lots,
-/// left_out}. A made part and a colour BrickLink has no number known for are
-/// left off, never guessed.
+/// left_out, stand_ins}. A made part and a colour BrickLink has no number
+/// known for are left off, never guessed. A part in a direct colour is listed
+/// in the colour it stands in as, with a REMARKS saying so (ShopLists.
+/// bricklink_xml), and named in stand_ins.
 export function wantedList(inventory) {
   const lines = ["<INVENTORY>"];
   let left = 0;
+  const standIns = [];
   for (const lot of inventory.lots) {
-    if (lot.custom || lot.bricklink_colour < 0) {
+    const colour = lot.stand_in ? lot.stand_in.bricklink : lot.bricklink_colour;
+    if (lot.custom || colour < 0) {
       left += 1;
       continue;
     }
     lines.push("  <ITEM>", "    <ITEMTYPE>P</ITEMTYPE>", `    <ITEMID>${xml(lot.bricklink)}</ITEMID>`,
-      `    <COLOR>${lot.bricklink_colour}</COLOR>`, `    <MINQTY>${lot.count}</MINQTY>`, "  </ITEM>");
+      `    <COLOR>${colour}</COLOR>`, `    <MINQTY>${lot.count}</MINQTY>`);
+    if (lot.stand_in) {
+      lines.push(`    <REMARKS>${xml(`Brickworks: drawn in ${lot.colour_name}, an LDraw direct colour no shop sells; listed in the nearest, ${lot.stand_in.name}`)}</REMARKS>`);
+      noteStandIn(standIns, lot);
+    }
+    lines.push("  </ITEM>");
   }
   lines.push("</INVENTORY>");
-  return { text: `${lines.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left };
+  return { text: `${lines.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left, stand_ins: standIns };
 }
 
-/// Rebrickable's parts-list import: Part, Color, Quantity, in its numbers.
+/// Rebrickable's parts-list import: Part, Color, Quantity, in its numbers; a
+/// part in a direct colour in the colour it stands in as, named in stand_ins.
 export function rebrickableCsv(inventory) {
   const rows = ["Part,Color,Quantity"];
   let left = 0;
+  const standIns = [];
   for (const lot of inventory.lots) {
-    if (lot.custom || lot.rebrickable_colour < 0) {
+    const colour = lot.stand_in ? lot.stand_in.rebrickable : lot.rebrickable_colour;
+    if (lot.custom || colour < 0) {
       left += 1;
       continue;
     }
+    if (lot.stand_in) noteStandIn(standIns, lot);
     const part = /[",\n]/.test(lot.rebrickable) ? `"${lot.rebrickable.replace(/"/g, '""')}"` : lot.rebrickable;
-    rows.push(`${part},${lot.rebrickable_colour},${lot.count}`);
+    rows.push(`${part},${colour},${lot.count}`);
   }
-  return { text: `${rows.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left };
+  return { text: `${rows.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left, stand_ins: standIns };
 }
 
 /// What a page needs to draw each lot's picture itself (web/part-pictures.js,
@@ -841,10 +960,10 @@ export function sceneOf(text, root, of = "", given = partsTable(), table = scene
   const colourIndex = (code) => {
     if (colourOf.has(code)) return colourOf.get(code);
     const row = given.colours[code];
-    const direct = code >= 0x2000000;
-    const hex = direct ? (code & 0xffffff).toString(16).padStart(6, "0") : row ? row[1] : "ff00ff";
+    const direct = isDirect(code) ? directOf(code) : null;
+    const hex = direct ? direct.hex : row ? row[1] : "ff00ff";
     colourOf.set(code, colours.length);
-    colours.push([code, direct ? `#${hex.toUpperCase()}` : row ? String(row[0]).replace(/_/g, " ") : `Colour ${code}`,
+    colours.push([code, direct ? direct.name : row ? String(row[0]).replace(/_/g, " ") : `Colour ${code}`,
       hex, !direct && row && Number.isInteger(row[6]) ? row[6] : 255]);
     return colourOf.get(code);
   };
@@ -1035,10 +1154,10 @@ export function roomOf(text, root, of = "", given = partsTable(), table = sceneT
   const colourIndex = (code) => {
     if (colourOf.has(code)) return colourOf.get(code);
     const row = given.colours[code];
-    const direct = code >= 0x2000000;
-    const hex = direct ? (code & 0xffffff).toString(16).padStart(6, "0") : row ? row[1] : "ff00ff";
+    const direct = isDirect(code) ? directOf(code) : null;
+    const hex = direct ? direct.hex : row ? row[1] : "ff00ff";
     colourOf.set(code, colours.length);
-    colours.push([code, direct ? `#${hex.toUpperCase()}` : row ? String(row[0]) : `Unknown ${code}`, hex,
+    colours.push([code, direct ? direct.name : row ? String(row[0]) : `Unknown ${code}`, hex,
       !direct && row && Number.isInteger(row[6]) ? row[6] : 255, !direct && row && Number.isInteger(row[7]) ? row[7] : FINISH.PLASTIC]);
     return colourOf.get(code);
   };
