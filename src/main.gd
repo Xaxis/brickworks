@@ -1814,6 +1814,9 @@ func _ready() -> void:
 	if not _viewing.is_empty() and _viewing_step > 0:
 		_build_wanted = _viewing_step
 	_viewing_build = _viewing_build or (not _viewing.is_empty() and _has_argument("--build"))
+	# A build party's code from the link (?party=CODE): its card opens with it.
+	if _party_code_wanted.is_empty() and RegEx.create_from_string("^[A-Za-z0-9]{4}$").search(_argument("--party")) != null:
+		_party_code_wanted = _argument("--party").to_upper()
 	if not _viewing.is_empty():
 		# Before anything reads or writes the visitor's own layout, or a
 		# part the model carries is kept for next time.
@@ -2782,12 +2785,17 @@ func _enter_view() -> void:
 	_share_view.booklet_wanted.connect(_booklet_wanted)
 	_share_view.parts_wanted.connect(_toggle_parts)
 	_share_view.copy_wanted.connect(_open_copy)
-	_share_view.build_wanted.connect(func() -> void: _enter_build())
+	_share_view.build_wanted.connect(func() -> void:
+		if _party_dealt():
+			_party_build()
+		else:
+			_enter_build())
 	# A changed model's step, offered to a builder who had got past it.
 	_share_view.build_from.connect(func(page: int) -> void: _enter_build(page))
 	_share_view.newest_wanted.connect(_open_newest)
 	_share_view.reset_wanted.connect(_play_reset)
 	_share_view.motion_wanted.connect(_play_motion)
+	_party_connect()
 	# The big Build it of a phone sits above the timeline, from its first
 	# frame. The timeline comes once the steps are worked out, after Build
 	# it is up, and Build it rose the timeline's height then, under a finger
@@ -3084,6 +3092,7 @@ func _view_shared() -> void:
 	var carried: Dictionary = SharedPages.read(str(shared.get("model", "")), _world, _store.scenery)
 	_steps_carried = not carried.is_empty()
 	_share_view.ready_to_look()
+	_party_on_ready()
 	# Its comments, asked for beside the steps being worked out: nothing
 	# waits for them.
 	_load_comments()
@@ -3408,16 +3417,24 @@ func _build_go(page: int, stepped: bool = false, part: int = 1) -> void:
 	var took: Dictionary = {}
 	var lap: int = started
 	page = _build_pages.clamped(page)
+	# A build party's last page joins everyone's shares: until every phone
+	# is done, this one waits on its own last page, built (_party_show).
+	var party_wait: bool = _party_pages and page >= 1 and page == _build_pages.last() \
+		and not bool(_party.call("all_finished"))
+	if party_wait:
+		page -= 1
 	var from: int = _build_page
 	_build_page = page
 	part = _build_pages.clamped_part(page, part) if _build_mode.by_part else 0
+	if _party_pages and (party_wait or page == _build_pages.last()):
+		part = 0
 	# A part put down, or the way of building changed, on the page the view
 	# was framed on: the view as the builder left it.
 	var keep_view: bool = page == from and page == _build_framed and (part > 0 or _build_part > 0)
 	_build_part = part
 	# The last step reached from the one before it: built. Not a jump on
 	# the progress bar, nor coming back to a place kept on it.
-	if stepped and page >= 1 and page == _build_pages.last() and from == page - 1:
+	if stepped and page >= 1 and page == _build_pages.last() and from == page - 1 and not _party_pages:
 		_count_built()
 	# A page is a count of the order the pages add bricks in, as a step of
 	# the timeline is, and its fading the page before's parts faded and
@@ -3453,7 +3470,14 @@ func _build_go(page: int, stepped: bool = false, part: int = 1) -> void:
 	_build_mode.show_page(page, _build_pages.last(), _build_pages.caption(page),
 		_build_pages.note(page), _build_pages.lots(page, part), part, _build_pages.parts(page))
 	lap = _lap(took, "page", lap)
-	BuildSteps.remember(_viewing, page, true, _view_version)
+	if _party_pages:
+		# Its place is the party's, not this link's own.
+		if party_wait:
+			_build_page = page + 1
+		_party_waiting = party_wait
+		_party_show(true)
+	else:
+		BuildSteps.remember(_viewing, page, true, _view_version)
 	_lap(took, "kept", lap)
 	_draw_ahead(page)
 	_build_turned_us = Time.get_ticks_usec() - started
@@ -3481,6 +3505,9 @@ func _build_go(page: int, stepped: bool = false, part: int = 1) -> void:
 ## Next, by the button, a swipe or a key: the page's next part, building a
 ## part at a time, and from its last part the next page's first.
 func _build_next() -> void:
+	# Waiting on the others: nothing past this phone's last page yet.
+	if _party_waiting:
+		return
 	if _build_pages != null and _build_part > 0 and _build_part < _build_pages.parts(_build_page):
 		_build_go(_build_page, true, _build_part + 1)
 	else:
@@ -3599,7 +3626,8 @@ func _leave_build() -> void:
 	_camera.seen = _model_rect
 	_share_view.show_bar(true)
 	_gizmo.visible = bool(_build_left.get("cube", true))
-	BuildSteps.remember(_viewing, _build_page, false, _view_version)
+	if not _party_pages:
+		BuildSteps.remember(_viewing, _build_page, false, _view_version)
 	if bool(_build_left.get("timeline", false)):
 		_steps.visible = true
 		_steps.to_end()
@@ -3607,6 +3635,8 @@ func _leave_build() -> void:
 		_world.show_only({})
 	_camera.look_from(BookletStudio.FRONT)
 	_camera.frame(_built_bounds())
+	if _party_pages:
+		_party_left_build()
 
 
 ## A model shared by link built to its last step on this device, in the
@@ -3650,6 +3680,9 @@ func build_state() -> Dictionary:
 		return {}
 	var said: Dictionary = _build_mode.page_state()
 	said["built"] = _built_said.duplicate()
+	said["party_state"] = _party.call("page_state") if _party != null else {}
+	# The bricks this phone was dealt, for a check across two phones.
+	said["party_share"] = _party_share.keys() if _party_pages else []
 	if not _build_mode.is_open():
 		return said
 	said["faded"] = _world.faded_ids().size()
@@ -10453,3 +10486,166 @@ static func _comma(value: int) -> String:
 		if count % 3 == 0 and n > 0:
 			out = "," + out
 	return out
+
+
+# -- Build together: a build party (APP_UX5 buildparty, 2026-11-06) ----------
+#
+# Several phones build one shared model together (BuildParty, src/net/
+# build_party.gd). The viewer's Build together card (ShareView) starts a
+# party or joins one by its code; once the first phone deals it out, Build
+# it here opens on this phone's share (BuildParty.steps_for: its own steps,
+# then the step that joins everyone's), a part at a time. Each page tells
+# the party how far along this phone is, and everyone's progress is along
+# the top (BuildMode.show_party). Done before the others, a phone waits on
+# its last page; once every phone is done, each is shown the joining step.
+
+## The party, made the first time Build together is pressed; a probe sets
+## one of its own before the scene enters the tree.
+var _party: Node = null
+## Build it is on the party's pages, not the model's own; and waiting for
+## the others on this phone's last page.
+var _party_pages: bool = false
+var _party_waiting: bool = false
+## A code from the link (?party=CODE), filled in when the card opens.
+var _party_code_wanted: String = ""
+## The party was dealt when last heard: Build it opens on this phone's
+## share the moment it is, with no press (and on joining again).
+var _party_was_dealt: bool = false
+## The bricks this phone was dealt (id -> true).
+var _party_share: Dictionary = {}
+
+
+func _party_made() -> Node:
+	if _party == null:
+		_party = Later.make(&"BuildParty")
+	if not _party.is_inside_tree():
+		add_child(_party)
+		_party.call("setup", _viewing)
+		_party.connect("changed", _party_changed)
+	return _party
+
+
+func _party_dealt() -> bool:
+	return _party != null and bool(_party.get("live")) and int(_party.get("dealt")) > 0
+
+
+func _party_connect() -> void:
+	_share_view.party_wanted.connect(func() -> void:
+		_share_view.show_party(_party_made().call("page_state"), _party_code_wanted))
+	_share_view.party_start_wanted.connect(func(as_name: String) -> void:
+		await _party_made().call("start", as_name)
+		_party_changed())
+	_share_view.party_join_wanted.connect(func(code: String, as_name: String) -> void:
+		_party_was_dealt = false
+		await _party_made().call("join", code, as_name)
+		_party_changed())
+	_share_view.party_deal_wanted.connect(func() -> void:
+		await _party_made().call("deal")
+		_party_changed())
+	_share_view.party_leave_wanted.connect(_party_leave)
+	_share_view.party_back_wanted.connect(_party_build)
+
+
+## The model is up: a link that carried a party's code opens its card.
+func _party_on_ready() -> void:
+	if not _party_code_wanted.is_empty():
+		_share_view.show_party(_party_made().call("page_state"), _party_code_wanted)
+
+
+func _party_changed() -> void:
+	if _party == null or _share_view == null:
+		return
+	_share_view.party_changed(_party.call("page_state"))
+	if _party_dealt() and not _party_was_dealt:
+		_party_was_dealt = true
+		_share_view.hide_party()
+		_party_build()
+		return
+	if not _party_pages or _build_mode == null or not _build_mode.is_open():
+		return
+	if _party_waiting and bool(_party.call("all_finished")):
+		# The last phone is done: the joining step, on every phone.
+		_build_go(_build_pages.last())
+		if int(_party.call("seat")) == 1:
+			_count_built()
+		return
+	_party_show(false)
+
+
+## Build it on this phone's share, where it was: the deal worked out here
+## from the model's steps and how many phones it was dealt for.
+func _party_build() -> void:
+	if not _party_dealt() or _share_view == null or _share_view.state != "ready":
+		return
+	_share_view.hide_party()
+	if _build_mode.is_open():
+		if _party_pages:
+			return
+		_leave_build()
+	while _steps.is_starting():
+		await get_tree().process_frame
+	var made: Array[Instructions.Step] = _steps.steps()
+	if made.is_empty() and not await _steps.start(_world, _library, _store.scenery):
+		return
+	made = _steps.steps()
+	var script: GDScript = Later.script(&"BuildParty")
+	var shares: Array = script.call("shares_of", made, int(_party.get("dealt")), _store.scenery)
+	var seat: int = int(_party.call("seat"))
+	var share: Dictionary = shares[seat - 1] if seat >= 1 and seat <= shares.size() else {}
+	_party_share = share
+	var pages: Array[Instructions.Step] = []
+	pages.assign(script.call("steps_for", made, share, _store.scenery))
+	if _build_pages != null:
+		_build_pages.stop()
+	_build_pages = BuildSteps.of(_world, _library, pages, _store.scenery)
+	_build_pages.turned_over.connect(_page_turned_over)
+	_turn_pages_over(_build_pages)
+	# Its own order: the world lays its parts out again for it.
+	_build_key = -1000 - Time.get_ticks_msec()
+	_party_pages = true
+	_build_mode.call("party_by_part")
+	var at: Dictionary = _party.call("mine")
+	await _enter_build(int(at.get("page", 0)))
+	var part: int = int(at.get("part", 0))
+	if _party_pages and _build_mode.is_open() and part != 0 and part != _build_part and not _party_waiting:
+		_build_go(_build_page, false, part)
+
+
+## The party told where this phone is ([param tell]), and everyone's
+## progress shown along the top: waiting for the others on this phone's
+## last page, or on the step that joins them.
+func _party_show(tell: bool) -> void:
+	if _party == null or not _party_pages or _build_pages == null or not _build_mode.is_open():
+		return
+	var joining: int = _build_pages.last()
+	var own: int = _build_pages.standing(joining - 1) if joining >= 2 else 0
+	var on_join: bool = _build_page >= joining and not _party_waiting
+	var finished: bool = _party_waiting or on_join
+	if tell:
+		var done: int = own if finished \
+			else (0 if _build_page == 0 else _build_pages.standing(_build_page, _build_part))
+		_party.call("tell", done, own, _build_page, _build_part, finished)
+	_build_mode.show_party(_party.call("board"), _party_waiting, on_join)
+
+
+## Build it closed on the party's pages: the model's own again next time,
+## and the card up, to go back or to leave.
+func _party_left_build() -> void:
+	_party_pages = false
+	_party_waiting = false
+	_build_mode.end_party()
+	if _build_pages != null:
+		_build_pages.stop()
+	_build_pages = null
+	if _party != null and bool(_party.get("live")):
+		_share_view.show_party(_party.call("page_state"))
+
+
+func _party_leave() -> void:
+	if _party == null:
+		return
+	if _build_mode.is_open() and _party_pages:
+		_leave_build()
+	await _party.call("leave")
+	_party_was_dealt = false
+	_share_view.show_party(_party.call("page_state"), str(_party.get("code")))

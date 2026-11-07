@@ -1181,13 +1181,6 @@
       "area": "view"
     },
     {
-      "kind": "ui",
-      "label": "stud directions",
-      "entry": "src/ui/stud_map.gd",
-      "reach": "tools/probe.sh seeing2   (by hand: View, Stud directions; a session: view_board studs=true)",
-      "area": "view"
-    },
-    {
       "kind": "cli",
       "label": "see inside in a browser",
       "entry": "tools/web/see_inside_flow.mjs",
@@ -1507,6 +1500,20 @@
       "label": "build it step player",
       "entry": "src/ui/build_mode.gd",
       "reach": "https://brickworks.diy/m/<id>, then Build it on the viewer's bar  (a phone or a tablet; the desktop too)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "build party",
+      "entry": "src/net/build_party.gd",
+      "reach": "https://brickworks.diy/app?view=<id> on two to four phones, Build together beside Build it: Start a build on one, the code typed and Join on the others, then Start building  (no account; api/together.js ?op=party_*)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "build party browser flow",
+      "entry": "tools/web/buildparty_flow.mjs",
+      "reach": "node tools/web/buildparty_flow.mjs --build=build/web --port=9921 --out=shots/buildparty_flow   (with .env sourced; or --url=<deployment> with BW_BYPASS)",
       "area": "web"
     },
     {
@@ -4401,6 +4408,20 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "the booklet's page setup",
+      "entry": "src/ui/page_setup_dialog.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Paper (the booklet's own 269 x 199, A4, US Letter, A5), Orientation, Margins, Page colour, Picture behind, Step numbers, Parts pictures, Style and Keep as a style; then Instructions, Save as PDF; page_setup over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "pagesetup probe",
+      "entry": "src/dev/pagesetup_probe.gd",
+      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "path tracer",
       "entry": "src/render/path_tracer.gd",
@@ -4674,20 +4695,6 @@
       "area": "web"
     },
     {
-      "kind": "ui",
-      "label": "the booklet's page setup",
-      "entry": "src/ui/page_setup_dialog.gd",
-      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Paper (the booklet's own 269 x 199, A4, US Letter, A5), Orientation, Margins, Page colour, Picture behind, Step numbers, Parts pictures, Style and Keep as a style; then Instructions, Save as PDF; page_setup over MCP)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "pagesetup probe",
-      "entry": "src/dev/pagesetup_probe.gd",
-      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
-      "area": "view"
-    },
-    {
       "kind": "cli",
       "label": "booklet safe probe",
       "entry": "src/dev/booklet_safe_probe.gd",
@@ -4699,6 +4706,13 @@
       "label": "a file's booklet runs nothing in a browser",
       "entry": "tools/web/booklet_safe_flow.mjs",
       "reach": "node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts: a model whose page picture breaks out of its attribute opened, Instructions pressed; no flag set, the good picture shown, the policy first with script-src 'none', script put into the tab refused, Print prints)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "stud directions",
+      "entry": "src/ui/stud_map.gd",
+      "reach": "tools/probe.sh seeing2   (by hand: View, Stud directions; a session: view_board studs=true)",
       "area": "view"
     },
     {
