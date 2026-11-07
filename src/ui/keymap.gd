@@ -141,6 +141,19 @@ const PRESET_KEYS: Dictionary = {
 		"cut_box": ALT | KEY_X, "cut_sphere": ALT | KEY_Z, "cut_cylinder": ALT | KEY_Y,
 		"booklet_page_setup": CTRL | SHIFT | KEY_B, "export_pickabrick": ALT | KEY_L,
 		"library": CTRL | SHIFT | KEY_O,
+		# savedviews (APP_UX5 #8): the views kept with the model (SavedViews),
+		# Alt-Shift and a digit for each of the first nine, beside the digits
+		# alone that are the views every model has, and Alt-V to keep the one
+		# looked from, a letter of its row (Save this View). No browser keeps
+		# Alt-Shift and a digit, as Firefox on Linux keeps Alt and a digit and
+		# every browser Ctrl and one; Shift and Ctrl-Shift with them are the
+		# colour keys (ColourKeys).
+		"save_view": ALT | KEY_V,
+		"saved_view_1": ALT | SHIFT | KEY_1, "saved_view_2": ALT | SHIFT | KEY_2,
+		"saved_view_3": ALT | SHIFT | KEY_3, "saved_view_4": ALT | SHIFT | KEY_4,
+		"saved_view_5": ALT | SHIFT | KEY_5, "saved_view_6": ALT | SHIFT | KEY_6,
+		"saved_view_7": ALT | SHIFT | KEY_7, "saved_view_8": ALT | SHIFT | KEY_8,
+		"saved_view_9": ALT | SHIFT | KEY_9,
 	},
 	"studio": {
 		"mode_select": KEY_V, "mode_hinge": KEY_H, "mode_clone": KEY_C, "mode_hide": KEY_L,

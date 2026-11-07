@@ -90,6 +90,14 @@ var _stop: OptionButton
 var _focus: HSlider
 var _lens_note: Label
 var _samples: OptionButton
+## A preset: these choices kept by a name, for any model (RenderSettings.presets).
+var _preset: OptionButton
+var _preset_save: Button
+var _preset_remove: Button
+var _preset_ask: ConfirmationDialog
+var _preset_name: LineEdit
+## The preset chosen, as it put these choices: changed since, it is chosen no more.
+var _preset_put: Dictionary = {}
 ## The choices, which scroll: a browser test scrolls one into view as a person does.
 var _choices: ScrollContainer
 var _frames: Array[Button] = []
@@ -212,6 +220,12 @@ func open() -> void:
 		settings.focal_mm = roundf(RenderSettings.focal_for(eye.fov, settings.size))
 		_focal.set_value_no_signal(settings.focal_mm)
 	_list_motions()
+	# The model's own views, as it keeps them now: another model open, or a
+	# view saved again, since the camera was chosen (SavedViews).
+	var gone: String = _use_saved_view(settings.saved_view) \
+		if not settings.saved_view.is_empty() else ""
+	_list_views()
+	_list_presets(_chosen_preset())
 	_describe()
 	visible = true
 	if _scrim != null:
@@ -222,7 +236,8 @@ func open() -> void:
 	# picture read back waited for it.
 	get_viewport().disable_3d = true
 	_loop.clear()
-	_status.text = "Choose how it should look; the picture is a quick draft of it."
+	_status.text = "Choose how it should look; the picture is a quick draft of it." \
+		if gone.is_empty() else gone
 	_progress.value = 0.0
 	_ask_preview(0)
 
@@ -450,6 +465,22 @@ func _build() -> void:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(right)
 
+	# savedviews: these choices kept by a name and chosen again in two
+	# actions, the list and the name, on any model (RenderSettings.presets).
+	_heading(right, "Preset")
+	var preset_row := HBoxContainer.new()
+	preset_row.add_theme_constant_override("separation", 6)
+	right.add_child(preset_row)
+	_preset = OptionButton.new()
+	_preset.add_theme_font_size_override("font_size", 12)
+	_preset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_preset.tooltip_text = "Choices kept by a name, for any model: choose one to use them all again"
+	_preset.item_selected.connect(_choose_preset)
+	preset_row.add_child(_preset)
+	_preset_save = _button(preset_row, "Save…", _ask_preset_name,
+		"Keep these choices by a name, to choose again on any model")
+	_preset_remove = _button(preset_row, "Remove", _remove_preset, "Forget the preset chosen")
+
 	_heading(right, "Quality")
 	_quality = _segments(right, ["Quick", "Good", "Best"], settings.quality,
 		func(n: int) -> void:
@@ -529,13 +560,18 @@ func _build() -> void:
 	_heading(right, "Camera")
 	_view = OptionButton.new()
 	_view.add_theme_font_size_override("font_size", 12)
-	for key: String in StudioRender.VIEWS:
-		_view.add_item(str(StudioRender.VIEWS[key][0]))
-		_view.set_item_metadata(_view.item_count - 1, key)
-		if key == settings.view:
-			_view.select(_view.item_count - 1)
+	_list_views()
+	# A view saved with the model (SavedViews) is drawn from exactly there.
 	_view.item_selected.connect(func(index: int) -> void:
-		settings.view = str(_view.get_item_metadata(index))
+		var chosen: Variant = _view.get_item_metadata(index)
+		if chosen is Dictionary:
+			var gone: String = _use_saved_view(str(chosen["saved"]))
+			if not gone.is_empty():
+				_status.text = gone
+				_list_views()
+		else:
+			settings.forget_eye()
+			settings.view = str(chosen)
 		_ask_preview())
 	right.add_child(_view)
 	_focal = _slider(right, "Lens", 18.0, 200.0, settings.focal_mm, 1.0, func(value: float) -> void:
@@ -566,10 +602,12 @@ func _build() -> void:
 	_samples = OptionButton.new()
 	_samples.add_theme_font_size_override("font_size", 12)
 	_samples.add_item("As this device does best (%d)" % _platform_samples())
+	_samples.set_item_metadata(0, 0)
 	for count: int in SAMPLES:
 		_samples.add_item("%d frames" % count)
+		_samples.set_item_metadata(_samples.item_count - 1, count)
 	_samples.item_selected.connect(func(index: int) -> void:
-		settings.samples = 0 if index == 0 else int(SAMPLES[index - 1])
+		settings.samples = int(_samples.get_item_metadata(index))
 		_describe())
 	right.add_child(_samples)
 
@@ -609,6 +647,7 @@ func _build() -> void:
 			_make_default("building")
 			_describe())
 	_building_note = _note(right)
+	_list_presets()
 
 
 static func _platform_samples() -> int:
@@ -843,6 +882,7 @@ func chosen_motion() -> String:
 ## What the choices come to, in words: what each grade does here, what the
 ## lens is, what the turntable and the animation are.
 func _describe() -> void:
+	_preset_kept()
 	var full: bool = StudioRender.full_renderer()
 	match settings.quality:
 		RenderSettings.Quality.QUICK:
@@ -906,12 +946,248 @@ func _order_of(name: String) -> Array:
 	return [motions.named(name)] if motions.named(name) != null else []
 
 
+# -- the camera from a saved view, and presets (savedviews, APP_UX5 #8) ------------
+
+
+## The Camera's rows: Render's own views, then the model's saved ones by name
+## (SavedViews), the one these settings name chosen.
+func _list_views() -> void:
+	_view.clear()
+	for key: String in StudioRender.VIEWS:
+		_view.add_item(str(StudioRender.VIEWS[key][0]))
+		_view.set_item_metadata(_view.item_count - 1, key)
+	var views: Array = world.saved_views if world != null else []
+	if not views.is_empty():
+		_view.add_separator("Saved with the model")
+	for name: String in SavedViews.names(views):
+		_view.add_item("“%s”" % name)
+		_view.set_item_metadata(_view.item_count - 1, {"saved": name})
+	var wanted: Variant = {"saved": settings.saved_view} if not settings.saved_view.is_empty() \
+		else settings.view
+	for n: int in _view.item_count:
+		# Render's own views are words, the model's a {"saved": name}: two
+		# kinds, which == will not compare.
+		var meta: Variant = _view.get_item_metadata(n)
+		if not _view.is_item_separator(n) and typeof(meta) == typeof(wanted) and meta == wanted:
+			_view.select(n)
+
+
+## Draw from the view saved with the model as [param name], as the window
+## looks from it now. Why not, in words, when the model keeps none of that
+## name: the camera is then Render's three-quarter view again.
+func _use_saved_view(name: String) -> String:
+	var views: Array = world.saved_views if world != null else []
+	var at: int = SavedViews.index_of(views, name)
+	if at >= 0:
+		settings.keep_view(views[at], eye)
+		return ""
+	settings.forget_eye()
+	settings.view = "hero"
+	return "This model keeps no view called “%s”, so the camera is Three-quarter, like the box." % name
+
+
+## A picture from the view saved with the model as [param name] (SavedViews),
+## as the window draws it, at [param size], kept nowhere: view_model's view=
+## (Assistant). Why not, in words, when there is none to draw.
+func picture_of_view(name: String, size: Vector2i) -> Variant:
+	var views: Array = world.saved_views if world != null else []
+	var at: int = SavedViews.index_of(views, name)
+	if at < 0:
+		return SavedViews.not_kept(views, name)
+	if world.brick_count() - scenery.size() <= 0:
+		return "There is nothing on the baseplate to look at yet."
+	if not StudioRender.possible():
+		return ("Looking from a saved view needs something to draw with, and this app is "
+			+ "running without a window. Start it in one (godot --path . -- --mcp).")
+	if is_rendering():
+		return "Render is drawing; ask again once it has finished."
+	_make_renderer()
+	while renderer.is_busy():
+		await get_tree().process_frame
+	var chosen := RenderSettings.new()
+	chosen.quality = RenderSettings.Quality.QUICK
+	chosen.size = size
+	# The window's own lens, so the picture is the window's from there.
+	chosen.focal_mm = RenderSettings.focal_for(eye.fov, size) if eye != null else 50.0
+	chosen.keep_view(views[at], eye)
+	return await renderer.render(world, chosen)
+
+
+## The Preset's rows: none chosen, then each kept, [param chosen] chosen.
+func _list_presets(chosen: String = "") -> void:
+	_preset.clear()
+	_preset.add_item("Your own choices")
+	_preset.set_item_metadata(0, "")
+	var kept: Dictionary = RenderSettings.presets()
+	for name: String in kept:
+		Language.keep_name(name)
+		_preset.add_item(name)
+		_preset.set_item_metadata(_preset.item_count - 1, name)
+		if name == chosen:
+			_preset.select(_preset.item_count - 1)
+	if chosen.is_empty() or not kept.has(chosen):
+		_preset.select(0)
+		_preset_put = {}
+	_preset_remove.disabled = _preset.selected <= 0
+
+
+func _chosen_preset() -> String:
+	return str(_preset.get_item_metadata(_preset.selected)) if _preset.selected >= 0 else ""
+
+
+## Every choice the preset [param index] keeps, put on these settings and
+## shown: the second of the two actions that choose one again.
+func _choose_preset(index: int) -> void:
+	var name: String = str(_preset.get_item_metadata(index))
+	_preset_remove.disabled = name.is_empty()
+	if name.is_empty():
+		_preset_put = {}
+		return
+	var kept: Dictionary = RenderSettings.presets()
+	if not kept.has(name):
+		_list_presets()
+		return
+	settings.use_preset(kept[name])
+	var gone: String = _use_saved_view(settings.saved_view) \
+		if not settings.saved_view.is_empty() else ""
+	_show_choices()
+	_preset_put = settings.preset()
+	_describe()
+	_ask_preview(0)
+	_status.text = "The preset “%s”.%s" % [name, "" if gone.is_empty() else " " + gone]
+
+
+## A choice changed by hand since the preset was chosen: none is chosen now.
+func _preset_kept() -> void:
+	if _preset == null or _preset_put.is_empty() or settings.preset() == _preset_put:
+		return
+	_preset_put = {}
+	_preset.select(0)
+	_preset_remove.disabled = true
+
+
+func _ask_preset_name() -> void:
+	if _preset_ask == null:
+		_preset_ask = ConfirmationDialog.new()
+		_preset_ask.title = "Save the preset"
+		_preset_ask.ok_button_text = "Save"
+		var column := VBoxContainer.new()
+		var asking := Label.new()
+		asking.text = "What should these choices be called?"
+		column.add_child(asking)
+		_preset_name = LineEdit.new()
+		_preset_name.accessibility_name = "Name of the preset"
+		_preset_name.custom_minimum_size = Vector2(320, 0)
+		_preset_name.max_length = SavedViews.LONGEST
+		_preset_name.text_submitted.connect(func(_text: String) -> void:
+			_preset_ask.hide()
+			save_preset(_preset_name.text))
+		column.add_child(_preset_name)
+		_preset_ask.add_child(column)
+		_preset_ask.confirmed.connect(func() -> void: save_preset(_preset_name.text))
+		add_child(_preset_ask)
+	var chosen: String = _chosen_preset()
+	_preset_name.text = chosen if not chosen.is_empty() \
+		else tr("Preset %d") % (RenderSettings.presets().size() + 1)
+	_preset_ask.popup_centered()
+	_preset_name.grab_focus()
+	_preset_name.select_all()
+
+
+## These choices kept as the preset [param name], over one of that name, and
+## chosen. What was said.
+func save_preset(name: String) -> String:
+	var called: String = SavedViews.clean_name(name)
+	var wrong: String = RenderSettings.save_preset(called, settings)
+	if not wrong.is_empty():
+		_status.text = wrong.left(1).to_upper() + wrong.substr(1) + "."
+		return _status.text
+	_list_presets(called)
+	_preset_put = settings.preset()
+	_status.text = "Kept these choices as the preset “%s”, for any model." % called
+	return _status.text
+
+
+func _remove_preset() -> void:
+	var name: String = _chosen_preset()
+	if name.is_empty():
+		return
+	RenderSettings.forget_preset(name)
+	_list_presets()
+	_status.text = "Forgot the preset “%s”." % name
+
+
+## Every control as these settings have it, as a preset leaves them.
+func _show_choices() -> void:
+	for n: int in _quality.size():
+		_quality[n].set_pressed_no_signal(n == settings.quality)
+	var look_at: int = RenderSettings.LOOKS.keys().find(settings.look)
+	for n: int in _looks.size():
+		_looks[n].set_pressed_no_signal(n == look_at)
+	var size_at: int = SIZES.size() - 1
+	for n: int in SIZES.size() - 1:
+		if SIZES[n][1] == settings.size:
+			size_at = n
+	for n: int in _sizes.size():
+		_sizes[n].set_pressed_no_signal(n == size_at)
+	_custom.visible = size_at == SIZES.size() - 1
+	_width.set_value_no_signal(settings.size.x)
+	_height.set_value_no_signal(settings.size.y)
+	# The backdrop: one of those named, a colour of its own, or none.
+	var background: int = 4
+	if settings.transparent:
+		background = 5
+	else:
+		for n: int in 4:
+			var named: Array = RenderSettings.BACKDROPS[str(BACKGROUNDS[n][1])]
+			if settings.backdrop.is_equal_approx(named[0]) \
+					and settings.backdrop_gradient == bool(named[1]):
+				background = n
+				break
+	_background = background
+	for n: int in _backgrounds.size():
+		_backgrounds[n].set_pressed_no_signal(n == background)
+	_picker.visible = background == 4
+	if background == 4:
+		_picker.color = settings.backdrop
+	for child: Node in _preview.get_parent().get_children():
+		if child.has_meta("checks"):
+			(child as CanvasItem).modulate = Color(1, 1, 1, 1.0 if settings.transparent else 0.0)
+	_contact.set_pressed_no_signal(settings.contact_shadow)
+	for n: int in _light.item_count:
+		if str(_light.get_item_metadata(n)) == settings.lighting:
+			_light.select(n)
+	_turn.set_value_no_signal(settings.light_turn)
+	_list_views()
+	_focal.set_value_no_signal(settings.focal_mm)
+	var stop_at: int = 0
+	for n: int in STOPS.size():
+		if absf(float(STOPS[n][1]) - settings.f_stop) \
+				< absf(float(STOPS[stop_at][1]) - settings.f_stop):
+			stop_at = n
+	_stop.select(stop_at)
+	_focus.set_value_no_signal(settings.focus)
+	var samples_at: int = -1
+	for n: int in _samples.item_count:
+		if int(_samples.get_item_metadata(n)) == settings.samples:
+			samples_at = n
+	if samples_at < 0:
+		_samples.add_item("%d frames" % settings.samples)
+		samples_at = _samples.item_count - 1
+		_samples.set_item_metadata(samples_at, settings.samples)
+	_samples.select(samples_at)
+	var frames_at: int = FRAMES.find(settings.frames)
+	for n: int in _frames.size():
+		_frames[n].set_pressed_no_signal(n == frames_at)
+
+
 # -- drawing ---------------------------------------------------------------------
 
 
 ## Draw the draft again, in a moment: choices come in runs (a slider
 ## dragged), and only the last is worth drawing.
 func _ask_preview(after_ms: int = 220) -> void:
+	_preset_kept()
 	_loop.clear()
 	_preview_due = Time.get_ticks_msec() + after_ms
 
@@ -1237,6 +1513,9 @@ func controls_by_name() -> Dictionary:
 	named_controls["render_close"] = _close_button
 	named_controls["render_light"] = _light
 	named_controls["render_view"] = _view
+	named_controls["render_preset"] = _preset
+	named_controls["render_preset_save"] = _preset_save
+	named_controls["render_preset_remove"] = _preset_remove
 	named_controls["render_choices"] = _choices
 	return named_controls
 
