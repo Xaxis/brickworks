@@ -480,7 +480,24 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   left holds the tree, the properties and the colours, and there is no right
   column. Each rail carries its icon and its name ("Parts", "Properties",
   "Assistant"), tinted with the accent down its edge while folded, and
-  switching is one click on it. Probe: `roomfit_probe` (1280 x 720,
+  switching is one click on it. The tools' column (Stress, Simulate, Motions,
+  the hose tool, Colour the hidden parts) takes its room out of the bin's, not
+  the model's (`Main._tool_room` in `_fit_bin`): beside Stress the bin is
+  four across at 1280 x 720, where it kept six and ran the row past the
+  window. And the model keeps its least room, 440 units (400 px at the
+  smallest the interface is drawn): where both columns show, one opened beside
+  the other and the tools' column that would leave it less folds the other
+  side's, as where they take turns (`Main.MODEL_LEAST`, `_room_beside`, in
+  `_column_opening`; at 1400 x 900 the bin, Stress and the assistant together
+  left it 393 px). On a tablet on its side the tools' column goes under the
+  model while, beside it, it would leave the model less than that, with a
+  drawer or the parts out, and back beside it when they go
+  (`Main._place_tool_column`, `_tool_crowds_model`): Stress and the
+  assistant's drawer left a 1024 x 768 tablet's model 233 px. Nothing the
+  person opened is put away for the room. `timelinefit_probe` (APP_UX6
+  timelinefit) opens them in two orders at 1280 x 720 and 1400 x 900, and
+  `timelinefit_tablet_probe` the tablet's own at 1024 x 768, and reads every
+  control along the window's edges inside it. Probe: `roomfit_probe` (1280 x 720,
   1400 x 900, 1600 x 900 and 1920 x 1080 in one window, made each size in
   turn: 24 parts in sight at the first and 40 at the rest, the selected
   part's boxes with the bin, the assistant beside the bin from 1400 px with
