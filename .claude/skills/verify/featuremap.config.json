@@ -4847,6 +4847,13 @@
       "entry": "tools/web/mysets_api.mjs",
       "reach": "node tools/web/mysets_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced: op missing from the counts shown, refusals changing nothing, marks kept through every other change and an older app's PUT, figs, the older collection lot for lot)",
       "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "a session keeps a view over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   (save_view {\"name\": NAME} keeps the window's view as Save this view… does, answered with the model from there; in_view lists the views with their keys; its Alt-Shift key and render_model view= back within 0.1° and 0.1 LDU; remove=true; highlight=/xray= take 4070 quoted or not, on the MCP walk's Pods)",
+      "area": "mcp"
     }
   ]
 }
