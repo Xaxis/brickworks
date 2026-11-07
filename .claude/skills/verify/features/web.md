@@ -148,7 +148,11 @@ plan with Claude as the client.
   (the catalogue and the rest of `assets/web/`, `models/`, LDraw's tables,
   the booklet PDF's fonts, and the 101 scripts the first screen does not
   compile, Later's classes and what only they name, as
-  `tools/web/start_closure.py` reads the sources: 1.6 MB of the code
+  `tools/web/start_closure.py` reads the sources, walked from every entry
+  point `project.godot` names, the main loop, each autoload and the main
+  scene (a main loop left in the data pack never started the app,
+  2026-11-07; one it cannot place stops the export,
+  `tests/test_start_closure.py`): 1.6 MB of the code
   pack's 3.9 that the engine waited for, webstart2, 2026-11-05; 4.6 MB) is
   fetched by the page's worker as soon as the engine's files are in,
   before `index.parts.bin`, and mounted by `Main._ready` before the
