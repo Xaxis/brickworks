@@ -31,7 +31,7 @@ import { chromium } from "playwright";
 import { spawn, execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { SOFTWARE, START_MS } from "./browser.mjs";
+import { instantScroll, SOFTWARE, START_MS } from "./browser.mjs";
 import { canSignIn, signInContext } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -178,6 +178,7 @@ const context = await chromium.launchPersistentContext(profile, {
   // Not "controlled by automated test software" across the top.
   ignoreDefaultArgs: ["--enable-automation"],
 });
+await instantScroll(context);
 if (canSignIn()) await signInContext(context);
 else console.log("  (not signed in: run with node --env-file=.env; the app will show its sign-in screen)");
 
