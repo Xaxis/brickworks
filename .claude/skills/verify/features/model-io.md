@@ -67,8 +67,12 @@ Whether what you built is still there tomorrow, and still means the same thing.
   app does not know and both lines of every pair (BEGIN/END, START/END,
   STORE/RETRIEVE, SKIP_BEGIN/SKIP_END, MLCad's GROUP: `_read_pairs`) stay
   where they are; a pair goes only when every line between its two went. An
-  LSynth hose, a LeoCAD or MLCad group and a TEXMAP block move whole with
-  their first part (`_read_blocks`). A copy whose every part moved alike,
+  LSynth hose and a TEXMAP block move whole with their first part
+  (`_read_blocks`): no step can split them. A group's parts are each their
+  own: one a step edit takes out of a LeoCAD group goes with its group's
+  pair round it, as LeoCAD writes a group across two steps, and the pair it
+  left goes once every part did (`GROUPED`, `_emit`); MLCad's group says
+  itself on each part's BTG line, which goes with it. A copy whose every part moved alike,
   the line placing it written again (`_common`), never by a majority. A part
   or copy with no line, a line at the end of its step, with a section of its
   own for a sub-model it needs; copies of one sub-model that no longer agree,

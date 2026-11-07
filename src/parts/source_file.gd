@@ -54,8 +54,15 @@ extends RefCounted
 const NEAR := 0.01
 const TURN := 0.0001
 ## The kinds of pair a step edit moves whole with its first part ([method
-## _read_blocks]): what is between them is one thing, drawn or grouped.
-const WHOLE := ["SYNTH", "LEOCAD GROUP", "TEXMAP", "MLCAD GROUP"]
+## _read_blocks]): what is between them is one thing drawn, an LSynth hose
+## or a texture's parts, which no step can split. A group's parts are each
+## their own: LeoCAD writes a group a part of which is in another step as a
+## pair in each step ([constant GROUPED]), and MLCad's says itself on each
+## part's own BTG line.
+const WHOLE := ["SYNTH", "TEXMAP"]
+## The pair a part a step edit takes out of it is written in again round it
+## where it goes ([method _emit]).
+const GROUPED := "LEOCAD GROUP"
 ## The section of a line in none (before the first FILE line, in !DATA): a
 ## newline, which no section's name can hold.
 const NONE := "\n"
@@ -123,6 +130,10 @@ class Item extends RefCounted:
 	## The first part of a block moved whole ([method _take]): the block's
 	## lines after its own, written after it.
 	var tail: PackedInt32Array = PackedInt32Array()
+	## Taken from its place by a step edit: the LeoCAD groups round it,
+	## [open, close] outermost first, said round it where it goes outside
+	## them ([method _emit]).
+	var groups: Array = []
 	## The line of its copy's section it goes before, unstepped: where an
 	## ungrouped copy's line was. -1 for the end of its step.
 	var anchor: int = -1
@@ -216,6 +227,14 @@ class Save extends RefCounted:
 	## the file would have no STEP line to say so ([method _assemble]).
 	var end_step: bool = false
 	var within: String = ""
+	## While a section is written ([method _render]): the line of it what
+	## is written next goes before, its lines left out, and the LeoCAD
+	## groups the item written last was closed in, closed where [code]out[/code]
+	## had this many lines ([method _emit]).
+	var at: int = -1
+	var dropped: Dictionary = {}
+	var closed: Array = []
+	var closed_at: int = -1
 	var main_name: String = ""
 	## The sources of the parts made here a save may name ([method write]),
 	## and the ids its new lines do name ([method _said]).
@@ -543,8 +562,8 @@ func _mlcad_groups(from: int, to: int) -> Array:
 
 
 ## The blocks a step edit moves whole, with their first part ([constant
-## WHOLE]): an LSynth hose or band, LeoCAD's and MLCad's groups, a
-## texture's parts, each with no STEP line in it. Split, LSynth's END came
+## WHOLE]): an LSynth hose or band, a texture's parts, each with no STEP
+## line in it. Split, LSynth's END came
 ## before its BEGIN (kt4review #2). The outermost where one is in another.
 func _read_blocks() -> void:
 	for start: int in pairs_in:
@@ -1320,6 +1339,22 @@ func _render(save: Save, target: Target) -> void:
 	else:
 		for item: Item in incoming:
 			_put(anchored if item.anchor >= 0 else null, item, tail)
+	# A LeoCAD group whose every part a step edit took to another step: its
+	# pair goes with them, said again round each where it goes.
+	for item: Variant in pairs_in.get(a, []):
+		var pair: Array = item
+		if str(pair[2]) != GROUPED or drop.has(int(pair[0])) or int(pair[1]) - int(pair[0]) < 2:
+			continue
+		var all: bool = true
+		for k: int in range(int(pair[0]) + 1, int(pair[1])):
+			if not drop.has(k):
+				all = false
+				break
+		if all:
+			drop[int(pair[0])] = true
+			drop[int(pair[1])] = true
+	save.dropped = drop
+	save.closed = []
 	for key: Variant in anchored:
 		(anchored[key] as Array).sort_custom(_sooner)
 	for key: Variant in at_end:
@@ -1381,6 +1416,7 @@ func _render(save: Save, target: Target) -> void:
 	var out: Array = []
 	var rank: int = 0
 	for n: int in range(a, b + 1):
+		save.at = n
 		if anchored.has(n):
 			for item: Item in anchored[n]:
 				_emit(save, out, item, target)
@@ -1449,6 +1485,7 @@ func _render(save: Save, target: Target) -> void:
 		out.append(lines[n])
 		if _is_step(lines[n]):
 			save.within = ""
+			save.at = n + 1
 			var blk: int = steps_here.find(n)
 			for step: int in after.get(blk, []):
 				for item: Item in news[step]:
@@ -1508,9 +1545,15 @@ func _drop(drop: Dictionary, line: int) -> void:
 
 ## [param item] taken from its place to go at the end of its step, its
 ## bound lines with it; the first part of a block, the whole block (an
-## LSynth hose, a group), its other parts written where they are in it.
+## LSynth hose, a texture's parts), its other parts written where they are
+## in it. A part of a LeoCAD group leaves it: its groups go with it.
 func _take(save: Save, target: Target, item: Item, drop: Dictionary) -> void:
 	item.order = item.line
+	var span: Array = main_span if target.copy == root else sections.get(target.copy.section, [0, 0])
+	for found: Variant in pairs_in.get(int(span[0]), []):
+		var pair: Array = found
+		if str(pair[2]) == GROUPED and int(pair[0]) < item.line and int(pair[1]) > item.line:
+			item.groups.push_front([int(pair[0]), int(pair[1])])
 	if blocks.has(item.line):
 		var whole: Array = blocks[item.line]
 		var run := PackedStringArray()
@@ -1657,7 +1700,20 @@ static func _said_within(save: Save, out: Array, within: String) -> void:
 ## [param item] written where it goes, with the lines bound to it and, for
 ## a block's first part, the rest of its block.
 func _emit(save: Save, out: Array, item: Item, target: Target) -> void:
-	_said_within(save, out, item.within)
+	# The LeoCAD groups it was in, round it where it goes outside them, as
+	# LeoCAD writes a group with parts in two steps; one pair round the
+	# parts of the same groups that go one after another.
+	var wrap: Array = []
+	for pair: Array in item.groups:
+		if not (pair[0] < save.at and save.at <= pair[1] and not save.dropped.has(pair[0])):
+			wrap.append(pair)
+	if not wrap.is_empty() and wrap == save.closed and out.size() == save.closed_at \
+			and item.within == save.within:
+		out.resize(out.size() - wrap.size())
+	else:
+		_said_within(save, out, item.within)
+		for pair: Array in wrap:
+			out.append(lines[pair[0]])
 	out.append_array(item.run)
 	_emit_line(save, out, item, target)
 	for line: int in item.tail:
@@ -1667,6 +1723,10 @@ func _emit(save: Save, out: Array, item: Item, target: Target) -> void:
 			_emit_line(save, out, target.inplace[line], target)
 		else:
 			out.append(lines[line])
+	for k: int in range(wrap.size() - 1, -1, -1):
+		out.append(lines[(wrap[k] as Array)[1]])
+	save.closed = wrap
+	save.closed_at = out.size()
 
 
 func _emit_line(save: Save, out: Array, item: Item, target: Target) -> void:

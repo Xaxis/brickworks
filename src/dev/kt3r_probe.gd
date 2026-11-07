@@ -314,7 +314,8 @@ func _case_leocad() -> void:
 
 ## A sub-model placed once, with notes, an MLCad group and retired numbers,
 ## ungrouped (kt3review #2): its parts in the model under their numbers,
-## with their lines; its section kept, placed by nothing.
+## with the lines about each (its MLCad group); its section kept whole,
+## notes and all, placed by nothing (kt4review #1, #7).
 func _case_ungroup() -> void:
 	var text: String = _fixture("kt3r_ungroup.mpd")
 	await _open(text)
@@ -332,9 +333,13 @@ func _case_ungroup() -> void:
 		_count(saved, "4073.dat") == 4 and _count(saved, " 3040.dat") == 2
 		and _count(saved, "6141") == 0 and _count(saved, "3040b") == 0)
 	var house: String = saved.get_slice("0 FILE roof.ldr", 0)
-	for kept: String in ["0 // two round tiles, under the number the author used",
-			"0 MLCAD BTG Roof", "0 // the roof, a sub-model of its own"]:
+	for kept: String in ["0 MLCAD BTG Roof", "0 // the roof, a sub-model of its own"]:
 		_check("...in the model with its parts: %s" % kept, house.contains(kept))
+	# A note is about no part (kt4review #1): it stays where it was, in
+	# the roof's block, kept whole and placed by nothing.
+	var roof: String = "0 FILE roof.ldr" + text.get_slice("0 FILE roof.ldr", 1)
+	_check("...the roof's block as it was, its notes in it", saved.ends_with(roof)
+		and not house.contains("0 // two round tiles"))
 
 
 ## The only copy of a sub-model holding a part no library has, taken off
