@@ -12004,3 +12004,8 @@ msgstr "Eine Rebrickable-Teileliste (.csv) mit diesen Teilen zum Importieren in 
 
 msgid "A list of LEGO® element numbers (.csv) of these, to upload at LEGO® Pick a Brick: the parts it has no number for are named"
 msgstr "Eine Liste von LEGO® Elementnummern (.csv) mit diesen Teilen zum Hochladen bei LEGO® Pick a Brick: Die Teile ohne Nummer werden genannt"
+
+# weighsure (APP_UX6 #4): the model's weight on the status bar, after its counts,
+# the model as it is in that frame (StatusBar._weight)
+msgid "What the model weighs, each part by its shape: within about 6% of real bricks on a scale. The baseplate is left out"
+msgstr "Was das Modell wiegt, jedes Teil nach seiner Form: auf etwa 6 % genau wie echte Steine auf einer Waage. Die Grundplatte zählt nicht mit"
