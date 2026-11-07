@@ -4791,6 +4791,27 @@
       "entry": "tools/release/thumbnail_check.py",
       "reach": "tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace   (smoke of the .deb runs it)",
       "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "the model in your room",
+      "entry": "web/room.js",
+      "reach": "https://brickworks.diy/m/<id> (and /library/<id>, /library/set/<n> with an LDraw model) on a phone or tablet that can place a model in a room (AR Quick Look on an iPhone or iPad, WebXR immersive AR on Android): In your room on the picture's foot (web/model-page.js offerRoom) writes the model's GLB in the browser (web/glb.js, from /m/<id>/room.json, /m/<id>/v/<n>/room.json, /library/<id>/room.json: api/share.js ?op=room|set_room, api/_parts.js roomOf) and shows it in <model-viewer> (web/model-viewer-4.4.0, pinned, tools/web/vendor_model_viewer.sh) with Place it in your room; never offered on a computer",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "room GLB probe",
+      "entry": "src/dev/arview_probe.gd",
+      "reach": "tools/probe.sh arview_probe [-- FILE.mpd ...]   (headless; Export's GLB of the car, 6040-1, 10243-1, 42080-1 and 8880-1 against the page's, tools/web/arview_check.mjs, node by node)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "room browser flow",
+      "entry": "tools/web/arview_flow.mjs",
+      "reach": "node tools/web/arview_flow.mjs --out=DIR [--before=<checkout>]   (the stand-in's watchtower with the example car's file; with --url=<preview> and BW_BYPASS, preview_checks.sh arview: the deployment's first model)",
+      "area": "web"
     }
   ]
 }

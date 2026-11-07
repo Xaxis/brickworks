@@ -2087,6 +2087,22 @@
       "tests": []
     },
     {
+      "id": "cli:room GLB probe",
+      "kind": "cli",
+      "entry": "src/dev/arview_probe.gd",
+      "reach": "tools/probe.sh arview_probe [-- FILE.mpd ...]   (headless; Export's GLB of the car, 6040-1, 10243-1, 42080-1 and 8880-1 against the page's, tools/web/arview_check.mjs, node by node)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:room browser flow",
+      "kind": "cli",
+      "entry": "tools/web/arview_flow.mjs",
+      "reach": "node tools/web/arview_flow.mjs --out=DIR [--before=<checkout>]   (the stand-in's watchtower with the example car's file; with --url=<preview> and BW_BYPASS, preview_checks.sh arview: the deployment's first model)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:round trip probe",
       "kind": "cli",
       "entry": "src/dev/roundtrip_probe.gd",
@@ -5672,6 +5688,14 @@
         "tests/test_library_site.py",
         "tests/test_sets.py"
       ]
+    },
+    {
+      "id": "ui:the model in your room",
+      "kind": "ui",
+      "entry": "web/room.js",
+      "reach": "https://brickworks.diy/m/<id> (and /library/<id>, /library/set/<n> with an LDraw model) on a phone or tablet that can place a model in a room (AR Quick Look on an iPhone or iPad, WebXR immersive AR on Android): In your room on the picture's foot (web/model-page.js offerRoom) writes the model's GLB in the browser (web/glb.js, from /m/<id>/room.json, /m/<id>/v/<n>/room.json, /library/<id>/room.json: api/share.js ?op=room|set_room, api/_parts.js roomOf) and shows it in <model-viewer> (web/model-viewer-4.4.0, pinned, tools/web/vendor_model_viewer.sh) with Place it in your room; never offered on a computer",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:the owner's feedback inbox",

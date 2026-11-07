@@ -10,7 +10,7 @@ config/description="A dimensionally exact brick construction system."
 ; Kept equal to VERSION by tools/release.py, which is where it is changed.
 ; The macOS Info.plist and the Windows file version are both read from
 ; here at export, and the app shows it in Help and the window title.
-config/version="0.18.0"
+config/version="0.19.0"
 run/main_scene="res://src/main.tscn"
 ; The engine's SceneTree, which draws a model file's picture for a file
 ; browser (--thumbnail) without loading the main scene: the engine makes

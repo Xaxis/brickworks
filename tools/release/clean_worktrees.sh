@@ -29,7 +29,9 @@ for d in "$R"/.claude/worktrees/*/; do
   if [ -e "$(git -C "$d" rev-parse --git-dir)/locked" ]; then
     echo "kept $w: locked (an agent is running in it)"; continue
   fi
-  busy=$(for p in /proc/[0-9]*; do c=$(readlink "$p/cwd" 2>/dev/null) || continue
+  # Every process's folder by one find, as retire_wt.sh reads them: a
+  # readlink forked for each process, for each worktree, took 21 s (2026-11-07).
+  busy=$(find /proc/[0-9]* -maxdepth 1 -name cwd -printf '%h %l\n' 2>/dev/null | while read -r p c; do
     case "$c" in "$d"|"$d"/*) echo "${p#/proc/}";; esac; done | head -3 | tr '\n' ' ')
   if [ -n "$busy" ]; then echo "kept $w: processes inside it ($busy)"; continue; fi
   if [ -n "$(git -C "$d" status --porcelain --untracked-files=no)" ]; then
@@ -45,8 +47,7 @@ for d in "$R"/.claude/worktrees/*/; do
   git worktree remove --force "$d" && echo "removed $w"
   [ "$b" != HEAD ] && git branch -d "$b" >/dev/null 2>&1
 done
-gone=$(for p in /proc/[0-9]*; do [ -O "$p" ] || continue
-  c=$(readlink "$p/cwd" 2>/dev/null) || continue
+gone=$(find /proc/[0-9]* -maxdepth 1 -name cwd -uid "$EUID" -printf '%h %l\n' 2>/dev/null | while read -r p c; do
   case "$c" in "$R"/.claude/worktrees/*" (deleted)") echo "${p#/proc/}";; esac; done)
 for pid in $gone; do
   what=$(ps -o etimes=,args= -p "$pid" 2>/dev/null | cut -c1-120) || continue

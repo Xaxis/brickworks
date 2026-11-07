@@ -232,17 +232,15 @@ def _upright_planes(polys: list[Poly]) -> list[Plane]:
     return planes
 
 
-def _orient(plane: Plane, verts: list[Vec3]) -> None:
-    """Face [param plane] out of the track: the way it reaches less past it."""
-    ahead = _past(plane, verts)
-    plane.normal = plane.normal * -1.0
-    plane.offset = -plane.offset
-    behind = _past(plane, verts)
+def _orient(plane: Plane, flat: list[tuple[float, float]]) -> None:
+    """Face [param plane] out of the track: the way it reaches less past it.
+    [param flat] is the track's points seen from above, (x, z), each once."""
+    ahead, behind = _past(plane, flat)
     if ahead <= behind:
-        plane.normal = plane.normal * -1.0
-        plane.offset = -plane.offset
         plane.past = ahead
     else:
+        plane.normal = plane.normal * -1.0
+        plane.offset = -plane.offset
         plane.past = behind
 
 
@@ -307,15 +305,18 @@ def _end_at(normal: Vec3, offset: float, face: list[Vec3], verts: list[Vec3],
     return Vec3(point.x, foot, point.z)
 
 
-def _past(plane: Plane, verts: list[Vec3]) -> float:
-    """How far the track reaches past a plane in front of its face: a
-    switch's straight end has its branch further on beside it."""
+def _past(plane: Plane, flat: list[tuple[float, float]]) -> tuple[float, float]:
+    """How far the track reaches past a plane in front of its face, and
+    past it behind, the plane turned round: a switch's straight end has its
+    branch further on beside it. Both from one pass over the points: two
+    passes over every corner of every face, each drawn three or four times,
+    were 12 of the 16 s a points part took to measure (2026-11-07)."""
     lat = _lateral(plane.normal)
     across = [lat.dot(v) for p in plane.polys for v in p.points]
     lo, hi = min(across) - 10.0, max(across) + 10.0
     n = plane.normal
-    return max(n.x * v.x + n.z * v.z for v in verts
-               if lo <= lat.x * v.x + lat.z * v.z <= hi) - plane.offset
+    reach = [n.x * x + n.z * z for x, z in flat if lo <= lat.x * x + lat.z * z <= hi]
+    return max(reach) - plane.offset, plane.offset - min(reach)
 
 
 def _width(plane: Plane) -> float:
@@ -386,8 +387,9 @@ def measure(part: str, joins: str, rail_gauge: float | None = None
         return [], shape.placed, "nothing of the track itself is drawn in it"
     verts = [v for p in body for v in p.points]
     planes = [pl for pl in _upright_planes(body) if pl.area >= 20.0]
+    flat = list(dict.fromkeys((v.x, v.z) for v in verts))
     for plane in planes:
-        _orient(plane, verts)
+        _orient(plane, flat)
     ends: list[End] = []
     if joins in ("clip", "face"):
         if joins == "clip":

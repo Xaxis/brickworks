@@ -151,6 +151,10 @@
   "Like this: the parts that could stand in for one, swapped in a double-click.": "Similaires : les pièces qui pourraient en remplacer une, échangées d’un double-clic.",
   "Cut away by a box, a sphere or a cylinder, and lay a grid of copies in one go.": "Vue en coupe par une boîte, une sphère ou un cylindre, et des copies en grille d’un coup.",
   "A LEGO® Pick a Brick list, more keys, What's This? and a clean quit.": "Une liste LEGO® Pick a Brick, plus de raccourcis, « Qu’est-ce que c’est ? » et une sortie propre.",
+  "A booklet or model from someone else can no longer run anything.": "Un livret ou un modèle venu de quelqu’un d’autre ne peut plus rien exécuter.",
+  "Page setup: the booklet on A4, Letter or A5, with your margins and colours.": "Mise en page : le livret en A4, Letter ou A5, avec vos marges et vos couleurs.",
+  "Train tracks join end to end, and sixteen curves close a circle.": "Les rails se joignent bout à bout, et seize courbes ferment un cercle.",
+  "Build it turns a page over as the booklet does.": "Construire retourne une page comme le fait le livret.",
   "Plans · Brickworks": "Offres · Brickworks",
   "Plans · Pro coming soon": "Offres · Pro arrive bientôt",
   "Free to build. Pro is coming.": "Construire est gratuit. Pro arrive.",
@@ -2603,6 +2607,17 @@
   "An AI app": "Une application d’IA",
   "Disconnect {app}? It can no longer work in your tabs, and it may forget the tool permissions you gave it, so connecting again asks for them all again.": "Déconnecter {app} ? Elle ne pourra plus travailler dans vos onglets, et elle peut oublier les autorisations d’outils que vous lui avez données : une nouvelle connexion les redemandera toutes.",
   "Enter the challenge": "Participer au défi",
-  "Coming next": "À venir"
+  "Coming next": "À venir",
+  "In your room": "Dans votre pièce",
+  "Place {name} in your room, at its real size": "Placer {name} dans votre pièce, à sa taille réelle",
+  "{name} in your room": "{name} dans votre pièce",
+  "Getting {name} ready for your room…": "Préparation de {name} pour votre pièce…",
+  "{name} is too big to place in a room from a phone: its 3D model would be about {size} MB, and a phone is given {most} MB at most.": "{name} est trop grand pour être placé dans une pièce depuis un téléphone : son modèle 3D ferait environ {size} Mo, et un téléphone en reçoit au plus {most} Mo.",
+  "{name}, to turn and to place in your room": "{name}, à faire tourner et à placer dans votre pièce",
+  "Place it in your room": "Le placer dans votre pièce",
+  "Not shown: {parts} made for this model alone, which this site has no shape for.": "Non affiché : {parts} créées pour ce seul modèle, dont ce site n’a pas la forme.",
+  "{name} could not be shown here. The picture is still here; try again in a moment.": "{name} n’a pas pu être affiché ici. L’image est toujours là ; réessayez dans un instant.",
+  "This phone could not open its camera on the room. The model is still here to turn.": "Ce téléphone n’a pas pu ouvrir sa caméra sur la pièce. Le modèle est toujours là, à faire tourner.",
+  "{name} could not be got ready for your room. The picture is still here; try again in a moment.": "{name} n’a pas pu être préparé pour votre pièce. L’image est toujours là ; réessayez dans un instant."
  }
 }
