@@ -8,13 +8,23 @@
 // a model is looked at, marking its place in the history as its own. A
 // reload there arrives here; this sends it straight back to the viewer,
 // so somebody building from a phone that reloaded the tab is not left on
-// the page. Replaced, not followed, so Back still leaves.
+// the page. Replaced, not followed, so Back still leaves. A link with
+// ?motion= is sent on the same way, with it, to open playing.
 (function () {
   "use strict";
   const body = document.body;
   const id = body && body.dataset.id;
   const viewer = body && body.dataset.viewer;
   if (!id || !/^[A-Za-z0-9]{10}$/.test(id)) return;
+
+  // A link that opens playing one of the model's motions (?motion=, the
+  // app's share panel, Opens) goes straight on to the viewer, which plays
+  // it; a social site's card is still this page's.
+  const motion = new URLSearchParams(location.search).get("motion");
+  if (motion && viewer && viewer.startsWith("/app?view=")) {
+    location.replace(`${viewer}&motion=${encodeURIComponent(motion.slice(0, 120))}`);
+    return;
+  }
 
   const state = history.state;
   if (state && state.brickworksViewer === id && viewer && viewer.startsWith("/app?view=")) {
