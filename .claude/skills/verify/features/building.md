@@ -1415,7 +1415,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   lands on its own footprint. `tools/probe.sh mirror_probe` (headless, ~1
   min): all of Orthanc both ways, each of its figures, its first step on the
   timeline among its neighbours, the same two bricks built between theirs,
-  and a reflection onto a part not selected refused. The point a turn goes
+  and a reflection onto a part not selected refused; and a design's mirror
+  pattern making what Mirror makes (assistant.md, `shapes said as patterns`). The point a turn goes
   round (`Carry.pivot_of`) was the plane until 2026-10-19: chosen as much by
   the other axis, it put Orthanc's first step a stud over, onto the 2 x 8s
   beside it, and progress_check's mirror step said "no room to mirror it
