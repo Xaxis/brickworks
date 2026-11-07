@@ -42,6 +42,14 @@
 ## - page_setup with nothing says it all.
 ## - Page setup…'s three tabs, each inside the window with every control in
 ##   sight: at this size, and with --dialog-only alone (PROBE_SIZE=1400x900).
+## - What blreview found on the save path (2026-11-07), on its own files
+##   (tests/fixtures/booklook): Page setup… left open while its Claude sets
+##   the title, while the person undoes, and while another model is opened
+##   or the model cleared; a sub-model's own PAGE_ lines; a CRLF file with
+##   no break at its end; a later build's words; words cut at 120 letters,
+##   and breaks a reader splits lines on; usual=true; a title of CJK
+##   letters on its page; letters the PDF's type cannot print; a title with
+##   "<section" in it read from the web's tab.
 ##
 ## What booklook adds is reached by name (get, call), so this runs on the
 ## commit before too, and fails there where a person would.
@@ -75,6 +83,12 @@ const OLD_OUTLINE := Color8(255, 133, 15)
 ## which 40 counted (78 px on its styled pages, the same 35 on its own).
 const OLD_OUTLINE_NEAR := 28.0 / 255.0
 const BADGE := Color8(208, 49, 45)
+## blreview's files, each copied into the probe's folder before it is opened.
+const FIXTURES := "res://tests/fixtures/booklook/"
+## Its CJK title, which Helvetica's table had no width for (30 letters, 315
+## mm across a 269 mm page as Chrome drew it), and its cover line.
+const CJK_TITLE := "城堡の門と塔と壁と橋と庭と道と川と山と森と空と海と島と町と村と家"
+const WORLD_LINE := "Замок 城堡 Ελλάδα 🧱 — the line"
 ## The cover's picture of the person's own: four colours, a quarter each.
 const QUARTERS: Array = [Color8(220, 40, 40), Color8(40, 170, 70), Color8(40, 80, 200),
 	Color8(240, 200, 40)]
@@ -160,6 +174,7 @@ func _run() -> void:
 	_pdf_check(printed, "the gatehouse's booklet")
 	await _kept()
 	await _style_to_other()
+	await _save_path()
 	_quit()
 
 
@@ -875,3 +890,287 @@ func _style_to_other() -> void:
 		and first.contains(LINE) and without.is_empty())
 	_numbers_and_outline(printed)
 	_pdf_check(printed, "booklet3's booklet")
+
+
+# -- the save path, as blreview tried it (2026-11-07) ---------------------------
+
+
+func _save_path() -> void:
+	await _dialog_left_open()
+	await _sub_model_lines()
+	await _crlf_without_end()
+	await _later_build()
+	await _words_said()
+	await _wide_letters()
+
+
+## blreview's [param name], copied into the probe's folder: its path there.
+func _fixture(name: String) -> String:
+	var path: String = _out.path_join(name)
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_buffer(FileAccess.get_file_as_bytes(FIXTURES + name))
+	file.close()
+	return path
+
+
+## The model's file as a save writes it.
+func _saved() -> String:
+	return _store.to_text(_store.title, true)
+
+
+## [param text]'s lines that are its own: not the app's page lines or
+## pictures, nor what every save adds (FLOOR, TITLE), each without its CR.
+static func _theirs(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var in_data: bool = false
+	for raw: String in text.split("\n"):
+		var line: String = raw.trim_suffix("\r")
+		var bare: String = line.strip_edges()
+		if in_data and bare.begins_with("0 !:"):
+			continue
+		in_data = bare.begins_with("0 !DATA brickworks-page-")
+		if in_data or bare.begins_with("0 !BRICKWORKS PAGE_") or bare.begins_with("0 !BRICKWORKS FLOOR") \
+				or bare.begins_with("0 !BRICKWORKS TITLE "):
+			continue
+		out.append(line)
+	while not out.is_empty() and out[out.size() - 1].is_empty():
+		out.remove_at(out.size() - 1)
+	return out
+
+
+## The PAGE_ lines of each part of [param text]: {the FILE it is in ("" before
+## any): [lines]}, any whitespace between a FILE line's words.
+static func _page_lines(text: String) -> Dictionary:
+	var out: Dictionary = {}
+	var within: String = ""
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		var words: PackedStringArray = LdrModel._fields(line)
+		if words.size() >= 3 and words[0] == "0" and words[1].to_upper() == "FILE":
+			within = " ".join(words.slice(2))
+		elif line.begins_with("0 !BRICKWORKS PAGE_"):
+			var kept: Array = out.get(within, [])
+			kept.append(line)
+			out[within] = kept
+	return out
+
+
+## Each line of [param text] but its last that does not end CRLF, but the
+## floor's (FLOOR GRID, another writer's): "line: words".
+static func _not_crlf(text: String) -> Array:
+	var bad: Array = []
+	var lines: PackedStringArray = text.split("\n")
+	for at: int in lines.size() - 1:
+		if not lines[at].ends_with("\r") and not lines[at].begins_with("0 !BRICKWORKS FLOOR"):
+			bad.append("%d: %s" % [at + 1, lines[at].left(40)])
+	return bad
+
+
+func _dialog_left_open() -> void:
+	print("")
+	print("Page setup… left open while the model changes under it")
+	var a: String = _fixture("dialog_a.ldr")
+	var b: String = _fixture("dialog_b.ldr")
+	await _open(a, 3)
+	await _tools.run("page_setup", {"title": "Alpha's title", "footer": "Alpha's foot"})
+	var dialog: Window = await _page_dialog()
+	if not _check("Page setup… opens on it", dialog != null and dialog.visible):
+		return
+	var texts: Dictionary = dialog.get("_texts")
+	# The person types a header and does not press Enter; their Claude sets
+	# the title meanwhile.
+	(texts["header"] as LineEdit).text = "Typed, not entered"
+	await _tools.run("page_setup", {"title": "Claude's title"})
+	await _frames(4)
+	_check("(a) the title set over MCP while it is open: its field shows it (%s), the header typed kept (%s)"
+		% [(texts["title"] as LineEdit).text, (texts["header"] as LineEdit).text],
+		(texts["title"] as LineEdit).text == "Claude's title"
+		and (texts["header"] as LineEdit).text == "Typed, not entered")
+	dialog.hide()
+	await _frames(2)
+	_check("...closed: the title still Claude's (%s), the header typed set (%s)" % [_field("title"),
+		_field("header")], _field("title") == "Claude's title" and _field("header") == "Typed, not entered")
+	await _tools.run("page_setup", {"footer": "Before"})
+	await _tools.run("page_setup", {"footer": "After"})
+	dialog = await _page_dialog()
+	_builder.undo()
+	await _frames(4)
+	_check("(b) undone while it is open: its footer field shows the undone (%s)"
+		% (texts["footer"] as LineEdit).text, (texts["footer"] as LineEdit).text == "Before")
+	dialog.hide()
+	await _frames(2)
+	_check("...closed: the undo stays (the footer %s)" % _field("footer"), _field("footer") == "Before")
+	dialog = await _page_dialog()
+	(texts["subtitle"] as LineEdit).text = "Typed on the first model"
+	await _open(b, 3)
+	_check("(c) another model opened under it: Page setup… closes (%s)" % ("open" if dialog.visible
+		else "closed"), not dialog.visible)
+	var fresh: Dictionary = _sheet().said()
+	dialog.hide()
+	await _frames(2)
+	var saved: String = _saved()
+	_check("...and none of the first model's words are on the second's page or in its file (%s; %d PAGE_ lines)"
+		% [str(_sheet().said()), _page_lines(saved).values().reduce(
+			func(sum: int, lines: Array) -> int: return sum + lines.size(), 0)],
+		fresh.is_empty() and _sheet().said().is_empty() and not saved.contains("0 !BRICKWORKS PAGE_"))
+	await _open(a, 3)
+	await _tools.run("page_setup", {"title": "Alpha's title"})
+	dialog = await _page_dialog()
+	(texts["header"] as LineEdit).text = "Typed before Clear"
+	_main.call("clear_model")
+	await _frames(4)
+	_check("(d) Clear under it: Page setup… closes (%s)" % ("open" if dialog.visible else "closed"),
+		not dialog.visible)
+	_world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(0, 24, 0)))
+	dialog.hide()
+	await _frames(2)
+	saved = _store.to_text("After clear", true)
+	_check("...and the new model's file has no PAGE_ line (%s)" % str(_page_lines(saved)),
+		not saved.contains("0 !BRICKWORKS PAGE_"))
+
+
+func _sub_model_lines() -> void:
+	print("")
+	print("PAGE_SETUP and PAGE_TEXT in a sub-model are the sub-model's")
+	var path: String = _fixture("sub_meta.mpd")
+	var text: String = FileAccess.get_file_as_string(path)
+	await _open(path, 5)
+	var said: Dictionary = _sheet().said()
+	_check("the main model's page, not its sub-model's (%s)" % str(said), said.get("title") == "Main's title"
+		and said.get("paper") == "a4" and str(said.get("box_frame")) == "#0000ff" and not said.has("box_fill"))
+	var pod: Array = _page_lines(text).get("my pod.ldr", [])
+	var plain: Dictionary = _page_lines(_saved())
+	_check("saved with nothing changed: the sub-model's lines in it as they were (%s), every other line of theirs kept"
+		% str(plain.get("my pod.ldr")), plain.get("my pod.ldr", []) == pod and pod.size() == 2
+		and _theirs(_saved()) == _theirs(text))
+	await _tools.run("page_setup", {"footer": "A footer"})
+	var lines: Dictionary = _page_lines(_saved())
+	var main: Array = lines.get("blrev mpd.ldr", [])
+	_check("a footer set: the sub-model's lines still in it (%s), the main model's title and the footer in the main model (%s)"
+		% [str(lines.get("my pod.ldr")), str(main)], lines.get("my pod.ldr", []) == pod
+		and main.has("0 !BRICKWORKS PAGE_TEXT TITLE Main's title")
+		and main.has("0 !BRICKWORKS PAGE_TEXT FOOTER A footer") and lines.size() == 2)
+	var again: String = _out.path_join("sub_meta_saved.mpd")
+	_write(again, _saved())
+	await _open(again, 5)
+	_check("...opened again, the main model's title still (%s)" % str(_field("title")),
+		_field("title") == "Main's title" and _field("footer") == "A footer")
+
+
+func _crlf_without_end() -> void:
+	print("")
+	print("a CRLF file with no line break at its end")
+	var cover: String = Marshalls.raw_to_base64(_quarters().save_jpg_to_buffer(0.9))
+	for name: String in ["single_crlf_nonl.ldr", "nostep_crlf_nonl.ldr"]:
+		var path: String = _fixture(name)
+		var text: String = FileAccess.get_file_as_string(path)
+		await _open(path, 3)
+		await _tools.run("page_setup", {"title": TITLE, "footer": FOOTER, "box_frame": "#C0392B",
+			"cover_picture_data": cover})
+		var saved: String = _saved()
+		var bad: Array = _not_crlf(saved)
+		_check("%s: every line ends CRLF but the floor's, another writer's (%s)" % [name, str(bad)],
+			bad.is_empty())
+		_check("...every line of theirs kept, in order", _theirs(saved) == _theirs(text))
+		var again: String = _out.path_join(name.get_basename() + "_saved.ldr")
+		_write(again, saved)
+		await _open(again, 3)
+		_check("...opened again as set (%s), saved again byte for byte" % _field("title"),
+			_field("title") == TITLE and _saved() == saved)
+
+
+func _later_build() -> void:
+	print("")
+	print("the words of a later build, kept")
+	var path: String = _fixture("later_build.ldr")
+	await _open(path, 3)
+	_check("its page read (%s)" % str(_sheet().said()), _field("title") == "Mine"
+		and _same(_field("box_frame"), Color8(0x11, 0x22, 0x33)))
+	var plain: String = _saved()
+	_check("saved with nothing changed: SPINE_COLOUR %s, PAGE_TEXT BACK_COVER %s" % [
+		plain.contains("SPINE_COLOUR #445566"), plain.contains("PAGE_TEXT BACK_COVER Words of a later build")],
+		plain.contains("SPINE_COLOUR #445566") and plain.contains("PAGE_TEXT BACK_COVER Words of a later build"))
+	await _tools.run("page_setup", {"footer": "F"})
+	var saved: String = _saved()
+	_check("...and with a footer set (%s, %s)" % [saved.contains("SPINE_COLOUR #445566"),
+		saved.contains("PAGE_TEXT BACK_COVER Words of a later build")], saved.contains("SPINE_COLOUR #445566")
+		and saved.contains("PAGE_TEXT BACK_COVER Words of a later build") and saved.contains("FOOTER F"))
+	await _tools.run("page_setup", {"usual": true})
+	saved = _saved()
+	_check("...and with the booklet's own page given (usual=true): its title kept, its frame gone (%s)"
+		% str(_page_lines(saved)), saved.contains("SPINE_COLOUR #445566")
+		and saved.contains("PAGE_TEXT BACK_COVER Words of a later build") and _field("title") == "Mine"
+		and not saved.contains("BOX_FRAME") and not saved.contains("FOOTER"))
+
+
+func _words_said() -> void:
+	print("")
+	print("words cut, and the breaks a reader splits lines on")
+	await _open(_fixture("dialog_a.ldr"), 3)
+	var heard: Array = []
+	var hear := func(text: String) -> void: heard.append(text)
+	_shell.bar.said.connect(hear)
+	var answer: String = str(await _tools.run("page_setup", {"footer": "x".repeat(119) + "YZ"}))
+	_shell.bar.said.disconnect(hear)
+	_check("a footer of 121 letters: cut to %d, and the answer says so (%s)" % [str(_field("footer")).length(),
+		answer.right(80)], str(_field("footer")).length() == 120 and answer.contains("cut to 120"))
+	_check("...and the status line (%s)" % str(heard).right(80), heard.any(
+		func(said: String) -> bool: return said.contains("cut to 120")))
+	await _tools.run("page_setup", {"title": "one\u0085two\u2028three\u2029four\u009Ffive"})
+	_check("U+0085, U+2028, U+2029 and U+009F each a space (%s)" % str(_field("title")).c_escape(),
+		_field("title") == "one two three four five")
+	await _tools.run("page_setup", {"title": TITLE, "subtitle": SUBTITLE, "footer": FOOTER,
+		"box_frame": "#C0392B"})
+	await _tools.run("page_setup", {"usual": true})
+	_check("usual=true: the booklet's own look, the model's own title and line under it kept (%s)"
+		% str(_sheet().said()), _field("title") == TITLE and _field("subtitle") == SUBTITLE
+		and _field("footer") == "" and _same(_field("box_frame"), OLD_FRAME))
+
+
+func _wide_letters() -> void:
+	print("")
+	print("letters Helvetica has no width for, and the PDF's type cannot print")
+	await _open(_fixture("dialog_a.ldr"), 3)
+	await _tools.run("page_setup", {"title": CJK_TITLE, "cover_line": WORLD_LINE,
+		"header": "Ελληνικά — 頭"})
+	var printed: Dictionary = await _printed("wide")
+	if printed.is_empty():
+		return
+	var sheet: BookletSheet = _sheet()
+	var room: float = sheet.size().x - sheet.margin * 2.0
+	var found: RegExMatch = RegEx.create_from_string(
+		"class=\"t n\" style=\"--x:[-0-9.]+;--y:[-0-9.]+;--s:([0-9.]+);[^\"]*\">([^<]*)</div>").search(
+		str(printed["html"]))
+	var wide: float = 0.0
+	if found != null:
+		# As a browser draws CJK: a whole em a letter.
+		var size: float = found.get_string(1).to_float()
+		for letter: String in found.get_string(2):
+			wide += size if letter.unicode_at(0) >= 0x2E80 else Helvetica.text_width(letter, size, true)
+	_check("the CJK title fits across its page as a browser draws it, an em a letter: %.1f mm of %.1f"
+		% [wide, room], found != null and wide > 0.0 and wide <= room + 0.5)
+	var html: String = _out.path_join("wide_instructions.html")
+	await _main.call("_export_booklet", html)
+	var wrote: String = str(await _main.call("save_booklet_as", "pdf", _out.path_join("wide_export.pdf")))
+	_check("Save as PDF says which letters its type cannot print, not \"?\" in silence (%s)" % wrote.right(120),
+		wrote.begins_with("wrote") and wrote.contains("城") and wrote.contains("З") and wrote.contains("Ε"))
+	# The web's PDF is read from the booklet's own tab: its title, decoded,
+	# fed back to the reader with its pages.
+	await _tools.run("page_setup", {"title": "Gate <section> Hill", "cover_line": "", "header": ""})
+	var gate: Dictionary = await _printed("gate")
+	if gate.is_empty():
+		return
+	var source: String = str(gate["html"])
+	var head: int = source.find("<title>") + 7
+	var title: String = BookletRead._unescaped(source.substr(head, source.find("</title>") - head))
+	var read := BookletRead.new()
+	var pages: Array = []
+	if read.has_method("title_line"):
+		for style: RegExMatch in RegEx.create_from_string("(?s)<style>(.*?)</style>").search_all(source):
+			read.feed("<style>%s</style>" % style.get_string(1))
+		read.feed(str(read.call("title_line", title)))
+		for section: RegExMatch in RegEx.create_from_string("(?s)<section .*?</section>").search_all(source):
+			pages.append_array(read.feed(section.get_string()))
+	_check("the web's PDF of \"%s\": %d pages read of the file's %d, its title kept (%s)" % [title,
+		pages.size(), (gate["read"] as Dictionary).size(), read.title], read.has_method("title_line")
+		and pages.size() == (gate["read"] as Dictionary).size() and read.title == title)
