@@ -2377,7 +2377,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   one that does not slide is seated already (`Exact._seating_most`); seating
   10267-1's candle (37762), its bar down a flower plate's hollow stud, lifted
   it 3 LDU into its flame and refused one of the 957 real sub-models, and the
-  probe builds it. Run it from a checkout whose catalogue was built
+  probe builds it. The seat pairs a bar and a clip anywhere the two overlap
+  along their line, as BrickNet's `Exact.meets` does, not only within reach
+  of the bar's middle (`Exact._move_to_meet`, techfix 2026-11-07): 30374
+  stands in 3062b's hollow stud 36 LDU from its middle, and unpaired it was
+  moved off the stud onto a clip pressed 2 LDU into its side, which
+  `technic_hand_probe`'s "a clip on a bar" refuses by hand and by
+  check_design. Run it from a checkout whose catalogue was built
   with on_receivers: on an older one the scorpion's three fail. `handbuild_probe -- only=build_from_a_booklet`
   99 of 140 across the grid, worse for none; `placing_probe` keeps 8643-1's
   bracket under its plate and 5762-1's clip plates on theirs.
