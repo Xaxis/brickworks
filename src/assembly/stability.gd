@@ -121,12 +121,16 @@ class Report extends RefCounted:
 	func is_stable() -> bool:
 		return risks.is_empty()
 
+	## The verdict, as the status bar says it after the counts: "stands up",
+	## or "2 weak joints (levered)". Not the weight, which the status bar
+	## says itself, of the model as it is in that frame (StatusBar._weight):
+	## said here, it was the weight of the model this was weighed on, up to
+	## a second before, and of the parts whose shapes had come by then.
 	func summary() -> String:
 		if risks.is_empty():
-			return "stands up · %.0f g" % total_grams
+			return "stands up"
 		var worst: String = weakest.kind if weakest else "weak"
-		return "%d weak joint%s (%s) · %.0f g" % [
-			risks.size(), "" if risks.size() == 1 else "s", worst, total_grams]
+		return "%d weak joint%s (%s)" % [risks.size(), "" if risks.size() == 1 else "s", worst]
 
 
 var library: PartLibrary

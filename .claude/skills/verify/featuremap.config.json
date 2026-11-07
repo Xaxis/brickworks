@@ -4747,7 +4747,7 @@
       "kind": "ui",
       "label": "model size and weight",
       "entry": "src/assembly/model_size.gd",
-      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4½ × 10.8 studs, 15 plates high · 3.6 × 8.64 × 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/)",
+      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4.5 × 10.8 studs, 15 plates high · 3.60 × 8.64 × 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/); tools/probe.sh weighsure_probe   (the weight after the counts, \"61 bricks · stands up · 52 g\", the model's in every frame, parts on their way counted; one style of number a line. Windowed, pictures in shots/weighsure/)",
       "area": "building"
     },
     {
@@ -4833,6 +4833,13 @@
       "entry": "tools/print3mf/check_3mf.py",
       "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
       "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "a session keeps a view over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   (save_view {\"name\": NAME} keeps the window's view as Save this view… does, answered with the model from there; in_view lists the views with their keys; its Alt-Shift key and render_model view= back within 0.1° and 0.1 LDU; remove=true; highlight=/xray= take 4070 quoted or not, on the MCP walk's Pods)",
+      "area": "mcp"
     }
   ]
 }
