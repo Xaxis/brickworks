@@ -28,10 +28,11 @@
 ## A part whose name is the words asked is the kind of part asked for: "plate 1
 ## x 1" is 3024, Plate 1 x 1, before 6141, Plate 1 x 1 Round, in more sets,
 ## which is another kind (words6, 2026-11-07). Where some part is named so,
-## every part of that kind, its name's head saying nothing more than was
-## asked, comes before the parts of another kind, and how much sets use them
-## decides among each: "technic pin" is still 2780, Technic Pin with Friction
-## and Slots, before 3673, Technic Pin, as a kind of pin with something on it.
+## the part of that kind (its name's head saying nothing more than was asked)
+## that sets use most comes first, and the rest keep their order: 6141 next,
+## not after every Plate 1 x 1 with petals or a clip. "technic pin" is still
+## 2780, Technic Pin with Friction and Slots, a pin with something on it and
+## in more sets than 3673, Technic Pin.
 ##
 ## And in the names builders use, which are BrickLink's and Rebrickable's
 ## more than LDraw's (names248, 2026-10-24): "liftarm 5" missed 32316, LDraw's
@@ -1156,7 +1157,8 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	# "wedge" before a wing that says it only in its keywords), then by its
 	# words' shares multiplied, in three
 	# bands: as good as a word begun, as one a letter off, and less; then,
-	# where a part is named as asked, a part of that kind (words6); then a
+	# where a part is named as asked, the part of that kind sets use most
+	# (words6); then a
 	# part filed under a word asked, the thing itself, or for a size alone
 	# the brick of that size and nothing more. Then, among the
 	# parts that answer as well, how much real sets use it: 60596,
@@ -1185,10 +1187,11 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	var size_alone: int = 0
 	if terms.size() == 1 and terms[0].has("sizes"):
 		size_alone = 1 if (terms[0]["tall"] as Array).is_empty() else 2
-	# words6: where a part is named as asked, the parts of that kind first
-	# (_says_its_kind): "plate 1 x 1" is Plate 1 x 1 before Plate 1 x 1 Round.
-	var whole: bool = size_alone == 0 and _names_a_part(terms)
-	var said_forms: Dictionary = _asked_forms(terms) if whole else {}
+	# words6: where a part is named as asked, the part of that kind sets use
+	# most first (_meant): "plate 1 x 1" is Plate 1 x 1 before Plate 1 x 1 Round.
+	var meant: int = -1
+	if size_alone == 0 and _names_a_part(terms):
+		meant = _meant(touched, matched, terms.size(), _asked_forms(terms))
 	var keys := PackedInt64Array()
 	var needed: int = 0
 	for term: Dictionary in terms:
@@ -1221,7 +1224,7 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 		key = key * 2 + ((0 if _infos[at].category == "Sticker" else 1) if decor_asked
 			else _plain[at])
 		key = key * 4 + tier
-		key = key * 2 + (1 if whole and has == terms.size() and _says_its_kind(at, said_forms) else 0)
+		key = key * 2 + (1 if at == meant else 0)
 		key = key * 2 + named_for
 		key = key * 4096 + _usage[at]
 		key = key * 16 + _plainness[at]
@@ -1383,6 +1386,26 @@ static func _asked_forms(terms: Array[Dictionary]) -> Dictionary:
 				for form: String in _forms(word):
 					asked[form] = true
 	return asked
+
+
+## The part a builder means by words that name a part whole: of the parts
+## [param touched] with every word asked ([param wanted] of them, [param
+## matched]) and of the kind asked (_says_its_kind), the one sets use most,
+## then the plainer name, then the catalogue's first. Only it is lifted: when
+## every part of the kind was, the round 6141 fell from first to the bin's
+## 22nd tile for "plate 1 x 1", after Plate 1 x 1 with 5 Petals and with
+## Swirl on Top (words6's first green run). -1 when none is.
+func _meant(touched: PackedInt32Array, matched: PackedInt32Array, wanted: int,
+		asked: Dictionary) -> int:
+	var best: int = -1
+	for at: int in touched:
+		if matched[at] != wanted or not _says_its_kind(at, asked):
+			continue
+		if best < 0 or _usage[at] > _usage[best] or (_usage[at] == _usage[best]
+				and (_plainness[at] > _plainness[best]
+				or (_plainness[at] == _plainness[best] and at < best))):
+			best = at
+	return best
 
 
 ## Whether the part at [param at] is of the kind asked: its name's head

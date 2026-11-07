@@ -41,6 +41,9 @@ const WALK: Array = [
 ## What a person means by these: the plain 1 x 1 plate.
 const PLATE_WORDS: Array[String] = ["plate 1 x 1", "1x1 plate"]
 const PLATE := "3024"
+## pre261's first, the round plate: next still, the rest in their order, not
+## after every Plate 1 x 1 with petals or a clip (22nd, words6's first green).
+const NEXT := "6141"
 ## Each part's tile's size line, as its tooltip says it.
 const SIZES: Dictionary = {
 	"87087": "1 x 1, a stud on one side, 1 brick",
@@ -131,10 +134,12 @@ func _plate_words() -> void:
 	for words: String in PLATE_WORDS:
 		var listed: PackedStringArray = await _listed(words, 5)
 		_check("the bin, \"%s\": %s" % [words, _rows(listed)], not listed.is_empty() and listed[0] == PLATE)
+		_check("...and %s, %s, next" % [NEXT, _named(NEXT)], listed.size() > 1 and listed[1] == NEXT)
 		if words == PLATE_WORDS[0]:
 			await _shot("bin_plate_1x1")
 		var said: PackedStringArray = await _mcp_found(words, 5)
-		_check("search_parts \"%s\": %s" % [words, ", ".join(said)], not said.is_empty() and said[0] == PLATE)
+		_check("search_parts \"%s\": %s" % [words, ", ".join(said)],
+			said.size() > 1 and said[0] == PLATE and said[1] == NEXT)
 
 
 ## The walk's 30 words: the part each put first on pre261 first still, in the
