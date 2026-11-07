@@ -47,6 +47,18 @@
 ## which takes it back. Reset puts everything back. A drag still moves a
 ## part as before.
 ##
+## A link that plays one (2026-11-06, docs/APP_UX5.md playlink):
+## /m/<id>?motion=<name>, which the page sends on to the viewer
+## (web/share-page.js), or /app?view=<id>&motion=<name>, made by the share
+## panel's Opens. The motion named (by its name, as the panel writes it,
+## "open-the-gates", or a word only its name has, Motions.for_link) plays as
+## soon as the joints are read, over and over, there and back with a rest at
+## each end, its button lit and the pill saying how to stop it; pressed, it
+## goes back from where it is. A drag, Reset, another motion or Build it stop
+## it as they stop a press. Turning the view does not. A visitor who asked
+## for less motion (Settings, Reduce motion) sees it played once. A name the
+## model has no motion of opens it still, and the pill says so at once.
+##
 ## Everything that edits is out of reach from here; main.gd says how
 ## (_enter_view), and no sign-in is asked for. A visitor who wants the
 ## model for their own presses Open in Brickworks, which signs them in and
@@ -145,6 +157,11 @@ var play_motions: PackedStringArray = PackedStringArray()
 var motions_out: Dictionary = {}
 var _motion_row: HFlowContainer
 var _motion_buttons: Array[Button] = []
+## A link that plays a motion (?motion=, main.gd's _open_playing): the one
+## played over and over, "" for none; and the name a link asked for that the
+## model has no motion of, said in the pill until something else is.
+var looping: String = ""
+var missing: String = ""
 var _play_pt: float = 1.0
 var _play_narrow: bool = false
 
@@ -574,6 +591,21 @@ func show_motion_out(name: String, out: bool) -> void:
 			button.tooltip_text = ("Play “%s” backwards: put it back" if out else "Play “%s”") % name
 
 
+## [param name] played over and over, from a link that plays it (""
+## when it has stopped): its button lit, and said how to stop it.
+func show_looping(name: String) -> void:
+	looping = name
+	_say_play()
+
+
+## The link asked to play [param asked], which the model has no motion by:
+## it opened still, and the pill says so, whatever else moves or not.
+func link_missing(asked: String) -> void:
+	missing = asked
+	_say_play()
+	_fit_big()
+
+
 ## Every motion back where it began: Reset.
 func motions_home() -> void:
 	for name: String in play_motions:
@@ -581,6 +613,17 @@ func motions_home() -> void:
 
 
 func _hint() -> String:
+	if not looping.is_empty():
+		return ("Playing “%s” over and over. Tap it to stop." if touch
+			else "Playing “%s” over and over. Press it to stop.") % looping
+	if not missing.is_empty():
+		var still: String = "There is no motion called “%s” in this model, so it opened still." % missing
+		return still if not play_ready else "%s %s" % [still, _ways()]
+	return _ways()
+
+
+## How to play with what moves, by its own motions or a drag.
+func _ways() -> String:
 	if not play_motions.is_empty():
 		if touch:
 			return "Tap one to play it, and again to put it back. Or touch a part that moves and drag it."
@@ -593,6 +636,8 @@ func _hint() -> String:
 func _say_play() -> void:
 	if not play_motions.is_empty():
 		_play_title.text = "Play its motions"
+	elif not missing.is_empty() and play_moves.is_empty() and not play_ready:
+		_play_title.text = "No such motion"
 	else:
 		_play_title.text = Playable.words(play_moves) if not play_moves.is_empty() else "Parts of it move"
 	_motion_row.visible = not play_motions.is_empty()
@@ -607,12 +652,22 @@ func _say_play() -> void:
 ## be taken hold of, but is not offered: the castle, whose card says nothing
 ## moves, said "Parts of it move" (walk180 W5).
 func _offers_play() -> bool:
-	return not play_moves.is_empty() or not play_motions.is_empty() or played or not _play_said.is_empty()
+	return not play_moves.is_empty() or not play_motions.is_empty() or played or not _play_said.is_empty() \
+		or not missing.is_empty()
+
+
+## Whether the pill is up: once what moves is read, or at once to say a
+## link's motion is not in the model.
+func _pill_wanted() -> bool:
+	return state == "ready" and _bar.visible and (play_ready or not missing.is_empty()) and _offers_play()
 
 
 ## What a drag is doing, said in the pill while it is ("" for the hint).
 func play_said(words: String) -> void:
 	_play_said = words
+	# A link's missing motion, said until anything else is.
+	if not words.is_empty():
+		missing = ""
 	if _play != null:
 		_say_play()
 		_show_pill()
@@ -628,7 +683,7 @@ func show_played(yes: bool) -> void:
 ## The pill shown or put away when what it offers changes, not every frame
 ## a drag says something.
 func _show_pill() -> void:
-	if _play != null and _play.visible != (state == "ready" and _bar.visible and play_ready and _offers_play()):
+	if _play != null and _play.visible != _pill_wanted():
 		_fit_big()
 
 
@@ -779,7 +834,7 @@ func _fit_big() -> void:
 	if not ready and comments.is_open():
 		comments.close()
 	comments.visible = ready
-	_play.visible = ready and play_ready and _offers_play()
+	_play.visible = _pill_wanted()
 	_fit_play(pt if _narrow else 1.0, _narrow)
 	_party_bar.visible = not _narrow and state != "gone"
 	_party_pill.visible = _big.visible
@@ -943,7 +998,8 @@ func page_state() -> Dictionary:
 			"title": _play_title.text, "says": _play_words.text, "played": played,
 			"reset": _play_reset.is_visible_in_tree(), "touch": touch,
 			"motions": Array(play_motions), "motions_out": Array(play_motions).filter(
-				func(name: String) -> bool: return motions_out.has(name.to_lower()))},
+				func(name: String) -> bool: return motions_out.has(name.to_lower())),
+			"looping": looping, "missing": missing},
 		"party": _party_state()}.merged(
 			comments.page_state() if _pill_shown()
 			else {"comments": 0, "comments_open": false, "comments_shown": [], "comments_where": [],

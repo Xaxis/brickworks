@@ -11854,3 +11854,30 @@ msgstr "Eine Voreinstellung braucht einen Namen."
 
 msgid "The preset could not be kept."
 msgstr "Die Voreinstellung konnte nicht gespeichert werden."
+
+# A link that opens playing one of the model's motions (playlink, APP_UX5 10): the
+# share panel's Opens, and the viewer's pill while it plays or when the link's motion is not there.
+
+msgid "Opens"
+msgstr "Beim Öffnen"
+
+msgid "Still"
+msgstr "Stillstehend"
+
+msgid "Playing “%s”"
+msgstr "Spielt „%s“"
+
+msgid "Open the link with one of the model's motions playing"
+msgstr "Den Link so öffnen, dass eine der Bewegungen des Modells abläuft"
+
+msgid "Playing “%s” over and over. Press it to stop."
+msgstr "„%s“ läuft immer wieder. Drücke darauf, um es anzuhalten."
+
+msgid "Playing “%s” over and over. Tap it to stop."
+msgstr "„%s“ läuft immer wieder. Tippe darauf, um es anzuhalten."
+
+msgid "There is no motion called “%s” in this model, so it opened still."
+msgstr "Dieses Modell hat keine Bewegung namens „%s“, darum wurde es stillstehend geöffnet."
+
+msgid "No such motion"
+msgstr "Keine solche Bewegung"
