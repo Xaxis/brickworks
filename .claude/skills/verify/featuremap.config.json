@@ -4394,6 +4394,20 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "the booklet's page setup",
+      "entry": "src/ui/page_setup_dialog.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Paper (the booklet's own 269 x 199, A4, US Letter, A5), Orientation, Margins, Page colour, Picture behind, Step numbers, Parts pictures, Style and Keep as a style; then Instructions, Save as PDF; page_setup over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "pagesetup probe",
+      "entry": "src/dev/pagesetup_probe.gd",
+      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "path tracer",
       "entry": "src/render/path_tracer.gd",
@@ -4644,6 +4658,41 @@
       "entry": "src/net/pattern_tool.gd",
       "reach": "tools/probe.sh grid_probe   (pattern_parts: bricks= in columns, rows and levels, column_studs/row_studs/level_plates apart or touching; one call, one undo step, a copy with no room said by its column, row and level and the part in its way)",
       "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "check the track table",
+      "entry": "tools/track_ends.py",
+      "reach": "tools/track_ends.py check   (assets/ldraw/track_ends.json is what the parts measure; straights' ends 320 apart, sixteen curves close a circle; tools/track_ends.py show ID: one part's ends and how they were found)",
+      "area": "pipeline"
+    },
+    {
+      "kind": "ui",
+      "label": "train tracks end to end",
+      "entry": "src/assembly/track_snap.gd",
+      "reach": "tools/probe.sh tracks_probe   (a 9V curve dragged near a straight's free end joins it in one drag; R puts its other end to the joint; two 12V curves get their sleeper, one undo takes both; sixteen curves by sixteen clicks close a circle; a session's oval of 16 curves and 4 straights in two calls, attach track[0] to track[1]. Windowed, pictures in shots/tracks/. By hand: a track in hand near a free end of one down sits on it; the status line says so and what R does)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "buildturn probe",
+      "entry": "src/dev/buildturn_probe.gd",
+      "reach": "tools/probe.sh buildturn_probe; PROBE_SIZE=1024x768, 1280x720 or 1400x900 tools/probe.sh buildturn_probe   (windowed, 390x844 by its header; pictures in shots/buildturn/)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "booklet safe probe",
+      "entry": "src/dev/booklet_safe_probe.gd",
+      "reach": "tools/probe.sh booklet_safe   (headless: a page's picture from a file kept only as a PNG or a JPEG in strict base64, the rest of the file read as before; strings made to break out of each place the booklet writes a file's or a person's text, escaped or left out; its Content-Security-Policy first, allowing its own script by hash and nothing else)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "a file's booklet runs nothing in a browser",
+      "entry": "tools/web/booklet_safe_flow.mjs",
+      "reach": "node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts: a model whose page picture breaks out of its attribute opened, Instructions pressed; no flag set, the good picture shown, the policy first with script-src 'none', script put into the tab refused, Print prints)",
+      "area": "view"
     }
   ]
 }

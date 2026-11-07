@@ -88,6 +88,8 @@ const COMMANDS: Dictionary = {
 	"measure": "measure",
 	# picklist: LEGO's Pick a Brick list (export_model format=pickabrick).
 	"export_pickabrick": "export_model",
+	# pagesetup: Build, Booklet page, Page setup… (BookletSheet).
+	"booklet_page_setup": "page_setup",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -175,6 +177,11 @@ changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
 booklet's per_page=, as the timeline's Booklet row does; place=, text=, \
 arrow= and guide= lay a page out by hand; callout_step= poses a callout's step.
+ - page_setup: the booklet's paper (size= "A4", "letter", "A5" or its own \
+269 x 199), orientation=, margin=, colour= or picture_data= behind every \
+page, number= the step numbers' height and parts= the parts boxes' scale, as \
+Build, Booklet page, Page setup… does; save_as= keeps it as a style by a \
+name and style= gives a kept one to this model.
  - lay_flex: a hose, a pneumatic tube, a flexible axle, a string or a \
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.
@@ -375,7 +382,7 @@ func definitions() -> Array:
 				+ "callout that step puts on, from 1: turn= and tilt= pose it apart, from the "
 				+ "way the callout faces. The page by hand, one undo step each and "
 				+ "alone in a call: place= moves an item of the step's page to x, y (and w, h) "
-				+ "in mm on the 269 x 199 page, as dragging it on Lay out the page does "
+				+ "in mm on the page (269 x 199 unless page_setup set it up), as dragging it on Lay out the page does "
 				+ "(item picture, parts, callout or number; note with index= for words or a "
 				+ "picture added, turn= degrees clockwise and opacity= percent turning and fading it; "
 				+ "remove=true takes a note off, back=true puts an item back "
@@ -451,6 +458,34 @@ func definitions() -> Array:
 						"at": {"type": "number"},
 						"was": {"type": "number", "description": "where the guide to move or take off is"},
 						"remove": {"type": "boolean"}}},
+			}},
+		},
+		# pagesetup: the booklet's page, the person's way (BookletSheet).
+		{
+			"name": "page_setup",
+			"description": ("The booklet's page, as Build, Booklet page, Page setup… sets it, "
+				+ "for the whole booklet and its PDF: size= \"booklet\" (its own 269 x 199 mm), "
+				+ "\"A4\", \"letter\" or \"A5\"; orientation= \"portrait\" or \"landscape\"; "
+				+ "margin= mm; colour= the page's colour (\"#ffffff\", \"usual\" its light blue); "
+				+ "picture_url= or picture_data= (base64) a picture behind every page, picture= "
+				+ "\"none\" takes it off; number= the step numbers' height in mm (8 usual); parts= "
+				+ "the parts boxes' pictures' size (1 usual, 0.5 to 2); usual=true the booklet's own "
+				+ "page again. save_as= keeps the page as a style by that name, and style= gives "
+				+ "this model a kept style whole. One undo step, saved with the model. With "
+				+ "nothing, says how the page is set up and the styles kept."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"size": {"type": "string", "enum": ["booklet", "A4", "letter", "A5"]},
+				"orientation": {"type": "string", "enum": ["portrait", "landscape"]},
+				"margin": {"type": "number", "description": "mm, 5 to 30 (9 usual)"},
+				"colour": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
+				"picture_url": {"type": "string", "description": "an http(s) link to a picture"},
+				"picture_data": {"type": "string", "description": "a picture's own bytes, base64"},
+				"picture": {"type": "string", "enum": ["none"]},
+				"number": {"type": "number", "description": "mm, 4 to 20"},
+				"parts": {"type": "number", "description": "0.5 to 2"},
+				"usual": {"type": "boolean"},
+				"style": {"type": "string", "description": "a style kept by save_as=, given whole"},
+				"save_as": {"type": "string", "description": "keep the page as a style by this name"},
 			}},
 		},
 		{
@@ -1025,6 +1060,9 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _booklet_layout(input)
 		"edit_booklet":
 			return await _edit_booklet(input)
+		# pagesetup.
+		"page_setup":
+			return await _page_setup(input)
 		"lay_flex":
 			return await _lay_flex(input)
 		"pose_model":
@@ -1152,7 +1190,9 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_
 	"make_sections", "break_out_section",
 	"mirror_parts", "split_parts", "merge_parts",
 	# Edit, Pattern…'s grid (PatternTool).
-	"pattern_parts"]
+	"pattern_parts",
+	# pagesetup: the booklet's page.
+	"page_setup"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the
@@ -1180,6 +1220,9 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return true
 		"view_board", "booklet_page":
 			return true
+		# pagesetup: how the page is set up, read.
+		"page_setup":
+			return input.is_empty()
 	return false
 
 
@@ -1327,6 +1370,46 @@ func _booklet_layout(input: Dictionary) -> String:
 	return BookletLooks.layout_said(world, pages, int(input.get("from", 2)))
 
 
+## pagesetup: the booklet's page set up (Shell.page_setup, as Page setup…
+## sets it): one undo. With nothing asked, how it is set up and the styles
+## kept.
+func _page_setup(input: Dictionary) -> String:
+	var world: BrickWorld = app.get("_world")
+	var shell: Shell = app.get("_shell")
+	if input.is_empty():
+		var styles: Array = BookletSheet.styles().keys()
+		styles.sort()
+		return "The booklet's page: %s. %s" % [BookletSheet.of(world).words(),
+			("Styles kept: %s." % ", ".join(styles)) if not styles.is_empty()
+				else "No style is kept yet: save_as= keeps this page as one."]
+	var fields: Dictionary = {}
+	for field: String in ["size", "orientation", "margin", "colour", "number", "parts", "usual",
+			"style", "save_as"]:
+		if input.has(field):
+			fields[field] = input[field]
+	if input.has("picture_url") or input.has("picture_data"):
+		var image: Image = null
+		if input.has("picture_data"):
+			var read: Dictionary = PictureFile.from_data(str(input["picture_data"]))
+			if read.has("error"):
+				return _sentence(str(read["error"]))
+			image = read["image"]
+		else:
+			var fetched: Dictionary = await _fetch(str(input["picture_url"]).strip_edges(),
+				PictureFile.MOST_BYTES)
+			if fetched.has("error"):
+				return str(fetched["error"])
+			image = PictureFile.decode(fetched["bytes"])
+			if image == null:
+				return _sentence(PictureFile.not_read(fetched["bytes"], "That link"))
+		var kept: Array = BookletSheet.picture_of(image)
+		fields["picture"] = kept[0]
+		fields["picture_data"] = kept[1]
+	elif str(input.get("picture", "")).to_lower() in ["none", "off", "false"]:
+		fields["picture"] = ""
+	return _sentence(shell.page_setup(fields))
+
+
 ## How a step is printed, set (Shell.change_look): one undo.
 func _edit_booklet(input: Dictionary) -> String:
 	var world: BrickWorld = app.get("_world")
@@ -1472,7 +1555,8 @@ func _lay_guide(given: Variant, at: Instructions.Step) -> String:
 	var axis: String = str(guide.get("axis", ""))
 	if not axis in ["x", "y"]:
 		return "guide= {axis: \"x\" (upright, at= mm from the left) or \"y\" (across, from the top), at}."
-	var most: float = Booklet.PAGE.x if axis == "x" else Booklet.PAGE.y
+	var page: Vector2 = BookletSheet.of(app.get("_world")).size()
+	var most: float = page.x if axis == "x" else page.y
 	var fields: Dictionary = {"axis": axis, "at": null, "was": guide.get("was")}
 	if bool(guide.get("remove", false)):
 		fields["was"] = guide.get("was", guide.get("at"))
@@ -3047,7 +3131,7 @@ func _parts_list(input: Dictionary) -> String:
 	if not which in ["need", "buildable"]:
 		return "which is model, need or buildable."
 	var shell: Shell = app.get("_shell")
-	var mine: CollectionStore = shell.collection.store if shell.collection != null else null
+	var mine: CollectionStore = shell.collection_store
 	if mine == null:
 		return "This app has no collection."
 	if mine.on_hand.is_empty() and not mine.collection.is_empty():

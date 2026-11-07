@@ -177,7 +177,7 @@ func _level() -> String:
 		var first: String = ""
 		var one: bool = true
 		for brick: BrickWorld.Brick in bricks:
-			var below: String = _child_of(at, Assemblies.path_of(brick))
+			var below: String = Assemblies.child_of(at, Assemblies.path_of(brick))
 			if below.is_empty() or (not first.is_empty() and below != first):
 				one = false
 				break
@@ -186,15 +186,6 @@ func _level() -> String:
 			return at
 		at = first
 	return at
-
-
-## The assembly directly inside [param at] that [param path] is in, or "".
-static func _child_of(at: String, path: String) -> String:
-	if path == at or not Assemblies.within(path, at):
-		return ""
-	var rest: String = path.substr(at.length()).trim_prefix("/")
-	var first: String = rest.get_slice("/", 0)
-	return Assemblies.join(at, first) if not first.is_empty() else ""
 
 
 ## The model's parts at [param at], the baseplate left out.
@@ -771,12 +762,12 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 	for n: int in count:
 		var path: String = Assemblies.path_of(bricks[n])
 		var whole: String = ""
-		var inside: String = _child_of(level, path)
+		var inside: String = Assemblies.child_of(level, path)
 		while not inside.is_empty():
 			if int(size_of.get(inside, 0)) <= most:
 				whole = inside
 				break
-			inside = _child_of(inside, path)
+			inside = Assemblies.child_of(inside, path)
 		if not whole.is_empty():
 			if not by_whole.has(whole):
 				by_whole[whole] = []
@@ -1100,7 +1091,7 @@ func _name(made: Suggestion, box: AABB, whole: AABB, bricks: Array, members: Arr
 	# One sub-assembly the model has, whole: its own name.
 	var paths: Dictionary = {}
 	for n: int in members:
-		paths[_child_of(level, Assemblies.path_of(bricks[n]))] = true
+		paths[Assemblies.child_of(level, Assemblies.path_of(bricks[n]))] = true
 	if paths.size() == 1 and not str(paths.keys()[0]).is_empty():
 		var own: String = Assemblies.definition(Assemblies.leaf(str(paths.keys()[0])))
 		# "subModel-48", as some files call every sub-model, says nothing.
@@ -1467,7 +1458,7 @@ func sections() -> Array:
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
 			continue
-		var child: String = _child_of(at, Assemblies.path_of(brick))
+		var child: String = Assemblies.child_of(at, Assemblies.path_of(brick))
 		if child.is_empty():
 			continue
 		# An Array: a packed one taken out of a dictionary is a copy, and
@@ -1749,7 +1740,7 @@ func put_back(path: String, words_name: String = "") -> Dictionary:
 		if world.get_brick(brick_id) != null:
 			ids[brick_id] = true
 	for brick_id: int in ids:
-		targets[brick_id] = home_for(world.get_brick(brick_id).transform, record, brick_id)
+		targets[brick_id] = BrickWorld.home_for(world.get_brick(brick_id).transform, record, brick_id)
 	var moved: int = _move(targets, "put %s back" % name,
 		{"undo": "sectionout", "path": kept, "record": record}, kept, null,
 		record.get("touching", {}))
@@ -1757,19 +1748,6 @@ func put_back(path: String, words_name: String = "") -> Dictionary:
 		return {"ok": false, "words": ("something was built where %s goes: move it, then put "
 			% name + "it back")}
 	return {"ok": true, "words": "put %s back" % name}
-
-
-## Where a part of a section broken out goes back to: where it stood, to
-## the bit, when it has not moved since; its offset back otherwise.
-static func home_for(now: Transform3D, record: Dictionary, brick_id: int) -> Transform3D:
-	var offset: Vector3 = record.get("offset", Vector3.ZERO)
-	var home: Dictionary = record.get("home", {})
-	if home.has(brick_id):
-		var was: Transform3D = home[brick_id]
-		if now.basis.is_equal_approx(was.basis) \
-				and now.origin.distance_to(was.origin + offset) < 0.01:
-			return was
-	return now.translated(-offset)
 
 
 ## Move bricks to [param targets] (id -> Transform3D) as one step of the

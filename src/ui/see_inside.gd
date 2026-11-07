@@ -632,17 +632,17 @@ func _draw_knobs(canvas: Control, view: int) -> void:
 		if eye.behind(points[face], view):
 			continue
 		var on: bool = face == lit or int(_drag.get("face", -1)) == face
-		var colour: Color = Handles.LIT if on else Handles.AXIS_COLOURS[face / 2]
+		var colour: Color = PivotMark.LIT if on else PivotMark.AXIS_COLOURS[face / 2]
 		var middle: Vector2 = eye.screen_of(points[face], view)
 		var out := Vector3.ZERO
 		out[face / 2] = BrickLattice.STUD if face % 2 == 1 else -BrickLattice.STUD
 		var way: Vector2 = eye.screen_of(points[face] + out, view) - middle
 		if way.length() > 1.0:
 			var tip: Vector2 = middle + way.normalized() * (KNOB + 9.0) * scale
-			canvas.draw_line(middle, tip, Handles.EDGE, 4.0 * scale, true)
+			canvas.draw_line(middle, tip, PivotMark.EDGE, 4.0 * scale, true)
 			canvas.draw_line(middle, tip, colour, 2.0 * scale, true)
 		var radius: float = (KNOB + (1.5 if on else 0.0)) * scale
-		canvas.draw_circle(middle, radius + 1.5 * scale, Handles.EDGE)
+		canvas.draw_circle(middle, radius + 1.5 * scale, PivotMark.EDGE)
 		canvas.draw_circle(middle, radius, colour)
 
 

@@ -79,7 +79,7 @@
                     "type": "number"
                   },
                   "to": {
-                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                     "type": "string"
                   },
                   "yaw": {
@@ -266,7 +266,7 @@
                           "type": "number"
                         },
                         "to": {
-                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                           "type": "string"
                         },
                         "yaw": {
@@ -1461,7 +1461,7 @@
                     "type": "number"
                   },
                   "to": {
-                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                     "type": "string"
                   },
                   "yaw": {
@@ -2105,7 +2105,7 @@
                     "type": "number"
                   },
                   "to": {
-                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                     "type": "string"
                   },
                   "yaw": {
@@ -2354,7 +2354,7 @@
                           "type": "number"
                         },
                         "to": {
-                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                           "type": "string"
                         },
                         "yaw": {
@@ -3517,7 +3517,7 @@
                     "type": "number"
                   },
                   "to": {
-                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                     "type": "string"
                   },
                   "yaw": {
@@ -4224,7 +4224,7 @@
       "readOnlyHint": false,
       "title": "Set how a booklet step is printed"
     },
-    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. callout_step= with step= is a step inside the callout that step puts on, from 1: turn= and tilt= pose it apart, from the way the callout faces. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the 269 x 199 page, as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added, turn= degrees clockwise and opacity= percent turning and fading it; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bends= [[x, y], ...] if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes, bends or removes one; guide= {axis x (upright) or y (across), at mm} lays a guide on every page, which what is dragged snaps to, never printed (was= moves one, remove=true takes it off). What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. follow=true lays out every later page with as many steps as the page step= is on, as that page is laid out (Apply to later pages), one undo step. Studio's extras: pull= studs (2 when true, 0 or false to put back) draws the step's parts, or {studs, parts: [part ids]} those, pulled out along the way each goes in with a red arrow in; colours= true lists the step's colours under its number (colours_all= true every step's); actual_size= false leaves off the 1:1 guide the booklet gives the first Technic axle or straight beam of each length, true gives every axle and beam of the step one, [part ids] those parts, \"auto\" as the booklet does it; preview= false leaves the finished sub-assembly off the first of its own pages. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. callout_step= with step= is a step inside the callout that step puts on, from 1: turn= and tilt= pose it apart, from the way the callout faces. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the page (269 x 199 unless page_setup set it up), as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added, turn= degrees clockwise and opacity= percent turning and fading it; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bends= [[x, y], ...] if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes, bends or removes one; guide= {axis x (upright) or y (across), at mm} lays a guide on every page, which what is dragged snaps to, never printed (was= moves one, remove=true takes it off). What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. follow=true lays out every later page with as many steps as the page step= is on, as that page is laid out (Apply to later pages), one undo step. Studio's extras: pull= studs (2 when true, 0 or false to put back) draws the step's parts, or {studs, parts: [part ids]} those, pulled out along the way each goes in with a red arrow in; colours= true lists the step's colours under its number (colours_all= true every step's); actual_size= false leaves off the 1:1 guide the booklet gives the first Technic axle or straight beam of each length, true gives every axle and beam of the step one, [part ids] those parts, \"auto\" as the booklet does it; preview= false leaves the finished sub-assembly off the first of its own pages. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4451,6 +4451,80 @@
       "type": "object"
     },
     "name": "edit_booklet"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Set up the booklet's page"
+    },
+    "description": "The booklet's page, as Build, Booklet page, Page setup… sets it, for the whole booklet and its PDF: size= \"booklet\" (its own 269 x 199 mm), \"A4\", \"letter\" or \"A5\"; orientation= \"portrait\" or \"landscape\"; margin= mm; colour= the page's colour (\"#ffffff\", \"usual\" its light blue); picture_url= or picture_data= (base64) a picture behind every page, picture= \"none\" takes it off; number= the step numbers' height in mm (8 usual); parts= the parts boxes' pictures' size (1 usual, 0.5 to 2); usual=true the booklet's own page again. save_as= keeps the page as a style by that name, and style= gives this model a kept style whole. One undo step, saved with the model. With nothing, says how the page is set up and the styles kept.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "colour": {
+          "description": "\"#rrggbb\", or \"usual\"",
+          "type": "string"
+        },
+        "margin": {
+          "description": "mm, 5 to 30 (9 usual)",
+          "type": "number"
+        },
+        "number": {
+          "description": "mm, 4 to 20",
+          "type": "number"
+        },
+        "orientation": {
+          "enum": [
+            "portrait",
+            "landscape"
+          ],
+          "type": "string"
+        },
+        "parts": {
+          "description": "0.5 to 2",
+          "type": "number"
+        },
+        "picture": {
+          "enum": [
+            "none"
+          ],
+          "type": "string"
+        },
+        "picture_data": {
+          "description": "a picture's own bytes, base64",
+          "type": "string"
+        },
+        "picture_url": {
+          "description": "an http(s) link to a picture",
+          "type": "string"
+        },
+        "save_as": {
+          "description": "keep the page as a style by this name",
+          "type": "string"
+        },
+        "size": {
+          "enum": [
+            "booklet",
+            "A4",
+            "letter",
+            "A5"
+          ],
+          "type": "string"
+        },
+        "style": {
+          "description": "a style kept by save_as=, given whole",
+          "type": "string"
+        },
+        "usual": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "page_setup"
   },
   {
     "annotations": {

@@ -588,6 +588,104 @@ collisions), and a lamp held only by an antenna's tip pushed into a round
 brick (`Joints.pushed_in`, which a toilet roll a stud off the studs also
 meets). No catalogue rebuild: the checker alone changed.
 
+Round joints, the third pass, 2026-11-05 (realjoints2). On the same 1,056
+sub-models, from 939: floating 39, overlaps 33, not held 32, collisions 9
+and off their studs 4. Two causes held most of the floating and all of the
+off, each read from the parts' own shapes. A cone's, a round plate's and a
+round brick's cover is cleared up the bore through its middle, so a stud
+under one has its tip in no cover, and the part on it floated though its
+walls stand round the stud: 5891's lamp, cones stacked each on the stud of
+the one under it, 31038's table, a round plate on a cone, two antennas on
+6861's cars. Stability already read such a stud by the walls round its tip;
+the checker, the booklet and the hand (`Joints.studs_in`) now read it the
+same way (`Joints._hollow_round`, the reach and the count shared with
+Stability), and a cone a brick up off the stud still floats. The hand's
+reading of what turns changed with it: 4096's crane boom lies on two cones
+on a plate's studs, and the cones, read as floating, had gone with the boom,
+which turned on its turntable and its hinge. On its rest it is held at both
+ends and says so; `grab_probe` lifts it off its rest before turning it. And LDraw
+writes a position to three decimals, so a part drawn on the grid can stand
+a thousandth short of it: 6542's container panels at x 9.999 were read a
+cell short, covers and all, and named 2 LDU off their studs. A part's
+origin now names its cell to within 0.01 of the corner
+(`BrickLattice.grid_cell`), as `is_off_lattice` already read it, wherever a
+placement or a cover is named by it (the checker, the builder's covers,
+Stability, the booklet); over all 1,576 sets `half_studs_in_sets` reads
+4,722 half-stud seats where it read 4,535, and refuses the same 57.
+**939 → 957, none newly refused**: floating 39 →
+27, off 4 → 0, overlaps 33 → 31, collisions 9 → 8, not held 32 → 33 (10272's
+grille, floating before, is now said to rest on a round plate unjoined).
+Refused with an overlap, by the joint that met: panes 8 → 7, bars and axles
+through holes 10 → 9, hollow studs 11, hinges 1, others 9. A rule for a pane
+held at both ends of a line (60608 in 60594) was tried and dropped: its pins
+sit in recesses drawn with boxes, which the cover fills and no bore names.
+Still refused, each needing the parts pipeline and a catalogue rebuild: 4595
+(five sub-models), whose side studs' bores open its inside to the cover's
+fill; the 60608 and 86210 panes' pin recesses; 4346's doors, which have no
+connector at all; and 3710 under 2582's lip, which BrickNet has no label
+for. By hand a cone went on a cone's stud 4 LDU down it, under the stud's
+foot, and the check seated it (`technic_hand_probe`; fixed by conestop,
+below); over MCP a bar in a hollow stud, a clip on it and a cone stack pass
+as one design. No catalogue rebuild: the checker alone changed.
+
+Parts at a stud's stop, 2026-11-05 (conestop). The hand rests a part on the
+covers under it, and a 1 x 1 cone's cover stops 4 LDU under its top (4589's
+6, a baseplate's 4), where it narrows to its stud: a cone, a round plate or
+a dome put on that stud went that far down it, into the cone, clicked or
+dragged, and the check seated it back up, saying it was fine. 53 of the
+7,928 parts with a stud on top have a cover short of a stud's foot. Now a
+stud stops what goes onto it at its foot, read from BrickNet's frames as the
+check reads them (`Exact.sunk_pairs`): a hole or tube past the foot of a
+stud it mates with, further than BrickNet joins the two (3 LDU), with the
+two shapes meeting deeper there than at the stop, is in the stud's part. The
+check refuses it ("passes 4 LDU into") and never seats it; the hand lifts the
+ghost, a dragged group and a figure to the stop (`Builder.stud_feet_lift`).
+Posts are left out (a lightsaber blade's is at its tip, down a hollow stud),
+and so are parts nested on a hinge (a turntable's base, its holes 8 LDU
+under its top's studs, meets it no deeper). The bar was TAU first, and three
+real sub-models went refused: their sets put a round plate 2 LDU down a half
+pin's stud, over its collar (42088's rear lights, 42105's cabin), or down a
+door's stud handle (7632), so it is BrickNet's own reach for a joint. Cones (3942c, 4589, 59900),
+a round plate and a dome 2 x 2, each on 59900's, 4589's and 6141's stud: 10
+of the 15 went 4 or 6 LDU low by hand, all 15 at the stop now, clicked,
+dragged, swapped in and over MCP (`technic_hand_probe`); replace and Like
+this keep the old part's bottom and were right already. add_minifig refused
+a figure on two cones as standing in the air (a cone's bore is open under
+the middle of each foot), and stands it on their studs now.
+
+A boom on its rest is lifted off it by a person (conestop, 2026-11-05). With
+a stud up a cone's hollow read as in it (realjoints2), 4096's crane boom,
+which lies on two cones' studs, was held at both ends, its hinge and its
+rest, in a loop with its turntable: "Locked", list_motions no longer
+offered Lift the boom, and realjoints2 was taken out of pre261. Now a part
+that only rests on a lone stud at a hinge's free end, the stud's part held
+to it another way round, is out of the joints (`Bodies.rests`): the hinge
+lifts it off, and Grab keeps it from going down into the stud, or across it
+while the stud is in it (`Grab._rests_let`; a stud is in no cover, so
+nothing else did: read as nothing, the boom went 3° into the cones and
+turned with the crane's top across them). Lift the boom is offered, kept,
+played, saved and opened again (`motions_probe`); lowered into its rest or
+turned with the top, the boom stops at once where it meets a cone, and is
+lifted 30° over MCP and 20° by hand (`grab_probe`).
+
+A clip plate built on a stud is not a rest (telescope, 2026-11-06). The
+observatory of the third MCP walk hangs each quarter dome by its handle in
+two 1 x 1 clip plates, each on a 1 x 1 plate's stud. Read as rests, six
+came out of the joints: the dome panel that opens carried one off its stud
+on its handle, into the telescope's way, and Extend the telescope stopped
+at 176° of 675°. A rest now needs a part that lies on the stud with
+sockets to spare, as the boom's 2 x 8 lies on a cone (a part with one
+socket sits on its stud whole), on a hinge whose far side reaches the
+stud's part off the hinge's line (on its line only, the far side turns and
+the part on the stud stays: a panel in two clips on one line). Of 477 real
+sets (every third, up to 400 KB), 7 had rests and 12 rests in all; 2 stay
+(42068-1's 19 parts turning on an axle, laid on a cone; 7743-1's 25
+on a 1 x 8 brick, laid on a round plate); 10 were parts built on their studs: clip plates, minifigure legs,
+pin connectors on half pins, and 6534-1's car on its driver's left leg,
+the right leg held in the car: both hips are on one line, so the hips turn
+and the car is not lifted. Each set's motions in motions_probe move the
+same parts as rel-m266 and stop where they did there.
+
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety
 (shapes, colours) moved least of all. `add_rooms` lays a floor at each

@@ -888,33 +888,47 @@ static func read(text: String) -> Dictionary:
 	if at < 0:
 		return {}
 	var end: int = text.find("\n", at)
-	var raw: Variant = JSON.parse_string(text.substr(at + META.length(),
-		(end if end >= 0 else text.length()) - at - META.length()))
+	var scheme: Dictionary = typed(JSON.parse_string(text.substr(at + META.length(),
+		(end if end >= 0 else text.length()) - at - META.length())))
+	return scheme if not (scheme.get("groups", []) as Array).is_empty() else {}
+
+
+## [param raw], a scheme a file's line or another side of Build together
+## gave, made precise: {mode, groups: [{label, colour, also, sections}]}, or
+## {} when it is not one. A group of the wrong shape is left out.
+static func typed(raw: Variant) -> Dictionary:
 	if not (raw is Dictionary):
 		return {}
 	var mode: String = str((raw as Dictionary).get("mode", ""))
 	if not mode in MODES:
 		return {}
 	var groups: Array = []
-	for one: Variant in (raw as Dictionary).get("groups", []):
-		if not (one is Dictionary):
+	var given: Variant = (raw as Dictionary).get("groups", [])
+	for one: Variant in (given if given is Array else []):
+		if not (one is Dictionary) or groups.size() >= GROUPS_MOST:
 			continue
 		var group: Dictionary = one
 		var colour: Variant = group.get("colour")
-		if not (colour is float or colour is int):
+		if not (colour is float or colour is int) or not is_finite(float(colour)):
 			continue
 		var also: Array = []
-		for code: Variant in group.get("also", []):
-			if code is float or code is int:
+		for code: Variant in (group.get("also") if group.get("also") is Array else []):
+			if (code is float or code is int) and is_finite(float(code)) and also.size() < GROUPS_MOST:
 				also.append(int(code))
 		var sections: Array = []
-		for name: Variant in group.get("sections", []):
-			sections.append(str(name))
+		for name: Variant in (group.get("sections") if group.get("sections") is Array else []):
+			if sections.size() < SECTIONS_MOST:
+				sections.append(str(name).left(400))
 		if sections.is_empty():
-			sections.append(str(group.get("label", "")))
-		groups.append({"label": str(group.get("label", "")), "colour": int(colour),
+			sections.append(str(group.get("label", "")).left(400))
+		groups.append({"label": str(group.get("label", "")).left(400), "colour": int(colour),
 			"also": also, "sections": sections})
-	return {"mode": mode, "groups": groups} if not groups.is_empty() else {}
+	return {"mode": mode, "groups": groups}
+
+
+## The most groups a scheme has, and sections a group; more is left out.
+const GROUPS_MOST := 256
+const SECTIONS_MOST := 4096
 
 
 ## The scheme's groups whose colour some part of [param world] is still

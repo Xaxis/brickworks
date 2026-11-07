@@ -413,6 +413,8 @@ function structured(origin, entry, picture, description, at) {
 /// with [words] the copy's, carried for the page's own scripts).
 export function setPage({ origin, entry, chrome, held = null, inside = [], next = [], lots = [], cardHtml, lang = "en",
   words = null }) {
+  // Into <html lang> and every link: a language of the site's, or English.
+  if (!SITE_LANGS.includes(lang)) lang = "en";
   const at = lang === "en" ? "" : `/${lang}`;
   const model = held?.main || null;
   const others = [...(model ? [model] : []), ...(held?.more || [])];

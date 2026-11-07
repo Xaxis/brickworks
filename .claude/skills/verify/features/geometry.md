@@ -30,6 +30,10 @@ can occupy the same millimetre.
   check's support and its piece count alike: read as in nothing, a 1 x 1 tile
   on a chamfered wing (41769b, no exact shape) in a ball's strip turned 210
   degrees was refused as not held (`turned_tips_probe` lays that ball).
+  The piece count joins the very stud pairs support read
+  (`Assistant._join_studs`, `Joints.studs_in`), a stud up a hollow too: with a
+  copy of the rule of its own, 10179-1's loudhailer on a stud was held and a
+  piece of its own, and `sections_probe` failed 3 of its sections (checks267).
   A turned cover is a box a row of cells, hundreds of them (42112's mixer
   drum, a part its file carries, is 23,309), so what two covers meet is not
   asked pair by pair (`_overlaps_pairwise`, kept as the reference): past a few
@@ -405,6 +409,57 @@ can occupy the same millimetre.
   `Builder._in_air_of_one`): a pane in its frame's groove, a drawer in its
   cupboard, which the cover fills shut. `joints_probe` has both and a little
   wrong; `harvest_probe` over 1,056 real sub-models, 917 → 939 (2026-11-05).
+  A stud whose tip is in no cover, up a cone's or a round plate's hollow that
+  the cover leaves open, is in the part whose walls stand round it
+  (`Joints._hollow_round`, read the same by Stability): `joints_probe` has
+  5891's lamp, 31038's table and a cone a brick up that floats, and
+  `technic_hand_probe` the stack by hand and over MCP; 939 → 957 with
+  `BrickLattice.grid_cell` (realjoints2).
+  A stud stops what goes onto it at its foot: a hole or tube of one part past
+  the foot of another's stud it mates with, further than BrickNet joins the
+  two (`Exact.SUNK_PAST`, POS_THR's 3 LDU), with their shapes meeting deeper
+  there than at the stud's stop, is in that part (`Exact.sunk_pairs`). The
+  check refuses it as passing that far into the part below and never seats
+  it up (`ExactCheck.sunk`, `_sunk_near`), and the hand lifts what it rests
+  on a cover to the stud's stop (`Builder.stud_feet_lift`, in `_aim_single`,
+  `settle_figure` and `Carry._aim`): a cone's cover stops 4 LDU under its top
+  (4589's 6), and a cone, round plate or dome put on its stud went that far
+  down it. `technic_hand_probe` has each by hand, dragged, swapped and over
+  MCP at the stop to 0.01 LDU, and a figure on two cones by hand and by
+  add_minifig; `joints_probe` four parts 4 LDU down a cone's stud from a
+  file, refused (conestop). The hand asks it on every aim of what is at each
+  hole only, the studs there read by place (`Exact.sunk_under`,
+  `Exact.studs_in`), never the parts in hand against each other: a figure's
+  own parts were weighed by their shapes whenever anything was near, and
+  `bigmodel_probe`'s figure aim grew 76x on the big model (figlift).
+  A pose the LEGO Group's sets are built in
+  (`ExactCheck.known_fit`) no deeper than a stud reaches is not sunk
+  (`ExactCheck._fit_sunk`): three sets' headlights put a 6141 4 LDU into a
+  4740 dish's tube, and `tested_seeds` holds 42022-1 to the faults it had
+  before (checks267); a known pose 8 LDU down, one author's file in two set
+  numbers, still is. A duplicate plate on the one before it is sunk its
+  whole 8 LDU (851-1, 6680-1).
+  A part that only rests on a lone stud at a hinge's free end, its stud's
+  part held to it another way round, is out of the joints (`Bodies.rests`,
+  `_lift_rests`): its hinge lifts it off, and it goes neither down into the
+  stud nor across it while the stud is in it (`Grab._rests_let`, in the
+  room test). 4096's crane boom lies on two cones up a plate's studs: read
+  as held there it was locked with its turntable and Lift the boom was
+  gone. `motions_probe` lifts it (offered, kept, played, saved, opened
+  again); `grab_probe -- --only=mcp` lowers it into the cones and turns the
+  crane's top under it (each stops at once, not held at both ends) and
+  lifts it 30°, and `--only=coast` drags it down and up by hand.
+  Only a part that lies on the stud with sockets to spare (`_lies_on`: the
+  boom's 2 x 8 on a cone; a part with one socket sits on its stud whole),
+  on a hinge whose far side reaches the stud's part off the hinge's line (on
+  its line only, the far side turns and the part stays). The observatory
+  of the third MCP walk hangs each quarter dome in two 1 x 1 clip plates on
+  1 x 1 plates' studs: read as rests, the panel that opens carried a clip
+  plate off its stud into the telescope, which stopped at 176° of 675°.
+  `seated_probe` reads all eight clip plates on their studs, none a rest,
+  the domes' 7 loops as built, and 6534-1's driver's leg on the car's stud
+  a joint (the hips turn on the line both legs hang on); `motions_probe`'s
+  Show it all puts the telescope out 675° clear (telescope).
 - `axles and gears on a line`: an axle or a pin is in every hole along its
   whole length (`Joints.through`, by Mechanism's own rule: on the line to
   1.5 LDU, the hole's middle no more than 2 LDU past an end; a pin not in an
@@ -1122,8 +1177,11 @@ one `--` line on purpose: LDraw draws a 1.6 mm stud where the LEGO Group moulds 
   A placement's x is the part's *corner*; an LDraw origin is wherever the author
   put it. Dividing the origin by a stud puts a 1x1 plate half a stud out and
   invents off-grid offsets — six of them, across models that have none. Invert
-  `_square_transform`: `to_cell(origin) + _corner_cell(part, id, basis)`, and
-  `_corners_in_studs` does.
+  `_square_transform`: `grid_cell(origin) + _corner_cell(part, id, basis)`, and
+  `_corners_in_studs` does. `grid_cell`, not `to_cell`: LDraw writes three
+  decimals, so 6542's panels at x 9.999 were a cell short and named 2 LDU off
+  their studs; the builder's covers, Stability and the booklet name a part's
+  cell by it too.
 
 - **Half a stud is judged by where the studs went, and the socket data lies.**
   Taken at their word — sockets and 2 x N tubes only — the catalogue refused

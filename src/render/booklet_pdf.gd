@@ -16,7 +16,10 @@
 ## words out by, BookletRead), and the type itself is in the file, so
 ## every reader draws the same letters whether it has Helvetica or not.
 ## The page is the booklet's, 269 x 199 mm, which fits A4 and US Letter
-## turned on their side (Booklet).
+## turned on their side (Booklet), or the paper its designer set it up on
+## (BookletSheet), the PDF's page that paper's size; a picture behind the
+## page is in the file once, and a step's picture over it keeps what it
+## lets show through (an SMask).
 ##
 ## Written as it goes, into its file or (on the web) into memory to be
 ## downloaded: each page's pictures and words, then the page; and at the
@@ -37,6 +40,9 @@ var _next: int = 5
 var _kids := PackedStringArray()
 ## A part's picture's object by its class and the colour it is laid on.
 var _parts: Dictionary = {}
+## The picture behind the pages, made the first time a page has it:
+## [object number, size in pixels].
+var _behind: Array = []
 var _read: BookletRead
 var _ok: bool = true
 
@@ -183,7 +189,7 @@ static func _u32(bytes: PackedByteArray, at: int) -> int:
 ## One page of the booklet, as read (BookletRead.feed).
 func page(drawn: BookletRead.Page) -> void:
 	var content := PackedStringArray()
-	content.append("%s 0 0 %s 0 %s cm 1 J 1 j" % [_n(PT), _n(-PT), _n(Booklet.PAGE.y * PT)])
+	content.append("%s 0 0 %s 0 %s cm 1 J 1 j" % [_n(PT), _n(-PT), _n(drawn.size.y * PT)])
 	var images := PackedStringArray()
 	var faded: Dictionary = {}
 	for op: Dictionary in drawn.ops:
@@ -214,7 +220,7 @@ func page(drawn: BookletRead.Page) -> void:
 	var number: int = _new()
 	_object(number, ("<< /Type /Page /Parent %d 0 R /MediaBox [0 0 %s %s] /Contents %d 0 R "
 		+ "/Resources << /Font << /F1 %d 0 R /F2 %d 0 R >> /XObject << %s >>%s >> >>") % [
-		_PAGES, _n(Booklet.PAGE.x * PT), _n(Booklet.PAGE.y * PT), contents, _FONT, _BOLD,
+		_PAGES, _n(drawn.size.x * PT), _n(drawn.size.y * PT), contents, _FONT, _BOLD,
 		" ".join(_unique(images)), (" /ExtGState << %s >>" % " ".join(faded.values()))
 			if not faded.is_empty() else ""])
 	_kids.append("%d 0 R" % number)
@@ -305,6 +311,19 @@ func _image(op: Dictionary) -> Array:
 	var part: String = op["part"]
 	var at: Rect2 = op["at"]
 	var on: Color = op["on"]
+	if bool(op.get("cover", false)):
+		# The picture behind the page: in the file once, covering the page as
+		# a browser's background-size: cover covers it, the page cutting it.
+		if _behind.is_empty():
+			_behind = _picture(str(op["src"]), on)
+			if _behind.is_empty():
+				_behind = [0]
+		if _behind.size() < 2:
+			return []
+		var natural: Vector2 = _behind[1]
+		var scale: float = maxf(at.size.x / maxf(natural.x, 1.0), at.size.y / maxf(natural.y, 1.0))
+		var covering: Vector2 = natural * scale
+		return [_behind[0], Rect2(at.get_center() - covering * 0.5, covering)]
 	if not part.is_empty():
 		var key: String = part + on.to_html(false)
 		if not _parts.has(key):
@@ -325,7 +344,9 @@ func _image(op: Dictionary) -> Array:
 	return [made[0], at] if not made.is_empty() else []
 
 
-## [object number, size in pixels] of the picture in data URI [param uri].
+## [object number, size in pixels] of the picture in data URI [param uri],
+## laid on [param on], or, where that has no colour, keeping what it lets
+## show through as its soft mask.
 func _picture(uri: String, on: Color) -> Array:
 	var comma: int = uri.find(",")
 	if not uri.begins_with("data:") or comma < 0:
@@ -350,15 +371,30 @@ func _picture(uri: String, on: Color) -> Array:
 	if error != OK or image.is_empty():
 		return []
 	image.convert(Image.FORMAT_RGBA8)
-	var laid := Image.create(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8)
-	laid.fill(Color(on, 1.0))
-	laid.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i.ZERO)
-	laid.convert(Image.FORMAT_RGB8)
+	var mask: String = ""
+	if on.a <= 0.0 and image.detect_alpha() != Image.ALPHA_NONE:
+		var alpha := PackedByteArray()
+		alpha.resize(image.get_width() * image.get_height())
+		var rgba: PackedByteArray = image.get_data()
+		for index: int in alpha.size():
+			alpha[index] = rgba[index * 4 + 3]
+		var soft: int = _new()
+		_stream(soft, ("/Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray "
+			+ "/BitsPerComponent 8 /Filter /FlateDecode") % [image.get_width(), image.get_height()],
+			alpha.compress(FileAccess.COMPRESSION_DEFLATE))
+		mask = " /SMask %d 0 R" % soft
+		image.convert(Image.FORMAT_RGB8)
+	else:
+		var laid := Image.create(image.get_width(), image.get_height(), false, Image.FORMAT_RGBA8)
+		laid.fill(Color(on, 1.0))
+		laid.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i.ZERO)
+		laid.convert(Image.FORMAT_RGB8)
+		image = laid
 	var number: int = _new()
 	_stream(number, ("/Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceRGB "
-		+ "/BitsPerComponent 8 /Filter /FlateDecode") % [laid.get_width(), laid.get_height()],
-		laid.get_data().compress(FileAccess.COMPRESSION_DEFLATE))
-	return [number, Vector2(laid.get_width(), laid.get_height())]
+		+ "/BitsPerComponent 8 /Filter /FlateDecode%s") % [image.get_width(), image.get_height(), mask],
+		image.get_data().compress(FileAccess.COMPRESSION_DEFLATE))
+	return [number, Vector2(image.get_width(), image.get_height())]
 
 
 ## A JPEG's width, height and colour channels, from its frame header;

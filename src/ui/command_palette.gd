@@ -23,8 +23,8 @@ const WIDE := 600.0
 const ROWS_SHOWN := 10
 ## The commands run from here that are kept, the latest first.
 const RECENT_KEPT := 8
-## Between a menu and its submenu, as the docs write it.
-const INTO := " › "
+## Between a menu and its submenu, as the docs write it (Keymap's).
+const INTO := Keymap.INTO
 ## A row that is a part, not a command: "part:3001". At most this many,
 ## once three letters are typed.
 const PART := "part:"

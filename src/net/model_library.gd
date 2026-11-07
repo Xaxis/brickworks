@@ -257,9 +257,9 @@ static var _inventories: SetInventories = null
 static func parts_words(entry: Dictionary) -> String:
 	var parts: int = int(entry.get("parts", 0))
 	var box: int = int(entry.get("box", 0))
-	var said: String = "%s parts" % CollectionDialog._comma(parts)
+	var said: String = "%s parts" % Working.comma(parts)
 	if box > 0 and not agrees(parts, box):
-		said += " · its box %s" % CollectionDialog._comma(box)
+		said += " · its box %s" % Working.comma(box)
 	return said
 
 

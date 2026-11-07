@@ -5122,6 +5122,9 @@ func _connectors_said(part_id: String, at: Transform3D, prefix: String = "",
 	for point: Attach.Point in points:
 		var frame: Transform3D = at * point.frame
 		var way: Vector3 = (-frame.basis.y).normalized()
+		# A train track's end points out of the track, along its frame's x.
+		if point.kind == TrackSnap.KIND:
+			way = frame.basis.x.normalized()
 		var line: bool = point.kind == Exact.AXLE or point.kind == Exact.HINGE
 		var spot: Vector3 = frame.origin
 		rows.append([spot.distance_to(where) if where != null else 0.0, point.type,
@@ -5155,7 +5158,8 @@ func _connectors_said(part_id: String, at: Transform3D, prefix: String = "",
 			% [prefix if not prefix.is_empty() else "<its name>.", (points[0] as Attach.Point).address()]
 		+ "\"by\": \"<that part's own connector>\", \"yaw\": <degrees about the joint>}}. A stud "
 		+ "takes a hole, tube or open stud; a clip or a hollow stud a bar; a pin a socket; an "
-		+ "axle a cross hole; a hinge, a ball or a fixed joint its other half (same sub, in to on).")
+		+ "axle a cross hole; a hinge, a ball or a fixed joint its other half (same sub, in to on); "
+		+ "a train track's end another track's end of its kind.")
 
 
 ## How many connectors attachment_points lists of a type, and near a point.
@@ -6047,7 +6051,7 @@ func _corners_in_studs(brick: BrickWorld.Brick) -> Array:
 	# Named by the same corner a placement is written with, or a model read
 	# back and written again moves every part drawn inside its footprint.
 	if BrickLattice.is_square_to_grid(brick.transform.basis):
-		lo = BrickLattice.to_cell(brick.transform.origin) + _corner_cell(part,
+		lo = BrickLattice.grid_cell(brick.transform.origin) + _corner_cell(part,
 			brick.part_id, BrickLattice.snap_basis(brick.transform.basis))
 	var near: Vector3 = BrickLattice.to_ldu(lo)
 	# One cell past the last one filled, because a cell is a step and
@@ -13020,7 +13024,7 @@ func _written_at(model: Model, placement: Placement, mesh: Lbm.PartMesh, at: Tra
 		placement.rot = BrickLattice.turns_about(basis, placement.face)
 		var corner: Vector3i = _corner_cell(mesh, placement.part,
 			BrickLattice.basis_for(placement.face, placement.rot))
-		var cell: Vector3i = BrickLattice.to_cell(local.origin + Vector3.ONE * 0.001)
+		var cell: Vector3i = BrickLattice.grid_cell(local.origin)
 		placement.x = _into_cell(cell.x + corner.x, STUD)
 		placement.y = _into_cell(cell.y + corner.y, PLATE)
 		placement.z = _into_cell(cell.z + corner.z, STUD)
@@ -13810,8 +13814,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		if not lopsided.is_empty():
 			advice.append(lopsided)
 
-	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds,
-		exact_joins, come_away)
+	var each_piece: Array = _pieces_of(cells_of, lattice, boxes_of, holds,
+		exact_joins, come_away, clutched_pairs)
 	var pieces: int = each_piece.size()
 	# What touches what, asked only of a model with a part of the design's
 	# in it: of one that is all the person's own nothing is asked, and for a
@@ -14229,7 +14233,7 @@ func _seat_exactly(model: Model, exact: ExactCheck) -> String:
 		# The cell the seated origin is in, written as its own number of studs
 		# and plates, and the rest of the way as a nudge: whole cells for a
 		# move of whole cells, an LDU over for a round part's odd stud.
-		var cell: Vector3i = BrickLattice.to_cell(at.origin + Vector3.ONE * 0.001)
+		var cell: Vector3i = BrickLattice.grid_cell(at.origin)
 		var was := [placement.x, placement.y, placement.z, placement.nudge]
 		placement.x = _into_cell(cell.x + corner.x, STUD)
 		placement.y = _into_cell(cell.y + corner.y, PLATE)
@@ -14317,8 +14321,9 @@ func _exact_collisions(model: Model, exact: ExactCheck, issues: Dictionary,
 			continue
 		# A wheel drawn spun on its axle: in plastic the axle turns with it. A
 		# ball in its socket, a bar in its clip, a pin in its hole: real sets
-		# meet so by their shapes, and are built (ExactCheck.at_joint).
-		if exact.forgiven(a, b):
+		# meet so by their shapes, and are built (ExactCheck.at_joint). Not a
+		# part down a stud past its foot, whatever sets meet the two by.
+		if not found.has("sunk") and exact.forgiven(a, b):
 			continue
 		var mine: bool = _exact_subject(model, a) or _exact_subject(model, b)
 		if not mine:
@@ -16223,11 +16228,12 @@ const NEAR: Array[int] = [5, 4, 5]
 
 
 ## The separate pieces the design is in, each the indices of its
-## placements, joined by the rules [method _check] says them by.
-func _pieces_of(model: Model, cells_of: Dictionary,
+## placements, joined by the rules [method _check] says them by. [param
+## studs] are the studs support read ([method _studs_reaching_in]).
+func _pieces_of(cells_of: Dictionary,
 		lattice: BrickLattice, boxes_of: Dictionary = {},
 		holds: Dictionary = {}, joins: Array = [],
-		come_away: Dictionary = {}) -> Array:
+		come_away: Dictionary = {}, studs: Array = []) -> Array:
 	if cells_of.size() <= 1:
 		return [cells_of.keys()] if cells_of.size() == 1 else []
 
@@ -16277,21 +16283,7 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 				joined[index].append(above - 1)
 				joined[above - 1].append(index)
 
-	for index: int in cells_of:
-		var placement: Placement = model.placements[index]
-		var part: Lbm.PartMesh = library.mesh_for(placement.part)
-		if part == null or come_away.has(index):
-			continue
-		var at: Transform3D = _joined_at(placement, part, model)
-		for connector: Lbm.Connector in part.connectors:
-			if connector.kind != "stud" or connector.gender != "male":
-				continue
-			var tip: Vector3 = at * (connector.position
-				+ connector.axis.normalized() * 5.0)
-			var reached: int = lattice.brick_but(BrickLattice.to_cell(tip), index + 1)
-			if reached != 0 and joined.has(reached - 1) and not come_away.has(reached - 1):
-				joined[index].append(reached - 1)
-				joined[reached - 1].append(index)
+	_join_studs(joined, studs, come_away)
 
 	var seen: Dictionary = {}
 	var pieces: Array = []
@@ -16310,6 +16302,24 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 					piece.append(next)
 		pieces.append(piece)
 	return pieces
+
+
+## Joins in [param joined] each stud's part and the part it reaches into,
+## as [param studs] gives them: support's own reading ([method
+## _studs_reaching_in], which is Joints.studs_in), not a copy of it. The
+## count read the tips by a copy, which a stud up a hollow its cover leaves
+## open (Joints._hollow_round) passed by: 10179-1's loudhailer, its bell on a
+## 2 x 12's stud, and two cones on a corner plate's were held and yet each a
+## piece of its own, and three of its sections two pieces (checks267). Not
+## for a part that comes away in the hand, as for the joints.
+static func _join_studs(joined: Dictionary, studs: Array, come_away: Dictionary) -> void:
+	for pair: Array in studs:
+		var owner: int = pair[0]
+		var into: int = pair[1]
+		if joined.has(owner) and joined.has(into) \
+				and not come_away.has(owner) and not come_away.has(into):
+			joined[owner].append(into)
+			joined[into].append(owner)
 
 
 ## What fills a cell, for [method Joints.pushed_in]: the placements whose
@@ -17297,6 +17307,12 @@ func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 				continue
 			if placed_at.has(other) and _seated(model.placements[index].part, at,
 					model.placements[other].part, placed_at[other]):
+				continue
+			# Two train tracks joined end to end: a tab in the other's slot
+			# (TrackSnap).
+			if placed_at.has(other) and TrackSnap.joined(
+					library.resolve(model.placements[index].part), at,
+					library.resolve(model.placements[other].part), placed_at[other]):
 				continue
 			if turning.has(other) and placed_at.has(other):
 				var slack: float = Joints.ROUND_SLACK
@@ -23088,8 +23104,9 @@ func _tools() -> Array:
 						+ "that part's connector: \"torso.hinge[0]\" (a part named so "
 						+ "before this one) or \"#41.stud[3]\" (a brick standing, by its "
 						+ "number). Types: stud, open, hole, tube, post, axle, cross, pin, "
-						+ "socket, bar, clip, hinge, ball, fixed; numbered from 0 in each "
-						+ "type, as attachment_points lists them"},
+						+ "socket, bar, clip, hinge, ball, fixed, track (a train track's "
+						+ "end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered "
+						+ "from 0 in each type, as attachment_points lists them"},
 					"by": {"type": "string", "description": "this part's own connector "
 						+ "that goes there, as \"hinge[0]\"; leave out when only one fits"},
 					"yaw": {"type": "number", "description": "degrees about the joint's "

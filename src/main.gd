@@ -101,8 +101,15 @@ var _connector: Node:
 ## with the panel.
 var _connector_made: Node = null
 ## File, Build together…: this model built with somebody else, live
-## (src/net/together.gd, src/ui/together_dialog.gd).
-var _together: Together
+## (src/net/together.gd, src/ui/together_dialog.gd). Made the first time it
+## is needed (Later): a link or a session to go back into, Build together…,
+## Comments…, a pin resolved. Null in [member _together_made] until then.
+var _together: Node:
+	get:
+		if _together_made == null and _built:
+			_make_together()
+		return _together_made
+var _together_made: Node = null
 var _together_dialog: AcceptDialog
 ## Comments pinned to parts (src/assembly/pinned_comments.gd): drawn on the
 ## model, and File, Comments….
@@ -207,7 +214,9 @@ var _log: RecentLog
 var _share_view: Control
 ## Build it, in the viewer: the step player, the pages it shows, the line
 ## round each page's new parts, and the page it is on (_enter_build).
-var _build_mode: BuildMode
+## A BuildMode (src/ui/build_mode.gd), a Later class: made as a shared
+## model's viewer opens, which the editor's first screen never is.
+var _build_mode: Control
 ## The booklet's page laid out by hand (Build, Booklet page, Lay out the page).
 var _page_editor: Control:
 	get:
@@ -478,9 +487,10 @@ var _reload_offer: ReloadOffer
 var _update_offer: UpdateOffer
 ## The desktop app keeping itself up to date (Updater): the check, the
 ## notice above the model, and Help's Check for updates… and Reinstall….
-var _updater: Updater
-var _update_notice: UpdateNotice
-var _update_dialog: UpdateDialog
+## Made at the start on the desktop only (Later): the web has none.
+var _updater: Node
+var _update_notice: Control
+var _update_dialog: ConfirmationDialog
 ## Once, where this browser may clear the person's models (StorageKeep).
 var _storage_offer: StorageOffer
 ## The person's models kept with their account too, signed in on the web.
@@ -501,10 +511,18 @@ var _graphics_notice: RestoreNotice
 ## looked at (_watch_other_tabs), in ticks.
 var _tabs_looked: int = 0
 var _tabs_said_here: int = 0
-## A picture of the model, and its parts list for a shop.
-var _exports: Exports
-## The ruler: src/ui/measure.gd.
-var _measure: Measure
+## A picture of the model, and its parts list for a shop (src/ui/exports.gd):
+## made the first time something asks (Later), null in [member
+## _exports_made] until then.
+var _exports: Node:
+	get:
+		if _exports_made == null and _built:
+			_make_exports()
+		return _exports_made
+var _exports_made: Node = null
+## The ruler: src/ui/measure.gd, a Later class, made as it is first taken
+## out (_make_measure); null until then.
+var _measure: Node3D = null
 ## Laying a hose, a tube or a chain: src/ui/flex_tool.gd.
 var _flex: FlexTool
 ## The assistant (src/ai/assistant.gd, a Later class): made the first time
@@ -712,7 +730,7 @@ func _assembly_places(to_window: Transform2D, per_css: float) -> Dictionary:
 ## where each suggestion's row and each sub-assembly's row is in the model
 ## tree, to be clicked.
 func _sections_on_page(to_window: Transform2D, per_css: float) -> Dictionary:
-	if _shell == null or _shell.sections == null:
+	if _shell == null or _shell._sections == null:
 		return {}
 	var said: Dictionary = _shell.sections.page_state()
 	var rows: Dictionary = {}
@@ -861,7 +879,7 @@ func _tell_page() -> void:
 		"app_menu": _open_rows(_bar.mark.get_popup()) if _bar != null and _bar.mark != null else [],
 		# Find a command, open or not, what is typed and its rows
 		# (tools/web/palette_flow.mjs).
-		"palette": _shell.palette.page_state() if _shell != null and _shell.palette != null else {},
+		"palette": _shell._palette.page_state() if _shell != null and _shell._palette != null else {},
 		# Who made the model and on what terms, when it is someone else's
 		# (ModelStore.credit): tools/web/library_flow.mjs reads it.
 		"credit": _store.credit,
@@ -953,7 +971,9 @@ func _tell_page() -> void:
 		"joints": _joint_places(to_window, per_css),
 		# ...and Connect's stage, the points of the part in hand it offers on
 		# the page and the one picked (ConnectTool).
-		"connect": _verbs.connect_tool.page_state(to_window, per_css) if _verbs != null else {},
+		"connect": _verbs._connect_tool.page_state(to_window, per_css)
+			if _verbs != null and _verbs._connect_tool != null
+			else {"stage": "", "points": [], "chosen": ""},
 		"on_joint": _builder.is_on_joint(),
 		"can_place": _builder.can_place(),
 		# Where the ghost stands, for tools/web/idle_check.mjs to know the
@@ -985,7 +1005,7 @@ func _tell_page() -> void:
 		"storage": {"state": StorageKeep.state(), "words": StorageKeep.words(),
 			"account": _account_panel.storage_words() if _account_panel != null else "",
 			"warning": _storage_offer.words() if _storage_offer != null else "",
-			"versions": _shell.versions.page_state() if _shell != null else {},
+			"versions": _shell._versions.page_state() if _shell != null and _shell._versions != null else {},
 			"title": _store.title},
 		# The models kept with the account, as the last look found them
 		# (CloudModels, tools/web/cloud_library_flow.mjs).
@@ -996,7 +1016,7 @@ func _tell_page() -> void:
 		"room_offer": _full_offer.words() if _full_offer != null else "",
 		# Help, Send feedback…: what is chosen, ticked and said
 		# (FeedbackDialog, tools/web/feedback_flow.mjs).
-		"feedback": _shell.feedback.page_state() if _shell != null and _shell.feedback != null else {},
+		"feedback": _shell._feedback.page_state() if _shell != null and _shell._feedback != null else {},
 		# What came into the feed since it was last opened: the count on
 		# Account and what its panel says (tools/web/follows_flow.mjs).
 		"feed": {"count": _account_panel.feed_count if _account_panel != null else 0,
@@ -1207,8 +1227,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_pins_dialog.controls_by_name())
 	if _pins_view != null:
 		named.merge(_pins_view.controls_by_name())
-	if _together != null and _together.stop_button() != null:
-		named["together_stop_following"] = _together.stop_button()
+	if _together_made != null and _together_made.stop_button() != null:
+		named["together_stop_following"] = _together_made.stop_button()
 	if _share_view != null:
 		named.merge(_share_view.controls_by_name())
 	if _build_mode != null:
@@ -1783,7 +1803,7 @@ func _ready() -> void:
 	if _brief_draft.is_empty():
 		_brief_draft = _argument("--brief").strip_edges().left(BRIEF_MOST)
 	if _together_wanted.is_empty():
-		_together_wanted = Together.secret_in(_argument("--together"))
+		_together_wanted = TogetherLink.secret_in(_argument("--together"))
 	# And which version of it, a number or nothing.
 	if _viewing_version == 0 and RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(_argument("--v")) != null:
 		_viewing_version = _argument("--v").to_int()
@@ -2790,7 +2810,7 @@ func _enter_view() -> void:
 				bottom -= floorf(below.get_combined_minimum_size().y)
 		return bottom - floorf(_steps.get_combined_minimum_size().y)
 	_share_view.loading()
-	_build_mode = BuildMode.new()
+	_build_mode = Later.make(&"BuildMode")
 	_build_mode.thumbnails = _thumbnails
 	$HUD.add_child(_build_mode)
 	_build_mode.next_wanted.connect(_build_next)
@@ -2812,6 +2832,7 @@ func _enter_view() -> void:
 	# Stepped, the step's new parts outlined and in view, as the step player
 	# shows its page; moved any other way, they are let go.
 	_steps.stepped.connect(_light_step)
+	_camera.frame_turned.connect(_turn_with_view)
 	_steps.reveal_upto.connect(func(_order: PackedInt64Array, _count: int, _key: int) -> void:
 		_unlight_step())
 	_steps.reveal.connect(func(_ids: Dictionary) -> void: _unlight_step())
@@ -2855,7 +2876,7 @@ func _light_step() -> void:
 	_build_outline.show_selection(_build_pages.fresh(page))
 	_step_lit = true
 	var view: Dictionary = _build_pages.view(page)
-	_camera.look_from(view["from"])
+	_camera.look_from(view["from"], view["up"])
 	_camera.frame(view["box"], 1.0)
 
 
@@ -2863,8 +2884,43 @@ func _unlight_step() -> void:
 	if not _step_lit:
 		return
 	_step_lit = false
+	# A step its booklet page turns over let go: the model the right way up
+	# again, seen from the same side.
+	if _camera.is_turned() and not (_build_mode != null and _build_mode.is_open()):
+		_camera.upright()
 	if _build_mode == null or not _build_mode.is_open():
 		_build_outline.show_selection({})
+
+
+## The lights and the sky turned with the view where Build it turns the
+## model (CadCamera.frame_turned), as the booklet turns its lights with a
+## model it draws turned over (BookletStudio._aim): the underside, up on the
+## screen, lit as a top is. And the floor put aside while it is turned,
+## its grid, its shadow and its plates: the model is lifted off it to be
+## turned over, and the booklet draws none. Seen from under the model, a
+## baseplate covered all of it.
+func _turn_with_view(frame: Basis) -> void:
+	if _upright_lights.is_empty():
+		for light: DirectionalLight3D in _rig_lights():
+			_upright_lights[light] = light.basis
+	for light: DirectionalLight3D in _upright_lights:
+		light.basis = frame * (_upright_lights[light] as Basis)
+	_look().sky_rotation = frame.get_euler()
+	var turned: bool = frame != Basis.IDENTITY
+	if turned != _floor_aside:
+		_floor_aside = turned
+		if _floor != null:
+			_floor.visible = not turned
+		for drawn: Node3D in _world.batches_only_of(_store.scenery):
+			drawn.visible = not turned
+	if not turned:
+		_upright_lights.clear()
+
+
+## The rig's lights as they stand for the model upright, while the view is
+## turned ([method _turn_with_view]); and whether the floor is put aside.
+var _upright_lights: Dictionary = {}
+var _floor_aside: bool = false
 
 
 ## The timeline's bricks on screen, as a set: the history's, and the end's
@@ -3042,6 +3098,8 @@ func _view_shared() -> void:
 		JavaScriptBridge.eval("window.brickworksStepsReady = performance.now()", true)
 	# Back where this device left it: a phone that slept mid-build opens on
 	# the page it was on.
+	if _build_pages != null:
+		_build_pages.stop()
 	_build_pages = null
 	var kept: Dictionary = BuildSteps.recall(_viewing)
 	# Kept on another version of the link: still right if nothing up to the
@@ -3266,13 +3324,46 @@ func _enter_build(page: int = -1) -> void:
 
 ## The pages of [param made], and the order and key the world shows them by.
 func _make_build_pages(made: Array[Instructions.Step]) -> void:
+	if _build_pages != null:
+		_build_pages.stop()
 	_build_pages = BuildSteps.of(_world, _library, made, _store.scenery)
+	_build_pages.turned_over.connect(_page_turned_over)
+	_turn_pages_over(_build_pages)
 	# The timeline's order, when the pages are its steps (they are, unless
 	# it is showing the order parts were put down in): the world is laid
 	# out in it already, and the cover costs nothing.
 	var timeline: Array = _steps.reveal_order()
 	_build_key = int(timeline[1]) if timeline[0] == _build_pages.order \
 		else -1000 - Time.get_ticks_msec()
+
+
+## Which of [param pages] the booklet turns over for their parts, worked out
+## a little a frame while the model is looked at (BuildSteps.work_out_turns):
+## a castle's is two seconds, which no page turn can spend. Its script
+## compiled on a worker first, as the first screen leaves it.
+func _turn_pages_over(pages: BuildSteps) -> void:
+	if not pages.asks_the_booklet() or pages.turns_known():
+		return
+	await Later.script_in_background(&"BookletMaker", null)
+	if pages == _build_pages:
+		pages.work_out_turns()
+
+
+## A page found to be turned over while it is on screen, in Build it or lit
+## on the timeline, turns over now: until then it was the right way up.
+## Pages done with are stopped (BuildSteps.stop) and say nothing more.
+func _page_turned_over(page: int) -> void:
+	var pages: BuildSteps = _build_pages
+	if pages == null:
+		return
+	var showing: bool = _build_page == page and _build_framed == page \
+		if _build_mode != null and _build_mode.is_open() \
+		else _step_lit and pages.steps.find(_steps.current_step()) + 1 == page
+	if not showing:
+		return
+	var view: Dictionary = pages.view(page)
+	_camera.look_from(view["from"], view["up"])
+	_camera.frame(view["box"], 1.0)
 
 
 ## The pages made, and the first page's view worked out, in a frame of
@@ -3285,6 +3376,11 @@ func _ready_the_pages() -> void:
 		return
 	_make_build_pages(_steps.steps())
 	await get_tree().process_frame
+	# The booklet says which way a figure's callout faces, and which pages
+	# are turned over (_turn_pages_over): its script compiled on a worker
+	# while the frames go on, not in a page's frame.
+	if _build_pages != null and _build_pages.asks_the_booklet():
+		await Later.script_in_background(&"BookletMaker", null)
 	if _build_pages != null and _build_pages.last() >= 1:
 		_build_pages.view(1)
 		# And the line round a page's new parts, made once unseen.
@@ -3346,7 +3442,9 @@ func _build_go(page: int, stepped: bool = false, part: int = 1) -> void:
 	lap = _lap(took, "outline", lap)
 	if not keep_view:
 		var view: Dictionary = _build_pages.view(page)
-		_camera.look_from(view["from"])
+		# Turned as its booklet page turns the model: over, where its parts go
+		# on from below, the eye under it and its underside up on the screen.
+		_camera.look_from(view["from"], view["up"])
 		# The ball round a flat box is roomy already: a step on a baseplate
 		# framed at the usual 1.25 sat in the middle third of a phone.
 		_camera.frame(view["box"], 1.0)
@@ -3817,6 +3915,9 @@ var _motion_last: Dictionary = {}
 var _finger: int = -1
 var _finger_brick: int = 0
 var _finger_at := Vector2.ZERO
+## Where the play's finger came down, before [method _play_brick_near] moved it
+## onto a part that moves.
+var _finger_down := Vector2.ZERO
 var _finger_grabbing: bool = false
 ## What the last finger's coming down and its drag were taken as, for a
 ## check reading the page: "part", "chain", "not a part", "over a panel",
@@ -3955,9 +4056,9 @@ func _play_brick_at(at: Vector2) -> int:
 ## turns the view. A steering wheel on a phone is a few points across, its
 ## rim thinner than a fingertip: play_flow's finger, on the wheel's handle
 ## to the CSS pixel, came down on the plate behind it. [brick id, point].
-func _play_brick_near(at: Vector2) -> Array:
+func _play_brick_near(at: Vector2, but_body: int = -1) -> Array:
 	var under: int = _play_brick_at(at)
-	if under == 0 or _moves_on_a_joint(under):
+	if under == 0 or (_moves_on_a_joint(under) and _body_of(under) != but_body):
 		return [under, at]
 	var across: float = Room.across()
 	var pt: float = get_viewport().get_visible_rect().size.x / across if across > 0.0 else 1.0
@@ -3965,9 +4066,15 @@ func _play_brick_near(at: Vector2) -> Array:
 		for step: int in 12:
 			var spot: Vector2 = at + Vector2.from_angle(TAU * float(step) / 12.0) * reach * pt
 			var brick_id: int = _play_brick_at(spot)
-			if brick_id != 0 and _moves_on_a_joint(brick_id):
+			if brick_id != 0 and _moves_on_a_joint(brick_id) and _body_of(brick_id) != but_body:
 				return [brick_id, spot]
 	return [under, at]
+
+
+## [param brick_id]'s body as the grab read them, -1 for none.
+func _body_of(brick_id: int) -> int:
+	var bodies: Bodies = _grab_drag.read_bodies() if _grab_drag != null else null
+	return int(bodies.body_of.get(brick_id, -1)) if bodies != null else -1
 
 
 ## Whether [param brick_id] hangs on a joint, as the grab read them.
@@ -4072,6 +4179,7 @@ func _play_touch(event: InputEvent) -> bool:
 					_finger = touch.index
 					_finger_brick = brick_id
 					_finger_at = near[1]
+					_finger_down = touch.position
 					_touch_hold.start()
 			else:
 				_finger = -1
@@ -4093,9 +4201,21 @@ func _play_touch(event: InputEvent) -> bool:
 	if drag.position.distance_to(_finger_at) <= CadCamera.TAP_SLOP:
 		return true
 	_finger_grabbing = _play_press(_finger_brick, _finger_at, _touch_hold.held_ms())
+	var refused: String = _grab_drag.last_words
+	if not _finger_grabbing and _moves_on_a_joint(_finger_brick):
+		# A fingertip is wide. The part it came down on hangs on a joint but
+		# does not move (its loop is locked): a part within the fingertip that
+		# moves is meant (a steering wheel's rim in front of a locked plate).
+		var beside: Array = _play_brick_near(_finger_down, _body_of(_finger_brick))
+		if int(beside[0]) != 0 and _moves_on_a_joint(int(beside[0])) \
+				and _body_of(int(beside[0])) != _body_of(_finger_brick) \
+				and _play_press(int(beside[0]), beside[1], _touch_hold.held_ms()):
+			_finger_brick = int(beside[0])
+			_finger_at = beside[1]
+			_finger_grabbing = true
 	_finger_said = ("chain" if _grab_drag.chain != null else "part") if _finger_grabbing \
 		else "turns the view from #%d %s: %s" % [_finger_brick, _world.get_brick(_finger_brick).part_id
-			if _world.get_brick(_finger_brick) != null else "?", _grab_drag.last_words]
+			if _world.get_brick(_finger_brick) != null else "?", refused]
 	if not _finger_grabbing:
 		_finger = -1
 		return false
@@ -5025,17 +5145,6 @@ func _build_ui() -> void:
 	_chat_dock.opening.connect(func() -> void:
 		if _chat_made == null:
 			_make_chat())
-	_together = Together.new()
-	_together.world = _world
-	_together.builder = _builder
-	_together.store = _store
-	_together.account = _account
-	_together.bar = _bar
-	_together.camera = _camera
-	_together.base_url = Deployment.api_base()
-	_together.said.connect(func(words: String) -> void: _bar.say(words))
-	# Following someone's view: the model's column framed in their colour.
-	_together.banner_parent = _over_model
 	# Comments pinned to parts: drawn over the model, undone as one step.
 	_builder.pins_hook = func(words: String) -> String:
 		var had: String = _store.pins.words(_world, _store.lift())
@@ -5046,39 +5155,9 @@ func _build_ui() -> void:
 	_pins_view.store = _store
 	_pins_view.world = _world
 	_pins_view.camera = _camera
-	_pins_view.together = _together
+	_pins_view.make_together = func() -> Node: return _together
 	_pins_view.list_wanted.connect(open_pins)
 	_over_model.add_child(_pins_view)
-	# Where this person is working, for the others' view: the part under the
-	# mouse, a few times a second while in a session.
-	# Looked for again only when the mouse, the view or the model moved: a
-	# look under the mouse four times a second on a model standing still
-	# was the owner's page held to 27 frames a second (the flow, 2026-10-24).
-	_together.pointer_at = func() -> Variant:
-		var mouse: Vector2 = get_viewport().get_mouse_position()
-		var looked: Array = [mouse, _camera.global_transform, _world.revision]
-		if looked == _pointer_key:
-			return _pointer_found
-		_pointer_key = looked
-		_pointer_found = null
-		if _verbs == null or _over_panel_at(mouse):
-			return null
-		var under: int = _verbs.brick_at(mouse)
-		var brick: BrickWorld.Brick = _world.get_brick(under) if under != 0 else null
-		_pointer_found = brick.transform.origin if brick != null else null
-		return _pointer_found
-	# A check's change made as Claude makes one: the same tools, answered here.
-	# Claude's connector's: made with the assistant's panel, if not yet.
-	_together.run_tool = func(name: String, arguments: Dictionary) -> String:
-		var answering: Node = _connector.get("rpc")
-		var got: Variant = await answering.answer_rpc({"jsonrpc": "2.0", "id": 1,
-			"method": "tools/call", "params": {"name": name, "arguments": arguments}})
-		var said := PackedStringArray()
-		for block: Variant in ((got as Dictionary).get("result", {}) as Dictionary).get("content", []):
-			if (block as Dictionary).get("type", "") == "text":
-				said.append(str((block as Dictionary).get("text", "")))
-		return "\n".join(said)
-	add_child(_together)
 	# The toolbar's quiet line about this tab and Claude (ClaudeTabView.badge),
 	# twice a minute for its "2 min ago"; and as the chats in it change, once
 	# the connector is made (_make_chat).
@@ -5178,8 +5257,8 @@ func _build_ui() -> void:
 		_elements.open(_builder.held_part))
 
 	# Prints and stickers for any part of the model (src/prints).
-	_bin.print_wanted.connect(func() -> void: _studio.print_part(_builder.held_part))
-	_bin.stickers_wanted.connect(func() -> void: _studio.open_sheet())
+	_bin.print_wanted.connect(func() -> void: (await _studio_ready()).print_part(_builder.held_part))
+	_bin.stickers_wanted.connect(func() -> void: (await _studio_ready()).open_sheet())
 
 	# Panels sized to the window, and folded away when there is no room
 	# for them beside the model. On a phone a panel that takes its
@@ -5250,7 +5329,6 @@ func _build_ui() -> void:
 	_verbs.reopen_words = _store.reopen_words
 	_verbs.scenery = _store.scenery
 	_verbs.camera = _camera
-	_verbs.together = _together
 	add_child(_verbs)
 	# A double-click in the bin replaces the selection, or puts a fit on it.
 	_bin.verbs = _verbs
@@ -5315,20 +5393,8 @@ func _build_ui() -> void:
 	_bin.column = _stack
 	_counts = _shell.status.counts
 
-	# The ruler, and what it says, under the counts.
-	_measure = Measure.new()
-	_measure.lattice = _builder.lattice
-	_measure.camera = _camera
-	_measure.world = _world
-	_measure.library = _library
-	_measure.label = _viewport_label(13)
-	_measure.label.visible = false
-	_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_measure.label.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_measure.label.offset_top = 10.0
-	spacer.add_child(_measure.label)
-	add_child(_measure)
-	_verbs.measure = _measure
+	# The ruler, made as it is first taken out.
+	_verbs.make_measure = _make_measure
 
 	# Make, Hose, tube or chain…: src/ui/flex_tool.gd, its panel in the
 	# column beside the model's, as Simulate's is.
@@ -5398,17 +5464,17 @@ func _build_ui() -> void:
 	_notices.get_child(0).add_child(_update_offer)
 	# The desktop app's own: a newer version out, said the same way, with
 	# Update and restart (src/net/updater.gd).
-	if Updater.on_desktop():
-		_updater = Updater.new()
+	if not OS.has_feature("web"):
+		_updater = Later.make(&"Updater")
 		_updater.name = "Updater"
 		_updater.store = _store
 		_updater.say = _bar.say
 		add_child(_updater)
-		_update_notice = UpdateNotice.new()
+		_update_notice = Later.make(&"UpdateNotice")
 		_update_notice.updater = _updater
 		_update_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_notices.get_child(0).add_child(_update_notice)
-		_update_dialog = UpdateDialog.new()
+		_update_dialog = Later.make(&"UpdateDialog")
 		_update_dialog.updater = _updater
 		add_child(_update_dialog)
 
@@ -5427,22 +5493,6 @@ func _build_ui() -> void:
 	# Each change to it one step of Undo.
 	_builder.reference_hook = _reference.put
 
-	# Export's picture and shop lists: src/ui/exports.gd.
-	_exports = Exports.new()
-	_exports.world = _world
-	_exports.library = _library
-	_exports.scenery = _store.scenery
-	_exports.say = _bar.say
-	_exports.named = _bar.model_name
-	_exports.store = _store
-	add_child(_exports)
-	_exports.picture.world = _world
-	_exports.picture.camera = _camera
-	_exports.picture.scenery = _store.scenery
-	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
-		_floor.shadow_node(), _shell.grid]
-	_exports.picture.shown_again = _verbs.apply_hidden
-	_exports.picture.aside.append(_reference)
 
 	# This browser may clear the models, which are only in it: said once,
 	# above the model, with the ways to keep a copy (_watch_other_tabs asks).
@@ -5589,9 +5639,9 @@ func _make_assistant() -> void:
 	# The picture a mosaic was asked of, for make_art.
 	if _mosaic_source != null:
 		_assistant_made.art_source = _mosaic_source
-	# What is owned, which a brief can ask it to prefer (CollectionDialog).
-	if _shell.collection != null and _shell.collection.store != null:
-		_assistant_made.owned = _shell.collection.store.on_hand
+	# What is owned, which a brief can ask it to prefer (Shell.collection_store).
+	if _shell != null and _shell.collection_store != null:
+		_assistant_made.owned = _shell.collection_store.on_hand
 	add_child(_assistant_made)
 	# Claude asking for more room than the selection waits on the person: the
 	# panel the question is in comes into view.
@@ -5995,8 +6045,11 @@ func _make_brickify() -> void:
 	# through the app's own exporters, of the build alone; and laid from the
 	# person's collection when they ask.
 	brickify.owned = func() -> Dictionary:
-		return _shell.collection.store.on_hand if _shell != null and _shell.collection != null \
-			and _shell.collection.store != null else {}
+		return _shell.collection_store.on_hand if _shell != null and _shell.collection_store != null \
+			else {}
+	# And told again as it arrives, once the person signs in.
+	if _shell != null and _shell.collection_store != null:
+		_shell.collection_store.changed.connect(brickify.tell_owned)
 	brickify.booklet_wanted.connect(_brickify_booklet)
 	brickify.shop_wanted.connect(func(shop: String, path: String) -> void:
 		brickify.tell(await _exports.shop_list(shop, _outside_of(path), true)))
@@ -6022,6 +6075,21 @@ func _make_elements() -> void:
 			Inventory._tidy(info.name) if info != null else part_id)))
 
 
+## [member _studio], its scripts compiled a few frames apart the first time
+## (Later.warm), for a person's Print…, sticker or Printed versions. In one
+## frame they held a browser's 331-414 ms at load 24-35 (leaves3,
+## 2026-11-06): the picture reader and the stickers left the first screen
+## (leaves), so the studio's first use compiled 189 KB, not 137.
+func _studio_ready() -> Node:
+	if _studio_made == null:
+		await Later.warm(STUDIO_FIRST)
+	return _studio
+
+
+## What the studio names, deepest first, a frame each (_studio_ready).
+const STUDIO_FIRST: Array[StringName] = [&"PictureFile", &"Stickers", &"PrintPaint", &"PrintEditor"]
+
+
 ## Prints and stickers for any part of the model (src/prints).
 func _make_studio() -> void:
 	var studio: Node = Later.make(&"PrintStudio")
@@ -6038,7 +6106,7 @@ func _make_studio() -> void:
 	studio.said.connect(func(words: String) -> void: _bar.say(words))
 	studio.made.connect(func(part_id: String) -> void:
 		_bin.populate()
-		if not Stickers.is_sticker(_library, part_id):
+		if not Later.script(&"Stickers").is_sticker(_library, part_id):
 			_bin.show_category(PartPrints.MY_PRINTS)
 			_bin.show_held(part_id, _builder.held_color)
 			_on_part_chosen(part_id))
@@ -6196,6 +6264,26 @@ func _make_page_editor() -> void:
 	_page_editor_made = editor
 	editor.app = self
 	_add_to_hud(editor)
+
+
+## The ruler, and what it says, under the counts: made the first time it is
+## taken out (EditVerbs.ruler).
+func _make_measure() -> Node3D:
+	if _measure == null:
+		_measure = Later.make(&"Measure")
+		_measure.lattice = _builder.lattice
+		_measure.camera = _camera
+		_measure.world = _world
+		_measure.library = _library
+		_measure.label = _viewport_label(13)
+		_measure.label.visible = false
+		_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_measure.label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_measure.label.offset_top = 10.0
+		_over_model.add_child(_measure.label)
+		add_child(_measure)
+		_verbs.measure = _measure
+	return _measure
 
 
 ## A label that reads over the 3D behind it, whatever colour that is.
@@ -7434,11 +7522,12 @@ func open_pins() -> void:
 ## A Build together link opened: joined once whatever was here is back and
 ## somebody is signed in (_on_account_changed asks again then).
 func _maybe_join_together() -> void:
-	if not _first_open_done or _account == null or not _account.signed_in() or _together.live:
+	if not _first_open_done or _account == null or not _account.signed_in() \
+			or (_together_made != null and _together_made.live):
 		return
 	# The session this tab was in before a reload or a restart, gone back
 	# into by itself: its model is the session's, so nothing is asked.
-	var kept: String = Together.kept_secret() if not _together_tried else ""
+	var kept: String = TogetherLink.kept_secret() if not _together_tried else ""
 	_together_tried = true
 	if _together_wanted.is_empty() and kept.is_empty():
 		return
@@ -7454,6 +7543,79 @@ func _maybe_join_together() -> void:
 		_bar.say("Back in the session: %s" % _store.title)
 		return
 	open_together()
+
+
+## Export's picture and shop lists (Exports), made the first time something
+## asks for them ([member _exports]): Export's menu, a share's picture, a
+## parts list for a shop, a browser's Download all.
+func _make_exports() -> void:
+	var made: Node = Later.make(&"Exports")
+	made.world = _world
+	made.library = _library
+	made.scenery = _store.scenery
+	made.say = _bar.say
+	made.named = _bar.model_name
+	made.store = _store
+	_exports_made = made
+	add_child(made)
+	made.picture.world = _world
+	made.picture.camera = _camera
+	made.picture.scenery = _store.scenery
+	# Typed here: a plain array set on the picture by name is refused.
+	var aside: Array[Node3D] = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
+		_floor.shadow_node(), _shell.grid, _reference]
+	made.picture.aside = aside
+	made.picture.shown_again = _verbs.apply_hidden
+
+
+## Build together's session (Together), made the first time it is needed
+## ([member _together]). Its code, 0.1 MB, was compiled before a first
+## visit's window was drawn (leaves, 2026-11-05).
+func _make_together() -> void:
+	var made: Node = Later.make(&"Together")
+	made.world = _world
+	made.builder = _builder
+	made.store = _store
+	made.account = _account
+	made.bar = _bar
+	made.camera = _camera
+	made.base_url = Deployment.api_base()
+	made.said.connect(func(words: String) -> void: _bar.say(words))
+	# Following someone's view: the model's column framed in their colour.
+	made.banner_parent = _over_model
+	# Where this person is working, for the others' view: the part under the
+	# mouse, a few times a second while in a session.
+	# Looked for again only when the mouse, the view or the model moved: a
+	# look under the mouse four times a second on a model standing still
+	# was the owner's page held to 27 frames a second (the flow, 2026-10-24).
+	made.pointer_at = func() -> Variant:
+		var mouse: Vector2 = get_viewport().get_mouse_position()
+		var looked: Array = [mouse, _camera.global_transform, _world.revision]
+		if looked == _pointer_key:
+			return _pointer_found
+		_pointer_key = looked
+		_pointer_found = null
+		if _verbs == null or _over_panel_at(mouse):
+			return null
+		var under: int = _verbs.brick_at(mouse)
+		var brick: BrickWorld.Brick = _world.get_brick(under) if under != 0 else null
+		_pointer_found = brick.transform.origin if brick != null else null
+		return _pointer_found
+	# A check's change made as Claude makes one: the same tools, answered here.
+	# Claude's connector's: made with the assistant's panel, if not yet.
+	made.run_tool = func(name: String, arguments: Dictionary) -> String:
+		var answering: Node = _connector.get("rpc")
+		var got: Variant = await answering.answer_rpc({"jsonrpc": "2.0", "id": 1,
+			"method": "tools/call", "params": {"name": name, "arguments": arguments}})
+		var said := PackedStringArray()
+		for block: Variant in ((got as Dictionary).get("result", {}) as Dictionary).get("content", []):
+			if (block as Dictionary).get("type", "") == "text":
+				said.append(str((block as Dictionary).get("text", "")))
+		return "\n".join(said)
+	_together_made = made
+	add_child(made)
+	_verbs.together = made
+	_pins_view.together = made
 
 
 ## Build, Motions….
@@ -9291,8 +9453,7 @@ func _dress_for_phone() -> void:
 	# And the panels that place themselves, placed as Main's are, and those
 	# over the model's own room (Motions, Colour the hidden parts, Stress),
 	# Simulate's column and the line saying what the app is busy with.
-	_touch.place_panel(_shell.library_dialog, Vector2(LibraryDialog.WIDE, LibraryDialog.TALL))
-	_touch.place_panel(_shell.collection, Vector2(CollectionDialog.WIDE, CollectionDialog.TALL))
+	_shell.place_dialogs()
 	_size_for_a_finger.call_deferred()
 	# A finger that came down on a part with the Select tool moves it, as
 	# the desktop's left drag does: the view does not turn with it.

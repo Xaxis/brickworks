@@ -1307,8 +1307,9 @@ func _the_ruler() -> void:
 	_camera.frame(AABB(Vector3(-120, 0, -60), Vector3(240, 30, 140)))
 	for _n: int in 40:
 		await process_frame
-	var measure: Measure = _main.get("_measure")
 	await _key(KEY_U)
+	# Made as it is first taken out (Later).
+	var measure: Node3D = _main.get("_measure")
 	_check("U takes the ruler out", measure.active and measure.label.visible)
 	var before: int = _count()
 	await _click(_screen(Vector3(-60, 0, -40)))

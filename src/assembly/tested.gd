@@ -1515,7 +1515,7 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 		var a: int = found["a"]
 		var b: int = found["b"]
 		if (meshing.get(a, {}) as Dictionary).has(b) or (meshing.get(b, {}) as Dictionary).has(a) \
-				or exact.forgiven(a, b):
+				or (not found.has("sunk") and exact.forgiven(a, b)):
 			continue
 		into.append([a, b, float(found["depth"])])
 	into.sort_custom(func(x: Array, y: Array) -> bool: return x[2] > y[2])

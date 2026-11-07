@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
 
 ## Sub-features
 
@@ -1933,8 +1933,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   or a ball's turn), `settle` (a free joint down under its weight), `commit`
   (one undo step). `grab_probe` checks each on real sets.
 - `closed loops of joints` (`src/assembly/linkage.gd`, `Linkage`; MECHANISMS
-  §11): a part held at both ends (Bodies' closing links) moves as its loop
-  allows: the loop's joint angles (and slides, and a ball's three turns)
+  §11): a part held at both ends (Bodies' closing links; not a part that
+  only rests on a stud at a hinge's free end, `Bodies.rests`) moves as its
+  loop allows: the loop's joint angles (and slides, and a ball's three turns)
   solved by damped Gauss-Newton with exact derivatives, from the last pose,
   in steps sized by the fastest turning joint (0.5 rad), each started along
   the last step's slope, closed to 0.5 LDU on the way and 0.05 at the end; a
@@ -2119,7 +2120,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   rest where five times the 40's turn puts it), a picture mid-coast and at
   rest, one undo, move_part spin=720 against the hand form, and 4096's hinge
   flicked the same way staying where it was let go (spin= says it does not
-  coast). Each fails with its fix taken out.
+  coast). Each fails with its fix taken out. Before the flick, 4096's boom
+  on its rest by hand: dragged 10° down into its cones it stays, dragged up
+  it lifts 20°, one step (`Bodies.rests`).
 - `hoses follow a grab` (`src/assembly/flex_follow.gd`, `FlexFollow`;
   MECHANISMS §18): a pneumatic tube, a ribbed hose, a flex-system hose, a
   flexible axle or a string (Flex's swept kinds, and the same parts LDCad laid:
@@ -2943,7 +2946,10 @@ godot --headless --path . --script src/dev/snap_probe.gd
 # it, a beam onto two pins, a clip on a bar, a clip on 2540's handle (room
 # with its plate out, up or down, not into the plate) and a bar in a clip,
 # each aimed at, clicked, joined, and passed by check_design; the same pin a
-# stud off and the same clip or bar 2 LDU off the line refused by both
+# stud off and the same clip or bar 2 LDU off the line refused by both. And
+# cones (3942c, 4589, 59900), a round plate and a dome 2 x 2 on a cone's or
+# round plate's stud, clicked, dragged, swapped in, stood on by a figure and
+# sent over MCP, each at the stud's stop to 0.01 LDU
 godot --headless --path . --script src/dev/technic_hand_probe.gd
 # a pneumatic tube laid by clicking two pin holes, bent by a dragged ball,
 # refused past its bend, undone; Pose offering the laid tube no slider; a chain
@@ -3044,3 +3050,7 @@ For the scene itself, launch it and read the brick count in the status bar: with
 ### Gears put in mesh by hand
 
 `tools/probe.sh gear_mesh_probe`: each gear pair is pointed onto its axles the way the editor places it, the second seats where it meshes (GearMesh, src/assembly/gear_mesh.gd), and Grab turns one: the other turns at the teeth's ratio. Spur 8/12/16/20/24/36/40, double bevels at right angles, a worm with a 24, a 24 in a crossblock. Fails on a build before gears186 (34 of 42), passes after; ends "gear_mesh probe:" with its count.
+
+### Train tracks end to end
+
+`tools/probe.sh tracks_probe` (and `PROBE_SIZE=1400x900`): a 9V curve dragged from the bin to within 12 px of a 9V straight's free end joins it in one drag, ends within 0.5 LDU and facing within 0.1 degree; R on the curve in hand over a free end puts its other end to the joint; two 12V curves joined get the sleeper their joint needs, and one undo takes both off; sixteen curves by sixteen clicks close a circle within 1 LDU; a session's oval of 16 curves and 4 straights in two calls (clear_model, submit_design with `attach: {to: "t3.track[1]", by: "track[0]"}`). The ends come from `assets/ldraw/track_ends.json` (TrackSnap, src/assembly/track_snap.gd; `tools/track_ends.py check`), read by the probe on its own, so a build without the joints fails each bar line and says by how much. Pictures in shots/tracks/<size>/.
