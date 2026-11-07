@@ -111,3 +111,18 @@ def test_the_trace_names_what_a_child_found_outside_the_sandbox(tmp_path):
     # thumbnailer, what was not found, the package, the model, the
     # factory's folder, /usr, /proc, and a process the thumbnailer did not make.
     assert thumbnail_check.outside_sandbox(trace, root, model) == ["/sys/devices/system/cpu/possible"]
+
+
+def test_without_gnomes_factory_a_smoke_says_so_and_the_installed_check_fails(tmp_path):
+    # -S: no site packages, so no GObject bindings, as setup-python's Python
+    # on a runner has none. A smoke on such a machine checks nothing and
+    # passes on; a runner asking for the installed package must not.
+    script = str(ROOT / "tools" / "release" / "thumbnail_check.py")
+    smoke = subprocess.run([sys.executable, "-S", script, "--root=%s" % tmp_path,
+                            "--out=%s" % (tmp_path / "smoke")], capture_output=True, text=True)
+    assert smoke.returncode == 0, smoke.stdout + smoke.stderr
+    assert "--    no GNOME thumbnail factory here" in smoke.stdout, smoke.stdout
+    runner = subprocess.run([sys.executable, "-S", script, "--installed",
+                             "--out=%s" % (tmp_path / "runner")], capture_output=True, text=True)
+    assert runner.returncode == 1, runner.stdout + runner.stderr
+    assert "FAIL  no GNOME thumbnail factory here" in runner.stdout, runner.stdout
