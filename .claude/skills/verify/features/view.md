@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe -->
 
 ## Sub-features
 
@@ -2077,6 +2077,38 @@ picture the assistant is shown.
   windows on one user folder (the probe again headless, `--race-remove`)
   losing no style's picture. `--dialog-only` with `PROBE_SIZE=1400x900`
   checks the dialog alone at that size.
+- `what is set in the booklet kept over an open` and `pullkept probe`
+  (APP_UX6 #1 pullkept; `BookletLooks.read`, `_pulls_follow_parts`,
+  `unmatched_words`, `ModelBar.looks_words`, `Assistant._tag_assemblies`):
+  every step line of the booklet (pull, colours, turn, zoom, notes, place,
+  page) is read back to the step it was written on, a sub-model's own steps
+  too. A save makes the session's named assemblies sub-models; where the
+  model's steps are its own those copies stay built in their parent's
+  steps (`AuthorSteps.IN_PARENT`, the file's `0 !BRICKWORKS IN` lines), as
+  Make a sub-assembly keeps them, so the booklet seen before the save is
+  the one after. A file (as Pods.ldr was saved by rel-m268) whose pull
+  names parts its step no longer puts in, with them in a copy that step
+  puts in, has the pull read onto the copy's step that puts in the most of
+  them (the first of two; only the pull moves, turns and the rest stay on
+  the file's step, where other LDraw readers put them), so the next save
+  writes it there. A pull whose parts are in no step, or a look on a step
+  the booklet shows none of, is kept in the file and named on open: "the
+  pull on step 1 of the model matches no step now, kept in the file", in
+  the MCP `open_model` reply and the status bar (de/fr/es in `locale/`).
+  `pullkept_probe` (headless; `PULLKEPT_ONLY=pods|session|named|lines|files`
+  for one): `tests/fixtures/steps/pods.ldr` opened by `open_model`, step 1's
+  look pulling 41769a and 41770a 2 studs and `booklet_layout` saying
+  "41770a, 41769a pulled out 2 studs", the PULL line in side_pod.ldr's step
+  after a save, the same after a reopen and the second save byte for byte;
+  the walk's session replayed over MCP and saved, step 1 pulling both after
+  a reopen and with step 1's parts made a sub-assembly by hand; a file
+  without the wing plates and one with a zoom on a step shown nowhere named
+  on open (MCP and `ModelBar.unshown_words`) and kept over a save; the
+  gatehouse given every kind of booklet line over MCP and `page_setup`, its
+  looks and parts the same after a save and an open, its lines byte for
+  byte on the second save; the 44 turned OMR files, the gatehouse, 346-2 and
+  Pods opened, saved, opened and saved: every booklet line in its file step
+  byte for byte and every part in its step.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,

@@ -4702,6 +4702,20 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "what is set in the booklet kept over an open",
+      "entry": "src/assembly/booklet_looks.gd",
+      "reach": "godot --path .  (a step's pull, colours, turn, zoom, notes, place and page read back on open to the step it was written for, a sub-model's own steps too; a pull whose parts the file now puts in a copy's own step follows them (BookletLooks._pulls_follow_parts); a line no step shows now kept in the file and named in the open's words, MCP open_model and the status bar (BookletLooks.unmatched_words, ModelBar.looks_words); the session's named assemblies made sub-models at a save stay built in their parent's steps (Assistant._tag_assemblies))",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "pullkept probe",
+      "entry": "src/dev/pullkept_probe.gd",
+      "reach": "tools/probe.sh pullkept_probe   (headless: the MCP walk's Pods.ldr opened, step 1 pulling 41770a and 41769a and booklet_layout saying so, kept over a save and an open byte for byte; the walk's session replayed over MCP, saved, opened, and step 1's parts made a sub-assembly by hand, the pull with them; every booklet line of the 44 turned OMR files, the gatehouse, 346-2 and a model given every kind of booklet line over MCP kept over an open, save and open byte for byte; a pull whose parts are gone and a look on a step the booklet shows none of named on open and kept; PULLKEPT_ONLY=pods|session|named|lines|files for one)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "booklet safe probe",
       "entry": "src/dev/booklet_safe_probe.gd",

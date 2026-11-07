@@ -11881,3 +11881,20 @@ msgstr "Dieses Modell hat keine Bewegung namens „%s“, darum wurde es stillst
 
 msgid "No such motion"
 msgstr "Keine solche Bewegung"
+
+# pullkept: what of the booklet no step shows now, said on open
+
+msgid "the pull on %s matches no step now, kept in the file"
+msgstr "das Herausziehen bei %s passt jetzt zu keinem Schritt, in der Datei behalten"
+
+msgid "what the booklet sets on %s matches no step now, kept in the file"
+msgstr "was die Anleitung bei %s festlegt, passt jetzt zu keinem Schritt, in der Datei behalten"
+
+msgid "step %d of the model"
+msgstr "Schritt %d des Modells"
+
+msgid "step %d of %s"
+msgstr "Schritt %d von %s"
+
+msgid "and %d more like it"
+msgstr "und %d weitere solche"

@@ -11881,3 +11881,20 @@ msgstr "Ce modèle n’a aucun mouvement nommé « %s », il s’est donc ouvert
 
 msgid "No such motion"
 msgstr "Mouvement introuvable"
+
+# pullkept: what of the booklet no step shows now, said on open
+
+msgid "the pull on %s matches no step now, kept in the file"
+msgstr "l’extraction de %s ne correspond plus à aucune étape, conservée dans le fichier"
+
+msgid "what the booklet sets on %s matches no step now, kept in the file"
+msgstr "ce que la notice règle sur %s ne correspond plus à aucune étape, conservé dans le fichier"
+
+msgid "step %d of the model"
+msgstr "l’étape %d du modèle"
+
+msgid "step %d of %s"
+msgstr "l’étape %d de %s"
+
+msgid "and %d more like it"
+msgstr "et %d autres de même"
