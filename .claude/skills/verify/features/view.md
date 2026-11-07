@@ -2495,8 +2495,9 @@ picture the assistant is shown.
   and `-- --means=FILE` (Forward+ first) holds Compatibility's Dark under 1
   and 4 suns within 15% of Forward+'s. Pictures in `shots/lights/`: look at
   Render's, the spot's pictures and maps (red would be a pixel changed
-  outside: on Compatibility a level apart is the bar, as it adds a shadowed
-  light in a pass of its own and that rounds, as many down as up), the
+  outside: on Compatibility a level apart is the bar, none lighter on the
+  whole, as it draws a shadowed light in passes of its own and that
+  rounds), the
   glowing brick's, `suns_*` and `grid_*`.
 - `quiet probe` (`src/dev/quiet_probe.gd`, `tools/probe.sh quiet_probe`,
   windowed at 1280 x 720, `PROBE_SIZE=1400x900`): APP_UX4 unit 9's bar.

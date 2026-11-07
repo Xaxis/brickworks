@@ -527,14 +527,15 @@ func _judged(drawn: Array, spot: Dictionary, box: AABB, words: String) -> float:
 	map.save_png(OUT + "spot_%s_map_%s.png" % [drawn[3], _size])
 	# At least a fifth of the picture surely outside the cone, to judge by.
 	# Forward+ draws a light that does not reach a pixel as no change at
-	# all. Compatibility draws a shadowed light in a pass of its own, added
-	# to the picture, and that rounds: outside the cone 92,700 px came out
-	# one level apart, as many down as up (2026-11-07, zink). So there the
-	# bar is no more than a level, and no light added on the whole.
+	# all. Compatibility draws a shadowed light in passes of its own, and
+	# that rounds: outside the cone 92,700 px came out one level apart, more
+	# of them darker than lighter (the mean -0.135 of a level; 2026-11-07,
+	# zink). So there the bar is no more than a level, and no light added
+	# on the whole.
 	var mean: float = outside_sum / maxf(1.0, outside * 3.0)
 	var fine: bool = outside_changed == 0
 	if not StudioRender.full_renderer():
-		fine = outside_most <= 1 and absf(mean) < 0.05
+		fine = outside_most <= 1 and mean < 0.05
 	_check("%s: outside the cone %d of %d px changed (%.0f%% of the picture; %d px not certain, "
 		% [words, outside_changed, outside, 100.0 * outside / float(size.x * size.y), unsure]
 		+ "left out), by %d level%s at most, %+.3f on the mean"
