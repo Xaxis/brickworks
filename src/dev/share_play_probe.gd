@@ -283,21 +283,17 @@ func _run() -> void:
 			if there != 0 and there != wheel and not (_main.get("_store") as ModelStore).scenery.has(there):
 				finger = beside
 				break
-		# The parts it may mean, tried in turn by the drag: the one under it
-		# may hang on a joint the model holds still (#64, a Technic plate on
-		# single studs at both ends since realjoints' stud joints).
-		var meant: Array = (_main.call("_play_bricks_near", finger) as Array).map(
-			func(one: Array) -> int: return int(one[0]))
-		_ok(verbs.brick_at(finger) == wheel or meant.has(wheel),
-			"a fingertip on #%d beside the wheel's rim may mean the wheel (#%d): %s" % [verbs.brick_at(finger), wheel, meant])
+		var under_finger: int = verbs.brick_at(finger)
 		# Index 1, as a browser numbers a finger that follows another gesture.
 		_touch(finger, FINGER, true)
 		await process_frame
 		_drag_finger(finger + tangent * 2.5)
 		await process_frame
 		var held: Grab = grab_drag.grab
-		_ok(held != null and held.state == "moves" and held.moving.has(wheel),
-			"the finger takes hold of the steering wheel (%s)" % (held.said if held != null else grab_drag.last_words))
+		var took_first: int = int(_main.get("_finger_brick"))
+		_ok(held != null and held.state == "moves"
+				and int(bodies.body_of.get(took_first, -1)) == int(bodies.body_of[wheel]),
+			"a fingertip on #%d beside the wheel's rim takes hold of the steering wheel (took #%d)" % [under_finger, took_first])
 		if held != null and held.state == "moves":
 			for degrees: float in [-6.0, -12.0, -18.0, -24.0]:
 				_drag_finger(camera.unproject_position(_about(held.pivot, held.axis, degrees) * held._hold))
@@ -320,6 +316,36 @@ func _run() -> void:
 			await _press(named["view_reset"])
 		await _settle()
 		_ok(_differing(world, before) == 0, "Reset puts it back again")
+
+		# play_flow's phone finger came down on a plate behind the wheel that
+		# hangs on a stud at each end, in a loop of 4 studs that is locked
+		# (rel-m268): the wheel within the fingertip is meant, not the view.
+		bodies = grab_drag.read_bodies()
+		var plate: int = _locked_on_a_joint(grab_drag, bodies, wheel, camera)
+		_ok(plate != 0, "a part beside the wheel hangs on joints in a locked loop (#%d)" % plate)
+		spot = _spot(grab_drag, bodies, wheel, camera)
+		if plate != 0 and not spot.is_empty():
+			finger = spot["screen"]
+			_touch(finger, FINGER, true)
+			await process_frame
+			# As if the fingertip's middle had been on the plate.
+			_main.set("_finger_brick", plate)
+			_drag_finger(finger + tangent * 2.5)
+			await process_frame
+			var took: int = int(_main.get("_finger_brick"))
+			_ok(bool(_main.get("_finger_grabbing")) and int(bodies.body_of.get(took, -1)) == int(bodies.body_of[wheel])
+					and grab_drag.is_moving(),
+				"a fingertip on the locked #%d takes hold of the wheel (took #%d: %s)" % [plate, took, _main.get("_finger_said")])
+			_touch(finger + tangent * 2.5, FINGER, false)
+			for _n: int in 240:
+				await process_frame
+				if not grab_drag.is_settling():
+					break
+			await _settle()
+			named = view.controls_by_name()
+			if named.has("view_reset"):
+				await _press(named["view_reset"])
+			await _settle()
 
 	print("\n5. a drag on what does not move turns the view")
 	var chassis: int = 0
@@ -649,6 +675,34 @@ func _turned(world: BrickWorld, before: Dictionary, id: int) -> float:
 
 ## A spot over [param key] on the screen and its joint's line there:
 ## {screen, pivot}, or {} when it does not show.
+## A part, not in [param wheel]'s body, that hangs on a joint (the viewer's
+## finger takes it as one that moves) but whose loop is locked: the grab
+## refuses it. 4262 first, the plate play_flow's finger came down on. 0 for none.
+func _locked_on_a_joint(grab_drag: GrabDrag, bodies: Bodies, wheel: int, camera: CadCamera) -> int:
+	if bodies == null:
+		return 0
+	var world: BrickWorld = _main.get("_world")
+	var keys: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if int(bodies.body_of.get(brick.id, -1)) != int(bodies.body_of.get(wheel, -2)) \
+				and bool(_main.call("_moves_on_a_joint", brick.id)):
+			if brick.part_id == "4262":
+				keys.push_front(brick.id)
+			else:
+				keys.append(brick.id)
+	for key: int in keys:
+		var screen: Vector2 = camera.unproject_position(world.get_brick(key).transform.origin)
+		if not grab_drag.press(key, screen, {}, false):
+			continue
+		var locked: bool = grab_drag.grab != null and grab_drag.grab.state == "locked"
+		if grab_drag.is_moving():
+			grab_drag.release()
+		grab_drag.let_be()
+		if locked:
+			return key
+	return 0
+
+
 func _spot(grab_drag: GrabDrag, bodies: Bodies, key: int, camera: CadCamera) -> Dictionary:
 	if bodies == null or not bodies.body_of.has(key):
 		return {}

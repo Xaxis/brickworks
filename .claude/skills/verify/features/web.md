@@ -2398,10 +2398,10 @@ plan with Claude as the client.
   does not, or a drag before the joints are read or while the timeline is
   short of the whole model, turns the view as before. A finger: the first
   one down (whatever its index) on a part that moves, or within about 10
-  points of one (`_play_bricks_near`: a phone's steering wheel is thinner
-  than a fingertip; the three nearest bodies in turn, so a part pinned at
-  both ends beside the wheel, 8808-1's Technic plate on its two studs, gives
-  way to the wheel), and past 14 px takes hold before the camera sees it;
+  points of one (`_play_brick_near`: a phone's steering wheel is thinner
+  than a fingertip; and when the part under it hangs on a joint but its
+  loop is locked, 8808-1's Technic plate on a stud at each end, the nearest
+  part within the fingertip that moves), and past 14 px takes hold before the camera sees it;
   a second finger lets go and pinches; `brickworksShare.finger` says what
   the last was taken as. The viewer's drag draws no balance marks and does
   not weigh each frame (`GrabDrag.show_marks`), and reads the joints on a

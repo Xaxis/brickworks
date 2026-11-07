@@ -93,6 +93,10 @@ var eye_transform: Transform3D = Transform3D()
 var eye_fov: float = 0.0
 var eye_orthogonal: bool = false
 var eye_focus: Vector3 = Vector3.ZERO
+## A view saved with the model (SavedViews) the picture is from, by its name,
+## or "": the eye above is then that view's, with [member view] "current", so
+## a render of it is drawn from there whatever the window looks at.
+var saved_view: String = ""
 
 
 ## Keep where [param camera] looks from now, and what it looks at.
@@ -102,6 +106,25 @@ func keep_eye(camera: Camera3D) -> void:
 	eye_orthogonal = camera.projection == Camera3D.PROJECTION_ORTHOGONAL
 	eye_focus = camera.call("focus_now") if camera.has_method("focus_now") \
 		else camera.global_position - camera.global_transform.basis.z * 100.0
+
+
+## Draw from [param kept], a view saved with the model (SavedViews), as the
+## window looks from it: [param camera], the window's, for its lens and its
+## limits. The camera is left where it is.
+func keep_view(kept: Dictionary, camera: Camera3D) -> void:
+	view = "current"
+	saved_view = str(kept["name"])
+	eye_transform = SavedViews.eye_of(kept, camera)
+	eye_fov = camera.fov if camera != null else 45.0
+	eye_orthogonal = bool(kept.get("square", false))
+	eye_focus = SavedViews.focus_of(kept)
+
+
+## The view no longer a saved one, nor where the window looked from when
+## asked: "current" is the window's as it is again.
+func forget_eye() -> void:
+	saved_view = ""
+	eye_fov = 0.0
 
 
 ## Put one of [constant BACKDROPS] behind the model; false when there is no
@@ -141,6 +164,7 @@ func take(asked: Dictionary) -> String:
 		if not view_asked in ["current", "hero", "front", "side", "back", "low", "top"]:
 			return "view is current, hero, front, side, back, low or top."
 		view = view_asked
+		forget_eye()
 	if asked.has("look"):
 		if not LOOKS.has(str(asked["look"])):
 			return "look is window or product."
@@ -162,6 +186,154 @@ func take(asked: Dictionary) -> String:
 
 ## The most samples a render is asked for by name.
 const MOST_SAMPLES := 4096
+
+
+# -- presets: Render's choices kept by a name, for any model ---------------------
+
+## Where the presets are kept, on this computer or in this browser: a preset
+## is how its person renders, so every model is offered it, as the booklet's
+## page styles are (BookletSheet.STYLES_FILE).
+const PRESETS_FILE := "user://render_presets.cfg"
+## What a preset keeps: every choice Render's panel makes, and nothing of
+## where the window looked from nor a probe's switches.
+const PRESET_KEEPS: Array[String] = ["quality", "look", "size", "transparent", "backdrop",
+	"backdrop_gradient", "lighting", "light_turn", "contact_shadow", "view", "saved_view",
+	"focal_mm", "f_stop", "focus", "samples", "frames", "fps"]
+
+
+## These choices as a preset keeps them: words, numbers and the backdrop's
+## colour as it is. A colour written as #rrggbb comes back a shade off the
+## one Render names (Dark), and the panel then showed a colour of its own.
+func preset() -> Dictionary:
+	var out: Dictionary = {}
+	for field: String in PRESET_KEEPS:
+		var value: Variant = get(field)
+		if value is Vector2i:
+			value = [(value as Vector2i).x, (value as Vector2i).y]
+		out[field] = value
+	return out
+
+
+## [param said], a preset as [method preset] made it, put on these choices,
+## each checked: the file is the person's to edit. What was passed over, in
+## words, or "". A saved view it names is only named here: Render looks it
+## up in the model open ([method keep_view]).
+func use_preset(said: Dictionary) -> String:
+	var passed := PackedStringArray()
+	for field: String in PRESET_KEEPS:
+		if not said.has(field):
+			continue
+		var value: Variant = said[field]
+		var number: bool = (value is float or value is int) and is_finite(float(value))
+		match field:
+			"quality":
+				if number and int(value) in [Quality.QUICK, Quality.GOOD, Quality.BEST]:
+					quality = int(value)
+					continue
+			"look":
+				if LOOKS.has(str(value)):
+					look = str(value)
+					continue
+			"size":
+				if _a_size(value):
+					size = Vector2i(int(value[0]), int(value[1]))
+					continue
+			"transparent", "backdrop_gradient", "contact_shadow":
+				if value is bool:
+					set(field, value)
+					continue
+			"backdrop":
+				if value is Color:
+					backdrop = value
+					continue
+				if value is String and Color.html_is_valid(str(value)):
+					backdrop = Color.html(str(value))
+					continue
+			"lighting":
+				if str(value) == "studio" or StudioRender.HDRIS.has(str(value)):
+					lighting = str(value)
+					continue
+			"light_turn":
+				if number and absf(float(value)) <= 180.0:
+					light_turn = float(value)
+					continue
+			"view":
+				if StudioRender.VIEWS.has(str(value)):
+					view = str(value)
+					continue
+			"saved_view":
+				if value is String:
+					saved_view = SavedViews.clean_name(str(value))
+					continue
+			"focal_mm":
+				if number and float(value) >= 10.0 and float(value) <= 400.0:
+					focal_mm = float(value)
+					continue
+			"f_stop":
+				if number and float(value) >= 0.0 and float(value) <= 64.0:
+					f_stop = float(value)
+					continue
+			"focus":
+				if number and float(value) >= 0.0 and float(value) <= 1.0:
+					focus = float(value)
+					continue
+			"samples":
+				if number and int(value) >= 0 and int(value) <= MOST_SAMPLES:
+					samples = int(value)
+					continue
+			"frames":
+				if number and int(value) >= 1 and int(value) <= 720:
+					frames = int(value)
+					continue
+			"fps":
+				if number and int(value) >= 1 and int(value) <= 60:
+					fps = int(value)
+					continue
+		passed.append(field)
+	if saved_view.is_empty():
+		eye_fov = 0.0
+	return "" if passed.is_empty() else "passed over: " + ", ".join(passed)
+
+
+static func _a_size(value: Variant) -> bool:
+	if not value is Array or (value as Array).size() != 2:
+		return false
+	for n: Variant in value:
+		if not (n is float or n is int) or float(n) < 16.0 or float(n) > 8192.0:
+			return false
+	return true
+
+
+## The presets kept, by name, in the order they were first kept.
+static func presets() -> Dictionary:
+	var out: Dictionary = {}
+	var file := ConfigFile.new()
+	if file.load(PRESETS_FILE) != OK:
+		return out
+	for name: String in file.get_sections():
+		var kept: Variant = file.get_value(name, "preset", {})
+		if kept is Dictionary:
+			out[name] = kept
+	return out
+
+
+## [param settings]' choices kept as the preset [param name], over one of
+## that name. What went wrong, or "".
+static func save_preset(name: String, settings: RenderSettings) -> String:
+	var called: String = SavedViews.clean_name(name)
+	if called.is_empty():
+		return "a preset needs a name"
+	var file := ConfigFile.new()
+	file.load(PRESETS_FILE)
+	file.set_value(called, "preset", settings.preset())
+	return "" if file.save(PRESETS_FILE) == OK else "the preset could not be kept"
+
+
+static func forget_preset(name: String) -> void:
+	var file := ConfigFile.new()
+	if file.load(PRESETS_FILE) == OK and file.has_section(name):
+		file.erase_section(name)
+		file.save(PRESETS_FILE)
 
 
 func copy() -> RenderSettings:
