@@ -121,20 +121,20 @@ func _opened(file_name: String) -> void:
 	var list: Array = []
 	for brick: BrickWorld.Brick in bricks:
 		var at: Transform3D = brick.transform
-		if absf(at.basis.determinant()) <= NO_SIZE:
-			shapeless += 1
-			continue
-		if not (at * at.affine_inverse()).is_equal_approx(Transform3D.IDENTITY):
-			unturned += 1
 		var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
 		if mesh != null:
 			list.append({"key": brick.id, "part": brick.part_id, "at": at, "mesh": mesh})
+		if absf(at.basis.determinant()) <= NO_SIZE:
+			shapeless += 1
+		elif not (at.basis * at.basis.inverse()).is_equal_approx(Basis.IDENTITY):
+			unturned += 1
 	print("  %d parts placed, %d bricks, %d with meshes" % [int(opened.get("placed", 0)), bricks.size(), list.size()])
 	_check(not bricks.is_empty() and shapeless == 0,
 		"every part on the baseplate has size: %d of %d without" % [shapeless, bricks.size()])
-	_check(unturned == 0, "every part's place has an inverse: %d without" % unturned)
-	# Read as a grab reads them (GrabDrag._read_all): an inverse taken of
-	# every part standing on studs (Mechanism._rest_on_studs).
+	_check(unturned == 0, "every part's turn has an inverse: %d of the rest without" % unturned)
+	# Read as a grab reads them (GrabDrag._read_all), every part with a mesh:
+	# an inverse taken of each to read what stands on studs
+	# (Mechanism._rest_on_studs). One at no size logs 'det == 0' here.
 	var mechanism: Mechanism = Mechanism.build(list)
 	print("  its gears: %d bodies, %d joints, %d gears" % [mechanism.bodies.size(), mechanism.joints.size(),
 		mechanism.gears.size()])

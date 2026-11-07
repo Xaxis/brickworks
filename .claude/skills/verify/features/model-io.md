@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe -->
 
 ## Sub-features
 
@@ -141,6 +141,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   teeth's ratio) and 42054-1's copied turntable top in Simulate; `-- --gears`
   lists every OMR copy of a part the gear table keys and whether it is read
   so (60 in 44 files, 55, ~1 min).
+- `a line placing a part at no size` (`LdrModel.has_size`, `parse`;
+  `Together._as_state`): Studio and LDCad write a matrix with a row or a
+  column of zeros where a flexible part's path doubles back (42125-1's
+  flexible axles and hoses, 42108-1's rope: 653 lines in 7 OMR sets). Such a
+  line places nothing and is read as no part, as a line of no colour is; the
+  kept file writes it back as it was (`SourceFile`), and a Build together
+  state at no size is refused. Read as parts they had no inverse, and
+  `Mechanism._rest_on_studs` logged 15 to 20 `det == 0` engine errors in
+  `grab_probe`'s groups case (APP_UX6 #23). `no_size_probe` counts the lines
+  from the sets' text, checks none is read, opens 42125-1 (every part's place
+  invertible, its gears read) and saves it with the 4 lines byte for byte;
+  then a grab_probe log has no `det == 0` (~1 min).
 - `table race` (`Mechanism.table`, `Flex.kind_of_piece`, `Exact._sphere`,
   `Exact.shape_for`, `Style.norms`, `Collection._sizes`): a static table
   read at first use, and reached by a worker, is either made as its class
