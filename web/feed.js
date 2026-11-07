@@ -25,13 +25,15 @@
 import { askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followsSent, personRow, showFeedCount, showTabCounts } from "/follow.js";
 import { ago, avatarHtml } from "/kit.js";
-import { FIRST_SCREEN, langAt, modelCard, say, told } from "/card.js";
+import { FIRST_SCREEN, langAt, modelCard, say, setPhoto, sharpPhotos, told } from "/card.js";
 
 const $ = (id) => document.getElementById(id);
 // The language the server says each post's line in.
 const LANG = /^(?:de|fr|es)$/.test(globalThis.brickworksLang?.code || "") ? `&lang=${globalThis.brickworksLang.code}` : "";
 // How many designers it suggests.
 const SUGGESTED = 5;
+// A photo's id (api/_builds.js): its picture is drawn from it alone.
+const ID = /^[A-Za-z0-9]{10}$/;
 let oldest = null;
 // Which load the page is drawing: one begun since (signed in from the
 // dialog, say) makes an older one's answers stale, and they are dropped.
@@ -74,7 +76,6 @@ function photoFigure(one, eager = false) {
   const link = document.createElement("a");
   link.href = here(one.link);
   const img = document.createElement("img");
-  img.src = here(one.photo.url, "");
   img.alt = say("A build of {name}", { name: String(one.name || say("a model")) });
   if (one.photo.width && one.photo.height) {
     img.width = Number(one.photo.width);
@@ -83,6 +84,7 @@ function photoFigure(one, eager = false) {
   img.loading = eager ? "eager" : "lazy";
   if (eager) img.fetchPriority = "high";
   img.decoding = "async";
+  setPhoto(img, one.photo, "feed");
   link.append(img);
   const caption = document.createElement("figcaption");
   const model = document.createElement("a");
@@ -159,7 +161,7 @@ function row(one, eager = false) {
     item.append(quote);
   }
   // The thing: the photo of the build, or the model's card.
-  if (one.kind === "photo" && one.photo && one.photo.url) item.append(photoFigure(one, eager));
+  if (one.kind === "photo" && one.photo && ID.test(String(one.photo.id))) item.append(photoFigure(one, eager));
   else if (one.card) item.append(modelCard(one.card, { eager }));
   return item;
 }
@@ -178,12 +180,12 @@ function buildFigure(one) {
   const link = document.createElement("a");
   link.href = here(one.page);
   const img = document.createElement("img");
-  img.src = here(one.url, "");
   img.alt = say("A build of {name}", { name: String(one.model_name || say("a model")) });
   img.width = Number(one.width) || 1;
   img.height = Number(one.height) || 1;
   img.loading = "lazy";
   img.decoding = "async";
+  setPhoto(img, one, "columns");
   link.append(img);
   const caption = document.createElement("figcaption");
   if (one.words) {
@@ -221,7 +223,8 @@ async function suggest(mine, { withLatest, skip = new Set() }) {
   const models = Array.isArray(answer.body.models) ? answer.body.models : [];
   const photos = Array.isArray(answer.body.photos) ? answer.body.photos : [];
   $("latest-models").replaceChildren(...models.map((one, i) => modelCard(one, { eager: i < FIRST_SCREEN })));
-  $("latest-photos").replaceChildren(...photos.map(buildFigure));
+  $("latest-photos").replaceChildren(...photos.filter((one) => one && ID.test(String(one.id))).map(buildFigure));
+  sharpPhotos($("latest-photos"));
   $("latest-photos").hidden = $("photos-title").hidden = photos.length === 0;
   $("latest").hidden = models.length === 0 && photos.length === 0;
 }
@@ -251,6 +254,7 @@ async function page(mine) {
   const rows = Array.isArray(answer.body.rows) ? answer.body.rows : [];
   // The first two posts are the first screen's: their pictures asked first.
   for (const [i, one] of rows.entries()) $("rows").append(row(one, first && i < 2));
+  sharpPhotos($("rows"));
   if (rows.length) oldest = rows[rows.length - 1].at;
   $("older-line").hidden = !answer.body.more;
   // Opened: what was counted is seen now; Notifications' is what is left.

@@ -11,7 +11,7 @@
 // The page says where it is on <html>: data-builds is "ready" once a page
 // is drawn ("none" when there is nothing yet, and the empty tab says what a
 // build is and how to add one).
-import { buildCard, counted, langAt, say } from "/card.js";
+import { buildCard, counted, langAt, say, sharpPhotos } from "/card.js";
 
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -53,6 +53,7 @@ export function buildsList(page) {
   }
 
   function drawn({ fresh }) {
+    sharpPhotos(grid);
     const none = !grid.querySelector(".model");
     const searching = Boolean(q.value.trim());
     $("builds-empty").hidden = !none || searching;

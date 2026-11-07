@@ -126,7 +126,10 @@
 //   POST ?op=unpublish&id=X  the owner takes it down, every version of it
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
-//                            CRON_SECRET): files no published row owns
+//                            CRON_SECRET): files no published row owns,
+//                            and photos' files whose photo is gone; never
+//                            more than a quarter of either unasked (held,
+//                            and said: api/_cron.js sweepHeld)
 //   GET  ?op=feature         the daily choice of the gallery's front (Vercel's
 //                            cron, with CRON_SECRET): this week's pick,
 //                            today's featured model and today's set from the
@@ -222,7 +225,7 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
-import { isCron } from "./_cron.js";
+import { isCron, sweepHeld } from "./_cron.js";
 import { db, dbConfigured, orUnknown, reach } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
@@ -259,10 +262,10 @@ import { flatLayJpeg } from "./_flatlay.js";
 import { indexOf as searchIndex } from "./_search.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // What a model is based on (docs/SOCIAL.md section 7, item 5).
-import { bases, basesOf, basesPut, setBased } from "./_bases.js";
+import { bases, basesOf, basesPut, setBased, setFind } from "./_bases.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, quietMarks, say, themeSaid } from "./_card.js";
+import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, photoAttrs, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -273,7 +276,7 @@ import { withFaces } from "./_faces.js";
 import { coversOf, listCardHtml, listsOf } from "./_lists.js";
 import {
   BuildRefusal, UPLOADS, buildsOf, countBuild, deleteFiles as deleteBuildFiles, fromTheApp, photosWhere,
-  uploadsLeft,
+  sweepPhotos, uploadsLeft,
 } from "./_builds.js";
 
 export const MAX_MODEL_BYTES = 2 * 1024 * 1024;
@@ -1383,13 +1386,14 @@ ${footer}
 function mediaStrip(model, picture, photos, small = picture) {
   // Right under the picture, so in the first screen: its first five asked at once.
   let shown = 0;
-  const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
+  const thumb = (source, alt, attrs) => `<a class="thumb" ${attrs}><img ${source(shown >= 5)} alt="${escapeHtml(alt)}" `
     + `width="96" height="72" loading="${shown++ < 5 ? "eager" : "lazy"}" decoding="async"></a>`;
-  const file = (photo) => `/api/people?op=photo_file&amp;id=${encodeURIComponent(photo.id)}`;
+  // A thumb its card's copy where that is enough, the picture's place the whole photo.
+  const file = (photo) => escapeHtml(photoSrc(photo.id));
   return `<div class="media-strip scroller" id="pictures" role="group" aria-label="${asText(say("Its pictures"))}"${photos?.length ? "" : " hidden"}>`
-    + (picture ? thumb(small, say("{name}, as it was published", { name: model.name }),
+    + (picture ? thumb(() => `src="${small}"`, say("{name}, as it was published", { name: model.name }),
       `href="${picture}" data-picture="${picture}" aria-current="true"`) : "")
-    + (photos || []).map((photo) => thumb(file(photo), photo.own ? say("{name}, a photo by its designer", { name: model.name })
+    + (photos || []).map((photo) => thumb((lazy) => photoAttrs(photo, "thumb", { lazy }), photo.own ? say("{name}, a photo by its designer", { name: model.name })
       : photo.by ? say("A real build of {name}, by {builder}", { name: model.name, builder: photo.by.name })
       : say("A real build of {name}", { name: model.name }),
     `href="#photo-${escapeHtml(photo.id)}" data-picture="${file(photo)}"${photo.own ? " data-own" : ""}`)).join("")
@@ -1461,7 +1465,7 @@ function buildFigure(model, photo) {
   const by = photo.by ? sayHtml("by {name}", { name: `<a href="${langAt()}/u/${escapeHtml(photo.by.handle)}">${escapeHtml(photo.by.name)}</a>` })
     : asText(say("by a builder"));
   return `<figure class="build" id="photo-${photo.id}" data-photo="${photo.id}">`
-    + `<img src="/api/people?op=photo_file&amp;id=${photo.id}" alt="${escapeHtml(say("A real build of {name}", { name: model.name }))}" `
+    + `<img ${photoAttrs(photo, "strip")} alt="${escapeHtml(say("A real build of {name}", { name: model.name }))}" `
     + `width="${photo.width}" height="${photo.height}" loading="lazy" decoding="async">`
     + `<figcaption>${photo.words ? `<q>${escapeHtml(photo.words)}</q>` : ""}`
     + `<span class="by">${by} · ${when(photo.at)}</span>`
@@ -2023,6 +2027,7 @@ async function read(request, response) {
   if (op === "oembed") return oembed(request, response, origin);
   if (op === "bases") return bases(request, response);
   if (op === "set_based") return setBased(request, response, origin);
+  if (op === "set_find") return setFind(request, response);
   // The LDraw library's sets (api/_library.js): /library's list, and each
   // set's page, cover, file and parts.
   // With tests=1, the OMR's arrivals staged for the lead to let out too
@@ -3168,8 +3173,12 @@ async function unpublish(request, response) {
 // are not rows, and Supabase refuses to delete storage objects from SQL,
 // so an account deleted in the dashboard left its models' files behind
 // for good. Once a day this takes away every file that no published row
-// owns. A publish writes its files a moment before its row, so a file
-// younger than an hour is left for the next day's sweep.
+// owns, and every photo's file whose photo has no row or was taken out
+// (api/_builds.js sweepPhotos). A publish writes its files a moment before
+// its row, so a file younger than an hour is left for the next day's sweep.
+// Neither takes more than a quarter of what it looked at unasked
+// (api/_cron.js sweepHeld): rows read back empty would otherwise delete
+// every file.
 
 const SWEEP_AGE_MS = 60 * 60 * 1000;
 
@@ -3177,12 +3186,15 @@ async function sweep(request, response) {
   response.setHeader("Cache-Control", "no-store");
   if (!isCron(request)) return response.status(401).json({ error: "the sweep is the cron's" });
   // ?only=A,B looks at those links alone, whatever their files' age: how
-  // share_probe proves an orphan goes without waiting an hour.
+  // share_probe proves an orphan goes without waiting an hour. ?photos=P,Q
+  // the same for photos' files; either alone looks at nothing else.
   const only = String(request.query?.only || "").split(",").filter((id) => ID.test(id));
+  const photos = String(request.query?.photos || "").split(",").filter((id) => ID.test(id));
+  const scoped = only.length > 0 || photos.length > 0;
   const now = Date.now();
   const files = (await listFiles()).filter((file) => {
     const id = file.name.split(".")[0];
-    if (only.length > 0) return only.includes(id);
+    if (scoped) return only.includes(id);
     return now - Date.parse(file.updated_at || file.created_at || 0) > SWEEP_AGE_MS;
   });
   const ids = [...new Set(files.map((file) => file.name.split(".")[0]).filter((id) => ID.test(id)))];
@@ -3192,25 +3204,41 @@ async function sweep(request, response) {
     for (const row of rows) kept.add(row.id);
   }
   const gone = files.map((file) => file.name).filter((name) => !kept.has(name.split(".")[0]));
-  for (let at = 0; at < gone.length; at += 100) await deleteFiles(gone.slice(at, at + 100));
+  // Most of what it looked at, unasked: the rows' read is wrong, not the
+  // files (api/_cron.js sweepHeld). None of them, said.
+  const held = scoped ? "" : sweepHeld(files.length, gone.length);
+  if (held) console.error(`sweep: models' files ${held}`);
+  else for (let at = 0; at < gone.length; at += 100) await deleteFiles(gone.slice(at, at + 100));
   // Who looked at what, kept only as long as it takes to count a visitor
   // once a day: today's and yesterday's.
   const yesterday = new Date(now - 24 * 3600 * 1000).toISOString().slice(0, 10);
-  if (only.length === 0) await db(`model_views?day=lt.${yesterday}`, { method: "DELETE" });
+  if (!scoped) await db(`model_views?day=lt.${yesterday}`, { method: "DELETE" });
   // How often each account or visitor did things (may_act), kept a day.
-  if (only.length === 0) await db(`act_log?at=lt.${new Date(now - 24 * 3600 * 1000).toISOString()}`, { method: "DELETE" });
+  if (!scoped) await db(`act_log?at=lt.${new Date(now - 24 * 3600 * 1000).toISOString()}`, { method: "DELETE" });
   // A photo as a phone sent it is read and deleted at once (api/_builds.js);
   // one whose sender never asked for it to be kept is gone within the day,
   // an hour after it came. Only that bucket's, and only files over an hour.
   let originals = 0;
-  if (only.length === 0) {
+  if (!scoped) {
     const stale = (await uploadsLeft()).filter((file) => now - Date.parse(file.at || 0) > SWEEP_AGE_MS)
       .map((file) => file.name);
     for (let at = 0; at < stale.length; at += 100) await deleteBuildFiles(UPLOADS, stale.slice(at, at + 100));
     originals = stale.length;
   }
-  return response.status(200).json({ looked_at: files.length, kept: files.length - gone.length, removed: gone,
-    originals });
+  // A photo's files with no photo, its copy for the cards among them: a
+  // failure said in the log and the answer, never stopping the rest.
+  let photoFiles = null;
+  if (!scoped || photos.length > 0) {
+    try {
+      photoFiles = await sweepPhotos({ now, age: SWEEP_AGE_MS, only: photos });
+    } catch (trouble) {
+      const said = String(trouble?.message || trouble).slice(0, 160);
+      console.error(`sweep: build photos: ${said}`);
+      photoFiles = { trouble: said };
+    }
+  }
+  return response.status(200).json({ looked_at: files.length, kept: files.length - (held ? 0 : gone.length),
+    removed: held ? [] : gone, ...(held ? { held } : {}), originals, photos: photoFiles });
 }
 
 // The front's daily choice (api/_featured.js) and the weekly look at the OMR

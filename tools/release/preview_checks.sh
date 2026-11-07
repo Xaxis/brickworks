@@ -96,6 +96,11 @@ declare -A CMD=(
   # out; 1280 px light signed in, 390 px dark signed out; the empty tab
   # says what a build is. Throwaway accounts, deleted after with their model.
   [gallery_builds]="tools/web/gallery_builds_flow.mjs --url=$P --out=$S/${TAG}_gallery_builds"
+  # local only: photo_sizes_flow.mjs. How large each photo of a real build
+  # is drawn against the pixels of the picture the browser took, at 390 3x
+  # and 1280 2x and 1x, every place a photo is drawn: the checkout's pages
+  # with the stand-in's photos, each the size its row says. [gallery_builds]
+  # holds the copy on a deployment.
   # More like a designer on a profile (docs/SOCIAL.md section 7, item 9):
   # hidden with nobody close; signed out the closest by shared tags (and
   # parts once supabase/designers_alike.sql is applied) with Follow beside
