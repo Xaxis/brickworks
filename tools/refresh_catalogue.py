@@ -21,9 +21,10 @@ it fails, saying which and why, when either cannot be made.
 It writes the checkout it is run in (tree_of), whichever copy of the
 script runs. Its assets/generated may be a link, as a staging tree links
 a private catalogue; a file in it that is a link out of it is refused
-before anything is written (Outside). Run in a tree whose catalogue was a
-private copy, the refresh went through that copy's elements.json, a link
-back into the shared catalogue, and wrote the shared one (2026-11-07).
+before anything is written (tools/checkout.py). Run in a tree whose
+catalogue was a private copy, the refresh went through that copy's
+elements.json, a link back into the shared catalogue, and wrote the
+shared one (2026-11-07).
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
 from bricklink_colours import NUMBERS as BRICKLINK  # noqa: E402
+from checkout import Outside, inside, tree_of  # noqa: E402,F401
 from ldraw.colors import Palette          # noqa: E402
 from ldraw.library import Library         # noqa: E402
 
@@ -57,36 +59,12 @@ class Behind(Exception):
     from before kept."""
 
 
-class Outside(Exception):
-    """A file the refresh would write is a link out of the folder it is in:
-    writing it would write another tree's catalogue."""
-
-
-def tree_of(here: Path) -> Path:
-    """The checkout a command run in ``here`` is in: the nearest folder up
-    from it holding project.godot, or this script's own when none does."""
-    for folder in (here, *here.parents):
-        if (folder / "project.godot").is_file():
-            return folder
-    return ROOT
-
-
-def _inside(path: Path) -> Path:
-    """``path``, when writing it writes the file in the folder it is named
-    in. Outside when it is a link out of that folder. The folder may itself
-    be a link: a staging tree's assets/generated is one to its catalogue."""
-    if path.resolve().parent != path.parent.resolve():
-        raise Outside(f"{path} is a link to {path.resolve()}, out of "
-                      f"{path.parent.resolve()}: not written through")
-    return path
-
-
 def main() -> int:
     tree = tree_of(Path.cwd())
     generated, ldraw = tree / "assets" / "generated", tree / "vendor" / "ldraw"
     try:
         for name in WRITES:
-            _inside(generated / name)
+            inside(generated / name)
     except Outside as outside:
         print(f"refresh_catalogue FAILED, nothing written: {outside}", file=sys.stderr)
         return 1
@@ -256,7 +234,7 @@ def write_colors(out: Path, palette: Palette) -> tuple[list[dict], str]:
 
     Returns the entries and a line saying what the joins reached.
     """
-    path = _inside(out / "colors.json")
+    path = inside(out / "colors.json")
     colors = palette.entries()
     said = "colour join: skipped"
     try:
@@ -369,7 +347,7 @@ def _elements(document: dict, colors: list[dict], out: Path) -> str:
     a parts list needs, and the catalogue is loaded at start-up by
     everything.
     """
-    path = _inside(out / "elements.json")
+    path = inside(out / "elements.json")
     try:
         import rebrickable
     except ImportError:
