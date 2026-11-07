@@ -327,6 +327,14 @@
       "tests": []
     },
     {
+      "id": "cli:a model file's picture",
+      "kind": "cli",
+      "entry": "src/render/model_thumbnail.gd",
+      "reach": "godot --headless --path . --thumbnail MODEL PICTURE [SIZE]   (the .deb's brickworks-thumbnailer MODEL PICTURE SIZE, as a file manager runs it)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:about credits probe",
       "kind": "cli",
       "entry": "src/dev/about_credits_probe.gd",
@@ -612,6 +620,7 @@
         "tests/test_release_links.py",
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
+        "tests/test_thumbnail_check.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -756,6 +765,7 @@
         "tests/test_release_links.py",
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
+        "tests/test_thumbnail_check.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -764,6 +774,14 @@
       "kind": "cli",
       "entry": "tools/release/release_links.sh",
       "reach": "tools/release/release_links.sh [web/releases.json]   (ship.sh runs it before a deploy)",
+      "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:check the .deb's thumbnails",
+      "kind": "cli",
+      "entry": "tools/release/thumbnail_check.py",
+      "reach": "tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace   (smoke of the .deb runs it)",
       "area": "release",
       "tests": []
     },
@@ -1945,6 +1963,7 @@
         "tests/test_release_links.py",
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
+        "tests/test_thumbnail_check.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -2277,6 +2296,7 @@
         "tests/test_release_links.py",
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
+        "tests/test_thumbnail_check.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },

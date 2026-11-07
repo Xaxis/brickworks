@@ -447,6 +447,20 @@
     },
     {
       "kind": "cli",
+      "label": "a model file's picture",
+      "entry": "src/render/model_thumbnail.gd",
+      "reach": "godot --headless --path . --thumbnail MODEL PICTURE [SIZE]   (the .deb's brickworks-thumbnailer MODEL PICTURE SIZE, as a file manager runs it)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "check the .deb's thumbnails",
+      "entry": "tools/release/thumbnail_check.py",
+      "reach": "tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace   (smoke of the .deb runs it)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
       "label": "check every release link",
       "entry": "tools/release/release_links.sh",
       "reach": "tools/release/release_links.sh [web/releases.json]   (ship.sh runs it before a deploy)",

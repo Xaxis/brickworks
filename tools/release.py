@@ -2382,6 +2382,7 @@ def opens_models(package: Path, base: list[str], env: dict[str, str],
     name = package.name
     if name.endswith(".deb"):
         said += double_click_linux(root / "unpacked", env, twice)
+        said += thumbnails_linux(root / "unpacked", models)
     elif name.endswith(".dmg"):
         said += double_click_mac(twice)
     elif name.endswith("-setup.exe"):
@@ -2497,6 +2498,28 @@ def double_click_linux(root: Path, env: dict[str, str],
         WINDOW_CLASS, ", ".join(sorted({c for _, c in named})) or "no window named one"),
         len([c for _, c in named if c == WINDOW_CLASS]) == 2, classes))
     end_windows(data)
+    return said
+
+
+def thumbnails_linux(root: Path, models: list[Path]) -> list[tuple[str, bool | None, str]]:
+    """The .deb's files, as double_click_linux told a desktop of them, and
+    GNOME's own thumbnail factory asked for a picture of each model, as
+    Files asks: tools/release/thumbnail_check.py, whose checks these are."""
+    out = root / "thumbnails"
+    done = subprocess.run([sys.executable, str(ROOT / "tools" / "release" / "thumbnail_check.py"),
+                           "--root=%s" % (root / "root"), "--out=%s" % out, "--trace"]
+                          + [str(model) for model in models],
+                          capture_output=True, text=True, timeout=900)
+    said: list[tuple[str, bool | None, str]] = []
+    for line in done.stdout.splitlines():
+        found = re.match(r"  (ok  |FAIL|--  )  (.*)$", line)
+        if found:
+            said.append(("thumbnail: " + found.group(2),
+                         {"ok  ": True, "FAIL": False, "--  ": None}[found.group(1)],
+                         done.stderr[-2000:]))
+    if not said or done.returncode not in (0, 1):
+        said.append(("thumbnail_check.py ran (exit %d)" % done.returncode, False,
+                     done.stdout[-1000:] + done.stderr[-2000:]))
     return said
 
 
