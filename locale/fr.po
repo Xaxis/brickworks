@@ -11695,3 +11695,30 @@ msgstr "orientation des tenons : chaque pièce colorée selon l'orientation de s
 
 msgid "stud directions off"
 msgstr "orientation des tenons désactivée"
+
+# A link that opens playing one of the model's motions (playlink, APP_UX5 10): the
+# share panel's Opens, and the viewer's pill while it plays or when the link's motion is not there.
+
+msgid "Opens"
+msgstr "À l’ouverture"
+
+msgid "Still"
+msgstr "Immobile"
+
+msgid "Playing “%s”"
+msgstr "Joue « %s »"
+
+msgid "Open the link with one of the model's motions playing"
+msgstr "Ouvrir le lien avec l’un des mouvements du modèle en cours"
+
+msgid "Playing “%s” over and over. Press it to stop."
+msgstr "« %s » joue en boucle. Appuyez dessus pour l’arrêter."
+
+msgid "Playing “%s” over and over. Tap it to stop."
+msgstr "« %s » joue en boucle. Touchez-le pour l’arrêter."
+
+msgid "There is no motion called “%s” in this model, so it opened still."
+msgstr "Ce modèle n’a aucun mouvement nommé « %s », il s’est donc ouvert immobile."
+
+msgid "No such motion"
+msgstr "Mouvement introuvable"

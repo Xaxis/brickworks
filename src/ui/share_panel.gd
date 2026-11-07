@@ -7,6 +7,11 @@
 ## the link's card in a blog or a forum. Publishing again updates the same
 ## link; Unpublish takes it down and the link then says so.
 ##
+## Opens (2026-11-06, docs/APP_UX5.md playlink): for a model with motions of
+## its own, the link opens still or playing one of them, over and over
+## (?motion=open-the-gates, Motions.slug; ShareView). The link, Copy link and
+## Open are that link; the embed's card is the same either way.
+##
 ## What goes up: the model as LDraw (to_text, so the prints, stickers and
 ## parts made here travel inside it as they do in any export), its name,
 ## the name it is credited to only if the box is ticked, and a picture of
@@ -89,6 +94,8 @@ var named: Callable = func() -> String: return "Model"
 var state: String = "idle"
 var url: String = ""
 var embed: String = ""
+## The motion the link opens playing (Opens), "" for still.
+var playing: String = ""
 
 var _name: LineEdit
 var _credit: CheckBox
@@ -122,6 +129,8 @@ var _status: Label
 var _publish: Button
 var _link_box: VBoxContainer
 var _link: LineEdit
+var _opens_row: HBoxContainer
+var _opens: OptionButton
 var _copy_link: Button
 var _copy_embed: Button
 var _open_link: Button
@@ -299,12 +308,27 @@ func setup() -> void:
 	_link.editable = false
 	_link.selecting_enabled = true
 	_link_box.add_child(_link)
+	# Still, or playing one of the model's motions: a model with none has
+	# no choice to make.
+	_opens_row = HBoxContainer.new()
+	_opens_row.add_theme_constant_override("separation", 6)
+	_opens_row.visible = false
+	_link_box.add_child(_opens_row)
+	_opens_row.add_child(_line("Opens", 12, 0.85))
+	_opens = OptionButton.new()
+	_opens.focus_mode = Control.FOCUS_NONE
+	_opens.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_opens.tooltip_text = "Open the link with one of the model's motions playing"
+	_opens.item_selected.connect(func(index: int) -> void:
+		playing = str(_opens.get_item_metadata(index))
+		_link.text = link())
+	_opens_row.add_child(_opens)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	_link_box.add_child(row)
 	_copy_link = _small(row, "Copy link", "Put the link on the clipboard")
 	_copy_link.pressed.connect(func() -> void:
-		DisplayServer.clipboard_set(url)
+		DisplayServer.clipboard_set(link())
 		_status.text = "The link is on the clipboard.")
 	_copy_embed = _small(row, "Copy embed code",
 		"An iframe of the model's card, for a blog or a forum")
@@ -312,7 +336,7 @@ func setup() -> void:
 		DisplayServer.clipboard_set(embed)
 		_status.text = "The embed code is on the clipboard: paste it into the page's HTML.")
 	_open_link = _small(row, "Open", "Open the link in the browser")
-	_open_link.pressed.connect(func() -> void: Outside.open_link(url))
+	_open_link.pressed.connect(func() -> void: Outside.open_link(link()))
 	_unpublish = Button.new()
 	_unpublish.text = "Unpublish"
 	_unpublish.focus_mode = Control.FOCUS_NONE
@@ -527,7 +551,8 @@ func _show_link(id: String) -> void:
 	_link_box.visible = not id.is_empty()
 	url = SharedModels.link_for(id) if not id.is_empty() else ""
 	embed = SharedModels.embed_for(id) if not id.is_empty() else ""
-	_link.text = url
+	_fill_opens()
+	_link.text = link()
 	var up: bool = not id.is_empty() and state != "unpublished"
 	_copy_link.disabled = not up
 	_copy_embed.disabled = not up
@@ -535,6 +560,39 @@ func _show_link(id: String) -> void:
 	_unpublish.visible = up
 	_publish.text = "Publish" if id.is_empty() else (
 		"Update the link" if up else "Publish again")
+
+
+## The link as it opens: still, or playing [member playing] (?motion=, the
+## name as a link writes it).
+func link() -> String:
+	if url.is_empty() or playing.is_empty():
+		return url
+	var words: String = Motions.slug(playing)
+	return "%s%smotion=%s" % [url, "&" if url.contains("?") else "?",
+		(words if not words.is_empty() else playing).uri_encode()]
+
+
+## Opens' choices: still, and each of the model's own motions playing; the
+## one chosen kept while the model still has it.
+func _fill_opens() -> void:
+	var names := PackedStringArray()
+	var motions: Motions = store.world.motions if store != null and store.world != null else null
+	if motions != null:
+		for motion: Motions.Motion in motions.list:
+			names.append(motion.name)
+	if not names.has(playing):
+		playing = ""
+	_opens.clear()
+	_opens.add_item("Still")
+	_opens.set_item_metadata(0, "")
+	for name: String in names:
+		_opens.add_item("Playing “%s”" % name)
+		_opens.set_item_metadata(_opens.item_count - 1, name)
+		if name == playing:
+			_opens.select(_opens.item_count - 1)
+	if playing.is_empty():
+		_opens.select(0)
+	_opens_row.visible = not names.is_empty()
 
 
 ## What the panel says of a model with no link yet, as the account stands:
@@ -662,7 +720,7 @@ func publish() -> void:
 	_show_link(store.share_id)
 	url = str(said.get("url", url))
 	embed = str(said.get("embed", embed))
-	_link.text = url
+	_link.text = link()
 	var listed: bool = bool(said.get("listed", false))
 	_list.button_pressed = listed
 	version = int(said.get("version", 1))
@@ -771,6 +829,8 @@ func controls_by_name() -> Dictionary:
 		named_controls["share_note"] = _note
 	if _link_box.is_visible_in_tree():
 		named_controls["share_copy_link"] = _copy_link
+		if _opens_row.is_visible_in_tree():
+			named_controls["share_opens"] = _opens
 		named_controls["share_copy_embed"] = _copy_embed
 		named_controls["share_open"] = _open_link
 		if _unpublish.is_visible_in_tree():
@@ -782,6 +842,8 @@ func controls_by_name() -> Dictionary:
 func page_state() -> Dictionary:
 	return {"open": visible, "state": state, "id": store.share_id if store != null else "",
 		"url": url, "embed": embed, "status": _status.text if _status != null else "",
+		"link": link(), "playing": playing,
+		"opens": _opens_row.visible if _opens_row != null else false,
 		"moves": Array(moves),
 		"listed": _list.button_pressed if _list != null else false,
 		"remixed_from": store.remixed_from if store != null else "",

@@ -283,16 +283,21 @@ func _run() -> void:
 			if there != 0 and there != wheel and not (_main.get("_store") as ModelStore).scenery.has(there):
 				finger = beside
 				break
-		var meant: Array = _main.call("_play_brick_near", finger)
-		_ok(verbs.brick_at(finger) == wheel or int(meant[0]) == wheel,
-			"a fingertip on #%d beside the wheel's rim means the wheel (#%d)" % [verbs.brick_at(finger), int(meant[0])])
+		# The parts it may mean, tried in turn by the drag: the one under it
+		# may hang on a joint the model holds still (#64, a Technic plate on
+		# single studs at both ends since realjoints' stud joints).
+		var meant: Array = (_main.call("_play_bricks_near", finger) as Array).map(
+			func(one: Array) -> int: return int(one[0]))
+		_ok(verbs.brick_at(finger) == wheel or meant.has(wheel),
+			"a fingertip on #%d beside the wheel's rim may mean the wheel (#%d): %s" % [verbs.brick_at(finger), wheel, meant])
 		# Index 1, as a browser numbers a finger that follows another gesture.
 		_touch(finger, FINGER, true)
 		await process_frame
 		_drag_finger(finger + tangent * 2.5)
 		await process_frame
 		var held: Grab = grab_drag.grab
-		_ok(held != null and held.state == "moves", "the finger takes hold of the steering wheel")
+		_ok(held != null and held.state == "moves" and held.moving.has(wheel),
+			"the finger takes hold of the steering wheel (%s)" % (held.said if held != null else grab_drag.last_words))
 		if held != null and held.state == "moves":
 			for degrees: float in [-6.0, -12.0, -18.0, -24.0]:
 				_drag_finger(camera.unproject_position(_about(held.pivot, held.axis, degrees) * held._hold))
@@ -301,7 +306,9 @@ func _run() -> void:
 			_ok(absf(held.angle) >= 12.0, "turned %.1f° by the finger" % held.angle)
 			_ok(camera.global_transform.is_equal_approx(start_view), "the camera did not turn with the finger")
 			await _save("4_finger.png")
-			_touch(camera.unproject_position(_about(held.pivot, held.axis, -24.0) * held._hold), FINGER, false)
+		# Lifted whether it took hold or not: a finger left down made the
+		# next section's mouse drag move parts (its "and nothing moved").
+		_touch(_finger_at, FINGER, false)
 		for _n: int in 240:
 			await process_frame
 			if not grab_drag.is_settling():

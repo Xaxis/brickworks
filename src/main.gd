@@ -170,6 +170,11 @@ var _viewing_step: int = 0
 ## Build it on the model's page (?build, as --build): the step player at
 ## step 1, or where this device was building it.
 var _viewing_build: bool = false
+## A link that opens playing one of the model's motions (?motion=<name>, as
+## --motion=<name>; the share panel's Opens): the name as the link gives it,
+## "" for none. Played over and over as soon as it can be (_open_playing),
+## or, when the model has no motion by that name, opened still and said so.
+var _viewing_motion: String = ""
 var _view_version: int = 1
 var _view_newest: int = 1
 var _view_versions: Array = []
@@ -1814,6 +1819,10 @@ func _ready() -> void:
 	if not _viewing.is_empty() and _viewing_step > 0:
 		_build_wanted = _viewing_step
 	_viewing_build = _viewing_build or (not _viewing.is_empty() and _has_argument("--build"))
+	# And a motion to open playing (?motion=boom): words as a person may type
+	# them, cut short; which motion they name is the model's to say.
+	if _viewing_motion.is_empty() and not _viewing.is_empty():
+		_viewing_motion = Motions.link_words(_argument("--motion"))
 	# A build party's code from the link (?party=CODE): its card opens with it.
 	if _party_code_wanted.is_empty() and RegEx.create_from_string("^[A-Za-z0-9]{4}$").search(_argument("--party")) != null:
 		_party_code_wanted = _argument("--party").to_upper()
@@ -3092,6 +3101,7 @@ func _view_shared() -> void:
 	var carried: Dictionary = SharedPages.read(str(shared.get("model", "")), _world, _store.scenery)
 	_steps_carried = not carried.is_empty()
 	_share_view.ready_to_look()
+	_open_playing()
 	_party_on_ready()
 	# Its comments, asked for beside the steps being worked out: nothing
 	# waits for them.
@@ -3131,7 +3141,9 @@ func _view_shared() -> void:
 	# first taps have had their frames; then what moves is read, to play.
 	get_tree().create_timer(2.0).timeout.connect(func() -> void:
 		await _store.register_later()
-		_ready_play())
+		# Begun already for a link that plays a motion (_open_playing).
+		if _play_depth < 0 and not _play_reading:
+			_ready_play())
 	if changed > 0:
 		_share_view.tell_changed(changed, int(kept["page"]))
 	if _build_wanted != NO_BUILD_WANTED:
@@ -3255,7 +3267,8 @@ func _send_comment(step: int, body: String, view: StepComments) -> void:
 ## The page's address for what the viewer has open: the link, or an older
 ## version's own.
 func _view_address() -> String:
-	return "/m/" + _viewing + ("/v/%d" % _view_version if _view_version < _view_newest else "")
+	return "/m/" + _viewing + ("/v/%d" % _view_version if _view_version < _view_newest else "") \
+		+ ("?motion=" + _viewing_motion.uri_encode() if not _viewing_motion.is_empty() else "")
 
 
 ## The newest version, from an older one: the link's own viewer.
@@ -3717,8 +3730,11 @@ func _set_address(path: String) -> void:
 		return
 	var to: String = JSON.stringify(path) if not path.is_empty() else "location.pathname"
 	var mark: String = "null"
-	if path.begins_with("/m/") and SharedModels.is_id(path.trim_prefix("/m/")):
-		mark = JSON.stringify({"brickworksViewer": path.trim_prefix("/m/")})
+	# A link that plays a motion keeps it (?motion=), which the page sends
+	# on to the viewer again.
+	var bare: String = path.get_slice("?", 0)
+	if bare.begins_with("/m/") and SharedModels.is_id(bare.trim_prefix("/m/")):
+		mark = JSON.stringify({"brickworksViewer": bare.trim_prefix("/m/")})
 	JavaScriptBridge.eval("history.replaceState(%s, '', %s)" % [mark, to], true)
 
 
@@ -3905,13 +3921,26 @@ var _play_reset_due: bool = false
 ## What moves, as Playable read it: {kind: [brick ids]}, the parts a person
 ## would take hold of first.
 var play_found: Dictionary = {}
-## A motion played from its button (_play_motion): its frames, drawn over
-## the model 12 a second while the model already stands where it ends; when
-## it began, the frame drawn, and what is said once it has played.
+## A motion played from its button (_play_motion): its frames, 12 a second,
+## drawn over the model (and between, every frame the screen draws) while
+## the model already stands where it ends; when it began, and what is said
+## once it has played.
 var _motion_frames: Array = []
 var _motion_began: int = 0
-var _motion_shown: int = -1
 var _motion_said: String = ""
+## The link's motion (?motion=), by its name in the model, until it is
+## pressed: once the joints are read and the steps worked out from the
+## model as built (a press moves parts). Dropped by anything the visitor
+## presses first.
+var _motion_link: String = ""
+## The motion played over and over, there and back with a rest at each end
+## (_looped), until its button stops it: its name, "" for none, and the
+## history's depth before its press, which stopping it goes back to. A drag,
+## Reset, another motion or Build it stop it too, as they stop a press.
+var _motion_loop: String = ""
+var _motion_loop_depth: int = -1
+## How long a motion played over and over rests at each end, ms.
+const LOOP_REST_MS := 700
 ## A press that came while the grab was busy, or the shapes it is judged by
 ## were on their way: played once they are here (or [constant
 ## SHAPES_WAIT_MS] after it), not dropped. The parts whose exact shapes it
@@ -3921,6 +3950,7 @@ var _motion_said: String = ""
 ## the model's parts are all here (_ask_shapes).
 var _motion_due: String = ""
 var _motion_due_at: int = 0
+var _motion_due_loop: bool = false
 var _motion_needs: Array = []
 var _motion_needs_for: String = ""
 ## How often the press was worked out again for a shape it found missing.
@@ -3948,6 +3978,9 @@ var _motion_last: Dictionary = {}
 var _finger: int = -1
 var _finger_brick: int = 0
 var _finger_at := Vector2.ZERO
+## The other parts the fingertip may mean (_play_bricks_near), tried in turn
+## when the first does not move.
+var _finger_others: Array = []
 var _finger_grabbing: bool = false
 ## What the last finger's coming down and its drag were taken as, for a
 ## check reading the page: "part", "chain", "not a part", "over a panel",
@@ -3972,6 +4005,23 @@ func _ready_play() -> void:
 	_play_depth = _builder.history_depth()
 	_play_reading = true
 	_grab_drag.set_process(true)
+
+
+## A link that plays a motion (?motion=), as the model is shown: the
+## motion it names found, and the joints read now, beside the steps, not 2 s
+## after them, so it opens playing (_play_frame presses it); or, for a name
+## the model has no motion of, opened still and said so at once.
+func _open_playing() -> void:
+	if _viewing_motion.is_empty():
+		return
+	var motion: Motions.Motion = _world.motions.for_link(_viewing_motion) if _world.motions != null else null
+	if motion == null:
+		_share_view.link_missing(_viewing_motion)
+		return
+	_motion_link = motion.name
+	await _store.register_later()
+	if _play_depth < 0 and not _play_reading:
+		_ready_play()
 
 
 ## What moves in the model as it stands, from the joints a drag uses
@@ -3999,6 +4049,7 @@ func _play_stop() -> void:
 		_grab_drag.set_process(false)
 	_grabbing = false
 	_motion_stop()
+	_motion_link = ""
 	_motion_due = ""
 	_motion_due_at = 0
 	_motion_needs = []
@@ -4037,7 +4088,13 @@ func _play_frame() -> void:
 			and (not _shapes_coming(_motion_needs) or Time.get_ticks_msec() > _motion_due_at + SHAPES_WAIT_MS):
 		var name: String = _motion_due
 		_motion_due = ""
-		_play_motion(name)
+		_play_motion(name, _motion_due_loop)
+	# The link's motion, once what moves is read and the steps are worked
+	# out from the model as built: played over and over, or once for a
+	# visitor who asked for less motion (Settings, Reduce motion).
+	if not _motion_link.is_empty() and _play_depth >= 0 and not _play_reading \
+			and not _steps.is_starting() and not _build_mode.is_open():
+		_play_motion(_motion_link, not ShellPrefs.reduce_motion())
 
 
 ## What moves, read from the joints the grab found: said on the viewer.
@@ -4080,25 +4137,47 @@ func _play_brick_at(at: Vector2) -> int:
 	return brick_id
 
 
-## The part a fingertip means at [param at], and where on the screen it is:
-## the one under it if that moves, else one that moves within a fingertip
-## of it (about 10 points), nearest first; else the one under it, which
-## turns the view. A steering wheel on a phone is a few points across, its
-## rim thinner than a fingertip: play_flow's finger, on the wheel's handle
-## to the CSS pixel, came down on the plate behind it. [brick id, point].
-func _play_brick_near(at: Vector2) -> Array:
+## The parts a fingertip may mean at [param at], and where on the screen
+## each is, [brick id, point]: the one under it if it hangs on a joint, then
+## those that do within a fingertip of it (about 10 points), nearest first,
+## a body each and [constant FINGER_TRIES] at most; with none, the one under
+## it, which turns the view. A steering wheel on a phone is a few points
+## across, its rim thinner than a fingertip: play_flow's finger, on the
+## wheel's handle to the CSS pixel, came down on the plate behind it. And a
+## part on a joint may be one the model holds still: 8808-1's Technic plate
+## beside that rim sits on single studs at both ends (2026-11-06), so the
+## drag takes the first of them that moves (_play_touch).
+func _play_bricks_near(at: Vector2) -> Array:
 	var under: int = _play_brick_at(at)
-	if under == 0 or _moves_on_a_joint(under):
-		return [under, at]
+	if under == 0:
+		return [[0, at]]
+	var out: Array = []
+	var bodies: Dictionary = {}
+	if _moves_on_a_joint(under):
+		out.append([under, at])
+		bodies[_body_of(under)] = true
 	var across: float = Room.across()
 	var pt: float = get_viewport().get_visible_rect().size.x / across if across > 0.0 else 1.0
 	for reach: float in [4.0, 7.0, 10.0]:
 		for step: int in 12:
 			var spot: Vector2 = at + Vector2.from_angle(TAU * float(step) / 12.0) * reach * pt
 			var brick_id: int = _play_brick_at(spot)
-			if brick_id != 0 and _moves_on_a_joint(brick_id):
-				return [brick_id, spot]
-	return [under, at]
+			if brick_id != 0 and not bodies.has(_body_of(brick_id)) and _moves_on_a_joint(brick_id):
+				bodies[_body_of(brick_id)] = true
+				out.append([brick_id, spot])
+				if out.size() >= FINGER_TRIES:
+					return out
+	return out if not out.is_empty() else [[under, at]]
+
+
+## How many parts a finger's drag tries, each one a press worked out.
+const FINGER_TRIES := 3
+
+
+## The body [param brick_id] is in, as the grab read them; -1 for none.
+func _body_of(brick_id: int) -> int:
+	var bodies: Bodies = _grab_drag.read_bodies() if _grab_drag != null else null
+	return int(bodies.body_of.get(brick_id, -1)) if bodies != null else -1
 
 
 ## Whether [param brick_id] hangs on a joint, as the grab read them.
@@ -4121,6 +4200,8 @@ func _play_press(brick_id: int, at: Vector2, held_ms: int) -> bool:
 	if not _grab_drag.is_moving():
 		_grab_drag.let_be()
 		return false
+	# A part taken hold of first: the link's motion is not played after it.
+	_motion_link = ""
 	_share_view.hover("", at)
 	_play_kind = _kind_of(brick_id)
 	_play_says(_grab_drag.last_words if _play_kind.is_empty() else "")
@@ -4195,14 +4276,15 @@ func _play_touch(event: InputEvent) -> bool:
 					return false
 				if _grab_drag != null and _grab_drag.is_swinging():
 					_grab_drag.catch()
-				var near: Array = _play_brick_near(touch.position)
-				var brick_id: int = int(near[0])
+				var near: Array = _play_bricks_near(touch.position)
+				var brick_id: int = int(near[0][0])
 				_finger_said = "a part (%d, at %d, %d)" % [touch.index, roundi(touch.position.x),
 					roundi(touch.position.y)] if brick_id != 0 else "not a part"
 				if brick_id != 0:
 					_finger = touch.index
 					_finger_brick = brick_id
-					_finger_at = near[1]
+					_finger_at = near[0][1]
+					_finger_others = near.slice(1)
 					_touch_hold.start()
 			else:
 				_finger = -1
@@ -4224,6 +4306,15 @@ func _play_touch(event: InputEvent) -> bool:
 	if drag.position.distance_to(_finger_at) <= CadCamera.TAP_SLOP:
 		return true
 	_finger_grabbing = _play_press(_finger_brick, _finger_at, _touch_hold.held_ms())
+	# Held still by the model: the next part the fingertip may mean.
+	for other: Array in _finger_others:
+		if _finger_grabbing:
+			break
+		_finger_grabbing = _play_press(int(other[0]), other[1], _touch_hold.held_ms())
+		if _finger_grabbing:
+			_finger_brick = int(other[0])
+			_finger_at = other[1]
+	_finger_others = []
 	_finger_said = ("chain" if _grab_drag.chain != null else "part") if _finger_grabbing \
 		else "turns the view from #%d %s: %s" % [_finger_brick, _world.get_brick(_finger_brick).part_id
 			if _world.get_brick(_finger_brick) != null else "?", _grab_drag.last_words]
@@ -4261,6 +4352,7 @@ func _play_reset() -> void:
 		_play_reset_due = true
 		return
 	_motion_stop()
+	_motion_link = ""
 	_motion_due = ""
 	_motion_due_at = 0
 	_builder.undo_steps(_builder.history_depth() - _play_depth)
@@ -4276,12 +4368,20 @@ func _play_reset() -> void:
 ## meets the model and gears and racks follow, kept for this visit only: one
 ## step that Reset undoes, and the store writes nothing. Pressed while it
 ## stands where it ends, it plays backwards, which takes it back. Its frames
-## are drawn as it goes (_motion_frame).
-func _play_motion(name: String) -> void:
+## are drawn as it goes (_motion_frame). With [param loop] (a link's motion)
+## they are drawn over and over, there and back, until its button is
+## pressed again, which takes it back from where it is.
+func _play_motion(name: String, loop: bool = false) -> void:
 	if not _built or _grab_drag == null or _play_depth < 0 or _world.motions == null:
 		return
 	var motion: Motions.Motion = _world.motions.named(name)
 	if motion == null:
+		return
+	# Whatever the visitor presses first is theirs: the link's is not played
+	# after it.
+	_motion_link = ""
+	if not _motion_loop.is_empty() and _motion_loop == motion.name:
+		_loop_home()
 		return
 	if _grab_drag.is_swinging():
 		_grab_drag.cancel()
@@ -4300,6 +4400,7 @@ func _play_motion(name: String) -> void:
 		if _motion_due_at == 0:
 			_motion_due_at = now
 		_motion_due = motion.name
+		_motion_due_loop = loop
 		_share_view.play_said("Getting “%s” ready…" % motion.name)
 		return
 	var first: int = _motion_due_at if _motion_due_at > 0 else now
@@ -4319,7 +4420,8 @@ func _play_motion(name: String) -> void:
 	# Worked out a slice a frame, so the page never waits long for it.
 	_motion_paced = _motions.pace(_world.motions.played_by(motion, back), back,
 		"played %s%s" % [Motions.quoted(motion.name), " backwards" if back else ""])
-	_motion_pressed = {"motion": motion, "back": back, "first": first, "waited": now - first}
+	_motion_pressed = {"motion": motion, "back": back, "first": first, "waited": now - first,
+		"loop": loop and not back}
 	_share_view.play_said(("Putting “%s” back…" if back else "Playing “%s”…") % motion.name)
 	_pace_motion()
 
@@ -4358,6 +4460,7 @@ func _pace_motion() -> void:
 		_library.prefer_exact(missed)
 		_motion_again += 1
 		_motion_due = motion.name
+		_motion_due_loop = bool(_motion_pressed["loop"])
 		_motion_due_at = first
 		_share_view.play_said("Getting “%s” ready…" % motion.name)
 		return
@@ -4390,7 +4493,12 @@ func _pace_motion() -> void:
 		else "“%s” played. Press it again to put it back." % motion.name)
 	_motion_frames = run.frames
 	_motion_began = Time.get_ticks_msec()
-	_motion_shown = 0
+	# A link's motion, played over and over until its button is pressed.
+	if bool(_motion_pressed["loop"]):
+		_motion_loop = motion.name
+		_motion_loop_depth = paced.depth
+		_share_view.show_looping(motion.name)
+		_share_view.play_said("")
 	# The model stands where it ends already: its first frame drawn at once.
 	_world.set_drawn(_motion_frames[0])
 
@@ -4516,24 +4624,89 @@ func _motion_frame() -> void:
 	if _grab_drag != null and _grab_drag.is_grabbing():
 		_motion_stop()
 		return
-	var fps: int = Later.script(&"MotionPlayer").PLAY_FPS
-	var n: int = (Time.get_ticks_msec() - _motion_began) * fps / 1000
-	if n >= _motion_frames.size():
+	var at: float = _motion_at()
+	if _motion_loop.is_empty() and at >= _motion_frames.size() - 1:
 		_motion_stop()
 		_share_view.play_said(_motion_said)
-	elif n != _motion_shown:
-		_motion_shown = n
-		_world.set_drawn(_motion_frames[n])
+		return
+	_world.set_drawn(_pose_at(at))
+
+
+## The playing motion's parts [param at] frames in: between two frames, so
+## it moves every frame the screen draws and not 12 times a second.
+func _pose_at(at: float) -> Dictionary:
+	var k: int = clampi(floori(at), 0, _motion_frames.size() - 1)
+	var part: float = at - k
+	if k + 1 >= _motion_frames.size() or part <= 0.0:
+		return _motion_frames[k]
+	var from: Dictionary = _motion_frames[k]
+	var to: Dictionary = _motion_frames[k + 1]
+	var between: Dictionary = {}
+	for brick_id: int in from:
+		between[brick_id] = (from[brick_id] as Transform3D).interpolate_with(to.get(brick_id, from[brick_id]), part)
+	return between
+
+
+## Which frame the playing motion is at, between two: one played over and
+## over goes there, rests, comes back and rests (_looped).
+func _motion_at() -> float:
+	var fps: int = Later.script(&"MotionPlayer").PLAY_FPS
+	var at: float = (Time.get_ticks_msec() - _motion_began) * fps / 1000.0
+	if _motion_loop.is_empty():
+		return at
+	return _looped(at, _motion_frames.size(), LOOP_REST_MS * fps / 1000.0)
+
+
+## [param at] frames into a motion of [param count] frames played over and
+## over: there, a rest of [param rest] frames, back, a rest, and again.
+static func _looped(at: float, count: int, rest: float) -> float:
+	var last: float = maxf(count - 1, 0.0)
+	var round_trip: float = 2.0 * (last + rest)
+	var t: float = fmod(at, round_trip) if round_trip > 0.0 else 0.0
+	if t < last:
+		return t
+	if t < last + rest:
+		return last
+	if t < 2.0 * last + rest:
+		return last - (t - last - rest)
+	return 0.0
+
+
+## The motion played over and over, stopped by its button: put back as it
+## was built, from the frame it is at, and no longer lit.
+func _loop_home() -> void:
+	var name: String = _motion_loop
+	var at: float = _motion_at()
+	_motion_loop = ""
+	_share_view.show_looping("")
+	if _builder.history_depth() > _motion_loop_depth:
+		_builder.undo_steps(_builder.history_depth() - _motion_loop_depth)
+	_share_view.show_motion_out(name, false)
+	_played()
+	# From where it is drawn now, back through the frames before it.
+	var back: Array = _motion_frames.slice(0, ceili(at))
+	back.reverse()
+	back.push_front(_pose_at(at))
+	_motion_frames = back
+	_motion_began = Time.get_ticks_msec()
+	_motion_said = _visitor_words("“%s” put back." % name)
+	_share_view.play_said("Putting “%s” back…" % name)
+	if _motion_frames.size() < 2:
+		_motion_stop()
+		_share_view.play_said(_motion_said)
 
 
 ## The playing motion's frames put away: the model drawn where it stands.
-## A press still being worked out is dropped.
+## A press still being worked out is dropped. One played over and over
+## stops where the model stands, at its end, its button lit.
 func _motion_stop() -> void:
 	_motion_drop()
+	if not _motion_loop.is_empty():
+		_motion_loop = ""
+		_share_view.show_looping("")
 	if _motion_frames.is_empty():
 		return
 	_motion_frames = []
-	_motion_shown = -1
 	_world.set_drawn({})
 
 
