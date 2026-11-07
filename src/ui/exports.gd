@@ -65,8 +65,16 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false,
 	if stock.lots.is_empty():
 		say.call("nothing to list yet")
 		return ""
+	return await stock_list(shop, stock, "", asking, wants)
+
+
+## A shop's list of [param stock], any parts list: the model's, or what
+## Compare says to buy to build one set or model from another (CompareView,
+## PartsCompare). [param named_as] names its file, the model's name when empty.
+func stock_list(shop: String, stock: Inventory, named_as: String = "", asking: bool = false,
+		wants: ShopLists.Wants = null) -> String:
 	if shop == "pickabrick":
-		return await _pick_a_brick(stock, asking)
+		return await _pick_a_brick(stock, asking, named_as)
 	var made: Dictionary
 	var file_name: String
 	var mime: String
@@ -74,11 +82,11 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false,
 		if wants == null:
 			wants = ShopLists.Wants.kept()
 		made = ShopLists.bricklink_xml(stock, library, wants)
-		file_name = _file("xml", "_bricklink")
+		file_name = _file("xml", "_bricklink", named_as)
 		mime = "application/xml"
 	else:
 		made = ShopLists.rebrickable_csv(stock)
-		file_name = _file("csv", "_rebrickable")
+		file_name = _file("csv", "_rebrickable", named_as)
 		mime = "text/csv"
 	var to: String = await _where(file_name, asking)
 	if to.is_empty():
@@ -100,7 +108,7 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false,
 ## file a 400, NAME_pickabrick_1.csv, _2.csv… beside the one chosen (in a
 ## browser, one .zip of them, as an OBJ and its colours come). What it says
 ## names the parts not on it, for the person to find elsewhere.
-func _pick_a_brick(stock: Inventory, asking: bool) -> String:
+func _pick_a_brick(stock: Inventory, asking: bool, named_as: String = "") -> String:
 	var made: Dictionary = ShopLists.pick_a_brick(stock)
 	var files: PackedStringArray = made["files"]
 	if files.is_empty():
@@ -108,7 +116,7 @@ func _pick_a_brick(stock: Inventory, asking: bool) -> String:
 			+ "so there is nothing for Pick a Brick")
 		say.call(none)
 		return none
-	var to: String = await _where(_file("csv", "_pickabrick"), asking)
+	var to: String = await _where(_file("csv", "_pickabrick", named_as), asking)
 	if to.is_empty():
 		return ""
 	var line: String
@@ -375,8 +383,8 @@ func model_3d(format: String, asking: bool = false) -> String:
 	return line
 
 
-func _file(extension: String, suffix: String = "") -> String:
-	var base: String = str(named.call()).to_snake_case()
+func _file(extension: String, suffix: String = "", named_as: String = "") -> String:
+	var base: String = (named_as if not named_as.is_empty() else str(named.call())).to_snake_case()
 	if base.is_empty():
 		base = "model"
 	return "%s%s.%s" % [base, suffix, extension]

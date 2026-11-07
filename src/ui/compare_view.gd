@@ -11,6 +11,14 @@
 ## (api/_versions.js). The matching is ModelDiff's: the fewest changes, so a
 ## part moved a stud is one part moved.
 ##
+## Its second mode, File, Compare two sets or models… (APP_UX6 #7,
+## comparesets), compares the parts of any two of a set, a saved model and the
+## model open now, as Rebrickable's set compare does: the parts in both and in
+## only one, by part and colour, and the list to buy to build the second from
+## the first, which goes to the parts list's shops. The sums are
+## PartsCompare's; the panel is then a sheet over the model, as the parts list
+## is, and draws nothing on it.
+##
 ## Comparing changes nothing. The drawing is BrickWorld's stress layer, the
 ## picture alone (a brick keeps its paint, the history no step, the save its
 ## state), and View, Stress is turned off meanwhile; the ghosts are a world
@@ -96,6 +104,9 @@ func open_with(saved: ModelVersions.Version) -> bool:
 	if text.is_empty():
 		say.call("could not read that save of %s" % store.title)
 		return false
+	if visible and mode == PARTS:
+		close()
+	_show_mode(SAVE)
 	if not visible:
 		_aim = camera.aim() if camera != null else {}
 		_stress_was = stress != null and stress.on
@@ -121,6 +132,12 @@ func close(restore_view: bool = true) -> void:
 		return
 	visible = false
 	set_process(false)
+	if mode == PARTS:
+		if thumbnails != null:
+			thumbnails.watch(self, [])
+		_asked += 1
+		closed.emit()
+		return
 	world.set_stress(false)
 	_drop_ghosts()
 	if _stress_was and stress != null:
@@ -144,6 +161,9 @@ func step(by: int) -> void:
 
 
 func _process(_delta: float) -> void:
+	if mode == PARTS:
+		_parts_pictures()
+		return
 	if diff == null or store.laying:
 		return
 	var now: int = Time.get_ticks_msec()
@@ -421,6 +441,7 @@ func _build() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 7)
 	add_child(column)
+	_save_column = column
 	var header := HBoxContainer.new()
 	column.add_child(header)
 	var title := Label.new()
@@ -506,8 +527,11 @@ func _button(into: Control, words_on_it: String, action: Callable, tip: String) 
 	return button
 
 
-## What it shows, for a probe to read as a person would.
+## What it shows, for a probe to read as a person would: in Parts, as
+## [method parts_fields] reads it.
 func fields() -> Dictionary:
+	if mode == PARTS:
+		return parts_fields()
 	var counts: Dictionary = {}
 	for kind: String in _counts:
 		counts[kind] = (_counts[kind] as Label).text
@@ -520,4 +544,510 @@ func fields() -> Dictionary:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
+	if mode == PARTS:
+		return _parts_controls()
 	return {"compare_close": _close, "compare_previous": _previous, "compare_next": _next}
+
+
+# -- comparesets: two sets' or models' parts (APP_UX6 #7) ---------------------------
+
+## Which the panel shows: one of the model's saves drawn on it ([constant
+## SAVE]), or the parts of any two of a set, a saved model and the model open
+## now ([constant PARTS]), a sheet over the model as the parts list is.
+const SAVE := "save"
+const PARTS := "parts"
+## The parts sheet's largest size; inset 14 px in a smaller model area.
+const PARTS_SIZE := Vector2(780, 620)
+## A row's height, its picture's side, as the parts list's.
+const ROW := 30
+## What each list is, by its tab.
+const BOTH := 0
+const ONLY_A := 1
+const ONLY_B := 2
+
+var mode: String = SAVE
+## Set by Shell for the parts sheet: the set inventories (CollectionStore's),
+## the parts' pictures, and the shops' writer for the list to buy
+## (Exports.stock_list): shop, the list, its file's name -> what it wrote.
+var inventories: SetInventories
+var thumbnails: PartThumbnails
+var write_list: Callable = func(_shop: String, _stock: Inventory, _named: String) -> String:
+	return ""
+## The comparison shown, null before one; its lists by tab (Inventory), the
+## last of them the list to buy to build B from A.
+var parts: PartsCompare = null
+var lists: Array = []
+
+var _save_column: VBoxContainer
+var _parts_column: VBoxContainer = null
+## Where Shell put the panel for a save, put back when one is compared again.
+var _side_place: Dictionary = {}
+var _parts_close: Button
+var _swap: Button
+var _go: Button
+var _pick: Array[OptionButton] = []
+var _number: Array[LineEdit] = []
+## Each picker's rows by item index: [kind, path, name], null for a separator.
+var _choices: Array = []
+var _sides: Label
+var _tabs: TabBar
+var _list_scroll: ScrollContainer
+var _list_rows: GridContainer
+var _list_sight: ThumbTile.Sight
+var _buy: Label
+var _shops: Dictionary = {}
+var _buy_note: Label
+## Counts each comparison asked for, so a slower set lookup never replaces a
+## newer one, nor fills a sheet closed meanwhile.
+var _asked: int = 0
+## Whether a comparison is being read, for a probe.
+var comparing: bool = false
+
+
+## File, Compare two sets or models…: the sheet, with what was compared last
+## time, or a set to type for A and the model open now for B; compared at once
+## when both are there.
+func open_parts() -> void:
+	if visible and mode == SAVE:
+		close()
+	_show_mode(PARTS)
+	_fill_picks()
+	_buy_note.visible = false
+	comparing = false
+	_go.disabled = false
+	visible = true
+	set_process(true)
+	if thumbnails != null:
+		_list_sight.forget()
+	for n: int in 2:
+		_number[n].visible = _kind(n) == PartsCompare.SET
+	if _ready_to_compare():
+		compare_parts()
+		return
+	for n: int in 2:
+		if _number[n].visible and _number[n].text.strip_edges().is_empty():
+			_number[n].grab_focus()
+			break
+
+
+## Compare what the two pickers name: the counts, each list by part and
+## colour, and what to buy to build B from A.
+func compare_parts() -> void:
+	if not _ready_to_compare():
+		_sides.text = "Choose A and B: a set by its number, a saved model or the model open now."
+		return
+	_asked += 1
+	var asked: int = _asked
+	comparing = true
+	_go.disabled = true
+	_sides.text = "Comparing…"
+	var from: PartsCompare.Side = await _side_of(0)
+	var to: PartsCompare.Side = await _side_of(1)
+	# A newer comparison, or the sheet closed meanwhile: theirs now.
+	if asked != _asked:
+		return
+	comparing = false
+	_go.disabled = false
+	for side: PartsCompare.Side in [from, to]:
+		if not side.ok():
+			parts = null
+			lists = []
+			_sides.text = side.trouble.left(1).to_upper() + side.trouble.substr(1) + "."
+			_fill_lists()
+			return
+	parts = PartsCompare.between(from, to)
+	lists = [Inventory.of_counts(parts.both, library), Inventory.of_counts(parts.only_a, library),
+		Inventory.of_counts(parts.only_b, library)]
+	_fill_lists()
+	say.call("Compared %s with %s: %s" % [from.short, to.short, parts.summary()])
+
+
+## The list to buy to build B from A, written for [param shop] ("bricklink",
+## "rebrickable" or "pickabrick") as the parts list's own buttons write the
+## model's: what was written, said under the buttons too.
+func buy_from(shop: String) -> String:
+	if parts == null or lists.size() < 3 or (lists[ONLY_B] as Inventory).lots.is_empty():
+		return ""
+	var line: String = await write_list.call(shop, lists[ONLY_B], parts.file_name())
+	_buy_note.text = line
+	_buy_note.visible = not line.is_empty()
+	return line
+
+
+func _show_mode(which: String) -> void:
+	if which == PARTS and _parts_column == null:
+		_build_parts()
+	if which == PARTS and _side_place.is_empty():
+		_side_place = {"anchors": [anchor_left, anchor_top, anchor_right, anchor_bottom],
+			"offsets": [offset_left, offset_top, offset_right, offset_bottom],
+			"grow": grow_horizontal}
+	mode = which
+	_save_column.visible = which == SAVE
+	if _parts_column != null:
+		_parts_column.visible = which == PARTS
+	if which == PARTS:
+		_place_parts()
+	elif not _side_place.is_empty():
+		var anchors: Array = _side_place["anchors"]
+		var offsets: Array = _side_place["offsets"]
+		for side: int in 4:
+			set_anchor(side, float(anchors[side]), false, false)
+		for side: int in 4:
+			set_offset(side, float(offsets[side]))
+		grow_horizontal = _side_place["grow"]
+
+
+## Centred over the model, as large as [constant PARTS_SIZE] where there is
+## room and inset 14 px from its edges where there is not.
+func _place_parts() -> void:
+	var area: Vector2 = (get_parent() as Control).size if get_parent() is Control \
+		else get_viewport_rect().size
+	var room: Vector2 = (area - Vector2(28.0, 28.0)).max(Vector2(WIDE, 240.0))
+	var wanted := Vector2(minf(PARTS_SIZE.x, room.x), minf(PARTS_SIZE.y, room.y))
+	for side: int in 4:
+		set_anchor(side, 0.5, false, false)
+	offset_left = -wanted.x / 2.0
+	offset_right = wanted.x / 2.0
+	offset_top = -wanted.y / 2.0
+	offset_bottom = wanted.y / 2.0
+	grow_horizontal = Control.GROW_DIRECTION_BOTH
+	grow_vertical = Control.GROW_DIRECTION_BOTH
+
+
+func _build_parts() -> void:
+	_parts_column = VBoxContainer.new()
+	_parts_column.add_theme_constant_override("separation", 8)
+	_parts_column.visible = false
+	add_child(_parts_column)
+	if get_parent() is Control:
+		(get_parent() as Control).resized.connect(func() -> void:
+			if visible and mode == PARTS:
+				_place_parts())
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	_parts_column.add_child(header)
+	var title := Label.new()
+	title.text = "Compare two sets or models"
+	title.add_theme_font_size_override("font_size", 14)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.clip_text = true
+	header.add_child(title)
+	_swap = _button(header, "Swap", _swap_sides,
+		"A in B's place and B in A's: what to buy to build the other")
+	_parts_close = _button(header, "Close", func() -> void: close(), "Stop comparing (Esc)")
+	for n: int in 2:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		_parts_column.add_child(row)
+		var letter := Label.new()
+		letter.text = ["A", "B"][n]
+		letter.custom_minimum_size = Vector2(14, 0)
+		letter.add_theme_font_size_override("font_size", 13)
+		row.add_child(letter)
+		var pick := OptionButton.new()
+		pick.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		pick.clip_text = true
+		pick.add_theme_font_size_override("font_size", 12)
+		pick.tooltip_text = ["What you have: a set, a saved model or the model open now",
+			"What you want to build: a set, a saved model or the model open now"][n]
+		pick.item_selected.connect(func(_index: int) -> void: _picked(n))
+		row.add_child(pick)
+		var number := LineEdit.new()
+		number.placeholder_text = "Set number, as 7140"
+		number.custom_minimum_size = Vector2(150, 0)
+		number.add_theme_font_size_override("font_size", 12)
+		number.tooltip_text = "A set's number, as on its box: 7140 or 7140-1"
+		number.text_submitted.connect(func(_text: String) -> void: compare_parts())
+		row.add_child(number)
+		_pick.append(pick)
+		_number.append(number)
+	var summary := HBoxContainer.new()
+	summary.add_theme_constant_override("separation", 8)
+	_parts_column.add_child(summary)
+	_sides = Label.new()
+	_sides.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_sides.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_sides.add_theme_font_size_override("font_size", 12)
+	_sides.modulate = Color(1, 1, 1, 0.85)
+	summary.add_child(_sides)
+	_go = _button(summary, "Compare", compare_parts,
+		"The parts in both, in only one, and what to buy to build B from A")
+	_go.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_tabs = TabBar.new()
+	_tabs.clip_tabs = true
+	_tabs.add_theme_font_size_override("font_size", 12)
+	for words: String in ["In both", "Only in A", "Only in B"]:
+		_tabs.add_tab(words)
+	_tabs.tab_changed.connect(func(_tab: int) -> void: _show_list())
+	_parts_column.add_child(_tabs)
+	_list_scroll = ScrollContainer.new()
+	_list_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_parts_column.add_child(_list_scroll)
+	_list_rows = GridContainer.new()
+	_list_rows.columns = 1
+	_list_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list_rows.add_theme_constant_override("v_separation", 2)
+	_list_scroll.add_child(_list_rows)
+	_list_sight = ThumbTile.Sight.new(_list_scroll, _list_rows)
+	_parts_column.add_child(HSeparator.new())
+	_buy = Label.new()
+	_buy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_buy.add_theme_font_size_override("font_size", 12)
+	_parts_column.add_child(_buy)
+	# The parts list's three shops, as its own buttons offer the model's.
+	var shops := HFlowContainer.new()
+	shops.add_theme_constant_override("h_separation", 8)
+	shops.add_theme_constant_override("v_separation", 6)
+	_parts_column.add_child(shops)
+	for shop: Array in [
+			["bricklink", "BrickLink", "A BrickLink wanted list (.xml) of these, to upload under Wanted › Upload"],
+			["rebrickable", "Rebrickable", "A Rebrickable parts list (.csv) of these, to import into a list of your own"],
+			["pickabrick", "LEGO® Pick a Brick",
+				"A list of LEGO® element numbers (.csv) of these, to upload at LEGO® Pick a Brick: the parts it has no number for are named"]]:
+		var kind: String = shop[0]
+		_shops[kind] = _button(shops, shop[1], func() -> void: await buy_from(kind), shop[2])
+	_buy_note = _words(_parts_column, 12, 0.8)
+	_buy_note.visible = false
+	_fill_lists()
+
+
+## Each picker's rows: the model open now, a set by its number, then the
+## person's saved models and the examples. What each chose before is chosen
+## again where it is still there; the first time, a set for A and the model
+## open now for B (a set for both on an empty baseplate).
+func _fill_picks() -> void:
+	var was: Array = []
+	for n: int in 2:
+		var at: int = _pick[n].selected
+		was.append(_choices[at] if at >= 0 and at < _choices.size() else null)
+	_choices = []
+	var words: Array = []
+	var built: bool = world.brick_count() > store.scenery.size()
+	var title: String = store.title if store.title != ModelStore.UNTITLED else ""
+	_choices.append([PartsCompare.OPEN, "", title])
+	words.append("The model open now" + (": " + title if not title.is_empty() else ""))
+	_choices.append([PartsCompare.SET, "", ""])
+	words.append("A set, by its number")
+	var saved: Array[ModelStore.Entry] = store.list_saved()
+	var examples: Array[ModelStore.Entry] = store.list_examples()
+	for group: Array in [[saved, "Saved: %s"], [examples, "Example: %s"]]:
+		if (group[0] as Array).is_empty():
+			continue
+		_choices.append(null)
+		words.append("")
+		for entry: ModelStore.Entry in group[0]:
+			_choices.append([PartsCompare.MODEL, entry.path, entry.name])
+			words.append(group[1] % entry.name)
+	for n: int in 2:
+		var pick: OptionButton = _pick[n]
+		pick.clear()
+		for at: int in _choices.size():
+			if _choices[at] == null:
+				pick.add_separator()
+			else:
+				pick.add_item(words[at])
+		pick.set_item_disabled(0, not built)
+		var again: int = -1
+		var before: Variant = was[n]
+		if before != null:
+			for at: int in _choices.size():
+				if _choices[at] != null and _choices[at][0] == before[0] \
+						and _choices[at][1] == before[1] and (at != 0 or built):
+					again = at
+		if again < 0:
+			again = 0 if n == 1 and built else 1
+		pick.select(again)
+
+
+func _kind(n: int) -> String:
+	var at: int = _pick[n].selected
+	return str(_choices[at][0]) if at >= 0 and at < _choices.size() and _choices[at] != null else ""
+
+
+func _ready_to_compare() -> bool:
+	for n: int in 2:
+		var kind: String = _kind(n)
+		if kind.is_empty() or (kind == PartsCompare.SET and _number[n].text.strip_edges().is_empty()):
+			return false
+	return true
+
+
+## A picker's row chosen: a set asks for its number, anything else is
+## compared at once.
+func _picked(n: int) -> void:
+	var set_wanted: bool = _kind(n) == PartsCompare.SET
+	_number[n].visible = set_wanted
+	if set_wanted and _number[n].text.strip_edges().is_empty():
+		_number[n].grab_focus()
+		return
+	if _ready_to_compare():
+		compare_parts()
+
+
+func _side_of(n: int) -> PartsCompare.Side:
+	var choice: Array = _choices[_pick[n].selected]
+	match str(choice[0]):
+		PartsCompare.OPEN:
+			return PartsCompare.of_open(world, library, store.scenery, str(choice[2]))
+		PartsCompare.SET:
+			return await PartsCompare.of_set(_number[n].text, inventories, library)
+	return PartsCompare.of_file(str(choice[1]), str(choice[2]), library)
+
+
+func _swap_sides() -> void:
+	var picked: Array = [_pick[0].selected, _pick[1].selected]
+	var typed: Array = [_number[0].text, _number[1].text]
+	for n: int in 2:
+		_pick[n].select(picked[1 - n])
+		_number[n].text = typed[1 - n]
+		_number[n].visible = _kind(n) == PartsCompare.SET
+	if _ready_to_compare():
+		compare_parts()
+
+
+## The counts, the tabs' words, the list shown and what to buy.
+func _fill_lists() -> void:
+	var counted: Array = [0, 0, 0]
+	var a_name: String = "A"
+	var b_name: String = "B"
+	if parts != null:
+		counted = [PartsCompare.total(parts.both), PartsCompare.total(parts.only_a),
+			PartsCompare.total(parts.only_b)]
+		a_name = parts.a.short
+		b_name = parts.b.short
+		_sides.text = "A: %s\nB: %s" % [PartsCompare.side_words(parts.a),
+			PartsCompare.side_words(parts.b)]
+	elif _sides.text.is_empty():
+		_sides.text = "Choose A and B: a set by its number, a saved model or the model open now."
+	var titles: Array = ["In both", "Only in %s" % a_name, "Only in %s" % b_name]
+	for tab: int in 3:
+		_tabs.set_tab_title(tab, titles[tab] + (" · %d" % counted[tab] if parts != null else ""))
+	var buying: Inventory = lists[ONLY_B] if lists.size() == 3 else null
+	if parts == null:
+		_buy.text = "To build B from A, the parts to buy are listed here, for the shops."
+	elif buying.lots.is_empty():
+		_buy.text = "%s has every piece %s needs: nothing to buy." % [a_name, b_name]
+	else:
+		_buy.text = "To build %s from %s, buy these %s in %s:" % [b_name, a_name,
+			Counted.of(buying.pieces, "piece"), Counted.of(buying.lots.size(), "lot")]
+	for shop: String in _shops:
+		(_shops[shop] as Button).disabled = buying == null or buying.lots.is_empty()
+	_buy_note.visible = false
+	_show_list()
+
+
+## The rows of the tab chosen, each a lot: how many, its picture, its colour,
+## its number, name and colour's name, as the parts list's rows are.
+func _show_list() -> void:
+	for child: Node in _list_rows.get_children():
+		_list_rows.remove_child(child)
+		child.queue_free()
+	_list_sight.forget()
+	_list_scroll.scroll_vertical = 0
+	var tab: int = _tabs.current_tab
+	if parts == null or lists.size() < 3:
+		return
+	var stock: Inventory = lists[tab]
+	if stock.lots.is_empty():
+		var none := Label.new()
+		none.text = ["Nothing in both.", "Nothing only in %s." % parts.a.short,
+			"Nothing only in %s." % parts.b.short][tab]
+		none.add_theme_font_size_override("font_size", 12)
+		none.modulate = Color(1, 1, 1, 0.7)
+		_list_rows.add_child(none)
+		return
+	for lot: Inventory.Lot in stock.lots:
+		_list_rows.add_child(_lot_row(lot, parts.mould_words(Collection.key_of(lot.part_id,
+			lot.color_code)) if tab == BOTH else ""))
+
+
+func _lot_row(lot: Inventory.Lot, note: String) -> Control:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size = Vector2(0, ROW)
+	row.add_theme_constant_override("separation", 9)
+	var count := Label.new()
+	count.text = "%d ×" % lot.count
+	count.custom_minimum_size = Vector2(44, 0)
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	count.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	count.add_theme_font_size_override("font_size", 12)
+	row.add_child(count)
+	var tile := ThumbTile.new(lot.part_id, lot.color_code)
+	tile.custom_minimum_size = Vector2(ROW, ROW)
+	row.set_meta("tile", tile)
+	if thumbnails != null:
+		var ready_now: ImageTexture = thumbnails.peek(lot.part_id, lot.color_code)
+		if ready_now != null:
+			tile.show_picture(ready_now, false)
+	row.add_child(tile)
+	var swatch := Panel.new()
+	swatch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	swatch.custom_minimum_size = Vector2(15, 15)
+	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var style := StyleBoxFlat.new()
+	var colour: PartLibrary.BrickColor = library.color(lot.color_code)
+	style.bg_color = colour.shown
+	style.set_corner_radius_all(3)
+	if colour.is_transparent():
+		style.set_border_width_all(2)
+		style.border_color = Color(colour.rgb, 1.0).darkened(0.4)
+	swatch.add_theme_stylebox_override("panel", style)
+	row.add_child(swatch)
+	for cell: Array in [[lot.part_id, 74.0, 0.55, false], [lot.name + note, 0.0, 1.0, true],
+			[lot.color_name, 150.0, 0.6, false]]:
+		var label := Label.new()
+		label.text = cell[0]
+		label.custom_minimum_size = Vector2(cell[1], 0)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL if cell[3] else Control.SIZE_FILL
+		label.clip_text = true
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", 12)
+		label.modulate = Color(1, 1, 1, cell[2])
+		row.add_child(label)
+	return row
+
+
+func _parts_pictures() -> void:
+	if thumbnails == null or _list_sight == null or not _list_sight.changed():
+		return
+	thumbnails.watch(self, _list_sight.tiles())
+
+
+## What the parts sheet shows, for a probe to read as a person would.
+func parts_fields() -> Dictionary:
+	if _parts_column == null:
+		return {"open": false, "mode": mode}
+	var tabs: Array = []
+	for tab: int in _tabs.tab_count:
+		tabs.append(_tabs.get_tab_title(tab))
+	var rows: Array = []
+	for row: Node in _list_rows.get_children():
+		if row is Label:
+			rows.append((row as Label).text)
+			continue
+		var said := PackedStringArray()
+		for cell: Node in row.get_children():
+			if cell is Label:
+				said.append((cell as Label).text)
+		rows.append(" ".join(said))
+	var picked: Array = []
+	for n: int in 2:
+		picked.append(_pick[n].get_item_text(_pick[n].selected) + (" " + _number[n].text
+			if _number[n].visible else ""))
+	return {"open": visible and mode == PARTS, "mode": mode, "a": picked[0], "b": picked[1],
+		"sides": _sides.text, "tabs": tabs, "tab": _tabs.current_tab, "rows": rows,
+		"buy": _buy.text, "note": _buy_note.text if _buy_note.visible else "",
+		"comparing": comparing}
+
+
+func _parts_controls() -> Dictionary:
+	var named: Dictionary = {"compare_close": _parts_close, "compare_swap": _swap,
+		"compare_go": _go, "compare_a": _pick[0], "compare_b": _pick[1], "compare_tabs": _tabs,
+		"compare_list": _list_scroll}
+	for n: int in 2:
+		if _number[n].visible:
+			named["compare_%s_number" % ["a", "b"][n]] = _number[n]
+	for shop: String in _shops:
+		named["compare_" + shop] = _shops[shop]
+	return named

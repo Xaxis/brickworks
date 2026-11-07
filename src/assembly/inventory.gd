@@ -124,21 +124,44 @@ static func of(world: BrickWorld, library: PartLibrary,
 			inventory._not_pieces[brick.id] = true
 			continue
 		inventory._add(by_key, library, brick.part_id, brick.color_code).bricks.append(brick.id)
+	inventory._sort()
+	return inventory
 
-	# Grouped by part, and the parts ordered by how many of them there
-	# are altogether.
-	#
-	# Sorting on the lot count alone looked right and was not: a 2 x 2
-	# brick in four colours became four rows scattered down the page,
-	# and finding out how many 2 x 2 bricks a model needs meant reading
-	# the whole list. You look a part up once and want all its colours
-	# together — that is what a shop's catalogue does and what a parts
-	# drawer does.
+
+## A parts list of [param counts], Collection.key_of's "part/colour" -> how
+## many: a set's inventory, or what Compare says to buy (PartsCompare). Each
+## lot named and numbered as one counted off a model is, so it goes to the
+## shops' writers (ShopLists) the same way.
+static func of_counts(counts: Dictionary, library: PartLibrary) -> Inventory:
+	var inventory := Inventory.new()
+	var by_key: Dictionary = {}
+	for key: String in counts:
+		var more: int = int(counts[key]) - 1
+		if more < 0:
+			continue
+		var lot: Lot = inventory._add(by_key, library, key.get_slice("/", 0),
+			int(key.get_slice("/", 1)))
+		lot.count += more
+		inventory.pieces += more
+		inventory.grams += lot.each_grams * more
+	inventory._sort()
+	return inventory
+
+
+## Grouped by part, and the parts ordered by how many of them there are
+## altogether.
+##
+## Sorting on the lot count alone looked right and was not: a 2 x 2 brick
+## in four colours became four rows scattered down the page, and finding out
+## how many 2 x 2 bricks a model needs meant reading the whole list. You look
+## a part up once and want all its colours together — that is what a shop's
+## catalogue does and what a parts drawer does.
+func _sort() -> void:
 	var per_part: Dictionary = {}
-	for lot: Lot in inventory.lots:
+	for lot: Lot in lots:
 		per_part[lot.part_id] = int(per_part.get(lot.part_id, 0)) + lot.count
 
-	inventory.lots.sort_custom(func(a: Lot, b: Lot) -> bool:
+	lots.sort_custom(func(a: Lot, b: Lot) -> bool:
 		var a_total: int = int(per_part[a.part_id])
 		var b_total: int = int(per_part[b.part_id])
 		if a_total != b_total:
@@ -152,7 +175,6 @@ static func of(world: BrickWorld, library: PartLibrary,
 		# Ties by name, so the same model always lists the same way — a
 		# list that reshuffles between exports cannot be diffed.
 		return a.color_name < b.color_name)
-	return inventory
 
 
 ## The lot a brick is counted in, by its "part:colour" key. A flexible
