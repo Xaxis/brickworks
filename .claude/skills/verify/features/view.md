@@ -752,13 +752,15 @@ picture the assistant is shown.
   Viewpoint (the views and the model's turns), Comments in File; Build ›
   Booklet page, 27 rows once Page setup… joined it, folds the step's turns,
   tilts, this view, usual view and zoom into Build › Booklet page › Step's view
-  (19 rows and 9; menurows, 2026-11-07). `keys3_probe`
+  (19 rows and 9), and View, 482 of 470 units with Stud map, its five panels
+  into View › Panels (menurows, 2026-11-07). `keys3_probe`
   (windowed, 1280 x 720; `PROBE_SIZE=1400x900`) measures every menu as the
   palette measures Edit, presses the colour keys as a desktop and a browser
   send them, the four selection keys against their menu rows, Studio's Shift-V,
   sets favourite 1 in the sheet and starts the app again on its data folder to
-  find it kept; pictures of Build › Booklet page and its Step's view opened
-  (shots/keys3/menu_build_booklet*_WxH.png). On the web, `tools/web/colour_keys_flow.mjs` (local build:
+  find it kept; pictures of Build › Booklet page and its Step's view opened,
+  and View › Panels (shots/keys3/menu_build_booklet*_WxH.png,
+  menu_view_panels_WxH.png). On the web, `tools/web/colour_keys_flow.mjs` (local build:
   `--url=http://127.0.0.1:PORT/`) selects all, presses Shift-2 and Ctrl+Z.
   Not proven: Cmd-Shift-3, 4 and 5 on a Mac are the system's screenshot keys,
   so those three most-used keys need setting there.

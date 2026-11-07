@@ -193,9 +193,10 @@ const ALT := KEY_MASK_ALT
 ## views and the model's turns to View's Viewpoint, the part in hand's turn
 ## and tip to Tools beside Place, Comments to File beside Share and Build
 ## together, My collection and What can I build? beside Library, and What
-## do I need? beside the parts list. Build › Booklet page reached 27 rows
-## with Page setup…, so the step's turns, tilts and zoom went into its own
-## Step's view, as a submenu of it (menurows).
+## do I need? beside the parts list. Then Build › Booklet page reached 27
+## rows with Page setup…, and View 482 of 470 units with Stud map, so the
+## step's turns, tilts and zoom went into Booklet page's own Step's view,
+## and the five panels into View › Panels (menurows).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
 		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
@@ -205,9 +206,8 @@ const MENUS: Array = [
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-", "panel_parts",
-		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
-		"split_view", "full_screen"]],
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-",
+		">panels", "split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
 		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
 		"leave_assembly", "rename_assembly", "make_unique", "-", "suggest_sections",
@@ -283,6 +283,10 @@ const SUBMENUS: Dictionary = {
 		"-", "booklet_pull", "booklet_colours", "booklet_actual_size", "booklet_preview",
 		# pagesetup: the booklet's page, the person's way (BookletSheet).
 		"-", "booklet_page_setup"],
+	# The window's panels, each shown or put away: set once a session, so
+	# folded beside Split view and Full screen (menurows).
+	"panels": ["panel_parts", "panel_assistant", "panel_properties", "panel_outliner",
+		"panel_keys"],
 	# Where the step's picture is seen from: its turns, its tilts and its zoom.
 	"booklet_view": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
 		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
@@ -298,7 +302,7 @@ const SUBMENUS: Dictionary = {
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
-	"viewpoint": "Viewpoint", "cut_away": "Cut away by",
+	"viewpoint": "Viewpoint", "cut_away": "Cut away by", "panels": "Panels",
 	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
 	"floor": "Floor", "floor_colour": "Baseplate colour"}
 

@@ -4789,7 +4789,7 @@
       "id": "ui:model tree",
       "kind": "ui",
       "entry": "src/ui/outliner.gd",
-      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Model tree)",
+      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Panels, Model tree)",
       "area": "building",
       "tests": []
     },
