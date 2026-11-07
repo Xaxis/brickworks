@@ -1065,6 +1065,11 @@ func _set_aside(paced: bool) -> void:
 		and DirAccess.copy_absolute(autosave(), path) == OK
 	if not kept:
 		var text: String = await _model_text(paced)
+		# Someone else's file that would not read back as the model: not
+		# kept as a model of nothing (SourceFile.checked).
+		if not kept_refused.is_empty() and not _has_parts(text):
+			push_warning("could not keep the model an open replaced: %s" % kept_refused)
+			return
 		var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 		if file == null:
 			push_warning("could not keep the model an open replaced (%d)" % FileAccess.get_open_error())
@@ -2024,6 +2029,11 @@ var _own_header: PackedStringArray = PackedStringArray()
 ## when it is someone else's, and said when it opens.
 var unshown: Dictionary = {}
 const TITLE_META := "0 !BRICKWORKS TITLE "
+## Why the model, last written into someone else's file, could not be: it
+## did not read back as the model (SourceFile.checked). "" when it did.
+## Every write of it then writes nothing ([method to_text] gives ""), and
+## says so ([method _write]).
+var kept_refused: String = ""
 
 
 ## The source the model on the baseplate is still the model of, or null.
@@ -2171,7 +2181,15 @@ static func _source_written(asked: Dictionary) -> String:
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
 	var number: String = asked["set"]
 	kept = kept if set_in(kept) == number else with_set(kept, number)
-	return (asked["source"] as SourceFile).ended(kept)
+	# Read back before it may go over anyone's file: refused, nothing is
+	# written, and the save says why ([member kept_refused]).
+	var source: SourceFile = asked["source"]
+	var refused: String = source.checked(kept, asked["bricks"], asked["lift"], asked["waiting"],
+		asked["library"])
+	if not refused.is_empty():
+		asked["refused"] = refused
+		return ""
+	return source.ended(kept)
 
 
 ## [param text] without the lines this app writes again on every save.
@@ -2442,6 +2460,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 				return ModelStore._source_written(asked), "write the model's file", library)
 		else:
 			kept = _source_written(asked)
+		kept_refused = str(asked.get("refused", ""))
+		if not kept_refused.is_empty():
+			push_warning("not written back: %s" % kept_refused)
 		made.append(str(kept))
 		return
 	# A section broken out is written where it was pulled from: the whole
@@ -2719,6 +2740,8 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 	if _saved_over_elsewhere(SAVE_DIR + clean + ".ldr", name):
 		return false
 	var text: String = await to_text_paced(name, job)
+	if text.is_empty() and not kept_refused.is_empty():
+		refused = _kept_refusal(name)
 	if text.is_empty() or job.cancelled:
 		return false
 	if _write(SAVE_DIR + clean + ".ldr", name, true, text):
@@ -2816,7 +2839,11 @@ func figure_frames(from: BrickWorld = null) -> Dictionary:
 ## so the bytes are handed to the browser as a download instead — the
 ## same model either way, by two entirely different mechanisms.
 func export_to(path: String, title: String = "Model") -> bool:
-	return _export_text(path, to_text(title, true))
+	var text: String = to_text(title, true)
+	if text.is_empty():
+		refused = _kept_refusal(title)
+		return false
+	return _export_text(path, text)
 
 
 ## [method export_to] from a person's press: a big model's build order
@@ -2824,6 +2851,8 @@ func export_to(path: String, title: String = "Model") -> bool:
 ## False when it was cancelled or not written.
 func export_paced(path: String, title: String = "Model") -> bool:
 	var text: String = await text_for_file(title, "Exporting %s…" % path.get_file())
+	if text.is_empty() and not kept_refused.is_empty():
+		refused = _kept_refusal(title)
 	return not text.is_empty() and _export_text(path, text)
 
 
@@ -2841,6 +2870,12 @@ func _export_text(path: String, text: String) -> bool:
 	return true
 
 
+## What a save refused by [member kept_refused] says.
+func _kept_refusal(title: String) -> String:
+	return ("Not saved: “%s” written back into its file would not be the model on the "
+		% title + "baseplate (%s), so nothing was written. Your model is as it was." % kept_refused)
+
+
 func _write(path: String, title: String, with_steps: bool = false,
 		written: String = "") -> bool:
 	if read_only:
@@ -2850,9 +2885,15 @@ func _write(path: String, title: String, with_steps: bool = false,
 	if not NewerBuild.may_write(path):
 		refused = NewerBuild.REFUSAL
 		return false
+	var body: String = written if not written.is_empty() else to_text(title, with_steps)
+	# Someone else's file that did not read back as the model: nothing
+	# written over anything (SourceFile.checked).
+	if body.is_empty() and not kept_refused.is_empty():
+		refused = _kept_refusal(title)
+		return false
 	var text: String = ReferenceImage.written_into(SetBin.written_into(with_share(
-		written if not written.is_empty() else to_text(title, with_steps), share_id,
-		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
+		body, share_id, remixed_from, remixed_from_version, credit, made_with), bin_sets),
+		reference)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate

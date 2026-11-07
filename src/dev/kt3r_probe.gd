@@ -338,8 +338,9 @@ func _case_ungroup() -> void:
 
 
 ## The only copy of a sub-model holding a part no library has, taken off
-## (kt3review #8): its line goes, and the sub-model with it, the part with
-## them (SourceFile._gone_sections, as fidelity's sub-model emptied).
+## (kt3review #8): its line goes, and the part with it. The sub-model's
+## block stays whole, placed by nothing, as Ungroup, LDCad and Studio keep
+## it, and the note above the line where it was (kt4review #1, #7).
 func _case_delete_unshown_copy() -> void:
 	var text: String = _fixture("kt3r_unshown_copy.mpd")
 	await _open(text)
@@ -349,24 +350,12 @@ func _case_delete_unshown_copy() -> void:
 	_shell.run("delete")
 	await _frames(4)
 	_shell.assemblies.leave_to("")
-	var sign: Array = Array(text.get_slice("0 FILE sign.ldr", 1).split("\n")).map(
-		func(line: String) -> String: return line.strip_edges())
-	sign[0] = "0 FILE sign.ldr"
-	# A touched line is matched first where it first is: one the cart has
-	# too (its Author line) is said twice, and the whole text checked below.
-	var cart: Array = Array(text.get_slice("0 FILE sign.ldr", 0).split("\n"))
-	var touched: Array = ["1 16 0 -8 0 1 0 0 0 1 0 0 0 1 sign.ldr",
-		"0 // the sign on top, with its sticker"]
-	for line: String in sign:
-		if not line.is_empty():
-			touched.append(line)
-			if cart.has(line):
-				touched.append(line)
-	var saved: String = await _saved("the only copy taken off", text, depth, touched)
+	var placing: String = "1 16 0 -8 0 1 0 0 0 1 0 0 0 1 sign.ldr"
+	var saved: String = await _saved("the only copy taken off", text, depth, [placing])
 	var plain: String = "\n".join(Array(saved.split("\n")).filter(
 		func(line: String) -> bool: return not line.begins_with("0 !BRICKWORKS")))
-	_check("...the sub-model gone with it, its block and its end: %s" % plain.c_escape(),
-		plain == text.get_slice("0 // the sign on top", 0) + "0 NOFILE\n")
+	_check("...its line gone, every other line as it was, the sub-model's block placed by "
+		+ "nothing: %s" % plain.c_escape(), plain == text.replace(placing + "\n", ""))
 	_check("...opened again, no part it cannot show: %s" % str(_store.unshown),
 		_store.unshown.is_empty())
 

@@ -69,7 +69,17 @@
 ## opened, saved and opened again: every line in CRLF and each read again
 ## (SourceFile.lines_put; each writer had put its line in with "\n" alone).
 ##
+## And every pair of another program's lines (LPub's, LSynth's, LeoCAD's,
+## MLCad's, TEXMAP's: kt4review's analyze.py) opens and closes in every save
+## here as it did in the file, with no END before its BEGIN; and over
+## kt4review's 26 files of the LDraw model repository, each saved unedited
+## is the file byte for byte, and a part between a pair's lines given a step
+## edit and then taken off is written with its pairs whole, never refused
+## by the save's read-back (keeptext4: a delete took a GROUP's BEGIN and
+## left its END, a step edit put LSynth's END before its BEGIN).
+##
 ##   KEEP_TEXT_ONLY=7140,6650   those files;  KEEP_TEXT_EDITS=rename,copy   those edits
+##   KEEP_TEXT_ONLY=pairs       only the 26 files' pass
 ##   KEEP_TEXT_STEPS=0     no step edits, only the edits above
 extends SceneTree
 
@@ -125,6 +135,27 @@ const MOTION := ['0 !BRICKWORKS MOTION "Turn the brick" AFTER "" SECONDS 2',
 	'0 !BRICKWORKS MOTION_KEY "Turn the brick" 1 0 0 EASE',
 	'0 !BRICKWORKS MOTION_KEY "Turn the brick" 1 2 90 EASE']
 const SHARE := "kt3CrLfAbc"
+## Another program's lines that open and close, by the line that opens and
+## the line that closes: kt4review's analyze.py PAIRS, as written there.
+const PAIRS: Array = [
+	["^0 !LEOCAD GROUP BEGIN", "^0 !LEOCAD GROUP END"],
+	["^0 !LPUB PLI BEGIN", "^0 !LPUB PLI END"],
+	["^0 !LPUB MULTI_STEP BEGIN", "^0 !LPUB MULTI_STEP END"],
+	["^0 !LPUB CALLOUT BEGIN", "^0 !LPUB CALLOUT END"],
+	["^0 MLCAD SKIP_BEGIN", "^0 MLCAD SKIP_END"],
+	["^0 !TEXMAP START", "^0 !TEXMAP END"],
+	["^0 BUFEXCHG \\w+ STORE", "^0 BUFEXCHG \\w+ RETRIEVE"],
+	["^0 SYNTH BEGIN", "^0 SYNTH END"],
+	["^0 SYNTH SYNTHESIZED BEGIN", "^0 SYNTH SYNTHESIZED END"],
+	["^0 !LPUB PART BEGIN", "^0 !LPUB PART END"],
+]
+## kt4review's 26 files of the LDraw model repository (its sweep1), LPub's,
+## LSynth's, MLCad's and LeoCAD's pairs among them: each saved unedited, and
+## given a step edit and a delete of a part between a pair's two lines.
+const OMR_FILES: Array = ["1775-1", "21113-1", "30572-1", "31040-1_Dune-Buggy", "358-1",
+	"4309-1", "4348-1_Space-Ship", "5540-1_Plane", "6054-1", "6450-1", "6480-1", "6511-1",
+	"6521-1", "6631-1", "6747-1_Chopper", "6799-1_Carriage", "6923-1", "6973-1", "7140-1",
+	"8028-1", "8062-1_Smale-Vehicle", "8121-1", "8156-1", "8257-1", "8281-1", "8644-1"]
 
 var _failures: int = 0
 var _main: Node
@@ -194,6 +225,8 @@ func _run() -> void:
 			await _edits(str(model[0]), str(model[1]), made, edits)
 	if only.is_empty() or only.contains("crlf") or only.contains("metas"):
 		await _metas_crlf()
+	if only.is_empty() or only.contains("pairs"):
+		await _omr_pairs()
 	print("\nlines lost by one step edit and a save:")
 	for row: Array in _summary:
 		print("  %-48s %4d in its section, %4d from the file, saved %s" % row)
@@ -885,6 +918,107 @@ func _metas_crlf() -> void:
 	_same_parts("...saved again", parts, again)
 
 
+## kt4review's 26 files (OMR_FILES), each saved unedited: the file byte
+## for byte, the app's floor aside. Then a part between two lines of a pair
+## (PAIRS: LPub's, LSynth's, LeoCAD's), or any where the file has none,
+## given a step edit and then taken off: each written with every pair
+## opened and closed as in the file, every line about the next above it,
+## the same parts (the one taken off aside), and not refused by the save's
+## read-back (SourceFile.checked). A delete that took a GROUP's BEGIN and
+## left its END, and a step edit that put LSynth's END before its BEGIN,
+## were written over a person's file (kt4review #1, #2, #3).
+func _omr_pairs() -> void:
+	print("\nkt4review's files of the LDraw model repository: unedited, a step edit, a delete")
+	for file: String in OMR_FILES:
+		var path: String = "res://vendor/omr/files/%s.mpd" % file
+		var text: String = FileAccess.get_file_as_string(path)
+		if not _check("%s read (%d lines)" % [file, text.split("\n").size()], not text.is_empty()):
+			continue
+		await _open(text, file)
+		var unedited: String = _store.to_text(file, true)
+		_check("...saved unedited: the file byte for byte, the floor aside",
+			_unfloored(unedited) == _unfloored(text))
+		var parts: Array = _parts_of(text)
+		var inside: Array = _inside_pair(text)
+		var part: int = int(inside[0]) if not inside.is_empty() else _chosen()
+		if not _check("...#%d (%s) to edit, %s" % [part,
+				_world.get_brick(part).part_id if part > 0 else "-",
+				"between %s and its END" % inside[1] if not inside.is_empty()
+				else "the file has no pair"], part > 0):
+			continue
+		var depth: int = _builder.history_depth()
+		var said: String = _shell.change_steps("next", [part], _step_holding(part))
+		await _frames(4)
+		var stepped: String = _store.to_text(file, true)
+		_check("...a step edit (\"%s\"): written, not refused%s" % [
+			said.get_slice("\n", 0).left(80), _refusal()],
+			not stepped.is_empty() and str(_store.get("kept_refused")).is_empty())
+		_shape_kept("...the step edit", text, stepped)
+		_same_parts("...the step edit", parts, stepped)
+		await _back_to(depth)
+		var part_id: String = _world.get_brick(part).part_id
+		var count: int = _world.brick_count()
+		_select_only([part])
+		_shell.run("delete")
+		await _frames(2)
+		var deleted: String = _store.to_text(file, true)
+		var taken: int = count - _world.brick_count()
+		_check("...#%d taken off (%d parts, its copies following): written, not refused%s"
+			% [part, taken, _refusal()], taken > 0 and not deleted.is_empty()
+			and str(_store.get("kept_refused")).is_empty())
+		_shape_kept("...taken off", text, deleted)
+		var got: Array = _parts_of(deleted)
+		var missing: Array = _unmatched(parts, got)
+		var extra: Array = _unmatched(got, parts)
+		_check("...opens as %d parts of %d: %d missing, all %s, %d more%s" % [got.size(),
+			parts.size(), missing.size(), part_id, extra.size(), _first(extra.map(
+				func(entry: Array) -> String: return "a %s more" % _named(entry)))],
+			missing.size() == taken and extra.is_empty() and missing.all(
+				func(entry: Array) -> bool: return str(entry[0]) == part_id))
+		await _back_to(depth)
+
+
+static func _unfloored(text: String) -> String:
+	return "\n".join(Array(text.split("\n")).filter(func(line: String) -> bool:
+		return not line.begins_with("0 !BRICKWORKS FLOOR")))
+
+
+func _refusal() -> String:
+	var refused: String = str(_store.get("kept_refused"))
+	return "" if refused.is_empty() else ": " + refused
+
+
+## A part of the model's text placed between a pair's two lines in one
+## section (PAIRS), the innermost first met: [its id, the opening line];
+## [] where there is none on the baseplate.
+func _inside_pair(text: String) -> Array:
+	var lines: PackedStringArray = text.split("\n")
+	var by_line: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id) or brick.origin.is_empty():
+			continue
+		var line: int = brick.origin.get_slice("/", brick.origin.get_slice_count("/") - 1).to_int()
+		if not by_line.has(line):
+			by_line[line] = brick.id
+	var matchers: Array = []
+	for pair: Array in PAIRS:
+		matchers.append([RegEx.create_from_string("(?i)" + str(pair[0])),
+			RegEx.create_from_string("(?i)" + str(pair[1]))])
+	var open: Array = []           ## the opening lines open, innermost last
+	for n: int in lines.size():
+		var line: String = lines[n].strip_edges()
+		if line.to_upper().begins_with("0 FILE "):
+			open.clear()
+		for k: int in matchers.size():
+			if (matchers[k][0] as RegEx).search(line) != null:
+				open.append(line)
+			elif (matchers[k][1] as RegEx).search(line) != null and not open.is_empty():
+				open.pop_back()
+		if not open.is_empty() and line.begins_with("1 ") and by_line.has(n):
+			return [int(by_line[n]), str(open.back()).left(40)]
+	return []
+
+
 ## [param text] with the app's own line of [param kind] written in by its
 ## writer, as a save writes it.
 func _meta_written(kind: String, text: String, pin_lines: PackedStringArray) -> String:
@@ -1565,20 +1699,82 @@ func _shape_kept(what: String, was: String, now: String) -> bool:
 	var runs: Array = _runs_wrong(was, now)
 	var ends: int = _endings_wrong(was, now)
 	var header: Array = _header_wrong(was, now)
+	var pairs: Array = _pairs_wrong(was, now)
 	return _check("%s: %d lines that say what the next is parted from it or given another, "
 		% [what, runs.size()] + "%d lines ending otherwise than the file's, " % ends
-		+ "%d header lines out of their place%s" % [header.size(), _first(runs + header)],
-		runs.is_empty() and ends == 0 and header.is_empty())
+		+ "%d header lines out of their place, %d pairs opened or closed otherwise%s"
+		% [header.size(), pairs.size(), _first(runs + header + pairs)],
+		runs.is_empty() and ends == 0 and header.is_empty() and pairs.is_empty())
 
 
 ## Whether [param line] says what the line after it is: LDCad's group of
-## the next part, MLCad's group and hidden part, BFC's INVERTNEXT.
+## the next part, MLCad's group, BFC's INVERTNEXT, a texture on the next
+## part (TEXMAP NEXT, Studio's PE_TEX_PATH and PE_TEX_INFO), LeoCAD's
+## PIECE. Not MLCad's HIDE: that line is a hidden part's own.
 static func _binds(line: String) -> bool:
 	var words: PackedStringArray = LdrModel._fields(line.strip_edges())
-	if words.size() < 3 or words[0] != "0":
+	if words.size() < 2 or words[0] != "0":
+		return false
+	if words[1].to_upper() in ["PE_TEX_PATH", "PE_TEX_INFO"]:
+		return true
+	if words.size() < 3:
 		return false
 	return (words[1] + " " + words[2]).to_upper() in ["!LDCAD GROUP_NXT", "MLCAD BTG",
-		"MLCAD HIDE", "BFC INVERTNEXT"]
+		"BFC INVERTNEXT", "!TEXMAP NEXT", "!LEOCAD PIECE"]
+
+
+## How [param now]'s pairs of another program's lines (PAIRS) are not as
+## [param was]'s, as kt4review's analyze.py reads them: a kind opened and
+## closed a different number of times more than the other (where [param now]
+## has that kind at all), and an END with none open or a BEGIN left open
+## (before a FILE line, or at the end) the file did not have.
+static func _pairs_wrong(was: String, now: String) -> Array:
+	var out: Array = []
+	var before: Dictionary = _pairs_read(was)
+	var after: Dictionary = _pairs_read(now)
+	for pair: Array in PAIRS:
+		var had: Vector2i = before["count"][pair[0]]
+		var has: Vector2i = after["count"][pair[0]]
+		if had.x - had.y != has.x - has.y and (has.x > 0 or has.y > 0):
+			out.append("%s: the file's %d/%d, %d/%d" % [str(pair[0]).trim_prefix("^"),
+				had.x, had.y, has.x, has.y])
+	for fault: String in after["faults"]:
+		if not (before["faults"] as Array).has(fault):
+			out.append(fault)
+	return out
+
+
+## [param text]'s pairs (PAIRS): each opening line's count of openings and
+## closings, and the faults of their order.
+static func _pairs_read(text: String) -> Dictionary:
+	var count: Dictionary = {}
+	var faults: Array = []
+	var lines: PackedStringArray = text.split("\n")
+	for pair: Array in PAIRS:
+		var opens := RegEx.create_from_string("(?i)" + str(pair[0]))
+		var closes := RegEx.create_from_string("(?i)" + str(pair[1]))
+		var file := RegEx.create_from_string("(?i)^0 FILE ")
+		var seen := Vector2i.ZERO
+		var depth: int = 0
+		for raw: String in lines:
+			var line: String = raw.strip_edges()
+			if file.search(line) != null:
+				if depth > 0:
+					faults.append("%s left open before a FILE line" % str(pair[0]).trim_prefix("^"))
+				depth = 0
+			if opens.search(line) != null:
+				seen.x += 1
+				depth += 1
+			elif closes.search(line) != null:
+				seen.y += 1
+				depth -= 1
+				if depth < 0:
+					faults.append("%s with none open" % str(pair[1]).trim_prefix("^"))
+					depth = 0
+		if depth > 0:
+			faults.append("%s left open" % str(pair[0]).trim_prefix("^"))
+		count[pair[0]] = seen
+	return {"count": count, "faults": faults}
 
 
 ## Each run of lines of [param text] that say what the next is, and what the

@@ -793,12 +793,18 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
 			continue
 		var definition: String = name.get_slice("|", 0)
 		var step: int = tail.to_int()
+		var then: Dictionary = before.get(definition, {})
+		var now: Dictionary = after.get(definition, {})
+		# A sub-model the edit left in its steps keeps its looks as they
+		# were, an empty step's turn too: dropped, its ROTSTEP lines were
+		# written as STEP (kt4review #5).
+		if then == now and not moved.has(name):
+			moved[name] = world.step_looks[name]
+			continue
 		var look: Dictionary = (world.step_looks[name] as Dictionary).duplicate(true)
 		look.erase("section")
 		if look.is_empty():
 			continue
-		var then: Dictionary = before.get(definition, {})
-		var now: Dictionary = after.get(definition, {})
 		var votes: Dictionary = {}
 		var kept_any: bool = false
 		for item: String in then:

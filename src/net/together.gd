@@ -344,8 +344,13 @@ func start() -> String:
 		return "Sign in to build together."
 	if store.laying or not store.awaited.is_empty():
 		return "The model is still opening. Try again in a moment."
+	# Someone else's file that would not read back as the model is not
+	# handed to anyone as nothing (SourceFile.checked).
+	var text: String = store.to_text(store.title)
+	if text.is_empty() and not store.kept_refused.is_empty():
+		return "The model can't be shared as it is: %s." % store.kept_refused
 	var snapshot: Dictionary = _begin_own()
-	snapshot["text"] = store.to_text(store.title)
+	snapshot["text"] = text
 	# How the owner is looking at it, for whoever joins to open on: framed
 	# on its parts alone, a joiner opened at a stud 107 pixels across on the
 	# owner's gear (walk256, BT1).
