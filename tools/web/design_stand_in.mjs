@@ -67,12 +67,14 @@ import { GONE, KEPT, entryOf } from "../../api/plans.js";
 import { Refusal as BetaRefusal, applicationOf } from "../../api/_beta.js";
 import { EARLY, KNOWN, NEW } from "../../api/_early.js";
 // What a person earned (docs/SOCIAL.md U13), worked out as the server works it out.
-import { achievementsOf } from "../../api/people.js";
+import { NAMED_MOST, achievementsOf, namedOf, peopleRanked } from "../../api/people.js";
 import { inLanguage, siteWords } from "../../api/_directory.js";
 // Whose picture is beside their name (supabase/avatars.sql), given as the
 // API gives it; and the pictures themselves, made here.
 import { facesOn, pictureAt } from "../../api/_faces.js";
 import { encode as encodeJpeg } from "../../api/_jpeg.js";
+// A photo's card copy (?op=photo_file&size=card), made as the server makes it.
+import { cardOf } from "../../api/_photo.js";
 // What a model is based on (supabase/model_bases.sql): a designer's list
 // checked, and said, as the API checks and says it.
 import { basesAsked, basesSaid } from "../../api/_bases.js";
@@ -907,6 +909,10 @@ const RPC = {
   model_lists: ({ model, most }) => modelLists(model, most || 12),
   follow_choice: ({ account }) => ({ shows_follows: SHOWS_FOLLOWS.has(account) }),
   shown_publicly: ({ account }) => !ADMIN.barred.some((one) => one.account === account),
+  // supabase/trust.sql: everybody here said 13 or over (age_of); a test
+  // account is a Resend test address.
+  trust_may_go_public: () => true,
+  trust_is_test_account: ({ account }) => /@resend\.dev$/i.test(emailOf(account) || ""),
   is_barred: ({ account }) => ADMIN.barred.some((one) => one.account === account),
   model_tested: ({ model_id }) => TESTED.has(model_id),
   // supabase/avatars.sql
@@ -1675,6 +1681,23 @@ function people(method, params, body, who, state) {
             .map((m) => (m.has_thumb ? `/m/${m.id}.webp?v=${(Date.parse(m.updated_at || "") || 0).toString(36)}`
               : m.has_image ? `/m/${m.id}.png` : "")).filter(Boolean).slice(0, 4) })) });
     }
+    if (op === "people_find") {
+      // api/people.js peopleFind and peopleFound: signed in (above), q cut
+      // to 23 and looked for from 2; the handles it starts first, 8 at most,
+      // then names; only a profile that may be named (api/_trust.js
+      // mayBeNamed, as the database here says it), a test account only for
+      // a probe (tests=1).
+      const q = String(params.get("q") || "").toLowerCase().slice(0, 23);
+      const tests = asked(params.get("tests"));
+      if (!namedOf(q)) return answer(200, { q, people: [] });
+      const handles = PEOPLE.filter((one) => one.handle.startsWith(q)).sort((a, b) => (a.handle < b.handle ? -1 : 1)).slice(0, 8);
+      const names = PEOPLE.filter((one) => !handles.includes(one)
+        && (one.name.toLowerCase().startsWith(q) || one.name.toLowerCase().includes(` ${q}`)));
+      const may = (account) => RPC.shown_publicly({ account }) && RPC.trust_may_go_public({ account })
+        && (tests || !RPC.trust_is_test_account({ account }));
+      return answer(200, { q, people: peopleRanked([...handles, ...names], q).filter((one) => may(one.account)).slice(0, NAMED_MOST)
+        .map((one) => ({ handle: one.handle, name: one.name })) });
+    }
     if (op === "alike") {
       // api/_alike.js designersAlike, by themes and tags alone (no parts
       // here): never the asker nor anybody they follow.
@@ -1694,7 +1717,7 @@ function people(method, params, body, who, state) {
           return { handle: them.handle, name: them.name, alike: alikeOf(one), kinds: one.kinds, tags: one.tags,
             follow: follows(them.handle, who, state).json };
         });
-      return answer(200, { handle: person.handle, name: person.name, designers });
+      return answer(200, { handle: person.handle, name: person.name, designers, yours: who === person.account });
     }
     if (op === "feed_count") {
       if (!who) return answer(200, { count: 0, signed_in: false });
@@ -2239,7 +2262,33 @@ function avatarFile(url) {
 }
 
 const isPicture = (url) => /^\/m\/[A-Za-z0-9]{10}(\/v\/\d+)?\.(png|webp)$/.test(url.pathname)
-  || (url.pathname === "/api/people" && url.searchParams.get("op") === "photo_file");
+  // A set's own picture (api/share.js catalog_photo), or its flat lay.
+  || /^\/library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}\.(webp|jpg)$/.test(url.pathname);
+/// A photo's card copy (?size=card), as against the whole kept photo.
+const isCard = (url) => url.pathname === "/api/people" && url.searchParams.get("op") === "photo_file"
+  && url.searchParams.get("size") === "card";
+/// Each photo's files as the server keeps them: {whole, card}, the whole a
+/// JPEG at the size its row says (a sky over a ground, with a brick in the
+/// middle) and its copy for the cards made from it by api/_photo.js cardOf.
+/// A photo with no row here: share.png's size.
+const photoFiles = new Map();
+function photoFilesOf(id) {
+  if (!photoFiles.has(id)) {
+    const row = PHOTOS.find((one) => one.id === id) || { width: 1200, height: 630 };
+    const [w, h] = [row.width, row.height];
+    const data = new Uint8Array(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const brick = Math.abs(x - w / 2) < w * 0.18 && Math.abs(y - h * 0.55) < h * 0.14;
+        const colour = brick ? [200, 40, 40] : y < h * 0.6 ? [90 + (x / w) * 60, 140, 200] : [90, 130 + (x / w) * 40, 70];
+        data.set([...colour.map(Math.round), 255], (y * w + x) * 4);
+      }
+    }
+    const image = { data, width: w, height: h };
+    photoFiles.set(id, { whole: Buffer.from(encodeJpeg(image, 85).data), card: cardOf(image).bytes });
+  }
+  return photoFiles.get(id);
+}
 
 /// Every request of [context] answered as a deployment of [web] and [api]
 /// would: their files, the server's pages made by [api]'s handlers (with
@@ -2259,6 +2308,10 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     // Anything else to whatever else answers it (browser.mjs quiets the
     // visit counter); nothing else is fetched from here.
     if (!ours) return route.fallback();
+    if (url.pathname === "/api/people" && url.searchParams.get("op") === "photo_file") {
+      const files = photoFilesOf(String(url.searchParams.get("id") || ""));
+      return route.fulfill({ status: 200, contentType: "image/jpeg", body: isCard(url) ? files.card : files.whole });
+    }
     if (isPicture(url)) return route.fulfill({ status: 200, contentType: "image/png", body: PICTURE });
     // A part's geometry, which a model's Parts list draws each lot from
     // (web/part-pictures.js): a deployment's from its own store, here from
@@ -2278,9 +2331,11 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return face ? route.fulfill({ status: 200, contentType: "image/jpeg", body: face })
         : route.fulfill({ status: 404, contentType: "text/plain", body: "" });
     }
-    // The LDraw library's list (api/share.js library), made by the real
-    // handler from this checkout's catalogue, as a set's page is.
-    if (url.origin === ORIGIN && url.pathname === "/api/share" && url.searchParams.get("op") === "library") {
+    // The LDraw library's list (api/share.js library), and the sets the
+    // Based on dialog offers as a name is typed (api/_bases.js setFind),
+    // made by the real handler from this checkout's catalogue, as a set's
+    // page is.
+    if (url.origin === ORIGIN && url.pathname === "/api/share" && ["library", "set_find"].includes(url.searchParams.get("op"))) {
       const made = await serverAsk(api, { name: "share", query: Object.fromEntries(url.searchParams) });
       return route.fulfill({ status: made.status, contentType: "application/json", body: made.html });
     }
