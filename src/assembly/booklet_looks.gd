@@ -1522,7 +1522,9 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	## Inside a page's picture as it was written (LDraw's !DATA): left out,
 	## and written again at the end from the looks.
 	var skipping: bool = false
-	for raw: String in lines:
+	var last: Dictionary = _last_endings(lines)
+	for at: int in lines.size():
+		var raw: String = lines[at]
 		var line: String = raw.strip_edges()
 		if skipping:
 			if line.begins_with("0 !:"):
@@ -1555,7 +1557,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			continue
 		if keyword == "STEP" or keyword == "ROTSTEP":
 			_step_lines(out, looks, definition, step, any_part, eol, wrote)
-			out.append(_ending(raw, looks, definition, step + 1, eol))
+			out.append(raw if last.has(at) else _ending(raw, looks, definition, step + 1, eol))
 			step += 1
 			any_part = false
 			continue
@@ -1751,10 +1753,54 @@ static func _ending(raw: String, looks: Dictionary, definition: String, step: in
 	if look.has("line") and line == str(look["line"]):
 		return raw
 	if str(look["turn"]) == "end":
-		return "0 ROTSTEP END" + eol
+		# "0 ROTSTEP 0 0 0 REL" puts the usual view back too: said as it
+		# was (kt4review #5, 358-1's Rocket).
+		return raw if _turns_back(line) else "0 ROTSTEP END" + eol
 	var turn: Vector3 = _vector(look["turn"])
 	return "0 ROTSTEP %s %s %s %s" % [_number(turn.x), _number(turn.y), _number(turn.z),
 		str(look.get("how", "REL"))] + eol
+
+
+## Whether [param line] is a ROTSTEP putting the usual view back: END, or
+## a turn of nothing from it.
+static func _turns_back(line: String) -> bool:
+	var words: PackedStringArray = LdrModel._fields(line)
+	if words.size() < 3 or words[0] != "0" or words[1].to_upper() != "ROTSTEP":
+		return false
+	if words[2].to_upper() == "END":
+		return true
+	if words.size() < 5 or (words.size() >= 6 and words[5].to_upper() != "REL"):
+		return false
+	for n: int in range(2, 5):
+		if not words[n].is_valid_float() or not is_zero_approx(words[n].to_float()):
+			return false
+	return true
+
+
+## The lines of [param lines] that end a step no part comes after in its
+## section: what they say turns nothing, and each is written as it was. A
+## file's last "0 ROTSTEP END" was written "0 STEP" (kt4review #5).
+static func _last_endings(lines: PackedStringArray) -> Dictionary:
+	var out: Dictionary = {}
+	var open: Array = []
+	for at: int in lines.size():
+		var line: String = lines[at].strip_edges()
+		if line.begins_with("1 ") or line.begins_with("1\t"):
+			open.clear()
+			continue
+		if not line.begins_with("0"):
+			continue
+		var words: PackedStringArray = LdrModel._fields(line)
+		var keyword: String = words[1].to_upper() if words.size() >= 2 else ""
+		if keyword in ["FILE", "NOFILE", "!DATA"]:
+			for ending: int in open:
+				out[ending] = true
+			open.clear()
+		elif keyword == "STEP" or keyword == "ROTSTEP":
+			open.append(at)
+	for ending: int in open:
+		out[ending] = true
+	return out
 
 
 static func _number(value: float) -> String:

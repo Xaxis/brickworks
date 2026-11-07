@@ -2271,11 +2271,11 @@ func _ref_text(save: Save, item: Item) -> String:
 
 ## [param text] read back as a reader reads it: where a copy comes back
 ## numbered otherwise than it is, its line says its number
-## (LdrModel.COPY_META), and the text is put together again. Not over a
-## line written as it was, unless the text names that copy (IN_META): the
-## file never said which copy it is, and a line added above it in a
-## section the edit left alone changed what nothing changed (kt4review #8).
-## Opened again, that copy is numbered as the file has it.
+## (LdrModel.COPY_META), and the text is put together again. Over a line
+## kept as it was too: what it says changed, as the copy before it went,
+## and unsaid, the copy opens again as another (kt4review #8, and its
+## probe's "the same copies"). The line is the app's own, which other
+## programs skip.
 func _read_back(save: Save, text: String) -> String:
 	if save.library == null:
 		return text
@@ -2287,7 +2287,6 @@ func _read_back(save: Save, text: String) -> String:
 		var read_at: Dictionary = {}
 		for path: String in model.unit_lines:
 			_add_to(read_at, int(model.unit_lines[path]), path)
-		var text_lines: PackedStringArray = text.split("\n")
 		var changed: bool = false
 		for line: int in save.placing:
 			var entry: Array = save.placing[line]
@@ -2298,11 +2297,7 @@ func _read_back(save: Save, text: String) -> String:
 			if meant == got or meant.size() != 1 or not entry[0] is Group:
 				continue
 			var group: Group = entry[0]
-			var leaf: String = Assemblies.leaf(str(meant[0]))
-			if _as_written(group, int(entry[1]), str(meant[0]), text_lines, line) \
-					and not _named_in(text_lines, leaf):
-				continue
-			var number: int = Assemblies.copy_of(leaf)
+			var number: int = Assemblies.copy_of(Assemblies.leaf(str(meant[0])))
 			if int(group.copy_numbers.get(entry[1], 0)) != number:
 				group.copy_numbers[entry[1]] = number
 				changed = true
@@ -2310,35 +2305,6 @@ func _read_back(save: Save, text: String) -> String:
 			return text
 		text = _assemble(save)
 	return text
-
-
-## Whether line [param at] of [param text_lines], placing the copy at
-## [param path] (entry [param n] of [param group]), is that copy's line
-## in the file as it was.
-func _as_written(group: Group, n: int, path: String, text_lines: PackedStringArray,
-		at: int) -> bool:
-	if at < 0 or at >= text_lines.size():
-		return false
-	for member: Target in group.members:
-		if n >= member.entries.size() or not member.entries[n] is Item:
-			continue
-		var item: Item = member.entries[n]
-		if item.child == null or item.child.path != path:
-			continue
-		return item.line >= 0 and item.line < lines.size() \
-			and lines[item.line].trim_suffix("\r") == text_lines[at].trim_suffix("\r")
-	return false
-
-
-## Whether a line of [param text_lines] names the copy [param leaf] as
-## the one the next lines are of (IN_META).
-static func _named_in(text_lines: PackedStringArray, leaf: String) -> bool:
-	var wanted: String = leaf.to_lower()
-	for line: String in text_lines:
-		var named: Variant = _in_named(line.trim_suffix("\r"))
-		if named != null and wanted in Array(str(named).to_lower().split("/")):
-			return true
-	return false
 
 
 # -- read back -----------------------------------------------------------------

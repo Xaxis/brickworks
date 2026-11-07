@@ -84,9 +84,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   part in it stays where its line is (its step is no one's to see).
   `0 !BRICKWORKS IN <copy>` goes before the lines of a copy built in its
   parent's steps (`AuthorSteps.IN_PARENT`), and `0 !BRICKWORKS COPY n` above
-  a line written anew whose copy would be read back numbered otherwise, or
-  that an IN line names; a line kept as it was gets none, and opens again
-  numbered as the file has it. Every other line where it was (notes, metas,
+  a line whose copy would be read back numbered otherwise (the copy before it
+  taken off: the app's own line, which other programs skip, so the copy opens
+  again as itself). Every other line where it was (notes, metas,
   empty steps, ROTSTEP, the author, `!DATA`, FILE names, sub-models nothing
   places, one emptied by an edit too, as Ungroup, LDCad and Studio keep it).
   A part made here that a new line names (a skin pasted, a part from the
