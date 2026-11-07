@@ -70,7 +70,10 @@ def test_a_signed_manifest_holds_and_a_changed_one_does_not() -> None:
         assert release.check_update_manifest(forged, {key_id: public}) == [
             "no signature by a key the app carries holds"]
         # A key the app does not carry signs nothing it believes.
-        other, other_id, other_public = _key(Path(scratch) / "..")
+        # In a folder of its own: "scratch/.." wrote /tmp/key.pem, a name
+        # every run on the machine shared, and suites now run side by side.
+        (Path(scratch) / "other").mkdir()
+        other, other_id, other_public = _key(Path(scratch) / "other")
         assert release.check_update_manifest(envelope, {other_id: other_public}) == [
             "no signature by a key the app carries holds"]
 
