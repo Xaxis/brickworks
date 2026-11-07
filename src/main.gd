@@ -6169,6 +6169,20 @@ func _make_render() -> void:
 		render.rig_lights.append(light)
 	render.named = _bar.model_name
 	render.player = _motions
+	# lights (APP_UX5 #7): Render's Lights in the model change the model,
+	# kept as any change is, never one shared to look at; a new light is set
+	# over the selection, or over what is built.
+	render.lights_changed = _store.touch
+	render.may_change = func() -> bool: return _shell == null or not _shell.read_only
+	render.chosen_box = func() -> AABB:
+		var box := AABB()
+		var any: bool = false
+		for id: int in _builder.selection:
+			var brick: BrickWorld.Brick = _world.get_brick(id)
+			if brick != null:
+				box = box.merge(_box_of(brick)) if any else _box_of(brick)
+				any = true
+		return box if any else _built_bounds()
 	_add_to_hud(render)
 	var kind: GDScript = Later.script(&"RenderDialog")
 	var fit: Callable = func() -> void: _inset(render, float(kind.WIDE), float(kind.TALL))

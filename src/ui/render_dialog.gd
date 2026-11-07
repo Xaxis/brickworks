@@ -226,6 +226,8 @@ func open() -> void:
 		if not settings.saved_view.is_empty() else ""
 	_list_views()
 	_list_presets(_chosen_preset())
+	# lights (APP_UX5 #7): the model's lights as it keeps them now.
+	_list_lamps(0)
 	_describe()
 	visible = true
 	if _scrim != null:
@@ -549,13 +551,20 @@ func _build() -> void:
 	for key: String in StudioRender.HDRIS:
 		_light.add_item(str(StudioRender.HDRIS[key][0]) + " (photographed)")
 		_light.set_item_metadata(_light.item_count - 1, key)
+	# lights (APP_UX5 #7): the studio put out, the model's own lights and its
+	# glowing plastics all there is.
+	_light.add_item("Dark: only the model's own lights")
+	_light.set_item_metadata(_light.item_count - 1, "dark")
 	_light.item_selected.connect(func(index: int) -> void:
 		settings.lighting = str(_light.get_item_metadata(index))
+		_show_lamp()
 		_ask_preview())
 	right.add_child(_light)
 	_turn = _slider(right, "Light from", -180.0, 180.0, 0.0, 5.0, func(value: float) -> void:
 		settings.light_turn = value
 		_ask_preview())
+	# lights (APP_UX5 #7): the lights kept with the model.
+	_build_lamps(right)
 
 	_heading(right, "Camera")
 	_view = OptionButton.new()
@@ -731,6 +740,9 @@ func _say_white() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and not _backgrounds.is_empty():
 		_say_white()
+	# lights (APP_UX5 #7): Which's rows are words made through tr().
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _lamp != null:
+		_list_lamps(_lamp.selected)
 
 
 ## A row of buttons of which one is down.
@@ -1158,6 +1170,7 @@ func _show_choices() -> void:
 		if str(_light.get_item_metadata(n)) == settings.lighting:
 			_light.select(n)
 	_turn.set_value_no_signal(settings.light_turn)
+	_show_lamp()
 	_list_views()
 	_focal.set_value_no_signal(settings.focal_mm)
 	var stop_at: int = 0
@@ -1517,6 +1530,18 @@ func controls_by_name() -> Dictionary:
 	named_controls["render_preset_save"] = _preset_save
 	named_controls["render_preset_remove"] = _preset_remove
 	named_controls["render_choices"] = _choices
+	# lights (APP_UX5 #7).
+	named_controls["render_lamp"] = _lamp
+	named_controls["render_lamp_colour"] = _lamp_colour
+	named_controls["render_lamp_remove"] = _lamp_remove
+	named_controls["render_lamp_strength"] = _lamp_strength
+	named_controls["render_lamp_cone"] = _lamp_cone
+	named_controls["render_lamp_size"] = _lamp_size
+	named_controls["render_lamp_shadows"] = _lamp_shadows
+	named_controls["render_lamp_from_eye"] = _lamp_from_eye
+	named_controls["render_lamp_over"] = _lamp_over
+	for n: int in SceneLights.KINDS.size():
+		named_controls["render_lamp_add_" + SceneLights.KINDS[n]] = _lamp_adds[n]
 	return named_controls
 
 
@@ -1539,3 +1564,244 @@ func _tell_page() -> void:
 		return
 	_told_page = said
 	JavaScriptBridge.eval("window.brickworksRender = %s" % said, true)
+
+
+# -- the model's own lights (lights, APP_UX5 #7) ---------------------------------
+
+## What Render's Lights in the model changes the model through, main's: a
+## change to be kept (ModelStore.touch, which the autosave and the title's
+## dot hear), whether the model may be changed now (not one shared to look
+## at), and the box a new light is set over: the selection's, or what is
+## built when nothing is selected.
+var lights_changed: Callable = func() -> void: pass
+var may_change: Callable = func() -> bool: return true
+var chosen_box: Callable = func() -> AABB: return AABB()
+var _lamp: OptionButton
+var _lamp_colour: ColorPickerButton
+var _lamp_remove: Button
+var _lamp_rows: VBoxContainer
+var _lamp_strength: HSlider
+var _lamp_cone: HSlider
+var _lamp_size: HSlider
+var _lamp_shadows: CheckBox
+var _lamp_from_eye: Button
+var _lamp_over: Button
+var _lamp_adds: Array[Button] = []
+var _lamp_note: Label
+
+
+## Lights in the model: which light, its colour and Remove; its strength,
+## a spot's cone and a bulb's or a panel's size; its shadows, and where it
+## is: from where the window looks, or hung over the selection; and Add, a
+## light of each kind set over the selection as a photographer first sets
+## one (SceneLights.made). Every change is the model's, kept with it.
+func _build_lamps(into: Control) -> void:
+	_heading(into, "Lights in the model")
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	into.add_child(row)
+	_lamp = OptionButton.new()
+	_lamp.add_theme_font_size_override("font_size", 12)
+	_lamp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_lamp.tooltip_text = "Which of the model's lights to change"
+	# Its rows are numbered words made here, each through tr().
+	_lamp.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_lamp.item_selected.connect(func(_index: int) -> void: _show_lamp())
+	row.add_child(_lamp)
+	_lamp_colour = ColorPickerButton.new()
+	_lamp_colour.edit_alpha = false
+	_lamp_colour.custom_minimum_size = Vector2(36, 26)
+	_lamp_colour.tooltip_text = "The light's colour"
+	_lamp_colour.color_changed.connect(func(colour: Color) -> void:
+		_change_lamp({"colour": "#" + colour.to_html(false)}))
+	row.add_child(_lamp_colour)
+	_lamp_remove = _button(row, "Remove", _remove_lamp, "Take this light out of the model")
+	_lamp_rows = VBoxContainer.new()
+	_lamp_rows.add_theme_constant_override("separation", 6)
+	into.add_child(_lamp_rows)
+	_lamp_strength = _slider(_lamp_rows, "Strength", 0.05, SceneLights.STRONGEST, 1.0, 0.01,
+		func(value: float) -> void: _change_lamp({"strength": snappedf(value, 0.01)}))
+	# Each step along it the same share brighter, from a glimmer to fifty
+	# times the window's key.
+	_lamp_strength.exp_edit = true
+	_lamp_cone = _slider(_lamp_rows, "Cone", SceneLights.NARROWEST, SceneLights.WIDEST, 40.0, 1.0,
+		func(value: float) -> void: _change_lamp({"cone": value}))
+	_lamp_size = _slider(_lamp_rows, "Size", 1.0, 2000.0, 4.0, 1.0,
+		func(value: float) -> void: _change_lamp({"size": value}))
+	_lamp_size.exp_edit = true
+	var placing := HBoxContainer.new()
+	placing.add_theme_constant_override("separation", 6)
+	_lamp_rows.add_child(placing)
+	_lamp_shadows = CheckBox.new()
+	_lamp_shadows.text = "Shadows"
+	_lamp_shadows.add_theme_font_size_override("font_size", 12)
+	_lamp_shadows.tooltip_text = "Whether what this light lights casts a shadow"
+	_lamp_shadows.toggled.connect(func(on: bool) -> void: _change_lamp({"shadows": on}))
+	placing.add_child(_lamp_shadows)
+	_lamp_from_eye = _button(placing, "From where I look", _lamp_to_eye,
+		"Put the light where the window's camera is, shining the way it looks")
+	_lamp_over = _button(placing, "Over the selection", _lamp_to_selection,
+		"Hang the light over the selected parts, or over the model, shining down on them")
+	var adding := HBoxContainer.new()
+	adding.add_theme_constant_override("separation", 4)
+	into.add_child(adding)
+	var add_words := Label.new()
+	add_words.text = "Add"
+	add_words.add_theme_font_size_override("font_size", 12)
+	adding.add_child(add_words)
+	var tips: Dictionary = {
+		"point": "A bulb over the selection, lighting every way",
+		"spot": "A spot over the selection, its cone just taking it in",
+		"directional": "A sun from the way the window looks, the same light everywhere",
+		"area": "A panel of light over the selection, its shadows soft",
+	}
+	for kind: String in SceneLights.KINDS:
+		var add: Button = _button(adding, SceneLights.kind_words(kind),
+			func() -> void: _add_lamp(kind), str(tips[kind]))
+		add.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_lamp_adds.append(add)
+	_lamp_note = _note(into)
+
+
+## The model's lights in Which, numbered, [param chosen] chosen, and the
+## rest of Lights in the model shown for it.
+func _list_lamps(chosen: int) -> void:
+	if _lamp == null:
+		return
+	var lights: Array = world.scene_lights if world != null else []
+	_lamp.clear()
+	for n: int in lights.size():
+		_lamp.add_item("%d. %s" % [n + 1, tr(SceneLights.kind_words(str(lights[n]["kind"])))])
+	if lights.is_empty():
+		_lamp.add_item(tr("No lights yet"))
+		_lamp.set_item_disabled(0, true)
+	_lamp.select(clampi(chosen, 0, maxi(lights.size() - 1, 0)))
+	_show_lamp()
+
+
+## Which light Lights in the model is changing, from 0, or -1 for none.
+func _lamp_at() -> int:
+	var lights: Array = world.scene_lights if world != null else []
+	if _lamp == null or lights.is_empty():
+		return -1
+	return clampi(_lamp.selected, 0, lights.size() - 1)
+
+
+## The chosen light's colour, strength, cone and size shown, each only for
+## a kind that has it; nothing to change while the model is one shared to
+## look at, and nothing past the most a model keeps to add.
+func _show_lamp() -> void:
+	if _lamp == null:
+		return
+	var lights: Array = world.scene_lights if world != null else []
+	var at: int = _lamp_at()
+	var allowed: bool = bool(may_change.call())
+	var light: Dictionary = lights[at] if at >= 0 else {}
+	var kind: String = str(light.get("kind", ""))
+	_lamp.disabled = at < 0
+	_lamp_colour.visible = at >= 0
+	_lamp_remove.visible = at >= 0
+	_lamp_rows.visible = at >= 0
+	_lamp_cone.get_parent().visible = kind == "spot"
+	_lamp_size.get_parent().visible = kind in ["point", "spot", "area"]
+	for control: BaseButton in [_lamp_remove, _lamp_shadows, _lamp_from_eye, _lamp_over]:
+		control.disabled = not allowed
+	_lamp_colour.disabled = not allowed
+	for slider: HSlider in [_lamp_strength, _lamp_cone, _lamp_size]:
+		slider.editable = allowed
+	for add: Button in _lamp_adds:
+		add.disabled = not allowed or lights.size() >= SceneLights.MOST
+	if at >= 0:
+		_lamp_colour.color = SceneLights.colour_of(light)
+		_lamp_strength.set_value_no_signal(float(light.get("strength", 1.0)))
+		_lamp_cone.set_value_no_signal(float(light.get("cone", 40.0)))
+		_lamp_size.set_value_no_signal(maxf(float(light.get("size", 4.0)), 1.0))
+		_lamp_shadows.set_pressed_no_signal(bool(light.get("shadows", true)))
+	if not allowed:
+		_lamp_note.text = "This model is shared to look at: its lights are drawn, not changed."
+	elif lights.is_empty():
+		_lamp_note.text = ("Lights the model keeps, drawn in every quality: Add sets one over "
+			+ "the selection, or over the model when nothing is selected.")
+	elif lights.size() >= SceneLights.MOST:
+		_lamp_note.text = "A model keeps at most %d lights." % SceneLights.MOST
+	elif settings.lighting == "dark":
+		_lamp_note.text = "In the Dark light these are all there is, with the plastics that glow."
+	else:
+		_lamp_note.text = ("Over the studio's light. Dark, in Light, puts the studio out and "
+			+ "lights the plastics that glow.")
+
+
+## [param fields] changed in the chosen light, each checked as a file's
+## line is (SceneLights.typed), and kept with the model.
+func _change_lamp(fields: Dictionary) -> void:
+	var at: int = _lamp_at()
+	if at < 0 or not bool(may_change.call()):
+		return
+	var lights: Array = world.scene_lights.duplicate()
+	var light: Dictionary = (lights[at] as Dictionary).duplicate()
+	light.merge(fields, true)
+	var checked: Dictionary = SceneLights.typed(light)
+	if checked.is_empty() or SceneLights.same([checked], [lights[at]]):
+		return
+	lights[at] = checked
+	_keep_lamps(lights, at)
+
+
+## [param lights] as the model's, [param chosen] chosen: a new array each
+## time, as the saved views are, since the autosave may be reading the one
+## before.
+func _keep_lamps(lights: Array, chosen: int) -> void:
+	world.scene_lights = lights
+	lights_changed.call()
+	_list_lamps(chosen)
+	_ask_preview()
+
+
+func _add_lamp(kind: String) -> void:
+	if world == null or not bool(may_change.call()):
+		return
+	if world.scene_lights.size() >= SceneLights.MOST:
+		_status.text = "A model keeps at most %d lights." % SceneLights.MOST
+		return
+	var box: AABB = chosen_box.call()
+	if box.size.length() <= 0.0:
+		box = world.model_bounds()
+	var way: Vector3 = box.get_center() - eye.global_position if eye != null \
+		else Vector3(-0.5, -0.6, -0.6)
+	var light: Dictionary = SceneLights.made(kind, box, way)
+	if light.is_empty():
+		return
+	var lights: Array = world.scene_lights.duplicate()
+	lights.append(light)
+	_keep_lamps(lights, lights.size() - 1)
+	_status.text = "Added a light: the model keeps it, and every render draws it."
+
+
+func _remove_lamp() -> void:
+	var at: int = _lamp_at()
+	if at < 0 or not bool(may_change.call()):
+		return
+	var lights: Array = world.scene_lights.duplicate()
+	lights.remove_at(at)
+	_keep_lamps(lights, at - 1 if at > 0 else 0)
+
+
+func _lamp_to_eye() -> void:
+	var at: int = _lamp_at()
+	if at < 0 or eye == null or not bool(may_change.call()):
+		return
+	var lights: Array = world.scene_lights.duplicate()
+	lights[at] = SceneLights.from_eye(lights[at], eye.global_transform)
+	_keep_lamps(lights, at)
+
+
+func _lamp_to_selection() -> void:
+	var at: int = _lamp_at()
+	if at < 0 or not bool(may_change.call()):
+		return
+	var box: AABB = chosen_box.call()
+	if box.size.length() <= 0.0:
+		box = world.model_bounds()
+	var lights: Array = world.scene_lights.duplicate()
+	lights[at] = SceneLights.over(lights[at], box)
+	_keep_lamps(lights, at)

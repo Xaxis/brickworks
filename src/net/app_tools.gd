@@ -250,6 +250,11 @@ there (view_model view= looks from it first).
  - render_queue: pictures lined up with Render's settings and drawn one \
 after another while the person goes on working, as File, Render queue… \
 does; list says how far each has got and where it was saved.
+ - light_model: the lights kept with the model, as Render's Lights in the \
+model keeps them: a spot, a bulb, a sun or a panel of light, hung over \
+parts by number or placed in the file's coordinates. render_model and \
+render_queue draw them; light="dark" puts the studio out, and they and the \
+plastics that glow (Glow In Dark, the neons) are all that lights the model.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, a LEGO® Pick a Brick list, or the building instructions as a \
@@ -828,7 +833,10 @@ func definitions() -> Array:
 				+ "and rim over a softbox studio (window, the default, is the window's own). "
 				+ "backdrop white, gradient, grey, dark or none (as Render last had it when "
 				+ "omitted). depth_of_field blurs what is nearer and farther than the "
-				+ "model's middle, as a lens at f/4 does, and is drawn at best. Saved where "
+				+ "model's middle, as a lens at f/4 does, and is drawn at best. light studio "
+				+ "(the window's three lights, the default), softbox, window or daylight "
+				+ "(photographed places), or dark: the studio put out, the model's own lights "
+				+ "(light_model) and the plastics that glow all that lights it. Saved where "
 				+ "Render saves. It is a job: the answer is a job number at once, and job "
 				+ "gives the result: a picture with it, or a turntable's or a build's six frames "
 				+ "in one picture, the last its end. Needs the app in a window."),
@@ -842,6 +850,9 @@ func definitions() -> Array:
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
 				"depth_of_field": {"type": "boolean"},
+				# lights (APP_UX5 #7).
+				"light": {"type": "string", "enum": ["studio", "softbox", "window", "daylight",
+					"dark"]},
 			}},
 		},
 		{
@@ -851,7 +862,7 @@ func definitions() -> Array:
 				+ "model and the view as they are now (view current, the window's, unless "
 				+ "another is given: view= may name a view saved with the model, drawn from "
 				+ "exactly there), with Render's settings changed by quality, size, "
-				+ "samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as "
+				+ "samples (Best's, 1 to 4096), view, look, backdrop, depth_of_field and light as "
 				+ "render_model takes them; drawing begins at once unless paused, and each is "
 				+ "saved where Render saves under a name of its own. list (the default) says "
 				+ "what is waiting, being drawn and done, with where each was saved, and "
@@ -873,6 +884,47 @@ func definitions() -> Array:
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
 				"depth_of_field": {"type": "boolean"},
+				# lights (APP_UX5 #7).
+				"light": {"type": "string", "enum": ["studio", "softbox", "window", "daylight",
+					"dark"]},
+			}},
+		},
+		# lights (APP_UX5 #7): the lights kept with the model (SceneLights).
+		{
+			"name": "light_model",
+			"description": ("The lights kept with the model, as Render's Lights in the model "
+				+ "keeps them: a spot over a cockpit, a bulb in a lamp post, a low sun, a panel "
+				+ "of light over a room. render_model and render_queue draw them over the "
+				+ "studio in every quality, and with light=dark they and the plastics that "
+				+ "glow are all that lights the model. With no op it lists them, numbered, and "
+				+ "changes nothing. op add puts one in: kind spot (the default), point (a "
+				+ "bulb), directional (a sun) or area (a square panel of light), set over the "
+				+ "parts numbered in over= (look_at_model numbers them; the whole model when "
+				+ "omitted) as a photographer first sets one, or placed by at= and aim=. op "
+				+ "change changes light number= (any of over, at, aim, colour, strength, cone, "
+				+ "size, shadows); op remove takes light number= out. at and aim are in LDU in "
+				+ "the file's coordinates, LDraw's: y down, so a light above the model has a "
+				+ "smaller y than its top, and aim [0, 1, 0] shines straight down. strength 1 "
+				+ "lights a face 100 LDU from a lamp, or any face turned to a sun, as the "
+				+ "window's key light does, and a lamp lights four times as brightly at half "
+				+ "the distance. cone is a spot's whole angle in degrees, 2 to 160; size a "
+				+ "bulb's radius or a panel's side in LDU. At most 8. Kept in the model's file, "
+				+ "saved with it, not an undo step."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"op": {"type": "string", "enum": ["list", "add", "change", "remove"]},
+				"number": {"type": "integer", "description": "which light, from 1, as list numbers them"},
+				"kind": {"type": "string", "enum": ["spot", "point", "directional", "area"]},
+				"over": {"type": "array", "items": {"type": "integer"},
+					"description": "the parts' numbers to hang the light over, shining down on them"},
+				"at": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3,
+					"description": "where it is, [x, y, z] in LDU, the file's coordinates (y down)"},
+				"aim": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3,
+					"description": "the way it shines, [x, y, z], the file's coordinates (y down)"},
+				"colour": {"type": "string", "description": "#rrggbb; a warm white, #fff1d6, when omitted"},
+				"strength": {"type": "number", "description": "above 0 to 50; 1 is the window's key"},
+				"cone": {"type": "number", "description": "a spot's whole angle in degrees, 2 to 160"},
+				"size": {"type": "number", "description": "a bulb's radius or a panel's side, in LDU"},
+				"shadows": {"type": "boolean", "description": "whether what it lights casts shadows; true when omitted"},
 			}},
 		},
 		{
@@ -1161,6 +1213,9 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _render(input, work)
 		"render_queue":
 			return _render_queue(input)
+		# lights (APP_UX5 #7).
+		"light_model":
+			return _light_model(input)
 		"export_model":
 			return await _export(input, work)
 		"brickify":
@@ -1263,7 +1318,9 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_
 	# Edit, Pattern…'s grid (PatternTool).
 	"pattern_parts",
 	# pagesetup: the booklet's page.
-	"page_setup"]
+	"page_setup",
+	# lights (APP_UX5 #7): the lights kept with the model.
+	"light_model"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the
@@ -1294,6 +1351,9 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		# pagesetup: how the page is set up, read.
 		"page_setup":
 			return input.is_empty()
+		# lights (APP_UX5 #7): the model's lights, listed.
+		"light_model":
+			return str(input.get("op", "list")) == "list"
 	return false
 
 
@@ -3636,6 +3696,11 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 			chosen.transparent = true
 		elif not chosen.use_backdrop(backdrop):
 			return "backdrop is white, gradient, grey, dark or none."
+	# lights (APP_UX5 #7): the light the set is in.
+	if input.has("light"):
+		var light_wrong: String = chosen.take({"light": input["light"]})
+		if not light_wrong.is_empty():
+			return light_wrong
 	if bool(input.get("depth_of_field", false)):
 		# A lens wide enough to blur is many frames through it: Best's.
 		chosen.f_stop = 4.0
@@ -3740,6 +3805,92 @@ static func _best_said(dialog: RenderDialog, chosen: RenderSettings) -> String:
 	var drawn: RenderSettings = chosen.copy()
 	drawn.traced = traced
 	return "Best was drawn so: " + drawn.best_words()
+
+
+# -- lights (APP_UX5 #7): the lights kept with the model -------------------------
+
+
+## light_model: the lights kept with the model (SceneLights) listed, put in,
+## changed or taken out, in the file's coordinates, as Render's Lights in the
+## model changes them; each change kept with the model as the window's are
+## (ModelStore.touch), and Render's dialog shows it when next opened.
+func _light_model(input: Dictionary) -> String:
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var lights: Array = SceneLights.in_file(world.scene_lights, store.lift())
+	var op: String = str(input.get("op", "list"))
+	if op == "list":
+		return SceneLights.words(lights)
+	if not op in ["add", "change", "remove"]:
+		return "op is list, add, change or remove."
+	if world.brick_count() - store.scenery.size() <= 0:
+		return "There is nothing on the baseplate to light yet."
+	var at: int = int(input.get("number", 0)) - 1
+	if op != "add" and (at < 0 or at >= lights.size()):
+		if lights.is_empty():
+			return "The model keeps no lights yet: op add puts one in."
+		return "number is 1 to %d, as op list numbers them; nothing changed." % lights.size()
+	if op == "remove":
+		lights.remove_at(at)
+		_keep_lights(lights)
+		return "Took light %d out of the model. %s" % [at + 1, SceneLights.words(lights)]
+	if op == "add" and lights.size() >= SceneLights.MOST:
+		return "A model keeps at most %d lights: op remove takes one out first." % SceneLights.MOST
+	# What it is hung over: the parts named, or the whole model.
+	var box := AABB()
+	if input.has("over"):
+		var given: Variant = input["over"]
+		if not given is Array or (given as Array).is_empty():
+			return "over is the parts' numbers, from look_at_model."
+		var any: bool = false
+		for raw: Variant in given:
+			var brick: BrickWorld.Brick = world.get_brick(int(raw))
+			if brick == null or store.scenery.has(int(raw)):
+				return "No part numbered %s (look_at_model numbers them); nothing changed." % str(raw)
+			var part: AABB = app.call("_box_of", brick)
+			box = box.merge(part) if any else part
+			any = true
+	else:
+		box = app.call("_built_bounds")
+	var light: Dictionary
+	if op == "add":
+		var kind: String = str(input.get("kind", "spot"))
+		if not kind in SceneLights.KINDS:
+			return "kind is spot, point, directional or area."
+		var camera: Camera3D = app.get("_camera")
+		var way: Vector3 = box.get_center() - camera.global_position if camera != null \
+			else Vector3(-0.5, -0.6, -0.6)
+		light = SceneLights.in_file([SceneLights.made(kind, box, way)], store.lift())[0]
+	else:
+		light = (lights[at] as Dictionary).duplicate()
+		if input.has("over"):
+			var placed: Dictionary = SceneLights.placed([light], store.lift())[0]
+			light = SceneLights.in_file([SceneLights.over(placed, box)], store.lift())[0]
+	for field: String in ["at", "aim", "colour", "strength", "cone", "size", "shadows"]:
+		if input.has(field):
+			light[field] = input[field]
+	var checked: Dictionary = SceneLights.typed(light)
+	if checked.is_empty():
+		return ("That is no light: at and aim are three numbers each (aim not all 0), colour "
+			+ "#rrggbb, strength above 0 to %d, cone 2 to 160, size 0 to 4000; nothing "
+			+ "changed.") % roundi(SceneLights.STRONGEST)
+	if op == "add":
+		lights.append(checked)
+		at = lights.size() - 1
+	else:
+		lights[at] = checked
+	_keep_lights(lights)
+	return "%s light %d. %s\nrender_model draws it; light=dark draws it alone." % [
+		"Put in" if op == "add" else "Changed", at + 1, SceneLights.words(lights)]
+
+
+## [param lights], in the file's coordinates, as the model's: a new array, as
+## the window's are, and the change kept.
+func _keep_lights(lights: Array) -> void:
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	world.scene_lights = SceneLights.placed(lights, store.lift())
+	store.touch()
 
 
 ## File, Render queue…, for a session: the window's own queue (RenderQueue).

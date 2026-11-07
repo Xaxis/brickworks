@@ -107,11 +107,14 @@ const OVERTAKEN_MS := 1500
 ## What the model is besides its parts, carried the same way, each by a key
 ## of its own with its words as the file has them (_meta_now): its name, the
 ## floor, the colours of hidden parts, motions, the booklet's looks, the
-## steps of sub-assembly copies, and sections broken out. And "~part:<id>":
+## steps of sub-assembly copies, sections broken out, and the lights placed
+## in it (SceneLights, as JSON in the file's coordinates). And "~part:<id>":
 ## the LDraw files of a part made in the app, sent once with the first part
 ## of it put down, so the other side can draw it.
 const META_KEYS: Array[String] = ["~title", "~floor", "~hidden", "~motions", "~looks",
-	"~unit_steps", "~broken"]
+	"~unit_steps", "~broken",
+	# lights (APP_UX5 #7): the lights placed in the model.
+	"~lights"]
 const MADE_PART := "~part:"
 ## A comment pinned to a part, a key each (PinnedComments.session_words), so
 ## two people pinning at once both keep theirs.
@@ -1456,6 +1459,7 @@ func _meta_now() -> Dictionary:
 		"~looks": var_to_str(world.step_looks),
 		"~unit_steps": var_to_str(world.unit_steps),
 		"~broken": _broken_words(),
+		"~lights": JSON.stringify(SceneLights.in_file(world.scene_lights, store.lift())),
 	}.merged(_pin_words())
 
 
@@ -1516,6 +1520,22 @@ func _put_meta(key: String, words: String) -> void:
 			TogetherWords.left_out_each("steps of sub-assembly copies", dropped)
 		"~broken":
 			_broken_from(words)
+		"~lights":
+			# Each read as a file's line is: whatever another side sends is
+			# data of a light's shape, or left out.
+			# Words that are no list at all change nothing here.
+			var given: Variant = JSON.parse_string(words) if not words.is_empty() else []
+			if not given is Array:
+				TogetherWords.left_out("lights", "not a list of lights")
+				return
+			var lights: Array = []
+			for each: Variant in given:
+				var light: Dictionary = SceneLights.parsed(each)
+				if not light.is_empty() and lights.size() < SceneLights.MOST:
+					lights.append(light)
+			if lights.size() != (given as Array).size():
+				TogetherWords.left_out("lights", "not lights")
+			world.scene_lights = SceneLights.placed(lights, store.lift())
 		_ when key.begins_with(PIN_KEY):
 			store.pins.put_session_words(key.substr(PIN_KEY.length()), words, world, store.lift(),
 				brick_of)

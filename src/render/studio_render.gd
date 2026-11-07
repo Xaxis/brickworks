@@ -31,6 +31,18 @@
 ## plastic, its environment and its frame cost are the same either way.
 ## docs/RENDERING.md says what it reaches and what is left.
 ##
+## And the lights placed in the model (SceneLights: bulbs, spots, suns and
+## panels, BrickWorld.scene_lights) over the set, rasterised as Godot's own
+## lights and path traced as lights of the tracer's, the same strength and
+## the same cone in both. The exposure is metered without them, as a
+## photographer meters the set and then adds a lamp: what a spot lights is
+## brighter, and nothing outside its cone changes. In the Dark light
+## (RenderSettings.lighting "dark") the studio is put out, its ambient
+## lowered to a glimmer, and the model's lights are all there is, with the
+## plastics that glow (glow-in-the-dark and the neons) drawn as light, as
+## Studio's Eyesight draws them: lit from within, and lighting what is
+## round them.
+##
 ## Off screen, in viewports of its own with a copy of the model, so the
 ## window keeps drawing and answering: a frame of the render is a frame of
 ## the app, and the work is cut into frames (one sample of one piece of the
@@ -146,6 +158,20 @@ const GI_KEY := 1.4
 ## How much of the ambient light Best moves into lights from the sky that
 ## cast shadows, which is what puts occlusion under a ledge.
 const SKY_SHARE := 0.6
+## The Dark light (lights): its ambient under Forward+, a glimmer where the
+## window's is 0.24, and how much of its colour the backdrop keeps beyond the
+## sweep, where no light reaches.
+const DARK_AMBIENT := 0.025
+const DARK_BACKDROP := 0.04
+## How much light a glowing plastic gives off in the Dark light, as radiance
+## in the window's units times its colour: the plastic shaders' glow and the
+## tracer's emission. A 1 x 1 brick of it lights a face beside it about as
+## the window's key does.
+const GLOW := 2.0
+## The rasterised glow: a light at each lump of glowing parts, this many LDU
+## across at most, and at most this many of them, the brightest.
+const GLOW_CELL := 80.0
+const GLOW_LIGHTS := 12
 
 ## The model, in the world being rendered, and what of it is not the model:
 ## the floor's baseplate, which a render leaves out for the studio's own
@@ -179,6 +205,16 @@ var _contact: MeshInstance3D
 var _contact_material: ShaderMaterial
 var _lights: Array[DirectionalLight3D] = []
 var _sky_light: DirectionalLight3D
+## The lights placed in the model, on the set as it stands (SceneLights):
+## what holds them turns and moves with the model's copy, and each light
+## carries the light it is and its reach as meta, for the tracer
+## (_traced_scene). And the rasterised glow's lights, in the Dark light.
+var _lamps: Node3D
+var _lamp_nodes: Array[Light3D] = []
+var _glow_nodes: Array[OmniLight3D] = []
+## How much the glowing plastics give off in the picture being drawn: GLOW in
+## the Dark light, nothing otherwise.
+var _glow: float = 0.0
 var _floor_view: SubViewport
 var _fence: SubViewport
 var _floor_camera: Camera3D
@@ -530,6 +566,12 @@ func _build() -> void:
 	_stage.library = library
 	_stage.keeps_history = false
 	_pivot.add_child(_stage)
+	_lamps = Node3D.new()
+	_lamps.name = "Lamps"
+	_pivot.add_child(_lamps)
+	# Room for the lamps' shadows, each a share of it: the default's 2048
+	# split eight ways blurred a spot's shadow in a 1080p picture.
+	_scene.positional_shadow_atlas_size = 2048 if OS.has_feature("web") else 4096
 
 	_contact = MeshInstance3D.new()
 	_contact.layers = 2
@@ -751,11 +793,15 @@ func _warm(view: SubViewport) -> bool:
 		_warmed[asked] = true
 		return true
 	var mask: int = camera.cull_mask
-	var lights: Array[DirectionalLight3D] = _lights.duplicate()
+	var lights: Array[Light3D] = []
+	lights.append_array(_lights)
 	lights.append(_sky_light)
+	# And the model's own (SceneLights), whose kinds build programs of their own.
+	lights.append_array(_lamp_nodes)
+	lights.append_array(_glow_nodes)
 	var seen: Array[int] = []
 	var lighting: Array[int] = []
-	for light: DirectionalLight3D in lights:
+	for light: Light3D in lights:
 		# A camera sees only the lights on the layers it draws: left off
 		# them, what was built was for a set with no lights at all.
 		seen.append(light.layers)
@@ -792,6 +838,9 @@ func _setup(view: SubViewport, camera: Camera3D) -> String:
 	var lights := PackedStringArray()
 	for light: DirectionalLight3D in _lights + [_sky_light]:
 		lights.append("%d%d" % [int(light.visible), int(light.shadow_enabled)])
+	for light: Light3D in _lamp_nodes:
+		lights.append("%s%d" % [light.get_class().left(1), int(light.shadow_enabled)])
+	lights.append("g%d" % _glow_nodes.size())
 	var environment: Environment = camera.environment
 	return "%s %d %d %s|" % [view.name, view.msaa_3d,
 		environment.get_instance_id() if environment != null else 0, "".join(lights)]
@@ -1005,10 +1054,27 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 	last_samples = plan.samples
 	_pivot.position = Vector3(_bounds.get_center().x, 0.0, _bounds.get_center().z)
 	_stage.position = -_pivot.position
+	_lamps.position = _stage.position
 	_pivot.rotation = Vector3.ZERO
+	# The model's own lights, and in the Dark light its glowing plastics
+	# (SceneLights), each on the set as the model has them.
+	var dark: bool = settings.lighting == "dark"
+	_glow = GLOW if dark else 0.0
+	_place_lamps(world.scene_lights, settings)
+	_place_glows(settings)
+	for batch: Node in _stage.get_children():
+		if not batch is MultiMeshInstance3D:
+			continue
+		var plastic := (batch as MultiMeshInstance3D).material_override as ShaderMaterial
+		while plastic != null:
+			plastic.set_shader_parameter("room", 0.0 if dark else 1.0)
+			plastic.set_shader_parameter("glow", _glow)
+			plastic = plastic.next_pass as ShaderMaterial
 	# What the window's own light makes of this model from here: the
 	# lightness every other choice is exposed to match.
-	var metered: bool = settings.lighting != "studio" or plan.gi or plan.traced
+	# Not in the Dark light, which is as dark as it is: metered to the
+	# window's lightness, its glimmer was made daylight again.
+	var metered: bool = (settings.lighting != "studio" or plan.gi or plan.traced) and not dark
 	var wanted: float = 0.0
 	if metered:
 		var reference: RenderSettings = settings.copy()
@@ -1063,9 +1129,12 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 			scale *= clampf(pow(wanted / got, 1.4), 0.4, 2.5)
 			environment.tonemap_exposure = base * scale
 		last_exposure = scale
-	# And the sweep brought to its colour: white white, black black.
+	# And the sweep brought to its colour: white white, black black. Not in
+	# the Dark light, where it is as lit as the model's lights light it.
 	_floor_mask = null
-	if _backdrop.visible:
+	_backdrop_material.set_shader_parameter("level", 1.0)
+	last_level = 1.0
+	if _backdrop.visible and not dark:
 		var level: float = 1.0
 		_backdrop_material.set_shader_parameter("level", level)
 		var goal: float = minf(settings.backdrop.get_luminance(), 0.95)
@@ -1120,7 +1189,11 @@ func _meter_floor(shot: Shot, picture: Vector2i) -> float:
 			return -1.0
 		_doing("reading the floor's mask")
 		_floor_mask = await _read(_scene)
-	if not await _draw([_scene]):
+	# The sweep in the set's light alone, as the model is metered.
+	_lamps.visible = false
+	var floor_drawn: bool = await _draw([_scene])
+	_lamps.visible = true
+	if not floor_drawn:
 		return -1.0
 	var image: Image = await _read(_scene)
 	if image == null:
@@ -1155,7 +1228,10 @@ func _meter(shot: Shot, picture: Vector2i) -> float:
 	var clear: Array[GeometryInstance3D] = _product_glass()
 	for batch: GeometryInstance3D in clear:
 		batch.visible = false
+	# Metered in the set's light alone: the model's own lights add to it.
+	_lamps.visible = false
 	var drawn: bool = await _draw([_scene])
+	_lamps.visible = true
 	for batch: GeometryInstance3D in clear:
 		batch.visible = true
 	_camera.cull_mask = 1 | 2
@@ -1329,6 +1405,7 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	var reach: float = (shot.origin - _bounds.get_center()).length() + radius * 2.5
 
 	var product: bool = settings.look == "product"
+	var dark: bool = settings.lighting == "dark"
 	var panorama: StudioPanorama = _panorama(settings.lighting)
 	_lit_by = panorama
 	_room = 1.0
@@ -1337,7 +1414,7 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	# three lights, when no photographed place is: a softbox studio. Only on
 	# the desktop, whose sky lights as it should (see below).
 	var reflected: StudioPanorama = panorama
-	if product and panorama == null and full:
+	if product and panorama == null and full and not dark:
 		reflected = _panorama(PRODUCT_SKY)
 		_panorama_in_use = null
 		_lit_by = reflected
@@ -1408,6 +1485,14 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			# like a second sun, and the probe measured the model half as
 			# light again as the window draws it, its reds gone to pink.
 			environment.sdfgi_energy = GI_ENERGY if panorama == null else 1.0
+		if dark:
+			# Nothing of the window's sky: no light from it, and nothing of
+			# it in the plastic's gloss. What lights the model is its own.
+			environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+			environment.ambient_light_color = Color(0.86, 0.88, 0.95)
+			environment.ambient_light_sky_contribution = 0.0
+			environment.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+			environment.sdfgi_read_sky_light = false
 		if product:
 			# A film's curve: highlights roll off to white rather than clip.
 			# Not AgX, which does the same and also bends a bright red
@@ -1439,6 +1524,9 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	else:
 		environment.background_mode = Environment.BG_COLOR
 		environment.background_color = settings.backdrop
+		if dark:
+			environment.background_color = Color(settings.backdrop.r * DARK_BACKDROP,
+				settings.backdrop.g * DARK_BACKDROP, settings.backdrop.b * DARK_BACKDROP)
 	var ambient_forward: float = (look.ambient_light_energy if look != null else 0.24) \
 		/ BrickWorld.light_energy(1.0)
 	if look == null:
@@ -1454,6 +1542,8 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 		environment.sky_rotation = Vector3(0.0, turn, 0.0) if full else Vector3.ZERO
 	elif reflected != null:
 		environment.sky_rotation = Vector3(0.0, turn, 0.0)
+	if dark:
+		ambient_forward = DARK_AMBIENT
 	environment.ambient_light_energy = BrickWorld.light_energy(ambient_forward)
 	_ambient = ambient_forward
 	if plan.gi:
@@ -1495,6 +1585,9 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			# in on a white floor is no shadow: the key gains what the
 			# bounce took, and the floor's shadow is as deep as Quick's.
 			light.light_energy *= GI_KEY
+		# The Dark light puts the studio out.
+		if dark:
+			light.visible = false
 		light.set_meta("toward", toward)
 		_aim_light(light, toward)
 		light.light_angular_distance = plan.soft_key if n == 0 else 0.0
@@ -1513,7 +1606,7 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 		# window look's renders are as they were.
 		light.shadow_bias = 0.12 if product else 0.02
 		light.shadow_normal_bias = 1.5
-	_sky_light.visible = plan.sky_samples
+	_sky_light.visible = plan.sky_samples and not dark
 	_sky_light.shadow_enabled = not settings.no_shadows
 	_sky_light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	_sky_light.directional_shadow_max_distance = reach
@@ -1545,6 +1638,9 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			false, 0.5, 4, 50.0, 300.0)
 		RenderingServer.directional_soft_shadow_filter_set_quality(
 			RenderingServer.SHADOW_QUALITY_SOFT_ULTRA)
+		# And the model's own lights' (SceneLights).
+		RenderingServer.positional_soft_shadow_filter_set_quality(
+			RenderingServer.SHADOW_QUALITY_SOFT_ULTRA)
 	else:
 		_shadow_atlas(_project_atlas())
 
@@ -1564,10 +1660,144 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			Vector3(_bounds.get_center().x, floor_y, _bounds.get_center().z))
 		_backdrop_material.set_shader_parameter("colour",
 			Vector3(settings.backdrop.r, settings.backdrop.g, settings.backdrop.b))
-		var dark: bool = settings.backdrop.get_luminance() < 0.2
+		var dark_sweep: bool = settings.backdrop.get_luminance() < 0.2
 		_backdrop_material.set_shader_parameter("fall", 0.0 if not settings.backdrop_gradient
-			else (FALL_DARK if dark else FALL_GRADIENT))
+			else (FALL_DARK if dark_sweep else FALL_GRADIENT))
 		_backdrop_material.set_shader_parameter("pool", Vector2(radius * 0.7, radius * 3.2))
+
+
+# -- the model's own lights (SceneLights) -----------------------------------------
+
+
+## [param lights] (BrickWorld.scene_lights, the window's coordinates) put on
+## the set as Godot's lights: a bulb an OmniLight3D and a spot a SpotLight3D,
+## each falling off with the square of the distance (attenuation 2) and
+## strong enough that a face 100 LDU away is lit as SceneLights.lit_at says;
+## a sun a DirectionalLight3D; a panel a spot opened nearly flat, falling off
+## as the cosine does, its size softening its shadows (the tracer's is a
+## true square of light). None of their light is bounced by global
+## illumination, nor by the tracer (path_tracer.glsl): what a spot lights is
+## what it lights, and the draft shows the light Best draws.
+func _place_lamps(lights: Array, settings: RenderSettings) -> void:
+	for node: Light3D in _lamp_nodes:
+		node.queue_free()
+	_lamp_nodes.clear()
+	var corner: float = _bounds.size.length()
+	for light: Dictionary in lights:
+		var kind: String = str(light["kind"])
+		var at: Vector3 = SceneLights.at_of(light)
+		var aim: Vector3 = SceneLights.aim_of(light).normalized()
+		var shadows: bool = bool(light.get("shadows", true)) and not settings.no_shadows
+		var node: Light3D
+		# Far enough that its fall to nothing at the end of its range is
+		# beyond anything it lights: three times its farthest corner of the
+		# model, the tracer's the same (path_tracer.glsl's reach).
+		var reach: float = maxf(3.0 * (at.distance_to(_bounds.get_center()) + corner), 400.0)
+		match kind:
+			"point":
+				var omni := OmniLight3D.new()
+				omni.omni_range = reach
+				omni.omni_attenuation = 2.0
+				node = omni
+			"spot", "area":
+				var spot := SpotLight3D.new()
+				spot.spot_range = reach
+				spot.spot_attenuation = 2.0
+				if kind == "spot":
+					spot.spot_angle = float(light.get("cone", 40.0)) * 0.5
+					spot.spot_angle_attenuation = SceneLights.EDGE
+				else:
+					# A flat panel's light: the cosine of the angle off its face.
+					spot.spot_angle = 80.0
+					spot.spot_angle_attenuation = 1.0
+				node = spot
+			"directional":
+				var sun := DirectionalLight3D.new()
+				sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+				sun.directional_shadow_max_distance = maxf(corner * 4.0, 400.0)
+				sun.directional_shadow_fade_start = 1.0
+				sun.light_angular_distance = 0.5
+				node = sun
+			_:
+				continue
+		node.light_color = SceneLights.colour_of(light)
+		node.light_energy = BrickWorld.light_energy(SceneLights.energy(light), shadows)
+		node.light_indirect_energy = 0.0
+		node.light_specular = BrickWorld.light_specular(0.5)
+		node.shadow_enabled = shadows
+		node.shadow_bias = 0.03
+		node.shadow_normal_bias = 1.0
+		if kind != "directional":
+			node.light_size = float(light.get("size", 4.0)) * (1.0 if kind == "area" else 2.0)
+		node.name = "Lamp%d" % _lamp_nodes.size()
+		_lamps.add_child(node)
+		var up: Vector3 = Vector3.UP if absf(aim.y) < 0.98 else Vector3.FORWARD
+		node.transform = Transform3D(Basis.looking_at(aim, up), at)
+		node.set_meta("lamp", light)
+		node.set_meta("reach", reach)
+		_lamp_nodes.append(node)
+
+
+## In the Dark light, the plastics that glow lighting what is round them,
+## rasterised: a light at each lump of glowing parts ([constant GLOW_CELL]
+## across), as much light as their faces give off ([constant GLOW] of their
+## colour over every face of their boxes), at most [constant GLOW_LIGHTS] of
+## the brightest. They cast no shadow, being inside what glows; the tracer
+## needs none of them, its glowing faces being lights of their own.
+func _place_glows(settings: RenderSettings) -> void:
+	for node: OmniLight3D in _glow_nodes:
+		node.queue_free()
+	_glow_nodes.clear()
+	if _glow <= 0.0 or library == null:
+		return
+	var cells: Dictionary = {}
+	for brick: BrickWorld.Brick in _stage.bricks():
+		var colour: PartLibrary.BrickColor = library.color(brick.color_code)
+		if colour == null or not colour.drawn_as in [PartLibrary.BrickColor.Finish.GLOW,
+				PartLibrary.BrickColor.Finish.FLUORESCENT]:
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+		var box: AABB = info.bounds if info != null and info.bounds.size.length() > 0.0 \
+			else AABB(Vector3(-10, -24, -10), Vector3(20, 24, 20))
+		var middle: Vector3 = _stage.drawn_at(brick) * box.get_center()
+		var faces: float = 2.0 * (box.size.x * box.size.y + box.size.y * box.size.z
+			+ box.size.z * box.size.x)
+		var lit: Color = colour.shown.srgb_to_linear()
+		# What its faces give off, as a light at its middle: radiance times
+		# area over four (a sphere's worth of a flat face's pi).
+		var power: float = _glow * faces * 0.25
+		var cell := Vector3i((middle / GLOW_CELL).floor())
+		var into: Array = cells.get(cell, [Vector3.ZERO, Color(0, 0, 0), 0.0])
+		into[0] = (into[0] as Vector3) + middle * power
+		into[1] = (into[1] as Color) + lit * power
+		into[2] = float(into[2]) + power
+		cells[cell] = into
+	var lumps: Array = cells.values()
+	lumps.sort_custom(func(a: Array, b: Array) -> bool: return float(a[2]) > float(b[2]))
+	for lump: Array in lumps.slice(0, GLOW_LIGHTS):
+		var power: float = float(lump[2])
+		var colour: Color = (lump[1] as Color) / power
+		var brightest: float = maxf(colour.r, maxf(colour.g, colour.b))
+		var node := OmniLight3D.new()
+		node.position = (lump[0] as Vector3) / power
+		node.light_color = (colour / maxf(brightest, 0.0001)).linear_to_srgb()
+		# Falling off a little slower than a point would: a lump of plastic
+		# is no point, and a face beside it is lit by it whole.
+		node.omni_attenuation = 1.5
+		node.omni_range = maxf(_bounds.size.length() * 2.0, 400.0)
+		node.light_energy = BrickWorld.light_energy(power * brightest * GLOW_RASTER)
+		node.light_indirect_energy = 0.0
+		node.light_specular = 0.0
+		node.shadow_enabled = false
+		node.light_size = GLOW_CELL * 0.25
+		node.name = "Glow%d" % _glow_nodes.size()
+		_lamps.add_child(node)
+		_glow_nodes.append(node)
+
+
+## The rasterised glow's light against a point's: falling off as distance to
+## the 1.5 (above), it is matched to the square's at 40 LDU.
+const GLOW_RASTER := 0.16
 
 
 ## The shadow map's size, set only when it changes: the atlas is made
@@ -1668,12 +1898,14 @@ func _contact_shadow() -> bool:
 	for light: DirectionalLight3D in lights:
 		lit.append(light.visible)
 		light.visible = false
+	_lamps.visible = false
 	var textures: Array[ImageTexture] = []
 	for n: int in HEIGHTS.size():
 		_floor_camera.far = 2.0 + float(HEIGHTS[n])
 		if not await _draw([_floor_view]):
 			for k: int in lights.size():
 				lights[k].visible = lit[k]
+			_lamps.visible = true
 			return false
 		_doing("reading a silhouette")
 		var silhouette: Image = await _read(_floor_view)
@@ -1684,6 +1916,7 @@ func _contact_shadow() -> bool:
 		textures.append(ImageTexture.create_from_image(silhouette))
 	for k: int in lights.size():
 		lights[k].visible = lit[k]
+	_lamps.visible = true
 	_contact_for = _staged
 	_contact_material.set_shader_parameter("near_tex", textures[0])
 	_contact_material.set_shader_parameter("mid_tex", textures[1])
@@ -1820,8 +2053,11 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	var small := Vector2i(maxi(roundi(120.0 * aspect), 16), 120)
 	var scale: float = 1.0
 	var goal: float = minf(settings.backdrop.get_luminance(), 0.95)
-	for round: int in 5:
-		_tracer.scene = _traced_scene(settings, plan, shot, small, level)
+	# In the set's light alone, as the raster is metered: the model's own
+	# lights add to it (SceneLights). None of it in the Dark light, as dark
+	# as it is.
+	for round: int in (0 if settings.lighting == "dark" else 5):
+		_tracer.scene = _traced_scene(settings, plan, shot, small, level, false)
 		if not _tracer.begin(small):
 			return null
 		# A frame's share at a time: 48 samples at once held the window's
@@ -1911,9 +2147,10 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	return result
 
 
-## What the tracer lights and sees, as path_tracer.glsl's Scene reads it.
+## What the tracer lights and sees, as path_tracer.glsl's Scene reads it:
+## with the model's own lights, unless [param lamps] is false (metering).
 func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Vector2i,
-		level: float) -> PackedFloat32Array:
+		level: float, lamps: bool = true) -> PackedFloat32Array:
 	var tan_half: float = tan(deg_to_rad(shot.fov) * 0.5)
 	var aspect: float = float(picture.x) / float(maxi(picture.y, 1))
 	var across: Vector3 = shot.basis.x * tan_half * aspect
@@ -1939,7 +2176,8 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	data.append_array([_ambient, _ambient, _ambient, 1.0 if place != null else 0.0])
 	data.append_array([energy, _turn, _room, float(PathTracer.PLACE_CELLS.x)])
 	var behind: Color = settings.backdrop.srgb_to_linear()
-	data.append_array([behind.r, behind.g, behind.b, 0.0 if settings.transparent else 1.0])
+	var beyond: Color = behind * (DARK_BACKDROP if settings.lighting == "dark" else 1.0)
+	data.append_array([beyond.r, beyond.g, beyond.b, 0.0 if settings.transparent else 1.0])
 	var dark: bool = settings.backdrop.get_luminance() < 0.2
 	var fall: float = 0.0 if not settings.backdrop_gradient \
 		else (FALL_DARK if dark else FALL_GRADIENT)
@@ -1990,6 +2228,38 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 			data.append_array([colour.r, colour.g, colour.b, float(row[3])])
 		else:
 			data.append_array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+	# The model's own lights (SceneLights), where they stand on the set now:
+	# a turntable's frame has turned them with the model. Each as its raster
+	# light is: the same strength, the same fall with distance and the same
+	# cone, so the two ways of drawing light it alike.
+	var rows: Array = []
+	if lamps:
+		for node: Light3D in _lamp_nodes:
+			if rows.size() >= SceneLights.MOST:
+				break
+			var light: Dictionary = node.get_meta("lamp", {})
+			if light.is_empty():
+				continue
+			var kind: int = SceneLights.KINDS.find(str(light["kind"]))
+			var at: Vector3 = node.global_position
+			var aim: Vector3 = -node.global_transform.basis.z.normalized()
+			var cone: float = cos(deg_to_rad(float(light.get("cone", 40.0)) * 0.5)) \
+				if kind == 1 else -1.0
+			var lit: Color = SceneLights.colour_of(light).srgb_to_linear() \
+				* SceneLights.energy(light)
+			var shadows: bool = bool(light.get("shadows", true)) and not settings.no_shadows
+			rows.append([at.x, at.y, at.z, float(kind), aim.x, aim.y, aim.z, cone,
+				lit.r, lit.g, lit.b, 1.0 if shadows else 0.0,
+				float(light.get("size", 4.0)), SceneLights.EDGE, float(node.get_meta("reach", 1e6)),
+				0.0])
+	data.append_array([float(rows.size()), _glow, 0.0, 0.0])
+	for n: int in SceneLights.MOST:
+		if n < rows.size():
+			data.append_array(rows[n])
+		else:
+			var none := PackedFloat32Array()
+			none.resize(16)
+			data.append_array(none)
 	return data
 
 
@@ -2232,6 +2502,10 @@ func _settle() -> void:
 		RenderingServer.directional_soft_shadow_filter_set_quality(
 			int(ProjectSettings.get_setting(
 				"rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality", 2))
+				as RenderingServer.ShadowQuality)
+		RenderingServer.positional_soft_shadow_filter_set_quality(
+			int(ProjectSettings.get_setting(
+				"rendering/lights_and_shadows/positional_shadow/soft_shadow_filter_quality", 2))
 				as RenderingServer.ShadowQuality)
 	if not _quickened:
 		return

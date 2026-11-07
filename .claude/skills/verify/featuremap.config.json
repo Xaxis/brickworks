@@ -4429,6 +4429,20 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "lights in the model",
+      "entry": "src/assembly/scene_lights.gd",
+      "reach": "tools/probe.sh lights && PROBE_SIZE=1280x720 tools/probe.sh lights -- --no-trace   (by hand: File, Render…, Lights in the model: Spot, Bulb, Sun or Light panel set over the selection, its colour, strength, cone, size and shadows, From where I look, Over the selection, Remove; Light, Dark: only the model's own lights, and the plastics that glow; save and open the model; light_model over MCP, render_model light=dark)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "lights probe",
+      "entry": "src/dev/lights_probe.gd",
+      "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; pictures in shots/lights/)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "pathtrace probe",
       "entry": "src/dev/pathtrace_probe.gd",

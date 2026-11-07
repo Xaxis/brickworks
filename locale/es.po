@@ -11821,3 +11821,85 @@ msgstr "Un preajuste necesita un nombre."
 
 msgid "The preset could not be kept."
 msgstr "No se pudo guardar el preajuste."
+
+# lights (APP_UX5 #7): Render's Lights in the model, and its Dark light.
+msgid "Dark: only the model's own lights"
+msgstr "Oscuro: solo las luces del propio modelo"
+
+msgid "Lights in the model"
+msgstr "Luces en el modelo"
+
+msgid "Which of the model's lights to change"
+msgstr "Qué luz del modelo cambiar"
+
+msgid "The light's colour"
+msgstr "El color de la luz"
+
+msgid "Take this light out of the model"
+msgstr "Quitar esta luz del modelo"
+
+msgid "Strength"
+msgstr "Intensidad"
+
+msgid "Shadows"
+msgstr "Sombras"
+
+msgid "Whether what this light lights casts a shadow"
+msgstr "Si lo que ilumina esta luz proyecta sombra"
+
+msgid "From where I look"
+msgstr "Desde donde miro"
+
+msgid "Put the light where the window's camera is, shining the way it looks"
+msgstr "Poner la luz donde está la cámara de la ventana, iluminando hacia donde mira"
+
+msgid "Over the selection"
+msgstr "Sobre la selección"
+
+msgid "Hang the light over the selected parts, or over the model, shining down on them"
+msgstr "Colgar la luz sobre las piezas seleccionadas, o sobre el modelo, iluminándolas desde arriba"
+
+msgid "A bulb over the selection, lighting every way"
+msgstr "Una bombilla sobre la selección, que ilumina en todas direcciones"
+
+msgid "A spot over the selection, its cone just taking it in"
+msgstr "Un foco sobre la selección, con el cono justo abarcándola"
+
+msgid "A sun from the way the window looks, the same light everywhere"
+msgstr "Un sol desde donde mira la ventana, la misma luz en todas partes"
+
+msgid "A panel of light over the selection, its shadows soft"
+msgstr "Un panel de luz sobre la selección, de sombras suaves"
+
+msgid "Bulb"
+msgstr "Bombilla"
+
+msgid "Spot"
+msgstr "Foco"
+
+msgid "Sun"
+msgstr "Sol"
+
+msgid "Light panel"
+msgstr "Panel de luz"
+
+msgid "No lights yet"
+msgstr "Aún no hay luces"
+
+msgid "This model is shared to look at: its lights are drawn, not changed."
+msgstr "Este modelo se comparte para verlo: sus luces se dibujan, no se cambian."
+
+msgid "Lights the model keeps, drawn in every quality: Add sets one over the selection, or over the model when nothing is selected."
+msgstr "Luces que el modelo guarda, dibujadas en cualquier calidad: Añadir pone una sobre la selección, o sobre el modelo cuando no hay nada seleccionado."
+
+msgid "A model keeps at most %d lights."
+msgstr "Un modelo guarda como mucho %d luces."
+
+msgid "In the Dark light these are all there is, with the plastics that glow."
+msgstr "Con «Oscuro», son la única luz, junto con los plásticos que brillan."
+
+msgid "Over the studio's light. Dark, in Light, puts the studio out and lights the plastics that glow."
+msgstr "Sobre la luz del estudio. «Oscuro», en Luz, apaga el estudio y hace brillar los plásticos que brillan."
+
+msgid "Added a light: the model keeps it, and every render draws it."
+msgstr "Luz añadida: el modelo la guarda y cada render la dibuja."

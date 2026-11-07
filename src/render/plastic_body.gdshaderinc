@@ -42,6 +42,15 @@ uniform float specular_level : hint_range(0.0, 1.0) = 0.5;
 // brick never reads as pure white in shadow.
 uniform float subsurface : hint_range(0.0, 1.0) = 0.10;
 
+// A render's own copy of the model in its Dark light (StudioRender, lights):
+// how much of the window's studio the mirror-like finishes show (their
+// reflection is drawn as light given off, studio()), 1 everywhere else; and
+// how much light the plastics that glow give off, glow-in-the-dark and the
+// neons, as Studio's Eyesight draws them, 0 everywhere else. The window's own
+// plastic never sets either.
+uniform float room : hint_range(0.0, 1.0) = 1.0;
+uniform float glow : hint_range(0.0, 16.0) = 0.0;
+
 // Whether the instance colour needs converting from sRGB to linear here.
 // The two renderers disagree about what they are handed: under Forward+
 // the conversion belongs in the shader, and doing it again under
@@ -646,6 +655,12 @@ void fragment() {
 	CLEARCOAT = coat * (1.0 - 0.6 * on_round);
 	CLEARCOAT_ROUGHNESS = mix(coat_roughness, 0.35, on_round);
 #endif
+	// In a render's Dark light: no studio to reflect, and the glowing
+	// plastics lit from within.
+	emission *= room;
+	if (finish == FINISH_GLOW || finish == FINISH_FLUORESCENT) {
+		emission += body_linear * glow;
+	}
 	ALBEDO = albedo;
 	METALLIC = metallic;
 	ROUGHNESS = roughness;

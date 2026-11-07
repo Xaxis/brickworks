@@ -16,6 +16,17 @@
 // Units are the window's (Forward+): a directional light of energy e lights
 // a white face turned to it e, and a sky of radiance a lights an open white
 // face a. The resolve meters the exposure on top.
+//
+// And the lights placed in the model (SceneLights: bulbs, spots, suns and
+// panels), each lighting the first surface the eye reaches directly, as the
+// rig does, with Godot's own fall with distance and spot cone, and bounced
+// no further, as the raster's are not: the raster's light and this one are
+// the same light, and nothing outside a spot's cone is lit by it; and in the
+// Dark light the plastics that glow giving off
+// light, which lights what is round them by the bounces that find them. A
+// lamp's chances are drawn from a stream of their own: the rest of a path is
+// the same with a lamp or without, so what a lamp does not light comes out
+// the same, sample for sample.
 
 #[raygen]
 
@@ -42,6 +53,20 @@ struct Light {
 	vec4 toward;
 	// Its colour times its energy, and whether it casts a shadow.
 	vec4 colour;
+};
+
+struct Lamp {
+	// Where it is (LDU), and its kind: 0 a bulb, 1 a spot, 2 a sun, 3 a panel.
+	vec4 at;
+	// Which way it shines, and a spot's cone, the cosine of its half-angle.
+	vec4 aim;
+	// Its colour times its energy (a sun's on a face, a lamp's at 1 LDU), and
+	// whether it casts a shadow.
+	vec4 colour;
+	// Its size (a bulb's radius, a panel's side, LDU), how its spot's edge
+	// falls (Godot's spot_angle_attenuation), its reach (where Godot's fall
+	// to nothing ends), unused.
+	vec4 shape;
 };
 
 layout(set = 0, binding = 2, std430) readonly buffer Scene {
@@ -77,6 +102,10 @@ layout(set = 0, binding = 2, std430) readonly buffer Scene {
 	vec4 sky_horizon;
 	vec4 sky_ground;
 	Light lights[4];
+	// How many lamps, and how much light the glowing plastics give off (0
+	// but in the Dark light).
+	vec4 lamp_info;
+	Lamp lamps[8];
 } scene;
 
 struct Instance {
@@ -131,6 +160,10 @@ const int FINISH_GLOW = 7;
 const int FINISH_FLUORESCENT = 8;
 const int FINISH_RUBBER = 9;
 const int FINISH_FABRIC = 10;
+const int LAMP_BULB = 0;
+const int LAMP_SPOT = 1;
+const int LAMP_SUN = 2;
+const int LAMP_PANEL = 3;
 
 // -- random numbers ----------------------------------------------------------
 
@@ -149,6 +182,16 @@ float rand() {
 
 vec2 rand2() {
 	return vec2(rand(), rand());
+}
+
+// The lamps' own stream (see the top).
+uint lamp_state;
+
+vec2 lamp_rand2() {
+	lamp_state = pcg(lamp_state);
+	float a = float(lamp_state >> 8) * (1.0 / 16777216.0);
+	lamp_state = pcg(lamp_state);
+	return vec2(a, float(lamp_state >> 8) * (1.0 / 16777216.0));
 }
 
 // -- geometry ----------------------------------------------------------------
@@ -346,9 +389,9 @@ Surface surface_of(Instance thing, vec3 at, vec3 local) {
 		s.specular = 0.25;
 		s.coat = 0.0;
 	} else if (finish == FINISH_GLOW) {
-		s.emission = body * 0.25;
+		s.emission = body * (scene.lamp_info.y > 0.0 ? scene.lamp_info.y : 0.25);
 	} else if (finish == FINISH_FLUORESCENT) {
-		s.emission = body * 0.18;
+		s.emission = body * (scene.lamp_info.y > 0.0 ? scene.lamp_info.y : 0.18);
 	}
 	return s;
 }
@@ -457,10 +500,10 @@ bool trace(vec3 from, vec3 way, float far, uint mask, uint flags) {
 	return hit.t >= 0.0;
 }
 
-// How much light gets through from a point towards a light: none past
-// anything solid, tinted by the clear plastic on the way.
-vec3 through(vec3 from, vec3 way) {
-	if (trace(from, way, 1e7, MASK_SOLID | MASK_SWEEP,
+// How much light gets through from a point towards a light [far] away:
+// none past anything solid, tinted by the clear plastic on the way.
+vec3 through_far(vec3 from, vec3 way, float far) {
+	if (trace(from, way, far, MASK_SOLID | MASK_SWEEP,
 			gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT)) {
 		return vec3(0.0);
 	}
@@ -469,18 +512,102 @@ vec3 through(vec3 from, vec3 way) {
 		return let;
 	}
 	vec3 at = from;
+	float left = far;
 	for (int n = 0; n < 8; n++) {
-		if (!trace(at, way, 1e7, MASK_GLASS, gl_RayFlagsOpaqueEXT)) {
+		if (!trace(at, way, left, MASK_GLASS, gl_RayFlagsOpaqueEXT)) {
 			return let;
 		}
 		Instance glass = instances[hit.instance];
 		let *= sqrt(max(glass.colour.rgb, vec3(0.0)));
 		at = at + way * hit.t + way * 0.02;
+		left -= hit.t + 0.02;
+		if (left <= 0.0) {
+			return let;
+		}
 		if (max(let.r, max(let.g, let.b)) < 0.01) {
 			return vec3(0.0);
 		}
 	}
 	return let;
+}
+
+vec3 through(vec3 from, vec3 way) {
+	return through_far(from, way, 1e7);
+}
+
+// The light arriving at a point of a surface straight from the lamps placed
+// in the model, each sampled once from the lamps' own stream.
+vec3 from_lamps(Surface s, vec3 at, vec3 n, vec3 v) {
+	vec3 sum = vec3(0.0);
+	int count = min(int(scene.lamp_info.x), 8);
+	for (int i = 0; i < count; i++) {
+		Lamp lamp = scene.lamps[i];
+		int kind = int(lamp.at.w + 0.5);
+		vec2 u = lamp_rand2();
+		vec3 l;
+		float far;
+		float lit;
+		if (kind == LAMP_SUN) {
+			// The sun's disc, half a degree across, as the raster's.
+			vec3 toward = -lamp.aim.xyz;
+			vec3 t;
+			vec3 b;
+			basis(toward, t, b);
+			float r = sqrt(u.x) * 0.00436;
+			float phi = 2.0 * PI * u.y;
+			l = normalize(toward + (t * cos(phi) + b * sin(phi)) * r);
+			far = 1e7;
+			lit = 1.0;
+		} else {
+			vec3 from = lamp.at.xyz;
+			if (kind == LAMP_PANEL) {
+				vec3 t;
+				vec3 b;
+				basis(lamp.aim.xyz, t, b);
+				from += (t * (u.x - 0.5) + b * (u.y - 0.5)) * lamp.shape.x;
+			} else if (lamp.shape.x > 0.0) {
+				// A point of the bulb's disc as seen from here.
+				vec3 t;
+				vec3 b;
+				basis(normalize(at - lamp.at.xyz), t, b);
+				float r = sqrt(u.x) * lamp.shape.x;
+				float phi = 2.0 * PI * u.y;
+				from += (t * cos(phi) + b * sin(phi)) * r;
+			}
+			vec3 to = from - at;
+			float d2 = max(dot(to, to), 1e-4);
+			float d = sqrt(d2);
+			l = to / d;
+			far = max(d - 0.05, 0.0);
+			// Godot's fall with distance: the square's, ending at the reach.
+			float nd = d / max(lamp.shape.z, 1.0);
+			nd *= nd;
+			nd *= nd;
+			nd = max(1.0 - nd, 0.0);
+			lit = nd * nd / d2;
+			float facing = dot(-l, lamp.aim.xyz);
+			if (kind == LAMP_SPOT) {
+				if (facing <= lamp.aim.w) {
+					continue;
+				}
+				float rim = max(1e-4, (1.0 - facing) / (1.0 - lamp.aim.w));
+				lit *= 1.0 - pow(rim, lamp.shape.y);
+			} else if (kind == LAMP_PANEL) {
+				if (facing <= 0.0) {
+					continue;
+				}
+				lit *= facing;
+			}
+		}
+		float pdf;
+		vec3 f = reflect_light(s, n, v, l, pdf);
+		if (max(f.r, max(f.g, f.b)) <= 0.0) {
+			continue;
+		}
+		vec3 let = lamp.colour.w > 0.5 ? through_far(at, l, far) : vec3(1.0);
+		sum += f * lamp.colour.rgb * lit * PI * let;
+	}
+	return sum;
 }
 
 float balance(float a, float b) {
@@ -542,6 +669,7 @@ void main() {
 	for (uint k = 0u; k < pass.count; k++) {
 		uint sample_index = pass.first + k;
 		rng_state = pcg(uint(pixel.x) * 9781u ^ pcg(uint(pixel.y) * 6271u ^ pcg(sample_index * 26699u + pass.seed)));
+		lamp_state = pcg(rng_state ^ 0x68bc21ebu);
 		// Through a point of the pixel (a tent a pixel and a half across)
 		// and of the lens.
 		vec2 r = rand2();
@@ -605,6 +733,13 @@ void main() {
 					radiance += carried * f * sky_light(mirrored);
 				}
 				vec3 tint = sqrt(max(thing.colour.rgb, vec3(0.0)));
+				// A clear neon glowing in the Dark light: light of its own,
+				// on every face the path goes through.
+				int glass_finish = int(floor(thing.custom.w + 0.001));
+				if (scene.lamp_info.y > 0.0
+						&& (glass_finish == FINISH_GLOW || glass_finish == FINISH_FLUORESCENT)) {
+					radiance += carried * thing.colour.rgb * scene.lamp_info.y;
+				}
 				carried *= tint * (1.0 - f);
 				from = at - ng * 0.02;
 				if (straight) {
@@ -630,6 +765,13 @@ void main() {
 			radiance += carried * s.emission;
 			from = at + ng * 0.02;
 			radiance += carried * direct(s, from, n, v);
+			// The model's own lights light what they shine on, as the window's
+			// draft draws them (StudioRender's lamps bounce nothing): on the
+			// first surface the eye reaches, through any glass, and not by
+			// a bounce, so nothing outside a spot's cone changes.
+			if (bounces == 0) {
+				radiance += carried * from_lamps(s, from, n, v);
+			}
 			if (bounces >= most) {
 				break;
 			}
