@@ -606,15 +606,16 @@ static func _kinds(mesh: Lbm.PartMesh) -> String:
 
 
 ## Each connector as words: its kind, where it is to a tenth of an LDU,
-## which way it faces, and a round's length and radius. (Plus 0.0, so a
-## -0.0 reads as 0.0.)
+## which way it faces, and a round's length and radius. (Snapped, then plus
+## 0.0, so a -0.0 reads as 0.0.)
 static func _places(mesh: Lbm.PartMesh) -> PackedStringArray:
 	var out := PackedStringArray()
 	for c: Lbm.Connector in mesh.connectors:
-		var at: Vector3 = c.position + Vector3.ZERO
+		var at: Vector3 = c.position.snapped(Vector3.ONE * 0.1)
+		var to: Vector3 = c.axis.snapped(Vector3.ONE * 0.01)
 		out.append("%s (%.1f, %.1f, %.1f) to (%.2f, %.2f, %.2f) %.1f x %.1f" % [c.kind,
-			at.x + 0.0, at.y + 0.0, at.z + 0.0, c.axis.x + 0.0, c.axis.y + 0.0,
-			c.axis.z + 0.0, c.length + 0.0, c.radius + 0.0])
+			at.x + 0.0, at.y + 0.0, at.z + 0.0, to.x + 0.0, to.y + 0.0, to.z + 0.0,
+			snappedf(c.length, 0.1) + 0.0, snappedf(c.radius, 0.1) + 0.0])
 	out.sort()
 	return out
 

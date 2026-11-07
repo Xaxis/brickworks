@@ -86,6 +86,11 @@ const CLIP_NECK: Dictionary = {"vertical": 4.1909, "horizontal": 4.0}
 const CLIP_PRIMITIVE: Dictionary = {"vertical": "clip5.dat", "horizontal": "clip6.dat"}
 const CLIP_Y: Dictionary = {"vertical": 4.0, "horizontal": 0.0}
 const CLIP_OUT := 10.0
+## How near a wedge plate's cut wall may come to a tube and leave it whole:
+## 2 LDU, 0.8 mm, half a wall. A thinner gap is too thin to mould, and the
+## library's wedge plates join such a tube to the wall: 43722a's back tube,
+## 0.65 LDU from it, is drawn as arcs, and 41770a's, 2.55 LDU from it, whole.
+const WEDGE_GAP := 2.0
 
 ## The sides a brick can carry studs on, in the order they are written:
 ## front (LDraw's -Z, the long face 87087 and 30414 put theirs on), back,
@@ -1493,10 +1498,12 @@ static func wedge_has_stud(spec: Spec, i: int, j: int) -> bool:
 ## A stud stands wherever its whole stud's square is inside the cut, which
 ## gives 41770a its four and 54383 its nine. The cavity is 4 LDU in from
 ## every side, the cut's too, and the tubes between four studs are whole
-## where the cut leaves room for them; where the cut's wall comes through
-## one, as it does through two of 41770a's three, the part of it on the
-## cavity's side is drawn, to the next sixteenth of a turn into the wall, so
-## it meets the wall as the library's own cut tubes do.
+## where the cut's wall stays [constant WEDGE_GAP] clear of them; where it
+## comes nearer, or through one, as it does through two of 41770a's three,
+## the part of it on the cavity's side is drawn, to the next sixteenth of a
+## turn into the wall, so it meets the wall as the library's own cut tubes
+## do (and one the wall only comes near, as 43722a's back one, all but the
+## sixteenth that faces the wall).
 static func _wedge(spec: Spec, out: PackedStringArray) -> void:
 	var h: float = PLATE
 	var corners: Array = wedge_outline(spec)
@@ -1560,27 +1567,24 @@ static func _wedge(spec: Spec, out: PackedStringArray) -> void:
 			var tz: float = -z + j * STUD
 			# How far inside the cut's inner wall the tube's middle is.
 			var room: float = inner_at - (nx * tx + nz * tz)
-			if room >= TUBE_RADIUS:
+			if room >= TUBE_RADIUS + WEDGE_GAP:
 				out.append(_ref(tx, TOP, tz, 1, 0, 0, 0, -(h - TOP) / 4.0, 0, 0, 0, 1,
 					"stud4.dat"))
 			elif room > 0.0:
 				_cut_tube(out, tx, tz, -nx, -nz, room, h)
 
 
-## A tube the cut's wall comes through, as the part of it on the cavity's
-## side: its outside and its bore in sixteenths of a turn (1-16cyli, as the
-## library draws every round), centred on [param ax], [param az] (unit, away
-## from the wall), [param room] from the wall, from the ceiling to the
-## bottom, with its bottom ring and its two ends closed. The turn it keeps
-## goes to the next whole sixteenth into the wall.
+## A tube the cut's wall comes near or through, as the part of it on the
+## cavity's side: its outside and its bore in sixteenths of a turn
+## (1-16cyli, as the library draws every round), centred on [param ax],
+## [param az] (unit, away from the wall), [param room] from the wall, from
+## the ceiling to the bottom, with its bottom ring and its two ends closed.
+## The turn it keeps goes to the next whole sixteenth into the wall, and is
+## never the whole turn: the sixteenth facing the wall is where it joins it.
 static func _cut_tube(out: PackedStringArray, cx: float, cz: float, ax: float, az: float,
 		room: float, h: float) -> void:
 	var lost: float = acos(clampf(room / TUBE_RADIUS, -1.0, 1.0)) / PI   ## of a half turn
-	var kept: int = ceili(16.0 - 16.0 * lost - 1e-6)
-	if kept >= 16:
-		# All of it, into the wall by less than a sixteenth: a tube.
-		out.append(_ref(cx, TOP, cz, 1, 0, 0, 0, -(h - TOP) / 4.0, 0, 0, 0, 1, "stud4.dat"))
-		return
+	var kept: int = mini(15, ceili(16.0 - 16.0 * lost - 1e-6))
 	var step: float = TAU / 16.0
 	var start: float = atan2(az, ax) - kept * step * 0.5
 	var inside: float = TUBE_RADIUS - 2.0   ## the bore, 12 across
