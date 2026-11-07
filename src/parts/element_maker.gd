@@ -1,6 +1,7 @@
 ## Making an element LEGO has not made: a brick, plate, tile, slope,
-## curved slope, round part, bracket or Technic brick of any size, or a
-## brick with studs on its sides, written as a real LDraw part file.
+## curved slope, round part, bracket, Technic brick, clip plate, bar or
+## wedge plate of any size, or a brick with studs on its sides, written as
+## a real LDraw part file.
 ##
 ## A LEGO element designer asks for a new mould, or a change to an existing
 ## one, inside the system's dimensions. This is the same request made of the
@@ -22,6 +23,9 @@
 ##   side stud 10 under the top    then every 20 down          (87087, 22885)
 ##   bracket upright 4 LDU         past the plate's footprint  (99781, 44728)
 ##   Technic hole 10 under the top a 12 LDU bore, 16 mouth     (3700, 3701)
+##   bar 8 LDU across              its top end at the origin   (87994)
+##   clip 10 in front of the plate clip5.dat or clip6.dat       (60897, 61252)
+##   wedge tip one stud wide       the cut to the far corner   (41770a, 43722a)
 ##
 ## Everything is in LDraw's own space: X right, Y *down*, origin at the
 ## middle of the footprint on the top of the body, the long side along X.
@@ -54,7 +58,27 @@ const MOST_PLATES := 36
 
 ## The families, by the word a designer would use.
 const FAMILIES: Array[String] = ["brick", "slope", "inverted", "round", "curved",
-	"bracket", "technic"]
+	"bracket", "technic", "clip", "bar", "wedge"]
+
+## The ways a family that has one can go, its first the one it starts with:
+## a bracket's upright down or up; a clip upright, holding a bar that
+## stands (60897), or level, holding one along the plate's edge (61252); a
+## wedge plate's straight side on the left (41770a) or the right (41769a).
+const WAYS: Dictionary = {
+	"bracket": ["down", "up"],
+	"clip": ["vertical", "horizontal"],
+	"wedge": ["left", "right"],
+}
+## A bar's radius: 8 LDU across, the 3.2 mm a clip grips (87994).
+const BAR_RADIUS := 4.0
+## Half the opening a clip's neck fills in the plate's front wall, as the
+## library's draw it round clip5 (60897) and clip6 (61252); and where each
+## primitive stands: 10 LDU in front of the plate's edge, and at mid-height
+## (clip5) or on the top (clip6).
+const CLIP_NECK: Dictionary = {"vertical": 4.1909, "horizontal": 4.0}
+const CLIP_PRIMITIVE: Dictionary = {"vertical": "clip5.dat", "horizontal": "clip6.dat"}
+const CLIP_Y: Dictionary = {"vertical": 4.0, "horizontal": 0.0}
+const CLIP_OUT := 10.0
 
 ## The sides a brick can carry studs on, in the order they are written:
 ## front (LDraw's -Z, the long face 87087 and 30414 put theirs on), back,
@@ -115,7 +139,9 @@ class Spec extends RefCounted:
 	## A brick's sides that carry studs, as letters of [constant SIDES].
 	var sides: String = ""
 	## A bracket's upright, in studs, and whether it hangs "down" from the
-	## plate's front edge or stands "up" from it.
+	## plate's front edge or stands "up" from it. A clip plate's clip is
+	## "vertical" or "horizontal", and a wedge plate "left" or "right"
+	## ([constant WAYS]).
 	var rise: int = 1
 	var way: String = "down"
 
@@ -139,6 +165,12 @@ class Spec extends RefCounted:
 	## form [method ElementMaker.parse_spec] reads.
 	func to_words() -> String:
 		var words: String = "family=%s" % family
+		# A bar is its length and nothing else: no height in plates, no studs.
+		if family == "bar":
+			words += " across=%d" % across
+			if not derived_from.is_empty():
+				words += " from=%s" % derived_from
+			return words
 		if family == "round":
 			words += " diameter=%d" % diameter
 		else:
@@ -148,6 +180,8 @@ class Spec extends RefCounted:
 			words += " run=%d" % run
 		if family == "bracket":
 			words += " rise=%d way=%s" % [rise, way]
+		elif family == "clip" or family == "wedge":
+			words += " way=%s" % way
 		if not sides.is_empty():
 			words += " sides=%s" % sides
 		# A curve over the whole depth has no flat rows for a stud to stand
@@ -164,6 +198,12 @@ class Spec extends RefCounted:
 static func problem(spec: Spec) -> String:
 	if not FAMILIES.has(spec.family):
 		return "there is no family called %s" % spec.family
+	# A bar has a length and no height in plates, and no studs to put on its
+	# sides.
+	if spec.family == "bar":
+		if spec.across < 1 or spec.across > MOST_STUDS:
+			return "a bar is 1 to %d studs long" % MOST_STUDS
+		return ""
 	if spec.plates < 1 or spec.plates > MOST_PLATES:
 		return "a part is 1 to %d plates tall" % MOST_PLATES
 	if not spec.sides.is_empty():
@@ -209,6 +249,21 @@ static func problem(spec: Spec) -> String:
 			return "a Technic brick is one stud wide; its holes run through that way"
 		if spec.plates != 3:
 			return "a Technic brick is one brick (3 plates) tall"
+	if spec.family == "clip":
+		if spec.plates != 1:
+			return "a clip plate is a plate: 1 plate tall"
+		if not (WAYS["clip"] as Array).has(spec.way):
+			return ("a clip is vertical (it holds a bar standing up) or horizontal (a bar "
+				+ "along the plate's edge)")
+	if spec.family == "wedge":
+		if spec.plates != 1:
+			return "a wedge plate is a plate: 1 plate tall"
+		if spec.across < 2:
+			return "a wedge plate is at least 2 studs wide: its tip is one"
+		if spec.deep < 2:
+			return "a wedge plate is at least 2 studs long"
+		if not (WAYS["wedge"] as Array).has(spec.way):
+			return "a wedge plate is left or right: the side that is straight"
 	return ""
 
 
@@ -284,6 +339,22 @@ static func title_for(spec: Spec) -> String:
 		"technic":
 			return "Technic Brick %s x %s with Hole%s%s" % [_pad(1), _pad(spec.across),
 				"" if spec.across <= 2 else "s", "" if spec.studs else " without Studs"]
+		"bar":
+			# "Bar  3L", as 87994: L is a stud's length.
+			return "Bar %sL" % _pad(spec.across)
+		"clip":
+			# "Plate  1 x  2 with Clip Horizontal on Side (Thick C-Clip)", as
+			# 11476: on the long side, or on the end when the clip's edge is
+			# the short one (63868).
+			var where: String = "" if spec.across == spec.deep \
+				else (" on Side" if spec.across > spec.deep else " on End")
+			return "%s %s x %s with Clip %s%s (Thick C-Clip)" % [_word(spec),
+				_pad(mini(spec.across, spec.deep)), _pad(maxi(spec.across, spec.deep)),
+				spec.way.capitalize(), where]
+		"wedge":
+			# LDraw names a wedge plate a wing, width first: "Wing  2 x  4 Left".
+			return "Wing %s x %s %s%s" % [_pad(spec.across), _pad(spec.deep),
+				spec.way.capitalize(), "" if spec.studs else " without Studs"]
 	var short: int = mini(spec.across, spec.deep)
 	var long: int = maxi(spec.across, spec.deep)
 	return "%s %s x %s%s%s" % [_word(spec), _pad(short), _pad(long),
@@ -374,6 +445,10 @@ static func category_for(spec: Spec) -> String:
 			return "Bracket"
 		"technic":
 			return "Technic"
+		"bar":
+			return "Bar"
+		"wedge":
+			return "Wing"
 	return _word(spec)
 
 
@@ -395,6 +470,12 @@ static func id_for(spec: Spec) -> String:
 			tail = "k%dx%dx%d%s" % [spec.deep, spec.across, spec.rise, spec.way.left(1)]
 		"technic":
 			tail = "h1x%d" % spec.across
+		"bar":
+			return "bw-bar%d" % spec.across
+		"clip":
+			tail = "clip%dx%d%s" % [spec.across, spec.deep, spec.way.left(1)]
+		"wedge":
+			tail = "wedge%dx%d%s" % [spec.across, spec.deep, spec.way.left(1)]
 		_:
 			tail = "b%dx%dx%d" % [mini(spec.across, spec.deep),
 				maxi(spec.across, spec.deep), spec.plates]
@@ -421,7 +502,8 @@ static func dat(spec: Spec, id: String = "") -> String:
 	out.append("0 BFC CERTIFY CCW")
 	out.append("")
 	out.append("0 !CATEGORY " + category_for(spec))
-	out.append("0 !KEYWORDS Brickworks, custom element")
+	out.append("0 !KEYWORDS Brickworks, custom element" + (", wedge plate"
+		if spec.family == "wedge" else ""))
 	out.append("")
 	out.append(MADE_BY + " " + spec.to_words())
 	if not spec.derived_from.is_empty():
@@ -441,6 +523,12 @@ static func dat(spec: Spec, id: String = "") -> String:
 			_bracket(spec, body)
 		"technic":
 			_technic(spec, body)
+		"clip":
+			_clip(spec, body)
+		"bar":
+			_bar(spec, body)
+		"wedge":
+			_wedge(spec, body)
 		_:
 			_box(spec, body)
 			if not spec.sides.is_empty():
@@ -510,9 +598,11 @@ static func canonical_sides(text: String) -> String:
 ##
 ## Only the plain families are recognised — "Brick  2 x  4", "Plate  1 x  6",
 ## "Tile  2 x  2 with Groove", "Slope Brick 45  2 x  2", "Slope Brick 33
-## 3 x  2 Inverted", "Brick  2 x  2 Round", "Plate  4 x  4 Round" — and a
-## name that says anything more (printed, with a clip, with a hole) is not
-## a plain part and returns null rather than a part it is not.
+## 3 x  2 Inverted", "Brick  2 x  2 Round", "Plate  4 x  4 Round", "Bar  3L",
+## "Plate  1 x  1 with Clip Vertical (Thick C-Clip)", "Wing  2 x  4 Left
+## without Chamfer" — and a name that says anything more (printed, with a
+## hole, a thin clip, a chamfered tip) is not a plain part and returns null
+## rather than a part it is not.
 static func from_part(part_id: String, name: String, tall: float = 0.0) -> Spec:
 	var text: String = name.strip_edges()
 	if text.begins_with("~") or text.begins_with("="):
@@ -578,6 +668,32 @@ static func from_part(part_id: String, name: String, tall: float = 0.0) -> Spec:
 		spec.deep = 1
 		spec.plates = 3
 		return spec if problem(spec).is_empty() else null
+	# "Bar  3L": a plain bar, and nothing more ("Bar  4L Lightsaber Blade").
+	if head == "Bar":
+		if words.size() != 2 or not words[1].ends_with("L") \
+				or not words[1].trim_suffix("L").is_valid_int():
+			return null
+		spec.family = "bar"
+		spec.across = words[1].trim_suffix("L").to_int()
+		return spec if problem(spec).is_empty() else null
+	# "Wing  2 x  4 Left without Chamfer": the wedge plate the maker draws,
+	# its tip a stud wide and its cut to the far corner (41770a, 43722a).
+	# The others are cut otherwise (24299's tip, 54383's corner) and are
+	# changed as themselves.
+	if head == "Wing":
+		var wing: Array = _dims(words, 1)
+		if wing.is_empty() or int(wing[2]) != 0:
+			return null
+		var hand: PackedStringArray = words.slice(int(wing[3]))
+		if hand.size() != 3 or not (hand[0] == "Left" or hand[0] == "Right") \
+				or hand[1] != "without" or hand[2] != "Chamfer":
+			return null
+		spec.family = "wedge"
+		spec.across = int(wing[0])
+		spec.deep = int(wing[1])
+		spec.plates = 1
+		spec.way = hand[0].to_lower()
+		return spec if problem(spec).is_empty() else null
 	if head == "Slope" and words.size() > 2 and words[1] == "Brick":
 		var angle: int = words[2].to_int()
 		if not NAMED_ANGLES.has(angle):
@@ -621,6 +737,20 @@ static func from_part(part_id: String, name: String, tall: float = 0.0) -> Spec:
 		if not sides.is_empty():
 			spec.sides = sides
 			rest = PackedStringArray()
+	# A plate with a clip on its edge: which clip, and which edge.
+	var clip: Array = CLIP_NAMES.get(" ".join(rest), [])
+	if not is_round and head != "Brick" and int(found[2]) == 0 and not clip.is_empty():
+		var short: int = mini(int(found[0]), int(found[1]))
+		var long: int = maxi(int(found[0]), int(found[1]))
+		if clip[1] == "" and short != long:
+			return null
+		spec.family = "clip"
+		spec.way = clip[0]
+		spec.plates = 1
+		spec.studs = head != "Tile"
+		spec.across = short if clip[1] == "end" else long
+		spec.deep = long if clip[1] == "end" else short
+		return spec if problem(spec).is_empty() else null
 	if not rest.is_empty():
 		return null
 	spec.studs = head != "Tile"
@@ -649,6 +779,17 @@ const SIDE_NAMES: Dictionary = {
 	"with Studs on 2 Opposite Sides": "fb",
 	"with Studs on Four Sides": "fblr",
 	"with Studs on 4 Sides": "fblr",
+}
+
+
+## What the library's names for plates with a thick C-clip on an edge say,
+## as the clip ([constant WAYS]) and the edge: "" on a square plate's (60897,
+## 61252), "side" the long one (11476), "end" the short one (63868).
+const CLIP_NAMES: Dictionary = {
+	"with Clip Vertical (Thick C-Clip)": ["vertical", ""],
+	"with Clip Horizontal (Thick C-Clip)": ["horizontal", ""],
+	"with Clip Horizontal on Side (Thick C-Clip)": ["horizontal", "side"],
+	"with Clip Horizontal on End (Thick C-Clip)": ["horizontal", "end"],
 }
 
 
@@ -1219,6 +1360,244 @@ static func holes_of(spec: Spec) -> Array[float]:
 		for i: int in range(1, spec.across):
 			holes.append(-x + i * STUD)
 	return holes
+
+
+## A plate with a clip on its front edge: 60897 (vertical) and 61252
+## (horizontal) at any size, and 11476 and 63868 among them.
+##
+## The plate is a plate's — studs, a 4 LDU top and walls, the cavity and
+## what grips underneath — but for its front wall, which stops either side
+## of the clip's neck, and the clip is the library's own primitive, stood
+## where those parts stand theirs: 10 LDU in front of the edge, on its
+## middle. clip5 is the vertical clip, whose bore stands up, and clip6 the
+## horizontal one, whose bore runs along the edge; each draws its own neck
+## back to the plate and its bore, which is the clip a bar goes in.
+static func _clip(spec: Spec, out: PackedStringArray) -> void:
+	var x: float = spec.across * STUD * 0.5
+	var z: float = spec.deep * STUD * 0.5
+	var h: float = PLATE
+	var w: float = CLIP_NECK[spec.way]
+	var ix: float = x - WALL
+	var iz: float = z - WALL
+	if spec.studs:
+		_studs_on_top(out, spec.across, spec.deep, 0.0, 0.0, 0.0)
+	out.append("0 // Top, back, ends, and the front either side of the clip")
+	# The top and the bottom ring meet the neck at its sides, as 60897's do.
+	_face(out, [[-x, 0, z], [-x, 0, -z], [-w, 0, -z]], [0, -1, 0])
+	_face(out, [[-x, 0, z], [-w, 0, -z], [w, 0, -z], [x, 0, z]], [0, -1, 0])
+	_face(out, [[x, 0, z], [w, 0, -z], [x, 0, -z]], [0, -1, 0])
+	_face(out, [[x, 0, z], [x, h, z], [-x, h, z], [-x, 0, z]], [0, 0, 1])
+	for side: float in [x, -x]:
+		var way: float = signf(side)
+		_face(out, [[side, 0, -z], [side, 0, z], [side, h, z], [side, h, -z]], [way, 0, 0])
+		_face(out, [[side, 0, -z], [way * w, 0, -z], [way * w, h, -z], [side, h, -z]],
+			[0, 0, -1])
+	# Edges round the top and the bottom, but where the neck carries on
+	# from the front: the clip draws its own.
+	for y: float in [0.0, h]:
+		_line(out, [x, y, z], [-x, y, z])
+		_line(out, [x, y, z], [x, y, -z])
+		_line(out, [-x, y, z], [-x, y, -z])
+		_line(out, [x, y, -z], [w, y, -z])
+		_line(out, [-w, y, -z], [-x, y, -z])
+	for side: float in [x, -x]:
+		_line(out, [side, 0, z], [side, h, z])
+		_line(out, [side, 0, -z], [side, h, -z])
+	out.append("0 // Underneath")
+	_face(out, [[x, h, z], [ix, h, iz], [-ix, h, iz], [-x, h, z]], [0, 1, 0])
+	_face(out, [[-x, h, z], [-ix, h, iz], [-ix, h, -iz], [-x, h, -z]], [0, 1, 0])
+	_face(out, [[x, h, -z], [ix, h, -iz], [ix, h, iz], [x, h, z]], [0, 1, 0])
+	_face(out, [[x, h, -z], [w, h, -z], [ix, h, -iz]], [0, 1, 0])
+	_face(out, [[w, h, -z], [-w, h, -z], [-ix, h, -iz], [ix, h, -iz]], [0, 1, 0])
+	_face(out, [[-x, h, -z], [-ix, h, -iz], [-w, h, -z]], [0, 1, 0])
+	_cavity(out, h, ix, iz, 0.0)
+	_underside(out, spec.across, spec.deep, 0.0, 0.0, h,
+		func(_at: float) -> float: return TOP)
+	out.append("0 // The clip and its neck")
+	out.append(_ref(0, CLIP_Y[spec.way], -z - CLIP_OUT, 1, 0, 0, 0, 1, 0, 0, 0, 1,
+		CLIP_PRIMITIVE[spec.way]))
+
+
+## A bar: 87994 at any length. A cylinder 8 LDU across, closed at both
+## ends, hanging from its top end at the origin as the library's bars do.
+static func _bar(spec: Spec, out: PackedStringArray) -> void:
+	var r: float = BAR_RADIUS
+	var length: float = spec.across * STUD
+	out.append("0 // The bar")
+	out.append(_ref(0, 0, 0, r, 0, 0, 0, 1, 0, 0, 0, r, "4-4edge.dat"))
+	out.append(_ref(0, 0, 0, r, 0, 0, 0, 1, 0, 0, 0, r, "4-4disc.dat"))
+	out.append(_ref(0, 0, 0, r, 0, 0, 0, length, 0, 0, 0, r, "4-4cyli.dat"))
+	out.append(_ref(0, length, 0, r, 0, 0, 0, 1, 0, 0, 0, r, "4-4edge.dat"))
+	out.append(_ref(0, length, 0, -r, 0, 0, 0, -1, 0, 0, 0, r, "4-4disc.dat"))
+
+
+## The outline of a wedge plate from above, as [x, z] corners: the front
+## of the straight side, the tip's other end one stud across, the far
+## corner the cut runs to, and the back of the straight side. A left one's
+## straight side is at -X, as 41770a's is; a right one is its mirror.
+static func wedge_outline(spec: Spec) -> Array:
+	var x: float = spec.across * STUD * 0.5
+	var z: float = spec.deep * STUD * 0.5
+	var m: float = -1.0 if spec.way == "right" else 1.0
+	return [[-x * m, -z], [(-x + STUD) * m, -z], [x * m, z], [-x * m, z]]
+
+
+## The cut's outward normal, unit, in x and z, and where the cut's line is
+## along it, as [nx, nz, at]: n . p = at on the cut.
+static func wedge_cut(spec: Spec) -> Array:
+	var corners: Array = wedge_outline(spec)
+	var b: Array = corners[1]
+	var c: Array = corners[2]
+	var dx: float = float(c[0]) - float(b[0])
+	var dz: float = float(c[1]) - float(b[1])
+	var length: float = sqrt(dx * dx + dz * dz)
+	var m: float = -1.0 if spec.way == "right" else 1.0
+	# Out of the plate: away from the straight side, and forward.
+	var nx: float = absf(dz) / length * m
+	var nz: float = -absf(dx) / length
+	return [nx, nz, nx * float(b[0]) + nz * float(b[1])]
+
+
+## Whether the stud cell [param i], [param j] (from the front of the
+## straight side) is whole inside a wedge plate's outline.
+static func wedge_has_stud(spec: Spec, i: int, j: int) -> bool:
+	var cut: Array = wedge_cut(spec)
+	var m: float = -1.0 if spec.way == "right" else 1.0
+	var x0: float = -spec.across * STUD * 0.5
+	var z0: float = -spec.deep * STUD * 0.5
+	for corner: Array in [[x0 + (i + 1) * STUD, z0 + j * STUD],
+			[x0 + (i + 1) * STUD, z0 + (j + 1) * STUD]]:
+		var at: float = float(cut[0]) * float(corner[0]) * m + float(cut[1]) * float(corner[1])
+		if at > float(cut[2]) + 1e-6:
+			return false
+	return true
+
+
+## A wedge plate: 41770a and 41769a, 43722a and 43723a, at any size. A
+## plate whose straight side is the left or the right, cut on the diagonal
+## from a tip one stud across at the front to the far corner at the back.
+##
+## A stud stands wherever its whole stud's square is inside the cut, which
+## gives 41770a its four and 54383 its nine. The cavity is 4 LDU in from
+## every side, the cut's too, and the tubes between four studs are whole
+## where the cut leaves room for them; where the cut's wall comes through
+## one, as it does through two of 41770a's three, the part of it on the
+## cavity's side is drawn, to the next sixteenth of a turn into the wall, so
+## it meets the wall as the library's own cut tubes do.
+static func _wedge(spec: Spec, out: PackedStringArray) -> void:
+	var h: float = PLATE
+	var corners: Array = wedge_outline(spec)
+	var cut: Array = wedge_cut(spec)
+	var nx: float = cut[0]
+	var nz: float = cut[1]
+	var m: float = -1.0 if spec.way == "right" else 1.0
+	var x: float = spec.across * STUD * 0.5
+	var z: float = spec.deep * STUD * 0.5
+	if spec.studs:
+		out.append("0 // Studs")
+		for i: int in spec.across:
+			for j: int in spec.deep:
+				if wedge_has_stud(spec, i, j):
+					out.append(_ref((-x + STUD * 0.5 + i * STUD) * m, 0,
+						-z + STUD * 0.5 + j * STUD, 1, 0, 0, 0, 1, 0, 0, 0, 1, "stud.dat"))
+	# The inside: each side moved 4 LDU in, the cut along its normal.
+	var inner_at: float = float(cut[2]) - WALL
+	var on_cut := func(at_z: float) -> float:
+		return (inner_at - nz * at_z) / nx
+	var inner: Array = [[(-x + WALL) * m, -z + WALL], [on_cut.call(-z + WALL), -z + WALL],
+		[on_cut.call(z - WALL), z - WALL], [(-x + WALL) * m, z - WALL]]
+	out.append("0 // Top, sides and the cut")
+	var top: Array = []
+	for c: Array in corners:
+		top.append([c[0], 0, c[1]])
+	_face(out, top, [0, -1, 0])
+	_outline(out, top)
+	for n: int in 4:
+		var a: Array = corners[n]
+		var b: Array = corners[(n + 1) % 4]
+		var outward: Array = [[0, 0, -1], [nx, 0, nz], [0, 0, 1], [-m, 0, 0]][n]
+		_face(out, [[a[0], 0, a[1]], [b[0], 0, b[1]], [b[0], h, b[1]], [a[0], h, a[1]]],
+			outward)
+		_line(out, [a[0], 0, a[1]], [a[0], h, a[1]])
+		_line(out, [a[0], h, a[1]], [b[0], h, b[1]])
+	out.append("0 // Underneath: the rim, the cavity and its ceiling")
+	for n: int in 4:
+		var a: Array = corners[n]
+		var b: Array = corners[(n + 1) % 4]
+		var ia: Array = inner[n]
+		var ib: Array = inner[(n + 1) % 4]
+		_face(out, [[a[0], h, a[1]], [b[0], h, b[1]], [ib[0], h, ib[1]], [ia[0], h, ia[1]]],
+			[0, 1, 0])
+		var inward: Array = [[0, 0, 1], [-nx, 0, -nz], [0, 0, -1], [m, 0, 0]][n]
+		_face(out, [[ia[0], TOP, ia[1]], [ib[0], TOP, ib[1]], [ib[0], h, ib[1]],
+			[ia[0], h, ia[1]]], inward)
+		_line(out, [ia[0], h, ia[1]], [ib[0], h, ib[1]])
+		_line(out, [ia[0], TOP, ia[1]], [ib[0], TOP, ib[1]])
+		_line(out, [ia[0], TOP, ia[1]], [ia[0], h, ia[1]])
+	var ceiling: Array = []
+	for c: Array in inner:
+		ceiling.append([c[0], TOP, c[1]])
+	_face(out, ceiling, [0, 1, 0])
+	if spec.across < 2 or spec.deep < 2:
+		return
+	out.append("0 // Underside")
+	for i: int in range(1, spec.across):
+		for j: int in range(1, spec.deep):
+			var tx: float = (-x + i * STUD) * m
+			var tz: float = -z + j * STUD
+			# How far inside the cut's inner wall the tube's middle is.
+			var room: float = inner_at - (nx * tx + nz * tz)
+			if room >= TUBE_RADIUS:
+				out.append(_ref(tx, TOP, tz, 1, 0, 0, 0, -(h - TOP) / 4.0, 0, 0, 0, 1,
+					"stud4.dat"))
+			elif room > 0.0:
+				_cut_tube(out, tx, tz, -nx, -nz, room, h)
+
+
+## A tube the cut's wall comes through, as the part of it on the cavity's
+## side: its outside and its bore in sixteenths of a turn (1-16cyli, as the
+## library draws every round), centred on [param ax], [param az] (unit, away
+## from the wall), [param room] from the wall, from the ceiling to the
+## bottom, with its bottom ring and its two ends closed. The turn it keeps
+## goes to the next whole sixteenth into the wall.
+static func _cut_tube(out: PackedStringArray, cx: float, cz: float, ax: float, az: float,
+		room: float, h: float) -> void:
+	var lost: float = acos(clampf(room / TUBE_RADIUS, -1.0, 1.0)) / PI   ## of a half turn
+	var kept: int = ceili(16.0 - 16.0 * lost - 1e-6)
+	if kept >= 16:
+		# All of it, into the wall by less than a sixteenth: a tube.
+		out.append(_ref(cx, TOP, cz, 1, 0, 0, 0, -(h - TOP) / 4.0, 0, 0, 0, 1, "stud4.dat"))
+		return
+	var step: float = TAU / 16.0
+	var start: float = atan2(az, ax) - kept * step * 0.5
+	var inside: float = TUBE_RADIUS - 2.0   ## the bore, 12 across
+	var length: float = h - TOP
+	for k: int in kept:
+		var t: float = start + k * step
+		var c: float = cos(t)
+		var s: float = sin(t)
+		out.append(_ref(cx, TOP, cz, TUBE_RADIUS * c, 0, -TUBE_RADIUS * s, 0, length, 0,
+			TUBE_RADIUS * s, 0, TUBE_RADIUS * c, "1-16cyli.dat"))
+		out.append("0 BFC INVERTNEXT")
+		out.append(_ref(cx, TOP, cz, inside * c, 0, -inside * s, 0, length, 0,
+			inside * s, 0, inside * c, "1-16cyli.dat"))
+		var c2: float = cos(t + step)
+		var s2: float = sin(t + step)
+		var ring: Array = [[cx + TUBE_RADIUS * c, h, cz + TUBE_RADIUS * s],
+			[cx + TUBE_RADIUS * c2, h, cz + TUBE_RADIUS * s2],
+			[cx + inside * c2, h, cz + inside * s2], [cx + inside * c, h, cz + inside * s]]
+		_face(out, ring, [0, 1, 0])
+		_line(out, ring[0], ring[1])
+		_line(out, ring[2], ring[3])
+	for end: int in 2:
+		var t: float = start + (kept * step if end == 1 else 0.0)
+		var c: float = cos(t)
+		var s: float = sin(t)
+		var away: Array = [-s, 0, c] if end == 1 else [s, 0, -c]
+		_face(out, [[cx + inside * c, TOP, cz + inside * s],
+			[cx + TUBE_RADIUS * c, TOP, cz + TUBE_RADIUS * s],
+			[cx + TUBE_RADIUS * c, h, cz + TUBE_RADIUS * s],
+			[cx + inside * c, h, cz + inside * s]], away)
 
 
 ## The sixteen points LDraw's round primitives are drawn on, as written in
