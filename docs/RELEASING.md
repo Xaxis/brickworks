@@ -65,7 +65,9 @@ tools/release.py build
 #    app over its own socket, as a Claude Code session does, for the car
 #    path traced at Best, and holds the picture to the editor's.
 #    The .deb is installed into the clean home and its models opened with
-#    gio, as a file manager opens a double-click, in windows of their own.
+#    gio, as a file manager opens a double-click, in windows of their own,
+#    and GNOME's own thumbnail factory asked for each one's picture
+#    (tools/release/thumbnail_check.py).
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.tar.xz --window
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.AppImage
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-amd64.deb
@@ -169,7 +171,7 @@ stale and shadows the keyring login. `tools/release.py` drops it itself.
 | File | What |
 |---|---|
 | `Brickworks-X-linux-x86_64.AppImage` | one file, runs as it is (FUSE, or `--appimage-extract-and-run`); carries its menu entry, icons and model types |
-| `Brickworks-X-linux-amd64.deb` | for Debian and Ubuntu: `/usr/lib/brickworks`, `brickworks` on the PATH, in the menu, opening models |
+| `Brickworks-X-linux-amd64.deb` | for Debian and Ubuntu: `/usr/lib/brickworks`, `brickworks` on the PATH, in the menu, opening models, and their pictures in the file manager (`brickworks-thumbnailer`) |
 | `Brickworks-X-linux-x86_64.tar.xz` | the same program, as a folder |
 | `Brickworks-X-macos-universal.dmg` | `Brickworks.app` (Apple silicon and Intel in one) and an Applications link, laid out to drag one onto the other |
 | `Brickworks-X-windows-x86_64-setup.exe` | the per-user installer: no admin, Start menu, Settings ▸ Apps, model types; `/VERYSILENT` for the updater |

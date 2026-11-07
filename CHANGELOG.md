@@ -13,6 +13,14 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+
+- **Pictures of your models in the file manager**, on Linux from the .deb:
+  an .ldr, .mpd or .io file shows its model from the front corner, as
+  Brickworks' corner view draws it, where it showed the type's icon. Parts
+  the library has not got are left out of the picture; a file with none it
+  knows keeps the icon. Windows comes next.
+
 ## [0.18.0] - 2026-11-06
 
 Brickworks gives you more room and more ways in. At 1400 × 900 the parts

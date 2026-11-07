@@ -153,6 +153,11 @@ const COPY_META := "0 !BRICKWORKS COPY"
 ## written in the steps they are built in: every LDraw reader builds the
 ## order shown, and this app reads each copy back as it was (stepskeep).
 const IN_META := "0 !BRICKWORKS IN"
+## The unit step of such a copy (AuthorSteps reads it from here): kept here,
+## where the file is read, so reading one names no class of the app's and
+## compiles alone, which is what a file browser's picture of a model waits
+## for (ModelThumbnail).
+const IN_PARENT := -2
 ## Every FILE section's text but the model's own, by its FILE name in lower
 ## case: what a part drawn from the file's sections is built from
 ## (CustomParts.begin_skins), LDCad's donor sections among them.
@@ -653,7 +658,7 @@ func _built_within(within: String, unit: String, copies: Dictionary, made: Dicti
 		copies[copy] = true
 		path = copy if path.is_empty() else "%s/%s" % [path, copy]
 		made[said] = path
-		unit_steps[path] = AuthorSteps.IN_PARENT
+		unit_steps[path] = IN_PARENT
 	return path
 
 
@@ -760,7 +765,7 @@ static func write_tree(
 	parts: Dictionary = {}
 ) -> String:
 	var in_parent := func(path: String) -> bool:
-		return int(unit_steps.get(path, -1)) == AuthorSteps.IN_PARENT
+		return int(unit_steps.get(path, -1)) == IN_PARENT
 	# The section a path's own parts are written in, and the path within it.
 	var home_of := func(path: String) -> String:
 		while not path.is_empty() and in_parent.call(path):
