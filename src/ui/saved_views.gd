@@ -49,14 +49,15 @@ const COMMAND := "saved_view_"
 
 ## The views [param text] keeps, in its order, as [method written_into] wrote
 ## them (the file's coordinates). A line this cannot read is passed over, and
-## a name kept twice is the first one's. Only the main model's lines
-## (SceneLights.main_end): a sub-model's views are its own, and stay in it.
+## a name kept twice is the first one's. Only the main model's lines, as
+## LdrModel reads which model a line is of (LdrModel.main_span): a
+## sub-model's views are its own, and stay in it.
 static func read(text: String) -> Array:
 	var out: Array = []
 	if not text.contains(META):
 		return out
 	var taken: Dictionary = {}
-	for line: String in text.substr(0, SceneLights.main_end(text)).split("\n"):
+	for line: String in text.substr(0, LdrModel.main_end(text)).split("\n"):
 		if not line.begins_with(META):
 			continue
 		var view: Dictionary = _parsed(line.substr(META.length()).strip_edges())
@@ -68,22 +69,29 @@ static func read(text: String) -> Array:
 
 
 ## [param text] with [param views] (the file's coordinates) written into it
-## after its first line, in their order, and any its main model had taken
-## out; with none, only taken out. A sub-model's lines are left as they are:
-## up to 2026-11-07 a view kept in one was moved into the main model at the
+## after its main model's first line (LdrModel.into_main), in their order,
+## each ending as the text's lines do, and any its main model had taken out;
+## with none, only taken out. A sub-model's lines are left as they are: up
+## to 2026-11-07 a view kept in one was moved into the main model at the
 ## first save (lreview).
 static func written_into(text: String, views: Array) -> String:
 	if views.is_empty() and not text.contains(META):
 		return text
 	# The main model's lines, and its sub-models' after them as they are.
-	var end: int = SceneLights.main_end(text)
+	var end: int = LdrModel.main_end(text)
 	var kept := PackedStringArray()
-	for line: String in text.substr(0, end).split("\n"):
+	var all: PackedStringArray = text.substr(0, end).split("\n")
+	for line: String in all:
 		if not line.begins_with(META):
 			kept.append(line)
-	for n: int in views.size():
-		kept.insert(mini(1 + n, kept.size()), META + JSON.stringify(views[n]))
-	return "\n".join(kept) + text.substr(end)
+	var out: String = "\n".join(kept)
+	# The text's last line taken out: the line end before it goes too.
+	if end == text.length() and not all.is_empty() and all[all.size() - 1].begins_with(META):
+		out = out.trim_suffix("\r")
+	var lines := PackedStringArray()
+	for view: Dictionary in views:
+		lines.append(META + JSON.stringify(view))
+	return LdrModel.into_main(out + text.substr(end), lines)
 
 
 ## [param views] as the window holds them, in the file's coordinates: the

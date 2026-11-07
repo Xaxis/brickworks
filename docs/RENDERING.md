@@ -624,15 +624,19 @@ Pictures, `bench/results/render353-2026-10-29/`:
   shadow); traced, their faces are lights of their own, opaque and clear.
 - **On Compatibility** (the web's renderer), which draws at most 8 bulbs
   and spots on one thing (`max_lights_per_object`; the stage's batches are
-  one thing each, so in effect the set): the model's lamps are placed first,
-  and the glow has the lights they leave. A glow left without a light of its
-  own gives its light to the nearest light drawn that shines every way (a
-  glow's or a bulb's, its colour mixed in by energy), so the web draws the
-  glow Forward+ draws in fewer lights: dropped, 8 bulbs over a neon grid
-  left the floor beside it darker (130.7 to 105.7 of 255); folded, it goes
-  145.4 to 186.4 (Forward+ 134.7 to 155.7). What is lost is the light the
-  glows gave the neon bricks themselves: that picture's mean goes 177.6 to
-  117.6 with the bulbs, where Forward+'s goes 171.2 to 174.9. Compatibility
+  one thing each, so in effect the set, and spots counted apart): while
+  anything glows the glow keeps at least 2 lights of its own
+  (`GLOW_KEPT`), the model's bulbs making room by the dimmest given to the
+  one nearest it (where the two are, by energy), and the glow's lumps
+  gathered into the lights it has (a few rounds of k-means weighted by
+  power), so its energy only ever goes into a glow light, never a bulb.
+  Folded into the nearest bulb instead (the first design), 8 bulbs over a
+  neon grid drew the glow from where the bulbs hang, the picture's mean
+  177.6 to 117.6 and its far floor black. Now, the mean / the floor left /
+  right of the grid with 0 and 8 bulbs: Forward+ 171.2 / 134.0 / 168.3 and
+  174.9 / 154.7 / 168.3; Compatibility 175.3 / 139.8 / 169.8 and 175.6 /
+  155.4 / 166.1 (the left floor, under the bulbs, rising as on Forward+).
+  Compatibility
   adds light in sRGB, so Dark there is calibrated against Forward+ on the
   card through zink: exposure x2, lamps x4 over `BrickWorld.light_energy`,
   and the model's suns sharing what Forward+ gives them together (it adds

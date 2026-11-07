@@ -41,9 +41,16 @@
 ## checked; at most four suns; light_model's words of the wrong kind answered
 ## in words; Render never changing a light it does not show; the designer's
 ## gate by the call; a file of 200,000 light lines that are no lights opened
-## as quickly as one of any other meta command, and against one of comments. And on this renderer, the car under 0 to 4
-## suns each adding light, and 8 bulbs over a grid of neon and of white
-## bricks in the dark raising the floor.
+## within [constant JUNK_SLOWER] of one of any other meta command, and saved
+## within [constant JUNK_SAVE] of one of 200,000 comments. Its second review
+## (N1, t11, t12, t18, t19): a cleared model's unread lines never in the next
+## model's file; a CRLF file's last light line saved with no lone CR; the
+## app's own MPD keeping its sub-model's light; a light put in a model with a
+## comment before its 0 FILE inside its section; 0 FILE lines with a tab read
+## as LdrModel reads them. And on this renderer, the car under 0 to 4 suns
+## each adding light, and 8 bulbs over a grid of neon and of white bricks in
+## the dark keeping the neon grid's mean and far floor within 10% of no bulbs
+## (on Compatibility too, and there within 10% of Forward+).
 ##
 ## Leaves shots/lights/: Render with the spot, studio and dark; the spot's
 ## pictures and their maps (green changed inside, red changed outside, grey
@@ -911,6 +918,9 @@ const VIEW_META := "0 !BRICKWORKS VIEW "
 ## A file of 200,000 light lines that are no lights opens no slower than the
 ## same file of comments, by this much.
 const JUNK_SLOWER := 1.2
+## And saved no slower than the same file of comments, by this much (the lead,
+## 2026-11-07).
+const JUNK_SAVE := 1.5
 
 
 func _review() -> void:
@@ -922,6 +932,10 @@ func _review() -> void:
 	await _r_types()
 	await _r_dialog()
 	await _r_gate()
+	await _r_cleared()
+	await _r_whole_mpd()
+	await _r_crlf_last()
+	await _r_sections()
 	await _r_junk()
 
 
@@ -1028,6 +1042,104 @@ func _r_submodel() -> void:
 	_check("...opened again: %d light, %d view" % [_scene().size(),
 		(_world.get("saved_views") as Array).size()], _scene().size() == 1
 		and (_world.get("saved_views") as Array).size() == 1)
+
+
+## The lines an open could not read are the model's: a Clear, and every other
+## way of laying another model, leaves them behind (lreview's second review,
+## N1: the cleared model's lines went into the next model's file).
+func _r_cleared() -> void:
+	for whose: String in ["Brickworks", "Someone"]:
+		var text: String = "0 Old\n0 Name: old.ldr\n0 Author: %s\n" % whose \
+			+ _light("laser", [0, 0, 0]) + "\n" + _light("point", [0, -60, 0]) + "\n" \
+			+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+		await _opened(_put("cleared.ldr", text))
+		var before: String = _store.lights_unread_words
+		await (_main.get("_bar") as ModelBar).call("_on_clear")
+		await _frames(30)
+		_world.add_brick("3003", 14, Transform3D(Basis.IDENTITY, Vector3(0.0, 24.0, 0.0)))
+		_store.touch()
+		await _frames(10)
+		var saved: String = ModelStore.SAVE_DIR + "cleared_new.ldr"
+		_main.call("save_model", saved)
+		var after: String = FileAccess.get_file_as_string(saved)
+		_check("%s's model with a line it could not read (\"%s\"), cleared, a part put down "
+			% [whose, before.left(36)] + "and saved: %d light lines in the new model's file (0), "
+			% _lines_of(after).size() + "the open's words gone (\"%s\")" % _store.lights_unread_words,
+			not before.is_empty() and _lines_of(after).is_empty()
+			and _store.lights_unread_words.is_empty())
+
+
+## The app's own MPD written whole: its sub-model's light stays in its
+## sub-model, and the main model's unread line is written once (lreview's
+## t12: the sub-model's line was lost).
+func _r_whole_mpd() -> void:
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": "#00ff00"})
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Own", "0 Name: main.ldr",
+		"0 Author: Brickworks", _light("point", [0, -60, 0]), _light("laser", [0, 0, 0]),
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr",
+		"0 NOFILE", "0 FILE sub.ldr", "0 Sub", "0 Name: sub.ldr", "0 Author: Brickworks",
+		sub_light, "1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+	await _opened(_put("whole.mpd", text))
+	var saved: String = ModelStore.SAVE_DIR + "whole_saved.mpd"
+	_main.call("save_model", saved)
+	await _opened(saved)
+	_main.call("save_model", saved)
+	var after: String = FileAccess.get_file_as_string(saved)
+	var sub_at: int = after.find("0 FILE sub")
+	_check("the app's own MPD, saved, opened and saved again: %d light lines (3), the "
+		% _lines_of(after).size() + "sub-model's in it (%s), the one it cannot read once (%d)"
+		% [sub_at > 0 and after.find(sub_light, sub_at) > 0, after.count("laser")],
+		_lines_of(after).size() == 3 and sub_at > 0 and after.find(sub_light, sub_at) > 0
+		and after.count("laser") == 1)
+
+
+## Someone else's file in Windows' line ends, a light its last line with no
+## line end: changed and saved, no line ends in a CR alone (lreview's t11).
+func _r_crlf_last() -> void:
+	var text: String = "0 Crlf last\r\n0 Name: crlf.ldr\r\n0 Author: Someone\r\n" \
+		+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n" + _light("laser", [0, 0, 0]) + "\r\n" \
+		+ _light("point", [0, -60, 0])
+	await _opened(_put("crlf_last.ldr", text))
+	await _tools.run("light_model", {"op": "change", "number": 1, "colour": "#00ff00"})
+	var saved: String = ModelStore.SAVE_DIR + "crlf_last_saved.ldr"
+	_main.call("save_model", saved)
+	var after: String = FileAccess.get_file_as_string(saved)
+	var alone: int = after.count("\r") - after.count("\r\n")
+	_check("a CRLF file whose last line is a light, changed and saved: %d CR alone (0), %d light "
+		% [alone, _lines_of(after).size()] + "lines (2), the change in it (%s)"
+		% after.contains("#00ff00"), alone == 0 and _lines_of(after).size() == 2
+		and after.contains("#00ff00"))
+
+
+## Which model a light is of, as LdrModel reads it: an MPD whose 0 FILE lines
+## have a tab keeps its sub-model's light in its sub-model (lreview's t19),
+## and a light added to one with a line before its first 0 FILE goes inside
+## its model's section (t18).
+func _r_sections() -> void:
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": "#00ff00"})
+	var text: String = "0\tFILE main.ldr\n0 Tabs\n0 Name: main.ldr\n0 Author: Someone\n" \
+		+ "1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr\n0\tNOFILE\n0\tFILE sub.ldr\n0 Sub\n" \
+		+ sub_light + "\n1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat\n0\tNOFILE\n"
+	await _opened(_put("tabs.mpd", text))
+	var read: int = _scene().size()
+	var saved: String = ModelStore.SAVE_DIR + "tabs_saved.mpd"
+	_main.call("save_model", saved)
+	var after: String = FileAccess.get_file_as_string(saved)
+	var sub_at: int = after.find("FILE sub.ldr")
+	_check("an MPD whose FILE lines have a tab: its sub-model's light not the model's (%d read), "
+		% read + "and saved, still in its sub-model (%s)" % (sub_at > 0
+		and after.find(sub_light, sub_at) > 0), read == 0 and sub_at > 0
+		and after.find(sub_light, sub_at) > 0)
+	var before_file: String = "0 // made by hand\n0 FILE main.ldr\n0 Pre\n0 Name: main.ldr\n" \
+		+ "0 Author: Someone\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 NOFILE\n"
+	await _opened(_put("before_file.mpd", before_file))
+	await _tools.run("light_model", {"op": "add", "kind": "point"})
+	var saved_too: String = ModelStore.SAVE_DIR + "before_file_saved.mpd"
+	_main.call("save_model", saved_too)
+	var written: String = FileAccess.get_file_as_string(saved_too)
+	_check("a light put in a model with a comment before its 0 FILE goes inside its section "
+		+ "(light at %d, FILE at %d)" % [written.find(META), written.find("0 FILE main.ldr")],
+		written.find(META) > written.find("0 FILE main.ldr") and written.find("0 FILE main.ldr") >= 0)
 
 
 ## A value is rounded as a file keeps it before it is checked: a strength or
@@ -1168,46 +1280,78 @@ func _r_gate() -> void:
 
 ## 200,000 light lines that are no lights: opened no slower than the same
 ## file of any other meta command this build has no use for ([constant
-## JUNK_SLOWER]), and kept; and, as lreview measured it, against 200,000
-## comments, said beside it. Each open as a person's (main's), three of each,
-## taken in turn.
+## JUNK_SLOWER]), and kept; saved within [constant JUNK_SAVE] of the same
+## file of comments, as the lead set it (lreview measured 2.9 times, from the
+## lights' own walk over the text's lines: the open's reading answers a save
+## now), and said beside it against comments as long as its lines and the
+## other meta. Each open and save as a person's (main's), three of each,
+## taken in turn, the median.
 func _r_junk() -> void:
 	var body: String = "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
 	var made: Dictionary = {"junk": META + "x", "comments": "0 // x",
-		"other metas": "0 !BRICKWORKS FOO x"}
+		"other metas": "0 !BRICKWORKS FOO x",
+		"comments as long": "0 // " + "x".repeat((META + "x").length() - 5)}
 	var files: Dictionary = {}
 	for which: String in made:
 		var lines := PackedStringArray(["0 " + which])
 		for n: int in 200000:
 			lines.append(made[which])
 		files[which] = _put(which.replace(" ", "_") + ".ldr", "\n".join(lines) + "\n" + body)
-	var took: Dictionary = {"junk": [], "comments": [], "other metas": []}
-	for which: String in ["comments", "junk", "other metas", "other metas", "junk", "comments",
-			"comments", "junk", "other metas"]:
+	var took: Dictionary = {}
+	var saves: Dictionary = {}
+	for which: String in made:
+		took[which] = []
+		saves[which] = []
+	var saved: String = ModelStore.SAVE_DIR + "junk_saved.ldr"
+	# A save first, before any is timed: the session's first wrote 6 s.
+	_main.call("_open", files["comments"])
+	await _frames(30)
+	_main.call("save_model", saved)
+	for which: String in ["comments", "junk", "other metas", "comments as long",
+			"comments as long", "other metas", "junk", "comments",
+			"comments", "junk", "other metas", "comments as long"]:
 		_main.call("clear_model")
 		await _frames(10)
 		var started: int = Time.get_ticks_msec()
 		_main.call("_open", files[which])
 		(took[which] as Array).append(Time.get_ticks_msec() - started)
 		await _frames(30)
-	var mean: Dictionary = {}
-	for which: String in took:
-		mean[which] = (took[which] as Array).reduce(func(a: float, b: int) -> float:
-			return a + b, 0.0) / 3.0
+		started = Time.get_ticks_msec()
+		_main.call("save_model", saved)
+		(saves[which] as Array).append(Time.get_ticks_msec() - started)
+		await _frames(10)
+	var opens: Dictionary = {}
+	var saving: Dictionary = {}
+	for which: String in made:
+		opens[which] = _median(took[which])
+		saving[which] = _median(saves[which])
 	_main.call("_open", files["junk"])
-	var saved: String = ModelStore.SAVE_DIR + "junk_saved.ldr"
+	await _frames(30)
 	_main.call("save_model", saved)
 	var kept: int = FileAccess.get_file_as_string(saved).count("\n" + META + "x")
 	_check("200,000 light lines that are no lights open in %.0f ms against %.0f ms for 200,000 "
-		% [mean["junk"], mean["other metas"]] + "of another meta (%s and %s), %.2f times, at most "
-		% [str(took["junk"]), str(took["other metas"]), mean["junk"] / maxf(mean["other metas"],
+		% [opens["junk"], opens["other metas"]] + "of another meta (%s and %s), %.2f times, at most "
+		% [str(took["junk"]), str(took["other metas"]), opens["junk"] / maxf(opens["other metas"],
 		1.0)] + "%.1f; saved, %d kept" % [JUNK_SLOWER, kept],
-		mean["junk"] <= mean["other metas"] * JUNK_SLOWER and kept == 200000)
-	print("        and %.0f ms for 200,000 comments (%s): %.2f times, the rest what any meta "
-		% [mean["comments"], str(took["comments"]), mean["junk"] / maxf(mean["comments"], 1.0)]
-		+ "command costs the app's other readers")
+		opens["junk"] <= opens["other metas"] * JUNK_SLOWER and kept == 200000)
+	_check("...saved in %.0f ms against %.0f ms for 200,000 comments (%s and %s), %.2f times, at "
+		% [saving["junk"], saving["comments"], str(saves["junk"]), str(saves["comments"]),
+		saving["junk"] / maxf(saving["comments"], 1.0)] + "most %.1f" % JUNK_SAVE,
+		saving["junk"] <= saving["comments"] * JUNK_SAVE)
+	print("        against comments as long as its lines %.0f ms (%s): %.2f times; the other "
+		% [saving["comments as long"], str(saves["comments as long"]), saving["junk"]
+		/ maxf(saving["comments as long"], 1.0)] + "meta %.0f ms (%s): %.2f times; opened, "
+		% [saving["other metas"], str(saves["other metas"]), saving["junk"]
+		/ maxf(saving["other metas"], 1.0)] + "comments %.0f ms (%s): %.2f times" % [
+		opens["comments"], str(took["comments"]), opens["junk"] / maxf(opens["comments"], 1.0)])
 	_main.call("clear_model")
 	await _frames(10)
+
+
+static func _median(values: Array) -> float:
+	var sorted_values: Array = values.duplicate()
+	sorted_values.sort()
+	return float(sorted_values[sorted_values.size() / 2]) if not sorted_values.is_empty() else 0.0
 
 
 # -- the model's suns and bulbs, on this renderer -----------------------------------------
@@ -1253,22 +1397,6 @@ func _measures(traced: bool) -> void:
 		_check("%s: the car's mean under 0 to 4 suns %s, each adding light" % [case[0], str(line)],
 			each)
 	_scene_set([])
-	var against: String = _argument("--means")
-	if method == "forward_plus" and not against.is_empty():
-		var file: FileAccess = FileAccess.open(against, FileAccess.WRITE)
-		file.store_string(JSON.stringify(means))
-		file.close()
-	elif method == "gl_compatibility" and not against.is_empty():
-		var forward: Variant = JSON.parse_string(FileAccess.get_file_as_string(against))
-		if not forward is Dictionary or not (forward as Dictionary).has("dark"):
-			_check("Forward+'s means to match, from %s" % against, false)
-		else:
-			for count: int in [1, 4]:
-				var here: float = float(means["dark"][count])
-				var there: float = float(forward["dark"][count])
-				_check("Dark, %d sun%s: %.1f here, %.1f under Forward+, %.0f%% apart (15%% at most)"
-					% [count, "" if count == 1 else "s", here, there,
-					absf(here - there) / there * 100.0], absf(here - there) <= 0.15 * there)
 	for colour: int in [42, 15]:
 		_main.call("clear_model")
 		await _frames(30)
@@ -1283,7 +1411,10 @@ func _measures(traced: bool) -> void:
 			var angle: float = TAU * n / 8.0
 			bulbs.append(_lights.call("made", "point", AABB(grid.position + Vector3(cos(angle), 0,
 				sin(angle)) * grid.size.x * 0.4, grid.size * 0.5)))
+		# The picture's mean and the floor at its left and its right, as
+		# lreview measured them, without the bulbs and with them.
 		var floors: Array = []
+		var sides: Array = []
 		for lit: Array in [[], bulbs]:
 			_scene_set(lit)
 			var settings := _measure_settings(RenderSettings.Quality.QUICK, Vector2i(1280, 720))
@@ -1291,16 +1422,57 @@ func _measures(traced: bool) -> void:
 			await _render.render(_world, settings)
 			var image: Image = await _render.render(_world, settings)
 			var floor_sum: float = 0.0
+			var right_sum: float = 0.0
 			for y: int in range(100, 480, 4):
 				for x: int in range(0, 300, 4):
 					floor_sum += image.get_pixel(x, y).get_luminance()
+				for x: int in range(1000, 1280, 4):
+					right_sum += image.get_pixel(x, y).get_luminance()
 			floors.append(floor_sum / (75.0 * 95.0) * 255.0)
+			sides.append([snappedf(_mean(image, 4), 0.1), snappedf(float(floors.back()), 0.1),
+				snappedf(right_sum / (70.0 * 95.0) * 255.0, 0.1)])
 			image.save_png(OUT + "grid_%s_%s_%s.png" % ["neon" if colour == 42 else "white",
 				"bulbs" if not lit.is_empty() else "dark", method])
 		_check("%s grid in the dark: 8 bulbs raise the floor at its left from %.1f to %.1f" % [
 			"a neon" if colour == 42 else "a white", floors[0], floors[1]],
 			float(floors[1]) >= float(floors[0]) + 3.0)
+		if colour == 42:
+			# The glow kept its own lights: given to the bulbs on Compatibility,
+			# the mean fell 177.6 to 117.6 and the far floor went black.
+			var none: Array = sides[0]
+			var eight: Array = sides[1]
+			means["neon"] = sides
+			_check("the neon grid's mean and its far floor with 8 bulbs %s within 10%% of "
+				% str(eight) + "no bulbs %s (mean, floor left, floor right)" % str(none),
+				absf(float(eight[0]) - float(none[0])) <= 0.1 * float(none[0])
+				and absf(float(eight[2]) - float(none[2])) <= 0.1 * float(none[2]))
 	_scene_set([])
+	var against: String = _argument("--means")
+	if method == "forward_plus" and not against.is_empty():
+		var file: FileAccess = FileAccess.open(against, FileAccess.WRITE)
+		file.store_string(JSON.stringify(means))
+		file.close()
+	elif method == "gl_compatibility" and not against.is_empty():
+		var forward: Variant = JSON.parse_string(FileAccess.get_file_as_string(against))
+		if not forward is Dictionary or not (forward as Dictionary).has("dark") \
+				or not (forward as Dictionary).has("neon"):
+			_check("Forward+'s means to match, from %s" % against, false)
+		else:
+			for count: int in [1, 4]:
+				var here: float = float(means["dark"][count])
+				var there: float = float(forward["dark"][count])
+				_check("Dark, %d sun%s: %.1f here, %.1f under Forward+, %.0f%% apart (15%% at most)"
+					% [count, "" if count == 1 else "s", here, there,
+					absf(here - there) / there * 100.0], absf(here - there) <= 0.15 * there)
+			for n: int in 2:
+				var here: Array = means["neon"][n]
+				var there: Array = forward["neon"][n]
+				var apart: float = 0.0
+				for k: int in 3:
+					apart = maxf(apart, absf(float(here[k]) - float(there[k])) / float(there[k]))
+				_check("the neon grid %s: %s here, %s under Forward+ (mean, floor left, floor "
+					% ["with 8 bulbs" if n == 1 else "in the dark", str(here), str(there)]
+					+ "right), %.0f%% apart at most (10%%)" % (apart * 100.0), apart <= 0.1)
 
 
 func _measure_settings(quality: int, size: Vector2i) -> RenderSettings:

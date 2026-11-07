@@ -181,10 +181,12 @@ const GLOW_LIGHTS := 12
 ## card through zink, the picture's mean (Forward+ / Compatibility before /
 ## after): the car in the dark 18.4 / 9.9 / 22.6, under one sun 103.7 / 24.0
 ## / 109.2, under four 162.3 / 48.8 / 166.5 (with [method _suns_share]);
-## the neon grid in the dark 171.2 / 127.3 / 177.6 (with [method
-## _fold_glow]), and the floor eight bulbs light beside the white grid 64.6
-## / 15.7 / 64.7. Of the 24 pairs tried (exposure 1 to 3, lamps 1 to 14),
-## none brought both one sun and four within 15% without the suns' share.
+## the neon grid in the dark 171.2 / 127.3 / 175.3, and under eight bulbs
+## 174.9 / 117.6 / 175.6 (the glow keeps its own lights, [method
+## _glows_allowed]), and the floor eight bulbs light beside the white grid
+## 64.6 / 15.7 / 64.7. Of the 24 pairs tried (exposure 1 to 3, lamps 1 to
+## 14), none brought both one sun and four within 15% without the suns'
+## share.
 const DARK_COMPAT_EXPOSURE := 2.0
 const DARK_COMPAT_LAMPS := 4.0
 
@@ -1796,26 +1798,24 @@ func _place_glows(settings: RenderSettings) -> void:
 		cells[cell] = into
 	var lumps: Array = cells.values()
 	lumps.sort_custom(func(a: Array, b: Array) -> bool: return float(a[2]) > float(b[2]))
-	var own: int = _glows_allowed()
-	for n: int in mini(lumps.size(), GLOW_LIGHTS):
-		var lump: Array = lumps[n]
+	lumps = lumps.slice(0, GLOW_LIGHTS)
+	if lumps.is_empty():
+		return
+	var own: int = _glows_allowed(lumps.size())
+	if not full_renderer():
+		_make_room(own)
+	for lump: Array in _gathered(lumps, own):
 		var power: float = float(lump[2])
 		var colour: Color = (lump[1] as Color) / power
 		var brightest: float = maxf(colour.r, maxf(colour.g, colour.b))
-		var tint: Color = (colour / maxf(brightest, 0.0001)).linear_to_srgb()
-		var energy: float = BrickWorld.light_energy(power * brightest * GLOW_RASTER)
-		var at: Vector3 = (lump[0] as Vector3) / power
-		if n >= own:
-			_fold_glow(at, tint, energy)
-			continue
 		var node := OmniLight3D.new()
-		node.position = at
-		node.light_color = tint
+		node.position = (lump[0] as Vector3) / power
+		node.light_color = (colour / maxf(brightest, 0.0001)).linear_to_srgb()
 		# Falling off a little slower than a point would: a lump of plastic
 		# is no point, and a face beside it is lit by it whole.
 		node.omni_attenuation = 1.5
 		node.omni_range = maxf(_bounds.size.length() * 2.0, 400.0)
-		node.light_energy = energy
+		node.light_energy = BrickWorld.light_energy(power * brightest * GLOW_RASTER)
 		node.light_indirect_energy = 0.0
 		node.light_specular = 0.0
 		node.shadow_enabled = false
@@ -1828,29 +1828,76 @@ func _place_glows(settings: RenderSettings) -> void:
 ## The rasterised glow's light against a point's: falling off as distance to
 ## the 1.5 (above), it is matched to the square's at 40 LDU.
 const GLOW_RASTER := 0.16
+## The fewest glow lights Compatibility keeps while anything glows: the
+## model's bulbs make room for them ([method _make_room]). Given to the
+## nearest bulb instead, eight bulbs over a grid of neon bricks drew the
+## glow from where the bulbs hang, its far floor black (lreview, 2026-11-07).
+const GLOW_KEPT := 2
 
 
-## A glow Compatibility has no light of its own left for ([method
-## _glows_allowed]): its light given to the nearest light drawn that shines
-## every way, a glow's or a bulb of the model's, its colour mixed in by
-## energy. So the web draws the glow Forward+ draws, in fewer lights: left
-## out, eight bulbs over a grid of neon bricks left the floor beside it
-## darker than the neon alone (130.7 to 105.7 of 255).
-func _fold_glow(at: Vector3, tint: Color, energy: float) -> void:
-	var nearest: OmniLight3D = null
-	for node: OmniLight3D in _glow_nodes:
-		if nearest == null or node.position.distance_squared_to(at) \
-				< nearest.position.distance_squared_to(at):
-			nearest = node
+## [param lumps] ([position x power, colour x power, power] each, the
+## brightest first) as [param most] lights at most: as they are when they are
+## no more, and otherwise gathered round [param most] middles, each the
+## power-weighted middle of the lumps nearest it (a few rounds of k-means
+## from the brightest), so fewer lights still give off the glow from where
+## it is, all of it.
+static func _gathered(lumps: Array, most: int) -> Array:
+	if lumps.size() <= most or most <= 0:
+		return lumps if most > 0 else []
+	var middles: Array[Vector3] = []
+	for n: int in most:
+		middles.append((lumps[n][0] as Vector3) / float(lumps[n][2]))
+	var groups: Array = []
+	for _round: int in 6:
+		groups = []
+		for n: int in most:
+			groups.append([Vector3.ZERO, Color(0, 0, 0), 0.0])
+		for lump: Array in lumps:
+			var at: Vector3 = (lump[0] as Vector3) / float(lump[2])
+			var nearest: int = 0
+			for n: int in range(1, most):
+				if at.distance_squared_to(middles[n]) < at.distance_squared_to(middles[nearest]):
+					nearest = n
+			var group: Array = groups[nearest]
+			group[0] = (group[0] as Vector3) + (lump[0] as Vector3)
+			group[1] = (group[1] as Color) + (lump[1] as Color)
+			group[2] = float(group[2]) + float(lump[2])
+		for n: int in most:
+			if float(groups[n][2]) > 0.0:
+				middles[n] = (groups[n][0] as Vector3) / float(groups[n][2])
+	return groups.filter(func(group: Array) -> bool: return float(group[2]) > 0.0)
+
+
+## Under Compatibility, the model's bulbs made few enough that [param glows]
+## glow lights are drawn beside them on one thing (max_lights_per_object
+## bulbs at most, its spots counted apart): the dimmest bulb given to the
+## bulb nearest it, where the two of them are, by energy, until they fit.
+## Past the limit Compatibility leaves out whichever lights come last, the
+## glow's or the model's own.
+func _make_room(glows: int) -> void:
+	var most: int = int(ProjectSettings.get_setting(
+		"rendering/limits/opengl/max_lights_per_object", 8))
+	var bulbs: Array[OmniLight3D] = []
 	for node: Light3D in _lamp_nodes:
-		if node is OmniLight3D and (nearest == null or node.position.distance_squared_to(at)
-				< nearest.position.distance_squared_to(at)):
-			nearest = node as OmniLight3D
-	if nearest == null:
-		return
-	var sum: float = nearest.light_energy + energy
-	nearest.light_color = nearest.light_color * (nearest.light_energy / sum) + tint * (energy / sum)
-	nearest.light_energy = sum
+		if node is OmniLight3D and node.visible:
+			bulbs.append(node as OmniLight3D)
+	while bulbs.size() > maxi(most - glows, 1):
+		bulbs.sort_custom(func(a: OmniLight3D, b: OmniLight3D) -> bool:
+			return a.light_energy < b.light_energy)
+		var gone: OmniLight3D = bulbs.pop_front()
+		var into: OmniLight3D = bulbs[0]
+		for node: OmniLight3D in bulbs:
+			if node.position.distance_squared_to(gone.position) \
+					< into.position.distance_squared_to(gone.position):
+				into = node
+		var sum: float = into.light_energy + gone.light_energy
+		var share: float = gone.light_energy / maxf(sum, 0.000001)
+		into.position = into.position.lerp(gone.position, share)
+		into.light_color = into.light_color.lerp(gone.light_color, share)
+		into.light_energy = sum
+		into.light_size = maxf(into.light_size, gone.light_size)
+		into.omni_range = maxf(into.omni_range, gone.omni_range)
+		gone.visible = false
 
 
 ## Under Compatibility, which adds light in sRGB, what each of the model's
@@ -1871,22 +1918,24 @@ static func _suns_share(lights: Array) -> float:
 	return pow(whole, 1.0 / 2.2) / parts if parts > 0.0 else 1.0
 
 
-## How many glow lights the set may have: [constant GLOW_LIGHTS], and under
-## Compatibility no more than the lamps leave of the lights it draws on one
-## thing (max_lights_per_object, 8). Past that it leaves lights out, the
-## model's own lamps among them: eight bulbs over a grid of neon bricks
-## added nothing on the web (lreview, 2026-11-07). The lamps are placed
-## first, and the glow takes what is left.
-func _glows_allowed() -> int:
+## How many glow lights the set may have for [param lumps] lumps of glowing
+## parts: one each, up to [constant GLOW_LIGHTS]; and under Compatibility,
+## which draws at most max_lights_per_object bulbs on one thing (8; its spots
+## are counted apart, a glow is a bulb), what the model's bulbs leave of
+## them, but never fewer than [constant GLOW_KEPT]: the bulbs make room
+## ([method _make_room]). Past the limit it leaves lights out, the model's
+## own among them: eight bulbs over a grid of neon bricks added nothing on
+## the web (lreview, 2026-11-07).
+func _glows_allowed(lumps: int) -> int:
 	if full_renderer():
-		return GLOW_LIGHTS
-	var lamps: int = 0
+		return mini(lumps, GLOW_LIGHTS)
+	var bulbs: int = 0
 	for node: Light3D in _lamp_nodes:
-		if not node is DirectionalLight3D:
-			lamps += 1
+		if node is OmniLight3D and node.visible:
+			bulbs += 1
 	var most: int = int(ProjectSettings.get_setting(
 		"rendering/limits/opengl/max_lights_per_object", 8))
-	return clampi(most - lamps, 0, GLOW_LIGHTS)
+	return mini(lumps, clampi(maxi(most - bulbs, GLOW_KEPT), 0, GLOW_LIGHTS))
 
 
 ## The shadow map's size, set only when it changes: the atlas is made

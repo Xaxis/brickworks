@@ -160,6 +160,9 @@ const _AUTHORED_WORD := "AUTHORED_STEPS"
 const _WORKED_WORD := "WORKED_STEPS"
 const _COPY_WORD := "COPY"
 const _IN_WORD := "IN"
+## A light placed in the model, "0 !BRICKWORKS LIGHT {...}" (SceneLights):
+## its word, as the others' are compared.
+const _LIGHT_WORD := "LIGHT"
 ## The unit step of such a copy (AuthorSteps reads it from here): kept here,
 ## where the file is read, so reading one names no class of the app's and
 ## compiles alone, which is what a file browser's picture of a model waits
@@ -176,6 +179,15 @@ var generated: Dictionary = {}
 ## by its body: made once an open, where the web looks for what a skin is
 ## drawn from before it opens (CustomParts.unreached_by) and builds it after.
 var skin_texts: Dictionary = {}
+## The model's own light lines (SceneLights), as the file has them, without a
+## line's CR, in its order: those of its first FILE section and any before
+## it. Read here, in the one reading of the file, so which model a light is
+## of is decided where every part's is: a sub-model's are [member
+## section_lights]'s.
+var light_lines := PackedStringArray()
+## A sub-model's light lines, by its key (as [member unit_sections] names
+## the section each copy is of) -> Array of the lines as the file has them.
+var section_lights: Dictionary = {}
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
@@ -224,6 +236,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	## The !DATA section being read, and its base64 so far.
 	var data_name: String = ""
 	var data := PackedStringArray()
+	## The model's own light lines, kept here and given to it at the end: a
+	## packed array read out of an object and appended to is a copy.
+	var own_lights := PackedStringArray()
 
 	var index: int = -1
 	for raw: String in text.split("\n"):
@@ -299,6 +314,17 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 					and tokens[2] == _COPY_WORD:
 				copy_next = maxi(tokens[3].to_int(), 0)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
+					and tokens[2] == _LIGHT_WORD:
+				# The model's own, or the sub-model's being read: a light is
+				# of the model its line is in, as a part is.
+				if current == model.main:
+					own_lights.append(raw.trim_suffix("\r"))
+				else:
+					var key: String = _key(current.name)
+					if not model.section_lights.has(key):
+						model.section_lights[key] = []
+					(model.section_lights[key] as Array).append(raw.trim_suffix("\r"))
+			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == _IN_WORD:
 				# A path's names may hold spaces: the rest of the line.
 				within = line.substr(line.to_upper().find(keyword) + keyword.length()).strip_edges() \
@@ -346,6 +372,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 
 	if not data_name.is_empty():
 		model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
+	model.light_lines = own_lights
 	for file_name: String in sections:
 		var lines := PackedStringArray(sections[file_name])
 		# The first section is the model itself, whatever it is called.
@@ -366,10 +393,99 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 
 
 static func _is_file_line(line: String) -> bool:
-	var tokens: PackedStringArray = line.split(" ", false)
-	return tokens.size() >= 2 and tokens[0] == "0" \
-		and (tokens[1].to_upper() == "FILE" or tokens[1].to_upper() == "NOFILE"
-			or tokens[1].to_upper() == "!DATA")
+	return not section_word(line).is_empty()
+
+
+## What [param line] opens or closes of a file of many sections, its words
+## split as [method parse] splits every line ([method _fields]: a tab is a
+## space): "FILE", "NOFILE" or "!DATA"; "" for any other line. Split on
+## spaces alone, "0<tab>FILE sub.ldr" ended no section here while parse
+## opened one there, and a sub-model's light was read as the model's
+## (lreview, 2026-11-07).
+static func section_word(line: String) -> String:
+	var tokens: PackedStringArray = _fields(line.strip_edges())
+	if tokens.size() < 2 or tokens[0].to_int() != 0:
+		return ""
+	var word: String = tokens[1].to_upper()
+	return word if word == "FILE" or word == "NOFILE" or word == "!DATA" else ""
+
+
+## Where [param text]'s own model is, as [method parse] reads it: x where its
+## lines begin after its 0 FILE line (0 when the text has none), y where they
+## end, at its second 0 FILE (the text's length when it has none). What a
+## writer puts into the model goes after the first of its lines (its title),
+## inside its FILE section, never before it. Each line that may be one read
+## as parse reads it ([method section_word]); those lines found by the
+## engine's searches for the word's last letters, "ILE" and "ile" (any case
+## of the word but a mix within them, FiLe say, which no tool writes): its
+## search without case took 860 ms over a model of 900,000 lines (these two
+## 250), and each save asks this more than once.
+static func main_span(text: String) -> Vector2i:
+	var start: int = -1
+	var upper: int = text.find("ILE")
+	var lower: int = text.find("ile")
+	while upper >= 0 or lower >= 0:
+		var found: int = upper if lower < 0 or (upper >= 0 and upper < lower) else lower
+		var line_start: int = text.rfind("\n", found) + 1
+		var line_end: int = text.find("\n", found)
+		if line_end < 0:
+			line_end = text.length()
+		if section_word(text.substr(line_start, line_end - line_start)) == "FILE":
+			if start >= 0:
+				return Vector2i(start, line_start)
+			start = mini(line_end + 1, text.length())
+		var after: int = line_end + 1
+		if after >= text.length():
+			break
+		if upper >= 0 and upper < after:
+			upper = text.find("ILE", after)
+		if lower >= 0 and lower < after:
+			lower = text.find("ile", after)
+	return Vector2i(maxi(start, 0), text.length())
+
+
+## Where [param text]'s own model's lines end ([method main_span]).
+static func main_end(text: String) -> int:
+	return main_span(text).y
+
+
+## [param text] with [param lines] put in after the first line of its own
+## model ([method main_span]: inside its FILE section, after its title),
+## each ending as the text's lines do: where a writer puts what it keeps in
+## the model.
+static func into_main(text: String, lines: PackedStringArray) -> String:
+	if lines.is_empty():
+		return text
+	var span: Vector2i = main_span(text)
+	var at: int = span.x
+	if at < span.y:
+		var stop: int = text.find("\n", at)
+		at = text.length() if stop < 0 else stop + 1
+	return lines_at(text, at, lines)
+
+
+## [param text] with [param lines] put in at [param at], where a line of it
+## begins or at its end, each ending as its lines do ([method eol_of]); a text
+## that ended without a line end still does.
+static func lines_at(text: String, at: int, lines: PackedStringArray) -> String:
+	if lines.is_empty():
+		return text
+	var eol: String = eol_of(text)
+	var block: String = eol.join(lines)
+	if at < text.length():
+		return text.substr(0, at) + block + eol + text.substr(at)
+	if text.is_empty() or text.ends_with("\n"):
+		return text + block + eol
+	return text + eol + block
+
+
+## How [param text] ends its lines, its first one's way: "\r\n" (Studio's,
+## Windows') or "\n". Every line a writer puts into a file ends this way, so
+## a file of one kind of line end is never given a line of the other or a CR
+## alone (lreview, 2026-11-07).
+static func eol_of(text: String) -> String:
+	var first: int = text.find("\n")
+	return "\r\n" if first > 0 and text[first - 1] == "\r" else "\n"
 
 
 ## Whether a FILE section is a part rather than a sub-model: its header
@@ -771,11 +887,14 @@ static func write_ldr(
 ## goes in its section's first step. A copy built in its parent's steps
 ## (AuthorSteps.IN_PARENT) has no section: its parts, and the copies it
 ## places, are written in the steps of the one round it after a line
-## naming it (IN_META).
+## naming it (IN_META). [param kept] is the lines a definition keeps that
+## are not parts, by its name -> the lines, written after its section's
+## first line as they are: a sub-model's lights the app could not read, or
+## any of its own (SceneLights.kept_in).
 static func write_tree(
 	placements: Array, title: String, author_name: String,
 	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {},
-	parts: Dictionary = {}
+	parts: Dictionary = {}, kept: Dictionary = {}
 ) -> String:
 	var in_parent := func(path: String) -> bool:
 		return int(unit_steps.get(path, -1)) == IN_PARENT
@@ -875,7 +994,7 @@ static func write_tree(
 		text += "0 FILE " + str(file_of[def]) + "\n" \
 			+ _write_one(own, def, author_name, refs.call(master, inverse), str(file_of[def]),
 				ref_steps.call(master), own.map(func(p: Placement) -> String: return p.within),
-				ref_within.call(master)) \
+				ref_within.call(master), kept.get(def, PackedStringArray())) \
 			+ "0 NOFILE\n"
 	var names: Array = embedded.keys()
 	names.sort()
@@ -902,12 +1021,15 @@ static func write_tree(
 ## step 9 came back put on in step 1. [param within] and [param ref_within]
 ## name the copy built in this one's steps each part and each reference is
 ## of, "" for its own: each run of a step's lines of one such copy is
-## written after a line naming it (IN_META).
+## written after a line naming it (IN_META). [param kept] go after its
+## first line, as they are (write_tree).
 static func _write_one(placements: Array, title: String, author_name: String,
 		refs: Array[String], file_name: String = "", ref_steps: Array = [],
-		within: Array = [], ref_within: Array = []) -> String:
+		within: Array = [], ref_within: Array = [],
+		kept: PackedStringArray = PackedStringArray()) -> String:
 	var lines := PackedStringArray()
 	lines.append("0 " + title)
+	lines.append_array(kept)
 	lines.append("0 Name: " + (file_name if not file_name.is_empty()
 		else title.to_snake_case() + ".ldr"))
 	if not author_name.is_empty():

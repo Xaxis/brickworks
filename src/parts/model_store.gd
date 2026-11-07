@@ -523,14 +523,32 @@ var _views_kept: Array = []
 ## The lights placed in the model (SceneLights) as it was opened or last saved
 ## to its file, in the window's coordinates: others now are work not saved.
 var _lights_kept: Array = []
-## The text it was opened from when that has light lines this could not read
-## (SceneLights.sorted), "" when it has none: they are written back word for
-## word with the lights wherever the model is written whole (SceneLights.unread,
-## asked only then). Someone else's file still has them where they were.
-var _lights_from: String = ""
-## Those lines in words, as the last open said them (SceneLights.unread_words),
-## for every way of opening to say: "" for none.
-var lights_unread_words: String = ""
+## What the open read of the model's lights (SceneLights.of_model): the lines
+## it read, those it could not, and its sub-models' own, each as the file has
+## them, written back with the lights wherever the model is written. The
+## model's, not the tab's: kept for the world's generation the model was laid
+## in ([member _lights_in]) and asked for only through [method _lights_now],
+## so whatever empties the world or lays another model in it (Clear, a mosaic,
+## Brick Art, a design asked for, another open) leaves them behind without
+## being told to, as [member _absent] are. Kept in this tab before, a Clear
+## wrote the cleared model's lines into the next model's file (lreview,
+## 2026-11-07).
+var _lights_read: Dictionary = {}
+var _lights_in: int = -1
+## The light lines of the model on the baseplate its open could not read, in
+## words (SceneLights.unread_words), for every way of opening to say: "" for
+## none, and for a model that is not the one opened.
+var lights_unread_words: String:
+	get:
+		return SceneLights.unread_words(_lights_now().get("why", {}))
+
+
+## The open's reading of the model's lights ([member _lights_read]) while the
+## model on the baseplate is the one it was read with; {} once it is not.
+func _lights_now() -> Dictionary:
+	if world == null or world.generation() != _lights_in:
+		return {}
+	return _lights_read
 
 
 ## The saved file the model on the baseplate is, as this tab or window last
@@ -636,8 +654,6 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	bin_sets = PackedStringArray()
 	_views_kept = []
 	_lights_kept = []
-	_lights_from = ""
-	lights_unread_words = ""
 	reference = picture
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
@@ -1674,8 +1690,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	var lit: Dictionary = read["lights"]
 	world.scene_lights = SceneLights.placed(lit["lights"], _lift_now())
 	_lights_kept = world.scene_lights
-	_lights_from = text if not (lit["why"] as Dictionary).is_empty() else ""
-	lights_unread_words = SceneLights.unread_words(lit["why"])
+	_lights_read = lit
+	_lights_in = _opened_in
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
@@ -1751,7 +1767,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"hidden": HiddenColours.read(text),
 		"cut": CutShape.read(text),
 		"views": SavedViews.read(text),
-		"lights": SceneLights.sorted(text),
+		"lights": SceneLights.of_model(model),
 		"motions": Motions.read(text),
 		"pins": PinnedComments.read(text),
 	}
@@ -2107,7 +2123,7 @@ func _source_asked(title_now: String) -> Dictionary:
 		"cut": world.cut_kept.duplicate(true),
 		"views": SavedViews.in_file(world.saved_views, _lift_now()),
 		"lights": SceneLights.in_file(world.scene_lights, _lift_now()),
-		"lights_unread": SceneLights.unread(_lights_from),
+		"lights_read": _lights_now(),
 		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
 		"pins": pins.lines(world, _lift_now()),
 		"authored": AuthorSteps.any(world, scenery), "set": from_set}
@@ -2145,7 +2161,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 	kept = HiddenColours.written_into(kept, asked["hidden"])
 	kept = CutShape.written_into(kept, asked["cut"])
 	kept = SavedViews.written_into(kept, asked["views"])
-	kept = SceneLights.written_into(kept, asked["lights"], asked["lights_unread"])
+	kept = SceneLights.written_with(kept, asked["lights"], asked["lights_read"], false)
 	kept = Motions.written_into(kept, asked["motions"])
 	kept = PinnedComments.written_into(kept, asked["pins"])
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
@@ -2533,8 +2549,10 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	for group: Variant in figures:
 		figures[group] = back * (figures[group] as Transform3D)
 	var known: Dictionary = library.parts if library != null else {}
+	# A sub-model's light lines in its own section (SceneLights.kept_in).
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known) if not instances.is_empty() \
+		unit_steps, known, SceneLights.kept_in(_lights_now(), instances)) \
+		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known)
 	if authored:
 		text = with_authored_steps(text)
@@ -2561,8 +2579,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	text = HiddenColours.written_into(text, hidden_scheme)
 	text = CutShape.written_into(text, world.cut_kept)
 	text = SavedViews.written_into(text, SavedViews.in_file(world.saved_views, _lift_now()))
-	text = SceneLights.written_into(text, SceneLights.in_file(world.scene_lights, _lift_now()),
-		SceneLights.unread(_lights_from))
+	text = SceneLights.written_with(text, SceneLights.in_file(world.scene_lights, _lift_now()),
+		_lights_now(), true)
 	text = Motions.written_into(text, _motion_lines())
 	text = PinnedComments.written_into(text, pins.lines(world, _lift_now()))
 	text = _with_looks(text, true)

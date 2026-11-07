@@ -2528,11 +2528,24 @@ picture the assistant is shown.
   of 200,000 light lines that are no lights opening within 20% of one of
   200,000 lines of another meta command (`0 !BRICKWORKS FOO x`), its time
   against comments said beside it (every `0 !BRICKWORKS` line costs the
-  open's other readers more than a comment does). Then the car under 0 to 4 suns (each adding light) and the neon
-  and white grids under 8 bulbs in the Dark light (the floor rising), on
-  either renderer; `PROBE_COMPAT=1` runs it on Compatibility through zink,
-  and `-- --means=FILE` (Forward+ first) holds Compatibility's Dark under 1
-  and 4 suns within 15% of Forward+'s. Pictures in `shots/lights/`: look at
+  open's other readers more than a comment does), and saved within 1.5x of
+  200,000 comments (medians of 12, after a warm-up; against comments as
+  long and other metas said beside it). lreview's second review: a model
+  with a line it cannot read, cleared by Clear, then a part put down and
+  saved: no light line in the new file (the read and unread lines are the
+  model's, kept against the world's generation); a CRLF file whose last line
+  is a light, changed and saved, no lone CR; the app's own MPD saved, opened
+  and saved again with its sub-model's light in its sub-model and the
+  unread line once; an MPD whose `0 FILE` lines have a tab keeping its
+  sub-model's light (sections are `LdrModel.parse`'s, never a regex of
+  lights' own); a light added to a model with a comment before its `0 FILE`
+  inside its section. Then the car under 0 to 4 suns (each adding light)
+  and the neon and white grids under 8 bulbs in the Dark light (the white
+  grid's floor rising; the neon grid's mean and far floor within 10% of no
+  bulbs), on either renderer; `PROBE_COMPAT=1` runs it on Compatibility
+  through zink, and `-- --means=FILE` (Forward+ first) holds
+  Compatibility's Dark under 1 and 4 suns within 15% of Forward+'s and the
+  neon grid's (0 and 8 bulbs) within 10%. Pictures in `shots/lights/`: look at
   Render's, the spot's pictures and maps (red would be a pixel changed
   outside: on Compatibility a level apart is the bar, none lighter on the
   whole, as it draws a shadowed light in passes of its own and that
