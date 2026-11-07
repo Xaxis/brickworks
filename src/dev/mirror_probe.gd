@@ -19,6 +19,16 @@
 ## same point and a stud over too, and the pair turned half round and then a
 ## quarter, on the studs; and a mirror whose reflection lands on a part not
 ## selected, refused, with nothing changed.
+##
+## And a design's mirror pattern turns its parts as Mirror does: the walk's
+## side pod (mirrorparts_probe's) by submit_design's mirror pattern, across x
+## and across z, part for part what mirror_parts makes of the same pod, to
+## 0.01 LDU; every part the pattern mirrors in five kept real-set designs
+## (fixtures/mirror_designs.json) what Builder.mirror_bricks makes of the same
+## half; and a part with no mirror image named in submit_design's reply. The
+## pattern kept each brick's rot until mirrorpattern (2026-11-06): across x a
+## headlight, a cheese slope and a hinge plate stayed at rot 1, facing in, and
+## across z a right wedge plate stayed right, a wrong car said as done.
 extends SceneTree
 
 var _failures: int = 0
@@ -91,6 +101,9 @@ func _run() -> void:
 
 	print("a reflection onto a part not selected")
 	await _refused()
+
+	print("a design's mirror pattern, part for part what mirror_parts makes")
+	await _pattern()
 
 	_world.clear()
 	await _frames(10)
@@ -332,3 +345,263 @@ func _quiet() -> void:
 func _frames(count: int) -> void:
 	for _n: int in count:
 		await process_frame
+
+
+# -- a design's mirror pattern (mirrorpattern) ---------------------------------------
+
+
+## The walk's pod as its session laid it (seeing2's walk, s1; mirrorparts_probe):
+## a 4 x 6 plate, a left wing plate, a 1 x 2 slope falling out, a headlight
+## brick facing out and a cheese slope on it falling out.
+const POD: Array = [
+	{"part": "3032", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 1},
+	{"part": "41770", "color": 71, "x": 2, "y": 1, "z": 1},
+	{"part": "3040", "color": 4, "x": 2, "y": 1, "z": 0, "rot": 1},
+	{"part": "4070", "color": 4, "x": 3, "y": 1, "z": 5, "rot": 1},
+	{"part": "54200", "color": 4, "x": 3, "y": 4, "z": 5, "rot": 1}]
+## A tile printed with a picture that reads one way only, which no part is
+## the mirror image of (Mirror: none).
+const LONE := "1126pt0"
+## Five designs sessions submitted with a mirror pattern in the realset
+## bench, each cut after its first mirror (bench/results, 2026-10-26 to 11-04).
+const KEPT := "res://src/dev/fixtures/mirror_designs.json"
+
+var _socket: CommandSocket
+var _next: int = 0
+
+
+## Patterns._mirror kept each brick's turn and laid it by its footprint: a
+## design mirrored by it was a wrong car said as done. Across x the pod's
+## headlight brick, slope and cheese slope stayed at rot 1, facing in; across
+## z a wing plate's other hand pointed back. Now each part it lays is made
+## its mirror image as mirror_parts makes it. Checked as a session meets it,
+## over MCP: the walk's pod by submit_design with a mirror pattern, and by
+## submit_design and mirror_parts, part for part, across x and across z; a
+## part with no mirror image named in submit_design's reply; and five kept
+## designs from the realset bench, every part the pattern mirrors against
+## the Builder's mirror (mirror_parts') on the same half.
+func _pattern() -> void:
+	_socket = CommandSocket.new()
+	_socket.assistant = _main.get("_assistant")
+	_socket.app = _main
+	_main.add_child(_socket)
+	for axis: String in ["x", "z"]:
+		await _pod_mirrored(axis)
+	await _no_image_said()
+	await _kept_designs()
+
+
+## The pod mirrored across [param axis] at -1 by a design's mirror pattern,
+## and laid alone and mirrored by mirror_parts across the same plane: alike,
+## part for part (part, colour, pose to 0.01 LDU).
+func _pod_mirrored(axis: String) -> void:
+	_main.call("clear_model")
+	await _quiet()
+	var said: String = await _say("submit_design", {"name": "Side pods", "floor": "none",
+		"bricks": POD, "patterns": [{"pattern": "mirror", "about": axis, "at": -1}]})
+	var by_pattern: Array = _rows(_model_ids())
+	_main.call("clear_model")
+	await _quiet()
+	await _say("submit_design", {"name": "Side pod", "floor": "none", "bricks": POD})
+	var pod: Array[int] = _model_ids()
+	await _say("mirror_parts", {"bricks": pod, "axis": axis, "copy": true, "across": -1,
+		"picture": false})
+	var by_hand: Array = _rows(_model_ids())
+	_check("the walk's pod across %s, by a design's mirror pattern and by mirror_parts: %d and %d "
+		% [axis, by_pattern.size(), by_hand.size()] + "parts, %d alike" % _alike(by_pattern,
+			by_hand), by_pattern.size() == 2 * POD.size() and by_pattern == by_hand)
+	if by_pattern != by_hand:
+		print("    said: %s" % said.left(400))
+		_differ(by_pattern, by_hand, "the pattern", "mirror_parts")
+	_main.call("clear_model")
+	await _quiet()
+
+
+## A part with no mirror image, mirrored by a design's pattern: named in
+## submit_design's reply, never said as done.
+func _no_image_said() -> void:
+	var library: PartLibrary = _main.get("_library")
+	var image: Dictionary = Mirror.image(library, LONE, Transform3D.IDENTITY, 0, 0.0)
+	_check("%s %s has no mirror image (Mirror)" % [LONE, _named(LONE)],
+		not bool(image["exact"]))
+	_main.call("clear_model")
+	await _quiet()
+	var said: String = await _say("submit_design", {"name": "Signs", "floor": "none",
+		"bricks": [{"part": "3020", "color": 15, "x": 0, "y": 0, "z": 0},
+			{"part": LONE, "color": 15, "x": 0, "y": 1, "z": 0}],
+		"patterns": [{"pattern": "mirror", "about": "x", "at": -1}]})
+	var parts: Array = _model_ids().map(func(id: int) -> String:
+		return _world.get_brick(id).part_id)
+	_check("a design mirroring it lays it on both sides (%s)" % ", ".join(parts),
+		parts.count(LONE) == 2)
+	var at: int = said.find("no mirror image")
+	_check("...and submit_design's reply names it as having no mirror image: \"%s\""
+		% (said.substr(maxi(0, at - 60), 260) if at >= 0 else said.left(300)),
+		at >= 0 and said.contains(_named(LONE)))
+	_main.call("clear_model")
+	await _quiet()
+
+
+## Each kept design read as submit_design reads it, with its first mirror and
+## without: what the mirror adds, part for part, is what the Builder's mirror
+## (mirror_parts') makes of the half it reflects, laid as the read lays it.
+func _kept_designs() -> void:
+	var kept: Variant = JSON.parse_string(FileAccess.get_file_as_string(KEPT))
+	var assistant: Assistant = _main.get("_assistant")
+	var designs: int = 0
+	var parts: int = 0
+	var mirrored: int = 0
+	var alike: int = 0
+	for entry: Dictionary in kept as Array:
+		var design: Dictionary = entry["design"]
+		var patterns: Array = design["patterns"]
+		var mirror: Dictionary = patterns.back()
+		var axis: int = 0 if str(mirror.get("about", "x")) == "x" else 2
+		var before: Dictionary = design.duplicate(true)
+		before["patterns"] = patterns.slice(0, patterns.size() - 1)
+		var without: Array = _read_rows(assistant, before)
+		var with: Array = _read_rows(assistant, design)
+		# What the mirror adds; a dressing tile, which the read picks for each
+		# part dressed by where it is, set apart.
+		var made: Array = _less(with, without)
+		var lost: Array = _less(without, with)
+		var dressed: Array = made.filter(func(row: String) -> bool: return row.ends_with("|dressing"))
+		made = made.filter(func(row: String) -> bool: return not row.ends_with("|dressing"))
+		# The half it reflects, as the read lays it: its own bricks, or all before it.
+		var half: Dictionary = before
+		if mirror.get("bricks") is Array and not (mirror["bricks"] as Array).is_empty():
+			half = {"name": design.get("name", "Model"), "bricks": mirror["bricks"]}
+		var model: Assistant.Model = assistant._read_model(half)
+		model.link_sections()
+		_main.call("clear_model")
+		await _quiet()
+		var ids := PackedInt64Array()
+		var skipped: int = 0
+		for placement: Assistant.Placement in model.placements:
+			var mesh: Lbm.PartMesh = assistant.library.mesh_for(placement.part)
+			if placement.dressing or placement.attached_to != null or mesh == null:
+				skipped += 1
+				continue
+			var at: Transform3D = assistant._transform(placement, mesh,
+				model.sections.get(placement.section))
+			var brick_id: int = _world.add_brick(placement.part, placement.color, at)
+			_builder.register(brick_id, placement.part, at)
+			ids.append(brick_id)
+		# The floor out of the way: 42081-1's half reaches under the ground,
+		# off the baseplate's edge, and two beams' reflections land in it, so
+		# Mirror refuses it there, which says nothing of what it makes.
+		var floor: Array = _store.scenery.keys()
+		for brick_id: int in floor:
+			_builder.lattice.release(brick_id)
+		var by_hand: Array = _rows(Array(_builder.mirror_bricks(ids, axis,
+			float(mirror["at"]) * BrickLattice.STUD)))
+		for brick_id: int in floor:
+			var plate: BrickWorld.Brick = _world.get_brick(brick_id)
+			if plate != null:
+				_builder.register(brick_id, plate.part_id, plate.transform)
+		var lone: int = _builder.no_image.size()
+		var same: int = _alike(made, by_hand)
+		designs += 1
+		parts += by_hand.size()
+		mirrored += made.size()
+		alike += same
+		_check(("%s, mirrored across %s at %s: the pattern made %d, mirror_parts %d of the %d it "
+			+ "reflects, %d alike (%d with no mirror image; %d dressing tiles; %d set aside; %d of "
+			+ "the rest moved)") % [entry["from"], "x" if axis == 0 else "z", str(mirror["at"]),
+			made.size(), by_hand.size(), ids.size(), same, lone, dressed.size(), skipped,
+			lost.size()], not by_hand.is_empty() and made.size() == by_hand.size()
+			and same == made.size() and lost.is_empty())
+		if same != made.size() or made.size() != by_hand.size():
+			_differ(made, by_hand, "the pattern", "mirror_parts")
+		_main.call("clear_model")
+		await _quiet()
+	_check("every part the pattern mirrors in %d kept designs is mirror_parts' (%d of %d, "
+		% [designs, alike, mirrored] + "mirror_parts made %d)" % parts,
+		designs == 5 and alike == mirrored and alike == parts and parts > 0)
+
+
+## [param design] read as submit_design reads it: each part as a row of
+## [method _row], a dressing tile's marked.
+func _read_rows(assistant: Assistant, design: Dictionary) -> Array:
+	var model: Assistant.Model = assistant._read_model(design)
+	model.link_sections()
+	var rows: Array = []
+	for placement: Assistant.Placement in model.placements:
+		var mesh: Lbm.PartMesh = assistant.library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var row: String = _row(placement.part, placement.color, assistant._transform(placement,
+			mesh, model.sections.get(placement.section)))
+		rows.append(row + ("|dressing" if placement.dressing else ""))
+	rows.sort()
+	return rows
+
+
+## Each brick as what it is and where, sorted: two sets of parts alike when
+## these are.
+func _rows(ids: Array) -> Array:
+	var rows: Array = []
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+		if brick != null:
+			rows.append(_row(brick.part_id, brick.color_code, brick.transform))
+	rows.sort()
+	return rows
+
+
+## A part, its colour and its pose to 0.01 LDU.
+static func _row(part: String, colour: int, at: Transform3D) -> String:
+	var row := PackedStringArray([part, str(colour)])
+	for v: Vector3 in [at.origin, at.basis.x, at.basis.y, at.basis.z]:
+		for n: int in 3:
+			row.append(str(snappedf(v[n], 0.01) + 0.0))
+	return "|".join(row)
+
+
+## The rows of [param one] not in [param other], each as many times more.
+static func _less(one: Array, other: Array) -> Array:
+	var left: Array = other.duplicate()
+	var out: Array = []
+	for row: Variant in one:
+		var at: int = left.find(row)
+		if at >= 0:
+			left.remove_at(at)
+		else:
+			out.append(row)
+	return out
+
+
+static func _alike(one: Array, other: Array) -> int:
+	return one.size() - _less(one, other).size()
+
+
+func _differ(one: Array, other: Array, one_name: String, other_name: String) -> void:
+	for row: Variant in _less(one, other).slice(0, 8):
+		print("      only %s: %s" % [one_name, row])
+	for row: Variant in _less(other, one).slice(0, 8):
+		print("      only %s: %s" % [other_name, row])
+
+
+func _named(part: String) -> String:
+	var info: PartLibrary.PartInfo = (_main.get("_library") as PartLibrary).parts.get(part)
+	return " ".join(PackedStringArray(info.name.split(" ", false))) if info != null else part
+
+
+func _model_ids() -> Array[int]:
+	var ids: Array[int] = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			ids.append(brick.id)
+	ids.sort()
+	return ids
+
+
+func _say(tool: String, arguments: Dictionary) -> String:
+	_next += 1
+	var answer: Variant = await _socket.answer_rpc({"jsonrpc": "2.0", "id": _next,
+		"method": "tools/call", "params": {"name": tool, "arguments": arguments}})
+	var text: String = ""
+	for block: Dictionary in ((answer as Dictionary).get("result", {}) as Dictionary).get(
+			"content", []):
+		text += str(block.get("text", ""))
+	return text

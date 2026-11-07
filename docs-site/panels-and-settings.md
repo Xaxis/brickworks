@@ -71,7 +71,7 @@ ui:remembered layout
 
 ## The model tree {#model-tree}
 
-At the top of the right-hand column, the model tree lists the model's sub-assemblies and sections by name, inside one another. Click one to select it, double-click to edit inside it. **View › Model tree** shows or hides it.
+At the top of the right-hand column, the model tree lists the model's sub-assemblies and sections by name, inside one another. Click one to select it, double-click to edit inside it. **View › Panels › Model tree** shows or hides it.
 
 <!-- covers
 ui:model tree

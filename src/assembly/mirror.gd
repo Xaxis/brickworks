@@ -172,6 +172,26 @@ static func _letters_apart(one: String, other: String) -> int:
 	return row[other.length()]
 
 
+## What a mirror says of the [param count] parts it made that have no mirror
+## image, [param named] (each part, or each kind with how many): never said
+## as done, since a part made in one hand only, the same no way round, is not
+## its reflection however it is turned. The first 12 named. Said alike by
+## mirror_parts (HandTools) and a design's mirror pattern (Assistant).
+static func said_without_image(named: PackedStringArray, count: int) -> String:
+	var lone: PackedStringArray = named
+	if lone.size() > 12:
+		lone = lone.slice(0, 12)
+		lone.append("and %d more" % (named.size() - 12))
+	return ("%s no mirror image: %s. %s not the same any way round, and the library "
+		+ "has no part named as %s other hand, so %s turned as near the reflection as %s; "
+		+ "look at %s, and swap or rebuild %s if the reflection matters there.") % [
+		"1 part has" if count == 1 else "%d parts have" % count,
+		", ".join(lone), "It is" if count == 1 else "They are",
+		"its" if count == 1 else "their", "it is" if count == 1 else "they are",
+		"it goes" if count == 1 else "they go", "it" if count == 1 else "them",
+		"it" if count == 1 else "them"]
+
+
 ## [param part_id] at [param at], reflected across the plane at [param across]
 ## square to world axis [param axis] (0 for x, 2 for z): {"part": the part
 ## that is its reflection, its other hand where it has one; "at": where that

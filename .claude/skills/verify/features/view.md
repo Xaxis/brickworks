@@ -749,12 +749,18 @@ picture the assistant is shown.
   (`set_disable_shortcuts`): its popup ran a greyed command silently. Menus
   split so each is at most 25 rows and 60% of a 1280 x 720 window: Make (the
   minifigure, mosaic, brickify, hoses, the part maker and prints), View ›
-  Viewpoint (the views and the model's turns), Comments in File. `keys3_probe`
+  Viewpoint (the views and the model's turns), Comments in File; Build ›
+  Booklet page, 27 rows once Page setup… joined it, folds the step's turns,
+  tilts, this view, usual view and zoom into Build › Booklet page › Step's view
+  (19 rows and 9), and View, 482 of 470 units with Stud map, its five panels
+  into View › Panels (menurows, 2026-11-07). `keys3_probe`
   (windowed, 1280 x 720; `PROBE_SIZE=1400x900`) measures every menu as the
   palette measures Edit, presses the colour keys as a desktop and a browser
   send them, the four selection keys against their menu rows, Studio's Shift-V,
   sets favourite 1 in the sheet and starts the app again on its data folder to
-  find it kept. On the web, `tools/web/colour_keys_flow.mjs` (local build:
+  find it kept; pictures of Build › Booklet page and its Step's view opened,
+  and View › Panels (shots/keys3/menu_build_booklet*_WxH.png,
+  menu_view_panels_WxH.png). On the web, `tools/web/colour_keys_flow.mjs` (local build:
   `--url=http://127.0.0.1:PORT/`) selects all, presses Shift-2 and Ctrl+Z.
   Not proven: Cmd-Shift-3, 4 and 5 on a Mac are the system's screenshot keys,
   so those three most-used keys need setting there.
@@ -1680,7 +1686,8 @@ picture the assistant is shown.
   adds), Bigger / Smaller (0.6x to 2x on the page), New page, Alone, Parts
   list, Callout (the sub-assembly the step puts on, in a box or on pages of
   its own), Per page (as fit, 1, 2, 4); the row's line says how the step is
-  set ("turned 45°, zoom 1.25x, new page"). The same are Build, Booklet page.
+  set ("turned 45°, zoom 1.25x, new page"). The same are Build, Booklet page
+  (the turns, tilts, views and zoom in its Step's view).
   Each is one undo (`steplooks` in `Builder._apply`: the table as it was);
   the first on a model with no steps of its own gives it the worked-out
   ones in the same undo. Kept in `BrickWorld.step_looks` by sub-model and

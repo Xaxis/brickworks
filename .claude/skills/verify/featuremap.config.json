@@ -447,20 +447,6 @@
     },
     {
       "kind": "cli",
-      "label": "a model file's picture",
-      "entry": "src/render/model_thumbnail.gd",
-      "reach": "godot --headless --path . --thumbnail MODEL PICTURE [SIZE]   (the .deb's brickworks-thumbnailer MODEL PICTURE SIZE, as a file manager runs it)",
-      "area": "release"
-    },
-    {
-      "kind": "cli",
-      "label": "check the .deb's thumbnails",
-      "entry": "tools/release/thumbnail_check.py",
-      "reach": "tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace   (smoke of the .deb runs it)",
-      "area": "release"
-    },
-    {
-      "kind": "cli",
       "label": "check every release link",
       "entry": "tools/release/release_links.sh",
       "reach": "tools/release/release_links.sh [web/releases.json]   (ship.sh runs it before a deploy)",
@@ -876,7 +862,7 @@
       "kind": "ui",
       "label": "model tree",
       "entry": "src/ui/outliner.gd",
-      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Model tree)",
+      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Panels, Model tree)",
       "area": "building"
     },
     {
@@ -1192,6 +1178,13 @@
       "label": "stress view",
       "entry": "src/ui/stress_view.gd",
       "reach": "tools/probe.sh stress_probe && tools/probe.sh stress_view_probe   (by hand: View, Stress; point at a part; right-click a red one, Ask Claude to brace this)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "stud directions",
+      "entry": "src/ui/stud_map.gd",
+      "reach": "tools/probe.sh seeing2   (by hand: View, Stud directions; a session: view_board studs=true)",
       "area": "view"
     },
     {
@@ -1514,20 +1507,6 @@
       "label": "build it step player",
       "entry": "src/ui/build_mode.gd",
       "reach": "https://brickworks.diy/m/<id>, then Build it on the viewer's bar  (a phone or a tablet; the desktop too)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "build party",
-      "entry": "src/net/build_party.gd",
-      "reach": "https://brickworks.diy/app?view=<id> on two to four phones, Build together beside Build it: Start a build on one, the code typed and Join on the others, then Start building  (no account; api/together.js ?op=party_*)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "build party browser flow",
-      "entry": "tools/web/buildparty_flow.mjs",
-      "reach": "node tools/web/buildparty_flow.mjs --build=build/web --port=9921 --out=shots/buildparty_flow   (with .env sourced; or --url=<deployment> with BW_BYPASS)",
       "area": "web"
     },
     {
@@ -4422,20 +4401,6 @@
       "area": "view"
     },
     {
-      "kind": "ui",
-      "label": "the booklet's page setup",
-      "entry": "src/ui/page_setup_dialog.gd",
-      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Paper (the booklet's own 269 x 199, A4, US Letter, A5), Orientation, Margins, Page colour, Picture behind, Step numbers, Parts pictures, Style and Keep as a style; then Instructions, Save as PDF; page_setup over MCP)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "pagesetup probe",
-      "entry": "src/dev/pagesetup_probe.gd",
-      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
-      "area": "view"
-    },
-    {
       "kind": "lib",
       "label": "path tracer",
       "entry": "src/render/path_tracer.gd",
@@ -4447,6 +4412,20 @@
       "label": "render queue",
       "entry": "src/ui/render_queue.gd",
       "reach": "godot --path .  (File, Render queue…, Add this view; render_queue over MCP)  /  tools/probe.sh pathtrace",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "saved views",
+      "entry": "src/ui/saved_views.gd",
+      "reach": "tools/probe.sh savedviews && PROBE_SIZE=1400x900 tools/probe.sh savedviews   (by hand: View, Viewpoint, Save this view… or Alt-V, a name; Alt-Shift-1 to 9 look from each again; save and open the model; Render's Camera lists them, its Preset keeps its choices; View, Viewpoint, Render each saved view, or the queue's Add each saved view; view_model and render_model view= over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "savedviews probe",
+      "entry": "src/dev/savedviews_probe.gd",
+      "reach": "tools/probe.sh savedviews [-- --keep=DIR]   (windowed, on the GPU, 1280 x 720 and PROBE_SIZE=1400x900: three views of the car saved by Alt-V, the model saved, closed and opened, each back by its Alt-Shift key within 0.1° and 0.1 LDU; a key each under every preset, none another command's; the queue's Add each saved view the same picture as the window turned there; view_model and render_model view= in one call; a Render preset saved and chosen again in 2 actions; then --older=DIR on an older checkout opens the file whole)",
       "area": "view"
     },
     {
@@ -4709,6 +4688,20 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "the booklet's page setup",
+      "entry": "src/ui/page_setup_dialog.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Paper (the booklet's own 269 x 199, A4, US Letter, A5), Orientation, Margins, Page colour, Picture behind, Step numbers, Parts pictures, Style and Keep as a style; then Instructions, Save as PDF; page_setup over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "pagesetup probe",
+      "entry": "src/dev/pagesetup_probe.gd",
+      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "booklet safe probe",
       "entry": "src/dev/booklet_safe_probe.gd",
@@ -4720,13 +4713,6 @@
       "label": "a file's booklet runs nothing in a browser",
       "entry": "tools/web/booklet_safe_flow.mjs",
       "reach": "node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts: a model whose page picture breaks out of its attribute opened, Instructions pressed; no flag set, the good picture shown, the policy first with script-src 'none', script put into the tab refused, Print prints)",
-      "area": "view"
-    },
-    {
-      "kind": "ui",
-      "label": "stud directions",
-      "entry": "src/ui/stud_map.gd",
-      "reach": "tools/probe.sh seeing2   (by hand: View, Stud directions; a session: view_board studs=true)",
       "area": "view"
     },
     {
@@ -4766,17 +4752,31 @@
     },
     {
       "kind": "ui",
-      "label": "saved views",
-      "entry": "src/ui/saved_views.gd",
-      "reach": "tools/probe.sh savedviews && PROBE_SIZE=1400x900 tools/probe.sh savedviews   (by hand: View, Viewpoint, Save this view… or Alt-V, a name; Alt-Shift-1 to 9 look from each again; save and open the model; Render's Camera lists them, its Preset keeps its choices; View, Viewpoint, Render each saved view, or the queue's Add each saved view; view_model and render_model view= over MCP)",
-      "area": "view"
+      "label": "build party",
+      "entry": "src/net/build_party.gd",
+      "reach": "https://brickworks.diy/app?view=<id> on two to four phones, Build together beside Build it: Start a build on one, the code typed and Join on the others, then Start building  (no account; api/together.js ?op=party_*)",
+      "area": "web"
     },
     {
       "kind": "cli",
-      "label": "savedviews probe",
-      "entry": "src/dev/savedviews_probe.gd",
-      "reach": "tools/probe.sh savedviews [-- --keep=DIR]   (windowed, on the GPU, 1280 x 720 and PROBE_SIZE=1400x900: three views of the car saved by Alt-V, the model saved, closed and opened, each back by its Alt-Shift key within 0.1° and 0.1 LDU; a key each under every preset, none another command's; the queue's Add each saved view the same picture as the window turned there; view_model and render_model view= in one call; a Render preset saved and chosen again in 2 actions; then --older=DIR on an older checkout opens the file whole)",
-      "area": "view"
+      "label": "build party browser flow",
+      "entry": "tools/web/buildparty_flow.mjs",
+      "reach": "node tools/web/buildparty_flow.mjs --build=build/web --port=9921 --out=shots/buildparty_flow   (with .env sourced; or --url=<deployment> with BW_BYPASS)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "a model file's picture",
+      "entry": "src/render/model_thumbnail.gd",
+      "reach": "godot --headless --path . --thumbnail MODEL PICTURE [SIZE]   (the .deb's brickworks-thumbnailer MODEL PICTURE SIZE, as a file manager runs it)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "check the .deb's thumbnails",
+      "entry": "tools/release/thumbnail_check.py",
+      "reach": "tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace   (smoke of the .deb runs it)",
+      "area": "release"
     }
   ]
 }

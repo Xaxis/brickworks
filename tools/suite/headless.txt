@@ -55,7 +55,7 @@ bigmodel
 quit
 edit
 selection
-mirror
+mirror   # Mirror in place on its own footprint, refused onto a part not selected; a design's mirror pattern part for part what mirror_parts makes, across x and z, on the walk's pod and five kept real-set designs, a part with no mirror image named in the reply
 scanner
 attach
 import
