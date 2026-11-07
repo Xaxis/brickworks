@@ -65,7 +65,7 @@ static func make_modified(library: PartLibrary, edit: RefCounted,
 ## this very part: {"text", "id", "problem"}.
 static func modified_text(library: PartLibrary, edit: RefCounted) -> Dictionary:
 	var info: PartLibrary.PartInfo = library.parts.get(edit.from)
-	if info == null:
+	if info == null or info.stand_in:
 		return {"text": "", "id": "", "problem": "there is no part %s" % edit.from}
 	var mesh: Lbm.PartMesh = library.mesh_for(edit.from)
 	var category: String = info.ldraw_category if info.custom else info.category
@@ -223,7 +223,7 @@ static func named_for(library: PartLibrary, id: String) -> String:
 		return ""
 	var named: String = id.substr(at + 3).strip_edges()
 	var info: PartLibrary.PartInfo = library.parts.get(named)
-	return named if info != null and not info.custom else ""
+	return named if info != null and not info.custom and not info.stand_in else ""
 
 
 ## The part [param id] is a copy of, for [param mesh], its geometry as the
@@ -658,7 +658,7 @@ static func _to_build(library: PartLibrary, model: LdrModel) -> PackedStringArra
 		# A part Studio drew itself that LDraw has since drawn (bl_5095 is
 		# 5095): the library's, as ModelStore.studio_part reads the name.
 		var plain: PartLibrary.PartInfo = library.parts.get(id.trim_prefix("bl_"))
-		if id.begins_with("bl_") and plain != null and not plain.custom:
+		if id.begins_with("bl_") and plain != null and not plain.custom and not plain.stand_in:
 			continue
 		wanted.append(file_name)
 	return wanted
@@ -807,7 +807,7 @@ static func copied_parts(library: PartLibrary, model: LdrModel) -> PackedStringA
 	for file_name: String in model.embedded_parts:
 		var id: String = file_name.get_basename()
 		var info: PartLibrary.PartInfo = library.parts.get(id)
-		if info != null and (not info.custom or not info.copy_of.is_empty()):
+		if info != null and not info.stand_in and (not info.custom or not info.copy_of.is_empty()):
 			continue
 		var named: String = named_for(library, id)
 		if not named.is_empty() and not out.has(library.resolve(named)):

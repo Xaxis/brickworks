@@ -118,8 +118,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   it the step of the part nearest it in its copy
   (`AuthorSteps._stand_ins_stepped`). It is no part to anything that asks
   by number (`PartLibrary.has_part`): a file opened later that carries a
-  sub-model or a part by that number builds it, and a session asking for it
-  hears there is none. File, Open says how many and which, a
+  sub-model or a part by that number builds it (Studio's too), and a session
+  asking for it hears there is none. Nor is it in the parts list, the shop
+  lists or what a model needs from a collection, and the model does not
+  stand on it. File, Open says how many and which, a
   flexible part once by its sub-model ("… (ropeLQ-1 (flexible))").
   `fidelity_probe` checks it, `kt3r_probe`'s unshown_copy and
   delete_unshown_copy move and delete its copy, unshown_edits picks it up,

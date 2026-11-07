@@ -2001,8 +2001,8 @@ static func _hold_unit(instances: Dictionary, unit: String, frame: Transform3D) 
 ## BrickLink knows, bl_3068pb2483), the name is kept, and the part is left
 ## out and named like any other the library has not got.
 static func studio_part(part_id: String, library: PartLibrary) -> String:
-	if part_id.begins_with("bl_") and not library.parts.has(part_id) \
-			and library.parts.has(part_id.substr(3)):
+	if part_id.begins_with("bl_") and not library.has_part(part_id) \
+			and library.has_part(part_id.substr(3)):
 		return part_id.substr(3)
 	return part_id
 
@@ -2370,7 +2370,8 @@ func lowest_of(pairs: Array) -> float:
 	var rows: Array = []   ## [how low the box reaches, part id, transform, exact]
 	for pair: Array in pairs:
 		var info: PartLibrary.PartInfo = library.parts.get(str(pair[0]))
-		if info == null:
+		# A stand-in has no size to stand on (PartLibrary.add_stand_in).
+		if info == null or info.stand_in:
 			continue
 		var at: Transform3D = pair[1]
 		var box: AABB = at * info.bounds
