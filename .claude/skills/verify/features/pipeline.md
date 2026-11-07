@@ -335,8 +335,8 @@ numbers it prints come from the files that were just written.
   side, a process each, as many at once as the heavy slot's cores
   (`MINITEST_JOBS=1` for one process, one after another); each file's output is
   printed whole under its name, in the order given, and the verdict for the lot is
-  last. The whole suite took 110 s that way at load 13-18 (815 s one after another
-  at load 35, 2026-11-07). A test must stand alone in its file's process and keep
+  last. The whole suite took 113.7 s that way, and 475.4 s one after another
+  beside it, both in a heavy slot at load 28-30 (2026-11-07). A test must stand alone in its file's process and keep
   its files in its own temp folder: another file runs beside it.
 - **−Y is up in LDraw.** Every axis conversion is `(x, -y, -z)`, and a mesh and its
   connectors have to get the same treatment or the studs end up on the bottom.
