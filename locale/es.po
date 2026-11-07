@@ -11936,3 +11936,48 @@ msgstr "Sobre la luz del estudio. «Oscuro», en Luz, apaga el estudio y hace br
 
 msgid "Added a light: the model keeps it, and every render draws it."
 msgstr "Luz añadida: el modelo la guarda y cada render la dibuja."
+
+msgid "Not now: %s"
+msgstr "Ahora no: %s"
+
+msgid "Not added: %s."
+msgstr "No añadida: %s."
+
+msgid "A model keeps at most %d suns."
+msgstr "Un modelo guarda como mucho %d soles."
+
+msgid "a model keeps at most %d lights"
+msgstr "un modelo guarda como mucho %d luces"
+
+msgid "a model keeps at most %d suns: with the studio's three lights and its sky that is eight, the most a renderer draws"
+msgstr "un modelo guarda como mucho %d soles: con las tres luces del estudio y su cielo son ocho, lo más que dibuja un motor de render"
+
+msgid "1 light line not read, kept in the file as it is"
+msgstr "1 línea de luz sin leer, guardada tal cual en el archivo"
+
+msgid "%d light lines not read, kept in the file as they are"
+msgstr "%d líneas de luz sin leer, guardadas tal cual en el archivo"
+
+msgid "not a light's words"
+msgstr "no son las palabras de una luz"
+
+msgid "past the first %d light lines, which are all that are read"
+msgstr "pasadas las primeras %d líneas de luz, las únicas que se leen"
+
+msgid "of a kind there is not (spot, point, directional or area)"
+msgstr "de un tipo que no existe (spot, point, directional o area)"
+
+msgid "its at and aim are not three numbers each, aim not all 0"
+msgstr "su at y su aim no son tres números cada uno, aim no todo 0"
+
+msgid "its colour is not #rrggbb"
+msgstr "su color no es #rrggbb"
+
+msgid "its strength is not above 0 (0.001 at least, as a file keeps it) to %d"
+msgstr "su intensidad no está por encima de 0 (0,001 como mínimo, como la guarda un archivo) hasta %d"
+
+msgid "its size is not 0 to 4000 LDU (a panel's above 0: 0.001 at least, as a file keeps it)"
+msgstr "su tamaño no está entre 0 y 4000 LDU (el de un panel por encima de 0: 0,001 como mínimo, como lo guarda un archivo)"
+
+msgid "its cone is not %d to %d degrees"
+msgstr "su cono no está entre %d y %d grados"

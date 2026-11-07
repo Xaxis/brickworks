@@ -11936,3 +11936,48 @@ msgstr "Zum Licht des Studios hinzu. „Dunkel“ unter Licht schaltet das Studi
 
 msgid "Added a light: the model keeps it, and every render draws it."
 msgstr "Ein Licht hinzugefügt: Das Modell behält es, und jedes Rendering zeichnet es."
+
+msgid "Not now: %s"
+msgstr "Gerade nicht: %s"
+
+msgid "Not added: %s."
+msgstr "Nicht hinzugefügt: %s."
+
+msgid "A model keeps at most %d suns."
+msgstr "Ein Modell behält höchstens %d Sonnen."
+
+msgid "a model keeps at most %d lights"
+msgstr "ein Modell behält höchstens %d Lichter"
+
+msgid "a model keeps at most %d suns: with the studio's three lights and its sky that is eight, the most a renderer draws"
+msgstr "ein Modell behält höchstens %d Sonnen: mit den drei Lichtern des Studios und seinem Himmel sind das acht, mehr zeichnet kein Renderer"
+
+msgid "1 light line not read, kept in the file as it is"
+msgstr "1 Lichtzeile nicht gelesen, unverändert in der Datei behalten"
+
+msgid "%d light lines not read, kept in the file as they are"
+msgstr "%d Lichtzeilen nicht gelesen, unverändert in der Datei behalten"
+
+msgid "not a light's words"
+msgstr "keine Angaben eines Lichts"
+
+msgid "past the first %d light lines, which are all that are read"
+msgstr "nach den ersten %d Lichtzeilen, mehr werden nicht gelesen"
+
+msgid "of a kind there is not (spot, point, directional or area)"
+msgstr "von einer Art, die es nicht gibt (spot, point, directional oder area)"
+
+msgid "its at and aim are not three numbers each, aim not all 0"
+msgstr "at und aim sind nicht je drei Zahlen, aim nicht alle 0"
+
+msgid "its colour is not #rrggbb"
+msgstr "seine Farbe ist nicht #rrggbb"
+
+msgid "its strength is not above 0 (0.001 at least, as a file keeps it) to %d"
+msgstr "seine Stärke liegt nicht über 0 (mindestens 0,001, wie eine Datei sie behält) bis %d"
+
+msgid "its size is not 0 to 4000 LDU (a panel's above 0: 0.001 at least, as a file keeps it)"
+msgstr "seine Größe liegt nicht bei 0 bis 4000 LDU (die eines Paneels über 0: mindestens 0,001, wie eine Datei sie behält)"
+
+msgid "its cone is not %d to %d degrees"
+msgstr "sein Kegel hat nicht %d bis %d Grad"

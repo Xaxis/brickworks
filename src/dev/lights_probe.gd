@@ -31,8 +31,9 @@
 ##   -- --no-trace    the path-traced half left out (a second window size)
 ##   -- --means=FILE  under Forward+ the Dark light's means under the model's
 ##                    suns written there; under Compatibility (the web's,
-##                    on the card through zink as look_probe runs it) read
-##                    back and matched, each within 15%
+##                    on the card through zink: PROBE_COMPAT=1 tools/probe.sh
+##                    lights -- --no-trace --means=FILE) read back and
+##                    matched, each within 15%
 ##
 ## And what an independent review found (lreview, 2026-11-07): lines it
 ## cannot read carried word for word and said at the open; a sub-model's

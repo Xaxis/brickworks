@@ -580,6 +580,20 @@ Pictures, `bench/results/render353-2026-10-29/`:
   Strength 1 lights a face 100 LDU from a lamp, or any face turned to a sun,
   as the window's key does; a lamp falls off with the square of distance.
   Older Brickworks and other LDraw readers pass over the lines.
+- **What is read, and what is kept as it is.** Only the main model's lines,
+  up to an MPD's second `0 FILE` (or `0 !DATA`, or its first `0 NOFILE`): a
+  sub-model's lights and saved views are its own, and stay in it. At most 4
+  of the 8 are suns: the studio's three lights, the sky (Good) and four suns
+  are eight, the most either renderer draws, so the tracer and the raster
+  always light the same. Each number is rounded to the thousandth a file
+  keeps before it is checked, so a strength that would be written as 0 is
+  refused, with why. A line that is no light (not `{`-words, past the first
+  64 tried, of a kind there is not, a ninth light, a fifth sun) is not read
+  and stays in the file word for word: where it was in someone else's file,
+  after the lights in Brickworks' own (written whole); the open says how
+  many and why on the status bar. A save takes out exactly the lines the
+  open read (`SceneLights._sorting`, the one rule for both), and keeps the
+  file's line ends.
 - **Rasterised** as Godot's own lights (`StudioRender._place_lamps`): an
   OmniLight3D, a SpotLight3D (its edge the rim to the power 3, which Godot
   takes as `spot_angle_attenuation` 1/3: it raises the rim to the
@@ -607,6 +621,26 @@ Pictures, `bench/results/render353-2026-10-29/`:
   Eyesight draws them: the plastic shaders' `glow` (2.0 times their colour)
   and, rasterised, a light at each 80-LDU lump of them (12 at most, no
   shadow); traced, their faces are lights of their own, opaque and clear.
+- **On Compatibility** (the web's renderer), which draws at most 8 bulbs
+  and spots on one thing (`max_lights_per_object`; the stage's batches are
+  one thing each, so in effect the set): the model's lamps are placed first,
+  and the glow has the lights they leave. A glow left without a light of its
+  own gives its light to the nearest light drawn that shines every way (a
+  glow's or a bulb's, its colour mixed in by energy), so the web draws the
+  glow Forward+ draws in fewer lights: dropped, 8 bulbs over a neon grid
+  left the floor beside it darker (130.7 to 105.7 of 255); folded, it goes
+  145.4 to 186.4 (Forward+ 134.7 to 155.7). What is lost is the light the
+  glows gave the neon bricks themselves: that picture's mean goes 177.6 to
+  117.6 with the bulbs, where Forward+'s goes 171.2 to 174.9. Compatibility
+  adds light in sRGB, so Dark there is calibrated against Forward+ on the
+  card through zink: exposure x2, lamps x4 over `BrickWorld.light_energy`,
+  and the model's suns sharing what Forward+ gives them together (it adds
+  in linear light and encodes the sum, so 4 equal suns light about 1.9 times
+  one: each is scaled by the sum's 1/2.2th power over the sum of the
+  powers). The car's mean under 0 to 4 suns: Forward+ 18.4, 103.7, 134.5,
+  151.8, 162.3; Compatibility 22.6, 109.2, 140.6, 158.5, 166.5 (it was 9.9,
+  24.0, 33.7, 41.7, 48.8). No exposure and lamp energy alone brought one
+  sun and four within 15% (24 pairs tried).
 - **Measured** (`tools/probe.sh lights`): see the probe's numbers in its
   run log; the bar is 0 px changed outside the cone both ways and the
   floor the spot lights beside the car 15% and 10 levels lighter, on a grey

@@ -177,9 +177,16 @@ const GLOW_LIGHTS := 12
 ## BrickWorld.light_energy gives them. Compatibility adds light in sRGB, so a
 ## lamp that lights a dark set is far dimmer there than under Forward+,
 ## whose sRGB rises steepest out of black: the car under one sun of the
-## model's own was a quarter as light (lreview, 2026-11-07).
-const DARK_COMPAT_EXPOSURE := 1.0
-const DARK_COMPAT_LAMPS := 1.0
+## model's own was a quarter as light (lreview, 2026-11-07). Measured on the
+## card through zink, the picture's mean (Forward+ / Compatibility before /
+## after): the car in the dark 18.4 / 9.9 / 22.6, under one sun 103.7 / 24.0
+## / 109.2, under four 162.3 / 48.8 / 166.5 (with [method _suns_share]);
+## the neon grid in the dark 171.2 / 127.3 / 177.6 (with [method
+## _fold_glow]), and the floor eight bulbs light beside the white grid 64.6
+## / 15.7 / 64.7. Of the 24 pairs tried (exposure 1 to 3, lamps 1 to 14),
+## none brought both one sun and four within 15% without the suns' share.
+const DARK_COMPAT_EXPOSURE := 2.0
+const DARK_COMPAT_LAMPS := 4.0
 
 ## The model, in the world being rendered, and what of it is not the model:
 ## the floor's baseplate, which a render leaves out for the studio's own
@@ -1693,6 +1700,8 @@ func _place_lamps(lights: Array, settings: RenderSettings) -> void:
 		node.queue_free()
 	_lamp_nodes.clear()
 	var corner: float = _bounds.size.length()
+	var compat_dark: bool = settings.lighting == "dark" and not full_renderer()
+	var suns: float = _suns_share(lights) if compat_dark else 1.0
 	for light: Dictionary in lights:
 		var kind: String = str(light["kind"])
 		var at: Vector3 = SceneLights.at_of(light)
@@ -1733,8 +1742,8 @@ func _place_lamps(lights: Array, settings: RenderSettings) -> void:
 				continue
 		node.light_color = SceneLights.colour_of(light)
 		node.light_energy = BrickWorld.light_energy(SceneLights.energy(light), shadows)
-		if settings.lighting == "dark" and not full_renderer():
-			node.light_energy *= DARK_COMPAT_LAMPS
+		if compat_dark:
+			node.light_energy *= DARK_COMPAT_LAMPS * (suns if kind == "directional" else 1.0)
 		node.light_indirect_energy = 0.0
 		node.light_specular = BrickWorld.light_specular(0.5)
 		node.shadow_enabled = shadows
@@ -1787,18 +1796,26 @@ func _place_glows(settings: RenderSettings) -> void:
 		cells[cell] = into
 	var lumps: Array = cells.values()
 	lumps.sort_custom(func(a: Array, b: Array) -> bool: return float(a[2]) > float(b[2]))
-	for lump: Array in lumps.slice(0, _glows_allowed()):
+	var own: int = _glows_allowed()
+	for n: int in mini(lumps.size(), GLOW_LIGHTS):
+		var lump: Array = lumps[n]
 		var power: float = float(lump[2])
 		var colour: Color = (lump[1] as Color) / power
 		var brightest: float = maxf(colour.r, maxf(colour.g, colour.b))
+		var tint: Color = (colour / maxf(brightest, 0.0001)).linear_to_srgb()
+		var energy: float = BrickWorld.light_energy(power * brightest * GLOW_RASTER)
+		var at: Vector3 = (lump[0] as Vector3) / power
+		if n >= own:
+			_fold_glow(at, tint, energy)
+			continue
 		var node := OmniLight3D.new()
-		node.position = (lump[0] as Vector3) / power
-		node.light_color = (colour / maxf(brightest, 0.0001)).linear_to_srgb()
+		node.position = at
+		node.light_color = tint
 		# Falling off a little slower than a point would: a lump of plastic
 		# is no point, and a face beside it is lit by it whole.
 		node.omni_attenuation = 1.5
 		node.omni_range = maxf(_bounds.size.length() * 2.0, 400.0)
-		node.light_energy = BrickWorld.light_energy(power * brightest * GLOW_RASTER)
+		node.light_energy = energy
 		node.light_indirect_energy = 0.0
 		node.light_specular = 0.0
 		node.shadow_enabled = false
@@ -1811,6 +1828,47 @@ func _place_glows(settings: RenderSettings) -> void:
 ## The rasterised glow's light against a point's: falling off as distance to
 ## the 1.5 (above), it is matched to the square's at 40 LDU.
 const GLOW_RASTER := 0.16
+
+
+## A glow Compatibility has no light of its own left for ([method
+## _glows_allowed]): its light given to the nearest light drawn that shines
+## every way, a glow's or a bulb of the model's, its colour mixed in by
+## energy. So the web draws the glow Forward+ draws, in fewer lights: left
+## out, eight bulbs over a grid of neon bricks left the floor beside it
+## darker than the neon alone (130.7 to 105.7 of 255).
+func _fold_glow(at: Vector3, tint: Color, energy: float) -> void:
+	var nearest: OmniLight3D = null
+	for node: OmniLight3D in _glow_nodes:
+		if nearest == null or node.position.distance_squared_to(at) \
+				< nearest.position.distance_squared_to(at):
+			nearest = node
+	for node: Light3D in _lamp_nodes:
+		if node is OmniLight3D and (nearest == null or node.position.distance_squared_to(at)
+				< nearest.position.distance_squared_to(at)):
+			nearest = node as OmniLight3D
+	if nearest == null:
+		return
+	var sum: float = nearest.light_energy + energy
+	nearest.light_color = nearest.light_color * (nearest.light_energy / sum) + tint * (energy / sum)
+	nearest.light_energy = sum
+
+
+## Under Compatibility, which adds light in sRGB, what each of the model's
+## suns is given so that together they light as Forward+'s do: Forward+ adds
+## them in linear light and encodes the sum, about its 1/2.2th power, so four
+## equal suns light a face about 4^0.45 = 1.9 times as much as one, not 4.
+## The sum's power over the sum of the powers: 1 for one sun or one far the
+## strongest, n^-0.55 for n equal ones.
+static func _suns_share(lights: Array) -> float:
+	var whole: float = 0.0
+	var parts: float = 0.0
+	for light: Dictionary in lights:
+		if str(light.get("kind", "")) != "directional":
+			continue
+		var energy: float = SceneLights.energy(light)
+		whole += energy
+		parts += pow(energy, 1.0 / 2.2)
+	return pow(whole, 1.0 / 2.2) / parts if parts > 0.0 else 1.0
 
 
 ## How many glow lights the set may have: [constant GLOW_LIGHTS], and under

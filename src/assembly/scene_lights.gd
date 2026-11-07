@@ -88,16 +88,16 @@ static func read(text: String) -> Array:
 ## not read for each reason. Only the main model's lines: a sub-model's are
 ## its own, and stay in it.
 static func sorted(text: String) -> Dictionary:
-	var out: Dictionary = {"lights": [], "unread": PackedStringArray(), "why": {}}
 	if not text.contains(META):
-		return out
+		return {"lights": [], "unread": PackedStringArray(), "why": {}}
 	var lines: PackedStringArray = text.split("\n")
 	var sorting: Dictionary = _sorting(lines)
+	# Gathered here and then put in: a packed array taken out of a Dictionary
+	# is a copy, and what is appended to it never reaches the Dictionary.
+	var unread := PackedStringArray()
 	for n: int in sorting["unread"]:
-		(out["unread"] as PackedStringArray).append(lines[n].trim_suffix("\r"))
-	out["lights"] = sorting["lights"]
-	out["why"] = sorting["why"]
-	return out
+		unread.append(lines[n].trim_suffix("\r"))
+	return {"lights": sorting["lights"], "unread": unread, "why": sorting["why"]}
 
 
 ## Which of [param lines] are light lines read ("taken", by their index,
@@ -110,6 +110,7 @@ static func _sorting(lines: PackedStringArray) -> Dictionary:
 	var unread: Array[int] = []
 	var why: Dictionary = {}
 	var tries: int = 0
+	var past: String = "past the first %d light lines, which are all that are read" % TRIES
 	for n: int in main_end(lines):
 		var line: String = lines[n]
 		if not line.begins_with(META):
@@ -120,7 +121,7 @@ static func _sorting(lines: PackedStringArray) -> Dictionary:
 		if not body.begins_with("{"):
 			reason = "not a light's words"
 		elif tries >= TRIES:
-			reason = "past the first %d light lines, which are all that are read" % TRIES
+			reason = past
 		else:
 			tries += 1
 			var found: Array = checked(body)
@@ -145,6 +146,12 @@ static func main_end(lines: PackedStringArray) -> int:
 	var opened: bool = false
 	for n: int in lines.size():
 		if not lines[n].begins_with("0 "):
+			continue
+		# Most lines start no section: only those whose word after the 0
+		# begins as one does, in any case, are split to be sure.
+		var head: String = lines[n].substr(2).strip_edges(true, false).left(6).to_upper()
+		if not (head.begins_with("FILE") or head.begins_with("NOFILE")
+				or head.begins_with("!DATA")):
 			continue
 		var line: String = lines[n].strip_edges()
 		if not LdrModel._is_file_line(line):

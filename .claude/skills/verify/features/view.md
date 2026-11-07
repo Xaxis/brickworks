@@ -2439,7 +2439,13 @@ picture the assistant is shown.
   strength, a spot's cone, a bulb's radius or a panel's side, shadows), read
   back through `ModelStore` (lifted as the parts are,
   `BrickWorld.scene_lights`), carried by Build together as `~lights` (the
-  relay's `api/together.js` allows it); at most 8. Strength 1 lights a face
+  relay's `api/together.js` allows it); at most 8, 4 of them suns (the
+  studio's 3, the sky and 4 are the 8 a renderer draws), refused with why
+  on every way in (a file, light_model, Together, Render's Add buttons).
+  Only the main model's lines are read (to an MPD's second section: a
+  sub-model keeps its own lights and views); numbers are rounded to a
+  thousandth before they are checked; a line not read stays in the file
+  word for word and the open says how many and why. Strength 1 lights a face
   100 LDU from a lamp, or any face turned to a sun, as the window's key does.
   Render draws them over its studio in every quality (`StudioRender._place_lamps`:
   Godot's OmniLight3D, SpotLight3D, DirectionalLight3D; a panel a wide spot)
@@ -2472,9 +2478,22 @@ picture the assistant is shown.
   in the Dark light lights the plate round it 3 times as much as a Trans
   Green one, and green, both ways. `-- --keep=DIR` leaves the files; the
   probe copied into an older checkout with `-- --older=DIR` opens each
-  whole, its light line left alone. Pictures in `shots/lights/`: look at
+  whole, its light line left alone. And lreview's findings (2026-11-07):
+  someone else's file and Brickworks' own of 11 light lines keep 11 (8 read,
+  3 carried word for word, the open's note); an MPD's sub-model keeps its
+  light and view; a strength or panel 0.0004 refused, 2 lights back as 2; a
+  fifth sun refused over MCP, in Render (its Sun button off, why in the
+  tooltip) and from a file; eight light_model calls of the wrong JSON type
+  each answered "nothing changed"; Render's Which never changing a light it
+  no longer shows; op list let through the designer's gate, add not; a file
+  of 200,000 light lines that are no lights opening within 20% of one of
+  comments. Then the car under 0 to 4 suns (each adding light) and the neon
+  and white grids under 8 bulbs in the Dark light (the floor rising), on
+  either renderer; `PROBE_COMPAT=1` runs it on Compatibility through zink,
+  and `-- --means=FILE` (Forward+ first) holds Compatibility's Dark under 1
+  and 4 suns within 15% of Forward+'s. Pictures in `shots/lights/`: look at
   Render's, the spot's pictures and maps (red would be a pixel changed
-  outside), and the glowing brick's.
+  outside), the glowing brick's, `suns_*` and `grid_*`.
 - `quiet probe` (`src/dev/quiet_probe.gd`, `tools/probe.sh quiet_probe`,
   windowed at 1280 x 720, `PROBE_SIZE=1400x900`): APP_UX4 unit 9's bar.
   The first build's offer on a first visit, gone at the third part put down

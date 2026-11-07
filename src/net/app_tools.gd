@@ -910,8 +910,9 @@ func definitions() -> Array:
 				+ "lights a face 100 LDU from a lamp, or any face turned to a sun, as the "
 				+ "window's key light does, and a lamp lights four times as brightly at half "
 				+ "the distance. cone is a spot's whole angle in degrees, 2 to 160; size a "
-				+ "bulb's radius or a panel's side in LDU. At most 8. Kept in the model's file, "
-				+ "saved with it, not an undo step."),
+				+ "bulb's radius or a panel's side in LDU. At most 8, 4 of them suns (the "
+				+ "studio's three lights, its sky and four suns are the eight a renderer draws). "
+				+ "Kept in the model's file, saved with it, not an undo step."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "add", "change", "remove"]},
 				"number": {"type": "integer", "description": "which light, from 1, as list numbers them"},

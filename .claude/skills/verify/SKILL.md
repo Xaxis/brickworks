@@ -104,7 +104,9 @@ for seven minutes (2026-10-29). So:
 `tools/probe.sh` reads the probe's header for headless or a window and its
 size, gives it its own data folder, the GPU lease and Xvfb for a window, and
 fails a run that printed a script error or skipped itself (both exit 0
-from Godot). `PROBE_DRY=1` shows the command.
+from Godot). `PROBE_DRY=1` shows the command. `PROBE_COMPAT=1` runs a
+windowed probe on Compatibility, the web's renderer, on the card through
+Mesa's zink (under Xvfb without it, llvmpipe draws Compatibility in software).
 
 Probes may run at once in one checkout: none writes `.godot`. What breaks
 them is a class list (`.godot/global_script_class_cache.cfg`) older than the

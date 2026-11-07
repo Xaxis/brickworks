@@ -11936,3 +11936,48 @@ msgstr "En plus de la lumière du studio. « Sombre », dans Lumière, éteint l
 
 msgid "Added a light: the model keeps it, and every render draws it."
 msgstr "Lumière ajoutée : le modèle la garde, et chaque rendu la dessine."
+
+msgid "Not now: %s"
+msgstr "Pas maintenant : %s"
+
+msgid "Not added: %s."
+msgstr "Non ajoutée : %s."
+
+msgid "A model keeps at most %d suns."
+msgstr "Un modèle garde au plus %d soleils."
+
+msgid "a model keeps at most %d lights"
+msgstr "un modèle garde au plus %d lumières"
+
+msgid "a model keeps at most %d suns: with the studio's three lights and its sky that is eight, the most a renderer draws"
+msgstr "un modèle garde au plus %d soleils : avec les trois lumières du studio et son ciel, cela fait huit, le plus qu'un moteur de rendu dessine"
+
+msgid "1 light line not read, kept in the file as it is"
+msgstr "1 ligne de lumière non lue, gardée telle quelle dans le fichier"
+
+msgid "%d light lines not read, kept in the file as they are"
+msgstr "%d lignes de lumière non lues, gardées telles quelles dans le fichier"
+
+msgid "not a light's words"
+msgstr "pas les mots d'une lumière"
+
+msgid "past the first %d light lines, which are all that are read"
+msgstr "au-delà des %d premières lignes de lumière, les seules lues"
+
+msgid "of a kind there is not (spot, point, directional or area)"
+msgstr "d'un type qui n'existe pas (spot, point, directional ou area)"
+
+msgid "its at and aim are not three numbers each, aim not all 0"
+msgstr "son at et son aim ne sont pas trois nombres chacun, aim pas tout à 0"
+
+msgid "its colour is not #rrggbb"
+msgstr "sa couleur n'est pas #rrggbb"
+
+msgid "its strength is not above 0 (0.001 at least, as a file keeps it) to %d"
+msgstr "son intensité n'est pas au-dessus de 0 (0,001 au moins, comme un fichier la garde) jusqu'à %d"
+
+msgid "its size is not 0 to 4000 LDU (a panel's above 0: 0.001 at least, as a file keeps it)"
+msgstr "sa taille n'est pas de 0 à 4000 LDU (celle d'un panneau au-dessus de 0 : 0,001 au moins, comme un fichier la garde)"
+
+msgid "its cone is not %d to %d degrees"
+msgstr "son cône n'est pas de %d à %d degrés"
