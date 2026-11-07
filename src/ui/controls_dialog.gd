@@ -472,13 +472,55 @@ func _columns() -> int:
 
 
 ## Whether [param binding]'s keys, words or section say every one of
-## [param words].
+## [param words], or the words of the submenus its commands are in: "cut
+## away" finds A box, A sphere and A cylinder, in View, Cut away by (words6).
 static func _says(binding: ControlsHint.Binding, words: PackedStringArray) -> bool:
 	var said: String = (" ".join(binding.keys) + " " + binding.verb + " " + binding.section).to_lower()
+	for action: String in binding.actions:
+		said += " " + str(_within(action)[0])
 	for word: String in words:
 		if not said.contains(word):
 			return false
 	return true
+
+
+# ── words6: the submenus a command is in ──────────────────────────────────
+
+## A command a submenu holds -> [the words of every submenu it is in, lower
+## case ("cut away by"), the words of the one that holds it ("Cut away by")].
+## Made at its first read, from the menus as Shell lists them.
+static var _submenus_of: Dictionary = {}
+
+
+static func _within(action: String) -> Array:
+	if _submenus_of.is_empty():
+		for menu: Array in Shell.MENUS:
+			_note_within(menu[1], "", "", _submenus_of)
+	return _submenus_of.get(action, ["", ""])
+
+
+static func _note_within(items: Array, path: String, holder: String, into: Dictionary) -> void:
+	for item: String in items:
+		if item == "-":
+			continue
+		if item.begins_with(">"):
+			var kind: String = item.substr(1)
+			var named: String = str(Shell.SUBMENU_WORDS.get(kind, ""))
+			_note_within(Shell.SUBMENUS.get(kind, []), (path + " " + named.to_lower()).strip_edges(),
+				named, into)
+		elif not holder.is_empty() and not into.has(item):
+			into[item] = [path, holder]
+
+
+## A row's words for a command a submenu holds, said whole where they finish
+## the submenu's: "A box", in Cut away by, is "Cut away by a box" on the
+## sheet, where no menu above it says what a box does. A command's own words
+## everywhere else, "Grow it a plate" too.
+static func _said_whole(action: String, words: String) -> String:
+	var holder: String = str(_within(action)[1])
+	if not holder.ends_with(" by") or not (words.begins_with("A ") or words.begins_with("An ")):
+		return words
+	return "%s %s" % [holder, words[0].to_lower() + words.substr(1)]
 
 
 ## The list's own sections, for the keys the menus show that it does not
@@ -511,7 +553,7 @@ func bindings() -> Array[ControlsHint.Binding]:
 			if not shell.assistant_shown and name in Shell.ASSISTANT_COMMANDS:
 				continue
 			named[name] = true
-			var words: String = command.words.trim_suffix("…")
+			var words: String = _said_whole(name, command.words.trim_suffix("…"))
 			# A name keeps its capitals: "LEGO® Pick a Brick list", "BrickLink
 			# wanted list", never "lEGO®" (keys2).
 			var first: String = words.get_slice(" ", 0)

@@ -690,7 +690,12 @@ picture the assistant is shown.
   whose keys, words or section say every word typed, and the letters typed run
   no tool; Escape in it closes the sheet. Besides the list it adds each key a
   menu shows that the list does not name (Open, Save as, the steps, the
-  cut-away, F2, Y), in the menu's words, from `Shell.key_text`.
+  cut-away, F2, Y), in the menu's words, from `Shell.key_text`. Its box reads
+  the words of the submenus a row's command is in as the row's own
+  (`ControlsDialog._says`, `_within`): "cut away" keeps A box, A sphere and
+  A cylinder, in View, Cut away by; and a row whose words finish its
+  submenu's ("A box" in "Cut away by") is said whole, "cut away by a box"
+  (`_said_whole`; words6, APP_UX6 14; `words6_probe`).
   `keysheet_probe` (1280 x 720; PROBE_SIZE=1400x900 too) counts the rows wholly
   in sight (36 of 85 at 1280 x 720, 51 at 1400 x 900; 20 needed), types "hinge" and "undo" with real
   keys, and checks `,` and Tools, Settings show the settings and no key. Settings'

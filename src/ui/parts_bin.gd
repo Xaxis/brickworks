@@ -3413,7 +3413,7 @@ func _make_row(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	title.clip_text = true
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	line.add_child(title)
-	var studs: Vector2i = info.footprint_studs()
+	var studs: Vector2i = top_studs(info)
 	var made: String = "" if info.colors.is_empty() else Counted.of(info.colors.size(), "colour")
 	var cells: Array[Label] = [title]
 	for words: String in [info.id, "%d×%d" % [studs.x, studs.y], made]:
@@ -3527,10 +3527,7 @@ func _bind_part_button(button: Button, info: PartLibrary.PartInfo, key: String,
 		colour: int) -> void:
 	# LDraw pads its names into columns, "Brick  1 x  2", which reads as
 	# a typo in a tooltip.
-	button.tooltip_text = "%s\n%s\n%d x %d studs, %s" % [
-		info.id, Inventory._tidy(info.name),
-		info.footprint_studs().x, info.footprint_studs().y,
-		_height_text(info)]
+	button.tooltip_text = "%s\n%s\n%s" % [info.id, Inventory._tidy(info.name), size_words(info)]
 	# The id, on the button, rather than read back out of the tooltip.
 	# The tooltip starts with the id and then a newline, so matching it
 	# by prefix lights 30055 when you pick 3005 — and there is no reason
@@ -3538,8 +3535,7 @@ func _bind_part_button(button: Button, info: PartLibrary.PartInfo, key: String,
 	button.set_meta("part", info.id)
 	# Its title, as a screen reader says it, and its number and size after.
 	button.accessibility_name = "%s, %s" % [Inventory._tidy(info.name), info.id]
-	button.accessibility_description = "%d x %d studs, %s" % [
-		info.footprint_studs().x, info.footprint_studs().y, _height_text(info)]
+	button.accessibility_description = size_words(info)
 	button.button_pressed = info.id == _selected_part and colour == _selected_color
 	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
 
@@ -3932,12 +3928,80 @@ func _finger_input(event: InputEvent, control: Control) -> void:
 
 
 static func _height_text(info: PartLibrary.PartInfo) -> String:
-	var plates: int = int(round(info.size.y / 8.0))
+	# Its body, less the stud on top: a brick's box is 28 LDU, three and a half
+	# plates, and read whole every brick said "4 plates" and a plate "2 plates"
+	# (words6, 2026-11-07).
+	var plates: int = roundi((info.size.y - (STUD_TALL if info.stud_count > 0 else 0.0)) / 8.0)
 	if plates <= 1:
 		return "1 plate"
 	if plates == 3:
 		return "1 brick"
 	return "%d plates" % plates
+
+
+# ── words6: the studs on top, and the studs on its sides ──────────────────
+
+## How far a stud stands out of the face it is on, LDU.
+const STUD_TALL := 4.0
+## A name that says a part has studs on its sides: "Brick 1 x 1 with Stud on
+## 1 Side", "with Studs on Four Sides", "with Two Studs on One Side", "with
+## Studs on Sides". The number of sides, as a word or a figure, if it says one.
+static var ON_SIDES := RegEx.create_from_string(
+	"\\b(studs?) on (?:(\\w+) )?(?:adjacent )?(sides?)\\b")
+## A name's first size, "1 x 4".
+static var FIRST_SIZE := RegEx.create_from_string("(\\d+) x (\\d+)")
+## How many sides a name's word says.
+const SIDES_SAID: Dictionary = {"1": 1, "one": 1, "2": 2, "two": 2, "3": 3, "three": 3,
+	"4": 4, "four": 4}
+## What a tile's tooltip says of the studs on a part's sides, by how many
+## sides: a stud on one, studs on each.
+const ON_SIDES_WORDS: Array[String] = ["", "studs on one side", "studs on two sides",
+	"studs on three sides", "studs on four sides"]
+const A_STUD_ON_A_SIDE := "a stud on one side"
+
+
+## [param info]'s size in studs as a builder counts it: the studs on top.
+## Where its name says it has studs on its sides, its box counts them in
+## (87087, Brick 1 x 1 with Stud on 1 Side, is 1 x 2 by its box; 4733, the
+## brick with studs on four sides, 2 x 2), so its name's size is read, each
+## side along the axis its box is longer on. Else its box's
+## (PartInfo.footprint_studs).
+static func top_studs(info: PartLibrary.PartInfo) -> Vector2i:
+	var box: Vector2i = info.footprint_studs()
+	var name: String = info.name.to_lower()
+	if ON_SIDES.search(name) == null:
+		return box
+	var sized: RegExMatch = FIRST_SIZE.search(" ".join(name.split(" ", false)))
+	if sized == null:
+		return box
+	var small: int = mini(sized.get_string(1).to_int(), sized.get_string(2).to_int())
+	var large: int = maxi(sized.get_string(1).to_int(), sized.get_string(2).to_int())
+	return Vector2i(large, small) if info.size.x >= info.size.z else Vector2i(small, large)
+
+
+## What [param info]'s name says of the studs on its sides, as a tile's
+## tooltip says it ("a stud on one side", "studs on four sides"), or "".
+static func side_words(info: PartLibrary.PartInfo) -> String:
+	var found: RegExMatch = ON_SIDES.search(info.name.to_lower())
+	if found == null:
+		return ""
+	var sides: int = int(SIDES_SAID.get(found.get_string(2), 0))
+	if sides == 0:
+		sides = 2 if found.get_string(3) == "sides" else 1
+	if found.get_string(1) == "stud" and sides == 1:
+		return A_STUD_ON_A_SIDE
+	return ON_SIDES_WORDS[clampi(sides, 1, 4)]
+
+
+## A tile's size line: "2 x 4 studs, 1 brick"; and for a part with studs on
+## its sides, the studs on top and then those: "1 x 1, a stud on one side, 1
+## brick" (87087), where its box made it "1 x 2 studs".
+static func size_words(info: PartLibrary.PartInfo) -> String:
+	var studs: Vector2i = top_studs(info)
+	var sides: String = side_words(info)
+	if sides.is_empty():
+		return "%d x %d studs, %s" % [studs.x, studs.y, _height_text(info)]
+	return "%d x %d, %s, %s" % [studs.x, studs.y, sides, _height_text(info)]
 
 
 ## [param colour], a set's tile's own, is taken in hand with the part.

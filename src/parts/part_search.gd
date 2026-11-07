@@ -25,6 +25,14 @@
 ## ("tyle", "hindge", "axel"), and two run together are both ("doorframe"):
 ## each answers a little less than the word itself.
 ##
+## A part whose name is the words asked is the kind of part asked for: "plate 1
+## x 1" is 3024, Plate 1 x 1, before 6141, Plate 1 x 1 Round, in more sets,
+## which is another kind (words6, 2026-11-07). Where some part is named so,
+## every part of that kind, its name's head saying nothing more than was
+## asked, comes before the parts of another kind, and how much sets use them
+## decides among each: "technic pin" is still 2780, Technic Pin with Friction
+## and Slots, before 3673, Technic Pin, as a kind of pin with something on it.
+##
 ## And in the names builders use, which are BrickLink's and Rebrickable's
 ## more than LDraw's (names248, 2026-10-24): "liftarm 5" missed 32316, LDraw's
 ## Technic Beam 5 and BrickLink's Liftarm Thick 1 x 5. A word of theirs for
@@ -220,6 +228,12 @@ const HEIGHTS: Dictionary = {"brick": 3, "plate": 1, "tile": 1}
 var _by_height: Dictionary = {}
 ## A first letter -> the parts with a word of their names that it begins.
 var _by_letter: Dictionary = {}
+## words6: what a part's name says it is, and the names whole. Per part, its
+## name's head (_head_of), "" for a part not plain; and the signature
+## (_signed) of every plain part's name, to tell a query that names a part
+## whole from one that names some of it.
+var _heads := PackedStringArray()
+var _named_whole: Dictionary = {}
 ## Every part's number in lower case, in order, and the part each is.
 var _numbers := PackedStringArray()
 var _number_at := PackedInt32Array()
@@ -323,7 +337,8 @@ func let_go_for(budget_usec: int) -> bool:
 	if not _going_began:
 		_going_began = true
 		_going = [_ids, _number_lines, _lead, _numbers, _also_words, _keyed_words, _named_words,
-			_sorting, _infos, _at, _by_letter, _by_height, _tall, _sized, _also, _keyed, _named]
+			_sorting, _infos, _at, _by_letter, _by_height, _tall, _sized, _also, _keyed, _named,
+			_heads, _named_whole]
 		_parts = {}
 		_ids = PackedStringArray()
 		_number_lines = PackedStringArray()
@@ -332,6 +347,8 @@ func let_go_for(budget_usec: int) -> bool:
 		_also_words = PackedStringArray()
 		_keyed_words = PackedStringArray()
 		_named_words = PackedStringArray()
+		_heads = PackedStringArray()
+		_named_whole = {}
 		_sorting = []
 		_infos = []
 		_at = {}
@@ -471,7 +488,8 @@ func _index_part(info: PartLibrary.PartInfo) -> void:
 	_plainness.append(15 - mini(15, own.size()))
 	var kind: PackedStringArray = words_of(info.family_category())
 	_lead.append(kind[0] if not kind.is_empty() else "")
-	_bare_brick.append(_bare_size(words_of(info.name)))
+	var name_words: PackedStringArray = words_of(info.name)
+	_bare_brick.append(_bare_size(name_words))
 	# What BrickLink files as a brick, plate or tile Modified (Rebrickable,
 	# Special): one with something on it, LDraw's "with", and not a round
 	# one, nor a tile with only the groove every tile has. 15573, the
@@ -494,8 +512,13 @@ func _index_part(info: PartLibrary.PartInfo) -> void:
 				var tall: PackedInt32Array = _by_height[word]
 				tall.append(at)
 				_by_height[word] = tall
-	_plain.append(1 if PartLibrary.decor_of(info.name, info.category) == 0
-		and not info.name.begins_with("=") and not _other_line(info) else 0)
+	var plain: bool = PartLibrary.decor_of(info.name, info.category) == 0 \
+		and not info.name.begins_with("=") and not _other_line(info)
+	_plain.append(1 if plain else 0)
+	# words6: the kind of part its name says it is, and its name whole.
+	_heads.append(_head_of(info.name) if plain else "")
+	if plain:
+		_named_whole[_signature(name_words)] = true
 
 
 ## The parts with a word of their names begun by [param word]'s first letter,
@@ -1132,7 +1155,8 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	# all in the builder's own words in its own name (a wedge brick for
 	# "wedge" before a wing that says it only in its keywords), then by its
 	# words' shares multiplied, in three
-	# bands: as good as a word begun, as one a letter off, and less; then a
+	# bands: as good as a word begun, as one a letter off, and less; then,
+	# where a part is named as asked, a part of that kind (words6); then a
 	# part filed under a word asked, the thing itself, or for a size alone
 	# the brick of that size and nothing more. Then, among the
 	# parts that answer as well, how much real sets use it: 60596,
@@ -1161,6 +1185,10 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	var size_alone: int = 0
 	if terms.size() == 1 and terms[0].has("sizes"):
 		size_alone = 1 if (terms[0]["tall"] as Array).is_empty() else 2
+	# words6: where a part is named as asked, the parts of that kind first
+	# (_says_its_kind): "plate 1 x 1" is Plate 1 x 1 before Plate 1 x 1 Round.
+	var whole: bool = size_alone == 0 and _names_a_part(terms)
+	var said_forms: Dictionary = _asked_forms(terms) if whole else {}
 	var keys := PackedInt64Array()
 	var needed: int = 0
 	for term: Dictionary in terms:
@@ -1193,6 +1221,7 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 		key = key * 2 + ((0 if _infos[at].category == "Sticker" else 1) if decor_asked
 			else _plain[at])
 		key = key * 4 + tier
+		key = key * 2 + (1 if whole and has == terms.size() and _says_its_kind(at, said_forms) else 0)
 		key = key * 2 + named_for
 		key = key * 4096 + _usage[at]
 		key = key * 16 + _plainness[at]
@@ -1226,3 +1255,142 @@ static func _other_line(info: PartLibrary.PartInfo) -> bool:
 
 const OTHER_LINES: Array[String] = ["duplo", "modulex", "primo", "quatro", "fabuland",
 	"znap", "galidor", "scala"]
+
+
+# ── words6: a part named as asked, and the parts of its kind ──────────────
+
+## Where a name's head ends and what the part has on it begins: "Technic Pin
+## with Friction and Slots", "Wing 2 x 4 Left without Chamfer", "Tile 1 x 1
+## with Clip (Thick C-Clip)", "Window 1 x 2 x 2 w/ Trans-Clear Glass".
+const HEAD_ENDS: Array[String] = [" with ", " without ", " w/ ", "(", "[", ","]
+
+
+## What [param name] says the part is, as words: its head, before what it has
+## on it (HEAD_ENDS), less its sizes and the words that say nothing (STOP_WORDS),
+## in order. "Plate 1 x 1 Round" is "plate round", a round plate; "Technic Pin
+## with Friction and Slots" is "technic pin", a pin.
+static func _head_of(name: String) -> String:
+	var text: String = " %s " % name.to_lower()
+	for end: String in HEAD_ENDS:
+		var at: int = text.find(end)
+		if at >= 0:
+			text = text.left(at)
+	text = " %s " % " ".join(words_of(text))
+	text = SIZE.sub(text, " ", true)
+	var out := PackedStringArray()
+	for word: String in words_of(text):
+		if not STOP_WORDS.has(word):
+			out.append(word)
+	return " ".join(out)
+
+
+## A name's words as one key, whatever their order: its first size (with a
+## height if it gives one), then its other words but STOP_WORDS, each with a
+## plural's s taken off, sorted. "Plate 1 x 1" and "1x1 plates" are one.
+static func _signature(words: PackedStringArray) -> String:
+	var size: String = ""
+	var rest := PackedStringArray()
+	var n: int = 0
+	while n < words.size():
+		if size.is_empty() and n + 2 < words.size() and words[n + 1] == "x" \
+				and words[n].is_valid_float() and words[n + 2].is_valid_float():
+			size = _sides(words[n], words[n + 2])
+			n += 3
+			if n + 1 < words.size() and words[n] == "x" and words[n + 1].is_valid_float():
+				size += "x" + _number(words[n + 1])
+				n += 2
+			continue
+		rest.append(words[n])
+		n += 1
+	return _signed(size, rest)
+
+
+static func _signed(size: String, words: PackedStringArray) -> String:
+	var kept: Dictionary = {}
+	for word: String in words:
+		if not STOP_WORDS.has(word):
+			kept[_singular(word)] = true
+	var sorted: Array = kept.keys()
+	sorted.sort()
+	return "%s|%s" % [size, " ".join(sorted)]
+
+
+## A plural's s taken off, a word of letters longer than three: studs, stud;
+## not glass, nor bus.
+static func _singular(word: String) -> String:
+	if word.length() > 3 and word.ends_with("s") and not word.ends_with("ss") \
+			and not word.is_valid_float():
+		return word.trim_suffix("s")
+	return word
+
+
+## Whether some plain part's name is the words of [param terms] whole, in any
+## order and in any of each term's own words (a language's, BrickLink's for
+## LDraw's): "plate 1 x 1" names 3024, Plate 1 x 1; "plate" names nothing whole.
+## Only one size, as a name has: two are a choice.
+func _names_a_part(terms: Array[Dictionary]) -> bool:
+	var size: String = ""
+	var choices: Array = []
+	for term: Dictionary in terms:
+		if term.has("sizes"):
+			var tall: Array = term["tall"]
+			if (term["sizes"] as Array).size() != 1 or tall.size() > 1 or not size.is_empty():
+				return false
+			size = str(tall[0]) if not tall.is_empty() else str(term["sizes"][0])
+			continue
+		var own: Array = []
+		var options: Array = term["options"]
+		for k: int in mini(int(term.get("full", 1)), options.size()):
+			own.append(options[k])
+		choices.append(own)
+	if choices.is_empty():
+		return false
+	# Each term's own words, one way of saying each at a time: a few ways
+	# at most (a word and BrickLink's for it), so a few looks.
+	var ways: Array = [PackedStringArray()]
+	for own: Array in choices:
+		var longer: Array = []
+		for way: PackedStringArray in ways:
+			for words: PackedStringArray in own:
+				var both := PackedStringArray(way)
+				both.append_array(words)
+				longer.append(both)
+				if longer.size() >= WHOLE_WAYS:
+					break
+		ways = longer
+		if ways.size() >= WHOLE_WAYS:
+			break
+	for way: PackedStringArray in ways:
+		if _named_whole.has(_signed(size, way)):
+			return true
+	return false
+
+
+## How many ways of saying a query whole are looked up at most.
+const WHOLE_WAYS := 16
+
+
+## Every form of every word [param terms] say in their own words (a term's
+## full options), for _says_its_kind.
+static func _asked_forms(terms: Array[Dictionary]) -> Dictionary:
+	var asked: Dictionary = {}
+	for term: Dictionary in terms:
+		if term.has("sizes"):
+			continue
+		var options: Array = term["options"]
+		for k: int in mini(int(term.get("full", 1)), options.size()):
+			for word: String in options[k]:
+				for form: String in _forms(word):
+					asked[form] = true
+	return asked
+
+
+## Whether the part at [param at] is of the kind asked: its name's head
+## (_head_of) says nothing [param asked] does not. A plain part only.
+func _says_its_kind(at: int, asked: Dictionary) -> bool:
+	if _plain[at] != 1:
+		return false
+	for word: String in _heads[at].split(" ", false):
+		if not asked.has(word) and not asked.has(_singular(word)):
+			return false
+	return true

@@ -11881,3 +11881,42 @@ msgstr "Dieses Modell hat keine Bewegung namens „%s“, darum wurde es stillst
 
 msgid "No such motion"
 msgstr "Keine solche Bewegung"
+
+# The words a person means find the part (words6, APP_UX6 14): the keys sheet's rows for the
+# cut shapes, said whole; and a part tile's size, the studs on top and then those on its sides.
+
+msgid "Cut away by a box"
+msgstr "Mit einem Quader wegschneiden"
+
+msgid "Cut away by a sphere"
+msgstr "Mit einer Kugel wegschneiden"
+
+msgid "Cut away by a cylinder"
+msgstr "Mit einem Zylinder wegschneiden"
+
+msgid "Cut away by a plane along X"
+msgstr "Mit einer Ebene entlang X wegschneiden"
+
+msgid "Cut away by a plane along Y"
+msgstr "Mit einer Ebene entlang Y wegschneiden"
+
+msgid "Cut away by a plane along Z"
+msgstr "Mit einer Ebene entlang Z wegschneiden"
+
+msgid "%d x %d, %s, %s"
+msgstr "%d x %d, %s, %s"
+
+msgid "a stud on one side"
+msgstr "eine Noppe an einer Seite"
+
+msgid "studs on one side"
+msgstr "Noppen an einer Seite"
+
+msgid "studs on two sides"
+msgstr "Noppen an zwei Seiten"
+
+msgid "studs on three sides"
+msgstr "Noppen an drei Seiten"
+
+msgid "studs on four sides"
+msgstr "Noppen an vier Seiten"

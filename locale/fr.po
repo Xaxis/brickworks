@@ -11881,3 +11881,42 @@ msgstr "Ce modèle n’a aucun mouvement nommé « %s », il s’est donc ouvert
 
 msgid "No such motion"
 msgstr "Mouvement introuvable"
+
+# The words a person means find the part (words6, APP_UX6 14): the keys sheet's rows for the
+# cut shapes, said whole; and a part tile's size, the studs on top and then those on its sides.
+
+msgid "Cut away by a box"
+msgstr "Couper par une boîte"
+
+msgid "Cut away by a sphere"
+msgstr "Couper par une sphère"
+
+msgid "Cut away by a cylinder"
+msgstr "Couper par un cylindre"
+
+msgid "Cut away by a plane along X"
+msgstr "Couper par un plan selon X"
+
+msgid "Cut away by a plane along Y"
+msgstr "Couper par un plan selon Y"
+
+msgid "Cut away by a plane along Z"
+msgstr "Couper par un plan selon Z"
+
+msgid "%d x %d, %s, %s"
+msgstr "%d x %d, %s, %s"
+
+msgid "a stud on one side"
+msgstr "un tenon sur un côté"
+
+msgid "studs on one side"
+msgstr "tenons sur un côté"
+
+msgid "studs on two sides"
+msgstr "tenons sur deux côtés"
+
+msgid "studs on three sides"
+msgstr "tenons sur trois côtés"
+
+msgid "studs on four sides"
+msgstr "tenons sur quatre côtés"
