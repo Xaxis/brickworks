@@ -69,8 +69,10 @@ The choices are a photographer's:
 | Size | 720p, 1080p, 4K, Square, or Custom |
 | Backdrop | White, Gradient, Grey, Dark, a Colour you pick, or None (a transparent picture), with a contact shadow under the model if you like |
 | Light | Three lights, as in the window; or photographed light: a softbox studio, window light, or daylight |
-| View | Three-quarter like the box, the view you are looking at, front, side, back three-quarter, low looking up, or from above |
+| View | Three-quarter like the box, the view you are looking at, front, side, back three-quarter, low looking up, from above, or one of the [views saved with the model](/docs/the-view#saved-views) |
 | Lens | The focal length, and an aperture from Off to f/2 for depth of field (blur comes with Best) |
+
+**Preset**, at the top, keeps these choices by a name: **Save…** names them, and choosing the name again, on any model, puts every choice back at once. Presets are kept on this device, for every model; change a choice by hand and none is chosen. **Remove** forgets the one chosen.
 
 ### Best, path traced {#path-traced}
 
@@ -82,7 +84,7 @@ lib:path tracer
 
 ### Render queue {#render-queue}
 
-**File › Render queue…** lines pictures up and draws them one after another while you go on building. **Add this view** queues the model and the view as they are now, with Render's settings; change the view, or the model, and add another. Each is drawn in turn, saved where Render saves under a name of its own, and shown in the status bar, whose **Cancel** stops the one being drawn and pauses the rest. **Finish now** keeps a path-traced picture as clean as it is so far. Claude can use the same queue over the connector (`render_queue`). The panel keeps out of the way: whatever you open after it is drawn over it, it sits above Cut away's strip, and [[Esc]] puts it away while what is queued goes on being drawn.
+**File › Render queue…** lines pictures up and draws them one after another while you go on building. **Add this view** queues the model and the view as they are now, with Render's settings; change the view, or the model, and add another. **Add each saved view** queues one from each [view saved with the model](/docs/the-view#saved-views). Each is drawn in turn, saved where Render saves under a name of its own, and shown in the status bar, whose **Cancel** stops the one being drawn and pauses the rest. **Finish now** keeps a path-traced picture as clean as it is so far. Claude can use the same queue over the connector (`render_queue`). The panel keeps out of the way: whatever you open after it is drawn over it, it sits above Cut away's strip, and [[Esc]] puts it away while what is queued goes on being drawn.
 
 <!-- covers
 ui:render queue
