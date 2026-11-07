@@ -1473,8 +1473,8 @@ func _world_parts() -> Dictionary:
 		if _store.scenery.has(brick.id):
 			continue
 		out[brick.id] = [brick.part_id, brick.color_code,
-			Transform3D(brick.transform.basis, brick.transform.origin - lift), true,
-			Assemblies.path_of(brick)]
+			Transform3D(brick.transform.basis, brick.transform.origin - lift),
+			_library.has_part(brick.part_id), Assemblies.path_of(brick)]
 	return out
 
 
@@ -1517,10 +1517,10 @@ static func _unmatched(a: Array, b: Array) -> Array:
 
 ## The parts the file opens as after the edit [param done] did: those of
 ## [param parts] but the ones it took or moved, and the ones it put down, as
-## the baseplate before ([param was]) and after it ([param now]) says. A copy
-## of a sub-model put down has its parts the app cannot show too, and one
-## taken off has them no more.
-func _after_edit(parts: Array, was: Dictionary, now: Dictionary, done: Dictionary) -> Array:
+## the baseplate before ([param was]) and after it ([param now]) says. The
+## parts the app cannot show among them: each is on the baseplate, drawn as
+## nothing (PartLibrary.add_stand_in).
+func _after_edit(parts: Array, was: Dictionary, now: Dictionary, _done: Dictionary) -> Array:
 	var taken: Array = []
 	var put: Array = []
 	for id: int in was:
@@ -1533,34 +1533,7 @@ func _after_edit(parts: Array, was: Dictionary, now: Dictionary, done: Dictionar
 			continue
 		if not was.has(id) or not _unmatched([now[id]], [was[id]]).is_empty():
 			put.append(now[id])
-	var out: Array = _unmatched(parts, taken) + put
-	if done.has("copied"):
-		var from: String = done["copied"][0]
-		var to: String = done["copied"][1]
-		var by: Vector3 = _middle_of(now, to) - _middle_of(now, from)
-		for entry: Array in parts:
-			if not bool(entry[3]) and _under(str(entry[4]), from):
-				var at: Transform3D = entry[2]
-				out.append([entry[0], entry[1], Transform3D(at.basis, at.origin + by), false, to])
-	if done.has("taken"):
-		var gone: Array = parts.filter(func(entry: Array) -> bool:
-			return not bool(entry[3]) and _under(str(entry[4]), str(done["taken"])))
-		out = _unmatched(out, gone)
-	return out
-
-
-static func _under(unit: String, path: String) -> bool:
-	return unit == path or unit.begins_with(path + "/")
-
-
-static func _middle_of(parts: Dictionary, path: String) -> Vector3:
-	var sum := Vector3.ZERO
-	var n: int = 0
-	for id: int in parts:
-		if _under(str(parts[id][4]), path):
-			sum += (parts[id][2] as Transform3D).origin
-			n += 1
-	return sum / maxf(n, 1)
+	return _unmatched(parts, taken) + put
 
 
 ## Whether the model [param text] opens as is [param expected]: every part,
