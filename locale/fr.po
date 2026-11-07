@@ -11727,3 +11727,123 @@ msgstr "orientation des tenons : chaque pièce colorée selon l'orientation de s
 
 msgid "stud directions off"
 msgstr "orientation des tenons désactivée"
+
+# Views and render presets kept with the model (APP_UX5 #8, savedviews): View ›
+# Viewpoint › Save this view…, the saved views' rows, Render's Preset and its Camera.
+
+msgid "Save this view…"
+msgstr "Enregistrer cette vue…"
+
+msgid "Saved view %d"
+msgstr "Vue enregistrée %d"
+
+msgid "Render each saved view"
+msgstr "Rendre chaque vue enregistrée"
+
+msgid "Keep where you are looking from with the model, by a name, to look from again with a key and to render"
+msgstr "Garder avec le modèle, sous un nom, l’endroit d’où vous regardez, pour y revenir d’une touche et le rendre"
+
+msgid "Look from the model's saved view %d again, as it was saved"
+msgstr "Regarder de nouveau depuis la vue enregistrée %d du modèle, telle qu’elle a été enregistrée"
+
+msgid "Queue a picture from each view saved with the model, with Render's settings"
+msgstr "Mettre en file une image de chaque vue enregistrée avec le modèle, avec les réglages de Rendu"
+
+msgid "Save this view"
+msgstr "Enregistrer cette vue"
+
+msgid "What should this view be called?"
+msgstr "Comment appeler cette vue ?"
+
+msgid "Name of the view"
+msgstr "Nom de la vue"
+
+msgid "View %d"
+msgstr "Vue %d"
+
+msgid "A view of the same name is replaced. Each of the first nine has a key, and Render's Camera lists them all."
+msgstr "Une vue du même nom est remplacée. Les neuf premières ont chacune une touche, et la Caméra de Rendu les liste toutes."
+
+msgid "Kept with the model, the first nine each with a key, and in Render's Camera."
+msgstr "Gardées avec le modèle, les neuf premières chacune avec une touche, et dans la Caméra de Rendu."
+
+msgid "Look from it"
+msgstr "Regarder d’ici"
+
+msgid "Look from this view now"
+msgstr "Regarder depuis cette vue maintenant"
+
+msgid "Take this view out of the model"
+msgstr "Retirer cette vue du modèle"
+
+msgid "kept the view “%s” with the model"
+msgstr "vue « %s » gardée avec le modèle"
+
+msgid "%s looks from it again"
+msgstr "%s y revient"
+
+msgid "the view “%s”"
+msgstr "la vue « %s »"
+
+msgid "took the view “%s” out of the model"
+msgstr "vue « %s » retirée du modèle"
+
+msgid "those after it each have the key before"
+msgstr "les suivantes prennent chacune la touche d’avant"
+
+msgid "queued a picture from each of the %d saved views"
+msgstr "une image de chacune des %d vues enregistrées mise en file"
+
+msgid "Add each saved view"
+msgstr "Ajouter chaque vue enregistrée"
+
+msgid "Preset"
+msgstr "Préréglage"
+
+msgid "Save…"
+msgstr "Enregistrer…"
+
+msgid "Your own choices"
+msgstr "Vos propres choix"
+
+msgid "Preset %d"
+msgstr "Préréglage %d"
+
+msgid "Save the preset"
+msgstr "Enregistrer le préréglage"
+
+msgid "What should these choices be called?"
+msgstr "Comment appeler ces choix ?"
+
+msgid "Name of the preset"
+msgstr "Nom du préréglage"
+
+msgid "Saved with the model"
+msgstr "Enregistrées avec le modèle"
+
+msgid "Choices kept by a name, for any model: choose one to use them all again"
+msgstr "Des choix gardés sous un nom, pour n’importe quel modèle : en choisir un les reprend tous"
+
+msgid "Keep these choices by a name, to choose again on any model"
+msgstr "Garder ces choix sous un nom, pour les reprendre sur n’importe quel modèle"
+
+msgid "Forget the preset chosen"
+msgstr "Oublier le préréglage choisi"
+
+msgid "Kept these choices as the preset “%s”, for any model."
+msgstr "Ces choix sont gardés comme préréglage « %s », pour n’importe quel modèle."
+
+msgid "Forgot the preset “%s”."
+msgstr "Préréglage « %s » oublié."
+
+msgid "The preset “%s”."
+msgstr "Le préréglage « %s »."
+
+msgid "This model keeps no view called “%s”, so the camera is Three-quarter, like the box."
+msgstr "Ce modèle ne garde aucune vue nommée « %s » : la caméra est donc de trois quarts, comme sur la boîte."
+
+msgid "A preset needs a name."
+msgstr "Un préréglage a besoin d’un nom."
+
+msgid "The preset could not be kept."
+msgstr "Le préréglage n’a pas pu être gardé."

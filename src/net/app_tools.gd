@@ -99,6 +99,9 @@ const COMMANDS: Dictionary = {
 	"booklet_page_setup": "page_setup",
 	# seeing2: View, Stud directions is view_board's studs=true.
 	"stud_map": "view_board",
+	# savedviews: View › Viewpoint › Render each saved view is render_queue's
+	# add view=NAME, a view at a time.
+	"render_views": "render_queue",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -160,6 +163,9 @@ const WINDOW_ONLY: Dictionary = {
 	"reinstall": "puts a fresh copy of the app in place and restarts it, ending the session's connection",
 	"restart": "closes and reopens the app the session is driving, ending the session's connection",
 	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; in_view shows a session the one laid, and a session is given its own pictures in the conversation",
+	# savedviews: the views kept with the model (SavedViews).
+	"save_view": "keeps where the person's own camera looks from, by a name of theirs; a session looks from a saved view with view_model view= and renders one with render_model view=",
+	"saved_view_*": "the person's camera; view_model view= looks from a saved view by its name, and render_model view= renders it",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -238,7 +244,9 @@ it reads the collection back. Their sets and their own lots are never changed.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
 the model built up step by step as a video, saved where Render saves; a \
-turntable or a build answers with six of its frames in one picture.
+turntable or a build answers with six of its frames in one picture. view= \
+a view the person saved with the model, by its name, draws it from exactly \
+there (view_model view= looks from it first).
  - render_queue: pictures lined up with Render's settings and drawn one \
 after another while the person goes on working, as File, Render queue… \
 does; list says how far each has got and where it was saved.
@@ -815,7 +823,9 @@ func definitions() -> Array:
 				+ "shadows. quality quick, good or best (good for a picture, quick for a "
 				+ "turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for "
 				+ "a turntable or a build); view hero, "
-				+ "front, side, back, low or top. look product is a product shot's: glossy "
+				+ "front, side, back, low or top, or the name of a view the person saved with "
+				+ "the model (View › Viewpoint), drawn from exactly there; a name it does not "
+				+ "keep is answered with those it does. look product is a product shot's: glossy "
 				+ "plastic with rounded edges, clear parts that bend the light, a key, fill "
 				+ "and rim over a softbox studio (window, the default, is the window's own). "
 				+ "backdrop white, gradient, grey, dark or none (as Render last had it when "
@@ -829,7 +839,7 @@ func definitions() -> Array:
 				"seconds": {"type": "integer", "description": "a build's length, 10 to 60; 20 when omitted"},
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
-				"view": {"type": "string", "enum": ["hero", "front", "side", "back", "low", "top"]},
+				"view": {"type": "string", "description": "hero, front, side, back, low or top, or a view saved with the model, by its name"},
 				"look": {"type": "string", "enum": ["window", "product"]},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
@@ -841,7 +851,8 @@ func definitions() -> Array:
 			"description": ("Pictures lined up and drawn one after another while the person "
 				+ "goes on working, as File, Render queue… does. action add queues the "
 				+ "model and the view as they are now (view current, the window's, unless "
-				+ "another is given), with Render's settings changed by quality, size, "
+				+ "another is given: view= may name a view saved with the model, drawn from "
+				+ "exactly there), with Render's settings changed by quality, size, "
 				+ "samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as "
 				+ "render_model takes them; drawing begins at once unless paused, and each is "
 				+ "saved where Render saves under a name of its own. list (the default) says "
@@ -859,8 +870,7 @@ func definitions() -> Array:
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"samples": {"type": "integer", "description": "Best's samples, 1 to 4096"},
-				"view": {"type": "string", "enum": ["current", "hero", "front", "side", "back",
-					"low", "top"]},
+				"view": {"type": "string", "description": "current, hero, front, side, back, low or top, or a view saved with the model, by its name"},
 				"look": {"type": "string", "enum": ["window", "product"]},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
@@ -3608,7 +3618,18 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		"4k": Vector2i(3840, 2160), "square": Vector2i(1080, 1080)}
 	chosen.size = sizes.get(str(input.get("size", "720p" if turning else "1080p")),
 		Vector2i(1920, 1080))
-	chosen.view = str(input.get("view", "hero"))
+	# Render's own views, or one the person saved with the model, by its name
+	# (SavedViews): drawn from exactly there.
+	var view_asked: String = str(input.get("view", "hero"))
+	if view_asked in ["hero", "front", "side", "back", "low", "top"]:
+		chosen.view = view_asked
+		chosen.forget_eye()
+	else:
+		var at: int = SavedViews.index_of(world.saved_views, view_asked)
+		if at < 0:
+			return SavedViews.not_kept(world.saved_views, view_asked) \
+				+ " Or view is hero, front, side, back, low or top."
+		chosen.keep_view(world.saved_views[at], app.get("_camera") as Camera3D)
 	var look: String = str(input.get("look", "window"))
 	if not RenderSettings.LOOKS.has(look):
 		return "look is window or product."
@@ -3746,10 +3767,16 @@ func _render_queue(input: Dictionary) -> Variant:
 			var options: Dictionary = input.duplicate()
 			options.erase("action")
 			options.erase("number")
+			# A view saved with the model, by its name (SavedViews).
+			var from_view: String = ""
+			if options.has("view") and not str(options["view"]) in ["current", "hero", "front",
+					"side", "back", "low", "top"]:
+				from_view = str(options["view"])
+				options.erase("view")
 			var wrong: String = chosen.take(options)
 			if not wrong.is_empty():
 				return wrong
-			var item: RenderQueue.Item = queue.add(chosen)
+			var item: RenderQueue.Item = queue.add(chosen, from_view)
 			if item == null:
 				return queue.last_refusal
 			return ("Queued %d: %s, %s. %s\n%s" % [item.number, item.what(),

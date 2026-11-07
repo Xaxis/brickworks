@@ -487,6 +487,7 @@ func save_as(name: String) -> bool:
 	if _write(SAVE_DIR + clean + ".ldr", name, true):
 		title = name
 		example = false
+		_views_kept = world.saved_views
 		saved.emit(name)
 		return true
 	return false
@@ -499,6 +500,8 @@ func save_as(name: String) -> bool:
 func save_file(path: String, file_title: String = "Model") -> bool:
 	var was: Array = [_known_path, _known_time, _known_lines]
 	var ok: bool = _write(path, file_title, true)
+	if ok:
+		_views_kept = world.saved_views
 	# Still watching the model's own file for saves from elsewhere.
 	if path != saved_path(title):
 		_known_path = was[0]
@@ -512,6 +515,9 @@ func save_file(path: String, file_title: String = "Model") -> bool:
 ## The last file [method save_file] wrote that is not the title's own: the
 ## model as it stands there is saved work ([method has_unsaved_work]).
 var _saved_as: String = ""
+## The views kept with the model (SavedViews) as it was opened or last saved
+## to its file, in the window's coordinates: others now are work not saved.
+var _views_kept: Array = []
 
 
 ## The saved file the model on the baseplate is, as this tab or window last
@@ -615,6 +621,7 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	hidden_scheme = {}
 	pins = PinnedComments.new()
 	bin_sets = PackedStringArray()
+	_views_kept = []
 	reference = picture
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
@@ -691,6 +698,12 @@ func _parts_with_awaited() -> int:
 ## Whether starting a new model would lose anything: bricks that are not
 ## in a saved model under this name, exactly as they stand.
 func has_unsaved_work() -> bool:
+	# A view saved, changed or taken out since the model was opened or saved
+	# (SavedViews) is the person's work, whatever else is as it was: the
+	# file is the only place it is kept.
+	if not SavedViews.same(world.saved_views, _views_kept) \
+			and world.brick_count() - scenery.size() > 0:
+		return true
 	# An example as it shipped is nobody's work: New on the first visit's
 	# car, untouched, asked whether to save it. Nothing has been done to
 	# it while there is nothing to undo (an Open forgets the history).
@@ -1630,6 +1643,12 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	from_set = read["set"]
 	hidden_scheme = read["hidden"]
 	world.cut_kept = read["cut"]
+	# The views it keeps (SavedViews), where the model now stands.
+	world.saved_views = SavedViews.placed(read["views"], _lift_now())
+	# Their names drawn as written in every language (Language.keep_name).
+	for view: Dictionary in world.saved_views:
+		Language.keep_name(str(view["name"]))
+	_views_kept = world.saved_views
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
@@ -1704,6 +1723,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"reference": ReferenceImage.read(text),
 		"hidden": HiddenColours.read(text),
 		"cut": CutShape.read(text),
+		"views": SavedViews.read(text),
 		"motions": Motions.read(text),
 		"pins": PinnedComments.read(text),
 	}
@@ -2057,6 +2077,7 @@ func _source_asked(title_now: String) -> Dictionary:
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
 		"cut": world.cut_kept.duplicate(true),
+		"views": SavedViews.in_file(world.saved_views, _lift_now()),
 		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
 		"pins": pins.lines(world, _lift_now()),
 		"authored": AuthorSteps.any(world, scenery), "set": from_set}
@@ -2093,6 +2114,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 	kept = ground.written_into(kept) if ground != null else kept
 	kept = HiddenColours.written_into(kept, asked["hidden"])
 	kept = CutShape.written_into(kept, asked["cut"])
+	kept = SavedViews.written_into(kept, asked["views"])
 	kept = Motions.written_into(kept, asked["motions"])
 	kept = PinnedComments.written_into(kept, asked["pins"])
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
@@ -2230,6 +2252,9 @@ func _settle() -> void:
 	if absf(by) < 0.001:
 		return
 	_lifted_by += by
+	# The views it keeps look at it where it now stands (SavedViews).
+	world.saved_views = SavedViews.moved(world.saved_views, Vector3(0.0, by, 0.0))
+	_views_kept = SavedViews.moved(_views_kept, Vector3(0.0, by, 0.0))
 	for brick: BrickWorld.Brick in model:
 		var to: Transform3D = brick.transform.translated(Vector3(0.0, by, 0.0))
 		builder.lattice.release(brick.id)
@@ -2500,6 +2525,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	text = model_floor.written_into(text) if model_floor != null else text
 	text = HiddenColours.written_into(text, hidden_scheme)
 	text = CutShape.written_into(text, world.cut_kept)
+	text = SavedViews.written_into(text, SavedViews.in_file(world.saved_views, _lift_now()))
 	text = Motions.written_into(text, _motion_lines())
 	text = PinnedComments.written_into(text, pins.lines(world, _lift_now()))
 	text = _with_looks(text, true)
@@ -2653,6 +2679,7 @@ func save_as_paced(name: String, job: Working.Job) -> bool:
 	if _write(SAVE_DIR + clean + ".ldr", name, true, text):
 		title = name
 		example = false
+		_views_kept = world.saved_views
 		saved.emit(name)
 		return true
 	return false

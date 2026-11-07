@@ -517,6 +517,78 @@
 							"words": "Turn the model right",
 							"key": "Shift+E",
 							"tip": ""
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "save_view",
+							"words": "Save this view…",
+							"key": "Alt+V",
+							"tip": "Keep where you are looking from with the model, by a name, to look from again with a key and to render"
+						},
+						{
+							"name": "saved_view_1",
+							"words": "Saved view 1",
+							"key": "Alt+Shift+1",
+							"tip": "Look from the model's saved view 1 again, as it was saved"
+						},
+						{
+							"name": "saved_view_2",
+							"words": "Saved view 2",
+							"key": "Alt+Shift+2",
+							"tip": "Look from the model's saved view 2 again, as it was saved"
+						},
+						{
+							"name": "saved_view_3",
+							"words": "Saved view 3",
+							"key": "Alt+Shift+3",
+							"tip": "Look from the model's saved view 3 again, as it was saved"
+						},
+						{
+							"name": "saved_view_4",
+							"words": "Saved view 4",
+							"key": "Alt+Shift+4",
+							"tip": "Look from the model's saved view 4 again, as it was saved"
+						},
+						{
+							"name": "saved_view_5",
+							"words": "Saved view 5",
+							"key": "Alt+Shift+5",
+							"tip": "Look from the model's saved view 5 again, as it was saved"
+						},
+						{
+							"name": "saved_view_6",
+							"words": "Saved view 6",
+							"key": "Alt+Shift+6",
+							"tip": "Look from the model's saved view 6 again, as it was saved"
+						},
+						{
+							"name": "saved_view_7",
+							"words": "Saved view 7",
+							"key": "Alt+Shift+7",
+							"tip": "Look from the model's saved view 7 again, as it was saved"
+						},
+						{
+							"name": "saved_view_8",
+							"words": "Saved view 8",
+							"key": "Alt+Shift+8",
+							"tip": "Look from the model's saved view 8 again, as it was saved"
+						},
+						{
+							"name": "saved_view_9",
+							"words": "Saved view 9",
+							"key": "Alt+Shift+9",
+							"tip": "Look from the model's saved view 9 again, as it was saved"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "render_views",
+							"words": "Render each saved view",
+							"key": "",
+							"tip": "Queue a picture from each view saved with the model, with Render's settings"
 						}
 					]
 				},
@@ -1779,6 +1851,17 @@
 		"stud_map": "",
 		"turn_left": "shift-Q",
 		"turn_right": "shift-E",
+		"save_view": "alt-V",
+		"saved_view_1": "alt-shift-1",
+		"saved_view_2": "alt-shift-2",
+		"saved_view_3": "alt-shift-3",
+		"saved_view_4": "alt-shift-4",
+		"saved_view_5": "alt-shift-5",
+		"saved_view_6": "alt-shift-6",
+		"saved_view_7": "alt-shift-7",
+		"saved_view_8": "alt-shift-8",
+		"saved_view_9": "alt-shift-9",
+		"render_views": "",
 		"panel_parts": "",
 		"panel_assistant": "",
 		"panel_properties": "",

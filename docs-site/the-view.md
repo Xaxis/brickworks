@@ -1,8 +1,9 @@
 ---
 tools: view_model, set_floor, in_view, view_board
-ai: Turning, sliding and zooming the camera, navigation presets, cutting away and X-ray, stress colours, stud directions, and the floor the model stands on. An assistant looks from a side with view_model and sets the floor with set_floor.
+ai: Turning, sliding and zooming the camera, navigation presets, views saved with the model, cutting away and X-ray, stress colours, stud directions, and the floor the model stands on. An assistant looks from a side with view_model and sets the floor with set_floor.
 rules:
   - view_model looks from corner, top, front, back, left or right; corner shows the shape best.
+  - view_model view=NAME looks from a view the person saved with the model, exactly as their window draws it; a name it does not keep is answered with those it does.
   - Floors are a baseplate (16, 32 or 48 studs, or any size in eights to 192), a grid, or none.
 title: The view
 nav: The view
@@ -18,6 +19,16 @@ The **Orbit**, **Pan** and **Zoom** tools ([[O]], [[H]], [[Z]]) make a left drag
 <!-- covers
 ui:camera controls
 ui:left-button navigation
+-->
+
+## Views saved with the model {#saved-views}
+
+**View › Viewpoint › Save this view…** ([[Alt+V]]) keeps where you are looking from, by a name you give it, with the model: the next time it is opened, on any computer, the view is there. The first nine each have a key, [[Alt+Shift+1]] to [[Alt+Shift+9]], beside the digits that give every model's own views, and each has a row of **View › Viewpoint** under its name. A view saved square on comes back square on and the same size, and one from a step Build it turned over comes back turned. Saving a view under a name already kept replaces it in its place; the dialog lists the views with **Look from it** and **Remove**. Other programs and older copies of Brickworks open the file as before and pass over the views.
+
+Render's **Camera** lists the model's views under *Saved with the model*, and draws exactly what the window shows from there, wherever the window is looking now. **View › Viewpoint › Render each saved view**, or the render queue's **Add each saved view**, queues a picture from each.
+
+<!-- covers
+ui:saved views
 -->
 
 ## Navigate like Studio, Blender or Mecabricks {#presets}

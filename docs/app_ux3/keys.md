@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 210 | 115 | 110 | 112 | 104 |
-| Studio | 210 | 118 | 113 | 115 | 107 |
-| Mecabricks | 210 | 116 | 111 | 113 | 105 |
-| LDCad | 210 | 118 | 114 | 116 | 108 |
+| Brickworks | 221 | 115 | 110 | 112 | 105 |
+| Studio | 221 | 118 | 113 | 115 | 108 |
+| Mecabricks | 221 | 116 | 111 | 113 | 106 |
+| LDCad | 221 | 118 | 114 | 116 | 109 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -25,7 +25,10 @@ more with none, and What's This? one with Shift-F1 under every preset: 208 when 
 done, six more without a key after it. Page setup… (pagesetup) and Stud directions
 (seeing2) added one more each with none: 210, and 112 without a key under the app's keys,
 before keys2. keys2 gave eight a key under every preset, each one no command had: 104
-without a key now, so 106 of the 210 have one (the walk's `counts`, APP_UX5).
+without a key then, so 106 of the 210 had one (the walk's `counts`, APP_UX5). Saved views
+(savedviews, APP_UX5 #8) added eleven: Save this view… and the nine saved views, each with
+a key under every preset, and Render each saved view with none. 221 now, 105 without a key
+under the app's keys, 116 with one.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -87,6 +90,28 @@ does, and so sits beside Ctrl-O, as a browser's own Library is Ctrl-Shift-O.
 | `booklet_page_setup` | Build › Booklet page › Page setup | — | — (Print and Print Preview have none) | — | once a booklet | Ctrl-shift-B | Ctrl-shift-B | Ctrl-shift-B | Ctrl-shift-B | beside Alt-B, Instructions, the booklet; the Mac's Cmd-Shift-P is Firefox's |
 | `export_pickabrick` | File › Export › LEGO® Pick a Brick list (.csv) | — | — | — | once a model, again as it changes | alt-L | alt-L | alt-L | alt-L | Alt and the first free letter, LEGO®'s L; BrickLink's and Rebrickable's lists are on the parts list (P) |
 | `library` | File › Library | — | — | — | once a session | Ctrl-shift-O | Ctrl-shift-O | Ctrl-shift-O | Ctrl-shift-O | beside Open's Ctrl-O, as a browser's Library is Ctrl-Shift-O |
+
+## Given a key with saved views (savedviews, 2026-11-06)
+
+The views a person keeps with the model (View › Viewpoint) are looked from again many
+times a session, as the views every model has are by the digits alone. Each of the
+nine is Alt-Shift and its digit, beside the digits: Shift and
+Ctrl-Shift with a digit are the colour keys, Ctrl and a digit is every browser's tab, and
+Firefox on Linux keeps Alt and a digit. No preset gives Alt-Shift and a digit, nor Alt-V,
+to anything. Save this view… is Alt and the first free letter of its row, V.
+
+| Command | Menu | Studio | LeoCAD | LDCad | How often | Brickworks | Studio's keys | Mecabricks' | LDCad's | Why this key |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `save_view` | View › Viewpoint › Save this view | — | — | — | a few times a model | alt-V | alt-V | alt-V | alt-V | Alt and the first free letter, View |
+| `saved_view_1` | View › Viewpoint › Saved view 1 | — | — | — | many times a session | alt-shift-1 | alt-shift-1 | alt-shift-1 | alt-shift-1 | beside the digit, the views every model has |
+| `saved_view_2` | View › Viewpoint › Saved view 2 | — | — | — | many times a session | alt-shift-2 | alt-shift-2 | alt-shift-2 | alt-shift-2 | as the first |
+| `saved_view_3` | View › Viewpoint › Saved view 3 | — | — | — | many times a session | alt-shift-3 | alt-shift-3 | alt-shift-3 | alt-shift-3 | as the first |
+| `saved_view_4` | View › Viewpoint › Saved view 4 | — | — | — | many times a session | alt-shift-4 | alt-shift-4 | alt-shift-4 | alt-shift-4 | as the first |
+| `saved_view_5` | View › Viewpoint › Saved view 5 | — | — | — | many times a session | alt-shift-5 | alt-shift-5 | alt-shift-5 | alt-shift-5 | as the first |
+| `saved_view_6` | View › Viewpoint › Saved view 6 | — | — | — | many times a session | alt-shift-6 | alt-shift-6 | alt-shift-6 | alt-shift-6 | as the first |
+| `saved_view_7` | View › Viewpoint › Saved view 7 | — | — | — | many times a session | alt-shift-7 | alt-shift-7 | alt-shift-7 | alt-shift-7 | as the first |
+| `saved_view_8` | View › Viewpoint › Saved view 8 | — | — | — | many times a session | alt-shift-8 | alt-shift-8 | alt-shift-8 | alt-shift-8 | as the first |
+| `saved_view_9` | View › Viewpoint › Saved view 9 | — | — | — | many times a session | alt-shift-9 | alt-shift-9 | alt-shift-9 | alt-shift-9 | as the first |
 
 ## Left without a key, on purpose
 
@@ -193,6 +218,7 @@ does, and so sits beside Ctrl-O, as a browser's own Library is Ctrl-Shift-O.
 | `mode_select` | Tools › Select tool | V, Default select mode | — | — | every few minutes | LDCad | under LDCad's keys only: V is LDCad's projection |
 | `mode_pan` | View › Pan tool | — | — | — | a few times a session | Studio, LDCad | under Studio's keys H is Hinge; under LDCad's H hides |
 | `mode_zoom` | View › Zoom tool | — | — | — | a few times a session | LDCad | under LDCad's keys only: Z fits, as LDCad's does |
+| `render_views` | View › Viewpoint › Render each saved view | — | — | — | once a model, again as it changes | all | a batch put in the render queue once a model; each saved view's picture is Render's Camera, under F9 |
 | `hidden_colours` | Tools › Colour the hidden parts | — | — | — | once a model | all | a big model's hidden parts, coloured once |
 | `reseat` | Tools › Seat parts on their studs | — | — | — | rarely | all | a repair after an import |
 | `connector` | Tools › Connect your AI | — | — | — | rarely | all | set up once |

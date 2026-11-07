@@ -3377,6 +3377,10 @@ func _tool_answer(block: Dictionary) -> Variant:
 			var colour: String = await _colours_looked(args)
 			return described if colour.is_empty() else "%s\n\n%s" % [described, colour]
 		"view_model":
+			# savedviews: a view the person saved with the model, by its name.
+			if args.has("view"):
+				progress.emit("looking from a saved view")
+				return await _from_saved_view(str(args["view"]))
 			var from: String = str(args.get("from", "corner"))
 			var close: AABB = _box_from(args.get("where"))
 			progress.emit("looking at the %s" % from
@@ -4643,6 +4647,27 @@ func _sections_measured() -> String:
 ## A measurement, without a decimal point it does not need.
 static func _studs(value: float) -> String:
 	return Placement._num(snappedf(value, 0.1))
+
+
+## view_model's view=: the model from the view the person saved with it as
+## [param name] (SavedViews), as their window draws it, drawn by Render's
+## own camera (RenderDialog.picture_of_view). Why not, in words.
+func _from_saved_view(name: String) -> Variant:
+	var app: Node = get_parent()
+	var render: Variant = app.get("_render") if app != null and "_render" in app else null
+	if render == null or not (render as Object).has_method("picture_of_view"):
+		return "Only the app's own window keeps saved views to look from."
+	var window: Vector2 = Vector2(app.get_viewport().get_visible_rect().size)
+	var tall: int = clampi(roundi(1024.0 * window.y / maxf(window.x, 1.0)), 256, 1024)
+	var drawn: Variant = await (render as Object).call("picture_of_view", name,
+		Vector2i(1024, tall))
+	if not drawn is Image:
+		return str(drawn)
+	var picture: Dictionary = await _ensure_shot().encode(drawn as Image)
+	if picture.is_empty():
+		return "The picture from “%s” did not come out; ask again." % name
+	return [{"type": "text", "text": "The model from “%s”, a view saved with it, as the window draws it:" % name},
+		picture]
 
 
 ## The thing that takes pictures, made on first use.
@@ -24296,6 +24321,14 @@ func _tools() -> Array:
 							+ "corner is a three-quarter view and shows "
 							+ "the shape best",
 					},
+					"view": {
+						"type": "string",
+						"description": ("A view the person saved with the "
+							+ "model (View › Viewpoint), by its name, in "
+							+ "place of from: the picture from exactly "
+							+ "there, as their window draws it. A name it "
+							+ "does not keep is answered with those it does."),
+					},
 					"where": {
 						"type": "object",
 						"description": ("Look closely at one part of "
@@ -24318,7 +24351,6 @@ func _tools() -> Array:
 						"additionalProperties": false,
 					},
 				},
-				"required": ["from"],
 				"additionalProperties": false,
 			},
 		},
