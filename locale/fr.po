@@ -11932,6 +11932,9 @@ msgstr "Le modèle, dessiné"
 msgid "The colour of every step's number"
 msgstr "La couleur du numéro de chaque étape"
 
+msgid "Number colour"
+msgstr "Couleur des numéros"
+
 msgid "Parts box frame"
 msgstr "Cadre de la boîte de pièces"
 

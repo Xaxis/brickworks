@@ -5631,7 +5631,7 @@
       "id": "ui:the booklet's own cover and colours",
       "kind": "ui",
       "entry": "src/assembly/booklet_sheet.gd",
-      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup\u2026: Page tab Header, Footer; Cover tab Title, Under the title, Picture Choose\u2026 or The model, Line; Steps tab Step numbers and their colour, Parts box frame, fill and corners, New parts outline, Usual colours; then Instructions, Save as PDF; page_setup title=, subtitle=, cover_line=, cover_picture_data=, header=, footer=, box_frame=, box_fill=, box_corners=, number_colour=, outline_colour= over MCP)",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup\u2026: Page tab Header, Footer; Cover tab Title, Under the title, Picture Choose\u2026 or The model, Line; Steps tab Step numbers, Number colour, Parts box frame, fill and corners, New parts outline, Usual colours; then Instructions, Save as PDF; page_setup title=, subtitle=, cover_line=, cover_picture_data=, header=, footer=, box_frame=, box_fill=, box_corners=, number_colour=, outline_colour= over MCP)",
       "area": "view",
       "tests": []
     },

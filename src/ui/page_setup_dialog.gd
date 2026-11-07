@@ -77,6 +77,8 @@ func _ready() -> void:
 	column.custom_minimum_size = Vector2(WIDTH, 0)
 	add_child(column)
 	_tabs = TabContainer.new()
+	# As wide and tall on every tab, so the dialog keeps its size as they turn.
+	_tabs.use_hidden_tabs_for_min_size = true
 	column.add_child(_tabs)
 	var grid: GridContainer = _tab("Page")
 	var cover: GridContainer = _tab("Cover")
@@ -156,15 +158,13 @@ func _ready() -> void:
 	_cover_line = _text_field("cover_line", "None", "A line of your words on the cover, over its count of pieces")
 	_row(cover, "Line", _cover_line)
 
-	var number := HBoxContainer.new()
-	number.add_theme_constant_override("separation", 6)
 	_number = _spin(BookletSheet.NUMBER_RANGE, 0.5, " mm", "How tall a step's number is printed",
 		"number")
-	_number.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	number.add_child(_number)
+	_row(steps, "Step numbers", _number)
+	# A bar as wide as the others: the booklet's own near-black, as a swatch
+	# beside the size, read as no control at all on the dark dialog.
 	_number_colour = _colour_field("number_colour", "The colour of every step's number")
-	number.add_child(_number_colour)
-	_row(steps, "Step numbers", number)
+	_row(steps, "Number colour", _number_colour)
 	_parts = _spin(Vector2(BookletSheet.PARTS_RANGE.x * 100.0, BookletSheet.PARTS_RANGE.y * 100.0),
 		5.0, " %", "How big the parts are drawn in each step's parts box and the parts list", "parts")
 	_row(steps, "Parts pictures", _parts)
