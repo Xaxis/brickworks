@@ -220,6 +220,7 @@ func _sets_in_window() -> void:
 	await _frames(60)
 	await _shot("comparesets_sets")
 	_placed()
+	_names_shown()
 
 	var swap: Button = _controls().get("compare_swap")
 	swap.pressed.emit()
@@ -459,10 +460,24 @@ func _note() -> String:
 	return ""
 
 
+## Each row's part named where a person reads it: the name's column as wide as
+## the room the sheet leaves it, not squeezed to nothing.
+func _names_shown() -> void:
+	var rows: Control = _compare.get("_list_rows")
+	var first: Control = rows.get_child(0) if rows != null and rows.get_child_count() > 0 else null
+	var name: Label = first.get_child(4) as Label if first != null and first.get_child_count() > 4 \
+		else null
+	var width: float = name.size.x if name != null else 0.0
+	_check("a row names its part, in a column %.0f px wide: %s" % [width,
+		name.text if name != null else "no row"],
+		name != null and not name.text.is_empty() and width >= 120.0)
+
+
 ## The sheet inside the window, and each of its controls inside it.
 func _placed() -> void:
 	var sheet: Rect2 = _compare.get_global_rect()
-	var window := Rect2(Vector2.ZERO, Vector2(root.size))
+	# In the UI's own units, as the sheet's rect is (the window is scaled).
+	var window: Rect2 = root.get_visible_rect()
 	var outside: Array = []
 	for name: String in _controls():
 		var control: Control = _controls()[name]

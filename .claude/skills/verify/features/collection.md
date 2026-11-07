@@ -372,6 +372,16 @@ Proves it when:
 - `collection_ui_probe` ends `the shortfall, the ranking and the collection on
   screen`; look at `shots/collection_need.png`, `collection_build.png`,
   `collection_own.png`.
+- `comparesets_probe` (at 1400x900 and PROBE_SIZE=1280x720) ends `all good`:
+  7140-1 (285 pieces, 1 spare not counted) against 9493-1 (571, 17 spares) is
+  21 in both, 264 only in 7140-1 and 550 only in 9493-1 (21 + 264 = 285,
+  21 + 550 = 571), each tab's rows summing to its count, Swap turning it round;
+  the car (61 pieces) against 7140-1 is 5 in both and 56 to buy, its Pick a
+  Brick file 27 lines summing to the 54 pieces with an element number, the 2
+  without one named under the buttons; over MCP the same counts in 1 call and
+  the same file to the byte; a set under test refused in both. Look at
+  `comparesets_both`, `_sets` and `_car`: the sheet inside the window, each
+  row's part named.
 - `mybricks_api.mjs` ends `every check passed`: an old collection (two sets, a
   CSV, an XML) kept with its sources through twelve lots added, one changed,
   one taken out, a stale count refused 409; a session's twelve apart, its

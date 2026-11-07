@@ -201,12 +201,13 @@ func _compare() -> void:
 	diff = ModelDiff.between(_was, now)
 	_revision = world.revision
 	compared += 1
-	_draw()
+	_draw_changes()
 	_fill()
 
 
 ## Each change drawn in its colour, everything else faded, and the ghosts.
-func _draw() -> void:
+## (Not _draw: the engine calls that on every redraw of the panel.)
+func _draw_changes() -> void:
 	var tints: Dictionary = {}
 	for change: ModelDiff.Change in diff.changes:
 		if change.now != null and change.now.id != 0:
@@ -712,6 +713,13 @@ func _place_parts() -> void:
 	offset_bottom = wanted.y / 2.0
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BOTH
+	# A wrapping label is as tall as its words at the width it has, and before
+	# its first layout it has none: one word a line, a sheet taller than the
+	# window. Each is given the width it will have.
+	var inside: float = wanted.x - get_theme_stylebox("panel").get_minimum_size().x
+	_sides.custom_minimum_size.x = maxf(120.0, inside - _go.get_combined_minimum_size().x - 8.0)
+	_buy.custom_minimum_size.x = inside
+	_buy_note.custom_minimum_size.x = inside
 
 
 func _build_parts() -> void:
@@ -964,6 +972,7 @@ func _show_list() -> void:
 func _lot_row(lot: Inventory.Lot, note: String) -> Control:
 	var row := HBoxContainer.new()
 	row.custom_minimum_size = Vector2(0, ROW)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", 9)
 	var count := Label.new()
 	count.text = "%d ×" % lot.count
