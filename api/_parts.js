@@ -24,7 +24,7 @@
 // <INVENTORY>) and a Rebrickable parts list (its CSV import: Part, Color,
 // Quantity), a lot left off where the shop has no number for its colour, and
 // a made part, which no shop sells; a part in a direct colour (0x2RRGGBB)
-// listed in the nearest colour LEGO makes, as the app lists it (standIn).
+// listed in the nearest colour still made, as the app lists it (standIn).
 
 import { existsSync, readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
@@ -430,7 +430,7 @@ function makeLibrary(given) {
   const colour = (code) => {
     const row = given.colours[code];
     if (row) return { name: row[0], hex: row[1], lego: row[2], rebrickable: row[3], bricklink: row[4], plain: row[5] };
-    // A direct colour is its own RGB, in no shop's or LEGO's numbers.
+    // A direct colour is its own RGB, in no shop's or palette's numbers.
     if (isDirect(code)) return { ...directOf(code), lego: "", rebrickable: -1, bricklink: -1, plain: code };
     return { name: `Unknown ${code}`, hex: "ff00ff", lego: "", rebrickable: -1, bricklink: -1, plain: code };
   };

@@ -19,7 +19,7 @@
 ##   the GLB against the site's of the same file (tools/web/arview_check.mjs);
 ##   the file's thumbnail (ModelThumbnail), each colour in it and no magenta;
 ##   the shops' lists, which have no such colour: each part listed in the
-##   nearest colour LEGO makes (PartLibrary.catalogue_nearest), BrickLink's
+##   nearest colour still made (PartLibrary.catalogue_nearest), BrickLink's
 ##   with a REMARKS saying so, Pick a Brick's named where that colour has no
 ##   element, each list's words naming every stand-in, and none dropped;
 ##   the site's parts list and lists of the same file (api/_parts.js,

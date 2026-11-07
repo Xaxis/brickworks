@@ -1941,7 +1941,7 @@ func color(code: int) -> BrickColor:
 ## A direct colour (LdrModel.is_direct_colour) as the palette's colours are:
 ## its own RGB (LdrModel.direct_rgb), opaque plain plastic, named by its hex
 ## ("#FF0000", as the site's parts list and room name it), with no number in
-## any shop or in LEGO's list, which never made it. Null for a palette code.
+## any shop or palette, as no one ever made it. Null for a palette code.
 ## Made afresh each time, as color's magenta is: nothing is written to a
 ## table a worker may be reading.
 static func direct_color(code: int) -> BrickColor:
@@ -1964,7 +1964,7 @@ static func direct_color(code: int) -> BrickColor:
 ## The catalogue colour a shop's list orders a part of direct colour [param
 ## code] in (Inventory.Lot.stand_in), as no shop sells plastic in a colour
 ## typed into a file: the nearest as an eye judges it (CIEDE2000,
-## HiddenColours.de2000) of the plain solid colours LEGO makes now
+## HiddenColours.de2000) of the plain solid colours still made
 ## (stand_in_codes), so BrickLink, Rebrickable and Pick a Brick all sell it;
 ## the lowest code of two as near. The site's lists choose by the same rule
 ## (api/_parts.js standIn). -1 for a palette code, which is ordered as

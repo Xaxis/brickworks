@@ -773,7 +773,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   colour, `0x2RRGGBB` (`LdrModel.is_direct_colour`), is its own RGB everywhere
   a colour code becomes a colour, through one helper, `LdrModel.direct_rgb`:
   `PartLibrary.color` gives it as `PartLibrary.direct_color` (opaque plain
-  plastic named by its hex, "#FF0000", no shop or LEGO number), so the 3D view,
+  plastic named by its hex, "#FF0000", no shop or palette number), so the 3D view,
   its pictures, the booklet, the parts list, the viewer's scene
   (`ModelScene`) and Export's GLB, glTF and OBJ (MTL name `rgb_FF0000`: a "#"
   may open a comment there) have it; `ModelThumbnail` takes `direct_rgb`
@@ -781,7 +781,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   colours it by `api/_colours.js` `directOf`. Only 0x2 is read: LDraw 0.27's
   0x3 to 0x7 forms are refused as unreadable (`LdrModel._colour`), so no
   direct colour is ever see-through. No shop sells one, so a shop list orders
-  the part in the nearest colour LEGO makes now
+  the part in the nearest colour still made
   (`PartLibrary.catalogue_nearest`: CIEDE2000 over `stand_in_codes`, LDConfig's
   solid section, opaque, own plain colour, a BrickLink number, `current`;
   `Inventory.Lot.stand_in*`) and says so: BrickLink's XML item carries a

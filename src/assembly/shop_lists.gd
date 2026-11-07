@@ -157,7 +157,7 @@ static func stand_in_words(made: Dictionary) -> String:
 	var stand_ins: PackedStringArray = made.get("stand_ins", PackedStringArray())
 	if stand_ins.is_empty():
 		return ""
-	return "no shop sells a direct colour, so %s in the nearest colour LEGO makes: %s" % [
+	return "no shop sells a direct colour, so %s in the nearest colour still made: %s" % [
 		"it is" if stand_ins.size() == 1 else "they are", ", ".join(stand_ins)]
 
 
