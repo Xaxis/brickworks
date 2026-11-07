@@ -340,7 +340,9 @@ picture the assistant is shown.
   (windowed, 1280x720, in the suite) sends WM_DELETE_WINDOW from outside
   (`tools/x11_close.py`, after making the atoms a window manager makes) with
   nothing up, Import's file chooser, Save as…, New's question and About: each
-  heard and gone within 2 s, exit 0, no abort; the part taken off kept;
+  heard, its scene tree gone within 2 s and the process within 5 s (0.7 to
+  1.8 s seen, the longer under twice the box's load), exit 0, no abort; the
+  part taken off kept;
   a click on File beside the chooser opens no menu, and Ctrl+N starts
   nothing. On pre261 every dialog way was still up 5 s after, exit 3.
   `quit_probe`'s close only emits the root's signal, which never met this.

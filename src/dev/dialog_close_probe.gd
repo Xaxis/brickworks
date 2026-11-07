@@ -24,7 +24,10 @@
 ##   save-as   File, Save as…, a part taken off first (work not saved);
 ##   confirm   File, New over a part taken off: "Start a new model?";
 ##   accept    Help, About Brickworks.
-## Pass: the app hears the close and is gone within GONE_MS of it, exit 0,
+## Pass: the app hears the close and has quit within QUIT_MS of it (its
+## scene tree gone), the process out within GONE_MS (the engine's own
+## freeing after: 0.7 to 1.8 s here, the longer with the box at twice its
+## cores' load), exit 0,
 ## no abort said. The app asks nothing as it closes, dialog or none: the
 ## model as it stands is kept as the working model and comes back at the
 ## next start (Main._exit_tree), so where a part was taken off, the working
@@ -37,8 +40,10 @@
 extends SceneTree
 
 const WAYS := ["none", "open", "save-as", "confirm", "accept"]
-## How soon after the close the app must be gone, process and all.
-const GONE_MS := 2000
+## How soon after the close the app must have quit: its scene tree gone.
+const QUIT_MS := 2000
+## And the process with it, the engine's freeing included.
+const GONE_MS := 5000
 ## How long a run waits for its close before it says it was ignored.
 const WAIT_MS := 5000
 const SIZE := "1280x720"
@@ -114,8 +119,11 @@ func _judge(way: String, code: int, output: String, ended: int) -> void:
 	_check("%s: the app heard it (%s)" % [way, "%d ms after" % (int(heard) - sent)
 		if not heard.is_empty() else "never: " + ("still up %.0f s later" % (WAIT_MS / 1000.0)
 			if output.contains("the app did not quit") else "nothing said")], not heard.is_empty())
-	_check("%s: and was gone %d ms after it (%d at most)" % [way, ended - sent, GONE_MS],
-		sent > 0 and not output.contains("the app did not quit") and ended - sent <= GONE_MS)
+	var quit_at: int = int(_said(output, "ENDED "))
+	_check("%s: and quit %d ms after it (%d at most), the process out %d ms after it (%d at most)"
+		% [way, quit_at - sent, QUIT_MS, ended - sent, GONE_MS], sent > 0 and quit_at >= sent
+		and not output.contains("the app did not quit") and quit_at - sent <= QUIT_MS
+		and ended - sent <= GONE_MS)
 	var aborts := PackedStringArray()
 	for line: String in output.split("\n"):
 		for abort: String in ABORTS:
@@ -315,8 +323,11 @@ func _check(what: String, ok: bool) -> void:
 
 
 ## Says when the close request reaches the app's nodes, as the window
-## tells each of them.
+## tells each of them, and when the scene tree goes.
 class _Ear extends Node:
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_WM_CLOSE_REQUEST:
 			print("HEARD %d" % int(Time.get_unix_time_from_system() * 1000.0))
+
+	func _exit_tree() -> void:
+		print("ENDED %d" % int(Time.get_unix_time_from_system() * 1000.0))
