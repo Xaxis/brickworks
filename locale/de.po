@@ -2697,8 +2697,8 @@ msgstr "Füge einen Schlüssel ein, um stattdessen hier einen zu behalten"
 msgid "On a web page a server on your own computer answers only if it allows this site (Ollama: OLLAMA_ORIGINS), and the browser asks you first."
 msgstr "Auf einer Webseite antwortet ein Server auf deinem eigenen Computer nur, wenn er diese Website zulässt (Ollama: OLLAMA_ORIGINS), und der Browser fragt dich vorher."
 
-msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; for any other server, use the desktop app."
-msgstr "Auf einer Webseite erreicht Brickworks nur die aufgeführten Anbieter und Server auf deinem eigenen Computer; für jeden anderen Server nimm die Desktop-App."
+msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; any other server needs the desktop app, coming soon."
+msgstr "Auf einer Webseite erreicht Brickworks nur die aufgeführten Anbieter und Server auf deinem eigenen Computer; jeder andere Server braucht die Desktop-App, die bald kommt."
 
 msgid "Sent only to Anthropic, never to us. Safest is a key just for this, in a Console workspace with a spend limit."
 msgstr "Nur an Anthropic gesendet, nie an uns. Am sichersten ist ein eigener Schlüssel nur dafür, in einem Console-Workspace mit Ausgabenlimit."
@@ -5571,8 +5571,8 @@ msgstr "Das Aussehen des Fensters, in der gewünschten Größe. Einen Augenblick
 msgid "Light bounced off the backdrop and between the parts, shading in every corner, and a soft shadow that widens with distance."
 msgstr "Licht, das vom Hintergrund und zwischen den Teilen zurückgeworfen wird, Schattierung in jeder Ecke und ein weicher Schatten, der mit dem Abstand breiter wird."
 
-msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the desktop app."
-msgstr "Weiche Schatten und glatte Kanten aus 8 gemittelten Bildern. Licht, das zwischen den Teilen zurückgeworfen wird, braucht die Desktop-App."
+msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the desktop app, coming soon."
+msgstr "Weiche Schatten und glatte Kanten aus 8 gemittelten Bildern. Licht, das zwischen den Teilen zurückgeworfen wird, braucht die Desktop-App, die bald kommt."
 
 msgid "Path traced, %d samples: soft shadows, light bounced off the floor and between the parts, glass that tints what is behind it, and depth of field if you want it."
 msgstr "Pathtracing, %d Samples: weiche Schatten, Licht, das vom Boden und zwischen den Teilen zurückgeworfen wird, Glas, das färbt, was dahinter liegt, und Schärfentiefe, wenn du sie willst."
@@ -5586,8 +5586,8 @@ msgstr "%d gemittelte Bilder: weiche Schatten einer Flächenleuchte, glatte Kant
 msgid "With nothing behind the model it is not path traced."
 msgstr "Ohne etwas hinter dem Modell wird es nicht mit Pathtracing gerendert."
 
-msgid "Path tracing needs the desktop app: a browser cannot trace rays."
-msgstr "Pathtracing braucht die Desktop-App: Ein Browser kann keine Strahlen verfolgen."
+msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
+msgstr "Pathtracing braucht die Desktop-App, die bald kommt: Ein Browser kann keine Strahlen verfolgen."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "Pathtracing braucht den vollen Grafikmodus, und dieses Fenster zeichnet im einfacheren."
@@ -11881,6 +11881,129 @@ msgstr "Dieses Modell hat keine Bewegung namens „%s“, darum wurde es stillst
 
 msgid "No such motion"
 msgstr "Keine solche Bewegung"
+
+# Compare two sets or models (comparesets, APP_UX6 #7): File's row, the sheet's
+# pickers, tabs, counts and shops, and what it says on the status line.
+
+msgid "Compare two sets or models…"
+msgstr "Zwei Sets oder Modelle vergleichen…"
+
+msgid "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+msgstr "Die Teile, die ein Set, ein gespeichertes Modell oder dieses mit einem anderen gemeinsam hat, die Teile, die nur eines hat, und was du kaufen musst, um das eine aus dem anderen zu bauen"
+
+msgid "Compare two sets or models"
+msgstr "Zwei Sets oder Modelle vergleichen"
+
+msgid "Swap"
+msgstr "Tauschen"
+
+msgid "A in B's place and B in A's: what to buy to build the other"
+msgstr "A an die Stelle von B und B an die von A: was du kaufen musst, um das andere zu bauen"
+
+msgid "Stop comparing (Esc)"
+msgstr "Vergleich beenden (Esc)"
+
+msgid "What you have: a set, a saved model or the model open now"
+msgstr "Was du hast: ein Set, ein gespeichertes Modell oder das offene Modell"
+
+msgid "What you want to build: a set, a saved model or the model open now"
+msgstr "Was du bauen willst: ein Set, ein gespeichertes Modell oder das offene Modell"
+
+msgid "Set number, as 7140"
+msgstr "Setnummer, etwa 7140"
+
+msgid "A set's number, as on its box: 7140 or 7140-1"
+msgstr "Die Nummer eines Sets, wie auf seiner Schachtel: 7140 oder 7140-1"
+
+msgid "The parts in both, in only one, and what to buy to build B from A"
+msgstr "Die Teile in beiden, die nur in einem, und was du kaufen musst, um B aus A zu bauen"
+
+msgid "The model open now"
+msgstr "Das offene Modell"
+
+msgid "The model open now: %s"
+msgstr "Das offene Modell: %s"
+
+msgid "A set, by its number"
+msgstr "Ein Set, nach seiner Nummer"
+
+msgid "Saved: %s"
+msgstr "Gespeichert: %s"
+
+msgid "Example: %s"
+msgstr "Beispiel: %s"
+
+msgid "In both"
+msgstr "In beiden"
+
+msgid "Only in %s"
+msgstr "Nur in %s"
+
+msgid "Choose A and B: a set by its number, a saved model or the model open now."
+msgstr "Wähle A und B: ein Set nach seiner Nummer, ein gespeichertes Modell oder das offene Modell."
+
+msgid "Comparing…"
+msgstr "Wird verglichen…"
+
+msgid "A: %s"
+msgstr "A: %s"
+
+msgid "B: %s"
+msgstr "B: %s"
+
+msgid "1 spare not counted"
+msgstr "1 Ersatzteil nicht gezählt"
+
+msgid "%d spares not counted"
+msgstr "%d Ersatzteile nicht gezählt"
+
+msgid "1 sticker or made part not counted"
+msgstr "1 Aufkleber oder selbst gemachtes Teil nicht gezählt"
+
+msgid "%d stickers and made parts not counted"
+msgstr "%d Aufkleber und selbst gemachte Teile nicht gezählt"
+
+msgid "To build B from A, the parts to buy are listed here, for the shops."
+msgstr "Um B aus A zu bauen: Die Teile, die du kaufen musst, stehen hier, für die Shops."
+
+msgid "%s has every piece %s needs: nothing to buy."
+msgstr "%s hat jedes Teil, das %s braucht: nichts zu kaufen."
+
+msgid "To build %s from %s, buy these %s in %s:"
+msgstr "Um %s aus %s zu bauen, kaufe diese %s in %s:"
+
+msgid "Nothing in both."
+msgstr "Nichts in beiden."
+
+msgid "Nothing only in %s."
+msgstr "Nichts nur in %s."
+
+msgid "Compared %s with %s: %s in both; %d only in %s; %d only in %s"
+msgstr "%s mit %s verglichen: %s in beiden; %d nur in %s; %d nur in %s"
+
+msgid "No set %s is in the set inventories."
+msgstr "Kein Set %s ist in den Teilelisten der Sets."
+
+msgid "Set %s is under test in this run, so its parts are not compared."
+msgstr "Set %s wird in diesem Lauf getestet, darum werden seine Teile nicht verglichen."
+
+msgid "%s could not be read."
+msgstr "%s konnte nicht gelesen werden."
+
+msgid "%s has no parts anybody can own."
+msgstr "%s hat keine Teile, die man einzeln besitzen kann."
+
+msgid "This app has no set inventories."
+msgstr "Diese App hat keine Teilelisten der Sets."
+
+msgid "A BrickLink wanted list (.xml) of these, to upload under Wanted › Upload"
+msgstr "Eine BrickLink-Wunschliste (.xml) mit diesen Teilen zum Hochladen unter Wanted › Upload"
+
+msgid "A Rebrickable parts list (.csv) of these, to import into a list of your own"
+msgstr "Eine Rebrickable-Teileliste (.csv) mit diesen Teilen zum Importieren in eine eigene Liste"
+
+msgid "A list of LEGO® element numbers (.csv) of these, to upload at LEGO® Pick a Brick: the parts it has no number for are named"
+msgstr "Eine Liste von LEGO® Elementnummern (.csv) mit diesen Teilen zum Hochladen bei LEGO® Pick a Brick: Die Teile ohne Nummer werden genannt"
 
 # weighsure (APP_UX6 #4): the model's weight on the status bar, after its counts,
 # the model as it is in that frame (StatusBar._weight)

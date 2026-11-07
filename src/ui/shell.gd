@@ -199,7 +199,10 @@ const ALT := KEY_MASK_ALT
 ## and the five panels into View › Panels (menurows).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
-		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
+		">import", "-", "save", "save_as", "versions", "compare",
+		# comparesets (APP_UX6 #7): any two of a set, a saved model or the open one.
+		"compare_sets",
+		"-", "share", "together",
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
@@ -1066,6 +1069,11 @@ func _define() -> void:
 	_add("compare", "Compare with…", 0, func() -> void: versions.open(true),
 		func() -> bool: return not store.versions().is_empty(),
 		"What changed since one of this model's saves: added green, removed red, moved amber")
+	# comparesets (APP_UX6 #7): Compare's parts sheet (src/ui/compare_view.gd,
+	# src/parts/parts_compare.gd), as Rebrickable's set compare.
+	_add("compare_sets", "Compare two sets or models…", 0, func() -> void: compare.open_parts(),
+		Callable(), "The parts a set, a saved model or this one shares with another, the parts "
+		+ "in only one, and what to buy to build one from the other")
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
@@ -3559,6 +3567,11 @@ func _make_compare() -> void:
 	_compare.assemblies = assemblies
 	_compare.stress = stress
 	_compare.say = bar.say
+	# comparesets: its parts sheet's sets, pictures and shops.
+	_compare.inventories = collection_store.inventories if collection_store != null else null
+	_compare.thumbnails = app.get("_thumbnails") if app != null else null
+	_compare.write_list = func(shop: String, stock: Inventory, named: String) -> String:
+		return await app.get("_exports").stock_list(shop, stock, named, true)
 	_compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_compare.offset_right = -14.0

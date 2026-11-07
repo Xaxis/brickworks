@@ -172,7 +172,9 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     # is said only while Pro is coming soon.
     assert 'under <a href="/terms#commercial-use">its terms</a>' in pro_list
     assert '<li data-when="soon">30 days free' in pro_list
-    assert re.search(r'<th scope="row">The desktop app for Windows, macOS and Linux</th><td><span class="has">', PAGE)
+    # It is coming soon (the owner, 2026-11-07), and Free's when it comes.
+    assert re.search(r'<th scope="row">The desktop app for Windows, macOS and Linux, coming soon</th><td><span class="has">',
+                     PAGE)
     assert re.search(r'<th scope="row">Commercial use: [^<]*</th><td><span class="hasnt">.*?</td><td><span class="has">',
                      PAGE)
     assert "Claude build" not in PAGE and not re.search(r"AI build", PAGE, re.I)
