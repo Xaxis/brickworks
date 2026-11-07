@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:a model file's picture, cli:check the .deb's thumbnails, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:coming soon check, cli:move the downloads to the releases repository, cli:check every release link, cli:a model file's picture, cli:check the .deb's thumbnails, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
 
 ## Sub-features
 
@@ -284,34 +284,70 @@ that offers each system its own build. The cycle and its cadence are
   asset's bytes, followed to the signed URL, the token never sent past the
   API): the check that still means something once the repo is private (U8).
   Both ways 15 of 15 on 2026-10-29 (a gh token standing in).
-- `download page`: `web/download.html` with `web/download.js`, served at
-  `/download` (tools/site.py copies every file in `web/`; the old
-  `/download.html` 308s to `/download`). Reads same-origin `releases.json`, detects the
-  system (client hints, `navigator.platform`, the user agent; a phone or an
-  iPad is "mobile", Linux on ARM "other"; `?os=` chooses one), and offers
-  its primary file as the one primary button, version and size in small
-  type, the other systems as links (`?os=`, in place). Folded away
-  (`details.qa`): the first launch, one line saying what happens, its steps
-  for the kind of file offered (`data-kind`: the disk image, the
-  installer, or a release's zips before them; the Gatekeeper and
-  SmartScreen ones only while unsigned; how to uninstall; the .deb's
-  command where a release has one, `data-has`; what it needs read from the
-  packages), and All files and checksums: every file for the system, linked
-  with its size, and a command per file that prints OK or True. The file
-  offered first is the first of `PREFER`'s kinds a release has. What is new: the four lines written for the
-  release in `<ul data-highlights="X">`, or else the summary's first four
-  sentences. A phone is told the desktop app is for a computer and offered
-  the web app first. No release in the manifest reads "on its way" with a
-  link to the web app (2026-10-20: the owner found the page that listed
-  everything at once broken and "way too verbose"). Free, like the web app
-  (2026-11-02, docs/PLANS.md): every link is the file's public address, with
-  no sign-in and no plan asked.
+- `download page`: `web/download.html`, served at `/download`
+  (tools/site.py copies every file in `web/`; the old `/download.html` 308s
+  to `/download`), and its copies at /de/download, /fr/download and
+  /es/download. The desktop app is coming soon (the owner, 2026-11-07:
+  "make the downloadable access 'Coming soon' ... since we can't properly
+  support it yet"): the page says so in its heading, offers Open Brickworks
+  (`#open-app`, into `/app`, `/app?lang=<code>` in a copy) as its one
+  button, and has no installer, no file name, no button for a system, and
+  no script (web/download.js is no longer loaded, and nothing reads
+  /releases.json but the changelog's dates). A note tells whoever has the
+  app already that it updates itself (Help › Check for updates…); the
+  update feed, src/net/updates.gd, version.json and the releases repository
+  are untouched. The header's Menu and the footer call it "Desktop app",
+  and the 404 page's tile, the home page, Plans, the FAQ, Compare, the
+  beta's page, the changelog (no Download or On GitHub on a release) and
+  the docs (web-and-desktop, troubleshooting, index, plans, claude-code,
+  connect) say coming soon and point at the app instead. Until 2026-11-07
+  it offered each system its build from /releases.json (git log --
+  web/download.html web/download.js).
 - `download page check`: `tools/web/download_check.mjs` serves `web/` with a
   CSP at least as strict as the site's and loads the page as Linux, macOS,
-  Windows and an Android phone through the DevTools protocol, then checks
-  every link the page has. `--manifest=FILE` serves another releases.json:
-  one with the disk image, the installer and the .deb holds the page to
-  offering them first, with their steps, sizes and checksums.
+  Windows and an Android phone through the DevTools protocol: each sees the
+  heading "The desktop app is coming soon", one primary button, Open
+  Brickworks to `/app`, no installer or releases link, no file name, no
+  button for a system, nothing asked of /releases.json or GitHub, at most
+  150 words, nothing past the edge at its width or 390, no console error;
+  then every link on the page answers. And the gallery (below).
+
+  ```sh
+  node tools/web/download_check.mjs --shots=shots
+  VERCEL_BYPASS=$VERCEL_BYPASS node tools/web/download_check.mjs --url=<deployment>/download
+  ```
+- `coming soon check`: `tools/web/coming_soon_check.mjs` puts the site
+  together (tools/site.py) and serves it at the host's addresses (or takes
+  `--url=` a deployment, its pages listed from this checkout's build), then
+  every page, 151 on 2026-11-07 (79 English with the docs, 24 each in
+  German, French and Spanish), and every script each loads and imports:
+  as sent, no link, button or form to an installer (.deb, .dmg, .exe, .msi,
+  .AppImage, a system's .zip or .tar.xz), the releases repository's
+  releases or files, or /releases.json, no JSON-LD downloadUrl, and no
+  script that names any of them; as drawn in a browser, the same of every
+  link and button, and none saying Download (in any of the four languages)
+  to /download or beside a system. Then /download in each language at 390
+  and 1280: its heading the language's "The desktop app is coming soon",
+  its one primary button the language's "Open Brickworks" to `/app` (with
+  `?lang=`), no file name, no button for a system, nothing asked of GitHub,
+  nothing past the edge, no console error. `--static` is the first pass
+  alone (tests/test_coming_soon.py runs it, and a made-up site with each
+  way of offering one, which it must fail); `--shots=DIR` writes /download
+  and / at 390 and 1280, light and dark. `flows_for: every page` in it
+  names it for a change to any page (tools/release/flows_for.py), and
+  preview_checks.sh runs it as `coming_soon`.
+
+  ```sh
+  node tools/web/coming_soon_check.mjs --static
+  node tools/web/coming_soon_check.mjs --shots=shots/coming-soon
+  VERCEL_BYPASS=$VERCEL_BYPASS node tools/web/coming_soon_check.mjs --url=<deployment>
+  ```
+
+  Proves it when: `coming_soon: every page says the desktop app is coming
+  soon, and none offers an installer`, exit 0. On pre261 (3f13e35f) it
+  said 478 problems: the footer's Download on every page, the download
+  page's GitHub links, the changelog's On GitHub, the home page's JSON-LD
+  downloadUrl and web/download.js reaching for releases.json.
 - `open a model by double-click`: `TabSession.given_file()` is the first
   bare argument that is an existing .ldr, .mpd, .io, .lxf or .lxfml file,
   as each system hands a double-clicked model over (Exec=brickworks %f, the
@@ -417,7 +453,7 @@ godot --headless --path . --script res://tools/release_notices.gd -- OUT   # the
 python3 tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window
 python3 tools/release.py best-reference     # the editor's Best of the car, smoke's reference
 python3 tools/release.py manifest --local --out=/tmp/releases.json
-node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots
+node tools/web/download_check.mjs --shots=shots   # the page says coming soon (2026-11-07)
 python3 tools/release.py publish --draft --tag=v0.0.0-upload-test --target=main --no-manifest
 gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0
 tools/release/releases_repo.sh --dir=<scratch>      # a dry run: about 5 GB downloaded
@@ -645,19 +681,18 @@ commit by Xaxis, release create `--draft`, release edit `--draft=false`),
 and ends `dry run: nothing was created, uploaded or changed`, exit 0.
 
 ```sh
-node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots
+node tools/web/download_check.mjs --shots=shots
+node tools/web/coming_soon_check.mjs --shots=shots/coming-soon
 ```
 
-Proves it when: linux is offered the AppImage, macos the universal zip and
-windows the windows zip, each as the one primary button with the version and
-size, about 100 words before anything is opened (150 at most); the phone is
-offered the web app first and told why; the other systems are one click away,
-each with its own steps and checksums, nothing past the edge at 1280 or 390 px
-with everything opened; every link answers; nothing is refused by the CSP;
-the Linux button, pressed, asks its public address and nothing of
-/api/plans, with no sign-in shown (`free linux:`); it ends `the download
-page offers each system its own build`. With a manifest
-that has no release it reads `no release yet` for all four.
+Proves it when (2026-11-07, the desktop app coming soon): linux, macos,
+windows and phone each print `"The desktop app is coming soon" · "Open
+Brickworks" /app` and under 150 words, every link answers, the gallery's
+lines follow, and it ends `the download page says the desktop app is coming
+soon, to every system`; the coming soon check ends `every page says the
+desktop app is coming soon, and none offers an installer`, exit 0. Until
+2026-11-07 it held each system to being offered its own build from a
+manifest (`--manifest=`, no longer read).
 
 ```sh
 tools/probe.sh updater_probe
