@@ -56,7 +56,7 @@ ui:the booklet
 
 ### Each step by hand {#booklet-by-hand}
 
-The timeline's **Booklet** row, or **Build › Booklet page**, changes how the step the timeline is on is printed: turn the view, look from higher or lower, use the window's view (these six under **Booklet page › Step view**), zoom in or out, bigger or smaller on the page, start a new page or have a page alone, show its parts box or not, build its sub-assembly in a callout, and how many steps go on a page. **Outline new parts** outlines each step's new parts in orange.
+The timeline's **Booklet** row, or **Build › Booklet page**, changes how the step the timeline is on is printed: turn the view, look from higher or lower, use the window's view, zoom in or out (in the menu these are under **Step's view**), bigger or smaller on the page, start a new page or have a page alone, show its parts box or not, build its sub-assembly in a callout, and how many steps go on a page. **Outline new parts** outlines each step's new parts in orange.
 
 On a step inside a callout, **Turn left**, **Turn right**, **Higher**, **Lower**, **This view** and **Usual view** turn that step's picture alone, from the way the callout faces, and the steps after it in the callout until turned again. The turn is saved in the sub-model's file as a ROTSTEP, as LPub reads it.
 

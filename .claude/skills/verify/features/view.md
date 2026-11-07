@@ -749,12 +749,18 @@ picture the assistant is shown.
   (`set_disable_shortcuts`): its popup ran a greyed command silently. Menus
   split so each is at most 25 rows and 60% of a 1280 x 720 window: Make (the
   minifigure, mosaic, brickify, hoses, the part maker and prints), View ›
-  Viewpoint (the views and the model's turns), Comments in File. `keys3_probe`
+  Viewpoint (the views and the model's turns), Comments in File; Build ›
+  Booklet page, 27 rows once Page setup… joined it, folds the step's turns,
+  tilts, this view, usual view and zoom into Build › Booklet page › Step's view
+  (19 rows and 9), and View, 482 of 470 units with Stud map, its five panels
+  into View › Panels (menurows, 2026-11-07). `keys3_probe`
   (windowed, 1280 x 720; `PROBE_SIZE=1400x900`) measures every menu as the
   palette measures Edit, presses the colour keys as a desktop and a browser
   send them, the four selection keys against their menu rows, Studio's Shift-V,
   sets favourite 1 in the sheet and starts the app again on its data folder to
-  find it kept. On the web, `tools/web/colour_keys_flow.mjs` (local build:
+  find it kept; pictures of Build › Booklet page and its Step's view opened,
+  and View › Panels (shots/keys3/menu_build_booklet*_WxH.png,
+  menu_view_panels_WxH.png). On the web, `tools/web/colour_keys_flow.mjs` (local build:
   `--url=http://127.0.0.1:PORT/`) selects all, presses Shift-2 and Ctrl+Z.
   Not proven: Cmd-Shift-3, 4 and 5 on a Mac are the system's screenshot keys,
   so those three most-used keys need setting there.
@@ -1680,9 +1686,8 @@ picture the assistant is shown.
   adds), Bigger / Smaller (0.6x to 2x on the page), New page, Alone, Parts
   list, Callout (the sub-assembly the step puts on, in a box or on pages of
   its own), Per page (as fit, 1, 2, 4); the row's line says how the step is
-  set ("turned 45°, zoom 1.25x, new page"). The same are Build, Booklet page,
-  its six turns and views under Booklet page › Step view (pagesetup2: with
-  Page setup… the menu was 27 rows, past keys3's 25; now 22).
+  set ("turned 45°, zoom 1.25x, new page"). The same are Build, Booklet page
+  (the turns, tilts, views and zoom in its Step's view).
   Each is one undo (`steplooks` in `Builder._apply`: the table as it was);
   the first on a model with no steps of its own gives it the worked-out
   ones in the same undo. Kept in `BrickWorld.step_looks` by sub-model and
@@ -1994,8 +1999,9 @@ picture the assistant is shown.
   worked keeps its step notes and their pictures byte for byte
   (`ModelStore._looks_into`, `BookletLooks.with_booklet_wide`), and a
   shared model says its page (`SharedPages.strip` takes only the carried
-  steps' `PAGES`/`PAGE` lines; `_without_app_lines` likewise). Keep as a style writes one
-  small JSON file a style in `user://page_styles/` (by its name's sha256),
+  steps' `PAGES`/`PAGE` lines; `_without_app_lines` likewise). Keep as a
+  style writes one small JSON file a style in `user://page_styles/` (by
+  its name's sha256),
   its picture once in `user://page_styles/pictures/` by what it is, so
   styles sharing a picture keep it once; Remove… beside Style (asked first)
   or page_setup `remove_style=` (the whole call checked first) takes one
@@ -2024,15 +2030,15 @@ picture the assistant is shown.
   when chosen on A5 and the paper made A4 upright; 3000 x 4000 kept
   1485 x 1980), a 16000 x 1000 panorama kept to 1419 x 1000, a see-through
   one a PNG within 1 MB or 900 px, someone else's worked file's step note
-  kept byte for byte, two styles of one picture keeping it once, a refused
+  kept byte for byte, a shared model saying its page, two styles of one picture keeping it once, a refused
   `remove_style=` call taking nothing, a style replaced 5 times keeping one
   picture, one removed in the dialog and one over MCP, neither read by a
   new start (the probe run again headless with `--list-styles`), the old
   styles file listed and given where it is with nothing written until the
   next keep moves it, or left byte for byte when unreadable, and two
   windows on one user folder (the probe again headless, `--race-remove`)
-  losing no style's picture. `--dialog-only` with `PROBE_SIZE=1400x900` checks the
-  dialog alone at that size.
+  losing no style's picture. `--dialog-only` with `PROBE_SIZE=1400x900`
+  checks the dialog alone at that size.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,

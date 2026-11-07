@@ -9,7 +9,9 @@
 ## - every menu, Make's and the app's too, and every submenu, is 25 rows or
 ##   fewer, and each of the menus along the top opens no taller than 60% of
 ##   the window, measured as palette_probe measures Edit; no command is in
-##   two of them;
+##   two of them; a step's turns and zoom are in Build › Booklet page ›
+##   Step's view, pictured open beside Booklet page, and the panels in
+##   View › Panels;
 ## - Shift-2 paints three selected parts the second favourite in one key,
 ##   one undo takes it back; Ctrl-Shift-1 paints them the model's most used
 ##   colour; a browser's Shift-2 (") and a UK keyboard's Shift-2 (@'s key
@@ -148,6 +150,17 @@ func _menus() -> void:
 		Keymap.menu_row("rotate_held"), Keymap.menu_row("mode_connect")],
 		Keymap.menu_row("rotate_held").begins_with("Tools")
 		and Keymap.menu_row("mode_connect").begins_with("Tools"))
+	_check("a step's turns and zoom are in Build › Booklet page › Step's view (%s, %s), Page setup… still in Booklet page (%s)"
+		% [Keymap.menu_row("booklet_turn_left"), Keymap.menu_row("booklet_zoom_out"),
+		Keymap.menu_row("booklet_page_setup")],
+		Keymap.menu_row("booklet_turn_left") == "Build › Booklet page › Step's view › Turn the view left"
+		and Keymap.menu_row("booklet_zoom_out") == "Build › Booklet page › Step's view › Zoom out"
+		and Keymap.menu_row("booklet_page_setup").begins_with("Build › Booklet page › Page setup"))
+	_check("the panels are in View › Panels (%s, %s)" % [Keymap.menu_row("panel_parts"),
+		Keymap.menu_row("panel_keys")], ["panel_parts", "panel_assistant", "panel_properties",
+		"panel_outliner", "panel_keys"].all(func(named: String) -> bool:
+			return Keymap.menu_row(named).begins_with("View › Panels › ")))
+	await _fold_shots()
 	# The Viewpoint submenu's rows run: From the front turns the view.
 	var view: PopupMenu = _shell.menu("View").get_popup()
 	var point: PopupMenu = view.find_child("viewpoint", false, false) as PopupMenu
@@ -160,6 +173,45 @@ func _menus() -> void:
 	await _frames(40)
 	_check("View › Viewpoint › From above turns the view", point != null
 		and not camera.global_transform.basis.is_equal_approx(was))
+
+
+## The menus folded (menurows) open as a person sees them: Build › Booklet
+## page, then its Step's view beside it, and View › Panels.
+func _fold_shots() -> void:
+	await _open_shot("Build", ["booklet", "booklet_view"])
+	await _open_shot("View", ["panels"])
+
+
+## Menu [param title] open, and each of [param path]'s submenus beside the
+## one before, each pictured: menu_build_booklet, then menu_build_booklet_view.
+func _open_shot(title: String, path: Array[String]) -> void:
+	var button: MenuButton = _shell.menu(title)
+	button.show_popup()
+	await _frames(10)
+	var open: Array[PopupMenu] = [button.get_popup()]
+	for kind: String in path:
+		var above: PopupMenu = open.back()
+		var sub: PopupMenu = above.find_child(kind, false, false) as PopupMenu
+		if sub == null:
+			break
+		# Beside its row, about: a row's place is the menu's height shared out.
+		sub.popup(Rect2i(above.position + Vector2i(above.size.x - 8, _row_y(above, sub)),
+			Vector2i.ZERO))
+		await _frames(10)
+		open.append(sub)
+		await _shot("menu_%s_%s" % [title.to_lower(), kind])
+	open.reverse()
+	for popup: PopupMenu in open:
+		popup.hide()
+	await _frames(3)
+
+
+## About where [param sub]'s row is down [param popup], in its units.
+func _row_y(popup: PopupMenu, sub: PopupMenu) -> int:
+	for i: int in popup.item_count:
+		if popup.get_item_submenu_node(i) == sub:
+			return roundi(popup.size.y * float(i) / maxf(popup.item_count, 1))
+	return 0
 
 
 func _submenus(popup: PopupMenu) -> Array[PopupMenu]:

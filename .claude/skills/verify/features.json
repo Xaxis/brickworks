@@ -327,6 +327,14 @@
       "tests": []
     },
     {
+      "id": "cli:a model file's picture",
+      "kind": "cli",
+      "entry": "src/render/model_thumbnail.gd",
+      "reach": "godot --headless --path . --thumbnail MODEL PICTURE [SIZE]   (the .deb's brickworks-thumbnailer MODEL PICTURE SIZE, as a file manager runs it)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:about credits probe",
       "kind": "cli",
       "entry": "src/dev/about_credits_probe.gd",
@@ -612,6 +620,7 @@
         "tests/test_release_links.py",
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
+        "tests/test_thumbnail_check.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -756,6 +765,7 @@
         "tests/test_release_links.py",
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
+        "tests/test_thumbnail_check.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -764,6 +774,14 @@
       "kind": "cli",
       "entry": "tools/release/release_links.sh",
       "reach": "tools/release/release_links.sh [web/releases.json]   (ship.sh runs it before a deploy)",
+      "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:check the .deb's thumbnails",
+      "kind": "cli",
+      "entry": "tools/release/thumbnail_check.py",
+      "reach": "tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace   (smoke of the .deb runs it)",
       "area": "release",
       "tests": []
     },
@@ -1735,7 +1753,7 @@
       "id": "cli:pagesetup probe",
       "kind": "cli",
       "entry": "src/dev/pagesetup_probe.gd",
-      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; the app's own model's page kept over a reopen, a picture the file lacks said missing, a big picture kept to its page at 5 px a mm, styles of one picture keeping it once, removed in the dialog and over MCP and gone in a new start; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; the app's own model's page kept over a reopen, someone else's worked file's step notes kept byte for byte, a shared model saying its page, a picture the file lacks said missing, a big picture kept for every paper at 5 px a mm (a panorama to what a page shows), styles of one picture keeping it once, a replaced one's picture gone, a refused remove_style= call taking none, removed in the dialog and over MCP and gone in a new start, the old styles file untouched by looking, two windows on one user folder losing no picture; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
       "area": "view",
       "tests": []
     },
@@ -1945,6 +1963,7 @@
         "tests/test_release_links.py",
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
+        "tests/test_thumbnail_check.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -2285,6 +2304,7 @@
         "tests/test_release_links.py",
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
+        "tests/test_thumbnail_check.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -4789,7 +4809,7 @@
       "id": "ui:model tree",
       "kind": "ui",
       "entry": "src/ui/outliner.gd",
-      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Model tree)",
+      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Panels, Model tree)",
       "area": "building",
       "tests": []
     },

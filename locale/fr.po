@@ -480,6 +480,9 @@ msgstr "Instructions…"
 msgid "Booklet page"
 msgstr "Page du livret"
 
+msgid "Step's view"
+msgstr "Vue de l'étape"
+
 msgid "Turn the view left"
 msgstr "Tourner la vue vers la gauche"
 
@@ -3002,6 +3005,12 @@ msgstr "1 pièce mise en miroir"
 
 msgid "mirrored %d parts"
 msgstr "%d pièces mises en miroir"
+
+msgid "1 has no mirror image, turned as near as it goes: %s"
+msgstr "1 n'a pas d'image miroir et est tournée au plus près : %s"
+
+msgid "%d have no mirror image, turned as near as they go: %s"
+msgstr "%d n'ont pas d'image miroir et sont tournées au plus près : %s"
 
 msgid "measuring"
 msgstr "mesure"
@@ -11488,10 +11497,8 @@ msgstr "Choisir un style…"
 msgid "Name the page first"
 msgstr "Nommez d’abord la page"
 
-# Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks; Booklet page › Step view
+# Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks
 
-msgid "Step view"
-msgstr "Vue de l'étape"
 
 msgid "Remove…"
 msgstr "Retirer…"

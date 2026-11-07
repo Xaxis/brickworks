@@ -1034,12 +1034,8 @@ static func _voted(votes: Dictionary, step: int) -> int:
 ## put where its reflection is, turned to look reflected, its other hand
 ## where it has one.
 func _mirrored(item: Dictionary) -> Dictionary:
-	var part: String = item["part"]
-	var other: String = Later.script(&"Mirror").counterpart(library, part)
-	if not other.is_empty() and library.parts.has(other):
-		part = other
-	return {"part": part, "color": item["color"],
-		"at": Later.script(&"Mirror").reflected(item["at"], 0, 0.0)}
+	var image: Dictionary = Later.script(&"Mirror").image(library, item["part"], item["at"], 0, 0.0)
+	return {"part": image["part"], "color": item["color"], "at": image["at"]}
 
 
 ## How ``a`` lies on ``b``: the turn and shift, mirrored or not, that lays
@@ -1257,9 +1253,9 @@ static func _figure_frame(figures: Dictionary, path: String) -> Transform3D:
 ## A part read from a mirrored reference, made one that can be built: its
 ## other hand where it has one, where its reflection is.
 static func unmirror(placement: LdrModel.Placement, library: PartLibrary) -> void:
-	var other: String = Later.script(&"Mirror").counterpart(library, placement.part_id)
-	if not other.is_empty() and library.parts.has(other):
-		placement.part_id = other
-	var at: Transform3D = placement.frame * Later.script(&"Mirror").reflected(placement.local, 0, 0.0)
+	var image: Dictionary = Later.script(&"Mirror").image(library, placement.part_id,
+		placement.local, 0, 0.0)
+	placement.part_id = image["part"]
+	var at: Transform3D = placement.frame * (image["at"] as Transform3D)
 	placement.transform = Builder._tidy(at, BrickLattice.is_square_to_grid(at.basis))
 	placement.mirrored = false

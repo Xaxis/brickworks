@@ -52,21 +52,14 @@ static var _crc_table: PackedInt64Array = PackedInt64Array()
 ## LDraw parts with their pictures (StudioDecor.carried). Given [param
 ## library], so does any other part it names that the library has not got
 ## and the file carries.
-static func read(bytes: PackedByteArray, library: PartLibrary = null) -> Dictionary:
-	var entries: Dictionary = _entries(bytes)
-	if entries.has("error"):
-		return {"text": "", "error": str(entries["error"])}
-	if not entries.has("model.ldr"):
-		return {"text": "", "error": "there is no model.ldr inside that .io file"}
-	var entry: Dictionary = entries["model.ldr"]
-	if entry.has("aes") and not int(entry["aes"]["strength"]) in [1, 3]:
-		return {"text": "", "error": "that .io file is locked with AES-192, which Brickworks "
-			+ "cannot open: saving it again in a current Studio writes one it can"}
-	var data: PackedByteArray = _unpack(bytes, entry)
-	if data.is_empty():
-		return {"text": "", "error": "could not unpack the model from that .io file: "
-			+ "it is damaged, or locked with a password that is not Studio's"}
-	var text: String = _text_of(data)
+## The library is any RefCounted here, as it reaches StudioDecor, so reading
+## an .io's model ([method model_ldr]) compiles none of the app with it.
+static func read(bytes: PackedByteArray, library: RefCounted = null) -> Dictionary:
+	var model: Dictionary = model_ldr(bytes)
+	if not str(model["error"]).is_empty():
+		return model
+	var entries: Dictionary = model["entries"]
+	var text: String = model["text"]
 	var model2: String = ""
 	if entries.has("model2.ldr"):
 		model2 = _text_of(_unpack(bytes, entries["model2.ldr"]))
@@ -80,6 +73,27 @@ static func read(bytes: PackedByteArray, library: PartLibrary = null) -> Diction
 	var notes: PackedStringArray = carried["notes"]
 	return {"text": carried["text"], "error": "", "note": "; ".join(notes.slice(0, 3)),
 		"studio_parts": carried["read"]}
+
+
+## The model.ldr inside an .io file, as Studio wrote it: {"text", "error":
+## "", "entries"} or {"text": "", "error"}. Its own parts are not brought
+## in ([method read] does that): a file browser's picture of it
+## (ModelThumbnail) draws what the library has.
+static func model_ldr(bytes: PackedByteArray) -> Dictionary:
+	var entries: Dictionary = _entries(bytes)
+	if entries.has("error"):
+		return {"text": "", "error": str(entries["error"])}
+	if not entries.has("model.ldr"):
+		return {"text": "", "error": "there is no model.ldr inside that .io file"}
+	var entry: Dictionary = entries["model.ldr"]
+	if entry.has("aes") and not int(entry["aes"]["strength"]) in [1, 3]:
+		return {"text": "", "error": "that .io file is locked with AES-192, which Brickworks "
+			+ "cannot open: saving it again in a current Studio writes one it can"}
+	var data: PackedByteArray = _unpack(bytes, entry)
+	if data.is_empty():
+		return {"text": "", "error": "could not unpack the model from that .io file: "
+			+ "it is damaged, or locked with a password that is not Studio's"}
+	return {"text": _text_of(data), "error": "", "entries": entries}
 
 
 ## A member's bytes as text: Studio starts its text with a byte-order mark,

@@ -193,7 +193,10 @@ const ALT := KEY_MASK_ALT
 ## views and the model's turns to View's Viewpoint, the part in hand's turn
 ## and tip to Tools beside Place, Comments to File beside Share and Build
 ## together, My collection and What can I build? beside Library, and What
-## do I need? beside the parts list.
+## do I need? beside the parts list. Then Build › Booklet page reached 27
+## rows with Page setup…, and View 482 of 470 units with Stud map, so the
+## step's turns, tilts and zoom went into Booklet page's own Step's view,
+## and the five panels into View › Panels (menurows).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
 		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
@@ -203,9 +206,8 @@ const MENUS: Array = [
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-", "panel_parts",
-		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
-		"split_view", "full_screen"]],
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-",
+		">panels", "split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
 		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
 		"leave_assembly", "rename_assembly", "make_unique", "-", "suggest_sections",
@@ -273,17 +275,22 @@ const SUBMENUS: Dictionary = {
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_to", "step_new", "-", "step_earlier", "step_later",
 		"step_merge", "step_delete"],
-	# The step's view in one row of its own: with Page setup… the menu was
-	# 27 rows, past the 25 every menu keeps to (keys3; pagesetup2).
-	"booklet": [">booklet_view", "-", "booklet_zoom_in",
-		"booklet_zoom_out", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
+	# The step's picture first: its view, folded (menurows), and its size on
+	# the page.
+	"booklet": [">booklet_view", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
 		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page", "-",
 		"booklet_lay_out", "booklet_highlight",
 		"-", "booklet_pull", "booklet_colours", "booklet_actual_size", "booklet_preview",
 		# pagesetup: the booklet's page, the person's way (BookletSheet).
 		"-", "booklet_page_setup"],
+	# The window's panels, each shown or put away: set once a session, so
+	# folded beside Split view and Full screen (menurows).
+	"panels": ["panel_parts", "panel_assistant", "panel_properties", "panel_outliner",
+		"panel_keys"],
+	# Where the step's picture is seen from: its turns, its tilts and its zoom.
 	"booklet_view": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
-		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view"],
+		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
+		"booklet_zoom_out"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
@@ -295,9 +302,9 @@ const SUBMENUS: Dictionary = {
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
-	"viewpoint": "Viewpoint", "cut_away": "Cut away by",
-	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step view", "floor": "Floor",
-	"floor_colour": "Baseplate colour"}
+	"viewpoint": "Viewpoint", "cut_away": "Cut away by", "panels": "Panels",
+	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
+	"floor": "Floor", "floor_colour": "Baseplate colour"}
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,

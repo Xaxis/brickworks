@@ -881,37 +881,40 @@
 					"line": true
 				},
 				{
-					"name": "panel_parts",
-					"words": "Parts bin",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"name": "panel_assistant",
-					"words": "Assistant",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"name": "panel_properties",
-					"words": "Properties",
-					"key": "",
-					"tip": "What is selected: its part, colour, where it stands and what it is joined to"
-				},
-				{
-					"name": "panel_outliner",
-					"words": "Model tree",
-					"key": "",
-					"tip": "The model's sub-assemblies by name, inside one another"
-				},
-				{
-					"name": "panel_keys",
-					"words": "Key strip",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"line": true
+					"submenu": "panels",
+					"words": "Panels",
+					"items": [
+						{
+							"name": "panel_parts",
+							"words": "Parts bin",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "panel_assistant",
+							"words": "Assistant",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "panel_properties",
+							"words": "Properties",
+							"key": "",
+							"tip": "What is selected: its part, colour, where it stands and what it is joined to"
+						},
+						{
+							"name": "panel_outliner",
+							"words": "Model tree",
+							"key": "",
+							"tip": "The model's sub-assemblies by name, inside one another"
+						},
+						{
+							"name": "panel_keys",
+							"words": "Key strip",
+							"key": "",
+							"tip": ""
+						}
+					]
 				},
 				{
 					"name": "split_view",
@@ -1017,7 +1020,7 @@
 					"items": [
 						{
 							"submenu": "booklet_view",
-							"words": "Step view",
+							"words": "Step's view",
 							"items": [
 								{
 									"name": "booklet_turn_left",
@@ -1054,23 +1057,23 @@
 									"words": "Usual view",
 									"key": "",
 									"tip": "This step drawn from the booklet's usual angle again"
+								},
+								{
+									"line": true
+								},
+								{
+									"name": "booklet_zoom_in",
+									"words": "Zoom in",
+									"key": "",
+									"tip": "This step's picture closer in on what it adds"
+								},
+								{
+									"name": "booklet_zoom_out",
+									"words": "Zoom out",
+									"key": "",
+									"tip": "This step's picture further out"
 								}
 							]
-						},
-						{
-							"line": true
-						},
-						{
-							"name": "booklet_zoom_in",
-							"words": "Zoom in",
-							"key": "",
-							"tip": "This step's picture closer in on what it adds"
-						},
-						{
-							"name": "booklet_zoom_out",
-							"words": "Zoom out",
-							"key": "",
-							"tip": "This step's picture further out"
 						},
 						{
 							"name": "booklet_bigger",

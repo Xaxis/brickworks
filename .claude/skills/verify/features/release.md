@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:a model file's picture, cli:check the .deb's thumbnails, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
 
 ## Sub-features
 
@@ -113,6 +113,44 @@ that offers each system its own build. The cycle and its cadence are
   alone and left out of the web's pack: the web's page covers its canvas
   with its own loading wall (`src/boot/shell.html`). `tests/test_boot_splash.py`
   reads the settings and the picture; the windowed smoke, the package.
+- `a model file's picture` (`src/render/model_thumbnail.gd`,
+  `src/boot/brickworks_loop.gd`): `--headless --thumbnail MODEL PICTURE
+  [SIZE]` draws an .ldr, .mpd or .io as the app's corner view
+  (`ModelShot.ANGLES["corner"]`, framed as it frames) in a PNG SIZE px square
+  (256 by default, 16 to 1024) on a clear ground, and quits: `thumbnail:
+  NAME, N of M parts drawn, T ms`, exit 0; parts the library has not got are
+  left out, and a file with none it knows says so and exits 1, so a file
+  manager keeps the type's icon. It is drawn on the CPU from the part meshes
+  (a thumbnailer runs where there is no display or graphics card), a band of
+  rows per core, with seams between parts and see-through parts over the
+  rest. The project's main loop is `BrickworksLoop`: given the flag it puts a
+  scene of one empty node in main.tscn's place before the engine loads it,
+  since compiling main.gd alone took 3.5 s and an export template refuses
+  `--script` and a scene on the command line; without the flag it does
+  nothing. The .deb carries `/usr/share/thumbnailers/dev.brickworks.app.thumbnailer`
+  (`thumbnailer_entry`: `Exec=brickworks-thumbnailer %i %o %s`, the three
+  types) and `/usr/bin/brickworks-thumbnailer` (`thumbnail_runner`), which
+  runs the app from a data folder made for the run and removed after, under
+  TMPDIR or else /tmp (the sandbox's), so Godot's log of the run never
+  pushes one of the app's own out. `inspect_deb` reads both back
+  (`thumbnailed`).
+- `check the .deb's thumbnails` (`tools/release/thumbnail_check.py`): dpkg
+  installs the .deb into a root of its own, `update-mime-database` runs as
+  its trigger does, and GNOME's own `GnomeDesktopThumbnailFactory`
+  (`gnome_thumbnail.py`, Python GI) is asked for each model's picture at
+  Files' 256 px, as Files asks: it finds the entry by GIO's MIME type and
+  runs it through `bwrap` on the PATH. On this box bwrap cannot start (Ubuntu
+  24.04's `kernel.apparmor_restrict_unprivileged_userns=1`: no thumbnailer
+  of any kind is drawn here), so `bwrap` is `bwrap_standin.py`: GNOME's own
+  seccomp filter from its descriptor, its environment, its working folder,
+  death with the factory, each path through the binds, TMPDIR as the
+  sandbox's /tmp, no display; and `sandbox_view.c`, preloaded, refuses every
+  file the sandbox has not got (ENOENT). `--trace` follows one run with
+  strace and names what the thumbnailer found outside the sandbox anyway.
+  `--installed` uses the system's bwrap on a package installed in /, for a
+  runner that can make the namespaces, and fails if GNOME's factory is
+  missing rather than check nothing; the release workflow's Ubuntu run does
+  that. The .deb's smoke runs it (`thumbnails_linux`).
 - `graphics mode` (`src/render/graphics_mode.gd`,
   `tools/release/package/launcher.c`): the desktop draws in its full mode
   (Forward+) or its simpler one (Compatibility, on OpenGL, as the web does).
@@ -172,9 +210,16 @@ that offers each system its own build. The cycle and its cadence are
   `hdiutil verify`, `codesign --verify --deep --strict` and `lipo -archs` on
   the mounted image's app and a screenshot of the image's window kept as a
   run artifact, and on Ubuntu `apt install` of the .deb (/ keeps its mode,
-  the four types default to the app, `brickworks --about`) and `apt remove`
-  leaving nothing. The Intel runner's only GPU is Apple's paravirtual one,
-  which MoltenVK aborts on, so the app's launcher starts it in the simpler
+  the four types default to the app, `brickworks --about`), GNOME's
+  thumbnail factory drawing each model through it in the real bwrap sandbox
+  (`sysctl kernel.apparmor_restrict_unprivileged_userns=0`, bubblewrap and
+  gir1.2-gnomedesktop-4.0, then `/usr/bin/python3
+  tools/release/thumbnail_check.py --installed`; a failed check fails the
+  run, and the pictures and `thumbnails.json` are kept as the
+  `thumbnails-ubuntu-24.04` artifact), and `apt remove` leaving nothing,
+  checked even when a picture failed. The Intel runner's only GPU is
+  Apple's paravirtual one, which MoltenVK aborts on, so the app's launcher
+  starts it in the simpler
   graphics mode; the Mac double-click checks each window's log says the
   mode `mac_mode` expects there (simpler on an Intel Mac whose GPUs are all
   paravirtual, full elsewhere) and that the simpler one was said once (see
@@ -377,6 +422,9 @@ python3 tools/release.py publish --draft --tag=v0.0.0-upload-test --target=main 
 gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0
 tools/release/releases_repo.sh --dir=<scratch>      # a dry run: about 5 GB downloaded
 tools/release/release_links.sh                      # this checkout's web/releases.json
+godot --headless --path . --thumbnail "$PWD/models/car.ldr" /tmp/car.png 256   # a model's picture
+python3 tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace
+tools/probe.sh thumbs_probe && PROBE_SIZE=1280x720 tools/probe.sh thumbs_probe
 tools/release/train.sh status                       # each release staged: its step, checks, what is live
 tools/probe.sh updater_probe                        # the updater on the real scene, against a local server
 python3 tools/minitest.py tests/test_updates.py     # signing, the helper's swaps and put-backs
@@ -456,6 +504,49 @@ no picture`, the job `Cancelled.` and 27 shapes refused.
 To see the boot itself, record the unpacked
 package's first seconds on an Xvfb of its own (`ffmpeg -f x11grab`): the mark
 on the dark face, then the app.
+
+```sh
+godot --headless --path . --thumbnail "$PWD/models/car.ldr" /tmp/car.png 256
+```
+
+Proves it when: it prints `thumbnail: car.png, 61 of 61 parts drawn, N ms`
+and exits 0 in about a second, and /tmp/car.png is the car from its front
+corner on a clear ground (0.75 s from start to exit, the editor binary,
+2026-11-06). Without `--thumbnail` the app starts as before.
+
+```sh
+tools/probe.sh thumbs_probe && PROBE_SIZE=1280x720 tools/probe.sh thumbs_probe
+```
+
+Proves it when: it ends `thumbs: PASS`: the loop, flag and corner wired;
+the catalogue read for geometry as JSON reads it; car.ldr, gatehouse.mpd,
+gatehouse_2025.io and the car with 3 parts no library has each drawn by the
+engine started as the thumbnailer starts it, in 3 s or less, 256 x 256, all
+parts but the 3; each outline the app's own corner picture's (ModelShot) to
+0.90 or more and nearer it than any other corner's. Look at
+`<out>/*.png` beside `*_app_corner.png`. On pre261 it fails: no
+BrickworksLoop, and the engine given `--thumbnail` starts the whole app and
+is stopped after 30 s.
+
+```sh
+python3 tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace
+```
+
+Proves it when: it ends `thumbnails: PASS`. dpkg installs it into a root of
+its own, and GNOME's own factory draws car.ldr, gatehouse.mpd,
+gatehouse_2025.io and the car with unknown parts at 256 px in 3 s or less
+each; a .lxf is not offered; a file of only unknown parts gets no picture;
+nothing lands in the home; and, past the sandbox's view, only what the C
+library and the engine look up past the view (input devices under /sys), which
+refused too gives the same picture. On 2026-11-06 a .deb of 0435ace (0.18.0
+plus this, 454 MB): 426, 453, 431 and 431 ms. Look at `DIR/*.png`. Here
+bwrap is the stand-in (it says so): this box cannot make GNOME's sandbox.
+The release workflow's Ubuntu run lifts that (`sudo sysctl -w
+kernel.apparmor_restrict_unprivileged_userns=0`) and, with the .deb installed
+by apt, runs `/usr/bin/python3 tools/release/thumbnail_check.py --installed
+--out=thumbnail-check`, the real bwrap; read its `thumbnails-ubuntu-24.04`
+artifact. setup-python's `python3` has no GObject bindings, and
+`--installed` fails without them.
 
 ```sh
 python3 tools/minitest.py tests/test_release.py
@@ -665,6 +756,19 @@ It proves it when every job is green and `-- what is left --` reads 0 four
 times.
 
 ## Gotchas
+
+- **No thumbnailer at all draws on this box.** GNOME's factory runs each one
+  in bubblewrap, and Ubuntu 24.04's
+  `kernel.apparmor_restrict_unprivileged_userns=1` refuses bwrap its user
+  namespace ("setting up uid map: Permission denied") for every
+  thumbnailer, gdk-pixbuf's own too (this home's thumbnail cache holds
+  nothing newer than 2026-09-29). A file manager with an AppArmor profile that
+  allows user namespaces, or that setting at 0, draws them. Check the .deb
+  with `thumbnail_check.py`, which says it used the stand-in.
+- **An export template takes no `--script` and no scene on the command
+  line** ("compiled without support for path overrides"): the only way past
+  main.tscn is the main loop (`BrickworksLoop`), which runs before the main
+  scene loads.
 
 - **0.15.0 and older have no updater.** The first version with one, and its
   latest.json, has to be downloaded by hand once; from then on it updates
