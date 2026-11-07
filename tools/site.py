@@ -108,11 +108,10 @@ def sections(markdown: str) -> list[dict]:
 
 
 def render(found: list[dict], releases: dict, say=english, code: str = "en") -> str:
-    """The releases as the changelog shows them: each one's head, links and
-    date in [say]'s language, [code]'s, its links to that language's pages;
-    its notes as they were written, in English."""
+    """The releases as the changelog shows them: each one's head and date in
+    [say]'s language, [code]'s, its link into the app in that language; its
+    notes as they were written, in English."""
     by_version = {r["version"]: r for r in releases.get("releases", [])}
-    at = "" if code == "en" else f"/{code}"
     app = "/app" if code == "en" else f"/app?lang={code}"
     notes = '<div class="release-notes">' if code == "en" else '<div class="release-notes" lang="en">'
     parts: list[str] = []
@@ -136,11 +135,11 @@ def render(found: list[dict], releases: dict, say=english, code: str = "en") -> 
             parts.append(f'<p class="when">{where}</p>')
         else:
             parts.append(f'<h2 id="{anchor}-h">Brickworks {html.escape(version)}</h2>')
-            links = [f'<a href="{at}/download">{html.escape(say("Download"))}</a>']
-            if release.get("page"):
-                links.append(f'<a href="{html.escape(release["page"])}">{html.escape(say("On GitHub"))}</a>')
-            when = f'<time datetime="{html.escape(date)}">{html.escape(day(date, say))}</time>' if date else ""
-            parts.append(f'<p class="when">{when}{" · " if when else ""}{" · ".join(links)}</p>')
+            # Its date, and no link to its files: the desktop app is coming
+            # soon (the owner, 2026-11-07), so neither /download nor the
+            # release on GitHub is offered (tools/web/coming_soon_check.mjs).
+            if date:
+                parts.append(f'<p class="when"><time datetime="{html.escape(date)}">{html.escape(day(date, say))}</time></p>')
         parts.append(f'</div>\n{notes}')
         open_list = False
         for kind, text in blocks:

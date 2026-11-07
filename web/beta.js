@@ -64,7 +64,6 @@ function drawStatus(answer) {
   $("status-more").hidden = !more;
   const approved = answer.application.status === "approved";
   $("status-acts").hidden = !approved;
-  $("status-download").hidden = !(approved && answer.application.comp === "granted");
   show("apply-status");
 }
 

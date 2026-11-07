@@ -6,7 +6,7 @@ rules:
   - A tab told it has been updated saves nothing to saved models until it is reloaded.
 title: The web app and the desktop app
 nav: Web and desktop
-description: Open Brickworks in a browser or install it, sign in, and what each one does that the other does not.
+description: Open Brickworks in a browser, and what the desktop app, coming soon, adds.
 ---
 
 There is one Brickworks, in two places. Everything you build is the same file in both, and your saved models follow your account.
@@ -34,7 +34,7 @@ When the same model is open in two tabs and you save it in one, the other offers
 
 ## On the desktop {#desktop}
 
-Download it from [the download page](/download), for Linux, macOS and Windows. The desktop app carries every part on disk and builds with no network at all. It is free, like the web app ([Plans](/docs/plans)).
+The desktop app for Linux, macOS and Windows is coming soon ([the desktop app's page](/download)): it carries every part on disk and builds with no network at all, and it will be free, like the web app ([Plans](/docs/plans)). Until it is out, [open Brickworks in your browser](/app): it is the same builder. If you have the desktop app already, it keeps itself up to date, and what follows is how it works.
 
 - **File › New window** ([[Ctrl+Shift+N]]) opens a second window with its own model.
 - File choosers open where you last used one of their kind, or else Pictures, Documents or Downloads, and every export asks where to save.
@@ -58,7 +58,7 @@ The desktop app keeps itself up to date. Once a day, a few seconds after it open
 - A notice above the model says when a version is out or ready, with **What's new**, **Update and restart** and **Later**. Restarting saves the model first, and the window comes back with it as it was.
 - **Help › Restart Brickworks** quits and starts again the same way. **Help › Reinstall Brickworks…** downloads the version you have again and puts it in place, to repair a damaged install; your models and settings are kept.
 - Brickworks installs only what its own release signed, downloaded from GitHub over HTTPS and checked against that release's size and checksum. It never installs an older version than yours. The old copy is kept until the new one has started, and put back if it does not.
-- Installed where it may not write (a tar.xz unpacked under `/opt`, say), it says so and opens [the download page](/download) instead. A Mac app run from Downloads or a disk image moves itself to Applications as it updates.
+- Installed where it may not write (a tar.xz unpacked under `/opt`, say), it says so and opens [the desktop app's page](/download) instead. A Mac app run from Downloads or a disk image moves itself to Applications as it updates.
 
 <!-- covers
 ui:update notice

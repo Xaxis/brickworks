@@ -1015,7 +1015,16 @@ picture the assistant is shown.
   forward and back, pauses, jumps to both ends, checks As made is placement
   order, and that History shows a removed brick before its removal, not after,
   that a save made with History open writes the model as it stands, and that it
-  leaves nothing behind.
+  leaves nothing behind. Every row of the bar wraps where the model's room is
+  narrower than the row, as its booklet row always did (`StepsBar._build`,
+  HFlowContainers): the buttons, with Instructions and Done together at the
+  right-hand end of whichever line they fall on; the step's words under the
+  slider (`SLIDER_LEAST`); the author's step edits. In one line each, the bar's
+  least width was its whole row of buttons, and with the bin, Stress and the
+  assistant beside the model it held the layout wider than a 1280 x 720 window,
+  Done, Instructions, Account and the status bar's right half past its edge
+  (APP_UX6 timelinefit). With room for one line it is one line, as it was.
+  Probe: `timelinefit_probe` and `timelinefit_tablet_probe`.
 - `build steps`: the model split into steps a person could follow in order,
   nothing placed before what holds it. On the timeline (B) a step, forwards or
   back, is a count raised or lowered in each batch (`StepsBar.reveal_upto`,
@@ -2813,6 +2822,18 @@ tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes
 # Pictures in shots/striproom/<size>[_phone|_tablet]/: look at the strip.
 tools/probe.sh striproom && PROBE_SIZE=1400x900 tools/probe.sh striproom
 tools/probe.sh striproom_phone && tools/probe.sh striproom_tablet
+# The timeline, the top bar and the status bar inside the window (APP_UX6
+# timelinefit): the car, a wheel rim picked out, the timeline, Stress, the
+# assistant and the bin opened in two orders at 1280 x 720 then 1400 x 900 (one
+# window, made each size): after each, every control of the timeline, the
+# menus, the toolbar and the status bar, and every column and rail, inside the
+# window, 0 px past its right edge; Instructions clicked opens its Save dialog,
+# Done clicked puts the timeline away; the model's room in the window 400 px or
+# more; the same in the author's steps; the timeline alone on one line. The
+# tablet's: the parts sheet, the tree and properties' drawer, Stress and the
+# assistant, by taps. Pictures in shots/timelinefit/<size>[_tablet]/: look at
+# the foot of the window and its right edge.
+tools/probe.sh timelinefit && tools/probe.sh timelinefit_tablet
 tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied into an older checkout: tools/probe.sh cutshapes_kept -- --older=/tmp/cut_kept
 # Saved views and Render presets (APP_UX5 #8): three views saved by Alt-V,
 # the model saved, closed and opened, each back by its Alt-Shift key within
