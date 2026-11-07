@@ -1,5 +1,5 @@
 ---
-ai: Brickworks is a CAD app for LEGO® bricks, in a browser at brickworks.diy/app and as a desktop app. People place real LDraw parts, check that a model stands, make build steps and booklets, and share to a gallery; an assistant designs in it through the MCP tools.
+ai: Brickworks is a CAD app for LEGO® bricks, in a browser at brickworks.diy/app; a desktop app is coming soon. People place real LDraw parts, check that a model stands, make build steps and booklets, and share to a gallery; an assistant designs in it through the MCP tools.
 rules:
   - Models are made of real LDraw parts in colours each was really made in.
   - AI is never limited on any plan: people bring their own AI.
@@ -14,7 +14,7 @@ scene:main
 ui:documentation
 -->
 
-Brickworks is a CAD app for LEGO® bricks. It runs at [brickworks.diy/app](/app) in any recent browser, on a computer, a tablet or a phone, and as a desktop app for Linux, macOS and Windows. You place real parts from the LDraw library, check that the model stands and holds, step through how it is built, print a booklet, and share it to the [gallery](/gallery). The AI app you use, Claude, ChatGPT or another, can design with you, or a model on your own API key.
+Brickworks is a CAD app for LEGO® bricks. It runs at [brickworks.diy/app](/app) in any recent browser, on a computer, a tablet or a phone; a desktop app for Linux, macOS and Windows is coming soon. You place real parts from the LDraw library, check that the model stands and holds, step through how it is built, print a booklet, and share it to the [gallery](/gallery). The AI app you use, Claude, ChatGPT or another, can design with you, or a model on your own API key.
 
 ![The builder at work: a model on its baseplate, the parts bin and model tree down the left, the menus and toolbar along the top.](/img/hero-1200.webp "The app, with a model open.")
 

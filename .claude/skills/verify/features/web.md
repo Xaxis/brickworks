@@ -1267,8 +1267,8 @@ plan with Claude as the client.
   mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" (`#free`),
   "Is AI limited on any plan?" (`#ai`: never, on any plan; people bring
   their own) and "I made my account before 29 October 2026" (`#had-account`)
-  and the download page's `#pro-note` say the same as /plans: downloads
-  free until Pro opens, every version kept. The terms, the privacy page,
+  say the same as /plans (the download page's `#pro-note` did, until it said
+  the desktop app is coming soon, 2026-11-07). The terms, the privacy page,
   the guidelines and /takedown share one row of `.tabs` in their head
   (site359, 2026-10-29).
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
@@ -3582,12 +3582,15 @@ plan with Claude as the client.
   is 390 x 844 at 3x by a finger (Parts, the search, a tile, taps on the
   baseplate). Spinworker's numbers are in
   `bench/results/spinworker-2026-11-05` and docs/SLOW_DEVICES.md.
-- The desktop downloads page (`web/download.html`, `download.js`,
-  `releases.json`) ships with every deploy like the rest of `web/`; what it
-  does and how it is checked is in [release](release.md). The landing page
-  links to it from the nav and the footer. The deploy does not check it yet:
-  after a release, run `node tools/web/download_check.mjs
-  --url=https://brickworks.diy/download`.
+- The desktop app's page (`web/download.html`) ships with every deploy like
+  the rest of `web/`. Since 2026-11-07 it says the desktop app is coming soon
+  and offers Open Brickworks (the owner: "make the downloadable access
+  'Coming soon' ... since we can't properly support it yet"); what it does
+  and how it is checked is in [release](release.md). Menu and the footer
+  link to it as "Desktop app". The release's preview checks run
+  `download` (`tools/web/download_check.mjs`) and `coming_soon`
+  (`tools/web/coming_soon_check.mjs`, every page in four languages: no
+  installer offered anywhere).
 - `put the website together` (`tools/site.py OUT`): every file in `web/` (and
   `web/img/`) but working ones named `_…` and `img/manifest.json`, with
   `changelog.html` filled from `CHANGELOG.md` and `releases.json`. The deploy runs
@@ -3648,8 +3651,8 @@ plan with Claude as the client.
   brickworks is much more than an ai tool, its also a fully advanced expert cad
   system"). It shows rather than says: the hero is one line ("A complete CAD
   for LEGO® models", `h1.display`), one sub-line (in your browser, on a computer,
-  tablet or phone; nothing to install, free), one primary action (Open Brickworks) and a quiet link to the
-  desktop download, over the builder at work on the castle
+  tablet or phone; nothing to install, free), one primary action (Open Brickworks), and since
+  2026-11-07 "A desktop app is coming soon" where it offered the download, over the builder at work on the castle
   (`img/hero-*.webp`) under a window's bar with the app's address; `#features`,
   six pictures from the app of what a Studio or LDD user cannot do there, one
   line each (Will it stand?, gears at their real ratios on the orrery,
@@ -4342,8 +4345,9 @@ A browser asking for en, de, fr and es first (Accept-Language and
 `navigator.languages`) opens /, /download, /plans, /faq, /compare, /gallery
 and /library at 1280 and 390 and must land on the language's copy (/de,
 /de/download, /de/plans ...; English stays), `<html lang>` its language, the
-title, the heading and the header's Sign in in its words, the download
-offer's "Download for Linux" and "New in", the gallery's and the library's
+title, the heading and the header's Sign in in its words, the desktop
+app's page's Open Brickworks into the app in the language (it is coming
+soon, 2026-11-07), the gallery's and the library's
 count ("1.234 Sets") in them; no English word left in any text, alt,
 title or label but names, people's cards and the library's themes the app
 too keeps under the catalogue's names; nothing cut short sideways that the
@@ -6716,7 +6720,8 @@ named, 15 Tabs inside it, Escape back on More; Follow; the account menu,
 Escape, Notifications, Mark all read said with the focus on the title;
 Edit profile's dialog keeping 40 Tabs and saving back on Edit profile;
 Settings' theme and a checkbox said; Sign in's dialog named, the code
-sent, Escape back on Sign in; the download started; and every one of
+sent, Escape back on Sign in; Open Brickworks on the desktop app's page
+opening the app (the download started, until 2026-11-07); and every one of
 the 354 stops showing its focus ring, on the screen and clear of the
 sticky header, with nothing moving (reduced motion asked).
 

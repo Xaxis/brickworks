@@ -2697,8 +2697,8 @@ msgstr "Pega una clave para guardar una aquí en su lugar"
 msgid "On a web page a server on your own computer answers only if it allows this site (Ollama: OLLAMA_ORIGINS), and the browser asks you first."
 msgstr "En una página web, un servidor de tu propio ordenador solo responde si permite este sitio (Ollama: OLLAMA_ORIGINS), y el navegador te pregunta antes."
 
-msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; for any other server, use the desktop app."
-msgstr "En una página web, Brickworks solo llega a los proveedores de la lista y a los servidores de tu propio ordenador; para cualquier otro servidor, usa la aplicación de escritorio."
+msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; any other server needs the desktop app, coming soon."
+msgstr "En una página web, Brickworks solo llega a los proveedores de la lista y a los servidores de tu propio ordenador; cualquier otro servidor necesita la aplicación de escritorio, que llega pronto."
 
 msgid "Sent only to Anthropic, never to us. Safest is a key just for this, in a Console workspace with a spend limit."
 msgstr "Se envía solo a Anthropic, nunca a nosotros. Lo más seguro es una clave solo para esto, en un espacio de trabajo de la Console con límite de gasto."
@@ -5571,8 +5571,8 @@ msgstr "El aspecto de la ventana, al tamaño que pidas. Un momento."
 msgid "Light bounced off the backdrop and between the parts, shading in every corner, and a soft shadow that widens with distance."
 msgstr "Luz que rebota en el fondo y entre las piezas, sombreado en cada rincón y una sombra suave que se ensancha con la distancia."
 
-msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the desktop app."
-msgstr "Sombras suaves y bordes lisos, del promedio de 8 fotogramas. La luz que rebota entre las piezas necesita la aplicación de escritorio."
+msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the desktop app, coming soon."
+msgstr "Sombras suaves y bordes lisos, del promedio de 8 fotogramas. La luz que rebota entre las piezas necesita la aplicación de escritorio, que llega pronto."
 
 msgid "Path traced, %d samples: soft shadows, light bounced off the floor and between the parts, glass that tints what is behind it, and depth of field if you want it."
 msgstr "Trazado de rutas, %d muestras: sombras suaves, luz que rebota en el suelo y entre las piezas, cristal que tiñe lo que hay detrás y profundidad de campo si la quieres."
@@ -5586,8 +5586,8 @@ msgstr "%d fotogramas promediados: sombras suaves de una luz de área, bordes li
 msgid "With nothing behind the model it is not path traced."
 msgstr "Sin nada detrás del modelo, no se renderiza con trazado de rutas."
 
-msgid "Path tracing needs the desktop app: a browser cannot trace rays."
-msgstr "El trazado de rutas necesita la aplicación de escritorio: un navegador no puede trazar rayos."
+msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
+msgstr "El trazado de rutas necesita la aplicación de escritorio, que llega pronto: un navegador no puede trazar rayos."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "El trazado de rutas necesita el modo gráfico completo, y esta ventana dibuja en el más sencillo."

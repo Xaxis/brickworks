@@ -39,6 +39,8 @@
   data-when="soon": Pro's button goes to /settings?upgrade=month or
   year#plan, the step before Checkout (web/plan.js).
 
+  Since 2026-11-07 the desktop app is coming soon (the owner), so the page
+  offers no download and says so where it names the desktop app.
   From 29 October to 2 November 2026 this page said the desktop app came
   with Pro; before and since, it is free (#changed). Every account made
   before 29 October 2026 keeps Pro free with no end date, as published
@@ -64,7 +66,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="Plans · Brickworks">
-<meta property="og:description" content="Free in your browser and on your desktop. Pro is coming: every model kept with your account and a licence for commercial use, $8 a month. Nothing takes money yet.">
+<meta property="og:description" content="Free in your browser. Pro is coming: every model kept with your account and a licence for commercial use, $8 a month. Nothing takes money yet.">
 <meta property="og:url" content="https://brickworks.diy/plans">
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
@@ -128,7 +130,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 					<a href="/gallery">Gallery</a>
 					<a href="/docs">Docs</a>
 					<a href="/plans" aria-current="page">Plans</a>
-					<a href="/download">Download</a>
+					<a href="/download">Desktop app</a>
 					<a href="/profile" data-account>Sign in</a>
 				</nav>
 				<div class="theme-choice"><span aria-hidden="true">Theme</span>
@@ -161,13 +163,13 @@ dialog .done .actions { margin-top: var(--s-4); }
 		<div class="tiers">
 			<article class="tier" id="free" aria-labelledby="free-h">
 				<div class="name"><h2 id="free-h">Free</h2></div>
-				<p>The whole of Brickworks, on the web and on your desktop, for personal and educational use.</p>
+				<p>The whole of Brickworks, in your browser and soon on your desktop, for personal and educational use.</p>
 				<p class="price"><b>$0</b></p>
 				<a class="cta ghost" href="/app">Open the app</a>
 				<p>What it has:</p>
 				<ul class="ticks">
 					<li>The web app, in any browser, with nothing to install</li>
-					<li><b>The desktop app</b> for Windows, macOS and Linux, offline, with every part on disk</li>
+					<li><b>The desktop app</b> for Windows, macOS and Linux, offline, with every part on disk: coming soon</li>
 					<li>Building by hand without a limit</li>
 					<li>The whole LDraw parts library, and its official models of real sets</li>
 					<li>Physics: whether it stands, and joints that move</li>
@@ -224,7 +226,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 					<tbody>
 						<tr class="group"><th scope="rowgroup" colspan="3">Where</th></tr>
 						<tr><th scope="row">The web app, in any browser</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
-						<tr><th scope="row">The desktop app for Windows, macOS and Linux</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">The desktop app for Windows, macOS and Linux, coming soon</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">Works offline, with every part on disk (the desktop app)</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr class="group"><th scope="rowgroup" colspan="3">Building</th></tr>
 						<tr><th scope="row">Building by hand</th><td>No limit</td><td>No limit</td></tr>
@@ -268,7 +270,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 				<h2 id="keep-h">What stays free</h2>
 				<p class="what">Pro keeps every model with your account and adds a licence for commercial use. It takes nothing out of Free, which keeps all of this, for personal and educational use:</p>
 				<ul class="keep">
-					<li><b>The web app and the desktop app.</b> In any browser, on a computer, a tablet or a phone; and on Windows, macOS and Linux, offline. Every desktop version you download keeps working.</li>
+					<li><b>The web app and the desktop app.</b> In any browser, on a computer, a tablet or a phone; and, once the desktop app is out, on Windows, macOS and Linux, offline.</li>
 					<li><b>Building by hand, and AI, without a limit.</b> Bring your own AI: the AI app you use through the connector, Claude or another, or an Anthropic API key, in any browser; in the desktop app, your own key for OpenAI, Gemini and others too.</li>
 					<li><b>Everything else the app does today.</b> Saving to your device, 25 models kept with your account, Build together, booklets and PDFs, renders, exports, photo search, parts lists, publishing, the gallery and challenges.</li>
 					<li><b>Your models.</b> Nothing is ever deleted or locked: on any plan, or none, the app opens, edits and exports everything you made. With more than 25 kept with your account you keep every one; a new one goes there once you are under 25 again.</li>
@@ -323,7 +325,6 @@ dialog .done .actions { margin-top: var(--s-4); }
 				<p class="lede">Open Brickworks in any browser: nothing to install, and no card.</p>
 				<div class="actions center">
 					<a class="cta big" href="/app">Open the app <span class="arrow" aria-hidden="true">→</span></a>
-					<a class="cta ghost big" href="/download">Download for desktop</a>
 				</div>
 			</div>
 		</div>
@@ -380,7 +381,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 					<p class="foot-h" id="foot-product">Product</p>
 					<ul aria-labelledby="foot-product">
 						<li><a href="/app">Open the app</a></li>
-						<li><a href="/download">Download</a></li>
+						<li><a href="/download">Desktop app</a></li>
 						<li><a href="/plans">Plans</a></li>
 						<li><a href="/changelog">Changelog</a></li>
 					</ul>

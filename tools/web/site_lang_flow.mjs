@@ -22,8 +22,9 @@
 // (/de, /de/download...; English stays where it is) with:
 //
 //   its words: <html lang>, the title, the heading and the header's Sign in
-//     as web/_lang/<code>.json says them, and the download offer's button
-//     and "New in", the gallery's and the library's count of what they
+//     as web/_lang/<code>.json says them, the desktop app's page's Open
+//     Brickworks into the app in the language (it is coming soon,
+//     2026-11-07), the gallery's and the library's count of what they
 //     list, as their scripts say them;
 //   no English left: no English word (the, and, your, with...) in any text
 //     of the page, shown or folded away, nor in an alt, title, aria-label
@@ -198,8 +199,8 @@ const THEMES = Object.fromEntries(["de", "fr", "es"].map((code) => {
 const PAGES = [
   { name: "home", path: "", title: "Brickworks — a CAD for LEGO® models, in your browser",
     heading: "#hero-h", says: "A CAD for LEGO® models, <em>in your browser</em>" },
-  { name: "download", path: "/download", title: "Download Brickworks for Linux, macOS and Windows",
-    heading: "#get-h", says: "Download Brickworks" },
+  { name: "download", path: "/download", title: "Brickworks for the desktop, coming soon",
+    heading: "#get-h", says: "The desktop app is coming soon" },
   { name: "plans", path: "/plans", title: "Plans · Brickworks" },
   { name: "faq", path: "/faq", title: "Questions · Brickworks", heading: "main h1", says: "Questions" },
   { name: "compare", path: "/compare", title: "Brickworks beside Studio, Mecabricks, LeoCAD and LDCad",
@@ -593,16 +594,12 @@ async function onePage(browser, code, one, width) {
     check(signIn.trim() === script(code, "Sign in"), `${where}: the header's Sign in says "${signIn.trim()}"`);
     check(await tab.evaluate(markShown), `${where}: the header shows the Brickworks wordmark`);
     if (one.name === "download") {
-      // Its script's words: the offer for this computer, and what is new.
-      await tab.waitForFunction(() => !document.getElementById("notes").hidden, null, { timeout: 15000 });
-      // The release the page offers: the one its own /releases.json names.
-      const version = await tab.evaluate(() => fetch("/releases.json").then((reply) => reply.json()).then((list) => list.latest));
-      const newIn = (await tab.locator("#notes-h").innerText()).trim();
-      check(newIn === script(code, "New in {version}", { version }), `${where}: "${newIn}"`);
-      if (width >= 600) {
-        const offer = (await tab.locator("#offer-button").innerText()).trim();
-        check(offer === script(code, "Download for {system}", { system: "Linux" }), `${where}: the offer says "${offer}"`);
-      }
+      // The desktop app is coming soon (2026-11-07): the one button is the
+      // app, in the language.
+      const open = await tab.locator("#open-app").evaluate((a) => ({ text: a.textContent.replace(/[→\s]+/g, " ").trim(),
+        href: a.getAttribute("href") }));
+      const app = code === "en" ? "/app" : `/app?lang=${code}`;
+      check(open.text === page(code, "Open Brickworks") && open.href === app, `${where}: its button says "${open.text}", to ${open.href}`);
     }
     // No English left but names.
     if (code !== "en") {
@@ -1714,17 +1711,17 @@ async function seventhSaid(browser, code, width, one) {
       const said = await tab.evaluate(() => ({
         notes: [...document.querySelectorAll(".release-notes")].map((notes) => notes.getAttribute("lang") || ""),
         first: [...document.querySelectorAll(".release time[datetime]")].map((time) => [time.dateTime, time.textContent.trim()])[0],
-        // A release's own links: "On the web now" (#web), drawn when
-        // CHANGELOG.md's Unreleased has notes, links the app instead.
-        download: [...document.querySelectorAll(".release:not(#web) .when a")].map((a) => [a.textContent.trim(), new URL(a.href).pathname])[0],
+        // A release's own links: none since the desktop app is coming
+        // soon (2026-11-07); "On the web now" (#web), drawn when
+        // CHANGELOG.md's Unreleased has notes, links the app.
+        links: [...document.querySelectorAll(".release:not(#web) .when a")].map((a) => new URL(a.href).pathname),
       }));
       const [iso, shown] = said.first || ["", ""];
       const [y, m, d] = iso.split("-").map(Number);
       const want = script(code, "{day} {month} {year}", { day: d, month: script(code, MONTHS[m - 1]), year: y });
       const notesWant = code === "en" ? "" : "en";
-      check(said.notes.length >= 5 && said.notes.every((one) => one === notesWant) && shown === want
-        && said.download?.[0] === script(code, "Download") && said.download?.[1] === `${lang}/download`,
-        `${where}: ${said.notes.length} releases' notes ${code === "en" ? "" : 'lang="en", '}"${shown}", "${said.download?.[0]}" ${said.download?.[1]}`);
+      check(said.notes.length >= 5 && said.notes.every((one) => one === notesWant) && shown === want && !said.links.length,
+        `${where}: ${said.notes.length} releases' notes ${code === "en" ? "" : 'lang="en", '}"${shown}", ${said.links.length} links to a release (none)`);
     }
     if (one.name === "feed" || one.name === "notifications") {
       // The lines the server said in the language, {who} where it puts them.

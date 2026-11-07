@@ -28,6 +28,10 @@ name the script gives ("page_canvas", or "page_picture_4" from
 named for a change to it, and rel-m226 held on it (2026-10-30). What a
 script reaches through other scripts is left to the feature map.
 
+A flow that crawls every page of the site names none of them: it says so
+with a line `// flows_for: every page` (coming_soon_check.mjs), and visits
+whatever page of web/ or the documentation changed (2026-11-07).
+
 What a session hears through the connector is made in the tab, and reaches
 it at /api/mcp: a script that shapes it (RELAY_FROM) is the relay's address
 too, so it names every flow that drives the relay, as api/mcp.js does.
@@ -183,8 +187,22 @@ def checks() -> dict[str, list[str]]:
     return named
 
 
+# A flow that visits every page of the site, and says so.
+EVERY_PAGE = re.compile(r"^// flows_for: every page$", re.M)
+
+
+def a_page(address: str) -> bool:
+    """Whether [address] is a page the site is put together with
+    (tools/site.py): one of web/'s, or the documentation's."""
+    if address in ("/", "/docs"):
+        return True
+    return re.fullmatch(r"/[a-z0-9-]+", address) is not None and (WEB / f"{address[1:]}.html").exists()
+
+
 def visits(flow: Path, address: str) -> bool:
     text = flow.read_text(errors="ignore")
+    if EVERY_PAGE.search(text) and a_page(address):
+        return True
     if address == "/":
         # The home page: a page sent to the site itself and nothing after it.
         # A bare goto(url) is no sign: the app's flows are given the app's own.

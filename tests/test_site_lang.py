@@ -48,9 +48,9 @@ def test_a_run_with_no_words_stops_the_copy() -> None:
     # The check above means something: a page's run missing from a table is
     # caught, and so is an entry that lost the English's link.
     words = site_lang.table("de")
-    del words["pages"]["Download for desktop"]
+    del words["pages"]["Free, in any browser"]
     _, missing, _ = site_lang.translated("index.html", "de", words)
-    assert missing == ["Download for desktop"]
+    assert missing == ["Free, in any browser"]
     words = site_lang.table("de")
     key = next(k for k in words["pages"] if '<a href="/plans#had">' in k)
     words["pages"][key] = re.sub(r"<[^>]+>", "", words["pages"][key])
@@ -450,7 +450,10 @@ def test_the_changelog_s_copy_says_its_chrome_and_keeps_the_notes_as_written() -
                   "October", "November", "December"]
         assert stamp.group(4) == said["{day} {month} {year}"].replace("{day}", str(day)).replace(
             "{month}", said[months[month - 1]]).replace("{year}", str(year))
-        assert f'<a href="/{code}/download">{said["Download"]}</a>' in copy and f'>{said["On GitHub"]}</a>' in copy
+        # No release links its files: the desktop app is coming soon (2026-11-07).
+        released = re.findall(r'<p class="when"><time .*?</p>', copy)
+        assert len(released) >= 5 and not [one for one in released if "<a " in one], released[:2]
+        assert "github.com/Xaxis/brickworks-releases/releases" not in copy
         assert 'href="/download"' not in copy
 
 

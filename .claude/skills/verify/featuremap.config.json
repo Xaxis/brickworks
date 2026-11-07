@@ -463,7 +463,14 @@
       "kind": "cli",
       "label": "download page check",
       "entry": "tools/web/download_check.mjs",
-      "reach": "node tools/web/download_check.mjs --manifest=FILE --shots=shots",
+      "reach": "node tools/web/download_check.mjs --shots=shots",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "coming soon check",
+      "entry": "tools/web/coming_soon_check.mjs",
+      "reach": "node tools/web/coming_soon_check.mjs [--static] [--url=DEPLOYMENT] [--shots=DIR]",
       "area": "release"
     },
     {

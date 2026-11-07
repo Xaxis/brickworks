@@ -201,7 +201,7 @@ declare -A CMD=(
   # checkbox): the gallery to a model, Like, Save, Share, a comment and a
   # reply, Report it's dialog, Follow, the account menu to Notifications
   # and Mark all read, Edit profile's dialog, Settings, Sign in's dialog and
-  # the download; each stop's focus shown, the focus never lost, dialogs
+  # Open Brickworks on the desktop app's page; each stop's focus shown, the focus never lost, dialogs
   # keeping it and giving it back. The deployment's pages and scripts, the
   # API and the stand-in's model answered here.
   [keyboard]="tools/web/keyboard_flow.mjs --url=$P --out=$S/${TAG}_keyboard"
@@ -286,10 +286,16 @@ declare -A CMD=(
   # throwaway account with three of its lots, and its wanted list; Open its
   # parts in Brickworks landing in the app's bin; and the sets' sitemaps.
   [sets_flow]="tools/web/sets_flow.mjs --url=$P --out=$S/${TAG}_sets_flow"
-  # The download page: each system its own build, every link answering, and
-  # the Linux button asking its public address with no sign-in and nothing
-  # of /api/plans (the desktop is free, docs/PLANS.md, 2026-11-02).
+  # The download page: the desktop app is coming soon (the owner,
+  # 2026-11-07), to Linux, macOS, Windows and a phone alike: Open Brickworks
+  # its one button, no installer, no file, every link answering.
   [download]="tools/web/download_check.mjs --url=$P/download"
+  # Every page of the site, in its four languages, and every script each
+  # loads: no link, button or script offering an installer, the releases
+  # repository's files or /releases.json, nothing saying Download to the
+  # desktop app's page; and /download in each language saying it is coming
+  # soon with Open Brickworks into the app. Reads only.
+  [coming_soon]="tools/web/coming_soon_check.mjs --url=$P"
   # Plans, coming soon (web/plans.html, supabase/plan_interest.sql): the page
   # at 390 and 1400, light and dark; its form refusing a bad address, then a
   # Resend test address's entry kept, sent again and changed, not added, and
@@ -601,7 +607,7 @@ declare -A CMD=(
   # the first step takes 9-12 s, so the times are said, not held to a bar.
   [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design a11y keyboard theme model_page gallery download frames load"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design a11y keyboard theme model_page gallery download coming_soon frames load"
 NAMES="${*:-$ORDER}"
 # The checks that write the live database, which every preview and the
 # relay share with production: each flow that makes a throwaway account and

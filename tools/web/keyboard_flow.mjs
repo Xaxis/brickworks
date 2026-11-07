@@ -30,7 +30,8 @@
 //   settings  Dark chosen, a checkbox ticked (Space) and said;
 //   sign-in   signed out: Sign in's dialog, an address and Enter, the code's
 //             field focused; Escape gives the focus back to Sign in;
-//   download  the download button reached and Enter starts the download.
+//   download  the desktop app is coming soon (2026-11-07): Open Brickworks
+//             reached, and Enter opens the app.
 //
 // Every stop on the way is judged: the focus shown (an outline or a ring of
 // its own, on it or on the card it stands for), on the screen, not under
@@ -189,9 +190,6 @@ async function visit(browser, address, { theme = "light", signedIn = true, state
       Object.defineProperty(window, "isSecureContext", { configurable: true, value: true });
     } catch { /* kept as it is */ }
   });
-  // The download, answered as GitHub's file is: an attachment.
-  await context.route("https://github.com/**", (route) => route.fulfill({ status: 200, contentType: "application/octet-stream",
-    headers: { "content-disposition": "attachment; filename=Brickworks.AppImage" }, body: "not really" }));
   if (signedIn) {
     const asProject = (text) => (remoteDb ? text.split(stand.DB).join(remoteDb) : text);
     const kept = JSON.parse(asProject(JSON.stringify(stand.signedInStorage())));
@@ -526,13 +524,13 @@ const JOURNEYS = {
   async download(browser, theme) {
     const { context, page } = await visit(browser, "/download", { theme, signedIn: false });
     const label = `download ${theme}`;
-    await until(page, () => /github|\/app/.test(document.getElementById("offer-button")?.href || ""), null, 10000);
-    if (await tabTo(page, label, "#offer-button")) {
+    if (await tabTo(page, label, "#open-app")) {
       const button = await page.evaluate(focusNow);
-      const started = page.waitForEvent("download", { timeout: 10000 }).then((one) => one.suggestedFilename(), () => "");
+      // The app itself is not what is judged: its address asked is enough.
+      await page.route(/\/app(?:\?|$)/, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "<title>app</title>" }));
+      const went = page.waitForRequest((r) => new URL(r.url()).pathname === "/app", { timeout: 10000 }).then(() => true, () => false);
       await page.keyboard.press("Enter");
-      const file = await started;
-      check(Boolean(file), `${label}: Enter on ${button.said} starts the download (${file || "nothing"})`);
+      check(await went, `${label}: Enter on ${button.said} opens the app`);
     }
     await context.close();
   },

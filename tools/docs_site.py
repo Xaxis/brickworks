@@ -873,8 +873,7 @@ def changelog() -> str:
         else:
             date = by_version.get(version, {}).get("date") or section["date"]
             out.append(f"## Brickworks {version} {{#v{version.replace('.', '-')}}}\n")
-            out.append(f'<p class="note"><time datetime="{html.escape(date)}">{changelog_site.day(date)}</time> · '
-                       '<a href="/download">Download</a></p>')
+            out.append(f'<p class="note"><time datetime="{html.escape(date)}">{changelog_site.day(date)}</time></p>')
         items: list[str] = []
         for kind, words in section["blocks"]:
             if kind != "li" and items:

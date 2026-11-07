@@ -43,7 +43,7 @@ const WRONG := Color(1.0, 0.6, 0.5)
 const ON_WEB_LOCAL := ("On a web page a server on your own computer answers only if it "
 	+ "allows this site (Ollama: OLLAMA_ORIGINS), and the browser asks you first.")
 const ON_WEB_OTHER := ("On a web page Brickworks reaches only the providers listed and "
-	+ "servers on your own computer; for any other server, use the desktop app.")
+	+ "servers on your own computer; any other server needs the desktop app, coming soon.")
 
 var who_claude: CheckBox
 var who_key: CheckBox
