@@ -11698,3 +11698,123 @@ msgstr "Noppenrichtungen: jedes Teil danach eingefärbt, wohin seine Noppen zeig
 
 msgid "stud directions off"
 msgstr "Noppenrichtungen aus"
+
+# Views and render presets kept with the model (APP_UX5 #8, savedviews): View ›
+# Viewpoint › Save this view…, the saved views' rows, Render's Preset and its Camera.
+
+msgid "Save this view…"
+msgstr "Diese Ansicht speichern…"
+
+msgid "Saved view %d"
+msgstr "Gespeicherte Ansicht %d"
+
+msgid "Render each saved view"
+msgstr "Jede gespeicherte Ansicht rendern"
+
+msgid "Keep where you are looking from with the model, by a name, to look from again with a key and to render"
+msgstr "Den Blickwinkel unter einem Namen mit dem Modell speichern, um ihn per Taste wieder einzunehmen und zu rendern"
+
+msgid "Look from the model's saved view %d again, as it was saved"
+msgstr "Wieder aus der gespeicherten Ansicht %d des Modells blicken, wie sie gespeichert wurde"
+
+msgid "Queue a picture from each view saved with the model, with Render's settings"
+msgstr "Ein Bild aus jeder mit dem Modell gespeicherten Ansicht in die Warteschlange stellen, mit den Einstellungen von Rendern"
+
+msgid "Save this view"
+msgstr "Diese Ansicht speichern"
+
+msgid "What should this view be called?"
+msgstr "Wie soll diese Ansicht heißen?"
+
+msgid "Name of the view"
+msgstr "Name der Ansicht"
+
+msgid "View %d"
+msgstr "Ansicht %d"
+
+msgid "A view of the same name is replaced. Each of the first nine has a key, and Render's Camera lists them all."
+msgstr "Eine Ansicht gleichen Namens wird ersetzt. Die ersten neun haben je eine Taste, und die Kamera von Rendern listet sie alle."
+
+msgid "Kept with the model, the first nine each with a key, and in Render's Camera."
+msgstr "Mit dem Modell gespeichert, die ersten neun je mit einer Taste, und in der Kamera von Rendern."
+
+msgid "Look from it"
+msgstr "Daraus blicken"
+
+msgid "Look from this view now"
+msgstr "Jetzt aus dieser Ansicht blicken"
+
+msgid "Take this view out of the model"
+msgstr "Diese Ansicht aus dem Modell entfernen"
+
+msgid "kept the view “%s” with the model"
+msgstr "Ansicht „%s“ mit dem Modell gespeichert"
+
+msgid "%s looks from it again"
+msgstr "%s blickt wieder daraus"
+
+msgid "the view “%s”"
+msgstr "die Ansicht „%s“"
+
+msgid "took the view “%s” out of the model"
+msgstr "Ansicht „%s“ aus dem Modell entfernt"
+
+msgid "those after it each have the key before"
+msgstr "die folgenden haben je die Taste davor"
+
+msgid "queued a picture from each of the %d saved views"
+msgstr "ein Bild aus jeder der %d gespeicherten Ansichten in die Warteschlange gestellt"
+
+msgid "Add each saved view"
+msgstr "Jede gespeicherte Ansicht hinzufügen"
+
+msgid "Preset"
+msgstr "Voreinstellung"
+
+msgid "Save…"
+msgstr "Speichern…"
+
+msgid "Your own choices"
+msgstr "Eigene Auswahl"
+
+msgid "Preset %d"
+msgstr "Voreinstellung %d"
+
+msgid "Save the preset"
+msgstr "Voreinstellung speichern"
+
+msgid "What should these choices be called?"
+msgstr "Wie soll diese Auswahl heißen?"
+
+msgid "Name of the preset"
+msgstr "Name der Voreinstellung"
+
+msgid "Saved with the model"
+msgstr "Mit dem Modell gespeichert"
+
+msgid "Choices kept by a name, for any model: choose one to use them all again"
+msgstr "Unter einem Namen gespeicherte Auswahl, für jedes Modell: eine wählen, um alles wieder zu verwenden"
+
+msgid "Keep these choices by a name, to choose again on any model"
+msgstr "Diese Auswahl unter einem Namen speichern, um sie bei jedem Modell wieder zu wählen"
+
+msgid "Forget the preset chosen"
+msgstr "Die gewählte Voreinstellung vergessen"
+
+msgid "Kept these choices as the preset “%s”, for any model."
+msgstr "Diese Auswahl als Voreinstellung „%s“ gespeichert, für jedes Modell."
+
+msgid "Forgot the preset “%s”."
+msgstr "Voreinstellung „%s“ vergessen."
+
+msgid "The preset “%s”."
+msgstr "Die Voreinstellung „%s“."
+
+msgid "This model keeps no view called “%s”, so the camera is Three-quarter, like the box."
+msgstr "Dieses Modell hat keine Ansicht namens „%s“, also ist die Kamera Dreiviertelansicht, wie auf der Verpackung."
+
+msgid "A preset needs a name."
+msgstr "Eine Voreinstellung braucht einen Namen."
+
+msgid "The preset could not be kept."
+msgstr "Die Voreinstellung konnte nicht gespeichert werden."

@@ -264,7 +264,12 @@ const SUBMENUS: Dictionary = {
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
-		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right"],
+		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right",
+		# savedviews: the views kept with the model (SavedViews), each row
+		# its view's name once there is one.
+		"-", "save_view", "saved_view_1", "saved_view_2", "saved_view_3", "saved_view_4",
+		"saved_view_5", "saved_view_6", "saved_view_7", "saved_view_8", "saved_view_9",
+		"-", "render_views"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_box", "cut_sphere", "cut_cylinder",
 		"cut_grow", "cut_shrink", "-", "cut_flip", "cut_ghosts"],
 	# Next step (E) is in Build itself, over these.
@@ -1386,6 +1391,19 @@ func _define() -> void:
 		func() -> void: app.call("_turn_model", -1), something)
 	_add("turn_right", "Turn the model right", SHIFT | KEY_E,
 		func() -> void: app.call("_turn_model", 1), something)
+	# savedviews (APP_UX5 #8): views kept with the model (src/ui/saved_views.gd),
+	# their keys Keymap's.
+	_add("save_view", "Save this view…", 0, func() -> void: saved_views().ask(), something,
+		"Keep where you are looking from with the model, by a name, to look from again with a key and to render")
+	for place: int in SavedViews.KEYED:
+		var index: int = place
+		_add(SavedViews.COMMAND + str(place + 1), "Saved view %d" % (place + 1), 0,
+			func() -> void: saved_views().go(index),
+			func() -> bool: return index < world.saved_views.size(),
+			"Look from the model's saved view %d again, as it was saved" % (place + 1))
+	_add("render_views", "Render each saved view", 0, render_saved_views,
+		func() -> bool: return not world.saved_views.is_empty() and bool(something.call()),
+		"Queue a picture from each view saved with the model, with Render's settings")
 	_add("panel_parts", "Parts bin", 0, func() -> void:
 		(app.get("_bin_dock") as SideDock).toggle())
 	_ticked("panel_parts", func() -> bool: return (app.get("_bin_dock") as SideDock).is_open())
@@ -1857,6 +1875,8 @@ func _refresh(popup: PopupMenu) -> void:
 			continue
 		var name: String = _ids[id]
 		_show_key(popup, index, _commands[name])
+		if name.begins_with(SavedViews.COMMAND):
+			_name_saved_view(popup, index, name)
 		popup.set_item_disabled(index, not can(name))
 		var on: int = ticked(name)
 		if on >= 0:
@@ -1866,6 +1886,46 @@ func _refresh(popup: PopupMenu) -> void:
 func _on_id(id: int) -> void:
 	if id >= 0 and id < _ids.size():
 		run(_ids[id])
+
+
+# -- savedviews (APP_UX5 #8): the views kept with the model -----------------------
+
+## View › Viewpoint › Save this view…, and what looks from a saved view
+## (SavedViews), made the first time one is asked for.
+var _views: SavedViews = null
+
+
+func saved_views() -> SavedViews:
+	if _views == null:
+		_views = SavedViews.new()
+		_views.world = world
+		_views.camera = camera
+		_views.say = bar.say
+		_views.changed = func() -> void: store.touch()
+		add_child(_views)
+	return _views
+
+
+## A saved view's row: its view's name, drawn as the person wrote it, or
+## "Saved view 4" while the model keeps no view there.
+func _name_saved_view(popup: PopupMenu, index: int, name: String) -> void:
+	var place: int = int(name.trim_prefix(SavedViews.COMMAND)) - 1
+	var views: Array = world.saved_views if world != null else []
+	var named: bool = place >= 0 and place < views.size()
+	popup.set_item_text(index, str((views[place] as Dictionary)["name"]) if named
+		else (_commands[name] as Command).words)
+	popup.set_item_auto_translate_mode(index, Node.AUTO_TRANSLATE_MODE_DISABLED if named
+		else Node.AUTO_TRANSLATE_MODE_INHERIT)
+
+
+## View › Viewpoint › Render each saved view: a picture from each queued in
+## File › Render queue…, with Render's settings, and the queue opened.
+func render_saved_views() -> void:
+	var queue: Node = (load("res://src/ui/render_queue.gd") as GDScript).call("of", app)
+	var added: Array = queue.call("add_views")
+	queue.call("open")
+	bar.say(("queued a picture from each of the %d saved views" % added.size()) if not added.is_empty()
+		else str(queue.get("last_refusal")).to_lower().trim_suffix("."))
 
 
 var _recent: Array[ModelStore.Entry] = []

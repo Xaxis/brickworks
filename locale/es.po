@@ -11698,3 +11698,123 @@ msgstr "dirección de las espigas: cada pieza coloreada según hacia dónde apun
 
 msgid "stud directions off"
 msgstr "dirección de las espigas desactivada"
+
+# Views and render presets kept with the model (APP_UX5 #8, savedviews): View ›
+# Viewpoint › Save this view…, the saved views' rows, Render's Preset and its Camera.
+
+msgid "Save this view…"
+msgstr "Guardar esta vista…"
+
+msgid "Saved view %d"
+msgstr "Vista guardada %d"
+
+msgid "Render each saved view"
+msgstr "Renderizar cada vista guardada"
+
+msgid "Keep where you are looking from with the model, by a name, to look from again with a key and to render"
+msgstr "Guardar con el modelo, con un nombre, desde dónde miras, para volver a mirar desde ahí con una tecla y renderizarlo"
+
+msgid "Look from the model's saved view %d again, as it was saved"
+msgstr "Volver a mirar desde la vista guardada %d del modelo, tal como se guardó"
+
+msgid "Queue a picture from each view saved with the model, with Render's settings"
+msgstr "Poner en cola una imagen desde cada vista guardada con el modelo, con los ajustes de Renderizar"
+
+msgid "Save this view"
+msgstr "Guardar esta vista"
+
+msgid "What should this view be called?"
+msgstr "¿Cómo debe llamarse esta vista?"
+
+msgid "Name of the view"
+msgstr "Nombre de la vista"
+
+msgid "View %d"
+msgstr "Vista %d"
+
+msgid "A view of the same name is replaced. Each of the first nine has a key, and Render's Camera lists them all."
+msgstr "Una vista con el mismo nombre se sustituye. Las nueve primeras tienen cada una una tecla, y la Cámara de Renderizar las enumera todas."
+
+msgid "Kept with the model, the first nine each with a key, and in Render's Camera."
+msgstr "Guardadas con el modelo, las nueve primeras cada una con una tecla, y en la Cámara de Renderizar."
+
+msgid "Look from it"
+msgstr "Mirar desde aquí"
+
+msgid "Look from this view now"
+msgstr "Mirar ahora desde esta vista"
+
+msgid "Take this view out of the model"
+msgstr "Quitar esta vista del modelo"
+
+msgid "kept the view “%s” with the model"
+msgstr "vista «%s» guardada con el modelo"
+
+msgid "%s looks from it again"
+msgstr "%s vuelve a mirar desde ahí"
+
+msgid "the view “%s”"
+msgstr "la vista «%s»"
+
+msgid "took the view “%s” out of the model"
+msgstr "vista «%s» quitada del modelo"
+
+msgid "those after it each have the key before"
+msgstr "las siguientes toman cada una la tecla anterior"
+
+msgid "queued a picture from each of the %d saved views"
+msgstr "una imagen de cada una de las %d vistas guardadas puesta en cola"
+
+msgid "Add each saved view"
+msgstr "Añadir cada vista guardada"
+
+msgid "Preset"
+msgstr "Preajuste"
+
+msgid "Save…"
+msgstr "Guardar…"
+
+msgid "Your own choices"
+msgstr "Tus propias opciones"
+
+msgid "Preset %d"
+msgstr "Preajuste %d"
+
+msgid "Save the preset"
+msgstr "Guardar el preajuste"
+
+msgid "What should these choices be called?"
+msgstr "¿Cómo deben llamarse estas opciones?"
+
+msgid "Name of the preset"
+msgstr "Nombre del preajuste"
+
+msgid "Saved with the model"
+msgstr "Guardadas con el modelo"
+
+msgid "Choices kept by a name, for any model: choose one to use them all again"
+msgstr "Opciones guardadas con un nombre, para cualquier modelo: elige una para volver a usarlas todas"
+
+msgid "Keep these choices by a name, to choose again on any model"
+msgstr "Guardar estas opciones con un nombre, para volver a elegirlas en cualquier modelo"
+
+msgid "Forget the preset chosen"
+msgstr "Olvidar el preajuste elegido"
+
+msgid "Kept these choices as the preset “%s”, for any model."
+msgstr "Estas opciones se guardaron como el preajuste «%s», para cualquier modelo."
+
+msgid "Forgot the preset “%s”."
+msgstr "Preajuste «%s» olvidado."
+
+msgid "The preset “%s”."
+msgstr "El preajuste «%s»."
+
+msgid "This model keeps no view called “%s”, so the camera is Three-quarter, like the box."
+msgstr "Este modelo no guarda ninguna vista llamada «%s», así que la cámara es Tres cuartos, como en la caja."
+
+msgid "A preset needs a name."
+msgstr "Un preajuste necesita un nombre."
+
+msgid "The preset could not be kept."
+msgstr "No se pudo guardar el preajuste."
