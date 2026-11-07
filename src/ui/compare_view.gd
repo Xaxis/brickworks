@@ -681,7 +681,7 @@ func _show_mode(which: String) -> void:
 	if which == PARTS and _side_place.is_empty():
 		_side_place = {"anchors": [anchor_left, anchor_top, anchor_right, anchor_bottom],
 			"offsets": [offset_left, offset_top, offset_right, offset_bottom],
-			"grow": grow_horizontal}
+			"grow": [grow_horizontal, grow_vertical]}
 	mode = which
 	_save_column.visible = which == SAVE
 	if _parts_column != null:
@@ -690,7 +690,8 @@ func _show_mode(which: String) -> void:
 		_place_parts()
 	elif not _side_place.is_empty():
 		_set_place(_side_place["anchors"], _side_place["offsets"])
-		grow_horizontal = _side_place["grow"]
+		grow_horizontal = _side_place["grow"][0]
+		grow_vertical = _side_place["grow"][1]
 
 
 ## Each edge's anchor, then its offset. Left and top first, each pushing the
