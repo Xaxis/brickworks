@@ -469,8 +469,9 @@ func _process(_delta: float) -> void:
 
 ## Whether every part on the page has its picture, or none to be had.
 func pictures_done() -> bool:
-	for tile: ThumbTile in _tiles:
-		if is_instance_valid(tile) and tile.state == ThumbTile.State.LOADING:
+	# Untyped until checked: a page turned has freed the tiles it showed.
+	for item: Variant in _tiles:
+		if is_instance_valid(item) and (item as ThumbTile).state == ThumbTile.State.LOADING:
 			return false
 	return true
 

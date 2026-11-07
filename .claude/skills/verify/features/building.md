@@ -576,7 +576,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   part (`Main._on_phone_hold`, `HOLD_MS`) brings its actions, the right-click
   menu's rows. Two fingers turn the view and pinch zooms
   (`CadCamera.phone`); a finger that lands on a part with Select moves it and
-  the view stays (`finger_taken`). The shared viewer keeps its own. The
+  the view stays (`finger_taken`). A second finger makes the gesture the
+  view's (`Main._second_finger`, touchfix): the first finger's press on a
+  part ends, a part it had begun to carry goes back with the selection as it
+  was, and its lifting is no click; on pre261 a twist or a pinch begun on a
+  part carried it off with the first finger and selected it (`twist_probe`
+  section 5). The shared viewer keeps its own. The
   notices strip is drawn for a finger (`Main._for_a_finger`). Proved by
   `tools/web/phone_flow.mjs` (preview check `phone`), at 390 x 844,
   430 x 932 and 844 x 390 at 3x with touch events: More, New; the parts sheet
@@ -701,7 +706,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`TouchSizing._grew`, on the panel's or the window's
   `minimum_size_changed`, fig257): Render's status line, told the picture's
   file name once it was downloaded, ran it and its Close off a 430-point
-  phone. A dialog already placed never moves under a finger
+  phone. A window or a panel freed while it shows never says it hid, so it
+  stays listed (a Save dialog cancelled is not one: Godot's Cancel hides it
+  before `SaveTo` frees it): every loop over the open dialogs takes each
+  untyped until it is checked, as a freed one put in a `Node` raised a script
+  error and laid out nothing after it (timelinefit's tablet; `twist_probe`
+  section 6). A dialog already placed never moves under a finger
   (`TouchSizing._place`, `finger_down`, press271): laid out again while a
   finger or a mouse button is down, it waits for the lift. Pressing Save or
   Rename takes the keys from the field, so the keyboard counted as gone and
