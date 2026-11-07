@@ -406,9 +406,43 @@ static func numbers_from_plan(world: BrickWorld, library: PartLibrary,
 static func adopted(world: BrickWorld, steps: Array[Instructions.Step],
 		skip: Dictionary = {}, in_place: bool = false) -> Dictionary:
 	var numbers: Dictionary = numbers_of(world, steps, skip, in_place)
+	_stand_ins_stepped(world, numbers, skip)
 	_tidy_numbers(world, numbers, skip)
 	_copies_alike(world, numbers, skip)
 	return numbers
+
+
+## Each part the library has not got (PartLibrary.add_stand_in), which no
+## plan builds as it has no shape, given the step of the part nearest it in
+## its copy, or the first step when its copy has no other. Left without, it
+## kept no step in a model given steps by an edit, and the save put it in
+## the step its line happened to fall in: the castle's sign moved step once
+## saved and opened again (keeptext4).
+static func _stand_ins_stepped(world: BrickWorld, numbers: Dictionary, skip: Dictionary) -> void:
+	if world.library == null:
+		return
+	var bricks: Dictionary = numbers["bricks"]
+	var stand_ins: Array[BrickWorld.Brick] = []
+	var by_path: Dictionary = {}    ## path -> its parts with a step
+	for brick: BrickWorld.Brick in world.bricks():
+		if skip.has(brick.id):
+			continue
+		if bricks.has(brick.id):
+			var path: String = Assemblies.path_of(brick)
+			if not by_path.has(path):
+				by_path[path] = []
+			(by_path[path] as Array).append(brick)
+		elif world.library.is_stand_in(brick.part_id):
+			stand_ins.append(brick)
+	for brick: BrickWorld.Brick in stand_ins:
+		var step: int = -1
+		var nearest: float = INF
+		for other: BrickWorld.Brick in by_path.get(Assemblies.path_of(brick), []):
+			var apart: float = other.transform.origin.distance_squared_to(brick.transform.origin)
+			if apart < nearest:
+				nearest = apart
+				step = int(bricks[other.id])
+		bricks[brick.id] = maxi(step, 0)
 
 
 ## The numbers of [param steps], a plan: each part the step it is in, and

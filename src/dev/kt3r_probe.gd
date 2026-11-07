@@ -10,10 +10,13 @@
 ## author's empty step, LeoCAD's and Studio's lines about the next part, the
 ## only copy holding a part no library has moved or taken off, a file with
 ## two sections of one name; and (keeptext4's own) a part moved onto an
-## author's empty page, and a last step with no STEP line after it emptied
-## while two new steps go in before it. Until keeptext4 a save paired the model's parts
-## with the file's lines again each time, by place, and wrote the file whole
-## where that failed; now each part knows its line (SourceFile).
+## author's empty page, a last step with no STEP line after it emptied
+## while two new steps go in before it, a part no library has picked up,
+## renamed, ungrouped and copied with its copy, and a file that carries
+## the sub-model and the part another file placed without them. Until keeptext4 a save
+## paired the model's parts with the file's lines again each time, by place,
+## and wrote the file whole where that failed; now each part knows its line
+## (SourceFile).
 ##
 ## Each case opens its file (src/dev/fixtures/kt3r_*, the castle made from
 ## models/castle.ldr) as the app opens it, makes its edit as a person makes
@@ -33,7 +36,8 @@ extends SceneTree
 const FX := "res://src/dev/fixtures/"
 const CASTLE := "res://models/castle.ldr"
 const CASES: Array = ["title", "whole", "emptystep", "emptystep2", "laststep", "move_copy",
-	"move_copy_7140", "leocad", "ungroup", "delete_unshown_copy", "move_unshown", "odd",
+	"move_copy_7140", "leocad", "ungroup", "delete_unshown_copy", "move_unshown",
+	"unshown_edits", "stand_in_named", "odd",
 	"castle"]
 
 var _failures: int = 0
@@ -88,6 +92,8 @@ func _run() -> void:
 			"ungroup": await _case_ungroup()
 			"delete_unshown_copy": await _case_delete_unshown_copy()
 			"move_unshown": await _case_move_unshown()
+			"unshown_edits": await _case_unshown_edits()
+			"stand_in_named": await _case_stand_in_named()
 			"odd": await _case_odd()
 			"castle": await _case_castle()
 			_: _check("no such case %s" % name, false)
@@ -366,7 +372,8 @@ func _case_delete_unshown_copy() -> void:
 
 
 ## The only copy of a sub-model holding a part no library has, moved
-## (kt3review #6): the part goes with it.
+## (kt3review #6): the part goes with it, a brick drawn as nothing moved
+## with the two it is stuck on (PartLibrary.add_stand_in).
 func _case_move_unshown() -> void:
 	var text: String = _fixture("kt3r_unshown_copy.mpd")
 	await _open(text)
@@ -376,12 +383,131 @@ func _case_move_unshown() -> void:
 	var moved: int = _builder.move_selection(Vector3i(0, 0, 4))
 	await _frames(4)
 	_shell.assemblies.leave_to("")
-	_check("moved %d parts: the copy %s" % [moved, paths[0]], moved == 2)
+	_check("moved %d parts: the copy %s, its sticker with it" % [moved, paths[0]], moved == 3)
 	var saved: String = await _saved("the copy moved", text, depth,
 		["1 16 0 -8 0 1 0 0 0 1 0 0 0 1 sign.ldr"])
 	_check("...the sticker's line as it was, its copy's line new",
 		saved.contains("1 16 0 -8 0 1 0 0 0 1 0 0 0 1 zz9001ps1.dat")
 		and _minus(saved, text).size() == 1)
+
+
+## A part no library has carried by every edit to the copy it is in, as a
+## brick drawn as nothing (PartLibrary.add_stand_in): kept beside the world,
+## no edit touched it (intomodel's second review, keeptext4). Picked up and
+## put down, renamed, ungrouped and copied, each saved, opened again (where
+## the comparison of every part, the sticker's too, says it went with its
+## copy) and undone.
+func _case_unshown_edits() -> void:
+	var text: String = _fixture("kt3r_unshown_copy.mpd")
+	var sticker: String = "1 16 0 -8 0 1 0 0 0 1 0 0 0 1 zz9001ps1.dat"
+	var placing: String = "1 16 0 -8 0 1 0 0 0 1 0 0 0 1 sign.ldr"
+	await _open(text)
+	var depth: int = _builder.history_depth()
+	var path: String = str(_shell.assemblies.paths()[0])
+	_select_assembly(path)
+	var lifted: int = _builder.lift_selection()
+	var put: int = await _put_down()
+	_shell.assemblies.leave_to("")
+	_check("picked up %d parts, the sticker with them, and put down %d" % [lifted, put],
+		lifted == 3 and put == 3)
+	var saved: String = await _saved("the copy picked up and put down", text, depth, [placing])
+	_check("...the sticker's line as it was, the copy's line new, nothing else",
+		saved.contains("\n" + sticker + "\n") and _minus(saved, text).size() == 1)
+	_check("...opened again, the sticker said not shown: %s" % _store.unshown,
+		_store.unshown == {"zz9001ps1": 1})
+
+	await _open(text)
+	depth = _builder.history_depth()
+	_select_assembly(path)
+	_shell.run("rename_assembly")
+	await _frames(2)
+	print("  renamed %s: %s" % [path, _name_it("Board")])
+	await _frames(4)
+	_shell.assemblies.leave_to("")
+	saved = await _saved("the copy renamed", text, depth, [placing, "0 FILE sign.ldr", "0 Sign",
+		"0 Name: sign.ldr"])
+	_check("...the sticker in the renamed sub-model",
+		saved.get_slice("0 FILE ", 2).contains(sticker) and saved.contains("Board"))
+
+	await _open(text)
+	depth = _builder.history_depth()
+	_select_assembly(path)
+	_shell.run("leave_submodel")
+	await _frames(4)
+	_shell.assemblies.leave_to("")
+	_check("ungrouped %s: copies now %s" % [path, str(_shell.assemblies.paths())],
+		_shell.assemblies.paths().is_empty())
+	saved = await _saved("the copy ungrouped", text, depth, [placing])
+	_check("...the sticker in the cart with the parts it is stuck on",
+		saved.get_slice("0 NOFILE", 0).contains("zz9001ps1.dat"))
+
+	await _open(text)
+	depth = _builder.history_depth()
+	_select_assembly(path)
+	var copied: int = _builder.copy_selection()
+	_builder.hold_copy(Carry.clipboard)
+	put = await _put_down()
+	_shell.assemblies.leave_to("")
+	_check("copied %d parts, the sticker with them, and put down %d" % [copied, put],
+		copied == 3 and put == 3)
+	saved = await _saved("the copy copied", text, depth, [])
+	_check("...opened again, both stickers said not shown: %s" % _store.unshown,
+		_store.unshown == {"zz9001ps1": 2})
+
+
+## A number a file places and does not carry stands in for a part
+## (PartLibrary.add_stand_in) only until a file carries it: one that
+## carries a sub-model by that name builds it, and one that carries a part
+## by it makes that part under its own number. Kept among the library's
+## parts, the stand-in read the sub-model as a part and the made part as
+## another's number, renamed (keeptext4).
+func _case_stand_in_named() -> void:
+	var host: String = "\n".join(PackedStringArray([
+		"0 Host", "0 Name: kt4host.ldr", "0 Author: Sam Other",
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 1 0 -24 0 1 0 0 0 1 0 0 0 1 kt4wing.ldr",
+		"1 2 40 0 0 1 0 0 0 1 0 0 0 1 kt4made.dat", ""]))
+	await _open(host)
+	var stood: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _library.is_stand_in(brick.part_id):
+			stood.append(brick.part_id)
+	stood.sort()
+	_check("a file placing a sub-model and a part it does not carry: %d parts, %s drawn as nothing"
+		% [_world.brick_count(), stood], _world.brick_count() == 3 and stood.size() == 2)
+	var carried: String = "\n".join(PackedStringArray([
+		"0 FILE kt4host.mpd", "0 Host", "0 Name: kt4host.mpd", "0 Author: Sam Other",
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 1 0 -24 0 1 0 0 0 1 0 0 0 1 kt4wing.ldr",
+		"1 2 40 0 0 1 0 0 0 1 0 0 0 1 kt4made.dat",
+		"0 NOFILE",
+		"0 FILE kt4wing.ldr", "0 Wing", "0 Name: kt4wing.ldr",
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat",
+		"1 14 0 -8 0 1 0 0 0 1 0 0 0 1 3020.dat",
+		"0 NOFILE",
+		"0 FILE kt4made.dat", "0 Made Brick", "0 Name: kt4made.dat", "0 Author: Sam Other",
+		"0 !LDRAW_ORG Unofficial_Part",
+		"1 16 0 0 0 1 0 0 0 1 0 0 0 1 3005.dat",
+		"0 NOFILE", ""]))
+	await _open(carried)
+	var parts: Dictionary = {}
+	var in_copy: int = 0
+	var still: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		parts[brick.part_id] = int(parts.get(brick.part_id, 0)) + 1
+		if brick.part_id == "3020" and not Assemblies.path_of(brick).is_empty():
+			in_copy += 1
+		if _library.is_stand_in(brick.part_id):
+			still += 1
+	_check("...then the file that carries both: %s, the wing's 2 in their copy (%d), %d drawn as nothing"
+		% [parts, in_copy, still], parts == {"3001": 1, "3020": 2, "kt4made": 1}
+		and in_copy == 2 and still == 0)
+	_check("...the made part made under its own number, with its shape: %s" % [
+		_library.mesh_for("kt4made") != null], not _library.is_stand_in("kt4made")
+		and _library.mesh_for("kt4made") != null)
+	var saved: String = _store.to_text("model", true)
+	_check("...saved, its sub-model and its part placed by their own names",
+		saved.contains("kt4wing.ldr\n") and saved.contains(" kt4made.dat"))
 
 
 ## Odd files (kt3review #9 and its no-crash list): opened, a part of the

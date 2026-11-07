@@ -71,16 +71,20 @@ func _ready() -> void:
 # -- what is held -----------------------------------------------------------
 
 
-## The parts of these bricks, in a frame of their own, ready to hold.
+## The parts of these bricks, in a frame of their own, ready to hold: a part
+## this build has not got among them (PartLibrary.add_stand_in), which a lift
+## takes off with the rest, and the line each was read from, which a lift
+## puts back down with it (Builder._put_carried).
 static func gather(world: BrickWorld, from: PartLibrary,
 		ids: Array) -> Array:
 	var placed: Array = []
 	for brick_id: int in ids:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		if brick != null and from.mesh_for(brick.part_id) != null:
+		if brick != null and (from.mesh_for(brick.part_id) != null
+				or from.is_stand_in(brick.part_id)):
 			placed.append({"part": brick.part_id, "color": brick.color_code,
 				"at": brick.transform, "group": brick.group, "unit": brick.unit,
-				"step": brick.step})
+				"step": brick.step, "origin": brick.origin})
 	return framed(placed, from)
 
 
@@ -537,7 +541,7 @@ func hide_ghost() -> void:
 
 
 ## Where each part goes if put down now: [{part, color, at, group, unit,
-## step}] in the world, and the cover each occupies. The copy a part was in
+## step, origin}] in the world, and the cover each occupies. The copy a part was in
 ## goes with it: without it a part moved in a sub-model's second copy went
 ## into its first, and one duplicated inside a copy within another into a
 ## new copy of the outermost (keeptext2).
@@ -553,7 +557,9 @@ func placements(builder: Builder) -> Array:
 		out.append({
 			"part": item["part"], "color": item["color"],
 			"group": item.get("group", ""),
+			"unit": item.get("unit", ""),
 			"step": item.get("step", -1),
+			"origin": item.get("origin", ""),
 			"at": _frame * (item["at"] as Transform3D),
 			"boxes": BrickLattice.moved_by(covers[0][n], shift),
 		})

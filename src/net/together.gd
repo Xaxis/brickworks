@@ -1558,7 +1558,7 @@ func _broken_from(words: String) -> void:
 ## files named as a part's are (TogetherWords.made_part): never one of the
 ## library's own, and never a file whose name the other side chose.
 func _add_made(part: String, words: String) -> void:
-	if not builder.library.parts.has(part):
+	if not builder.library.has_part(part):
 		var dropped := PackedStringArray()
 		var files: Dictionary = TogetherWords.made_part(part, TogetherWords.dictionary(words,
 			"made part"), dropped)

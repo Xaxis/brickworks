@@ -107,10 +107,24 @@ Whether what you built is still there tomorrow, and still means the same thing.
   a part of the file the library has not got, a part the file carries that
   cannot be built (on the web, one drawn from an official part or subpart,
   which a build does not ship: 42082-1's 13971, 8202-1's 57719), or a
-  flexible part whose skin cannot be built, is never dropped: it stays in the
-  file and is saved back, and File, Open says how many and which, a flexible
-  part once by its sub-model ("… (ropeLQ-1 (flexible))"). `fidelity_probe`
-  checks it, and the cad task test counts a part lost on open only when it
+  flexible part whose skin cannot be built, is never dropped: it is a brick
+  in the world like any other, drawn as nothing and offered nowhere
+  (`PartLibrary.add_stand_in`: a PartInfo with no size, `mesh_for` null,
+  `reachable` false), with its place, colour, copy, step and line, so move,
+  rename, Ungroup, delete, undo and copy carry it and a save writes it by
+  its line (keeptext4: kept beside the world in `ModelStore._absent` and
+  `SourceFile.not_shown`, moving its copy left it behind and deleting the
+  copy kept it, kt3review #6 and #8). A model given steps by an edit gives
+  it the step of the part nearest it in its copy
+  (`AuthorSteps._stand_ins_stepped`). It is no part to anything that asks
+  by number (`PartLibrary.has_part`): a file opened later that carries a
+  sub-model or a part by that number builds it, and a session asking for it
+  hears there is none. File, Open says how many and which, a
+  flexible part once by its sub-model ("… (ropeLQ-1 (flexible))").
+  `fidelity_probe` checks it, `kt3r_probe`'s unshown_copy and
+  delete_unshown_copy move and delete its copy, unshown_edits picks it up,
+  renames, ungroups and copies its copy, stand_in_named opens the file that
+  carries it, and the cad task test counts a part lost on open only when it
   is neither shown nor kept.
 - `flexible parts drawn` (`CustomParts.begin_skins`, `PartForge.build_skin`):
   LDCad writes a hose's, a rope's or a band's skin after `0 !LDCAD
@@ -925,10 +939,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   after any change, an empty one too.
 - `the autosave of a model short of a part` (`ModelStore.tick`,
   `ModelStore._text_into`): a model with parts not yet fetched, that never
-  come (`ModelStore.awaited`), or that the catalogue has not got
-  (`ModelStore._absent` for the app's own file; `SourceFile` keeps someone
-  else's) is autosaved like any other, those parts written where the file had
-  them, in their sub-model even when nothing else of it is on the baseplate
+  come (`ModelStore.awaited`), or that the catalogue has not got (a brick
+  drawn as nothing, `PartLibrary.add_stand_in`, written with the rest) is
+  autosaved like any other, those parts written where the file had them, in their sub-model even when nothing else of it is on the baseplate
   (`ModelStore._hold_unit`: until 2026-10-30 such a sub-model's parts went out
   loose in the model), and reopens with every part, the missing ones awaited
   and put down when they come. An open of a saved model says what it could not

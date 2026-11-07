@@ -1381,17 +1381,24 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	var missing: Dictionary = {}
 	var waiting: Dictionary = {}
 	var made_again: Dictionary = {}
+	# The parts this build has not got: in the model all the same, each a
+	# brick drawn as nothing (PartLibrary.add_stand_in), put down after the
+	# rest.
+	var absent: Array = []
 	for item: Variant in flattened:
 		var placement: LdrModel.Placement = item
+		var have: bool = library.has_part(placement.part_id)
 		# A piece the app makes itself (a band's, a coil's) whose FILE
 		# section the file has lost, as a tool that cannot read one drops
 		# it: made again from its name, as the tool made it. A band went
 		# off the baseplate whole without (springs, 2026-10-30).
-		if not library.parts.has(placement.part_id) and Bands.is_piece_id(placement.part_id) \
+		if not have and Bands.is_piece_id(placement.part_id) \
 				and not made_again.has(placement.part_id):
 			made_again[placement.part_id] = Bands.piece_part(library, placement.part_id)
-		if not library.parts.has(placement.part_id):
+		have = library.has_part(placement.part_id)
+		if not have:
 			missing[placement.part_id] = int(missing.get(placement.part_id, 0)) + 1
+			absent.append(placement)
 		elif not library.is_resident(placement.part_id):
 			# In the catalogue but not yet fetched, which on the web is
 			# most of it. Counted apart from missing, because asking for
@@ -1426,8 +1433,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Made before the model is stood on the ground: the file's coordinates.
 	# With what the text says besides its parts, read from the whole of it:
 	# on a worker for a big model, the frames going on.
-	var absent: Array = flattened.filter(func(p: LdrModel.Placement) -> bool:
-		return not library.parts.has(p.part_id))
 	var reading: Callable = func() -> Dictionary:
 		return _read_text(text, model, known, mirrored_lines, authored, absent, foreign)
 	var read: Dictionary
@@ -1459,8 +1464,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		unshown = source.unshown(absent)
 	elif not missing.is_empty():
 		unshown = _unshown_of(absent)
-	# The app's own file carries them itself (_text_into).
-	_absent = absent if source == null else []
 
 	# Which copy of the file each copy is, by its path, wherever an edit
 	# takes it (SourceFile).
@@ -1540,6 +1543,21 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			if world.generation() != laying_in:
 				_put_away(out, job)
 				return
+	# A part this build has not got goes down as a brick drawn as nothing,
+	# where the file puts it: every edit carries it as it carries the rest,
+	# and a save writes it. Kept beside the world, it was left behind by
+	# its copy moved and kept by its copy deleted (kt3review #6, #8).
+	for placement: LdrModel.Placement in absent:
+		library.add_stand_in(placement.part_id)
+		placement.transform.origin += up
+		var stand_in: int = world.add_brick(
+			placement.part_id, placement.color_code, placement.transform)
+		if stand_in == 0:
+			continue
+		world.get_brick(stand_in).group = placement.group
+		world.get_brick(stand_in).unit = placement.unit
+		world.get_brick(stand_in).step = placement.step
+		world.get_brick(stand_in).origin = placement.origin
 	_phase("draw")
 	if paced:
 		# Drawn now, every part down whose geometry is here, and the rest
@@ -1678,7 +1696,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# drawn.
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "",
-		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
+		"unshown": unshown, "kept": source != null or not absent.is_empty(),
 		"unbuilt": unbuilt})
 
 
@@ -1711,7 +1729,7 @@ static func _why_not_a_model(text: String) -> String:
 static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lines: Dictionary,
 		authored: bool, absent: Array, foreign: bool) -> Dictionary:
 	return {
-		"source": SourceFile.make(text, model, known, mirrored_lines, authored, absent)
+		"source": SourceFile.make(text, model, known + absent, mirrored_lines, authored)
 			if foreign else null,
 		# A step's look is kept by its step's number, which means nothing
 		# where the steps are not the author's; the booklet's own, its page
@@ -2198,12 +2216,6 @@ static func title_meta_in(text: String) -> String:
 ## brick, and New said the model had changed. Main opens through here now.
 var awaited: Array[LdrModel.Placement] = []
 var _awaited_in: int = -1
-## Placements of the app's own file whose part the catalogue has not got
-## (a newer build's, say), in the file's coordinates: written back where it
-## had them, as [member awaited] are. Someone else's file keeps its own
-## (SourceFile). Until 2026-10-20 they went from the app's own: a save, or an
-## autosave once the model was edited, wrote it without them.
-var _absent: Array = []
 ## Whether [method not_coming] has said this model's count.
 var _told_not_coming: bool = false
 
@@ -2506,22 +2518,16 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		if first.has(path):
 			entry["first"] = int(first[path])
 	# What has not arrived, or could not be fetched, goes out last, where the
-	# file had it, and so does what the catalogue has not got. Someone else's
-	# file keeps their lines (SourceFile); the app's own was saved without
-	# them: a model saved on a phone that lost a part's fetch lost the part
-	# (fetch_retry_probe, 2026-10-20).
+	# file had it. Someone else's file keeps their lines (SourceFile); the
+	# app's own was saved without them: a model saved on a phone that lost a
+	# part's fetch lost the part (fetch_retry_probe, 2026-10-20). A part the
+	# catalogue has not got is on the baseplate, a brick drawn as nothing
+	# (PartLibrary.add_stand_in), and goes out with the rest.
 	if _live_source() == null and world.generation() == _awaited_in:
-		# Awaited parts were stood on the ground with the rest; the absent are
-		# as the file had them.
-		var held_at: Array = []
+		# Stood on the ground with the rest.
 		for waiting: LdrModel.Placement in awaited:
-			held_at.append([waiting, back * waiting.transform])
-		for absent: LdrModel.Placement in _absent:
-			held_at.append([absent, absent.transform])
-		for pair: Array in held_at:
-			var waiting: LdrModel.Placement = pair[0]
 			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
-				pair[1], waiting.step)
+				back * waiting.transform, waiting.step)
 			held.group = waiting.group
 			# In its sub-model, as the file had it: one with nothing on the
 			# baseplate (a band whose pieces could not be made) is written

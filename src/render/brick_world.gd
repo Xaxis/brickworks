@@ -402,7 +402,9 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 		# The stub's geometry is the new part's, where it is to hand first.
 		drawn_as = part_id
 		part = library.mesh_for(part_id)
-	if part == null:
+	# A part this build has not got is a brick all the same, drawn as
+	# nothing (PartLibrary.add_stand_in).
+	if part == null and not library.is_stand_in(real):
 		return 0
 	var number: int = as_id if as_id > 0 and as_id < _next_id and not _bricks.has(as_id) \
 		else _next_id
@@ -416,7 +418,7 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 
 	var keys := PackedStringArray()
 	var info: PartLibrary.PartInfo = library.parts[drawn_as]
-	for surface_index: int in part.surface_count():
+	for surface_index: int in (part.surface_count() if part != null else 0):
 		var key: String = _batch_key(info.mesh_hash, surface_index, part, color_code)
 		var batch: Batch = _batches.get(key)
 		if batch == null:
@@ -510,7 +512,7 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 	var info: PartLibrary.PartInfo = library.parts[brick.part_id]
 	var keys := PackedStringArray()
-	for surface_index: int in part.surface_count():
+	for surface_index: int in (part.surface_count() if part != null else 0):
 		var key: String = _batch_key(
 			info.mesh_hash, surface_index, part, color_code)
 		var batch: Batch = _batches.get(key)
@@ -660,7 +662,7 @@ func repaint_in_place(changes: Dictionary) -> void:
 		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		var code: int = int(changes[brick_id])
 		var same_class: bool = true
-		for surface_index: int in part.surface_count():
+		for surface_index: int in (part.surface_count() if part != null else 0):
 			if _material_class_for(part, surface_index, code) \
 					!= _material_class_for(part, surface_index, brick.color_code):
 				same_class = false
@@ -818,7 +820,7 @@ func model_bounds() -> AABB:
 			continue
 		var brick: Brick = _bricks[brick_id]
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
-		if info == null:
+		if info == null or info.stand_in:
 			continue
 		var box: AABB = brick.transform * info.bounds
 		if first:

@@ -42,7 +42,7 @@ static func make(library: PartLibrary, spec: RefCounted,
 	var id: String = base
 	var text: String = maker.dat(spec, id)
 	var n: int = 1
-	while library.parts.has(id) and library.custom_source(id) != text:
+	while library.has_part(id) and library.custom_source(id) != text:
 		n += 1
 		id = "%s-%d" % [base, n]
 		text = maker.dat(spec, id)
@@ -74,7 +74,7 @@ static func modified_text(library: PartLibrary, edit: RefCounted) -> Dictionary:
 	var id: String = base
 	var made: Dictionary = editor.make_dat(edit, mesh, info.name, category, id)
 	var n: int = 1
-	while made["problem"] == "" and library.parts.has(id) \
+	while made["problem"] == "" and library.has_part(id) \
 			and library.custom_source(id) != str(made["text"]):
 		n += 1
 		id = "%s-%d" % [base, n]
@@ -556,7 +556,7 @@ static func _load_later(library: PartLibrary, texts: Dictionary,
 		return PackedStringArray(named.keys()))
 	for file_name: String in texts:
 		var id: String = file_name.get_basename()
-		if library.parts.has(id):
+		if library.has_part(id):
 			continue
 		var result: Dictionary = add(library, texts[file_name], id, false,
 			sources.get(file_name, {}))
@@ -737,7 +737,7 @@ static func unreached_by(library: PartLibrary, model: LdrModel) -> PackedStringA
 				continue
 			var body: String = str(model.section_texts.get(sub.name.to_lower(), ""))
 			var seen: Array = _skins_of_body.get(body, [])
-			if not seen.is_empty() and (str(seen[0]).is_empty() or library.parts.has(seen[0])):
+			if not seen.is_empty() and (str(seen[0]).is_empty() or library.has_part(seen[0])):
 				continue
 			if not model.skin_texts.has(body):
 				model.skin_texts[body] = _skin_text(library, model, sub, body, pieces)
@@ -1028,7 +1028,7 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 		# or that it has none (42058's hose is 15,760 lines: read again on
 		# every open, 40 ms of a 150 ms one).
 		var seen: Array = _skins_of_body.get(body, [])
-		if not seen.is_empty() and (str(seen[0]).is_empty() or (library.parts.has(seen[0])
+		if not seen.is_empty() and (str(seen[0]).is_empty() or (library.has_part(seen[0])
 				and library.custom_source(seen[0]) == str(seen[1]))):
 			if not str(seen[0]).is_empty():
 				begun.append({"key": key, "sub": sub, "id": seen[0], "text": seen[1],
@@ -1050,7 +1050,7 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 		_skins_of_body[body] = [id, text]
 		var entry: Dictionary = {"key": key, "sub": sub, "id": id, "text": text,
 			"sources": sources, "pieces": pieces, "task": -1, "built": [null]}
-		if not (library.parts.has(id) and library.custom_source(id) == text):
+		if not (library.has_part(id) and library.custom_source(id) == text):
 			# Found already where the web looked before it opened (unreached_by).
 			var unreached: PackedStringArray = made_of["unreached"] if made_of.has("unreached") \
 				else Later.script(&"PartForge").unreached(text, sources)
@@ -1264,7 +1264,7 @@ static func _skin_id(library: PartLibrary, key: String, text: String) -> String:
 	var base: String = key + "-flex"
 	var id: String = base
 	var n: int = 1
-	while library.parts.has(id) and library.custom_source(id) != text:
+	while library.has_part(id) and library.custom_source(id) != text:
 		n += 1
 		id = "%s-%d" % [base, n]
 	return id
@@ -1279,7 +1279,7 @@ static func _is_piece(library: PartLibrary, model: LdrModel, key: String,
 	if pieces.has(key):
 		return pieces[key]
 	var piece: bool = false
-	if library.parts.has(key) or model.embedded_parts.has(key + ".dat"):
+	if library.has_part(key) or model.embedded_parts.has(key + ".dat"):
 		piece = true
 	elif model.generated.has(key) and model.submodels.has(key):
 		piece = true

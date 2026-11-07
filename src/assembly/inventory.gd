@@ -242,7 +242,7 @@ static func count_of_text(text: String, library: PartLibrary) -> int:
 	var bricks: Array = []
 	for placement: LdrModel.Placement in model.flatten(library.parts):
 		var part: String = library.resolve(ModelStore.studio_part(placement.part_id, library))
-		if not library.parts.has(part):
+		if not library.has_part(part):
 			continue
 		var brick := BrickWorld.Brick.new(bricks.size() + 1, part, placement.color_code,
 			placement.transform)

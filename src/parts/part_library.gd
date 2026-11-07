@@ -338,6 +338,10 @@ class PartInfo extends RefCounted:
 	## old files); -1 for every other part.
 	var fixed_colour: int = -1
 
+	## A part this build has not got, read from a model's file
+	## ([method PartLibrary.add_stand_in]): no shape, no size, offered nowhere.
+	var stand_in: bool = false
+
 	func is_redirect() -> bool:
 		return not moved_to.is_empty()
 
@@ -1070,7 +1074,7 @@ func _load_colors() -> void:
 ## than as an error worth stopping for.
 func mesh_for(part_id: String) -> Lbm.PartMesh:
 	var info: PartInfo = parts.get(part_id)
-	if info == null:
+	if info == null or info.stand_in:
 		return null
 	if _mesh_cache.has(info.mesh_hash):
 		return _mesh_cache[info.mesh_hash]
@@ -1316,7 +1320,7 @@ func is_resident(part_id: String) -> bool:
 ## coming at all.
 func is_on_its_way(part_id: String) -> bool:
 	var info: PartInfo = parts.get(part_id)
-	if info == null or _mesh_cache.has(info.mesh_hash) \
+	if info == null or info.stand_in or _mesh_cache.has(info.mesh_hash) \
 			or _arrived.has(info.mesh_hash):
 		return false
 	return (_fetching.has(info.mesh_hash) or _queued_fetches.has(part_id)
@@ -1340,7 +1344,7 @@ func is_on_its_way(part_id: String) -> bool:
 ## until they are done — the one wait in the whole app that is felt.
 func request_mesh(part_id: String, urgent: bool = false) -> bool:
 	var info: PartInfo = parts.get(part_id)
-	if info == null:
+	if info == null or info.stand_in:
 		return false
 	if _mesh_cache.has(info.mesh_hash) or _custom_meshes.has(info.mesh_hash) \
 			or _arrived.has(info.mesh_hash):
@@ -1884,6 +1888,54 @@ var _custom_meshes: Dictionary = {}
 signal custom_added(part_id: String)
 
 
+## A part a model's file places that this build has not got (an unofficial
+## sticker, a part of another program's library), made a part of the model
+## like any other: in the world as a brick drawn as nothing, with its place,
+## colour, copy, step and line. Every edit carries it, undo puts it back, and
+## a save writes it, where it was beside the world before and no edit
+## touched it: moving its copy left it behind, deleting the copy kept it
+## (kt3review #6, #8; keeptext4). Its PartInfo has no size, no shape
+## (mesh_for gives null, as for a part whose shape has not arrived) and is
+## offered nowhere (reachable false). A part made or carried later by that
+## number takes its place ([method add_custom]).
+func add_stand_in(part_id: String) -> void:
+	if parts.has(part_id):
+		return
+	_wait_for_readers()
+	var info := PartInfo.new()
+	info.id = part_id
+	info.name = part_id
+	info.category = STAND_IN_CATEGORY
+	info.kind = "Part"
+	info.recolourable = true
+	info.unofficial = true
+	info.reachable = false
+	info.exact = false
+	info.stand_in = true
+	parts[part_id] = info
+
+
+## Whether [param part_id] is a part this build has not got, in a model as a
+## brick drawn as nothing ([method add_stand_in]).
+func is_stand_in(part_id: String) -> bool:
+	var info: PartInfo = parts.get(part_id)
+	return info != null and info.stand_in
+
+
+## Whether [param part_id] is a part: the library's own, or one made or
+## carried in a file. Not a stand-in, which only holds a number a model
+## placed: a file opened later that carries a sub-model or a part by that
+## number builds it, and a session or a person asking for it hears there is
+## no such part.
+func has_part(part_id: String) -> bool:
+	var info: PartInfo = parts.get(part_id)
+	return info != null and not info.stand_in
+
+
+## The category a part this build has not got is under ([method add_stand_in]).
+const STAND_IN_CATEGORY := "Not in this library"
+
+
 ## Put a made part beside the catalogue's, or replace one made before.
 func add_custom(info: PartInfo, mesh: Lbm.PartMesh, source: String) -> void:
 	_wait_for_readers()
@@ -1892,7 +1944,7 @@ func add_custom(info: PartInfo, mesh: Lbm.PartMesh, source: String) -> void:
 	# ahead of the next search once this frame's parts are in (a file brings
 	# several), where the next key waited for it (handbuild, 2026-11-05).
 	var indexed: bool = forget_search()
-	if not parts.has(info.id):
+	if not parts.has(info.id) or (parts[info.id] as PartInfo).stand_in:
 		_ordered_ids.append(info.id)
 	parts[info.id] = info
 	custom[info.id] = source

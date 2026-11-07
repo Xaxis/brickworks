@@ -1431,7 +1431,7 @@ func _parts_of(text: String) -> Array:
 			placement.part_id = _library.current(placement.part_id)
 			placement.color_code = colour
 		out.append([placement.part_id, placement.color_code, placement.transform,
-			_library.parts.has(placement.part_id), placement.unit])
+			_library.has_part(placement.part_id), placement.unit])
 	return out
 
 

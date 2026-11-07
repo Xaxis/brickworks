@@ -2266,10 +2266,14 @@ func _put_carried() -> int:
 		world.get_brick(brick_id).unit = unit
 		if not carrying.lifted and copy_group.is_valid():
 			set_path(world.get_brick(brick_id), path)
-		# Moved, a part keeps its build step; a copy goes in the step a
-		# placed part would.
+		# Moved, a part keeps its build step, and the line of the file it
+		# was read from (BrickWorld.Brick.origin): picked up and put down,
+		# it was written as a part gone and a part new (keeptext4). A copy
+		# goes in the step a placed part would, and was read from no line.
 		world.get_brick(brick_id).step = int(item.get("step", -1)) if carrying.lifted \
 			else _new_step(world.get_brick(brick_id))
+		if carrying.lifted:
+			world.get_brick(brick_id).origin = str(item.get("origin", ""))
 		lattice.occupy_boxes(brick_id, item["boxes"])
 		steps.append({"undo": "remove", "brick": brick_id})
 		ids.append(brick_id)

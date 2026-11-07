@@ -86,8 +86,6 @@ class Read extends RefCounted:
 	var colour: int = 0
 	var at: Transform3D = Transform3D.IDENTITY
 	var unit: String = ""
-	## A part the app can show (one it cannot is kept as it was).
-	var shown: bool = true
 	## Read from a line that is no part's: a flexible part's skin, from
 	## LDCad's GENERATED line (CustomParts). Never written over.
 	var fixed: bool = false
@@ -239,7 +237,6 @@ var unit_lines: Dictionary = {}
 var unit_chains: Dictionary = {}
 var authored: bool = false
 ## The parts the app could not show, as LdrModel.Placement.
-var not_shown: Array = []
 ## What the model is called by the file itself: a save under another name
 ## says that name on a line of its own (ModelStore.TITLE_META).
 var own_title: String = ""
@@ -270,12 +267,11 @@ var nofile: bool = false
 
 ## [param placements] are what the model opened as: every part put down or
 ## on its way, after its number was resolved, before the model was stood on
-## the ground ([member LdrModel.Placement.origin] set).
-## [param hidden_parts] are the parts it holds the app cannot show.
+## the ground ([member LdrModel.Placement.origin] set), parts this build has
+## not got with them (PartLibrary.add_stand_in).
 static func make(text: String, model: LdrModel, placements: Array,
-		_mirrored_lines: Dictionary, authored_steps: bool, hidden_parts: Array = []) -> SourceFile:
+		_mirrored_lines: Dictionary, authored_steps: bool) -> SourceFile:
 	var source := SourceFile.new()
-	source.not_shown = hidden_parts.duplicate()
 	source.lines = text.split("\n")
 	var ended_so: int = 0
 	for n: int in source.lines.size() - 1:
@@ -292,9 +288,7 @@ static func make(text: String, model: LdrModel, placements: Array,
 	source._read_sections()
 	source._read_copies()
 	for item: Variant in placements:
-		source._read_part(item as LdrModel.Placement, true)
-	for item: Variant in hidden_parts:
-		source._read_part(item as LdrModel.Placement, false)
+		source._read_part(item as LdrModel.Placement)
 	source._read_runs()
 	return source
 
@@ -413,7 +407,7 @@ func _read_copies() -> void:
 		parent.children.append(copy)
 
 
-func _read_part(placement: LdrModel.Placement, shown: bool) -> void:
+func _read_part(placement: LdrModel.Placement) -> void:
 	if placement.origin.is_empty() or reads.has(placement.origin):
 		return
 	var cut: int = placement.origin.rfind("/")
@@ -428,7 +422,6 @@ func _read_part(placement: LdrModel.Placement, shown: bool) -> void:
 	read.colour = placement.color_code
 	read.at = placement.transform
 	read.unit = placement.unit
-	read.shown = shown
 	read.fixed = read.line >= lines.size() or not _is_placing(lines[read.line])
 	reads[read.origin] = read
 	copy.reads.append(read)
@@ -711,7 +704,7 @@ func _place_copies(save: Save) -> void:
 	var brickable: Dictionary = {}
 	for origin: String in reads:
 		var read: Read = reads[origin]
-		if read.shown and not save.waiting.has(origin):
+		if not save.waiting.has(origin):
 			var copy: Copy = read.copy
 			while copy != null and not brickable.has(copy.chain):
 				brickable[copy.chain] = true
@@ -731,7 +724,7 @@ func _place_copies(save: Save) -> void:
 			var brick: BrickWorld.Brick = save.by_origin.get(read.origin)
 			if brick != null and read.fixed:
 				drawn.append(save.at_of[brick.id] * read.at.affine_inverse())
-			elif read.fixed and read.shown and not save.waiting.has(read.origin):
+			elif read.fixed and not save.waiting.has(read.origin):
 				skin_gone = true
 		# Its part taken away, a flexible part's copy is gone: its end parts,
 		# where there are any, are parts of their own.
@@ -899,7 +892,7 @@ func _assign(save: Save) -> void:
 					here.inplace[read.line] = item
 				else:
 					_move_in(save, item, to, copy)
-			elif save.waiting.has(read.origin) or not read.shown:
+			elif save.waiting.has(read.origin):
 				var held := Item.new()
 				held.read = read
 				held.line = read.line
@@ -1862,7 +1855,7 @@ func _holds(save: Save, copy: Copy) -> bool:
 	todo.append(copy)
 	for each: Copy in todo:
 		for read: Read in each.reads:
-			if save.waiting.has(read.origin) or (read.shown and save.by_origin.has(read.origin)):
+			if save.waiting.has(read.origin) or save.by_origin.has(read.origin):
 				return true
 	return false
 
