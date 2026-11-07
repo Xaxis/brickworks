@@ -9,19 +9,21 @@
 ## about each other did nothing, where a map, a photo and LeoCAD turn with
 ## them. In the app laid out for a phone (a tablet's, or the desktop's with a
 ## touchscreen, by the window and --tablet), by fingers as the window hands
-## them over, a frame at a time:
+## them over, a frame at a time, each finger starting and stopping at rest as
+## a person's does:
 ##   1. two fingers turned a quarter turn about the model turn the view 90°
 ##      ±5° round the up, its tilt as it was within 0.5°, and what was
 ##      between them still between them; the model as it was;
 ##   2. seen from above and from below, the model turns the way the fingers
-##      went round on the screen, and the view still looks straight down;
+##      went round on the screen, and the view still looks straight down or up;
 ##   3. a pinch, two fingers slid together and one finger's drag do what they
-##      did before the twist, within 1% (SAME, measured on pre261 3f13e35f);
-##      a pinch whose fingers turn 6° as they spread zooms as far and turns
-##      nothing;
+##      did before the twist, within 1% (SAME, measured on pre261 3f13e35f),
+##      and a pinch turns nothing, nor does one whose fingers turn 6° as they
+##      spread (pre261 turned the view by the first finger's way: the pointer
+##      the engine raises from it);
 ##   4. a quarter turn and a spread at once, as a hand makes them: both.
-## Pictures before and after the turn in shots/twist/. Exits non-zero when a
-## check fails.
+## Every gesture leaves the model as it was. Pictures before and after the
+## turn in shots/twist/. Exits non-zero when a check fails.
 extends SceneTree
 
 const SHOTS := "res://shots/twist/"
@@ -32,8 +34,8 @@ const SHOTS := "res://shots/twist/"
 ## drag on a phone as degrees turned round the up, the slide on the desktop as
 ## how far the model moved on the screen, in the window's units.
 const SAME := {
-	"phone": {"pinch": 1.0 / 3.0, "slide": -30.94, "drag": -30.94},
-	"desktop": {"pinch": 1.0 / 3.0, "slide": 150.0, "drag": -30.94},
+	"phone": {"pinch": 1.0 / 3.0, "slide": -82.245, "drag": -82.245},
+	"desktop": {"pinch": 1.0 / 3.0, "slide": 151.747, "drag": -82.245},
 }
 ## How far the fingers slide and a finger drags, in the window's units.
 const TRAVEL := 150.0
@@ -46,6 +48,8 @@ var _builder: Builder
 var _layout: String = "phone"
 var _size: String = ""
 var _home: Dictionary = {}
+## Every part where it was put and nothing selected (_parts).
+var _built: Array = []
 
 
 func _initialize() -> void:
@@ -100,12 +104,16 @@ func _run() -> void:
 		else "the desktop's"), _camera.phone == (_layout != "desktop"))
 
 	# Two 2 x 4 bricks crossed, framed small in the middle, so the fingers come
-	# down round the model and the point between them is on it.
+	# down round the model and the point between them is on it. The example
+	# car a first visit opens is taken off first.
+	_main.call("clear_model")
+	await _frames(4)
 	for brick: Array in [["3001", 4, Basis.IDENTITY, Vector3(0, 24, 0)],
 			["3001", 1, Basis(Vector3.UP, PI * 0.5), Vector3(0, 48, 0)]]:
 		var where := Transform3D(brick[2] as Basis, brick[3] as Vector3)
 		var id: int = _world.add_brick(brick[0], brick[1], where)
 		_builder.register(id, brick[0], where)
+	_built = _parts()
 	_camera.set_view("default")
 	_camera.frame(AABB(Vector3(-160, 0, -160), Vector3(320, 72, 320)))
 	await _settle()
@@ -120,6 +128,7 @@ func _run() -> void:
 	await _as_before()
 	print("\n4. a quarter turn and a spread at once")
 	await _turn_and_spread()
+	await _on_the_model()
 
 	print("\ntwist_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures else 0)
@@ -154,6 +163,7 @@ func _turned_a_quarter() -> void:
 	var back: float = _turned(heading, _heading())
 	_check("turned back a quarter turn the other way, the view is back (%.1f° from it)" % back,
 		absf(back) <= 2.0)
+	_check("...the model as it was", _parts() == parts)
 
 
 ## Seen from above or below: a point of the model beside the one between the
@@ -193,8 +203,8 @@ func _as_before() -> void:
 	print("  measure pinch %.6f" % pinch)
 	_check("a pinch spread three times as wide leaves %.4f of the distance (%.4f before, ±1%%)"
 		% [pinch, same["pinch"]], _within(pinch, same["pinch"]))
-	_check("...and turns nothing (%.3f°)" % _turned(heading, _heading()),
-		absf(_turned(heading, _heading())) <= 0.05)
+	_check("...and turns nothing (%.3f°), the model as it was" % _turned(heading, _heading()),
+		absf(_turned(heading, _heading())) <= 0.05 and _parts() == _built)
 
 	await _go_home()
 	heading = _heading()
@@ -203,7 +213,8 @@ func _as_before() -> void:
 	var turned: float = _turned(heading, _heading())
 	print("  measure sloppy %.6f %.3f" % [sloppy, turned])
 	_check("a pinch whose fingers turn 6° as they spread zooms as far (%.4f) and turns nothing (%.3f°)"
-		% [sloppy, turned], _within(sloppy, same["pinch"]) and absf(turned) <= 0.05)
+		% [sloppy, turned], _within(sloppy, same["pinch"]) and absf(turned) <= 0.05
+		and _parts() == _built)
 
 	await _go_home()
 	heading = _heading()
@@ -216,12 +227,13 @@ func _as_before() -> void:
 		var moved: float = _camera.screen_of(was).x - seen_at.x
 		print("  measure slide %.3f" % moved)
 		_check("two fingers slid %d units slide the model %.2f units (%.2f before, ±1%%)" % [
-			roundi(TRAVEL), moved, same["slide"]], _within(moved, same["slide"]))
+			roundi(TRAVEL), moved, same["slide"]], _within(moved, same["slide"]) and _parts() == _built)
 	else:
 		var round_up: float = _turned(heading, _heading())
 		print("  measure slide %.3f" % round_up)
 		_check("two fingers slid %d units turn the view %.2f° (%.2f° before, ±1%%)" % [
-			roundi(TRAVEL), round_up, same["slide"]], _within(round_up, same["slide"]))
+			roundi(TRAVEL), round_up, same["slide"]], _within(round_up, same["slide"])
+			and _parts() == _built)
 
 	# One finger beside the model, on nothing, so it is the view's.
 	await _go_home()
@@ -231,7 +243,7 @@ func _as_before() -> void:
 	var dragged: float = _turned(heading, _heading())
 	print("  measure drag %.3f" % dragged)
 	_check("one finger dragged %d units turns the view %.2f° (%.2f° before, ±1%%)" % [
-		roundi(TRAVEL), dragged, same["drag"]], _within(dragged, same["drag"]))
+		roundi(TRAVEL), dragged, same["drag"]], _within(dragged, same["drag"]) and _parts() == _built)
 
 
 func _turn_and_spread() -> void:
@@ -244,7 +256,24 @@ func _turn_and_spread() -> void:
 	var left: float = _camera.distance_now() / far
 	print("  measure both %.3f %.6f" % [turned, left])
 	_check("turned a quarter turn as they spread twice as wide: %.1f° (90 ±5), %.4f of the distance (0.5000 ±1%%)"
-		% [turned, left], absf(absf(turned) - 90.0) <= 5.0 and _within(left, 0.5))
+		% [turned, left], absf(absf(turned) - 90.0) <= 5.0 and _within(left, 0.5)
+		and _parts() == _built)
+
+
+## Told, not judged, and last, since it may move a part: the fingers on the
+## model itself, the first on a part, as a twist on a small screen often is.
+func _on_the_model() -> void:
+	await _go_home()
+	var heading: float = _heading()
+	var middle: Vector2 = _camera.seen_rect().get_center()
+	await _two(_turning(middle, _reach() * 0.15, 90.0))
+	var now: Array = _parts()
+	var moved: int = 0
+	for n: int in _built.size() - 1:
+		if n >= now.size() - 1 or now[n] != _built[n]:
+			moved += 1
+	print("  note  fingers on the model: the view turned %.1f°, %d parts moved, %s selected"
+		% [_turned(heading, _heading()), moved, now[now.size() - 1]])
 
 
 # -- fingers ---------------------------------------------------------------------
@@ -279,7 +308,7 @@ func _two(path: Callable, steps: int = 24) -> void:
 		_touch(index, at[index], true)
 	await process_frame
 	for n: int in steps:
-		var to: Array = path.call(float(n + 1) / steps)
+		var to: Array = path.call(_eased(n + 1, steps))
 		for index: int in 2:
 			_drag(index, to[index], (to[index] as Vector2) - (at[index] as Vector2))
 		at = to
@@ -294,12 +323,19 @@ func _one(from: Vector2, to: Vector2, steps: int = 24) -> void:
 	await process_frame
 	var at: Vector2 = from
 	for n: int in steps:
-		var next: Vector2 = from.lerp(to, float(n + 1) / steps)
+		var next: Vector2 = from.lerp(to, _eased(n + 1, steps))
 		_drag(0, next, next - at)
 		at = next
 		await process_frame
 	_touch(0, to, false)
 	await _settle()
+
+
+## How far along the way a finger is after [param step] of [param steps]:
+## from rest to rest, as a hand moves, not at an even pace from its first
+## event (whose first move is then as long as any).
+static func _eased(step: int, steps: int) -> float:
+	return smoothstep(0.0, 1.0, float(step) / steps)
 
 
 func _touch(index: int, at: Vector2, down: bool) -> void:

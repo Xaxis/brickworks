@@ -569,6 +569,14 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	elif event is InputEventMouseMotion:
 		var motion: InputEventMouseMotion = event
+		# The pointer the engine raises from the first of two fingers. Two
+		# are read as two (_two_fingers), and the first one's own way is
+		# not the view's: turned by it as well, a twist swung the view as
+		# far as that finger went round, under the model and away from
+		# the fingers (74° and to straight down for a quarter turn on a
+		# phone), and a pinch turned it as far as the finger spread.
+		if motion.device == InputEvent.DEVICE_ID_EMULATION and _touches.size() >= 2:
+			return
 		if _dragging_right and _doing == Doing.NOTHING:
 			_right_travel += motion.relative.length()
 			if _right_travel > DRAG_SLOP:
@@ -1117,6 +1125,14 @@ func _distance_between() -> float:
 ## tremor turns a long way, are not read as turning.
 const TWIST_START := deg_to_rad(10.0)
 
+## How far two fingers moved together turn a phone's view, a share of the
+## way the point between them goes: what the pair turned it before the
+## twist. The fingers' own turn (0.006) and the mouse's (0.01), which the
+## pointer the engine raises from the first finger added at its every move
+## until it was left out (_unhandled_input), so a slide is as quick as it
+## was. One finger keeps both, as it always had.
+const TWO_FINGER_TURN := 0.016
+
 ## Where the point between the first two fingers was last frame, for a
 ## phone's turn; not finite with fewer than two down.
 var _middle_was: Vector2 = Vector2.INF
@@ -1160,7 +1176,7 @@ func _line_between() -> float:
 func _two_fingers() -> void:
 	var middle: Vector2 = _between()
 	if phone and _doing == Doing.ORBIT and _middle_was.is_finite():
-		_turn_by(middle - _middle_was, 0.006)
+		_turn_by(middle - _middle_was, TWO_FINGER_TURN)
 	_middle_was = middle
 	_twist()
 
