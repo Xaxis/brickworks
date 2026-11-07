@@ -24,6 +24,15 @@
 ## brick), and 3001 with a notch cut under its middle beside 3001, each
 ## beside the part it came from: shots/element_changed.png.
 ##
+## Then the families that copy a part LEGO makes (APP_UX6 #15), made with
+## the pointer, clicking the dialog's own buttons: a clip plate, a bar and a
+## wedge plate, each as the part it copies, then the other way of each
+## (horizontal, right): shots/element_clip_dialog.png. Each stands beside
+## the part it copies (60897, 87994, 41770a, 41769a, 61252), and 3062b
+## beside them takes the made bar in its hollow stud and the bar the made
+## clip, each taken as a click on a tile takes it and clicked on where it
+## goes: shots/element_clip.png. With -- only=copies, only that.
+##
 ## A window is needed because the preview and the thumbnails are drawn by
 ## SubViewports. Run it on Xvfb, never on somebody's screen (tools/check.sh
 ## does that for you).
@@ -68,6 +77,13 @@ func _run() -> void:
 	var world: BrickWorld = _main.get("_world")
 	var dialog: ElementDialog = _main.get("_elements")
 	_ok(dialog != null and not dialog.visible, "the dialog is there, closed")
+	if OS.get_cmdline_user_args().has("only=copies"):
+		var camera_only: CadCamera = _main.get("_camera")
+		bin._on_colour(MADE)
+		await _copies(_find_button(bin, "Make a part…"), dialog, library, world, builder,
+			store, camera_only)
+		_finish()
+		return
 
 	# The button a person presses.
 	bin._on_colour(MADE)
@@ -186,6 +202,7 @@ func _run() -> void:
 	_save("element_beside.png")
 	await _families(button, dialog, library, world, builder, store, camera)
 	await _changed(button, dialog, library, world, builder, store, camera)
+	await _copies(button, dialog, library, world, builder, store, camera)
 	_finish()
 
 
@@ -326,6 +343,191 @@ func _families(button: Button, dialog: ElementDialog, library: PartLibrary,
 	builder.hide_preview()
 	await RenderingServer.frame_post_draw
 	_save("element_families.png")
+
+
+## APP_UX6 #15 by the pointer: each family's button and Add clicked as a
+## person clicks them, each part held to the one it copies, then the made
+## bar clicked into 3062b's hollow stud and the made clip onto the bar.
+func _copies(button: Button, dialog: ElementDialog, library: PartLibrary,
+		world: BrickWorld, builder: Builder, store: ModelStore, camera: CadCamera) -> void:
+	if button == null or dialog == null:
+		_ok(false, "the parts bin has its Make a part… button")
+		return
+	# [the family's button, the way to set first if not its first, the
+	# part it copies, the title].
+	var makes: Array = [
+		["clip", "", "60897", "Plate  1 x  1 with Clip Vertical (Thick C-Clip)"],
+		["bar", "", "87994", "Bar  3L"],
+		["wedge", "", "41770a", "Wing  2 x  4 Left"],
+		["wedge", "right", "41769a", "Wing  2 x  4 Right"],
+		["clip", "horizontal", "61252", "Plate  1 x  1 with Clip Horizontal (Thick C-Clip)"],
+	]
+	var buttons: Dictionary = dialog.get("_family_buttons")
+	var add: Button = dialog.get("_add")
+	var ids: Array[String] = []
+	for entry: Array in makes:
+		await _press(button)
+		# Away from the family a part in hand would start it as.
+		await _press(buttons["brick"])
+		await _press(buttons[entry[0]])
+		if not str(entry[1]).is_empty():
+			dialog.set_field("way", entry[1])
+		for _n: int in 30:
+			await process_frame
+		await RenderingServer.frame_post_draw
+		_ok(dialog.built() != null and dialog.built().problem.is_empty() and _preview_drew(dialog),
+			"%s %s: its preview drew, \"%s\"" % [entry[0], entry[1], dialog.get("_about").text])
+		if ids.is_empty():
+			_save("element_clip_dialog.png")
+		var made: Array = []
+		dialog.made.connect(func(id: String) -> void: made.append(id), CONNECT_ONE_SHOT)
+		await _press(add)
+		var id: String = made[0] if not made.is_empty() else ""
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		var ours: Lbm.PartMesh = library.mesh_for(id)
+		var theirs: Lbm.PartMesh = library.mesh_for(str(entry[2]))
+		var off: float = INF
+		if ours != null and theirs != null:
+			off = maxf((ours.bounds.position - theirs.bounds.position).abs().length(),
+				(ours.bounds.end - theirs.bounds.end).abs().length())
+		_ok(info != null and info.name == str(entry[3]) and off <= 0.01
+				and ours.connectors.size() == theirs.connectors.size(),
+			"Add made %s, \"%s\": %s's bounds to %.4f LDU, its %d connectors" % [id,
+				info.name if info != null else "nothing", entry[2], off,
+				ours.connectors.size() if ours != null else 0])
+		ids.append(id)
+	if ids.has(""):
+		return
+
+	world.clear()
+	builder.lattice.clear()
+	store.scenery.clear()
+	_main.call("_lay_baseplate")
+	# Each beside the part it copies, made red, LEGO's grey.
+	var placed: Array[int] = []
+	var cursor: float = -150.0
+	for index: int in makes.size():
+		for n: int in 2:
+			var part_id: String = ids[index] if n == 0 else str(makes[index][2])
+			var wide: float = library.mesh_for(part_id).bounds.size.x
+			placed.append(_put(world, builder, library, part_id, MADE if n == 0 else LIBRARY,
+				Vector3(cursor + wide * 0.5, 0.0, -60.0)))
+			cursor += wide + 14.0
+		cursor += 16.0
+	var round_brick: int = _put(world, builder, library, "3062b", LIBRARY, Vector3(0, 0, 40))
+	placed.append(round_brick)
+	var box := AABB()
+	for brick_id: int in placed:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var bounds: AABB = brick.transform * library.mesh_for(brick.part_id).bounds
+		box = bounds if box.size == Vector3.ZERO else box.merge(bounds)
+	# Room over 3062b for the bar standing in it and the clip on the bar.
+	box = box.merge(AABB(Vector3(-20, 0, 20), Vector3(40, 90, 40)))
+	var chat: SideDock = _main.get("_chat_dock")
+	if chat != null:
+		chat.set_open(false, false)
+	for _n: int in 30:
+		await process_frame
+	camera.set("_target_yaw", deg_to_rad(-24.0))
+	camera.set("_target_pitch", deg_to_rad(28.0))
+	camera.frame(box.merge(AABB(box.position - Vector3(box.size.x * 0.45, 0.0, 0.0),
+		Vector3.ONE)), 0.72)
+	for _n: int in 180:
+		await process_frame
+
+	# The bar, taken as a click on its tile takes it, and clicked into the
+	# hollow stud: the pointer on the stud's top, in the middle.
+	var top: Vector3 = world.get_brick(round_brick).transform.origin
+	var bar: int = await _click_on(ids[1], top, camera, world, builder, library)
+	_ok(bar != 0 and _joined(world, library, bar).has(round_brick),
+		"the made bar, clicked on 3062b's hollow stud, stands in it, joined")
+	if bar == 0:
+		return
+	var along: AABB = world.get_brick(bar).transform * library.mesh_for(ids[1]).bounds
+	var clip: int = await _click_on(ids[0], along.get_center() + Vector3(0, 6, 0), camera,
+		world, builder, library)
+	_ok(clip != 0 and _joined(world, library, clip).has(bar),
+		"the made clip, clicked on the made bar, grips it, joined")
+	builder.held_part = ""
+	builder.hide_preview()
+	for _n: int in 60:
+		await process_frame
+	builder.hide_preview()
+	await RenderingServer.frame_post_draw
+	_save("element_clip.png")
+
+
+## Take [param part_id] as a click on its tile takes it, move the pointer
+## onto [param point] and click. Returns the brick put down there, or 0;
+## says whether its ghost stood on a joint before the click.
+func _click_on(part_id: String, point: Vector3, camera: CadCamera, world: BrickWorld,
+		builder: Builder, library: PartLibrary) -> int:
+	_main.call("_on_part_chosen", part_id)
+	for _n: int in 10:
+		await process_frame
+	var at: Vector2 = camera.unproject_position(point)
+	await _move(at + Vector2(0, 1))
+	await _move(at)
+	var on_joint: bool = builder.is_on_joint() and builder.can_place()
+	_ok(on_joint, "%s's ghost, the pointer on %s, is on a joint and may go" % [part_id,
+		Vector3i(point)])
+	var before: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		before[brick.id] = true
+	await _click_whole(at)
+	for brick: BrickWorld.Brick in world.bricks():
+		if not before.has(brick.id) and brick.part_id == part_id:
+			return brick.id
+	return 0
+
+
+## The bricks [param brick_id] is joined to by a pin, an axle or a round.
+func _joined(world: BrickWorld, library: PartLibrary, brick_id: int) -> Array:
+	var entries: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		entries.append([brick.id, brick.transform, library.mesh_for(brick.part_id)])
+	var held: Dictionary = (Joints.both_ways(entries).get(brick_id, {}) as Dictionary).duplicate()
+	held.merge(Joints.rounds(entries).get(brick_id, {}))
+	return held.keys()
+
+
+## A control pressed as a person presses one: the pointer to its middle,
+## pressed and let go.
+func _press(control: Control) -> void:
+	var at: Vector2 = control.get_global_rect().get_center()
+	await _move(at)
+	await _click_whole(at)
+
+
+func _as_event(at: Vector2) -> Vector2:
+	var rect: Vector2 = root.get_visible_rect().size
+	var window := Vector2(DisplayServer.window_get_size())
+	return at * (window / rect)
+
+
+func _move(at: Vector2) -> void:
+	var event := InputEventMouseMotion.new()
+	event.position = _as_event(at)
+	event.global_position = event.position
+	Input.parse_input_event(event)
+	for _n: int in 3:
+		await process_frame
+
+
+## A press and a release in whole pixels, as a browser sends them.
+func _click_whole(at: Vector2) -> void:
+	var whole: Vector2 = _as_event(at).floor()
+	for down: bool in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = down
+		event.position = whole
+		event.global_position = whole
+		Input.parse_input_event(event)
+		for _n: int in 2:
+			await process_frame
+	for _n: int in 3:
+		await process_frame
 
 
 ## Put things on a placed part the way it is used: a 1 x 1 round plate on

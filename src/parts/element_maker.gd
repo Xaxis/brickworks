@@ -69,6 +69,13 @@ const WAYS: Dictionary = {
 	"clip": ["vertical", "horizontal"],
 	"wedge": ["left", "right"],
 }
+## Where the dialog and make_part start each of these: the part LEGO makes
+## most of. A 4 x 2 brick made a clip plate keeps nothing worth keeping.
+const STARTS: Dictionary = {
+	"clip": {"across": 1, "deep": 1, "plates": 1, "way": "vertical"},
+	"bar": {"across": 3},
+	"wedge": {"across": 2, "deep": 4, "plates": 1, "way": "left"},
+}
 ## A bar's radius: 8 LDU across, the 3.2 mm a clip grips (87994).
 const BAR_RADIUS := 4.0
 ## Half the opening a clip's neck fills in the plate's front wall, as the
@@ -1440,6 +1447,12 @@ static func wedge_outline(spec: Spec) -> Array:
 	var z: float = spec.deep * STUD * 0.5
 	var m: float = -1.0 if spec.way == "right" else 1.0
 	return [[-x * m, -z], [(-x + STUD) * m, -z], [x * m, z], [-x * m, z]]
+
+
+## The angle between a wedge plate's cut side and its straight side, in
+## degrees: 14.0 for a 2 x 4 (41770a), 18.4 for a 3 x 6.
+static func wedge_angle(spec: Spec) -> float:
+	return rad_to_deg(atan2((spec.across - 1) * STUD, spec.deep * STUD))
 
 
 ## The cut's outward normal, unit, in x and z, and where the cut's line is

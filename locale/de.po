@@ -12027,3 +12027,63 @@ msgstr "%d Farben, je ein Objekt"
 
 msgid "3MF to 3D print"
 msgstr "3MF für den 3D-Druck"
+
+# Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
+# buttons, their ways, their rows and what the dialog says of each part.
+
+msgid "Clip"
+msgstr "Clip"
+
+msgid "A plate or tile with a clip on its front edge that grips a bar, upright or level"
+msgstr "Eine Platte oder Fliese mit einem Clip an der Vorderkante, der eine Stange hält, senkrecht oder waagerecht"
+
+msgid "A bar 3.2 mm across, any number of studs long: a clip grips it, a hollow stud holds its end"
+msgstr "Eine Stange, 3,2 mm dick und beliebig viele Noppen lang: ein Clip hält sie, eine hohle Noppe ihr Ende"
+
+msgid "A wedge plate (LDraw calls it a wing): one side straight, the other cut in to a tip one stud wide"
+msgstr "Eine Keilplatte (LDraw nennt sie Flügel): eine Seite gerade, die andere schräg bis zu einer Spitze, eine Noppe breit"
+
+msgid "vertical: it holds a bar standing up"
+msgstr "senkrecht: er hält eine stehende Stange"
+
+msgid "horizontal: it holds a bar along the edge"
+msgstr "waagerecht: er hält eine Stange entlang der Kante"
+
+msgid "left: the straight side on the left"
+msgstr "links: die gerade Seite links"
+
+msgid "right: the straight side on the right"
+msgstr "rechts: die gerade Seite rechts"
+
+msgid "The clip"
+msgstr "Der Clip"
+
+msgid "Left or right"
+msgstr "Links oder rechts"
+
+msgid "Which way"
+msgstr "Welche Richtung"
+
+msgid "Width, studs (the clip's edge)"
+msgstr "Breite, Noppen (die Kante mit dem Clip)"
+
+msgid "Width, studs (the wide end)"
+msgstr "Breite, Noppen (das breite Ende)"
+
+msgid "Depth, studs"
+msgstr "Tiefe, Noppen"
+
+msgid "Length, studs (to the tip)"
+msgstr "Länge, Noppen (bis zur Spitze)"
+
+msgid "%s mm long and %s mm across: a clip grips it anywhere along it, and either end goes into a hollow stud."
+msgstr "%s mm lang und %s mm dick: ein Clip hält sie an jeder Stelle, und jedes Ende passt in eine hohle Noppe."
+
+msgid "Its clip grips a bar 3.2 mm across, standing up."
+msgstr "Sein Clip hält eine Stange von 3,2 mm, stehend."
+
+msgid "Its clip grips a bar 3.2 mm across, lying along the edge."
+msgstr "Sein Clip hält eine Stange von 3,2 mm, liegend entlang der Kante."
+
+msgid "Its cut side runs at %s° to the straight side, to a tip one stud wide."
+msgstr "Ihre schräge Seite steht in %s° zur geraden, bis zu einer Spitze, eine Noppe breit."

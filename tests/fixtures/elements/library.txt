@@ -48,3 +48,11 @@
 # Not whole studs across: sockets on the part's own studs (bottom_sockets).
 50949
 50948
+# The parts round six's families copy (APP_UX6 #15): clips (clip5, clip6),
+# a bar, and wedge plates whose tubes the cut shortens to arcs (shafts
+# and bores from partial cylinders).
+60897
+61252
+87994
+41770a
+41769a

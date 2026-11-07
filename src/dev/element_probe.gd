@@ -37,6 +37,16 @@
 ## with "Change it" and a corner cut out of it: three studs, a corner brick,
 ## stacked and carried like the rest.
 ##
+## And three families that copy a part LEGO makes (APP_UX6 #15): a 1 x 1
+## plate with a vertical clip (60897) and with a horizontal one (61252), a
+## bar 3 studs long (87994), and a 2 x 4 wedge plate left and right (41770a,
+## 41769a). Each is held to the part it copies as the catalogue has it:
+## its bounds to 0.01 LDU, its connectors the same in number, kind and
+## place. Then the made bar is aimed into 3062b's hollow stud and the made
+## clip at the made bar, as the pointer aims, and each goes on, joined; the
+## wedge plates are stacked and clutched, with the space their cut leaves
+## free; and each is made again in one make_part call, the same part.
+##
 ## Made parts go to user://custom_parts_probe/, never the person's own.
 extends SceneTree
 
@@ -49,6 +59,18 @@ var _assistant: Assistant
 var _base: int = 0
 
 const PROBE_DIR := "user://custom_parts_probe/"
+
+## What APP_UX6 #15 copies: [family, the dialog's fields, the title it
+## makes, the LDraw part it copies].
+const COPIES: Array = [
+	["clip", {"across": 1, "deep": 1, "way": "vertical"},
+		"Plate  1 x  1 with Clip Vertical (Thick C-Clip)", "60897"],
+	["clip", {"across": 1, "deep": 1, "way": "horizontal"},
+		"Plate  1 x  1 with Clip Horizontal (Thick C-Clip)", "61252"],
+	["bar", {"across": 3}, "Bar  3L", "87994"],
+	["wedge", {"across": 2, "deep": 4, "way": "left"}, "Wing  2 x  4 Left", "41770a"],
+	["wedge", {"across": 2, "deep": 4, "way": "right"}, "Wing  2 x  4 Right", "41769a"],
+]
 
 
 func _initialize() -> void:
@@ -142,17 +164,40 @@ func _initialize() -> void:
 	print("\n3003 with a corner cut out")
 	_stack(corner, Vector3(200, 0, -160))
 
+	print("\na clip, a bar and a wedge plate, made like the parts they copy")
+	var copies: Array[String] = await _copies(dialog)
+	if copies.size() != COPIES.size():
+		_finish()
+		return
+	var clip: String = copies[0]
+	var level_clip: String = copies[1]
+	var bar: String = copies[2]
+	print("\nthe made bar in 3062b's hollow stud, the made clip on it, by hand")
+	_clip_on_bar(clip, bar, Vector3(200, 0, -280))
+	print("\nthe level clip plate on a 2 x 4, its clip out over the edge")
+	_on_edge(level_clip, Vector3(200, 0, 280))
+	print("\nthe 2 x 4 wedge plates, left and right")
+	_stack(copies[3], Vector3(-200, 0, -280), false)
+	_wedge_cut(copies[3])
+	_stack(copies[4], Vector3(0, 0, -280), false)
+	_wedge_cut(copies[4])
+	print("\neach made again in one make_part call")
+	await _by_mcp(copies)
+
 	print("\nwhat the assistant's checker makes of all of it")
-	_checker()
+	# The eight stacks, the clip on its bar in its brick, the level clip
+	# on its 2 x 4 and the two wedge stacks.
+	_checker(12)
 
 	print("\neach family used the way only it can be")
 	_used(sided, bracket, technic)
 
+	var all: Array = [brick, plate, slope, sided, curved, technic, changed, corner] + copies
 	print("\nin the parts list")
-	_parts_list([brick, plate, slope, sided, curved, technic, changed, corner])
+	_parts_list(all)
 
 	print("\nsaved, and opened where the parts were never made")
-	await _round_trip([brick, plate, slope, sided, curved, technic, changed, corner])
+	await _round_trip(all)
 	_finish()
 
 
@@ -255,8 +300,11 @@ func _lay_baseplate() -> int:
 
 
 ## Put [param part_id] on a 2 x 4 on the baseplate and a 2 x 4 on it,
-## each by the ray the mouse casts, and check the clutch both ways.
-func _stack(part_id: String, near: Vector3) -> void:
+## each by the ray the mouse casts, and check the clutch both ways; and,
+## when [param exact], that it is as big as it says on every side (a wedge
+## plate is not: its cut is inside its bounds, and [method _wedge_cut]
+## checks that instead).
+func _stack(part_id: String, near: Vector3, exact: bool = true) -> void:
 	var below: int = _hand("3001", near)
 	var made: int = _hand(part_id, near)
 	# Over its studs, which on a slope are the flat rows at the back and
@@ -285,7 +333,8 @@ func _stack(part_id: String, near: Vector3) -> void:
 		"it clutches the 2 x 4 above: %d of its studs reach inside" % int(reach_over.get(above, 0)))
 	print("        (2 x 4 below at %s, %s at %s, 2 x 4 above at %s)" % [
 		under.transform.origin, part_id, it.transform.origin, over.transform.origin])
-	_exact(it, mesh)
+	if exact:
+		_exact(it, mesh)
 
 
 ## Where a placed brick's studs are, on average, in the world: those on
@@ -422,7 +471,7 @@ func _slope_face(slope: String) -> void:
 		% [free_over, solid_under])
 
 
-func _checker() -> void:
+func _checker(pieces: int) -> void:
 	var model: Assistant.Model = _assistant._model_from_world()
 	var report: Dictionary = _assistant._check(model, true)
 	var said: String = str(report.get("feedback", ""))
@@ -430,11 +479,12 @@ func _checker() -> void:
 	for complaint: String in ["floating", "nothing holding", "overlap", "no stud anywhere",
 			"no stud can reach", "collide"]:
 		_ok(not said.to_lower().contains(complaint), "it says nothing about \"%s\"" % complaint)
-	# Eight stacks on the baseplate, and the checker finds eight pieces:
-	# each made part is joined to the 2 x 4 under it and the one over it,
-	# or a stack would come apart into more.
-	_ok(said.contains("in 8 pieces"),
-		"it finds eight pieces, one per stack: each made part joins both its 2 x 4s")
+	# A piece per stack on the baseplate: each made part is joined to the
+	# 2 x 4 under it and the one over it, the clip to the bar and the bar to
+	# its brick, or a stack would come apart into more.
+	_ok(said.contains("in %d pieces" % pieces),
+		"it finds %d pieces, one per stack: each made part joins what is under and over it"
+		% pieces)
 	if not said.is_empty():
 		print("        (it said: %s)" % said.left(400).replace("\n", " / "))
 
@@ -507,6 +557,165 @@ func _cut_corner(dialog: ElementDialog) -> String:
 		"Add made %s, \"%s\"" % [id, info.name if info != null else "nothing"])
 	dialog.set_field("family", "brick")
 	return id if info != null else ""
+
+
+## Each of [constant COPIES] made through the dialog and held to the part
+## it copies. Returns their ids, or fewer when one was not made.
+func _copies(dialog: ElementDialog) -> Array[String]:
+	var ids: Array[String] = []
+	for copy: Array in COPIES:
+		var id: String = await _make(dialog, copy[0], copy[1], copy[2])
+		if id.is_empty():
+			return ids
+		_like(id, copy[3])
+		ids.append(id)
+	return ids
+
+
+## [param id] against [param real] as the catalogue has it: the bounds, and
+## every connector's kind, place and direction.
+func _like(id: String, real: String) -> void:
+	var ours: Lbm.PartMesh = _library.mesh_for(id)
+	var theirs: Lbm.PartMesh = _library.mesh_for(real)
+	if ours == null or theirs == null:
+		_ok(false, "%s and %s both have meshes" % [id, real])
+		return
+	var off: float = 0.0
+	for n: int in 3:
+		off = maxf(off, absf(ours.bounds.position[n] - theirs.bounds.position[n]))
+		off = maxf(off, absf(ours.bounds.end[n] - theirs.bounds.end[n]))
+	_ok(off <= 0.01, "%s's bounds are %s's to %.4f LDU: %s to %s" % [id, real, off,
+		theirs.bounds.position, theirs.bounds.end])
+	var kinds: Array = [_kinds(ours), _kinds(theirs)]
+	_ok(kinds[0] == kinds[1], "...its connectors %s's in number and kind: %s" % [real,
+		kinds[1] if kinds[0] == kinds[1] else "%s, not %s" % kinds])
+	var places: Array = [_places(ours), _places(theirs)]
+	_ok(places[0] == places[1], "...each where %s has it and facing as it does%s" % [real,
+		"" if places[0] == places[1] else ": %s, not %s" % places])
+
+
+static func _kinds(mesh: Lbm.PartMesh) -> String:
+	var counts: Dictionary = {}
+	for c: Lbm.Connector in mesh.connectors:
+		counts[c.kind] = int(counts.get(c.kind, 0)) + 1
+	var out := PackedStringArray()
+	for kind: String in counts:
+		out.append("%d %s" % [counts[kind], kind])
+	out.sort()
+	return ", ".join(out)
+
+
+## Each connector as words: its kind, where it is to a tenth of an LDU,
+## which way it faces, and a round's length and radius. (Plus 0.0, so a
+## -0.0 reads as 0.0.)
+static func _places(mesh: Lbm.PartMesh) -> PackedStringArray:
+	var out := PackedStringArray()
+	for c: Lbm.Connector in mesh.connectors:
+		var at: Vector3 = c.position + Vector3.ZERO
+		out.append("%s (%.1f, %.1f, %.1f) to (%.2f, %.2f, %.2f) %.1f x %.1f" % [c.kind,
+			at.x + 0.0, at.y + 0.0, at.z + 0.0, c.axis.x + 0.0, c.axis.y + 0.0,
+			c.axis.z + 0.0, c.length + 0.0, c.radius + 0.0])
+	out.sort()
+	return out
+
+
+## 3062b put on the baseplate by hand; the made bar aimed at its hollow
+## stud, as the pointer aims, and clicked; the made clip aimed at the
+## middle of the bar and clicked. Each goes on its joint and is joined.
+func _clip_on_bar(clip: String, bar: String, near: Vector3) -> void:
+	var brick: int = _hand("3062b", near)
+	if brick == 0:
+		_ok(false, "3062b goes on the baseplate")
+		return
+	var top: Vector3 = _world.get_brick(brick).transform.origin
+	_aim(bar, top, top + Vector3(30, 276, 120))
+	_ok(_builder.is_on_joint() and _builder.can_place(),
+		"%s aimed at 3062b's hollow stud stands in it" % bar)
+	var stood: int = _builder.place()
+	_ok(stood != 0 and _joined(stood).has(brick), "...and a click puts it in, joined to the brick")
+	if stood == 0:
+		return
+	var along: AABB = _world.get_brick(stood).transform * _library.mesh_for(bar).bounds
+	var middle: Vector3 = along.get_center()
+	_aim(clip, middle, middle + Vector3(40, 80, 240))
+	_ok(_builder.is_on_joint() and _builder.can_place(),
+		"%s aimed at the bar goes on it, %.0f LDU up" % [clip, middle.y])
+	var clipped: int = _builder.place()
+	_ok(clipped != 0 and _joined(clipped).has(stood),
+		"...and a click puts it on, joined to the bar: the made clip grips the made bar")
+
+
+## The level clip plate on a 2 x 4's front row, by hand, its clip out over
+## the edge where a real one goes: on its stud, at its socket.
+func _on_edge(clip: String, near: Vector3) -> void:
+	var below: int = _hand("3001", near)
+	# The 2 x 4's front stud row, which is +z here: the clip faces +z.
+	var made: int = _hand(clip, near + Vector3(10, 0, 10))
+	if below == 0 or made == 0:
+		_ok(false, "the 2 x 4 and %s could be placed by hand (%d, %d)" % [clip, below, made])
+		return
+	var under: BrickWorld.Brick = _world.get_brick(below)
+	var it: BrickWorld.Brick = _world.get_brick(made)
+	var mesh: Lbm.PartMesh = _library.mesh_for(clip)
+	var reach: Dictionary = _studs_into(under)
+	_ok(int(reach.get(made, 0)) == 1 and _on_sockets(under, it, mesh),
+		"%s sits on one of the 2 x 4's studs, at its socket, at %s" % [clip, it.transform.origin])
+
+
+## A wedge plate's cut is its edge: 6 LDU out from the middle of the cut is
+## free, and 6 LDU in is the plate, at half its height.
+func _wedge_cut(wedge: String) -> void:
+	var it: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == wedge:
+			it = brick
+	if it == null:
+		return
+	var spec: ElementMaker.Spec = ElementMaker.parse_spec(_library.custom_source(wedge))
+	var outline: Array = ElementMaker.wedge_outline(spec)
+	var cut: Array = ElementMaker.wedge_cut(spec)
+	var mid := Vector2((float(outline[1][0]) + float(outline[2][0])) * 0.5,
+		(float(outline[1][1]) + float(outline[2][1])) * 0.5)
+	var normal := Vector2(float(cut[0]), float(cut[1]))
+	var owners: Array = []
+	for step: float in [6.0, -6.0]:
+		var ldraw := Vector3(mid.x + normal.x * step, 4.0, mid.y + normal.y * step)
+		var app: Vector3 = it.transform * Vector3(ldraw.x, -ldraw.y, -ldraw.z)
+		owners.append(_builder.lattice.brick_at(BrickLattice.to_cell(app)))
+	_ok(owners[0] != it.id and owners[1] == it.id,
+		"%s's cut is its edge: 6 LDU out is free, 6 LDU in is the plate" % wedge)
+
+
+## Each copy made again by make_part, as an MCP session calls it: one call,
+## the same part.
+func _by_mcp(ids: Array[String]) -> void:
+	for n: int in COPIES.size():
+		var copy: Array = COPIES[n]
+		var args: Dictionary = {"family": copy[0]}
+		args.merge(copy[1])
+		var said: String = str(await _assistant.use_tool("make_part", args))
+		_ok(said.begins_with("Made part \"%s\"" % ids[n]),
+			"make_part %s makes %s in one call: %s" % [JSON.stringify(args), ids[n],
+				said.left(200)])
+
+
+## Hold a part and aim the pointer's line from [param from] at [param point].
+func _aim(part: String, point: Vector3, from: Vector3) -> void:
+	_builder.held_part = part
+	_builder.held_color = 0
+	_builder.held_face = "up"
+	_builder.held_rotation = 0
+	_builder.update_preview(from, (point - from).normalized())
+
+
+## The bricks [param brick_id] is joined to by a pin, an axle or a round.
+func _joined(brick_id: int) -> Array:
+	var entries: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		entries.append([brick.id, brick.transform, _library.mesh_for(brick.part_id)])
+	var held: Dictionary = (Joints.both_ways(entries).get(brick_id, {}) as Dictionary).duplicate()
+	held.merge(Joints.rounds(entries).get(brick_id, {}))
+	return held.keys()
 
 
 ## A part's studs and tubes as words: kind and where, to a tenth.

@@ -1,8 +1,8 @@
 # Elements
 
 Making a part LEGO has not made — a brick, plate, tile, slope, curved slope,
-inverted slope, round part, bracket or Technic brick of any size, or a brick
-with studs on its sides — or changing a part that exists, from its own
+inverted slope, round part, bracket or Technic brick of any size, a brick
+with studs on its sides, a clip plate, a bar or a wedge plate — or changing a part that exists, from its own
 geometry, as a real LDraw part, and building it into the same geometry,
 connectors and collision the library's own parts have.
 
@@ -34,6 +34,19 @@ connectors and collision the library's own parts have.
   library part's name ("Brick  2 x  4", "Brick  1 x  4 with Studs on Side",
   "Bracket  1 x  2 -  2 x  2 Down", "Slope Brick Curved  2 x  1", "Technic
   Brick  1 x  4 with Holes") into its spec: the resize path.
+  And three that copy a part LEGO makes (APP_UX6 #15), each the part it
+  copies at that part's size, bounds and connectors: a clip plate (`clip`,
+  `way=vertical|horizontal`; 60897, 61252, 11476) — a plate or tile with
+  the library's own thick C-clip (`clip5.dat` upright, `clip6.dat` level)
+  10 LDU in front of its front edge, where 60897 has it; a bar (`bar`,
+  `across` its length in studs; 87994, 30374) — 87994's cylinder 8 LDU
+  across, its origin its top end, with no plates and no studs; and a wedge
+  plate (`wedge`, `way=left|right`; 41770a, 41769a, 43722a, 43723a) — a
+  plate whose straight side is the left or the right, cut from a tip one
+  stud wide at the back to the far front corner, a stud on every whole
+  square, whole tubes where the cut leaves room and, where its wall comes
+  through one, the tube's arcs on the cavity's side in `1-16cyli`
+  sixteenths, which the walk reads as a shaft and a bore, as 41770a's are.
   Named `bw-<shape>`, never an LDraw `u`/`t` number (those are assigned by
   the Parts Library admin).
 - `build a part in the app` (`PartForge`): tools/build_meshes.py's
@@ -42,7 +55,8 @@ connectors and collision the library's own parts have.
   studs, fill cavities (clearing a Technic hole's bore), boxes, sockets, and
   a hole's two faces merged into one hole — ending in the same `.lbm` bytes.
   Needed because neither a desktop export nor a browser has Python.
-  Primitives: the eleven in `assets/ldraw/` (committed, in every export;
+  Primitives: the thirty-two in `assets/ldraw/` (committed, in every export;
+  the clips' and the wedge plate's came with them;
   `peghole` and `4-4ndis` came with the Technic brick), `vendor/ldraw`
   when present, and in an export every primitive (`assets/ldraw/p/`,
   `PartForge.SHIPPED`, copied there by tools/export.sh and ignored by git),
@@ -87,10 +101,11 @@ connectors and collision the library's own parts have.
   header the change (`0 // Modified by Brickworks: from=3700 length=6 …`) and
   the LDraw part it came from, CC BY 4.0.
 - `make a part` (`ElementDialog`): **Make a part…** in the parts bin. A
-  button for each of the seven families (all on show, one press each), sizes
+  button for each of the ten families (all on show, one press each), sizes
   (two to a row), LEGO's four named angles for a slope, studs on or off,
   Front/Back/Left/Right for studs on a brick's sides, a bracket's upright and
-  which way it goes, a name, and "Start from a part" — a part number, or the
+  which way it goes, a clip's way (vertical or horizontal) and a wedge
+  plate's hand (left or right) in the same list, a name, and "Start from a part" — a part number, or the
   part in hand when the dialog opens. "Start from it" resizes a part of the
   families as its family and changes any other (a printed part, a grille,
   32000) as itself; "Change it" changes any part as itself, a plain 3001 too.
@@ -102,7 +117,11 @@ connectors and collision the library's own parts have.
   offered in the box, not started on. The preview is the part built by
   `PartForge`, turning; a sentence under it gives the size in mm, the studs
   on top and on the sides, the places a stud goes in underneath, the Technic
-  holes, and a slope's true angle (a curved slope's at its foot). **Add to parts** makes it, keeps
+  holes, and a slope's true angle (a curved slope's at its foot), the bar a
+  clip grips and which way, a wedge plate's cut angle, a bar's length. A
+  clip, a bar or a wedge plate pressed from another family starts as the
+  part LEGO makes most of it (`ElementMaker.STARTS`: 1 x 1 vertical, 3L,
+  2 x 4 left). **Add to parts** makes it, keeps
   it, holds it, and shows the bin's Custom category.
 - `the assistant makes a part` (`PartTool`, `make_part`): a tool in the
   assistant's list, and so in every MCP session's, for a part no real one
