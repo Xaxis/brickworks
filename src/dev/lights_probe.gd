@@ -164,6 +164,7 @@ func _in_render() -> void:
 		and controls.get("render_lamp_add_area") != null)
 	if add == null:
 		return
+	await _drafted(dialog)
 	await _shoot("render_none")
 	add.pressed.emit()
 	await _frames(3)
