@@ -1406,10 +1406,13 @@ static func _pulls_follow_parts(text: String, looks: Dictionary, names: Dictiona
 				_most_of(file, named, steps, definition_by, best, {})
 		if int(best[1]) == 0:
 			continue
+		# A step there with a pull of its own keeps it, and this one stays
+		# where the file has it, said on open (unmatched_words), never lost.
 		var to: Dictionary = looks.get(best[0], {})
-		if not to.has("pull"):
-			to["pull"] = look["pull"]
-			looks[best[0]] = to
+		if to.has("pull"):
+			continue
+		to["pull"] = look["pull"]
+		looks[best[0]] = to
 		look.erase("pull")
 		if look.is_empty():
 			looks.erase(name)
