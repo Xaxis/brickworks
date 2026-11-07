@@ -4819,6 +4819,20 @@
       "entry": "src/dev/playlink_probe.gd",
       "reach": "tools/probe.sh playlink_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/playlink_probe.gd; PROBE_SIZE=1400x900, 390x844, 1024x768)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "two fingers' twist",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "on a phone, a tablet or a touchscreen: two fingers turned about each other turn the view round the up by as much, about what is between them, once they have turned 10 degrees; a pinch and a slide as before  (CadCamera._twist, _two_fingers; tools/probe.sh twist_probe)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "twist probe",
+      "entry": "src/dev/twist_probe.gd",
+      "reach": "tools/probe.sh twist_probe; PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet; PROBE_SIZE=1280x720 or 1400x900 tools/probe.sh twist_probe   (windowed, 390x844 by its header; pictures in shots/twist/)",
+      "area": "view"
     }
   ]
 }

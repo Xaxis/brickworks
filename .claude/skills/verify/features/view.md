@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe -->
 
 ## Sub-features
 
@@ -170,6 +170,37 @@ picture the assistant is shown.
   the page where one is drawn (`tooltip` in `window.brickworksControls`). A
   bin tile's reached 125 px over the view, and with another tile scrolled
   under the pointer read as the view moving on the grid's light floor (rel-m255).
+- `two fingers' twist` (`CadCamera._twist`, `_two_fingers`; APP_UX6 twist):
+  on a phone, a tablet or a touchscreen, two fingers turned about each other
+  turn the view round the up (the turntable's, Build it's turned one too) by
+  as much as the line between them turned, about what was between them as
+  they began to turn, which stays between them; the model goes round the way
+  the fingers did on the screen, seen from above or below (`_twist_way`). It
+  waits until the line has turned 10° and each finger has gone `TAP_SLOP`
+  round (`TWIST_START`), then takes the whole turn, so a pinch or a slide that
+  turns real fingers a few degrees turns nothing and a quarter turn is a
+  quarter. Read once a frame from where both fingers are, as is a phone's turn
+  by the point between two fingers: applied a finger's event at a time, half
+  of that turn was stopped at straight down and the other half was not, so a
+  twist seen from above tipped the view. The pinch stays with the events (a
+  ratio, whichever finger comes first). Not over the second view, which is
+  square on. A trackpad's twist has no event in Godot 4.7
+  (`InputEventRotateGesture` does not exist), so it is fingers on glass only.
+- `twist probe` (`src/dev/twist_probe.gd`, `tools/probe.sh twist_probe`,
+  windowed on the GPU at 390 x 844 laid out for a phone; `PROBE_SIZE=1024x768
+  tools/probe.sh twist_probe --tablet` a tablet's, `PROBE_SIZE=1280x720` or
+  `1400x900` the desktop's with a touchscreen): fingers as the window hands
+  them over, a frame at a time. Two fingers turned a quarter turn round two
+  crossed 2 x 4s turn the view 90° ±5° round the up, the tilt within 0.5°,
+  what was between them within 2% of the room of where it was, nothing moved
+  or selected, and back again; from above and from below a point beside the
+  pivot goes 90° ±5° round on the screen the way the fingers went, the view
+  still straight down or up; a pinch to three times as wide, two fingers slid
+  150 units and one finger dragged 150 within 1% of what pre261 did (SAME in
+  the probe), a pinch turned 6° zooms as far and turns nothing; a quarter turn
+  with a spread to twice as wide does both. `measure` lines carry the numbers
+  to compare with another checkout. Pictures in `shots/twist/`: the model
+  before and after the quarter turn, and from above after it.
 - `centred on the model's column` (`CadCamera.seen`, `Main._model_rect`): the
   3D draws across the whole window, behind the columns, and the view is
   centred on the model's part of it (`model_cover`'s "view": between the
@@ -2775,6 +2806,12 @@ tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied
 # each the window's from there; view_model and render_model view= in one
 # call; a preset chosen again in 2 actions. Look at shots/savedviews/.
 tools/probe.sh savedviews -- --keep=/tmp/views_kept && PROBE_SIZE=1400x900 tools/probe.sh savedviews   # then, the probe copied into an older checkout: tools/probe.sh savedviews -- --older=/tmp/views_kept
+# Two fingers turned about each other (APP_UX6 twist): a quarter turn 90° ±5°
+# round the up about what is between them, the model going round as the
+# fingers went from above and below; a pinch, a slide and a drag as pre261's
+# within 1%. Phone by its header, then a tablet's and the desktop's layouts.
+# Look at shots/twist/.
+tools/probe.sh twist_probe && PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet && PROBE_SIZE=1280x720 tools/probe.sh twist_probe && PROBE_SIZE=1400x900 tools/probe.sh twist_probe
 # View, Stress: a loaded 2x10 cantilever's root red on 1x1s, plain on 2x2s; a
 # bare one and a bonded wall not red; nothing painted; the shipped models none
 # red. Then in the window: the menu, the tint, what pointing says, Ask Claude

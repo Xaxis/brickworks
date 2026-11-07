@@ -2588,6 +2588,14 @@
       "tests": []
     },
     {
+      "id": "cli:twist probe",
+      "kind": "cli",
+      "entry": "src/dev/twist_probe.gd",
+      "reach": "tools/probe.sh twist_probe; PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet; PROBE_SIZE=1280x720 or 1400x900 tools/probe.sh twist_probe   (windowed, 390x844 by its header; pictures in shots/twist/)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:two chats browser flow",
       "kind": "cli",
       "entry": "tools/web/tabpair_flow.mjs",
@@ -5780,6 +5788,14 @@
       "entry": "src/assembly/track_snap.gd",
       "reach": "tools/probe.sh tracks_probe   (a 9V curve dragged near a straight's free end joins it in one drag; R puts its other end to the joint; two 12V curves get their sleeper, one undo takes both; sixteen curves by sixteen clicks close a circle; a session's oval of 16 curves and 4 straights in two calls, attach track[0] to track[1]. Windowed, pictures in shots/tracks/. By hand: a track in hand near a free end of one down sits on it; the status line says so and what R does)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:two fingers' twist",
+      "kind": "ui",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "on a phone, a tablet or a touchscreen: two fingers turned about each other turn the view round the up by as much, about what is between them, once they have turned 10 degrees; a pinch and a slide as before  (CadCamera._twist, _two_fingers; tools/probe.sh twist_probe)",
+      "area": "view",
       "tests": []
     },
     {
