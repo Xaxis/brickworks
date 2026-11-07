@@ -51,7 +51,7 @@ const TURNED := ["1572-1.mpd", "20009-1.mpd", "20019-1.mpd", "20021-1.mpd", "300
 	"8272-1.mpd", "8273-1.mpd", "8273-1_Utility-Cargo-Truck.mpd", "8274-1_Dragstar.mpd",
 	"8274-1.mpd", "8275-1.mpd", "891-1.mpd", "894-1.mpd", "918-1.mpd", "924-1.mpd", "928-1.mpd"]
 ## Pods' pull as the walk's file has it, and where its first save puts it.
-const PODS_PULL := "model.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"
+const PODS_PULL := "the model step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"
 const PODS_PULL_MOVED := "side_pod.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"
 const WINGS: Array = ["41769a", "41770a"]
 const MODELS := "user://models/"
@@ -213,7 +213,7 @@ func _session() -> void:
 	_check("...the file builds the side pod in the model's steps (%d IN lines) and pulls on its step (%s)"
 		% [_lines_with(text, LdrModel.IN_META), _pull_lines(text)],
 		_lines_with(text, LdrModel.IN_META) > 0
-		and _pull_lines(text) == "model.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a")
+		and _pull_lines(text) == PODS_PULL)
 	_main.call("clear_model")
 	await _frames(4)
 	var opened: String = await _say("open_model", {"name": "PodsAgain"})
@@ -374,8 +374,11 @@ func _every_line() -> void:
 	await _frames(4)
 	await _say("open_model", {"name": "LinedSaved"})
 	await _settled()
-	_check("opened: every step's look as it was set (%d)" % looks.size(),
-		JSON.stringify(_world.step_looks, "", true) == JSON.stringify(looks, "", true))
+	# A turn read from the file keeps the file's own ROTSTEP line with it
+	# ("line"), to write it back as it was; numbers come back as JSON's.
+	_check("opened: every step's look as it was set (%d: %s)" % [looks.size(),
+		_first_look_difference(_plain(looks), _plain(_world.step_looks))],
+		JSON.stringify(_plain(_world.step_looks), "", true) == JSON.stringify(_plain(looks), "", true))
 	_check("...every part where it was (%d)" % parts.size(), _parts_of() == parts)
 	await _say("save_model", {"name": "LinedSaved.ldr"})
 	var second: String = FileAccess.get_file_as_string(MODELS + "LinedSaved.ldr")
@@ -478,14 +481,18 @@ func _files() -> void:
 ## Every booklet line of [param text] with where it is: "file step n: line".
 static func _booklet_lines(text: String) -> Array:
 	var out: Array = []
-	var file: String = ""
+	var file: String = "the model"
+	var seen_file: bool = false
 	var step: int = 1
 	var in_data: bool = false
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
 		var upper: String = line.to_upper()
 		if upper.begins_with("0 FILE "):
-			file = line.substr(7).strip_edges().to_lower()
+			# The model's own section by what it is: a save names it after
+			# the model's title (pods.ldr's model.ldr saved as pods).
+			file = "the model" if not seen_file else line.substr(7).strip_edges().to_lower()
+			seen_file = true
 			step = 1
 			in_data = false
 			continue
@@ -538,6 +545,32 @@ static func _first_difference(a: String, b: String) -> String:
 		if p != q:
 			return "line %d: \"%s\" then \"%s\"" % [n + 1, p.left(70), q.left(70)]
 	return "the same"
+
+
+## [param looks] as the file says them: without the ROTSTEP line a turn
+## read from a file keeps, each number as JSON reads it, keys in order.
+static func _plain(looks: Dictionary) -> Dictionary:
+	var out: Dictionary = JSON.parse_string(JSON.stringify(looks, "", true))
+	for name: String in out:
+		if out[name] is Dictionary:
+			(out[name] as Dictionary).erase("line")
+	return JSON.parse_string(JSON.stringify(out, "", true))
+
+
+## Each look [param b] has otherwise than [param a]: "key: was then now".
+static func _first_look_difference(a: Dictionary, b: Dictionary) -> String:
+	var names: Array = a.keys()
+	for name: String in b.keys():
+		if not names.has(name):
+			names.append(name)
+	names.sort()
+	var said := PackedStringArray()
+	for name: String in names:
+		var p: String = JSON.stringify(a.get(name), "", true) if a.has(name) else "(none)"
+		var q: String = JSON.stringify(b.get(name), "", true) if b.has(name) else "(none)"
+		if p != q:
+			said.append("%s: %s then %s" % [name, p.left(300), q.left(300)])
+	return "the same" if said.is_empty() else "; ".join(said)
 
 
 static func _first_line_difference(a: Array, b: Array) -> String:
