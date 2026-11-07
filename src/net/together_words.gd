@@ -312,27 +312,30 @@ func _string() -> Variant:
 ## [param raw] with Godot's escapes read as its reader reads them: \n, \t,
 ## \r, \b, \f, \uXXXX, \UXXXXXX, and any other character as itself.
 func _unescaped(raw: String) -> Variant:
-	var out: String = ""
+	# Pieces joined once at the end: a String grown by += copies itself each
+	# time, and a peer's string of a million escapes froze the tab for
+	# seconds (tsreview, 2026-11-06).
+	var out := PackedStringArray()
 	var at: int = 0
 	while at < raw.length():
 		var slash: int = raw.find("\\", at)
 		if slash < 0 or slash == raw.length() - 1:
-			out += raw.substr(at)
+			out.append(raw.substr(at))
 			break
-		out += raw.substr(at, slash - at)
+		out.append(raw.substr(at, slash - at))
 		var what: String = raw[slash + 1]
 		at = slash + 2
 		match what:
 			"n":
-				out += "\n"
+				out.append("\n")
 			"t":
-				out += "\t"
+				out.append("\t")
 			"r":
-				out += "\r"
+				out.append("\r")
 			"b":
-				out += char(8)
+				out.append(char(8))
 			"f":
-				out += char(12)
+				out.append(char(12))
 			"u", "U":
 				var digits: int = 4 if what == "u" else 6
 				var hex: String = raw.substr(at, digits)
@@ -349,10 +352,10 @@ func _unescaped(raw: String) -> Variant:
 						at += 6
 				if code <= 0 or code > 0x10FFFF or (code >= 0xD800 and code <= 0xDFFF):
 					return _refuse("\\%s that is no character" % what)
-				out += char(code)
+				out.append(char(code))
 			_:
-				out += what
-	return out
+				out.append(what)
+	return "".join(out)
 
 
 static var _number_shape: RegEx = RegEx.create_from_string(
