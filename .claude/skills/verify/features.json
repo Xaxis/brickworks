@@ -976,6 +976,14 @@
       "tests": []
     },
     {
+      "id": "cli:direct colour probe",
+      "kind": "cli",
+      "entry": "src/dev/direct_colour_probe.gd",
+      "reach": "tools/probe.sh direct_colour_probe [-- --shots=DIR]   (headless; three bricks in 0x2FF0000, 0x200FF00, 0x20000FF through the 3D view, Export's GLB/glTF/OBJ, the site's GLB, the thumbnail, the shops' lists and the site's lists, tools/web/direct_colour_check.mjs)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:discovery browser flow",
       "kind": "cli",
       "entry": "tools/web/discovery_flow.mjs",
@@ -1905,6 +1913,14 @@
       "kind": "cli",
       "entry": "tools/web/play_flow.mjs",
       "reach": "node tools/web/play_flow.mjs --url=http://127.0.0.1:8771 --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 8771 --parts assets/generated/parts --delay 0 --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd; a preview: preview_checks.sh ... play, which publishes from a throwaway account)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:playlink probe",
+      "kind": "cli",
+      "entry": "src/dev/playlink_probe.gd",
+      "reach": "tools/probe.sh playlink_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/playlink_probe.gd; PROBE_SIZE=1400x900, 390x844, 1024x768)",
       "area": "web",
       "tests": []
     },
@@ -4097,6 +4113,14 @@
       "entry": "src/render/frame_budget.gd",
       "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:a link that opens playing",
+      "kind": "ui",
+      "entry": "src/main.gd",
+      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over within 2 s of the model shown; its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
+      "area": "web",
       "tests": []
     },
     {

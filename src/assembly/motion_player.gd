@@ -512,6 +512,10 @@ class Paced extends RefCounted:
 	var keep_ms: float = 0.0
 	## When it began, or its last motion was kept, ms.
 	var kept_at: int = 0
+	## Whether it is kept, one step; false to work its frames out alone,
+	## nothing changed (a link's motion played over and over, drawn only).
+	## One motion only: a sequence's next begins where the last was kept.
+	var keep: bool = true
 
 
 func pace(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Paced:
@@ -548,7 +552,8 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 			if paced.at >= paced.order.size():
 				for frames: Array in MotionRender.whole_frames(paced.run.each):
 					paced.run.frames.append_array(frames)
-				builder.fold_since(paced.depth, paced.words)
+				if paced.keep:
+					builder.fold_since(paced.depth, paced.words)
 				paced.done = true
 				break
 			var held_at: int = Time.get_ticks_usec()
@@ -559,7 +564,7 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 			break
 		paced.frame_ms = maxf(paced.frame_ms, paced.playing.frame_ms)
 		var kept_at: int = Time.get_ticks_usec()
-		finish(paced.playing, true, paced.words if paced.order.size() == 1 else "")
+		finish(paced.playing, paced.keep or paced.order.size() > 1, paced.words if paced.order.size() == 1 else "")
 		paced.keep_ms = maxf(paced.keep_ms, (Time.get_ticks_usec() - kept_at) / 1000.0)
 		paced.kept_at = Time.get_ticks_msec()
 		paced.run.played.append(paced.playing)

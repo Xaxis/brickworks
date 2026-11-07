@@ -374,8 +374,8 @@ class Drawer extends RefCounted:
 	func _colour_of(code: int, placed: int) -> Color:
 		if code == Lbm.COLOR_INHERIT:
 			code = placed
-		if code >= 0x2000000:
-			return Color.hex((code & 0xFFFFFF) << 8 | 0xFF)
+		if LdrModel.is_direct_colour(code):
+			return LdrModel.direct_rgb(code)
 		return colours.get(code, UNKNOWN_COLOUR)
 
 

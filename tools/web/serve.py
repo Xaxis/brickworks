@@ -243,8 +243,11 @@ class Handler(SimpleHTTPRequestHandler):
         """The link's two addresses, played from --share's file. True if answered."""
         link = re.fullmatch(r"/m/([A-Za-z0-9]{10})/?", path)
         if link:
+            # Its query goes on with it, as the page sends ?motion= on to the
+            # viewer (web/share-page.js).
+            query = self.path.split("?", 1)[1] if "?" in self.path else ""
             self.send_response(302)
-            self.send_header("Location", f"/index.html?view={link.group(1)}")
+            self.send_header("Location", f"/index.html?view={link.group(1)}" + (f"&{query}" if query else ""))
             self.send_header("Content-Length", "0")
             self.end_headers()
             return True
