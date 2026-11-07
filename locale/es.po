@@ -11488,7 +11488,10 @@ msgstr "Elegir un estilo…"
 msgid "Name the page first"
 msgstr "Primero nombra la página"
 
-# Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks
+# Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks; Booklet page › Step view
+
+msgid "Step view"
+msgstr "Vista del paso"
 
 msgid "Remove…"
 msgstr "Quitar…"

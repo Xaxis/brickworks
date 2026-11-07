@@ -175,7 +175,9 @@ func _run() -> void:
 	# With the assistant switched off, as a person may have it: every one of
 	# these is the window's own.
 	_shell.set_assistant(false)
-	var menu: Array = Shell.SUBMENUS.get("booklet", [])
+	var menu: Array = []
+	for id: String in Shell.SUBMENUS.get("booklet", []):
+		menu.append_array(Shell.SUBMENUS.get(id.substr(1), []) if id.begins_with(">") else [id])
 	var missing: Array = menu.filter(func(id: String) -> bool:
 		return id != "-" and not _shell._commands.has(id))
 	_check("the assistant off, Build, Booklet page has its %d commands"

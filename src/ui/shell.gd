@@ -268,14 +268,17 @@ const SUBMENUS: Dictionary = {
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_to", "step_new", "-", "step_earlier", "step_later",
 		"step_merge", "step_delete"],
-	"booklet": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
-		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
+	# The step's view in one row of its own: with Page setup… the menu was
+	# 27 rows, past the 25 every menu keeps to (keys3; pagesetup2).
+	"booklet": [">booklet_view", "-", "booklet_zoom_in",
 		"booklet_zoom_out", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
 		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page", "-",
 		"booklet_lay_out", "booklet_highlight",
 		"-", "booklet_pull", "booklet_colours", "booklet_actual_size", "booklet_preview",
 		# pagesetup: the booklet's page, the person's way (BookletSheet).
 		"-", "booklet_page_setup"],
+	"booklet_view": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
+		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
@@ -288,7 +291,7 @@ const SUBMENUS: Dictionary = {
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
 	"viewpoint": "Viewpoint", "cut_away": "Cut away by",
-	"steps": "Build steps", "booklet": "Booklet page", "floor": "Floor",
+	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step view", "floor": "Floor",
 	"floor_colour": "Baseplate colour"}
 
 

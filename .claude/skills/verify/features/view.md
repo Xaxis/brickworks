@@ -1680,7 +1680,9 @@ picture the assistant is shown.
   adds), Bigger / Smaller (0.6x to 2x on the page), New page, Alone, Parts
   list, Callout (the sub-assembly the step puts on, in a box or on pages of
   its own), Per page (as fit, 1, 2, 4); the row's line says how the step is
-  set ("turned 45°, zoom 1.25x, new page"). The same are Build, Booklet page.
+  set ("turned 45°, zoom 1.25x, new page"). The same are Build, Booklet page,
+  its six turns and views under Booklet page › Step view (pagesetup2: with
+  Page setup… the menu was 27 rows, past keys3's 25; now 22).
   Each is one undo (`steplooks` in `Builder._apply`: the table as it was);
   the first on a model with no steps of its own gives it the worked-out
   ones in the same undo. Kept in `BrickWorld.step_looks` by sub-model and
