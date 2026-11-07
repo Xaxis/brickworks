@@ -1945,9 +1945,11 @@ func _picture(settings: RenderSettings, from: float, to: float, words: String = 
 	var tiles: Array[Rect2i] = _tiles(picture)
 	last_tiles = tiles.size()
 	var margin: int = 0
-	if tiles.size() > 1 and plan.occlusion:
+	if plan.occlusion:
 		# Occlusion looks a little past the edge of what it draws; each
-		# piece is drawn wider and cut back.
+		# piece is drawn wider and cut back. A picture in one piece too:
+		# its last column came out darker, and not the same from one
+		# drawing to the next (lights_probe, 2026-11-06).
 		margin = clampi(picture.y / 24, 16, 96)
 	var tile_size: Vector2i = tiles[0].size
 	_size_all(tile_size + Vector2i(margin * 2, margin * 2))
@@ -2098,11 +2100,20 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	var rows: int = maxi(picture.y / 4, 1)
 	var row: int = 0
 	var card_ms: float = 0.0
+	# What the card's timing asks for, taken up between whole samples: a
+	# sample's bands all get the same count, or rows would differ in how
+	# many they have.
+	var fit_rows: int = rows
+	var fit_per_pass: int = per_pass
+	var count: int = mini(per_pass, wanted)
 	var shown_at: int = Time.get_ticks_msec()
 	_stopping = false
 	while _tracer.samples < wanted:
-		var count: int = mini(per_pass, wanted - _tracer.samples)
-		_tracer.trace(count, 7919 * _tracer.samples + 104729 * settings.seed, row, rows)
+		# Each sample's numbers come from its own index (path_tracer.glsl)
+		# and the seed alone, not from how the passes fell: the same
+		# settings trace the same picture however fast the card was
+		# (lights_probe's "0 px outside the cone").
+		_tracer.trace(count, 104729 * settings.seed, row, rows)
 		row = 0 if row + rows >= picture.y else row + rows
 		_doing("tracing %d samples, %d rows, %.1f ms on the card" % [count, rows, card_ms])
 		await get_tree().process_frame
@@ -2114,11 +2125,14 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		var sample_ms: float = _tracer.sample_ms()
 		if sample_ms > 0.0:
 			var fit: int = floori(pass_ms / sample_ms / float(picture.x))
-			rows = clampi(fit, 8, picture.y)
-			per_pass = clampi(fit / picture.y, 1, PathTracer.MOST_PER_PASS)
-			card_ms = sample_ms * float(picture.x * rows * per_pass)
+			fit_rows = clampi(fit, 8, picture.y)
+			fit_per_pass = clampi(fit / picture.y, 1, PathTracer.MOST_PER_PASS)
+			card_ms = sample_ms * float(picture.x * fit_rows * fit_per_pass)
 		if row != 0:
 			continue
+		rows = fit_rows
+		per_pass = fit_per_pass
+		count = mini(per_pass, wanted - _tracer.samples)
 		var said: String = words if not words.is_empty() else \
 			"%d of %d samples" % [_tracer.samples, wanted]
 		progress.emit(lerpf(from, to, float(_tracer.samples) / float(wanted)), said)

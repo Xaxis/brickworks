@@ -5191,7 +5191,7 @@
       "readOnlyHint": false,
       "title": "Render a picture"
     },
-    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
+    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. light studio (the window's three lights, the default), softbox, window or daylight (photographed places), or dark: the studio put out, the model's own lights (light_model) and the plastics that glow all that lights it. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5213,6 +5213,16 @@
             "picture",
             "turntable",
             "build"
+          ],
+          "type": "string"
+        },
+        "light": {
+          "enum": [
+            "studio",
+            "softbox",
+            "window",
+            "daylight",
+            "dark"
           ],
           "type": "string"
         },
@@ -5261,7 +5271,7 @@
       "readOnlyHint": false,
       "title": "Queue renders"
     },
-    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given: view= may name a view saved with the model, drawn from exactly there), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
+    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given: view= may name a view saved with the model, drawn from exactly there), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop, depth_of_field and light as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5289,6 +5299,16 @@
         },
         "depth_of_field": {
           "type": "boolean"
+        },
+        "light": {
+          "enum": [
+            "studio",
+            "softbox",
+            "window",
+            "daylight",
+            "dark"
+          ],
+          "type": "string"
         },
         "look": {
           "enum": [
@@ -5330,6 +5350,90 @@
       "type": "object"
     },
     "name": "render_queue"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Place the model's lights"
+    },
+    "description": "The lights kept with the model, as Render's Lights in the model keeps them: a spot over a cockpit, a bulb in a lamp post, a low sun, a panel of light over a room. render_model and render_queue draw them over the studio in every quality, and with light=dark they and the plastics that glow are all that lights the model. With no op it lists them, numbered, and changes nothing. op add puts one in: kind spot (the default), point (a bulb), directional (a sun) or area (a square panel of light), set over the parts numbered in over= (look_at_model numbers them; the whole model when omitted) as a photographer first sets one, or placed by at= and aim=. op change changes light number= (any of over, at, aim, colour, strength, cone, size, shadows); op remove takes light number= out. at and aim are in LDU in the file's coordinates, LDraw's: y down, so a light above the model has a smaller y than its top, and aim [0, 1, 0] shines straight down. strength 1 lights a face 100 LDU from a lamp, or any face turned to a sun, as the window's key light does, and a lamp lights four times as brightly at half the distance. cone is a spot's whole angle in degrees, 2 to 160; size a bulb's radius or a panel's side in LDU. At most 8. Kept in the model's file, saved with it, not an undo step.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "aim": {
+          "description": "the way it shines, [x, y, z], the file's coordinates (y down)",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "at": {
+          "description": "where it is, [x, y, z] in LDU, the file's coordinates (y down)",
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "colour": {
+          "description": "#rrggbb; a warm white, #fff1d6, when omitted",
+          "type": "string"
+        },
+        "cone": {
+          "description": "a spot's whole angle in degrees, 2 to 160",
+          "type": "number"
+        },
+        "kind": {
+          "enum": [
+            "spot",
+            "point",
+            "directional",
+            "area"
+          ],
+          "type": "string"
+        },
+        "number": {
+          "description": "which light, from 1, as list numbers them",
+          "type": "integer"
+        },
+        "op": {
+          "enum": [
+            "list",
+            "add",
+            "change",
+            "remove"
+          ],
+          "type": "string"
+        },
+        "over": {
+          "description": "the parts' numbers to hang the light over, shining down on them",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "shadows": {
+          "description": "whether what it lights casts shadows; true when omitted",
+          "type": "boolean"
+        },
+        "size": {
+          "description": "a bulb's radius or a panel's side, in LDU",
+          "type": "number"
+        },
+        "strength": {
+          "description": "above 0 to 50; 1 is the window's key",
+          "type": "number"
+        }
+      },
+      "type": "object"
+    },
+    "name": "light_model"
   },
   {
     "annotations": {

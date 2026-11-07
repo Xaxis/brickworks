@@ -571,6 +571,46 @@ Pictures, `bench/results/render353-2026-10-29/`:
   shadow on nothing is the raster's). No denoiser: 256 samples are clean
   enough on the car, and Cycles keeps OIDN for R2.
 
+## 5d. Lights in the model, and plastics that glow (APP_UX5 lights)
+
+- **What a model keeps.** Up to 8 lights (`SceneLights`, a `0 !BRICKWORKS
+  LIGHT {json}` line each after the file's first line): a bulb, a spot, a sun
+  or a square panel, its place and aim in the file's coordinates, colour,
+  strength, a spot's cone, a bulb's radius or a panel's side, and shadows.
+  Strength 1 lights a face 100 LDU from a lamp, or any face turned to a sun,
+  as the window's key does; a lamp falls off with the square of distance.
+  Older Brickworks and other LDraw readers pass over the lines.
+- **Rasterised** as Godot's own lights (`StudioRender._place_lamps`): an
+  OmniLight3D, a SpotLight3D (its edge `spot_angle_attenuation` 3), a
+  DirectionalLight3D; a panel a spot opened to 80 degrees falling off as the
+  cosine, its size softening the shadows. **Path traced** by the tracer's
+  `from_lamps`, the same fall, cone and edge, the panel a true square of
+  light, each lamp's random numbers a stream of their own.
+- **Nothing outside a spot changes.** The exposure and the sweep's level
+  are metered with the lamps hidden, as a photographer meters the set and
+  then adds a lamp; the lamps are bounced by neither the raster's global
+  illumination (`light_indirect_energy` 0) nor the tracer (first surface
+  only), so the draft shows the light Best draws, and a pixel whose surface
+  is outside the cone is the same pixel. Their bounce is what is given up.
+  For that the same settings draw the same picture: the tracer's samples
+  take their numbers from their own index and the seed, not from how its
+  passes fell (a pass's size follows the card's timing, and changes only
+  between whole samples); and a raster picture in one piece is drawn wider
+  and cut back when it has occlusion, as pieces were, since its last
+  column came out darker and not the same twice.
+- **Dark** (Render's Light, `lighting` "dark"; `render_model light=dark`):
+  the studio's three lights and the sky put out, the ambient 0.025, the
+  sweep beyond the lights' reach 4% of its colour, no metering. The neons
+  (Trans Neon Green, Orange, Yellow, Red) and Glow In Dark give off light, as
+  Eyesight draws them: the plastic shaders' `glow` (2.0 times their colour)
+  and, rasterised, a light at each 80-LDU lump of them (12 at most, no
+  shadow); traced, their faces are lights of their own, opaque and clear.
+- **Measured** (`tools/probe.sh lights`): see the probe's numbers in its
+  run log; the bar is 0 px changed outside the cone both ways and the
+  floor the spot lights beside the car 15% and 10 levels lighter, on a grey
+  sweep (the car's roof is black), and the plate round a neon 1 x 1 three
+  times as light as round a Trans Green one.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**

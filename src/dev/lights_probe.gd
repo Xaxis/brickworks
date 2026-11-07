@@ -18,9 +18,9 @@
 ## (Quick) and path traced (Best, where the card traces rays): every pixel
 ## whose surface is outside the spot's cone wherever along its ray it can be
 ## (the car's box and the floor, a pixel and more round it), 0 px changed;
-## the roof under it brighter by a set amount ([constant BRIGHTER] of its
-## light, and [constant LEVELS] levels); the two drawings' rises the same
-## light within [constant SAME_LIGHT]. A 1 x 1 brick in Trans Neon Green on a
+## the lit side, the floor beside the car under it, brighter by a set
+## amount ([constant BRIGHTER] of its light, and [constant LEVELS] levels);
+## the two drawings' rises the same light within [constant SAME_LIGHT]. A 1 x 1 brick in Trans Neon Green on a
 ## white plate in the Dark light lights the plate round it ([constant
 ## GLOW_TIMES] as light as with a 1 x 1 in Trans Green, and green), both ways.
 ##
@@ -37,11 +37,11 @@ extends SceneTree
 
 const OUT := "res://shots/lights/"
 const META := "0 !BRICKWORKS LIGHT "
-## The roof under the spot: at least this much more light in it, and this
-## many more levels of 255.
+## The floor the spot lights beside the car: at least this much more light
+## on it, and this many more levels of 255.
 const BRIGHTER := 0.15
 const LEVELS := 10.0
-## The rasterised and the path traced rise, each a share of the roof's light
+## The rasterised and the path traced rise, each a share of the floor's light
 ## without the spot: within this of each other.
 const SAME_LIGHT := 0.35
 ## The plate round the glowing brick against one round a brick that does not.
@@ -232,11 +232,14 @@ func _kept_everywhere() -> void:
 	var saved: bool = bool(_main.call("save_model", path))
 	_check("saved: %s" % _said_lines(path), saved and _same(_read(path), wanted))
 	_check("saved, nothing is left unsaved", not _store.has_unsaved_work())
-	# The autosave.
+	# The autosave. A probe's store keeps none unless it asks (main), in
+	# its own data folder.
 	_scene_set([_lights.call("typed", _with(_scene()[0], {"colour": "#ffd27f"}))])
+	_store.keeps = true
 	_store.touch()
 	wanted = _in_file()
 	var auto: String = str(_store.call("write_now"))
+	_store.keeps = false
 	_check("the autosave: %s" % _said_lines(auto), not auto.is_empty()
 		and _same(_read(auto), wanted))
 	# A step edit, and saved again.
@@ -318,7 +321,6 @@ func _kept_everywhere() -> void:
 	together.call("_put_meta", "~lights", words)
 	together.call("_put_meta", "~lights", "not a list")
 	_check("...and words that are no list leave the lights as they were", _same(_in_file(), wanted))
-	_store.call("write_now")
 
 
 # -- over MCP -----------------------------------------------------------------------
@@ -397,16 +399,17 @@ func _spot(traced: bool) -> void:
 	settings.quality = RenderSettings.Quality.QUICK
 	settings.size = SIZE
 	settings.view = "hero"
+	# On grey, where a floor lit more can show it: white is drawn near the
+	# top of what a picture holds.
+	settings.use_backdrop("grey")
 	var quick: Array = await _with_and_without(spot, settings, "quick")
 	var raster_rise: float = -1.0
 	if not quick.is_empty():
 		raster_rise = _judged(quick, spot, box, "rasterised (Quick)")
 	if not traced:
 		return
-	var best := RenderSettings.new()
+	var best: RenderSettings = settings.copy()
 	best.quality = RenderSettings.Quality.BEST
-	best.size = SIZE
-	best.view = "hero"
 	best.samples = 64
 	best.seed = 1
 	best.traced = true
@@ -415,7 +418,7 @@ func _spot(traced: bool) -> void:
 		return
 	_check("Best is path traced", _render.traced_last())
 	var traced_rise: float = _judged(both, spot, box, "path traced (Best, 64 samples)")
-	_check("the same light both ways: the roof %.0f%% lighter rasterised, %.0f%% path traced"
+	_check("the same light both ways: the floor %.0f%% lighter rasterised, %.0f%% path traced"
 		% [raster_rise * 100.0, traced_rise * 100.0], raster_rise > 0.0 and traced_rise > 0.0
 		and absf(traced_rise - raster_rise) <= SAME_LIGHT * maxf(raster_rise, traced_rise))
 
@@ -423,26 +426,40 @@ func _spot(traced: bool) -> void:
 ## Drawn without the spot and with it: [without, with, the shot], or [].
 func _with_and_without(spot: Dictionary, settings: RenderSettings, named: String) -> Array:
 	# Each drawn once first, so neither is the first drawing of its set
-	# (what the card builds for a new set of lights is built by then).
-	if not settings.traced:
-		_scene_set([spot])
-		await _render.render(_world, settings)
-	_scene_set([])
+	# (what the card builds for a new set of lights is built by then; the
+	# tracer's first picture of a set came out a little apart from its
+	# second, 573 px in all).
+	_scene_set([spot])
 	await _render.render(_world, settings)
+	_scene_set([])
+	var before: Image = await _render.render(_world, settings)
 	var without: Image = await _render.render(_world, settings)
 	_scene_set([spot])
 	var with: Image = await _render.render(_world, settings)
 	var shot: StudioRender.Shot = _render.last_shot
 	_scene_set([])
-	if without == null or with == null:
+	if before == null or without == null or with == null:
 		_check("the car is drawn %s" % named, false)
 		return []
 	without.save_png(OUT + "spot_%s_off_%s.png" % [named, _size])
 	with.save_png(OUT + "spot_%s_on_%s.png" % [named, _size])
+	# What the renderer changes by itself, drawing the same twice: said, so
+	# a pixel changed outside the cone can be told from it. (Rasterised, a
+	# shadow's soft edge came out a level apart now and then, 3,250 px of
+	# the car's own shadow, 2026-11-06.)
+	before.convert(Image.FORMAT_RGB8)
+	without.convert(Image.FORMAT_RGB8)
+	var own: int = 0
+	var a: PackedByteArray = before.get_data()
+	var b: PackedByteArray = without.get_data()
+	for n: int in a.size() / 3:
+		if a[n * 3] != b[n * 3] or a[n * 3 + 1] != b[n * 3 + 1] or a[n * 3 + 2] != b[n * 3 + 2]:
+			own += 1
+	print("    %s: the same drawn twice without it, %d px apart" % [named, own])
 	return [without, with, shot, named]
 
 
-## The bar's two measures of one drawing; the roof's rise, a share of its light.
+## The bar's two measures of one drawing; the floor's rise, a share of its light.
 func _judged(drawn: Array, spot: Dictionary, box: AABB, words: String) -> float:
 	var without: Image = drawn[0]
 	var with: Image = drawn[1]
@@ -484,17 +501,71 @@ func _judged(drawn: Array, spot: Dictionary, box: AABB, words: String) -> float:
 	map.save_png(OUT + "spot_%s_map_%s.png" % [drawn[3], _size])
 	_check("%s: outside the cone %d of %d px changed (%d px not certain, left out)" % [words,
 		outside_changed, outside, unsure], outside > size.x * size.y / 3 and outside_changed == 0)
-	# The roof under the spot, where its axis meets the top of the car.
-	var roof: Vector2 = _project(shot, Vector3(_at(spot).x, box.end.y, _at(spot).z), size)
-	var off: Color = _patch(without, roof)
-	var on: Color = _patch(with, roof)
+	# The lit side: the floor beside the car, inside the cone and out of
+	# the car's shadow, seen from the camera's side of the car. (The car's
+	# roof is black, and much of its bonnet is under the windscreen.)
+	var points: Array[Vector3] = _lit_floor(shot, size, spot, box)
+	var off := Color(0, 0, 0)
+	var on := Color(0, 0, 0)
+	for point: Vector3 in points:
+		var at: Vector2 = _project(shot, point, size)
+		off += _patch(without, at) / float(points.size())
+		on += _patch(with, at) / float(points.size())
 	var light_off: float = _linear(off)
 	var light_on: float = _linear(on)
 	var rise: float = (light_on - light_off) / maxf(light_off, 0.001)
 	var levels: float = (on.get_luminance() - off.get_luminance()) * 255.0
-	_check("%s: the roof under it %.0f%% lighter, %.1f levels; %d px lit in all" % [words,
-		rise * 100.0, levels, changed], rise >= BRIGHTER and levels >= LEVELS and changed > 500)
+	_check("%s: the floor it lights beside the car (%d places) %.0f%% lighter, %.1f levels "
+		% [words, points.size(), rise * 100.0, levels] + "(%.0f to %.0f); %d px lit in all" % [
+		off.get_luminance() * 255.0, on.get_luminance() * 255.0, changed], points.size() >= 3
+		and rise >= BRIGHTER and levels >= LEVELS and changed > 500)
 	return rise
+
+
+## Places on the floor the spot lights that the camera sees: inside the
+## inner part of its cone, beyond the car's box on the camera's side (so
+## nothing of the car stands between them and the camera) and so far
+## beyond it that the line to the spot clears the car's top too (so they
+## are not in its shadow); well inside the picture. At most 9, spread out.
+func _lit_floor(shot: StudioRender.Shot, size: Vector2i, spot: Dictionary,
+		box: AABB) -> Array[Vector3]:
+	var apex: Vector3 = _at(spot)
+	var low: float = box.position.y
+	var reach: float = (apex.y - low) * tan(deg_to_rad(float(spot["cone"]) * 0.5)) * 0.85
+	var toward: Vector3 = shot.origin - box.get_center()
+	var clear: float = 8.0
+	var found: Array[Vector3] = []
+	var step: float = 6.0
+	var x: float = apex.x - reach
+	while x <= apex.x + reach:
+		var z: float = apex.z - reach
+		while z <= apex.z + reach:
+			var point := Vector3(x, low, z)
+			z += step
+			if Vector2(point.x - apex.x, point.z - apex.z).length() > reach:
+				continue
+			# Where the line to the spot crosses the car's top.
+			var top: Vector3 = apex + (point - apex) * ((apex.y - box.end.y) / (apex.y - low))
+			var beyond: bool = false
+			for axis: int in [0, 2]:
+				var past_end: bool = toward[axis] > 0.0
+				var edge: float = (box.end[axis] + clear) if past_end else (box.position[axis] - clear)
+				if (point[axis] > edge and top[axis] > edge) if past_end \
+						else (point[axis] < edge and top[axis] < edge):
+					beyond = true
+			if not beyond:
+				continue
+			var seen: Vector2 = _project(shot, point, size)
+			if seen.x < 12.0 or seen.y < 12.0 or seen.x > size.x - 12.0 or seen.y > size.y - 12.0:
+				continue
+			found.append(point)
+		x += step
+	# Spread out: every so many of them.
+	var picked: Array[Vector3] = []
+	var every: int = maxi(found.size() / 9, 1)
+	for n: int in range(0, found.size(), every):
+		picked.append(found[n])
+	return picked
 
 
 ## Each pixel: 1 when whatever it shows is inside [param spot]'s cone, 0 when
