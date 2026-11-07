@@ -360,6 +360,16 @@ func _hand(part_id: String, near: Vector3) -> int:
 	return _builder.place()
 
 
+## Where the ghost of [param part_id] stands aimed straight down at [param
+## near], or null where it may not go there.
+func _ghost_of(part_id: String, near: Vector3) -> Variant:
+	_builder.held_part = part_id
+	_builder.held_rotation = 0
+	_builder.held_face = "up"
+	_builder.update_preview(near + Vector3(0.3, 2000, 0.3), Vector3.DOWN)
+	return _builder.ghost_transform() if _builder.can_place() else null
+
+
 ## Brick id -> how many of [param brick]'s studs reach into it: the
 ## sample the app's own clutch test takes, five LDU past each tip.
 func _studs_into(brick: BrickWorld.Brick) -> Dictionary:
@@ -647,11 +657,18 @@ func _clip_on_bar(clip: String, bar: String, near: Vector3) -> void:
 
 
 ## The level clip plate on a 2 x 4's front row, by hand, its clip out over
-## the edge where a real one goes: on its stud, at its socket.
+## the edge: where 61252 itself goes aimed there, on its stud, at its socket.
 func _on_edge(clip: String, near: Vector3) -> void:
 	var below: int = _hand("3001", near)
 	# The 2 x 4's front stud row, which is +z here: the clip faces +z.
-	var made: int = _hand(clip, near + Vector3(10, 0, 10))
+	var aim: Vector3 = near + Vector3(10, 0, 10)
+	var real: Variant = _ghost_of("61252", aim)
+	var mine: Variant = _ghost_of(clip, aim)
+	_ok(real != null and mine != null and (mine as Transform3D).is_equal_approx(real),
+		"%s aimed at the 2 x 4's front row, its clip out over the edge, goes where 61252 goes (%s, %s)"
+		% [clip, (mine as Transform3D).origin if mine != null else "refused",
+			(real as Transform3D).origin if real != null else "refused"])
+	var made: int = _hand(clip, aim)
 	if below == 0 or made == 0:
 		_ok(false, "the 2 x 4 and %s could be placed by hand (%d, %d)" % [clip, below, made])
 		return

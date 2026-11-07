@@ -3726,23 +3726,25 @@ static func _on_half_stud(phase: float) -> bool:
 
 ## How far the part reaches below its plate, where it sits on the studs of
 ## what is under it: the bottom of its cover under its sockets less the
-## bottom of all of it. 0 for a plain part, which has nothing below its
-## plate, and for one with no sockets or not upright.
+## bottom of its box, which is what it was dropped by. 0 for a plain part,
+## which has nothing below its plate, and for one with no sockets or not
+## upright. Less the bottom of its cover, which is whole cells, it sank by
+## what those round out: a thick clip's ring hangs 1.448 LDU under its plate
+## (61252) and its cover 2, and a made one stood 0.552 LDU into the brick it
+## was put on, refused (makepart2, 2026-11-07).
 func _hangs_below(part: Lbm.PartMesh, basis: Basis) -> float:
 	if part.sockets.is_empty() or part.boxes.is_empty() \
 			or (basis * Vector3.UP).y < 0.99:
 		return 0.0
 	var seat: float = INF
-	var lowest: float = INF
 	for cells: AABB in part.boxes:
 		var low: Vector3 = cells.position * part.cell_ldu
 		var high: Vector3 = cells.end * part.cell_ldu
-		lowest = minf(lowest, low.y)
 		for socket: Vector2 in part.sockets:
 			if socket.x >= low.x - 0.01 and socket.x <= high.x + 0.01 \
 					and socket.y >= low.z - 0.01 and socket.y <= high.z + 0.01:
 				seat = minf(seat, low.y)
-	return seat - lowest if seat < INF else 0.0
+	return maxf(0.0, seat - part.bounds.position.y) if seat < INF else 0.0
 
 
 ## A part laid on its side, aimed at a face with studs on it — a brick
