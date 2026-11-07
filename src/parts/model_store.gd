@@ -523,6 +523,10 @@ var _views_kept: Array = []
 ## The lights placed in the model (SceneLights) as it was opened or last saved
 ## to its file, in the window's coordinates: others now are work not saved.
 var _lights_kept: Array = []
+## The light lines its file has that this could not read (SceneLights.sorted),
+## word for word: written back with the lights, wherever the model is written
+## whole. Someone else's file still has them where they were.
+var _lights_unread := PackedStringArray()
 
 
 ## The saved file the model on the baseplate is, as this tab or window last
@@ -628,6 +632,7 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	bin_sets = PackedStringArray()
 	_views_kept = []
 	_lights_kept = []
+	_lights_unread = PackedStringArray()
 	reference = picture
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
@@ -1659,9 +1664,12 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	for view: Dictionary in world.saved_views:
 		Language.keep_name(str(view["name"]))
 	_views_kept = world.saved_views
-	# The lights placed in it (SceneLights), where the model now stands.
-	world.scene_lights = SceneLights.placed(read["lights"], _lift_now())
+	# The lights placed in it (SceneLights), where the model now stands; and
+	# its light lines this cannot read, kept to be written back, and said.
+	var lit: Dictionary = read["lights"]
+	world.scene_lights = SceneLights.placed(lit["lights"], _lift_now())
 	_lights_kept = world.scene_lights
+	_lights_unread = lit["unread"]
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
@@ -1684,7 +1692,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "",
 		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
-		"unbuilt": unbuilt})
+		"unbuilt": unbuilt, "lights_unread": SceneLights.unread_words(lit["why"])})
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
@@ -1737,7 +1745,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"hidden": HiddenColours.read(text),
 		"cut": CutShape.read(text),
 		"views": SavedViews.read(text),
-		"lights": SceneLights.read(text),
+		"lights": SceneLights.sorted(text),
 		"motions": Motions.read(text),
 		"pins": PinnedComments.read(text),
 	}
@@ -2093,6 +2101,7 @@ func _source_asked(title_now: String) -> Dictionary:
 		"cut": world.cut_kept.duplicate(true),
 		"views": SavedViews.in_file(world.saved_views, _lift_now()),
 		"lights": SceneLights.in_file(world.scene_lights, _lift_now()),
+		"lights_unread": _lights_unread,
 		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
 		"pins": pins.lines(world, _lift_now()),
 		"authored": AuthorSteps.any(world, scenery), "set": from_set}
@@ -2130,7 +2139,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 	kept = HiddenColours.written_into(kept, asked["hidden"])
 	kept = CutShape.written_into(kept, asked["cut"])
 	kept = SavedViews.written_into(kept, asked["views"])
-	kept = SceneLights.written_into(kept, asked["lights"])
+	kept = SceneLights.written_into(kept, asked["lights"], asked["lights_unread"])
 	kept = Motions.written_into(kept, asked["motions"])
 	kept = PinnedComments.written_into(kept, asked["pins"])
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
@@ -2546,7 +2555,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	text = HiddenColours.written_into(text, hidden_scheme)
 	text = CutShape.written_into(text, world.cut_kept)
 	text = SavedViews.written_into(text, SavedViews.in_file(world.saved_views, _lift_now()))
-	text = SceneLights.written_into(text, SceneLights.in_file(world.scene_lights, _lift_now()))
+	text = SceneLights.written_into(text, SceneLights.in_file(world.scene_lights, _lift_now()),
+		_lights_unread)
 	text = Motions.written_into(text, _motion_lines())
 	text = PinnedComments.written_into(text, pins.lines(world, _lift_now()))
 	text = _with_looks(text, true)

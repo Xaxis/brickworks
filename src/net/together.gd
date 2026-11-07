@@ -1534,7 +1534,8 @@ func _put_meta(key: String, words: String) -> void:
 			var lights: Array = []
 			for each: Variant in given:
 				var light: Dictionary = SceneLights.parsed(each)
-				if not light.is_empty() and lights.size() < SceneLights.MOST:
+				# As a file's are: at most MOST, SUNS of them suns.
+				if not light.is_empty() and SceneLights.joins(lights, light).is_empty():
 					lights.append(light)
 			if lights.size() != given.size():
 				TogetherWords.left_out("lights", "not lights")

@@ -41,6 +41,15 @@ const META := "0 !BRICKWORKS LIGHT "
 const KINDS: Array[String] = ["point", "spot", "directional", "area"]
 ## The most a model keeps, as many as the path tracer lights a bounce with.
 const MOST := 8
+## The most suns a model keeps: with the studio's three lights and its sky,
+## eight, the most suns Godot draws at once under either renderer. Past it
+## a sun added nothing in the window's light (lreview, 2026-11-07), and the
+## tracer drew what the raster did not.
+const SUNS := 4
+## How many of a file's light lines are read at most: past them the rest are
+## kept as they are, unread. A file of 200,000 lines that were no lights took
+## twice as long to open as one of comments, each tried as JSON.
+const TRIES := 64
 ## Strength 1 lights a face this far from a lamp as the window's key does.
 const REACH := 100.0
 ## The window's key light, as StudioRender's RIG has it under Forward+.
@@ -66,34 +75,156 @@ const WARM := "#fff1d6"
 
 
 ## The lights [param text] keeps, in its order, as [method written_into] wrote
-## them (the file's coordinates). A line this cannot read is passed over, and
-## past [constant MOST] the rest are.
+## them (the file's coordinates): those of its main model's lines ([method
+## main_end]) it can read, up to [constant MOST] of them and [constant SUNS]
+## suns. The rest are kept in the file as they are ([method sorted]).
 static func read(text: String) -> Array:
-	var out: Array = []
+	return sorted(text)["lights"]
+
+
+## [param text]'s light lines, sorted: "lights" those it keeps ([method read]),
+## "unread" every other light line of its main model word for word, to be
+## written back as it was ([method written_into]), and "why" how many were
+## not read for each reason. Only the main model's lines: a sub-model's are
+## its own, and stay in it.
+static func sorted(text: String) -> Dictionary:
+	var out: Dictionary = {"lights": [], "unread": PackedStringArray(), "why": {}}
 	if not text.contains(META):
 		return out
-	for line: String in text.split("\n"):
-		if not line.begins_with(META) or out.size() >= MOST:
-			continue
-		var light: Dictionary = parsed(line.substr(META.length()).strip_edges())
-		if not light.is_empty():
-			out.append(light)
+	var lines: PackedStringArray = text.split("\n")
+	var sorting: Dictionary = _sorting(lines)
+	for n: int in sorting["unread"]:
+		(out["unread"] as PackedStringArray).append(lines[n].trim_suffix("\r"))
+	out["lights"] = sorting["lights"]
+	out["why"] = sorting["why"]
 	return out
 
 
-## [param text] with [param lights] (the file's coordinates) written into it
-## after its first line, in their order, and any it had taken out; with none,
-## only taken out.
-static func written_into(text: String, lights: Array) -> String:
-	if lights.is_empty() and not text.contains(META):
-		return text
-	var kept := PackedStringArray()
-	for line: String in text.split("\n"):
+## Which of [param lines] are light lines read ("taken", by their index,
+## and "lights") and which not ("unread", by index, and "why"), as [method
+## read] and [method written_into] both decide it: the one rule, so a save
+## takes out exactly the lines an open read.
+static func _sorting(lines: PackedStringArray) -> Dictionary:
+	var lights: Array = []
+	var taken: Dictionary = {}
+	var unread: Array[int] = []
+	var why: Dictionary = {}
+	var tries: int = 0
+	for n: int in main_end(lines):
+		var line: String = lines[n]
 		if not line.begins_with(META):
-			kept.append(line)
+			continue
+		var body: String = line.substr(META.length()).strip_edges()
+		var reason: String = ""
+		var light: Dictionary = {}
+		if not body.begins_with("{"):
+			reason = "not a light's words"
+		elif tries >= TRIES:
+			reason = "past the first %d light lines, which are all that are read" % TRIES
+		else:
+			tries += 1
+			var found: Array = checked(body)
+			light = found[0]
+			reason = found[1]
+			if reason.is_empty():
+				reason = joins(lights, light)
+		if reason.is_empty():
+			lights.append(light)
+			taken[n] = true
+		else:
+			unread.append(n)
+			why[reason] = int(why.get(reason, 0)) + 1
+	return {"lights": lights, "taken": taken, "unread": unread, "why": why}
+
+
+## Where the main model's lines end in [param lines]: at the second section
+## an MPD opens (another 0 FILE, or an embedded picture's 0 !DATA) or its
+## first 0 NOFILE; all of them when there is none. What a sub-model holds
+## is its own (a model brought into this one keeps its lights and views).
+static func main_end(lines: PackedStringArray) -> int:
+	var opened: bool = false
+	for n: int in lines.size():
+		if not lines[n].begins_with("0 "):
+			continue
+		var line: String = lines[n].strip_edges()
+		if not LdrModel._is_file_line(line):
+			continue
+		if line.split(" ", false)[1].to_upper() == "FILE" and not opened:
+			opened = true
+			continue
+		return n
+	return lines.size()
+
+
+## Why [param light] cannot join [param lights] in a model, or "": a model
+## keeps at most [constant MOST] lights, [constant SUNS] of them suns.
+static func joins(lights: Array, light: Dictionary) -> String:
+	if lights.size() >= MOST:
+		return "a model keeps at most %d lights" % MOST
+	if str(light.get("kind", "")) == "directional":
+		var suns: int = 0
+		for one: Dictionary in lights:
+			if str(one.get("kind", "")) == "directional":
+				suns += 1
+		if suns >= SUNS:
+			return ("a model keeps at most %d suns: with the studio's three lights and its "
+				+ "sky that is eight, the most a renderer draws") % SUNS
+	return ""
+
+
+## What an open left out of [param why] (as [method sorted] counts them), in
+## words for the status bar, each reason a part of its own as the bar's
+## parts are (" — "): "2 light lines not read, kept in the file as they are
+## — of a kind there is not (...) — a model keeps at most 4 suns: ..."; ""
+## for none.
+static func unread_words(why: Dictionary) -> String:
+	if why.is_empty():
+		return ""
+	var count: int = 0
+	for reason: String in why:
+		count += int(why[reason])
+	var said: String = "1 light line not read, kept in the file as it is" if count == 1 \
+		else "%d light lines not read, kept in the file as they are" % count
+	return " — ".join(PackedStringArray([said]) + PackedStringArray(why.keys()))
+
+
+## [param text] with [param lights] (the file's coordinates) written into it
+## after its first line, in their order, in place of the light lines it
+## read ([method sorted]); every other light line stays where it is, and
+## those of [param carried] it lacks (the lines an open could not read, when
+## the text is written whole) go in after the lights, word for word. Its
+## sub-models' lines are left as they are, and the file's line ends kept.
+static func written_into(text: String, lights: Array,
+		carried: PackedStringArray = PackedStringArray()) -> String:
+	if lights.is_empty() and carried.is_empty() and not text.contains(META):
+		return text
+	var lines: PackedStringArray = text.split("\n")
+	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
+	var sorting: Dictionary = _sorting(lines)
+	var taken: Dictionary = sorting["taken"]
+	# The unread lines it still has, so a carried one is not written twice.
+	var has: Dictionary = {}
+	for n: int in sorting["unread"]:
+		var line: String = lines[n].trim_suffix("\r")
+		has[line] = int(has.get(line, 0)) + 1
+	var adding := PackedStringArray()
 	for n: int in mini(lights.size(), MOST):
-		kept.insert(mini(1 + n, kept.size()), META + JSON.stringify(lights[n]))
-	return "\n".join(kept)
+		adding.append(META + JSON.stringify(lights[n]) + eol)
+	for line: String in carried:
+		if int(has.get(line, 0)) > 0:
+			has[line] = int(has[line]) - 1
+		else:
+			adding.append(line + eol)
+	var out := PackedStringArray()
+	for n: int in lines.size():
+		if taken.has(n):
+			continue
+		out.append(lines[n])
+		if out.size() == 1:
+			out.append_array(adding)
+			adding = PackedStringArray()
+	out.append_array(adding)
+	return "\n".join(out)
 
 
 ## [param lights] as the window holds them, in the file's coordinates: the
@@ -327,51 +458,69 @@ static func _point(at: Vector3) -> Array:
 ## number, finite and in reason, the kind one there is. Empty for anything
 ## else: a file is anybody's to edit, and a session's words anybody's to send.
 static func parsed(said: Variant) -> Dictionary:
+	return checked(said)[0]
+
+
+## [param said] (a light's line, its JSON, or the dictionary) as a light and
+## "", or an empty light and why it is none, in words a person reads.
+static func checked(said: Variant) -> Array:
 	var raw: Variant = said
 	if said is String:
 		# Quietly: a line that is no JSON is no light, not an error.
 		var json := JSON.new()
 		if json.parse(said as String) != OK:
-			return {}
+			return [{}, "not a light's words"]
 		raw = json.data
 	if not raw is Dictionary:
-		return {}
-	return typed(raw as Dictionary)
+		return [{}, "not a light's words"]
+	return _checked(raw as Dictionary)
 
 
 ## [param given] as a light, each field checked and the rest filled in as a
 ## new light of its kind has them; empty when it is not one.
 static func typed(given: Dictionary) -> Dictionary:
+	return _checked(given)[0]
+
+
+## [method typed], and why not. Each number is rounded as a file keeps it
+## before it is checked, so what is kept is what was checked: a strength of
+## 0.0004 was kept, written as 0 and refused at the next open, and the model
+## lost both its lights (lreview, 2026-11-07).
+static func _checked(given: Dictionary) -> Array:
 	var kind: Variant = given.get("kind")
 	if not kind is String or not str(kind) in KINDS:
-		return {}
+		return [{}, "of a kind there is not (spot, point, directional or area)"]
 	var at: Variant = _vector(given.get("at"))
 	var aim: Variant = _vector(given.get("aim"))
 	if at == null or aim == null or (aim as Vector3).length() < 0.001:
-		return {}
+		return [{}, "its at and aim are not three numbers each, aim not all 0"]
 	var light: Dictionary = _with({"kind": str(kind)}, at, aim)
 	var colour: Variant = given.get("colour", WARM)
 	if not colour is String or not Color.html_is_valid(str(colour)):
-		return {}
+		return [{}, "its colour is not #rrggbb"]
 	light["colour"] = "#" + Color.html(str(colour)).to_html(false)
 	var strength: Variant = given.get("strength", 1.0)
-	if not _number(strength) or float(strength) <= 0.0 or float(strength) > STRONGEST:
-		return {}
-	light["strength"] = snappedf(float(strength), 0.001)
+	var kept_strength: float = snappedf(float(strength), 0.001) if _number(strength) else -1.0
+	if kept_strength <= 0.0 or kept_strength > STRONGEST:
+		return [{}, "its strength is not above 0 (0.001 at least, as a file keeps it) to %d"
+			% roundi(STRONGEST)]
+	light["strength"] = kept_strength
 	var shadows: Variant = given.get("shadows", true)
 	light["shadows"] = shadows if shadows is bool else true
 	var default_size: float = 40.0 if kind == "area" else (0.0 if kind == "directional" else 4.0)
 	var size: Variant = given.get("size", default_size)
-	if not _number(size) or float(size) < 0.0 or float(size) > 4000.0 \
-			or (kind == "area" and float(size) <= 0.0):
-		return {}
-	light["size"] = snappedf(float(size), 0.001)
+	var kept_size: float = snappedf(float(size), 0.001) if _number(size) else -1.0
+	if kept_size < 0.0 or kept_size > 4000.0 or (kind == "area" and kept_size <= 0.0):
+		return [{}, "its size is not 0 to 4000 LDU (a panel's above 0: 0.001 at least, as a "
+			+ "file keeps it)"]
+	light["size"] = kept_size
 	if kind == "spot":
 		var cone: Variant = given.get("cone", 40.0)
-		if not _number(cone) or float(cone) < NARROWEST or float(cone) > WIDEST:
-			return {}
-		light["cone"] = snappedf(float(cone), 0.001)
-	return light
+		var kept_cone: float = snappedf(float(cone), 0.001) if _number(cone) else -1.0
+		if kept_cone < NARROWEST or kept_cone > WIDEST:
+			return [{}, "its cone is not %d to %d degrees" % [roundi(NARROWEST), roundi(WIDEST)]]
+		light["cone"] = kept_cone
+	return [light, ""]
 
 
 static func _vector(said: Variant) -> Variant:

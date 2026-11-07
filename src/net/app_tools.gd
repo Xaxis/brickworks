@@ -1299,13 +1299,13 @@ func refusal(tool: String, input: Dictionary) -> String:
 		return ("This tab shows a model shared to look at: it can be listed and its booklet "
 			+ "made, not changed or written out. Open in Brickworks copies it into the "
 			+ "person's own models.")
-	if assistant != null and assistant.is_busy() and tool in CHANGES:
+	if assistant != null and assistant.is_busy() and changes(tool, input):
 		return "The app's own designer is building right now; wait for it to finish."
 	# A run kept to a list of parts: a tool that makes parts of its own is not.
 	if not PartsOnly.tool_refusal(tool).is_empty():
 		return PartsOnly.tool_refusal(tool)
 	# As clear_model: a request about the selected parts changes those alone.
-	if assistant != null and assistant.asked_about_selection() and tool in CHANGES:
+	if assistant != null and assistant.asked_about_selection() and changes(tool, input):
 		return ("Not now — the person asked about the parts they selected, and this would "
 			+ "change more than those. Change them with edit_selection.")
 	return ""
@@ -1323,6 +1323,15 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_
 	"page_setup",
 	# lights (APP_UX5 #7): the lights kept with the model.
 	"light_model"]
+
+
+## Whether [param tool] called with [param input] changes the model: one of
+## [constant CHANGES], and not in a form that only reads it (as a model
+## shared to look at allows, [method _while_looking]). By the call, not the
+## tool: light_model's list was refused while the designer built, as edit_steps'
+## list and set_floor's question were (lreview, 2026-11-07).
+static func changes(tool: String, input: Dictionary) -> bool:
+	return tool in CHANGES and not _while_looking(tool, input)
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the
@@ -3827,7 +3836,10 @@ func _light_model(input: Dictionary) -> String:
 		return "op is list, add, change or remove."
 	if world.brick_count() - store.scenery.size() <= 0:
 		return "There is nothing on the baseplate to light yet."
-	var at: int = int(input.get("number", 0)) - 1
+	var number: Variant = _whole(input.get("number", 0))
+	if number == null:
+		return "number is a whole number, from 1, as op list numbers the lights; nothing changed."
+	var at: int = int(number) - 1
 	if op != "add" and (at < 0 or at >= lights.size()):
 		if lights.is_empty():
 			return "The model keeps no lights yet: op add puts one in."
@@ -3838,6 +3850,10 @@ func _light_model(input: Dictionary) -> String:
 		return "Took light %d out of the model. %s" % [at + 1, SceneLights.words(lights)]
 	if op == "add" and lights.size() >= SceneLights.MOST:
 		return "A model keeps at most %d lights: op remove takes one out first." % SceneLights.MOST
+	if op == "add" and str(input.get("kind", "spot")) == "directional":
+		var no_sun: String = SceneLights.joins(lights, {"kind": "directional"})
+		if not no_sun.is_empty():
+			return "No sun added: %s. op remove takes one out first." % no_sun
 	# What it is hung over: the parts named, or the whole model.
 	var box := AABB()
 	if input.has("over"):
@@ -3846,9 +3862,13 @@ func _light_model(input: Dictionary) -> String:
 			return "over is the parts' numbers, from look_at_model."
 		var any: bool = false
 		for raw: Variant in given:
-			var brick: BrickWorld.Brick = world.get_brick(int(raw))
-			if brick == null or store.scenery.has(int(raw)):
-				return "No part numbered %s (look_at_model numbers them); nothing changed." % str(raw)
+			var id: Variant = _whole(raw)
+			if id == null:
+				return ("over is the parts' numbers, from look_at_model: %s is not one; nothing "
+					+ "changed.") % JSON.stringify(raw).left(40)
+			var brick: BrickWorld.Brick = world.get_brick(int(id))
+			if brick == null or store.scenery.has(int(id)):
+				return "No part numbered %s (look_at_model numbers them); nothing changed." % str(id)
 			var part: AABB = app.call("_box_of", brick)
 			box = box.merge(part) if any else part
 			any = true
@@ -3871,11 +3891,13 @@ func _light_model(input: Dictionary) -> String:
 	for field: String in ["at", "aim", "colour", "strength", "cone", "size", "shadows"]:
 		if input.has(field):
 			light[field] = input[field]
-	var checked: Dictionary = SceneLights.typed(light)
+	var found: Array = SceneLights.checked(light)
+	var checked: Dictionary = found[0]
 	if checked.is_empty():
-		return ("That is no light: at and aim are three numbers each (aim not all 0), colour "
-			+ "#rrggbb, strength above 0 to %d, cone 2 to 160, size 0 to 4000; nothing "
-			+ "changed.") % roundi(SceneLights.STRONGEST)
+		return ("That is no light: %s. at and aim are three numbers each (aim not all 0), colour "
+			+ "#rrggbb, strength above 0 to %d, cone 2 to 160, size 0 to 4000 (a panel's above "
+			+ "0); each kept to a thousandth; nothing changed.") % [found[1],
+			roundi(SceneLights.STRONGEST)]
 	if op == "add":
 		lights.append(checked)
 		at = lights.size() - 1
@@ -3884,6 +3906,20 @@ func _light_model(input: Dictionary) -> String:
 	_keep_lights(lights)
 	return "%s light %d. %s\nrender_model draws it; light=dark draws it alone." % [
 		"Put in" if op == "add" else "Changed", at + 1, SceneLights.words(lights)]
+
+
+## [param said] as a whole number when it is one (a JSON number, or its
+## digits), or null: a session's words are anybody's, and int() of an array
+## stopped the call with an error (lreview, 2026-11-07).
+static func _whole(said: Variant) -> Variant:
+	if said is int:
+		return said
+	if said is float and is_finite(said) and absf(said) < 1e9 and is_equal_approx(said,
+			roundf(said)):
+		return roundi(said)
+	if said is String and (said as String).is_valid_int() and (said as String).length() < 10:
+		return (said as String).to_int()
+	return null
 
 
 ## [param lights], in the file's coordinates, as the model's: a new array, as

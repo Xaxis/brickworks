@@ -355,6 +355,11 @@ func _process(delta: float) -> void:
 	# view, which it does not know is behind the panel.
 	if not get_viewport().disable_3d:
 		get_viewport().disable_3d = true
+	# The model's lights changed from elsewhere (light_model, Build together,
+	# an undo): shown again, and drawn.
+	if _lamp != null and world != null and not is_same(world.scene_lights, _listed):
+		_relist_lamps()
+		_ask_preview()
 	if _preview_due >= 0 and Time.get_ticks_msec() >= _preview_due and _working.is_empty():
 		_preview_due = -1
 		_draft()
@@ -1588,6 +1593,12 @@ var _lamp_from_eye: Button
 var _lamp_over: Button
 var _lamp_adds: Array[Button] = []
 var _lamp_note: Label
+## The model's lights as Which last listed them: the very array, so a change
+## made to them elsewhere is seen (is_same) before a change here lands on
+## whichever light now has the number shown.
+var _listed: Array = []
+## Each Add button's own tip, said again once it may add (above, why not).
+var _lamp_tips: PackedStringArray = []
 
 
 ## Lights in the model: which light, its colour and Remove; its strength,
@@ -1660,6 +1671,7 @@ func _build_lamps(into: Control) -> void:
 			func() -> void: _add_lamp(kind), str(tips[kind]))
 		add.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_lamp_adds.append(add)
+		_lamp_tips.append(str(tips[kind]))
 	_lamp_note = _note(into)
 
 
@@ -1669,6 +1681,7 @@ func _list_lamps(chosen: int) -> void:
 	if _lamp == null:
 		return
 	var lights: Array = world.scene_lights if world != null else []
+	_listed = lights
 	_lamp.clear()
 	for n: int in lights.size():
 		_lamp.add_item("%d. %s" % [n + 1, tr(SceneLights.kind_words(str(lights[n]["kind"])))])
@@ -1679,12 +1692,33 @@ func _list_lamps(chosen: int) -> void:
 	_show_lamp()
 
 
-## Which light Lights in the model is changing, from 0, or -1 for none.
+## Which light Lights in the model is changing, from 0, or -1 for none: -1
+## too when the model's lights changed elsewhere since they were listed,
+## listed again then, so a change lands only on the light shown. Up to
+## 2026-11-07 a light taken out over MCP left Which on its number, and the
+## next drag changed the light after it (lreview).
 func _lamp_at() -> int:
 	var lights: Array = world.scene_lights if world != null else []
 	if _lamp == null or lights.is_empty():
 		return -1
+	if not is_same(lights, _listed):
+		_relist_lamps()
+		return -1
 	return clampi(_lamp.selected, 0, lights.size() - 1)
+
+
+## Which listed again from the model's lights, the light shown before still
+## chosen where it is still one of them, else the first.
+func _relist_lamps() -> void:
+	var shown: int = clampi(_lamp.selected, 0, maxi(_listed.size() - 1, 0))
+	var chosen: int = 0
+	if shown < _listed.size():
+		var lights: Array = world.scene_lights
+		for n: int in lights.size():
+			if SceneLights.same([lights[n]], [_listed[shown]]):
+				chosen = n
+				break
+	_list_lamps(chosen)
 
 
 ## The chosen light's colour, strength, cone and size shown, each only for
@@ -1709,8 +1743,11 @@ func _show_lamp() -> void:
 	_lamp_colour.disabled = not allowed
 	for slider: HSlider in [_lamp_strength, _lamp_cone, _lamp_size]:
 		slider.editable = allowed
-	for add: Button in _lamp_adds:
-		add.disabled = not allowed or lights.size() >= SceneLights.MOST
+	for n: int in _lamp_adds.size():
+		var add: Button = _lamp_adds[n]
+		var why: String = SceneLights.joins(lights, {"kind": SceneLights.KINDS[n]})
+		add.disabled = not allowed or not why.is_empty()
+		add.tooltip_text = _lamp_tips[n] if why.is_empty() else "Not now: " + why
 	if at >= 0:
 		_lamp_colour.color = SceneLights.colour_of(light)
 		_lamp_strength.set_value_no_signal(float(light.get("strength", 1.0)))
@@ -1724,6 +1761,8 @@ func _show_lamp() -> void:
 			+ "the selection, or over the model when nothing is selected.")
 	elif lights.size() >= SceneLights.MOST:
 		_lamp_note.text = "A model keeps at most %d lights." % SceneLights.MOST
+	elif not SceneLights.joins(lights, {"kind": "directional"}).is_empty():
+		_lamp_note.text = "A model keeps at most %d suns." % SceneLights.SUNS
 	elif settings.lighting == "dark":
 		_lamp_note.text = "In the Dark light these are all there is, with the plastics that glow."
 	else:
@@ -1760,8 +1799,9 @@ func _keep_lamps(lights: Array, chosen: int) -> void:
 func _add_lamp(kind: String) -> void:
 	if world == null or not bool(may_change.call()):
 		return
-	if world.scene_lights.size() >= SceneLights.MOST:
-		_status.text = "A model keeps at most %d lights." % SceneLights.MOST
+	var why: String = SceneLights.joins(world.scene_lights, {"kind": kind})
+	if not why.is_empty():
+		_status.text = "Not added: %s." % why
 		return
 	var box: AABB = chosen_box.call()
 	if box.size.length() <= 0.0:

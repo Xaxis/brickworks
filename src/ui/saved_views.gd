@@ -49,13 +49,16 @@ const COMMAND := "saved_view_"
 
 ## The views [param text] keeps, in its order, as [method written_into] wrote
 ## them (the file's coordinates). A line this cannot read is passed over, and
-## a name kept twice is the first one's.
+## a name kept twice is the first one's. Only the main model's lines
+## (SceneLights.main_end): a sub-model's views are its own, and stay in it.
 static func read(text: String) -> Array:
 	var out: Array = []
 	if not text.contains(META):
 		return out
 	var taken: Dictionary = {}
-	for line: String in text.split("\n"):
+	var lines: PackedStringArray = text.split("\n")
+	for n: int in SceneLights.main_end(lines):
+		var line: String = lines[n]
 		if not line.begins_with(META):
 			continue
 		var view: Dictionary = _parsed(line.substr(META.length()).strip_edges())
@@ -67,14 +70,19 @@ static func read(text: String) -> Array:
 
 
 ## [param text] with [param views] (the file's coordinates) written into it
-## after its first line, in their order, and any it had taken out; with none,
-## only taken out.
+## after its first line, in their order, and any its main model had taken
+## out; with none, only taken out. A sub-model's lines are left as they are:
+## up to 2026-11-07 a view kept in one was moved into the main model at the
+## first save (lreview).
 static func written_into(text: String, views: Array) -> String:
 	if views.is_empty() and not text.contains(META):
 		return text
 	var kept := PackedStringArray()
-	for line: String in text.split("\n"):
-		if not line.begins_with(META):
+	var lines: PackedStringArray = text.split("\n")
+	var end: int = SceneLights.main_end(lines)
+	for n: int in lines.size():
+		var line: String = lines[n]
+		if n >= end or not line.begins_with(META):
 			kept.append(line)
 	for n: int in views.size():
 		kept.insert(mini(1 + n, kept.size()), META + JSON.stringify(views[n]))

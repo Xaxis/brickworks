@@ -172,6 +172,14 @@ const GLOW := 2.0
 ## across at most, and at most this many of them, the brightest.
 const GLOW_CELL := 80.0
 const GLOW_LIGHTS := 12
+## The Dark light under Compatibility (the web's), calibrated against
+## Forward+'s picture: its exposure, and its lamps' energy over what
+## BrickWorld.light_energy gives them. Compatibility adds light in sRGB, so a
+## lamp that lights a dark set is far dimmer there than under Forward+,
+## whose sRGB rises steepest out of black: the car under one sun of the
+## model's own was a quarter as light (lreview, 2026-11-07).
+const DARK_COMPAT_EXPOSURE := 1.0
+const DARK_COMPAT_LAMPS := 1.0
 
 ## The model, in the world being rendered, and what of it is not the model:
 ## the floor's baseplate, which a render leaves out for the studio's own
@@ -1519,6 +1527,8 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	environment.tonemap_exposure = look.tonemap_exposure if look != null else 1.05
 	if product:
 		environment.tonemap_exposure *= PRODUCT_EXPOSURE
+	if dark and not full:
+		environment.tonemap_exposure *= DARK_COMPAT_EXPOSURE
 	if settings.transparent:
 		environment.background_mode = Environment.BG_CLEAR_COLOR
 	else:
@@ -1723,6 +1733,8 @@ func _place_lamps(lights: Array, settings: RenderSettings) -> void:
 				continue
 		node.light_color = SceneLights.colour_of(light)
 		node.light_energy = BrickWorld.light_energy(SceneLights.energy(light), shadows)
+		if settings.lighting == "dark" and not full_renderer():
+			node.light_energy *= DARK_COMPAT_LAMPS
 		node.light_indirect_energy = 0.0
 		node.light_specular = BrickWorld.light_specular(0.5)
 		node.shadow_enabled = shadows
@@ -1775,7 +1787,7 @@ func _place_glows(settings: RenderSettings) -> void:
 		cells[cell] = into
 	var lumps: Array = cells.values()
 	lumps.sort_custom(func(a: Array, b: Array) -> bool: return float(a[2]) > float(b[2]))
-	for lump: Array in lumps.slice(0, GLOW_LIGHTS):
+	for lump: Array in lumps.slice(0, _glows_allowed()):
 		var power: float = float(lump[2])
 		var colour: Color = (lump[1] as Color) / power
 		var brightest: float = maxf(colour.r, maxf(colour.g, colour.b))
@@ -1799,6 +1811,24 @@ func _place_glows(settings: RenderSettings) -> void:
 ## The rasterised glow's light against a point's: falling off as distance to
 ## the 1.5 (above), it is matched to the square's at 40 LDU.
 const GLOW_RASTER := 0.16
+
+
+## How many glow lights the set may have: [constant GLOW_LIGHTS], and under
+## Compatibility no more than the lamps leave of the lights it draws on one
+## thing (max_lights_per_object, 8). Past that it leaves lights out, the
+## model's own lamps among them: eight bulbs over a grid of neon bricks
+## added nothing on the web (lreview, 2026-11-07). The lamps are placed
+## first, and the glow takes what is left.
+func _glows_allowed() -> int:
+	if full_renderer():
+		return GLOW_LIGHTS
+	var lamps: int = 0
+	for node: Light3D in _lamp_nodes:
+		if not node is DirectionalLight3D:
+			lamps += 1
+	var most: int = int(ProjectSettings.get_setting(
+		"rendering/limits/opengl/max_lights_per_object", 8))
+	return clampi(most - lamps, 0, GLOW_LIGHTS)
 
 
 ## The shadow map's size, set only when it changes: the atlas is made

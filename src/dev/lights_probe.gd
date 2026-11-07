@@ -29,6 +29,20 @@
 ##                    Brickworks, which knows nothing of lights: each opens
 ##                    whole, and its light lines are as they were
 ##   -- --no-trace    the path-traced half left out (a second window size)
+##   -- --means=FILE  under Forward+ the Dark light's means under the model's
+##                    suns written there; under Compatibility (the web's,
+##                    on the card through zink as look_probe runs it) read
+##                    back and matched, each within 15%
+##
+## And what an independent review found (lreview, 2026-11-07): lines it
+## cannot read carried word for word and said at the open; a sub-model's
+## lights and views its own; a value rounded as a file keeps it before it is
+## checked; at most four suns; light_model's words of the wrong kind answered
+## in words; Render never changing a light it does not show; the designer's
+## gate by the call; a file of 200,000 light lines that are no lights opened
+## as quickly as one of comments. And on this renderer, the car under 0 to 4
+## suns each adding light, and 8 bulbs over a grid of neon and of white
+## bricks in the dark raising the floor.
 ##
 ## Leaves shots/lights/: Render with the spot, studio and dark; the spot's
 ## pictures and their maps (green changed inside, red changed outside, grey
@@ -113,6 +127,7 @@ func _run() -> void:
 	await _in_render()
 	await _kept_everywhere()
 	await _sessions()
+	await _review()
 	_render = StudioRender.new()
 	_render.library = _library
 	_render.scenery = _store.scenery
@@ -127,6 +142,7 @@ func _run() -> void:
 			"--no-trace") else "not here: " + PathTracer.why_not()))
 	await _spot(traced)
 	await _glow(traced)
+	await _measures(traced)
 	var keep: String = _argument("--keep")
 	if not keep.is_empty():
 		_leave_in(keep)
@@ -867,3 +883,405 @@ func _shoot(name: String) -> void:
 	var file: String = "%s_%s.png" % [name, _size]
 	image.save_png(OUT + file)
 	print("    the window: %s" % file)
+
+
+# -- what an independent review found (lreview, 2026-11-07) ----------------------------
+# Each by what a person or a session does and what the file then holds, so the
+# same checks run on the build reviewed and fail there.
+
+const VIEW_META := "0 !BRICKWORKS VIEW "
+## A file of 200,000 light lines that are no lights opens no slower than the
+## same file of comments, by this much.
+const JUNK_SLOWER := 1.2
+
+
+func _review() -> void:
+	print("  what the review found")
+	await _r_unread()
+	await _r_submodel()
+	await _r_rounded()
+	await _r_suns()
+	await _r_types()
+	await _r_dialog()
+	await _r_gate()
+	await _r_junk()
+
+
+func _put(name: String, text: String) -> String:
+	var path: String = ModelStore.SAVE_DIR + name
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(ModelStore.SAVE_DIR))
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+	return path
+
+
+## Opened as a person opens a file, and what the status bar said of it.
+func _opened(path: String) -> String:
+	_main.call("clear_model")
+	await _frames(10)
+	_main.call("_open", path)
+	var said: String = (_main.get("_bar") as ModelBar).status_text()
+	await _frames(120)
+	return said
+
+
+static func _light(kind: String, at: Array, more: Dictionary = {}) -> String:
+	var light: Dictionary = {"kind": kind, "at": at, "aim": [0, 1, 0], "colour": "#ffffff",
+		"strength": 1, "size": 4, "shadows": true}
+	light.merge(more, true)
+	return META + JSON.stringify(light)
+
+
+## Lines this build cannot read are carried, word for word, by a save of
+## someone else's file and of the app's own: nine good lights (one past the
+## eight a model keeps), one of a kind there is not, one too strong.
+func _r_unread() -> void:
+	for own: bool in [false, true]:
+		var text: String = "0 Many lights\n0 Name: many.ldr\n" + ("0 Author: Brickworks\n"
+			if own else "")
+		var lines := PackedStringArray()
+		for n: int in 9:
+			lines.append(_light("point", [n * 10, -100, 0]))
+		lines.append(_light("laser", [0, -100, 0]))
+		lines.append(_light("point", [0, -100, 0], {"strength": 60}))
+		text += "\n".join(lines) + "\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+		var whose: String = "the app's own" if own else "someone else's"
+		var said: String = await _opened(_put("unread_%s.ldr" % ("own" if own else "theirs"),
+			text))
+		var read: int = _scene().size()
+		var saved: String = ModelStore.SAVE_DIR + "unread_saved_%s.ldr" % ("own" if own else "theirs")
+		_main.call("save_model", saved)
+		var after: String = FileAccess.get_file_as_string(saved)
+		var carried: bool = true
+		for line: String in lines.slice(8):
+			carried = carried and line in _lines_of(after)
+		_check("%s file of 11 light lines: %d read, %d kept at a save (11), the 3 it cannot read "
+			% [whose, read, _lines_of(after).size()] + "word for word: %s" % carried,
+			read == 8 and _lines_of(after).size() == 11 and carried)
+		_check("...the open says so: %s" % said.get_slice(" — ", 1).left(80),
+			said.contains("3 light lines not read, kept in the file as they are")
+			and said.contains("a model keeps at most 8 lights") and said.contains("kind there is not"))
+		await _opened(saved)
+		var again: int = _scene().size()
+		_main.call("save_model", saved)
+		_check("...opened again, %d read, and saved again %d kept" % [again,
+			_lines_of(FileAccess.get_file_as_string(saved)).size()], again == 8
+			and _lines_of(FileAccess.get_file_as_string(saved)).size() == 11)
+
+
+## A sub-model's light and view are its own: not read as the model's, and
+## left in it at a save.
+func _r_submodel() -> void:
+	var view: String = VIEW_META + JSON.stringify({"name": "sub view", "yaw": 10, "pitch": -20,
+		"distance": 300, "focus": [0, 0, 0]})
+	var main_view: String = VIEW_META + JSON.stringify({"name": "main view", "yaw": 30,
+		"pitch": -25, "distance": 400, "focus": [0, 0, 0]})
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": "#00ff00"})
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Main model",
+		"0 Name: main.ldr", "0 Author: Someone", _light("spot", [0, -200, 0], {"cone": 30}),
+		main_view, "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 STEP",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 STEP", "0 NOFILE", "0 FILE sub.ldr",
+		"0 Sub", "0 Name: sub.ldr", sub_light, view, "1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat",
+		"0 NOFILE", ""]))
+	await _opened(_put("submodel.mpd", text))
+	var lights: int = _scene().size()
+	var views: int = (_world.get("saved_views") as Array).size()
+	var saved: String = ModelStore.SAVE_DIR + "submodel_saved.mpd"
+	_main.call("save_model", saved)
+	var after: String = FileAccess.get_file_as_string(saved)
+	var sub: String = after.substr(after.find("0 FILE sub.ldr"))
+	var main_part: String = after.left(after.find("0 FILE sub.ldr"))
+	_check("an MPD's sub-model light and view are its own: the model reads %d light (1) and %d "
+		% [lights, views] + "view (1); saved, the sub-model still has both (%s, %s), the main "
+		% [sub.contains(sub_light), sub.contains(view)] + "model one light line (%d) and one view "
+		% _lines_of(main_part).size() + "line (%d)" % main_part.count(VIEW_META), lights == 1
+		and views == 1 and sub.contains(sub_light) and sub.contains(view)
+		and _lines_of(main_part).size() == 1 and main_part.count(VIEW_META) == 1)
+	await _opened(saved)
+	_check("...opened again: %d light, %d view" % [_scene().size(),
+		(_world.get("saved_views") as Array).size()], _scene().size() == 1
+		and (_world.get("saved_views") as Array).size() == 1)
+
+
+## A value is rounded as a file keeps it before it is checked: a strength or
+## a panel's size that rounds to 0 is refused with why, and the two lights
+## saved come back as two.
+func _r_rounded() -> void:
+	_main.call("clear_model")
+	await _frames(10)
+	for n: int in 3:
+		_world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(n * 80.0, 24.0, 0.0)))
+	_store.touch()
+	await _frames(3)
+	await _tools.run("light_model", {"op": "add", "kind": "spot"})
+	var faint: String = str(await _tools.run("light_model", {"op": "change", "number": 1,
+		"strength": 0.0004}))
+	await _tools.run("light_model", {"op": "add", "kind": "area"})
+	var thin: String = str(await _tools.run("light_model", {"op": "change", "number": 2,
+		"size": 0.0004}))
+	var kept: Array = _in_file()
+	_check("strength 0.0004 and a panel 0.0004 across, which a file keeps as 0, are refused with "
+		+ "why: %s / %s" % [faint.left(70), thin.left(60)], faint.begins_with("That is no light: its strength")
+		and thin.begins_with("That is no light: its size") and kept.size() == 2
+		and float(kept[0]["strength"]) > 0.0 and float(kept[1]["size"]) > 0.0)
+	var saved: String = ModelStore.SAVE_DIR + "rounded.ldr"
+	_main.call("save_model", saved)
+	await _opened(saved)
+	_check("...two lights saved come back as %d" % _scene().size(), _scene().size() == 2)
+
+
+## At most four suns: a fifth refused with why, over MCP and in Render, and
+## a file's fifth kept in it unread.
+func _r_suns() -> void:
+	_main.call("clear_model")
+	await _frames(10)
+	_world.add_brick("3001", 4, Transform3D(Basis.IDENTITY, Vector3(0.0, 24.0, 0.0)))
+	_store.touch()
+	await _frames(3)
+	var said: Array = []
+	for n: int in 5:
+		said.append(str(await _tools.run("light_model", {"op": "add", "kind": "directional"})))
+	var suns: int = _in_file().size()
+	_check("over MCP, four suns put in and a fifth refused with why: %s" % str(said[4]).left(110),
+		suns == 4 and str(said[4]).contains("at most 4 suns"))
+	_shell.call("run", "render")
+	await _frames(6)
+	var dialog: Node = _main.get("_render")
+	var controls: Dictionary = dialog.call("controls_by_name")
+	dialog.call("open")
+	await _frames(3)
+	var sun: Button = controls.get("render_lamp_add_directional")
+	var bulb: Button = controls.get("render_lamp_add_point")
+	_check("in Render, Sun cannot be added past four, and says why: %s" % sun.tooltip_text.left(70),
+		sun.disabled and sun.tooltip_text.contains("at most 4 suns") and not bulb.disabled)
+	(controls["render_close"] as Button).pressed.emit()
+	await _frames(3)
+	var lines := PackedStringArray()
+	for n: int in 5:
+		lines.append(_light("directional", [0, -100, 0], {"aim": [cos(n), 1, sin(n)]}))
+	var path: String = _put("suns.ldr", "0 Five suns\n0 Name: suns.ldr\n" + "\n".join(lines)
+		+ "\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n")
+	var note: String = await _opened(path)
+	var saved: String = ModelStore.SAVE_DIR + "suns_saved.ldr"
+	_main.call("save_model", saved)
+	_check("a file's five suns: %d read, the fifth kept (%d lines saved), and said: %s" % [
+		_scene().size(), _lines_of(FileAccess.get_file_as_string(saved)).size(),
+		note.get_slice(" — ", 2).left(40)], _scene().size() == 4
+		and _lines_of(FileAccess.get_file_as_string(saved)).size() == 5
+		and note.contains("at most 4 suns"))
+
+
+## Words of the wrong kind over MCP: refused in words, never stopped by an
+## error, nothing changed.
+func _r_types() -> void:
+	_scene_set([])
+	await _tools.run("light_model", {"op": "add", "kind": "point"})
+	var before: Array = _in_file()
+	var said := PackedStringArray()
+	var calls: Array = [{"op": "change", "number": [1]}, {"op": "change", "number": {}},
+		{"op": "change", "number": null}, {"op": "change", "number": 1.5},
+		{"op": "add", "over": [{}]}, {"op": "add", "over": [1e300]}, {"op": "add", "over": [null]},
+		{"op": "remove", "number": "x"}]
+	for input: Dictionary in calls:
+		said.append(str(await _tools.run("light_model", input)))
+	var worded: bool = true
+	for words: String in said:
+		worded = worded and words.length() > 10 and words.contains("nothing changed")
+	_check("light_model given numbers of the wrong kind answers each in words: %s" % said[0].left(60)
+		+ " / " + said[4].left(60), worded and _same(_in_file(), before))
+
+
+## Render's Which never changes a light other than the one it shows: the
+## lights changed elsewhere, it lists them again first.
+func _r_dialog() -> void:
+	_scene_set([])
+	await _tools.run("light_model", {"op": "add", "kind": "point", "strength": 1})
+	await _tools.run("light_model", {"op": "add", "kind": "spot", "strength": 2})
+	_shell.call("run", "render")
+	await _frames(6)
+	var dialog: Node = _main.get("_render")
+	dialog.call("open")
+	await _frames(3)
+	var which: OptionButton = dialog.get("_lamp")
+	which.select(0)
+	dialog.call("_show_lamp")
+	await _frames(2)
+	# The first taken out elsewhere while Render shows it (as light_model, an
+	# undo or another side of Build together puts the model's lights), and a
+	# drag in the same frame, before Render has drawn again.
+	_scene_set(_scene().slice(1))
+	dialog.call("_change_lamp", {"strength": 7.0})
+	var left: Array = _in_file()
+	await _frames(4)
+	_check("a light taken out elsewhere while Render shows it: a drag at once changes no other "
+		+ "light (the one left at strength %s, 2), and Which lists %d" % [
+		str(left[0]["strength"]) if not left.is_empty() else "-", which.item_count],
+		left.size() == 1 and is_equal_approx(float(left[0]["strength"]), 2.0)
+		and which.item_count == 1)
+	dialog.call("_change_lamp", {"strength": 3.0})
+	_check("...and once listed again, a drag changes the light shown: %s" % str(
+		_in_file()[0]["strength"]), is_equal_approx(float(_in_file()[0]["strength"]), 3.0))
+	var controls: Dictionary = dialog.call("controls_by_name")
+	(controls["render_close"] as Button).pressed.emit()
+	await _frames(3)
+
+
+## The designer at work refuses what changes the model, not what only reads it.
+func _r_gate() -> void:
+	var assistant: Node = _main.get("_assistant")
+	assistant.set("_busy", true)
+	var listing: String = _tools.refusal("light_model", {"op": "list"})
+	var bare: String = _tools.refusal("light_model", {})
+	var adding: String = _tools.refusal("light_model", {"op": "add"})
+	assistant.set("_busy", false)
+	_check("while the designer builds, light_model's list is let through and its add is not: "
+		+ "\"%s\" / \"%s\"" % [listing.left(40), adding.left(40)], listing.is_empty()
+		and bare.is_empty() and not adding.is_empty())
+
+
+## 200,000 light lines that are no lights: opened no slower than 200,000
+## comments ([constant JUNK_SLOWER]), and kept.
+func _r_junk() -> void:
+	var body: String = "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+	var junk := PackedStringArray(["0 Junk"])
+	var comments := PackedStringArray(["0 Comments"])
+	for n: int in 200000:
+		junk.append(META + "x")
+		comments.append("0 // x")
+	var files: Dictionary = {"junk": _put("junk.ldr", "\n".join(junk) + "\n" + body),
+		"comments": _put("comments.ldr", "\n".join(comments) + "\n" + body)}
+	var took: Dictionary = {"junk": [], "comments": []}
+	for which: String in ["comments", "junk", "junk", "comments", "comments", "junk"]:
+		_main.call("clear_model")
+		await _frames(10)
+		var started: int = Time.get_ticks_msec()
+		_main.call("_open", files[which])
+		(took[which] as Array).append(Time.get_ticks_msec() - started)
+		await _frames(30)
+	var junk_ms: float = (took["junk"] as Array).reduce(func(a: float, b: int) -> float:
+		return a + b, 0.0) / 3.0
+	var comments_ms: float = (took["comments"] as Array).reduce(func(a: float, b: int) -> float:
+		return a + b, 0.0) / 3.0
+	var saved: String = ModelStore.SAVE_DIR + "junk_saved.ldr"
+	_main.call("save_model", saved)
+	var kept: int = FileAccess.get_file_as_string(saved).count("\n" + META + "x")
+	_check("200,000 light lines that are no lights open in %.0f ms against %.0f ms for 200,000 "
+		% [junk_ms, comments_ms] + "comments (%s and %s), %.2f times, at most %.1f; saved, %d kept"
+		% [str(took["junk"]), str(took["comments"]), junk_ms / maxf(comments_ms, 1.0),
+		JUNK_SLOWER, kept], junk_ms <= comments_ms * JUNK_SLOWER and kept == 200000)
+	_main.call("clear_model")
+	await _frames(10)
+
+
+# -- the model's suns and bulbs, on this renderer -----------------------------------------
+# lreview's measures: the car under 0 to 4 suns of strength 0.3 from round it,
+# the picture's mean, in the studio's light and the Dark light; a grid of 576
+# neon bricks, and of white ones, in the dark with and without 8 bulbs round
+# it, the floor at its left.
+
+
+func _measures(traced: bool) -> void:
+	var method: String = RenderingServer.get_current_rendering_method()
+	print("  the model's suns and bulbs (%s)" % method)
+	_main.call("clear_model")
+	await _frames(30)
+	_main.call("_open", "res://models/car.ldr")
+	await _frames(400)
+	(_main.get("_builder") as Builder).hide_preview()
+	var box: AABB = _world.model_bounds()
+	var suns: Array = []
+	for n: int in 4:
+		var angle: float = TAU * n / 8.0
+		var sun: Dictionary = _lights.call("made", "directional", box,
+			Vector3(cos(angle), -0.6, sin(angle)))
+		sun["strength"] = 0.3
+		suns.append(sun)
+	var means: Dictionary = {}
+	for case: Array in [["studio", RenderSettings.Quality.QUICK], ["dark", RenderSettings.Quality.QUICK],
+			["studio good", RenderSettings.Quality.GOOD]]:
+		var line: Array = []
+		for count: int in 5:
+			_scene_set(suns.slice(0, count))
+			var settings := _measure_settings(case[1], Vector2i(640, 360))
+			settings.lighting = str(case[0]).get_slice(" ", 0)
+			await _render.render(_world, settings)
+			var image: Image = await _render.render(_world, settings)
+			line.append(snappedf(_mean(image, 2), 0.1))
+			if count == 4:
+				image.save_png(OUT + "suns_%s_4_%s.png" % [str(case[0]).replace(" ", "_"), method])
+		means[case[0]] = line
+		var each: bool = true
+		for n: int in range(1, 5):
+			each = each and float(line[n]) > float(line[n - 1]) + 0.5
+		_check("%s: the car's mean under 0 to 4 suns %s, each adding light" % [case[0], str(line)],
+			each)
+	_scene_set([])
+	var against: String = _argument("--means")
+	if method == "forward_plus" and not against.is_empty():
+		var file: FileAccess = FileAccess.open(against, FileAccess.WRITE)
+		file.store_string(JSON.stringify(means))
+		file.close()
+	elif method == "gl_compatibility" and not against.is_empty():
+		var forward: Variant = JSON.parse_string(FileAccess.get_file_as_string(against))
+		if not forward is Dictionary or not (forward as Dictionary).has("dark"):
+			_check("Forward+'s means to match, from %s" % against, false)
+		else:
+			for count: int in [1, 4]:
+				var here: float = float(means["dark"][count])
+				var there: float = float(forward["dark"][count])
+				_check("Dark, %d sun%s: %.1f here, %.1f under Forward+, %.0f%% apart (15%% at most)"
+					% [count, "" if count == 1 else "s", here, there,
+					absf(here - there) / there * 100.0], absf(here - there) <= 0.15 * there)
+	for colour: int in [42, 15]:
+		_main.call("clear_model")
+		await _frames(30)
+		for x: int in 24:
+			for z: int in 24:
+				_world.add_brick("3005", colour if colour != 42 else (42 if (x + z) % 2 == 0 else 38),
+					Transform3D(Basis.IDENTITY, Vector3(x * 20.0, 24.0, z * 20.0)))
+		await _frames(30)
+		var grid: AABB = _world.model_bounds()
+		var bulbs: Array = []
+		for n: int in 8:
+			var angle: float = TAU * n / 8.0
+			bulbs.append(_lights.call("made", "point", AABB(grid.position + Vector3(cos(angle), 0,
+				sin(angle)) * grid.size.x * 0.4, grid.size * 0.5)))
+		var floors: Array = []
+		for lit: Array in [[], bulbs]:
+			_scene_set(lit)
+			var settings := _measure_settings(RenderSettings.Quality.QUICK, Vector2i(1280, 720))
+			settings.lighting = "dark"
+			await _render.render(_world, settings)
+			var image: Image = await _render.render(_world, settings)
+			var floor_sum: float = 0.0
+			for y: int in range(100, 480, 4):
+				for x: int in range(0, 300, 4):
+					floor_sum += image.get_pixel(x, y).get_luminance()
+			floors.append(floor_sum / (75.0 * 95.0) * 255.0)
+			image.save_png(OUT + "grid_%s_%s_%s.png" % ["neon" if colour == 42 else "white",
+				"bulbs" if not lit.is_empty() else "dark", method])
+		_check("%s grid in the dark: 8 bulbs raise the floor at its left from %.1f to %.1f" % [
+			"a neon" if colour == 42 else "a white", floors[0], floors[1]],
+			float(floors[1]) >= float(floors[0]) + 3.0)
+	_scene_set([])
+
+
+func _measure_settings(quality: int, size: Vector2i) -> RenderSettings:
+	var settings := RenderSettings.new()
+	settings.quality = quality
+	settings.size = size
+	settings.view = "hero"
+	settings.seed = 1
+	return settings
+
+
+## A picture's mean luminance, of 255, every [param step]th pixel each way.
+static func _mean(image: Image, step: int) -> float:
+	var sum: float = 0.0
+	var count: int = 0
+	for y: int in range(0, image.get_height(), step):
+		for x: int in range(0, image.get_width(), step):
+			sum += image.get_pixel(x, y).get_luminance()
+			count += 1
+	return sum / maxf(count, 1.0) * 255.0
