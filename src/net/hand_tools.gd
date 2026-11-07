@@ -462,7 +462,7 @@ func _in_view(input: Dictionary) -> Variant:
 func _model_size(builder: Builder, library: PartLibrary) -> String:
 	var store: ModelStore = app.get("_store")
 	var model: ModelSize = ModelSize.of_model(builder.world, library,
-		store.scenery if store != null else {})
+		store.scenery if store != null else {}, ModelSize.coming(store))
 	if model.is_empty():
 		return "The model: nothing built yet, so no size and no weight."
 	var cm: Vector3 = model.centimetres()

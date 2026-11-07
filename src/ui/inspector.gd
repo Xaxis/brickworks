@@ -531,7 +531,7 @@ func _show_size() -> void:
 	var words: String = ""
 	if _open and _idle and not compact and shell.world != null:
 		var measured: ModelSize = ModelSize.of_model(shell.world, shell.library,
-			shell.store.scenery if shell.store != null else {})
+			shell.store.scenery if shell.store != null else {}, ModelSize.coming(shell.store))
 		if not measured.is_empty():
 			var lines := PackedStringArray([measured.studs_words(), measured.centimetre_words(),
 				measured.weight_words()])

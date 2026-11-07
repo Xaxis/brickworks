@@ -273,17 +273,18 @@ func _open_over_a_weighing(weighed_path: String) -> void:
 		return
 	var result: Dictionary = _store.open_text(FileAccess.get_file_as_string(weighed_path), weighed)
 	(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
-	var counts: Label = _main.get("_counts")
+	# The counts and the weight after them, as one line is read (StatusBar).
+	var status: StatusBar = (_main.get("_shell") as Shell).status
 	var lines: Dictionary = {}
 	var began: int = Time.get_ticks_msec()
 	while Time.get_ticks_msec() - began < 300000:
 		await process_frame
-		lines[counts.text] = true
+		lines[str(status.fields()["counts"])] = true
 		if not bool(_main.get("_weighing")) and int(_main.get("_stability_revision")) \
 				== _world.revision and not str(_main.get("_stability_text")).is_empty():
 			break
 	await _frames(2)
-	var own: String = counts.text
+	var own: String = str(status.fields()["counts"])
 	lines[own] = true
 	var count: String = own.get_slice(" · ", 0)
 	var weight := RegEx.create_from_string("(-?\\d+) g$")

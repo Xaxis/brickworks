@@ -17,12 +17,20 @@
 ## The weight is each part's grams from its shape (Stability.grams): the
 ## catalogue lists no part's weight (BrickLink's catalogue does, behind its
 ## keys and terms), and the shape's comes within 6% of the bricks that have
-## been weighed. The same sum as the status bar's "52 g". A part the library
-## has no entry for has neither, and is counted as left out.
+## been weighed. A part the library has no entry for has neither, and is
+## counted as left out.
+##
+## A part whose shape is not here yet (on the web, fetched after the model
+## opens; ModelStore.awaited) is in the model all the same: measured and
+## weighed from the catalogue, which has every part's box, so the size and
+## the weight are the whole model's from the first frame. Weighed from the
+## shapes loaded so far, the status bar's weight was a sum that grew as they
+## came (docs/APP_UX6.md, weighsure).
 ##
 ## The baseplate under the model is the floor, not the model, as the counts
 ## leave it out. Worked out once a change of the model (BrickWorld.revision),
-## and shared by the status bar, Properties and in_view.
+## and shared by the status bar (its size and its weight), Properties and
+## in_view: one weight for one model.
 class_name ModelSize
 extends RefCounted
 
@@ -42,19 +50,39 @@ var grams: float = 0.0
 var body_top: float = 0.0
 
 ## The model's, kept for its revision: [world's id, revision, generation,
-## the floor's parts] and what they gave. On the window's own thread only.
+## the floor's parts, the parts on their way] and what they gave. On the
+## window's own thread only.
 static var _key: Array = []
 static var _kept: ModelSize = null
 
 
-## The model's size and weight, the baseplate ([param scenery]) left out.
-static func of_model(world: BrickWorld, library: PartLibrary, scenery: Dictionary) -> ModelSize:
-	var key: Array = [world.get_instance_id(), world.revision, world.generation(), scenery.size()]
+## The model's size and weight, the baseplate ([param scenery]) left out,
+## and the parts on their way ([param coming], [method coming]) in.
+static func of_model(world: BrickWorld, library: PartLibrary, scenery: Dictionary,
+		coming: Array = []) -> ModelSize:
+	var key: Array = [world.get_instance_id(), world.revision, world.generation(), scenery.size(),
+		coming.size()]
 	if _kept != null and key == _key:
 		return _kept
-	_kept = of_bricks(world.bricks(), library, scenery)
+	var bricks: Array = world.bricks()
+	# Measured as a part down is: by the number it will land as, where it
+	# will land (BrickWorld._place).
+	for placement: LdrModel.Placement in coming:
+		bricks.append(BrickWorld.Brick.new(0, library.resolve(placement.part_id),
+			placement.color_code, placement.transform * library.moved_by(placement.part_id)))
+	_kept = of_bricks(bricks, library, scenery)
 	_key = key
 	return _kept
+
+
+## The parts of [param store]'s model still on their way, put down as each
+## arrives (ModelStore.awaited): the open model's, none once the world has
+## been cleared since.
+static func coming(store: ModelStore) -> Array:
+	if store == null or store.world == null or store.awaited.is_empty() \
+			or store._awaited_in != store.world.generation():
+		return []
+	return store.awaited
 
 
 ## [param bricks]' size and weight, those in [param skip] left out. Kept in
@@ -113,20 +141,21 @@ func centimetres() -> Vector3:
 	return box.size * LDU_MM / 10.0
 
 
-## "4½ × 10.8 studs, 15 plates high" (the car): across, deep, and high without the top's
-## studs. "" for nothing measured.
+## "4.5 × 10.8 studs, 15 plates high" (the car): across, deep, and high
+## without the top's studs, in one style (StatusBar.amounts): "4½ × 8 studs"
+## only where every number is a whole quarter. "" for nothing measured.
 func studs_words() -> String:
 	if is_empty():
 		return ""
-	var high: float = plates_high()
-	var across: String = "%s × %s studs" % [StatusBar.amount(box.size.x / BrickLattice.STUD),
-		StatusBar.amount(box.size.z / BrickLattice.STUD)]
-	if absf(high - 1.0) < 0.005:
+	var said: PackedStringArray = StatusBar.amounts([box.size.x / BrickLattice.STUD,
+		box.size.z / BrickLattice.STUD, plates_high()])
+	var across: String = "%s × %s studs" % [said[0], said[1]]
+	if said[2] == "1":
 		return across + ", 1 plate high"
-	return across + ", %s plates high" % StatusBar.amount(high)
+	return across + ", %s plates high" % said[2]
 
 
-## "3.6 × 8.64 × 4.96 cm", to the tenth of a millimetre. "" for nothing.
+## "3.60 × 8.64 × 4.96 cm", to the tenth of a millimetre. "" for nothing.
 func centimetre_words() -> String:
 	if is_empty():
 		return ""
@@ -141,9 +170,15 @@ func words() -> String:
 	return studs_words() + " · " + centimetre_words()
 
 
-## "About 52 g", rounded as the status bar's weight is (Stability.Report).
+## "About 52 g", Properties' words for the status bar's "52 g" ([method
+## grams_words]).
 func weight_words() -> String:
-	return "About %s g" % ("%.0f" % grams)
+	return "About %s" % grams_words()
+
+
+## "52 g", to the gram, as the status bar says it beside the counts.
+func grams_words() -> String:
+	return "%s g" % ("%.0f" % grams)
 
 
 ## "1 part not in the library, not counted", or "".
@@ -154,6 +189,7 @@ func left_out_words() -> String:
 		else "%d parts not in the library, not counted" % left_out
 
 
-## A length in centimetres to the tenth of a millimetre: "12.8", "2.08".
+## A length in centimetres to the tenth of a millimetre, two places always:
+## "12.80", "2.08". "3.6 × 8.64" put one place beside two.
 static func cm(value: float) -> String:
-	return String.num(value, 2)
+	return "%.2f" % value

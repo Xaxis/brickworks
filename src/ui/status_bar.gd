@@ -3,8 +3,9 @@
 ## On the left, what just happened — or, when nothing has, what the tool
 ## in use does. On the right, while a part is in hand, where it goes if put
 ## down now, in studs and plates, as LeoCAD's says where its preview stands;
-## then the model: how many parts and whether it stands up, how big it is
-## (ModelSize: studs and plates, and centimetres), how many are selected and,
+## then the model: how many parts and whether it stands up, what it weighs,
+## how big it is (ModelSize: studs and plates, and centimetres), how many are
+## selected and,
 ## while some are, how big they are; what a part snaps to and how far a turn
 ## goes, and how big a stud is on screen. The counts were a pill over
 ## the top of the model and the messages a line in the bar beside the
@@ -18,6 +19,19 @@ var shell: Shell
 var message: Label
 ## The parts count and the stability, written by the app (main.gd).
 var counts: Label
+## What the model weighs, after its counts as one line with them ("61 bricks
+## · stands up · 52 g"): the model as it is in this frame (ModelSize), every
+## part in it, those on their way too. It was the stability check's sum, made
+## at most once a second on a worker, so for a second after each change it
+## was an earlier model's: the walk's eight 1 x 4s read 8 g just built, 13 g
+## with the next part in hand, 12 g after one was turned and put back, then
+## 13 g again (docs/APP_UX6.md, weighsure).
+var _weight: Label
+## The " · " before it.
+var _weight_join: Label
+## The world's generation it was said for: while a model is laid, the last
+## weight said of it stays; a model just opened says none until it is down.
+var _weighed_in: int = -1
 var _hint: Label
 ## Where the part in hand goes, while one is (place_words).
 var _place: Label
@@ -100,6 +114,16 @@ func _ready() -> void:
 		+ "from the middle of the floor, and plates up from the ground")
 	_show_place("")
 	counts = _cell(row, "How many parts the model has, and whether it would stand up as built")
+	# Part of the counts' field: no line between, the join drawn as the
+	# counts' own are.
+	_weight_join = _label(row, 0.82)
+	_weight_join.text = " · "
+	_weight_join.visible = false
+	_weight = _label(row, 0.82)
+	_weight.tooltip_text = "What the model weighs, each part by its shape: within about 6% of " \
+		+ "real bricks on a scale. The baseplate is left out"
+	_weight.mouse_filter = Control.MOUSE_FILTER_PASS
+	_weight.visible = false
 	_size = _cell(row, "How big the model is, or the parts selected: studs across and deep, "
 		+ "plates high without the studs on top, and centimetres each way with them")
 	_selected = _cell(row, "How many parts are selected")
@@ -124,6 +148,8 @@ func only_the_work() -> void:
 	for label: Label in [_place, counts, _size, _selected, _settings, _zoom]:
 		label.visible = false
 		(label.get_meta("line") as Control).visible = false
+	_weight.visible = false
+	_weight_join.visible = false
 	visible = Working.is_busy()
 
 
@@ -190,6 +216,7 @@ func _process(_delta: float) -> void:
 	# selection changed: the two stand side by side and say one selection.
 	var count: int = shell.builder.selection.size()
 	_selected.text = "%d selected" % count if count > 0 else "nothing selected"
+	_show_weight()
 	_show_size()
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at >= 150:
@@ -222,6 +249,8 @@ func _fit() -> void:
 	for label: Label in [_place, counts, _size, _selected, _settings, _zoom]:
 		if bool(shown.get(label, label.visible)):
 			needed += _width(label)
+	if _weight.visible:
+		needed += _weight_join.get_minimum_size().x + _weight.get_minimum_size().x
 	if show_folder.visible:
 		needed += show_folder.get_combined_minimum_size().x
 	for least: Label in [_zoom, _settings, _size]:
@@ -239,6 +268,33 @@ static func _width(label: Label) -> float:
 	return label.get_minimum_size().x + (label.get_meta("line") as Control).get_minimum_size().x
 
 
+## What the model weighs, beside its counts, every frame: worked out again
+## in the frame the model changes (ModelSize.of_model keeps it for the
+## revision), the parts on their way in. Not while a model is laid, part of
+## it down: the weight said before stays, and a model just opened says none
+## until it is all down, so its first number is its weight.
+func _show_weight() -> void:
+	var world: BrickWorld = shell.world
+	var words: String = ""
+	if world != null and shell.library != null and not counts.text.is_empty():
+		if world.is_being_laid():
+			if world.generation() == _weighed_in:
+				return
+		else:
+			var store: ModelStore = shell.store
+			var model: ModelSize = ModelSize.of_model(world, shell.library,
+				store.scenery if store != null else {}, ModelSize.coming(store))
+			if not model.is_empty():
+				words = model.grams_words()
+				_weighed_in = world.generation()
+	if _weight.text != words:
+		_weight.text = words
+	var shown: bool = not words.is_empty() and counts.visible
+	if _weight.visible != shown:
+		_weight.visible = shown
+		_weight_join.visible = shown
+
+
 ## The model's size beside its counts, or the selection's beside "3
 ## selected": worked out again in the frame either changes, and only then.
 func _show_size() -> void:
@@ -252,7 +308,8 @@ func _show_size() -> void:
 	var scenery: Dictionary = shell.store.scenery if shell.store != null else {}
 	var picked: bool = not builder.selection.is_empty()
 	var key: Array = [world.get_instance_id(), world.revision, world.generation(), scenery.size(),
-		_selection_moves if picked else -1, builder.selection.size()]
+		_selection_moves if picked else -1, builder.selection.size(),
+		ModelSize.coming(shell.store).size()]
 	if key == _size_key:
 		return
 	_size_key = key
@@ -265,10 +322,10 @@ func _show_size() -> void:
 				bricks.append(brick)
 		measured = ModelSize.of_bricks(bricks, shell.library)
 	else:
-		measured = ModelSize.of_model(world, shell.library, scenery)
+		measured = ModelSize.of_model(world, shell.library, scenery, ModelSize.coming(shell.store))
 	_size.text = measured.words()
-	# Beside what it measures.
-	var after: Label = _selected if picked else counts
+	# Beside what it measures: the model's after its counts and weight.
+	var after: Label = _selected if picked else _weight
 	var row: Node = _size.get_parent()
 	var line: Control = _size.get_meta("line")
 	if line.get_index() != after.get_index() + 1:
@@ -284,8 +341,8 @@ func _show_size() -> void:
 ## Where the part in hand goes if put down now: "x 2½, z −1 studs · 3 plates
 ## up", its middle across and back from the middle of the floor, to the
 ## half stud, and its foot over the ground, to the quarter plate (a 2 LDU
-## cell); a finer snap's places to the hundredth. "" with nothing in hand,
-## or in hand and aimed nowhere.
+## cell); a finer snap's places to the hundredth, the line's every number
+## then (amounts). "" with nothing in hand, or in hand and aimed nowhere.
 func place_words() -> String:
 	var box: Variant = landing()
 	if box == null:
@@ -293,13 +350,14 @@ func place_words() -> String:
 	var at: AABB = box
 	var middle: Vector3 = at.get_center()
 	var up: float = at.position.y / BrickLattice.PLATE
+	var said: PackedStringArray = amounts([middle.x / BrickLattice.STUD,
+		middle.z / BrickLattice.STUD, absf(up)])
 	var height: String = "on the ground"
 	if absf(up) >= 0.005:
-		var plates: String = amount(absf(up))
+		var plates: String = said[2]
 		height = ("1 plate up" if plates == "1" else "%s plates up" % plates) if up > 0.0 \
 			else ("1 plate down" if plates == "1" else "%s plates down" % plates)
-	return "x %s, z %s studs · %s" % [amount(middle.x / BrickLattice.STUD),
-		amount(middle.z / BrickLattice.STUD), height]
+	return "x %s, z %s studs · %s" % [said[0], said[1], height]
 
 
 ## Where what is in hand lands, in LDU: the box round it, its foot where
@@ -359,16 +417,35 @@ func _carried_bounds(carry: Carry) -> Variant:
 ## A number of studs or plates as the bar writes it: whole, or with ¼, ½
 ## or ¾, or to the hundredth; "−" before one below.
 static func amount(value: float) -> String:
-	var sign: String = "−" if value <= -0.005 else ""
-	var size: float = absf(value)
-	var whole: int = floori(size + 0.005)
-	var part: float = size - whole
-	if part < 0.005:
-		return sign + str(whole)
-	for quarter: Array in [[0.25, "¼"], [0.5, "½"], [0.75, "¾"]]:
-		if absf(part - float(quarter[0])) < 0.005:
-			return sign + ("" if whole == 0 else str(whole)) + str(quarter[1])
-	return sign + String.num(size, 2)
+	return amounts([value])[0]
+
+
+## Numbers of studs or plates said on one line, in one style: in quarters
+## ("4½ × 8 studs") when every one is a whole quarter, and otherwise each to
+## the hundredth ("4.5 × 10.8 studs, 15 plates high"). Each said alone, the
+## car's size put a fraction beside a decimal: "4½ × 10.8 studs"
+## (docs/APP_UX6.md, weighsure). "−" before one below.
+static func amounts(values: Array) -> PackedStringArray:
+	var quarters: bool = true
+	for value: float in values:
+		var size: float = absf(value)
+		var part: float = size - floori(size + 0.005)
+		quarters = quarters and (part < 0.005 or absf(part - 0.25) < 0.005
+			or absf(part - 0.5) < 0.005 or absf(part - 0.75) < 0.005)
+	var out := PackedStringArray()
+	for value: float in values:
+		var sign: String = "−" if value <= -0.005 else ""
+		var size: float = absf(value)
+		var whole: int = floori(size + 0.005)
+		var part: float = size - whole
+		if not quarters:
+			out.append(sign + String.num(size, 2))
+		elif part < 0.005:
+			out.append(sign + str(whole))
+		else:
+			var mark: String = "¼" if part < 0.375 else ("½" if part < 0.625 else "¾")
+			out.append(sign + ("" if whole == 0 else str(whole)) + mark)
+	return out
 
 
 func _show_place(words: String) -> void:
@@ -393,7 +470,10 @@ func _stud_on_screen() -> float:
 func fields() -> Dictionary:
 	return {"message": message.text, "hint": shell.verbs.hint(), "line": _hint.text,
 		"place": _place.text if _place.visible else "",
-		"counts": counts.text, "size": _size.text if _size.visible else "",
+		# As read: the weight is one line with them.
+		"counts": counts.text + (_weight_join.text + _weight.text if _weight.visible else ""),
+		"weight": _weight.text if _weight.visible else "",
+		"size": _size.text if _size.visible else "",
 		"size_after": "selected" if _size.get_index() > _selected.get_index() else "counts",
 		"selected": _selected.text, "settings": _settings.text,
 		"zoom": _zoom.text, "show_folder": show_folder.visible}

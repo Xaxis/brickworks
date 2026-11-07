@@ -237,8 +237,11 @@ func _selected() -> void:
 		_builder.select_brick(tyre.id, false)
 	await _frames(2)
 	said = _bar()
+	# 4½ plates, or 4.5 where its width is no whole quarter: one style of
+	# number a line (weighsure).
+	var read: Variant = _read(said)
 	_check("2: a tyre selected: \"%s\", 4½ plates high, no studs taken off" % said,
-		tyre != null and said.contains("4½ plates high"))
+		tyre != null and read != null and is_equal_approx(float((read as Dictionary)["y"]), 4.5))
 	if tyre != null:
 		_judge("2: the tyre", said, [tyre])
 	_builder.clear_selection()
