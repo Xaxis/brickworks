@@ -3860,8 +3860,8 @@ func _maybe_open_library() -> void:
 	_store.credit = ModelLibrary.credit_of(entry)
 	_store.touch()
 	_bar.opened.emit(placed)
-	_bar.say("opened %s — %s%s" % [title, ModelBar.credit_words(_store.credit),
-		ModelBar.left_out_words(result, false)])
+	_bar.say("opened %s — %s%s%s" % [title, ModelBar.credit_words(_store.credit),
+		ModelBar.left_out_words(result, false), ModelBar.looks_words(_store)])
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its
@@ -8014,7 +8014,8 @@ func _open_given(path: String) -> int:
 		_bar.say("could not open %s: %s" % [path.get_file(), result["error"]])
 		printerr("could not open %s: %s" % [path, result["error"]])
 		return 0
-	var said: String = "opened %d parts" % int(result["placed"]) + ModelBar.left_out_words(result)
+	var said: String = "opened %d parts" % int(result["placed"]) + ModelBar.left_out_words(result) \
+		+ ModelBar.looks_words(_store)
 	if not str(made["note"]).is_empty():
 		said += " — " + str(made["note"])
 	_bar.say(said)

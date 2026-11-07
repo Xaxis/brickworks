@@ -1033,6 +1033,89 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	return out
 
 
+## What of the booklet as its designer set it no step shows now, said as a
+## model opens (ModelBar.unshown_words): " — the pull on step 1 of the
+## model matches no step now, kept in the file"; "" for nothing. A pull
+## whose parts no part of its step is ([method _pulls_follow_parts] moved
+## those it could); and a step's look on a step the booklet shows none of,
+## one that puts on only sub-models it builds where they stand, worked out
+## by the plan only where a look is on a step with no part of its own. Each
+## stays in the file as it is ([method written_into]), and was dropped from
+## sight without a word (pullkept). A part still on its way ([param
+## awaited], ModelStore's) is in its step; while any is, the plan is not
+## asked, as a step of them alone is in no plan yet.
+static func unmatched_words(world: BrickWorld, library: PartLibrary, skip: Dictionary = {},
+		awaited: Array = []) -> String:
+	if world == null or not any_step_look(world) or not AuthorSteps.any(world, skip):
+		return ""
+	if _said_for == [world.get_instance_id(), world.generation(), awaited.size()]:
+		return _said
+	var own: Dictionary = {}      ## step look key -> {part: true}, its own parts
+	for brick: BrickWorld.Brick in world.bricks():
+		if not skip.has(brick.id) and brick.step >= 0:
+			var at: String = key(definition_of(AuthorSteps.home(world, Assemblies.path_of(brick))),
+				brick.step)
+			own.get_or_add(at, {})[LdrModel._key(brick.part_id)] = true
+	for placement: LdrModel.Placement in awaited:
+		if placement.step >= 0:
+			var at: String = key(definition_of(AuthorSteps.home(world,
+				Assemblies.path_from(placement.group, placement.unit))), placement.step)
+			own.get_or_add(at, {})[LdrModel._key(placement.part_id)] = true
+	var names: Array = world.step_looks.keys().filter(func(name: String) -> bool:
+		return name.get_slice("|", 1).is_valid_int() and world.step_looks[name] is Dictionary)
+	names.sort_custom(func(a: String, b: String) -> bool:
+		return a.get_slice("|", 0) < b.get_slice("|", 0) or a.get_slice("|", 0) \
+			== b.get_slice("|", 0) and a.get_slice("|", 1).to_int() < b.get_slice("|", 1).to_int())
+	var said := PackedStringArray()
+	var unplaced: Array = []
+	for name: String in names:
+		var look: Dictionary = world.step_looks[name]
+		var pull: Variant = look.get("pull")
+		if pull is Dictionary and not (pull.get("parts", []) as Array).is_empty() \
+				and not (pull["parts"] as Array).any(func(part: String) -> bool:
+					return (own.get(name, {}) as Dictionary).has(part)):
+			said.append("the pull on %s matches no step now, kept in the file" % _step_named(name))
+		# A turn holds on for the steps after it, and a section's start goes
+		# on to the next step there is (sections_by): neither is the step's
+		# alone.
+		if not own.has(name) and look.keys().any(func(field: String) -> bool:
+				return not field in ["turn", "how", "line", "section", "pull"]):
+			unplaced.append(name)
+	if not unplaced.is_empty() and awaited.is_empty() and library != null:
+		var shown: Dictionary = {}
+		for step: Instructions.Step in Instructions.plan(world, library, skip, {}, true):
+			if step.authored_step >= 0:
+				shown[key(definition_of(step.authored_in), step.authored_step)] = true
+		for name: String in unplaced:
+			if not shown.has(name):
+				said.append("what the booklet sets on %s matches no step now, kept in the file"
+					% _step_named(name))
+	var out: String = ""
+	for n: int in mini(said.size(), 3):
+		out += " — " + said[n]
+	if said.size() > 3:
+		out += " — and %d more like it" % (said.size() - 3)
+	_said_for = [world.get_instance_id(), world.generation(), awaited.size()]
+	_said = out
+	return out
+
+
+## [method unmatched_words] as last worked out, for the world, its
+## generation and the parts on their way it was worked out for: an open says
+## it more than once (Main._open).
+static var _said_for: Array = []
+static var _said: String = ""
+
+
+## A step look's step as an LDraw reader numbers it: "step 1 of the model",
+## "step 3 of Window".
+static func _step_named(name: String) -> String:
+	var definition: String = name.get_slice("|", 0)
+	var number: int = name.get_slice("|", 1).to_int() + 1
+	return "step %d of the model" % number if definition.is_empty() \
+		else "step %d of %s" % [number, definition]
+
+
 ## Of [param looks] ([method read]'s), the booklet's own (BOOKLET: its page
 ## set up, guides, steps a page and the like) and the picture behind its
 ## pages: what holds for the whole booklet whoever's its steps are.
@@ -1250,7 +1333,108 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 				shown[str(note["image"])] = pictures[str(note["image"])]
 	if not shown.is_empty():
 		out[DATA] = shown
+	_pulls_follow_parts(text, out, names, main_key)
 	return out
+
+
+## A pull that names parts its step does not put in, on a step that puts on
+## sub-models with steps of their own, moved in [param looks] to the step
+## among theirs that puts in the most of those parts, the first of any two:
+## a pull is drawn on the step that adds its parts (BookletMaker._pull_out),
+## and a booklet editor takes only a step's own parts for one
+## (AppTools._pulled_parts). Pods (the MCP walk, APP_UX6) pulled both wing
+## plates out in step 1, and the save then made the pods a sub-model built
+## in its own steps: its file kept the pull on the step that puts the
+## sub-model on, which no page shows, and opened again the pull was gone
+## (pullkept). The rest of that step's look stays on it, where every LDraw
+## reader puts it; the booklet shows it on the step that puts a sub-model on
+## as a callout, and says on open when it shows no such step (unmatched).
+static func _pulls_follow_parts(text: String, looks: Dictionary, names: Dictionary,
+		main_key: String) -> void:
+	var pulled: Array = []
+	for name: String in looks:
+		var look: Variant = looks[name]
+		if look is Dictionary and (look as Dictionary).get("pull") is Dictionary \
+				and not ((look as Dictionary)["pull"].get("parts", []) as Array).is_empty() \
+				and name.get_slice("|", 1).is_valid_int():
+			pulled.append(name)
+	if pulled.is_empty():
+		return
+	# Each section's steps as the file has them: every file each puts in,
+	# parts and sub-models alike, by its key ({file: true}), and in order.
+	var steps: Dictionary = {}       ## definition -> [{"put": {file: true}, "order": [file]}]
+	var definition_by: Dictionary = {}   ## file key -> definition
+	var definition: String = ""
+	var step: int = 0
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		if line.begins_with("0 "):
+			var words: PackedStringArray = LdrModel._fields(line)
+			var keyword: String = words[1].to_upper() if words.size() >= 2 else ""
+			if keyword == "FILE":
+				var file_key: String = LdrModel._key(" ".join(words.slice(2)))
+				definition = "" if file_key == main_key else str(names.get(file_key, file_key))
+				definition_by[file_key] = definition
+				step = 0
+			elif keyword == "STEP" or keyword == "ROTSTEP":
+				step += 1
+			continue
+		if not line.begins_with("1 "):
+			continue
+		var fields: PackedStringArray = LdrModel._fields(line)
+		if fields.size() < 15:
+			continue
+		var file: String = LdrModel._key(" ".join(fields.slice(14)))
+		var of: Array = steps.get(definition, [])
+		while of.size() <= step:
+			of.append({"put": {}, "order": []})
+		steps[definition] = of
+		(of[step]["put"] as Dictionary)[file] = true
+		(of[step]["order"] as Array).append(file)
+	for name: String in pulled:
+		var look: Dictionary = looks[name]
+		var named: Array = look["pull"]["parts"]
+		var at: Array = steps.get(name.get_slice("|", 0), [])
+		var here: int = name.get_slice("|", 1).to_int()
+		if here >= at.size() or named.any(func(part: String) -> bool:
+				return (at[here]["put"] as Dictionary).has(part)):
+			continue
+		# The sub-models it puts on: the files that are sections of this one.
+		var best: Array = ["", 0]       ## the step, how many of the parts it puts in
+		for file: String in at[here]["order"]:
+			if definition_by.has(file):
+				_most_of(file, named, steps, definition_by, best, {})
+		if int(best[1]) == 0:
+			continue
+		var to: Dictionary = looks.get(best[0], {})
+		if not to.has("pull"):
+			to["pull"] = look["pull"]
+			looks[best[0]] = to
+		look.erase("pull")
+		if look.is_empty():
+			looks.erase(name)
+
+
+## Into [param best], [the step, how many]: the step of the sub-model
+## [param file] (and of those it puts on, each before the step that puts it
+## on, as they are built) that puts in the most of [param named], the first
+## of any two.
+static func _most_of(file: String, named: Array, steps: Dictionary, definition_by: Dictionary,
+		best: Array, seen: Dictionary) -> void:
+	if seen.has(file):
+		return
+	seen[file] = true
+	var definition: String = definition_by[file]
+	var at: Array = steps.get(definition, [])
+	for step: int in at.size():
+		for inner: String in at[step]["order"]:
+			if definition_by.has(inner):
+				_most_of(inner, named, steps, definition_by, best, seen)
+		var count: int = named.filter(func(part: String) -> bool:
+			return (at[step]["put"] as Dictionary).has(part)).size()
+		if count > int(best[1]):
+			best[0] = key(definition, step)
+			best[1] = count
 
 
 ## [param count] numbers from [param words] at [param from], each within

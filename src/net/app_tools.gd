@@ -3260,7 +3260,8 @@ func _open_library(id: String, discard: bool) -> String:
 		+ "models. look_at_model to see it.") % [title,
 		await _parts_against_box(store, str(entry["set"]) if str(entry.get("alternate_of", "")).is_empty()
 			else ""),
-		ModelBar.left_out_words(result, false), ModelBar.credit_words(store.credit), entry["page"],
+		ModelBar.left_out_words(result, false) + ModelBar.looks_words(store),
+		ModelBar.credit_words(store.credit), entry["page"],
 		str(entry["author"]) if not str(entry["author"]).is_empty() else "its maker"] \
 		+ _replaced_words(store, unsaved, was) + _opened_motions()
 
