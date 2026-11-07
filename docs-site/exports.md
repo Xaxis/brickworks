@@ -18,7 +18,7 @@ description: Every file Brickworks saves, from LDraw and Studio files to 3D mode
 |---|---|
 | LDraw model (`.ldr`, or `.mpd` with its sub-models) | The open format: LDCad, LeoCAD, Studio and every LDraw tool read it |
 | BrickLink Studio model (`.io`) | Open it in Studio, with its steps |
-| 3D model (`.glb`, `.gltf`, `.obj`, `.stl`) | Blender, AR, a 3D printer |
+| 3D model (`.glb`, `.gltf`, `.obj`, `.stl`, `.3mf`) | Blender, AR, a 3D printer, one printing in colour |
 | Picture of the model (`.png`) | A picture with nothing behind the model |
 | BrickLink wanted list (`.xml`) | Buy the parts on BrickLink |
 | Rebrickable parts list (`.csv`) | Buy the parts, or check them against your sets on Rebrickable |
@@ -47,7 +47,9 @@ ui:parts lists for shops
 
 ## 3D models {#3d}
 
-**3D model…** writes the model as glTF (`.glb` or `.gltf`) in its colours, OBJ, or STL for a printer, each part with its real shape.
+**3D model…** writes the model as glTF (`.glb` or `.gltf`) in its colours, OBJ, STL for a printer, or 3MF for a printer that prints in several colours, each part with its real shape.
+
+A **3MF** has an object for each colour, in that colour, so your slicer gives each its own filament: when it asks, load it as one object of several parts. It is in millimetres, standing on the bed. A part moulded in two colours, such as a steering wheel on its stand, goes to both; a printed pattern is painted on its part for a slicer that reads a triangle's colour, and prints in the part's own colour in one that does not. The parts are LDraw's shapes at their exact size, not loosened for a printer, so printed parts may fit real bricks tightly.
 
 ![The 3D model export's formats.](/img/compare-export3d-640.webp "Export a 3D model: glb, gltf, obj or stl.")
 

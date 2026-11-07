@@ -355,8 +355,13 @@ geometry in front of them.
 - `mesh fetch`: a part whose mesh is not in the shipped pack is fetched from the
   storage bucket at run time. Several callers can ask for the same part at once,
   and every one of them has to hear that it arrived. Geometry and exact shapes
-  (and so the bin's previews) go through one fetch, `PartLibrary._ask`: a fault
-  that may pass (no answer, 408, 429, 5xx: `may_pass`) is asked again after
+  (and so the bin's previews) go through one fetch, `PartLibrary._ask`; in a
+  browser an exact shape is fetched by the page itself (`_ask_page`, handed
+  over as its bytes come, where an HTTPRequest took a frame for each of its
+  states: 7 frames, 1 to 4 s, playweb), and one asked for before the
+  deployment has said where the parts live waits for it as geometry does
+  (`_release_waiting`, `_next_exact`). A fault
+  that may pass (no answer, 408, 429, 5xx: `may_pass`, `_answered`) is asked again after
   `RETRY_AFTER` (2, 6, 12 s), a 404 or the bucket's 400 is final, and a part
   the web catalogue marks `"exact": false` has its shape kept as none unasked
   (`fetch_retry_probe`'s 3023); a part asked
