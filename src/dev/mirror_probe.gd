@@ -275,13 +275,11 @@ func _why_refused(axis: int) -> void:
 	var found: Dictionary = {}
 	for brick_id: int in _builder.selection:
 		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
-		var part: String = brick.part_id
-		var other: String = Mirror.counterpart(library, part)
-		if not other.is_empty() and library.mesh_for(other) != null:
-			part = other
-		var at: Transform3D = Builder._tidy(Mirror.reflected(brick.transform, axis, across),
+		var image: Dictionary = Mirror.image(library, brick.part_id, brick.transform, axis,
+			across, true)
+		var at: Transform3D = Builder._tidy(image["at"],
 			BrickLattice.is_square_to_grid(brick.transform.basis))
-		var packed: PackedInt32Array = _builder.boxes_for(library.mesh_for(part), at)
+		var packed: PackedInt32Array = _builder.boxes_for(library.mesh_for(image["part"]), at)
 		for id: int in _builder.lattice.blockers_boxes(packed, 0, _builder.selection):
 			found[id] = brick
 	if found.is_empty():
