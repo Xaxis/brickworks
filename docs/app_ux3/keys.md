@@ -143,14 +143,14 @@ to anything. Save this view… is Alt and the first free letter of its row, V.
 | `printed_versions` | Make › Printed versions | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
 | `brace` | (no menu row) | — | — | — | rarely | all | asks Claude to brace a weak part; on the part's own menu while Stress shows it weak |
 | `step_new` | Build › Build steps › New step from selection | Ctrl-T, Add a step | — | — (its Ctrl-Insert appends a step: Next step here) | every few minutes | LDCad | under LDCad's keys only: Shift-N leaves nesting, and Ctrl-Insert ends a step |
-| `booklet_turn_left` | Build › Booklet page › Turn the view left | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_turn_right` | Build › Booklet page › Turn the view right | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_tilt_up` | Build › Booklet page › Look from higher | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_tilt_down` | Build › Booklet page › Look from lower | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_this_view` | Build › Booklet page › Use this view for the step | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_usual_view` | Build › Booklet page › Usual view | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_zoom_in` | Build › Booklet page › Zoom in | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_zoom_out` | Build › Booklet page › Zoom out | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_turn_left` | Build › Booklet page › Step's view › Turn the view left | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_turn_right` | Build › Booklet page › Step's view › Turn the view right | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_tilt_up` | Build › Booklet page › Step's view › Look from higher | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_tilt_down` | Build › Booklet page › Step's view › Look from lower | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_this_view` | Build › Booklet page › Step's view › Use this view for the step | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_usual_view` | Build › Booklet page › Step's view › Usual view | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_zoom_in` | Build › Booklet page › Step's view › Zoom in | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_zoom_out` | Build › Booklet page › Step's view › Zoom out | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
 | `booklet_bigger` | Build › Booklet page › Bigger on the page | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
 | `booklet_smaller` | Build › Booklet page › Smaller on the page | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
 | `booklet_new_page` | Build › Booklet page › Start a new page | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
@@ -196,11 +196,11 @@ to anything. Save this view… is Alt and the first free letter of its row, V.
 | `cut_shrink` | View › Cut away by › Shrink it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Shrink is the strip's button |
 | `stress` | View › Stress | — | — | — | a few times a model | all | Alt-K checks stability; Stress is the colour of it, looked at after |
 | `stud_map` | View › Stud directions | — | — | — | once a design | all | a check of which way studs face, looked at once and put away; it shares Stress's layer, and Stress has none either |
-| `panel_parts` | View › Parts bin | — | — | — | once a session | all | a panel set once a session, and it stays |
-| `panel_assistant` | View › Assistant | — | — | — | once a session | all | a panel set once a session, and it stays |
-| `panel_properties` | View › Properties | — (Instruction Maker's inspector, Ctrl-Alt-2) | — | I, the information panel | once a session | all | a panel set once a session; I is X-ray here, used far more |
+| `panel_parts` | View › Panels › Parts bin | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `panel_assistant` | View › Panels › Assistant | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `panel_properties` | View › Panels › Properties | — (Instruction Maker's inspector, Ctrl-Alt-2) | — | I, the information panel | once a session | all | a panel set once a session; I is X-ray here, used far more |
 | `show_properties` | (no menu row) | — | — | — | rarely | all | on a part's own menu, in no menu of the bar |
-| `panel_keys` | View › Key strip | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `panel_keys` | View › Panels › Key strip | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `collection` | File › My collection | — | — | — | rarely | all | the person's own bricks, looked at between builds |
 | `collection_need` | Build › What do I need? | — | — | — | rarely | all | the person's own bricks, looked at between builds |
 | `collection_build` | File › What can I build? | — | — | — | rarely | all | the person's own bricks, looked at between builds |
@@ -209,7 +209,7 @@ to anything. Save this view… is Alt and the first free letter of its row, V.
 | `suggest_sections` | Build › Suggest sections | — | — | — | rarely | all | a big model's sections, now and then; Y and Shift-Y are the ones used often |
 | `evaluate_section` | Build › Evaluate the section | — | — | — | rarely | all | a big model's sections, now and then; Y and Shift-Y are the ones used often |
 | `put_back` | Build › Put every section back | — | — | — | rarely | all | a big model's sections, now and then; Y and Shift-Y are the ones used often |
-| `panel_outliner` | View › Model tree | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `panel_outliner` | View › Panels › Model tree | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `minifig` | Make › Minifigure builder | — | — | — | a few times a model | Mecabricks, LDCad | under Mecabricks' and LDCad's keys M is their Move |
 | `mosaic` | Make › Mosaic from a picture | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
 | `part_maker` | Make › Part maker | — | — | — | rarely | all | a maker of its own, opened once for what it makes |

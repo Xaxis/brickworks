@@ -480,6 +480,9 @@ msgstr "Instrucciones…"
 msgid "Booklet page"
 msgstr "Página del folleto"
 
+msgid "Step's view"
+msgstr "Vista del paso"
+
 msgid "Turn the view left"
 msgstr "Girar la vista a la izquierda"
 

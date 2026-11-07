@@ -185,15 +185,18 @@ NOTICES_SAY = {
 # it one (TabSession.given_file). LDraw's it claims; Studio's and LDD's it
 # only offers to open, so a person with Studio or LDD keeps them opening
 # there. The MIME types are LeoCAD's, so the two share them on Linux.
+# "drawn": the file browser shows a picture of the model the app draws
+# (THUMBNAILER); an LDD file keeps its type's icon, the app reading only
+# what LDD's own parts become in LDraw's.
 MODEL_TYPES = (
     {"ext": "ldr", "name": "LDraw model", "uti": "org.ldraw.ldr",
-     "mime": "application/x-ldraw", "text": True, "claims": True},
+     "mime": "application/x-ldraw", "text": True, "claims": True, "drawn": True},
     {"ext": "mpd", "name": "LDraw multi-part model", "uti": "org.ldraw.mpd",
-     "mime": "application/x-multi-part-ldraw", "text": True, "claims": True},
+     "mime": "application/x-multi-part-ldraw", "text": True, "claims": True, "drawn": True},
     {"ext": "io", "name": "BrickLink Studio model", "uti": "dev.brickworks.studio-io",
-     "mime": "application/x-bricklink-studio", "text": False, "claims": False},
+     "mime": "application/x-bricklink-studio", "text": False, "claims": False, "drawn": True},
     {"ext": "lxf", "name": "LDD model", "uti": "dev.brickworks.ldd-lxf",
-     "mime": "application/x-lxf", "text": False, "claims": False},
+     "mime": "application/x-lxf", "text": False, "claims": False, "drawn": False},
 )
 # Art the packages carry, drawn by tools/web/make_icons.mjs: the icon at the
 # sizes each system asks for, and the disk image's background.
@@ -201,6 +204,21 @@ PACKAGE_ART = ROOT / "tools" / "release" / "package"
 # The Linux packages' name for the app: the .desktop file, the icon, the
 # MIME types and the metainfo are all called this (the macOS bundle's id).
 APP_ID = "dev.brickworks.app"
+# The .deb's thumbnailer: a folder of models shows a picture of each, drawn
+# by the app from its corner view (src/render/model_thumbnail.gd), where it
+# showed the type's icon on every file. GNOME's file browser (and anything
+# else reading /usr/share/thumbnailers, Xfce's tumbler among them) runs the
+# entry's Exec with %i the model, %o the PNG to write and %s the size, in
+# GNOME's case inside a bubblewrap sandbox: /usr read only, the model, an
+# empty /tmp for the picture, no display, no network. THUMBNAIL_RUNNER runs
+# the app headless with a data folder of its own there, made and removed
+# each time, so the app's logs and settings are never touched: the engine
+# writes a log at every start and keeps five, and a folder of fifty models
+# would have pushed out every log of the app's own. It is a command on PATH
+# as evince-thumbnailer is, so "brickworks-thumbnailer MODEL PICTURE" works
+# from a terminal too.
+THUMBNAILER = "usr/share/thumbnailers/%s.thumbnailer" % APP_ID
+THUMBNAIL_RUNNER = "usr/bin/brickworks-thumbnailer"
 
 
 class Failed(Exception):
@@ -941,6 +959,33 @@ def desktop_files(share: Path, command: str, version: str = "") -> None:
     (share / "mime" / "packages" / (APP_ID + ".xml")).write_text(mime_types())
 
 
+def thumbnailer_entry() -> str:
+    """The thumbnailer entry: what runs, for which model files."""
+    runner = THUMBNAIL_RUNNER.rsplit("/", 1)[-1]
+    return ("[Thumbnailer Entry]\nTryExec=%s\nExec=%s %%i %%o %%s\nMimeType=%s;\n"
+            % (runner, runner, ";".join(kind["mime"] for kind in MODEL_TYPES if kind["drawn"])))
+
+
+def thumbnail_runner() -> str:
+    """The script the entry runs: the app headless, drawing the model,
+    with a data folder of its own (see THUMBNAILER)."""
+    return ("#!/bin/sh\n"
+            "# A file browser's picture of a Brickworks model: thumbnail MODEL PICTURE [SIZE].\n"
+            "# The app draws it headless (--thumbnail) from a data folder of its own,\n"
+            "# made here and removed after, so the app's own logs and settings stay as\n"
+            "# they are.\n"
+            "app=${0%/*}/../lib/brickworks/brickworks.x86_64\n"
+            # A TMPDIR outside the sandbox (pam_tmpdir's /tmp/user/1000) is not
+            # in it: /tmp is.
+            "data=$(mktemp -d \"${TMPDIR:-/tmp}/brickworks-thumbnail.XXXXXX\" 2>/dev/null \\\n"
+            "  || mktemp -d /tmp/brickworks-thumbnail.XXXXXX) || exit 1\n"
+            "XDG_DATA_HOME=$data XDG_CONFIG_HOME=$data XDG_CACHE_HOME=$data \\\n"
+            "  \"$app\" --headless --thumbnail \"$1\" \"$2\" \"${3:-256}\"\n"
+            "code=$?\n"
+            "rm -rf \"$data\"\n"
+            "exit $code\n")
+
+
 def write_deb(folder: Path, target: Path, version: str, epoch: int) -> None:
     """A .deb for Debian and Ubuntu: the app in /usr/lib/brickworks, run as
     brickworks, in the menu and opening models. No maintainer scripts:
@@ -957,6 +1002,9 @@ def write_deb(folder: Path, target: Path, version: str, epoch: int) -> None:
     (root / "usr" / "bin" / "brickworks").symlink_to("../lib/brickworks/brickworks.x86_64")
     share = root / "usr" / "share"
     desktop_files(share, "brickworks")
+    (root / THUMBNAILER).parent.mkdir(parents=True)
+    (root / THUMBNAILER).write_text(thumbnailer_entry())
+    (root / THUMBNAIL_RUNNER).write_text(thumbnail_runner())
     docs = share / "doc" / "brickworks"
     docs.mkdir(parents=True)
     for name in ("README.txt", "ATTRIBUTION.md", "THIRD-PARTY-NOTICES.txt"):
@@ -969,7 +1017,8 @@ def write_deb(folder: Path, target: Path, version: str, epoch: int) -> None:
     # give the system's / (a group-writable / breaks sshd and sudo).
     for path in [root, *root.rglob("*")]:
         if not path.is_symlink():
-            path.chmod(0o755 if path.is_dir() or path.name == "brickworks.x86_64" else 0o644)
+            path.chmod(0o755 if path.is_dir() or path.name in (
+                "brickworks.x86_64", "brickworks-thumbnailer") else 0o644)
     glibc = glibc_needed((folder / "brickworks.x86_64").read_bytes()) or "2.28"
     installed = sum(path.stat().st_size for path in root.rglob("*")
                     if path.is_file() and not path.is_symlink()) // 1024
@@ -1732,7 +1781,8 @@ def inspect_deb(path: Path) -> dict[str, Any]:
     binary, data = None, b""
     wanted = {"usr/lib/brickworks/brickworks.x86_64",
               "usr/share/applications/%s.desktop" % APP_ID,
-              "usr/share/mime/packages/%s.xml" % APP_ID}
+              "usr/share/mime/packages/%s.xml" % APP_ID, THUMBNAILER, THUMBNAIL_RUNNER}
+    runnable = set()
     stream = Slice(path, *members[data_name])
     # One pass, each file read as it is reached (inspect_tar).
     with tarfile.open(fileobj=stream, mode="r|*") as archive:  # type: ignore[call-overload]
@@ -1744,6 +1794,8 @@ def inspect_deb(path: Path) -> dict[str, Any]:
                 loose.append("%s %o %d:%d" % (name or "/", member.mode, member.uid, member.gid))
             if member.issym():
                 links[name] = member.linkname
+            if member.isfile() and member.mode & 0o111:
+                runnable.add(name)
             leaf = name.rsplit("/", 1)[-1]
             if name in wanted or (name.startswith("usr/share/doc/brickworks/")
                                   and leaf in LICENCE_FILES):
@@ -1770,8 +1822,25 @@ def inspect_deb(path: Path) -> dict[str, Any]:
             "icons": sorted(name.split("/")[4] for name in contents
                             if name.startswith("usr/share/icons/hicolor/")
                             and name.endswith("/apps/%s.png" % APP_ID)),
+            "thumbnails": thumbnailed(beside.get(THUMBNAILER, b"").decode(),
+                                      beside.get(THUMBNAIL_RUNNER, b"").decode(),
+                                      THUMBNAIL_RUNNER in runnable),
             "contents": [name for name in contents if not name.endswith("/")],
             "loose": loose, "licences": licences(beside.get)}
+
+
+def thumbnailed(entry: str, runner: str, runs: bool) -> list[str]:
+    """The model files a .deb's thumbnailer draws, by extension: those its
+    entry names, when the entry runs the runner it carries, executable, and
+    the runner asks the app for a picture."""
+    fields = dict(line.split("=", 1) for line in entry.splitlines() if "=" in line)
+    runner_name = THUMBNAIL_RUNNER.rsplit("/", 1)[-1]
+    if not (runs and fields.get("Exec", "").startswith(runner_name + " ")
+            and fields.get("TryExec") == runner_name
+            and "--thumbnail" in runner and runner.startswith("#!/bin/sh")):
+        return []
+    named = fields.get("MimeType", "").split(";")
+    return [kind["ext"] for kind in MODEL_TYPES if kind["mime"] in named]
 
 
 def dmg_reader(path: Path, into: Path) -> tuple[Callable[[str], bytes | None], int]:
@@ -1923,14 +1992,17 @@ def inspect(out: Path) -> list[dict[str, Any]]:
                 path.name, human(entry["size"]), facts["package"], facts["version"],
                 facts["architecture"], human(facts["unpacked"]),
                 "yes" if facts["executable"] else "NO", facts["glibc"]))
-            say("      brickworks -> %s; opens %s; icons %s" % (
-                facts["command"], ", ".join(facts["opens"]) or "nothing", " ".join(facts["icons"])))
+            say("      brickworks -> %s; opens %s; pictures of %s; icons %s" % (
+                facts["command"], ", ".join(facts["opens"]) or "nothing",
+                ", ".join(facts["thumbnails"]) or "nothing", " ".join(facts["icons"])))
             say_licences(path.name, facts["licences"])
             if facts["version"] != version or not facts["executable"] or not facts["command"]:
                 raise Failed("%s: version %s, executable %s, command %r" % (
                     path.name, facts["version"], facts["executable"], facts["command"]))
             if sorted(facts["opens"]) != sorted(kind["ext"] for kind in MODEL_TYPES):
                 raise Failed("%s opens only %s" % (path.name, facts["opens"]))
+            if facts["thumbnails"] != [kind["ext"] for kind in MODEL_TYPES if kind["drawn"]]:
+                raise Failed("%s's thumbnailer draws only %s" % (path.name, facts["thumbnails"]))
             if facts["loose"]:
                 raise Failed("%s would install these other than 0755 root: %s" % (
                     path.name, ", ".join(facts["loose"][:5])))
@@ -2310,6 +2382,7 @@ def opens_models(package: Path, base: list[str], env: dict[str, str],
     name = package.name
     if name.endswith(".deb"):
         said += double_click_linux(root / "unpacked", env, twice)
+        said += thumbnails_linux(root / "unpacked", models)
     elif name.endswith(".dmg"):
         said += double_click_mac(twice)
     elif name.endswith("-setup.exe"):
@@ -2425,6 +2498,29 @@ def double_click_linux(root: Path, env: dict[str, str],
         WINDOW_CLASS, ", ".join(sorted({c for _, c in named})) or "no window named one"),
         len([c for _, c in named if c == WINDOW_CLASS]) == 2, classes))
     end_windows(data)
+    return said
+
+
+def thumbnails_linux(root: Path, models: list[Path]) -> list[tuple[str, bool | None, str]]:
+    """The .deb's files, as double_click_linux told a desktop of them, and
+    GNOME's own thumbnail factory asked for a picture of each model, as
+    Files asks: tools/release/thumbnail_check.py, whose checks these are."""
+    # Not "thumbnails": GNOME's factory draws nothing in a folder of that name.
+    out = root / "thumbnail check"
+    done = subprocess.run([sys.executable, str(ROOT / "tools" / "release" / "thumbnail_check.py"),
+                           "--root=%s" % (root / "root"), "--out=%s" % out, "--trace"]
+                          + [str(model) for model in models],
+                          capture_output=True, text=True, timeout=900)
+    said: list[tuple[str, bool | None, str]] = []
+    for line in done.stdout.splitlines():
+        found = re.match(r"  (ok  |FAIL|--  )  (.*)$", line)
+        if found:
+            said.append(("thumbnail: " + found.group(2),
+                         {"ok  ": True, "FAIL": False, "--  ": None}[found.group(1)],
+                         done.stderr[-2000:]))
+    if not said or done.returncode not in (0, 1):
+        said.append(("thumbnail_check.py ran (exit %d)" % done.returncode, False,
+                     done.stdout[-1000:] + done.stderr[-2000:]))
     return said
 
 
