@@ -689,13 +689,20 @@ func _show_mode(which: String) -> void:
 	if which == PARTS:
 		_place_parts()
 	elif not _side_place.is_empty():
-		var anchors: Array = _side_place["anchors"]
-		var offsets: Array = _side_place["offsets"]
-		for side: int in 4:
-			set_anchor(side, float(anchors[side]), false, false)
-		for side: int in 4:
-			set_offset(side, float(offsets[side]))
+		_set_place(_side_place["anchors"], _side_place["offsets"])
 		grow_horizontal = _side_place["grow"]
+
+
+## Each edge's anchor, then its offset. Left and top first, each pushing the
+## edge opposite along when it passes it: an anchor kept from crossing its
+## opposite stays where it was (the side panel's top at 0, under a centred
+## sheet's bottom at 0.5, made the sheet as tall as half the model area and
+## more).
+func _set_place(anchors: Array, offsets: Array) -> void:
+	for side: int in 4:
+		set_anchor(side, float(anchors[side]), true, true)
+	for side: int in 4:
+		set_offset(side, float(offsets[side]))
 
 
 ## Centred over the model, as large as [constant PARTS_SIZE] where there is
@@ -705,12 +712,8 @@ func _place_parts() -> void:
 		else get_viewport_rect().size
 	var room: Vector2 = (area - Vector2(28.0, 28.0)).max(Vector2(WIDE, 240.0))
 	var wanted := Vector2(minf(PARTS_SIZE.x, room.x), minf(PARTS_SIZE.y, room.y))
-	for side: int in 4:
-		set_anchor(side, 0.5, false, false)
-	offset_left = -wanted.x / 2.0
-	offset_right = wanted.x / 2.0
-	offset_top = -wanted.y / 2.0
-	offset_bottom = wanted.y / 2.0
+	_set_place([0.5, 0.5, 0.5, 0.5], [-wanted.x / 2.0, -wanted.y / 2.0, wanted.x / 2.0,
+		wanted.y / 2.0])
 	grow_horizontal = Control.GROW_DIRECTION_BOTH
 	grow_vertical = Control.GROW_DIRECTION_BOTH
 	# A wrapping label is as tall as its words at the width it has, and before

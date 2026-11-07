@@ -333,6 +333,17 @@ func _car_from_7140() -> void:
 	await _frames(30)
 	await _shot("comparesets_car")
 	_placed()
+	# Compare with a save, from the sheet: the side panel it was, where it was.
+	_store.save_as("Comparesets car")
+	await _frames(4)
+	_compare.call("open_with", _store.versions()[0])
+	await _frames(6)
+	var panel: Rect2 = _compare.get_global_rect()
+	var area: Rect2 = (_compare.get_parent() as Control).get_global_rect()
+	_check("Compare with a save after it: the side panel at the model's right (%s in %s)"
+		% [panel, area], str(_compare.get("mode")) == "save" and _compare.visible
+		and absf(panel.end.x - (area.end.x - 14.0)) < 1.0 and absf(panel.size.x - 300.0) < 1.0
+		and panel.position.y > area.position.y and panel.end.y < area.end.y)
 	_compare.call("close")
 	await _frames(3)
 
