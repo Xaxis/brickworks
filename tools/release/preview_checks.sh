@@ -151,7 +151,8 @@ declare -A CMD=(
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
   # frames held to 36 ms on average on a CPU; and 1484-1 with motions of its
   # own, each played by its button and taken back, Reset, and its page
-  # saying what it does.
+  # saying what it does; its link with ?motion= opening playing over and
+  # over within 2 s, stopped by its button, and an unknown name opening still.
   # Published from a throwaway account, deleted after; API routes only,
   # with the bypass (supabase/play.sql's and motions.sql's card when they
   # are applied).

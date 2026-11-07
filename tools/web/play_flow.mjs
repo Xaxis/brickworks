@@ -80,6 +80,11 @@
 //      lit; what the press cost the app is said.
 //   7. The gates' button pressed again: they play backwards, back to 0°.
 //   8. Reset: nothing lit, Reset gone; the link's text unchanged.
+//   9. Its link that opens playing (APP_UX5 playlink), /m/<id>?motion=open-
+//      the-gates: on to the viewer with it, the gates played over and over
+//      within 2 s of the model shown (the app's own phases, "parts" to
+//      "moving"), their frame there and back; pressed, back and stopped.
+//      ?motion=wings opens still and says so.
 //
 // And its page, /m/<id>: what it does in its facts, "Moves: open the
 // gates, open the mailbox" once supabase/motions.sql is applied there, or
@@ -407,6 +412,71 @@ async function houseLink(size, shape) {
   await context.close();
 }
 
+// The house's link that opens playing (APP_UX5 playlink): /m/<id>?motion=
+// open-the-gates, as the share panel's Opens writes it, goes on to the viewer
+// with it (web/share-page.js on a deployment, serve.py's redirect locally),
+// which plays the gates over and over within 2 s of the model shown, their
+// frame going there and back; pressed, they go back and stop. And a name the
+// house has no motion of opens it still, saying so.
+async function housePlaying(size, shape) {
+  const finger = Boolean(shape.hasTouch);
+  console.log(`\nthe house's link that opens playing, ${size}`);
+  const context = await browser.newContext({ ...shape, extraHTTPHeaders: headers });
+  const page = await context.newPage();
+  page.on("pageerror", (e) => errors.push(`${size} playing: ${String(e).slice(0, 200)}`));
+  await page.goto(`${site}/m/${houseId}?motion=open-the-gates`, { waitUntil: "domcontentloaded", timeout: 180000 });
+  await page.waitForURL(/[?&]view=.*[?&]motion=open-the-gates/, { timeout: 60000 }).catch(() => {});
+  check(`the link went on to the viewer with its motion: ${page.url().replace(site, "")}`,
+    /[?&]view=/.test(page.url()) && /[?&]motion=open-the-gates/.test(page.url()));
+  const playing = await until(page, () => {
+    const s = window.brickworksShare || {};
+    return s.looping ? s : null;
+  }, "the gates playing", 600).catch(() => null);
+  const phases = playing ? playing.opened || {} : {};
+  const after = Number(phases.moving) - Number(phases.parts);
+  check(`it opens playing "${playing ? playing.looping : ""}", ${after} ms after the model is shown (under 2000; phases ${JSON.stringify(phases)})`,
+    Boolean(playing) && playing.looping === "Open the gates" && after >= 0 && after <= 2000);
+  // Its frame, read twice a second for 6 s: it changes, and comes back.
+  const seen = [];
+  for (let n = 0; n < 12; n += 1) {
+    await page.waitForTimeout(500);
+    seen.push(Number((await share(page)).looping_at));
+  }
+  const most = Math.max(...seen);
+  const turned = seen.some((at, n) => n > 0 && at < seen[n - 1] - 0.5) && seen.some((at, n) => n > 0 && at > seen[n - 1] + 0.5);
+  check(`its frame goes there and back, over and over: ${seen.map((at) => at.toFixed(1)).join(", ")}`,
+    most > 5 && turned && new Set(seen).size >= 6);
+  const said = await play(page);
+  check(`its button lit, and the pill says how to stop it: "${said.says}"`, (said.motions_out || []).includes("Open the gates")
+    && (finger ? /over and over\. Tap it to stop\.$/ : /over and over\. Press it to stop\.$/).test(said.says));
+  await shot(page, `${size}_10_playing.png`);
+  const button = (await controls(page)).view_motion_1;
+  if (button) await (finger ? page.touchscreen.tap(button.x, button.y) : page.mouse.click(button.x, button.y));
+  const home = await until(page, () => {
+    const s = window.brickworksShare || {};
+    const p = (s.view || {}).play || {};
+    return !s.looping && !(p.motions_out || []).length && !p.played && !/^Putting/.test(p.says) ? p : null;
+  }, "put back", 60).catch(() => null);
+  check(`pressed, it goes back and stops, nothing lit: "${home ? home.says : "still playing"}"`, Boolean(home));
+  await context.close();
+
+  const still = await browser.newContext({ ...shape, extraHTTPHeaders: headers });
+  const other = await still.newPage();
+  other.on("pageerror", (e) => errors.push(`${size} still: ${String(e).slice(0, 200)}`));
+  await other.goto(`${site}/m/${houseId}?motion=wings`, { waitUntil: "domcontentloaded", timeout: 180000 });
+  const missing = await until(other, () => {
+    const p = (((window.brickworksShare || {}).view || {}).play) || {};
+    return p.shown && p.missing ? p : null;
+  }, "the missing motion said", 600).catch(() => null);
+  await other.waitForTimeout(3000);
+  const later = await share(other);
+  check(`?motion=wings opens still and says so: "${missing ? missing.says : ""}"`, Boolean(missing)
+    && /^There is no motion called “wings” in this model, so it opened still\./.test(missing.says)
+    && !later.looping && !(((later.view || {}).play || {}).motions_out || []).length);
+  await shot(other, `${size}_11_missing.png`);
+  await still.close();
+}
+
 // The house's own page, /m/<id>: what it does, in its facts, at both sizes,
 // light and dark.
 async function housePage() {
@@ -653,6 +723,7 @@ try {
   // The house, with motions of its own.
   if (houseId) {
     for (const size of wanted) await houseLink(size, SIZES[size]);
+    for (const size of wanted) await housePlaying(size, SIZES[size]);
     if (housePublished) await housePage();
   } else {
     say("no house with motions served (--publish, or --house with serve.py), so its buttons are not tried");

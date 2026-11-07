@@ -256,6 +256,9 @@ var _steps_carried: bool = false
 ## the link fetched, the model opened (with ModelStore's own phases), the
 ## steps in.
 var _view_phases: Dictionary = {}
+## When the viewer began fetching the link, ms (Time.get_ticks_msec): its
+## phases are counted from it, and a link's motion's first frame ("moving").
+var _view_began: int = 0
 ## What was in sight before the player took the window, put back after.
 var _build_left: Dictionary = {}
 ## How long turning to the last page took, and the longest, in microseconds:
@@ -1076,8 +1079,11 @@ func _tell_page() -> void:
 		"view": _share_view.page_state() if _share_view != null else {},
 		# What the last finger on the model was taken as (_play_touch).
 		"finger": _finger_said,
-		# What the last motion's button played (_play_motion).
+		# What the last motion's button played (_play_motion), and the one a
+		# link plays over and over with the frame it is at.
 		"motion": _motion_last,
+		"looping": _motion_loop,
+		"looping_at": snappedf(_motion_at(), 0.01) if not _motion_loop.is_empty() else -1.0,
 		"steps": [_steps.timeline_at().x, _steps.timeline_at().y] if _steps.is_playing_back() else [],
 		"build": build_state(),
 		"carried": _steps_carried,
@@ -3008,6 +3014,7 @@ func _view_shared() -> void:
 	# until its joints are read for it.
 	_play_stop()
 	var began: int = Time.get_ticks_msec()
+	_view_began = began
 	_view_phases = {}
 	var answer: Dictionary = await _shared.fetch(_viewing, _viewing_version)
 	_view_phases["fetched"] = Time.get_ticks_msec() - began
@@ -4497,6 +4504,8 @@ func _pace_motion() -> void:
 	if bool(_motion_pressed["loop"]):
 		_motion_loop = motion.name
 		_motion_loop_depth = paced.depth
+		if not _view_phases.has("moving"):
+			_view_phases["moving"] = Time.get_ticks_msec() - _view_began
 		_share_view.show_looping(motion.name)
 		_share_view.play_said("")
 	# The model stands where it ends already: its first frame drawn at once.

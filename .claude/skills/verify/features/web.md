@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow -->
 
 ## Sub-features
 
@@ -2398,8 +2398,10 @@ plan with Claude as the client.
   does not, or a drag before the joints are read or while the timeline is
   short of the whole model, turns the view as before. A finger: the first
   one down (whatever its index) on a part that moves, or within about 10
-  points of one (`_play_brick_near`: a phone's steering wheel is thinner
-  than a fingertip), and past 14 px takes hold before the camera sees it;
+  points of one (`_play_bricks_near`: a phone's steering wheel is thinner
+  than a fingertip; the three nearest bodies in turn, so a part pinned at
+  both ends beside the wheel, 8808-1's Technic plate on its two studs, gives
+  way to the wheel), and past 14 px takes hold before the camera sees it;
   a second finger lets go and pinches; `brickworksShare.finger` says what
   the last was taken as. The viewer's drag draws no balance marks and does
   not weigh each frame (`GrabDrag.show_marks`), and reads the joints on a
@@ -2414,8 +2416,9 @@ plan with Claude as the client.
   pill says "Play its motions" with a button each (`view_motion_1`…, Reset's
   face, a fingertip tall on a phone) and "Press one to play it, and again to
   put it back…" ("Tap one…" on a touch screen); pressed, `main._play_motion`
-  plays it through `MotionPlayer.play` kept (one step), its frames drawn
-  12 a second (`_motion_frame`, `BrickWorld.set_drawn`), the button lit while
+  plays it through `MotionPlayer.play` kept (one step), its frames worked
+  out 12 a second and drawn between them every screen frame (`_motion_frame`,
+  `_pose_at`, `BrickWorld.set_drawn`), the button lit while
   it stands where it ends; pressed again it plays backwards; Reset undoes a
   motion's step as a drag's and puts every button out. What the last press
   played: `brickworksShare.motion` (`name`, `backwards`, `joints` [name,
@@ -2468,6 +2471,29 @@ plan with Claude as the client.
   (`motionWords`, three and "and N more", `data-motions`), the page's facts
   all of them, or the words.
 - `share play probe` (`src/dev/share_play_probe.gd`): below.
+- `a link that opens playing` (`src/main.gd` `_viewing_motion`,
+  `_open_playing`, `_looped`, `_loop_home`; `Motions.for_link`, `slug`,
+  `link_words`; `ShareView.show_looping`, `link_missing`; `SharePanel`
+  Opens, `link()`; `web/share-page.js`; APP_UX5 playlink, 2026-11-06): the
+  Share panel of a model with motions of its own has Opens, Still or
+  Playing “Lift the boom” (`share_opens`, Still by default), and the link it
+  copies is then `/m/<id>?motion=lift-the-boom`. The model page sends such
+  a link straight on to `/app?view=<id>&motion=…` (its social card stays the
+  page's); `/app?view=<id>&motion=` works as well, and the address bar keeps
+  it. The name is the motion's own, its slug, or words only one motion's name
+  has ("boom"). The joints are read at once instead of 2 s after, and once
+  the steps are worked out the motion plays there and back over and over, a
+  rest of 0.7 s at each end (`_looped`), drawn and never kept, its button lit
+  and the pill saying "Playing “…” over and over. Press it to stop."; its
+  button eases it back to as built from where it is (`_loop_home`), as do a
+  drag, Reset, another motion or Build it; turning the view does not. Reduce
+  motion plays it once. A name the model has no motion for opens still and
+  says "There is no motion called “wings” in this model, so it opened
+  still." with the motions it has. `brickworksShare`: `looping`,
+  `looping_at`; `view.play.looping`, `missing`; `view.phases.moving` (ms
+  from the view starting to the first frame drawn off); the panel's
+  `link`, `playing`, `opens`.
+- `playlink probe` (`src/dev/playlink_probe.gd`): below.
 - `what a frame costs in a browser` (`tools/web/look_cost.mjs`): serves
   the export with `serve.py --share L00kM0del1=vendor/omr/files/6392-1.mpd
   --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd`, with .env sourced, and
@@ -4919,6 +4945,32 @@ about a minute on the GPU):
 ```sh
 tools/probe.sh share_play_probe
 ```
+
+A link that opens playing, on the crane 4096-1 and its motion "Lift the
+boom" (a window; 1280 x 720, then `PROBE_SIZE=1400x900`, `390x844` and
+`1024x768`; about two minutes each on the GPU):
+
+```sh
+tools/probe.sh playlink_probe
+PROBE_SIZE=1400x900 tools/probe.sh playlink_probe   # and 390x844, 1024x768
+```
+
+Proves it when it ends "playlink_probe: all passed": no Opens for a model
+without motions; Opens with Playing “Lift the boom” once it has one, the
+link copied `…?motion=lift-the-boom`; that link (`--view --motion=boom`)
+drawing the boom off within 2 s of the model shown, its angle changing on 95%
+of the frames it moves and going up and down at least three times in 8 s
+past 10 degrees, the button lit and the words "over and over"; its button
+bringing it home angle by angle with every part as built; nothing written;
+`--motion=wings` opening still with the words and the motions it has, and
+nothing drawn off for 3 s; Reduce motion playing it once. Pictures in
+`shots/playlink/<size>_*.png`: look at `1_playing` (boom up, button lit)
+and `4_missing`.
+
+In a browser, `tools/web/play_flow.mjs` with `--house=<id>` (the house's
+"Open the gates") opens `/m/<id>?motion=open-the-gates` and checks it loops
+within 2 s, its button stops it, and `?motion=wings` opens still
+(`<size>_10_playing.png`, `<size>_11_missing.png`).
 
 Build it turned as its booklet turns the model (a window; a phone, then
 `PROBE_SIZE=1024x768`, `1280x720` and `1400x900`; about four minutes on the

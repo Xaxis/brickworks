@@ -2764,6 +2764,20 @@
     },
     {
       "kind": "ui",
+      "label": "a link that opens playing",
+      "entry": "src/main.gd",
+      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over within 2 s of the model shown; its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "playlink probe",
+      "entry": "src/dev/playlink_probe.gd",
+      "reach": "tools/probe.sh playlink_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/playlink_probe.gd; PROBE_SIZE=1400x900, 390x844, 1024x768)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "design system",
       "entry": "web/site.css",
       "reach": "every page of brickworks.diy: its controls (fields, checkboxes, buttons, dialog, card) in one place (docs/DESIGN_SYSTEM.md)",

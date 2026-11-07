@@ -28,6 +28,12 @@
 ##   5. With Reduce motion on (Settings): the link's motion played once, the
 ##      boom left raised, its button lit, and nothing moving after.
 ##
+## And the words a link may carry, before any of it: the motion's name in any
+## case, as the panel writes it, or a word only its name has; not a word two
+## names share, nor words on two lines.
+##
+## It loads on a build from before (what is new is asked for by name), so
+## that build fails its checks rather than failing to load.
 ## Pictures in shots/playlink/, named by the window's size: share_opens,
 ## 1_playing, 2_stopped, 4_missing.
 extends SceneTree
@@ -130,12 +136,13 @@ func _share(text: String) -> String:
 	await panel.publish()
 	await _settle()
 	# A model with no motions of its own: no choice to make.
-	_ok(panel.controls_by_name().has("share_copy_link") and not panel.page_state()["opens"]
+	_ok(panel.controls_by_name().has("share_copy_link") and not panel.page_state().get("opens", false)
 		and not panel.controls_by_name().has("share_opens"),
-		"published with no motion of its own, its link has no Opens: %s" % panel.link())
+		"published with no motion of its own, its link has no Opens: %s" % _link(panel))
 	panel.visible = false
 	var player: MotionPlayer = _main.get("_motions")
 	var offered: Array = player.suggest()
+	_words(offered)
 	var boom: Motions.Motion = null
 	for one: Motions.Motion in offered:
 		if one.name == MOTION:
@@ -153,13 +160,13 @@ func _share(text: String) -> String:
 		and opens.get_item_text(0) == "Still" and opens.get_item_text(1) == "Playing “%s”" % MOTION,
 		"published, Opens offers Still and Playing “%s” (%s)" % [MOTION,
 			[] if opens == null else range(opens.item_count).map(func(n: int) -> String: return opens.get_item_text(n))])
-	_ok(panel.url.ends_with("/m/" + ID) and panel.link() == panel.url, "the link opens still at first: %s" % panel.link())
+	_ok(panel.url.ends_with("/m/" + ID) and _link(panel) == panel.url, "the link opens still at first: %s" % _link(panel))
 	if opens != null:
 		opens.select(1)
 		opens.item_selected.emit(1)
 	await _settle()
-	var link: String = panel.link()
-	_ok(link == panel.url + "?motion=lift-the-boom" and panel.page_state()["playing"] == MOTION,
+	var link: String = _link(panel)
+	_ok(link == panel.url + "?motion=lift-the-boom" and panel.page_state().get("playing", "") == MOTION,
 		"Playing “%s” chosen, the link opens playing it: %s" % [MOTION, link])
 	var shown: LineEdit = _find_line(panel, link)
 	_ok(shown != null, "the panel shows that link")
@@ -186,8 +193,9 @@ func _open_link(text: String, asked: String) -> FakeShared:
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("_viewing", ID)
 	_main.set("_shared", fake)
-	# As main reads the link's ?motion= at the edge.
-	_main.set("_viewing_motion", Motions.link_words(asked))
+	# As main reads the link's ?motion= at the edge (Motions.link_words, which
+	# _words checks; asked for by name here, as a build from before has none).
+	_main.set("_viewing_motion", asked)
 	root.add_child(_main)
 	return fake
 
@@ -306,7 +314,7 @@ func _playing(text: String, files_before: PackedStringArray) -> void:
 	for _n: int in 60:
 		await process_frame
 	var still: Dictionary = view.page_state()["play"]
-	_ok(_main.get("_motion_loop") == "" and not (still["motions_out"] as Array).has(MOTION) and still["looping"] == "",
+	_ok(_main.get("_motion_loop") == "" and not (still["motions_out"] as Array).has(MOTION) and still.get("looping") == "",
 		"no longer played or lit: %s" % still["says"])
 	_ok(_differing(world, built) == 0 and _drawn_off(world, built) == 0 and not view.played,
 		"every part where it was built, Reset gone (%d differ)" % _differing(world, built))
@@ -405,6 +413,35 @@ func _once(text: String) -> void:
 		await process_frame
 
 
+## The words a link may carry (Motions.for_link, slug, link_words), on the
+## crane's own motions as the builder suggests them: [param offered].
+func _words(offered: Array) -> void:
+	print("\nthe words a link may carry")
+	var edge: Script = load("res://src/assembly/motions.gd")
+	var list := Motions.new()
+	for one: Motions.Motion in offered:
+		list.put(one)
+	if not list.has_method("for_link"):
+		_ok(false, "a link's words find a motion (no Motions.for_link)")
+		return
+	var found := func(asked: String) -> String:
+		var motion: Motions.Motion = list.call("for_link", asked)
+		return "" if motion == null else motion.name
+	for asked: String in [MOTION, MOTION.to_upper(), "lift-the-boom", "boom", " Boom "]:
+		_ok(found.call(asked) == MOTION, "“%s” is “%s”" % [asked, found.call(asked)])
+	# A word more than one of the crane's names has, and words none has.
+	var counts: Dictionary = {}
+	for one: Motions.Motion in offered:
+		for word: String in edge.call("slug", one.name).split("-"):
+			counts[word] = int(counts.get(word, 0)) + 1
+	var shared: Array = counts.keys().filter(func(word: String) -> bool: return counts[word] > 1).slice(0, 1)
+	for asked: String in shared + ["wings", "", "-"]:
+		_ok(found.call(asked) == "", "“%s” is none (%s)" % [asked, found.call(asked)])
+	_ok(edge.call("link_words", "  boom ") == "boom" and edge.call("link_words", "boom\nwings") == ""
+		and edge.call("link_words", "x".repeat(400)).length() == 120,
+		"at the edge, one line of words, cut at 120")
+
+
 ## How far [param key] is drawn turned from where it was built, degrees.
 func _angle(world: BrickWorld, key: int, built: Dictionary) -> float:
 	var brick: BrickWorld.Brick = world.get_brick(key)
@@ -447,6 +484,12 @@ func _differing(world: BrickWorld, before: Dictionary) -> int:
 				or not brick.transform.basis.is_equal_approx(then.basis):
 			count += 1
 	return count
+
+
+## The link the panel gives, asked for by name (a build from before had
+## only its url).
+func _link(panel: SharePanel) -> String:
+	return str(panel.call("link")) if panel.has_method("link") else panel.url
 
 
 func _find_line(node: Node, text: String) -> LineEdit:
@@ -537,7 +580,7 @@ func _ok(ok: bool, what: String) -> void:
 
 
 func _finish() -> void:
-	print("\n%s" % ("all passed" if _failures == 0 else "%d FAILED" % _failures))
+	print("\nplaylink_probe: %s" % ("all passed" if _failures == 0 else "%d FAILED" % _failures))
 	if _main != null and is_instance_valid(_main):
 		_main.queue_free()
 	for _n: int in 5:
