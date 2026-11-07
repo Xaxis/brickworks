@@ -2505,7 +2505,8 @@ def thumbnails_linux(root: Path, models: list[Path]) -> list[tuple[str, bool | N
     """The .deb's files, as double_click_linux told a desktop of them, and
     GNOME's own thumbnail factory asked for a picture of each model, as
     Files asks: tools/release/thumbnail_check.py, whose checks these are."""
-    out = root / "thumbnails"
+    # Not "thumbnails": GNOME's factory draws nothing in a folder of that name.
+    out = root / "thumbnail check"
     done = subprocess.run([sys.executable, str(ROOT / "tools" / "release" / "thumbnail_check.py"),
                            "--root=%s" % (root / "root"), "--out=%s" % out, "--trace"]
                           + [str(model) for model in models],

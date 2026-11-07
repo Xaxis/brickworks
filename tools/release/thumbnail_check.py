@@ -239,10 +239,17 @@ def main(argv: list[str]) -> int:
         if standin is not None and built:
             env["BWRAP_STANDIN_VIEW"] = str(view)
             env["BWRAP_STANDIN_ALSO"] = str(root / "usr") if root is not None else ""
-        unknown = out / "car with unknown parts.ldr"
+        # In a folder of their own, and copied to OUT for the record: GNOME's
+        # factory thumbnails nothing in a folder named thumbnails, where an
+        # OUT is often put.
+        made = work / "models"
+        made.mkdir()
+        unknown = made / "car with unknown parts.ldr"
         unknown.write_text((ROOT / "models" / "car.ldr").read_text() + UNKNOWN)
-        nothing = out / "only unknown parts.ldr"
+        nothing = made / "only unknown parts.ldr"
         nothing.write_text("0 Nothing a library has\n" + UNKNOWN)
+        for model in (unknown, nothing):
+            shutil.copy2(model, out / model.name)
         asked = models + [unknown, nothing]
         said = ask(env, out, asked)
         facts["thumbnails"] = said
