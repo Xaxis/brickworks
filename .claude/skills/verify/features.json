@@ -284,6 +284,14 @@
       ]
     },
     {
+      "id": "cli:3mf strict reader",
+      "kind": "cli",
+      "entry": "tools/print3mf/check_3mf.py",
+      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:ChatGPT connector flow",
       "kind": "cli",
       "entry": "tools/web/chatgpt_flow.mjs",
@@ -1922,6 +1930,14 @@
       "entry": "src/dev/playlink_probe.gd",
       "reach": "tools/probe.sh playlink_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/playlink_probe.gd; PROBE_SIZE=1400x900, 390x844, 1024x768)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:print3mf probe",
+      "kind": "cli",
+      "entry": "src/dev/print3mf_probe.gd",
+      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model\u2026 and export_model, read by tools/print3mf/check_3mf.py; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
+      "area": "model-io",
       "tests": []
     },
     {

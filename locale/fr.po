@@ -117,8 +117,8 @@ msgstr "Modèle LDraw (.ldr, ou .mpd avec ses sous-modèles)"
 msgid "BrickLink Studio model (.io)"
 msgstr "Modèle BrickLink Studio (.io)"
 
-msgid "3D model (.glb, .gltf, .obj, .stl)…"
-msgstr "Modèle 3D (.glb, .gltf, .obj, .stl)…"
+msgid "3D model (.glb, .gltf, .obj, .stl, .3mf)…"
+msgstr "Modèle 3D (.glb, .gltf, .obj, .stl, .3mf)…"
 
 msgid "Picture of the model (.png)"
 msgstr "Image du modèle (.png)"
@@ -11881,3 +11881,21 @@ msgstr "Ce modèle n’a aucun mouvement nommé « %s », il s’est donc ouvert
 
 msgid "No such motion"
 msgstr "Mouvement introuvable"
+
+# A model as a 3MF for a printer that prints in several colours (print3mf, APP_UX6 18): File,
+# Export, 3D model…'s format and what it says, the line it writes, and the save dialog's kind.
+
+msgid "3MF in its colours, to 3D print (.3mf)"
+msgstr "3MF dans ses couleurs, pour l'impression 3D (.3mf)"
+
+msgid "An object for each colour, in its colour, for a slicer to give each its own filament, in millimetres on the bed."
+msgstr "Un objet par couleur, dans sa couleur, pour qu'un slicer donne à chacun son propre filament, en millimètres sur le plateau."
+
+msgid "one colour, one object"
+msgstr "une couleur, un objet"
+
+msgid "%d colours, an object each"
+msgstr "%d couleurs, un objet chacune"
+
+msgid "3MF to 3D print"
+msgstr "3MF pour l'impression 3D"
