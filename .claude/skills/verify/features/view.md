@@ -323,6 +323,29 @@ picture the assistant is shown.
   left to the engine: every task, group and thread the app sets going goes
   through `WorkerTasks` (`add`, `add_group`, `start`) and is collected as the
   tree goes.
+  And with a dialog of the app's up (2026-11-07, `src/ui/modal_dialogs.gd`,
+  `ModalDialogs`; `bench/results/dialogclose-2026-11-07/`): the engine drops a
+  close request sent to a window with an exclusive child (`Window`'s
+  `_event_callback`), and every AcceptDialog, ConfirmationDialog and
+  FileDialog of the main window was one, so with Godot's own file dialog up
+  (no xdg portal; File, Open's and Import's always) or any question, the
+  title bar's X, Alt+F4 and the session ending did nothing until it was
+  answered (desktop018, 0.18.0 and 0.19.0). Now nothing is exclusive to the
+  main window: a dialog that would be is made not exclusive the frame it is
+  up, and `ModalDialogs`, the root's last node, takes the events the main
+  window would have refused while one is, and gives the dialog the keys back
+  on a press beside it. A dialog's own questions stay exclusive to it, and
+  Reference picture stays not modal. The app still asks nothing as it
+  closes: the model is kept as the working model. `dialog_close_probe`
+  (windowed, 1280x720, in the suite) sends WM_DELETE_WINDOW from outside
+  (`tools/x11_close.py`, after making the atoms a window manager makes) with
+  nothing up, Import's file chooser, Save as…, New's question and About: each
+  heard, its scene tree gone within 2 s and the process within 5 s (0.7 to
+  1.8 s seen, the longer under twice the box's load), exit 0, no abort; the
+  part taken off kept;
+  a click on File beside the chooser opens no menu, and Ctrl+N starts
+  nothing. On pre261 every dialog way was still up 5 s after, exit 3.
+  `quit_probe`'s close only emits the root's signal, which never met this.
 - `text fields give the keys back` (`src/ui/focus_guard.gd`): Enter, Tab,
   Escape or a press anywhere outside a text field ends the typing, in every
   field — the model's name, the part search, the brief, the properties'
