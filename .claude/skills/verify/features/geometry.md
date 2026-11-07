@@ -340,6 +340,17 @@ can occupy the same millimetre.
   are that tube, the Friends foal's down its middle are its four hooves';
   `tests/test_ldraw.py` holds the scorpion, the foal, and what stays (a 2 x 2
   brick's tube between four, a helmet's and a minifigure's tube up inside).
+  Across an axis whose footprint is not whole studs, the squares go on the
+  part's top studs' line, or half a stud off it where more studs fit there,
+  most squares off it are such places, and the line's mostly are not or are
+  fewer than fit off it (`occupancy._fits`, `PartForge._fits`: the stud's
+  disc under the part and air in its own voxels 4 LDU up, with plastic round
+  it to grip it; 2026-11-07): the one middle stud of a rock (30596) and a
+  cone (98100) is over a 2 x 2 underside's tube, so their one square is the
+  four around it, and a centaur's (67638) three hooves' holes, half a stud
+  off its hip studs, are its sockets; a flared roof (50948) keeps its
+  studs' line. The test holds the three and the roof. It moved 169 parts'
+  sockets; in real sets their studs met went 3 to 86 of 244, and none fewer.
   `animals_probe` puts all 63 by hand. Probes:
   `moulded_animal_probe` (the horse put by edit_model at whole studs, by its
   hoof's connector and moved, each standing with every hoof on a stud and

@@ -37,6 +37,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass
+from itertools import product
 
 import numpy as np
 from scipy.ndimage import binary_fill_holes
@@ -1029,12 +1030,24 @@ def remove_studs(
 ## How far a footprint may be from whole studs across and still be whole,
 ## LDU: a brick's clearance (BrickLattice.CLEARANCE).
 WHOLE_STUDS = 0.4
+## LDU, and shares: a stud fits a square of the underside where its disc,
+## FIT_RADIUS round (a stud is 6; a cell's rounding left), is FIT_AIR under
+## the part and air for its height up, in the part's own voxels, and plastic
+## holds it: GRIP of the ring GRIP_RING round its middle is plastic over that
+## height. A 2 x 2 brick's walls and tube are 0.54 of it, a cone's (98100)
+## 0.32; under a leaf's thin sheet (2423) or a crab's shell (33121) a stud
+## stands in air with 0.11 or less round it.
+FIT_RADIUS = 5.0
+FIT_AIR = 0.8
+GRIP_RING = (6.5, 9.0)
+GRIP = 0.25
 
 
 def bottom_sockets(
     occupancy: Occupancy, connections: list[Connection] | None = None,
     widths: tuple[float, float] | None = None,
-    *, cell: float = CELL, pitch: float = 20.0, coverage: float = 0.5,
+    *, raw: Occupancy | None = None,
+    cell: float = CELL, pitch: float = 20.0, coverage: float = 0.5,
 ) -> list[tuple[float, float]]:
     """Stud-lattice positions on the underside that can receive a stud.
 
@@ -1065,7 +1078,7 @@ def bottom_sockets(
         return []
 
     grid = occupancy.to_grid()
-    ox, _oy, oz = occupancy.origin
+    ox, oy, oz = occupancy.origin
 
     filled_rows = np.nonzero(grid.any(axis=(0, 2)))[0]
     if filled_rows.size == 0:
@@ -1105,38 +1118,100 @@ def bottom_sockets(
     # the squares are laid on the part's own top studs (_stud_phase). Bounds
     # wider than the footprint are something else's: a trophy's handles, a
     # Minion's head over its 2 x 2 neck.
-    base = [int(xs.min()), int(zs.min())]
-    for n, (cells, start) in enumerate(((xs, ox), (zs, oz))):
+    #
+    # Or half a stud off them, where more studs fit there (_fits, in the
+    # part's own voxels, ``raw``). A top stud is not always over the studs
+    # under it: 30596, a rock, and 98100, a cone, have one in the middle of a
+    # 2 x 2 underside, where its tube is, and a centaur's (67638) hip studs
+    # stand between its hooves' holes. On their studs' line 30596 and 98100
+    # had one square where four studs go, and the centaur none where 3 do.
+    # On the studs' line where it is itself an underside of places a stud
+    # fits, or where the squares off it mostly are not.
+    lines: list[tuple[int, float]] = []
+    for n, cells in enumerate((xs, zs)):
         across = (int(cells.max()) - int(cells.min()) + 1) * cell
         if widths is not None and across - 2.0 * cell < widths[n] < across:
             across = widths[n]
         if abs(across - round(across / pitch) * pitch) <= WHOLE_STUDS:
             continue
         phase = _stud_phase(connections or [], n, cell, pitch)
-        if phase is None:
-            continue
-        # The grid index of an edge of a square whose middle is on the studs'
-        # line, and the nearest such edge at or before the footprint's own.
-        edge = int(round((phase - pitch / 2.0) / cell)) - start
-        base[n] = int(cells.min()) - (int(cells.min()) - edge) % step
-    base_x, base_z = base
-
-    counts: dict[tuple[int, int], int] = {}
-    for x, z in zip(xs, zs):
-        key = ((int(x) - base_x) // step, (int(z) - base_z) // step)
-        counts[key] = counts.get(key, 0) + 1
+        if phase is not None:
+            lines.append((n, phase))
 
     needed = coverage * step * step
-    sockets: list[tuple[float, float]] = []
-    for (kx, kz), filled in counts.items():
-        if filled < needed:
-            continue
-        sockets.append((
-            (ox + base_x + kx * step + step * 0.5) * cell,
-            (oz + base_z + kz * step + step * 0.5) * cell,
-        ))
+    tried: list[tuple[int, list[tuple[float, float]]]] = []
+    for offs in product((0.0, pitch / 2.0) if raw is not None else (0.0,), repeat=len(lines)):
+        base = [int(xs.min()), int(zs.min())]
+        for (n, phase), off in zip(lines, offs):
+            # The grid index of an edge of a square whose middle is on the
+            # line, and the nearest such edge at or before the footprint's own.
+            edge = int(round((phase + off - pitch / 2.0) / cell)) - (ox, oz)[n]
+            base[n] -= (base[n] - edge) % step
+        base_x, base_z = base
 
-    return sorted(sockets)
+        counts: dict[tuple[int, int], int] = {}
+        for x, z in zip(xs, zs):
+            key = ((int(x) - base_x) // step, (int(z) - base_z) // step)
+            counts[key] = counts.get(key, 0) + 1
+
+        sockets: list[tuple[float, float]] = []
+        for (kx, kz), filled in counts.items():
+            if filled < needed:
+                continue
+            sockets.append((
+                (ox + base_x + kx * step + step * 0.5) * cell,
+                (oz + base_z + kz * step + step * 0.5) * cell,
+            ))
+        tried.append((0 if raw is None else sum(
+            1 for x, z in sockets if _fits(raw, footprint, (ox, oz), oy + bottom, x, z, cell)),
+            sockets))
+
+    # Off the line only for an underside of places a stud fits (one hole
+    # among squares that are not, 2397's, moves nothing), and only where the
+    # line is not one: most of its squares not places a stud fits, or more
+    # fit off it than it has squares. Along a skid's channel (30248) a stud
+    # fits either way, and the line is kept.
+    line, *off = tried
+    best = line
+    for fits, sockets in off:
+        if fits > best[0] and 2 * fits >= len(sockets) \
+                and (2 * line[0] < len(line[1]) or fits > len(line[1])):
+            best = (fits, sockets)
+    return sorted(best[1])
+
+
+def _fits(
+    raw: Occupancy, footprint: np.ndarray, origin: tuple[int, int], bottom: int,
+    x: float, z: float, cell: float,
+) -> bool:
+    """Whether a stud fits at ``x``, ``z`` (the application's, LDU) under a
+    part whose lowest row of cells is ``bottom``: its disc, FIT_RADIUS round,
+    FIT_AIR of it under the part (``footprint``, its lowest plate's with the
+    hollows filled, its first cell at ``origin``) and air in ``raw`` for the
+    stud's height up, and GRIP of the ring round it (GRIP_RING) plastic over
+    that height. Beside the part is not under it."""
+    grid = raw.to_grid()
+    rx, ry, rz = raw.origin
+    reach = GRIP_RING[1]
+    ci, ck = np.meshgrid(
+        np.arange(int(np.floor((x - reach) / cell)), int(np.ceil((x + reach) / cell)) + 1),
+        np.arange(int(np.floor((z - reach) / cell)), int(np.ceil((z + reach) / cell)) + 1),
+        indexing="ij")
+    d2 = ((ci + 0.5) * cell - x) ** 2 + ((ck + 0.5) * cell - z) ** 2
+    # Each column's plastic over the stud's height; past raw's edge, none.
+    a, b = ci - rx, ck - rz
+    held = (a >= 0) & (a < grid.shape[0]) & (b >= 0) & (b < grid.shape[2])
+    plastic = np.zeros(ci.shape, dtype=bool)
+    for j in range(bottom - ry, bottom - ry + max(1, int(round(_STUD_HEIGHT / cell)))):
+        if 0 <= j < grid.shape[1]:
+            plastic[held] |= grid[a[held], j, b[held]]
+    fa, fb = ci - origin[0], ck - origin[1]
+    under = (fa >= 0) & (fa < footprint.shape[0]) & (fb >= 0) & (fb < footprint.shape[1])
+    under[under] = footprint[fa[under], fb[under]]
+    disc = d2 <= FIT_RADIUS ** 2
+    ring = (d2 > GRIP_RING[0] ** 2) & (d2 <= GRIP_RING[1] ** 2)
+    return (int((disc & under & ~plastic).sum()) / int(disc.sum()) >= FIT_AIR
+            and int((ring & plastic).sum()) / int(ring.sum()) >= GRIP)
 
 
 def _stud_phase(

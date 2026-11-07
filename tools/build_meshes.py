@@ -159,7 +159,8 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
         part.boxes = [(int(x0), int(y0), int(z0), int(x1), int(y1), int(z1))
                       for x0, y0, z0, x1, y1, z1 in occ.to_boxes(solid, connections)]
         part.sockets = [(float(x), float(z)) for x, z in occ.on_receivers(occ.bottom_sockets(
-            solid, connections, (part.size_ldu()[0], part.size_ldu()[2])), connections, raw)]
+            solid, connections, (part.size_ldu()[0], part.size_ldu()[2]), raw=raw),
+            connections, raw)]
         part.cell_ldu = occ.CELL
 
         blob = meshfile.write(part)

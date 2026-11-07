@@ -1346,6 +1346,21 @@ def test_a_flared_part_has_its_sockets_where_the_bricks_under_it_stand() -> None
 
 
 @needs_numpy
+def test_a_top_stud_not_over_the_studs_under_it_leaves_them_where_they_fit() -> None:
+    """30596, a rock, and 98100, a cone, have one stud in the middle of a
+    2 x 2 underside that is not whole studs across as drawn (39.49 and 36
+    LDU), and a centaur's (67638) hip studs stand between the holes in its
+    hooves. On their studs' line the rock and the cone had one socket, in
+    the middle, where real sets put their four studs into the cone, and the
+    centaur none. Half a stud off the line is where a stud fits, so their
+    squares are there; a flared roof's (50948, above) stay on its studs."""
+    four = [(-10.0, -10.0), (-10.0, 10.0), (10.0, -10.0), (10.0, 10.0)]
+    assert _built_sockets("30596.dat") == four
+    assert _built_sockets("98100.dat") == four
+    assert _built_sockets("67638.dat") == [(-10.0, -70.0), (10.0, -50.0), (10.0, -10.0)]
+
+
+@needs_numpy
 def test_a_creature_stands_on_the_open_tube_it_draws() -> None:
     """The scorpion (30169) draws one open tube and its foot is not whole
     studs: its two squares were laid 10 LDU either side of the tube, each a

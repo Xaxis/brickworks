@@ -218,7 +218,8 @@ def summary(part_id: str, blob: bytes) -> dict:
         "connectors": connectors,
         "boxes": sorted([int(v) for v in box] for box in occ.to_boxes(solid, connections)),
         "sockets": sorted([_r(x), _r(z)] for x, z in occ.on_receivers(occ.bottom_sockets(
-            solid, connections, (part.size_ldu()[0], part.size_ldu()[2])), connections, raw)),
+            solid, connections, (part.size_ldu()[0], part.size_ldu()[2]), raw=raw),
+            connections, raw)),
         "cells": solid.cell_count,
         "lbm_sha256": hashlib.sha256(blob).hexdigest(),
     }
