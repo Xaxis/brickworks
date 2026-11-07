@@ -67,6 +67,10 @@ const OLD_FRAME := Color8(61, 111, 151)
 const OLD_FILL := Color8(188, 218, 241)
 const OLD_INK := Color8(21, 25, 30)
 const OLD_OUTLINE := Color8(255, 133, 15)
+## How near the old orange a pixel is counted as it: the gatehouse's yellow
+## parts shade to (215-232, 165-173, 0-55), 32 or more from it in a channel,
+## which 40 counted (78 px on its styled pages, the same 35 on its own).
+const OLD_OUTLINE_NEAR := 28.0 / 255.0
 const BADGE := Color8(208, 49, 45)
 ## The cover's picture of the person's own: four colours, a quarter each.
 const QUARTERS: Array = [Color8(220, 40, 40), Color8(40, 170, 70), Color8(40, 80, 200),
@@ -187,6 +191,13 @@ func _sheet() -> BookletSheet:
 ## A field of the model's page by name: null where the build has none.
 func _field(name: String) -> Variant:
 	return _sheet().get(name)
+
+
+## The same colour, as the file keeps it (two hex digits a channel); the
+## probe's own, so it loads on the commit before, which has no
+## BookletSheet.same_colour.
+static func _same(a: Variant, b: Color) -> bool:
+	return a is Color and (a as Color).to_html(false) == b.to_html(false)
 
 
 ## A style taken away, where it is kept.
@@ -314,7 +325,7 @@ func _usual() -> void:
 	var printed: Dictionary = await _printed("usual")
 	if printed.is_empty():
 		return
-	_usual_orange = _outline_count(printed, OLD_OUTLINE)
+	_usual_orange = _outline_count(printed, OLD_OUTLINE, OLD_OUTLINE_NEAR)
 	print("    the booklet's own orange round the new parts: %d px in its step pictures" % _usual_orange)
 	if _against.is_empty():
 		return
@@ -473,13 +484,13 @@ func _set_up() -> void:
 		and cover.begins_with("brickworks-page-cover") and BookletLooks.images(_world).has(cover))
 	_check("...the step numbers #%s and the outline #%s" % [_hex(_field("number_colour")),
 		_hex(_field("outline_colour"))], _field("number_colour") is Color
-		and BookletSheet.same_colour(_field("number_colour"), NUMBER) and _field("outline_colour") is Color
-		and BookletSheet.same_colour(_field("outline_colour"), OUTLINE))
+		and _same(_field("number_colour"), NUMBER) and _field("outline_colour") is Color
+		and _same(_field("outline_colour"), OUTLINE))
 	_check("over MCP in 1 call: the header, the footer, the parts box #%s on #%s, corners %s mm"
 		% [_hex(_field("box_frame")), _hex(_field("box_fill")), str(_field("box_corners"))],
 		_field("header") == HEADER and _field("footer") == FOOTER and _field("box_frame") is Color
-		and BookletSheet.same_colour(_field("box_frame"), FRAME)
-		and BookletSheet.same_colour(_field("box_fill"), FILL)
+		and _same(_field("box_frame"), FRAME)
+		and _same(_field("box_fill"), FILL)
 		and is_equal_approx(float(_field("box_corners")), CORNERS))
 	var told: String = str(await _tools.run("page_setup", {}))
 	print("    page_setup: %s" % told)
@@ -692,7 +703,7 @@ func _boxes(printed: Dictionary) -> void:
 
 
 ## The step pictures' pixels of [param colour], every other one each way.
-func _outline_count(printed: Dictionary, colour: Color) -> int:
+func _outline_count(printed: Dictionary, colour: Color, near: float = 40.0 / 255.0) -> int:
 	var document: Booklet.Document = printed["document"]
 	var found: int = 0
 	for laid: Booklet.Page in document.pages:
@@ -701,7 +712,7 @@ func _outline_count(printed: Dictionary, colour: Color) -> int:
 		var image: Image = _png(printed, laid.number)
 		for entry: Booklet.Entry in laid.entries:
 			if entry.rect.size.x > 0.0:
-				found += _count(image, entry.rect, colour, 40.0 / 255.0, [], 2)
+				found += _count(image, entry.rect, colour, near, [], 2)
 	return found
 
 
@@ -728,7 +739,7 @@ func _numbers_and_outline(printed: Dictionary) -> void:
 	_check("every one of the %d step numbers #%s, 0 px of the old ink (%s)" % [numbers,
 		NUMBER.to_html(false), str(wrong.slice(0, 3)) if not wrong.is_empty() else "all"],
 		numbers > 0 and wrong.is_empty())
-	var orange: int = _outline_count(printed, OLD_OUTLINE)
+	var orange: int = _outline_count(printed, OLD_OUTLINE, OLD_OUTLINE_NEAR)
 	var outline: int = _outline_count(printed, OUTLINE)
 	_check("the new parts outlined #%s in the step pictures (%d px), 0 px of the old orange (%d; the booklet's own had %d)"
 		% [OUTLINE.to_html(false), outline, orange, _usual_orange], orange == 0 and outline > 200

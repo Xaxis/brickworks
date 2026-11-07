@@ -542,6 +542,14 @@
       "tests": []
     },
     {
+      "id": "cli:booklook probe",
+      "kind": "cli",
+      "entry": "src/dev/booklook_probe.gd",
+      "reach": "tools/probe.sh booklook -- --into=DIR [--against=DIR]   (windowed, on the GPU: the gatehouse's booklet with the designer's own cover (title, subtitle, picture, line) read back off the PNG and PDF pages, a header and footer on every page, the parts box in its frame colour with 0 px of the old frame or fill, the step numbers' and new parts' colours; kept over a save and an open, one undo; a style of all of it given to booklet3's model in 2 actions; --against=DIR the booklet's own the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:browse browser flow",
       "kind": "cli",
       "entry": "tools/web/browse_flow.mjs",
@@ -5616,6 +5624,14 @@
       "kind": "ui",
       "entry": "src/render/booklet_maker.gd",
       "reach": "godot --path .  (B opens the timeline; on a step, Build, Booklet page: Pull out the selected parts, Colour guide, 1:1 guide, Sub-model preview; then Instructions; a straight Technic axle's or beam's first step gets its 1:1 guide unasked; edit_booklet pull=, colours=, colours_all=, actual_size=, preview= over MCP)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:the booklet's own cover and colours",
+      "kind": "ui",
+      "entry": "src/assembly/booklet_sheet.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup\u2026: Page tab Header, Footer; Cover tab Title, Under the title, Picture Choose\u2026 or The model, Line; Steps tab Step numbers and their colour, Parts box frame, fill and corners, New parts outline, Usual colours; then Instructions, Save as PDF; page_setup title=, subtitle=, cover_line=, cover_picture_data=, header=, footer=, box_frame=, box_fill=, box_corners=, number_colour=, outline_colour= over MCP)",
       "area": "view",
       "tests": []
     },

@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:the booklet's own cover and colours, cli:booklook probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe -->
 
 ## Sub-features
 
@@ -2077,6 +2077,50 @@ picture the assistant is shown.
   windows on one user folder (the probe again headless, `--race-remove`)
   losing no style's picture. `--dialog-only` with `PROBE_SIZE=1400x900`
   checks the dialog alone at that size.
+- `the booklet's own cover and colours` and `booklook probe`
+  (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
+  cover_picture, header, footer, box_frame, box_fill, box_corners,
+  number_colour, outline_colour; `PageSetupDialog`'s Page, Cover and Steps
+  tabs; `Shell.page_setup`, MCP `page_setup`): Page setup… in three tabs
+  so every row fits at 1280 x 720. A cover is the designer's own once any
+  of its title, line under it, picture or line of words is set: the title
+  fitted across the band (`Booklet._fit_line`, an ellipsis past the room),
+  the BRICKWORKS badge gone and the credit line kept, their picture shown
+  whole in `Booklet.cover_area` (kept as `brickworks-page-cover.jpg|png`,
+  its longest side at most 1485 px, by `BookletSheet.cover_of`), and the
+  title also the HTML's and the PDF's title. The header goes at the head
+  of every page but the cover, the footer at the foot of every page, the
+  cover's right-aligned beside the credit; parts-list pages keep room for
+  it. The parts box's frame, fill and corners are the CSS's `--box-line`,
+  `--box` and a `.box{border-radius:…}` rule `BookletRead` reads back for
+  `BookletPdf` and `BookletPng`; the frame also rings the white boxes and
+  a finished page. The step number's colour is an inline style on each
+  number (callouts' too); the new parts' outline is `BookletStudio`'s ink
+  `new_colour`. The file keeps them as `COVER_PICTURE`, `BOX_FRAME`,
+  `BOX_FILL`, `BOX_CORNERS`, `NUMBER_COLOUR` and `OUTLINE_COLOUR` words on
+  `0 !BRICKWORKS PAGE_SETUP` and one `0 !BRICKWORKS PAGE_TEXT TITLE|SUBTITLE|
+  COVER_LINE|HEADER|FOOTER words` line each, which older builds read past
+  and keep raw; words are one line of at most 120 characters, control
+  characters made spaces. Nothing set writes nothing new: the booklet's own
+  HTML is byte for byte what it was. A style carries every field and the
+  cover's picture (`cover_file` beside `picture_file`).
+  `booklook_probe` (windowed, `gpu`): the gatehouse's booklet first as its
+  own (with `--against=` a run on the commit before: its HTML the same but
+  its pictures, every PNG page and every page of its PDF as `pdftoppm -r
+  300` draws it the same to the pixel); the dialog's three tabs each inside
+  the window; the cover by hand (title, subtitle, a four-colour picture,
+  a line), number colour and outline by hand, header, footer, frame, fill
+  and corners over MCP in 1 call; then off the PNG and PDF: the cover's
+  words by `pdftotext` and inked where they are, its picture's JPEG
+  byte-equal by `pdfimages` and its four colours where it is fitted, no
+  badge; the footer on every page and the header on every page but the
+  cover; every parts box's edge in the frame colour, its fill, a rounder
+  corner, 0 px of the old frame or fill; every number in its colour and
+  the new parts outlined in theirs with 0 px of the old orange;
+  `booklet_pdf_check.py` passing; a save and reopen and one undo; a style
+  kept and given to booklet3's model in 2 actions, every field and the
+  picture's bytes the same. Its pictures are kept in `--into=`.
+  `--dialog-only` with `PROBE_SIZE=1400x900` checks the tabs alone.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
@@ -2666,6 +2710,7 @@ godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the bo
 godot --path . --resolution 1280x800 --script src/dev/booklet_stream_probe.gd  # the castle's booklet read as it is drawn
 godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --into=DIR  # the castle's booklet saved as a PDF and as PNG pages from its own Save buttons; --model=res://models/orthanc.ldr for the tower
 tools/probe.sh pagesetup -- --into=DIR --against=BEFORE_DIR   # the booklet's page set up: A4 upright over MCP, US Letter by the dialog, a colour, a picture behind, a style to the gatehouse; a picture the file lacks said missing, a big picture kept for every paper (a panorama to what a page shows), someone else's worked file's notes kept, styles removed (a refused call taking none, a replaced one's picture gone) and gone in a new start, the old styles file untouched by looking, two windows losing no picture; BEFORE_DIR a run on the commit before; PROBE_SIZE=1400x900 tools/probe.sh pagesetup -- --dialog-only
+tools/probe.sh booklook -- --into=DIR --against=BEFORE_DIR   # the booklet the designer's way: the gatehouse's own cover, header, footer, parts box frame, fill and corners, number and outline colours, read off the PNG and PDF; a style to booklet3's model in 2 actions; BEFORE_DIR a run on the commit before (the booklet's own the same to the pixel); PROBE_SIZE=1400x900 tools/probe.sh booklook -- --dialog-only
 #   every step pictured and framed on the model, new parts in frame, a parts box
 #   with a picture of every part, the shed's 2x callout with two arrows and its
 #   figure, the turn sign behind a wall (plates against its back), plates a hand's

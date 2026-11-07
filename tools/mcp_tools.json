@@ -4461,12 +4461,50 @@
       "readOnlyHint": false,
       "title": "Set up the booklet's page"
     },
-    "description": "The booklet's page, as Build, Booklet page, Page setup… sets it, for the whole booklet and its PDF: size= \"booklet\" (its own 269 x 199 mm), \"A4\", \"letter\" or \"A5\"; orientation= \"portrait\" or \"landscape\"; margin= mm; colour= the page's colour (\"#ffffff\", \"usual\" its light blue); picture_url= or picture_data= (base64) a picture behind every page, picture= \"none\" takes it off; number= the step numbers' height in mm (8 usual); parts= the parts boxes' pictures' size (1 usual, 0.5 to 2); usual=true the booklet's own page again. save_as= keeps the page as a style by that name, style= gives this model a kept style whole, and remove_style= takes a kept style away. One undo step, saved with the model. With nothing, says how the page is set up, its picture's size in the file, and the styles kept.",
+    "description": "The booklet's page, as Build, Booklet page, Page setup… sets it, for the whole booklet and its PDF: size= \"booklet\" (its own 269 x 199 mm), \"A4\", \"letter\" or \"A5\"; orientation= \"portrait\" or \"landscape\"; margin= mm; colour= the page's colour (\"#ffffff\", \"usual\" its light blue); picture_url= or picture_data= (base64) a picture behind every page, picture= \"none\" takes it off; number= the step numbers' height in mm (8 usual); parts= the parts boxes' pictures' size (1 usual, 0.5 to 2); usual=true the booklet's own page again. save_as= keeps the page as a style by that name, style= gives this model a kept style whole, and remove_style= takes a kept style away. One undo step, saved with the model. With nothing, says how the page is set up, its picture's size in the file, and the styles kept. The cover: title= (the model's name when none), subtitle= under it, cover_line= a line of their words on it, cover_picture_url= or cover_picture_data= a picture of their own (cover_picture= \"model\" the model drawn again). header= and footer= words on every page (\"\" none). box_frame=, box_fill= and box_corners= (mm) the parts box, number_colour= the step numbers, outline_colour= the band round the new parts; a colour \"usual\" is the booklet's own. A style keeps all of these.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
+        "box_corners": {
+          "description": "mm, 0 to 8 (2.2 usual)",
+          "type": "number"
+        },
+        "box_fill": {
+          "description": "\"#rrggbb\", or \"usual\"",
+          "type": "string"
+        },
+        "box_frame": {
+          "description": "\"#rrggbb\", or \"usual\"",
+          "type": "string"
+        },
         "colour": {
           "description": "\"#rrggbb\", or \"usual\"",
+          "type": "string"
+        },
+        "cover_line": {
+          "description": "a line of words on the cover",
+          "type": "string"
+        },
+        "cover_picture": {
+          "enum": [
+            "model"
+          ],
+          "type": "string"
+        },
+        "cover_picture_data": {
+          "description": "the cover's picture's own bytes, base64",
+          "type": "string"
+        },
+        "cover_picture_url": {
+          "description": "an http(s) link to a picture for the cover",
+          "type": "string"
+        },
+        "footer": {
+          "description": "words at the foot of every page",
+          "type": "string"
+        },
+        "header": {
+          "description": "words at the head of every page",
           "type": "string"
         },
         "margin": {
@@ -4477,11 +4515,19 @@
           "description": "mm, 4 to 20",
           "type": "number"
         },
+        "number_colour": {
+          "description": "\"#rrggbb\", or \"usual\"",
+          "type": "string"
+        },
         "orientation": {
           "enum": [
             "portrait",
             "landscape"
           ],
+          "type": "string"
+        },
+        "outline_colour": {
+          "description": "\"#rrggbb\", or \"usual\"",
           "type": "string"
         },
         "parts": {
@@ -4521,6 +4567,14 @@
         },
         "style": {
           "description": "a style kept by save_as=, given whole",
+          "type": "string"
+        },
+        "subtitle": {
+          "description": "a line under the title",
+          "type": "string"
+        },
+        "title": {
+          "description": "the cover's title, \"\" the model's name",
           "type": "string"
         },
         "usual": {

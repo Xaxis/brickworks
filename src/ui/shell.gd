@@ -1286,7 +1286,7 @@ func _define() -> void:
 	# pagesetup: the booklet's paper, margins, colour and sizes (BookletSheet,
 	# src/ui/page_setup_dialog.gd).
 	_add("booklet_page_setup", "Page setup…", 0, open_page_setup, Callable(),
-		"The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another")
+		"The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, its cover, header and footer, the step numbers' and parts boxes' sizes and colours; kept with the model, and as a style by a name for another")
 	# src/ui/flex_tool.gd.
 	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
 		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")

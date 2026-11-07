@@ -11398,8 +11398,8 @@ msgstr "guardado: %d × %s"
 msgid "Page setup…"
 msgstr "Configurar página…"
 
-msgid "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another"
-msgstr "El papel del folleto (A4, Carta, A5 o el suyo), en vertical u horizontal, los márgenes, un color o una imagen detrás de cada página, el tamaño de los números de paso y de las piezas; guardado con el modelo y como estilo con un nombre para otro"
+msgid "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, its cover, header and footer, the step numbers' and parts boxes' sizes and colours; kept with the model, and as a style by a name for another"
+msgstr "El papel del folleto (A4, Carta, A5 o el suyo), en vertical u horizontal, los márgenes, un color o una imagen detrás de cada página, su portada, encabezado y pie de página, el tamaño y los colores de los números de paso y de las cajas de piezas; guardado con el modelo y como estilo con un nombre para otro"
 
 msgid "Page setup"
 msgstr "Configurar página"
@@ -11881,3 +11881,83 @@ msgstr "Este modelo no tiene ningún movimiento llamado «%s», así que se abri
 
 msgid "No such motion"
 msgstr "No existe ese movimiento"
+
+# Page setup… the designer's way (booklook, APP_UX6 5): the cover, the header and footer, the booklet's colours
+
+msgid "Page"
+msgstr "Página"
+
+msgid "Steps"
+msgstr "Pasos"
+
+msgid "Header"
+msgstr "Encabezado"
+
+msgid "Footer"
+msgstr "Pie de página"
+
+msgid "Your words at the head of every page but the cover"
+msgstr "Tus palabras en la parte superior de cada página excepto la portada"
+
+msgid "Your words at the foot of every page, the cover too"
+msgstr "Tus palabras al pie de cada página, también en la portada"
+
+msgid "Title"
+msgstr "Título"
+
+msgid "The model's name"
+msgstr "El nombre del modelo"
+
+msgid "The title across the top of the cover"
+msgstr "El título en la parte superior de la portada"
+
+msgid "Under the title"
+msgstr "Bajo el título"
+
+msgid "A line under the title"
+msgstr "Una línea bajo el título"
+
+msgid "A picture of your own on the cover, shown whole"
+msgstr "Una imagen tuya en la portada, mostrada entera"
+
+msgid "The finished model drawn on the cover again"
+msgstr "De nuevo el modelo terminado en la portada"
+
+msgid "A line of your words on the cover, over its count of pieces"
+msgstr "Una línea de tus palabras en la portada, sobre el número de piezas"
+
+msgid "The model, drawn"
+msgstr "El modelo, dibujado"
+
+msgid "The colour of every step's number"
+msgstr "El color del número de cada paso"
+
+msgid "Parts box frame"
+msgstr "Marco de la caja de piezas"
+
+msgid "The colour of the parts box's frame, and of the boxes beside it"
+msgstr "El color del marco de la caja de piezas y de las cajas a su lado"
+
+msgid "Parts box fill"
+msgstr "Relleno de la caja de piezas"
+
+msgid "The colour inside the parts box"
+msgstr "El color dentro de la caja de piezas"
+
+msgid "Parts box corners"
+msgstr "Esquinas de la caja de piezas"
+
+msgid "How round the parts box's corners are: 0 for square"
+msgstr "Lo redondeadas que son las esquinas de la caja de piezas: 0 para rectas"
+
+msgid "New parts outline"
+msgstr "Contorno de las piezas nuevas"
+
+msgid "The colour round the parts each step adds"
+msgstr "El color alrededor de las piezas que añade cada paso"
+
+msgid "Usual colours"
+msgstr "Colores habituales"
+
+msgid "The booklet's own parts box, step numbers and outline again"
+msgstr "De nuevo la caja de piezas, los números de paso y el contorno propios del folleto"

@@ -139,7 +139,6 @@ func _ready() -> void:
 	picture.add_theme_constant_override("separation", 6)
 	_cover = Label.new()
 	_cover.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_cover.clip_text = true
 	picture.add_child(_cover)
 	_cover_choose = Button.new()
 	_cover_choose.text = "Choose…"
