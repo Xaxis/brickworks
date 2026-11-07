@@ -9,7 +9,8 @@
 ## - every menu, Make's and the app's too, and every submenu, is 25 rows or
 ##   fewer, and each of the menus along the top opens no taller than 60% of
 ##   the window, measured as palette_probe measures Edit; no command is in
-##   two of them;
+##   two of them; a step's turns and zoom are in Build › Booklet page ›
+##   Step's view, pictured open beside Booklet page;
 ## - Shift-2 paints three selected parts the second favourite in one key,
 ##   one undo takes it back; Ctrl-Shift-1 paints them the model's most used
 ##   colour; a browser's Shift-2 (") and a UK keyboard's Shift-2 (@'s key
@@ -148,6 +149,13 @@ func _menus() -> void:
 		Keymap.menu_row("rotate_held"), Keymap.menu_row("mode_connect")],
 		Keymap.menu_row("rotate_held").begins_with("Tools")
 		and Keymap.menu_row("mode_connect").begins_with("Tools"))
+	_check("a step's turns and zoom are in Build › Booklet page › Step's view (%s, %s), Page setup… still in Booklet page (%s)"
+		% [Keymap.menu_row("booklet_turn_left"), Keymap.menu_row("booklet_zoom_out"),
+		Keymap.menu_row("booklet_page_setup")],
+		Keymap.menu_row("booklet_turn_left") == "Build › Booklet page › Step's view › Turn the view left"
+		and Keymap.menu_row("booklet_zoom_out") == "Build › Booklet page › Step's view › Zoom out"
+		and Keymap.menu_row("booklet_page_setup").begins_with("Build › Booklet page › Page setup"))
+	await _booklet_shots()
 	# The Viewpoint submenu's rows run: From the front turns the view.
 	var view: PopupMenu = _shell.menu("View").get_popup()
 	var point: PopupMenu = view.find_child("viewpoint", false, false) as PopupMenu
@@ -160,6 +168,42 @@ func _menus() -> void:
 	await _frames(40)
 	_check("View › Viewpoint › From above turns the view", point != null
 		and not camera.global_transform.basis.is_equal_approx(was))
+
+
+## Build › Booklet page open, then its Step's view beside it, pictured as a
+## person sees them (menurows).
+func _booklet_shots() -> void:
+	var button: MenuButton = _shell.menu("Build")
+	button.show_popup()
+	await _frames(10)
+	var top: PopupMenu = button.get_popup()
+	var page: PopupMenu = top.find_child("booklet", false, false) as PopupMenu
+	var view: PopupMenu = null
+	if page != null:
+		view = page.find_child("booklet_view", false, false) as PopupMenu
+		# Beside its row, about: a row's place is the menu's height shared out.
+		page.popup(Rect2i(top.position + Vector2i(top.size.x - 8,
+			_row_y(top, page)), Vector2i.ZERO))
+		await _frames(10)
+		await _shot("menu_build_booklet")
+	if view != null:
+		view.popup(Rect2i(page.position + Vector2i(page.size.x - 8, _row_y(page, view)),
+			Vector2i.ZERO))
+		await _frames(10)
+		await _shot("menu_build_booklet_view")
+		view.hide()
+	if page != null:
+		page.hide()
+	top.hide()
+	await _frames(3)
+
+
+## About where [param sub]'s row is down [param popup], in its units.
+func _row_y(popup: PopupMenu, sub: PopupMenu) -> int:
+	for i: int in popup.item_count:
+		if popup.get_item_submenu_node(i) == sub:
+			return roundi(popup.size.y * float(i) / maxf(popup.item_count, 1))
+	return 0
 
 
 func _submenus(popup: PopupMenu) -> Array[PopupMenu]:

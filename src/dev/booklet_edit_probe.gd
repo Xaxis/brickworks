@@ -175,12 +175,11 @@ func _run() -> void:
 	# With the assistant switched off, as a person may have it: every one of
 	# these is the window's own.
 	_shell.set_assistant(false)
-	var menu: Array = Shell.SUBMENUS.get("booklet", [])
-	var missing: Array = menu.filter(func(id: String) -> bool:
-		return id != "-" and not _shell._commands.has(id))
-	_check("the assistant off, Build, Booklet page has its %d commands"
-		% menu.filter(func(id: String) -> bool: return id != "-").size(),
-		not menu.is_empty() and missing.is_empty() and not _shell.assistant_shown)
+	# Its submenu's too (Step's view, menurows).
+	var menu: Array = ControlsDialog._commands_in(Shell.SUBMENUS.get("booklet", []))
+	var missing: Array = menu.filter(func(id: String) -> bool: return not _shell._commands.has(id))
+	_check("the assistant off, Build, Booklet page has its %d commands" % menu.size(),
+		menu.size() > 20 and missing.is_empty() and not _shell.assistant_shown)
 	if not FileAccess.file_exists(str(SETS[0][0])):
 		print("booklet edit: vendor/omr is not in this checkout; nothing judged")
 		quit(0)
