@@ -1297,7 +1297,16 @@ picture the assistant is shown.
   what is under the pointer at most 3 times in a 30-frame turn (the press),
   every part's lattice cover its part's own after the moves, undo and redo,
   and what the web build tells the page of the sub-assemblies kept while
-  nothing changes (`Main._page_assemblies`). And that what the aiming asks,
+  nothing changes (`Main._page_assemblies`). Every time is the main thread's
+  own (`_clock`: the clock less its run delay, `/proc/thread-self/schedstat`'s
+  second number), so the box's other work holding it back is left out; and
+  a ratio over its bar the first time is said (`over`, not FAIL) and timed
+  again (`_again`): both models made, or both real sets opened, once more,
+  one after the other, judged on that pair (`..., timed again`). A load
+  spike on the big model's sweep alone read as aiming a figure growing 3.4x
+  on rel-m271's train (1.19 ms -> 4.11 ms; m270 0.7x, m268 1.1x), and a CPU
+  whose other thread is busy slows even the thread's own time (1.75x under
+  40 busy threads). And that what the aiming asks,
   the parts near the line kept by where they are (`BrickGrid`), finds what
   asking every one did: the builder's connectors are `JointSnap.sites_in`'s
   in its order, the end a pin is aimed at with and without the grid the

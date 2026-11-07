@@ -21,7 +21,10 @@
 ## undo and redo, Delete and its undo no faster than the model (near-linear;
 ## quadratic is 25 times at five times the parts). And that the parts the
 ## aiming asks, found by where they are (BrickGrid), are every one asking
-## them all would have found.
+## them all would have found. Each time is the main thread's own (_clock),
+## the clock less its waits for a CPU, so a busy box is not read as the
+## code growing; and a ratio over its bar is timed again, both sizes, before
+## it is called (_again), as a CPU shared with other work slows even that.
 ##
 ## With --sweep, the models are opened and only swept, and judged so when
 ## made here: with --profile, the aiming's pieces at each move, a grid of
@@ -94,6 +97,15 @@ var _held: PackedStringArray = PackedStringArray()
 var _model_name: String = ""
 ## Name -> [calls, total us, most us], while profiling.
 var _spent: Dictionary = {}
+## Whether this thread's run delay can be read (_clock): Linux's /proc.
+var _own_clock: bool = false
+## The ratios over their bar the first time, by what they say, each to the
+## judging it was said in ("made" or "open"): timed again before they are
+## called (_again).
+var _over: Dictionary = {}
+var _judging: String = "made"
+## The second time (_again): only the ratios over their bar are judged.
+var _again_now: bool = false
 
 
 func _initialize() -> void:
@@ -103,6 +115,9 @@ func _initialize() -> void:
 func _run() -> void:
 	await process_frame
 	Engine.max_fps = 0
+	_own_clock = FileAccess.file_exists("/proc/thread-self/schedstat")
+	print("bigmodel: times are %s" % ("the main thread's own, its waits for a CPU left out"
+		if _own_clock else "the clock's (no /proc here)"))
 	var out_path: String = ""
 	var paths: PackedStringArray = PackedStringArray()
 	for argument: String in OS.get_cmdline_user_args():
@@ -167,12 +182,15 @@ func _run() -> void:
 		print("bigmodel: written to %s" % out_path)
 	if paths.is_empty() and _sweep_only:
 		_judge_sweeps(rows[0], rows[1])
+		await _again()
 		print("bigmodel: %s" % ("a part in hand moves over the big model as over the small"
 			if _failures == 0 else "%d checks failed" % _failures))
 	elif paths.is_empty():
 		_judge(rows[0], rows[1])
+		_judging = "open"
 		_judge_open(sets)
 		await _open_mid_weigh()
+		await _again()
 		print("bigmodel: %s" % ("every act grows no faster than the model"
 			if _failures == 0 else "%d acts grow faster than the model" % _failures))
 	await _quit_mid_weigh()
@@ -325,6 +343,26 @@ func _unread(model: String) -> bool:
 	return true
 
 
+## Microseconds of the main thread's own: the clock less the time the
+## thread stood ready to run with no CPU free (its run delay, the second of
+## /proc/thread-self/schedstat's numbers, in nanoseconds). Kept are the time
+## it worked, slept or waited on another thread; left out is the box's
+## other work holding it back. rel-m271's train read a load spike on the
+## big model's sweep as aiming a figure growing 3.4x (1.19 ms -> 4.11 ms),
+## where rel-m270 had run the same code at 0.7x and rel-m268 at 1.1x.
+## The clock is read first, so a wait while the file is read falls inside
+## the span it ends, or after it. Opened anew each time: read again after a
+## seek, it gave the same numbers (glibc's buffer).
+func _clock() -> int:
+	var now: int = Time.get_ticks_usec()
+	if not _own_clock:
+		return now
+	var file: FileAccess = FileAccess.open("/proc/thread-self/schedstat", FileAccess.READ)
+	if file == null:
+		return now
+	return now - int(file.get_line().get_slice(" ", 1)) / 1000
+
+
 ## The box's load over the last minute, which the opens timed here move with.
 static func _load() -> String:
 	# /proc says its files are empty, so read a line rather than the length.
@@ -382,14 +420,14 @@ func _one(name: String, text: String) -> Dictionary:
 	_spent.clear()
 	var row: Dictionary = {"model": name}
 	_model_name = name.get_basename()
-	var began: int = Time.get_ticks_usec()
+	var began: int = _clock()
 	var result: Dictionary = _store.open_text(text, name.get_basename())
 	(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
 	await _frames(2)
-	row["open_ms"] = (Time.get_ticks_usec() - began) / 1000.0
+	row["open_ms"] = (_clock() - began) / 1000.0
 	row["parts"] = _world.brick_count() - _store.scenery.size()
 	await _quiet()
-	row["open_settled_ms"] = (Time.get_ticks_usec() - began) / 1000.0
+	row["open_settled_ms"] = (_clock() - began) / 1000.0
 	_said("open", row["open_settled_ms"])
 	_profiled(row, "open")
 	# What the web build tells the page twice a second of the sub-assemblies,
@@ -522,10 +560,10 @@ func _one(name: String, text: String) -> Dictionary:
 	_profiled(row, "step")
 	# Ten steps forward, as Next makes them, the work of the steps alone:
 	# what a step costs without the frames around it.
-	var steps_began: int = Time.get_ticks_usec()
+	var steps_began: int = _clock()
 	for _k: int in 10:
 		_steps.step_forward()
-	row["ten_steps_ms"] = (Time.get_ticks_usec() - steps_began) / 1000.0
+	row["ten_steps_ms"] = (_clock() - steps_began) / 1000.0
 	_said("ten steps", row["ten_steps_ms"])
 	await _quiet()
 	_key(KEY_B)
@@ -547,12 +585,12 @@ func _opened(path: String) -> Dictionary:
 		_main.call("clear_model")
 		await _quiet()
 		_spent.clear()
-		var began: int = Time.get_ticks_usec()
+		var began: int = _clock()
 		var result: Dictionary
-		var frames: Dictionary = {"longest": 0, "last": Time.get_ticks_usec(), "count": 0}
+		var frames: Dictionary = {"longest": 0, "last": _clock(), "count": 0}
 		if _paced:
 			var watch: Callable = func() -> void:
-				var now: int = Time.get_ticks_usec()
+				var now: int = _clock()
 				frames["longest"] = maxi(int(frames["longest"]), now - int(frames["last"]))
 				frames["last"] = now
 				frames["count"] = int(frames["count"]) + 1
@@ -563,19 +601,19 @@ func _opened(path: String) -> Dictionary:
 			process_frame.disconnect(watch)
 		else:
 			result = _store.open_text(text, path.get_file().get_basename())
-		var stored: int = Time.get_ticks_usec()
+		var stored: int = _clock()
 		var phases: Variant = _store.get("open_phases")
 		(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
-		var emitted: int = Time.get_ticks_usec()
+		var emitted: int = _clock()
 		await _frames(2)
 		var row: Dictionary = {"model": path.get_file(),
 			"open_text_ms": (stored - began) / 1000.0,
 			"opened_handlers_ms": (emitted - stored) / 1000.0,
-			"open_ms": (Time.get_ticks_usec() - began) / 1000.0,
+			"open_ms": (_clock() - began) / 1000.0,
 			"parts": _world.brick_count() - _store.scenery.size(),
 			"phases": (phases as Dictionary).duplicate() if phases is Dictionary else {}}
 		await _quiet()
-		row["open_settled_ms"] = (Time.get_ticks_usec() - began) / 1000.0
+		row["open_settled_ms"] = (_clock() - began) / 1000.0
 		each.append(row["open_settled_ms"])
 		print("  %s, %d parts: open_text %.0f ms, opened %.0f ms, to the second frame %.0f ms, "
 			% [row["model"], row["parts"], row["open_text_ms"], row["opened_handlers_ms"],
@@ -712,7 +750,7 @@ func _origin(brick_id: int) -> Vector3:
 ## frame, and how many frames it took.
 func _act(name: String, press: Callable, done: Callable, most: int = 1200) -> Dictionary:
 	await process_frame
-	var began: int = Time.get_ticks_usec()
+	var began: int = _clock()
 	var last: int = began
 	press.call()
 	var frames: Array = []
@@ -720,7 +758,7 @@ func _act(name: String, press: Callable, done: Callable, most: int = 1200) -> Di
 	var after: int = 0
 	while frames.size() < most and after < 2:
 		await process_frame
-		var now: int = Time.get_ticks_usec()
+		var now: int = _clock()
 		frames.append((now - last) / 1000.0)
 		last = now
 		if finished:
@@ -738,20 +776,20 @@ func _act(name: String, press: Callable, done: Callable, most: int = 1200) -> Di
 ## called here, one at a time, timed.
 func _framed(count: int, each: Callable, nodes: Array = [], label: String = "orbit") -> Dictionary:
 	await process_frame
-	var last: int = Time.get_ticks_usec()
+	var last: int = _clock()
 	var frames: Array = []
 	for n: int in count + 1:
 		if n < count:
 			each.call(n)
 		await process_frame
-		var now: int = Time.get_ticks_usec()
+		var now: int = _clock()
 		if not nodes.is_empty():
 			for node: Node in nodes:
 				if is_instance_valid(node) and node.is_inside_tree():
 					var t0: int = Time.get_ticks_usec()
 					node.call("_process", 1.0 / 60.0)
 					_add("_process " + _node_name(node), Time.get_ticks_usec() - t0)
-			now = Time.get_ticks_usec()
+			now = _clock()
 		if n > 0:
 			frames.append((now - last) / 1000.0)
 		last = now
@@ -815,9 +853,9 @@ func _sweep(kind: String, middle: Vector2, view: Rect2) -> Dictionary:
 	# few milliseconds as well, and a floor under them.
 	var aims: Array = []
 	for point: Vector2 in points:
-		var t0: int = Time.get_ticks_usec()
+		var t0: int = _clock()
 		_main.call("_refresh_preview", point)
-		aims.append((Time.get_ticks_usec() - t0) / 1000.0)
+		aims.append((_clock() - t0) / 1000.0)
 	aims.sort()
 	out["aim_ms"] = aims[aims.size() / 2]
 	out["aim_worst_ms"] = aims.back()
@@ -1271,15 +1309,55 @@ func _judge_open(sets: Array) -> void:
 		small["open_settled_ms"], big["open_settled_ms"], LINEAR / (float(BIG) / SMALL) * grew)
 
 
+## A ratio over its bar the first time is said, and timed again (_again)
+## before it is called.
 func _ratio(what: String, small_ms: float, big_ms: float, most: float,
 		floor_ms: float = FLOOR_MS) -> void:
+	if _again_now and not _over.has(what):
+		return
 	var ratio: float = maxf(big_ms, floor_ms) / maxf(small_ms, floor_ms)
 	var said: String = "%.0f ms -> %.0f ms" if floor_ms >= 5.0 else "%.2f ms -> %.2f ms"
-	_check("%s grows %.1fx (%s; at most %.0fx)" % [what, ratio, said % [small_ms, big_ms],
-		most], ratio <= most)
+	var words: String = "%s grows %.1fx (%s; at most %.0fx)" % [what, ratio,
+		said % [small_ms, big_ms], most]
+	if ratio > most and not _again_now:
+		_over[what] = _judging
+		print("  over  %s: timed again before it is called" % words)
+		return
+	_check(words + (", timed again" if _again_now else ""), ratio <= most, true)
 
 
-func _check(what: String, ok: bool) -> void:
+## Each ratio over its bar the first time (_over), timed again: both models
+## made, or both real sets, opened and timed once more, one after the other,
+## and the ratio judged on that pair. The thread's own time (_clock) leaves
+## out its waits for a CPU, but not a CPU slowed by the other work on its
+## core: forty busy threads on this 24-thread box slowed a fixed loop's own
+## time 1.75x (0.83 ms -> 1.45 ms, 2026-11-07), so a load that lands on one
+## model's timing alone can still put a ratio over. A real slowdown is in
+## both pairs; a load is seldom on the same one of the two twice.
+func _again() -> void:
+	if _over.is_empty():
+		return
+	print("  %d over their bar: timed again, both sizes, one after the other" % _over.size())
+	_again_now = true
+	if _over.values().has("made"):
+		_judging = "made"
+		var rows: Array = []
+		for size: int in [SMALL, BIG]:
+			rows.append(await _one("made %d" % size, _made(size)))
+		if _sweep_only:
+			_judge_sweeps(rows[0], rows[1])
+		else:
+			_judge(rows[0], rows[1])
+	if _over.values().has("open"):
+		_judging = "open"
+		_judge_open(await _real_sets())
+
+
+## Said, and counted when not [param ok]. The second time over (_again) only
+## the ratios are judged, the rest having been the first time.
+func _check(what: String, ok: bool, a_ratio: bool = false) -> void:
+	if _again_now and not a_ratio:
+		return
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
 		_failures += 1
