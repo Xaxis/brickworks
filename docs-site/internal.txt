@@ -18,6 +18,7 @@ entry:export_presets.cfg  # the desktop exports the release makes
 entry:tools/viewer/*  # building and checking the card Claude shows (the card itself is in connector.md)
 entry:tools/storage_ldraw.py  # an upload to the parts store, the project's own
 entry:tools/storage_library.py  # an upload to the parts store, the project's own
+entry:tools/print3mf/*  # the strict 3MF reader print3mf_probe checks the app's 3MF with (print3mf); a person meets the 3MF, not it
 entry:tools/storage_parts.py  # an upload to the parts store, the project's own
 entry:tools/build_meshes.py  # the parts pipeline: the meshes the app ships
 entry:tools/build_exact.py  # the parts pipeline: the exact shapes the checks read
