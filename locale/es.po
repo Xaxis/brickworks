@@ -11881,3 +11881,8 @@ msgstr "Este modelo no tiene ningún movimiento llamado «%s», así que se abri
 
 msgid "No such motion"
 msgstr "No existe ese movimiento"
+
+# weighsure (APP_UX6 #4): the model's weight on the status bar, after its counts,
+# the model as it is in that frame (StatusBar._weight)
+msgid "What the model weighs, each part by its shape: within about 6% of real bricks on a scale. The baseplate is left out"
+msgstr "Lo que pesa el modelo, cada pieza según su forma: con un margen de un 6 % frente a ladrillos reales en una báscula. La placa base no se cuenta"
