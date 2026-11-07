@@ -177,6 +177,10 @@ func _share(text: String) -> String:
 		"Playing “%s” chosen, the link opens playing it: %s" % [MOTION, link])
 	var shown: LineEdit = _find_line(panel, link)
 	_ok(shown != null, "the panel shows that link")
+	# One row, its words on one line (a wrapping label once made it five).
+	if opens != null and shown != null:
+		var tall: float = (opens.get_parent() as Control).size.y
+		_ok(tall <= shown.size.y * 1.5, "Opens is one row, %d px tall (the link's box %d)" % [tall, shown.size.y])
 	var copy: Button = panel.controls_by_name().get("share_copy_link")
 	if copy != null:
 		await _press(copy)

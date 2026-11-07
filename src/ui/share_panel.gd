@@ -314,7 +314,12 @@ func setup() -> void:
 	_opens_row.add_theme_constant_override("separation", 6)
 	_opens_row.visible = false
 	_link_box.add_child(_opens_row)
-	_opens_row.add_child(_line("Opens", 12, 0.85))
+	# On one line: a wrapping label beside a filling choice is squeezed to a
+	# letter a line, and the row grows five lines tall.
+	var opens_said: Label = _line("Opens", 12, 0.85)
+	opens_said.autowrap_mode = TextServer.AUTOWRAP_OFF
+	opens_said.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_opens_row.add_child(opens_said)
 	_opens = OptionButton.new()
 	_opens.focus_mode = Control.FOCUS_NONE
 	_opens.size_flags_horizontal = Control.SIZE_EXPAND_FILL
