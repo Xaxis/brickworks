@@ -144,6 +144,7 @@ func _ready() -> void:
 	column.add_child(_said)
 
 	_confirm = ConfirmationDialog.new()
+	_confirm.title = "Remove a page style?"
 	_confirm.ok_button_text = "Remove"
 	_confirm.confirmed.connect(func() -> void: _apply({"remove_style": _removing}))
 	add_child(_confirm)

@@ -11496,6 +11496,9 @@ msgstr "Entfernen…"
 msgid "Take a kept style away; the models given it keep their page"
 msgstr "Einen gespeicherten Stil löschen; die Modelle, die ihn haben, behalten ihre Seite"
 
+msgid "Remove a page style?"
+msgstr "Einen Seitenstil löschen?"
+
 msgid "Remove the page style “%s”? The models given it keep their page."
 msgstr "Den Seitenstil „%s“ löschen? Die Modelle, die ihn haben, behalten ihre Seite."
 
