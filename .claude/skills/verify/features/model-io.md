@@ -1084,6 +1084,7 @@ godot --headless --path . --script src/dev/carried_fetch_probe.gd -- --census be
 godot --headless --path . --script src/dev/own_copies_probe.gd   # 42125-1's own copies of LEGO parts read as those parts: joints, exact shapes, tie rods held, written back as they came; copied gears turning theirs (~3 min)
 godot --headless --path . --script src/dev/own_copies_probe.gd -- --gears   # ...every OMR copy of a gear, turntable, ring, rack or actuator, read as its part or its own
 godot --headless --path . --script src/dev/own_copies_probe.gd -- --survey --shard=0/2   # ...and how many of the OMR's copies are read so (run 1/2 too, ~4 min each)
+godot --headless --path . --script src/dev/no_size_probe.gd   # a line placing a part at no size (Studio's and LDCad's where a flexible part doubles back) places nothing and is saved back as it was; grab_probe's log then has no 'det == 0' (mechdet)
 godot --headless --path . --script src/dev/carried_at_once_probe.gd -- rounds=12   # files' carried parts built on every worker at once, each as built alone
 godot --headless --path . --script src/dev/carried_at_once_probe.gd -- dir=$PWD/.scratch-data/godot/app_userdata/Brickworks/custom_parts   # ...the parts kept from files, as start-up builds them
 godot --headless --path . --script src/dev/worker_first_run_probe.gd   # cold operators on every worker at once, through first_here: none wrong, no crash (~70 s)

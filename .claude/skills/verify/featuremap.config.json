@@ -2421,6 +2421,13 @@
     },
     {
       "kind": "cli",
+      "label": "a line placing a part at no size",
+      "entry": "src/dev/no_size_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/no_size_probe.gd   (a type-1 line whose matrix has no size, as Studio and LDCad write where a flexible part doubles back, places nothing (LdrModel.has_size): the 653 such lines of 7 OMR sets counted from their text and none read; 42125-1 opened with every part's place invertible, its gears read, its 4 such lines saved back byte for byte; a Build together state at no size refused)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
       "label": "carried parts at once",
       "entry": "src/dev/carried_at_once_probe.gd",
       "reach": "godot --headless --path . --script src/dev/carried_at_once_probe.gd [-- rounds=N] [-- dir=PATH] [-- FILE ...]   (the parts files carry built on every worker at once, round after round, each the same to the byte as built alone on the main thread; dir= builds a folder's .dat files as load_all builds those kept; with nothing given 42129-1, 10261-1 and 60216-1; a crash is the run ending on signal 11)",

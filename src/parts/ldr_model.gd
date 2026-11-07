@@ -330,7 +330,14 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		if part_id.ends_with(".dat") or part_id.ends_with(".ldr"):
 			part_id = part_id.substr(0, part_id.length() - 4)
 
-		var read := Placement.new(part_id, color, to_transform(numbers), step)
+		var at: Transform3D = to_transform(numbers)
+		if not has_size(at.basis):
+			# It places nothing: left out as a line of no colour is, and the
+			# file keeps it (SourceFile writes back every line no part is
+			# read from). Its COPY_META was its own.
+			copy_next = 0
+			continue
+		var read := Placement.new(part_id, color, at, step)
 		read.line = index
 		read.copy = copy_next
 		read.within = within
@@ -356,6 +363,19 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		model.embedded_parts[key.get_file()] = body
 		model.submodels.erase(_key(file_name))
 	return model
+
+
+## Whether a part turned by [param basis] has size: it goes some way along
+## each of its own axes. Studio and LDCad write a matrix with a row or a
+## column of zeros where a flexible part's path doubles back: a segment of
+## 42125-1's flexible axles and hoses, 639 of 42108-1's rope, 653 lines in 7
+## of the 1,576 sets in vendor/omr, each with nothing of the part drawn.
+## Read as parts, there was no inverse of where they stood: Mechanism asked
+## for one of every part to read what rests on studs, and grab_probe logged
+## 15 to 20 engine errors from 42125-1 alone. Those sets place every other
+## part at a thousandth of its volume or more; a millionth is between.
+static func has_size(basis: Basis) -> bool:
+	return absf(basis.determinant()) > 0.000001
 
 
 static func _is_file_line(line: String) -> bool:
