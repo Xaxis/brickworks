@@ -17,7 +17,7 @@
 import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followsSent, showFeedCount } from "/follow.js";
 import { avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
-import { counted, langAt, number, say, told } from "/card.js";
+import { counted, langAt, number, photoSrc, say, told } from "/card.js";
 import { openShare, sheetFor } from "/share-sheet.js";
 
 // A date as the page's language writes one: "October 2026".
@@ -248,7 +248,7 @@ async function showModels({ focus = false, first = false } = {}) {
 /// A photo of a real build, as a person's page shows one.
 function buildFigure(photo, { by = false } = {}) {
   const img = make("img");
-  img.src = `/api/people?op=photo_file&id=${photo.id}`;
+  img.src = photoSrc(photo.id, { card: true });
   img.alt = say("A build of {name}", { name: String(photo.model_name || say("a model")) });
   img.width = Number(photo.width) || 1;
   img.height = Number(photo.height) || 1;

@@ -67,12 +67,14 @@ import { GONE, KEPT, entryOf } from "../../api/plans.js";
 import { Refusal as BetaRefusal, applicationOf } from "../../api/_beta.js";
 import { EARLY, KNOWN, NEW } from "../../api/_early.js";
 // What a person earned (docs/SOCIAL.md U13), worked out as the server works it out.
-import { achievementsOf } from "../../api/people.js";
+import { NAMED, NAMED_MOST, achievementsOf, peopleRanked } from "../../api/people.js";
 import { inLanguage, siteWords } from "../../api/_directory.js";
 // Whose picture is beside their name (supabase/avatars.sql), given as the
 // API gives it; and the pictures themselves, made here.
 import { facesOn, pictureAt } from "../../api/_faces.js";
 import { encode as encodeJpeg } from "../../api/_jpeg.js";
+// A photo's card copy (?op=photo_file&size=card), made as the server makes it.
+import { cardOf, decodePicture } from "../../api/_photo.js";
 // What a model is based on (supabase/model_bases.sql): a designer's list
 // checked, and said, as the API checks and says it.
 import { basesAsked, basesSaid } from "../../api/_bases.js";
@@ -1546,7 +1548,7 @@ function people(method, params, body, who, state) {
   // What anybody may ask; everything else needs the session.
   const open = method === "GET" ? ["profile", "collection", "comments", "photos", "photo_file", "follows", "following",
     "feed_count", "page", "list_page", "challenge", "latest", "likes", "avatar", "list_follows", "builds", "alike",
-    "collections"]
+    "collections", "people_find"]
     : ["report", "digest"];
   if (!who && !open.includes(op)) {
     return answer(401, { error: op === "feed" ? "Sign in to see your feed: we email you a code, no password."
@@ -1675,6 +1677,12 @@ function people(method, params, body, who, state) {
             .map((m) => (m.has_thumb ? `/m/${m.id}.webp?v=${(Date.parse(m.updated_at || "") || 0).toString(36)}`
               : m.has_image ? `/m/${m.id}.png` : "")).filter(Boolean).slice(0, 4) })) });
     }
+    if (op === "people_find") {
+      // api/people.js peopleFound: every profile here may be named.
+      const q = String(params.get("q") || "").toLowerCase();
+      return answer(200, { q, people: NAMED.test(q) ? peopleRanked(PEOPLE, q).slice(0, NAMED_MOST)
+        .map((one) => ({ handle: one.handle, name: one.name })) : [] });
+    }
     if (op === "alike") {
       // api/_alike.js designersAlike, by themes and tags alone (no parts
       // here): never the asker nor anybody they follow.
@@ -1694,7 +1702,7 @@ function people(method, params, body, who, state) {
           return { handle: them.handle, name: them.name, alike: alikeOf(one), kinds: one.kinds, tags: one.tags,
             follow: follows(them.handle, who, state).json };
         });
-      return answer(200, { handle: person.handle, name: person.name, designers });
+      return answer(200, { handle: person.handle, name: person.name, designers, yours: who === person.account });
     }
     if (op === "feed_count") {
       if (!who) return answer(200, { count: 0, signed_in: false });
@@ -2240,6 +2248,11 @@ function avatarFile(url) {
 
 const isPicture = (url) => /^\/m\/[A-Za-z0-9]{10}(\/v\/\d+)?\.(png|webp)$/.test(url.pathname)
   || (url.pathname === "/api/people" && url.searchParams.get("op") === "photo_file");
+/// A photo's card copy: the picture every photo here is, made at most 480
+/// px wide by api/_photo.js cardOf, as the server makes each photo's.
+let cardPicture = null;
+const isCard = (url) => url.pathname === "/api/people" && url.searchParams.get("op") === "photo_file"
+  && url.searchParams.get("size") === "card";
 
 /// Every request of [context] answered as a deployment of [web] and [api]
 /// would: their files, the server's pages made by [api]'s handlers (with
@@ -2259,6 +2272,10 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     // Anything else to whatever else answers it (browser.mjs quiets the
     // visit counter); nothing else is fetched from here.
     if (!ours) return route.fallback();
+    if (isCard(url)) {
+      cardPicture ||= decodePicture(PICTURE, "image/png").then((image) => cardOf(image).bytes);
+      return route.fulfill({ status: 200, contentType: "image/jpeg", body: await cardPicture });
+    }
     if (isPicture(url)) return route.fulfill({ status: 200, contentType: "image/png", body: PICTURE });
     // A part's geometry, which a model's Parts list draws each lot from
     // (web/part-pictures.js): a deployment's from its own store, here from
@@ -2278,9 +2295,11 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return face ? route.fulfill({ status: 200, contentType: "image/jpeg", body: face })
         : route.fulfill({ status: 404, contentType: "text/plain", body: "" });
     }
-    // The LDraw library's list (api/share.js library), made by the real
-    // handler from this checkout's catalogue, as a set's page is.
-    if (url.origin === ORIGIN && url.pathname === "/api/share" && url.searchParams.get("op") === "library") {
+    // The LDraw library's list (api/share.js library), and the sets the
+    // Based on dialog offers as a name is typed (api/_bases.js setFind),
+    // made by the real handler from this checkout's catalogue, as a set's
+    // page is.
+    if (url.origin === ORIGIN && url.pathname === "/api/share" && ["library", "set_find"].includes(url.searchParams.get("op"))) {
       const made = await serverAsk(api, { name: "share", query: Object.fromEntries(url.searchParams) });
       return route.fulfill({ status: made.status, contentType: "application/json", body: made.html });
     }

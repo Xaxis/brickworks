@@ -71,7 +71,9 @@
 //                                 may be shown; with the session, also the
 //                                 caller's own on it, and for its owner the
 //                                 hidden ones (api/_builds.js)
-//   GET  ?op=photo_file&id=P      photo P, the JPEG made from what was sent
+//   GET  ?op=photo_file&id=P      photo P, the JPEG made from what was sent;
+//                                 &size=card its copy at most 480 px wide,
+//                                 for the cards and strips that show it small
 //   GET  ?op=builds&page=N        the gallery's Builds tab: everybody's
 //                                 photos of real builds, newest first, 24
 //                                 a page, each with its model and builder
@@ -87,9 +89,13 @@
 //                                 them and may (api/_follows.js)
 //   POST ?op=follow               (session) {handle, on}: follow, or let go
 //   GET  ?op=following&handle=X   whom X follows, when they chose to show it
+//   GET  ?op=people_find&q=P      up to six profiles that may be named in a
+//                                 comment whose handle or name starts with
+//                                 P, for @ in a comment's box (peopleFound)
 //   GET  ?op=alike&handle=X       up to six designers whose work is closest
 //                                 to X's, to follow; with the session never
-//                                 the caller nor whom they follow
+//                                 the caller nor whom they follow, and
+//                                 yours: true on the caller's own page
 //                                 (api/_alike.js)
 //   POST ?op=follow_choice        (session) {shows}: show whom I follow
 //   GET  ?op=feed&before=ISO      (session) the caller's feed, newest first,
@@ -220,7 +226,7 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, shareSheetHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoSrc, shareSheetHtml } from "./_card.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
 import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
@@ -994,7 +1000,66 @@ async function alike(request, response) {
   response.setHeader("Cache-Control", asker || tests ? "private, no-store" : SHARED_CACHE);
   if (!person) return response.status(404).json({ error: "nobody here has that handle" });
   const designers = await designersAlike(person, asker, tests);
-  return response.status(200).json(await withFaces({ handle: person.handle, name: person.name, designers }));
+  // On their own page they are offered designers like them to follow.
+  return response.status(200).json(await withFaces({ handle: person.handle, name: person.name, designers,
+    yours: Boolean(asker) && asker === person.account }));
+}
+
+// ---------------------------------------------------------------------------
+// @ in a comment's box (socialtails, 2026-11-06): the people on the page
+// first (web/model-page.js pickMentions), then anybody whose profile may be
+// named, as Behance and Sketchfab offer, found by what follows the @.
+
+/// What may follow an @: a handle's letters, digits and hyphens.
+export const NAMED = /^[a-z0-9-]{1,23}$/;
+/// How many people the box offers.
+export const NAMED_MOST = 6;
+
+/// [rows] ({account, handle, name}) that [q] may mean, best first: the
+/// handle typed whole, then one it starts, then a name it starts, then a
+/// word of a name; the shorter handle first between equals, then by
+/// handle. Pure.
+export function peopleRanked(rows, q) {
+  const asked = String(q || "").toLowerCase();
+  const rank = (one) => {
+    const handle = String(one.handle || "");
+    const name = String(one.name || "").toLowerCase();
+    if (handle === asked) return 0;
+    if (handle.startsWith(asked)) return 1;
+    if (name.startsWith(asked)) return 2;
+    return name.split(/[^\p{L}\p{N}]+/u).some((word) => word.startsWith(asked)) ? 3 : 4;
+  };
+  return (rows || []).map((one) => ({ one, at: rank(one) })).filter(({ at }) => at < 4)
+    .sort((a, b) => a.at - b.at || a.one.handle.length - b.one.handle.length || (a.one.handle < b.one.handle ? -1 : 1))
+    .map(({ one }) => one);
+}
+
+/// The profiles [q] may mean that may be named (shown in public: 13 or
+/// over, not taken out; [shown] asks, api/_trust.js shownPublicly), at most
+/// NAMED_MOST: [{handle, name}].
+export async function peopleFound(q, shown) {
+  const asked = String(q || "").toLowerCase();
+  if (!NAMED.test(asked)) return [];
+  const any = `(handle.like.${asked}*,name.ilike.${asked}*,name.ilike."* ${asked}*")`;
+  const rows = await db(`people?or=${encodeURIComponent(any)}&select=account,handle,name&order=handle&limit=40`);
+  const out = [];
+  // In order, a few at a time, asked together, until six may be shown.
+  const waiting = peopleRanked(rows, asked);
+  while (out.length < NAMED_MOST && waiting.length) {
+    const batch = waiting.splice(0, NAMED_MOST - out.length + 2);
+    const may = await Promise.all(batch.map((one) => shown(one.account)));
+    batch.forEach((one, i) => {
+      if (may[i] && out.length < NAMED_MOST) out.push({ handle: one.handle, name: one.name });
+    });
+  }
+  return out;
+}
+
+/// GET ?op=people_find&q=P: the same for everybody, so kept briefly by the CDN.
+async function peopleFind(request, response) {
+  const q = String(request.query?.q || "").slice(0, 23);
+  response.setHeader("Cache-Control", SHARED_CACHE);
+  return response.status(200).json({ q, people: await peopleFound(q, shownPublicly) });
 }
 
 /// The gallery's Builds tab, page N: the same for everybody, so kept briefly
@@ -1009,7 +1074,8 @@ async function builds(request, response) {
 }
 
 async function photoServe(request, response) {
-  const file = await photoFile(String(request.query?.id || ""), shownPublicly);
+  const file = await photoFile(String(request.query?.id || ""), shownPublicly,
+    { card: String(request.query?.size || "") === "card" });
   if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
   response.setHeader("Content-Type", "image/jpeg");
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -1220,7 +1286,7 @@ async function levelsOf(account, tests) {
 function stripHtml(photos, { by = false } = {}) {
   const at = langAt();
   return photos.map((one) => `<figure class="build" id="photo-${escapeHtml(one.id)}"><a href="${at}/m/${escapeHtml(one.model)}#photo-${escapeHtml(one.id)}">`
-    + `<img src="/api/people?op=photo_file&amp;id=${encodeURIComponent(one.id)}" alt="${escapeHtml(say("A build of {name}", { name: one.model_name }))}" `
+    + `<img src="${escapeHtml(photoSrc(one.id, { card: true }))}" alt="${escapeHtml(say("A build of {name}", { name: one.model_name }))}" `
     + `width="${Number(one.width) || 1}" height="${Number(one.height) || 1}" loading="lazy" decoding="async"></a>`
     + `<figcaption>${one.words ? `<q>${escapeHtml(one.words)}</q>` : ""}<a href="${at}/m/${escapeHtml(one.model)}">${escapeHtml(one.model_name)}</a>`
     + `${by ? sayHtml(", built by {who}", { who: one.by ? `<a href="${at}/u/${escapeHtml(one.by.handle)}">${escapeHtml(one.by.name)}</a>`
@@ -1646,6 +1712,7 @@ export default async function handler(request, response) {
       if (op === "list_follows") return await getListFollows(request, response);
       if (op === "following") return await getFollowing(request, response);
       if (op === "alike") return await alike(request, response);
+      if (op === "people_find") return await peopleFind(request, response);
       if (op === "feed") return await feed(request, response, { origin: originOf(request) });
       if (op === "latest") return await latest(request, response, { origin: originOf(request) });
       if (op === "feed_count") return await feedCount(request, response);

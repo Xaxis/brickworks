@@ -12,7 +12,7 @@
 // Everything is put on the page as text, in the page's language (say: a
 // person's page in German at /de/u/<you>).
 import { call, signedIn } from "/account.js";
-import { counted, number as said, say } from "/card.js";
+import { counted, number as said, photoSrc, say } from "/card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -74,7 +74,7 @@ function builders(model) {
   strip.setAttribute("aria-label", say("Builds of {name}", { name: model.name }));
   for (const one of photos) {
     const picture = document.createElement("img");
-    picture.src = `/api/people?op=photo_file&id=${one.id}`;
+    picture.src = photoSrc(one.id, { card: true });
     picture.alt = say("A build of {name}", { name: model.name });
     picture.width = Number(one.width) || 1;
     picture.height = Number(one.height) || 1;

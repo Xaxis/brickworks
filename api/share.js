@@ -259,10 +259,10 @@ import { flatLayJpeg } from "./_flatlay.js";
 import { indexOf as searchIndex } from "./_search.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // What a model is based on (docs/SOCIAL.md section 7, item 5).
-import { bases, basesOf, basesPut, setBased } from "./_bases.js";
+import { bases, basesOf, basesPut, setBased, setFind } from "./_bases.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, quietMarks, say, themeSaid } from "./_card.js";
+import { MADE_WITH, basedHtml, cardHtml, counted, langAt, madeOf, marksOf, number, photoSrc, quietMarks, say, themeSaid } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -1385,11 +1385,12 @@ function mediaStrip(model, picture, photos, small = picture) {
   let shown = 0;
   const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
     + `width="96" height="72" loading="${shown++ < 5 ? "eager" : "lazy"}" decoding="async"></a>`;
-  const file = (photo) => `/api/people?op=photo_file&amp;id=${encodeURIComponent(photo.id)}`;
+  // A thumb its card's copy (480 px at most), the picture's place the whole photo.
+  const file = (photo, card = false) => escapeHtml(photoSrc(photo.id, { card }));
   return `<div class="media-strip scroller" id="pictures" role="group" aria-label="${asText(say("Its pictures"))}"${photos?.length ? "" : " hidden"}>`
     + (picture ? thumb(small, say("{name}, as it was published", { name: model.name }),
       `href="${picture}" data-picture="${picture}" aria-current="true"`) : "")
-    + (photos || []).map((photo) => thumb(file(photo), photo.own ? say("{name}, a photo by its designer", { name: model.name })
+    + (photos || []).map((photo) => thumb(file(photo, true), photo.own ? say("{name}, a photo by its designer", { name: model.name })
       : photo.by ? say("A real build of {name}, by {builder}", { name: model.name, builder: photo.by.name })
       : say("A real build of {name}", { name: model.name }),
     `href="#photo-${escapeHtml(photo.id)}" data-picture="${file(photo)}"${photo.own ? " data-own" : ""}`)).join("")
@@ -1461,7 +1462,7 @@ function buildFigure(model, photo) {
   const by = photo.by ? sayHtml("by {name}", { name: `<a href="${langAt()}/u/${escapeHtml(photo.by.handle)}">${escapeHtml(photo.by.name)}</a>` })
     : asText(say("by a builder"));
   return `<figure class="build" id="photo-${photo.id}" data-photo="${photo.id}">`
-    + `<img src="/api/people?op=photo_file&amp;id=${photo.id}" alt="${escapeHtml(say("A real build of {name}", { name: model.name }))}" `
+    + `<img src="${escapeHtml(photoSrc(photo.id, { card: true }))}" alt="${escapeHtml(say("A real build of {name}", { name: model.name }))}" `
     + `width="${photo.width}" height="${photo.height}" loading="lazy" decoding="async">`
     + `<figcaption>${photo.words ? `<q>${escapeHtml(photo.words)}</q>` : ""}`
     + `<span class="by">${by} · ${when(photo.at)}</span>`
@@ -2023,6 +2024,7 @@ async function read(request, response) {
   if (op === "oembed") return oembed(request, response, origin);
   if (op === "bases") return bases(request, response);
   if (op === "set_based") return setBased(request, response, origin);
+  if (op === "set_find") return setFind(request, response);
   // The LDraw library's sets (api/_library.js): /library's list, and each
   // set's page, cover, file and parts.
   // With tests=1, the OMR's arrivals staged for the lead to let out too

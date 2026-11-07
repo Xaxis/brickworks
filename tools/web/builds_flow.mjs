@@ -521,6 +521,15 @@ try {
   check(`the original is gone from storage (${uploads.length} of the builder's left in the uploads bucket)`, uploads.length === 0);
   const kept = await stored("build-photos", `${photo}.jpg`);
   check(`what is kept is build-photos/${photo}.jpg, ${kept[0]?.bytes} bytes`, kept.length === 1);
+  // And its copy for the cards, at most 480 px wide, made from the kept
+  // photo's pixels alone, so nothing of the original's file is in it either.
+  const cardKept = await stored("build-photos", `${photo}.card.jpg`);
+  const small = Buffer.from(await (await fetch(`${site}/api/people?op=photo_file&id=${photo}&size=card`, { headers })).arrayBuffer());
+  const cardSeen = decode(small, { useTArray: true });
+  check(`beside it build-photos/${photo}.card.jpg, ${cardSeen.width} x ${cardSeen.height}, markers ${markers(small).join(",")}`,
+    cardKept.length === 1 && cardSeen.width <= 480 && cardSeen.width === Math.min(480, seen.width)
+    && Math.abs(cardSeen.height - Math.round((seen.height * cardSeen.width) / seen.width)) <= 1
+    && markers(small).join(",") === "e0,db,c0,c4,da" && whereFrom(small) === "");
   const { value: strip, waited: stripWaited } = await fresh(async () => {
     await visitor.goto(`${site}/m/${id}`, { waitUntil: "load" });
     return visitor.evaluate((one) => {
@@ -638,6 +647,8 @@ try {
   for (const one of await held("build_photos", "model", id)) {
     afterFiles.push(...(await stored("build-photos", `${one.id}.jpg`)).map((file) => file.name));
   }
+  const cardAfter = await stored("build-photos", `${photo}.card.jpg`);
+  check(`taken out: its card's copy deleted from storage too (${cardAfter.length ? "still there" : "gone"})`, cardAfter.length === 0);
   const rowAfter = (await held("build_photos", "id", photo))[0];
   const servedAfter = { status: (await fresh(async () => (await photoStatus(photo)) === 404)).value ? 404 : 200 };
   check(`taken out: its file deleted from storage (${afterFiles.includes(`${photo}.jpg`) ? "still there" : "gone"}), `

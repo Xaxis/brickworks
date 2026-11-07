@@ -153,3 +153,38 @@ def test_the_api_and_the_page_go_together() -> None:
     assert page.count("pickMentions(") == 3
     checks = (ROOT / "tools/release/preview_checks.sh").read_text()
     assert '[mentions]="tools/web/mentions_flow.mjs --url=$P --out=$S/${TAG}_mentions"' in checks
+
+
+def test_anybody_who_may_be_named_is_offered() -> None:
+    # @ offers the people on the page first, then anybody whose profile may
+    # be named (socialtails): a handle typed whole, then one it starts, then
+    # a name it starts, then a word of a name; only a profile shown in public.
+    got = node("""
+process.env.SUPABASE_URL = "https://db.test";
+process.env.SUPABASE_SECRET_KEY = "secret";
+const rows = [
+  { account: "a1", handle: "mika-mocs", name: "Mika Tanaka" },
+  { account: "a2", handle: "mi", name: "Mi" },
+  { account: "a3", handle: "jo-bricks", name: "Mia Lindqvist" },
+  { account: "a4", handle: "sam-builds", name: "Sam Mikkelsen" },
+  { account: "a5", handle: "milo-young", name: "Milo" },
+  { account: "a6", handle: "robin", name: "Robin Castell" },
+];
+const asked = [];
+globalThis.fetch = async (input) => {
+  asked.push(decodeURIComponent(String(input)));
+  return new Response(JSON.stringify(rows), { status: 200 });
+};
+const { peopleFound, peopleRanked } = await import("./api/people.js");
+const ranked = peopleRanked(rows, "mi").map((one) => one.handle);
+const found = await peopleFound("Mi", async (account) => account !== "a5");
+const refused = await peopleFound("mi,handle.eq.x", async () => true);
+console.log(JSON.stringify({ ranked, found, refused, asked }));
+""")
+    assert got["ranked"] == ["mi", "mika-mocs", "milo-young", "jo-bricks", "sam-builds"]
+    # Milo is under 13: never offered. Robin's name has no word starting "mi".
+    assert [one["handle"] for one in got["found"]] == ["mi", "mika-mocs", "jo-bricks", "sam-builds"]
+    assert got["found"][1] == {"handle": "mika-mocs", "name": "Mika Tanaka"}
+    # What may follow an @ only: anything else asks nothing.
+    assert got["refused"] == [] and len(got["asked"]) == 1
+    assert 'or=(handle.like.mi*,name.ilike.mi*,name.ilike."* mi*")' in got["asked"][0]

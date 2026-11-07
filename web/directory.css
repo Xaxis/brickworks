@@ -376,20 +376,29 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 /* An @handle its writer named (docs/SOCIAL.md section 7, item 6): a link
    to them, in the words' own size. */
 .model-page .comment-body a.mention { font-weight: 600; }
-/* @ in a box: the people on the page to name, under the box, a menu's
-   panel (site.css .menu-list), the one marked as a hovered row. */
-.model-page .mention-pick {
+/* What a box offers as one types, under the box, a menu's panel (site.css
+   .menu-list), the one marked as a hovered row: @ in a comment's box, the
+   people to name; a set's name in the Based on dialog, the sets it may be. */
+.pick-list {
 	list-style: none; margin: 0; padding: 6px; display: grid; max-width: 360px;
 	border-radius: var(--r-3); background: var(--panel); border: 1px solid var(--line-strong);
 	box-shadow: var(--highlight), var(--shadow);
 }
-.model-page .mention-pick[hidden] { display: none; }
-.model-page .mention-pick li {
+.pick-list[hidden] { display: none; }
+.pick-list li {
 	padding: 8px 10px; border-radius: var(--r-1); cursor: pointer; color: var(--ink-soft);
 	overflow-wrap: anywhere; min-height: 24px;
 }
-.model-page .mention-pick li b { color: var(--ink); font-weight: 600; }
-.model-page .mention-pick li[aria-selected="true"], .model-page .mention-pick li:hover { background: var(--panel-hi); color: var(--ink); }
+.pick-list li b { color: var(--ink); font-weight: 600; }
+.pick-list li[aria-selected="true"], .pick-list li:hover { background: var(--panel-hi); color: var(--ink); }
+/* A set: its picture, then its number and name over its year, parts and
+   theme; the list scrolls past six. */
+.pick-list.set-pick { max-width: none; margin: 4px 0 10px; max-height: min(360px, 50vh); overflow-y: auto; }
+.set-pick li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-items: center; }
+.set-pick li img { width: 48px; height: 36px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
+.set-pick li small { display: block; font-size: var(--t-small); }
+dialog.bases-dialog .set-chosen { margin: -6px 0 10px; font-size: var(--t-small); color: var(--ink-soft); }
+dialog.bases-dialog .set-chosen[hidden] { display: none; }
 .model-page .comment .note { margin: 6px 0 0; }
 .model-page .comment-acts { margin: 6px 0 0; display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--t-small); }
 .model-page .comment-acts:empty { display: none; }

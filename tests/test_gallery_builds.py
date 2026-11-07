@@ -153,7 +153,8 @@ def test_a_card_links_its_model_and_builder_and_says_every_word_as_text() -> Non
                   "by": {"handle": "kim-builds", "name": "Kim & Co"}})
     assert '<article class="model build-card" data-id="PhotoAbc01" data-model="ModelAbc01">' in drawn
     assert 'href="/m/ModelAbc01#photo-PhotoAbc01"' in drawn
-    assert 'src="/api/people?op=photo_file&amp;id=PhotoAbc01"' in drawn
+    # The photo's copy at most 480 px wide, not the whole kept photo.
+    assert 'src="/api/people?op=photo_file&amp;id=PhotoAbc01&amp;size=card"' in drawn
     assert 'href="/u/kim-builds"' in drawn and "Built by Kim &amp; Co" in drawn
     assert "Keep &lt;b&gt;" in drawn and "&lt;script&gt;" in drawn and "<script>" not in drawn and "<b>Keep" not in drawn
     assert 'alt="A build of Keep &lt;b&gt; by Kim &amp; Co"' in drawn
@@ -168,3 +169,45 @@ def test_a_builder_with_no_profile_shown_is_named_by_no_link() -> None:
 
 def test_its_flow_is_a_preview_check() -> None:
     assert "gallery_builds_flow.mjs" in CHECKS
+
+
+def test_a_card_loads_a_copy_at_most_480_wide() -> None:
+    # The Builds tab's cards loaded the whole kept photo, up to 1,600 px, for
+    # a card a quarter of a laptop's width (socialtails). Each photo is kept
+    # with a copy at most 480 px wide, its shape kept, never made larger, and
+    # a card asks for that copy.
+    got = node("""
+import { encode } from "./api/_jpeg.js";
+import { cardPhoto, cleanPhoto, decodePicture } from "./api/_photo.js";
+import { buildCardHtml, photoSrc } from "./web/card.js";
+const photo = (width, height) => {
+  const data = Buffer.alloc(width * height * 4, 200);
+  return Buffer.from(encode({ width, height, data }, 85).data);
+};
+const out = {};
+for (const [name, w, h] of [["landscape", 4000, 3000], ["portrait", 1200, 1600], ["small", 300, 200]]) {
+  const kept = await cleanPhoto(photo(w, h), "image/jpeg");
+  const card = await decodePicture(kept.card.bytes, "image/jpeg");
+  const again = await cardPhoto(kept.bytes);
+  out[name] = { kept: [kept.width, kept.height], card: [card.width, card.height], said: [kept.card.width, kept.card.height],
+    again: [again.width, again.height], smaller: kept.card.bytes.length <= kept.bytes.length };
+}
+out.src = [photoSrc("PhotoAaa01"), photoSrc("PhotoAaa01", { card: true })];
+out.html = /<img src="([^"]+)"/.exec(buildCardHtml({ id: "PhotoAaa01", model: "ModelAaa01", model_name: "A keep" }))[1];
+console.log(JSON.stringify(out));
+""")
+    assert got["landscape"] == {"kept": [1600, 1200], "card": [480, 360], "said": [480, 360], "again": [480, 360], "smaller": True}
+    assert got["portrait"]["kept"] == [1200, 1600] and got["portrait"]["card"] == [480, 640]
+    assert got["small"]["kept"] == [300, 200] and got["small"]["card"] == [300, 200] and got["small"]["again"] == [300, 200]
+    assert got["src"] == ["/api/people?op=photo_file&id=PhotoAaa01", "/api/people?op=photo_file&id=PhotoAaa01&size=card"]
+    assert got["html"] == "/api/people?op=photo_file&amp;id=PhotoAaa01&amp;size=card"
+
+
+def test_the_copy_is_served_kept_and_deleted_with_its_photo() -> None:
+    builds = (ROOT / "api/_builds.js").read_text()
+    # Asked for with size=card; kept beside the photo when it is posted, made
+    # the first time for one posted before; deleted with it however it goes.
+    assert '{ card: String(request.query?.size || "") === "card" }' in PEOPLE
+    assert "await putFile(PHOTOS, cardName(id), made.card.bytes" in builds
+    assert builds.count("deleteFiles(PHOTOS, [photoName(id), cardName(id)])") == 2
+    assert "${one.id}.card.jpg" in (ROOT / "api/account.js").read_text()

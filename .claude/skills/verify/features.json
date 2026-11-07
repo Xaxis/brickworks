@@ -4749,6 +4749,7 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
+        "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_sets.py"
       ]
@@ -4974,6 +4975,7 @@
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
+        "tests/test_model_bases.py",
         "tests/test_sets.py"
       ]
     },
@@ -5604,6 +5606,7 @@
       "area": "mcp",
       "tests": [
         "tests/test_billing_pay.py",
+        "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_sets.py"
       ]
@@ -5625,6 +5628,7 @@
       "tests": [
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
+        "tests/test_model_bases.py",
         "tests/test_search.py",
         "tests/test_sets.py"
       ]
@@ -5835,6 +5839,7 @@
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
+        "tests/test_model_bases.py",
         "tests/test_sets.py"
       ]
     },

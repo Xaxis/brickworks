@@ -36,6 +36,14 @@
 //      test model; nothing sideways.
 //   5. Ivy takes them away at 390 px (dark): the lines gone, and the set's
 //      page lists nothing of hers.
+//   6. Ivy finds set 7140 by its name, at 1280 px (light) (socialtails,
+//      2026-11-06): "X-wing Fighter" typed in the box offers the sets it
+//      may be, 7140-1 X-wing Fighter (1999) among them; Down to it and
+//      Enter puts in 7140-1 and says its name under the box; saved, its
+//      line credits set 7140-1 X-wing Fighter and links its page. Taken
+//      away again.
+//   7. At 390 px (dark), the list as it is typed: nothing sideways; Escape
+//      closes the list alone, and again the dialog.
 //
 // Pictures in --out.
 import { launch } from "./browser.mjs";
@@ -63,6 +71,8 @@ const ivyEmail = `delivered+bw-based-ivy-${rand}@resend.dev`;
 const jonEmail = `delivered+bw-based-jon-${rand}@resend.dev`;
 const CASTLE = `Based Flow Castle ${rand}`;
 const SET = "6080-1";
+// The set found by its name (step 6): LEGO's 1999 X-wing Fighter.
+const FOUND = "7140-1";
 const WORK = `https://example.org/castle-${rand}`;
 const NOT_OPEN = "Saying what a model is based on is not open yet.";
 
@@ -191,6 +201,14 @@ async function sayBases(page, rows) {
       ? { kept: false, status: document.documentElement.dataset.basesRefused,
         said: document.querySelector("dialog.bases-dialog .said").textContent.trim() } : null), "the dialog's answer");
 }
+
+/// The sets the dialog's list offers, as drawn: [{set, text}], or null while
+/// it is not shown.
+const setsOffered = () => {
+  const list = document.querySelector("dialog.bases-dialog .set-pick:not([hidden])");
+  return list && list.children.length ? [...list.children].map((li) => ({ set: li.dataset.set,
+    text: li.textContent.replace(/\s+/g, " ").trim() })) : null;
+};
 
 let ivy = null;
 let jon = null;
@@ -364,6 +382,73 @@ try {
       said.kept === true && lines.length === 0 && (await ivySmall.textContent("#bases-own button")) === "Say what it is based on");
     const after = await api(`/api/share?op=set_based&set=${SET}&tests=1`);
     check(`set ${SET}'s list has nothing of hers`, after.status === 200 && !(after.body.models || []).some((one) => one.id === castle));
+
+    // --- 6. Found by its name ------------------------------------------------------
+    console.log(`Ivy finds set ${FOUND} by its name, at 1280 px (light)`);
+    await ivyPage.goto(`${site}/m/${castle}?tests=1&asked=${Date.now()}`, { waitUntil: "load" });
+    await until(ivyPage, () => document.querySelector("#bases-own button")?.textContent === "Say what it is based on", "Say it");
+    await ivyPage.click("#bases-own button");
+    await ivyPage.waitForSelector("dialog.bases-dialog[open]");
+    const box = ivyPage.locator("dialog.bases-dialog input[name=what]").first();
+    await box.click();
+    await box.pressSequentially("X-wing Fighter", { delay: 40 });
+    const offered = await until(ivyPage, setsOffered, "the sets it may be");
+    const at = offered.findIndex((one) => one.set === FOUND);
+    check(`"X-wing Fighter" offers ${offered.length}: ${offered.map((one) => one.set).join(", ")}; ${FOUND} is number ${at + 1}, `
+      + `"${offered[at]?.text}"`, offered.length >= 1 && offered.length <= 8 && at >= 0
+      && /^7140-1 X-wing Fighter ?1999 · 285 parts · Star Wars$/.test(offered[at].text));
+    const aria = await ivyPage.evaluate(() => {
+      const field = document.querySelector("dialog.bases-dialog input[name=what]");
+      return { role: field.getAttribute("role"), expanded: field.getAttribute("aria-expanded"),
+        controls: document.getElementById(field.getAttribute("aria-controls"))?.getAttribute("role") || "" };
+    });
+    check(`the box a combobox (${aria.role}), expanded ${aria.expanded}, its list a ${aria.controls}`,
+      aria.role === "combobox" && aria.expanded === "true" && aria.controls === "listbox");
+    for (let n = 0; n < at; n += 1) await ivyPage.keyboard.press("ArrowDown");
+    const marked = await ivyPage.evaluate(() => document.querySelector("dialog.bases-dialog .set-pick [aria-selected=true]")?.dataset.set);
+    check(`Down ${at} times marks ${marked}`, marked === FOUND);
+    await shot(ivyPage, "5_found_by_name_1280.png");
+    await ivyPage.keyboard.press("Enter");
+    const picked = await ivyPage.evaluate(() => ({ value: document.querySelector("dialog.bases-dialog input[name=what]")?.value,
+      chosen: document.querySelector("dialog.bases-dialog .set-chosen:not([hidden])")?.textContent || "",
+      open: Boolean(document.querySelector("dialog.bases-dialog[open]")),
+      list: Boolean(document.querySelector("dialog.bases-dialog .set-pick:not([hidden])")) }));
+    check(`Enter puts in ${picked.value} and says "${picked.chosen}" under it; the list closed (${!picked.list}), the dialog open (${picked.open})`,
+      picked.value === FOUND && picked.chosen === "7140-1 X-wing Fighter, 1999" && !picked.list && picked.open);
+    await ivyPage.locator("dialog.bases-dialog").getByRole("button", { name: "Save" }).click();
+    await until(ivyPage, () => !document.querySelector("dialog.bases-dialog"), "saved");
+    lines = await linesDrawn(ivyPage);
+    check(`saved: ${lines.map((one) => `"${one.text}" → ${one.href}`).join(", ")}`, lines.length === 1 && lines[0].how === "alternate"
+      && lines[0].text === `An alternate build of set ${FOUND} X-wing Fighter` && lines[0].href === `/library/set/${FOUND}`);
+    await shot(ivyPage, "6_found_saved_1280.png");
+
+    // --- 7. The list on a phone ------------------------------------------------------
+    console.log("the list at 390 px (dark)");
+    await ivySmall.goto(`${site}/m/${castle}?tests=1&asked=${Date.now()}`, { waitUntil: "load" });
+    await until(ivySmall, () => document.querySelector("#bases-own button")?.textContent === "Change what it is based on", "Change it");
+    await ivySmall.locator("#bases-own").scrollIntoViewIfNeeded();
+    await ivySmall.click("#bases-own button");
+    await ivySmall.waitForSelector("dialog.bases-dialog[open]");
+    await ivySmall.waitForTimeout(600);
+    const kept = await ivySmall.evaluate(() => document.querySelector("dialog.bases-dialog .set-chosen:not([hidden])")?.textContent || "");
+    check(`what was picked is said under its box when the dialog opens again ("${kept}")`, kept === "7140-1 X-wing Fighter");
+    const small = ivySmall.locator("dialog.bases-dialog input[name=what]").first();
+    await small.click();
+    await small.fill("");
+    await small.pressSequentially("x wing fighter", { delay: 40 });
+    const phoneOffered = await until(ivySmall, setsOffered, "the sets it may be, on the phone");
+    check(`on the phone it offers ${FOUND} too (${phoneOffered.map((one) => one.set).join(", ")}), nothing sideways`,
+      phoneOffered.some((one) => one.set === FOUND) && !(await sideways(ivySmall)));
+    await shot(ivySmall, "7_found_390_dark.png");
+    await ivySmall.keyboard.press("Escape");
+    const escaped = await ivySmall.evaluate(() => ({ list: Boolean(document.querySelector("dialog.bases-dialog .set-pick:not([hidden])")),
+      open: Boolean(document.querySelector("dialog.bases-dialog[open]")) }));
+    check(`Escape closes the list (${!escaped.list}) and leaves the dialog open (${escaped.open})`, !escaped.list && escaped.open);
+    await ivySmall.keyboard.press("Escape");
+    await until(ivySmall, () => !document.querySelector("dialog.bases-dialog"), "the dialog closed by a second Escape");
+    said = await sayBases(ivySmall, []);
+    check(`taken away again: kept ${said.kept}, ${(await linesDrawn(ivySmall)).length} lines`, said.kept === true
+      && (await linesDrawn(ivySmall)).length === 0);
   }
 } catch (trouble) {
   failed += 1;

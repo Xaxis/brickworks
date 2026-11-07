@@ -19,7 +19,10 @@
 // it to be kept (?op=photo): the server reads the original, makes a new
 // JPEG from its pixels alone (api/_photo.js: no metadata survives, and
 // what is not a picture does not decode), keeps that as
-// build-photos/<id>.jpg, and deletes the original whatever came of it.
+// build-photos/<id>.jpg, and a copy at most 480 px wide beside it for the
+// cards (<id>.card.jpg, made from the kept photo the first time a card asks
+// for one kept before there were copies), and deletes the original
+// whatever came of it.
 //
 // Shown on the model's page as a strip of builds and on the builder's
 // profile, while it may be: not hidden by the model's owner, not taken out
@@ -33,7 +36,7 @@
 
 import { createHmac, randomBytes } from "node:crypto";
 import { db, orUnknown, reach } from "./_db.js";
-import { cleanPhoto, MAX_PHOTO_BYTES, PhotoTrouble, TYPES } from "./_photo.js";
+import { cardPhoto, cleanPhoto, MAX_PHOTO_BYTES, PhotoTrouble, TYPES } from "./_photo.js";
 
 export const UPLOADS = "build-photo-uploads";
 export const PHOTOS = "build-photos";
@@ -41,6 +44,10 @@ export const MOST_ON_A_MODEL = 3;
 export const MAX_WORDS = 140;
 // How many photos a model's page and a profile show.
 export const PHOTOS_SHOWN = 24;
+/// A photo's files in PHOTOS: the kept photo, and its copy for the cards
+/// (api/account.js names both too, when an account is deleted).
+export const photoName = (id) => `${id}.jpg`;
+export const cardName = (id) => `${id}.card.jpg`;
 const ID = /^[A-Za-z0-9]{10}$/;
 const DEVICE = /^[0-9a-f]{32}$/;
 const TICKET = /^[0-9a-f]{32}\.(jpg|png|webp)$/;
@@ -229,19 +236,46 @@ async function photosBy(account, model) {
 
 /// The photo's file, for whoever may see it: null when it may not be shown
 /// (hidden, taken out, its model down, its builder not shown) or is gone.
-export async function photoFile(id, shown, { owner = false } = {}) {
+/// With [card], its copy at most 480 px wide.
+export async function photoFile(id, shown, { owner = false, card = false } = {}) {
   const row = await photoRow(id);
   if (!row || row.removed_at || (row.hidden_at && !owner)) return null;
   const models = await db(`shared_models?id=eq.${row.model}&published=is.true&barred=is.false&select=id`);
   if (!models.length || !(await shown(row.account))) return null;
-  return getFile(PHOTOS, `${id}.jpg`);
+  return card ? cardFile(id) : getFile(PHOTOS, photoName(id));
+}
+
+/// A photo's copy for the cards: kept beside it, or made from it and kept
+/// the first time it is asked for (a photo kept before there were copies).
+/// The whole photo when no copy can be made of it; null when it is gone.
+async function cardFile(id) {
+  const kept = await getFile(PHOTOS, cardName(id));
+  if (kept) return kept;
+  const whole = await getFile(PHOTOS, photoName(id));
+  if (!whole) return null;
+  let made;
+  try {
+    made = (await cardPhoto(whole)).bytes;
+  } catch (trouble) {
+    console.error(`builds: no card copy of ${id}: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return whole;
+  }
+  await putFile(PHOTOS, cardName(id), made, "image/jpeg").catch((trouble) =>
+    console.error(`builds: the card copy of ${id} was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`));
+  // Taken out while it was made: the copy goes with it, never left behind.
+  const now = await photoRow(id);
+  if (!now || now.removed_at) {
+    await deleteFiles(PHOTOS, [cardName(id)]).catch(() => {});
+    return null;
+  }
+  return made;
 }
 
 /// The file of any photo not taken out, for the site's owner only.
 export async function photoFileForAdmin(id) {
   const row = await photoRow(id);
   if (!row || row.removed_at) return null;
-  return getFile(PHOTOS, `${id}.jpg`);
+  return getFile(PHOTOS, photoName(id));
 }
 
 /// Step one of a photo: where the phone sends it. {upload, ticket, most}.
@@ -295,12 +329,14 @@ export async function keepPhoto(account, model, ticket, words, check) {
       throw trouble;
     }
     const id = newPhotoId();
-    await putFile(PHOTOS, `${id}.jpg`, made.bytes, "image/jpeg");
+    await putFile(PHOTOS, photoName(id), made.bytes, "image/jpeg");
+    // Its card's copy: if it does not go, the first card to ask makes it.
+    await putFile(PHOTOS, cardName(id), made.card.bytes, "image/jpeg").catch(() => {});
     try {
       await db("build_photos", { method: "POST", body: { id, model, account, words, width: made.width,
         height: made.height, bytes: made.bytes.length, was: made.was } });
     } catch (trouble) {
-      await deleteFiles(PHOTOS, [`${id}.jpg`]).catch(() => {});
+      await deleteFiles(PHOTOS, [photoName(id), cardName(id)]).catch(() => {});
       if (/: 400$/.test(trouble.message)) {
         throw new BuildRefusal("that photo could not be kept: the most is three on a model, by accounts 13 or over", 422);
       }
@@ -323,9 +359,9 @@ export async function hidePhoto(account, id, on) {
   return { id, hidden: on };
 }
 
-/// The site's owner takes a photo out: its file deleted from storage, that
-/// one file and no other, and the row kept to say it was. What was
-/// reported about it is settled.
+/// The site's owner takes a photo out: its files deleted from storage, the
+/// photo and its card's copy and no other, and the row kept to say it was.
+/// What was reported about it is settled.
 export async function removePhoto(id, why) {
   const row = await photoRow(id);
   if (!row) throw new BuildRefusal("there is no photo at that id", 404);
@@ -333,14 +369,14 @@ export async function removePhoto(id, why) {
     await db(`build_photos?id=eq.${id}`, { method: "PATCH",
       body: { removed_at: new Date().toISOString(), removed_why: why || "Taken out by Brickworks" } });
   }
-  await deleteFiles(PHOTOS, [`${id}.jpg`]);
+  await deleteFiles(PHOTOS, [photoName(id), cardName(id)]);
   const reports = await db(`report_photos?photo=eq.${id}&select=report`);
   const ids = reports.map((one) => one.report);
   if (ids.length) {
     await db(`reports?id=in.(${ids.join(",")})&resolved_at=is.null`, { method: "PATCH",
       body: { resolved_at: new Date().toISOString(), resolution: "taken_out" } });
   }
-  return { id, removed: true, file: `${PHOTOS}/${id}.jpg`, reports: ids.length };
+  return { id, removed: true, file: `${PHOTOS}/${photoName(id)}`, card: `${PHOTOS}/${cardName(id)}`, reports: ids.length };
 }
 
 /// Which photo each of [reports] is about: report id -> photo row.

@@ -551,6 +551,13 @@ const posted = (at) => {
   return POSTED.get(locale).format(at);
 };
 
+/// A photo of a real build's address (api/people.js ?op=photo_file). With
+/// [card], its copy at most 480 px wide (api/_photo.js CARD_WIDTH), for a
+/// card or a strip that shows it small; without, the whole kept photo, for
+/// where it is shown whole.
+export const photoSrc = (id, { card = false } = {}) =>
+  `/api/people?op=photo_file&id=${encodeURIComponent(String(id))}${card ? "&size=card" : ""}`;
+
 /// A photo of a real build as a card (site.css .build-card), the gallery's
 /// Builds tab: the model card's shape, so the tab reads as the gallery
 /// does. The photo, cut to the card's 4:3 as a model's picture is and
@@ -572,7 +579,7 @@ export function buildCardHtml(photo, { eager = false } = {}) {
   const when = Number.isFinite(at)
     ? `<time class="when" datetime="${escapeHtml(new Date(at).toISOString())}">${escapeHtml(posted(at))}</time>` : "";
   return `<article class="model build-card" data-id="${id}" data-model="${model}">`
-    + `<div class="frame"><img src="/api/people?op=photo_file&amp;id=${id}" `
+    + `<div class="frame"><img src="${escapeHtml(photoSrc(photo.id, { card: true }))}" `
     + `alt="${escapeHtml(builder ? say("A build of {name} by {builder}", { name, builder }) : say("A build of {name}", { name }))}" `
     + `width="${Number(photo.width) || 4}" height="${Number(photo.height) || 3}" ${eager
       ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async"></div>`

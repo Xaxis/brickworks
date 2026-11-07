@@ -26,7 +26,10 @@
 // side, at least 120 a side; its size read from its header before anything
 // is decoded, so a small file that claims to be enormous is refused unread.
 // What goes out: a JPEG at most 1,600 pixels on its long side, the
-// transparent parts of a PNG or a WebP on white.
+// transparent parts of a PNG or a WebP on white; and beside it a copy at
+// most 480 pixels wide for the cards and strips that show it small
+// (socialtails, 2026-11-06): the Builds tab's cards loaded the whole kept
+// photo, 1,600 pixels for a card a third of a laptop's width.
 
 import { inflateSync } from "node:zlib";
 import { decode as decodeJpeg, encode as encodeJpeg } from "./_jpeg.js";
@@ -39,6 +42,9 @@ export const MOST_SIDE = 12000;
 export const LEAST_SIDE = 120;
 export const LONG_SIDE = 1600;
 export const QUALITY = 85;
+/// A card's copy: at most this wide, its shape kept.
+export const CARD_WIDTH = 480;
+const CARD_QUALITY = 82;
 export const TYPES = { "image/jpeg": "jpeg", "image/png": "png", "image/webp": "webp" };
 
 // How long the site's CDN may keep a picture a person sent (a build photo,
@@ -429,5 +435,23 @@ export async function cleanPhoto(given, declared = "") {
   const image = await decodePicture(given, declared);
   const made = upright(shrink(image), image.orientation);
   const jpeg = encodeJpeg({ data: made.data, width: made.width, height: made.height }, QUALITY).data;
-  return { bytes: Buffer.from(jpeg), width: made.width, height: made.height, was: image.was };
+  return { bytes: Buffer.from(jpeg), width: made.width, height: made.height, was: image.was, card: cardOf(made) };
+}
+
+/// [image] (upright, decoded) as a card shows it: a JPEG at most
+/// CARD_WIDTH wide, its shape kept, never made larger: {bytes, width,
+/// height}.
+export function cardOf(image) {
+  const width = Math.min(image.width, CARD_WIDTH);
+  const height = Math.max(1, Math.round((image.height * width) / image.width));
+  const made = width === image.width ? image
+    : resample(image, { left: 0, top: 0, width: image.width, height: image.height }, width, height);
+  const jpeg = encodeJpeg({ data: made.data, width: made.width, height: made.height }, CARD_QUALITY).data;
+  return { bytes: Buffer.from(jpeg), width: made.width, height: made.height };
+}
+
+/// The card's copy of a photo already kept (cleanPhoto's JPEG), for one
+/// kept before there were copies: {bytes, width, height}.
+export async function cardPhoto(kept) {
+  return cardOf(await decodePicture(kept, "image/jpeg"));
 }

@@ -11,8 +11,10 @@
 // With no --url nothing leaves this machine: the pages are made by this
 // checkout's api/ and every call answered by design_stand_in.mjs, signed
 // in as its Sam: the watchtower's reply naming Priya is a link; Sam's reply
-// there names her from the picker; his Notifications have Jo naming him on
-// the gearbox.
+// there names her from the picker; "@mi" in a new comment offers Mika, who
+// is nowhere on the page, found among every profile that may be named
+// (socialtails, 2026-11-06); his Notifications have Jo naming him on the
+// gearbox.
 //
 // With --url, the live project's tables, and throwaway accounts at Resend
 // test addresses, deleted at the end with the model: Pia designs, Max
@@ -193,6 +195,20 @@ try {
     const made = (await sent.json()).comment || {};
     check(`his reply: "${made.body}", naming ${JSON.stringify(made.mentions)}`, made.body === "Thank you @priya-plays it clicks."
       && made.mentions?.length === 1 && made.mentions[0].handle === "priya-plays");
+    // Anybody whose profile may be named, beyond the people on the page.
+    const fresh = "#comment-body";
+    await page.click(fresh);
+    await page.type(fresh, "Ask @mi");
+    const ends = Date.now() + 15000;
+    do pick = await picker(page, fresh); while (!pick.options.includes("Mika Tanaka @mika-mocs") && Date.now() < ends
+      && !(await page.waitForTimeout(200)));
+    check(`"@mi" offers ${pick.options.join(" | ")}, who is nowhere on the page, "${pick.said}"`, pick.open
+      && pick.options.length === 1 && pick.marked === "Mika Tanaka @mika-mocs" && pick.active && pick.said.startsWith("1 person to name"));
+    await shot(page, "1b_picker_anybody.png");
+    await page.keyboard.press("Enter");
+    pick = await picker(page, fresh);
+    check(`Enter puts him in: "${pick.value}"`, pick.value === "Ask @mika-mocs " && !pick.open);
+    await page.fill(fresh, "");
     // Sam's Notifications, at 390 px (dark).
     const phone = await context({ as: {}, width: 390, height: 844, dark: true, phone: true });
     const small = await phone.newPage();
@@ -226,6 +242,10 @@ try {
       body: { model: tower, version: 1, body: "Lovely tower." } });
     const maxComment = maxSaid.body.comment?.id;
     check(`Max's comment: ${maxSaid.status}`, maxSaid.status === 201 && Boolean(maxComment));
+    // Anybody whose profile may be named is found by what follows the @.
+    const anybody = await api(`/api/people?op=people_find&q=${handles.max}`);
+    check(`the profiles that may be named, by his handle: ${JSON.stringify(anybody.body.people)}`, anybody.status === 200
+      && (anybody.body.people || []).some((one) => one.handle === handles.max && one.name === names.max));
 
     // --- 2. Lia names him from the picker ----------------------------------------------
     console.log("Lia names Max, at 1280 px (light)");
