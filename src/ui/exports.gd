@@ -291,8 +291,8 @@ var _format: String = "glb"
 static var _writing: bool = false
 
 
-## What the chosen format is for, and whether this model fits in it: OBJ and
-## STL write every triangle and are capped (MeshExport.most_triangles).
+## What the chosen format is for, and whether this model fits in it: OBJ,
+## STL and 3MF write every triangle and are capped (MeshExport.most_triangles).
 func _describe_format() -> void:
 	var format: String = MeshExport.FORMATS[_format_choice.selected]
 	var maker: MeshExport = _mesh_export()
@@ -307,6 +307,7 @@ func _describe_format() -> void:
 		"gltf": "The same as GLB, written as text with its data inside.",
 		"obj": "Every part with its own triangles, and an .mtl of its colours. In metres." + cap,
 		"stl": "One mesh of every part, in millimetres, standing on Z, for a slicer." + cap,
+		"3mf": "An object for each colour, in its colour, for a slicer to give each its own filament, in millimetres on the bed." + cap,
 	}[format]
 	if not refused.is_empty():
 		note = refused.left(1).to_upper() + refused.substr(1) + "."
@@ -324,7 +325,7 @@ func _mesh_export() -> MeshExport:
 	return maker
 
 
-## The model as a 3D file (MeshExport): glb, gltf, obj or stl. Downloaded in a
+## The model as a 3D file (MeshExport): glb, gltf, obj, stl or 3mf. Downloaded in a
 ## browser, where an OBJ and its MTL come as one zip; on the desktop written
 ## where the person chose, an OBJ's MTL beside it, or to Downloads. What was
 ## written, or why not: the dialog, and a session over MCP (AppTools).
@@ -371,6 +372,10 @@ func model_3d(format: String, asking: bool = false) -> String:
 				Working.comma(made.triangles)]
 		else:
 			line += ", %s triangles" % Working.comma(made.triangles)
+		if made.colours == 1:
+			line += " — one colour, one object"
+		elif made.colours > 1:
+			line += " — %d colours, an object each" % made.colours
 		if not made.left_out.is_empty():
 			var count: int = 0
 			for id: String in made.left_out:
