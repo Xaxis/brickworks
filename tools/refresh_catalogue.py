@@ -17,6 +17,13 @@ it fails, saying which and why, when either cannot be made.
     tools/refresh_catalogue.py --colours  colors.json alone
     tools/refresh_catalogue.py --dry-run  all of it in a scratch folder: says
                                           what would change, writes nothing
+
+It writes the checkout it is run in (tree_of), whichever copy of the
+script runs. Its assets/generated may be a link, as a staging tree links
+a private catalogue; a file in it that is a link out of it is refused
+before anything is written (Outside). Run in a tree whose catalogue was a
+private copy, the refresh went through that copy's elements.json, a link
+back into the shared catalogue, and wrote the shared one (2026-11-07).
 """
 
 from __future__ import annotations
@@ -35,11 +42,12 @@ from bricklink_colours import NUMBERS as BRICKLINK  # noqa: E402
 from ldraw.colors import Palette          # noqa: E402
 from ldraw.library import Library         # noqa: E402
 
-GENERATED = ROOT / "assets" / "generated"
-LDRAW = ROOT / "vendor" / "ldraw"
-KNOWN = ROOT / "assets" / "knowledge"
+# The catalogue a refresh writes, in the checkout it is run in, as the
+# files it writes there.
+WRITES = ("catalogue.json", "colors.json", "elements.json")
 # Made after the catalogue from the same tables (figs217): the tool, the
-# file it writes into KNOWN, and the list in it that is never empty.
+# file it writes into the checkout's assets/knowledge, and the list in it
+# that is never empty.
 KNOWLEDGE = (("minifig_sets.py", "minifig_sets.json", "parts"),
              ("set_sizes.py", "set_sizes.json", "models"))
 
@@ -49,25 +57,58 @@ class Behind(Exception):
     from before kept."""
 
 
+class Outside(Exception):
+    """A file the refresh would write is a link out of the folder it is in:
+    writing it would write another tree's catalogue."""
+
+
+def tree_of(here: Path) -> Path:
+    """The checkout a command run in ``here`` is in: the nearest folder up
+    from it holding project.godot, or this script's own when none does."""
+    for folder in (here, *here.parents):
+        if (folder / "project.godot").is_file():
+            return folder
+    return ROOT
+
+
+def _inside(path: Path) -> Path:
+    """``path``, when writing it writes the file in the folder it is named
+    in. Outside when it is a link out of that folder. The folder may itself
+    be a link: a staging tree's assets/generated is one to its catalogue."""
+    if path.resolve().parent != path.parent.resolve():
+        raise Outside(f"{path} is a link to {path.resolve()}, out of "
+                      f"{path.parent.resolve()}: not written through")
+    return path
+
+
 def main() -> int:
+    tree = tree_of(Path.cwd())
+    generated, ldraw = tree / "assets" / "generated", tree / "vendor" / "ldraw"
+    try:
+        for name in WRITES:
+            _inside(generated / name)
+    except Outside as outside:
+        print(f"refresh_catalogue FAILED, nothing written: {outside}", file=sys.stderr)
+        return 1
     if "--colours" in sys.argv[1:]:
         # colors.json alone: the palette and its cross-references, which
         # change without the catalogue having to be read and rewritten.
-        print(write_colors(GENERATED, Palette.from_file(LDRAW / "LDConfig.ldr"))[1])
+        print(write_colors(generated, Palette.from_file(ldraw / "LDConfig.ldr"))[1])
         return 0
-    path = GENERATED / "catalogue.json"
+    path = generated / "catalogue.json"
     if not path.exists():
         print(f"no catalogue at {path} — run tools/build_meshes.py first")
         return 1
 
     document = json.loads(path.read_text())
     if "--dry-run" in sys.argv[1:]:
-        return dry_run(document)
-    for line in refresh(document, GENERATED, LDRAW):
+        return dry_run(document, tree)
+    print(f"refresh_catalogue: the catalogue in {generated}")
+    for line in refresh(document, generated, ldraw):
         print(line)
     path.write_text(json.dumps(document, separators=(",", ":")))
     try:
-        for line in knowledge(GENERATED, KNOWN):
+        for line in knowledge(generated, tree / "assets" / "knowledge"):
             print(line)
     except Behind as behind:
         print(f"refresh_catalogue FAILED: {behind}", file=sys.stderr)
@@ -75,12 +116,13 @@ def main() -> int:
     return 0
 
 
-def dry_run(document: dict) -> int:
+def dry_run(document: dict, tree: Path) -> int:
     """The whole refresh, the knowledge too, into a scratch folder: says what
-    each would change, writes nothing here."""
+    each would change in ``tree``, writes nothing there."""
+    generated, known = tree / "assets" / "generated", tree / "assets" / "knowledge"
     with tempfile.TemporaryDirectory(prefix="refresh_catalogue.") as scratch:
         out = Path(scratch)
-        for line in refresh(document, out, LDRAW):
+        for line in refresh(document, out, tree / "vendor" / "ldraw"):
             print(line)
         (out / "catalogue.json").write_text(json.dumps(document, separators=(",", ":")))
         try:
@@ -89,9 +131,8 @@ def dry_run(document: dict) -> int:
         except Behind as behind:
             print(f"refresh_catalogue FAILED: {behind}", file=sys.stderr)
             return 1
-        for name, here in [("catalogue.json", GENERATED), ("colors.json", GENERATED),
-                           ("elements.json", GENERATED)] + [
-                (name, KNOWN) for _tool, name, _listed in KNOWLEDGE]:
+        for name, here in [(name, generated) for name in WRITES] + [
+                (name, known) for _tool, name, _listed in KNOWLEDGE]:
             made, had = out / name, here / name
             if not made.exists():
                 continue
@@ -215,6 +256,7 @@ def write_colors(out: Path, palette: Palette) -> tuple[list[dict], str]:
 
     Returns the entries and a line saying what the joins reached.
     """
+    path = _inside(out / "colors.json")
     colors = palette.entries()
     said = "colour join: skipped"
     try:
@@ -234,7 +276,7 @@ def write_colors(out: Path, palette: Palette) -> tuple[list[dict], str]:
                 % (len(facts), current,
                    sum(1 for e in colors if e.get("lego_ids"))))
     said += ", %d a BrickLink number" % sum(1 for e in colors if "bricklink" in e)
-    (out / "colors.json").write_text(json.dumps(colors, separators=(",", ":")))
+    path.write_text(json.dumps(colors, separators=(",", ":")))
     return colors, said
 
 
@@ -327,7 +369,7 @@ def _elements(document: dict, colors: list[dict], out: Path) -> str:
     a parts list needs, and the catalogue is loaded at start-up by
     everything.
     """
-    path = out / "elements.json"
+    path = _inside(out / "elements.json")
     try:
         import rebrickable
     except ImportError:
