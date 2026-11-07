@@ -2875,6 +2875,16 @@
       "tests": []
     },
     {
+      "id": "lib:a session keeps a view over mcp",
+      "kind": "lib",
+      "entry": "src/net/app_tools.gd",
+      "reach": "tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   (save_view {\"name\": NAME} keeps the window's view as Save this view\u2026 does, answered with the model from there; in_view lists the views with their keys; its Alt-Shift key and render_model view= back within 0.1\u00b0 and 0.1 LDU; remove=true; highlight=/xray= take 4070 quoted or not, on the MCP walk's Pods)",
+      "area": "mcp",
+      "tests": [
+        "tests/test_docs_site.py"
+      ]
+    },
+    {
       "id": "lib:a session per tab",
       "kind": "lib",
       "entry": "src/parts/tab_session.gd",

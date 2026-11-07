@@ -1,9 +1,10 @@
 ---
-tools: view_model, set_floor, in_view, view_board
+tools: view_model, set_floor, in_view, view_board, save_view
 ai: Turning, sliding and zooming the camera, navigation presets, views saved with the model, cutting away and X-ray, stress colours, stud directions, and the floor the model stands on. An assistant looks from a side with view_model and sets the floor with set_floor.
 rules:
   - view_model looks from corner, top, front, back, left or right; corner shows the shape best.
   - view_model view=NAME looks from a view the person saved with the model, exactly as their window draws it; a name it does not keep is answered with those it does.
+  - save_view name=NAME keeps where the person's window looks from now with the model, as Save this view… does; in_view lists the views kept, each with its key.
   - Floors are a baseplate (16, 32 or 48 studs, or any size in eights to 192), a grid, or none.
 title: The view
 nav: The view
@@ -27,8 +28,11 @@ ui:left-button navigation
 
 Render's **Camera** lists the model's views under *Saved with the model*, and draws exactly what the window shows from there, wherever the window is looking now. **View › Viewpoint › Render each saved view**, or the render queue's **Add each saved view**, queues a picture from each.
 
+Ask Claude to keep the view you are looking from and it does the same over the connector (`save_view`): the view is kept under the name you asked for, with its key, and Claude sees the model from there. It can list the views a model keeps (`in_view`), draw from one by its name, and take one out.
+
 <!-- covers
 ui:saved views
+lib:a session keeps a view over mcp
 -->
 
 ## Navigate like Studio, Blender or Mecabricks {#presets}

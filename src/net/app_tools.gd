@@ -102,6 +102,8 @@ const COMMANDS: Dictionary = {
 	# savedviews: View › Viewpoint › Render each saved view is render_queue's
 	# add view=NAME, a view at a time.
 	"render_views": "render_queue",
+	# mcpsee3: View › Viewpoint › Save this view… (SavedViews.save_now).
+	"save_view": "save_view",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -163,8 +165,8 @@ const WINDOW_ONLY: Dictionary = {
 	"reinstall": "puts a fresh copy of the app in place and restarts it, ending the session's connection",
 	"restart": "closes and reopens the app the session is driving, ending the session's connection",
 	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; in_view shows a session the one laid, and a session is given its own pictures in the conversation",
-	# savedviews: the views kept with the model (SavedViews).
-	"save_view": "keeps where the person's own camera looks from, by a name of theirs; a session looks from a saved view with view_model view= and renders one with render_model view=",
+	# savedviews: the views kept with the model (SavedViews); save_view is
+	# save_view's (mcpsee3).
 	"saved_view_*": "the person's camera; view_model view= looks from a saved view by its name, and render_model view= renders it",
 }
 
@@ -250,6 +252,10 @@ there (view_model view= looks from it first).
  - render_queue: pictures lined up with Render's settings and drawn one \
 after another while the person goes on working, as File, Render queue… \
 does; list says how far each has got and where it was saved.
+ - save_view keeps where the person's window looks from now with the \
+model, by a name, as View › Viewpoint › Save this view… does, with a key of \
+its own; remove=true takes one out. in_view lists those kept, and \
+view_model, render_model and render_queue draw from one by its name (view=).
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, a LEGO® Pick a Brick list, or the building instructions as a \
@@ -289,12 +295,12 @@ measure, read-only: the distance and the angle between two connectors \
 joint with the turn between them as attach's yaw. in_view, read-only: what \
 the person sees and a session is not told — the step the timeline is at, \
 the part in their hand, and the reference picture they build over, with a \
-picture of it; and the model's size in studs and centimetres and its weight \
-in grams, as the status bar says them.
+picture of it; the model's size in studs and centimetres and its weight \
+in grams, as the status bar says them; and the views saved with the model.
  - view_board, read-only: up to six of view_model's views in one labelled \
 picture; highlight= parts edged in magenta with the rest see-through, xray= \
 parts see-through so what they hide shows (each by number, part number \
-"3024", colour "red" or "step:3"), step=N the model as built to step N with \
+3024 as text, colour red or step:3), step=N the model as built to step N with \
 its new parts edged, studs=true each part coloured by where its studs point. booklet_page, read-only: a page of the booklet as \
 Instructions draws it and its PDF prints it, to see what edit_booklet did. \
 mirror_parts, split_parts and merge_parts answer with the change pictured, as \
@@ -877,6 +883,27 @@ func definitions() -> Array:
 				"depth_of_field": {"type": "boolean"},
 			}},
 		},
+		# mcpsee3: View › Viewpoint › Save this view… (SavedViews).
+		{
+			"name": "save_view",
+			"description": ("Keep where the person's window looks from now with the model, "
+				+ "by a name, as View › Viewpoint › Save this view… does: the camera's turn, "
+				+ "tilt and distance, the point it looks at, and whether it is square on. Each "
+				+ "of the first nine gets a key of its own and a row in View › Viewpoint, "
+				+ "Render's Camera lists them all, and view_model, render_model and render_queue "
+				+ "draw from one by its name as view=; in_view lists them. A view of the same "
+				+ "name is replaced where it is. Kept in the model's file at its next save "
+				+ "(save_model). remove=true takes the view of that name out instead. Answered "
+				+ "with the model drawn from the view, as view_model view= draws it "
+				+ "(picture=false: words alone)."),
+			"input_schema": {"type": "object", "additionalProperties": false,
+				"required": ["name"], "properties": {
+					"name": {"type": "string", "description": ("what to call it, as View › "
+						+ "Viewpoint will list it (Three quarter, say); at most 60 letters")},
+					"remove": {"type": "boolean", "description": "take the view of this name out of the model"},
+					"picture": {"type": "boolean", "description": "false: words alone"},
+				}},
+		},
 		{
 			"name": "export_model",
 			"description": ("Write the model out as File, Export does, where Export writes "
@@ -1163,6 +1190,9 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _render(input, work)
 		"render_queue":
 			return _render_queue(input)
+		# mcpsee3: View › Viewpoint › Save this view….
+		"save_view":
+			return await _save_view(input)
 		"export_model":
 			return await _export(input, work)
 		"brickify":
@@ -1663,7 +1693,9 @@ func _pulled_parts(asked: Array, at: Instructions.Step, world: BrickWorld) -> Va
 		if raw is float or raw is int:
 			number = int(raw)
 		else:
-			var said: String = str(raw).strip_edges().to_lower().trim_prefix("#").trim_suffix(".dat")
+			# Quotes round it are a session's (Quotes.off, mcpsee3).
+			var said: String = Quotes.off(str(raw)).to_lower().trim_prefix("#") \
+				.trim_suffix(".dat")
 			if ids_of.has(said):
 				part = said
 			elif said.is_valid_int():
@@ -3807,6 +3839,83 @@ func _render_queue(input: Dictionary) -> Variant:
 		return "The queue is empty. " + RenderQueue.best_here()
 	return "%s\n%s%s" % ["\n".join(said), "Paused. " if queue.paused else "",
 		RenderQueue.best_here()]
+
+
+# -- mcpsee3: View › Viewpoint › Save this view…, for a session ----------------------
+
+
+## save_view: where the window looks from now, kept with the model by a name
+## by the window's own Save this view… (SavedViews.save_now), or with
+## remove=true taken out by its Remove. A session asked to keep the person's
+## angle could only tell them how to (APP_UX6, the MCP walk's v4). Answered
+## with the model drawn from the view, as view_model view= draws it.
+func _save_view(input: Dictionary) -> Variant:
+	var shell: Shell = app.get("_shell")
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	if shell == null or world == null or store == null:
+		return "This app has no window whose view could be kept."
+	var asked: String = Quotes.off(str(input.get("name", "")))
+	var name: String = SavedViews.clean_name(asked)
+	if name.is_empty():
+		return ("name= is what to call the view, as View › Viewpoint will list it: Three "
+			+ "quarter, say.")
+	var views: SavedViews = shell.saved_views()
+	if bool(input.get("remove", false)):
+		var at_was: int = SavedViews.index_of(world.saved_views, name)
+		if at_was < 0:
+			return SavedViews.not_kept(world.saved_views, name)
+		var called: String = str((world.saved_views[at_was] as Dictionary)["name"])
+		views.remove(called)
+		return ("Took the view “%s” out of the model%s. %s" % [called,
+			"; those after it each have the key before" if at_was < world.saved_views.size()
+				and at_was < SavedViews.KEYED else "", SavedViews.listed(world.saved_views)])
+	if world.brick_count() - store.scenery.size() <= 0:
+		return "There is nothing built to keep a view of yet."
+	var replacing: bool = SavedViews.index_of(world.saved_views, name) >= 0
+	if views.save_now(name).is_empty():
+		return "The window's view could not be kept."
+	var at: int = SavedViews.index_of(world.saved_views, name)
+	var view: Dictionary = world.saved_views[at]
+	var kept: String = str(view["name"])
+	var key: String = Keymap.written(SavedViews.COMMAND + str(at + 1)) \
+		if at < SavedViews.KEYED else ""
+	var yaw: float = wrapf(rad_to_deg(float(view["yaw"])), -180.0, 180.0)
+	var pitch: float = rad_to_deg(float(view["pitch"]))
+	var lines := PackedStringArray()
+	lines.append("Kept the window's view with the model as “%s”%s, view %d of %d%s." % [kept,
+		", replacing the one of that name" if replacing else "", at + 1,
+		world.saved_views.size(), "; %s looks from it again in the window" % key
+			if not key.is_empty() else ""])
+	if kept != asked.strip_edges():
+		lines.append("Its name is cut to %d letters on one line, as a view keeps it."
+			% SavedViews.LONGEST)
+	# Its turn as view_model's sides say it: from the front (+z), round
+	# towards +x or -x (CadCamera: a yaw of 0 looks from +z).
+	var turned: String = "from the front (+z)" if absf(yaw) < 0.5 \
+		else "from %.0f° round from the front (+z) towards %s" % [absf(yaw),
+			"+x" if yaw > 0.0 else "-x"]
+	lines.append("It looks %s, %.0f° %s level, from %s studs away%s%s." % [turned, absf(pitch),
+		"above" if pitch >= 0.0 else "below",
+		HandTools._n(snappedf(float(view["distance"]) / HandTools.STUD, 0.1)),
+		", square on (View, Orthographic)" if bool(view.get("square", false)) else "",
+		", the model turned as Build it had turned it" if view.has("frame") else ""])
+	lines.append(("view_model, render_model and render_queue draw from it by its name, "
+		+ "view=“%s”. It goes into the model's file at its next save (save_model); until then it "
+		+ "is unsaved work, as a view saved in the window is.") % kept)
+	var said: String = "\n".join(lines)
+	if not bool(input.get("picture", true)) or not StudioRender.possible():
+		return said
+	var render: Node = app.get("_render")
+	if render == null or not render.has_method("picture_of_view"):
+		return said
+	var window: Vector2 = Vector2(app.get_viewport().get_visible_rect().size)
+	var tall: int = clampi(roundi(1024.0 * window.y / maxf(window.x, 1.0)), 256, 1024)
+	var drawn: Variant = await render.call("picture_of_view", kept, Vector2i(1024, tall))
+	if not drawn is Image:
+		return said + "\nNo picture of it: " + str(drawn)
+	return [{"type": "text", "text": said + "\nThe model from “%s”, as the window draws it:"
+		% kept}, _picture_block(drawn as Image)]
 
 
 func _export(input: Dictionary, work: Working.Job = null) -> String:

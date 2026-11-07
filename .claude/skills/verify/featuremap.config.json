@@ -4646,10 +4646,24 @@
       "area": "mcp"
     },
     {
+      "kind": "lib",
+      "label": "a session keeps a view over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   (save_view {\"name\": NAME} keeps the window's view as Save this view… does, answered with the model from there; in_view lists the views with their keys; its Alt-Shift key and render_model view= back within 0.1° and 0.1 LDU; remove=true; highlight=/xray= take 4070 quoted or not, on the MCP walk's Pods)",
+      "area": "mcp"
+    },
+    {
       "kind": "cli",
       "label": "picklist probe",
       "entry": "src/dev/picklist_probe.gd",
       "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "direct colour probe",
+      "entry": "src/dev/direct_colour_probe.gd",
+      "reach": "tools/probe.sh direct_colour_probe [-- --shots=DIR]   (headless; three bricks in 0x2FF0000, 0x200FF00, 0x20000FF through the 3D view, Export's GLB/glTF/OBJ, the site's GLB, the thumbnail, the shops' lists and the site's lists, tools/web/direct_colour_check.mjs)",
       "area": "model-io"
     },
     {
@@ -4798,13 +4812,6 @@
       "entry": "tools/web/arview_flow.mjs",
       "reach": "node tools/web/arview_flow.mjs --out=DIR [--before=<checkout>]   (the stand-in's watchtower with the example car's file; with --url=<preview> and BW_BYPASS, preview_checks.sh arview: the deployment's first model)",
       "area": "web"
-    },
-    {
-      "kind": "cli",
-      "label": "direct colour probe",
-      "entry": "src/dev/direct_colour_probe.gd",
-      "reach": "tools/probe.sh direct_colour_probe [-- --shots=DIR]   (headless; three bricks in 0x2FF0000, 0x200FF00, 0x20000FF through the 3D view, Export's GLB/glTF/OBJ, the site's GLB, the thumbnail, the shops' lists and the site's lists, tools/web/direct_colour_check.mjs)",
-      "area": "model-io"
     },
     {
       "kind": "ui",
