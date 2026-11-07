@@ -220,8 +220,11 @@ func _tooltips() -> void:
 		_check("...and a screen reader hears it so: \"%s\"" % tile.accessibility_description,
 			tile.accessibility_description == str(SIZES[part]))
 		if part == "87087":
-			await _hover(tile)
+			var shown: String = await _hover(tile)
+			_check("...and its tooltip shows it over the tile: \"%s\"" % shown.replace("\n", " / "),
+				shown.get_slice("\n", 2) == str(SIZES[part]))
 			await _shot("tooltip_87087")
+			await _hover_off()
 	# The bin's list of rows says the same size.
 	await _type("87087")
 	var list: Button = _bin.get("_list")
@@ -241,29 +244,55 @@ func _tooltips() -> void:
 	await _type("")
 
 
-## The size a list row of [param part] shows, "1×1", or "".
+## The size a list row of [param part] shows, "1×1", or "": the cell after
+## its number (the name before it can say a size too, "Brick 1×1 with ...").
 func _row_size(part: String) -> String:
 	for label: Node in (_bin as Node).find_children("*", "Label", true, false):
 		if (label as Label).text != part or not (label as Label).is_visible_in_tree():
 			continue
-		for other: Node in label.get_parent().get_children():
-			if other is Label and (other as Label).text.contains("×"):
-				return (other as Label).text
+		var at: int = label.get_index() + 1
+		if at < label.get_parent().get_child_count() and label.get_parent().get_child(at) is Label:
+			return (label.get_parent().get_child(at) as Label).text
 	return ""
 
 
 ## The pointer rested on [param tile], as a person's does, until its tooltip
-## shows.
-func _hover(tile: Control) -> void:
+## shows: the text the tooltip shows, or "" when none came. On Xvfb the
+## system's pointer is moved too, as tooltip_probe's is: moved by events
+## alone, the app's replay of the system's pointer took it off the tile and
+## no tooltip came (words6's first red run, 2026-11-07).
+func _hover(tile: Control) -> String:
 	var at: Vector2 = tile.get_global_rect().get_center()
 	for step: int in 3:
-		var motion := InputEventMouseMotion.new()
-		motion.position = _as_event(at + Vector2(step, 0))
-		motion.global_position = motion.position
-		Input.parse_input_event(motion)
+		_move(at + Vector2(step, 0))
 		await _frames(2)
-	await create_timer(1.5).timeout
-	await _frames(10)
+	var until: int = Time.get_ticks_msec() + 3000
+	while Time.get_ticks_msec() < until:
+		await process_frame
+		for sub: Window in root.get_embedded_subwindows():
+			if sub is PopupPanel and (sub as PopupPanel).theme_type_variation == &"TooltipPanel" \
+					and sub.visible:
+				await _frames(4)
+				var said := PackedStringArray()
+				for label: Node in sub.find_children("*", "Label", true, false):
+					said.append((label as Label).text)
+				return "\n".join(said)
+	return ""
+
+
+## The pointer back over the model, so no tooltip stays up.
+func _hover_off() -> void:
+	_move(Vector2(root.get_visible_rect().size.x * 0.7, root.get_visible_rect().size.y * 0.5))
+	await _frames(4)
+
+
+func _move(at: Vector2) -> void:
+	if OS.get_environment("XAUTHORITY").contains("xvfb-run"):
+		Input.warp_mouse(_as_event(at))
+	var motion := InputEventMouseMotion.new()
+	motion.position = _as_event(at)
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
 
 
 # -- the keys sheet --------------------------------------------------------------
