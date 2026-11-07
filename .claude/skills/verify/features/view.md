@@ -180,27 +180,36 @@ picture the assistant is shown.
   round (`TWIST_START`), then takes the whole turn, so a pinch or a slide that
   turns real fingers a few degrees turns nothing and a quarter turn is a
   quarter. Read once a frame from where both fingers are, as is a phone's turn
-  by the point between two fingers: applied a finger's event at a time, half
-  of that turn was stopped at straight down and the other half was not, so a
-  twist seen from above tipped the view. The pinch stays with the events (a
+  by the point between two fingers (`TWO_FINGER_TURN`, 0.016 of the way):
+  applied a finger's event at a time, half of that turn was stopped at
+  straight down and the other half was not, so a twist seen from above tipped
+  the view. While two fingers are down the pointer the engine raises from the
+  first (`InputEvent.DEVICE_ID_EMULATION`) is not the camera's: it turned the
+  view as far as that finger went, so on pre261 a quarter twist swung a
+  phone's view 74° round and tipped it to look straight down, and a pinch
+  turned it as far as the first finger spread (59° for the probe's). The pair's slide keeps
+  its speed: 0.016 is the fingers' own 0.006 and the 0.01 that pointer added.
+  One finger is as it was, both shares. The pinch stays with the events (a
   ratio, whichever finger comes first). Not over the second view, which is
   square on. A trackpad's twist has no event in Godot 4.7
   (`InputEventRotateGesture` does not exist), so it is fingers on glass only.
 - `twist probe` (`src/dev/twist_probe.gd`, `tools/probe.sh twist_probe`,
   windowed on the GPU at 390 x 844 laid out for a phone; `PROBE_SIZE=1024x768
   tools/probe.sh twist_probe --tablet` a tablet's, `PROBE_SIZE=1280x720` or
-  `1400x900` the desktop's with a touchscreen): fingers as the window hands
-  them over, a frame at a time. Two fingers turned a quarter turn round two
-  crossed 2 x 4s turn the view 90° ±5° round the up, the tilt within 0.5°,
-  what was between them within 2% of the room of where it was, nothing moved
-  or selected, and back again; from above and from below a point beside the
-  pivot goes 90° ±5° round on the screen the way the fingers went, the view
-  still straight down or up; a pinch to three times as wide, two fingers slid
-  150 units and one finger dragged 150 within 1% of what pre261 did (SAME in
-  the probe), a pinch turned 6° zooms as far and turns nothing; a quarter turn
-  with a spread to twice as wide does both. `measure` lines carry the numbers
-  to compare with another checkout. Pictures in `shots/twist/`: the model
-  before and after the quarter turn, and from above after it.
+  `1400x900` the desktop's with a touchscreen): an empty model with two
+  crossed 2 x 4s, fingers as the window hands them over, a frame at a time,
+  each starting and stopping at rest. Two fingers turned a quarter turn round
+  the model turn the view 90° ±5° round the up, the tilt within 0.5°, what
+  was between them within 2% of the room of where it was, and back again;
+  from above and from below a point beside the pivot goes 90° ±5° round on
+  the screen the way the fingers went, the view still straight down or up; a
+  pinch to three times as wide, two fingers slid 150 units and one finger
+  dragged 150 within 1% of what pre261 did (`SAME` in the probe, from its
+  `measure` lines there), a pinch and one turned 6° turning nothing; a
+  quarter turn with a spread to twice as wide does both; the model as it was
+  after each. A `note` line tells what a twist with the first finger on a
+  part does, unjudged. Pictures in `shots/twist/`: the model before and after
+  the quarter turn, and from above after it.
 - `centred on the model's column` (`CadCamera.seen`, `Main._model_rect`): the
   3D draws across the whole window, behind the columns, and the view is
   centred on the model's part of it (`model_cover`'s "view": between the

@@ -34,8 +34,8 @@ const SHOTS := "res://shots/twist/"
 ## drag on a phone as degrees turned round the up, the slide on the desktop as
 ## how far the model moved on the screen, in the window's units.
 const SAME := {
-	"phone": {"pinch": 1.0 / 3.0, "slide": -82.245, "drag": -82.245},
-	"desktop": {"pinch": 1.0 / 3.0, "slide": 151.747, "drag": -82.245},
+	"phone": {"pinch": 1.0 / 3.0, "slide": -82.244, "drag": -82.244},
+	"desktop": {"pinch": 1.0 / 3.0, "slide": 152.107, "drag": -82.245},
 }
 ## How far the fingers slide and a finger drags, in the window's units.
 const TRAVEL := 150.0
