@@ -2079,6 +2079,14 @@
       "tests": []
     },
     {
+      "id": "cli:savedviews probe",
+      "kind": "cli",
+      "entry": "src/dev/savedviews_probe.gd",
+      "reach": "tools/probe.sh savedviews [-- --keep=DIR]   (windowed, on the GPU, 1280 x 720 and PROBE_SIZE=1400x900: three views of the car saved by Alt-V, the model saved, closed and opened, each back by its Alt-Shift key within 0.1\u00b0 and 0.1 LDU; a key each under every preset, none another command's; the queue's Add each saved view the same picture as the window turned there; view_model and render_model view= in one call; a Render preset saved and chosen again in 2 actions; then --older=DIR on an older checkout opens the file whole)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:say which build this is",
       "kind": "cli",
       "entry": "src/main.gd",
@@ -5180,6 +5188,14 @@
       "entry": "src/ui/save_to.gd",
       "reach": "godot --path .  (File, Export, any of them; Instructions; File, Save as; the parts list's CSV)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:saved views",
+      "kind": "ui",
+      "entry": "src/ui/saved_views.gd",
+      "reach": "tools/probe.sh savedviews && PROBE_SIZE=1400x900 tools/probe.sh savedviews   (by hand: View, Viewpoint, Save this view\u2026 or Alt-V, a name; Alt-Shift-1 to 9 look from each again; save and open the model; Render's Camera lists them, its Preset keeps its choices; View, Viewpoint, Render each saved view, or the queue's Add each saved view; view_model and render_model view= over MCP)",
+      "area": "view",
       "tests": []
     },
     {

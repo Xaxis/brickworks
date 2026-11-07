@@ -1921,6 +1921,10 @@
           ],
           "type": "string"
         },
+        "view": {
+          "description": "A view the person saved with the model (View › Viewpoint), by its name, in place of from: the picture from exactly there, as their window draws it. A name it does not keep is answered with those it does.",
+          "type": "string"
+        },
         "where": {
           "additionalProperties": false,
           "description": "Look closely at one part of the model rather than all of it, in studs and plates. The rest is still in the picture, just not filling it. On a big model a single assembly is a few dozen pixels across otherwise, which is not enough to judge its shape by.",
@@ -1955,9 +1959,6 @@
           "type": "object"
         }
       },
-      "required": [
-        "from"
-      ],
       "type": "object"
     },
     "name": "view_model"
@@ -5190,7 +5191,7 @@
       "readOnlyHint": false,
       "title": "Render a picture"
     },
-    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
+    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5244,14 +5245,7 @@
           "type": "string"
         },
         "view": {
-          "enum": [
-            "hero",
-            "front",
-            "side",
-            "back",
-            "low",
-            "top"
-          ],
+          "description": "hero, front, side, back, low or top, or a view saved with the model, by its name",
           "type": "string"
         }
       },
@@ -5267,7 +5261,7 @@
       "readOnlyHint": false,
       "title": "Queue renders"
     },
-    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
+    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given: view= may name a view saved with the model, drawn from exactly there), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5329,15 +5323,7 @@
           "type": "string"
         },
         "view": {
-          "enum": [
-            "current",
-            "hero",
-            "front",
-            "side",
-            "back",
-            "low",
-            "top"
-          ],
+          "description": "current, hero, front, side, back, low or top, or a view saved with the model, by its name",
           "type": "string"
         }
       },
