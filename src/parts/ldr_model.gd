@@ -153,6 +153,13 @@ const COPY_META := "0 !BRICKWORKS COPY"
 ## written in the steps they are built in: every LDraw reader builds the
 ## order shown, and this app reads each copy back as it was (stepskeep).
 const IN_META := "0 !BRICKWORKS IN"
+## The word after "0 !BRICKWORKS" of each of those four, as [method parse]
+## compares a line's: written out, not sliced from them four times over for
+## every "0 !BRICKWORKS" line read (lreview's file of 200,000, 2026-11-07).
+const _AUTHORED_WORD := "AUTHORED_STEPS"
+const _WORKED_WORD := "WORKED_STEPS"
+const _COPY_WORD := "COPY"
+const _IN_WORD := "IN"
 ## The unit step of such a copy (AuthorSteps reads it from here): kept here,
 ## where the file is read, so reading one names no class of the app's and
 ## compiles alone, which is what a file browser's picture of a model waits
@@ -283,16 +290,16 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				model.stepped = true
 				within = ""
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == AUTHORED_META.get_slice(" ", 2):
+					and tokens[2] == _AUTHORED_WORD:
 				model.marked_authored = true
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == WORKED_META.get_slice(" ", 2):
+					and tokens[2] == _WORKED_WORD:
 				model.marked_worked = true
 			elif keyword == "!BRICKWORKS" and tokens.size() > 3 \
-					and tokens[2] == COPY_META.get_slice(" ", 2):
+					and tokens[2] == _COPY_WORD:
 				copy_next = maxi(tokens[3].to_int(), 0)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == IN_META.get_slice(" ", 2):
+					and tokens[2] == _IN_WORD:
 				# A path's names may hold spaces: the rest of the line.
 				within = line.substr(line.to_upper().find(keyword) + keyword.length()).strip_edges() \
 					.substr(tokens[2].length()).strip_edges()
