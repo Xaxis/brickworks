@@ -3006,6 +3006,12 @@ msgstr "1 pieza reflejada"
 msgid "mirrored %d parts"
 msgstr "%d piezas reflejadas"
 
+msgid "1 has no mirror image, turned as near as it goes: %s"
+msgstr "1 no tiene imagen especular y queda girada lo más cerca posible: %s"
+
+msgid "%d have no mirror image, turned as near as they go: %s"
+msgstr "%d no tienen imagen especular y quedan giradas lo más cerca posible: %s"
+
 msgid "measuring"
 msgstr "midiendo"
 

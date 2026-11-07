@@ -3948,6 +3948,9 @@ var _motion_last: Dictionary = {}
 var _finger: int = -1
 var _finger_brick: int = 0
 var _finger_at := Vector2.ZERO
+## Where the play's finger came down, before [method _play_brick_near] moved it
+## onto a part that moves.
+var _finger_down := Vector2.ZERO
 var _finger_grabbing: bool = false
 ## What the last finger's coming down and its drag were taken as, for a
 ## check reading the page: "part", "chain", "not a part", "over a panel",
@@ -4086,9 +4089,9 @@ func _play_brick_at(at: Vector2) -> int:
 ## turns the view. A steering wheel on a phone is a few points across, its
 ## rim thinner than a fingertip: play_flow's finger, on the wheel's handle
 ## to the CSS pixel, came down on the plate behind it. [brick id, point].
-func _play_brick_near(at: Vector2) -> Array:
+func _play_brick_near(at: Vector2, but_body: int = -1) -> Array:
 	var under: int = _play_brick_at(at)
-	if under == 0 or _moves_on_a_joint(under):
+	if under == 0 or (_moves_on_a_joint(under) and _body_of(under) != but_body):
 		return [under, at]
 	var across: float = Room.across()
 	var pt: float = get_viewport().get_visible_rect().size.x / across if across > 0.0 else 1.0
@@ -4096,9 +4099,15 @@ func _play_brick_near(at: Vector2) -> Array:
 		for step: int in 12:
 			var spot: Vector2 = at + Vector2.from_angle(TAU * float(step) / 12.0) * reach * pt
 			var brick_id: int = _play_brick_at(spot)
-			if brick_id != 0 and _moves_on_a_joint(brick_id):
+			if brick_id != 0 and _moves_on_a_joint(brick_id) and _body_of(brick_id) != but_body:
 				return [brick_id, spot]
 	return [under, at]
+
+
+## [param brick_id]'s body as the grab read them, -1 for none.
+func _body_of(brick_id: int) -> int:
+	var bodies: Bodies = _grab_drag.read_bodies() if _grab_drag != null else null
+	return int(bodies.body_of.get(brick_id, -1)) if bodies != null else -1
 
 
 ## Whether [param brick_id] hangs on a joint, as the grab read them.
@@ -4203,6 +4212,7 @@ func _play_touch(event: InputEvent) -> bool:
 					_finger = touch.index
 					_finger_brick = brick_id
 					_finger_at = near[1]
+					_finger_down = touch.position
 					_touch_hold.start()
 			else:
 				_finger = -1
@@ -4224,9 +4234,21 @@ func _play_touch(event: InputEvent) -> bool:
 	if drag.position.distance_to(_finger_at) <= CadCamera.TAP_SLOP:
 		return true
 	_finger_grabbing = _play_press(_finger_brick, _finger_at, _touch_hold.held_ms())
+	var refused: String = _grab_drag.last_words
+	if not _finger_grabbing and _moves_on_a_joint(_finger_brick):
+		# A fingertip is wide. The part it came down on hangs on a joint but
+		# does not move (its loop is locked): a part within the fingertip that
+		# moves is meant (a steering wheel's rim in front of a locked plate).
+		var beside: Array = _play_brick_near(_finger_down, _body_of(_finger_brick))
+		if int(beside[0]) != 0 and _moves_on_a_joint(int(beside[0])) \
+				and _body_of(int(beside[0])) != _body_of(_finger_brick) \
+				and _play_press(int(beside[0]), beside[1], _touch_hold.held_ms()):
+			_finger_brick = int(beside[0])
+			_finger_at = beside[1]
+			_finger_grabbing = true
 	_finger_said = ("chain" if _grab_drag.chain != null else "part") if _finger_grabbing \
 		else "turns the view from #%d %s: %s" % [_finger_brick, _world.get_brick(_finger_brick).part_id
-			if _world.get_brick(_finger_brick) != null else "?", _grab_drag.last_words]
+			if _world.get_brick(_finger_brick) != null else "?", refused]
 	if not _finger_grabbing:
 		_finger = -1
 		return false

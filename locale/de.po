@@ -3006,6 +3006,12 @@ msgstr "1 Teil gespiegelt"
 msgid "mirrored %d parts"
 msgstr "%d Teile gespiegelt"
 
+msgid "1 has no mirror image, turned as near as it goes: %s"
+msgstr "1 hat kein Spiegelbild und ist so nah wie möglich gedreht: %s"
+
+msgid "%d have no mirror image, turned as near as they go: %s"
+msgstr "%d haben kein Spiegelbild und sind so nah wie möglich gedreht: %s"
+
 msgid "measuring"
 msgstr "Messen"
 

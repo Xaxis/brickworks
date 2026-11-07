@@ -3006,6 +3006,12 @@ msgstr "1 pièce mise en miroir"
 msgid "mirrored %d parts"
 msgstr "%d pièces mises en miroir"
 
+msgid "1 has no mirror image, turned as near as it goes: %s"
+msgstr "1 n'a pas d'image miroir et est tournée au plus près : %s"
+
+msgid "%d have no mirror image, turned as near as they go: %s"
+msgstr "%d n'ont pas d'image miroir et sont tournées au plus près : %s"
+
 msgid "measuring"
 msgstr "mesure"
 
