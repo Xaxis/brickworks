@@ -2399,7 +2399,9 @@ picture the assistant is shown.
   Godot's OmniLight3D, SpotLight3D, DirectionalLight3D; a panel a wide spot)
   and path traced (`path_tracer.glsl`'s `from_lamps`, the same fall and cone),
   on the first surface the eye reaches and bounced by neither, the exposure
-  metered without them: nothing outside a spot's cone changes. Light's Dark
+  metered without them: nothing outside a spot's cone changes. The spot's
+  edge is the rim to the power `SceneLights.EDGE` (3) both ways: Godot takes
+  `spot_angle_attenuation` as the reciprocal, so the raster's is 1/3. Light's Dark
   puts the studio out (ambient 0.025), and the plastics that glow (Glow In
   Dark, the neons) give off light (`plastic_body.gdshaderinc`'s `glow`, a
   light at each lump of them rasterised, emission traced). Add sets a light
@@ -2417,8 +2419,10 @@ picture the assistant is shown.
   and refusals; nothing changeable on a model shared to look at. The bar: the
   spot drawn without and with, Quick and Best path traced: 0 px changed
   outside its cone (each pixel judged along its ray between the floor and
-  the top of the car), the roof under it lighter by 15% and 10 levels, the
-  two drawings' rises within 35%; a Trans Neon Green 1 x 1 on a white plate
+  the top of the car; the renderer's own changes, the same drawn twice,
+  said beside it), on a grey sweep the floor it lights beside the car (out
+  of the car's shadow, on the camera's side) lighter by 15% and 10 levels,
+  the two drawings' rises within 35%; a Trans Neon Green 1 x 1 on a white plate
   in the Dark light lights the plate round it 3 times as much as a Trans
   Green one, and green, both ways. `-- --keep=DIR` leaves the files; the
   probe copied into an older checkout with `-- --older=DIR` opens each
@@ -2732,7 +2736,7 @@ tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied
 tools/probe.sh savedviews -- --keep=/tmp/views_kept && PROBE_SIZE=1400x900 tools/probe.sh savedviews   # then, the probe copied into an older checkout: tools/probe.sh savedviews -- --older=/tmp/views_kept
 # Lights in the model (APP_UX5 #7): Render's Spot over the car, kept over
 # every save and back after an open; 0 px changed outside its cone, Quick and
-# path traced, the roof lighter by 15%; a neon 1 x 1 lighting the plate round
+# path traced, the floor beside the car lighter by 15%; a neon 1 x 1 lighting the plate round
 # it in the Dark light; light_model over MCP. Look at shots/lights/.
 tools/probe.sh lights -- --keep=/tmp/lights_kept && PROBE_SIZE=1280x720 tools/probe.sh lights -- --no-trace   # then, the probe copied into an older checkout: tools/probe.sh lights -- --older=/tmp/lights_kept
 # View, Stress: a loaded 2x10 cantilever's root red on 1x1s, plain on 2x2s; a
