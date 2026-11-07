@@ -258,6 +258,11 @@ func _playing(text: String, files_before: PackedStringArray) -> void:
 	var angles: PackedFloat32Array = PackedFloat32Array()
 	var looping_said: bool = false
 	var lit: bool = false
+	# Drawn only: the model itself stays as built, and nothing is kept, so
+	# the steps worked out meanwhile read the model as built.
+	var builder: Builder = _main.get("_builder")
+	var depth: int = builder.history_depth()
+	var kept_off: int = 0
 	since = Time.get_ticks_msec()
 	var shot_taken: bool = false
 	while Time.get_ticks_msec() - since < 8000:
@@ -267,6 +272,7 @@ func _playing(text: String, files_before: PackedStringArray) -> void:
 		var said: Dictionary = view.page_state()["play"]
 		looping_said = looping_said or str(said["says"]).begins_with("Playing “%s” over and over." % MOTION)
 		lit = lit or (said["motions_out"] as Array).has(MOTION)
+		kept_off = maxi(kept_off, _differing(world, built) + absi(builder.history_depth() - depth))
 		if not shot_taken and angle > 10.0 and _main.get("_motion_loop") == MOTION:
 			shot_taken = true
 			await _save("1_playing")
@@ -296,6 +302,7 @@ func _playing(text: String, files_before: PackedStringArray) -> void:
 		"its angle changes frame to frame while it moves: %d of %d frames (%d frames in 8 s)" % [
 			changed, moving_frames, angles.size()])
 	_ok(lit, "its button is lit while it plays")
+	_ok(kept_off == 0, "drawn only: every part as built underneath and no step kept while it plays (%d)" % kept_off)
 	_ok(looping_said, "the pill says so: %s" % view.page_state()["play"]["says"])
 	var named: Dictionary = view.controls_by_name()
 	_ok(named.has("view_motion_1") and (named["view_motion_1"] as Button).text == MOTION,

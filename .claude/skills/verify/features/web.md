@@ -2481,9 +2481,12 @@ plan with Claude as the client.
   a link straight on to `/app?view=<id>&motion=…` (its social card stays the
   page's); `/app?view=<id>&motion=` works as well, and the address bar keeps
   it. The name is the motion's own, its slug, or words only one motion's name
-  has ("boom"). The joints are read at once instead of 2 s after, and once
-  the steps are worked out the motion plays there and back over and over, a
-  rest of 0.7 s at each end (`_looped`), drawn and never kept, its button lit
+  has ("boom"). The joints are read at once instead of 2 s after, and the
+  motion plays there and back over and over, a rest of 0.7 s at each end
+  (`_looped`), drawn only with nothing kept, so it does not wait for the
+  steps (`_link_draws_only`, `MotionPlayer.Paced.keep`; on the web the
+  house's took 8 s after it was shown; a sequence, or Reduce motion's
+  once, is kept as a press is and waits for them), its button lit
   and the pill saying "Playing “…” over and over. Press it to stop."; its
   button eases it back to as built from where it is (`_loop_home`), as do a
   drag, Reset, another motion or Build it; turning the view does not. Reduce
@@ -4960,7 +4963,8 @@ without motions; Opens with Playing “Lift the boom” once it has one, the
 link copied `…?motion=lift-the-boom`; that link (`--view --motion=boom`)
 drawing the boom off within 2 s of the model shown, its angle changing on 95%
 of the frames it moves and going up and down at least three times in 8 s
-past 10 degrees, the button lit and the words "over and over"; its button
+past 10 degrees, every part as built underneath and no step kept, the
+button lit and the words "over and over"; its button
 bringing it home angle by angle with every part as built; nothing written;
 `--motion=wings` opening still with the words and the motions it has, and
 nothing drawn off for 3 s; Reduce motion playing it once. Pictures in

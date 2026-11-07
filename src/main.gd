@@ -3936,9 +3936,8 @@ var _motion_frames: Array = []
 var _motion_began: int = 0
 var _motion_said: String = ""
 ## The link's motion (?motion=), by its name in the model, until it is
-## pressed: once the joints are read and the steps worked out from the
-## model as built (a press moves parts). Dropped by anything the visitor
-## presses first.
+## pressed: once the joints are read (_play_frame, _link_draws_only).
+## Dropped by anything the visitor presses first.
 var _motion_link: String = ""
 ## The motion played over and over, there and back with a rest at each end
 ## (_looped), until its button stops it: its name, "" for none, and the
@@ -3946,6 +3945,10 @@ var _motion_link: String = ""
 ## Reset, another motion or Build it stop it too, as they stop a press.
 var _motion_loop: String = ""
 var _motion_loop_depth: int = -1
+## Whether it stands where it ends, a step kept: a sequence's (each of its
+## motions begins where the one before left the model). One motion is
+## drawn only, the model left as built, so it need not wait for the steps.
+var _motion_loop_kept: bool = false
 ## How long a motion played over and over rests at each end, ms.
 const LOOP_REST_MS := 700
 ## A press that came while the grab was busy, or the shapes it is judged by
@@ -4096,12 +4099,24 @@ func _play_frame() -> void:
 		var name: String = _motion_due
 		_motion_due = ""
 		_play_motion(name, _motion_due_loop)
-	# The link's motion, once what moves is read and the steps are worked
-	# out from the model as built: played over and over, or once for a
+	# The link's motion, once what moves is read: played over and over, drawn
+	# only, while the steps are worked out; or once, kept, after them, for a
 	# visitor who asked for less motion (Settings, Reduce motion).
 	if not _motion_link.is_empty() and _play_depth >= 0 and not _play_reading \
-			and not _steps.is_starting() and not _build_mode.is_open():
+			and not _build_mode.is_open() and (not _steps.is_starting() or _link_draws_only()):
 		_play_motion(_motion_link, not ShellPrefs.reduce_motion())
+
+
+## Whether the link's motion, played now, is only drawn: over and over, and
+## one motion. Then nothing the steps are worked out from changes, and it
+## plays while they are (on the web they took 8 s after the house was
+## shown, 2026-11-06). Kept, as a press is, it waits for them: once, for a
+## visitor who asked for less motion, or a sequence.
+func _link_draws_only() -> bool:
+	if ShellPrefs.reduce_motion() or _world.motions == null:
+		return false
+	var motion: Motions.Motion = _world.motions.named(_motion_link)
+	return motion != null and _world.motions.played_by(motion, false).size() == 1
 
 
 ## What moves, read from the joints the grab found: said on the viewer.
@@ -4412,8 +4427,11 @@ func _play_motion(name: String, loop: bool = false) -> void:
 	# A sequence plays each of its motions from where the one before left
 	# the model, and backwards in reverse order: one step, as one motion.
 	# Worked out a slice a frame, so the page never waits long for it.
-	_motion_paced = _motions.pace(_world.motions.played_by(motion, back), back,
+	var order: Array = _world.motions.played_by(motion, back)
+	_motion_paced = _motions.pace(order, back,
 		"played %s%s" % [Motions.quoted(motion.name), " backwards" if back else ""])
+	# A link's one motion over and over is drawn only (_link_draws_only).
+	_motion_paced.keep = not (loop and not back and order.size() == 1)
 	_motion_pressed = {"motion": motion, "back": back, "first": first, "waited": now - first,
 		"loop": loop and not back}
 	_share_view.play_said(("Putting “%s” back…" if back else "Playing “%s”…") % motion.name)
@@ -4491,6 +4509,7 @@ func _pace_motion() -> void:
 	if bool(_motion_pressed["loop"]):
 		_motion_loop = motion.name
 		_motion_loop_depth = paced.depth
+		_motion_loop_kept = paced.keep
 		if not _view_phases.has("moving"):
 			_view_phases["moving"] = Time.get_ticks_msec() - _view_began
 		_share_view.show_looping(motion.name)
@@ -4698,6 +4717,9 @@ func _loop_home() -> void:
 func _motion_stop() -> void:
 	_motion_drop()
 	if not _motion_loop.is_empty():
+		# Drawn only, it never stood where it ends: its button goes out.
+		if not _motion_loop_kept:
+			_share_view.show_motion_out(_motion_loop, false)
 		_motion_loop = ""
 		_share_view.show_looping("")
 	if _motion_frames.is_empty():
