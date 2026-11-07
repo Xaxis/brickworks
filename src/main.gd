@@ -3009,8 +3009,8 @@ var _ahead_key: int = -1
 var _ahead_count: int = 0
 
 
-## The longest a frame's own work took, ms (Performance.TIME_PROCESS, the
-## most of the last second's frames), from the frame after the one the
+## The longest a frame took, ms (Performance.TIME_PROCESS, the most of the
+## last second's frames, their drawing too), from the frame after the one the
 ## model's parts were all here in (which opened it again) until 3 s after a
 ## link's motion moves, and the last phase before it: the phases' "longest".
 func _view_longest() -> void:
@@ -4071,11 +4071,12 @@ func _open_playing() -> void:
 	# How many of them were here as every part was, of how many.
 	_view_phases["shapes_here"] = [_motion_needs.filter(func(part_id: String) -> bool:
 		return Exact.known(_library, part_id)).size(), _motion_needs.size()]
-	# In one slice where it can be, not a slice a frame: the joints are read
-	# from them, and a frame given back was a frame of the house just opened
-	# again, 0.8 s and more in a browser drawing in software (playweb,
-	# 2026-11-07). A big model's still a slice at a time.
-	await _store.register_later(LINK_REGISTER_US)
+	# In a browser in one slice where it can be, not a slice a frame: the
+	# joints are read from them, and a frame given back was a frame of the
+	# house just opened again, 0.8 s and more drawn in software (playweb,
+	# 2026-11-07), as ModelStore.SHOWN_SLICE_US's are. A big model's still a
+	# slice at a time. Elsewhere a frame is a frame, as before.
+	await _store.register_later(LINK_REGISTER_US if OS.has_feature("web") else FramePace.LEAST_US)
 	_view_phases["registered"] = Time.get_ticks_msec() - _view_began
 	_view_frame("registered")
 	# The joints read once those shapes are here, or have been waited for as
@@ -4762,8 +4763,8 @@ func _motion_boxes(motion: Motions.Motion, coming: Array = []) -> Array:
 	return out
 
 
-## The least slice a link's model's parts are told to its lattice in, us
-## (_open_playing).
+## The least slice a link's model's parts are told to its lattice in, in a
+## browser, us (_open_playing).
 const LINK_REGISTER_US := 200000
 
 
