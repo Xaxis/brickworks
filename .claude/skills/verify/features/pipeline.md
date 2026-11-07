@@ -28,7 +28,16 @@ The Python side: LDraw in, mesh cache and catalogue out.
   1771 models, every file unchanged. `tests/test_refresh_catalogue.py` holds
   the knowledge step over stand-in tools (each made from the catalogue it was
   given; one failing, or writing an empty list, raised by name with its old
-  file kept).
+  file kept). It writes the checkout it is run in (`tree_of`: the nearest
+  folder up from the working directory with `project.godot`), whichever copy
+  of the script runs, and says which on its first line. Its `assets/generated`
+  may be a link (a staging tree's private catalogue); a file in it that links
+  out of that folder is refused before anything is written (`checkout.Outside`,
+  exit 1, `refresh_catalogue FAILED, nothing written: ... not written through`), as is
+  `write_colors` or the elements index given one by `build_meshes.py` or
+  `update_parts.py`. A refresh in a staging tree once wrote the shared
+  catalogue's `elements.json` through such a link (animals, 2026-11-07);
+  `tests/test_refresh_catalogue.py` holds it.
 - `update the parts`: `tools/update_parts.py` brings the library and the
   catalogue up to a month of LDraw without the full build. It fetches the
   official updates newer than the library's release notes (`models/NoteYYRRCA.txt`)
@@ -159,7 +168,15 @@ tools/export.sh linux                 # one of them
   interrupted run therefore costs the whole thing, but leaves the old catalogue
   consistent. `tools/merge_subbuild.py` exists for that: build the affected
   parts with `--only`, include a few hundred parts that did *not* change, and it
-  refuses to merge unless every one of those comes out identical.
+  refuses to merge unless every one of those comes out identical. It merges
+  into the checkout it is run in (`tools/checkout.py`'s `tree_of`, as the
+  refresh does) and says which; a catalogue file or folder it would write
+  that links out of the folder it is named in (the catalogue, `parts/`,
+  `exact/`, a mesh or an exact shape under a new mesh) refuses the whole
+  merge before anything is written (`merge_subbuild FAILED, nothing written:
+  ... not written through`, exit 1). It merged into its script's own
+  checkout before, a worktree's link to the shared catalogue (2026-11-07);
+  `tests/test_merge_subbuild.py` holds both, the link cases one each.
 
 - **An LDraw update is minutes, not the full build (2026-10-22).** On a copy
   of the library and catalogue, the unofficial zip of 2026-10-22 (169 new and

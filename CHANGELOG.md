@@ -20,6 +20,7 @@ whole cycle.
   Brickworks' corner view draws it, where it showed the type's icon. Parts
   the library has not got are left out of the picture; a file with none it
   knows keeps the icon. Windows comes next.
+
 ## [0.19.0] - 2026-11-07
 
 A booklet made from someone else's file can no longer run anything in your
