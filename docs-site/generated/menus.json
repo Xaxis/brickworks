@@ -944,40 +944,46 @@
 					"words": "Booklet page",
 					"items": [
 						{
-							"name": "booklet_turn_left",
-							"words": "Turn the view left",
-							"key": "",
-							"tip": "The model turned 45 degrees for this step's picture, and the steps after it"
-						},
-						{
-							"name": "booklet_turn_right",
-							"words": "Turn the view right",
-							"key": "",
-							"tip": "The model turned 45 degrees the other way for this step's picture"
-						},
-						{
-							"name": "booklet_tilt_up",
-							"words": "Look from higher",
-							"key": "",
-							"tip": "This step's picture from 15 degrees higher"
-						},
-						{
-							"name": "booklet_tilt_down",
-							"words": "Look from lower",
-							"key": "",
-							"tip": "This step's picture from 15 degrees lower"
-						},
-						{
-							"name": "booklet_this_view",
-							"words": "Use this view for the step",
-							"key": "",
-							"tip": "This step's picture drawn from the angle the window looks from now"
-						},
-						{
-							"name": "booklet_usual_view",
-							"words": "Usual view",
-							"key": "",
-							"tip": "This step drawn from the booklet's usual angle again"
+							"submenu": "booklet_view",
+							"words": "Step view",
+							"items": [
+								{
+									"name": "booklet_turn_left",
+									"words": "Turn the view left",
+									"key": "",
+									"tip": "The model turned 45 degrees for this step's picture, and the steps after it"
+								},
+								{
+									"name": "booklet_turn_right",
+									"words": "Turn the view right",
+									"key": "",
+									"tip": "The model turned 45 degrees the other way for this step's picture"
+								},
+								{
+									"name": "booklet_tilt_up",
+									"words": "Look from higher",
+									"key": "",
+									"tip": "This step's picture from 15 degrees higher"
+								},
+								{
+									"name": "booklet_tilt_down",
+									"words": "Look from lower",
+									"key": "",
+									"tip": "This step's picture from 15 degrees lower"
+								},
+								{
+									"name": "booklet_this_view",
+									"words": "Use this view for the step",
+									"key": "",
+									"tip": "This step's picture drawn from the angle the window looks from now"
+								},
+								{
+									"name": "booklet_usual_view",
+									"words": "Usual view",
+									"key": "",
+									"tip": "This step drawn from the booklet's usual angle again"
+								}
+							]
 						},
 						{
 							"line": true
