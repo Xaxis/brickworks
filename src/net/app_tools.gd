@@ -267,7 +267,7 @@ model, by a name, as View › Viewpoint › Save this view… does, with a key o
 its own; remove=true takes one out. in_view lists those kept, and \
 view_model, render_model and render_queue draw from one by its name (view=).
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
-(GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
+(GLB, glTF, OBJ, STL, 3MF), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, a LEGO® Pick a Brick list, or the building instructions as a \
 booklet, written where Export writes; all_models is every saved model in one .zip.
  - brickify: a 3D model (OBJ, STL, glTF, PLY, 3MF, VOX, FBX) laid in LEGO® bricks at the size asked, \
@@ -955,7 +955,8 @@ func definitions() -> Array:
 				+ "with its sub-models, with its build steps), studio (a BrickLink Studio .io), "
 				+ "a 3D file at real size — glb (one file: Blender, three.js, AR; any size of "
 				+ "model), gltf (the same as text), obj (with an .mtl of its colours) or stl "
-				+ "(one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are "
+				+ "(one mesh in mm, Z up, to 3D print) or 3mf (to 3D print in colour: an object a "
+				+ "colour, in mm on the bed); obj, stl and 3mf hold every triangle and are "
 				+ "capped — picture (.png), bricklink (a wanted list), rebrickable (a parts "
 				+ "list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and "
 				+ "quantities, 400 lines a file; the answer names the parts with no element "
@@ -969,7 +970,7 @@ func definitions() -> Array:
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
-					"stl", "picture", "bricklink", "rebrickable", "instructions", "all_models",
+					"stl", "3mf", "picture", "bricklink", "rebrickable", "instructions", "all_models",
 					"pickabrick"]},
 				"condition": {"type": "string", "enum": ["new", "used", "any"],
 					"description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)"},
@@ -4041,7 +4042,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			said = await bar.export_now(exports.folder)
 		"studio":
 			said = await exports.studio_io()
-		"glb", "gltf", "obj", "stl":
+		"glb", "gltf", "obj", "stl", "3mf":
 			said = await exports.model_3d(str(input["format"]))
 		"picture":
 			if DisplayServer.get_name() == "headless":
@@ -4066,7 +4067,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
 				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
 		_:
-			return ("format is ldraw, studio, glb, gltf, obj, stl, picture, bricklink, rebrickable, "
+			return ("format is ldraw, studio, glb, gltf, obj, stl, 3mf, picture, bricklink, rebrickable, "
 				+ "pickabrick, instructions or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
 

@@ -1079,7 +1079,7 @@ func _define() -> void:
 	_add("export_io", "BrickLink Studio model (.io)", 0,
 		func() -> void: await app.get("_exports").studio_io(true), something)
 	# src/ui/exports.gd, src/parts/mesh_export.gd.
-	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
+	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl, .3mf)…", 0,
 		func() -> void: app.get("_exports").ask_model_3d(), something,
 		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
