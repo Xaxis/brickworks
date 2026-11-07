@@ -679,9 +679,14 @@ static func _wrap_words(root: Node, across: float) -> bool:
 		if label.get_minimum_size().x <= across and not in_row:
 			continue
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		if in_row:
+		# A row, or a row that flows, lays a label at its least width, and a
+		# wrapped label's is one letter: My collection's hint under Loose
+		# parts ran down a 768 x 1024 tablet a letter a line. There it keeps
+		# a share of the width and takes what its row leaves it.
+		var shares: bool = in_row or label.get_parent() is FlowContainer
+		if shares:
 			label.size_flags_horizontal |= Control.SIZE_EXPAND
-		label.custom_minimum_size.x = across * 0.3 if in_row else minf(label.custom_minimum_size.x, across)
+		label.custom_minimum_size.x = across * 0.3 if shares else minf(label.custom_minimum_size.x, across)
 		wrapped = true
 	return wrapped
 

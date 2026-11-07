@@ -46,7 +46,7 @@ Measured at the default setting, a small house took 11 minutes and $2.40, and a 
 
 ## Another AI on your own key {#other-ai}
 
-In the desktop app, **Tools › Settings…**, **AI…** sets another AI on your own key, from OpenAI, Google Gemini, OpenRouter and others: see [Another AI on your own key](/docs/ai#other-ais).
+In the desktop app, coming soon, **Tools › Settings…**, **AI…** sets another AI on your own key, from OpenAI, Google Gemini, OpenRouter and others: see [Another AI on your own key](/docs/ai#other-ais).
 
 > [!NOTE]
 > A key stays in your browser or on your computer, and is sent only to its own provider. The page's security policy refuses to send anything anywhere but its own short list, so a key has nowhere else to go.

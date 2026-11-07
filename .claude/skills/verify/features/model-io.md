@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader -->
 
 ## Sub-features
 
@@ -194,6 +194,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   teeth's ratio) and 42054-1's copied turntable top in Simulate; `-- --gears`
   lists every OMR copy of a part the gear table keys and whether it is read
   so (60 in 44 files, 55, ~1 min).
+- `a line placing a part at no size` (`LdrModel.has_size`, `parse`;
+  `Together._as_state`): Studio and LDCad write a matrix with a row or a
+  column of zeros where a flexible part's path doubles back (42125-1's
+  flexible axles and hoses, 42108-1's rope: 653 lines in 7 OMR sets). Such a
+  line places nothing and is read as no part, as a line of no colour is; the
+  kept file writes it back as it was (`SourceFile`), and a Build together
+  state at no size is refused. Read as parts they had no inverse, and
+  `Mechanism._rest_on_studs` logged 15 to 20 `det == 0` engine errors in
+  `grab_probe`'s groups case (APP_UX6 #23). `no_size_probe` counts the lines
+  from the sets' text, checks none is read, opens 42125-1 (every part's place
+  invertible, its gears read) and saves it with the 4 lines byte for byte;
+  then a grab_probe log has no `det == 0` (~1 min).
 - `table race` (`Mechanism.table`, `Flex.kind_of_piece`, `Exact._sphere`,
   `Exact.shape_for`, `Style.norms`, `Collection._sizes`): a static table
   read at first use, and reached by a worker, is either made as its class
@@ -722,7 +734,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   sub-model's steps with the author's.
 - `3d model export` (`src/parts/mesh_export.gd`, `Exports.model_3d` and
   `ask_model_3d` in `src/ui/exports.gd`; File, Export → 3D model (.glb, .gltf,
-  .obj, .stl)…, and `export_model` format `glb`/`gltf`/`obj`/`stl` over MCP):
+  .obj, .stl, .3mf)…, and `export_model` format `glb`/`gltf`/`obj`/`stl`/`3mf`
+  over MCP; the 3MF is `src/parts/mesh_3mf.gd`, below):
   a dialog with GLB chosen (or the format chosen last) and a line on what each
   is for and, for OBJ and STL, the cap and this model's triangles; Export
   writes it with the Working bar and Cancel. Real size: glTF and OBJ in
@@ -767,6 +780,41 @@ Whether what you built is still there tomorrow, and still means the same thing.
   LDraw's own geometry (4600 is open underneath by 0.8 mm, 3829c01 by
   1.6 mm), written as LDraw draws them, for a slicer to mend; the probe
   checks the file adds no gap the part does not have.
+- `print3mf probe` and `3mf strict reader` (APP_UX6 #18; `src/parts/mesh_3mf.gd`
+  `Mesh3mf`, through `MeshExport.write`'s "3mf"; `tools/print3mf/check_3mf.py`
+  with the core's own XSD `tools/print3mf/3mf_core.xsd`): the model as a 3MF
+  for a printer that prints in several colours. One object (a mesh, type
+  model) for each colour a part is placed in, named for it, its `pid`/`pindex`
+  a base material whose `displaycolor` is `PartLibrary.color`'s RGB (a
+  see-through colour's alpha after it); each object a build item whose
+  transform moves the model's box to the bed's corner (the positive octant,
+  lowest point on the bed); millimetres, Z up (`MeshExport.Z_UP`). A part's
+  surface in its own colour goes to its placed colour's object; a moulded-
+  colour surface that closes on itself (`Mesh3mf.solid`: a tenth of its edges
+  open at most, its vector area under 5% of its area; 3829c01's wheel) to its
+  own colour's; any other (a print) stays on the body, each triangle naming
+  its colour (`pid`, `p1`). Places welded within a part at 1/64 LDU, repeated
+  corners dropped; a part placed mirrored turned back; two-sided (non-BFC)
+  triangles turned out (`Mesh3mf._face_out`: across shared edges from the
+  certified ones, then each unreached shell by its volume about the part's
+  middle). Capped at 1,000,000 triangles like OBJ. Parts are LDraw's shapes,
+  closed but not stitched (a stud stands on the top face), so lib3mf's
+  `IsManifoldAndOriented` is false for most objects: the core's manifold rule
+  is not met, and every slicer fills the shells as solids. **Check:**
+  `tools/probe.sh print3mf_probe` (headless, a few minutes, of which the
+  reader is most; needs `uvx` and, once, the network for lib3mf 2.5.0,
+  xmlschema 4.3.2 and numpy 2.5.4, kept in uv's cache). The reader alone:
+  `uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4
+  python3 -I tools/print3mf/check_3mf.py FILE.3mf` prints a JSON report and
+  exits 1 on any error. Its winding test (three tilted rays from 1 µm in
+  front of each triangle and three from behind, the positive fill rule
+  against the triangle's own shell): facing in when empty behind and filled
+  or below nought in front; internal when filled both sides (LDraw's shapes
+  overlapping, solid whichever way they face). On 150 random BFC-certified
+  library parts 0.15% of triangles read as facing in (open or overlapping
+  shapes the rays cannot judge) and 92.5% once turned inside out, so a
+  model's count is 0 only when it is right; the car's is 0, with 12
+  internal. See `bench/results/print3mf-2026-11-07/`.
 - `open an ldd model` (`src/parts/ldd_lxf.gd`, `src/ui/model_file_picker.gd`):
   File, Import → LEGO Digital Designer model, or Open → From a file, reads
   LDD's `.lxf` (a zip around LXFML; the zip is read by `StudioIo`'s reader) or
@@ -1136,6 +1184,7 @@ godot --headless --path . --script src/dev/carried_fetch_probe.gd -- --census be
 godot --headless --path . --script src/dev/own_copies_probe.gd   # 42125-1's own copies of LEGO parts read as those parts: joints, exact shapes, tie rods held, written back as they came; copied gears turning theirs (~3 min)
 godot --headless --path . --script src/dev/own_copies_probe.gd -- --gears   # ...every OMR copy of a gear, turntable, ring, rack or actuator, read as its part or its own
 godot --headless --path . --script src/dev/own_copies_probe.gd -- --survey --shard=0/2   # ...and how many of the OMR's copies are read so (run 1/2 too, ~4 min each)
+godot --headless --path . --script src/dev/no_size_probe.gd   # a line placing a part at no size (Studio's and LDCad's where a flexible part doubles back) places nothing and is saved back as it was; grab_probe's log then has no 'det == 0' (mechdet)
 godot --headless --path . --script src/dev/carried_at_once_probe.gd -- rounds=12   # files' carried parts built on every worker at once, each as built alone
 godot --headless --path . --script src/dev/carried_at_once_probe.gd -- dir=$PWD/.scratch-data/godot/app_userdata/Brickworks/custom_parts   # ...the parts kept from files, as start-up builds them
 godot --headless --path . --script src/dev/worker_first_run_probe.gd   # cold operators on every worker at once, through first_here: none wrong, no crash (~70 s)

@@ -1751,6 +1751,8 @@ func _ready() -> void:
 	IdleDraw.for_the_app()
 	Tooltips.let_clicks_through(get_window())
 	Tooltips.keep_inside(get_window())
+	# The window's close button closes it with a dialog up too.
+	ModalDialogs.for_the_app(get_window())
 	# Before anything draws: the controls strip reads these to say what
 	# the middle button does, and a strip built from the defaults and
 	# never rebuilt would be wrong for everyone who has changed them.
@@ -7256,8 +7258,11 @@ func _fit_bin(opening: SideDock = null) -> void:
 	var share: float = MODEL_SHARE
 	if _columns == "wide":
 		share = BOTH_SHARE if right_open else WIDE_SHARE
+	# And the tools' column's room out of the bin's, not the model's: beside
+	# Stress's panel the bin kept six across at 1280 x 720, and the row was
+	# wider than the window (APP_UX6 timelinefit).
 	var room: float = units * (1.0 - share) - SideDock.RAIL_WIDTH * rails \
-		- (SIDE_WIDE if _columns == "wide" and right_open else 0.0)
+		- (SIDE_WIDE if _columns == "wide" and right_open else 0.0) - _tool_room()
 	_bin_dock.set_open_width(_parts_wide(maxi(LEAST_ACROSS,
 		floori((room - BIN_EDGES) / TILE_PITCH))))
 	if _bin_props != null:
@@ -7268,6 +7273,36 @@ func _fit_bin(opening: SideDock = null) -> void:
 ## The bin's column wide enough for this many tiles across.
 static func _parts_wide(across: int) -> float:
 	return across * TILE_PITCH + BIN_EDGES
+
+
+## The least the model's room is left beside the columns, in the interface's
+## units: 400 px at the smallest the interface is drawn (MOST_SHRUNK). Where
+## both columns show, one opened beside the other and the tools' column that
+## would leave the model less folds the other, as where they take turns: at
+## 1400 x 900 the bin, Stress and the assistant together left it 393 px.
+const MODEL_LEAST := 440.0
+
+
+## How much of the row beside the model the tools' column takes: its width
+## while it stands beside the model, and none while it is folded or is a
+## sheet under the model (a touch screen held upright).
+func _tool_room() -> float:
+	if _tool_column == null or not _tool_column.visible or _tool_sheet:
+		return 0.0
+	return maxf(SIMULATE_WIDTH, _tool_column.get_combined_minimum_size().x)
+
+
+## The model's room, in units, were [param opening] open beside what is open
+## now: the bin at its narrowest, the right-hand column, the tools' column
+## and the rails.
+func _room_beside(opening: SideDock) -> float:
+	var units: float = get_viewport().get_visible_rect().size.x
+	var rails: float = 2.0 if _props_dock != null or _chat_dock.visible else 1.0
+	var bin: bool = opening == _bin_dock or _bin_dock.is_open()
+	var right: bool = opening != _bin_dock or _chat_dock.is_open() \
+		or _props_dock != null and _props_dock.is_open()
+	return units - SideDock.RAIL_WIDTH * rails - _tool_room() \
+		- (_parts_wide(LEAST_ACROSS) if bin else 0.0) - (SIDE_WIDE if right else 0.0)
 
 
 ## The part of the window the model is seen in, for the camera to centre
@@ -7321,6 +7356,8 @@ func _tool_column_shown() -> void:
 		return
 	var room: Rect2 = _model_rect()
 	_tool_column.visible = open
+	# The bin's width beside it, or back without it, before it is opened.
+	_fit_bin()
 	if open and _bin_dock.is_open() and _columns != "drawers":
 		_tool_folded_parts = true
 		_arranging = true
@@ -7417,13 +7454,18 @@ func _column_opening(dock: SideDock) -> void:
 	if _arranging:
 		return
 	# Where both show, the right-hand column opens beside the bin, which
-	# gives it the room (_fit_bin).
-	if _columns == "wide":
+	# gives it the room (_fit_bin), while the model keeps its least beside
+	# them and the tools' column; where it would not, the other side's
+	# folds, as where they take turns.
+	if _columns == "wide" and _room_beside(dock) >= MODEL_LEAST:
 		_fit_bin(dock)
 		return
 	for other: SideDock in _docks():
 		if (other == _bin_dock) != (dock == _bin_dock):
 			other.set_open(false)
+	# Fitted with the other side folded, before this one slides out.
+	if _columns == "wide":
+		_fit_bin(dock)
 
 
 ## A column opened or folded: kept as the person's layout for a window of
@@ -9639,6 +9681,9 @@ func _dress_for_phone() -> void:
 	_gizmo.visible = false
 	_place_tool_column()
 	get_viewport().size_changed.connect(_place_tool_column)
+	# And as a drawer, the parts or the column itself comes and goes beside
+	# the model on a tablet: the room the column would leave the model.
+	(_over_model.get_parent() as Control).resized.connect(_place_tool_column, CONNECT_DEFERRED)
 	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
 	_bin_dock.set_phone_rail(rail, float(_phone.foot_height()))
 	_chat_dock.set_phone_rail(rail, float(_phone.foot_height()))
@@ -9727,9 +9772,15 @@ func _size_for_a_finger() -> void:
 ## Simulate's took the model off a 390-point phone, and Colour the hidden
 ## parts' its own buttons off a 768-point tablet. Placed again as the
 ## screen turns.
+##
+## And under the model on a tablet on its side while, beside it, the column
+## would leave the model less than its least (MODEL_LEAST): with Stress
+## beside it and a drawer or the parts out, a 1024 x 768 tablet's model had
+## 233 px between them (APP_UX6 timelinefit). Back beside it when the
+## drawer goes. Nothing the person opened is put away for the room.
 func _place_tool_column() -> void:
 	var screen: Vector2 = get_viewport().get_visible_rect().size
-	var under: bool = screen.y > screen.x
+	var under: bool = screen.y > screen.x or Phone.wide() and _tool_crowds_model()
 	# Beside the model it ends above the foot's row of tools, as the drawers
 	# do (SideDock.set_phone_rail): behind it, the panel's last lines were.
 	(_tool_column.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = \
@@ -9746,6 +9797,17 @@ func _place_tool_column() -> void:
 		beside.move_child(_tool_column, _bin_dock.get_index() + 1)
 	_tool_column.custom_minimum_size = Vector2(0.0 if under else SIMULATE_WIDTH, 0.0)
 	_tool_column.size_flags_stretch_ratio = PHONE_SHEET if under else 1.0
+
+
+## Whether the tools' column, shown beside the model, leaves it less than
+## its least room: as it stands beside it, or, from under it, as it would.
+func _tool_crowds_model() -> bool:
+	if _tool_column == null or not _tool_column.visible:
+		return false
+	var room: float = _model_rect().size.x
+	if _tool_sheet:
+		room -= SIMULATE_WIDTH
+	return room < MODEL_LEAST
 
 
 ## One of the tools' panels on a touch screen, wider than the column's

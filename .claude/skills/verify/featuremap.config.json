@@ -463,7 +463,7 @@
       "kind": "cli",
       "label": "download page check",
       "entry": "tools/web/download_check.mjs",
-      "reach": "node tools/web/download_check.mjs --manifest=FILE --shots=shots",
+      "reach": "node tools/web/download_check.mjs --shots=shots",
       "area": "release"
     },
     {
@@ -2290,7 +2290,7 @@
       "kind": "lib",
       "label": "quitting cleanly",
       "entry": "src/render/worker_tasks.gd",
-      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)",
+      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)  /  tools/probe.sh dialog_close_probe  (windowed: the close button, sent as WM_DELETE_WINDOW, with nothing up, Import's file chooser, Save as, New's question and About up: each heard and quit within 2 s, the process out within 5 s, exit 0; the dialog still holds the window against a click and Ctrl+N beside it)",
       "area": "view"
     },
     {
@@ -4754,7 +4754,7 @@
       "kind": "ui",
       "label": "model size and weight",
       "entry": "src/assembly/model_size.gd",
-      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4½ × 10.8 studs, 15 plates high · 3.6 × 8.64 × 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/)",
+      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4.5 × 10.8 studs, 15 plates high · 3.60 × 8.64 × 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/); tools/probe.sh weighsure_probe   (the weight after the counts, \"61 bricks · stands up · 52 g\", the model's in every frame, parts on their way counted; one style of number a line. Windowed, pictures in shots/weighsure/)",
       "area": "building"
     },
     {
@@ -4819,6 +4819,76 @@
       "entry": "src/dev/playlink_probe.gd",
       "reach": "tools/probe.sh playlink_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/playlink_probe.gd; PROBE_SIZE=1400x900, 390x844, 1024x768)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a session keeps a view over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   (save_view {\"name\": NAME} keeps the window's view as Save this view… does, answered with the model from there; in_view lists the views with their keys; its Alt-Shift key and render_model view= back within 0.1° and 0.1 LDU; remove=true; highlight=/xray= take 4070 quoted or not, on the MCP walk's Pods)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "a line placing a part at no size",
+      "entry": "src/dev/no_size_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/no_size_probe.gd   (a type-1 line whose matrix has no size, as Studio and LDCad write where a flexible part doubles back, places nothing (LdrModel.has_size): the 653 such lines of 7 OMR sets counted from their text and none read; 42125-1 opened with every part's place invertible, its gears read, its 4 such lines saved back byte for byte; a Build together state at no size refused)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "coming soon check",
+      "entry": "tools/web/coming_soon_check.mjs",
+      "reach": "node tools/web/coming_soon_check.mjs [--static] [--url=DEPLOYMENT] [--shots=DIR]",
+      "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "compare two sets or models",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare two sets or models…: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO® Pick a Brick)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "parts compare",
+      "entry": "src/parts/parts_compare.gd",
+      "reach": "tools/probe.sh comparesets_probe   (PartsCompare.between: Collection.allocate's matching, own part and colour then another moulding; a set's spares and the open model's stickers and made parts not counted; a set under test refused)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "comparesets probe",
+      "entry": "src/dev/comparesets_probe.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR",
+      "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "two fingers' twist",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "on a phone, a tablet or a touchscreen: two fingers turned about each other turn the view round the up by as much, about what is between them, once they have turned 10 degrees; a pinch and a slide as before  (CadCamera._twist, _two_fingers; tools/probe.sh twist_probe)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "twist probe",
+      "entry": "src/dev/twist_probe.gd",
+      "reach": "tools/probe.sh twist_probe; PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet; PROBE_SIZE=1280x720 or 1400x900 tools/probe.sh twist_probe   (windowed, 390x844 by its header; pictures in shots/twist/)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "print3mf probe",
+      "entry": "src/dev/print3mf_probe.gd",
+      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "3mf strict reader",
+      "entry": "tools/print3mf/check_3mf.py",
+      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
+      "area": "model-io"
     }
   ]
 }

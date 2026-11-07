@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe -->
 
 ## Sub-features
 
@@ -170,6 +170,46 @@ picture the assistant is shown.
   the page where one is drawn (`tooltip` in `window.brickworksControls`). A
   bin tile's reached 125 px over the view, and with another tile scrolled
   under the pointer read as the view moving on the grid's light floor (rel-m255).
+- `two fingers' twist` (`CadCamera._twist`, `_two_fingers`; APP_UX6 twist):
+  on a phone, a tablet or a touchscreen, two fingers turned about each other
+  turn the view round the up (the turntable's, Build it's turned one too) by
+  as much as the line between them turned, about what was between them as
+  they began to turn, which stays between them; the model goes round the way
+  the fingers did on the screen, seen from above or below (`_twist_way`). It
+  waits until the line has turned 10° and each finger has gone `TAP_SLOP`
+  round (`TWIST_START`), then takes the whole turn, so a pinch or a slide that
+  turns real fingers a few degrees turns nothing and a quarter turn is a
+  quarter. Read once a frame from where both fingers are, as is a phone's turn
+  by the point between two fingers (`TWO_FINGER_TURN`, 0.016 of the way):
+  applied a finger's event at a time, half of that turn was stopped at
+  straight down and the other half was not, so a twist seen from above tipped
+  the view. While two fingers are down the pointer the engine raises from the
+  first (`InputEvent.DEVICE_ID_EMULATION`) is not the camera's: it turned the
+  view as far as that finger went, so on pre261 a quarter twist swung a
+  phone's view 74° round and tipped it to look straight down, and a pinch
+  turned it as far as the first finger spread (59° for the probe's). The pair's slide keeps
+  its speed: 0.016 is the fingers' own 0.006 and the 0.01 that pointer added.
+  One finger is as it was, both shares. The pinch stays with the events (a
+  ratio, whichever finger comes first). Not over the second view, which is
+  square on. A trackpad's twist has no event in Godot 4.7
+  (`InputEventRotateGesture` does not exist), so it is fingers on glass only.
+- `twist probe` (`src/dev/twist_probe.gd`, `tools/probe.sh twist_probe`,
+  windowed on the GPU at 390 x 844 laid out for a phone; `PROBE_SIZE=1024x768
+  tools/probe.sh twist_probe --tablet` a tablet's, `PROBE_SIZE=1280x720` or
+  `1400x900` the desktop's with a touchscreen): an empty model with two
+  crossed 2 x 4s, fingers as the window hands them over, a frame at a time,
+  each starting and stopping at rest. Two fingers turned a quarter turn round
+  the model turn the view 90° ±5° round the up, the tilt within 0.5°, what
+  was between them within 2% of the room of where it was, and back again;
+  from above and from below a point beside the pivot goes 90° ±5° round on
+  the screen the way the fingers went, the view still straight down or up; a
+  pinch to three times as wide, two fingers slid 150 units and one finger
+  dragged 150 within 1% of what pre261 did (`SAME` in the probe, from its
+  `measure` lines there), a pinch and one turned 6° turning nothing; a
+  quarter turn with a spread to twice as wide does both; the model as it was
+  after each. A `note` line tells what a twist with the first finger on a
+  part does, unjudged. Pictures in `shots/twist/`: the model before and after
+  the quarter turn, and from above after it.
 - `centred on the model's column` (`CadCamera.seen`, `Main._model_rect`): the
   3D draws across the whole window, behind the columns, and the view is
   centred on the model's part of it (`model_cover`'s "view": between the
@@ -323,6 +363,29 @@ picture the assistant is shown.
   left to the engine: every task, group and thread the app sets going goes
   through `WorkerTasks` (`add`, `add_group`, `start`) and is collected as the
   tree goes.
+  And with a dialog of the app's up (2026-11-07, `src/ui/modal_dialogs.gd`,
+  `ModalDialogs`; `bench/results/dialogclose-2026-11-07/`): the engine drops a
+  close request sent to a window with an exclusive child (`Window`'s
+  `_event_callback`), and every AcceptDialog, ConfirmationDialog and
+  FileDialog of the main window was one, so with Godot's own file dialog up
+  (no xdg portal; File, Open's and Import's always) or any question, the
+  title bar's X, Alt+F4 and the session ending did nothing until it was
+  answered (desktop018, 0.18.0 and 0.19.0). Now nothing is exclusive to the
+  main window: a dialog that would be is made not exclusive the frame it is
+  up, and `ModalDialogs`, the root's last node, takes the events the main
+  window would have refused while one is, and gives the dialog the keys back
+  on a press beside it. A dialog's own questions stay exclusive to it, and
+  Reference picture stays not modal. The app still asks nothing as it
+  closes: the model is kept as the working model. `dialog_close_probe`
+  (windowed, 1280x720, in the suite) sends WM_DELETE_WINDOW from outside
+  (`tools/x11_close.py`, after making the atoms a window manager makes) with
+  nothing up, Import's file chooser, Save as…, New's question and About: each
+  heard, its scene tree gone within 2 s and the process within 5 s (0.7 to
+  1.8 s seen, the longer under twice the box's load), exit 0, no abort; the
+  part taken off kept;
+  a click on File beside the chooser opens no menu, and Ctrl+N starts
+  nothing. On pre261 every dialog way was still up 5 s after, exit 3.
+  `quit_probe`'s close only emits the root's signal, which never met this.
 - `text fields give the keys back` (`src/ui/focus_guard.gd`): Enter, Tab,
   Escape or a press anywhere outside a text field ends the typing, in every
   field — the model's name, the part search, the brief, the properties'
@@ -992,7 +1055,16 @@ picture the assistant is shown.
   forward and back, pauses, jumps to both ends, checks As made is placement
   order, and that History shows a removed brick before its removal, not after,
   that a save made with History open writes the model as it stands, and that it
-  leaves nothing behind.
+  leaves nothing behind. Every row of the bar wraps where the model's room is
+  narrower than the row, as its booklet row always did (`StepsBar._build`,
+  HFlowContainers): the buttons, with Instructions and Done together at the
+  right-hand end of whichever line they fall on; the step's words under the
+  slider (`SLIDER_LEAST`); the author's step edits. In one line each, the bar's
+  least width was its whole row of buttons, and with the bin, Stress and the
+  assistant beside the model it held the layout wider than a 1280 x 720 window,
+  Done, Instructions, Account and the status bar's right half past its edge
+  (APP_UX6 timelinefit). With room for one line it is one line, as it was.
+  Probe: `timelinefit_probe` and `timelinefit_tablet_probe`.
 - `build steps`: the model split into steps a person could follow in order,
   nothing placed before what holds it. On the timeline (B) a step, forwards or
   back, is a count raised or lowered in each batch (`StepsBar.reveal_upto`,
@@ -1297,7 +1369,22 @@ picture the assistant is shown.
   what is under the pointer at most 3 times in a 30-frame turn (the press),
   every part's lattice cover its part's own after the moves, undo and redo,
   and what the web build tells the page of the sub-assemblies kept while
-  nothing changes (`Main._page_assemblies`). And that what the aiming asks,
+  nothing changes (`Main._page_assemblies`). Every time is the main thread's
+  own (`_clock`: the clock less its run delay, `/proc/thread-self/schedstat`'s
+  second number), so the box's other work holding it back is left out; and
+  a ratio over its bar the first time is said (`over`, not FAIL) and timed
+  again (`_again`): both models made, or both real sets opened, once more,
+  one after the other, judged on that pair (`..., timed again`). A load
+  spike on the big model's sweep alone read as aiming a figure growing 3.4x
+  on rel-m271's train (1.19 ms -> 4.11 ms; m270 0.7x, m268 1.1x), and a CPU
+  sharing its core and memory with other work slows even the thread's own
+  time. Proved 2026-11-07 (`bench/results/aimflake-2026-11-07/` of the main
+  checkout): 32 busy processes from the big model's open to its end failed
+  pre261 3 of 3 (aiming a figure 3.4x, 0.76 -> 3.42 ms; the move 13.3x), and
+  this 5 of 5 (64 of them 2 of 2, 24 streaming memory 5 of 5); a loop over
+  every part's box planted in `Main._refresh_preview` failed it 10 of 10,
+  quiet and under load all the run (aiming a figure 3.3x-5.7x timed again).
+  And that what the aiming asks,
   the parts near the line kept by where they are (`BrickGrid`), finds what
   asking every one did: the builder's connectors are `JointSnap.sites_in`'s
   in its order, the end a pin is aimed at with and without the grid the
@@ -2730,6 +2817,18 @@ tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes
 # Pictures in shots/striproom/<size>[_phone|_tablet]/: look at the strip.
 tools/probe.sh striproom && PROBE_SIZE=1400x900 tools/probe.sh striproom
 tools/probe.sh striproom_phone && tools/probe.sh striproom_tablet
+# The timeline, the top bar and the status bar inside the window (APP_UX6
+# timelinefit): the car, a wheel rim picked out, the timeline, Stress, the
+# assistant and the bin opened in two orders at 1280 x 720 then 1400 x 900 (one
+# window, made each size): after each, every control of the timeline, the
+# menus, the toolbar and the status bar, and every column and rail, inside the
+# window, 0 px past its right edge; Instructions clicked opens its Save dialog,
+# Done clicked puts the timeline away; the model's room in the window 400 px or
+# more; the same in the author's steps; the timeline alone on one line. The
+# tablet's: the parts sheet, the tree and properties' drawer, Stress and the
+# assistant, by taps. Pictures in shots/timelinefit/<size>[_tablet]/: look at
+# the foot of the window and its right edge.
+tools/probe.sh timelinefit && tools/probe.sh timelinefit_tablet
 tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied into an older checkout: tools/probe.sh cutshapes_kept -- --older=/tmp/cut_kept
 # Saved views and Render presets (APP_UX5 #8): three views saved by Alt-V,
 # the model saved, closed and opened, each back by its Alt-Shift key within
@@ -2737,6 +2836,12 @@ tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied
 # each the window's from there; view_model and render_model view= in one
 # call; a preset chosen again in 2 actions. Look at shots/savedviews/.
 tools/probe.sh savedviews -- --keep=/tmp/views_kept && PROBE_SIZE=1400x900 tools/probe.sh savedviews   # then, the probe copied into an older checkout: tools/probe.sh savedviews -- --older=/tmp/views_kept
+# Two fingers turned about each other (APP_UX6 twist): a quarter turn 90° ±5°
+# round the up about what is between them, the model going round as the
+# fingers went from above and below; a pinch, a slide and a drag as pre261's
+# within 1%. Phone by its header, then a tablet's and the desktop's layouts.
+# Look at shots/twist/.
+tools/probe.sh twist_probe && PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet && PROBE_SIZE=1280x720 tools/probe.sh twist_probe && PROBE_SIZE=1400x900 tools/probe.sh twist_probe
 # View, Stress: a loaded 2x10 cantilever's root red on 1x1s, plain on 2x2s; a
 # bare one and a bonded wall not red; nothing painted; the shipped models none
 # red. Then in the window: the menu, the tint, what pointing says, Ask Claude

@@ -1,43 +1,35 @@
 <!DOCTYPE html>
 <!--
-  The desktop downloads, at /download (and /download.html, which
-  redirects here).
+  The desktop app, at /download (and /download.html, which redirects
+  here): coming soon.
 
-  One button for the computer you are on, the other systems a click away,
-  and what only some people need (the first launch's steps, the
-  checksums) folded away under it. The owner found the page that listed
-  everything at once "way too verbose" (2026-10-20).
+  The owner, 2026-11-07: "make the downloadable access 'Coming soon' or
+  something of that sort, since we can't properly support it yet." So this
+  page says the desktop app is coming soon and offers the one way in today,
+  Brickworks in the browser, as its one button. No installer, no file
+  name, no button for a system, and nothing asked of /releases.json or
+  GitHub: tools/web/coming_soon_check.mjs crawls every page of the site, in
+  each language, and fails on any link, button or script that offers one.
+  The header's Menu and the footer call this page "Desktop app", not
+  Download.
 
-  What is on offer comes from /releases.json, which tools/release.py
-  publish writes from the files GitHub actually holds, so the version,
-  size and SHA-256 shown are those of the file the button fetches. Each
-  system gets what its own apps come as (docs/DISTRIBUTION.md): a disk
-  image on a Mac, an installer on Windows, the AppImage on Linux with a
-  .deb beside it. A release from before them offers its zips, with the
-  steps for a zip (data-kind).
-  download.js reads it; this page has no inline script, because the
-  site's content security policy allows none that it has not hashed.
-  tools/web/download_check.mjs checks each system's offer against it.
+  Whoever installed it before keeps it: the app updates itself from the
+  signed feed (src/net/updates.gd), which this page never was, and it
+  opens this page only when it cannot write where it is installed, so the
+  page tells them where its own updates are.
 
-  On the design system since site356 (2026-10-29): the opening lit as the
-  landing page's is (.halo), the picture of the app on a large surface's
-  corners, and what is new in a card with its version. Still 150 words at
-  most before anything is opened (tools/web/download_check.mjs).
-
-  The desktop app is free, as the web app is, for personal and
-  educational use (the owner, 2026-11-02, docs/PLANS.md): no download asks
-  for a plan or a sign-in. The page says so once, under the button
-  (#free-note), with the promise that every version downloaded keeps
-  working. A release's lines claim only what was seen to work: a
-  Brickworks .io has not been opened in Studio yet.
+  Until 2026-11-07 the page offered each system its build from
+  /releases.json through web/download.js (git log -- web/download.html).
+  tools/release.py publish still writes /releases.json, which the
+  changelog reads for each release's date.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <script defer src="/ov/s.js" data-api="https://overlook.technology/e" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Download Brickworks for Linux, macOS and Windows</title>
-<meta name="description" content="Brickworks for the desktop: the same builder as the web app, with every part on disk, so it works offline. For Linux, macOS and Windows, and free.">
+<title>Brickworks for the desktop, coming soon</title>
+<meta name="description" content="The Brickworks desktop app for Linux, macOS and Windows is coming soon. Until then, the same builder runs in any browser, free, with nothing to install.">
 <link rel="canonical" href="https://brickworks.diy/download">
 <link rel="alternate" hreflang="en" href="https://brickworks.diy/download">
 <link rel="alternate" hreflang="de" href="https://brickworks.diy/de/download">
@@ -50,48 +42,31 @@
 <link rel="manifest" href="/site.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
-<meta property="og:title" content="Download Brickworks">
-<meta property="og:description" content="Brickworks for Linux, macOS and Windows, with every part on disk so it builds offline. Free.">
+<meta property="og:title" content="Brickworks for the desktop, coming soon">
+<meta property="og:description" content="Coming soon for Linux, macOS and Windows. Until then, Brickworks runs in any browser, free, with nothing to install.">
 <meta property="og:url" content="https://brickworks.diy/download">
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Brickworks mark, a cube with a corner cut away, and the words: a complete CAD for LEGO® models, beside a render of a grey stone castle in bricks.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Download Brickworks">
-<meta name="twitter:description" content="Brickworks for Linux, macOS and Windows, with every part on disk so it builds offline.">
+<meta name="twitter:title" content="Brickworks for the desktop, coming soon">
+<meta name="twitter:description" content="Coming soon for Linux, macOS and Windows. Until then, Brickworks runs in any browser, free, with nothing to install.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-/* The download and how to start it, then a picture of what it is: side
+/* What the desktop app is and when, then a picture of the builder: side
    by side on a laptop, one under the other on a phone. Only layout here;
    every control is site.css's. */
-.get { border-bottom: 1px solid var(--line); }
-.get > .wrap { display: grid; gap: var(--s-6); align-items: start; padding: var(--page-top) 0 var(--s-8); }
+.get > .wrap { display: grid; gap: var(--s-6); align-items: center; padding: var(--page-top) 0 var(--section); }
 @media (width >= 900px) { .get > .wrap { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s-7); } }
 .get .shot { border-radius: var(--r-4); }
-.offer .note { margin: var(--s-3) 0 0; }
-.offer .note a { color: var(--ink-soft); }
-.offer .state { margin-top: var(--s-5); }
-.more { margin-top: var(--s-5); }
-.more ol { margin: 0 0 10px; padding-left: 20px; }
-.more li { margin: 0 0 8px; }
-.more b { color: var(--ink); font-weight: 620; }
-.more .note { margin: 0; }
-.more .file { overflow-wrap: anywhere; }
-.copy-row { display: flex; gap: var(--s-2); align-items: flex-start; margin: 6px 0 10px; }
-.copy-row .cmd { flex: 1; min-width: 0; margin: 0; }
-.copy-row button { flex: none; }
-.news { padding: var(--s-7) 0 var(--section); }
-.news .card { max-width: 720px; }
-.news .card > * { max-width: 640px; }
-.news h2 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
-.news ul { margin: 0 0 var(--s-3); padding-left: 20px; color: var(--ink-soft); }
-.news li { margin: 0 0 6px; }
-.news .note a { color: var(--ink-soft); }
+.get .eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.soon .note { margin: var(--s-3) 0 0; }
+.soon .actions { margin-top: var(--s-5); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -114,7 +89,7 @@
 					<a href="/gallery">Gallery</a>
 					<a href="/docs">Docs</a>
 					<a href="/plans">Plans</a>
-					<a href="/download" aria-current="page">Download</a>
+					<a href="/download" aria-current="page">Desktop app</a>
 					<a href="/profile" data-account>Sign in</a>
 				</nav>
 				<div class="theme-choice"><span aria-hidden="true">Theme</span>
@@ -132,79 +107,15 @@
 <main id="main">
 	<section class="get halo" aria-labelledby="get-h">
 		<div class="wrap">
-		<div class="offer">
-			<p class="eyebrow">Windows, macOS and Linux</p>
-			<h1 id="get-h">Download Brickworks</h1>
-			<p class="lede" data-pitch="computer">The same builder as the web app, with every part on disk, so it works offline.</p>
-			<p class="lede" data-pitch="mobile" hidden>The desktop app is for a computer. Here, open the web app: it is the same builder, with nothing to install.</p>
-			<p class="lede" data-pitch="other" hidden>There is no desktop build for this computer yet. The web app is the same builder, with nothing to install.</p>
-
-			<!-- Without the script, the button goes to the release on GitHub. -->
+		<div class="soon">
+			<p class="eyebrow">Windows, macOS and Linux <span class="pill new">Coming soon</span></p>
+			<h1 id="get-h">The desktop app is coming soon</h1>
+			<p class="lede">Brickworks on your computer, with every part on disk so it builds offline, is not ready for everyone yet. Until it is, the same builder runs in your browser, with nothing to install.</p>
 			<div class="actions">
-				<a class="cta big" id="web-app" href="/app" hidden>Open the web app</a>
-				<a class="cta big" id="offer-button" href="https://github.com/Xaxis/brickworks-releases/releases/latest">Download</a>
+				<a class="cta big" id="open-app" href="/app">Open Brickworks <span class="arrow" aria-hidden="true">→</span></a>
 			</div>
-			<p class="note" id="offer-meta"></p>
-			<p class="note" id="others" hidden></p>
-			<p class="note" id="free-note">Free, like the web app, for personal and educational use; selling what you make comes with <a href="/plans">Pro</a>. Every version you download keeps working.</p>
-
-			<p class="state" id="none-yet" hidden>The first desktop release is on its way. Until then, <a href="/app">open the web app</a>.</p>
-			<p class="state" id="broken" hidden>The list of downloads did not load. Every release is on <a href="https://github.com/Xaxis/brickworks-releases/releases/latest">GitHub</a>.</p>
-
-			<div class="more" id="more" hidden>
-				<details class="qa" id="steps">
-					<summary id="steps-line">First launch</summary>
-					<div data-steps="macos" hidden>
-						<ol data-kind="dmg">
-							<li>Open the disk image and drag <b>Brickworks</b> onto Applications.</li>
-							<li data-unsigned>Open it from Applications. macOS says it cannot check it for malicious software: choose <b>Done</b>.</li>
-							<li data-unsigned>Open <b>System Settings</b>, then <b>Privacy &amp; Security</b>. Under Security, choose <b>Open Anyway</b> beside Brickworks, then <b>Open</b>.</li>
-						</ol>
-						<ol data-kind="zip">
-							<li>Open the zip and drag <b>Brickworks</b> into Applications.</li>
-							<li data-unsigned>Open it. macOS says it cannot check it for malicious software: choose <b>Done</b>.</li>
-							<li data-unsigned>Open <b>System Settings</b>, then <b>Privacy &amp; Security</b>. Under Security, choose <b>Open Anyway</b> beside Brickworks, then <b>Open</b>.</li>
-						</ol>
-						<p data-unsigned>macOS asks because Apple has not notarised this build yet. It asks only the first time.</p>
-						<p data-unsigned>If it says the app <b>is damaged</b>, that is the download's quarantine flag, not damage. Verify the download, then in Terminal:</p>
-						<div class="copy-row" data-unsigned><code class="cmd">xattr -dr com.apple.quarantine /Applications/Brickworks.app</code><button type="button" class="cta ghost small" data-copy>Copy</button></div>
-						<p>To uninstall, move Brickworks from Applications to the Trash. Your models and settings stay.</p>
-						<p class="note" data-need="macos"></p>
-					</div>
-					<div data-steps="windows" hidden>
-						<ol data-kind="installer">
-							<li>Open the installer you downloaded. It installs for you alone, with no administrator, and puts Brickworks in the Start menu.</li>
-							<li data-unsigned>If Windows says <b>Windows protected your PC</b>, choose <b>More info</b>, then <b>Run anyway</b>. It asks only for the installer, because this build is not signed yet.</li>
-						</ol>
-						<p data-kind="installer">To uninstall, open <b>Settings</b>, then <b>Apps</b>, and choose <b>Uninstall</b> beside Brickworks. Your models and settings stay.</p>
-						<ol data-kind="zip">
-							<li>Right-click the zip and choose <b>Extract All</b>. It will not run from inside the zip.</li>
-							<li>Open the folder and run <b>Brickworks.exe</b>.</li>
-							<li data-unsigned>If Windows says <b>Windows protected your PC</b>, choose <b>More info</b>, then <b>Run anyway</b>. It asks only the first time, because this build is not signed yet.</li>
-						</ol>
-						<p class="note" data-need="windows"></p>
-					</div>
-					<div data-steps="linux" hidden>
-						<p>In your file manager, open the AppImage's <b>Properties</b> and allow it to run as a program. Then double-click it. Or in a terminal:</p>
-						<div class="copy-row"><code class="cmd" data-cmd="linux-appimage">chmod +x Brickworks-*.AppImage &amp;&amp; ./Brickworks-*.AppImage</code><button type="button" class="cta ghost small" data-copy>Copy</button></div>
-						<p data-has="deb">On Debian or Ubuntu, the <a id="linux-deb" href="https://github.com/Xaxis/brickworks-releases/releases/latest">.deb</a> puts Brickworks in your menu and opens models in it. Uninstall it with <code>sudo apt remove brickworks</code>.</p>
-						<div class="copy-row" data-has="deb"><code class="cmd" data-cmd="linux-deb">cd ~/Downloads &amp;&amp; sudo apt install ./Brickworks-*-linux-amd64.deb</code><button type="button" class="cta ghost small" data-copy>Copy</button></div>
-						<p>Will not start? Your system may lack FUSE. Get the <a id="linux-tar" href="https://github.com/Xaxis/brickworks-releases/releases/latest">.tar.xz</a> instead, and run it from where it unpacks:</p>
-						<div class="copy-row"><code class="cmd" data-cmd="linux-tar">tar -xf Brickworks-*.tar.xz &amp;&amp; ./Brickworks-*/brickworks.x86_64</code><button type="button" class="cta ghost small" data-copy>Copy</button></div>
-						<p>To uninstall, delete the AppImage or the folder. Your models and settings stay.</p>
-						<p class="note" data-need="linux"></p>
-					</div>
-				</details>
-				<details class="qa" id="verify">
-					<summary>All files and checksums</summary>
-					<div>
-						<p id="verify-how"></p>
-						<div id="sums"></div>
-						<p class="note">Every file's SHA-256 is in SHA256SUMS on <a id="release-link" href="https://github.com/Xaxis/brickworks-releases/releases/latest">the release on GitHub</a>.</p>
-					</div>
-				</details>
-			</div>
-			<noscript><p class="state">This page picks your download with a little JavaScript. Without it, every file is on <a href="https://github.com/Xaxis/brickworks-releases/releases/latest">GitHub</a>.</p></noscript>
+			<p class="note">Free, on a computer, a tablet or a phone. Your models are kept with your account, so the desktop app will open them too.</p>
+			<p class="note">Have the desktop app already? It keeps itself up to date: <b>Help › Check for updates…</b></p>
 		</div>
 
 		<figure class="shot">
@@ -214,119 +125,6 @@
 				width="2400" height="1350" fetchpriority="high" decoding="async"
 				alt="The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.">
 		</figure>
-		</div>
-	</section>
-
-	<section class="wrap news" id="notes" aria-labelledby="notes-h" hidden>
-		<div class="card">
-		<h2 id="notes-h">What is new</h2>
-		<!-- A release's few lines, written for this page when it is published
-		     (docs/RELEASING.md, step 6). A release without them here shows the
-		     first sentences of its summary instead. -->
-		<ul data-highlights="0.19.0" hidden>
-			<li>A booklet or model from someone else can no longer run anything.</li>
-			<li>Page setup: the booklet on A4, Letter or A5, with your margins and colours.</li>
-			<li>Train tracks join end to end, and sixteen curves close a circle.</li>
-			<li>Build it turns a page over as the booklet does.</li>
-		</ul>
-		<ul data-highlights="0.18.0" hidden>
-			<li>More of the parts bin in sight, and the assistant beside it.</li>
-			<li>Like this: the parts that could stand in for one, swapped in a double-click.</li>
-			<li>Cut away by a box, a sphere or a cylinder, and lay a grid of copies in one go.</li>
-			<li>A LEGO® Pick a Brick list, more keys, What's This? and a clean quit.</li>
-		</ul>
-		<ul data-highlights="0.17.0" hidden>
-			<li>Instructions no longer freezes the window, even the first time.</li>
-			<li>A step edit moves only what you moved, and the booklet keeps its sections.</li>
-			<li>A first drag and a new part from the bin no longer stutter.</li>
-			<li>Horses and other animals moulded in one piece stand on their studs.</li>
-		</ul>
-		<ul data-highlights="0.16.0" hidden>
-			<li>Installs like your system's own apps: a disk image, an installer or a .deb.</li>
-			<li>Keeps itself up to date: Automatic, Ask first or Off.</li>
-			<li>Your AI keys are kept in the system's own keychain.</li>
-			<li>Design on your GitHub Copilot plan, as on Claude's.</li>
-		</ul>
-		<ul data-highlights="0.15.0" hidden>
-			<li>Free, and nothing in it asks for a plan.</li>
-			<li>Instructions plans its steps without the window stopping.</li>
-			<li>Hinges with clicks stop on a click, even on a slow computer.</li>
-			<li>Claude hears when a design has fewer colours than real sets.</li>
-		</ul>
-		<ul data-highlights="0.14.0" hidden>
-			<li>Replace across a big model without the window stopping.</li>
-			<li>Designs Claude finishes are framed whole in the view.</li>
-			<li>On a touch screen, lists scroll from a text field too.</li>
-			<li>Suggest sections a little quicker on big models.</li>
-		</ul>
-		<ul data-highlights="0.13.0" hidden>
-			<li>Opens sooner: panels load the first time you use them.</li>
-			<li>Parts and colours named in German, French and Spanish.</li>
-			<li>See inside's cut keeps up on big models.</li>
-			<li>Undo puts a part back where it stood.</li>
-		</ul>
-		<ul data-highlights="0.12.0" hidden>
-			<li>Best renders path traced on your graphics card.</li>
-			<li>Pictures queue up and draw while you build.</li>
-			<li>Booklets with parts at real size and pulled out.</li>
-			<li>The app in German, French or Spanish.</li>
-		</ul>
-		<ul data-highlights="0.11.0" hidden>
-			<li>Turn any part about any axis by the rings on it.</li>
-			<li>Connect a point on one part to a point on another.</li>
-			<li>Studio's, Mecabricks' or LDCad's keys, as presets.</li>
-			<li>A model's build, part by part, as a video.</li>
-		</ul>
-		<ul data-highlights="0.10.0" hidden>
-			<li>A fresh pair of eyes on every new design.</li>
-			<li>Judged by your whole request, word for word.</li>
-			<li>Parts with studs on their sides no longer read as wider.</li>
-			<li>Tested judges a build by its own parts and joints.</li>
-		</ul>
-		<ul data-highlights="0.9.0" hidden>
-			<li>Every dialog and button in the app's own look.</li>
-			<li>One part count for a model, wherever it is shown.</li>
-			<li>Stress weighs a Technic model's pins and axles.</li>
-			<li>Find a technique by its words, a part by its number.</li>
-		</ul>
-		<ul data-highlights="0.8.0" hidden>
-			<li>Build a model together with someone, live.</li>
-			<li>Works with a screen reader and the keyboard alone.</li>
-			<li>Find a part by its BrickLink name, its number, or a photo.</li>
-			<li>Save a booklet as a PDF.</li>
-		</ul>
-		<ul data-highlights="0.7.0" hidden>
-			<li>Your models kept with your account, on every device.</li>
-			<li>Every export asks where to save it.</li>
-			<li>Big booklets are drawn about six times faster.</li>
-			<li>Gears mesh and doors hang as you put them down.</li>
-		</ul>
-		<ul data-highlights="0.6.0" hidden>
-			<li>View, Stress shows where a model would give.</li>
-			<li>Big models open without freezing the window.</li>
-			<li>Moving parts turn by hand more smoothly.</li>
-			<li>Claude finds parts by a builder's own words.</li>
-		</ul>
-		<ul data-highlights="0.5.0" hidden>
-			<li>Open any of 1,575 real set models from the Library.</li>
-			<li>85 sets steer as the real ones do.</li>
-			<li>Claude designs twice and keeps the better.</li>
-			<li>Brickify lays steep sides on their sides.</li>
-		</ul>
-		<ul data-highlights="0.4.0" hidden>
-			<li>Motions: name how a model moves, play it, and film it.</li>
-			<li>Racks, cranks and sliders move as the real parts do.</li>
-			<li>Brickify reads PLY, 3MF, VOX and FBX files.</li>
-			<li>A second model in a tab of its own.</li>
-		</ul>
-		<ul data-highlights="0.3.0" hidden>
-			<li>Instruction booklets, with steps that build as drawn.</li>
-			<li>Render your model, share it by link, pose and animate it.</li>
-			<li>Turn a 3D file into bricks, or a picture into Brick Art.</li>
-			<li>Export for BrickLink, Rebrickable or a 3D program.</li>
-		</ul>
-		<ul id="notes-list" hidden></ul>
-		<p class="note"><span id="notes-date"></span><a id="notes-link" href="/changelog">The full changelog</a> · <a href="https://github.com/Xaxis/brickworks-releases/releases">Older versions</a></p>
 		</div>
 	</section>
 </main>
@@ -358,7 +156,7 @@
 					<p class="foot-h" id="foot-product">Product</p>
 					<ul aria-labelledby="foot-product">
 						<li><a href="/app">Open the app</a></li>
-						<li><a href="/download">Download</a></li>
+						<li><a href="/download">Desktop app</a></li>
 						<li><a href="/plans">Plans</a></li>
 						<li><a href="/changelog">Changelog</a></li>
 					</ul>
@@ -398,6 +196,5 @@
 	</div>
 </footer>
 
-<script src="/download.js" defer></script>
 </body>
 </html>

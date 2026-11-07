@@ -35,6 +35,11 @@ func _check(what: String, ok: bool) -> bool:
 func _run() -> void:
 	_check("a script's run is held, started by tools/probe.sh or not (BRICKWORKS_OPEN_NOTHING %s)"
 		% ("set" if OS.has_environment("BRICKWORKS_OPEN_NOTHING") else "not set"), Outside.held())
+	# The app's own main loop is a script as well: counted as a probe's, no
+	# link opened and no file reached Downloads in the person's app.
+	_check("the app's own main loop is not a script's run, and this probe's is",
+		not Outside.a_script_run(load("res://src/boot/brickworks_loop.gd"))
+		and Outside.a_script_run(get_script()))
 	var downloads: String = OS.get_user_data_dir().path_join("outside_probe_downloads")
 	DirAccess.make_dir_recursive_absolute(downloads)
 	Download.folder = downloads
