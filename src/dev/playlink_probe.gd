@@ -226,6 +226,9 @@ func _playing(text: String, files_before: PackedStringArray) -> void:
 		if shown_at > 0 and _drawn_off(world, built) > 0:
 			moved_at = Time.get_ticks_msec()
 			break
+		# Long past the bar's 2 s: it is not coming.
+		if shown_at > 0 and Time.get_ticks_msec() - shown_at > 20000:
+			break
 	var view: ShareView = _view()
 	_ok(shown_at > 0, "the link's model opened (%s)" % (view.state if view != null else "none"))
 	if shown_at == 0:
