@@ -447,10 +447,15 @@ if (wanted("booklet") && kart) {
   const opened = context.waitForEvent("page", { timeout: 60000 }).catch(() => null);
   await press(kart, "instructions", 500);
   const booklet = await opened;
+  // Its pages counted once it is whole: the booklet is written into the tab
+  // as it is drawn (BookletOut, 2026-10-23) and closed at its end, so its
+  // first page alone, the cover, read as the booklet, and the scene took
+  // the cover and failed with "0 pages of steps" (flowscroll, 2026-11-07).
   let pages = 0;
   for (let n = 0; booklet && n < 300 && pages === 0; n++) {
     await kart.waitForTimeout(2000);
-    pages = await booklet.evaluate(() => document.querySelectorAll("section.page").length).catch(() => 0);
+    pages = await booklet.evaluate(() => (document.readyState === "complete"
+      ? document.querySelectorAll("section.page").length : 0)).catch(() => 0);
   }
   say(pages > 0, `Instructions opened the kart's booklet in a tab: ${pages} pages`);
   if (booklet && pages > 0) {
