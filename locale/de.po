@@ -480,6 +480,9 @@ msgstr "Bauanleitung…"
 msgid "Booklet page"
 msgstr "Seite der Anleitung"
 
+msgid "Step's view"
+msgstr "Ansicht des Schritts"
+
 msgid "Turn the view left"
 msgstr "Ansicht nach links drehen"
 

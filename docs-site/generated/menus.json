@@ -881,37 +881,40 @@
 					"line": true
 				},
 				{
-					"name": "panel_parts",
-					"words": "Parts bin",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"name": "panel_assistant",
-					"words": "Assistant",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"name": "panel_properties",
-					"words": "Properties",
-					"key": "",
-					"tip": "What is selected: its part, colour, where it stands and what it is joined to"
-				},
-				{
-					"name": "panel_outliner",
-					"words": "Model tree",
-					"key": "",
-					"tip": "The model's sub-assemblies by name, inside one another"
-				},
-				{
-					"name": "panel_keys",
-					"words": "Key strip",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"line": true
+					"submenu": "panels",
+					"words": "Panels",
+					"items": [
+						{
+							"name": "panel_parts",
+							"words": "Parts bin",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "panel_assistant",
+							"words": "Assistant",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "panel_properties",
+							"words": "Properties",
+							"key": "",
+							"tip": "What is selected: its part, colour, where it stands and what it is joined to"
+						},
+						{
+							"name": "panel_outliner",
+							"words": "Model tree",
+							"key": "",
+							"tip": "The model's sub-assemblies by name, inside one another"
+						},
+						{
+							"name": "panel_keys",
+							"words": "Key strip",
+							"key": "",
+							"tip": ""
+						}
+					]
 				},
 				{
 					"name": "split_view",
@@ -1016,55 +1019,61 @@
 					"words": "Booklet page",
 					"items": [
 						{
-							"name": "booklet_turn_left",
-							"words": "Turn the view left",
-							"key": "",
-							"tip": "The model turned 45 degrees for this step's picture, and the steps after it"
-						},
-						{
-							"name": "booklet_turn_right",
-							"words": "Turn the view right",
-							"key": "",
-							"tip": "The model turned 45 degrees the other way for this step's picture"
-						},
-						{
-							"name": "booklet_tilt_up",
-							"words": "Look from higher",
-							"key": "",
-							"tip": "This step's picture from 15 degrees higher"
-						},
-						{
-							"name": "booklet_tilt_down",
-							"words": "Look from lower",
-							"key": "",
-							"tip": "This step's picture from 15 degrees lower"
-						},
-						{
-							"name": "booklet_this_view",
-							"words": "Use this view for the step",
-							"key": "",
-							"tip": "This step's picture drawn from the angle the window looks from now"
-						},
-						{
-							"name": "booklet_usual_view",
-							"words": "Usual view",
-							"key": "",
-							"tip": "This step drawn from the booklet's usual angle again"
-						},
-						{
-							"line": true
-						},
-						{
-							"name": "booklet_zoom_in",
-							"words": "Zoom in",
-							"key": "",
-							"tip": "This step's picture closer in on what it adds"
-						},
-						{
-							"name": "booklet_zoom_out",
-							"words": "Zoom out",
-							"key": "",
-							"tip": "This step's picture further out"
+							"submenu": "booklet_view",
+							"words": "Step's view",
+							"items": [
+								{
+									"name": "booklet_turn_left",
+									"words": "Turn the view left",
+									"key": "",
+									"tip": "The model turned 45 degrees for this step's picture, and the steps after it"
+								},
+								{
+									"name": "booklet_turn_right",
+									"words": "Turn the view right",
+									"key": "",
+									"tip": "The model turned 45 degrees the other way for this step's picture"
+								},
+								{
+									"name": "booklet_tilt_up",
+									"words": "Look from higher",
+									"key": "",
+									"tip": "This step's picture from 15 degrees higher"
+								},
+								{
+									"name": "booklet_tilt_down",
+									"words": "Look from lower",
+									"key": "",
+									"tip": "This step's picture from 15 degrees lower"
+								},
+								{
+									"name": "booklet_this_view",
+									"words": "Use this view for the step",
+									"key": "",
+									"tip": "This step's picture drawn from the angle the window looks from now"
+								},
+								{
+									"name": "booklet_usual_view",
+									"words": "Usual view",
+									"key": "",
+									"tip": "This step drawn from the booklet's usual angle again"
+								},
+								{
+									"line": true
+								},
+								{
+									"name": "booklet_zoom_in",
+									"words": "Zoom in",
+									"key": "",
+									"tip": "This step's picture closer in on what it adds"
+								},
+								{
+									"name": "booklet_zoom_out",
+									"words": "Zoom out",
+									"key": "",
+									"tip": "This step's picture further out"
+								}
+							]
 						},
 						{
 							"name": "booklet_bigger",

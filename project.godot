@@ -12,6 +12,10 @@ config/description="A dimensionally exact brick construction system."
 ; here at export, and the app shows it in Help and the window title.
 config/version="0.18.0"
 run/main_scene="res://src/main.tscn"
+; The engine's SceneTree, which draws a model file's picture for a file
+; browser (--thumbnail) without loading the main scene: the engine makes
+; the main loop first (src/boot/brickworks_loop.gd).
+run/main_loop_type="BrickworksLoop"
 config/features=PackedStringArray("4.7", "Forward Plus")
 ; Without this the app ships Godot's own robot as its icon — in the
 ; window, on the dock, and as the favicon of the web build, where the

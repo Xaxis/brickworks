@@ -359,7 +359,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   shows its own. `V` is Select, `Q` Place; `Esc` closes whatever is up and goes
   back to Select with nothing in hand, in one press.
 - `properties panel` (`src/ui/inspector.gd`): in the right-hand column, under
-  the model tree (`docked panels`); View, Properties with the column folded,
+  the model tree (`docked panels`); View, Panels, Properties with the column folded,
   or showing the assistant, opens it on them (`SideDock.of`). Nothing
   selected, it is its header and the floor alone ("nothing selected",
   `Inspector.is_idle`) and the tree has the column. With a part selected it
@@ -518,7 +518,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   points (`Phone.px`, about 1.85 units a point at 390): along the top the mark
   (`phone_app_menu`, published as `app_menu`: the desktop's app menu dropped
   under it, About to Back to brickworks.diy), the model's name, the
-  assistant's spark while it is on (`phone_assistant`, View, Assistant: its
+  assistant's spark while it is on (`phone_assistant`, View, Panels, Assistant: its
   drawer's rail shows only while it is open, so a phone that turned it on had
   no way to it), Undo and Redo (the name field gives way to them down to 80
   points, and past that Redo leaves the bar for More's Edit: at 150% a
@@ -1264,7 +1264,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `user://shell.cfg`). Off, nothing of AI is anywhere in the window: no
   assistant column or rail (its key form, Sketch first and the connector's
   switch are in it), no Ask Claude in Edit or on a part and Ctrl+K does
-  nothing, no View, Assistant or Tools, Claude connector…, no brief or Design
+  nothing, no View, Panels, Assistant or Tools, Claude connector…, no brief or Design
   with Claude in Brick Art, no Claude in Account, the sign-in screen, My
   collection or About, and Build your first model without its last line about it. The connector is held
   off (`ClaudeConnector.hold`): nothing switches it on, a sign-in or a
@@ -1524,7 +1524,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   lists the copies one step puts on in the order the booklet builds them,
   `LdrModel.write_tree` by each instance's `first`).
 - `model tree`: at the top of the right-hand column, over the properties
-  (View, Model tree, or its header) lists the
+  (View, Panels, Model tree, or its header) lists the
   model and its sub-assemblies inside one another with their part counts. A
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto
