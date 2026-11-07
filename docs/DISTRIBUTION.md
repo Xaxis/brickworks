@@ -131,6 +131,8 @@ Ubuntu. Every one of them opens its own documents by double-click.
   sandbox with no display or graphics card), on a clear ground; parts the
   library has not got are left out, and a file with none it knows keeps the
   icon. .lxf is not drawn: LDD's own files are better pictured by LDD.
+  The release workflow's Ubuntu run proves it in GNOME's real sandbox,
+  which the machine that builds the package cannot make.
 - **Next:** Windows' thumbnail provider (an IThumbnailProvider the installer
   registers); the Mac's Quick Look extension is parked.
 

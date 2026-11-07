@@ -196,8 +196,11 @@ def main(argv: list[str]) -> int:
         import gi  # noqa: F401
         gi.require_version("GnomeDesktop", "4.0")
     except (ImportError, ValueError) as error:
-        check(None, "no GNOME thumbnail factory here (gir1.2-gnomedesktop-4.0): %s" % error)
-        return 0
+        # A smoke on a machine without it checks nothing and says so; asked
+        # for the installed package, as a runner asks, nothing checked fails.
+        check(False if installed else None,
+              "no GNOME thumbnail factory here (gir1.2-gnomedesktop-4.0): %s" % error)
+        return 1 if installed else 0
 
     work = Path(tempfile.mkdtemp(prefix="thumbnail-check-"))
     try:
