@@ -202,7 +202,7 @@
 						},
 						{
 							"name": "export_3d",
-							"words": "3D model (.glb, .gltf, .obj, .stl)…",
+							"words": "3D model (.glb, .gltf, .obj, .stl, .3mf)…",
 							"key": "",
 							"tip": "The model as a 3D file for Blender, AR or a 3D printer"
 						},
