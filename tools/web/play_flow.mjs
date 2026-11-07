@@ -94,7 +94,8 @@
 //
 // Pictures in --out: <size>_1_ready.png, _2_turned.png, _3_let_go.png,
 // _4_reset.png, <size>_5_gallery.png; <size>_6_motions.png,
-// _7_played.png, _8_motions_reset.png, <size>_<light|dark>_9_page.png.
+// _7_played.png, _8_motions_reset.png, <size>_<light|dark>_9_page.png;
+// <size>_10_playing.png and <size>_11_missing.png.
 import { appFromModelPage, launch } from "./browser.mjs";
 import { deleteAccount, mintSession } from "./session.mjs";
 import { createHash, randomBytes } from "node:crypto";
