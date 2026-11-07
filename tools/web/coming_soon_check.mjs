@@ -310,13 +310,16 @@ if (!args.static) {
           await page.goto(base + path, { waitUntil: "load", timeout: 30000 });
           await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
           // Read down the page as a person does: the home page fills a
-          // section once it is near the window (web/landing.js), and a shot
-          // taken from the top showed its tiles as blank screens.
+          // section once it is near the window (web/landing.js). And a
+          // section drawn only near the window (.defer, content-visibility:
+          // auto) is drawn here throughout: a whole-page shot showed the
+          // home page's tiles at 1280 as a blank screen (2026-11-07).
           for (let y = 0; y < await page.evaluate(() => document.body.scrollHeight); y += 600) {
             await page.evaluate((to) => window.scrollTo(0, to), y);
             await page.waitForTimeout(150);
           }
           await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
+          await page.addStyleTag({ content: ".defer { content-visibility: visible !important; }" });
           await page.evaluate(() => window.scrollTo(0, 0));
           const shot = join(args.shots, `${name}-${width}-${scheme}.png`);
           await page.screenshot({ path: shot, fullPage: true });
