@@ -33,7 +33,7 @@ import { TESTS_CACHE, Unacceptable, cardOf, testsAsked } from "./_directory.js";
 // The words of a line, drawn the same on the page and by its dialog.
 import { HOWS } from "./_card.js";
 import { namesTrouble } from "./_names.js";
-import { SET_NUMBER, askSets, catalogSet, pageOf, searchCatalog, setCatalog } from "./_sets.js";
+import { SET_NUMBER, askSets, catalogSet, pictureOf, searchCatalog, setCatalog } from "./_sets.js";
 import { wordsOf } from "./_search.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -129,7 +129,7 @@ export function setsFound(q, given = setCatalog()) {
   const whole = (entry) => (wordsOf(entry.name).join(" ") === typed ? 0 : 1);
   return found.map((entry, at) => ({ entry, at })).sort((a, b) => whole(a.entry) - whole(b.entry) || a.at - b.at)
     .slice(0, FOUND_MOST).map(({ entry }) => ({ set: entry.set, name: entry.name, year: entry.year || null,
-      parts: entry.parts, theme: entry.theme[0] || "", picture: entry.photo ? `${pageOf(entry)}.webp` : "" }));
+      parts: entry.parts, theme: entry.theme[0] || "", picture: pictureOf(entry, null) }));
 }
 
 // ---------------------------------------------------------------------------

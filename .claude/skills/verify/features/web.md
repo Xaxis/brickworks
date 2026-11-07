@@ -2248,7 +2248,9 @@ plan with Claude as the client.
   data-bases>` the count, `not-open` before the file. Its box "A set, or a
   link" (`input[name=what]`, a combobox, `web/model-page.js` `pickSet`)
   offers as a set's name or number is typed the sets it may be
-  (`ul.pick-list.set-pick`, a listbox, each `li[data-set]` its picture,
+  (`ul.pick-list.set-pick`, a listbox, each `li[data-set]` its picture
+  (`api/_sets.js` `pictureOf`: its own, else its flat lay; the ground until
+  it comes, rows that never overlap),
   number and name, year, parts and theme; arrows, Enter or a click puts the
   number in and `p.set-chosen` says "7140-1 X-wing Fighter, 1999"; Escape
   closes the list alone), from `GET /api/share?op=set_find&q=WORDS`
@@ -2346,7 +2348,10 @@ plan with Claude as the client.
   `?op=photo_file&id=X&size=card`): each photo kept as `build-photos/<id>.jpg`
   (1,600 px long side at most) and `<id>.card.jpg` beside it, at most 480
   px wide, its shape kept, never larger, made from the kept pixels when it
-  is posted, or the first time a card asks for one posted before; served
+  is posted, or the first time a card asks for one posted before, and
+  never outliving it (made as the photo is taken out or its account's files
+  deleted, the copy is deleted too: `tests/test_gallery_builds.py`
+  `test_a_copy_is_made_once_and_never_outlives_its_photo`); served
   under the same rules as the photo (hidden, taken out, its builder not
   shown: 404). Taking a photo out, a failed keep, and an account's deletion
   (`api/account.js`, by name) delete both. The cards that show it small ask

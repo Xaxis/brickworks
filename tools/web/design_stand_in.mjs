@@ -2247,6 +2247,8 @@ function avatarFile(url) {
 }
 
 const isPicture = (url) => /^\/m\/[A-Za-z0-9]{10}(\/v\/\d+)?\.(png|webp)$/.test(url.pathname)
+  // A set's own picture (api/share.js catalog_photo), or its flat lay.
+  || /^\/library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}\.(webp|jpg)$/.test(url.pathname)
   || (url.pathname === "/api/people" && url.searchParams.get("op") === "photo_file");
 /// A photo's card copy: the picture every photo here is, made at most 480
 /// px wide by api/_photo.js cardOf, as the server makes each photo's.

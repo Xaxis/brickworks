@@ -391,11 +391,14 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 }
 .pick-list li b { color: var(--ink); font-weight: 600; }
 .pick-list li[aria-selected="true"], .pick-list li:hover { background: var(--panel-hi); color: var(--ink); }
-/* A set: its picture, then its number and name over its year, parts and
-   theme; the list scrolls past six. */
-.pick-list.set-pick { max-width: none; margin: 4px 0 10px; max-height: min(360px, 50vh); overflow-y: auto; }
+/* A set: its picture on its ground, then its number and name over its
+   year, parts and theme; the list scrolls past six. Rows in a block, not
+   the grid: a grid's rows shrank to its height and overlapped. */
+.pick-list.set-pick { display: block; max-width: none; margin: 4px 0 10px; max-height: min(360px, 50vh); overflow-y: auto; }
 .set-pick li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-items: center; }
-.set-pick li img { width: 48px; height: 36px; object-fit: cover; border-radius: var(--r-1); background: var(--line); }
+.set-pick .set-picture { display: block; width: 48px; height: 36px; overflow: hidden; border-radius: var(--r-1); background: var(--line); }
+.set-pick .set-picture img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.set-pick .set-picture img:not(.came) { visibility: hidden; }
 .set-pick li small { display: block; font-size: var(--t-small); }
 dialog.bases-dialog .set-chosen { margin: -6px 0 10px; font-size: var(--t-small); color: var(--ink-soft); }
 dialog.bases-dialog .set-chosen[hidden] { display: none; }

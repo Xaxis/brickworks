@@ -1931,15 +1931,21 @@ function pickSet(field, chosen) {
       item.id = `${list.id}-${n}`;
       item.setAttribute("role", "option");
       item.dataset.set = one.set;
-      const picture = document.createElement("img");
-      picture.alt = "";
-      picture.width = 48;
-      picture.height = 36;
-      picture.loading = "lazy";
-      picture.decoding = "async";
-      // A set with no picture of its own, or one that does not come: its ground.
-      picture.addEventListener("error", () => picture.removeAttribute("src"));
-      if (one.picture) picture.src = one.picture;
+      // Its picture on its ground, shown once it has come; a set with no
+      // picture, or one that does not come, keeps the ground alone.
+      const ground = document.createElement("span");
+      ground.className = "set-picture";
+      if (one.picture) {
+        const picture = document.createElement("img");
+        picture.alt = "";
+        picture.width = 48;
+        picture.height = 36;
+        picture.decoding = "async";
+        picture.addEventListener("load", () => picture.classList.add("came"));
+        picture.addEventListener("error", () => picture.remove());
+        picture.src = one.picture;
+        ground.append(picture);
+      }
       const words = document.createElement("span");
       const name = document.createElement("b");
       name.textContent = `${one.set} ${one.name}`;
@@ -1947,7 +1953,7 @@ function pickSet(field, chosen) {
       facts.textContent = [one.year ? String(one.year) : "", one.parts ? counted(one.parts, "part") : "",
         one.theme ? themeSaid(one.theme) : ""].filter(Boolean).join(" · ");
       words.append(name, facts);
-      item.append(picture, words);
+      item.append(ground, words);
       // Chosen without the box losing its focus.
       item.addEventListener("mousedown", (event) => {
         event.preventDefault();
@@ -1977,7 +1983,7 @@ function pickSet(field, chosen) {
         .catch(() => null);
       const body = reply && reply.ok ? await reply.json().catch(() => null) : null;
       const sets = (Array.isArray(body?.sets) ? body.sets : []).filter((one) => one && SET.test(String(one.set))
-        && typeof one.name === "string" && (!one.picture || /^\/library\/set\/[A-Za-z0-9.-]+\.webp$/.test(String(one.picture))));
+        && typeof one.name === "string" && (!one.picture || /^\/library\/set\/[A-Za-z0-9.-]+\.(webp|jpg)$/.test(String(one.picture))));
       found.set(typed, sets);
       if (field.value.trim() === typed) draw(sets);
     }, 180);

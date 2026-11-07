@@ -203,6 +203,59 @@ console.log(JSON.stringify(out));
     assert got["html"] == "/api/people?op=photo_file&amp;id=PhotoAaa01&amp;size=card"
 
 
+def test_a_copy_is_made_once_and_never_outlives_its_photo() -> None:
+    # A photo kept before there were copies has one made the first time a
+    # card asks, kept beside it. Made while the photo is taken out, or while
+    # its account's files are deleted (api/account.js deletes them by name,
+    # then the rows), the copy goes too: a red run's copies outlived their
+    # accounts so (socialtails, 2026-11-06).
+    got = node(r"""
+process.env.SUPABASE_URL = "http://project.test";
+process.env.SUPABASE_SECRET_KEY = "k";
+import { encode } from "./api/_jpeg.js";
+import { decodePicture } from "./api/_photo.js";
+const files = new Map();
+const row = { id: "PhotoAaa01", model: "ModelAaa01", account: "a", removed_at: null, hidden_at: null };
+let onPut = () => {};
+globalThis.fetch = async (url, init = {}) => {
+  const where = new URL(url);
+  const method = init.method || "GET";
+  if (where.pathname.startsWith("/rest/v1/build_photos")) return new Response(JSON.stringify(row.gone ? [] : [row]), { status: 200 });
+  if (where.pathname.startsWith("/rest/v1/shared_models")) return new Response(JSON.stringify([{ id: row.model }]), { status: 200 });
+  const object = /^\/storage\/v1\/object\/build-photos\/(.+)$/.exec(where.pathname);
+  if (object && method === "POST") { files.set(object[1], Buffer.from(init.body)); onPut(object[1]); return new Response("{}", { status: 200 }); }
+  if (object) return files.has(object[1]) ? new Response(method === "HEAD" ? null : files.get(object[1]), { status: 200 }) : new Response("{}", { status: 400 });
+  if (where.pathname === "/storage/v1/object/build-photos" && method === "DELETE") {
+    for (const name of JSON.parse(init.body).prefixes) files.delete(name);
+    return new Response("[]", { status: 200 });
+  }
+  return new Response("{}", { status: 404 });
+};
+const { photoFile } = await import("./api/_builds.js");
+const whole = Buffer.from(encode({ width: 1600, height: 1200, data: Buffer.alloc(1600 * 1200 * 4, 120) }, 85).data);
+const shown = async () => true;
+const out = {};
+files.set("PhotoAaa01.jpg", whole);
+const first = await photoFile("PhotoAaa01", shown, { card: true });
+out.made = [(await decodePicture(first, "image/jpeg")).width, [...files.keys()].sort()];
+const again = await photoFile("PhotoAaa01", shown, { card: true });
+out.kept = Buffer.compare(again, first) === 0;
+// Its account deleted as the copy is made: the files by name, then the row.
+files.clear(); files.set("PhotoAaa01.jpg", whole);
+onPut = (name) => { if (name.endsWith(".card.jpg")) { files.delete("PhotoAaa01.jpg"); files.delete("PhotoAaa01.card.jpg"); files.set(name, Buffer.from("late")); } };
+out.deleted = [await photoFile("PhotoAaa01", shown, { card: true }), [...files.keys()]];
+// Taken out as the copy is made.
+files.clear(); files.set("PhotoAaa01.jpg", whole);
+onPut = (name) => { if (name.endsWith(".card.jpg")) row.removed_at = "2026-11-06T00:00:00Z"; };
+out.taken = [await photoFile("PhotoAaa01", shown, { card: true }), [...files.keys()]];
+console.log(JSON.stringify(out));
+""")
+    assert got["made"] == [480, ["PhotoAaa01.card.jpg", "PhotoAaa01.jpg"]]
+    assert got["kept"] is True
+    assert got["deleted"] == [None, []]
+    assert got["taken"] == [None, ["PhotoAaa01.jpg"]]
+
+
 def test_the_copy_is_served_kept_and_deleted_with_its_photo() -> None:
     builds = (ROOT / "api/_builds.js").read_text()
     # Asked for with size=card; kept beside the photo when it is posted, made

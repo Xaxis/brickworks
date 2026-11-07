@@ -303,8 +303,15 @@ try {
     check("nothing wider than the phone", !(await sideways(page)));
     const dark = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     check(`drawn dark (${dark})`, /rgb\((\d+), (\d+), (\d+)\)/.test(dark) && Number(dark.match(/\d+/)[0]) < 40);
-    await page.evaluate((photo) => document.querySelector(`#models .build-card[data-id="${photo}"]`)?.scrollIntoView({ block: "center" }),
-      photos.cyShown);
+    // Each card in view in turn, so its photo is asked for (they load
+    // lazily, and the second sits below the fold on a phone).
+    for (const photo of [photos.boFirst, photos.cyShown]) {
+      await page.evaluate((one) => document.querySelector(`#models .build-card[data-id="${one}"]`)?.scrollIntoView({ block: "center" }), photo);
+      await until(page, (one) => {
+        const img = document.querySelector(`#models .build-card[data-id="${one}"] .frame img`);
+        return Boolean(img && img.complete && img.naturalWidth > 0);
+      }, `the photo of ${photo} on the phone`, 30, photo).catch(() => null);
+    }
     await page.waitForTimeout(400);
     await shot(page, "2_builds_390_dark_out.png");
     const small = await cardsOf(page, id);

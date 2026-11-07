@@ -209,6 +209,19 @@ const setsOffered = () => {
   return list && list.children.length ? [...list.children].map((li) => ({ set: li.dataset.set,
     text: li.textContent.replace(/\s+/g, " ").trim() })) : null;
 };
+/// Once every offered set's picture has come: how many came, which row
+/// (from 0) lies over the one before it and which is too short for its
+/// words (-1 for none). A grid's rows once shrank to the list's height.
+const setRows = () => {
+  const list = document.querySelector("dialog.bases-dialog .set-pick:not([hidden])");
+  const rows = [...(list?.children || [])];
+  const pictures = rows.map((li) => li.querySelector(".set-picture img")).filter(Boolean);
+  if (!rows.length || !pictures.length || pictures.some((img) => !img.classList.contains("came") || !img.naturalWidth)) return null;
+  const boxes = rows.map((li) => li.getBoundingClientRect());
+  return { rows: rows.length, came: pictures.length,
+    over: boxes.findIndex((box, n) => n > 0 && box.top < boxes[n - 1].bottom - 0.5),
+    short: rows.findIndex((li) => li.scrollHeight > li.clientHeight + 1) };
+};
 
 let ivy = null;
 let jon = null;
@@ -404,6 +417,9 @@ try {
     });
     check(`the box a combobox (${aria.role}), expanded ${aria.expanded}, its list a ${aria.controls}`,
       aria.role === "combobox" && aria.expanded === "true" && aria.controls === "listbox");
+    const laid = await until(ivyPage, setRows, "the sets' pictures");
+    check(`each set its picture (${laid.came} of ${laid.rows} came), its row clear of the next (${laid.over}) and as tall as its words (${laid.short})`,
+      laid.came >= 1 && laid.over === -1 && laid.short === -1);
     for (let n = 0; n < at; n += 1) await ivyPage.keyboard.press("ArrowDown");
     const marked = await ivyPage.evaluate(() => document.querySelector("dialog.bases-dialog .set-pick [aria-selected=true]")?.dataset.set);
     check(`Down ${at} times marks ${marked}`, marked === FOUND);
@@ -439,6 +455,9 @@ try {
     const phoneOffered = await until(ivySmall, setsOffered, "the sets it may be, on the phone");
     check(`on the phone it offers ${FOUND} too (${phoneOffered.map((one) => one.set).join(", ")}), nothing sideways`,
       phoneOffered.some((one) => one.set === FOUND) && !(await sideways(ivySmall)));
+    const phoneLaid = await until(ivySmall, setRows, "the sets' pictures, on the phone");
+    check(`on the phone each row clear of the next (${phoneLaid.over}) and as tall as its words (${phoneLaid.short}), ${phoneLaid.came} pictures`,
+      phoneLaid.came >= 1 && phoneLaid.over === -1 && phoneLaid.short === -1);
     await shot(ivySmall, "7_found_390_dark.png");
     await ivySmall.keyboard.press("Escape");
     const escaped = await ivySmall.evaluate(() => ({ list: Boolean(document.querySelector("dialog.bases-dialog .set-pick:not([hidden])")),

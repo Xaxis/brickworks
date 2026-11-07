@@ -262,13 +262,25 @@ async function cardFile(id) {
   }
   await putFile(PHOTOS, cardName(id), made, "image/jpeg").catch((trouble) =>
     console.error(`builds: the card copy of ${id} was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`));
-  // Taken out while it was made: the copy goes with it, never left behind.
+  // Taken out, or its account deleted, while it was made: the copy goes
+  // with it, never left behind. Both delete the photo's files by name,
+  // the whole one with its copy, so a copy put after that finds the whole
+  // one gone (an account's rows go only after its files).
   const now = await photoRow(id);
-  if (!now || now.removed_at) {
+  if (!now || now.removed_at || !(await stillThere(photoName(id)))) {
     await deleteFiles(PHOTOS, [cardName(id)]).catch(() => {});
     return null;
   }
   return made;
+}
+
+/// Whether [name] is still in PHOTOS, asked without its bytes.
+async function stillThere(name) {
+  const answer = await reach(`storage HEAD ${PHOTOS}`, 30, `${project()}/storage/v1/object/${PHOTOS}/${name}`, {
+    method: "HEAD", headers: storageHeaders() });
+  if (answer.status === 400 || answer.status === 404) return false;
+  if (!answer.ok) throw new Error(`storage HEAD ${PHOTOS}: ${answer.status}`);
+  return true;
 }
 
 /// The file of any photo not taken out, for the site's owner only.
