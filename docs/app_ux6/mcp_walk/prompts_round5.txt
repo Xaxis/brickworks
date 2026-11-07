@@ -1,0 +1,10 @@
+v1|How big is this track oval, in studs and in centimetres, and roughly how much would it weigh?
+v2|Clear the baseplate and open my saved model Pods. Show me which way every part's studs point, and tell me which parts have studs facing sideways.
+v3|Show me every headlight brick in the model picked out, with everything else faded, and say where each one is.
+v4|Save the view you are looking from now as "Three quarter", so I can come back to it later, then make a picture from it.
+v5|Set the instructions up to print on A4 paper, upright, with a pale blue page, and show me page 1 as it will print.
+v6|Make a short video of this model being built, then tell me what happens in it.
+v7|Check this model for problems and show me where each one is.
+v8|In the instructions, pull out brick 3 of the first step so it stands apart, and show me that page.
+v9|I own some loose bricks: twenty red 2x4 bricks, ten white 1x2 plates and four black 1x1 round plates. Add them to my collection, then tell me what I would still need to build this model.
+v10|Take back the parts you added to my collection just now.

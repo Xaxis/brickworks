@@ -148,7 +148,11 @@ plan with Claude as the client.
   (the catalogue and the rest of `assets/web/`, `models/`, LDraw's tables,
   the booklet PDF's fonts, and the 101 scripts the first screen does not
   compile, Later's classes and what only they name, as
-  `tools/web/start_closure.py` reads the sources: 1.6 MB of the code
+  `tools/web/start_closure.py` reads the sources, walked from every entry
+  point `project.godot` names, the main loop, each autoload and the main
+  scene (a main loop left in the data pack never started the app,
+  2026-11-07; one it cannot place stops the export,
+  `tests/test_start_closure.py`): 1.6 MB of the code
   pack's 3.9 that the engine waited for, webstart2, 2026-11-05; 4.6 MB) is
   fetched by the page's worker as soon as the engine's files are in,
   before `index.parts.bin`, and mounted by `Main._ready` before the
@@ -3322,6 +3326,19 @@ plan with Claude as the client.
   `assistant_flow`, `connector_flow` and the rest drive the builder rather than
   the sign-in screen. `deploy.sh` sources `.env`, so its checks are signed in.
   Pages of the site that are not the app launch with `{ signedOut: true }`.
+- `instant scrolls, in every browser flow` (flowscroll, 2026-11-07): the site
+  scrolls smoothly (`web/site.css`), so a flow that scrolled and then measured
+  read the page on its way (model_page_flow's frame at -808 px). Every context
+  `launch()` makes gets `instantScroll` (`tools/web/browser.mjs`: a constructed
+  sheet, `scroll-behavior: auto !important`, in every document and frame), and
+  a script that opens its own browser and scrolls (`compare_media`'s persistent
+  context) calls it itself. Not the browser's reduced motion, which also stops
+  /compare's clips that `site_check` plays. `tests/test_flow_scroll.py` fails a
+  script under `tools/` that scrolls a page in a browser it opened without it,
+  and reads where a page is the moment after scrollTo, scrollIntoView, a #part
+  jump and a row's scrollLeft in contexts from `launch()` and `instantScroll`
+  (and, without either, still on its way). Proved: site_lang_flow's `screens()`
+  read 0 then 685 of 900 px 200 ms after its scroll on pre261, 900 with it.
 - `which build this is`: the deploy writes `version.json` (commit, UTC time)
   beside the build, and the Help panel finds it beside the engine
   (`GODOT_CONFIG.executable`), not beside the page — at `/app` the page is not

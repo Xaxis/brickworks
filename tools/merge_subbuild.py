@@ -10,16 +10,25 @@ did not change, byte-identical output to what is already there. So the
 sub-build deliberately includes a few hundred parts that are *not* in
 the affected set, and every one of them has to match. If any differs,
 the sub-build is not equivalent to a full build and nothing is merged.
+
+It merges into the catalogue of the checkout it is run in (tree_of),
+whichever copy of the script runs, and says which. That catalogue may be a
+link, as a staging tree's is; a file or folder in it that links out of it
+is refused before anything is written (tools/checkout.py). Run from a
+staging tree, it merged into the catalogue of the tree its script was in:
+in a worktree, a link to the shared one.
 """
 from __future__ import annotations
 
 import json
 import shutil
 import sys
+from collections.abc import Iterator
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-GENERATED = ROOT / "assets" / "generated"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from checkout import Outside, inside, tree_of  # noqa: E402
 
 # Added later by tools/refresh_catalogue.py, so not part of the compare,
 # and carried over to a merged entry because the sub-build does not make
@@ -45,17 +54,23 @@ def carry_exact(before: dict[str, str], after: dict[str, str],
     joint check skipped, which reads as a pass (2026-10-19).
     """
     copied, lacking = 0, []
-    for part_id, mesh in after.items():
-        old = before.get(part_id)
-        if not old or old == mesh or not (exact / f"{old}.bwx").exists():
-            continue
-        target = exact / f"{mesh}.bwx"
+    for part_id, source, target in _to_carry(before, after, exact):
         if not target.exists():
-            shutil.copy2(exact / f"{old}.bwx", target)
+            shutil.copy2(source, inside(target))
             copied += 1
         if not target.exists():
             lacking.append(part_id)
     return copied, lacking
+
+
+def _to_carry(before: dict[str, str], after: dict[str, str],
+              exact: Path) -> Iterator[tuple[str, Path, Path]]:
+    """(part id, its shape, the shape under its new mesh) for each part
+    whose mesh changed and that had a shape."""
+    for part_id, mesh in after.items():
+        old = before.get(part_id)
+        if old and old != mesh and (exact / f"{old}.bwx").exists():
+            yield part_id, exact / f"{old}.bwx", exact / f"{mesh}.bwx"
 
 
 def main(argv: list[str]) -> int:
@@ -68,8 +83,9 @@ def main(argv: list[str]) -> int:
         if line.strip()
     }
 
+    generated = tree_of(Path.cwd()) / "assets" / "generated"
     fresh = json.loads((built / "catalogue.json").read_text())
-    whole_path = GENERATED / "catalogue.json"
+    whole_path = generated / "catalogue.json"
     whole = json.loads(whole_path.read_text())
     have = {e["id"]: e for e in whole["parts"]}
 
@@ -117,13 +133,6 @@ def main(argv: list[str]) -> int:
         print("      rebuild to pick up. Not caused by this merge, and "
               "not fixed by it.")
 
-    copied = 0
-    for mesh in (built / "parts").iterdir():
-        target = GENERATED / "parts" / mesh.name
-        if not target.exists() or target.read_bytes() != mesh.read_bytes():
-            shutil.copy2(mesh, target)
-            copied += 1
-
     replaced = 0
     before, after = {}, {}
     for index, entry in enumerate(whole["parts"]):
@@ -138,9 +147,29 @@ def main(argv: list[str]) -> int:
             before[entry["id"]] = entry["mesh"]
             after[entry["id"]] = fresher["mesh"]
 
+    # Everything it will write, asked before it writes any: one link out
+    # refuses the whole merge, not the half after it.
+    meshes = [mesh for mesh in sorted((built / "parts").iterdir())
+              if not (generated / "parts" / mesh.name).exists()
+              or (generated / "parts" / mesh.name).read_bytes() != mesh.read_bytes()]
+    try:
+        for path in [generated / "parts", generated / "exact", whole_path,
+                     *(generated / "parts" / mesh.name for mesh in meshes),
+                     *(target for _id, _shape, target in
+                       _to_carry(before, after, generated / "exact") if not target.exists())]:
+            inside(path)
+    except Outside as outside:
+        print(f"merge_subbuild FAILED, nothing written: {outside}", file=sys.stderr)
+        return 1
+    print(f"merge_subbuild: the catalogue in {generated}")
+
+    for mesh in meshes:
+        shutil.copy2(mesh, generated / "parts" / mesh.name)
+    copied = len(meshes)
+
     whole_path.write_text(json.dumps(whole, separators=(",", ":")))
     print(f"merged {replaced:,} entries and {copied:,} mesh files")
-    carried, lacking = carry_exact(before, after, GENERATED / "exact")
+    carried, lacking = carry_exact(before, after, generated / "exact")
     print(f"carried {carried:,} exact shapes to their parts' new meshes")
     if lacking:
         print(f"WARNING: {len(lacking)} parts lost their exact shapes")
@@ -148,7 +177,7 @@ def main(argv: list[str]) -> int:
 
     gone = [
         e["id"] for e in whole["parts"]
-        if e.get("mesh") and not (GENERATED / "parts" / f"{e['mesh']}.lbm").exists()
+        if e.get("mesh") and not (generated / "parts" / f"{e['mesh']}.lbm").exists()
     ]
     if gone:
         print(f"WARNING: {len(gone)} parts now reference a missing mesh")

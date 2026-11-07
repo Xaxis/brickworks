@@ -192,7 +192,10 @@ def later_scripts() -> frozenset[str]:
     as the pack names them."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import start_closure
-    out = frozenset(path.removeprefix("res://") for path in start_closure.outside())
+    try:
+        out = frozenset(path.removeprefix("res://") for path in start_closure.outside())
+    except ValueError as error:
+        sys.exit(f"pck_split: could not tell which scripts the first screen compiles: {error}")
     if not out or "src/main.gd" in out:
         sys.exit("pck_split: could not tell which scripts the first screen compiles (start_closure.py)")
     return out
