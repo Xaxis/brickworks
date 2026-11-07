@@ -26,10 +26,23 @@
 ## The endpoint is the one their API documents for parts (openapi.json,
 ## "search (legacy)"). Their own site has moved to another, internal one;
 ## should this one go, the failure is said plainly, as any other is.
+##
+## Sets and minifigures (mysets, APP_UX6 #6, 2026-11-07): the same API's
+## /predict/sets/ and /predict/figs/ answer a photo of a box, a booklet's
+## cover or a minifigure in the same shape, each item a "set" or a "fig"
+## under BrickLink's number (S= and M= in its BrickLink link: 7140-1,
+## sw0001a). [member kind] says which is asked; neither takes a colour.
 class_name Brickognize
 extends Node
 
-const URL := "https://api.brickognize.com/predict/parts/"
+const BASE := "https://api.brickognize.com/predict/"
+const URL := BASE + "parts/"
+## What a node asks about: "parts", "sets" or "figs", the endpoint's own
+## word, and the item type its answer is kept to.
+const KINDS := {"parts": "part", "sets": "set", "figs": "fig"}
+var kind: String = "parts"
+## How many sets or figures are asked for: the top three to choose from.
+const MOST_SETS := 3
 ## The longest side a photo is sent at. A phone's twelve megapixels are four
 ## megabytes to upload for an answer a thousand pixels gives as well.
 const LONGEST := 1024
@@ -84,10 +97,13 @@ func identify(photo: Image) -> void:
 	else:
 		_http.cancel_request()
 	colour = {}
-	# And the colour it sees the part in, its best one.
-	var asked: int = _http.request_raw(
-		"%s?top_k_items=%d&min_similarity_items=%s&predict_color=true&top_k_colors=1"
-		% [url, MOST, LEAST], ["Content-Type: multipart/form-data; boundary=" + boundary],
+	# And the colour it sees the part in, its best one. A set or a figure
+	# has none to ask for.
+	var query: String = ("%s?top_k_items=%d&min_similarity_items=%s&predict_color=true&top_k_colors=1"
+		% [url, MOST, LEAST]) if kind == "parts" else ("%s?top_k_items=%d&min_similarity_items=%s"
+		% [url, MOST_SETS, LEAST])
+	var asked: int = _http.request_raw(query,
+		["Content-Type: multipart/form-data; boundary=" + boundary],
 		HTTPClient.METHOD_POST, body)
 	if asked != OK:
 		failed.emit(OFFLINE)
@@ -102,7 +118,7 @@ func _on_answer(result: int, code: int, _headers: PackedStringArray,
 	if not why.is_empty():
 		failed.emit(why)
 		return
-	var guesses: Variant = guesses_in(body.get_string_from_utf8())
+	var guesses: Variant = guesses_in(body.get_string_from_utf8(), str(KINDS.get(kind, "part")))
 	if guesses == null:
 		failed.emit("Brickognize answered with something that is not an answer: try again later")
 		return
@@ -144,8 +160,9 @@ static func colour_in(text: String) -> Dictionary:
 
 ## The guesses in an answer's text, best first, or null when it is not one.
 ## Each has the BrickLink number its BrickLink link names, which is
-## Brickognize's own id where there is none.
-static func guesses_in(text: String) -> Variant:
+## Brickognize's own id where there is none. Only items of [param type]
+## ("part", "set" or "fig") are kept.
+static func guesses_in(text: String, type: String = "part") -> Variant:
 	# Read quietly: an answer that is not JSON (a gateway's error page) is
 	# said to the person, not printed as an error of the app's.
 	var reading := JSON.new()
@@ -159,14 +176,16 @@ static func guesses_in(text: String) -> Variant:
 		if not raw is Dictionary:
 			continue
 		var item: Dictionary = raw
-		if str(item.get("type", "part")) != "part":
+		if str(item.get("type", "part")) != type:
 			continue
 		var number: String = str(item.get("id", ""))
+		# BrickLink's link names a part P=, a set S=, a minifigure M=.
+		var named: String = {"part": "P=", "set": "S=", "fig": "M="}.get(type, "P=")
 		for site: Variant in item.get("external_sites", []):
 			if site is Dictionary and str((site as Dictionary).get("name", "")) == "bricklink":
 				var link: String = str((site as Dictionary).get("url", ""))
-				if link.contains("P="):
-					number = link.get_slice("P=", 1).get_slice("&", 0).uri_decode()
+				if link.contains("?" + named) or link.contains("&" + named):
+					number = link.get_slice(named, 1).get_slice("&", 0).uri_decode()
 		if number.is_empty():
 			continue
 		out.append({"bricklink": number, "name": str(item.get("name", "")),

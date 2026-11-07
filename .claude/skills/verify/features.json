@@ -1611,6 +1611,22 @@
       "tests": []
     },
     {
+      "id": "cli:mysets api test",
+      "kind": "cli",
+      "entry": "tools/web/mysets_api.mjs",
+      "reach": "node tools/web/mysets_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced: op missing from the counts shown, refusals changing nothing, marks kept through every other change and an older app's PUT, figs, the older collection lot for lot)",
+      "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "cli:mysets probe",
+      "kind": "cli",
+      "entry": "src/dev/mysets_probe.gd",
+      "reach": "tools/relay_probe.sh mysets   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: a box photo's set in 3 actions, 7140-1 with 12 missing, What do I need? for it, 5 found as loose parts, Closest to whole, a minifigure, the builds out there, the older collection lot for lot)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:needs backfill",
       "kind": "cli",
       "entry": "tools/web/needs_backfill.mjs",
@@ -4147,6 +4163,22 @@
       "entry": "api/_parts.js",
       "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:a set from a photo",
+      "kind": "ui",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection\u2026, What I own: Photo\u2026 beside Add sets, a photo of a box, a booklet's cover or a minifigure; asked of Brickognize's /predict/sets/ and /predict/figs/ at once, the top three offered, one pressed adds it; a minifigure kept among the sets by BrickLink's number and name, its parts not counted)",
+      "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "ui:a set's missing parts",
+      "kind": "ui",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (What I own: a set's Missing parts\u2026, its lots each with how many are missing, All missing, None missing; Closest to whole, sets by how much is missing, What it needs; What do I need? for a set; the pool, What do I need? and What can I build? count only what is there, loose parts counting towards a set; op missing at /api/collection)",
+      "area": "collection",
       "tests": []
     },
     {

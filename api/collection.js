@@ -25,6 +25,9 @@
 //   {"from": "rebrickable_api", "sets": [["10237-1", 1, true]],
 //                               "parts": [["3001", 4, 12]], "mode": "add"}
 //   {"from": "sets", "text": "10237-1, 6020"}          typed by number
+//   {"from": "figs", "figs": [{"fig": "sw0001a", "name": "Luke Skywalker"}]}
+//                                                      minifigures, by
+//                                                      BrickLink's number
 //
 // Every lot and set keeps where it came from ("src"): "hand" (added in My
 // collection, a set typed by number), "rebrickable" (the person's
@@ -63,6 +66,22 @@
 //   {"op": "remove_set", "set": "6020-1", "src"?, "was": 1}
 //       a set, at the count the person saw, taken out
 //   {"op": "start_over", "rev": <the rev the person saw>}
+//   {"op": "missing", "set": "7140-1", "src"?: "hand",
+//                     "lots": [{part, colour, was, qty}]}
+//       the parts a set has missing (mysets, APP_UX6 #6): each lot's count
+//       missing from the count the person saw ("was", 0 for none) to qty
+//       (0: none missing). Kept on the set as "missing": [{part, colour,
+//       qty}], in LDraw's numbers as the set's inventory has them.
+//
+// A set as it really is (mysets, 2026-11-07), additive: a set entry may
+// carry "missing", the lots it is short of, and a minifigure is kept among
+// the sets as {"set": "sw0001a", "fig": true, "name": ..., "qty", "src"},
+// BrickLink's number with no -1 (no set number is without one, so the two
+// never meet). Every op keeps both as they are; a Rebrickable fetch that
+// lists a set again keeps its missing lots, as an import of a set already
+// there does; remove_set takes a figure out by its number, from an older
+// app too. An older app reads every set and lot as before and counts a set
+// with parts missing as whole, as it always has.
 //
 // What was seen and is no longer so (a count moved on, a lot gone, the rev
 // moved on) is refused with 409 and the collection as it is now, changing
@@ -116,6 +135,11 @@ const MAX_QTY = 100000;
 
 const SET_NUMBER = /^[a-z0-9][a-z0-9._]{0,24}(-[0-9]{1,3})?$/;
 const PART_NUMBER = /^[a-z0-9][a-z0-9._-]{0,40}$/;
+/// A minifigure's BrickLink number (sw0001a, pln190s, 47394pb001): never a
+/// set number's -N.
+const FIG_NUMBER = /^[a-z0-9][a-z0-9._]{0,40}$/;
+/// The most lots one set is marked as missing.
+export const MOST_MISSING = 5000;
 /// Which of a session's chats added a lot: an id.
 const CHAT = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/;
 /// A request's id: the app's, one per action.
@@ -134,6 +158,7 @@ export const HAND = "hand";
 export const REBRICKABLE = "rebrickable";
 export const SOURCE_OF = {
   sets: HAND, rebrickable_api: REBRICKABLE, rebrickable_csv: REBRICKABLE, bricklink_xml: "bricklink_xml",
+  figs: HAND,
 };
 const SOURCES = new Set(Object.values(SOURCE_OF));
 
@@ -184,6 +209,27 @@ export function setNumber(raw) {
 export function partNumber(raw) {
   const text = String(raw ?? "").trim().toLowerCase().replace(/\.dat$/, "");
   return PART_NUMBER.test(text) ? text : null;
+}
+
+export function figNumber(raw) {
+  const text = String(raw ?? "").trim().toLowerCase();
+  return FIG_NUMBER.test(text) && !/-[0-9]{1,3}$/.test(text) ? text : null;
+}
+
+/// A minifigure's name as its finder gave it: printable, 120 characters at most.
+function figName(raw) {
+  return [...whoName(raw)].slice(0, 120).join("").replace(/ +$/, "");
+}
+
+/// Minifigures found by a photo: [{fig, name}], each kept once.
+export function typedFigs(list) {
+  if (!Array.isArray(list) || list.length === 0) throw new Refusal(400, "no minifigure given");
+  if (list.length > 100) throw new Refusal(413, `that is ${list.length} minifigures; one change is at most 100`);
+  return list.map((one, n) => {
+    const fig = figNumber(one?.fig);
+    if (!fig) throw new Refusal(400, `minifigure ${n + 1}: "${one?.fig ?? ""}" is not a BrickLink minifigure number`);
+    return [fig, 1, figName(one?.name)];
+  });
 }
 
 function quantity(raw, line) {
@@ -343,6 +389,9 @@ function mapped(parsed, numbering, index) {
   }
   if (parsed.otherKinds) leave("BrickLink minifigures, books and gear, which are not expanded", parsed.otherKinds);
   const sets = parsed.sets.map(([set, qty, spares]) => ({ set, qty, spares: Boolean(spares) }));
+  for (const [fig, qty, name] of parsed.figs || []) {
+    sets.push(name ? { set: fig, qty, spares: false, fig: true, name } : { set: fig, qty, spares: false, fig: true });
+  }
   return { sets, parts, leftOut };
 }
 
@@ -499,7 +548,24 @@ function merged(have, add, mode, src) {
   const sets = new Keyed(setKey, have.sets.filter((s) => !(replaceSets && brought(s))
     && !(s.src === HAND && fetched.has(s.set))));
   const parts = new Keyed(lotKey, have.parts.filter((p) => !(replaceParts && brought(p))));
-  for (const s of add.sets) sets.add({ ...s, src }, s.qty);
+  // A set a replace takes out and puts back keeps the parts marked missing
+  // in it (mysets): the fetch says it is owned, not that it is whole.
+  // Two entries of one set taken out (typed by hand, and Rebrickable's)
+  // put their marks together on the one put back.
+  const marked = new Map();
+  for (const s of have.sets) {
+    if (!Array.isArray(s.missing) || !s.missing.length || sets.get(s)) continue;
+    const both = new Keyed(lotKey, marked.get(s.set) || []);
+    for (const p of s.missing) both.add({ ...p }, p.qty);
+    marked.set(s.set, both.list);
+  }
+  for (const s of add.sets) {
+    const held = sets.add({ ...s, src }, s.qty);
+    if (!held.missing && marked.has(s.set)) {
+      held.missing = marked.get(s.set);
+      marked.delete(s.set);
+    }
+  }
   for (const p of add.parts) parts.add({ ...p, src }, p.qty);
   return { next: { sets: sets.list, parts: parts.list }, parts };
 }
@@ -610,18 +676,62 @@ export function applyOp(have, body) {
   }
 
   if (op === "remove_set") {
-    const set = setNumber(body?.set);
+    // A minifigure by its own number (mysets); an older app, which knows
+    // no figures, names one as it was kept, and is found by it too.
+    const fig = figNumber(body?.set);
+    const set = body?.fig === true ? fig : setNumber(body?.set);
     if (!set) throw new Refusal(400, `"${body?.set}" is not a set number`);
     const src = body?.src === undefined || body?.src === null ? "" : String(body.src);
     if (src && !SOURCES.has(src)) throw new Refusal(400, `"${src}" is not where a set comes from`);
     const was = counted(body?.was, set, 1, "count seen");
-    const id = src ? { set, src } : { set };
+    let id = src ? { set, src } : { set };
+    if (!sets.get(id) && fig && body?.fig !== true) {
+      const asFig = src ? { set: fig, src } : { set: fig };
+      if (sets.get(asFig)?.fig === true) id = asFig;
+    }
     const held = sets.get(id);
     // Taken out already, elsewhere: what the person asked for is so.
     if (!held) return { next: null, done: { removed_sets: 0 } };
     if (held.qty !== was) throw new Conflict(`${set} is ${held.qty} now, not the ${was} shown`, have);
     sets.take(id);
     return { next: next(), done: { removed_sets: 1 } };
+  }
+
+  if (op === "missing") {
+    const set = setNumber(body?.set);
+    if (!set) throw new Refusal(400, `"${body?.set}" is not a set number`);
+    const src = body?.src === undefined || body?.src === null ? "" : String(body.src);
+    if (src && !SOURCES.has(src)) throw new Refusal(400, `"${src}" is not where a set comes from`);
+    const changes = listed(body, "lots", MOST_LOT_CHANGES);
+    if (changes.length === 0) throw new Refusal(400, "no lots to mark");
+    const ids = changes.map((p, n) => {
+      const part = partNumber(p?.part);
+      if (!part) throw new Refusal(400, `lot ${n + 1}: "${p?.part}" is not a part number`);
+      return { part, colour: colourOf(p?.colour, `lot ${n + 1}`) };
+    });
+    once(ids, "lot");
+    const counts = changes.map((p, n) => [counted(p?.was, `lot ${n + 1}`, 0, "count seen"),
+      counted(p?.qty, `lot ${n + 1}`, 0)]);
+    const held = sets.get(src ? { set, src } : { set });
+    if (!held || held.fig) throw new Conflict(`${set} is not in your collection any more`, have);
+    const missing = new Keyed(lotKey, Array.isArray(held.missing) ? held.missing : []);
+    ids.forEach((id, n) => {
+      const now = missing.get(id)?.qty || 0;
+      if (now !== counts[n][0]) {
+        throw new Conflict(`lot ${n + 1}: ${id.part} in colour ${id.colour} is ${now} missing now, not the ${counts[n][0]} shown`, have);
+      }
+    });
+    ids.forEach((id, n) => {
+      if (counts[n][1] === 0) missing.take(id);
+      else if (missing.get(id)) missing.get(id).qty = counts[n][1];
+      else missing.keep({ ...id, qty: counts[n][1] });
+    });
+    if (missing.list.length > MOST_MISSING) {
+      throw new Refusal(413, `that marks ${missing.list.length} lots missing; a set is at most ${MOST_MISSING}`);
+    }
+    if (missing.list.length) held.missing = missing.list;
+    else delete held.missing;
+    return { next: next(), done: { marked: ids.length, missing: missing.list.reduce((sum, p) => sum + p.qty, 0) } };
   }
 
   if (op === "start_over") {
@@ -632,8 +742,8 @@ export function applyOp(have, body) {
     return { next: { sets: [], parts: [] }, done: { started_over: true } };
   }
 
-  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set or start_over, "
-    + "or from rebrickable_csv, bricklink_xml, rebrickable_api or sets");
+  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, missing or start_over, "
+    + "or from rebrickable_csv, bricklink_xml, rebrickable_api, sets or figs");
 }
 
 /// An import, as a change: {next, done}. What it imported and left out is
@@ -687,6 +797,7 @@ export function parseImport(body) {
   if (from === "rebrickable_csv") parsed = rebrickableCsv(body.text);
   else if (from === "bricklink_xml") { parsed = bricklinkXml(body.text); numbering = "bricklink"; }
   else if (from === "sets") parsed = typedSets(body.text);
+  else if (from === "figs") parsed = { sets: [], parts: [], figs: typedFigs(body.figs) };
   else if (from === "rebrickable_api") {
     const sets = (Array.isArray(body.sets) ? body.sets : []).map((s, n) => {
       const set = setNumber(s?.[0]);
@@ -702,7 +813,7 @@ export function parseImport(body) {
     if (sets.length + parts.length === 0) throw new Refusal(400, "Rebrickable sent back no sets and no parts");
     parsed = { sets, parts };
   } else {
-    throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api or sets");
+    throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api, sets or figs");
   }
   return mapped(parsed, numbering, index);
 }
@@ -881,8 +992,8 @@ export default async function handler(request, response) {
       return response.status(200).json({ ...shown(row), done });
     }
     if (!Object.hasOwn(SOURCE_OF, String(body?.from || ""))) {
-      throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api or sets, "
-        + "or op lots, set, keep, take_back, remove_set or start_over");
+      throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api, sets or figs, "
+        + "or op lots, set, keep, take_back, remove_set, missing or start_over");
     }
     const imported = parseImport(body);
     const { row, done } = await change(owner, (have) => importing(have, body, imported), id);

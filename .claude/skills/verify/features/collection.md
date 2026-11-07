@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test -->
+<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test -->
 
 ## Sub-features
 
@@ -76,6 +76,37 @@ which models they could build from what they have. Added 2026-10-12.
   under "Added by Claude", with Keep them (they join the person's own, by
   hand) and Take back what Claude added (exactly those lots out, at the
   counts shown, any number of them). Needs the person signed in.
+- `a set from a photo` (`src/ui/collection_dialog.gd`, `src/net/brickognize.gd`,
+  APP_UX6 #6 mysets, 2026-11-07): Photo… beside Add sets (said first, once,
+  the bin's own notice, ShellPrefs `photo_told`) sends the photo to
+  Brickognize's `/predict/sets/` and `/predict/figs/` at once (a JPEG, the
+  longest side 1,024 px, top_k_items=3, no colour asked); the top three of
+  both together are offered, the kind it is surer of first, each a button
+  named for the set as its inventory here names it ("7140-1 X-wing Fighter
+  (1999) · 83%"). One press adds the set as typed (`from: sets`), or a
+  minifigure (`from: figs`): kept among the sets as `{"set": BrickLink's
+  number, "fig": true, "name"}`, listed under Minifigures with its BrickLink
+  page and Remove, its parts not counted (no inventory of a BrickLink figure
+  is here) and said so. A box, a booklet's cover or a figure is 3 actions
+  (4 the first time ever, the notice).
+- `a set's missing parts` (`src/collection/collection.gd`, `src/ui/collection_dialog.gd`,
+  `api/collection.js` op `missing`, 2026-11-07): each set on What I own has
+  Missing parts… ("12 missing…" once marked): its page lists the set's lots
+  (name, then colour; find by number, name or colour), each with how many
+  are missing, typed in place and sent 0.6 s after the last (or before any
+  other press), All missing (to count back in what is found) and None
+  missing. Kept on the set entry as `missing: [{part, colour, qty}]` (found =
+  the inventory less these), sent from the counts shown: a count changed
+  elsewhere meanwhile is refused (409) with the collection as it is. Every
+  other change keeps the marks (adds, counts, retyping, a Rebrickable
+  replace carries them to the re-added set, an older app's PUT). The pool,
+  and so What do I need? and What can I build?, count only what is there.
+  Closest to whole lists the sets with parts missing by how many pieces are
+  short (the marked less what loose parts make up; another set's parts never
+  count), each with What it needs: What do I need? for that set (its own
+  chooser: the open model or a set), its missing lots less loose parts, the
+  BrickLink and Rebrickable lists named for it. Older apps read a marked set
+  as a whole one.
 - `build from a set's parts` (`src/collection/set_bin.gd`, `src/ui/parts_bin.gd`,
   docs/APP_UX.md B10, 2026-10-30): the parts bin as one set's parts, or
   several sets' added up, a tile for each part and colour in its own colour,
@@ -305,6 +336,9 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/collection_flow.mjs --url=https://<a pre
 # loose parts (mybricks): the endpoint's lots, then the app by hand and over MCP, on a relay
 node tools/web/mybricks_api.mjs --url=http://127.0.0.1:8790
 tools/relay_probe.sh mybricks                     # a window, 1280x720 (PROBE_SIZE=1400x900 too)
+# a set's missing parts and a set from a photo (mysets): the endpoint's op, then the app, on a relay
+node tools/web/mysets_api.mjs --url=http://127.0.0.1:8790
+tools/relay_probe.sh mysets -- --shots=DIR        # a window, 1280x720 (PROBE_SIZE=1400x900 too)
 # rebuilding the data, after tools/fetch_data.sh or a catalogue change
 python3 tools/collection_data.py
 python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json
@@ -379,6 +413,30 @@ Proves it when:
   (from git) reading every lot, importing to Rebrickable's lot, and taking a
   set out with every mark kept, refused from a stale copy. Look at the pictures: `mybricks_row`, `_like`,
   `_loose`, `_need`, `_build`, `_claude`, `_taken_back`.
+- `mysets_api.mjs` ends `every check passed` (29 checks): 7140-1 typed and 12
+  lots marked in one op; refusals (a stale count 409, a set not there, a lot
+  twice, a bad colour or part, a count over 100,000, no lots) changing
+  nothing; the marks kept through a lot added, a count set, a Keep, a retype,
+  a Rebrickable replace (carried), another set's remove_set and an older
+  app's PUT; one id sent twice made once; a minifigure kept, a set number
+  refused as one, taken out both ways; every mark off and the collection
+  back lot for lot.
+- `mysets_probe` (tools/relay_probe.sh mysets, with `-- --shots=DIR`) ends `all
+  good`: the notice first, cancelled sending nothing; a box photo's 7140-1
+  added in 3 actions, both endpoints asked once each (a JPEG, top 3, no
+  colour), the top three offered by score, a stray minifigure passed over;
+  12 of 7140-1's lots marked missing on its page: kept on the set, the pool
+  12 less, the open 7140-1 model's What do I need? 12 more in exactly those
+  lots; What it needs listing exactly those 12; 5 of them added as loose
+  parts in the row, leaving exactly the other 7; Closest to whole by how
+  much is missing; a minifigure from its photo kept and removed with the
+  pool unchanged; a restart; rel-m268's and desktop 0.19.0's collection code
+  reading every set and lot and their Remove keeping the marks; the older
+  collection lot for lot at the end. Look at `mysets_photo`, `_marked`,
+  `_need`, `_need_seven`, `_closest`, `_minifigure`.
+- the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
+  ten Commons box photos, said, not gated): 7 of the 8 cropped to the box
+  found, each first; whole scenes of box, bags and parts 2 of 10.
 - `collection_probe.mjs` ends `every check passed` (44 checks): every import in
   LDraw's numbers, the other account refused by the endpoint, and straight at
   the database every session refused, the owner's too, and the anonymous key, the
@@ -425,3 +483,8 @@ A deployment carries the numbers once `colors.json` is rebuilt
   a probe on this machine ranks the owner's own saves too ("Yours").
 - Minifigures and sets inside sets are expanded; BrickLink minifigures in an
   XML are not (nothing here says what is in one) and are counted as left out.
+  A minifigure added from a photo is kept by BrickLink's number for the same
+  reason, and counts no parts.
+- Building from a set's parts (`set_bin.gd`) still offers a set's whole
+  inventory, its missing parts with it: only the pool, What do I need? and
+  What can I build? count what is there.

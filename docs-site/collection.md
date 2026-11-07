@@ -36,6 +36,17 @@ What do I need? and What can I build? count your loose parts with your sets', an
 
 **From a photo, with Claude.** Show your own Claude a photo of your pile and ask it to add what it sees: it adds every lot in one go, each marked as that chat's. *What I own* then says what it added, so you can look the lots over: **Keep them** makes them your own, and **Take back what Claude added** takes exactly those lots off again. Claude never changes your sets or the lots you added yourself.
 
+## Sets as they really are {#sets}
+
+<!-- covers
+ui:a set from a photo
+ui:a set's missing parts
+-->
+
+**A set from a photo.** Beside **Add sets**, choose **Photo…** and pick a photo of the set's box, the cover of its building instructions, or a minifigure. Brickworks asks Brickognize what it shows and offers the three it thinks most likely; choose the right one to add it. A photo of the box's front, on its own, works best. The photo goes to Brickognize, a third party, and Brickworks says so the first time. A minifigure is kept among your sets by its BrickLink number; its parts are not counted, as Brickworks has no list of what is in each.
+
+**Parts missing from a set.** Most sets that have been played with are short of a few pieces. Beside a set under *What I own*, choose **Missing parts…** and say how many of each part are missing; **All missing** marks every part, for counting back in what you find. What do I need? and What can I build? then count only what is there. **Closest to whole** lists your sets with parts missing, those nearest to complete first, and **What it needs** shows what do I need? for that set: its missing parts, less any loose parts you have added that make them up. Loose parts count towards any set; parts of your other sets do not, since taking them would break those sets.
+
 ## What do I need? {#need}
 
 **Build › What do I need?…** (or [[P]], then *What do I need?*) lists what this model uses that you do not own, and what you own that could stand in for it. Export what is left as a shopping list: see [Parts lists for shops](/docs/exports#shop-lists).

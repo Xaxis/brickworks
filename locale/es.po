@@ -11881,3 +11881,153 @@ msgstr "Este modelo no tiene ningún movimiento llamado «%s», así que se abri
 
 msgid "No such motion"
 msgstr "No existe ese movimiento"
+
+# mysets (APP_UX6 6): a set from a photo of its box, its booklet's cover or a minifigure; a set's missing parts,
+# Closest to whole, What do I need? for a set, and minifigures on What I own.
+
+msgid "Find the set from a photo of its box, its booklet's cover or a minifigure"
+msgstr "Encontrar el set a partir de una foto de su caja, de la portada de sus instrucciones o de una minifigura"
+
+msgid "Find a set from a photo"
+msgstr "Encontrar un set a partir de una foto"
+
+msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® sets, minifigures and parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nNothing is sent until you choose a photo."
+msgstr "La foto que elijas se envía a Brickognize (brickognize.com), un tercero que identifica sets, minifiguras y piezas LEGO®. Según sus condiciones puede guardar la foto y usarla para entrenar su reconocimiento, y es para uso personal y no comercial: la licencia de uso comercial de Pro no lo cubre.\n\nNo se envía nada hasta que eliges una foto."
+
+msgid "asking Brickognize what set or minifigure this is…"
+msgstr "preguntando a Brickognize qué set o minifigura es…"
+
+msgid "from your photo, most likely first, as Brickognize sees it: choose the one it is"
+msgstr "según tu foto, lo más probable primero, como lo ve Brickognize: elige el que es"
+
+msgid "Brickognize saw no set or minifigure it knows in that photo: try the box's front, or the figure alone on a plain background"
+msgstr "Brickognize no ha reconocido ningún set ni minifigura en esa foto: prueba con el frente de la caja, o la figura sola sobre un fondo liso"
+
+msgid "From your photo:"
+msgstr "Según tu foto:"
+
+msgid "Minifigure %s %s"
+msgstr "Minifigura %s %s"
+
+msgid "Add this minifigure; its parts are not counted"
+msgstr "Añadir esta minifigura; sus piezas no se cuentan"
+
+msgid "Add this set: %s pieces"
+msgstr "Añadir este set: %s piezas"
+
+msgid "Add this set; no inventory of it is here, so it adds no parts"
+msgstr "Añadir este set; aquí no está su inventario, así que no añade piezas"
+
+msgid "added %s %s"
+msgstr "%s %s añadido"
+
+msgid "Missing parts…"
+msgstr "Piezas que faltan…"
+
+msgid "%d missing…"
+msgstr "faltan %d…"
+
+msgid "Mark the parts this set is missing: only what is there is counted"
+msgstr "Marcar las piezas que le faltan a este set: solo se cuenta lo que está"
+
+msgid "Closest to whole"
+msgstr "Los más cerca de estar completos"
+
+msgid "%d of %d pieces missing"
+msgstr "faltan %d de %d piezas"
+
+msgid "your loose parts make up %d of the %d marked"
+msgstr "tus piezas sueltas cubren %d de las %d marcadas"
+
+msgid "What it needs"
+msgstr "Lo que necesita"
+
+msgid "What do I need? for this set: its missing parts, less what your loose parts make up"
+msgstr "¿Qué necesito? para este set: sus piezas que faltan, menos lo que cubren tus piezas sueltas"
+
+msgid "Minifigures"
+msgstr "Minifiguras"
+
+msgid "their parts are not counted: no list of what is in each is here"
+msgstr "sus piezas no se cuentan: aquí no está la lista de lo que lleva cada una"
+
+msgid "This minifigure on BrickLink"
+msgstr "Esta minifigura en BrickLink"
+
+msgid "‹ What I own"
+msgstr "‹ Lo que tengo"
+
+msgid "All missing"
+msgstr "Faltan todas"
+
+msgid "Every part missing, to count back in what you find"
+msgstr "Todas las piezas faltan, para volver a contar lo que encuentres"
+
+msgid "None missing"
+msgstr "No falta ninguna"
+
+msgid "Nothing missing: the set is whole"
+msgstr "No falta nada: el set está completo"
+
+msgid "How many of each part are missing. What do I need? and What can I build? count only what is there, and loose parts you add count towards the set."
+msgstr "Cuántas faltan de cada pieza. ¿Qué necesito? y ¿Qué puedo construir? cuentan solo lo que está, y las piezas sueltas que añadas cuentan para el set."
+
+msgid "Find a part in the set: its number, name or colour"
+msgstr "Buscar una pieza del set: su número, nombre o color"
+
+msgid "missing"
+msgstr "faltan"
+
+msgid "in the set"
+msgstr "en el set"
+
+msgid "That set is no longer in your collection."
+msgstr "Ese set ya no está en tu colección."
+
+msgid "that set is no longer in your collection"
+msgstr "ese set ya no está en tu colección"
+
+msgid "%s: %s of %s pieces missing"
+msgstr "%s: faltan %s de %s piezas"
+
+msgid "…and more lots: find them above"
+msgstr "…y más lotes: búscalos arriba"
+
+msgid "How many of this part are missing"
+msgstr "Cuántas faltan de esta pieza"
+
+msgid "%s is whole: nothing marked missing"
+msgstr "%s está completo: nada marcado como que falta"
+
+msgid "%s: %s marked missing"
+msgstr "%s: %s marcadas como que faltan"
+
+msgid "What to check: the open model, or a set you own with parts missing"
+msgstr "Qué comprobar: el modelo abierto, o un set tuyo al que le faltan piezas"
+
+msgid "The open model"
+msgstr "El modelo abierto"
+
+msgid "The open model: %s"
+msgstr "El modelo abierto: %s"
+
+msgid "%s: %d missing"
+msgstr "%s: faltan %d"
+
+msgid "%s: %s pieces, %s there"
+msgstr "%s: %s piezas, %s están"
+
+msgid "Missing: %s pieces in %d lots"
+msgstr "Faltan: %s piezas en %d lotes"
+
+msgid "Missing: %s pieces in %d lots."
+msgstr "Faltan: %s piezas en %d lotes."
+
+msgid "your loose parts make up %d of the %d marked."
+msgstr "tus piezas sueltas cubren %d de las %d marcadas."
+
+msgid "%s: whole, with your loose parts making up all %d pieces marked missing."
+msgstr "%s: completo, tus piezas sueltas cubren las %d piezas marcadas como que faltan."
+
+msgid "no such choice"
+msgstr "no existe esa opción"

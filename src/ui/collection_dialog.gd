@@ -29,6 +29,10 @@
 ## What a session added over MCP (edit_collection) is listed apart, under
 ## who added it, with Keep them and Take back.
 ##
+## Sets as they really are (mysets, APP_UX6 #6, 2026-11-07): Add sets takes
+## a photo, and a set can be marked as having parts missing. See the block
+## at the end.
+##
 ## The sums are Collection's; the keeping is CollectionStore's, the one the
 ## window makes and fetches as the person signs in (Shell.collection_store),
 ## given to this panel as it is made. Built by Shell, which reaches the app
@@ -157,6 +161,7 @@ func _ready() -> void:
 ## Open on one page: "own", "need" or "build".
 func open(page: String = "own") -> void:
 	visible = true
+	_need_set = {}
 	_rb_note.text = _rebrickable_note()
 	_show(page)
 	# What another device or a session changed since is shown, not a copy
@@ -287,6 +292,7 @@ func _build() -> void:
 	_pages["own"] = _own_page()
 	_pages["need"] = _need_page()
 	_pages["build"] = _build_page()
+	_pages["set"] = _set_page()
 	for page: String in _pages:
 		var holder: Control = _pages[page]
 		holder.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -320,6 +326,9 @@ func _own_page() -> Control:
 	typed.add_child(_typed)
 	_controls["collection_sets"] = _typed
 	_button(typed, "Add sets", _add_typed, "collection_add_sets")
+	_button(typed, "Photo…", ask_set_photo, "collection_sets_photo",
+		"Find the set from a photo of its box, its booklet's cover or a minifigure")
+	_set_found_row(page)
 
 	var files := HBoxContainer.new()
 	files.add_theme_constant_override("separation", 8)
@@ -447,6 +456,7 @@ func _loose_row(page: Container) -> void:
 func _need_page() -> Control:
 	var page := VBoxContainer.new()
 	page.add_theme_constant_override("separation", 8)
+	_need_for_row(page)
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 8)
 	page.add_child(top)
@@ -576,7 +586,9 @@ func _show(page: String) -> void:
 	_page = page
 	for name: String in _pages:
 		(_pages[name] as Control).visible = name == page
-		(_tabs[name] as Button).button_pressed = name == page
+	# A set's missing parts are a page of What I own's, with no tab.
+	for name: String in _tabs:
+		(_tabs[name] as Button).button_pressed = name == page or (page == "set" and name == "own")
 	match page:
 		"own":
 			_fill_own()
@@ -584,6 +596,8 @@ func _show(page: String) -> void:
 			_fill_need()
 		"build":
 			_fill_build()
+		"set":
+			_fill_set()
 	_tell_page()
 
 
@@ -591,7 +605,8 @@ func _fill_own() -> void:
 	var mine: Collection = store.collection
 	var sets: int = 0
 	for entry: Dictionary in mine.sets:
-		sets += int(entry["qty"])
+		if not Collection.is_fig(entry):
+			sets += int(entry["qty"])
 	if mine.is_empty():
 		_summary.text = ("Nothing here yet. Bring in what you own: your Rebrickable account, "
 			+ "a Rebrickable or BrickLink export, or set numbers typed in.")
@@ -603,7 +618,9 @@ func _fill_own() -> void:
 	_clear_rows(_own_rows)
 	_controls.erase("collection_build_all")
 	_controls.erase("collection_build_first")
-	if not mine.sets.is_empty():
+	_controls.erase("collection_mark_first")
+	_closest_rows()
+	if sets > 0:
 		var heading := HBoxContainer.new()
 		var named: Label = _label("Sets", 12, 0.6)
 		named.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -611,7 +628,7 @@ func _fill_own() -> void:
 		# Every set owned, counted together, as one bin to build from.
 		var every := PackedStringArray()
 		for entry: Dictionary in mine.sets:
-			for _copy: int in int(entry["qty"]):
+			for _copy: int in (int(entry["qty"]) if not Collection.is_fig(entry) else 0):
 				every.append(str(entry["set"]))
 		if every.size() > 1:
 			_small(_button(heading, "Build from them all", _build_from.bind(every),
@@ -619,6 +636,8 @@ func _fill_own() -> void:
 				+ "together, each counting how many are left as you build"))
 		_own_rows.add_child(heading)
 	for entry: Dictionary in mine.sets:
+		if Collection.is_fig(entry):
+			continue
 		var number: String = str(entry["set"])
 		var record: Dictionary = store.records.get(number, {})
 		var row := HBoxContainer.new()
@@ -635,6 +654,7 @@ func _fill_own() -> void:
 		for lot: Variant in record.get("p", []):
 			pieces += int((lot as Array)[2])
 		row.add_child(_label("%s pieces" % _comma(pieces) if pieces > 0 else "", 12, 0.6, 90.0))
+		_set_row_marks(row, entry, pieces)
 		if pieces > 0:
 			var copies := PackedStringArray()
 			for _copy: int in int(entry["qty"]):
@@ -649,6 +669,7 @@ func _fill_own() -> void:
 		drop.pressed.connect(_remove_set.bind(entry))
 		row.add_child(drop)
 		_own_rows.add_child(row)
+	_fig_rows(mine)
 	# What a session added first, apart, to be looked over: kept as the
 	# person's own, or taken back, all at once.
 	var added: Array = mine.added_lots()
@@ -749,6 +770,8 @@ func lot_rows() -> Array[HBoxContainer]:
 
 func _fill_need() -> void:
 	_clear_rows(_need_rows)
+	if _fill_need_for_set():
+		return
 	_need_stock = Inventory.of(world, library, models.scenery)
 	if _need_stock.pieces == 0:
 		_need_heading.text = "There is nothing on the baseplate yet to check against your collection."
@@ -830,7 +853,7 @@ func _export(shop: String) -> void:
 		_say("nothing is short, so there is nothing to order")
 		return
 	var short: Inventory = Collection.shortfall_stock(_need_stock, _need_plan, library)
-	var title: String = (bar.model_name() if bar != null else "model").to_snake_case()
+	var title: String = _need_name().to_snake_case()
 	if title.is_empty():
 		title = "model"
 	var made: Dictionary
@@ -1232,6 +1255,7 @@ func _begin() -> void:
 	_writing = true
 	_count_wait.stop()
 	await _send_typed()
+	await _send_marks()
 
 
 func _end() -> void:
@@ -1544,3 +1568,702 @@ func _tell_page() -> void:
 		"need": {"pieces": int(_need_cover.get("pieces", 0)), "owned": int(_need_cover.get("owned", 0)),
 			"short": short, "lots": _need_plan.size()},
 		"build": {"ranked": _ranked.size(), "top": top}}), true)
+
+
+# --- a set as it really is (mysets, APP_UX6 #6, 2026-11-07) ----------------
+#
+# Most people own old sets mixed in a tub (BrickBack, brick-tidy), and many
+# have a set's box or a minifigure in hand rather than its number.
+#
+# Add sets takes a photo: of a box, a booklet's cover or a minifigure. It
+# goes to Brickognize's /predict/sets/ and /predict/figs/ at once (the same
+# third party as a part's photo, said before the first the same way, the
+# same choice kept), and the top three of each it found are offered under
+# the row, most likely first: a set by its number, its name and year as its
+# inventory here has them, and its pieces; a minifigure by BrickLink's
+# number and name. One press adds it: the press, the photo, the choice.
+#
+# A set can be marked as having parts missing (Missing parts… on its row):
+# a page of its inventory, each lot with how many of it are missing, and
+# All missing and None missing for a set put back together from a tub. Kept
+# with the account as the set's missing lots (api/collection.js's "missing"
+# op, each from the count shown), sent 0.6 s after the last change or at
+# once before any other press, as a lot's count is. The pool then counts
+# only what is there (Collection.pool), so What do I need? and What can I
+# build? do. Closest to whole lists the sets with parts missing by how many
+# are still missing once the loose parts are counted towards each, and What
+# do I need? can be asked for one of them: its missing parts less what the
+# loose parts make up, with what could stand in, each part's BrickLink page
+# and the BrickLink and Rebrickable lists.
+
+## The photo's askers, by kind ("sets", "figs"), and what each said of the
+## last photo: its guesses, or why it could not.
+var _set_eyes: Dictionary = {}
+var _set_heard: Dictionary = {}
+var _set_photo: PickImage
+var _set_telling: ConfirmationDialog
+## Where a photo's answers are offered, under the Add sets row, and the
+## answers: [{"kind": "set" or "fig", "number", "name", "score", "pieces"}],
+## as shown.
+var _set_found: HFlowContainer
+var _set_offered: Array = []
+
+## The set whose missing parts the "set" page shows, as its entry, and its
+## inventory's record.
+var _marking: Dictionary = {}
+var _marking_record: Dictionary = {}
+var _set_title: Label
+var _set_filter: LineEdit
+var _set_rows: VBoxContainer
+var _filter_wait: Timer
+## Missing counts typed: lot key -> [{"part", "colour"}, the count its row
+## shows as kept ({"qty"}), the count typed]; for [member _marks_for].
+var _marks_typed: Dictionary = {}
+var _marks_for: Dictionary = {}
+var _mark_wait: Timer
+
+## What do I need? asked for a set with parts missing: its entry; {} for
+## the open model. The chooser lists the open model, then those sets.
+var _need_set: Dictionary = {}
+var _need_for: OptionButton
+var _need_for_row_box: HBoxContainer
+var _need_for_sets: Array = []
+
+## The most lots the set's page draws; the rest are found by its search.
+const MARK_ROWS := 400
+
+
+## The row under Add sets where a photo's sets and minifigures are offered,
+## hidden until there are some.
+func _set_found_row(page: Container) -> void:
+	_set_found = HFlowContainer.new()
+	_set_found.add_theme_constant_override("h_separation", 4)
+	_set_found.add_theme_constant_override("v_separation", 4)
+	_set_found.visible = false
+	page.add_child(_set_found)
+	_mark_wait = Timer.new()
+	_mark_wait.one_shot = true
+	_mark_wait.wait_time = 0.6
+	_mark_wait.timeout.connect(func() -> void:
+		await _begin()
+		_end())
+	add_child(_mark_wait)
+	_filter_wait = Timer.new()
+	_filter_wait.one_shot = true
+	_filter_wait.wait_time = 0.25
+	_filter_wait.timeout.connect(func() -> void:
+		if _page == "set":
+			_fill_set())
+	add_child(_filter_wait)
+
+
+## Add sets' camera: the photo goes to Brickognize, a third party, which is
+## said before the first one as the bin and the loose row say it (the same
+## choice, kept once). Straight from the press into the chooser, which a
+## browser opens only while a press is being handled (PickImage).
+func ask_set_photo() -> void:
+	if _set_photo == null:
+		_set_photo = PickImage.new()
+		_set_photo.picked.connect(identify_set)
+		_set_photo.failed.connect(func(why: String) -> void:
+			if why != "no picture chosen":
+				_say(why))
+		add_child(_set_photo)
+	if bool(ShellPrefs.value("photo_told")):
+		_set_photo.ask()
+		return
+	if _set_telling == null:
+		_set_telling = ConfirmationDialog.new()
+		_set_telling.title = "Find a set from a photo"
+		_set_telling.dialog_text = ("The photo you choose is sent to Brickognize "
+			+ "(brickognize.com), a third party that identifies LEGO® sets, minifigures and parts. "
+			+ "Under its terms it may keep the photo and use it to train its recognition, and it is "
+			+ "for personal, non-commercial use: Pro’s licence for commercial use does not "
+			+ "cover it.\n\n"
+			+ "Nothing is sent until you choose a photo.")
+		_set_telling.dialog_autowrap = true
+		_set_telling.ok_button_text = "Choose a photo"
+		_set_telling.confirmed.connect(func() -> void:
+			ShellPrefs.put("photo_told", true)
+			_set_photo.ask())
+		add_child(_set_telling)
+	_set_telling.popup_centered(Vector2i(420, 0))
+
+
+## The askers, made once: one for sets, one for minifigures. A probe points
+## each one's url at a stand-in.
+func set_eyes() -> Dictionary:
+	if _set_eyes.is_empty():
+		for kind: String in ["sets", "figs"]:
+			var eye := Brickognize.new()
+			eye.kind = kind
+			eye.url = Brickognize.BASE + kind + "/"
+			eye.answered.connect(func(guesses: Array) -> void: _heard(kind, guesses))
+			eye.failed.connect(func(why: String) -> void: _heard(kind, why))
+			add_child(eye)
+			_set_eyes[kind] = eye
+	return _set_eyes
+
+
+## [param photo] asked about as a set and as a minifigure at once; the
+## answers are offered when both are in.
+func identify_set(photo: Image) -> void:
+	_set_heard = {}
+	_set_offered = []
+	_show_offered()
+	_say("asking Brickognize what set or minifigure this is…")
+	var eyes: Dictionary = set_eyes()
+	for kind: String in eyes:
+		(eyes[kind] as Brickognize).identify(photo)
+
+
+func _heard(kind: String, said: Variant) -> void:
+	_set_heard[kind] = said
+	if _set_heard.size() < _set_eyes.size():
+		return
+	var offered: Array = []
+	var why: String = ""
+	var numbers := PackedStringArray()
+	for asked: String in ["sets", "figs"]:
+		var got: Variant = _set_heard.get(asked, [])
+		if got is String:
+			why = got
+			continue
+		for guess: Dictionary in (got as Array).slice(0, Brickognize.MOST_SETS):
+			var number: String = str(guess["bricklink"]).strip_edges().to_lower()
+			if asked == "sets":
+				number = SetInventories.normal(number)
+				numbers.append(number)
+			offered.append({"kind": "set" if asked == "sets" else "fig", "number": number,
+				"name": str(guess["name"]), "score": float(guess["score"]), "pieces": 0})
+	# A set as its inventory here names it, with its year and pieces.
+	var records: Dictionary = {}
+	if not numbers.is_empty():
+		records = await store.inventories.lookup(numbers)
+	for one: Dictionary in offered:
+		var record: Dictionary = records.get(str(one["number"]), {})
+		if not record.is_empty():
+			one["name"] = str(record.get("n", one["name"])) + (" (%d)" % int(record["y"]) if int(record.get("y", 0)) > 0 else "")
+			for lot: Variant in record.get("p", []):
+				one["pieces"] = int(one["pieces"]) + int((lot as Array)[2])
+	# Whichever kind Brickognize is surer of first, each kind best first,
+	# and the top three of them: a box's photo draws a stray minifigure at
+	# 0.3 now and then (mysets' live photos), offered after its set's three
+	# only to be passed over.
+	var best: Dictionary = {}
+	for one: Dictionary in offered:
+		best[one["kind"]] = maxf(float(best.get(one["kind"], 0.0)), float(one["score"]))
+	offered.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if a["kind"] != b["kind"]:
+			return float(best[a["kind"]]) > float(best[b["kind"]])
+		return float(a["score"]) > float(b["score"]))
+	_set_offered = offered.slice(0, Brickognize.MOST_SETS)
+	_show_offered()
+	if not offered.is_empty():
+		_say("from your photo, most likely first, as Brickognize sees it: choose the one it is")
+	elif not why.is_empty():
+		_say(why)
+	else:
+		_say("Brickognize saw no set or minifigure it knows in that photo: try the box's front, "
+			+ "or the figure alone on a plain background")
+
+
+## The photo's answers, each a button that adds it.
+func _show_offered() -> void:
+	if _set_found == null:
+		return
+	for child: Node in _set_found.get_children():
+		_set_found.remove_child(child)
+		child.queue_free()
+	for n: int in 6:
+		_controls.erase("collection_sets_found_%d" % n)
+	_set_found.visible = not _set_offered.is_empty()
+	if _set_offered.is_empty():
+		return
+	var said: Label = _label("From your photo:", 11, 0.6)
+	said.clip_text = false
+	_set_found.add_child(said)
+	for n: int in _set_offered.size():
+		var one: Dictionary = _set_offered[n]
+		var pick := Button.new()
+		pick.focus_mode = Control.FOCUS_NONE
+		pick.add_theme_font_size_override("font_size", 11)
+		var sure: int = roundi(100.0 * float(one["score"]))
+		if one["kind"] == "fig":
+			pick.text = "Minifigure %s %s · %d%%" % [one["number"], str(one["name"]).left(40), sure]
+			pick.tooltip_text = "Add this minifigure; its parts are not counted"
+		else:
+			pick.text = "%s %s · %d%%" % [one["number"], str(one["name"]).left(40), sure]
+			pick.tooltip_text = ("Add this set: %s pieces" % _comma(int(one["pieces"]))) if int(one["pieces"]) > 0 \
+				else "Add this set; no inventory of it is here, so it adds no parts"
+		pick.pressed.connect(add_offered.bind(n))
+		_set_found.add_child(pick)
+		_controls["collection_sets_found_%d" % n] = pick
+
+
+## What a photo was answered with, as offered: for a probe to read.
+func offered() -> Array:
+	return _set_offered.duplicate(true)
+
+
+## The photo's answer [param at] added: a set by its number, a minifigure
+## by BrickLink's. Returns what went wrong, "" when it was added.
+func add_offered(at: int) -> String:
+	if at < 0 or at >= _set_offered.size():
+		return "no such choice"
+	var one: Dictionary = _set_offered[at]
+	_say("adding %s…" % one["number"])
+	await _begin()
+	var result: Dictionary
+	if one["kind"] == "fig":
+		result = await store.add({"from": "figs", "figs": [{"fig": one["number"], "name": one["name"]}]})
+	else:
+		result = await store.add({"from": "sets", "text": str(one["number"]), "mode": "add"})
+	_end()
+	if not str(result["error"]).is_empty():
+		_say(str(result["error"]))
+		return str(result["error"])
+	_set_offered = []
+	_show_offered()
+	_say("added %s %s" % [one["number"], one["name"]])
+	return ""
+
+
+## A set's row on What I own: Missing parts… to mark which are, or how many
+## are when some are.
+func _set_row_marks(row: HBoxContainer, entry: Dictionary, pieces: int) -> void:
+	if pieces <= 0:
+		return
+	var marked: int = 0
+	for lot: Dictionary in Collection.missing_lots(entry):
+		marked += int(lot["qty"])
+	var mark: Button = _small(_button(row, "%d missing…" % marked if marked > 0 else "Missing parts…",
+		mark_set.bind(entry), "collection_mark_" + str(entry["set"]),
+		"Mark the parts this set is missing: only what is there is counted"))
+	if marked > 0:
+		mark.add_theme_color_override("font_color", Look.ACCENT)
+	if not _controls.has("collection_mark_first"):
+		_controls["collection_mark_first"] = mark
+
+
+## Closest to whole, first on What I own: the sets with parts missing, the
+## fewest still missing first once the loose parts are counted towards each.
+func _closest_rows() -> void:
+	# The rows' buttons by name are this filling's: the last one's are gone.
+	for named: Variant in _controls.keys():
+		if str(named).begins_with("collection_mark_") or str(named).begins_with("collection_needs_"):
+			_controls.erase(named)
+	var listed: Array = store.collection.closest_to_whole(store.records, library)
+	if listed.is_empty():
+		return
+	_own_rows.add_child(_label("Closest to whole", 12, 0.6))
+	for whole: Dictionary in listed:
+		var entry: Dictionary = whole["entry"]
+		var record: Dictionary = whole["record"]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 9)
+		var short: Label = _label(str(int(whole["short"])), 12, 1.0, 40.0)
+		short.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		short.add_theme_color_override("font_color", Look.ACCENT)
+		row.add_child(short)
+		row.add_child(_label(str(entry["set"]), 12, 0.55, 90.0))
+		var words: Label = _label("%s — %d of %d pieces missing" % [str(record.get("n", "")),
+			int(whole["short"]), int(whole["pieces"])]
+			+ ("; your loose parts make up %d of the %d marked" % [int(whole["loose"]), int(whole["marked"])]
+				if int(whole["loose"]) > 0 else ""), 12)
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.tooltip_text = words.text
+		row.add_child(words)
+		_small(_button(row, "What it needs", need_for_set.bind(entry), "collection_needs_" + str(entry["set"]),
+			"What do I need? for this set: its missing parts, less what your loose parts make up"))
+		row.set_meta("whole", whole)
+		_own_rows.add_child(row)
+
+
+## The sets Closest to whole lists, in its order, for a probe to read.
+func closest_listed() -> PackedStringArray:
+	var out := PackedStringArray()
+	for child: Node in _own_rows.get_children():
+		if child.has_meta("whole"):
+			out.append(str((child.get_meta("whole") as Dictionary)["entry"]["set"]))
+	return out
+
+
+## The minifigures on What I own, by BrickLink's number and name, each with
+## its BrickLink page and Remove.
+func _fig_rows(mine: Collection) -> void:
+	var figs: Array = mine.sets.filter(func(entry: Dictionary) -> bool: return Collection.is_fig(entry))
+	if figs.is_empty():
+		return
+	var heading: Label = _label("Minifigures — their parts are not counted: no list of what is in each is here",
+		12, 0.6)
+	heading.tooltip_text = heading.text
+	_own_rows.add_child(heading)
+	for entry: Dictionary in figs:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 9)
+		row.add_child(_label("%d ×" % int(entry["qty"]), 12, 1.0, 40.0))
+		row.add_child(_label(str(entry["set"]), 12, 0.55, 90.0))
+		var name: Label = _label(str(entry.get("name", "")), 12)
+		name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(name)
+		var link := LinkButton.new()
+		link.text = "BrickLink"
+		link.add_theme_font_size_override("font_size", 11)
+		link.tooltip_text = "This minifigure on BrickLink"
+		var url: String = "https://www.bricklink.com/v2/catalog/catalogitem.page?M=%s" % str(entry["set"]).uri_encode()
+		link.pressed.connect(func() -> void: Outside.open_link(url))
+		row.add_child(link)
+		var drop := Button.new()
+		drop.text = "Remove"
+		drop.add_theme_font_size_override("font_size", 11)
+		drop.pressed.connect(_remove_set.bind(entry))
+		row.add_child(drop)
+		row.set_meta("fig", entry)
+		_own_rows.add_child(row)
+
+
+# --- a set's missing parts -------------------------------------------------
+
+func _set_page() -> Control:
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", 8)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	page.add_child(top)
+	_button(top, "‹ What I own", func() -> void: _show("own"), "collection_mark_back")
+	_set_title = Label.new()
+	_set_title.add_theme_font_size_override("font_size", 13)
+	_set_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_set_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(_set_title)
+	_button(top, "All missing", func() -> void: mark_all(true), "collection_mark_all",
+		"Every part missing, to count back in what you find")
+	_button(top, "None missing", func() -> void: mark_all(false), "collection_mark_none",
+		"Nothing missing: the set is whole")
+	var note: Label = _label("How many of each part are missing. What do I need? and What can I build? count only "
+		+ "what is there, and loose parts you add count towards the set.", 11, 0.55)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.clip_text = false
+	page.add_child(note)
+	_set_filter = LineEdit.new()
+	_set_filter.placeholder_text = "Find a part in the set: its number, name or colour"
+	_set_filter.clear_button_enabled = true
+	_set_filter.add_theme_font_size_override("font_size", 12)
+	_set_filter.text_changed.connect(func(_text: String) -> void: _filter_wait.start())
+	page.add_child(_set_filter)
+	_controls["collection_mark_search"] = _set_filter
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 9)
+	page.add_child(columns)
+	var missing: Label = _label("missing", 11, 0.5, 64.0)
+	missing.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	columns.add_child(missing)
+	columns.add_child(_label("", 11, 0.5, 15.0))
+	columns.add_child(_label("part", 11, 0.5, 74.0))
+	var named: Label = _label("name", 11, 0.5)
+	named.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.add_child(named)
+	columns.add_child(_label("colour", 11, 0.5, 150.0))
+	columns.add_child(_label("in the set", 11, 0.5, 70.0))
+	_set_rows = _scrolled(page)
+	return page
+
+
+## Missing parts… pressed: the set's page, its lots each with how many are
+## missing.
+func mark_set(entry: Dictionary) -> void:
+	_marking = entry
+	_marking_record = store.records.get(str(entry["set"]), {})
+	_set_filter.text = ""
+	_show("set")
+
+
+## The entry [param entry] is now, as the collection keeps it: {} when it
+## is no longer there.
+func _entry_now(entry: Dictionary) -> Dictionary:
+	if entry.is_empty():
+		return {}
+	for one: Dictionary in store.collection.sets:
+		if str(one["set"]) == str(entry["set"]) and str(one.get("src", "")) == str(entry.get("src", "")) \
+				and not Collection.is_fig(one):
+			return one
+	return {}
+
+
+## The set's lots: [{"part", "colour", "count"}], its copies counted, by name
+## then colour, as the parts list puts a part's colours together.
+func _set_lots(entry: Dictionary, record: Dictionary) -> Array:
+	var times: int = maxi(1, int(entry.get("qty", 1)))
+	var lots: Array = []
+	for row: Variant in record.get("p", []):
+		var lot: Array = row
+		var info: PartLibrary.PartInfo = library.parts.get(library.resolve(str(lot[0])))
+		lots.append({"part": str(lot[0]), "colour": int(lot[1]), "count": int(lot[2]) * times,
+			"name": Inventory._tidy(info.name) if info != null else str(lot[0])})
+	lots.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if a["name"] != b["name"]:
+			return str(a["name"]) < str(b["name"])
+		return _colour(int(a["colour"])) < _colour(int(b["colour"])))
+	return lots
+
+
+func _fill_set() -> void:
+	_clear_rows(_set_rows)
+	var entry: Dictionary = _entry_now(_marking)
+	if entry.is_empty() or _marking_record.is_empty():
+		_set_title.text = "That set is no longer in your collection."
+		return
+	_marking = entry
+	var whole: Dictionary = store.collection.wholeness(entry, _marking_record, library)
+	_set_title.text = "%s %s: %s of %s pieces missing" % [str(entry["set"]), str(_marking_record.get("n", "")),
+		_comma(int(whole["marked"])), _comma(int(whole["pieces"]))]
+	var words: PackedStringArray = _set_filter.text.strip_edges().to_lower().split(" ", false)
+	var shown: int = 0
+	var lots: Array = _set_lots(entry, _marking_record)
+	for n: int in lots.size():
+		var lot: Dictionary = lots[n]
+		var said: String = ("%s %s %s" % [lot["part"], lot["name"], _colour(int(lot["colour"]))]).to_lower()
+		if not Array(words).all(func(word: String) -> bool: return said.contains(word)):
+			continue
+		if shown >= MARK_ROWS:
+			_set_rows.add_child(_label("…and more lots: find them above", 12, 0.5))
+			break
+		shown += 1
+		_set_rows.add_child(_mark_row(entry, lot))
+
+
+## A lot of the set: how many are missing (changed in place), its part and
+## colour, and how many the set has.
+func _mark_row(entry: Dictionary, lot: Dictionary) -> HBoxContainer:
+	var row: HBoxContainer = _part_row(str(lot["part"]), int(lot["colour"]), "")
+	var counted: Control = row.get_child(0)
+	row.remove_child(counted)
+	counted.queue_free()
+	var kept: Dictionary = {"qty": Collection.missing_count(entry, str(lot["part"]), int(lot["colour"]))}
+	var key: String = JSON.stringify([str(lot["part"]), int(lot["colour"])])
+	var typed: Array = _marks_typed.get(key, [])
+	if not typed.is_empty():
+		kept = typed[1]
+	var count := SpinBox.new()
+	count.min_value = 0
+	count.max_value = int(lot["count"])
+	count.step = 1
+	count.value = int(typed[2]) if not typed.is_empty() else int(kept["qty"])
+	count.select_all_on_focus = true
+	count.custom_minimum_size = Vector2(64, 0)
+	count.get_line_edit().add_theme_font_size_override("font_size", 12)
+	count.tooltip_text = "How many of this part are missing"
+	var asked: Dictionary = {"part": str(lot["part"]), "colour": int(lot["colour"])}
+	count.value_changed.connect(func(value: float) -> void: _mark_typed(entry, asked, kept, int(value)))
+	row.add_child(count)
+	row.move_child(count, 0)
+	if int(count.value) > 0:
+		(row.get_child(3) as Label).add_theme_color_override("font_color", Look.ACCENT)
+	row.add_child(_label("of %d" % int(lot["count"]), 12, 0.6, 70.0))
+	row.set_meta("mark", {"part": lot["part"], "colour": lot["colour"], "count": lot["count"]})
+	return row
+
+
+## The lots' rows on the set's page, each with its lot (meta "mark") and its
+## missing count as its first child, for a probe to set as a person does.
+func mark_rows() -> Array[HBoxContainer]:
+	var out: Array[HBoxContainer] = []
+	for child: Node in _set_rows.get_children():
+		if child is HBoxContainer and (child as HBoxContainer).has_meta("mark"):
+			out.append(child)
+	return out
+
+
+func _mark_typed(entry: Dictionary, lot: Dictionary, kept: Dictionary, count: int) -> void:
+	var key: String = JSON.stringify([lot["part"], int(lot["colour"])])
+	if count == int(kept["qty"]) and not _marks_typed.has(key):
+		return
+	# Another set's marks still waiting go first.
+	if not _marks_for.is_empty() and not _marks_typed.is_empty() \
+			and (str(_marks_for["set"]) != str(entry["set"]) or str(_marks_for.get("src", "")) != str(entry.get("src", ""))):
+		await _begin()
+		_end()
+	_marks_for = entry
+	_marks_typed[key] = [lot, kept, count]
+	_mark_wait.start()
+
+
+## The missing counts typed, sent: each from the count its row showed as
+## kept. Refused when any is no longer that, and the set shown as it is.
+func _send_marks() -> void:
+	_mark_wait.stop()
+	var lots: Array = []
+	var rows: Array = []
+	for key: String in _marks_typed:
+		var typed: Array = _marks_typed[key]
+		if int(typed[2]) == int((typed[1] as Dictionary)["qty"]):
+			continue
+		lots.append({"part": typed[0]["part"], "colour": int(typed[0]["colour"]),
+			"was": int((typed[1] as Dictionary)["qty"]), "qty": int(typed[2])})
+		rows.append(typed)
+	var entry: Dictionary = _marks_for
+	_marks_typed.clear()
+	if lots.is_empty():
+		return
+	var done: Dictionary = await _mark_change(entry, lots)
+	if done["kind"] == CollectionStore.DONE:
+		for typed: Array in rows:
+			(typed[1] as Dictionary)["qty"] = int(typed[2])
+	_say_marked(entry, done)
+
+
+## The account's "missing" op for [param entry]'s set, in changes of at
+## most 2,000 lots.
+func _mark_change(entry: Dictionary, lots: Array) -> Dictionary:
+	var done: Dictionary = {"kind": CollectionStore.DONE, "said": "", "body": {}}
+	for from: int in range(0, lots.size(), 2000):
+		var body: Dictionary = {"op": "missing", "set": str(entry["set"]), "lots": lots.slice(from, from + 2000)}
+		if not str(entry.get("src", "")).is_empty():
+			body["src"] = str(entry["src"])
+		done = await store.change(body)
+		if done["kind"] != CollectionStore.DONE:
+			break
+	return done
+
+
+func _say_marked(entry: Dictionary, done: Dictionary) -> void:
+	if done["kind"] != CollectionStore.DONE:
+		_say(str(done["said"]))
+		return
+	var now: Dictionary = _entry_now(entry)
+	var marked: int = 0
+	for lot: Dictionary in Collection.missing_lots(now):
+		marked += int(lot["qty"])
+	_say("%s is whole: nothing marked missing" % str(entry["set"]) if marked == 0
+		else "%s: %s marked missing" % [str(entry["set"]), Counted.of(marked, "piece")])
+
+
+## All missing ([param missing]), to count back in what is found, or none.
+func mark_all(missing: bool) -> String:
+	await _begin()
+	var entry: Dictionary = _entry_now(_marking)
+	if entry.is_empty() or _marking_record.is_empty():
+		_end()
+		return "that set is no longer in your collection"
+	var lots: Array = []
+	var listed: Dictionary = {}
+	for lot: Dictionary in _set_lots(entry, _marking_record):
+		var now: int = Collection.missing_count(entry, str(lot["part"]), int(lot["colour"]))
+		var want: int = int(lot["count"]) if missing else 0
+		listed[JSON.stringify([str(lot["part"]), int(lot["colour"])])] = true
+		if now != want:
+			lots.append({"part": lot["part"], "colour": int(lot["colour"]), "was": now, "qty": want})
+	# A lot marked that the set's inventory no longer lists goes too.
+	for lot: Dictionary in Collection.missing_lots(entry):
+		if not missing and not listed.has(JSON.stringify([str(lot["part"]), int(lot["colour"])])):
+			lots.append({"part": lot["part"], "colour": int(lot["colour"]), "was": int(lot["qty"]), "qty": 0})
+	var done: Dictionary = {"kind": CollectionStore.DONE, "said": "", "body": {}}
+	if not lots.is_empty():
+		done = await _mark_change(entry, lots)
+	_end()
+	_say_marked(entry, done)
+	return str(done["said"])
+
+
+# --- What do I need? for a set ---------------------------------------------
+
+func _need_for_row(page: Container) -> void:
+	_need_for_row_box = HBoxContainer.new()
+	_need_for_row_box.add_theme_constant_override("separation", 8)
+	_need_for_row_box.visible = false
+	page.add_child(_need_for_row_box)
+	_need_for = OptionButton.new()
+	_need_for.add_theme_font_size_override("font_size", 12)
+	_need_for.tooltip_text = "What to check: the open model, or a set you own with parts missing"
+	_need_for.item_selected.connect(func(at: int) -> void:
+		_need_set = {} if at <= 0 or at > _need_for_sets.size() else _need_for_sets[at - 1]
+		_fill_need()
+		_tell_page())
+	_need_for_row_box.add_child(_need_for)
+	_controls["collection_need_for"] = _need_for
+
+
+## What do I need? for [param entry]'s set: Closest to whole's What it needs.
+func need_for_set(entry: Dictionary) -> void:
+	_need_set = entry
+	_show("need")
+
+
+## The chooser's rows: the open model, then the sets with parts missing,
+## closest to whole first; the one asked for chosen.
+func _fill_need_for() -> void:
+	var listed: Array = store.collection.closest_to_whole(store.records, library)
+	_need_for_sets = listed.map(func(whole: Dictionary) -> Dictionary: return whole["entry"])
+	_need_for_row_box.visible = not listed.is_empty()
+	_need_for.clear()
+	var model: String = bar.model_name() if bar != null else ""
+	_need_for.add_item("The open model: %s" % model if not model.is_empty() else "The open model")
+	var chosen: int = 0
+	for n: int in listed.size():
+		var whole: Dictionary = listed[n]
+		var entry: Dictionary = whole["entry"]
+		_need_for.add_item("%s %s: %d missing" % [str(entry["set"]), str((whole["record"] as Dictionary).get("n", "")),
+			int(whole["short"])])
+		if not _need_set.is_empty() and str(entry["set"]) == str(_need_set["set"]) \
+				and str(entry.get("src", "")) == str(_need_set.get("src", "")):
+			chosen = n + 1
+	_need_for.select(chosen)
+
+
+## What do I need? for the set asked for, when one is: its inventory against
+## what is there towards it. False when it is for the open model.
+func _fill_need_for_set() -> bool:
+	_fill_need_for()
+	if _need_set.is_empty():
+		return false
+	var entry: Dictionary = _entry_now(_need_set)
+	var record: Dictionary = store.records.get(str(_need_set["set"]), {})
+	if entry.is_empty() or record.is_empty() or Collection.missing_lots(entry).is_empty():
+		_need_set = {}
+		_fill_need_for()
+		return false
+	_need_set = entry
+	var needs: Dictionary = Collection.set_needs(entry, record, library)
+	var there: Dictionary = store.collection.toward_set(entry, record, library)
+	_need_stock = Collection.set_stock(entry, record, library)
+	_need_cover = Collection.coverage(needs, there)
+	_need_plan = Collection.plan(needs, there, library)
+	var whole: Dictionary = store.collection.wholeness(entry, record, library)
+	var title: String = "%s %s" % [str(entry["set"]), str(record.get("n", ""))]
+	if _need_plan.is_empty():
+		_need_heading.text = "%s: whole, with your loose parts making up all %d pieces marked missing." % [
+			title, int(whole["marked"])]
+	else:
+		var short: int = 0
+		for row: Dictionary in _need_plan:
+			short += int(row["short"])
+		_need_heading.text = "%s: %s pieces, %s there. Missing: %s pieces in %d lots%s." % [title,
+			_comma(int(_need_cover["pieces"])), _comma(int(_need_cover["owned"])), _comma(short), _need_plan.size(),
+			"; your loose parts make up %d of the %d marked" % [int(whole["loose"]), int(whole["marked"])]
+				if int(whole["loose"]) > 0 else ""]
+	var shown: int = 0
+	for row: Dictionary in _need_plan:
+		if shown >= MOST_ROWS:
+			_need_rows.add_child(_label("…and %d more lots" % (_need_plan.size() - shown), 12, 0.5))
+			break
+		shown += 1
+		_need_rows.add_child(_need_row(row))
+	return true
+
+
+## What do I need?'s lists are named for: the set asked for, or the model.
+func _need_name() -> String:
+	if not _need_set.is_empty():
+		return str(_need_set["set"])
+	var named: String = bar.model_name() if bar != null else "model"
+	return named if not named.is_empty() else "model"
+
+
+## What What do I need? lists, for a probe to read: [{"part", "colour",
+## "short"}], and what it is for ("set": the number, "" for the model).
+func need_listed() -> Dictionary:
+	var rows: Array = []
+	for row: Dictionary in _need_plan:
+		rows.append({"part": str(row["part"]), "colour": int(row["colour"]), "short": int(row["short"])})
+	return {"set": str(_need_set.get("set", "")), "rows": rows}

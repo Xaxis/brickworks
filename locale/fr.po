@@ -11881,3 +11881,153 @@ msgstr "Ce modèle n’a aucun mouvement nommé « %s », il s’est donc ouvert
 
 msgid "No such motion"
 msgstr "Mouvement introuvable"
+
+# mysets (APP_UX6 6): a set from a photo of its box, its booklet's cover or a minifigure; a set's missing parts,
+# Closest to whole, What do I need? for a set, and minifigures on What I own.
+
+msgid "Find the set from a photo of its box, its booklet's cover or a minifigure"
+msgstr "Trouver le set à partir d'une photo de sa boîte, de la couverture de ses instructions ou d'une minifigurine"
+
+msgid "Find a set from a photo"
+msgstr "Trouver un set à partir d'une photo"
+
+msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® sets, minifigures and parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nNothing is sent until you choose a photo."
+msgstr "La photo que vous choisissez est envoyée à Brickognize (brickognize.com), un tiers qui identifie les sets, minifigurines et pièces LEGO®. Selon ses conditions, il peut garder la photo et s'en servir pour entraîner sa reconnaissance, et il est réservé à un usage personnel et non commercial : la licence commerciale de Pro ne le couvre pas.\n\nRien n'est envoyé avant que vous choisissiez une photo."
+
+msgid "asking Brickognize what set or minifigure this is…"
+msgstr "Brickognize cherche quel set ou quelle minifigurine c'est…"
+
+msgid "from your photo, most likely first, as Brickognize sees it: choose the one it is"
+msgstr "d'après votre photo, le plus probable d'abord, tel que Brickognize le voit : choisissez le bon"
+
+msgid "Brickognize saw no set or minifigure it knows in that photo: try the box's front, or the figure alone on a plain background"
+msgstr "Brickognize n'a reconnu aucun set ni aucune minifigurine sur cette photo : essayez le devant de la boîte, ou la figurine seule sur un fond uni"
+
+msgid "From your photo:"
+msgstr "D'après votre photo :"
+
+msgid "Minifigure %s %s"
+msgstr "Minifigurine %s %s"
+
+msgid "Add this minifigure; its parts are not counted"
+msgstr "Ajouter cette minifigurine ; ses pièces ne sont pas comptées"
+
+msgid "Add this set: %s pieces"
+msgstr "Ajouter ce set : %s pièces"
+
+msgid "Add this set; no inventory of it is here, so it adds no parts"
+msgstr "Ajouter ce set ; son inventaire n'est pas ici, il n'ajoute donc aucune pièce"
+
+msgid "added %s %s"
+msgstr "%s %s ajouté"
+
+msgid "Missing parts…"
+msgstr "Pièces manquantes…"
+
+msgid "%d missing…"
+msgstr "%d manquantes…"
+
+msgid "Mark the parts this set is missing: only what is there is counted"
+msgstr "Indiquer les pièces qui manquent à ce set : seul ce qui est là est compté"
+
+msgid "Closest to whole"
+msgstr "Les plus près d'être complets"
+
+msgid "%d of %d pieces missing"
+msgstr "%d pièces manquantes sur %d"
+
+msgid "your loose parts make up %d of the %d marked"
+msgstr "vos pièces en vrac en remplacent %d sur les %d indiquées"
+
+msgid "What it needs"
+msgstr "Ce qu'il lui faut"
+
+msgid "What do I need? for this set: its missing parts, less what your loose parts make up"
+msgstr "De quoi ai-je besoin ? pour ce set : ses pièces manquantes, moins ce que vos pièces en vrac remplacent"
+
+msgid "Minifigures"
+msgstr "Minifigurines"
+
+msgid "their parts are not counted: no list of what is in each is here"
+msgstr "leurs pièces ne sont pas comptées : la liste de ce que contient chacune n'est pas ici"
+
+msgid "This minifigure on BrickLink"
+msgstr "Cette minifigurine sur BrickLink"
+
+msgid "‹ What I own"
+msgstr "‹ Ce que je possède"
+
+msgid "All missing"
+msgstr "Tout manque"
+
+msgid "Every part missing, to count back in what you find"
+msgstr "Toutes les pièces manquantes, pour recompter ce que vous retrouvez"
+
+msgid "None missing"
+msgstr "Rien ne manque"
+
+msgid "Nothing missing: the set is whole"
+msgstr "Rien ne manque : le set est complet"
+
+msgid "How many of each part are missing. What do I need? and What can I build? count only what is there, and loose parts you add count towards the set."
+msgstr "Combien de chaque pièce manquent. De quoi ai-je besoin ? et Que puis-je construire ? ne comptent que ce qui est là, et les pièces en vrac que vous ajoutez comptent pour le set."
+
+msgid "Find a part in the set: its number, name or colour"
+msgstr "Trouver une pièce du set : son numéro, son nom ou sa couleur"
+
+msgid "missing"
+msgstr "manquantes"
+
+msgid "in the set"
+msgstr "dans le set"
+
+msgid "That set is no longer in your collection."
+msgstr "Ce set n'est plus dans votre collection."
+
+msgid "that set is no longer in your collection"
+msgstr "ce set n'est plus dans votre collection"
+
+msgid "%s: %s of %s pieces missing"
+msgstr "%s : %s pièces manquantes sur %s"
+
+msgid "…and more lots: find them above"
+msgstr "…et d'autres lots : cherchez-les plus haut"
+
+msgid "How many of this part are missing"
+msgstr "Combien de cette pièce manquent"
+
+msgid "%s is whole: nothing marked missing"
+msgstr "%s est complet : rien d'indiqué comme manquant"
+
+msgid "%s: %s marked missing"
+msgstr "%s : %s indiquées comme manquantes"
+
+msgid "What to check: the open model, or a set you own with parts missing"
+msgstr "Ce qu'il faut vérifier : le modèle ouvert, ou un de vos sets auquel il manque des pièces"
+
+msgid "The open model"
+msgstr "Le modèle ouvert"
+
+msgid "The open model: %s"
+msgstr "Le modèle ouvert : %s"
+
+msgid "%s: %d missing"
+msgstr "%s : %d manquantes"
+
+msgid "%s: %s pieces, %s there"
+msgstr "%s : %s pièces, %s présentes"
+
+msgid "Missing: %s pieces in %d lots"
+msgstr "Manquent : %s pièces en %d lots"
+
+msgid "Missing: %s pieces in %d lots."
+msgstr "Manquent : %s pièces en %d lots."
+
+msgid "your loose parts make up %d of the %d marked."
+msgstr "vos pièces en vrac en remplacent %d sur les %d indiquées."
+
+msgid "%s: whole, with your loose parts making up all %d pieces marked missing."
+msgstr "%s : complet, vos pièces en vrac remplaçant les %d pièces indiquées comme manquantes."
+
+msgid "no such choice"
+msgstr "ce choix n'existe pas"
