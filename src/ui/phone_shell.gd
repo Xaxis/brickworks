@@ -876,11 +876,7 @@ func _more_rows(items: Array, under: String) -> void:
 		if item.begins_with(">"):
 			var kind: String = item.substr(1)
 			if Shell.SUBMENUS.has(kind):
-				var words: String = {"import": "Import", "export": "Export",
-					"select_by": "Select by", "cut_away": "Cut away by", "steps": "Build steps",
-					"booklet": "Booklet page", "floor": "Floor",
-					"floor_colour": "Baseplate colour"}.get(kind, kind)
-				_more_rows(Shell.SUBMENUS[kind] as Array, words)
+				_more_rows(Shell.SUBMENUS[kind] as Array, str(Shell.SUBMENU_WORDS.get(kind, kind)))
 			continue
 		var command: Shell.Command = shell.command(item)
 		if command == null:
