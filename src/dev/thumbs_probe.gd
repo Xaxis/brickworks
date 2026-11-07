@@ -146,8 +146,13 @@ func _one(label: String, model: String, library: PartLibrary) -> void:
 	DirAccess.remove_absolute(picture)
 	var ran: Dictionary = await _draw(model, picture)
 	var said: String = str(ran["said"])
+	# The command's own line, or the end of what it said.
+	var told: String = said.strip_edges().right(160)
+	for line: String in said.split("\n"):
+		if line.begins_with("thumbnail:"):
+			told = line
 	_check(int(ran["exit"]) == 0 and FileAccess.file_exists(picture),
-		"drawn by the command (exit %d, %s)" % [int(ran["exit"]), said.strip_edges().right(160)])
+		"drawn by the command (exit %d, %s)" % [int(ran["exit"]), told])
 	_check(int(ran["ms"]) <= MOST_MS, "in %d ms, start to exit (at most %d)"
 		% [int(ran["ms"]), MOST_MS])
 	if not FileAccess.file_exists(picture):
