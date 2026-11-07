@@ -669,6 +669,7 @@ func _boxes(printed: Dictionary) -> void:
 	if printed.is_empty():
 		return
 	var boxes: Array = _parts_boxes(printed["document"])
+	var page: Color = (printed["document"] as Booklet.Document).sheet.colour
 	for kind: String in ["PNG", "PDF"]:
 		var wrong_frame: Array = []
 		var wrong_fill: Array = []
@@ -687,9 +688,10 @@ func _boxes(printed: Dictionary) -> void:
 			var inside := Vector2(rect.get_center().x, rect.position.y + 1.1)
 			if not _near(_at(image, inside), FILL, 8.0 / 255.0):
 				wrong_fill.append("p%d #%s" % [box[0], _at(image, inside).to_html(false)])
-			# Inside the old corners' 2.2 mm round and outside the new 4.
+			# Inside the old corners' 2.2 mm round (1.84 mm from its middle) and
+			# outside the new 4 (4.38 mm from its): the page's own colour.
 			var corner: Color = _at(image, rect.position + Vector2(0.9, 0.9))
-			if _near(corner, FILL, 12.0 / 255.0) or _near(corner, FRAME, 40.0 / 255.0):
+			if not _near(corner, page, 12.0 / 255.0):
 				square.append("p%d #%s" % [box[0], corner.to_html(false)])
 			old += _count(image, rect.grow(0.6), OLD_FRAME, 10.0 / 255.0, box[2])
 			old += _count(image, rect.grow(0.6), OLD_FILL, 10.0 / 255.0, box[2])
