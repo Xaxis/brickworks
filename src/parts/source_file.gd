@@ -1572,8 +1572,10 @@ func _reproduces(save: Save, line: String, frame: Transform3D, inherit: int, ite
 		part = ModelStore.studio_part(part, library)
 	var at: Transform3D = frame * local
 	if frame.basis.determinant() < 0.0:
-		var image: Dictionary = Mirror.image(library, part, local, 0, 0.0) if library != null \
-			else Mirror.reflected(null, null, local, 0, 0.0)
+		# Through Later: the first screen compiles SourceFile (test_later).
+		var mirror: GDScript = Later.script(&"Mirror")
+		var image: Dictionary = mirror.image(library, part, local, 0, 0.0) if library != null \
+			else mirror.reflected(null, null, local, 0, 0.0)
 		part = str(image.get("part", part))
 		at = frame * LdrModel.REFLECT_X * (image["at"] as Transform3D)
 		at = Builder._tidy(at, BrickLattice.is_square_to_grid(at.basis))
@@ -1608,7 +1610,7 @@ func _said(save: Save, original: String, item: Item, frame: Transform3D, inherit
 		var part: String = ModelStore.studio_part(_part_of(reference), library)
 		var said_part: String = part
 		if reflected:
-			var other: String = Mirror.counterpart(library, part)
+			var other: String = Later.script(&"Mirror").counterpart(library, part)
 			if not other.is_empty() and library.parts.has(other):
 				part = other
 		var real: String = library.resolve(part)
@@ -1625,7 +1627,7 @@ func _said(save: Save, original: String, item: Item, frame: Transform3D, inherit
 	if token.is_empty():
 		var id: String = item.part_id
 		if reflected and library != null:
-			var other: String = Mirror.counterpart(library, id)
+			var other: String = Later.script(&"Mirror").counterpart(library, id)
 			if not other.is_empty() and library.parts.has(other):
 				id = other
 		token = id + ".dat"
@@ -1636,8 +1638,8 @@ func _said(save: Save, original: String, item: Item, frame: Transform3D, inherit
 	if reflected:
 		var put: Lbm.PartMesh = library.mesh_for(put_part) if library != null else null
 		var file: Lbm.PartMesh = library.mesh_for(file_part) if library != null else null
-		local = Mirror.reflected(put, file, (frame * LdrModel.REFLECT_X).affine_inverse() * want,
-			0, 0.0)["at"]
+		local = Later.script(&"Mirror").reflected(put, file,
+			(frame * LdrModel.REFLECT_X).affine_inverse() * want, 0, 0.0)["at"]
 	var colour: String = _colour_token(item.colour)
 	if item.read != null and words.size() >= 15 and item.colour == item.read.colour \
 			and (words[1] != "16" or inherit == item.colour):

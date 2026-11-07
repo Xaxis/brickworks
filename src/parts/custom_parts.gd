@@ -650,7 +650,8 @@ static func _to_build(library: PartLibrary, model: LdrModel) -> PackedStringArra
 		var id: String = file_name.get_basename()
 		var text: String = model.embedded_parts[file_name]
 		var info: PartLibrary.PartInfo = library.parts.get(id)
-		if info != null and not info.custom:
+		# A stand-in only held the number for a model that did not carry it.
+		if info != null and not info.custom and not info.stand_in:
 			continue
 		if info != null and library.custom_source(id) == text:
 			continue

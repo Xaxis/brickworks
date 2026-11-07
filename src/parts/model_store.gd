@@ -2114,7 +2114,7 @@ func _source_asked(title_now: String) -> Dictionary:
 	# A copy placed mirrored asks Mirror for a part's other hand, whose index
 	# is built once and not for two threads: built here, on the main one.
 	if source.mirrored and library != null:
-		Mirror._index(library)
+		Later.script(&"Mirror")._index(library)
 	# A part made here that a line may name (a skin pasted, a part from the
 	# element maker) goes out inside the file: its sources read here, on the
 	# main thread, where the library is (SourceFile._made_lines).

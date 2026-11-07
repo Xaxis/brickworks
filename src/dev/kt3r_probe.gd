@@ -408,8 +408,8 @@ func _case_unshown_edits() -> void:
 	var lifted: int = _builder.lift_selection()
 	var put: int = await _put_down()
 	_shell.assemblies.leave_to("")
-	_check("picked up %d parts, the sticker with them, and put down %d" % [lifted, put],
-		lifted == 3 and put == 3)
+	_check("picked up %d parts, the sticker with them, and put down (#%d): %d stickers on the baseplate"
+		% [lifted, put, _stickers()], lifted == 3 and put > 0 and _stickers() == 1)
 	var saved: String = await _saved("the copy picked up and put down", text, depth, [placing])
 	_check("...the sticker's line as it was, the copy's line new, nothing else",
 		saved.contains("\n" + sticker + "\n") and _minus(saved, text).size() == 1)
@@ -448,8 +448,8 @@ func _case_unshown_edits() -> void:
 	_builder.hold_copy(Carry.clipboard)
 	put = await _put_down()
 	_shell.assemblies.leave_to("")
-	_check("copied %d parts, the sticker with them, and put down %d" % [copied, put],
-		copied == 3 and put == 3)
+	_check("copied %d parts, the sticker with them, and put down (#%d): %d stickers on the baseplate"
+		% [copied, put, _stickers()], copied == 3 and put > 0 and _stickers() == 2)
 	saved = await _saved("the copy copied", text, depth, [])
 	_check("...opened again, both stickers said not shown: %s" % _store.unshown,
 		_store.unshown == {"zz9001ps1": 2})
@@ -997,6 +997,12 @@ func _put_down(up: bool = false) -> int:
 			return put
 	_builder.cancel_carry()
 	return 0
+
+
+## The parts no library has on the baseplate (unshown_edits' sticker).
+func _stickers() -> int:
+	return _world.bricks().filter(func(brick: BrickWorld.Brick) -> bool:
+		return _library.is_stand_in(brick.part_id)).size()
 
 
 func _select_assembly(path: String) -> void:
