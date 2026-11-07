@@ -771,6 +771,222 @@ async function point(request, me) {
   return { ok: Boolean(mine) };
 }
 
+// -- Build party (APP_UX5 buildparty, 2026-11-06) ---------------------------
+//
+// Several phones build one shared model together: Build it, Build together,
+// on the model's link (src/ui/share_view.gd, src/net/build_party.gd). One
+// phone starts a party and is given a short code to say across the table;
+// up to three more on the same link join by it, with no account. The phone
+// that started deals the model out, each builds its own share a part at a
+// time and sees the others' progress, and the step that joins them is shown
+// to all once each is done (src/net/build_party.gd says how it is dealt).
+//
+// Through this relay's own log: a party is a session here, its id the
+// SHA-256 of "party:<link>:<code>", so a code works only on its own link,
+// and each phone's word is an op in it, numbered by together_append in the
+// one order every phone folds them in. The phones have no accounts, so the
+// party is kept under the link's owner, whose model it is, as the link's
+// own views are. Each op names its phone by a random id that phone keeps
+// for the link (client), which is never sent to the others: they see a
+// short hash of it (who). A phone that leaves and joins again with the same
+// id has its seat, its share and its place back.
+//
+// All POST, with no sign-in:
+//
+//   ?op=party_start {link, phone, name}   a party on the shared model [link]:
+//                                         its code, and the phone in seat 1
+//   ?op=party_join  {link, code, phone, name}  a seat, or the phone's own
+//                                         again: every word said so far
+//   ?op=party_send  {link, code, phone, cid, said}  one word, as a phone
+//                                         in it: {deal: n} (seat 1, once:
+//                                         the shares fixed for n phones),
+//                                         {at: {done, of, page, part,
+//                                         finished}} or {left: true}
+//   ?op=party_poll  {link, code, after}   the words after [after], waiting
+//                                         up to ~15 s for one
+//
+// A name is a person's own words to the others at the table: one line, 20
+// characters at most, nothing a stranger may not be shown (api/_names.js);
+// none is "Builder 2" on every phone. A party takes no new phone once dealt
+// or with four, and none at all a day after it began.
+const PARTY_LINK = /^[A-Za-z0-9]{10}$/;
+// Said aloud and typed on a phone: no vowels (no words), no 0, O, 1 or I.
+const PARTY_LETTERS = "BCDFGHJKLMNPQRSTVWXZ23456789";
+const PARTY_CODE = new RegExp(`^[${PARTY_LETTERS}]{4}$`);
+const PARTY_PHONES = 4;
+const PARTY_NAME_MOST = 20;
+const PARTY_HOURS = 24;
+// Live parties on one link at most: past it, a start is refused.
+const PARTIES_MOST = 40;
+const PARTY_WAIT_MS = 15_000;
+const PARTY_POLL_MS = 150;
+const PARTY_WORDS_MOST = 4_000;
+
+const partyIdOf = (link, code) => idOf(`party:${link}:${code}`);
+const partyWho = (id, phone) => createHash("sha256").update(`${id}:${phone}`).digest("hex").slice(0, 8);
+
+function partyCode() {
+  const bytes = randomBytes(4);
+  return [...bytes].map((byte) => PARTY_LETTERS[byte % PARTY_LETTERS.length]).join("");
+}
+
+// The link, the code and the phone of a request, each as it must be.
+function partyAsked(body, { code = true, phone = true } = {}) {
+  const link = String(body?.link || "");
+  if (!PARTY_LINK.test(link)) throw new Refusal(404, "no such model");
+  const given = String(body?.code || "").toUpperCase().replace(/[\s-]+/g, "");
+  if (code && !PARTY_CODE.test(given)) throw new Refusal(404, "There is no build with that code on this model");
+  const device = String(body?.phone || "");
+  if (phone && !CLIENT.test(device)) throw new Refusal(400, "which phone?");
+  return { link, code: given, phone: device };
+}
+
+// A name as the others are shown it: one line, printable, at most
+// PARTY_NAME_MOST characters, and nothing a stranger may not be shown.
+function partyName(said) {
+  const text = String(said ?? "").replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]+/g, " ")
+    .replace(/\s+/g, " ").trim();
+  const name = [...text].slice(0, PARTY_NAME_MOST).join("");
+  const trouble = name ? namesTrouble({ "Your name": [name, "words"] }) : "";
+  if (trouble) throw new Refusal(422, trouble);
+  return name;
+}
+
+// The party on [link] with [code], as a phone may use it: there, not ended,
+// begun within PARTY_HOURS.
+async function partyRow(link, code) {
+  const id = partyIdOf(link, code);
+  const [row] = await db(`together_sessions?id=eq.${id}&select=id,owner,title,created_at,ended_at`) || [];
+  if (!row || row.title !== `party:${link}`) throw new Refusal(404, "There is no build with that code on this model");
+  if (row.ended_at || Date.now() - Date.parse(row.created_at) > PARTY_HOURS * 3600_000) {
+    throw new Refusal(410, "That build is over. Start a new one");
+  }
+  return row;
+}
+
+// Every word in party [id], in order.
+async function partyWords(id) {
+  return await db(`together_ops?session=eq.${id}&order=seq.asc&limit=${PARTY_WORDS_MOST}&select=seq,client,changes`) || [];
+}
+
+// Who has a seat (their phones, in the order they first joined) and how
+// many the party was dealt for (0 until it is).
+function partySeats(rows) {
+  const seats = [];
+  let dealt = 0;
+  for (const row of rows) {
+    const said = row.changes || {};
+    if (said.join && !seats.includes(row.client)) seats.push(row.client);
+    else if (said.deal && !dealt && row.client === seats[0]) dealt = Number(said.deal);
+  }
+  return { seats, dealt };
+}
+
+const partyOut = (id, rows) => rows.map((row) => ({ seq: Number(row.seq), who: partyWho(id, row.client),
+  said: row.changes }));
+
+async function partyAppend(row, phone, cid, said) {
+  const [seq] = await db("rpc/together_append", {
+    method: "POST", body: { p_session: row.id, p_author: row.owner, p_client: phone, p_ops: [{ cid, changes: said }] },
+  });
+  return Number(seq);
+}
+
+// The party as [phone] has it once in: every word, and which seat is theirs.
+async function partyAnswer(row, link, code, phone) {
+  const rows = await partyWords(row.id);
+  const { seats } = partySeats(rows);
+  return { code, link, me: partyWho(row.id, phone), seat: seats.indexOf(phone) + 1, ops: partyOut(row.id, rows),
+    seq: rows.length > 0 ? Number(rows[rows.length - 1].seq) : 0 };
+}
+
+async function partyStart(request) {
+  const body = request.body || {};
+  const { link, phone } = partyAsked(body, { code: false });
+  const name = partyName(body.name);
+  const [model] = await db(`shared_models?id=eq.${link}&published=is.true&select=id,owner`) || [];
+  if (!model) throw new Refusal(404, "no such model");
+  const live = await db(`together_sessions?title=eq.party:${link}&ended_at=is.null&select=id`) || [];
+  if (live.length >= PARTIES_MOST) throw new Refusal(429, "Too many builds on this model just now. Try again later");
+  // A code taken already on this link is drawn again.
+  for (let tries = 0; tries < 6; tries += 1) {
+    const code = partyCode();
+    const id = partyIdOf(link, code);
+    try {
+      await db("together_sessions", { method: "POST",
+        body: { id, owner: model.owner, title: `party:${link}`, snapshot: { party: 1, link } } });
+    } catch (trouble) {
+      if (/: 409$/.test(String(trouble?.message))) continue;
+      throw trouble;
+    }
+    const row = { id, owner: model.owner };
+    await partyAppend(row, phone, 0, { join: { name } });
+    if (Math.random() < 0.1) await db("rpc/together_sweep", { method: "POST", body: {} }).catch(() => null);
+    return await partyAnswer(row, link, code, phone);
+  }
+  throw new Refusal(503, "No code was free. Try again");
+}
+
+async function partyJoin(request) {
+  const body = request.body || {};
+  const { link, code, phone } = partyAsked(body);
+  const name = partyName(body.name);
+  const row = await partyRow(link, code);
+  const { seats, dealt } = partySeats(await partyWords(row.id));
+  if (!seats.includes(phone)) {
+    if (dealt) throw new Refusal(409, "That build has started. Ask for a new code, or build it on your own");
+    if (seats.length >= PARTY_PHONES) throw new Refusal(409, `That build has ${PARTY_PHONES} phones already`);
+  }
+  // Back in, or in: said as a word, so every phone folds it in its place.
+  await partyAppend(row, phone, 0, { join: { name } });
+  const answer = await partyAnswer(row, link, code, phone);
+  // Two joining at once as the fourth and the fifth: the later is not seated.
+  if (answer.seat < 1 || answer.seat > PARTY_PHONES) throw new Refusal(409, `That build has ${PARTY_PHONES} phones already`);
+  return answer;
+}
+
+const whole = (n, least, most) => Number.isInteger(n) && n >= least && n <= most;
+
+async function partySend(request) {
+  const body = request.body || {};
+  const { link, code, phone } = partyAsked(body);
+  const said = body.said;
+  const keys = said && typeof said === "object" && !Array.isArray(said) ? Object.keys(said) : [];
+  const at = said?.at;
+  const ok = keys.length === 1 && whole(body.cid, 0, 1_000_000) && (
+    (keys[0] === "deal" && whole(said.deal, 1, PARTY_PHONES))
+    || (keys[0] === "left" && said.left === true)
+    || (keys[0] === "at" && at && typeof at === "object" && whole(at.done, 0, 100_000) && whole(at.of, 0, 100_000)
+      && whole(at.page, 0, 100_000) && whole(at.part, -1, 100_000) && typeof at.finished === "boolean"
+      && Object.keys(at).length === 5));
+  if (!ok) throw new Refusal(400, "a word is {deal: n}, {at: {done, of, page, part, finished}} or {left: true}");
+  const row = await partyRow(link, code);
+  const { seats, dealt } = partySeats(await partyWords(row.id));
+  if (!seats.includes(phone)) throw new Refusal(403, "Join the build by its code first");
+  if (keys[0] === "deal" && seats[0] !== phone) throw new Refusal(403, "The phone that started the build deals it");
+  if (keys[0] === "deal" && dealt) throw new Refusal(409, "That build is dealt already");
+  return { seq: await partyAppend(row, phone, body.cid, said) };
+}
+
+async function partyPoll(request) {
+  const body = request.body || {};
+  const { link, code } = partyAsked(body, { phone: false });
+  const after = Math.max(0, Math.floor(Number(body.after) || 0));
+  const row = await partyRow(link, code);
+  const until = Date.now() + PARTY_WAIT_MS;
+  for (;;) {
+    const rows = await db(`together_ops?session=eq.${row.id}&seq=gt.${after}&order=seq.asc&limit=${PARTY_WORDS_MOST}`
+      + "&select=seq,client,changes") || [];
+    if (rows.length > 0 || Date.now() > until) {
+      return { ops: partyOut(row.id, rows), seq: rows.length > 0 ? Number(rows[rows.length - 1].seq) : after };
+    }
+    await sleep(PARTY_POLL_MS);
+  }
+}
+
+const PARTY_OPS = { party_start: partyStart, party_join: partyJoin, party_send: partySend, party_poll: partyPoll };
+// -- end of Build party ------------------------------------------------------
+
 const OPS = { start, join, send, poll, end, leave, remove, point, upload, snapshot: snapshotPart };
 const LINES = "application/x-ndjson";
 
@@ -783,6 +999,13 @@ export default async function handler(request, response) {
       .setHeader("Access-Control-Allow-Methods", "POST, OPTIONS").end();
   }
   try {
+    // A build party's: no sign-in (above).
+    const party = PARTY_OPS[String(request.query?.op || "")];
+    if (party) {
+      if (!dbConfigured()) throw new Refusal(503, "building together is not configured here");
+      if (request.method !== "POST") throw new Refusal(405, "POST only");
+      return response.status(200).json(await party(request));
+    }
     if (!authConfigured() || !dbConfigured()) throw new Refusal(503, "building together is not configured here");
     if (request.method !== "POST") throw new Refusal(405, "POST only");
     const op = OPS[String(request.query?.op || "")];

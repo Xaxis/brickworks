@@ -11517,6 +11517,173 @@ msgstr "Un PNG"
 msgid "A JPEG"
 msgstr "Un JPEG"
 
+# Build together, a build party (buildparty, APP_UX5 5): the share link's card and Build it's party row.
+
+msgid "Build it with others, each on their own phone: a code to join by, the model dealt out"
+msgstr "Constrúyelo con otros, cada uno en su móvil: un código para unirse y el modelo repartido"
+
+msgid "Put this away: the build goes on"
+msgstr "Ocultar: la construcción sigue"
+
+msgid "Your name (you can leave it out)"
+msgstr "Tu nombre (opcional)"
+
+msgid "Start a build"
+msgstr "Empezar una construcción"
+
+msgid "Start one and get a code for the others"
+msgstr "Empieza una y recibe un código para los demás"
+
+msgid "Code"
+msgstr "Código"
+
+msgid "Join the build with the code another phone shows"
+msgstr "Únete a la construcción con el código que muestra otro móvil"
+
+msgid "Start building"
+msgstr "Empezar a construir"
+
+msgid "Deal the model out to everyone in it now"
+msgstr "Repartir ahora el modelo entre todos los que están dentro"
+
+msgid "Back to building"
+msgstr "Volver a construir"
+
+msgid "Your share, where you were"
+msgstr "Tu parte, donde lo dejaste"
+
+msgid "Leave the build"
+msgstr "Salir de la construcción"
+
+msgid "The others are told; the code stays here to join again"
+msgstr "Se avisa a los demás; el código se queda aquí para volver a unirte"
+
+msgid "Up to four phones build this model at once, each its own part, and put the parts together at the end. One phone starts; the others join with its code. No account needed."
+msgstr "Hasta cuatro móviles construyen este modelo a la vez, cada uno su parte, y al final se juntan las partes. Un móvil empieza; los demás se unen con su código. No hace falta cuenta."
+
+msgid "Code: %s"
+msgstr "Código: %s"
+
+msgid "On each other phone, open this model, press Build together and type %s. Press Start building when everyone is in."
+msgstr "En cada uno de los otros móviles, abre este modelo, pulsa Construir juntos y escribe %s. Pulsa Empezar a construir cuando estén todos."
+
+msgid "On each other phone, open this model, press Build together and type %s. The phone that started deals it out when everyone is in."
+msgstr "En cada uno de los otros móviles, abre este modelo, pulsa Construir juntos y escribe %s. El móvil que empezó lo reparte cuando estén todos."
+
+msgid "Building together · %s"
+msgstr "Construyendo juntos · %s"
+
+msgid "Everyone is done: put the parts together."
+msgstr "Todos han terminado: juntad las partes."
+
+msgid "Each phone builds its own part."
+msgstr "Cada móvil construye su propia parte."
+
+msgid "Start building: %d phones"
+msgstr "Empezar a construir: %d móviles"
+
+msgid "Start building: 1 phone"
+msgstr "Empezar a construir: 1 móvil"
+
+msgid "%s has left"
+msgstr "%s se ha ido"
+
+msgid "%s is done"
+msgstr "%s ha terminado"
+
+msgid "%s %d of %d"
+msgstr "%s %d de %d"
+
+msgid "Your part is built"
+msgstr "Tu parte está construida"
+
+msgid "Waiting for %s: %d of %d"
+msgstr "Esperando a %s: %d de %d"
+
+msgid "Waiting for %d others"
+msgstr "Esperando a otros %d"
+
+msgid "Waiting for the others"
+msgstr "Esperando a los demás"
+
+msgid "Waiting"
+msgstr "Esperando"
+
+msgid "The step that puts everyone's parts together comes when everyone is done"
+msgstr "El paso que junta las partes de todos llega cuando todos han terminado"
+
+msgid "Put it together"
+msgstr "Júntalo"
+
+msgid "Everyone is done. The others' parts go on where they are outlined."
+msgstr "Todos han terminado. Las partes de los demás van donde están perfiladas."
+
+msgid "Builder %d"
+msgstr "Constructor %d"
+
+msgid "A code is four letters and numbers, as the other phone shows it."
+msgstr "Un código son cuatro letras y números, tal como lo muestra el otro móvil."
+
+msgid "Only the phone that started the build deals it."
+msgstr "Solo el móvil que empezó la construcción la reparte."
+
+msgid "%s: Brickworks could not be reached. Check the connection and try again."
+msgstr "%s: no se pudo conectar con Brickworks. Comprueba la conexión y vuelve a intentarlo."
+
+msgid "%s: the server said %d."
+msgstr "%s: el servidor respondió %d."
+
+msgid "Starting a build"
+msgstr "Empezar una construcción"
+
+msgid "Joining the build"
+msgstr "Unirse a la construcción"
+
+msgid "Dealing it out"
+msgstr "Repartir"
+
+msgid "Leaving"
+msgstr "Salir"
+
+msgid "The build"
+msgstr "La construcción"
+
+msgid "There is no build with that code on this model."
+msgstr "No hay ninguna construcción con ese código en este modelo."
+
+msgid "That build is over. Start a new one."
+msgstr "Esa construcción ha terminado. Empieza otra."
+
+msgid "No such model."
+msgstr "Ese modelo no existe."
+
+msgid "Too many builds on this model just now. Try again later."
+msgstr "Hay demasiadas construcciones de este modelo ahora mismo. Vuelve a intentarlo más tarde."
+
+msgid "No code was free. Try again."
+msgstr "No había ningún código libre. Vuelve a intentarlo."
+
+msgid "That build has started. Ask for a new code, or build it on your own."
+msgstr "Esa construcción ya ha empezado. Pide un código nuevo o constrúyelo tú solo."
+
+msgid "That build has 4 phones already."
+msgstr "Esa construcción ya tiene 4 móviles."
+
+msgid "Join the build by its code first."
+msgstr "Únete primero a la construcción con su código."
+
+msgid "The phone that started the build deals it."
+msgstr "El móvil que empezó la construcción la reparte."
+
+msgid "That build is dealt already."
+msgstr "Esa construcción ya está repartida."
+
+msgid "Building together is not configured here."
+msgstr "Construir juntos no está configurado aquí."
+
+msgid "Your name has a word in it the gallery does not show: say it another way."
+msgstr "Tu nombre tiene una palabra que la galería no muestra: dilo de otra forma."
+
 # View, Stud directions (APP_UX5 seeing2): each part coloured by where its studs point, its legend
 
 msgid "Stud directions"

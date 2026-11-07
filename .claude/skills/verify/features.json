@@ -585,6 +585,14 @@
       "tests": []
     },
     {
+      "id": "cli:build party browser flow",
+      "kind": "cli",
+      "entry": "tools/web/buildparty_flow.mjs",
+      "reach": "node tools/web/buildparty_flow.mjs --build=build/web --port=9921 --out=shots/buildparty_flow   (with .env sourced; or --url=<deployment> with BW_BYPASS)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:build steps probe",
       "kind": "cli",
       "entry": "src/dev/build_steps_probe.gd",
@@ -4217,6 +4225,14 @@
       "kind": "ui",
       "entry": "src/ui/build_mode.gd",
       "reach": "https://brickworks.diy/m/<id>, then Build it on the viewer's bar  (a phone or a tablet; the desktop too)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:build party",
+      "kind": "ui",
+      "entry": "src/net/build_party.gd",
+      "reach": "https://brickworks.diy/app?view=<id> on two to four phones, Build together beside Build it: Start a build on one, the code typed and Join on the others, then Start building  (no account; api/together.js ?op=party_*)",
       "area": "web",
       "tests": []
     },
