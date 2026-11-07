@@ -1925,6 +1925,14 @@
       "tests": []
     },
     {
+      "id": "cli:playlink probe",
+      "kind": "cli",
+      "entry": "src/dev/playlink_probe.gd",
+      "reach": "tools/probe.sh playlink_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/playlink_probe.gd; PROBE_SIZE=1400x900, 390x844, 1024x768)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:prints and stickers in a browser",
       "kind": "cli",
       "entry": "tools/web/studio_flow.mjs",
@@ -4113,6 +4121,14 @@
       "entry": "src/render/frame_budget.gd",
       "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:a link that opens playing",
+      "kind": "ui",
+      "entry": "src/main.gd",
+      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over within 2 s of the model shown; its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
+      "area": "web",
       "tests": []
     },
     {

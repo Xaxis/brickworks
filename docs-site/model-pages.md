@@ -62,6 +62,12 @@ A model with something that moves says so under the bar (*Moves: steering, boom*
 ui:play in a shared model
 -->
 
+A link can open the model playing one of its motions: add `?motion=` and the motion's name, as the Share panel's **Opens** writes it (`brickworks.diy/m/<id>?motion=lift-the-boom`; a word only that motion's name has, such as `?motion=boom`, works too). It plays there and back over and over until you press its button, which puts it back as built. With **Reduce motion** on in your system or in Settings it plays once. A name the model has no motion for opens it still, and says so.
+
+<!-- covers
+ui:a link that opens playing
+-->
+
 ## Pictures and tabs {#tabs}
 
 Under the picture is a strip: the published picture, its owner's photos and photos of real builds people sent; choose one to see it large. Its owner can **Add a picture**. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Collections**, and **Versions** once it has more than one.

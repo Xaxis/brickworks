@@ -11981,3 +11981,30 @@ msgstr "su tamaño no está entre 0 y 4000 LDU (el de un panel por encima de 0: 
 
 msgid "its cone is not %d to %d degrees"
 msgstr "su cono no está entre %d y %d grados"
+
+# A link that opens playing one of the model's motions (playlink, APP_UX5 10): the
+# share panel's Opens, and the viewer's pill while it plays or when the link's motion is not there.
+
+msgid "Opens"
+msgstr "Al abrirse"
+
+msgid "Still"
+msgstr "Quieto"
+
+msgid "Playing “%s”"
+msgstr "Reproduce «%s»"
+
+msgid "Open the link with one of the model's motions playing"
+msgstr "Abrir el enlace con uno de los movimientos del modelo en marcha"
+
+msgid "Playing “%s” over and over. Press it to stop."
+msgstr "«%s» se repite una y otra vez. Púlsalo para detenerlo."
+
+msgid "Playing “%s” over and over. Tap it to stop."
+msgstr "«%s» se repite una y otra vez. Tócalo para detenerlo."
+
+msgid "There is no motion called “%s” in this model, so it opened still."
+msgstr "Este modelo no tiene ningún movimiento llamado «%s», así que se abrió quieto."
+
+msgid "No such motion"
+msgstr "No existe ese movimiento"
