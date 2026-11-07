@@ -1773,9 +1773,10 @@ var _unregistered: Array = []
 
 
 ## The parts open_text left the lattice to be told of, told now, a slice a
-## frame. A model opened again meanwhile starts its own list.
-func register_later() -> void:
-	var pace := FramePace.new()
+## frame, of at least [param least_us] (FramePace). A model opened again
+## meanwhile starts its own list.
+func register_later(least_us: int = FramePace.LEAST_US) -> void:
+	var pace := FramePace.new(least_us)
 	var list: Array = _unregistered
 	while not list.is_empty() and is_same(list, _unregistered):
 		var item: Array = list.pop_back()

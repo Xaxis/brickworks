@@ -2639,7 +2639,18 @@ plan with Claude as the client.
   (`_looped`), drawn only with nothing kept, so it does not wait for the
   steps (`_link_draws_only`, `MotionPlayer.Paced.keep`; on the web the
   house's took 8 s after it was shown; a sequence, or Reduce motion's
-  once, is kept as a press is and waits for them), its button lit
+  once, is kept as a press is and waits for them). On the web the exact
+  shapes the motion is judged by are asked for as the model is first shown,
+  among the parts still on their way too (`_ask_link_shapes`,
+  `_motion_parts(motion, true)`, `EARLY_REACH`), fetched by the page itself
+  (`PartLibrary._ask_page`); once every part is here its parts are told to
+  the lattice in one slice (`register_later(LINK_REGISTER_US)`), the joints
+  read once those shapes are here, and the motion, nothing kept, worked out
+  whole on a worker at high priority (`MotionPlayer.pace_off_frame`,
+  `GrabDrag.hold_still`: a press waits for it) rather than a slice a frame
+  (playweb, 2026-11-07: the house's gates 3.3 to 6.5 s after its parts on
+  the web, now 1.5 to 2.5 at a laptop's size and 2 to 3.5 at a phone's).
+  Its button lit
   and the pill saying "Playing “…” over and over. Press it to stop."; its
   button eases it back to as built from where it is (`_loop_home`), as do a
   drag, Reset, another motion or Build it; turning the view does not. Reduce
@@ -2647,9 +2658,13 @@ plan with Claude as the client.
   says "There is no motion called “wings” in this model, so it opened
   still." with the motions it has. `brickworksShare`: `looping`,
   `looping_at`; `view.play.looping`, `missing`; `opened` (the viewer's
-  phases, ms from the view starting: `parts`, the joints `read`, the
-  motion `pressed`, `moving` at the first frame drawn off); the panel's
-  `link`, `playing`, `opens`.
+  phases, ms from the view starting: `parts`, `registered`, the joints
+  `read` with their `reading`, the motion `pressed`, `moving` at the first
+  frame drawn off; `asked` [ms, how many] as the model was first shown,
+  `shapes_here` [here, of] once every part was, `frames` [frame, drawn] each
+  phase came in, `longest` [ms, phase] the app's longest frame from the
+  parts to 3 s after it moves, `reread`, `needs`); the motion's own
+  `off_frame`; the panel's `link`, `playing`, `opens`.
 - `playlink probe` (`src/dev/playlink_probe.gd`): below.
 - `what a frame costs in a browser` (`tools/web/look_cost.mjs`): serves
   the export with `serve.py --share L00kM0del1=vendor/omr/files/6392-1.mpd
@@ -5127,7 +5142,8 @@ and `4_missing`.
 
 In a browser, `tools/web/play_flow.mjs` with `--house=<id>` (the house's
 "Open the gates") opens `/m/<id>?motion=open-the-gates` and checks it loops
-within 2 s, its button stops it, and `?motion=wings` opens still
+within 2 s of its parts at a laptop's size and 3 s at a phone's, saying
+each phase, its button stops it, and `?motion=wings` opens still
 (`<size>_10_playing.png`, `<size>_11_missing.png`).
 
 Build it turned as its booklet turns the model (a window; a phone, then
