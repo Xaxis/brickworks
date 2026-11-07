@@ -21,6 +21,7 @@
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
+import { photoUrls } from "./_card.js";
 import { Unacceptable } from "./_directory.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -38,7 +39,7 @@ function photoOf(origin, photo, model) {
   if (!ID.test(String(photo?.id || "")) || !ID.test(String(model || ""))) return null;
   const by = photo.by && HANDLE.test(String(photo.by.handle || "")) ? { handle: photo.by.handle, name: photo.by.name } : null;
   return { id: photo.id, model, words: photo.words ?? null, width: n(photo.width), height: n(photo.height), at: photo.at,
-    by, url: `${origin}/api/people?op=photo_file&id=${photo.id}`, page: `${origin}/m/${model}#photo-${photo.id}`,
+    by, ...photoUrls(origin, photo.id), page: `${origin}/m/${model}#photo-${photo.id}`,
     ...(photo.model_name ? { model_name: String(photo.model_name) } : {}) };
 }
 

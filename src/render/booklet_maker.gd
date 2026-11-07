@@ -52,9 +52,10 @@ const TELLS_MORE := 2.0
 const TELLS_SHARE := 0.05
 
 var library: PartLibrary
-## Pixels per millimetre of paper: 5 is 127 dots an inch. Fewer on the
-## web, where a castle's pictures at full size would be a slow afternoon.
-var px_per_mm: float = 5.0
+## Pixels per millimetre of paper: 5 is 127 dots an inch (BookletSheet
+## .PX_PER_MM, which the picture behind the pages is kept at too). Fewer on
+## the web, where a castle's pictures at full size would be a slow afternoon.
+var px_per_mm: float = BookletSheet.PX_PER_MM
 ## For a probe: what each picture showed, [{what, size, model, new, seen}].
 var measured: Array = []
 var document: Booklet.Document

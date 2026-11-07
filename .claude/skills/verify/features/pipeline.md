@@ -348,7 +348,13 @@ numbers it prints come from the files that were just written.
 - **There is no pip and no ensurepip either**, so `tools/check.sh` falls back to
   `tools/minitest.py` for the test file. It implements `approx`, `fixture`,
   `mark.parametrize` and `mark.skipif` and raises by name on anything else — add
-  to it rather than working around it.
+  to it rather than working around it. Given several files it runs them side by
+  side, a process each, as many at once as the heavy slot's cores
+  (`MINITEST_JOBS=1` for one process, one after another); each file's output is
+  printed whole under its name, in the order given, and the verdict for the lot is
+  last. The whole suite took 113.7 s that way, and 475.4 s one after another
+  beside it, both in a heavy slot at load 28-30 (2026-11-07). A test must stand alone in its file's process and keep
+  its files in its own temp folder: another file runs beside it.
 - **−Y is up in LDraw.** Every axis conversion is `(x, -y, -z)`, and a mesh and its
   connectors have to get the same treatment or the studs end up on the bottom.
 - **A box is six numbers.** `build_meshes.py` unpacks them explicitly so a box that

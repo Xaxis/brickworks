@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow -->
 
 ## Sub-features
 
@@ -148,7 +148,11 @@ plan with Claude as the client.
   (the catalogue and the rest of `assets/web/`, `models/`, LDraw's tables,
   the booklet PDF's fonts, and the 101 scripts the first screen does not
   compile, Later's classes and what only they name, as
-  `tools/web/start_closure.py` reads the sources: 1.6 MB of the code
+  `tools/web/start_closure.py` reads the sources, walked from every entry
+  point `project.godot` names, the main loop, each autoload and the main
+  scene (a main loop left in the data pack never started the app,
+  2026-11-07; one it cannot place stops the export,
+  `tests/test_start_closure.py`): 1.6 MB of the code
   pack's 3.9 that the engine waited for, webstart2, 2026-11-05; 4.6 MB) is
   fetched by the page's worker as soon as the engine's files are in,
   before `index.parts.bin`, and mounted by `Main._ready` before the
@@ -746,7 +750,19 @@ plan with Claude as the client.
   caller's. Rows (and the publish log) go with the account. Its files cannot
   (Supabase refuses to delete storage objects from SQL), so Vercel's cron calls
   `/api/share/sweep` (`op=sweep`) at 04:17 UTC daily with `CRON_SECRET`, and it
-  removes every file an hour old or more that no published row owns.
+  removes every file an hour old or more that no published row owns, and
+  every `build-photos` file (a photo or its card copy) whose id has no row
+  or a removed one (`api/_builds.js` `sweepPhotos`, a failure logged,
+  `photos` in its answer). Unasked, neither takes more than a quarter of
+  what it looked at (four files at least): rows read back empty would
+  otherwise delete every file, so such a run removes none, logs `sweep:
+  models' files held: ...` or `sweep: build photos held: ...`, and says
+  `held` in its answer (`api/_cron.js` `sweepHeld`;
+  `tests/test_gallery_builds.py`
+  `test_a_sweep_that_would_take_most_of_what_it_saw_takes_nothing`).
+  `?only=<id,...>&photos=<id,...>` scopes it to those models' and photos'
+  files alone, all of them (views, `act_log` and uploads left for the
+  cron): a hand-run check always scopes it, never the whole sweep.
   **The gallery** (2026-10-13, `supabase/gallery.sql`, applied to the live
   project that day with `tools/apply_sql.mjs`: columns `listed` boolean not
   null default false, `listed_at`, `remixed_from` → `shared_models(id)` on
@@ -1071,7 +1087,8 @@ plan with Claude as the client.
   `/library/<id>/scene.json`: `api/share.js` ?op=scene and set_scene,
   `api/_parts.js` `sceneOf`, the stored file packed as the app packs the
   card's scene, every part through the sub-models, carried copies as their
-  part; `_scene_table.json` beside the function, written by
+  part, a retired number turned as its stub turns it (the table's
+  `moved`, `PartLibrary.moved_by`); `_scene_table.json` beside the function, written by
   `tools/web/part_facts.mjs --scene`), its parts' `.lbm` from the part
   store. Over 3 million triangles on a phone (9 on a computer) it asks
   first. Checked by `model_page_flow` step 17 (no 3D code before it is
@@ -1109,6 +1126,56 @@ plan with Claude as the client.
   app is a tab of its own, Turn it anyway draws it. No policy refusals, no
   script errors. With no `--url` the stand-in's watchtower; with one, the
   deployment's first model, signed out.
+- `the model in your room` (APP_UX5 #13, arview, 2026-11-07; `web/room.js`
+  `openRoom`, `web/glb.js`, `web/model-page.js` `roomWay`/`offerRoom`,
+  `web/view3d.css` `.room-go`, `web/room.css`): on a phone or tablet whose
+  browser can place a model in a room (AR Quick Look: an iPhone or iPad,
+  Safari or a browser on it but the Google app; WebXR immersive-ar with hit
+  tests: Chrome on Android, a headset), In your room on the picture's foot,
+  opposite View in 3D. Never on a computer. Tapped, it asks for
+  `/room.js`, `/room.css`, the model's plan (`/m/<id>/room.json`,
+  `/m/<id>/v/<n>/room.json`, `/library/<id>/room.json`: `api/share.js`
+  ?op=room and set_room, `api/_parts.js` `roomOf`) and, once the plan's
+  size guess is under `MOST_BYTES` (32 MB), each shape's `.lbm` and
+  `/model-viewer-4.4.0/model-viewer.min.js` (Google's 4.4.0, pinned by
+  sha512 and committed by `tools/web/vendor_model_viewer.sh`; about 1 MB,
+  290 KB gzipped); then writes the GLB Export writes (`writeGlb`, a port of
+  `MeshExport._gltf`: each shape once, every part a node in its assembly,
+  materials by finish, metres, stood on the ground as `ModelStore.lift_for`
+  stands it) and shows it in `<model-viewer>` over the picture, with Place
+  it in your room (WebXR, or Quick Look from a USDZ `<model-viewer>` makes
+  of the same GLB). A part the file carries as a copy of a catalogue part
+  ("8880 - 168315i") is drawn as that part; one with no geometry in the
+  store is left out and said. Over the size, it says so before fetching a
+  shape. The page's policy lets `<model-viewer>` fetch the GLB's `blob:`
+  address (`connect-src ... blob:`, the share pages' and the site's) and
+  refuses its meshopt decoder's WebAssembly, as meant (no
+  `wasm-unsafe-eval`). Checked by `room GLB probe` and `room browser flow`.
+- `room GLB probe`: `tools/probe.sh arview_probe` (headless, about two
+  minutes): opens the example car, 6040-1, 10243-1, 42080-1 and 8880-1 in
+  the app, writes each with Export's own writer (`MeshExport.write("glb")`),
+  and `tools/web/arview_check.mjs` reads it against the page's GLB of the
+  same file node by node: every part the same part, colour, place (basis to
+  1e-5 of itself, origin to 2 micrometres) and assembly path; each mesh,
+  material, position (to the bit), triangle and normal (to 2e-3) the same;
+  each shape once; what the page leaves out exactly the app's parts it has
+  no geometry for; and the size guesses (`glbSize`, `guessBytes`) within 10
+  and 15 per cent. Measured 2026-11-07: all five equal, 0.52-9.19 MB.
+- `room browser flow` (`tools/web/arview_flow.mjs`, preview check `arview`):
+  at 1280 x 720 and 1400 x 900 not offered and nothing of it asked; an
+  Android phone (Pixel 7, a WebXR stub that has immersive-ar and refuses
+  the session, having no camera), an iPhone 14 (a stub for Safari's
+  rel="ar") and an iPad (a Mac with a touch screen): offered on the
+  picture's foot, nothing of it asked before the tap; tapped, the model
+  shown, its GLB fetched back from the page byte for byte `web/glb.js`'s,
+  every part and colour in it, under 32 MB; Place it in your room asks for
+  an immersive-ar session in the tap (Android) or hands Quick Look a
+  `model.usdz` whose materials and placed surfaces are the GLB's (iPhone);
+  Back to the picture and again asks nothing more; a plan over the size
+  refused before a shape or the viewer is asked for. `--before=<checkout>`
+  weighs the first load against it: the same requests, none of the room's.
+  Pictures in `--out`; with no `--url` the stand-in's watchtower made of
+  `models/car.ldr`.
 - `parts page probe`: `tools/probe.sh parts_page_probe` (headless, about a
   minute once its class list is current): opens 6040-1, 10243-1, 42080-1
   and 8880-1 in the app (or the files given after `--`), takes each one's
@@ -2245,7 +2312,18 @@ plan with Claude as the client.
   JSON-LD `isBasedOn` and its JSON `based_on` say them; `web/model-page.js`
   `basesOwn` gives its designer Say what it is based on / Change what it is
   based on (`p#bases-own`) and the dialog (`dialog.bases-dialog`), `<html
-  data-bases>` the count, `not-open` before the file. `model_bases_put` (its
+  data-bases>` the count, `not-open` before the file. Its box "A set, or a
+  link" (`input[name=what]`, a combobox, `web/model-page.js` `pickSet`)
+  offers as a set's name or number is typed the sets it may be
+  (`ul.pick-list.set-pick`, a listbox, each `li[data-set]` its picture
+  (`api/_sets.js` `pictureOf`: its own, else its flat lay; the ground until
+  it comes, rows that never overlap),
+  number and name, year, parts and theme; arrows, Enter or a click puts the
+  number in and `p.set-chosen` says "7140-1 X-wing Fighter, 1999"; Escape
+  closes the list alone), from `GET /api/share?op=set_find&q=WORDS`
+  (`api/_bases.js` `setsFound`: the library's search, a set of the whole
+  name typed first, at most 8, `{set, name, year, parts, theme, picture}`,
+  CDN an hour; the stand-in answers it with the real handler). `model_bases_put` (its
   designer, 13 or over, not taken out; a broken base takes the list back,
   22023), `model_bases_of`, `set_based`; the service role alone. Dry run:
   `PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs
@@ -2255,7 +2333,11 @@ plan with Claude as the client.
   `based_on`): with no `--url` the stand-in keeps a list as the table does
   (Sam's tram, Robin's watchtower for somebody else's) and the whole flow
   runs: the dialog's refusals, two said, the page as sent, its data and
-  JSON, the set's page at 390 px dark, taken away. With `--url`, throwaway
+  JSON, the set's page at 390 px dark, taken away; then "X-wing Fighter"
+  typed offers 7140-1, Down to it and Enter picks it, saved as "An
+  alternate build of set 7140-1 X-wing Fighter"; at 390 dark the list
+  offers it, nothing sideways, Escape closes the list then the dialog
+  (pictures `5_found_by_name_1280.png`, `7_found_390_dark.png`). With `--url`, throwaway
   Ivy and Jon; before the file it proves nothing is offered and a list is
   refused in words, and passes.
 - `mentions in comments` (`supabase/comment_mentions.sql`, **not applied to
@@ -2275,10 +2357,22 @@ plan with Claude as the client.
   the comment) nor in a conversation they are in (told of the reply);
   `api/_notifications.js` says "mentioned you in a comment / a reply", linked
   to `#comment-N`. `web/model-page.js` `pickMentions`: `@` in the comment
-  box or a reply box opens `ul.mention-pick` (a listbox the box controls,
+  box or a reply box opens `ul.pick-list.mention-pick` (a listbox the box controls,
   the box still a textbox, its marked option the `aria-activedescendant`, a
   `role=status` saying how many: the designer, the commenters, those they
-  named; arrows, Enter or Tab, Escape closes it alone). Before the file a comment names nobody and posts as
+  named, then anybody whose profile may be named from `GET
+  /api/people?op=people_find&q=P` (`api/people.js` `peopleFound` /
+  `peopleRanked`: a handle typed whole, one it starts, a name, a word of a
+  name; at most 6; signed in only (401), each look counted by `may_act`
+  `people_find` (600 an hour, 3,000 a day), `q` lower-cased and cut to 23
+  characters, under 2 answered [] uncounted; the handles it starts asked
+  first (8), the names beside them (40), so a handle typed whole is never
+  crowded out; only a profile `shownPublicly`, `trust_may_go_public` and,
+  unless `tests=1`, not `trust_is_test_account` (`api/_trust.js`
+  `mayBeNamed`, as `comment_mentions.sql` names nobody else); `private,
+  no-store`; the stand-in's mirrors it), asked 150 ms after typing pauses
+  from 2 characters (`tests=1` passed on when the page has it); arrows,
+  Enter or Tab, Escape closes it alone). Before the file a comment names nobody and posts as
   ever. Dry run: `PG_MODULE=<pg>/lib/index.js node --env-file=.env
   tools/apply_sql.mjs supabase/achievements.sql
   --again=supabase/challenge_notices.sql,supabase/comment_mentions.sql --dry
@@ -2287,8 +2381,12 @@ plan with Claude as the client.
 - `mentions browser flow` (`tools/web/mentions_flow.mjs`, preview check
   `mentions`): with no `--url` the stand-in's Sam on the watchtower: a
   comment's link, the picker on a reply (the designer first, narrowed by
-  typing, Escape, Enter), the reply's answer naming her, a mention in
-  Notifications at 390 px dark. With `--url`, throwaway Pia, Max and Lia:
+  typing, Escape, Enter), the reply's answer naming her, "@mi" in a new
+  comment offering Mika (nowhere on the page) and Enter putting him in, a
+  mention in Notifications at 390 px dark. With `--url`, throwaway Pia, Max
+  and Lia (`?op=people_find` refused signed out, no `bwm-` test account
+  offered without `tests=1`, one letter finds nobody, with `tests=1` finds
+  Max by his handle):
   Lia names Max with the picker and a handle nobody has; Max is told (390
   dark), Pia hears a comment and no mention, Lia's reply in their thread
   tells Max once, as a reply. Before the file it proves the comment posts
@@ -2301,7 +2399,9 @@ plan with Claude as the client.
   name has every word (`?q=`), no filters but a line saying what a build
   is. Everybody's
   photos of real builds as `article.model.build-card[data-id][data-model]`:
-  the photo (`/api/people?op=photo_file&id=`, cut to 4:3), `a.open` to
+  the photo's copy (`/api/people?op=photo_file&id=X&size=card`, `web/card.js`
+  `photoAttrs` "card": the copy and the whole photo in a `srcset`, cut to
+  4:3), `a.open` to
   `/m/<model>#photo-<id>`, `a.who` "Built by <name>" to `/u/<handle>` (a
   span "Built by a builder" with no profile shown), `time.when`, and
   `q.said`. Its name line keeps clear of the designer's link under it
@@ -2321,15 +2421,67 @@ plan with Claude as the client.
   (`shownPublicly`: not under 13). Each `{id, model, model_name, words, width,
   height, at, by: {handle, name, picture} | null, url, page}`. Kept by the
   CDN 30 s (a test's not). `tests/test_gallery_builds.py`.
+- `a build photo's card copy` (`api/_photo.js` `cardOf` / `cardPhoto`,
+  `api/_builds.js` `photoName` / `cardName` / `cardFile`, `api/people.js`
+  `?op=photo_file&id=X&size=card`): each photo kept as `build-photos/<id>.jpg`
+  (1,600 px long side at most) and `<id>.card.jpg` beside it, covering a
+  480 x 360 card (`web/card.js` `cardSize`: 1,600 x 1,200 gives 480 x 360,
+  1,600 x 840 gives 686 x 360, 1,200 x 1,600 gives 480 x 640; never
+  larger than the photo), made from the kept pixels when it is posted, or
+  the first time a card asks for one posted before or of another size
+  (`cardFile` remakes it), and never outliving it: taking a photo out, a
+  failed keep, and an account's deletion (`api/account.js`, by name)
+  delete both, every failure logged, and the daily sweep takes a
+  `build-photos` file whose id has no row or a removed one, an hour old
+  or more (`api/_builds.js` `photosGone` / `sweepPhotos`;
+  `tests/test_gallery_builds.py`
+  `test_a_copy_is_made_once_and_never_outlives_its_photo`,
+  `test_the_sweep_deletes_a_photos_files_once_it_is_gone`). Served under
+  the same rules as the photo (hidden, taken out, its builder not shown:
+  404). Every JSON that names a photo says `url` and `card`
+  (`photoUrls`). Every place a photo is drawn offers both
+  (`web/card.js` `PHOTO_PLACES` / `photoPicture` / `photoAttrs` /
+  `setPhoto`: `srcset "<copy> Nw, <whole> Mw"`, each described by its
+  width once cut to the place's shape, `sizes` the place's box, `auto,`
+  first only on a lazy image, since Chrome takes `auto` on an eager one as
+  100vw), and `sharpPhotos` (a ResizeObserver) gives an image the whole
+  photo when the copy would be drawn larger than its pixels (Chrome keeps
+  the smaller of two up to their geometric mean): the Builds tab's cards,
+  a model's strip thumbs and its Builds figures (`api/share.js`
+  `mediaStrip` / `buildFigure`, `web/model-page.js`; a thumb's
+  `data-picture` stays the whole photo), a profile's Builds tab
+  (`api/people.js` `stripHtml` with `web/photos.js`, `web/profile.js`),
+  the feed's photos and Latest (`web/feed.js`), Your models' builders
+  (`web/designs.js`). `tests/test_gallery_builds.py`
+  `test_every_place_a_photo_is_drawn_offers_the_copy_and_the_whole`,
+  `tests/test_account_erase.py`; `builds_flow` checks the copy kept, clean
+  and taken out with its photo; `photo_sizes_flow` how large each is
+  drawn.
+- `photo sizes browser flow` (`tools/web/photo_sizes_flow.mjs`, stand-in
+  only, `node tools/web/photo_sizes_flow.mjs --out=DIR`, about 2 min): at
+  390 px 3x and 1280 px 2x the Builds tab, a profile's Builds tab, a
+  model's page, the feed's Latest (signed out), the feed's photos and Your
+  models' builders (signed in as Sam): every photo's real pixels (its
+  `currentSrc` decoded apart) against its box, none drawn larger than its
+  picture unless that is the whole photo; at 1280 px 1x the Builds cards
+  and a model's thumbs still take the copy; no page error. streview
+  (2026-11-07) measured 1.5 to 2.26 before the fix.
 - `gallery builds browser flow` (`tools/web/gallery_builds_flow.mjs`,
   preview check `gallery_builds`): needs `--url` (a preview or a local
   relay; it seeds the live tables). Throwaway Ann lists a model; Bo, Cy and
   Di post five photos; Ann hides one, Di reports one, Di answers under 13.
   The API and the page (1280 light signed in as Bo, 390 dark signed out)
   show Cy's second then Bo's first, each card's links, photo and words;
-  the model link opens the photo on its page; the empty tab (its answer
-  emptied in the browser); Builds before Collections on `/gallery` and
-  `/library`. Accounts deleted after.
+  each card's photo the copy, 480 x 360 of the 1,600 x 1,200 posted, kept
+  beside it in storage; the model link opens the photo on its page (its
+  strip thumb the copy, its picture the whole photo); a copy taken away is
+  made again by the first card to ask; with `CRON_SECRET` the sweep
+  asked of two photos alone (`?only=<none>&photos=<orphan>,<live>`) takes
+  a copy whose photo has no row and leaves the live photo's two files; the
+  empty tab (its answer emptied in the browser); Builds before Collections
+  on `/gallery` and
+  `/library`. Accounts deleted as a person deletes theirs (`?op=delete`),
+  and no photo's file nor copy is left.
 - `more like a designer` (`api/_alike.js` `closestDesigners` / `alikeSaid` /
   `designersAlike`, `api/people.js` `?op=alike&handle=X`,
   `supabase/designers_alike.sql`, **not applied to the live project** until
@@ -2342,8 +2494,9 @@ plan with Claude as the client.
   parts and followers in common, at most 200; before it, themes and tags
   alone. Never the person, the asker, anybody the asker follows, or a
   profile `follow_state` says may not be followed (under 13, taken out).
-  Each `{handle, name, picture, said, kinds, tags, follow}`; signed in or
-  with tests `private, no-store`, else 30 s at the CDN.
+  Each `{handle, name, picture, said, kinds, tags, follow}`, and `yours:
+  true` when the asker is the person; signed in or with tests `private,
+  no-store`, else 30 s at the CDN.
   `tests/test_alike.py`; the dry run: `PG_MODULE=<pg>/lib/index.js node
   --env-file=.env tools/apply_sql.mjs supabase/designers_alike.sql --dry
   --try=tools/designers_alike_try.sql --table=model_needs` (Ben, Cy, Di in
@@ -2356,6 +2509,8 @@ plan with Claude as the client.
   `li.person-row[data-handle]` (avatar and name to `/u/handle`, what they
   share in a line, `button[data-follow]` drawn from the answer's `follow`).
   Hidden with nobody; `html[data-alike]` is `shown`, `none` or `broken`.
+  On your own page (the answer's `yours`) it speaks to you: "Designers like
+  you", "Their models share the most with yours…", `section#alike[data-yours]`.
   The feed's designers to follow draw the same `personRow`.
 - `more like browser flow` (`tools/web/alike_flow.mjs`, preview check
   `alike`): needs `--url`. Throwaway Ann, Bo, Di, Cy and Fay list a model
@@ -2363,7 +2518,9 @@ plan with Claude as the client.
   Ann alone: hidden; Fay under 13, Di follows Bo; signed out at 1280 light
   Bo and Di then Cy, never Ann or Fay, links, words and Follow; as Di at
   390 dark only Cy, her answer `private, no-store`, Follow on Cy in place,
-  asked again nobody left. It says whether the parts were counted (the SQL
+  asked again nobody left; Ann on her own page at 1280 light: "Designers
+  like you", Bo and Di then Cy with Follow, her answer `yours: true`, a
+  visitor's `false`. It says whether the parts were counted (the SQL
   applied). Accounts deleted after.
 - `your achievements tab` (`web/profile.js` `drawAchievements`,
   `web/profile.html` `data-panel="achievements"`, `.achievements-list` in
@@ -2399,7 +2556,9 @@ plan with Claude as the client.
   short of the whole model, turns the view as before. A finger: the first
   one down (whatever its index) on a part that moves, or within about 10
   points of one (`_play_brick_near`: a phone's steering wheel is thinner
-  than a fingertip), and past 14 px takes hold before the camera sees it;
+  than a fingertip; and when the part under it hangs on a joint but its
+  loop is locked, 8808-1's Technic plate on a stud at each end, the nearest
+  part within the fingertip that moves), and past 14 px takes hold before the camera sees it;
   a second finger lets go and pinches; `brickworksShare.finger` says what
   the last was taken as. The viewer's drag draws no balance marks and does
   not weigh each frame (`GrabDrag.show_marks`), and reads the joints on a
@@ -2414,8 +2573,9 @@ plan with Claude as the client.
   pill says "Play its motions" with a button each (`view_motion_1`…, Reset's
   face, a fingertip tall on a phone) and "Press one to play it, and again to
   put it back…" ("Tap one…" on a touch screen); pressed, `main._play_motion`
-  plays it through `MotionPlayer.play` kept (one step), its frames drawn
-  12 a second (`_motion_frame`, `BrickWorld.set_drawn`), the button lit while
+  plays it through `MotionPlayer.play` kept (one step), its frames worked
+  out 12 a second and drawn between them every screen frame (`_motion_frame`,
+  `_pose_at`, `BrickWorld.set_drawn`), the button lit while
   it stands where it ends; pressed again it plays backwards; Reset undoes a
   motion's step as a drag's and puts every button out. What the last press
   played: `brickworksShare.motion` (`name`, `backwards`, `joints` [name,
@@ -2468,6 +2628,33 @@ plan with Claude as the client.
   (`motionWords`, three and "and N more", `data-motions`), the page's facts
   all of them, or the words.
 - `share play probe` (`src/dev/share_play_probe.gd`): below.
+- `a link that opens playing` (`src/main.gd` `_viewing_motion`,
+  `_open_playing`, `_looped`, `_loop_home`; `Motions.for_link`, `slug`,
+  `link_words`; `ShareView.show_looping`, `link_missing`; `SharePanel`
+  Opens, `link()`; `web/share-page.js`; APP_UX5 playlink, 2026-11-06): the
+  Share panel of a model with motions of its own has Opens, Still or
+  Playing “Lift the boom” (`share_opens`, Still by default), and the link it
+  copies is then `/m/<id>?motion=lift-the-boom`. The model page sends such
+  a link straight on to `/app?view=<id>&motion=…` (its social card stays the
+  page's); `/app?view=<id>&motion=` works as well, and the address bar keeps
+  it. The name is the motion's own, its slug, or words only one motion's name
+  has ("boom"). The joints are read at once instead of 2 s after, and the
+  motion plays there and back over and over, a rest of 0.7 s at each end
+  (`_looped`), drawn only with nothing kept, so it does not wait for the
+  steps (`_link_draws_only`, `MotionPlayer.Paced.keep`; on the web the
+  house's took 8 s after it was shown; a sequence, or Reduce motion's
+  once, is kept as a press is and waits for them), its button lit
+  and the pill saying "Playing “…” over and over. Press it to stop."; its
+  button eases it back to as built from where it is (`_loop_home`), as do a
+  drag, Reset, another motion or Build it; turning the view does not. Reduce
+  motion plays it once. A name the model has no motion for opens still and
+  says "There is no motion called “wings” in this model, so it opened
+  still." with the motions it has. `brickworksShare`: `looping`,
+  `looping_at`; `view.play.looping`, `missing`; `opened` (the viewer's
+  phases, ms from the view starting: `parts`, the joints `read`, the
+  motion `pressed`, `moving` at the first frame drawn off); the panel's
+  `link`, `playing`, `opens`.
+- `playlink probe` (`src/dev/playlink_probe.gd`): below.
 - `what a frame costs in a browser` (`tools/web/look_cost.mjs`): serves
   the export with `serve.py --share L00kM0del1=vendor/omr/files/6392-1.mpd
   --share Pl4yFl0w01=vendor/omr/files/8808-1.mpd`, with .env sourced, and
@@ -4919,6 +5106,33 @@ about a minute on the GPU):
 ```sh
 tools/probe.sh share_play_probe
 ```
+
+A link that opens playing, on the crane 4096-1 and its motion "Lift the
+boom" (a window; 1280 x 720, then `PROBE_SIZE=1400x900`, `390x844` and
+`1024x768`; about two minutes each on the GPU):
+
+```sh
+tools/probe.sh playlink_probe
+PROBE_SIZE=1400x900 tools/probe.sh playlink_probe   # and 390x844, 1024x768
+```
+
+Proves it when it ends "playlink_probe: all passed": no Opens for a model
+without motions; Opens with Playing “Lift the boom” once it has one, the
+link copied `…?motion=lift-the-boom`; that link (`--view --motion=boom`)
+drawing the boom off within 2 s of the model shown, its angle changing on 95%
+of the frames it moves and going up and down at least three times in 8 s
+past 10 degrees, every part as built underneath and no step kept, the
+button lit and the words "over and over"; its button
+bringing it home angle by angle with every part as built; nothing written;
+`--motion=wings` opening still with the words and the motions it has, and
+nothing drawn off for 3 s; Reduce motion playing it once. Pictures in
+`shots/playlink/<size>_*.png`: look at `1_playing` (boom up, button lit)
+and `4_missing`.
+
+In a browser, `tools/web/play_flow.mjs` with `--house=<id>` (the house's
+"Open the gates") opens `/m/<id>?motion=open-the-gates` and checks it loops
+within 2 s, its button stops it, and `?motion=wings` opens still
+(`<size>_10_playing.png`, `<size>_11_missing.png`).
 
 Build it turned as its booklet turns the model (a window; a phone, then
 `PROBE_SIZE=1024x768`, `1280x720` and `1400x900`; about four minutes on the

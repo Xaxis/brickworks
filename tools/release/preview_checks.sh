@@ -96,6 +96,11 @@ declare -A CMD=(
   # out; 1280 px light signed in, 390 px dark signed out; the empty tab
   # says what a build is. Throwaway accounts, deleted after with their model.
   [gallery_builds]="tools/web/gallery_builds_flow.mjs --url=$P --out=$S/${TAG}_gallery_builds"
+  # local only: photo_sizes_flow.mjs. How large each photo of a real build
+  # is drawn against the pixels of the picture the browser took, at 390 3x
+  # and 1280 2x and 1x, every place a photo is drawn: the checkout's pages
+  # with the stand-in's photos, each the size its row says. [gallery_builds]
+  # holds the copy on a deployment.
   # More like a designer on a profile (docs/SOCIAL.md section 7, item 9):
   # hidden with nobody close; signed out the closest by shared tags (and
   # parts once supabase/designers_alike.sql is applied) with Follow beside
@@ -151,7 +156,8 @@ declare -A CMD=(
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
   # frames held to 36 ms on average on a CPU; and 1484-1 with motions of its
   # own, each played by its button and taken back, Reset, and its page
-  # saying what it does.
+  # saying what it does; its link with ?motion= opening playing over and
+  # over within 2 s, stopped by its button, and an unknown name opening still.
   # Published from a throwaway account, deleted after; API routes only,
   # with the bypass (supabase/play.sql's and motions.sql's card when they
   # are applied).
@@ -242,6 +248,13 @@ declare -A CMD=(
   # its own; on a phone the blog scrolls until the model is taken hold of,
   # and a model past the phone's budget asks first. Signed out, reads only.
   [embed]="tools/web/embed_flow.mjs --url=$P --out=$S/${TAG}_embed"
+  # In your room (APP_UX5 #13, arview), the deployment's first model: not
+  # offered on a computer; on an Android phone (a WebXR stub), an iPhone (a
+  # Quick Look stub) and an iPad offered, nothing of it asked before the
+  # tap, then the model shown, its GLB byte for byte web/glb.js's of the
+  # store's geometry, under 32 MB; the session asked for, the USDZ handed
+  # over; a plan over the size refused before a shape. Signed out, reads only.
+  [arview]="tools/web/arview_flow.mjs --url=$P --out=$S/${TAG}_arview"
   # The LDraw library on the site (library333): /library at 390 and 1400 px,
   # light and dark, the whole shelf with every card's cover, number and
   # modeller; found by a set's number, 10179, and by a theme's pill; the

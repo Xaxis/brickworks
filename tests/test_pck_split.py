@@ -144,11 +144,32 @@ def test_only_the_scripts_the_first_screen_compiles_stay_with_the_engine() -> No
     stay; Later's classes, and what only they name, go with the data pack."""
     later = pck_split.later_scripts()
     assert "src/main.gd" not in later and "src/ui/parts_bin.gd" not in later
+    # The main loop is made before the main scene loads: in the data pack it
+    # is not there yet, and the web app never starts (BrickworksLoop).
+    assert pck_split.where("src/boot/brickworks_loop.gdc", later) == "index.pck"
     assert {"src/ai/assistant.gd", "src/ui/chat_panel.gd", "src/ai/shapes.gd"} <= later
     assert pck_split.where("src/main.gdc", later) == "index.pck"
     assert pck_split.where("src/ai/assistant.gdc", later) == "index.data.pck"
     assert pck_split.where("src/ai/assistant.gd.remap", later) == "index.data.pck"
     assert pck_split.where("assets/ldraw/gears.json", later) == "index.pck"
+
+
+def test_an_entry_point_the_closure_cannot_place_stops_the_export(monkeypatch) -> None:
+    """A main loop, autoload or main scene start_closure cannot place would
+    be left in the data pack: the split stops, saying which, and the export
+    with it."""
+    sys.path.insert(0, str(ROOT / "tools/web"))
+    import start_closure
+
+    def cannot(*_args):
+        raise ValueError("project.godot's main loop is Gone, and no script of the app is class_name Gone")
+    monkeypatch.setattr(start_closure, "outside", cannot)
+    try:
+        pck_split.later_scripts()
+    except SystemExit as stop:
+        assert "main loop is Gone" in str(stop.code)
+        return
+    raise AssertionError("the split went on without its main loop")
 
 
 def test_the_primitives_and_the_light_are_files_under_their_own_names(split: Path) -> None:

@@ -22,7 +22,9 @@ for d in "$R"/.claude/worktrees/*/; do
   own=$(git -C "$d" log -1 --format=%ct main..HEAD 2>/dev/null)
   if [ -n "$own" ]; then age="$(( (now - own) / 60 ))m"; else age="none"; fi
   dirty=$(git -C "$d" status --porcelain --untracked-files=no | wc -l)
-  procs=$(for p in /proc/[0-9]*; do c=$(readlink "$p/cwd" 2>/dev/null) || continue
+  # Every process's folder by one find: a readlink forked for each of ~800
+  # processes, for each worktree, took this 37 s (2026-11-07).
+  procs=$(find /proc/[0-9]* -maxdepth 1 -name cwd -printf '%l\n' 2>/dev/null | while IFS= read -r c; do
     case "$c" in "$d"|"$d"/*) echo x;; esac; done | wc -l)
   flags=""
   if [ "$locked" = yes ]; then

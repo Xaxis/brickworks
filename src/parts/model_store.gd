@@ -1463,9 +1463,10 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
-		# And how its booklet shows them: ROTSTEP's turns and the app's own
-		# lines (BookletLooks).
-		world.step_looks = read["looks"]
+	# And how its booklet shows them: ROTSTEP's turns and the app's own
+	# lines (BookletLooks); where the steps are not the author's, only the
+	# whole booklet's, its page set up and guides (_read_text).
+	world.step_looks = read["looks"]
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
@@ -1702,8 +1703,14 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 	return {
 		"source": SourceFile.make(text, model, known, mirrored_lines, authored, absent)
 			if foreign else null,
+		# A step's look is kept by its step's number, which means nothing
+		# where the steps are not the author's; the booklet's own, its page
+		# set up and guides with it, is the whole booklet's either way. Read
+		# only with the author's steps, a model of the app's own steps lost
+		# its page setup at every open (pagesetup2, 2026-11-06).
 		"looks": BookletLooks.read(text, model._assembly_names(), LdrModel._key(model.main.name))
-			if authored else {},
+			if authored else BookletLooks.booklet_wide(BookletLooks.read(text,
+				model._assembly_names(), LdrModel._key(model.main.name))),
 		"title": title_meta_in(text) if foreign else "",
 		"share": share_in(text),
 		"remix": remix_in(text),
@@ -2126,7 +2133,8 @@ static func _without_app_lines(text: String) -> String:
 				or line.begins_with(MADE_META) or line.begins_with(SetBin.META) \
 				or line.begins_with(ReferenceImage.META) \
 				or line.begins_with(ReferenceImage.PICTURE_META) \
-				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE.strip_edges()):
+				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE) \
+				or line.begins_with(SharedPages.HEAD):
 			continue
 		kept.append(line)
 	return "\n".join(kept)
@@ -2544,11 +2552,24 @@ func _with_looks(text: String, whole: bool = false) -> String:
 ## are; [param looks] when not given.
 static func _looks_into(text: String, looks: Dictionary, authored: bool,
 		written: Callable = Callable()) -> String:
-	if looks.is_empty() and (not authored or not BookletLooks._written_in(text)):
+	if looks.is_empty() and not BookletLooks._written_in(text):
+		return text
+	# Steps not the author's: the app has only the whole booklet's looks
+	# (_read_text), and each step's own, its notes and their pictures, stay
+	# as the file has them; the file byte for byte when the whole booklet's
+	# are as it says. Up to 2026-11-07 someone else's file marked worked
+	# lost its step notes at the first save once its page setup was read
+	# (ps2review).
+	if not authored and BookletLooks.booklet_wide(BookletLooks.read(text, {}, "")) \
+			== BookletLooks.booklet_wide(looks):
 		return text
 	var parsed: LdrModel = LdrModel.parse(text, "model")
+	var names: Dictionary = parsed._assembly_names()
+	var main_key: String = LdrModel._key(parsed.main.name)
+	if not authored:
+		looks = BookletLooks.with_booklet_wide(BookletLooks.read(text, names, main_key), looks)
 	return BookletLooks.written_into(text, written.call() if written.is_valid() else looks,
-		parsed._assembly_names(), LdrModel._key(parsed.main.name))
+		names, main_key)
 
 
 ## [param text], written whole, under [param header] (SourceFile.header)

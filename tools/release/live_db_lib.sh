@@ -82,7 +82,8 @@ older_waits() {
   return 1
 }
 # take_live_db [alone]: a slot of the live database, or with "alone" all of
-# it, waiting LIVE_WAIT seconds (an hour) at most. Held by LIVE_DB_HOLD and
+# it, waiting LIVE_WAIT seconds (an hour) at most, looking again every
+# LIVE_DB_POLL seconds (1). Held by LIVE_DB_HOLD and
 # LIVE_DB_SLOT, open in this shell, until leave_live_db; LIVE_DB_HOW says
 # which, for live-db.log.
 take_live_db() {
@@ -110,7 +111,7 @@ take_live_db() {
         return 0
       fi
     fi
-    sleep 1
+    sleep "${LIVE_DB_POLL:-1}"
   done
   rm -f "${LIVE_DB:?}.$line/${ticket:?}"
   leave_live_db

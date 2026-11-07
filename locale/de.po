@@ -11497,6 +11497,36 @@ msgstr "Stil auswählen…"
 msgid "Name the page first"
 msgstr "Erst die Seite benennen"
 
+# Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks
+
+
+msgid "Remove…"
+msgstr "Entfernen…"
+
+msgid "Take a kept style away; the models given it keep their page"
+msgstr "Einen gespeicherten Stil löschen; die Modelle, die ihn haben, behalten ihre Seite"
+
+msgid "Remove a page style?"
+msgstr "Einen Seitenstil löschen?"
+
+msgid "Remove the page style “%s”? The models given it keep their page."
+msgstr "Den Seitenstil „%s“ löschen? Die Modelle, die ihn haben, behalten ihre Seite."
+
+msgid "Missing from the file"
+msgstr "Fehlt in der Datei"
+
+msgid "The file names %s but does not carry it: another program saved it without it, or it was not a PNG or a JPEG. Choose it again, or take it off."
+msgstr "Die Datei nennt %s, enthält das Bild aber nicht: Ein anderes Programm hat sie ohne das Bild gespeichert, oder es war kein PNG oder JPEG. Wähle es erneut aus oder entferne es."
+
+msgid "%s, %d KB in the file"
+msgstr "%s, %d KB in der Datei"
+
+msgid "A PNG"
+msgstr "Ein PNG"
+
+msgid "A JPEG"
+msgstr "Ein JPEG"
+
 # Build together, a build party (buildparty, APP_UX5 5): the share link's card and Build it's party row.
 
 msgid "Build it with others, each on their own phone: a code to join by, the model dealt out"
@@ -11824,3 +11854,30 @@ msgstr "Eine Voreinstellung braucht einen Namen."
 
 msgid "The preset could not be kept."
 msgstr "Die Voreinstellung konnte nicht gespeichert werden."
+
+# A link that opens playing one of the model's motions (playlink, APP_UX5 10): the
+# share panel's Opens, and the viewer's pill while it plays or when the link's motion is not there.
+
+msgid "Opens"
+msgstr "Beim Öffnen"
+
+msgid "Still"
+msgstr "Stillstehend"
+
+msgid "Playing “%s”"
+msgstr "Spielt „%s“"
+
+msgid "Open the link with one of the model's motions playing"
+msgstr "Den Link so öffnen, dass eine der Bewegungen des Modells abläuft"
+
+msgid "Playing “%s” over and over. Press it to stop."
+msgstr "„%s“ läuft immer wieder. Drücke darauf, um es anzuhalten."
+
+msgid "Playing “%s” over and over. Tap it to stop."
+msgstr "„%s“ läuft immer wieder. Tippe darauf, um es anzuhalten."
+
+msgid "There is no motion called “%s” in this model, so it opened still."
+msgstr "Dieses Modell hat keine Bewegung namens „%s“, darum wurde es stillstehend geöffnet."
+
+msgid "No such motion"
+msgstr "Keine solche Bewegung"

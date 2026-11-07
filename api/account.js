@@ -569,13 +569,14 @@ async function erase(account) {
     }
     const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
     const key = process.env.SUPABASE_SECRET_KEY;
-    // Exactly these files of build-photos (api/_builds.js PHOTOS), not
-    // imported from there: this route answers every start of the app, and
-    // _builds.js brings the picture decoders with it.
+    // Exactly these files of build-photos (api/_builds.js PHOTOS): each
+    // photo and its card's copy (photoName, cardName), not imported from
+    // there: this route answers every start of the app, and _builds.js
+    // brings the picture decoders with it.
     for (let at = 0; at < photos.length; at += 100) {
       const files = await reach("storage DELETE build-photos", 20, `${base}/storage/v1/object/build-photos`, {
         method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify({ prefixes: photos.slice(at, at + 100).map((one) => `${one.id}.jpg`) }) });
+        body: JSON.stringify({ prefixes: photos.slice(at, at + 100).flatMap((one) => [`${one.id}.jpg`, `${one.id}.card.jpg`]) }) });
       if (!files.ok) throw new Error(`storage DELETE build-photos: ${files.status}`);
     }
     // Its own picture as its avatar (api/_avatars.js AVATARS), by name too.
