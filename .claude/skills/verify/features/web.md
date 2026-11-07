@@ -2588,10 +2588,7 @@ plan with Claude as the client.
   (`_looped`), drawn only with nothing kept, so it does not wait for the
   steps (`_link_draws_only`, `MotionPlayer.Paced.keep`; on the web the
   house's took 8 s after it was shown; a sequence, or Reduce motion's
-  once, is kept as a press is and waits for them). The steps wait for it
-  instead (`_link_moving`), and its own parts' shapes are asked for first
-  (`_ask_shapes`): in a browser the steps' slices took the frames its
-  joints and shapes needed. Its button lit
+  once, is kept as a press is and waits for them), its button lit
   and the pill saying "Playing “…” over and over. Press it to stop."; its
   button eases it back to as built from where it is (`_loop_home`), as do a
   drag, Reset, another motion or Build it; turning the view does not. Reduce
