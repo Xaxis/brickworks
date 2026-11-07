@@ -48,10 +48,13 @@ const KEY := 0.9
 ## A spot's cone, whole, in degrees: its narrowest and widest.
 const NARROWEST := 2.0
 const WIDEST := 160.0
-## How a spot's light falls to nothing at the edge of its cone: Godot's
-## SpotLight3D spot_angle_attenuation, and path_tracer.glsl's the same, so
-## both ways of drawing have the one edge. Over most of the cone it is
-## nearly whole, and it fades over its outer part.
+## How a spot's light falls to nothing at the edge of its cone: the power
+## of the rim (1 - pow(rim, EDGE), path_tracer.glsl's as Godot's spot
+## shader has it), so both ways of drawing have the one edge. Over most of
+## the cone it is nearly whole, and it fades over its outer part. Godot
+## raises the rim to the reciprocal of SpotLight3D's spot_angle_attenuation:
+## the raster's is 1 / EDGE (set at 3, the raster's spot lit the floor beside
+## the car a third as much as the tracer's, falling away from its middle).
 const EDGE := 3.0
 ## The strongest a light is kept at.
 const STRONGEST := 50.0
@@ -324,7 +327,13 @@ static func _point(at: Vector3) -> Array:
 ## number, finite and in reason, the kind one there is. Empty for anything
 ## else: a file is anybody's to edit, and a session's words anybody's to send.
 static func parsed(said: Variant) -> Dictionary:
-	var raw: Variant = JSON.parse_string(said) if said is String else said
+	var raw: Variant = said
+	if said is String:
+		# Quietly: a line that is no JSON is no light, not an error.
+		var json := JSON.new()
+		if json.parse(said as String) != OK:
+			return {}
+		raw = json.data
 	if not raw is Dictionary:
 		return {}
 	return typed(raw as Dictionary)

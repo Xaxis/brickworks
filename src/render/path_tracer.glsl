@@ -64,8 +64,8 @@ struct Lamp {
 	// whether it casts a shadow.
 	vec4 colour;
 	// Its size (a bulb's radius, a panel's side, LDU), how its spot's edge
-	// falls (Godot's spot_angle_attenuation), its reach (where Godot's fall
-	// to nothing ends), unused.
+	// falls (the power of the rim, SceneLights.EDGE), its reach (where
+	// Godot's fall to nothing ends), unused.
 	vec4 shape;
 };
 
@@ -587,10 +587,15 @@ vec3 from_lamps(Surface s, vec3 at, vec3 n, vec3 v) {
 			lit = nd * nd / d2;
 			float facing = dot(-l, lamp.aim.xyz);
 			if (kind == LAMP_SPOT) {
-				if (facing <= lamp.aim.w) {
+				// The cone from the lamp's middle, as Godot's: its edge where
+				// the spot's hood cuts it, the bulb's size softening only the
+				// shadows. (From each point of the bulb, the floor 4 LDU past
+				// the cone was lit.)
+				float centred = dot(normalize(at - lamp.at.xyz), lamp.aim.xyz);
+				if (centred <= lamp.aim.w) {
 					continue;
 				}
-				float rim = max(1e-4, (1.0 - facing) / (1.0 - lamp.aim.w));
+				float rim = max(1e-4, (1.0 - centred) / (1.0 - lamp.aim.w));
 				lit *= 1.0 - pow(rim, lamp.shape.y);
 			} else if (kind == LAMP_PANEL) {
 				if (facing <= 0.0) {

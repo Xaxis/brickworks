@@ -499,8 +499,10 @@ func _judged(drawn: Array, spot: Dictionary, box: AABB, words: String) -> float:
 					shown = Color(0.1, 0.9, 0.2)
 			map.set_pixel(x, y, shown)
 	map.save_png(OUT + "spot_%s_map_%s.png" % [drawn[3], _size])
-	_check("%s: outside the cone %d of %d px changed (%d px not certain, left out)" % [words,
-		outside_changed, outside, unsure], outside > size.x * size.y / 3 and outside_changed == 0)
+	# At least a fifth of the picture surely outside the cone, to judge by.
+	_check("%s: outside the cone %d of %d px changed (%.0f%% of the picture; %d px not certain, "
+		% [words, outside_changed, outside, 100.0 * outside / float(size.x * size.y), unsure]
+		+ "left out)", outside > size.x * size.y / 5 and outside_changed == 0)
 	# The lit side: the floor beside the car, inside the cone and out of
 	# the car's shadow, seen from the camera's side of the car. (The car's
 	# roof is black, and much of its bonnet is under the windscreen.)

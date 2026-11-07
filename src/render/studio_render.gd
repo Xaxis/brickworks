@@ -1705,7 +1705,8 @@ func _place_lamps(lights: Array, settings: RenderSettings) -> void:
 				spot.spot_attenuation = 2.0
 				if kind == "spot":
 					spot.spot_angle = float(light.get("cone", 40.0)) * 0.5
-					spot.spot_angle_attenuation = SceneLights.EDGE
+					# Godot raises the rim to the reciprocal of this.
+					spot.spot_angle_attenuation = 1.0 / SceneLights.EDGE
 				else:
 					# A flat panel's light: the cosine of the angle off its face.
 					spot.spot_angle = 80.0

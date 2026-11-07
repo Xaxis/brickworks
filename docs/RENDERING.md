@@ -581,7 +581,9 @@ Pictures, `bench/results/render353-2026-10-29/`:
   as the window's key does; a lamp falls off with the square of distance.
   Older Brickworks and other LDraw readers pass over the lines.
 - **Rasterised** as Godot's own lights (`StudioRender._place_lamps`): an
-  OmniLight3D, a SpotLight3D (its edge `spot_angle_attenuation` 3), a
+  OmniLight3D, a SpotLight3D (its edge the rim to the power 3, which Godot
+  takes as `spot_angle_attenuation` 1/3: it raises the rim to the
+  reciprocal, and at 3 the floor beside the car had a third of the light), a
   DirectionalLight3D; a panel a spot opened to 80 degrees falling off as the
   cosine, its size softening the shadows. **Path traced** by the tracer's
   `from_lamps`, the same fall, cone and edge, the panel a true square of

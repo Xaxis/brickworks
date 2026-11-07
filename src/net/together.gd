@@ -1521,19 +1521,22 @@ func _put_meta(key: String, words: String) -> void:
 		"~broken":
 			_broken_from(words)
 		"~lights":
-			# Each read as a file's line is: whatever another side sends is
-			# data of a light's shape, or left out.
-			# Words that are no list at all change nothing here.
-			var given: Variant = JSON.parse_string(words) if not words.is_empty() else []
-			if not given is Array:
-				TogetherWords.left_out("lights", "not a list of lights")
+			# Read as every other side's words are (TogetherWords.read), then
+			# each as a file's line is: whatever another side sends is data
+			# of a light's shape, or left out. Words that are no list at all
+			# change nothing here.
+			var got: Array = TogetherWords.read(words) if not words.is_empty() else [true, []]
+			if not bool(got[0]) or not got[1] is Array:
+				TogetherWords.left_out("lights", str(got[1]) if not bool(got[0])
+					else "not a list of lights")
 				return
+			var given: Array = got[1]
 			var lights: Array = []
 			for each: Variant in given:
 				var light: Dictionary = SceneLights.parsed(each)
 				if not light.is_empty() and lights.size() < SceneLights.MOST:
 					lights.append(light)
-			if lights.size() != (given as Array).size():
+			if lights.size() != given.size():
 				TogetherWords.left_out("lights", "not lights")
 			world.scene_lights = SceneLights.placed(lights, store.lift())
 		_ when key.begins_with(PIN_KEY):
