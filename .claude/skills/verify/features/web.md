@@ -2486,15 +2486,19 @@ plan with Claude as the client.
   (`_looped`), drawn only with nothing kept, so it does not wait for the
   steps (`_link_draws_only`, `MotionPlayer.Paced.keep`; on the web the
   house's took 8 s after it was shown; a sequence, or Reduce motion's
-  once, is kept as a press is and waits for them), its button lit
+  once, is kept as a press is and waits for them). The steps wait for it
+  instead (`_link_moving`), and its own parts' shapes are asked for first
+  (`_ask_shapes`): in a browser the steps' slices took the frames its
+  joints and shapes needed. Its button lit
   and the pill saying "Playing “…” over and over. Press it to stop."; its
   button eases it back to as built from where it is (`_loop_home`), as do a
   drag, Reset, another motion or Build it; turning the view does not. Reduce
   motion plays it once. A name the model has no motion for opens still and
   says "There is no motion called “wings” in this model, so it opened
   still." with the motions it has. `brickworksShare`: `looping`,
-  `looping_at`; `view.play.looping`, `missing`; `view.phases.moving` (ms
-  from the view starting to the first frame drawn off); the panel's
+  `looping_at`; `view.play.looping`, `missing`; `opened` (the viewer's
+  phases, ms from the view starting: `parts`, the joints `read`, the
+  motion `pressed`, `moving` at the first frame drawn off); the panel's
   `link`, `playing`, `opens`.
 - `playlink probe` (`src/dev/playlink_probe.gd`): below.
 - `what a frame costs in a browser` (`tools/web/look_cost.mjs`): serves

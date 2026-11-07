@@ -3113,6 +3113,7 @@ func _view_shared() -> void:
 	# Its comments, asked for beside the steps being worked out: nothing
 	# waits for them.
 	_load_comments()
+	await _link_moving()
 	# The finished model, on a timeline to drag back through.
 	if _steps_carried and _steps.start_from(carried["steps"], int(carried["mode"]), _world,
 			_library, _store.scenery):
@@ -4034,6 +4035,21 @@ func _open_playing() -> void:
 		_ready_play()
 
 
+## Until the link's motion moves, when it is only drawn (_link_draws_only):
+## the steps are worked out a slice a frame, and in a browser the house's
+## gates waited for those frames, its joints read and its shapes taken in
+## (3.6 s after it was shown, 2026-11-07). Kept, once or as a sequence, it
+## waits for the steps instead, so they do not wait for it. At most a
+## shape's wait and 5 s more, so the steps always come.
+func _link_moving() -> void:
+	if _motion_link.is_empty() or not _link_draws_only():
+		return
+	var until: int = Time.get_ticks_msec() + SHAPES_WAIT_MS + 5000
+	while _motion_loop.is_empty() and Time.get_ticks_msec() < until and is_inside_tree() \
+			and not (_motion_link.is_empty() and _motion_due.is_empty() and _motion_paced == null):
+		await get_tree().process_frame
+
+
 ## What moves in the model as it stands, from the joints a drag uses
 ## (Playable): sent with it when it is published, for its gallery card. Read
 ## now if the grab has not read them yet.
@@ -4081,6 +4097,8 @@ func _play_frame() -> void:
 		_touch_hold.saw()
 	if _play_reading and _grab_drag.is_ready():
 		_play_reading = false
+		if not _view_phases.has("read"):
+			_view_phases["read"] = Time.get_ticks_msec() - _view_began
 		_play_found()
 	if _play_reset_due and not _grab_drag.is_settling() and not _grab_drag.is_grabbing():
 		_play_reset_due = false
@@ -4108,10 +4126,11 @@ func _play_frame() -> void:
 
 
 ## Whether the link's motion, played now, is only drawn: over and over, and
-## one motion. Then nothing the steps are worked out from changes, and it
-## plays while they are (on the web they took 8 s after the house was
-## shown, 2026-11-06). Kept, as a press is, it waits for them: once, for a
-## visitor who asked for less motion, or a sequence.
+## one motion. Then nothing the steps are worked out from changes, so it
+## need not wait for them (on the web they took 8 s after the house was
+## shown, 2026-11-06), and they wait for it (_link_moving). Kept, as a press
+## is, it waits for them: once, for a visitor who asked for less motion, or
+## a sequence.
 func _link_draws_only() -> bool:
 	if ShellPrefs.reduce_motion() or _world.motions == null:
 		return false
@@ -4415,6 +4434,8 @@ func _play_motion(name: String, loop: bool = false) -> void:
 	var first: int = _motion_due_at if _motion_due_at > 0 else now
 	_motion_due = ""
 	_motion_due_at = 0
+	if not _view_phases.has("pressed"):
+		_view_phases["pressed"] = now - _view_began
 	_motion_stop()
 	# Its joints read again where they were read without those shapes: the
 	# house's mailbox door, its hinge named only by its shape, was held
@@ -4563,6 +4584,14 @@ func _ask_shapes() -> void:
 		return
 	var first: Dictionary = {}
 	var near: Array = []
+	# A link's motion's own before any other's: it is pressed as soon as
+	# they are here (_open_playing).
+	var own: Dictionary = {}
+	if _world.motions != null and not _viewing_motion.is_empty():
+		var link: Motions.Motion = _world.motions.for_link(_viewing_motion)
+		if link != null:
+			for part_id: String in _motion_parts(link):
+				own[part_id] = true
 	if _world.motions != null:
 		for motion: Motions.Motion in _world.motions.list:
 			for part_id: String in _motion_parts(motion):
@@ -4574,7 +4603,7 @@ func _ask_shapes() -> void:
 		if seen.has(brick.part_id):
 			continue
 		seen[brick.part_id] = true
-		var far: float = 0.0 if first.has(brick.part_id) else INF
+		var far: float = -1.0 if own.has(brick.part_id) else 0.0 if first.has(brick.part_id) else INF
 		if far > 0.0 and not near.is_empty():
 			var mid: Vector3 = _box_of(brick).get_center()
 			for box: AABB in near:
