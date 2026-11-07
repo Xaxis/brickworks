@@ -56,12 +56,7 @@ const AT_ITS_PLACE := 1.0
 const ACROSS: Dictionary = {
 	"10176-1.mpd 48812": "the set stands its wolf 4 LDU off the studs under it, its "
 		+ "holes over x=34 and -6 where the plate's studs are at 30 and -10; the "
-		+ "ghost puts them on the studs",
-	"30169": "the scorpion's one receiver is a tube, and BrickNet labels a tube where "
-		+ "a stud goes inside it, as between a 2 x 2 brick's four: taken for where "
-		+ "a part takes a stud, plain bricks would stand half a stud off; so its "
-		+ "sockets are its foot's two stud squares, and the stud its set puts in its "
-		+ "tube goes between them",
+		+ "ghost puts them on the studs (animals_probe)",
 }
 
 var _library: PartLibrary

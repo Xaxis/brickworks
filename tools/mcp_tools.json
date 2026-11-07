@@ -5338,6 +5338,38 @@
   {
     "annotations": {
       "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Save the view"
+    },
+    "description": "Keep where the person's window looks from now with the model, by a name, as View › Viewpoint › Save this view… does: the camera's turn, tilt and distance, the point it looks at, and whether it is square on. Each of the first nine gets a key of its own and a row in View › Viewpoint, Render's Camera lists them all, and view_model, render_model and render_queue draw from one by its name as view=; in_view lists them. A view of the same name is replaced where it is. Kept in the model's file at its next save (save_model). remove=true takes the view of that name out instead. Answered with the model drawn from the view, as view_model view= draws it (picture=false: words alone).",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "what to call it, as View › Viewpoint will list it (Three quarter, say); at most 60 letters",
+          "type": "string"
+        },
+        "picture": {
+          "description": "false: words alone",
+          "type": "boolean"
+        },
+        "remove": {
+          "description": "take the view of this name out of the model",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "name": "save_view"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false,
@@ -6027,7 +6059,7 @@
       "readOnlyHint": true,
       "title": "What the person sees"
     },
-    "description": "What the person sees in the window that a session is not told: the step the timeline is at and its parts, the part in their hand (the Place tool's, its colour, which way it points as face and rot, and the span its ghost takes under the pointer; or the parts they are carrying), how many parts they have selected and how big those are, the model's size (in studs and plates, and in centimetres: will it fit a shelf) and its weight in grams, as the status bar says them, and the reference picture they laid to build over: its file, size and place in studs, and with picture=true (the default) the picture itself, the model's parts drawn on it where they stand over it. Changes nothing.",
+    "description": "What the person sees in the window that a session is not told: the step the timeline is at and its parts, the part in their hand (the Place tool's, its colour, which way it points as face and rot, and the span its ghost takes under the pointer; or the parts they are carrying), how many parts they have selected and how big those are, the model's size (in studs and plates, and in centimetres: will it fit a shelf) and its weight in grams, as the status bar says them, the views saved with the model by name (save_view keeps one), and the reference picture they laid to build over: its file, size and place in studs, and with picture=true (the default) the picture itself, the model's parts drawn on it where they stand over it. Changes nothing.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -6050,7 +6082,7 @@
       "additionalProperties": false,
       "properties": {
         "highlight": {
-          "description": "parts, one or a list of: their numbers in look_at_model (12), a part number as a string (\"3024\": every one of it), a colour (\"red\"), or a step (\"step:3\": that step's new parts)"
+          "description": "parts, one or a list of: a part's number in look_at_model (12); a part number, as text: 3024 (every one of it); a colour: red; or a step: step:3 (that step's new parts)"
         },
         "step": {
           "description": "a step's number, from 1",
@@ -6109,7 +6141,7 @@
           "type": "object"
         },
         "xray": {
-          "description": "parts, one or a list of: their numbers in look_at_model (12), a part number as a string (\"3024\": every one of it), a colour (\"red\"), or a step (\"step:3\": that step's new parts)"
+          "description": "parts, one or a list of: a part's number in look_at_model (12); a part number, as text: 3024 (every one of it); a colour: red; or a step: step:3 (that step's new parts)"
         }
       },
       "type": "object"

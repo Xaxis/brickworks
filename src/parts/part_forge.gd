@@ -3001,16 +3001,25 @@ static func _hull(points: PackedInt64Array) -> Array:
 ## occupancy.WHOLE_STUDS: how far a footprint may be from whole studs across
 ## and still be whole, LDU.
 const WHOLE_STUDS := 0.4
+## occupancy.FIT_RADIUS, FIT_AIR, GRIP_RING and GRIP: a stud fits a square
+## of the underside where its disc is this much under the part and air for
+## its height up, in the part's own voxels, and plastic holds it: this much
+## of the ring round its middle is plastic over that height.
+const FIT_RADIUS := 5.0
+const FIT_AIR := 0.8
+const GRIP_RING: Array[float] = [6.5, 9.0]
+const GRIP := 0.25
 
 
 ## Where a stud from below can go: the lowest plate's footprint with its
 ## voids filled, divided into stud squares, each kept if half covered. The
 ## squares from the footprint's edge where it is whole studs across, and on
-## the part's own upright studs where it is not ([param widths], its bounds
-## across x and z, where they are a little narrower than its cells): as
-## occupancy.bottom_sockets.
+## the part's own upright studs, or half a stud off them where more studs fit
+## there ([param raw], the part's own voxels), where it is not ([param
+## widths], its bounds across x and z, where they are a little narrower than
+## its cells): as occupancy.bottom_sockets.
 static func _bottom_sockets(grid: Grid, connectors: Array = [],
-		widths: PackedFloat64Array = PackedFloat64Array()) -> Array:
+		widths: PackedFloat64Array = PackedFloat64Array(), raw: Grid = null) -> Array:
 	if grid.count() == 0:
 		return []
 	var s: Vector3i = grid.shape
@@ -3052,42 +3061,118 @@ static func _bottom_sockets(grid: Grid, connectors: Array = [],
 				last_z = maxi(last_z, z)
 	if base_x < 0:
 		return []
-	var base: Array[int] = [base_x, base_z]
+	var first: Array[int] = [base_x, base_z]
 	var last: Array[int] = [last_x, last_z]
 	var start: Array[int] = [grid.origin.x, grid.origin.z]
+	var lines: Array = []
 	for n: int in 2:
-		var across: float = float(last[n] - base[n] + 1) * CELL
+		var across: float = float(last[n] - first[n] + 1) * CELL
 		if not widths.is_empty() and across - 2.0 * CELL < widths[n] and widths[n] < across:
 			across = widths[n]
 		if absf(across - float(_rint(across / 20.0)) * 20.0) <= WHOLE_STUDS:
 			continue
 		var phase: Variant = _stud_phase(connectors, n)
-		if phase == null:
-			continue
-		var edge: int = _rint((float(phase) - 10.0) / CELL) - start[n]
-		base[n] = base[n] - posmod(base[n] - edge, step)
-	base_x = base[0]
-	base_z = base[1]
-	var counts: Dictionary = {}
-	var order: Array = []
-	for x: int in s.x:
-		for z: int in s.z:
-			if footprint[x * s.z + z] == 1:
-				var key := Vector2i((x - base_x) / step, (z - base_z) / step)
-				if not counts.has(key):
-					counts[key] = 0
-					order.append(key)
-				counts[key] = int(counts[key]) + 1
+		if phase != null:
+			lines.append([n, float(phase)])
+	# Each such axis on the studs' line or half a stud off it, in
+	# itertools.product's order, the first of the most that fit kept.
+	var offsets: Array[float] = [0.0]
+	if raw != null:
+		offsets.append(10.0)
+	var combos: int = roundi(pow(offsets.size(), lines.size()))
 	var needed: float = 0.5 * step * step
-	var sockets: Array = []
-	for key: Vector2i in order:
-		if float(counts[key]) < needed:
-			continue
-		sockets.append([
-			(float(grid.origin.x + base_x + key.x * step) + step * 0.5) * CELL,
-			(float(grid.origin.z + base_z + key.y * step) + step * 0.5) * CELL])
-	sockets.sort_custom(PartForge._before)
-	return sockets
+	var best: Array = []
+	var best_fits: int = -1
+	var line_fits: int = 0
+	var line_size: int = 0
+	for combo: int in combos:
+		var base: Array[int] = [first[0], first[1]]
+		var rest: int = combo
+		for i: int in range(lines.size() - 1, -1, -1):
+			var off: float = offsets[rest % offsets.size()]
+			rest /= offsets.size()
+			var n: int = lines[i][0]
+			var edge: int = _rint((float(lines[i][1]) + off - 10.0) / CELL) - start[n]
+			base[n] = base[n] - posmod(base[n] - edge, step)
+		var counts: Dictionary = {}
+		var order: Array = []
+		for x: int in s.x:
+			for z: int in s.z:
+				if footprint[x * s.z + z] == 1:
+					var key := Vector2i((x - base[0]) / step, (z - base[1]) / step)
+					if not counts.has(key):
+						counts[key] = 0
+						order.append(key)
+					counts[key] = int(counts[key]) + 1
+		var sockets: Array = []
+		for key: Vector2i in order:
+			if float(counts[key]) < needed:
+				continue
+			sockets.append([
+				(float(grid.origin.x + base[0] + key.x * step) + step * 0.5) * CELL,
+				(float(grid.origin.z + base[1] + key.y * step) + step * 0.5) * CELL])
+		var fits: int = 0
+		if raw != null:
+			for socket: Array in sockets:
+				if _fits(raw, footprint, s, grid.origin, grid.origin.y + bottom,
+						float(socket[0]), float(socket[1])):
+					fits += 1
+		if best_fits < 0:
+			best_fits = fits
+			best = sockets
+			line_fits = fits
+			line_size = sockets.size()
+		elif fits > best_fits and 2 * fits >= sockets.size() \
+				and (2 * line_fits < line_size or fits > line_size):
+			best_fits = fits
+			best = sockets
+	best.sort_custom(PartForge._before)
+	return best
+
+
+## occupancy._fits: whether a stud fits at [param x], [param z] under a part
+## whose lowest row of cells is [param bottom]: its disc, FIT_RADIUS round,
+## FIT_AIR of it under the part ([param footprint], its lowest plate's with
+## the hollows filled, [param size] and [param origin] its grid's) and air in
+## [param raw] for the stud's height up, and GRIP of the ring round it
+## (GRIP_RING) plastic over that height.
+static func _fits(raw: Grid, footprint: PackedByteArray, size: Vector3i, origin: Vector3i,
+		bottom: int, x: float, z: float) -> bool:
+	var reach: float = GRIP_RING[1]
+	var rows: int = maxi(1, _rint(STUD_HEIGHT / CELL))
+	var disc: int = 0
+	var fit: int = 0
+	var ring: int = 0
+	var grip: int = 0
+	for a: int in range(floori((x - reach) / CELL), ceili((x + reach) / CELL) + 1):
+		for b: int in range(floori((z - reach) / CELL), ceili((z + reach) / CELL) + 1):
+			var dx: float = (float(a) + 0.5) * CELL - x
+			var dz: float = (float(b) + 0.5) * CELL - z
+			var d2: float = dx * dx + dz * dz
+			var in_disc: bool = d2 <= FIT_RADIUS * FIT_RADIUS
+			var in_ring: bool = d2 > GRIP_RING[0] * GRIP_RING[0] and d2 <= reach * reach
+			if not in_disc and not in_ring:
+				continue
+			var plastic := false
+			var ga: int = a - raw.origin.x
+			var gb: int = b - raw.origin.z
+			if ga >= 0 and ga < raw.shape.x and gb >= 0 and gb < raw.shape.z:
+				for j: int in range(bottom - raw.origin.y, bottom - raw.origin.y + rows):
+					if j >= 0 and j < raw.shape.y and raw.at(ga, j, gb) == 1:
+						plastic = true
+						break
+			if in_ring:
+				ring += 1
+				if plastic:
+					grip += 1
+				continue
+			disc += 1
+			var fa: int = a - origin.x
+			var fb: int = b - origin.z
+			if not plastic and fa >= 0 and fa < size.x and fb >= 0 and fb < size.z \
+					and footprint[fa * size.z + fb] == 1:
+				fit += 1
+	return float(fit) / float(disc) >= FIT_AIR and float(grip) / float(ring) >= GRIP
 
 
 ## occupancy._stud_phase: where the part's upright studs stand across the
@@ -3492,8 +3577,8 @@ func _build(text: String, id: String, others: Dictionary,
 		for socket: Vector2 in cover.sockets:
 			result.sockets.append([socket.x, socket.y])
 	else:
-		var solid: Grid = _clear_bores(_fill_cavities(_remove_studs(_voxelise(), found), found),
-			found)
+		var raw: Grid = _voxelise()
+		var solid: Grid = _clear_bores(_fill_cavities(_remove_studs(raw, found), found), found)
 		# A part with no connector at all that is a ring: its hole a bore
 		# (occupancy.open_ring, and build_meshes after it).
 		if found.is_empty():
@@ -3509,7 +3594,7 @@ func _build(text: String, id: String, others: Dictionary,
 		result.boxes = _to_boxes(solid, found)
 		result.sockets = _bottom_sockets(solid, found, PackedFloat64Array([
 			result.bounds_max[0] - result.bounds_min[0],
-			result.bounds_max[2] - result.bounds_min[2]]))
+			result.bounds_max[2] - result.bounds_min[2]]), raw)
 
 	result.lbm = encode(surfaces, result.bounds_min, result.bounds_max,
 		result.connectors, result.boxes, result.sockets)

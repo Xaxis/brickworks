@@ -13,9 +13,9 @@
 //      redirects), and every #fragment is an id on its page.
 //   3. /docs and a long page in light and dark at 390 and 1400 px: drawn
 //      in the theme's own colours, nothing sideways, no error logged.
-//   4. Search: Ctrl+K opens it; "fresh eyes" and "Build together" each
-//      find their own page first; Enter goes there; Escape closes it and
-//      gives the focus back; / opens it too.
+//   4. Search: Ctrl+K opens it; every page's title, "fresh eyes" and
+//      "Build together" each find their own page first; Enter goes there;
+//      Escape closes it and gives the focus back; / opens it too.
 //   5. The pages list: at 390 px hidden behind Browse the docs, which opens
 //      it, and a link in it goes to its page; at 1400 px down the left, with
 //      the page being read marked; what is on this page marks the section
@@ -173,6 +173,22 @@ for (const [width, dark] of [[1400, false], [390, true]]) {
   const opened = await page.waitForFunction(() => document.querySelector("dialog.docs-search")?.open
     && document.activeElement === document.querySelector("dialog.docs-search input"), null, { timeout: 4000 }).then(() => true, () => false);
   check(`${width} ${theme}: Ctrl+K opens search with the box focused`, opened);
+  if (width === 1400) {
+    // Every page's title finds that page first. On rel-m271, 48 of the 52
+    // found a section first, and "Build together" one on A model's page.
+    const pages = await page.evaluate(() => fetch("/docs/search.json").then((r) => r.json())
+      .then((rows) => rows.filter((row) => !row.h).map((row) => [row.p, row.u])));
+    const missed = [];
+    for (const [title, want] of pages) {
+      await page.fill("dialog.docs-search input", title);
+      const first = await page.waitForFunction((q) => document.querySelector(".docs-results")?.dataset.for === q
+        && document.querySelector(".docs-results li a")?.getAttribute("href"), title, { timeout: 6000 })
+        .then((h) => h.jsonValue(), () => "");
+      if (first !== want) missed.push(`${title}: ${first}`);
+    }
+    check(`each page's title finds that page first: ${pages.length - missed.length} of ${pages.length}`,
+      pages.length > 40 && missed.length === 0, missed.slice(0, 4).join("; "));
+  }
   for (const [query, want] of [["fresh eyes", "/docs/fresh-eyes"], ["Build together", "/docs/build-together"]]) {
     await page.fill("dialog.docs-search input", query);
     // The results for this query, not the last one's still on screen.

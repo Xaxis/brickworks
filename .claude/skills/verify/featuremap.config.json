@@ -2297,7 +2297,7 @@
       "kind": "lib",
       "label": "quitting cleanly",
       "entry": "src/render/worker_tasks.gd",
-      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)",
+      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)  /  tools/probe.sh dialog_close_probe  (windowed: the close button, sent as WM_DELETE_WINDOW, with nothing up, Import's file chooser, Save as, New's question and About up: each heard and quit within 2 s, the process out within 5 s, exit 0; the dialog still holds the window against a click and Ctrl+N beside it)",
       "area": "view"
     },
     {
@@ -4643,6 +4643,13 @@
       "label": "what a session sees over mcp",
       "entry": "src/net/see_tools.gd",
       "reach": "PROBE_SIZE=1400x900 tools/probe.sh seeing   (view_board: six views in one labelled picture, highlight= edged with the rest see-through, xray=, step=N; booklet_page as the PDF prints it; split/merge/mirror pictured; render_model Best says how it was drawn)",
+      "area": "mcp"
+    },
+    {
+      "kind": "lib",
+      "label": "a session keeps a view over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   (save_view {\"name\": NAME} keeps the window's view as Save this view… does, answered with the model from there; in_view lists the views with their keys; its Alt-Shift key and render_model view= back within 0.1° and 0.1 LDU; remove=true; highlight=/xray= take 4070 quoted or not, on the MCP walk's Pods)",
       "area": "mcp"
     },
     {
