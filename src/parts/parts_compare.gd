@@ -27,8 +27,9 @@ const SET := "set"
 const MODEL := "model"
 
 
-## One side: what it is, its name, and its parts.
-class Side extends RefCounted:
+## One side of a comparison, the parts of a set or a model: what it is, its
+## name, and its parts. (Not "Side": that is Godot's own enum of a box's sides.)
+class Pile extends RefCounted:
 	## [constant OPEN], [constant SET] or [constant MODEL].
 	var kind: String = ""
 	## As a person reads it: "7140-1 X-wing Fighter (1999)", "Car".
@@ -54,8 +55,8 @@ class Side extends RefCounted:
 			pieces += int(counts[key])
 
 
-var a: Side
-var b: Side
+var a: Pile
+var b: Pile
 ## B's key -> how many of B's pieces A has too: its own, or another moulding.
 var both: Dictionary = {}
 ## A's key -> the pieces of it B does not use.
@@ -68,7 +69,7 @@ var moulds: Dictionary = {}
 
 ## [param from] against [param to]: what they share, and what [param to]
 ## needs beyond [param from].
-static func between(from: Side, to: Side) -> PartsCompare:
+static func between(from: Pile, to: Pile) -> PartsCompare:
 	var out := PartsCompare.new()
 	out.a = from
 	out.b = to
@@ -117,8 +118,7 @@ func file_name() -> String:
 ## What it says to a session (parts_list which="compare"): the sides, the
 ## counts, then each list by part and colour, at most [param most] lots a list.
 func said(library: PartLibrary, most: int = 30) -> String:
-	var lines := PackedStringArray()
-	lines.append("%s against %s, by part and colour:" % [side_words(a), side_words(b)])
+	var lines := PackedStringArray([side_line("A", a), side_line("B", b), "By part and colour:"])
 	var lists: Array = [["In both", both], ["Only in " + a.short, only_a],
 		["Only in %s: to build it from %s, buy these" % [b.short, a.short], only_b]]
 	for list: Array in lists:
@@ -141,18 +141,15 @@ func said(library: PartLibrary, most: int = 30) -> String:
 	return "\n".join(lines)
 
 
-## A side as a sentence names it: "7140-1 X-wing Fighter (1999, 285 pieces;
-## 1 spare not counted)".
-static func side_words(side: Side) -> String:
-	var not_counted: String = ""
+## A side as the sheet and a session read it: "A: 7140-1 X-wing Fighter
+## (1999) · 285 pieces · 1 spare not counted".
+static func side_line(letter: String, side: Pile) -> String:
+	var said := PackedStringArray([letter + ": " + side.name, Counted.of(side.pieces, "piece")])
 	if side.not_counted > 0:
-		not_counted = "; %d %s not counted" % [side.not_counted,
-			("spare" if side.not_counted == 1 else "spares") if side.kind == SET
-			else "stickers and made parts"]
-	var named: String = side.name
-	if named.ends_with(")"):
-		return "%s, %s%s)" % [named.trim_suffix(")"), Counted.of(side.pieces, "piece"), not_counted]
-	return "%s (%s%s)" % [named, Counted.of(side.pieces, "piece"), not_counted]
+		said.append((Counted.of(side.not_counted, "spare") if side.kind == SET
+			else Counted.of(side.not_counted, "sticker or made part", "stickers and made parts"))
+			+ " not counted")
+	return " · ".join(said)
 
 
 ## " (as 3794a in A)" for a piece of B counted in both as another moulding.
@@ -171,8 +168,8 @@ func mould_words(key: String) -> String:
 
 ## The model open now, as What do I need? counts it (Collection.needs_of).
 static func of_open(world: BrickWorld, library: PartLibrary, scenery: Dictionary,
-		title: String) -> Side:
-	var side := Side.new()
+		title: String) -> Pile:
+	var side := Pile.new()
 	side.kind = OPEN
 	side.name = title if not title.is_empty() and title != ModelStore.UNTITLED \
 		else "the model open now"
@@ -188,8 +185,8 @@ static func of_open(world: BrickWorld, library: PartLibrary, scenery: Dictionary
 
 ## A saved model or an example, by its file, as What can I build? reads it
 ## (Collection.needs_of_ldraw).
-static func of_file(path: String, named: String, library: PartLibrary) -> Side:
-	var side := Side.new()
+static func of_file(path: String, named: String, library: PartLibrary) -> Pile:
+	var side := Pile.new()
 	side.kind = MODEL
 	side.name = named
 	side.short = named
@@ -207,8 +204,8 @@ static func of_file(path: String, named: String, library: PartLibrary) -> Side:
 ## A set, by its number ("7140", "7140-1"), from its inventory: every part
 ## in it but its spares. None of a set under test (DesignMemory.holds): its
 ## parts list is a bench session's answer.
-static func of_set(number: String, inventories: SetInventories, library: PartLibrary) -> Side:
-	var side := Side.new()
+static func of_set(number: String, inventories: SetInventories, library: PartLibrary) -> Pile:
+	var side := Pile.new()
 	side.kind = SET
 	var normal: String = SetInventories.normal(number)
 	side.name = normal
@@ -248,7 +245,7 @@ static func of_set(number: String, inventories: SetInventories, library: PartLib
 ## a set number ("7140", "7140-1", "set 7140"), or a saved model's or an
 ## example's name ("model Car" when the name is a number).
 static func side_for(said: String, store: ModelStore, world: BrickWorld, library: PartLibrary,
-		inventories: SetInventories) -> Side:
+		inventories: SetInventories) -> Pile:
 	var words: String = said.strip_edges()
 	var lower: String = words.to_lower()
 	if lower in ["", "open", "the open model", "this model", "the model open now"]:
@@ -262,7 +259,7 @@ static func side_for(said: String, store: ModelStore, world: BrickWorld, library
 	for entry: ModelStore.Entry in store.list_saved() + store.list_examples():
 		if entry.name.to_lower() == name.to_lower():
 			return of_file(entry.path, entry.name, library)
-	var side := Side.new()
+	var side := Pile.new()
 	side.kind = MODEL
 	side.name = name
 	side.short = name

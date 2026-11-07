@@ -861,6 +861,14 @@
       "tests": []
     },
     {
+      "id": "cli:comparesets probe",
+      "kind": "cli",
+      "entry": "src/dev/comparesets_probe.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:connect Claude browser flow",
       "kind": "cli",
       "entry": "tools/web/oauth_flow.mjs",
@@ -3504,6 +3512,14 @@
       "tests": []
     },
     {
+      "id": "lib:parts compare",
+      "kind": "lib",
+      "entry": "src/parts/parts_compare.gd",
+      "reach": "tools/probe.sh comparesets_probe   (PartsCompare.between: Collection.allocate's matching, own part and colour then another moulding; a set's spares and the open model's stickers and made parts not counted; a set under test refused)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "lib:parts seen from outside",
       "kind": "lib",
       "entry": "src/render/seen_parts.gd",
@@ -4438,6 +4454,14 @@
       "entry": "web/compare.html",
       "reach": "https://brickworks.diy/compare   (Brickworks next to Studio and LDD, each point on a real model; linked from the home page and the FAQ)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:compare two sets or models",
+      "kind": "ui",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare two sets or models\u2026: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO\u00ae Pick a Brick)",
+      "area": "collection",
       "tests": []
     },
     {

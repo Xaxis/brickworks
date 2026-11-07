@@ -3398,7 +3398,7 @@ func _parts_compare(input: Dictionary) -> String:
 		if shell != null and shell.collection_store != null else null
 	var sides: Array = []
 	for name: String in ["a", "b"]:
-		var side: PartsCompare.Side = await PartsCompare.side_for(str(input[name]), store, world,
+		var side: PartsCompare.Pile = await PartsCompare.side_for(str(input[name]), store, world,
 			library, inventories)
 		if not side.ok():
 			return "%s: %s." % [name, side.trouble]

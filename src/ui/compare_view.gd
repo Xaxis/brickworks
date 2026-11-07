@@ -641,14 +641,14 @@ func compare_parts() -> void:
 	comparing = true
 	_go.disabled = true
 	_sides.text = "Comparing…"
-	var from: PartsCompare.Side = await _side_of(0)
-	var to: PartsCompare.Side = await _side_of(1)
+	var from: PartsCompare.Pile = await _side_of(0)
+	var to: PartsCompare.Pile = await _side_of(1)
 	# A newer comparison, or the sheet closed meanwhile: theirs now.
 	if asked != _asked:
 		return
 	comparing = false
 	_go.disabled = false
-	for side: PartsCompare.Side in [from, to]:
+	for side: PartsCompare.Pile in [from, to]:
 		if not side.ok():
 			parts = null
 			lists = []
@@ -885,7 +885,7 @@ func _picked(n: int) -> void:
 		compare_parts()
 
 
-func _side_of(n: int) -> PartsCompare.Side:
+func _side_of(n: int) -> PartsCompare.Pile:
 	var choice: Array = _choices[_pick[n].selected]
 	match str(choice[0]):
 		PartsCompare.OPEN:
@@ -916,8 +916,7 @@ func _fill_lists() -> void:
 			PartsCompare.total(parts.only_b)]
 		a_name = parts.a.short
 		b_name = parts.b.short
-		_sides.text = "A: %s\nB: %s" % [PartsCompare.side_words(parts.a),
-			PartsCompare.side_words(parts.b)]
+		_sides.text = PartsCompare.side_line("A", parts.a) + "\n" + PartsCompare.side_line("B", parts.b)
 	elif _sides.text.is_empty():
 		_sides.text = "Choose A and B: a set by its number, a saved model or the model open now."
 	var titles: Array = ["In both", "Only in %s" % a_name, "Only in %s" % b_name]

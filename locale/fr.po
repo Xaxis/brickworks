@@ -11881,3 +11881,126 @@ msgstr "Ce modèle n’a aucun mouvement nommé « %s », il s’est donc ouvert
 
 msgid "No such motion"
 msgstr "Mouvement introuvable"
+
+# Compare two sets or models (comparesets, APP_UX6 #7): File's row, the sheet's
+# pickers, tabs, counts and shops, and what it says on the status line.
+
+msgid "Compare two sets or models…"
+msgstr "Comparer deux sets ou modèles…"
+
+msgid "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+msgstr "Les pièces qu'un set, un modèle enregistré ou celui-ci a en commun avec un autre, les pièces d'un seul des deux, et ce qu'il faut acheter pour construire l'un à partir de l'autre"
+
+msgid "Compare two sets or models"
+msgstr "Comparer deux sets ou modèles"
+
+msgid "Swap"
+msgstr "Échanger"
+
+msgid "A in B's place and B in A's: what to buy to build the other"
+msgstr "A à la place de B et B à celle de A : ce qu'il faut acheter pour construire l'autre"
+
+msgid "Stop comparing (Esc)"
+msgstr "Arrêter de comparer (Esc)"
+
+msgid "What you have: a set, a saved model or the model open now"
+msgstr "Ce que vous avez : un set, un modèle enregistré ou le modèle ouvert"
+
+msgid "What you want to build: a set, a saved model or the model open now"
+msgstr "Ce que vous voulez construire : un set, un modèle enregistré ou le modèle ouvert"
+
+msgid "Set number, as 7140"
+msgstr "Numéro de set, comme 7140"
+
+msgid "A set's number, as on its box: 7140 or 7140-1"
+msgstr "Le numéro d'un set, comme sur sa boîte : 7140 ou 7140-1"
+
+msgid "The parts in both, in only one, and what to buy to build B from A"
+msgstr "Les pièces des deux, celles d'un seul, et ce qu'il faut acheter pour construire B à partir de A"
+
+msgid "The model open now"
+msgstr "Le modèle ouvert"
+
+msgid "The model open now: %s"
+msgstr "Le modèle ouvert : %s"
+
+msgid "A set, by its number"
+msgstr "Un set, par son numéro"
+
+msgid "Saved: %s"
+msgstr "Enregistré : %s"
+
+msgid "Example: %s"
+msgstr "Exemple : %s"
+
+msgid "In both"
+msgstr "Dans les deux"
+
+msgid "Only in %s"
+msgstr "Seulement dans %s"
+
+msgid "Choose A and B: a set by its number, a saved model or the model open now."
+msgstr "Choisissez A et B : un set par son numéro, un modèle enregistré ou le modèle ouvert."
+
+msgid "Comparing…"
+msgstr "Comparaison…"
+
+msgid "A: %s"
+msgstr "A : %s"
+
+msgid "B: %s"
+msgstr "B : %s"
+
+msgid "1 spare not counted"
+msgstr "1 pièce de rechange non comptée"
+
+msgid "%d spares not counted"
+msgstr "%d pièces de rechange non comptées"
+
+msgid "1 sticker or made part not counted"
+msgstr "1 autocollant ou pièce faite maison non compté"
+
+msgid "%d stickers and made parts not counted"
+msgstr "%d autocollants et pièces faites maison non comptés"
+
+msgid "To build B from A, the parts to buy are listed here, for the shops."
+msgstr "Pour construire B à partir de A, les pièces à acheter sont listées ici, pour les boutiques."
+
+msgid "%s has every piece %s needs: nothing to buy."
+msgstr "%s a toutes les pièces dont %s a besoin : rien à acheter."
+
+msgid "To build %s from %s, buy these %s in %s:"
+msgstr "Pour construire %s à partir de %s, achetez ces %s en %s :"
+
+msgid "Nothing in both."
+msgstr "Rien dans les deux."
+
+msgid "Nothing only in %s."
+msgstr "Rien seulement dans %s."
+
+msgid "Compared %s with %s: %s in both; %d only in %s; %d only in %s"
+msgstr "%s comparé avec %s : %s dans les deux ; %d seulement dans %s ; %d seulement dans %s"
+
+msgid "No set %s is in the set inventories."
+msgstr "Aucun set %s dans les inventaires des sets."
+
+msgid "Set %s is under test in this run, so its parts are not compared."
+msgstr "Le set %s est testé dans cette exécution, ses pièces ne sont donc pas comparées."
+
+msgid "%s could not be read."
+msgstr "%s n'a pas pu être lu."
+
+msgid "%s has no parts anybody can own."
+msgstr "%s n'a aucune pièce que l'on puisse posséder seule."
+
+msgid "This app has no set inventories."
+msgstr "Cette application n'a pas les inventaires des sets."
+
+msgid "A BrickLink wanted list (.xml) of these, to upload under Wanted › Upload"
+msgstr "Une liste de souhaits BrickLink (.xml) de ces pièces, à téléverser sous Wanted › Upload"
+
+msgid "A Rebrickable parts list (.csv) of these, to import into a list of your own"
+msgstr "Une liste de pièces Rebrickable (.csv) de ces pièces, à importer dans une liste à vous"
+
+msgid "A list of LEGO® element numbers (.csv) of these, to upload at LEGO® Pick a Brick: the parts it has no number for are named"
+msgstr "Une liste de numéros d'élément LEGO® (.csv) de ces pièces, à téléverser sur LEGO® Pick a Brick : les pièces sans numéro sont nommées"

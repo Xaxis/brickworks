@@ -343,11 +343,11 @@ func _over_mcp() -> void:
 	print("\n  parts_list which=\"compare\" over MCP")
 	var said: String = await _say("parts_list", {"which": "compare", "a": "7140", "b": "9493"})
 	print("     %s" % "\n     ".join(said.split("\n").slice(0, 5)))
-	if _window_counts.size() == 3:
-		_check("in 1 call, the window's counts: %d in both, %d only in 7140-1, %d only in 9493-1"
-			% _window_counts, said.contains("In both: %d pieces" % _window_counts[0])
-			and said.contains("Only in 7140-1: %d pieces" % _window_counts[1])
-			and said.contains("buy these: %d pieces" % _window_counts[2]))
+	var counts: Array = _window_counts if _window_counts.size() == 3 else [-1, -1, -1]
+	_check("in 1 call, the window's counts: %d in both, %d only in 7140-1, %d only in 9493-1"
+		% counts, _window_counts.size() == 3 and said.contains("In both: %d pieces" % counts[0])
+		and said.contains("Only in 7140-1: %d pieces" % counts[1])
+		and said.contains("buy these: %d pieces" % counts[2]))
 	# Each list under its own head, a lot a line: "  4 x 2412b Tile 1 x 2 Grille, Red (element …)".
 	var lot: RegEx = RegEx.create_from_string("\\n {2}[ \\d]{3} x \\S+ .+, [^\\n]+")
 	var heads: Array = []
@@ -357,7 +357,7 @@ func _over_mcp() -> void:
 		if next == null or next.get_start() != at + head.length() + 1:
 			heads.append(head)
 	_check("...then each list by part and colour, a lot a line (%s)" % ("all three" if heads.is_empty()
-		else "missing %s" % heads), heads.is_empty() and said.contains("(element "))
+		else "missing %s" % [heads]), heads.is_empty() and said.contains("(element "))
 	DirAccess.remove_absolute(_out.path_join("car_from_7140_1_pickabrick.csv"))
 	for name: String in DirAccess.get_files_at(_out):
 		DirAccess.remove_absolute(_out.path_join(name))

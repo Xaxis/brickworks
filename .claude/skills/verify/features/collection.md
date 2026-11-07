@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test -->
+<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe -->
 
 ## Sub-features
 
@@ -168,6 +168,27 @@ which models they could build from what they have. Added 2026-10-12.
   wins: BrickLink 77 reads as 148, not 316). 21,173 sets, 256 shards, 26 MB, under
   `assets/generated/sets/`; the shard rule is the same sum in the Python and in
   `SetInventories.shard_of`.
+- `compare two sets or models` and `parts compare` (APP_UX6 #7, comparesets,
+  2026-11-07; `src/ui/compare_view.gd`'s parts sheet, `src/parts/parts_compare.gd`):
+  File, Compare two sets or models… (Shell `compare_sets`) opens Compare as a
+  sheet over the model, as the parts list is: A and B each a set by its number
+  (`SetInventories`, its spares not counted, as Rebrickable's compare leaves
+  them out), a saved model or an example (its file, as What can I build? reads
+  it) or the model open now (as What do I need? counts it, stickers and made
+  parts not counted). Tabs In both, Only in A and Only in B list the lots by part
+  and colour with their pictures (the parts list's rows); the matching is
+  `Collection.allocate` with B as needs and A as on hand (own part and colour,
+  then another moulding, named "(2 as 3794a in A)"), so each side's pieces are
+  counted once and the tabs add up to them. Only in B is the list to buy to
+  build B from A: its BrickLink, Rebrickable and LEGO® Pick a Brick buttons
+  write it through `Exports.stock_list` (the parts list's own writers,
+  `ShopLists`, direct colours in their stand-ins) as B_from_A_pickabrick.csv.
+  Swap turns it round. What it compared last is chosen again; another model
+  opened, New or Clear closes it, as Compare with a save. `parts_list
+  which="compare" a= b=` says the same to a session (a and b: a set number,
+  "open", or a saved model's or example's name; "set 1234"/"model 1234"), and
+  `shop=` writes the list to buy where export_model writes. A set under test in
+  a bench run (`DesignMemory.holds`) is compared by neither.
 - `official models' parts lists` (`src/dev/collection_models.gd`): the 1,575
   `vendor/omr` models counted with the app's own LDraw reader, leaving out
   what nobody can own (a primitive drawn into the model, a sub-model the file
@@ -281,6 +302,7 @@ which models they could build from what they have. Added 2026-10-12.
 
 ```sh
 godot --path .     # Build > My collection…  ·  P, then What do I need?
+godot --path .     # File > Compare two sets or models…: 7140 for A, 9493 for B
 curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   # 401 signed out
 ```
 
@@ -290,6 +312,8 @@ curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   #
 python3 tools/minitest.py tests/test_collection.py        # a set's expansion against the raw tables
 godot --headless --path . --script src/dev/collection_probe.gd
 tools/probe.sh collection_arrives_probe   # fetched as they sign in, read first thing with no panel made
+# two sets or models compared, and the list to buy (1400x900; PROBE_SIZE=1280x720 too)
+tools/probe.sh comparesets_probe -- --shots=DIR
 godot --path . --resolution 1400x900 --script src/dev/collection_ui_probe.gd   # needs a display
 # building from a set's parts: the counts down, undo, delete, over, saved (1280x720; PROBE_SIZE=1400x900 too)
 tools/probe.sh setbin_probe -- --shots=DIR
