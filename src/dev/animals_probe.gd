@@ -33,6 +33,12 @@
 ## saddles 9 of 27 seated, 18 refused, each left an LDU low: the seat followed
 ## the sword's bar in the saddle's clip, or would not take a barding as far
 ## into its rider's leg as it was into its horse.
+##
+## And the seat moves no part a bar holds where its set has it: 10267-1's
+## candle (37762), its bar down a flower plate's hollow stud and its hole 3 LDU
+## off that stud, as harvest_probe writes it. The seat that took the move
+## seating the most lifted it onto the stud, 3 LDU into its flame, and the
+## harvest refused it (956 of 1,056, 2026-11-07); held by the bar, it stays.
 extends SceneTree
 
 const SETS := "res://vendor/omr/files/"
@@ -51,6 +57,13 @@ const SEATED := 0.05
 ## a library that lost some would otherwise pass with fewer.
 const HAND_AT_LEAST := 63
 const SADDLES_AT_LEAST := 27
+## 10267-1's house-step66 as harvest_probe writes it: a flower plate, the
+## candle on its hollow stud, its flame on the candle's bar.
+const CANDLE := [
+	{"part": "24866", "color": 297, "x": -0.5, "y": 0.0, "z": -0.5, "face": "up", "rot": 0},
+	{"part": "37762", "color": 15, "x": -0.4, "y": 0.5, "z": -0.4, "face": "up", "rot": 0},
+	{"part": "37775", "color": 57, "x": -0.2, "y": 4.0, "z": -0.4, "face": "up", "rot": 2},
+]
 
 var _library: PartLibrary
 var _world: BrickWorld
@@ -122,6 +135,15 @@ func _run() -> void:
 		_saddles[1] == _saddles[0] and _saddles[0] >= SADDLES_AT_LEAST)
 	_check("and none of them is refused for more than it is where its set has it (%d)"
 		% _refused, _refused == 0)
+	_world.clear()
+	_builder.lattice.clear()
+	var candle := Assistant.Model.new()
+	for raw: Dictionary in CANDLE:
+		candle.placements.append(Assistant.Placement.from_dict(raw))
+	var verdict: Dictionary = _assistant._check(candle)
+	_check("and the seat leaves a part a bar holds where its set has it: 10267-1's candle on "
+		+ "its flower plate's hollow stud builds (%s)" % str(verdict["summary"]).left(200),
+		bool(verdict["ok"]))
 	quit(1 if _failures > 0 else 0)
 
 

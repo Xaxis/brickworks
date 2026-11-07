@@ -1602,7 +1602,9 @@ static func _find(root: PackedInt32Array, i: int) -> int:
 ## studs. Its lattice cover then ran into the horse's, and 18 of the 27 saddles
 ## and bardings on horses in the library's sets were refused (animals_probe).
 ## Seating its holes on the studs moves it up as well, and the clip stays on
-## the bar it slides along.
+## the bar it slides along. Only a bar or an axle that slides lets a part go:
+## held where it is by a stud, a hole or a hinge, it stays, and it never goes
+## onto a part it already slides in.
 ##
 ## [param exact] 0 asks for the nearest miss instead, and {} only where one
 ## meets already: a fault's advice says how far to move a part to join it.
@@ -1652,8 +1654,18 @@ static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 
 ## Of [param pairs] (as [method seat_move] gathers them), the move that seats
 ## more of the part's connectors than staying does, the most and then the
-## shortest: {move, mine, other, item, residual}, or {}.
+## shortest: {move, mine, other, item, residual}, or {}. None where a pairing
+## that does not slide is seated already, and none onto a part one that
+## slides is seated in: 10267-1's candle (37762) stands with its bar down a
+## flower plate's hollow stud, its hole 3 LDU off that stud, and seating the
+## hole lifted it 3 LDU into its flame.
 static func _seating_most(pairs: Array, exact: float) -> Dictionary:
+	var joined: Dictionary = {}
+	for pair: Array in pairs:
+		if _seated_by([pair], Vector3.ZERO, exact) == 1:
+			if pair[1] == Vector3.ZERO:
+				return {}
+			joined[pair[4]] = true
 	var most: int = _seated_by(pairs, Vector3.ZERO, exact)
 	var best: Dictionary = {}
 	var tried: Dictionary = {}
@@ -1661,7 +1673,7 @@ static func _seating_most(pairs: Array, exact: float) -> Dictionary:
 		var move: Vector3 = pair[0]
 		var residual: float = move.length()
 		var key := Vector3i((move / exact).round())
-		if residual <= exact or tried.has(key):
+		if residual <= exact or tried.has(key) or joined.has(pair[4]):
 			continue
 		tried[key] = true
 		var seated: int = _seated_by(pairs, move, exact)
