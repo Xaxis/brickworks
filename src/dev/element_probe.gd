@@ -664,7 +664,9 @@ func _on_edge(clip: String, near: Vector3) -> void:
 
 
 ## A wedge plate's cut is its edge: 6 LDU out from the middle of the cut is
-## free, and 6 LDU in is the plate, at half its height.
+## free, and 6 LDU in is the plate, at half its height. The cut as 41770a
+## has it, in LDraw's axes: from the tip, one stud wide at the back (-Z) on
+## the straight side, to the far front corner; a right one mirrored.
 func _wedge_cut(wedge: String) -> void:
 	var it: BrickWorld.Brick = null
 	for brick: BrickWorld.Brick in _world.bricks():
@@ -673,11 +675,14 @@ func _wedge_cut(wedge: String) -> void:
 	if it == null:
 		return
 	var spec: ElementMaker.Spec = ElementMaker.parse_spec(_library.custom_source(wedge))
-	var outline: Array = ElementMaker.wedge_outline(spec)
-	var cut: Array = ElementMaker.wedge_cut(spec)
-	var mid := Vector2((float(outline[1][0]) + float(outline[2][0])) * 0.5,
-		(float(outline[1][1]) + float(outline[2][1])) * 0.5)
-	var normal := Vector2(float(cut[0]), float(cut[1]))
+	var hand: float = -1.0 if spec.way == "right" else 1.0
+	var half := Vector2(spec.across * 10.0, spec.deep * 10.0)
+	var tip := Vector2((-half.x + 20.0) * hand, -half.y)
+	var corner := Vector2(half.x * hand, half.y)
+	var mid: Vector2 = (tip + corner) * 0.5
+	var along: Vector2 = (corner - tip).normalized()
+	# Out of the plate: away from the straight side.
+	var normal := Vector2(along.y, -along.x) if hand > 0.0 else Vector2(-along.y, along.x)
 	var owners: Array = []
 	for step: float in [6.0, -6.0]:
 		var ldraw := Vector3(mid.x + normal.x * step, 4.0, mid.y + normal.y * step)
