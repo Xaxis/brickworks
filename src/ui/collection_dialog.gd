@@ -1999,11 +1999,18 @@ func _set_lots(entry: Dictionary, record: Dictionary) -> Array:
 	for row: Variant in record.get("p", []):
 		var lot: Array = row
 		var info: PartLibrary.PartInfo = library.parts.get(library.resolve(str(lot[0])))
+		# Sorted by the words a person reads: LDraw's marks before a name
+		# ("=" a moved part's) left out, and parts the library lacks last
+		# (mysets' first picture put two of them, by number, at the top).
 		lots.append({"part": str(lot[0]), "colour": int(lot[1]), "count": int(lot[2]) * times,
-			"name": Inventory._tidy(info.name) if info != null else str(lot[0])})
+			"name": Inventory._tidy(info.name) if info != null else str(lot[0]),
+			"known": info != null,
+			"sort": Inventory._tidy(info.name).lstrip("=_~ ").to_lower() if info != null else str(lot[0])})
 	lots.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		if a["name"] != b["name"]:
-			return str(a["name"]) < str(b["name"])
+		if a["known"] != b["known"]:
+			return bool(a["known"])
+		if a["sort"] != b["sort"]:
+			return str(a["sort"]) < str(b["sort"])
 		return _colour(int(a["colour"])) < _colour(int(b["colour"])))
 	return lots
 

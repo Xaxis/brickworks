@@ -261,6 +261,12 @@ func _steps() -> void:
 	await _frames(5)
 	var rows: Array = _dialog.call("mark_rows")
 	_check("its page lists the set's 124 lots, each with how many are missing (%d)" % rows.size(), rows.size() == 124)
+	# By name, as a person reads them: the parts the library lacks last.
+	var known: Array = rows.map(func(row: HBoxContainer) -> bool:
+		return _library.parts.has(_library.resolve(str((row.get_meta("mark") as Dictionary)["part"]))))
+	var last_known: int = known.rfind(true)
+	_check("...by name, the %d parts the library lacks after the rest" % known.count(false),
+		not known.is_empty() and bool(known[0]) and not known.slice(0, last_known + 1).has(false))
 	var typed: int = 0
 	for lot: Dictionary in twelve:
 		var row: HBoxContainer = _mark_row(lot)
