@@ -178,7 +178,8 @@ func _parts() -> Dictionary:
 	return _said("%s in %s." % [Counted.of(stock.pieces, "piece"), Counted.of(lots.size(), "lot")], {"of": _now(), "lots": lots,
 		"pieces": stock.pieces, "grams": snappedf(stock.grams, 0.1), "file": file,
 		"bricklink": {"text": str(bricklink.get("text", "")),
-			"left_out": ShopLists.why_left_off(bricklink, "BrickLink")}})
+			"left_out": ShopLists.why_left_off(bricklink, "bricklink"),
+			"stand_ins": ShopLists.stand_in_words(bricklink)}})
 
 
 func _pick(input: Dictionary, busy: bool) -> Dictionary:

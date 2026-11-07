@@ -48,6 +48,16 @@ class Lot extends RefCounted:
 	var each_grams: float = 0.0
 	## Made in the element maker: not a part anyone can order.
 	var custom: bool = false
+	## A direct colour (LdrModel.is_direct_colour), which no shop sells: the
+	## catalogue colour a shop's list orders the part in instead
+	## (PartLibrary.catalogue_nearest), its name, and the element and
+	## Rebrickable number of the part in it. Each list says so (ShopLists
+	## stand_in_words). -1 for a palette colour, ordered as itself. The lot's
+	## own element and numbers stay empty: that plastic was never made.
+	var stand_in: int = -1
+	var stand_in_name: String = ""
+	var stand_in_element: String = ""
+	var stand_in_rebrickable: int = -1
 	## The numbers BrickLink and Rebrickable list the part under, which
 	## are not always LDraw's (PartLibrary.shop_part).
 	var bricklink_id: String = ""
@@ -320,6 +330,12 @@ func _add(by_key: Dictionary, library: PartLibrary, part_id: String, color_code:
 			lot.rebrickable_colour = plain.rebrickable_id
 		lot.each_grams = Stability.grams(info) if info != null else 0.0
 		lot.element = library.element_for(part_id, color_code)
+		lot.stand_in = library.catalogue_nearest(color_code)
+		if lot.stand_in >= 0:
+			var stood: PartLibrary.BrickColor = library.color(lot.stand_in)
+			lot.stand_in_name = stood.name
+			lot.stand_in_element = library.element_for(part_id, lot.stand_in)
+			lot.stand_in_rebrickable = stood.rebrickable_id
 		lot.bricklink_id = library.shop_part(part_id, "BrickLink")
 		lot.rebrickable_id = library.shop_part(part_id, "Rebrickable")
 		by_key[key] = lot

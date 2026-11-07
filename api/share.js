@@ -1982,8 +1982,10 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
       mesh: (root && lot.mesh) || null, ...namesOf(lot, words) })),
     root: root || null, colours: root ? paletteOf() : {},
     // What each shop's list leaves off: a made part, or a colour it has no
-    // number for.
+    // number for; and the direct colours each lists in the nearest colour
+    // still made ("#FF0000 as Reddish Orange"), as no shop sells them.
     left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickableCsv(parts).left_out },
+    stand_ins: wantedList(parts).stand_ins,
   });
 }
 

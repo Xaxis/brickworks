@@ -22,8 +22,9 @@
 ##
 ## Colours: a StandardMaterial3D per colour (material_for), from colors.json:
 ## the plastic's colour, a see-through colour's alpha, and its finish as
-## roughness and metallic. A print drawn in the app (PartPrints) is not
-## written; the part comes out in its plastic.
+## roughness and metallic; a direct colour (0x2RRGGBB) its own RGB, opaque
+## plain plastic (PartLibrary.direct_color). A print drawn in the app
+## (PartPrints) is not written; the part comes out in its plastic.
 class_name MeshExport
 extends RefCounted
 
@@ -574,7 +575,11 @@ func _obj(list: Array, title: String, mtl_name: String, made: Made) -> Array:
 					await _written_out()
 			var code: int = brick.color_code if shape.colour == Lbm.COLOR_INHERIT else shape.colour
 			var colour: PartLibrary.BrickColor = library.color(code)
-			var material_name: String = "%d_%s" % [code, colour.name.replace(" ", "_")]
+			# A direct colour's name is its hex, "#FF0000", and an MTL reader
+			# may take a "#" for the start of a comment: it is named by its
+			# RGB alone, "rgb_FF0000".
+			var material_name: String = "%d_%s" % [code, colour.name.replace(" ", "_")] \
+				if not LdrModel.is_direct_colour(code) else "rgb_" + colour.name.trim_prefix("#")
 			if not used.has(material_name):
 				used[material_name] = material_for(colour)
 			_lines.append("usemtl " + material_name)

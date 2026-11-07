@@ -4653,6 +4653,13 @@
       "area": "model-io"
     },
     {
+      "kind": "cli",
+      "label": "direct colour probe",
+      "entry": "src/dev/direct_colour_probe.gd",
+      "reach": "tools/probe.sh direct_colour_probe [-- --shots=DIR]   (headless; three bricks in 0x2FF0000, 0x200FF00, 0x20000FF through the 3D view, Export's GLB/glTF/OBJ, the site's GLB, the thumbnail, the shops' lists and the site's lists, tools/web/direct_colour_check.mjs)",
+      "area": "model-io"
+    },
+    {
       "kind": "ui",
       "label": "cut away by a shape",
       "entry": "src/render/cut_shape.gd",

@@ -699,7 +699,8 @@ static func shortfall_stock(stock: Inventory, rows: Array, library: PartLibrary 
 		var copy := Inventory.Lot.new()
 		for field: String in ["part_id", "name", "color_code", "color_name", "lego_colour",
 				"rebrickable_colour", "element", "rgb_hex", "each_grams", "custom",
-				"bricklink_id", "rebrickable_id"]:
+				"bricklink_id", "rebrickable_id", "stand_in", "stand_in_name", "stand_in_element",
+				"stand_in_rebrickable"]:
 			copy.set(field, lot.get(field))
 		copy.count = mini(wanted, lot.count)
 		given[key] = int(given.get(key, 0)) + copy.count
