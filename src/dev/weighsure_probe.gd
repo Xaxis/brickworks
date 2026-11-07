@@ -314,8 +314,8 @@ func _the_wall() -> void:
 	var down: Array = frames.filter(func(one_frame: Array) -> bool: return int(one_frame[1]) == 8)
 	var wrong: Array = down.filter(func(one_frame: Array) -> bool:
 		return str(one_frame[2]) != eight)
-	_check("2: the eight 1 x 4s read %s in every frame they are all down, from the last placed, "
-		+ "with the next part in hand and after one is turned and put down (%d frames: %s)"
+	_check(("2: the eight 1 x 4s read %s in every frame they are all down, from the last placed, "
+		+ "with the next part in hand and after one is turned and put down (%d frames: %s)")
 		% [eight, down.size(), _said(down)], down.size() > 100 and wrong.is_empty())
 	for phase: String in ["the last", "built", "in hand", "put down"]:
 		var these: Array = _frames_of([phase], from)
@@ -433,8 +433,7 @@ func _weigh(text: String, name: String, library: PartLibrary, balance: bool) -> 
 	await _frames(2)
 	var coming: Array = _coming(store)
 	var size: ModelSize = _of_model(world, library, store.scenery, coming)
-	var out: Dictionary = {"said": size.grams_words() if size.has_method("grams_words")
-			else "%.0f g" % size.grams,
+	var out: Dictionary = {"said": "%.0f g" % size.grams,
 		"grams": size.grams, "parts": size.parts, "down": world.brick_count() - store.scenery.size(),
 		"coming": coming.size()}
 	if balance:
@@ -495,16 +494,18 @@ func _half_balance(world: BrickWorld, builder: Builder, store: ModelStore, brick
 ## The parts of [param store]'s model on their way, as the status bar counts
 ## them (ModelSize.coming); none where this build does not.
 func _coming(store: ModelStore) -> Array:
-	if _has_static(ModelSize, "coming"):
-		return ModelSize.call("coming", store)
+	var sizes: GDScript = load("res://src/assembly/model_size.gd")
+	if _has_static(sizes, "coming"):
+		return sizes.call("coming", store)
 	return []
 
 
 func _of_model(world: BrickWorld, library: PartLibrary, scenery: Dictionary,
 		coming: Array) -> ModelSize:
-	if _has_static(ModelSize, "coming"):
-		return ModelSize.callv("of_model", [world, library, scenery, coming])
-	return ModelSize.callv("of_model", [world, library, scenery])
+	var sizes: GDScript = load("res://src/assembly/model_size.gd")
+	if _has_static(sizes, "coming"):
+		return sizes.callv("of_model", [world, library, scenery, coming])
+	return sizes.callv("of_model", [world, library, scenery])
 
 
 static func _has_static(script: Script, method: String) -> bool:
@@ -538,14 +539,16 @@ func _one_style() -> void:
 		var studs: String = line.get_slice(" · ", 0) if line.contains(" cm") else line
 		var fraction: bool = studs.contains("¼") or studs.contains("½") or studs.contains("¾")
 		var decimal: bool = RegEx.create_from_string(r"\d\.\d").search(studs) != null
+		# A decimal's trailing nought: "15.0 plates high" beside "4.5".
+		var nought: bool = RegEx.create_from_string(r"\d\.\d*0(?!\d)").search(studs) != null
 		var cm_ok: bool = true
 		if line.contains(" cm"):
 			for number: String in line.get_slice(" · ", 1).trim_suffix(" cm").split(" × "):
 				cm_ok = cm_ok and RegEx.create_from_string(r"^\d+\.\d\d$").search(number) != null
-		if (fraction and decimal) or not cm_ok:
+		if (fraction and decimal) or nought or not cm_ok:
 			mixed.append("\"%s\"" % line)
 	print("  4: %d lines said: %s" % [_lines.size(), ", ".join(PackedStringArray(_lines.keys().slice(0, 8)))])
-	_check("4: every size and place said is in one style, centimetres to two places (%d of %d not%s)"
+	_check("4: every size and place said is in one style, no decimal's nought, centimetres to two places (%d of %d not%s)"
 		% [mixed.size(), _lines.size(), "" if mixed.is_empty() else ": " + ", ".join(mixed.slice(0, 6))],
 		mixed.is_empty() and _lines.size() >= 4)
 

@@ -439,7 +439,10 @@ static func amounts(values: Array) -> PackedStringArray:
 		var whole: int = floori(size + 0.005)
 		var part: float = size - whole
 		if not quarters:
-			out.append(sign + String.num(size, 2))
+			# Bare when whole: String.num keeps a whole number's ".0",
+			# and the car was "15.0 plates high".
+			var cents: int = roundi(size * 100.0)
+			out.append(sign + (str(cents / 100) if cents % 100 == 0 else String.num(cents / 100.0, 2)))
 		elif part < 0.005:
 			out.append(sign + str(whole))
 		else:
