@@ -138,7 +138,7 @@ static func _sorting(text: String) -> Dictionary:
 	var past: int = _light_lines(text, at, end) if tries >= TRIES else 0
 	var none: int = _light_lines(text, 0, end) - past - tries
 	if none > 0:
-		why["not a light's words"] = none
+		why["not a light's words"] = int(why.get("not a light's words", 0)) + none
 	if past > 0:
 		why["past the first %d light lines, which are all that are read" % TRIES] = past
 	return {"lights": lights, "taken": taken, "why": why}
