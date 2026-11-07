@@ -147,12 +147,9 @@ static func _colour_index(library: PartLibrary, code: int, colours: Array, colou
 	var name: String = "Colour %d" % code
 	var rgb := Color.MAGENTA
 	var alpha: int = 255
-	if code >= 0x2000000:
-		# A direct colour: 0x2RRGGBB.
-		rgb = Color.hex((code & 0xFFFFFF) << 8 | 0xFF)
-		name = "#%06X" % (code & 0xFFFFFF)
-	elif library != null:
-		var colour: PartLibrary.BrickColor = library.color(code)
+	var colour: PartLibrary.BrickColor = library.color(code) if library != null \
+		else PartLibrary.direct_color(code)
+	if colour != null:
 		rgb = colour.shown
 		alpha = colour.alpha
 		name = colour.name.replace("_", " ")
