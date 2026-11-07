@@ -107,19 +107,24 @@
     return loading;
   }
 
+  // A page's own entry is headed by its title, as a section is by its
+  // heading, and a heading that is the words typed comes before one that
+  // holds them. Without that, 48 of the 52 pages' titles found a section
+  // first: "Build together" the section of that name on A model's page.
   function score(row, terms, phrase) {
-    let total = 0;
+    const head = row.h ? row.hl : row.pl;
+    let total = head === phrase ? 25 : 0;
     for (const term of terms) {
-      const inHead = row.hl.includes(term);
+      const inHead = head.includes(term);
       const inPage = row.pl.includes(term);
       const inText = row.tl.includes(term);
       if (!inHead && !inPage && !inText) return 0;
-      if (inHead) total += 10 + (new RegExp(`\\b${term}`).test(row.hl) ? 5 : 0);
+      if (inHead) total += 10 + (new RegExp(`\\b${term}`).test(head) ? 5 : 0);
       if (inPage) total += 4;
       if (inText) total += 2;
     }
     if (terms.length > 1) {
-      if (row.hl.includes(phrase)) total += 25;
+      if (head.includes(phrase)) total += 25;
       else if (row.tl.includes(phrase)) total += 10;
     }
     if (!row.h) total += 1; // a page's own entry, when it ties with a section

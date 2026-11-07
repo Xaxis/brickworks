@@ -301,7 +301,11 @@ try {
       /^Ada Feed shared version 2 of “Feed Flow Tower/.test(version?.what || "") && version?.go === `/m/${id}/v/2`
         && version?.said === "A taller roof" && version?.card === id && version?.who === `/u/${ADA}` && version?.avatar);
     check(`"${snap?.what}" → ${snap?.go}, the photo ${snap?.photo}`, /^Ada Feed posted a photo of their build of “Feed Flow Tower/.test(snap?.what || "")
-      && snap?.go === `/m/${id}#photo-${kept.body.id}` && snap?.photo.endsWith(`op=photo_file&id=${kept.body.id}`)
+      // The card's copy of her photo, or the whole photo where the copy would
+      // be drawn past its size (web/card.js sharpPhotos): a feed row sends the
+      // copy since socialtails (0ab66fdc), as Latest and the cards do.
+      && snap?.go === `/m/${id}#photo-${kept.body.id}`
+      && new RegExp(`op=photo_file&id=${kept.body.id}(&size=card)?$`).test(snap?.photo || "")
       && snap?.said === "Built it on the kitchen table");
     check(`"${listedRow?.what}" → ${listedRow?.go}, her card`, /^Ada Feed shared a new model “Feed Flow Tower/.test(listedRow?.what || "")
       && listedRow?.go === `/m/${id}` && listedRow?.card === id);
