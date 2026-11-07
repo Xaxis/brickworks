@@ -2603,6 +2603,17 @@
   "An AI app": "Une application d’IA",
   "Disconnect {app}? It can no longer work in your tabs, and it may forget the tool permissions you gave it, so connecting again asks for them all again.": "Déconnecter {app} ? Elle ne pourra plus travailler dans vos onglets, et elle peut oublier les autorisations d’outils que vous lui avez données : une nouvelle connexion les redemandera toutes.",
   "Enter the challenge": "Participer au défi",
-  "Coming next": "À venir"
+  "Coming next": "À venir",
+  "In your room": "Dans votre pièce",
+  "Place {name} in your room, at its real size": "Placer {name} dans votre pièce, à sa taille réelle",
+  "{name} in your room": "{name} dans votre pièce",
+  "Getting {name} ready for your room…": "Préparation de {name} pour votre pièce…",
+  "{name} is too big to place in a room from a phone: its 3D model would be about {size} MB, and a phone is given {most} MB at most.": "{name} est trop grand pour être placé dans une pièce depuis un téléphone : son modèle 3D ferait environ {size} Mo, et un téléphone en reçoit au plus {most} Mo.",
+  "{name}, to turn and to place in your room": "{name}, à faire tourner et à placer dans votre pièce",
+  "Place it in your room": "Le placer dans votre pièce",
+  "Not shown: {parts} made for this model alone, which this site has no shape for.": "Non affiché : {parts} créées pour ce seul modèle, dont ce site n’a pas la forme.",
+  "{name} could not be shown here. The picture is still here; try again in a moment.": "{name} n’a pas pu être affiché ici. L’image est toujours là ; réessayez dans un instant.",
+  "This phone could not open its camera on the room. The model is still here to turn.": "Ce téléphone n’a pas pu ouvrir sa caméra sur la pièce. Le modèle est toujours là, à faire tourner.",
+  "{name} could not be got ready for your room. The picture is still here; try again in a moment.": "{name} n’a pas pu être préparé pour votre pièce. L’image est toujours là ; réessayez dans un instant."
  }
 }
