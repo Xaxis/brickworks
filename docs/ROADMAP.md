@@ -307,7 +307,8 @@ plainer — see the first lever below.
        not 15 (inside the spread), but 3 builders of 4 built it on the right
        wing's part, not 1: turned over, a left wing looks like a right one,
        and the builder cannot turn the model in its hands. The steps score
-       did not move. The step player still does not roll.
+       did not move. The step player did not roll then; since rel-m268 (buildturn)
+       Build it turns the model as its booklet does.
    - **The whole castle**, nine hours of builder, is a lead's run; the
      command is in the write-up.
 

@@ -82,10 +82,32 @@ export async function allPictures(page, ms = 30000) {
   }, ms);
 }
 
+/// Every scroll a page is asked for lands at once, never on its way. The
+/// site scrolls smoothly (site.css: the page, and its sideways rows), so a
+/// flow that scrolled and then measured read the page part way there:
+/// model_page_flow measured a frame at -808 px at 1280 dark (arview,
+/// 2026-11-07), and 17 more scrollTo calls in 11 flows could do the same,
+/// as could a scrollIntoView or a jump to #part. The site honours reduced
+/// motion too, but that also stops /compare's clips playing, which
+/// site_check plays: so only the scrolling changes, in every document and
+/// frame of [context]. Every context launch() makes has it; a browser
+/// opened otherwise gives it to its contexts here (tests/test_flow_scroll.py
+/// fails a script that scrolls one without). A constructed sheet, which no
+/// page's content security policy refuses.
+export async function instantScroll(context) {
+  await context.addInitScript(() => {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(":root, :root * { scroll-behavior: auto !important; }");
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+  });
+  return context;
+}
+
 export async function launch(options = {}) {
   const { signedOut = false, realCounter = false, ...rest } = options;
   const browser = await chromium.launch({ ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
-  const bare = browser.newContext.bind(browser);
+  const made = browser.newContext.bind(browser);
+  const bare = async (contextOptions) => instantScroll(await made(contextOptions));
   const newContext = realCounter ? bare : async (contextOptions) => quietCounter(await bare(contextOptions));
   if (signedOut) {
     const newPage = browser.newPage.bind(browser);
