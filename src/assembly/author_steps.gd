@@ -28,7 +28,7 @@ extends RefCounted
 ## after a line naming the copy ("0 !BRICKWORKS IN tower#1", LdrModel.IN_META),
 ## so every LDraw reader builds them in the order shown, and this app reads
 ## the copy back as it was.
-const IN_PARENT := -2
+const IN_PARENT := LdrModel.IN_PARENT
 
 
 ## The section the parts directly in [param path] are stepped in: its own,
