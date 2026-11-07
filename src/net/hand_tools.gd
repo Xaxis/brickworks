@@ -208,23 +208,10 @@ func _mirror(input: Dictionary) -> String:
 			rows.append("%s%s" % [key, "" if int(swaps[key]) == 1 else " (x%d)" % swaps[key]])
 		said.append("Swapped for the other hand: %s." % "; ".join(rows))
 	if not builder.no_image.is_empty():
-		# Never said as done: a part made in one hand only, the same no way
-		# round, is not its reflection however it is turned.
 		var lone := PackedStringArray()
 		for brick_id: int in builder.no_image:
 			lone.append(_brick_words(brick_id))
-		var count: int = lone.size()
-		if count > 12:
-			lone = lone.slice(0, 12)
-			lone.append("and %d more" % (count - 12))
-		said.append(("%s no mirror image: %s. %s not the same any way round, and the library "
-			+ "has no part named as %s other hand, so %s turned as near the reflection as %s; "
-			+ "look at %s, and swap or rebuild %s if the reflection matters there.") % [
-			"1 part has" if count == 1 else "%d parts have" % count,
-			", ".join(lone), "It is" if count == 1 else "They are",
-			"its" if count == 1 else "their", "it is" if count == 1 else "they are",
-			"it goes" if count == 1 else "they go", "it" if count == 1 else "them",
-			"it" if count == 1 else "them"])
+		said.append(Mirror.said_without_image(lone, lone.size()))
 	said.append("One undo step.")
 	return " ".join(said)
 
