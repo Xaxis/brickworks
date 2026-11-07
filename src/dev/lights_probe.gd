@@ -977,6 +977,14 @@ func _r_unread() -> void:
 		_check("%s file of 11 light lines: %d read, %d kept at a save (11), the 3 it cannot read "
 			% [whose, read, _lines_of(after).size()] + "word for word: %s" % carried,
 			read == 8 and _lines_of(after).size() == 11 and carried)
+		if not own:
+			# Someone else's file keeps its author's words for the lights read
+			# and not changed (lreview's t2 listed the 8 as lost: rewritten).
+			var own_words: int = 0
+			for line: String in lines.slice(0, 8):
+				own_words += int(line in _lines_of(after))
+			_check("...and the 8 it read, not changed, in their author's words: %d" % own_words,
+				own_words == 8)
 		_check("...the open says so: %s" % said.get_slice(" — ", 1).left(80),
 			said.contains("3 light lines not read, kept in the file as they are")
 			and said.contains("a model keeps at most 8 lights") and said.contains("kind there is not"))

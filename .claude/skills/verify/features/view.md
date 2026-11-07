@@ -2480,7 +2480,8 @@ picture the assistant is shown.
   probe copied into an older checkout with `-- --older=DIR` opens each
   whole, its light line left alone. And lreview's findings (2026-11-07):
   someone else's file and Brickworks' own of 11 light lines keep 11 (8 read,
-  3 carried word for word, the open's note); an MPD's sub-model keeps its
+  3 carried word for word, the open's note; someone else's keeps the 8 in
+  their author's words too); an MPD's sub-model keeps its
   light and view; a strength or panel 0.0004 refused, 2 lights back as 2; a
   fifth sun refused over MCP, in Render (its Sun button off, why in the
   tooltip) and from a file; eight light_model calls of the wrong JSON type

@@ -592,8 +592,9 @@ Pictures, `bench/results/render353-2026-10-29/`:
   and stays in the file word for word: where it was in someone else's file,
   after the lights in Brickworks' own (written whole); the open says how
   many and why on the status bar. A save takes out exactly the lines the
-  open read (`SceneLights._sorting`, the one rule for both), and keeps the
-  file's line ends.
+  open read (`SceneLights._sorting`, the one rule for both), writes a light
+  read and not changed since in its author's words, and keeps the file's
+  line ends.
 - **Rasterised** as Godot's own lights (`StudioRender._place_lamps`): an
   OmniLight3D, a SpotLight3D (its edge the rim to the power 3, which Godot
   takes as `spot_angle_attenuation` 1/3: it raises the rim to the

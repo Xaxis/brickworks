@@ -240,11 +240,11 @@ static func unread_words(why: Dictionary) -> String:
 
 ## [param text] with [param lights] (the file's coordinates) written into it
 ## after its first line, in their order, in place of the light lines it
-## read ([method sorted]); every other light line stays where it is, and
-## those of [param carried] it lacks (the lines an open could not read, when
-## the text is written whole: [method unread]) go in after the lights, word
-## for word. Its sub-models' lines are left as they are, and the file's line
-## ends kept.
+## read ([method sorted]), each one read and not changed since in the words
+## it was written in; every other light line stays where it is, and those of
+## [param carried] it lacks (the lines an open could not read, when the text
+## is written whole: [method unread]) go in after the lights, word for word.
+## Its sub-models' lines are left as they are, and the file's line ends kept.
 static func written_into(text: String, lights: Array,
 		carried: PackedStringArray = PackedStringArray()) -> String:
 	if lights.is_empty() and carried.is_empty() and not text.contains(META):
@@ -252,9 +252,11 @@ static func written_into(text: String, lights: Array,
 	var first: int = text.find("\n")
 	var eol: String = "\r" if first > 0 and text[first - 1] == "\r" else ""
 	# The text without the lines it read, each with its line end.
+	var sorting: Dictionary = _sorting(text)
+	var taken: Array[Vector2i] = sorting["taken"]
 	var pieces := PackedStringArray()
 	var from: int = 0
-	for span: Vector2i in (_sorting(text)["taken"] as Array[Vector2i]):
+	for span: Vector2i in taken:
 		pieces.append(text.substr(from, span.x - from))
 		from = span.y + 1
 	pieces.append(text.substr(from))
@@ -268,9 +270,20 @@ static func written_into(text: String, lights: Array,
 	if not carried.is_empty():
 		for line: String in unread(text):
 			has[line] = int(has.get(line, 0)) + 1
+	# A light read and not changed since is written back in its own words:
+	# someone else's file keeps the author's line wherever nothing changed.
+	var read: Array = sorting["lights"]
+	var used: Dictionary = {}
 	var adding := PackedStringArray()
 	for n: int in mini(lights.size(), MOST):
-		adding.append(META + JSON.stringify(lights[n]) + eol)
+		var line: String = META + JSON.stringify(lights[n])
+		var words: String = _words(lights[n])
+		for m: int in read.size():
+			if not used.has(m) and _words(read[m]) == words:
+				used[m] = true
+				line = text.substr(taken[m].x, taken[m].y - taken[m].x).trim_suffix("\r")
+				break
+		adding.append(line + eol)
 	for line: String in carried:
 		if int(has.get(line, 0)) > 0:
 			has[line] = int(has[line]) - 1
@@ -284,6 +297,18 @@ static func written_into(text: String, lights: Array,
 	if cut < 0:
 		return rest + "\n" + "\n".join(adding)
 	return rest.substr(0, cut + 1) + "\n".join(adding) + "\n" + rest.substr(cut + 1)
+
+
+## [param light] in words to compare, as a file keeps it: -0 written as 0.
+static func _words(light: Dictionary) -> String:
+	var out: Dictionary = light.duplicate(true)
+	for field: String in ["at", "aim"]:
+		if out.get(field) is Array:
+			var numbers: Array = out[field]
+			for n: int in numbers.size():
+				if numbers[n] is float:
+					numbers[n] = float(numbers[n]) + 0.0
+	return JSON.stringify(out)
 
 
 ## [param lights] as the window holds them, in the file's coordinates: the
