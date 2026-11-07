@@ -54,7 +54,8 @@ static func definitions() -> Array:
 			"name": "mirror_parts",
 			"description": ("Make parts their mirror image, as the window's Mirror "
 				+ "does: each put where its reflection is and turned, a part made in a left and "
-				+ "a right hand (a wing, a wedge plate, a door) swapped for its other hand. "
+				+ "a right hand (a wing, a wedge plate, a door) swapped for its other hand; a "
+				+ "part with no mirror image is turned as near it as it goes and named. "
 				+ "bricks= the parts; axis \"x\" mirrors left to right (the default), \"z\" "
 				+ "front to back. In place, across the plane through their middle; copy=true "
 				+ "leaves them and puts a mirrored copy beside them, across their far side "
@@ -206,6 +207,11 @@ func _mirror(input: Dictionary) -> String:
 		for key: String in swaps:
 			rows.append("%s%s" % [key, "" if int(swaps[key]) == 1 else " (x%d)" % swaps[key]])
 		said.append("Swapped for the other hand: %s." % "; ".join(rows))
+	if not builder.no_image.is_empty():
+		var lone := PackedStringArray()
+		for brick_id: int in builder.no_image:
+			lone.append(_brick_words(brick_id))
+		said.append(Mirror.said_without_image(lone, lone.size()))
 	said.append("One undo step.")
 	return " ".join(said)
 

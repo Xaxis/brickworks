@@ -65,7 +65,9 @@ tools/release.py build
 #    app over its own socket, as a Claude Code session does, for the car
 #    path traced at Best, and holds the picture to the editor's.
 #    The .deb is installed into the clean home and its models opened with
-#    gio, as a file manager opens a double-click, in windows of their own.
+#    gio, as a file manager opens a double-click, in windows of their own,
+#    and GNOME's own thumbnail factory asked for each one's picture
+#    (tools/release/thumbnail_check.py).
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.tar.xz --window
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.AppImage
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-amd64.deb
@@ -82,10 +84,12 @@ tools/release.py latest --check dist/0.2.0/latest.json
 #    Windows, and the .deb on a stock Ubuntu, each installed as a person
 #    installs it (the disk image's app copied to /Applications, the
 #    installer run silently, the .deb by apt) and run in a clean home,
-#    models double-clicked into it, and on Windows and Ubuntu removed again
-#    (the AppImage and the tar.xz were step 3). The Intel runner is a VM
-#    whose GPU MoltenVK cannot draw on: its double-clicks open the models in
-#    the simpler graphics mode, which the launcher chose, and say so once.
+#    models double-clicked into it (on Ubuntu, GNOME's thumbnailer draws
+#    each model in its real sandbox too), and on Windows and Ubuntu
+#    removed again (the AppImage and the tar.xz were step 3). The Intel
+#    runner is a VM whose GPU MoltenVK cannot draw on: its double-clicks
+#    open the models in the simpler graphics mode, which the launcher
+#    chose, and say so once.
 #    Wait for green. It runs once, here: publishing does not run it again.
 #    The workflow lives in the releases repository, where Actions are free.
 gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.2.0
@@ -169,7 +173,7 @@ stale and shadows the keyring login. `tools/release.py` drops it itself.
 | File | What |
 |---|---|
 | `Brickworks-X-linux-x86_64.AppImage` | one file, runs as it is (FUSE, or `--appimage-extract-and-run`); carries its menu entry, icons and model types |
-| `Brickworks-X-linux-amd64.deb` | for Debian and Ubuntu: `/usr/lib/brickworks`, `brickworks` on the PATH, in the menu, opening models |
+| `Brickworks-X-linux-amd64.deb` | for Debian and Ubuntu: `/usr/lib/brickworks`, `brickworks` on the PATH, in the menu, opening models, and their pictures in the file manager (`brickworks-thumbnailer`) |
 | `Brickworks-X-linux-x86_64.tar.xz` | the same program, as a folder |
 | `Brickworks-X-macos-universal.dmg` | `Brickworks.app` (Apple silicon and Intel in one) and an Applications link, laid out to drag one onto the other |
 | `Brickworks-X-windows-x86_64-setup.exe` | the per-user installer: no admin, Start menu, Settings ▸ Apps, model types; `/VERYSILENT` for the updater |

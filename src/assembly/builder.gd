@@ -1583,12 +1583,20 @@ func mirror_selection(axis: int) -> int:
 	return made.size()
 
 
+## The parts the last mirror made that are no mirror image of what they were
+## made from: a part made in one hand only and the same no way round, turned
+## as near its reflection as it goes (Mirror.image). The person is told
+## which; empty when every part is its reflection.
+var no_image := PackedInt64Array()
+
+
 ## [method mirror_selection] on the bricks [param alive], across the plane at
 ## [param across] LDU when it is given (on a half stud), and with [param copy]
 ## a mirrored copy put down and the bricks left where they are: a session's
 ## mirror_parts (HandTools). The new bricks, or none.
 func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 		copy: bool = false) -> PackedInt64Array:
+	no_image = PackedInt64Array()
 	if alive.is_empty():
 		return PackedInt64Array()
 	var bricks: Array = []
@@ -1605,16 +1613,10 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 			BrickLattice.STUD * 0.5)
 	var plan: Array = []
 	for brick: BrickWorld.Brick in bricks:
-		var part: String = brick.part_id
-		var other: String = Later.script(&"Mirror").counterpart(library, part)
-		if not other.is_empty() and library.mesh_for(other) != null:
-			part = other
-		# A part not swapped for its other hand is turned to look reflected
-		# by its own shape.
-		var at: Transform3D = _tidy(Later.script(&"Mirror").reflected(brick.transform, axis, across,
-			library.mesh_for(part) if part == brick.part_id else null),
-			BrickLattice.is_square_to_grid(brick.transform.basis))
-		plan.append({"brick": brick, "part": part, "at": at})
+		var image: Dictionary = Later.script(&"Mirror").image(library, brick.part_id,
+			brick.transform, axis, across, true)
+		plan.append({"brick": brick, "part": str(image["part"]), "exact": bool(image["exact"]),
+			"at": _tidy(image["at"], BrickLattice.is_square_to_grid(brick.transform.basis))})
 	var picked: Dictionary = {}
 	for brick_id: int in alive:
 		picked[brick_id] = true
@@ -1658,6 +1660,8 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 		lattice.occupy_boxes(new_id, item["boxes"])
 		steps.push_front({"undo": "remove", "brick": new_id})
 		made.append(new_id)
+		if not bool(item["exact"]):
+			no_image.append(new_id)
 	_history.append({"undo": "group", "steps": steps,
 		"words": ("mirrored a copy of %s" if copy else "mirrored %s") % _many(made.size())})
 	_redo.clear()

@@ -480,6 +480,9 @@ msgstr "Bauanleitung…"
 msgid "Booklet page"
 msgstr "Seite der Anleitung"
 
+msgid "Step's view"
+msgstr "Ansicht des Schritts"
+
 msgid "Turn the view left"
 msgstr "Ansicht nach links drehen"
 
@@ -3002,6 +3005,12 @@ msgstr "1 Teil gespiegelt"
 
 msgid "mirrored %d parts"
 msgstr "%d Teile gespiegelt"
+
+msgid "1 has no mirror image, turned as near as it goes: %s"
+msgstr "1 hat kein Spiegelbild und ist so nah wie möglich gedreht: %s"
+
+msgid "%d have no mirror image, turned as near as they go: %s"
+msgstr "%d haben kein Spiegelbild und sind so nah wie möglich gedreht: %s"
 
 msgid "measuring"
 msgstr "Messen"
@@ -11487,6 +11496,36 @@ msgstr "Stil auswählen…"
 
 msgid "Name the page first"
 msgstr "Erst die Seite benennen"
+
+# Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks
+
+
+msgid "Remove…"
+msgstr "Entfernen…"
+
+msgid "Take a kept style away; the models given it keep their page"
+msgstr "Einen gespeicherten Stil löschen; die Modelle, die ihn haben, behalten ihre Seite"
+
+msgid "Remove a page style?"
+msgstr "Einen Seitenstil löschen?"
+
+msgid "Remove the page style “%s”? The models given it keep their page."
+msgstr "Den Seitenstil „%s“ löschen? Die Modelle, die ihn haben, behalten ihre Seite."
+
+msgid "Missing from the file"
+msgstr "Fehlt in der Datei"
+
+msgid "The file names %s but does not carry it: another program saved it without it, or it was not a PNG or a JPEG. Choose it again, or take it off."
+msgstr "Die Datei nennt %s, enthält das Bild aber nicht: Ein anderes Programm hat sie ohne das Bild gespeichert, oder es war kein PNG oder JPEG. Wähle es erneut aus oder entferne es."
+
+msgid "%s, %d KB in the file"
+msgstr "%s, %d KB in der Datei"
+
+msgid "A PNG"
+msgstr "Ein PNG"
+
+msgid "A JPEG"
+msgstr "Ein JPEG"
 
 # Build together, a build party (buildparty, APP_UX5 5): the share link's card and Build it's party row.
 

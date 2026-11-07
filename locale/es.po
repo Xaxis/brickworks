@@ -480,6 +480,9 @@ msgstr "Instrucciones…"
 msgid "Booklet page"
 msgstr "Página del folleto"
 
+msgid "Step's view"
+msgstr "Vista del paso"
+
 msgid "Turn the view left"
 msgstr "Girar la vista a la izquierda"
 
@@ -3002,6 +3005,12 @@ msgstr "1 pieza reflejada"
 
 msgid "mirrored %d parts"
 msgstr "%d piezas reflejadas"
+
+msgid "1 has no mirror image, turned as near as it goes: %s"
+msgstr "1 no tiene imagen especular y queda girada lo más cerca posible: %s"
+
+msgid "%d have no mirror image, turned as near as they go: %s"
+msgstr "%d no tienen imagen especular y quedan giradas lo más cerca posible: %s"
 
 msgid "measuring"
 msgstr "midiendo"
@@ -11487,6 +11496,36 @@ msgstr "Elegir un estilo…"
 
 msgid "Name the page first"
 msgstr "Primero nombra la página"
+
+# Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks
+
+
+msgid "Remove…"
+msgstr "Quitar…"
+
+msgid "Take a kept style away; the models given it keep their page"
+msgstr "Borra un estilo guardado; los modelos que lo recibieron conservan su página"
+
+msgid "Remove a page style?"
+msgstr "¿Eliminar un estilo de página?"
+
+msgid "Remove the page style “%s”? The models given it keep their page."
+msgstr "¿Borrar el estilo de página «%s»? Los modelos que lo recibieron conservan su página."
+
+msgid "Missing from the file"
+msgstr "Falta en el archivo"
+
+msgid "The file names %s but does not carry it: another program saved it without it, or it was not a PNG or a JPEG. Choose it again, or take it off."
+msgstr "El archivo nombra %s pero no contiene esa imagen: otro programa lo guardó sin ella, o no era un PNG ni un JPEG. Elígela de nuevo o quítala."
+
+msgid "%s, %d KB in the file"
+msgstr "%s, %d KB en el archivo"
+
+msgid "A PNG"
+msgstr "Un PNG"
+
+msgid "A JPEG"
+msgstr "Un JPEG"
 
 # Build together, a build party (buildparty, APP_UX5 5): the share link's card and Build it's party row.
 

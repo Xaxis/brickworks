@@ -193,7 +193,10 @@ const ALT := KEY_MASK_ALT
 ## views and the model's turns to View's Viewpoint, the part in hand's turn
 ## and tip to Tools beside Place, Comments to File beside Share and Build
 ## together, My collection and What can I build? beside Library, and What
-## do I need? beside the parts list.
+## do I need? beside the parts list. Then Build › Booklet page reached 27
+## rows with Page setup…, and View 482 of 470 units with Stud map, so the
+## step's turns, tilts and zoom went into Booklet page's own Step's view,
+## and the five panels into View › Panels (menurows).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
 		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
@@ -203,9 +206,8 @@ const MENUS: Array = [
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-", "panel_parts",
-		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
-		"split_view", "full_screen"]],
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-",
+		">panels", "split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
 		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
 		"leave_assembly", "rename_assembly", "make_unique", "-", "suggest_sections",
@@ -273,14 +275,22 @@ const SUBMENUS: Dictionary = {
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_to", "step_new", "-", "step_earlier", "step_later",
 		"step_merge", "step_delete"],
-	"booklet": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
-		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
-		"booklet_zoom_out", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
+	# The step's picture first: its view, folded (menurows), and its size on
+	# the page.
+	"booklet": [">booklet_view", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
 		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page", "-",
 		"booklet_lay_out", "booklet_highlight",
 		"-", "booklet_pull", "booklet_colours", "booklet_actual_size", "booklet_preview",
 		# pagesetup: the booklet's page, the person's way (BookletSheet).
 		"-", "booklet_page_setup"],
+	# The window's panels, each shown or put away: set once a session, so
+	# folded beside Split view and Full screen (menurows).
+	"panels": ["panel_parts", "panel_assistant", "panel_properties", "panel_outliner",
+		"panel_keys"],
+	# Where the step's picture is seen from: its turns, its tilts and its zoom.
+	"booklet_view": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
+		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
+		"booklet_zoom_out"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
@@ -292,9 +302,9 @@ const SUBMENUS: Dictionary = {
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
-	"viewpoint": "Viewpoint", "cut_away": "Cut away by",
-	"steps": "Build steps", "booklet": "Booklet page", "floor": "Floor",
-	"floor_colour": "Baseplate colour"}
+	"viewpoint": "Viewpoint", "cut_away": "Cut away by", "panels": "Panels",
+	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
+	"floor": "Floor", "floor_colour": "Baseplate colour"}
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,
@@ -3210,11 +3220,25 @@ func open_page_setup() -> void:
 ## booklet's own page; "style" a style kept by that name, its page given
 ## whole; "picture_data" (base64) a picture behind every page, "picture"
 ## its name, or "picture" "" to take it off; "save_as" a name to keep the
-## page as a style for another model. One undo, saved with the model.
-## Returns what was done, or why nothing was.
+## page as a style for another model; "remove_style" a style's name, taken
+## away (the models given it keep their page). One undo, saved with the
+## model. Returns what was done, or why nothing was.
 func page_setup(fields: Dictionary) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
+	# The whole call is checked before anything is done: a style taken away
+	# by a call refused for another field stayed gone (ps2review).
+	var gone: String = str(fields.get("remove_style", "")).strip_edges()
+	if fields.has("remove_style") and not BookletSheet.styles().has(gone):
+		var left: Array = BookletSheet.styles().keys()
+		left.sort()
+		return "no page style is called \"%s\"" % gone \
+			+ ("; kept: %s" % ", ".join(left) if not left.is_empty() else "")
+	if fields.has("save_as") and str(fields["save_as"]).strip_edges().is_empty():
+		return "a style needs a name"
+	if fields.has("remove_style") and fields.size() == 1:
+		var failed: String = BookletSheet.remove_style(gone)
+		return failed if not failed.is_empty() else "the page style \"%s\" removed" % gone
 	var was: BookletSheet = BookletSheet.of(world)
 	var sheet: BookletSheet = BookletSheet.of(world)
 	var pictures: Dictionary = BookletLooks.images(world).duplicate()
@@ -3223,19 +3247,23 @@ func page_setup(fields: Dictionary) -> String:
 	if bool(given.get("usual", false)):
 		sheet = BookletSheet.new()
 		words = "the booklet's own page"
+	var style_lost: bool = false
 	if given.has("style"):
-		var styles: Dictionary = BookletSheet.styles()
 		var name: String = str(given["style"])
-		if not styles.has(name):
-			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles.keys())]) \
+		var style: Dictionary = BookletSheet.style(name)
+		if style.is_empty():
+			var styles: Array = BookletSheet.styles().keys()
+			styles.sort()
+			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles)]) \
 				if not styles.is_empty() else "no page style is kept yet: save_as= keeps this page as one"
-		var style: Dictionary = (styles[name] as Dictionary).duplicate()
 		sheet = BookletSheet.new()
+		style_lost = bool(style.get("picture_lost", false))
 		if style.has("picture_data") and style.has("picture"):
 			pictures[str(style["picture"])] = str(style["picture_data"])
 		else:
 			style.erase("picture")
 		style.erase("picture_data")
+		style.erase("picture_lost")
 		sheet.change(style)
 		words = "the page style \"%s\"" % name
 	if given.has("picture_data"):
@@ -3244,16 +3272,19 @@ func page_setup(fields: Dictionary) -> String:
 			named = BookletSheet.PICTURE_NAME + "." + named.get_extension()
 		pictures[named] = str(given["picture_data"])
 		given["picture"] = named
-	for field: String in ["usual", "style", "save_as", "picture_data"]:
+	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style"]:
 		given.erase(field)
 	var wrong: String = sheet.change(given)
 	if not wrong.is_empty():
 		return wrong
-	if not sheet.picture.is_empty() and not pictures.has(sheet.picture):
+	# The picture its file names and does not carry stays named, as the file
+	# had it, until another is chosen or it is taken off (BookletSheet.of).
+	var still_missing: bool = was.missing and sheet.picture == was.picture \
+		and not pictures.has(sheet.picture)
+	if not sheet.picture.is_empty() and not pictures.has(sheet.picture) and not still_missing:
 		return "there is no picture called %s: picture_data= gives one" % sheet.picture
 	# Behind every page of the booklet's HTML as it is: a PNG or a JPEG in base64 only.
-	if not sheet.picture.is_empty() \
-			and BookletLooks.picture_kind(str(pictures[sheet.picture])).is_empty():
+	if pictures.has(sheet.picture) and BookletLooks.picture_kind(str(pictures[sheet.picture])).is_empty():
 		return "the picture behind the pages is a PNG or a JPEG, in base64"
 	# The picture that was behind the pages, gone with them.
 	if not was.picture.is_empty() and was.picture != sheet.picture:
@@ -3261,22 +3292,31 @@ func page_setup(fields: Dictionary) -> String:
 	for name: String in pictures.keys():
 		if name.begins_with(BookletSheet.PICTURE_NAME) and name != sheet.picture:
 			pictures.erase(name)
+	var also := PackedStringArray()
+	if fields.has("remove_style"):
+		var failed: String = BookletSheet.remove_style(gone)
+		if not failed.is_empty():
+			return failed
+		also.append("the page style \"%s\" removed" % gone)
 	var undo: Array = BookletLooks.set_images(world, pictures)
 	undo.append_array(BookletLooks.change(world, BookletLooks.BOOKLET, {"sheet": sheet.said()}))
 	undo = AuthorSteps.squash(undo)
-	var kept: String = ""
+	if style_lost:
+		also.append("the style's picture could not be read, so the page has none")
 	if fields.has("save_as"):
-		var failed: String = BookletSheet.save_style(str(fields["save_as"]), sheet,
-			str(pictures.get(sheet.picture, "")))
-		kept = failed if not failed.is_empty() \
-			else "kept as the page style \"%s\"" % str(fields["save_as"]).strip_edges()
+		var keeping: String = str(fields["save_as"]).strip_edges()
+		var replaced: bool = BookletSheet.styles().has(keeping)
+		var failed: String = BookletSheet.save_style(keeping, sheet, str(pictures.get(sheet.picture, "")))
+		also.append(failed if not failed.is_empty() else "kept as the page style \"%s\"%s"
+			% [keeping, " in place of the one kept by that name" if replaced else ""])
+	var tail: String = ("; " + "; ".join(also)) if not also.is_empty() else ""
 	if undo.is_empty():
-		return "the page is as it was: %s%s" % [sheet.words(), ("; " + kept) if not kept.is_empty() else ""]
+		return "the page is as it was: %s%s" % [BookletSheet.of(world).words(), tail]
 	var said: String = "page set up%s: %s" % [(" as " + words) if not words.is_empty() else "",
-		sheet.words()]
+		BookletSheet.of(world).words()]
 	builder.record(undo, said)
 	store.touch()
-	return said + (("; " + kept) if not kept.is_empty() else "")
+	return said + tail
 
 
 ## Many steps' pages laid out at once, as one undo: the page editor's

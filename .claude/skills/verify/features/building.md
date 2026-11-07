@@ -359,7 +359,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   shows its own. `V` is Select, `Q` Place; `Esc` closes whatever is up and goes
   back to Select with nothing in hand, in one press.
 - `properties panel` (`src/ui/inspector.gd`): in the right-hand column, under
-  the model tree (`docked panels`); View, Properties with the column folded,
+  the model tree (`docked panels`); View, Panels, Properties with the column folded,
   or showing the assistant, opens it on them (`SideDock.of`). Nothing
   selected, it is its header and the floor alone ("nothing selected",
   `Inspector.is_idle`) and the tree has the column. With a part selected it
@@ -518,7 +518,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   points (`Phone.px`, about 1.85 units a point at 390): along the top the mark
   (`phone_app_menu`, published as `app_menu`: the desktop's app menu dropped
   under it, About to Back to brickworks.diy), the model's name, the
-  assistant's spark while it is on (`phone_assistant`, View, Assistant: its
+  assistant's spark while it is on (`phone_assistant`, View, Panels, Assistant: its
   drawer's rail shows only while it is open, so a phone that turned it on had
   no way to it), Undo and Redo (the name field gives way to them down to 80
   points, and past that Redo leaves the bar for More's Edit: at 150% a
@@ -1264,7 +1264,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `user://shell.cfg`). Off, nothing of AI is anywhere in the window: no
   assistant column or rail (its key form, Sketch first and the connector's
   switch are in it), no Ask Claude in Edit or on a part and Ctrl+K does
-  nothing, no View, Assistant or Tools, Claude connector…, no brief or Design
+  nothing, no View, Panels, Assistant or Tools, Claude connector…, no brief or Design
   with Claude in Brick Art, no Claude in Account, the sign-in screen, My
   collection or About, and Build your first model without its last line about it. The connector is held
   off (`ClaudeConnector.hold`): nothing switches it on, a sign-in or a
@@ -1408,16 +1408,41 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   selection its mirror image left to right as the view sees it, in place, one
   step. A reflection is not something plastic can do, so each part goes where
   its reflection would and is turned to look reflected; a handed part (a
-  "Left"/"Right" in its name, a wing or wedge plate) becomes its other hand.
-  The plane is the selection's middle on that axis, on a half stud, so it
+  "Left"/"Right" in its name, a wing or wedge plate) becomes its other hand,
+  of several named so the one whose number is nearest, each of a pair the
+  other's (`Mirror.counterpart`: 3816b, a right leg, went to another mould's
+  3817 and came back as 3816). The plane is the selection's middle on that axis, on a half stud, so it
   lands on its own footprint. `tools/probe.sh mirror_probe` (headless, ~1
   min): all of Orthanc both ways, each of its figures, its first step on the
   timeline among its neighbours, the same two bricks built between theirs,
-  and a reflection onto a part not selected refused. The point a turn goes
+  and a reflection onto a part not selected refused; and a design's mirror
+  pattern making what Mirror makes (assistant.md, `shapes said as patterns`). The point a turn goes
   round (`Carry.pivot_of`) was the plane until 2026-10-19: chosen as much by
   the other axis, it put Orthanc's first step a stud over, onto the 2 x 8s
   beside it, and progress_check's mirror step said "no room to mirror it
-  there" on every build back to m87.
+  there" on every build back to m87. Which way a part is turned is read off
+  its shape, the corners of its surfaces (`Mirror.image`): the turn of its
+  own axes that lays it on its reflection, in its colours, connectors alike
+  (a bar or a hole through read from either end), about its corners' middle;
+  the other hand turned the way it lies on the reflection. The same is as a
+  person sees it: all but 2% of a part's corners in each colour (`Mirror.SAME`;
+  2401's cut 0.16 LDU off its diagonal, 1750's lip 0.5 LDU), so a print that
+  reads backwards or a hair parted on one side is not. Read off its connectors
+  alone, a headlight brick (4070) and a cheese slope (54200) faced the way they
+  were on a pod mirrored over MCP (seeing2, 2026-11-06). A part made in one hand
+  and the same no way round is turned as near as it goes, by a turn that is its
+  own undoing weighed both ways so it mirrors back where it was, and named,
+  never done in silence: the bar ("1 has no mirror image, turned as near as it goes: ...")
+  and mirror_parts' answer (`Builder.no_image`). A file's mirrored reference is
+  put down the same way (`Assemblies.unmirror`). `tools/probe.sh mirrorparts`
+  (windowed, `PROBE_SIZE=1280x720` too): the walk's pod by submit_design and
+  mirror_parts, every corner on its reflection to 0.01 LDU, the headlight's face
+  and the slope's fall out on both pods, one undo; the car's left half by Mirror
+  and by mirror_parts alike; a sample of the bin's shapes in three poses and
+  back, each 95% of its corners within an eighth of an LDU of its reflection
+  (`SEEN`, Mirror's cell: a file's two sides are often that far apart) or
+  named. `-- --library=DIR` (headless) does every shape the bin offers and
+  writes those with no mirror image.
 - `split and merge parts` (`src/assembly/split_merge.gd`, APP_UX2 gap 6): `Alt-S`
   splits the selection by Studio's rules (a plate, brick or tile into 1 x 1s, a
   1 x 1 brick into three plates, a slope into the 1-wide slope of its angle,
@@ -1500,7 +1525,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   lists the copies one step puts on in the order the booklet builds them,
   `LdrModel.write_tree` by each instance's `first`).
 - `model tree`: at the top of the right-hand column, over the properties
-  (View, Model tree, or its header) lists the
+  (View, Panels, Model tree, or its header) lists the
   model and its sub-assemblies inside one another with their part counts. A
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto

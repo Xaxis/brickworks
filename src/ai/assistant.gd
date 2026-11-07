@@ -526,6 +526,11 @@ class Placement extends RefCounted:
 	var attached_by: String = ""
 	## Why an attach could not be done as asked, for the check to say.
 	var odd_attach: String = ""
+	## Laid by a mirror pattern as the mirror image of another part, {"of": that
+	## part as said, "planes": [[axis, plane LDU], ...]} (Patterns._mirror),
+	## until the app has made it that image ([method Assistant._mirror_images]);
+	## then empty, and part, x, y, z, face, rot, nudge and section say it.
+	var mirror: Dictionary = {}
 
 	## Where the exact check takes this to be: where it stands while it is
 	## standing and unmoved, else [param built] (where it will be built).
@@ -1223,6 +1228,7 @@ func _hold_sketch(args: Dictionary) -> Variant:
 	else:
 		_sketches_outside = false
 	await _ensure_parts(model)
+	await _mirrors_ready(model)
 	progress.emit("checking a sketch of %d parts" % parts)
 	var report: Dictionary = await _checked(model)
 	if running and not _busy:
@@ -7542,6 +7548,7 @@ func _read_model(args: Dictionary) -> Model:
 	# expanded after the bricks because mirror reflects what is there.
 	var patterns: Array = args.get("patterns", [])
 	_pattern_advice = []
+	_mirror_said = ""
 	_shaped_body = false
 	for raw: Variant in patterns:
 		_shaped_body = _shaped_body or (raw is Dictionary
@@ -7581,7 +7588,11 @@ func _read_model(args: Dictionary) -> Model:
 				one.erase("panel")
 				if not tile.is_empty():
 					model.placements.append(Placement.from_dict(tile))
-			model.placements.append(Placement.from_dict(one))
+			var placement := Placement.from_dict(one)
+			if one.get("_mirror") is Dictionary:
+				placement.mirror = one["_mirror"]
+			model.placements.append(placement)
+		_mirror_images(model, false)
 		for raw: Variant in sideways:
 			for brick: Dictionary in _studs_out(raw, trouble):
 				model.placements.append(Placement.from_dict(brick))
@@ -11981,6 +11992,10 @@ static func _queue_assemblies(named: Array[Dictionary]) -> Array[Dictionary]:
 ## What the last design or edit read was given in place of a colour its part
 ## was never made in ([method _made_colours]), or "".
 var _made_said: String = ""
+## What the last design read said of the parts its mirror patterns made with
+## no mirror image, or could not make ([method _mirror_images]), or "": in
+## every reply to it, a design's or a few parts' ([method _placed_said]).
+var _mirror_said: String = ""
 ## What was wrong with the last set of patterns, said by the check.
 var _pattern_trouble: Array = []
 ## And what the patterns did that was not asked, said as advice.
@@ -12870,6 +12885,168 @@ func _attach_parts(model: Model) -> void:
 
 ## What [method _attach_one] says of a part whose geometry has not arrived.
 const ATTACH_WAITS := "waits"
+
+
+## Each part a mirror pattern laid (Patterns._mirror) made the mirror image of
+## the part it reflects, as the window's Mirror makes it (Mirror.image), part
+## for part what mirror_parts makes of the same parts: where the reflection
+## is, its other hand where it has one, turned by the shapes to lie on the
+## reflection, and a part with no mirror image turned as near it as it goes
+## and named, never said as done. Read off the shapes, so here and not where
+## the pattern is expanded: that is before the web build fetches a part, and
+## for a design with shapes on a worker, which reads a shape only as the main
+## thread has weighed it. A part whose shape, or its other hand's, has not
+## arrived waits for [method _mirrors_ready], as an attach does; with
+## [param final] it is made as near as what is here allows.
+func _mirror_images(model: Model, final: bool) -> void:
+	if library == null:
+		return
+	var lone: Dictionary = {}       ## a part's name -> how many have no mirror image
+	var lone_count: int = 0
+	var unmade := PackedStringArray()
+	for placement: Placement in model.placements:
+		if placement.mirror.is_empty():
+			continue
+		var said: String = _mirror_one(model, placement, final)
+		if said == ATTACH_WAITS:
+			continue
+		placement.mirror = {}
+		if said == MIRROR_LONE:
+			var name: String = _part_called(placement.part)
+			lone[name] = int(lone.get(name, 0)) + 1
+			lone_count += 1
+		elif not said.is_empty():
+			unmade.append("%s (%s): %s" % [placement.part, _part_called(placement.part), said])
+	if lone_count > 0:
+		var named := PackedStringArray()
+		for name: String in lone:
+			named.append(name if int(lone[name]) == 1 else "%d x %s" % [lone[name], name])
+		_mirror_note("Of the parts the mirror pattern made, "
+			+ Mirror.said_without_image(named, lone_count))
+	if not unmade.is_empty():
+		_mirror_note(("The mirror pattern could not make %d part%s the mirror image of "
+			% [unmade.size(), "" if unmade.size() == 1 else "s"]) + "what it reflects, so "
+			+ ("it is" if unmade.size() == 1 else "they are") + " laid where its footprint's "
+			+ "reflection is, turned as written: %s. Write %s out instead." % ["; ".join(
+				unmade.slice(0, 12)), "it" if unmade.size() == 1 else "them"])
+
+
+## A note on the mirror pattern's parts, as the check's advice and in
+## [member _mirror_said].
+func _mirror_note(note: String) -> void:
+	_pattern_advice.append(note)
+	_mirror_said = (_mirror_said + " " + note).strip_edges()
+
+
+## What [method _mirror_one] says of a part with no mirror image.
+const MIRROR_LONE := "lone"
+
+
+## One part a mirror pattern laid made the mirror image of what it reflects,
+## across each plane in turn: "" when it is that image, [constant MIRROR_LONE]
+## when it has none and is turned as near it as it goes, [constant
+## ATTACH_WAITS] to wait for its shapes, else why not. What it reflects is
+## placed as the read places it, in the frame it is written in (its own turn,
+## then its joint's line), and the image written in the frame of the section
+## it is in, with what lies past the lattice cell as a nudge.
+func _mirror_one(model: Model, placement: Placement, final: bool) -> String:
+	var of: Variant = placement.mirror.get("of")
+	var planes: Variant = placement.mirror.get("planes")
+	if not (of is Dictionary and planes is Array):
+		return ""
+	var source := Placement.from_dict(of)
+	# As the read places it (_current_parts): a number LDraw keeps for old files
+	# has its other hand only under the part made now (41770 is 41770a).
+	var colour: int = -1
+	var now: String = library.current(source.part)
+	if now != source.part:
+		colour = library.current_colour(source.part)
+		source.part = now
+	var mesh: Lbm.PartMesh = library.mesh_for(source.part)
+	if mesh == null:
+		return ATTACH_WAITS if not final else "the shape of %s is not to hand" % source.part
+	# Its own turn, a section of one about its corner (_turned_parts).
+	var frame := Transform3D.IDENTITY
+	if source.turn != Vector3.ZERO:
+		var turned := Section.new()
+		turned.x = source.x
+		turned.y = source.y
+		turned.z = source.z
+		turned.yaw = source.turn.x
+		turned.pitch = source.turn.y
+		turned.roll = source.turn.z
+		frame = turned.own()
+		source.x = 0.0
+		source.y = 0.0
+		source.z = 0.0
+	_on_its_line(source)
+	if not source.odd_axis.is_empty():
+		return "the part it reflects %s" % source.odd_axis
+	var at: Transform3D = frame * _square_transform(source, mesh)
+	var part: String = source.part
+	var exact: bool = true
+	for raw: Variant in planes:
+		var plane: Array = raw if raw is Array else []
+		if plane.size() != 2 or not int(plane[0]) in [0, 2]:
+			return ""
+		var other: String = Mirror.counterpart(library, part)
+		if not final and not other.is_empty() and library.parts.has(other) \
+				and library.mesh_for(other) == null:
+			return ATTACH_WAITS
+		var image: Dictionary = Mirror.image(library, part, at, int(plane[0]), float(plane[1]),
+			true)
+		part = image["part"]
+		at = image["at"]
+		exact = exact and bool(image["exact"])
+	var parent: Section = model.sections.get(placement.section)
+	var was: Array = [placement.part, placement.x, placement.y, placement.z, placement.face,
+		placement.rot, placement.section]
+	placement.part = part
+	placement.axis = ""
+	placement.joint = -1
+	placement.turn = Vector3.ZERO
+	placement.odd_axis = ""
+	if not _written_at(model, placement, library.mesh_for(part),
+			at if parent == null else parent.placed() * at, parent, "a mirror").is_empty():
+		placement.part = was[0]
+		placement.x = was[1]
+		placement.y = was[2]
+		placement.z = was[3]
+		placement.face = was[4]
+		placement.rot = was[5]
+		if placement.section != was[6]:
+			model.sections.erase(placement.section)
+		placement.section = was[6]
+		placement.nudge = Vector3.ZERO
+		return "its mirror image could not be written where the reflection puts it"
+	if colour >= 0:
+		placement.color = colour
+	return "" if exact else MIRROR_LONE
+
+
+## The shapes the mirror images still waiting need, theirs and their other
+## hands', to hand (the web build fetches them), and then the images made
+## ([method _mirror_images]). Awaited, as [method _ensure_parts] is.
+func _mirrors_ready(model: Model) -> void:
+	if library == null:
+		return
+	var wanted := Model.new()
+	for placement: Placement in model.placements:
+		var of: Variant = placement.mirror.get("of")
+		var planes: Variant = placement.mirror.get("planes")
+		if not (of is Dictionary and planes is Array):
+			continue
+		var part: String = library.current(str((of as Dictionary).get("part", "")))
+		wanted.placements.append(Placement.from_dict({"part": part}))
+		for _plane: Variant in planes:
+			var other: String = Mirror.counterpart(library, part)
+			if not other.is_empty() and library.parts.has(other):
+				part = other
+				wanted.placements.append(Placement.from_dict({"part": part}))
+	if wanted.placements.is_empty():
+		return
+	await _ensure_parts(wanted)
+	_mirror_images(model, true)
 
 
 ## One placement's attach worked out: "" when done, [constant ATTACH_WAITS]
@@ -17975,6 +18152,7 @@ const TILE_PLATES: Dictionary = {
 ## here before it is checked, so what is checked is what is built.
 func _ready_to_check(model: Model) -> void:
 	await _ensure_parts(model)
+	await _mirrors_ready(model)
 	if _studs_where_stood_on(model) > 0:
 		await _ensure_parts(model)
 	await _ensure_exact(model)
@@ -21374,6 +21552,8 @@ func _placed_said(design: Model, report: Dictionary) -> String:
 		said.append(apart)
 	if not _made_said.is_empty():
 		said.append(_made_said.strip_edges())
+	if not _mirror_said.is_empty():
+		said.append(_mirror_said)
 	return "\n\n".join(said)
 
 

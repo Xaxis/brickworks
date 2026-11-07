@@ -40,6 +40,7 @@ Download it from [the download page](/download), for Linux, macOS and Windows. T
 - File choosers open where you last used one of their kind, or else Pictures, Documents or Downloads, and every export asks where to save.
 - While it loads, the Brickworks mark shows on the app's dark face.
 - **Brickworks › About Brickworks** names every piece of other people's work in Brickworks with its terms, and opens each licence in full.
+- On Linux, installed from the .deb, a folder of `.ldr`, `.mpd` and `.io` files shows a picture of each model in Files and the file managers like it, from the front corner as Brickworks draws it, where it showed the same icon for each. Parts the library has not got are left out of the picture; a file with none it knows keeps its icon.
 
 <!-- covers
 ui:download page
@@ -76,9 +77,11 @@ The desktop app also runs from a terminal. The program is `./brickworks.x86_64` 
 ./brickworks.x86_64 -- --view=<id>                                 # open a shared model to look at
 ./brickworks.x86_64 -- --together=<secret>                         # join a Build together session
 ./brickworks.x86_64 -- --mcp                                       # open the local MCP port
+./brickworks.x86_64 --headless -- --thumbnail castle.ldr castle.png 256   # a picture of a model, 256 px
 ```
 
 <!-- covers
+cli:a model file's picture
 cli:export a model
 cli:say which build this is
 lib:command socket
