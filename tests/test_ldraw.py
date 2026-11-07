@@ -1343,3 +1343,45 @@ def test_a_flared_part_has_its_sockets_where_the_bricks_under_it_stand() -> None
     assert sorted({x for x, _z in _built_sockets("50948.dat")}) == [-10.0, 10.0]
     assert _built_sockets("67649p03.dat") == [(-10.0, -10.0), (-10.0, 10.0),
                                               (10.0, -10.0), (10.0, 10.0)]
+
+
+@needs_numpy
+def test_a_top_stud_not_over_the_studs_under_it_leaves_them_where_they_fit() -> None:
+    """30596, a rock, and 98100, a cone, have one stud in the middle of a
+    2 x 2 underside that is not whole studs across as drawn (39.49 and 36
+    LDU), and a centaur's (67638) hip studs stand between the holes in its
+    hooves. On their studs' line the rock and the cone had one socket, in
+    the middle, where real sets put their four studs into the cone, and the
+    centaur none. Half a stud off the line is where a stud fits, so their
+    squares are there; a flared roof's (50948, above) stay on its studs."""
+    four = [(-10.0, -10.0), (-10.0, 10.0), (10.0, -10.0), (10.0, 10.0)]
+    assert _built_sockets("30596.dat") == four
+    assert _built_sockets("98100.dat") == four
+    assert _built_sockets("67638.dat") == [(-10.0, -70.0), (10.0, -50.0), (10.0, -10.0)]
+
+
+@needs_numpy
+def test_a_creature_stands_on_the_open_tube_it_draws() -> None:
+    """The scorpion (30169) draws one open tube and its foot is not whole
+    studs: its two squares were laid 10 LDU either side of the tube, each a
+    stud standing in the tube's wall, and the ghost stood it 10 LDU off the
+    stud 7326-1 puts in its tube. The Friends foal's (11241) were laid down
+    its middle, 10 from the tubes in its four hooves. Each takes its studs in
+    its tubes now (occupancy.on_receivers)."""
+    assert _built_sockets("30169.dat") == [(0.0, 0.0)]
+    assert _built_sockets("11241.dat") == [(-10.0, -30.0), (-10.0, 30.0),
+                                           (10.0, -30.0), (10.0, 30.0)]
+
+
+@needs_numpy
+def test_a_tube_between_studs_or_up_inside_is_not_where_a_stud_goes() -> None:
+    """A 2 x 2's tube grips four studs from outside, and a square clear of
+    every tube says the part is on a grid a stud does stand on: 17114, a
+    2 x 2 brick with ball joints three studs across, keeps all six. A
+    helmet's tube (15864) is up where the head's stud goes, with no wall at
+    the helmet's rim, and a minifigure's (979) is 104 LDU up: neither moves
+    the squares under them."""
+    assert _built_sockets("17114.dat") == [(-20.0, -10.0), (-20.0, 10.0), (0.0, -10.0),
+                                           (0.0, 10.0), (20.0, -10.0), (20.0, 10.0)]
+    assert _built_sockets("15864.dat") == [(-10.0, -6.0), (10.0, -6.0)]
+    assert _built_sockets("979.dat") == [(-10.0, 0.0), (10.0, 0.0)]

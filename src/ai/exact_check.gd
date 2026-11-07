@@ -1752,15 +1752,43 @@ func _seat_pieces(wanted: Dictionary, near: Dictionary, moved: Dictionary) -> vo
 
 ## Whether a connector of item [param i] meets another part's exactly, by
 ## [param points] (the connectors of every item by their point to the LDU).
+## A bar in its clip, or an axle in its hole, says where a part is across its
+## line and not along it: met only so, the part is seated where none of its
+## studs or holes stops an LDU or two short of its mate, as a saddle written
+## an LDU low on its horse stopped with its clip on the sword's bar.
 func _meets_exactly(i: int, points: Dictionary) -> bool:
-	for one: Array in (items[i] as Exact.Item).world():
+	var item: Exact.Item = items[i]
+	var slid: bool = false
+	for one: Array in item.world():
 		var mine: Array = [i, one[0], one[1], one[2], one[3]]
 		for other: Variant in points.get(Vector3i((one[1] as Vector3).round()), []):
 			if int((other as Array)[0]) == i:
 				continue
 			var move: Variant = Exact._move_to_meet(items, mine, other, 1.0)
 			if move is Vector3 and (move as Vector3).length() <= 0.05:
-				return true
+				if item.shape.kind[one[0]] != Exact.AXLE:
+					return true
+				slid = true
+	return slid and not _short_of_its_stud(i, points)
+
+
+## Whether a stud or a hole of item [param i] stands an LDU or two short of a
+## mate along the way it points, by [param points]: not pressed home.
+func _short_of_its_stud(i: int, points: Dictionary) -> bool:
+	var item: Exact.Item = items[i]
+	for one: Array in item.world():
+		var kind: int = item.shape.kind[one[0]]
+		if kind != Exact.STUD and kind != Exact.HOLE:
+			continue
+		var mine: Array = [i, one[0], one[1], one[2], one[3]]
+		for along: float in [-2.0, -1.0, 1.0, 2.0]:
+			var key := Vector3i(((one[1] as Vector3) + (one[2] as Vector3) * along).round())
+			for other: Variant in points.get(key, []):
+				if int((other as Array)[0]) == i:
+					continue
+				var move: Variant = Exact._move_to_meet(items, mine, other, Exact.POS_THR)
+				if move is Vector3 and (move as Vector3).length() > 0.05:
+					return true
 	return false
 
 
@@ -1888,12 +1916,22 @@ func _seat(movable: Array) -> Dictionary:
 		var was: Exact.Item = items[i]
 		var move: Vector3 = found["move"]
 		var there := Exact.Item.new(was.shape, was.at.translated(move))
-		# Into nothing it was not in already, and joined once there.
+		# Into nothing it was not in already, no deeper than it was into
+		# something, and joined once there. A part written an LDU low on its
+		# studs is an LDU into what it stands on, and going home may take it as
+		# far into another: 6085-1's barding, its rider's leg 1 LDU into it
+		# where the set has it, was left low, and called into its horse.
+		var deepest: float = 0.0
+		for j: int in others:
+			if items[j] != null:
+				deepest = maxf(deepest, float(Exact.clash(was, items[j], true).get("depth", 0.0)))
 		var clear: bool = true
 		for j: int in others:
 			if items[j] == null:
 				continue
-			if not Exact.clash(there, items[j], true).is_empty() and Exact.clash(was, items[j], true).is_empty():
+			var into: Dictionary = Exact.clash(there, items[j], true)
+			if not into.is_empty() and Exact.clash(was, items[j], true).is_empty() \
+					and float(into["depth"]) > deepest + 0.01:
 				clear = false
 				break
 		items[i] = there
