@@ -309,6 +309,15 @@ if (!args.static) {
         for (const [name, path] of [["download", "/download"], ["home", "/"]]) {
           await page.goto(base + path, { waitUntil: "load", timeout: 30000 });
           await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
+          // Read down the page as a person does: the home page fills a
+          // section once it is near the window (web/landing.js), and a shot
+          // taken from the top showed its tiles as blank screens.
+          for (let y = 0; y < await page.evaluate(() => document.body.scrollHeight); y += 600) {
+            await page.evaluate((to) => window.scrollTo(0, to), y);
+            await page.waitForTimeout(150);
+          }
+          await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
+          await page.evaluate(() => window.scrollTo(0, 0));
           const shot = join(args.shots, `${name}-${width}-${scheme}.png`);
           await page.screenshot({ path: shot, fullPage: true });
           console.log(`           ${shot}`);
