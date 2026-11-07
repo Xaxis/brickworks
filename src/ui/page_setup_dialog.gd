@@ -1,7 +1,7 @@
 ## Build, Booklet page, Page setup…: the booklet's paper and which way up,
 ## its margins, a colour or a picture behind every page, and how big the
 ## step numbers and the parts boxes' pictures are (BookletSheet); a style
-## kept by a name and given to another model in one choice.
+## kept by a name and given to another model in one choice, or taken away.
 ##
 ## Each change is made as it is chosen, one undo each (Shell.page_setup),
 ## as the timeline's Booklet row makes its changes: there is no OK to
@@ -23,6 +23,10 @@ var _take_off: Button
 var _number: SpinBox
 var _parts: SpinBox
 var _style: OptionButton
+var _remove: MenuButton
+var _confirm: ConfirmationDialog
+## The style Remove… asks about.
+var _removing: String = ""
 var _name: LineEdit
 var _keep: Button
 var _said: Label
@@ -105,7 +109,20 @@ func _ready() -> void:
 	styles.add_theme_constant_override("h_separation", 12)
 	styles.add_theme_constant_override("v_separation", 6)
 	column.add_child(styles)
-	_row(styles, "Style", _style)
+	var chosen := HBoxContainer.new()
+	chosen.add_theme_constant_override("separation", 6)
+	_style.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chosen.add_child(_style)
+	# A list of its own, not the style chosen: choosing one in Style gives
+	# it to this model, which taking one away must not do.
+	_remove = MenuButton.new()
+	_remove.text = "Remove…"
+	_remove.flat = false
+	_remove.tooltip_text = "Take a kept style away; the models given it keep their page"
+	_remove.get_popup().index_pressed.connect(func(index: int) -> void:
+		_ask_remove(_remove.get_popup().get_item_text(index)))
+	chosen.add_child(_remove)
+	_row(styles, "Style", chosen)
 	var keep := HBoxContainer.new()
 	keep.add_theme_constant_override("separation", 6)
 	_name = LineEdit.new()
@@ -125,6 +142,12 @@ func _ready() -> void:
 	_said.custom_minimum_size = Vector2(WIDTH, 0)
 	_said.add_theme_font_size_override("font_size", 12)
 	column.add_child(_said)
+
+	_confirm = ConfirmationDialog.new()
+	_confirm.title = "Remove a page style?"
+	_confirm.ok_button_text = "Remove"
+	_confirm.confirmed.connect(func() -> void: _apply({"remove_style": _removing}))
+	add_child(_confirm)
 
 	_picker = PickImage.new()
 	add_child(_picker)
@@ -167,7 +190,20 @@ func fill() -> void:
 	_orientation.select(1 if sheet.portrait else 0)
 	_margin.value = sheet.margin
 	_colour.color = sheet.colour
-	_picture.text = "A picture" if not sheet.picture.is_empty() else "None"
+	# What is behind the pages, and how much of the model's file it is; a
+	# picture the file names and does not carry, said (BookletSheet.missing).
+	if sheet.missing:
+		_picture.text = "Missing from the file"
+		_picture.tooltip_text = tr("The file names %s but does not carry it: another program saved it without it, or it was not a PNG or a JPEG. Choose it again, or take it off.") \
+			% sheet.picture
+	elif not sheet.picture_uri.is_empty():
+		var data: String = sheet.picture_uri.substr(sheet.picture_uri.find(",") + 1)
+		_picture.text = tr("%s, %d KB in the file") % [tr("A PNG") if BookletLooks.picture_kind(data)
+			== "png" else tr("A JPEG"), BookletSheet.picture_kb(data)]
+		_picture.tooltip_text = ""
+	else:
+		_picture.text = "None"
+		_picture.tooltip_text = ""
 	_take_off.disabled = sheet.picture.is_empty()
 	_number.value = sheet.number
 	_parts.value = sheet.parts * 100.0
@@ -179,6 +215,11 @@ func fill() -> void:
 		_style.add_item(name)
 	_style.select(0)
 	_style.disabled = names.is_empty()
+	var popup: PopupMenu = _remove.get_popup()
+	popup.clear()
+	for name: String in names:
+		popup.add_item(name)
+	_remove.disabled = names.is_empty()
 	_filling = false
 
 
@@ -196,6 +237,14 @@ func _pick_style(index: int) -> void:
 	if _filling or index <= 0:
 		return
 	_apply({"style": _style.get_item_text(index)})
+
+
+## Remove… on [param name]: asked first, since a style taken away is not
+## undone.
+func _ask_remove(name: String) -> void:
+	_removing = name
+	_confirm.dialog_text = tr("Remove the page style “%s”? The models given it keep their page.") % name
+	_confirm.popup_centered()
 
 
 func _keep_style() -> void:

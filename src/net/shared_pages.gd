@@ -61,13 +61,16 @@ static func attach_tested(text: String, library: PartLibrary, store: ModelStore,
 	return {"text": out, "tested": tested}
 
 
-## [param text] without carried steps.
+## [param text] without carried steps: their lines alone, not the
+## booklet's page set up ("0 !BRICKWORKS PAGE_SETUP", which a share took
+## away up to 2026-11-07).
 static func strip(text: String) -> String:
-	if text.find("0 !BRICKWORKS PAGE") < 0:
+	if text.find(HEAD) < 0 and text.find(PAGE) < 0:
 		return text
 	var kept := PackedStringArray()
 	for line: String in text.split("\n"):
-		if not line.strip_edges().begins_with("0 !BRICKWORKS PAGE"):
+		var trimmed: String = line.strip_edges(true, false)
+		if not trimmed.begins_with(HEAD) and not trimmed.begins_with(PAGE):
 			kept.append(line)
 	return "\n".join(kept)
 
@@ -200,9 +203,9 @@ static func read(text: String, world: BrickWorld, scenery: Dictionary) -> Dictio
 	var steps: Array[Instructions.Step] = []
 	for n: int in range(1, lines.size()):
 		var line: String = lines[n].strip_edges()
-		if not line.begins_with(PAGE.strip_edges()):
+		if not line.begins_with(PAGE):
 			continue
-		var said: Variant = JSON.parse_string(line.trim_prefix(PAGE.strip_edges()).strip_edges())
+		var said: Variant = JSON.parse_string(line.trim_prefix(PAGE).strip_edges())
 		if not (said is Dictionary):
 			return {}
 		var step: Instructions.Step = _step_from(said, ids)
@@ -229,9 +232,9 @@ static func count(text: String) -> Dictionary:
 	var steps: Array = []
 	for n: int in range(1, lines.size()):
 		var line: String = lines[n].strip_edges()
-		if not line.begins_with(PAGE.strip_edges()):
+		if not line.begins_with(PAGE):
 			continue
-		var said: Variant = JSON.parse_string(line.trim_prefix(PAGE.strip_edges()).strip_edges())
+		var said: Variant = JSON.parse_string(line.trim_prefix(PAGE).strip_edges())
 		if not (said is Dictionary):
 			return {}
 		var step := Instructions.Step.new()
