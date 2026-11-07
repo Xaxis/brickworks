@@ -1472,31 +1472,83 @@ static func may_pass(result: int, code: int) -> bool:
 func _ask(url: String, done: Callable, tries: int = 0) -> bool:
 	if _fetch_host == null or not _fetch_host.is_inside_tree():
 		return false
+	var kind: String = url.get_extension()
+	if kind == BWX and OS.has_feature("web"):
+		return _ask_page(url, done, tries)
 	var request := HTTPRequest.new()
 	_fetch_host.add_child(request)
-	var kind: String = url.get_extension()
 	request.request_completed.connect(func(result: int, code: int,
 			_headers: PackedStringArray, body: PackedByteArray) -> void:
 		request.queue_free()
-		_open[kind] = int(_open.get(kind, 1)) - 1
-		if may_pass(result, code) and tries < RETRY_AFTER.size() \
-				and _fetch_host != null and _fetch_host.is_inside_tree():
-			retries += 1
-			_fetch_host.get_tree().create_timer(RETRY_AFTER[tries], true, false, true) \
-				.timeout.connect(func() -> void:
-					if not _ask(url, done, tries + 1):
-						done.call(0, PackedByteArray()))
-			# Its place is free while it waits. When the wait is over it goes
-			# out whether or not there is room: it was asked for first.
-			_next_fetch()
-			_next_exact()
-			return
-		done.call(code, body))
+		_answered(url, kind, done, tries, result, code, body))
 	if request.request(url) != OK:
 		request.queue_free()
 		return false
 	_open[kind] = int(_open.get(kind, 0)) + 1
 	return true
+
+
+## [method _ask]'s answer to [param url]: [param done] called with it, or,
+## where asking again may change it, asked again after a wait.
+func _answered(url: String, kind: String, done: Callable, tries: int, result: int, code: int,
+		body: PackedByteArray) -> void:
+	_open[kind] = int(_open.get(kind, 1)) - 1
+	if may_pass(result, code) and tries < RETRY_AFTER.size() \
+			and _fetch_host != null and _fetch_host.is_inside_tree():
+		retries += 1
+		_fetch_host.get_tree().create_timer(RETRY_AFTER[tries], true, false, true) \
+			.timeout.connect(func() -> void:
+				if not _ask(url, done, tries + 1):
+					done.call(0, PackedByteArray()))
+		# Its place is free while it waits. When the wait is over it goes
+		# out whether or not there is room: it was asked for first.
+		_next_fetch()
+		_next_exact()
+		return
+	done.call(code, body)
+
+
+## In a browser, an exact shape fetched by the page itself and handed over
+## the moment its bytes are in. The engine polls an HTTPRequest once a frame
+## and each of its states takes a frame: the house's gates' shapes took 7
+## frames from asked to answered, 1 to 4 s while its model was drawn in
+## software (playweb, 2026-11-07), as Together's requests did
+## (Together._ask_page).
+func _ask_page(url: String, done: Callable, tries: int) -> bool:
+	if _page_answer == null:
+		_page_answer = JavaScriptBridge.create_callback(_on_page_answer)
+		JavaScriptBridge.get_interface("window").brickworksShapeFetched = _page_answer
+	_page_asked += 1
+	_page_asks[_page_asked] = [url, done, tries]
+	# Its bytes as base64: a callback is handed strings and numbers.
+	JavaScriptBridge.eval(("fetch(%s).then(async (r) => { const b = new Uint8Array(await r.arrayBuffer());"
+		+ " let s = ''; for (let i = 0; i < b.length; i += 32768) s += String.fromCharCode.apply(null, b.subarray(i, i + 32768));"
+		+ " window.brickworksShapeFetched(%d, r.status, btoa(s)); })"
+		+ ".catch(() => window.brickworksShapeFetched(%d, 0, ''));") % [JSON.stringify(url),
+		_page_asked, _page_asked], true)
+	_open[BWX] = int(_open.get(BWX, 0)) + 1
+	return true
+
+
+## The page's answer to [method _ask_page]'s fetch [param args][0]: its
+## status (0 for none) and its bytes as base64.
+func _on_page_answer(args: Array) -> void:
+	var id: int = int(args[0])
+	var asked: Array = _page_asks.get(id, [])
+	_page_asks.erase(id)
+	if asked.is_empty():
+		return
+	var code: int = int(args[1])
+	_answered(asked[0], BWX, asked[1], int(asked[2]),
+		HTTPRequest.RESULT_SUCCESS if code != 0 else HTTPRequest.RESULT_CANT_CONNECT, code,
+		Marshalls.base64_to_raw(str(args[2])) if code != 0 else PackedByteArray())
+
+
+## The page's fetches: the callback it answers through, and id -> [url, done,
+## tries] for each still out.
+var _page_answer: JavaScriptObject = null
+var _page_asked: int = 0
+var _page_asks: Dictionary = {}
 
 
 ## Start the next waiting fetch, if there is room.
@@ -1545,6 +1597,7 @@ func prefer(part_ids: PackedStringArray) -> void:
 
 ## Send the requests that arrived before there was anywhere to send them.
 func _release_waiting() -> void:
+	_next_exact()
 	if _waiting.is_empty():
 		return
 	var held: PackedStringArray = _waiting.duplicate()
@@ -1789,11 +1842,13 @@ func request_exact(part_id: String) -> bool:
 		return true
 	if _fetch_host == null or not _fetch_host.is_inside_tree():
 		return false
-	if OS.has_feature("web") and remote_parts.is_empty():
-		return false
 	# A check of a big design asks for a shape a part: a few at a time, as
-	# the geometry is fetched, the rest in turn.
-	if int(_open.get("bwx", 0)) >= MAX_IN_FLIGHT:
+	# the geometry is fetched, the rest in turn. And held, as geometry is,
+	# until the deployment has said where they live (remote_parts): dropped
+	# then, a link's motion's shapes asked as its model was first shown were
+	# asked again only once every part was here, and came 4 to 8 s after it
+	# (playweb, 2026-11-07).
+	if int(_open.get("bwx", 0)) >= MAX_IN_FLIGHT or (OS.has_feature("web") and remote_parts.is_empty()):
 		_exact_waiting.append(part_id)
 		return true
 	_fetching_exact[info.mesh_hash] = true
@@ -1861,7 +1916,8 @@ func _on_fetched_exact(code: int, body: PackedByteArray, hash_name: String,
 
 ## Start the next exact shape waiting, if there is room.
 func _next_exact() -> void:
-	while not _exact_waiting.is_empty() and int(_open.get("bwx", 0)) < MAX_IN_FLIGHT:
+	while not _exact_waiting.is_empty() and int(_open.get("bwx", 0)) < MAX_IN_FLIGHT \
+			and not (OS.has_feature("web") and remote_parts.is_empty()):
 		var next: String = _exact_waiting[0]
 		_exact_waiting.remove_at(0)
 		request_exact(next)

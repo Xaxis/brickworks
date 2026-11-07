@@ -516,6 +516,10 @@ class Paced extends RefCounted:
 	## nothing changed (a link's motion played over and over, drawn only).
 	## One motion only: a sequence's next begins where the last was kept.
 	var keep: bool = true
+	## Worked out whole on a worker ([method pace_off_frame]): its task, -1
+	## for none; and whether it was, once.
+	var task: int = -1
+	var off_frame: bool = false
 
 
 func pace(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Paced:
@@ -576,6 +580,56 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 	paced.longest_ms = maxf(paced.longest_ms, spent)
 	paced.total_ms += spent
 	return paced.done
+
+
+## [param paced] worked out whole on a worker, not a slice a frame, when it
+## keeps nothing (Paced.keep false: a link's motion, drawn over and over):
+## whether it is done, asked each frame until it is. In a browser drawing in
+## software a frame of a model just opened is 0.3 to 1.3 s, and the house's
+## gates, 25 frames of 15 to 40 ms of work each, were worked out a slice a
+## frame: 7 to 31 frames, 1 to 6 s after the press (playweb, 2026-11-07).
+## On a worker the frames wait for none of it. What it reads stands still meanwhile, as for a section
+## let go (GrabDrag.hold_still): a press waits for it, and parts that arrive
+## are held aside. The joints are read first, never on the worker. Kept, or
+## where there are no threads, [method pace_on]'s slices of [param
+## budget_ms].
+func pace_off_frame(paced: Paced, budget_ms: float) -> bool:
+	if paced.task >= 0:
+		if not WorkerThreadPool.is_task_completed(paced.task):
+			return false
+		drop(paced)
+		return paced.done
+	# Once only: what a worker left undone (a script error) goes on here.
+	if paced.done or paced.keep or paced.off_frame or OS.has_feature("nothreads"):
+		return pace_on(paced, budget_ms)
+	if not grabbing.is_ready():
+		if grabbing.reads_ahead():
+			grabbing.read_soon()
+			return false
+		return pace_on(paced, budget_ms)
+	paced.off_frame = true
+	grabbing.hold_still(true)
+	library.begin_reading()
+	# Ahead of the shapes and geometry read a few at a time meanwhile: at low
+	# priority the house's gates moved 2.1 s after the press for 0.16 s of
+	# work, at high 0.3 s (playweb, 2026-11-07).
+	paced.task = WorkerTasks.add(func() -> void:
+		Exact.noting_worker = OS.get_thread_caller_id()
+		pace_on(paced, 0.0)
+		Exact.noting_worker = -1, true, "work out a link's motion")
+	library.reading_in(paced.task)
+	return false
+
+
+## [param paced]'s worker, if it has one, waited for and let go: what it
+## read may change again. Before anything changes the model under it.
+func drop(paced: Paced) -> void:
+	if paced == null or paced.task < 0:
+		return
+	WorkerTasks.collect(paced.task)
+	library.end_reading(paced.task)
+	paced.task = -1
+	grabbing.hold_still(false)
 
 
 ## [param track]'s joint taken hold of for playing: an Item with its Grab,
