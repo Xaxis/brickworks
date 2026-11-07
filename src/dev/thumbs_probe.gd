@@ -204,7 +204,8 @@ func _against_the_app(label: String, model: String, library: PartLibrary,
 		return
 	var text: String
 	if model.get_extension() == "io":
-		text = str(StudioIo.model_ldr(FileAccess.get_file_as_bytes(model))["text"])
+		# As the app opens one (Main), which reads it the same on pre261.
+		text = str(StudioIo.read(FileAccess.get_file_as_bytes(model), library)["text"])
 	else:
 		text = FileAccess.get_file_as_string(model)
 	var world := BrickWorld.new()

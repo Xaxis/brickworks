@@ -101,10 +101,17 @@ def factory_env(home: Path, root: Path | None, standin: Path | None) -> dict[str
     return env
 
 
-def ask(env: dict[str, str], out: Path, models: list[Path],
-        trace: Path | None = None) -> list[dict]:
+def ask(env: dict[str, str], out: Path, models: list[Path], trace: Path | None = None,
+        refuse: list[str] | None = None) -> list[dict]:
+    """The factory's answer for each model. [trace]: followed by strace into
+    that file. [refuse]: those paths not there for any process (ENOENT),
+    strace's doing, and only they traced."""
     command = [sys.executable, str(HERE / "gnome_thumbnail.py"), str(out)] + [str(m) for m in models]
-    if trace is not None:
+    if refuse:
+        named = [part for path in refuse for part in ("-P", path)]
+        command = ["strace", "-f", "-qq", "-e", "trace=%file", "-e", "inject=%file:error=ENOENT",
+                   "-o", str(trace or os.devnull)] + named + command
+    elif trace is not None:
         command = ["strace", "-f", "-qq", "-e", "trace=%file,%process", "-o", str(trace)] + command
     done = subprocess.run(command, env=env, capture_output=True, text=True, timeout=600)
     said = [json.loads(line) for line in done.stdout.splitlines() if line.startswith("{")]
@@ -266,11 +273,23 @@ def main(argv: list[str]) -> int:
         if "--trace" in options and root is not None and shutil.which("strace"):
             log = out / "trace.txt"
             first = models[0]
-            ask(env, work / "traced", [first], log)
+            traced = ask(env, work / "traced", [first], log)[0]
             strays = outside_sandbox(log, root, first, (env.get("BWRAP_STANDIN_VIEW", ""),))
             facts["outside_sandbox"] = strays
-            check(not strays, "the thumbnailer opened nothing GNOME's sandbox lacks: %s"
-                  % (", ".join(strays[:12]) or "none"))
+            if not strays:
+                check(True, "the thumbnailer found nothing GNOME's sandbox lacks")
+            else:
+                # What the C library looked up for itself, past the view
+                # (its own count of processors, say): refused too, and the
+                # picture made again.
+                check(None, "the thumbnailer found %d files GNOME's sandbox lacks, past the view: %s"
+                      % (len(strays), ", ".join(strays[:6])))
+                again = ask(env, work / "refused", [first], out / "trace_refused.txt", strays)[0]
+                same = bool(traced.get("picture")) and bool(again.get("picture")) and \
+                    Path(traced["picture"]).read_bytes() == Path(again["picture"]).read_bytes()
+                facts["refused_too"] = again
+                check(same, "...with those refused too (strace, ENOENT), the same picture, in %d ms"
+                      % again["ms"])
         (out / "thumbnails.json").write_text(json.dumps(facts, indent=1) + "\n")
     finally:
         shutil.rmtree(work, ignore_errors=True)

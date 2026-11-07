@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
+#include <sys/statvfs.h>
 #include <sys/syscall.h>
 #include <unistd.h>
 
@@ -222,4 +224,57 @@ int execve(const char *path, char *const argv[], char *const envp[]) {
     REAL(execve);
     if (!is_seen(path, AT_FDCWD)) { errno = ENOENT; return -1; }
     return real_execve(path, argv, envp);
+}
+
+/* The stat calls of a program built against a C library older than 2.33,
+   as Godot's export templates are (they name glibc 2.28). */
+int __xstat(int ver, const char *path, struct stat *out) {
+    REAL(__xstat);
+    if (!is_seen(path, AT_FDCWD)) { errno = ENOENT; return -1; }
+    return real___xstat(ver, path, out);
+}
+int __xstat64(int ver, const char *path, struct stat64 *out) {
+    REAL(__xstat64);
+    if (!is_seen(path, AT_FDCWD)) { errno = ENOENT; return -1; }
+    return real___xstat64(ver, path, out);
+}
+int __lxstat(int ver, const char *path, struct stat *out) {
+    REAL(__lxstat);
+    if (!is_seen(path, AT_FDCWD)) { errno = ENOENT; return -1; }
+    return real___lxstat(ver, path, out);
+}
+int __lxstat64(int ver, const char *path, struct stat64 *out) {
+    REAL(__lxstat64);
+    if (!is_seen(path, AT_FDCWD)) { errno = ENOENT; return -1; }
+    return real___lxstat64(ver, path, out);
+}
+int __fxstatat(int ver, int dirfd, const char *path, struct stat *out, int flags) {
+    REAL(__fxstatat);
+    if (path[0] && !is_seen(path, dirfd)) { errno = ENOENT; return -1; }
+    return real___fxstatat(ver, dirfd, path, out, flags);
+}
+int __fxstatat64(int ver, int dirfd, const char *path, struct stat64 *out, int flags) {
+    REAL(__fxstatat64);
+    if (path[0] && !is_seen(path, dirfd)) { errno = ENOENT; return -1; }
+    return real___fxstatat64(ver, dirfd, path, out, flags);
+}
+int statfs(const char *path, struct statfs *out) {
+    REAL(statfs);
+    if (!is_seen(path, AT_FDCWD)) { errno = ENOENT; return -1; }
+    return real_statfs(path, out);
+}
+int statfs64(const char *path, struct statfs64 *out) {
+    REAL(statfs64);
+    if (!is_seen(path, AT_FDCWD)) { errno = ENOENT; return -1; }
+    return real_statfs64(path, out);
+}
+int statvfs(const char *path, struct statvfs *out) {
+    REAL(statvfs);
+    if (!is_seen(path, AT_FDCWD)) { errno = ENOENT; return -1; }
+    return real_statvfs(path, out);
+}
+int statvfs64(const char *path, struct statvfs64 *out) {
+    REAL(statvfs64);
+    if (!is_seen(path, AT_FDCWD)) { errno = ENOENT; return -1; }
+    return real_statvfs64(path, out);
 }
