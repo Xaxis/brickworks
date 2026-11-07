@@ -2297,7 +2297,7 @@
       "kind": "lib",
       "label": "quitting cleanly",
       "entry": "src/render/worker_tasks.gd",
-      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)",
+      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)  /  tools/probe.sh dialog_close_probe  (windowed: the close button, sent as WM_DELETE_WINDOW, with nothing up, Import's file chooser, Save as, New's question and About up: each heard and quit within 2 s, the process out within 5 s, exit 0; the dialog still holds the window against a click and Ctrl+N beside it)",
       "area": "view"
     },
     {
@@ -4653,13 +4653,6 @@
       "area": "model-io"
     },
     {
-      "kind": "cli",
-      "label": "direct colour probe",
-      "entry": "src/dev/direct_colour_probe.gd",
-      "reach": "tools/probe.sh direct_colour_probe [-- --shots=DIR]   (headless; three bricks in 0x2FF0000, 0x200FF00, 0x20000FF through the 3D view, Export's GLB/glTF/OBJ, the site's GLB, the thumbnail, the shops' lists and the site's lists, tools/web/direct_colour_check.mjs)",
-      "area": "model-io"
-    },
-    {
       "kind": "ui",
       "label": "cut away by a shape",
       "entry": "src/render/cut_shape.gd",
@@ -4805,6 +4798,13 @@
       "entry": "tools/web/arview_flow.mjs",
       "reach": "node tools/web/arview_flow.mjs --out=DIR [--before=<checkout>]   (the stand-in's watchtower with the example car's file; with --url=<preview> and BW_BYPASS, preview_checks.sh arview: the deployment's first model)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "direct colour probe",
+      "entry": "src/dev/direct_colour_probe.gd",
+      "reach": "tools/probe.sh direct_colour_probe [-- --shots=DIR]   (headless; three bricks in 0x2FF0000, 0x200FF00, 0x20000FF through the 3D view, Export's GLB/glTF/OBJ, the site's GLB, the thumbnail, the shops' lists and the site's lists, tools/web/direct_colour_check.mjs)",
+      "area": "model-io"
     },
     {
       "kind": "ui",
