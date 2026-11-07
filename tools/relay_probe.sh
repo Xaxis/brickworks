@@ -11,7 +11,7 @@
 # code's: rel-m252's, then connectany's (2026-11-03).
 set -u
 cd "$(dirname "$0")/.." || exit 2
-name=${1:?usage: relay_probe.sh NAME}; name=${name%.gd}; name=${name##*/}; name=${name%_probe}
+name=${1:?usage: relay_probe.sh NAME [-- PROBE ARGS]}; shift; name=${name%.gd}; name=${name##*/}; name=${name%_probe}
 port=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])') || exit 2
 api=http://127.0.0.1:$port
 hold=(); args=(); env=()
@@ -39,4 +39,7 @@ trap 'kill -TERM -- "-$relay" 2>/dev/null' EXIT
 for _ in $(seq 1 60); do curl -s -o /dev/null "$api/" && break; sleep 1; done
 curl -s -o /dev/null "$api/" || { echo "relay_probe: the relay never answered on $port; its log, $log:" >&2; tail -n 5 "$log" >&2; exit 1; }
 echo "relay_probe: $name on the relay at $api (its log $log)"
-tools/release/live_db.sh "relay_probe $name" env "${env[@]}" tools/probe.sh "${name}_probe" "${args[@]}"
+# What follows NAME goes to the probe (-- --shots=DIR): dropped before
+# mysets (2026-11-07), so the recipes' --shots never reached a probe.
+[ "${1:-}" != -- ] || shift
+tools/release/live_db.sh "relay_probe $name" env "${env[@]}" tools/probe.sh "${name}_probe" "${args[@]}" "$@"
