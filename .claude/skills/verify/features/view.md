@@ -2096,7 +2096,7 @@ picture the assistant is shown.
   pull on step 1 of the model matches no step now, kept in the file", in
   the MCP `open_model` reply and the status bar (de/fr/es in `locale/`).
   `pullkept_probe` (headless; `PULLKEPT_ONLY=pods|session|named|lines|files`
-  for one): `tests/fixtures/steps/pods.ldr` opened by `open_model`, step 1's
+  for one): `src/dev/fixtures/mcp_walk_pods.ldr` opened by `open_model`, step 1's
   look pulling 41769a and 41770a 2 studs and `booklet_layout` saying
   "41770a, 41769a pulled out 2 studs", the PULL line in side_pod.ldr's step
   after a save, the same after a reopen and the second save byte for byte;

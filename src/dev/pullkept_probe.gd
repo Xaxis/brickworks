@@ -10,7 +10,7 @@
 ## the file kept the pull on the step that puts the side pod on, which the
 ## booklet builds where it stands and shows no page of.
 ##
-## 1. Pods.ldr as the walk saved it (tests/fixtures/steps/pods.ldr), opened
+## 1. Pods.ldr as the walk saved it (src/dev/fixtures/mcp_walk_pods.ldr), opened
 ##    as the session opened it: step 1 pulls 41770a and 41769a, as when it
 ##    was saved, and booklet_layout says so. Saved and opened again: the
 ##    same, and saved again the file is the same, byte for byte.
@@ -36,7 +36,7 @@
 ##    over a save.
 extends SceneTree
 
-const PODS := "res://tests/fixtures/steps/pods.ldr"
+const PODS := "res://src/dev/fixtures/mcp_walk_pods.ldr"
 const GATEHOUSE := "res://tests/fixtures/steps/gatehouse.mpd"
 const CREDIT := "res://tests/fixtures/omr_credit/346-2.published.ldr"
 const FILES := "res://vendor/omr/files/"
