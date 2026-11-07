@@ -11497,6 +11497,36 @@ msgstr "Choisir un style…"
 msgid "Name the page first"
 msgstr "Nommez d’abord la page"
 
+# Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks
+
+
+msgid "Remove…"
+msgstr "Retirer…"
+
+msgid "Take a kept style away; the models given it keep their page"
+msgstr "Supprimer un style enregistré ; les modèles qui l’ont reçu gardent leur page"
+
+msgid "Remove a page style?"
+msgstr "Supprimer un style de page ?"
+
+msgid "Remove the page style “%s”? The models given it keep their page."
+msgstr "Supprimer le style de page « %s » ? Les modèles qui l’ont reçu gardent leur page."
+
+msgid "Missing from the file"
+msgstr "Absente du fichier"
+
+msgid "The file names %s but does not carry it: another program saved it without it, or it was not a PNG or a JPEG. Choose it again, or take it off."
+msgstr "Le fichier nomme %s mais ne contient pas cette image : un autre programme l’a enregistré sans elle, ou ce n’était ni un PNG ni un JPEG. Choisissez-la de nouveau ou retirez-la."
+
+msgid "%s, %d KB in the file"
+msgstr "%s, %d Ko dans le fichier"
+
+msgid "A PNG"
+msgstr "Un PNG"
+
+msgid "A JPEG"
+msgstr "Un JPEG"
+
 # Build together, a build party (buildparty, APP_UX5 5): the share link's card and Build it's party row.
 
 msgid "Build it with others, each on their own phone: a code to join by, the model dealt out"

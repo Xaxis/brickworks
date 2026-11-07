@@ -6487,6 +6487,10 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		note = "the booklet is open in a new tab, %d steps" % steps
 	else:
 		note = Download.give(_booklet_out.kept(), file_name, "text/html")
+	# A picture behind the pages the model's file names and does not carry
+	# is drawn as the page's colour, and said (BookletSheet.missing).
+	if BookletSheet.of(_world).missing:
+		note += "; the picture behind its pages is missing from the model's file: Page setup… chooses it again"
 	job.end()
 	_bar.say(note)
 	return note
