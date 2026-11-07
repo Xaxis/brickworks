@@ -2,7 +2,8 @@
 
 Loading a script compiles every class it names, and theirs, before a line
 of it runs (GDScriptCache::finish_compiling). The first screen is
-src/main.tscn's scripts and all they name, stopping at the classes Later
+src/main.tscn's scripts, and the main loop the engine makes before it, and
+all they name, stopping at the classes Later
 loads on first use (src/later.gd, Later.PATHS): what a first visit to the
 web app compiles before it draws anything, about 0.37 s a megabyte of
 source on the box (webstart2, 2026-11-05).
@@ -81,13 +82,26 @@ def later(root: Path = ROOT) -> dict[str, str]:
 
 
 def first_screen(root: Path = ROOT) -> list[str]:
-    """The scripts the main scene names: where the start's compile begins."""
+    """The scripts the main scene names, and those the engine loads before
+    it (the project's main loop, its autoloads): where the start's compile
+    begins. A main loop left in the data pack is not there when the engine
+    makes it, and the app never starts (BrickworksLoop, 2026-11-07)."""
     scene = (root / "src" / "main.tscn").read_text()
-    return sorted(set(re.findall(r'path="(res://[^"]+\.gd)"', scene)))
+    seeds = set(re.findall(r'path="(res://[^"]+\.gd)"', scene))
+    project = (root / "project.godot").read_text()
+    loop = re.search(r'^run/main_loop_type="(\w+)"', project, re.M)
+    if loop:
+        for path, text in scripts(root).items():
+            if re.search(rf"^class_name\s+{loop.group(1)}\s*$", text, re.M):
+                seeds.add(path)
+    autoload = re.search(r"^\[autoload\]\n([\s\S]*?)(?=^\[|\Z)", project, re.M)
+    if autoload:
+        seeds |= set(re.findall(r'^\w+="\*?(res://[^"]+\.gd)"', autoload.group(1), re.M))
+    return sorted(seeds)
 
 
 def closure(root: Path = ROOT) -> set[str]:
-    """What the first screen compiles: main.tscn's scripts and every script
+    """What the first screen compiles: its seeds (first_screen) and every script
     they name, and theirs, but none of Later's (nor what only they name)."""
     _, deps = graph(root)
     stops = set(later(root).values())

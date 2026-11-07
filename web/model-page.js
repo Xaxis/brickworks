@@ -23,7 +23,8 @@
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { avatarHtml } from "/kit.js";
-import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, rulesSaid, say, told } from "/card.js";
+import { HOWS, basedHtml, brokenSaid, counted, langAt, mentionPieces, number, photoSrc, rulesSaid, say, setPhoto, sharpPhotos, themeSaid,
+  told } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 
@@ -63,7 +64,13 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) basesOwn();
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
+// Its photos of real builds, the whole one where a copy would be drawn
+// larger than it is (web/card.js sharpPhotos).
+sharpPhotos(document);
 
+// A page a probe opened with ?tests=1: the people @ offers include test
+// accounts, which nobody else is offered.
+const TESTS = new URLSearchParams(location.search).get("tests") === "1";
 // Where the picture's frame is square (directory.css): a phone's.
 const PHONE = matchMedia("(width < 600px)");
 // Its picture: the frame says it is coming until it is drawn, and one that
@@ -1022,10 +1029,10 @@ function buildPhotos(box) {
     figure.id = `photo-${photo.id}`;
     figure.dataset.photo = photo.id;
     const img = document.createElement("img");
-    img.src = `/api/people?op=photo_file&id=${encodeURIComponent(photo.id)}`;
     img.alt = say("Your build");
     img.width = photo.width;
     img.height = photo.height;
+    setPhoto(img, photo, "strip");
     const caption = document.createElement("figcaption");
     if (photo.words) {
       const line = document.createElement("q");
@@ -1038,16 +1045,18 @@ function buildPhotos(box) {
     caption.append(by);
     figure.append(img, caption);
     row.prepend(figure);
+    sharpPhotos(figure);
     // And in the strip under the picture: the owner's with theirs, first.
     if (pictures) {
       const thumb = document.createElement("a");
       thumb.className = "thumb";
       thumb.href = `#photo-${photo.id}`;
-      thumb.dataset.picture = img.src;
+      // The picture's place shows it whole; the thumb, its card's copy.
+      thumb.dataset.picture = photoSrc(photo.id);
       if (state?.owner) thumb.dataset.own = "";
       const small = document.createElement("img");
-      small.src = img.src;
       small.alt = state?.owner ? say("Your picture of it") : say("Your build");
+      setPhoto(small, photo, "thumb");
       thumb.append(small);
       const own = pictures.querySelectorAll("a.thumb[data-own]");
       const after = state?.owner ? pictures.querySelector("a.thumb:not([href^='#'])") : own[own.length - 1]
@@ -1055,6 +1064,7 @@ function buildPhotos(box) {
       if (after) after.after(thumb);
       else pictures.prepend(thumb);
       pictures.hidden = false;
+      sharpPhotos(thumb);
     }
   }
 
@@ -1718,10 +1728,10 @@ function showBases(line, said) {
   document.documentElement.dataset.bases = String(said.length);
 }
 
-/// The dialog: at most three, each how it is based on it, then a set's
-/// number or a link, and for a link its title, author and licence. The
-/// server checks the set against the catalogue and says what is wrong in
-/// words.
+/// The dialog: at most three, each how it is based on it, then a set (its
+/// name or number typed, the set picked from what it may be) or a link, and
+/// for a link its title, author and licence. The server checks the set
+/// against the catalogue and says what is wrong in words.
 function basesDialog(current) {
   const dialog = document.createElement("dialog");
   dialog.className = "sign-in report bases-dialog";
@@ -1774,8 +1784,18 @@ function basesDialog(current) {
       how.append(option);
     }
     how.value = one.how && HOWS[one.how] ? one.how : "alternate";
-    const what = text("what", 300, "6080-1, or https://…");
+    const what = text("what", 300, say("Its name or number, or https://…"));
+    what.id = `bases-what-${++basesRows}`;
     what.value = one.set || one.url || "";
+    // The set picked, by its name, under the box.
+    const chosen = document.createElement("p");
+    chosen.className = "set-chosen";
+    chosen.id = `${what.id}-set`;
+    chosen.hidden = true;
+    if (one.set && one.name) {
+      chosen.textContent = `${one.set} ${one.name}`;
+      chosen.hidden = false;
+    }
     const linked = document.createElement("div");
     linked.className = "link-fields";
     const named = text("title", 120);
@@ -1797,7 +1817,9 @@ function basesDialog(current) {
       counted();
       add.focus();
     });
-    box.append(legend, field(say("How"), how), field("A set's number, or a link", what), linked, remove);
+    const asked = field(say("A set, or a link"), what);
+    box.append(legend, field(say("How"), how), asked, chosen, linked, remove);
+    pickSet(what, chosen);
     row.append(box);
     list.append(row);
     counted();
@@ -1857,16 +1879,149 @@ function basesDialog(current) {
   list.querySelector("select")?.focus();
 }
 
+let basesRows = 0;
+
+/// The sets the dialog's box [field] may mean as a set's name or number is
+/// typed in it (api/_bases.js setsFound, ?op=set_find), in a list under
+/// it: each its picture, number, name, year, parts and theme. Up and Down
+/// move, Enter or a click puts its number in the box and its name in
+/// [chosen] under it; Escape closes the list (and only it). A link typed
+/// asks nothing. The box is a combobox, its list a listbox, the one marked
+/// its active descendant, and a status says how many there are.
+function pickSet(field, chosen) {
+  const list = document.createElement("ul");
+  list.className = "pick-list set-pick";
+  list.id = `${field.id}-sets`;
+  list.setAttribute("role", "listbox");
+  list.setAttribute("aria-label", say("Sets it may be"));
+  list.hidden = true;
+  const said = document.createElement("span");
+  said.className = "visually-hidden";
+  said.setAttribute("role", "status");
+  chosen.before(list, said);
+  field.setAttribute("role", "combobox");
+  field.setAttribute("aria-autocomplete", "list");
+  field.setAttribute("aria-expanded", "false");
+  field.setAttribute("aria-controls", list.id);
+  field.setAttribute("aria-describedby", chosen.id);
+  const SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
+  const found = new Map();
+  let shown = [];
+  let at = 0;
+  let waiting = 0;
+
+  const close = () => {
+    list.hidden = true;
+    shown = [];
+    said.textContent = "";
+    field.setAttribute("aria-expanded", "false");
+    field.removeAttribute("aria-activedescendant");
+  };
+  const mark = (to) => {
+    at = (to + shown.length) % shown.length;
+    [...list.children].forEach((item, n) => item.setAttribute("aria-selected", String(n === at)));
+    field.setAttribute("aria-activedescendant", list.children[at].id);
+    list.children[at].scrollIntoView({ block: "nearest" });
+  };
+  const choose = (n) => {
+    const one = shown[n];
+    if (!one) return;
+    field.value = one.set;
+    chosen.textContent = `${one.set} ${one.name}${one.year ? `, ${one.year}` : ""}`;
+    chosen.hidden = false;
+    chosen.dataset.set = one.set;
+    close();
+  };
+  const draw = (sets) => {
+    shown = sets;
+    if (!shown.length || document.activeElement !== field) return close();
+    list.replaceChildren(...shown.map((one, n) => {
+      const item = document.createElement("li");
+      item.id = `${list.id}-${n}`;
+      item.setAttribute("role", "option");
+      item.dataset.set = one.set;
+      // Its picture on its ground, shown once it has come; a set with no
+      // picture, or one that does not come, keeps the ground alone.
+      const ground = document.createElement("span");
+      ground.className = "set-picture";
+      if (one.picture) {
+        const picture = document.createElement("img");
+        picture.alt = "";
+        picture.width = 48;
+        picture.height = 36;
+        picture.decoding = "async";
+        picture.addEventListener("load", () => picture.classList.add("came"));
+        picture.addEventListener("error", () => picture.remove());
+        picture.src = one.picture;
+        ground.append(picture);
+      }
+      const words = document.createElement("span");
+      const name = document.createElement("b");
+      name.textContent = `${one.set} ${one.name}`;
+      const facts = document.createElement("small");
+      facts.textContent = [one.year ? String(one.year) : "", one.parts ? counted(one.parts, "part") : "",
+        one.theme ? themeSaid(one.theme) : ""].filter(Boolean).join(" · ");
+      words.append(name, facts);
+      item.append(ground, words);
+      // Chosen without the box losing its focus.
+      item.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        choose(n);
+      });
+      return item;
+    }));
+    list.hidden = false;
+    field.setAttribute("aria-expanded", "true");
+    const words = shown.length === 1 ? say("1 set it may be: up and down to choose, Enter to put it in")
+      : say("{n} sets it may be: up and down to choose, Enter to put one in", { n: number(shown.length) });
+    if (said.textContent !== words) said.textContent = words;
+    mark(0);
+  };
+  const look = () => {
+    clearTimeout(waiting);
+    const typed = field.value.trim();
+    if (chosen.dataset.set !== typed) {
+      chosen.hidden = true;
+      delete chosen.dataset.set;
+    }
+    if (/^https?:/i.test(typed) || typed.replace(/[^\p{L}\p{N}]/gu, "").length < 2) return close();
+    if (found.has(typed)) return draw(found.get(typed));
+    // Asked once typing pauses; the answer is the CDN's, the same for everybody.
+    waiting = setTimeout(async () => {
+      const reply = await fetch(`/api/share?op=set_find&q=${encodeURIComponent(typed)}`, { headers: { accept: "application/json" } })
+        .catch(() => null);
+      const body = reply && reply.ok ? await reply.json().catch(() => null) : null;
+      const sets = (Array.isArray(body?.sets) ? body.sets : []).filter((one) => one && SET.test(String(one.set))
+        && typeof one.name === "string" && (!one.picture || /^\/library\/set\/[A-Za-z0-9.-]+\.(webp|jpg)$/.test(String(one.picture))));
+      found.set(typed, sets);
+      if (field.value.trim() === typed) draw(sets);
+    }, 180);
+  };
+  field.addEventListener("input", look);
+  field.addEventListener("blur", close);
+  field.addEventListener("keydown", (event) => {
+    if (list.hidden) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") mark(at + (event.key === "ArrowDown" ? 1 : -1));
+    else if (event.key === "Enter") choose(at);
+    else if (event.key === "Escape") close();
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
+}
+
 /// @ in [field] offers [people]() whose handle or name starts with what
 /// follows it, at most six, under the field: Up and Down move, Enter or
 /// Tab puts the one marked in as @handle, Escape closes it (and only it).
 /// The field stays a box of several lines to a screen reader (a combobox
 /// is one line), its list a listbox it controls, the one marked its active
-/// descendant, and a status says when the list is there. Anybody may be
-/// named by typing their handle; this offers the ones on the page.
+/// descendant, and a status says when the list is there. The people on
+/// the page first, then anybody whose profile may be named whose handle or
+/// name starts with it (api/people.js peopleFound, ?op=people_find), asked
+/// once typing pauses.
 function pickMentions(field, people) {
   const list = document.createElement("ul");
-  list.className = "mention-pick";
+  list.className = "pick-list mention-pick";
   list.id = `${field.id || "box"}-people`;
   list.setAttribute("role", "listbox");
   list.setAttribute("aria-label", say("People to name"));
@@ -1880,8 +2035,13 @@ function pickMentions(field, people) {
   let shown = [];
   let at = 0;
   let typed = null;
+  let waiting = 0;
+  // Who each prefix found beyond the page, asked once each.
+  const found = new Map();
+  const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 
   const close = () => {
+    clearTimeout(waiting);
     list.hidden = true;
     shown = [];
     typed = null;
@@ -1906,14 +2066,42 @@ function pickMentions(field, people) {
     close();
     field.dispatchEvent(new Event("input", { bubbles: true }));
   };
-  const look = () => {
+  /// What follows the @ before the caret, or null when the caret is not in one.
+  const atCaret = () => {
     const upto = field.value.slice(0, field.selectionStart);
-    const found = /(^|[^A-Za-z0-9_.@/-])@([A-Za-z0-9-]{0,23})$/.exec(upto);
-    if (!found || field.selectionStart !== field.selectionEnd) return close();
-    const asked = found[2].toLowerCase();
-    shown = people().filter((one) => one.handle.startsWith(asked) || one.name.toLowerCase().startsWith(asked)).slice(0, 6);
-    if (!shown.length) return close();
-    typed = { start: upto.length - found[2].length - 1 };
+    const hit = /(^|[^A-Za-z0-9_.@/-])@([A-Za-z0-9-]{0,23})$/.exec(upto);
+    if (!hit || field.selectionStart !== field.selectionEnd) return null;
+    return { asked: hit[2].toLowerCase(), start: upto.length - hit[2].length - 1 };
+  };
+  const look = () => {
+    const now = atCaret();
+    if (!now) return close();
+    const { asked } = now;
+    const here = people().filter((one) => one.handle.startsWith(asked) || one.name.toLowerCase().startsWith(asked));
+    const there = (found.get(asked) || []).filter((one) => !here.some((own) => own.handle === one.handle));
+    draw([...here, ...there].slice(0, 6), now);
+    clearTimeout(waiting);
+    // From two letters (api/people.js peopleFind), signed in, each asked once.
+    if (asked.length < 2 || found.has(asked) || here.length >= 6) return;
+    waiting = setTimeout(async () => {
+      const reply = await call(`/api/people?op=people_find&q=${encodeURIComponent(asked)}${TESTS ? "&tests=1" : ""}`).catch(() => null);
+      const body = reply && reply.status === 200 ? reply.body : null;
+      found.set(asked, (Array.isArray(body?.people) ? body.people : [])
+        .filter((one) => one && HANDLE.test(String(one.handle)) && typeof one.name === "string"));
+      // Still where it was asked: drawn again with them.
+      if (atCaret()?.asked === asked && document.activeElement === field) look();
+    }, 150);
+  };
+  const draw = (who, now) => {
+    shown = who;
+    if (!shown.length) {
+      list.hidden = true;
+      said.textContent = "";
+      field.removeAttribute("aria-activedescendant");
+      typed = null;
+      return;
+    }
+    typed = { start: now.start };
     list.replaceChildren(...shown.map((one, n) => {
       const item = document.createElement("li");
       item.id = `${list.id}-${n}`;

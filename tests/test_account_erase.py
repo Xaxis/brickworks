@@ -222,3 +222,20 @@ return { down, held, said, age, asked, deleted: w.deleted, erased: w.admission.e
     def steps(calls: list[str], sub: str) -> list[str]:
         return [c.replace(sub, "<id>") for c in calls if not re.search(r"jwks|rpc/age_of|otp_requests", c)]
     assert steps(age, bo) == steps(got["asked"], ada) and erase_of("<id>") in steps(age, bo)
+
+
+def test_its_photos_go_with_their_card_copies() -> None:
+    # Each photo of a real build it posted is two files in storage, the photo
+    # and its copy for the cards (api/_builds.js photoName, cardName): both go.
+    got = run("""
+w.photos = [{ id: "PhotoAaa01", account: ADA.sub, model: "ModelAaa01" },
+  { id: "PhotoBbb02", account: ADA.sub, model: "ModelBbb02" },
+  { id: "PhotoCcc03", account: "someone-else", model: "ModelAaa01" }];
+const said = await del(ADA);
+return { said, removed: w.storageDeletes, deleted: w.deleted };
+""", billing="")
+    if got is None:
+        return
+    assert got["said"]["status"] == 200 and got["said"]["json"]["photos"] == 2
+    assert got["removed"] == [["PhotoAaa01.jpg", "PhotoAaa01.card.jpg", "PhotoBbb02.jpg", "PhotoBbb02.card.jpg"]]
+    assert got["deleted"] == ["7d6c1a2e-0000-4000-8000-00000000ada0"]

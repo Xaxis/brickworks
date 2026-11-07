@@ -746,7 +746,19 @@ plan with Claude as the client.
   caller's. Rows (and the publish log) go with the account. Its files cannot
   (Supabase refuses to delete storage objects from SQL), so Vercel's cron calls
   `/api/share/sweep` (`op=sweep`) at 04:17 UTC daily with `CRON_SECRET`, and it
-  removes every file an hour old or more that no published row owns.
+  removes every file an hour old or more that no published row owns, and
+  every `build-photos` file (a photo or its card copy) whose id has no row
+  or a removed one (`api/_builds.js` `sweepPhotos`, a failure logged,
+  `photos` in its answer). Unasked, neither takes more than a quarter of
+  what it looked at (four files at least): rows read back empty would
+  otherwise delete every file, so such a run removes none, logs `sweep:
+  models' files held: ...` or `sweep: build photos held: ...`, and says
+  `held` in its answer (`api/_cron.js` `sweepHeld`;
+  `tests/test_gallery_builds.py`
+  `test_a_sweep_that_would_take_most_of_what_it_saw_takes_nothing`).
+  `?only=<id,...>&photos=<id,...>` scopes it to those models' and photos'
+  files alone, all of them (views, `act_log` and uploads left for the
+  cron): a hand-run check always scopes it, never the whole sweep.
   **The gallery** (2026-10-13, `supabase/gallery.sql`, applied to the live
   project that day with `tools/apply_sql.mjs`: columns `listed` boolean not
   null default false, `listed_at`, `remixed_from` → `shared_models(id)` on
@@ -2245,7 +2257,18 @@ plan with Claude as the client.
   JSON-LD `isBasedOn` and its JSON `based_on` say them; `web/model-page.js`
   `basesOwn` gives its designer Say what it is based on / Change what it is
   based on (`p#bases-own`) and the dialog (`dialog.bases-dialog`), `<html
-  data-bases>` the count, `not-open` before the file. `model_bases_put` (its
+  data-bases>` the count, `not-open` before the file. Its box "A set, or a
+  link" (`input[name=what]`, a combobox, `web/model-page.js` `pickSet`)
+  offers as a set's name or number is typed the sets it may be
+  (`ul.pick-list.set-pick`, a listbox, each `li[data-set]` its picture
+  (`api/_sets.js` `pictureOf`: its own, else its flat lay; the ground until
+  it comes, rows that never overlap),
+  number and name, year, parts and theme; arrows, Enter or a click puts the
+  number in and `p.set-chosen` says "7140-1 X-wing Fighter, 1999"; Escape
+  closes the list alone), from `GET /api/share?op=set_find&q=WORDS`
+  (`api/_bases.js` `setsFound`: the library's search, a set of the whole
+  name typed first, at most 8, `{set, name, year, parts, theme, picture}`,
+  CDN an hour; the stand-in answers it with the real handler). `model_bases_put` (its
   designer, 13 or over, not taken out; a broken base takes the list back,
   22023), `model_bases_of`, `set_based`; the service role alone. Dry run:
   `PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs
@@ -2255,7 +2278,11 @@ plan with Claude as the client.
   `based_on`): with no `--url` the stand-in keeps a list as the table does
   (Sam's tram, Robin's watchtower for somebody else's) and the whole flow
   runs: the dialog's refusals, two said, the page as sent, its data and
-  JSON, the set's page at 390 px dark, taken away. With `--url`, throwaway
+  JSON, the set's page at 390 px dark, taken away; then "X-wing Fighter"
+  typed offers 7140-1, Down to it and Enter picks it, saved as "An
+  alternate build of set 7140-1 X-wing Fighter"; at 390 dark the list
+  offers it, nothing sideways, Escape closes the list then the dialog
+  (pictures `5_found_by_name_1280.png`, `7_found_390_dark.png`). With `--url`, throwaway
   Ivy and Jon; before the file it proves nothing is offered and a list is
   refused in words, and passes.
 - `mentions in comments` (`supabase/comment_mentions.sql`, **not applied to
@@ -2275,10 +2302,22 @@ plan with Claude as the client.
   the comment) nor in a conversation they are in (told of the reply);
   `api/_notifications.js` says "mentioned you in a comment / a reply", linked
   to `#comment-N`. `web/model-page.js` `pickMentions`: `@` in the comment
-  box or a reply box opens `ul.mention-pick` (a listbox the box controls,
+  box or a reply box opens `ul.pick-list.mention-pick` (a listbox the box controls,
   the box still a textbox, its marked option the `aria-activedescendant`, a
   `role=status` saying how many: the designer, the commenters, those they
-  named; arrows, Enter or Tab, Escape closes it alone). Before the file a comment names nobody and posts as
+  named, then anybody whose profile may be named from `GET
+  /api/people?op=people_find&q=P` (`api/people.js` `peopleFound` /
+  `peopleRanked`: a handle typed whole, one it starts, a name, a word of a
+  name; at most 6; signed in only (401), each look counted by `may_act`
+  `people_find` (600 an hour, 3,000 a day), `q` lower-cased and cut to 23
+  characters, under 2 answered [] uncounted; the handles it starts asked
+  first (8), the names beside them (40), so a handle typed whole is never
+  crowded out; only a profile `shownPublicly`, `trust_may_go_public` and,
+  unless `tests=1`, not `trust_is_test_account` (`api/_trust.js`
+  `mayBeNamed`, as `comment_mentions.sql` names nobody else); `private,
+  no-store`; the stand-in's mirrors it), asked 150 ms after typing pauses
+  from 2 characters (`tests=1` passed on when the page has it); arrows,
+  Enter or Tab, Escape closes it alone). Before the file a comment names nobody and posts as
   ever. Dry run: `PG_MODULE=<pg>/lib/index.js node --env-file=.env
   tools/apply_sql.mjs supabase/achievements.sql
   --again=supabase/challenge_notices.sql,supabase/comment_mentions.sql --dry
@@ -2287,8 +2326,12 @@ plan with Claude as the client.
 - `mentions browser flow` (`tools/web/mentions_flow.mjs`, preview check
   `mentions`): with no `--url` the stand-in's Sam on the watchtower: a
   comment's link, the picker on a reply (the designer first, narrowed by
-  typing, Escape, Enter), the reply's answer naming her, a mention in
-  Notifications at 390 px dark. With `--url`, throwaway Pia, Max and Lia:
+  typing, Escape, Enter), the reply's answer naming her, "@mi" in a new
+  comment offering Mika (nowhere on the page) and Enter putting him in, a
+  mention in Notifications at 390 px dark. With `--url`, throwaway Pia, Max
+  and Lia (`?op=people_find` refused signed out, no `bwm-` test account
+  offered without `tests=1`, one letter finds nobody, with `tests=1` finds
+  Max by his handle):
   Lia names Max with the picker and a handle nobody has; Max is told (390
   dark), Pia hears a comment and no mention, Lia's reply in their thread
   tells Max once, as a reply. Before the file it proves the comment posts
@@ -2301,7 +2344,9 @@ plan with Claude as the client.
   name has every word (`?q=`), no filters but a line saying what a build
   is. Everybody's
   photos of real builds as `article.model.build-card[data-id][data-model]`:
-  the photo (`/api/people?op=photo_file&id=`, cut to 4:3), `a.open` to
+  the photo's copy (`/api/people?op=photo_file&id=X&size=card`, `web/card.js`
+  `photoAttrs` "card": the copy and the whole photo in a `srcset`, cut to
+  4:3), `a.open` to
   `/m/<model>#photo-<id>`, `a.who` "Built by <name>" to `/u/<handle>` (a
   span "Built by a builder" with no profile shown), `time.when`, and
   `q.said`. Its name line keeps clear of the designer's link under it
@@ -2321,15 +2366,67 @@ plan with Claude as the client.
   (`shownPublicly`: not under 13). Each `{id, model, model_name, words, width,
   height, at, by: {handle, name, picture} | null, url, page}`. Kept by the
   CDN 30 s (a test's not). `tests/test_gallery_builds.py`.
+- `a build photo's card copy` (`api/_photo.js` `cardOf` / `cardPhoto`,
+  `api/_builds.js` `photoName` / `cardName` / `cardFile`, `api/people.js`
+  `?op=photo_file&id=X&size=card`): each photo kept as `build-photos/<id>.jpg`
+  (1,600 px long side at most) and `<id>.card.jpg` beside it, covering a
+  480 x 360 card (`web/card.js` `cardSize`: 1,600 x 1,200 gives 480 x 360,
+  1,600 x 840 gives 686 x 360, 1,200 x 1,600 gives 480 x 640; never
+  larger than the photo), made from the kept pixels when it is posted, or
+  the first time a card asks for one posted before or of another size
+  (`cardFile` remakes it), and never outliving it: taking a photo out, a
+  failed keep, and an account's deletion (`api/account.js`, by name)
+  delete both, every failure logged, and the daily sweep takes a
+  `build-photos` file whose id has no row or a removed one, an hour old
+  or more (`api/_builds.js` `photosGone` / `sweepPhotos`;
+  `tests/test_gallery_builds.py`
+  `test_a_copy_is_made_once_and_never_outlives_its_photo`,
+  `test_the_sweep_deletes_a_photos_files_once_it_is_gone`). Served under
+  the same rules as the photo (hidden, taken out, its builder not shown:
+  404). Every JSON that names a photo says `url` and `card`
+  (`photoUrls`). Every place a photo is drawn offers both
+  (`web/card.js` `PHOTO_PLACES` / `photoPicture` / `photoAttrs` /
+  `setPhoto`: `srcset "<copy> Nw, <whole> Mw"`, each described by its
+  width once cut to the place's shape, `sizes` the place's box, `auto,`
+  first only on a lazy image, since Chrome takes `auto` on an eager one as
+  100vw), and `sharpPhotos` (a ResizeObserver) gives an image the whole
+  photo when the copy would be drawn larger than its pixels (Chrome keeps
+  the smaller of two up to their geometric mean): the Builds tab's cards,
+  a model's strip thumbs and its Builds figures (`api/share.js`
+  `mediaStrip` / `buildFigure`, `web/model-page.js`; a thumb's
+  `data-picture` stays the whole photo), a profile's Builds tab
+  (`api/people.js` `stripHtml` with `web/photos.js`, `web/profile.js`),
+  the feed's photos and Latest (`web/feed.js`), Your models' builders
+  (`web/designs.js`). `tests/test_gallery_builds.py`
+  `test_every_place_a_photo_is_drawn_offers_the_copy_and_the_whole`,
+  `tests/test_account_erase.py`; `builds_flow` checks the copy kept, clean
+  and taken out with its photo; `photo_sizes_flow` how large each is
+  drawn.
+- `photo sizes browser flow` (`tools/web/photo_sizes_flow.mjs`, stand-in
+  only, `node tools/web/photo_sizes_flow.mjs --out=DIR`, about 2 min): at
+  390 px 3x and 1280 px 2x the Builds tab, a profile's Builds tab, a
+  model's page, the feed's Latest (signed out), the feed's photos and Your
+  models' builders (signed in as Sam): every photo's real pixels (its
+  `currentSrc` decoded apart) against its box, none drawn larger than its
+  picture unless that is the whole photo; at 1280 px 1x the Builds cards
+  and a model's thumbs still take the copy; no page error. streview
+  (2026-11-07) measured 1.5 to 2.26 before the fix.
 - `gallery builds browser flow` (`tools/web/gallery_builds_flow.mjs`,
   preview check `gallery_builds`): needs `--url` (a preview or a local
   relay; it seeds the live tables). Throwaway Ann lists a model; Bo, Cy and
   Di post five photos; Ann hides one, Di reports one, Di answers under 13.
   The API and the page (1280 light signed in as Bo, 390 dark signed out)
   show Cy's second then Bo's first, each card's links, photo and words;
-  the model link opens the photo on its page; the empty tab (its answer
-  emptied in the browser); Builds before Collections on `/gallery` and
-  `/library`. Accounts deleted after.
+  each card's photo the copy, 480 x 360 of the 1,600 x 1,200 posted, kept
+  beside it in storage; the model link opens the photo on its page (its
+  strip thumb the copy, its picture the whole photo); a copy taken away is
+  made again by the first card to ask; with `CRON_SECRET` the sweep
+  asked of two photos alone (`?only=<none>&photos=<orphan>,<live>`) takes
+  a copy whose photo has no row and leaves the live photo's two files; the
+  empty tab (its answer emptied in the browser); Builds before Collections
+  on `/gallery` and
+  `/library`. Accounts deleted as a person deletes theirs (`?op=delete`),
+  and no photo's file nor copy is left.
 - `more like a designer` (`api/_alike.js` `closestDesigners` / `alikeSaid` /
   `designersAlike`, `api/people.js` `?op=alike&handle=X`,
   `supabase/designers_alike.sql`, **not applied to the live project** until
@@ -2342,8 +2439,9 @@ plan with Claude as the client.
   parts and followers in common, at most 200; before it, themes and tags
   alone. Never the person, the asker, anybody the asker follows, or a
   profile `follow_state` says may not be followed (under 13, taken out).
-  Each `{handle, name, picture, said, kinds, tags, follow}`; signed in or
-  with tests `private, no-store`, else 30 s at the CDN.
+  Each `{handle, name, picture, said, kinds, tags, follow}`, and `yours:
+  true` when the asker is the person; signed in or with tests `private,
+  no-store`, else 30 s at the CDN.
   `tests/test_alike.py`; the dry run: `PG_MODULE=<pg>/lib/index.js node
   --env-file=.env tools/apply_sql.mjs supabase/designers_alike.sql --dry
   --try=tools/designers_alike_try.sql --table=model_needs` (Ben, Cy, Di in
@@ -2356,6 +2454,8 @@ plan with Claude as the client.
   `li.person-row[data-handle]` (avatar and name to `/u/handle`, what they
   share in a line, `button[data-follow]` drawn from the answer's `follow`).
   Hidden with nobody; `html[data-alike]` is `shown`, `none` or `broken`.
+  On your own page (the answer's `yours`) it speaks to you: "Designers like
+  you", "Their models share the most with yours…", `section#alike[data-yours]`.
   The feed's designers to follow draw the same `personRow`.
 - `more like browser flow` (`tools/web/alike_flow.mjs`, preview check
   `alike`): needs `--url`. Throwaway Ann, Bo, Di, Cy and Fay list a model
@@ -2363,7 +2463,9 @@ plan with Claude as the client.
   Ann alone: hidden; Fay under 13, Di follows Bo; signed out at 1280 light
   Bo and Di then Cy, never Ann or Fay, links, words and Follow; as Di at
   390 dark only Cy, her answer `private, no-store`, Follow on Cy in place,
-  asked again nobody left. It says whether the parts were counted (the SQL
+  asked again nobody left; Ann on her own page at 1280 light: "Designers
+  like you", Bo and Di then Cy with Follow, her answer `yours: true`, a
+  visitor's `false`. It says whether the parts were counted (the SQL
   applied). Accounts deleted after.
 - `your achievements tab` (`web/profile.js` `drawAchievements`,
   `web/profile.html` `data-panel="achievements"`, `.achievements-list` in

@@ -30,7 +30,8 @@
 // person's page, a section with data-alike="<handle>" is filled with up to
 // six designers whose work is closest to theirs (api/_alike.js), each a
 // row with Follow in place, never you nor anybody you follow already;
-// shown only when somebody is close.
+// shown only when somebody is close. On your own page it speaks to you:
+// designers like you, to follow (socialtails, 2026-11-06).
 //
 // Everything is put on the page as text, said in the visitor's language
 // as the sign-in's dialogs say theirs (web/account.js say): a Follow button
@@ -253,6 +254,12 @@ async function showAlike(box) {
     ? answer.body.designers.filter((one) => one && HANDLE.test(String(one.handle))) : [];
   box.querySelector(".people-list").replaceChildren(...designers.map((one) => personRow(one, alikeSaid(one.alike),
     { you_follow: false, mine: false, signed_in: signedIn(), may: true, why_not: "", ...(one.follow || {}) })));
+  if (answer?.body?.yours === true && designers.length) {
+    box.querySelector("h2").textContent = say("Designers like you");
+    const note = box.querySelector(".note");
+    if (note) note.textContent = say("Their models share the most with yours: themes, tags and parts. Follow them to see what they make next.");
+    box.dataset.yours = "";
+  }
   box.hidden = designers.length === 0;
   document.documentElement.dataset.alike = !answer || answer.status !== 200 ? "broken" : designers.length ? "shown" : "none";
 }
