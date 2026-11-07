@@ -283,16 +283,17 @@ func _run() -> void:
 			if there != 0 and there != wheel and not (_main.get("_store") as ModelStore).scenery.has(there):
 				finger = beside
 				break
-		var meant: Array = _main.call("_play_brick_near", finger)
-		_ok(verbs.brick_at(finger) == wheel or int(meant[0]) == wheel,
-			"a fingertip on #%d beside the wheel's rim means the wheel (#%d)" % [verbs.brick_at(finger), int(meant[0])])
+		var under_finger: int = verbs.brick_at(finger)
 		# Index 1, as a browser numbers a finger that follows another gesture.
 		_touch(finger, FINGER, true)
 		await process_frame
 		_drag_finger(finger + tangent * 2.5)
 		await process_frame
 		var held: Grab = grab_drag.grab
-		_ok(held != null and held.state == "moves", "the finger takes hold of the steering wheel")
+		var took_first: int = int(_main.get("_finger_brick"))
+		_ok(held != null and held.state == "moves"
+				and int(bodies.body_of.get(took_first, -1)) == int(bodies.body_of[wheel]),
+			"a fingertip on #%d beside the wheel's rim takes hold of the steering wheel (took #%d)" % [under_finger, took_first])
 		if held != null and held.state == "moves":
 			for degrees: float in [-6.0, -12.0, -18.0, -24.0]:
 				_drag_finger(camera.unproject_position(_about(held.pivot, held.axis, degrees) * held._hold))
