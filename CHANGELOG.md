@@ -13,6 +13,69 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-07
+
+A booklet made from someone else's file can no longer run anything in your
+browser, and someone you build with in Build together can send you only
+their words and parts, never anything that runs. You can print a booklet
+your way now: Build › Booklet page › Page setup… lays it out on the paper
+you have, the booklet's own, A4, US Letter or A5, either way up, with your
+margins, a page colour or a picture behind every page, and the sizes of its
+step numbers and parts, kept with the model and, by a name, for the next
+one. Train tracks join end to end: drag a curve to a straight and it meets
+the end, R puts its other end to the joint, and sixteen curves close a
+circle. Build it turns a page over when its booklet does, so parts going on
+from below are seen. A cone put on a stud sits at the stud's stop, and
+aiming a figure over a big model is as quick as over a small one. When you
+build with your own Claude, it can set the booklet's page up in one call
+and lay an oval of track in two.
+
+### Security
+
+- **A booklet made from someone else's file can no longer run anything in
+  your browser.** A picture in a model file is kept only when it is a PNG
+  or a JPEG, as the file is read, as a picture is put on a page and as it
+  comes from the other person in Build together; anything else is left out
+  with a word in the log. Every word, colour and picture the booklet writes
+  is escaped for where it goes, and the booklet carries a policy that runs
+  no script but its own Print and Save.
+- **Someone you build with can send you only their words and parts.** What
+  Build together receives is read as plain values of the shape each message
+  should have, never as objects or files of the sender's choosing; anything
+  else is left out with a word in the log, and a part the other person made
+  stays in memory. Someone still on 0.18.0 can build with you as before.
+
+### Added
+
+- **Build › Booklet page › Page setup…**: the paper (the booklet's own, A4,
+  US Letter, A5), which way up, the margins, a page colour or a picture
+  behind every page, and the step numbers' and parts' sizes. The booklet is
+  laid out on that page and its PDF's pages are that paper's size. It is
+  kept with the model as one file line, and kept by a name as a style to
+  give another model in one choice. A booklet nobody set up writes the same
+  file it always did. Over MCP, page_setup does the same in one call.
+- **Train tracks join end to end**, by ends measured from the parts: a
+  curve joins a straight in one drag, R puts the other end to the joint,
+  and sixteen curves close a circle to a thousandth of an LDU. The status
+  line names the track it goes on and the sleeper.
+
+### Changed
+
+- **Build it turns a page over as the booklet does**, so parts going on
+  from below are seen. Which pages turn is worked out a few milliseconds a
+  frame while the model is looked at; a page shown before its turn is known
+  is upright until it is, then turns.
+- **Aiming a figure** over a big model costs what is under its feet, not
+  the whole model, so its ghost no longer stutters.
+
+### Fixed
+
+- A cone put on a stud sits at the stud's stop, and the build check refuses
+  one sunk below it.
+- The build check passes studs up a cone's hollow and parts placed at
+  LDraw's three decimals: 957 of 1,056 real sets' sub-models build, up from
+  939.
+
 ## [0.18.0] - 2026-11-06
 
 Brickworks gives you more room and more ways in. At 1400 × 900 the parts
