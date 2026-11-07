@@ -1652,9 +1652,18 @@ static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 		return {}
 	var mine: Array = _world_connectors(items, PackedInt32Array([i]))
 	# Theirs by where they are, a cell of [param reach] each, so a connector
-	# of this part is set only against those within reach of it.
+	# of this part is set only against those within reach of it. Not a bar's
+	# or a clip's: one meets the other anywhere the two overlap along their
+	# line, and its point is its middle. 30374, a bar 80 LDU long, stands in
+	# 3062b's hollow stud 36 LDU from its middle; unpaired, it looked held by
+	# nothing, and the seat moved it off the stud onto a clip pressed into
+	# its side.
 	var grid: Dictionary = {}
+	var axles: Array = []
 	for entry: Array in _world_connectors(items, near):
+		if (items[entry[0]] as Item).shape.kind[entry[1]] == AXLE:
+			axles.append(entry)
+			continue
 		var cell := Vector3i(((entry[2] as Vector3) / reach).floor())
 		var list: Array = grid.get(cell, [])
 		list.append(entry)
@@ -1664,25 +1673,29 @@ static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 	## other, item].
 	var pairs: Array = []
 	for one: Array in mine:
-		var cell := Vector3i(((one[2] as Vector3) / reach).floor())
-		for dx: int in range(-1, 2):
-			for dy: int in range(-1, 2):
-				for dz: int in range(-1, 2):
-					for other: Array in grid.get(cell + Vector3i(dx, dy, dz), []):
-						var move: Variant = _move_to_meet(items, one, other, reach)
-						if move == null:
-							continue
-						var residual: float = (move as Vector3).length()
-						if exact > 0.0:
-							var slides: bool = item.shape.kind[one[1]] == AXLE
-							pairs.append([move, (other[3] as Vector3) if slides else Vector3.ZERO,
-								int(one[1]), int(other[1]), int(other[0])])
-							continue
-						if residual <= exact:
-							return {}
-						if best.is_empty() or residual < float(best["residual"]):
-							best = {"move": move, "mine": int(one[1]), "other": int(other[1]),
-								"item": int(other[0]), "residual": residual}
+		var slides: bool = item.shape.kind[one[1]] == AXLE
+		var theirs: Array = axles
+		if not slides:
+			theirs = []
+			var cell := Vector3i(((one[2] as Vector3) / reach).floor())
+			for dx: int in range(-1, 2):
+				for dy: int in range(-1, 2):
+					for dz: int in range(-1, 2):
+						theirs.append_array(grid.get(cell + Vector3i(dx, dy, dz), []))
+		for other: Array in theirs:
+			var move: Variant = _move_to_meet(items, one, other, reach)
+			if move == null:
+				continue
+			var residual: float = (move as Vector3).length()
+			if exact > 0.0:
+				pairs.append([move, (other[3] as Vector3) if slides else Vector3.ZERO,
+					int(one[1]), int(other[1]), int(other[0])])
+				continue
+			if residual <= exact:
+				return {}
+			if best.is_empty() or residual < float(best["residual"]):
+				best = {"move": move, "mine": int(one[1]), "other": int(other[1]),
+					"item": int(other[0]), "residual": residual}
 	return best if exact <= 0.0 else _seating_most(pairs, exact)
 
 
@@ -1757,7 +1770,8 @@ static func _near(items: Array, i: int, among: PackedInt32Array, reach: float,
 
 ## The move that would put connector [param one] where it meets [param
 ## other], or null when the two never meet that way or are further than
-## [param reach] apart.
+## [param reach] apart: a bar and a clip across their line, and along it
+## only as far as the two still overlap, by BrickNet's rule ([method meets]).
 static func _move_to_meet(items: Array, one: Array, other: Array, reach: float) -> Variant:
 	var a: Shape = (items[one[0]] as Item).shape
 	var b: Shape = (items[other[0]] as Item).shape
@@ -1768,6 +1782,16 @@ static func _move_to_meet(items: Array, one: Array, other: Array, reach: float) 
 	var xa: Vector3 = one[3]
 	var xb: Vector3 = other[3]
 	var delta: Vector3 = (other[2] as Vector3) - (one[2] as Vector3)
+	if ka == AXLE and kb == AXLE:
+		if not _mates(AXLE_MATES, sa, sb) or absf(xa.dot(xb)) < AXLE_AXIS_THR:
+			return null
+		# Along the line it may slide; only across it is it off.
+		var along: float = delta.dot(xb)
+		var across: Vector3 = delta - xb * along
+		if across.length() > reach or maxf(a.length[one[1]], AXLE_DEFAULT_RAD) \
+				+ maxf(b.length[other[1]], AXLE_DEFAULT_RAD) - absf(along) < AXLE_MIN_OVERLAP:
+			return null
+		return across
 	if delta.length() > reach:
 		return null
 	if (ka == STUD and kb == HOLE) or (ka == HOLE and kb == STUD):
@@ -1776,12 +1800,6 @@ static func _move_to_meet(items: Array, one: Array, other: Array, reach: float) 
 		return delta
 	if ka != kb or ka < HINGE:
 		return null
-	if ka == AXLE:
-		if not _mates(AXLE_MATES, sa, sb) or absf(xa.dot(xb)) < AXLE_AXIS_THR:
-			return null
-		# Along the line it may slide; only across it is it off.
-		var ref: Vector3 = xb
-		return delta - ref * delta.dot(ref)
 	var qa: int = a.pol[one[1]]
 	var qb: int = b.pol[other[1]]
 	if sa != sb or qa == NO_POLARITY or qb == NO_POLARITY or qa == qb:

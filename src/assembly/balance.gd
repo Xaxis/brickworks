@@ -395,6 +395,10 @@ static func opposite(name: String) -> String:
 var _ids := PackedInt64Array()
 var _parts: Array[String] = []
 var _mass := PackedFloat64Array()
+## The grams of the parts read whose shape is not to hand (a reader on a
+## worker, before it has loaded): in the weight, from the catalogue, though
+## not in the balance, which needs a part's shape to place it.
+var _unshaped_grams: float = 0.0
 var _middle: Array[Vector3] = []
 var _rest: Array[Transform3D] = []
 ## Each part's geometry, for how low a pose takes it (Lbm.PartMesh.lowest_at).
@@ -437,14 +441,13 @@ var _floor_y: float = 0.0
 func measure(bricks: Array, poses: Array = [], links: Variant = null,
 		contacts: Dictionary = {}) -> Report:
 	var report := Report.new()
-	if not prepare(bricks, links, contacts):
+	var ready: bool = prepare(bricks, links, contacts)
+	report.grams = _weight()
+	if not ready:
 		return report
 	report.empty = false
 	report.support = _hull
 	report.floor_y = _floor_y
-
-	for n: int in _mass.size():
-		report.grams += _mass[n]
 
 	# As it stands, then each pose.
 	var weighed: Array = []         ## [centre, margin, edge index, ...] per pose
@@ -580,8 +583,7 @@ func weigh_pose(placed: Dictionary, label: String = "") -> Report:
 	report.empty = false
 	report.support = _hull
 	report.floor_y = _floor_y
-	for n: int in _mass.size():
-		report.grams += _mass[n]
+	report.grams = _weight()
 	var worst_at: Dictionary = {}
 	var here: Dictionary = _weigh(placed, label, worst_at)
 	report.centre = here["centre"]
@@ -601,10 +603,22 @@ func weigh_pose(placed: Dictionary, label: String = "") -> Report:
 	return report
 
 
+## What the parts read weigh: every part the catalogue knows, its shape
+## to hand or not. Summed from the shapes alone, a part read before its shape
+## came was in no weight: the same model weighed less on a worker that had
+## not loaded it (docs/APP_UX6.md, weighsure).
+func _weight() -> float:
+	var grams: float = _unshaped_grams
+	for n: int in _mass.size():
+		grams += _mass[n]
+	return grams
+
+
 func _read(bricks: Array) -> void:
 	_ids = PackedInt64Array()
 	_parts.clear()
 	_mass = PackedFloat64Array()
+	_unshaped_grams = 0.0
 	_middle.clear()
 	_rest.clear()
 	_meshes.clear()
@@ -619,6 +633,8 @@ func _read(bricks: Array) -> void:
 		if it.is_empty() or it[0] != brick.part_id:
 			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
 			var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+			if info != null and part == null:
+				_unshaped_grams += Stability.grams(info)
 			if info == null or part == null:
 				continue
 			# Weighed at the middle of its shape, as Stability does: LDraw
