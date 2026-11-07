@@ -40,6 +40,10 @@
 //                            3D view (api/_parts.js sceneOf), every part's
 //                            place, turn and colour, its geometry in the
 //                            store; with v=N, version N's
+//   GET  ?op=room&id=X       /m/X/room.json: what its page writes the GLB the
+//                            app's Export writes of it from, to place it in
+//                            a room (api/_parts.js roomOf, web/room.js);
+//                            with v=N, version N's
 //   GET  ?op=thumb&id=X      /m/X.webp: the small picture the gallery's
 //                            cards show, made by the app beside the big one
 //   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
@@ -113,7 +117,8 @@
 //                            op=set_parts (/library/X/parts.json, .xml,
 //                            .csv) its parts, op=set_scene
 //                            (/library/X/scene.json) its model for the
-//                            page's 3D view
+//                            page's 3D view, op=set_room
+//                            (/library/X/room.json) for In your room
 //   GET  ?op=bases&id=X      what X is based on, and whether the caller may
 //                            change it; POST ?op=bases {model, bases} its
 //                            designer's list; GET ?op=set_based&set=N the
@@ -245,7 +250,7 @@ import {
   librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
-import { inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable, rebrickableCsv, sceneOf, wantedList } from "./_parts.js";
+import { inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -1797,8 +1802,11 @@ function pageCsp() {
     }
   };
   const others = [...new Set([origin(process.env.SUPABASE_URL), origin(storeRoot())])].filter(Boolean);
+  // blob: the GLB In your room writes in the page (web/room.js), which
+  // <model-viewer> fetches by its blob: address; one made by the page
+  // itself, never another's.
   return "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
-    + `connect-src 'self'${others.map((one) => ` ${one}`).join("")}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
+    + `connect-src 'self'${others.map((one) => ` ${one}`).join("")} blob:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 }
 /// The embed's: the site's stylesheets ('self'), so the card is drawn in
 /// the site's colours; its theme's script (web/theme.js), so in the colours
@@ -1938,7 +1946,7 @@ async function download(response, op, id, asked, as, lang = "en") {
     response.setHeader("Content-Disposition", named("mpd"));
     return response.status(200).end(file);
   }
-  if (op === "scene") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`);
+  if (op === "scene" || op === "room") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`, op);
   return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest }, lang);
 }
 
@@ -1983,14 +1991,17 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
 /// /library/X/scene.json: the model packed for its page's 3D view
 /// (api/_parts.js sceneOf; tools/viewer/inline.js draws it), each part's
 /// geometry in the store the Parts list draws from. Asked only when a
-/// visitor opens the 3D view, and kept by the CDN as the page is.
-function sceneAnswer(response, name, file, of) {
+/// visitor opens the 3D view, and kept by the CDN as the page is. As
+/// [kind] "room" (/m/X/room.json, /library/X/room.json), what the page
+/// writes the GLB Export writes of it from, for In your room (api/_parts.js
+/// roomOf, web/room.js): asked only when a visitor taps it.
+function sceneAnswer(response, name, file, of, kind = "scene") {
   const root = storeRoot();
-  const key = `${name}/${file.length}/${file.subarray(0, 64).toString("hex")}/${file.subarray(-64).toString("hex")}`;
+  const key = `${kind}/${name}/${file.length}/${file.subarray(0, 64).toString("hex")}/${file.subarray(-64).toString("hex")}`;
   let scene = scenesKept.get(key);
   if (scene === undefined && root) {
     try {
-      scene = sceneOf(file.toString("utf8"), root, of);
+      scene = (kind === "room" ? roomOf : sceneOf)(file.toString("utf8"), root, of);
     } catch {
       scene = null;
     }
@@ -2052,14 +2063,14 @@ async function read(request, response) {
   if (op === "set_parts") {
     return setParts(response, id, String(request.query?.as || "json"), testsAsked(request.query || {}), String(request.query?.lang || "en"));
   }
-  if (op === "set_scene") return setScene(response, id, testsAsked(request.query || {}));
+  if (op === "set_scene" || op === "set_room") return setScene(response, id, testsAsked(request.query || {}), op === "set_room" ? "room" : "scene");
 
   // A version asked for, where there can be one: the page, its picture and
   // the model. The gallery's small picture says which upload it is with a
   // v of its own (cardOf), which is not a version.
-  const asked = ["page", "image", "cutout", "file", "parts", "scene", ""].includes(op) ? askedVersion(request) : null;
+  const asked = ["page", "image", "cutout", "file", "parts", "scene", "room", ""].includes(op) ? askedVersion(request) : null;
 
-  if (op === "file" || op === "parts" || op === "scene") {
+  if (op === "file" || op === "parts" || op === "scene" || op === "room") {
     return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"));
   }
 
@@ -2333,8 +2344,8 @@ async function setParts(response, id, as, tests = false, lang = "en") {
 }
 
 /// /library/X/scene.json: its model packed for its page's 3D view, as a
-/// model's is (sceneAnswer).
-async function setScene(response, id, tests = false) {
+/// model's is (sceneAnswer); as [kind] "room", /library/X/room.json.
+async function setScene(response, id, tests = false, kind = "scene") {
   const entry = await librarySet(id, libraryOf(tests));
   if (!entry) {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
@@ -2343,7 +2354,7 @@ async function setScene(response, id, tests = false) {
   if (!text) return response.status(503).setHeader("Cache-Control", "no-store").json({ error: "Its file could not be read just now." });
   response.setHeader("Cache-Control", SET_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
-  return sceneAnswer(response, entry.file, Buffer.from(text), `library:${entry.id}`);
+  return sceneAnswer(response, entry.file, Buffer.from(text), `library:${entry.id}`, kind);
 }
 
 // ---------------------------------------------------------------------------

@@ -2603,6 +2603,17 @@
   "An AI app": "Eine KI-App",
   "Disconnect {app}? It can no longer work in your tabs, and it may forget the tool permissions you gave it, so connecting again asks for them all again.": "{app} trennen? Es kann dann nicht mehr in deinen Tabs arbeiten und vergisst vielleicht die Tool-Berechtigungen, die du ihm gegeben hast, sodass eine neue Verbindung sie alle wieder abfragt.",
   "Enter the challenge": "Am Wettbewerb teilnehmen",
-  "Coming next": "Als Nächstes"
+  "Coming next": "Als Nächstes",
+  "In your room": "In deinem Zimmer",
+  "Place {name} in your room, at its real size": "{name} in Originalgröße in dein Zimmer stellen",
+  "{name} in your room": "{name} in deinem Zimmer",
+  "Getting {name} ready for your room…": "{name} wird für dein Zimmer vorbereitet…",
+  "{name} is too big to place in a room from a phone: its 3D model would be about {size} MB, and a phone is given {most} MB at most.": "{name} ist zu groß, um es vom Telefon aus in ein Zimmer zu stellen: Sein 3D-Modell hätte etwa {size} MB, und ein Telefon bekommt höchstens {most} MB.",
+  "{name}, to turn and to place in your room": "{name}, zum Drehen und zum Aufstellen in deinem Zimmer",
+  "Place it in your room": "In dein Zimmer stellen",
+  "Not shown: {parts} made for this model alone, which this site has no shape for.": "Nicht gezeigt: {parts}, nur für dieses Modell gemacht, für die diese Seite keine Form hat.",
+  "{name} could not be shown here. The picture is still here; try again in a moment.": "{name} konnte hier nicht gezeigt werden. Das Bild ist noch da; versuch es gleich noch einmal.",
+  "This phone could not open its camera on the room. The model is still here to turn.": "Dieses Telefon konnte seine Kamera nicht auf das Zimmer öffnen. Das Modell ist noch da und lässt sich drehen.",
+  "{name} could not be got ready for your room. The picture is still here; try again in a moment.": "{name} konnte nicht für dein Zimmer vorbereitet werden. Das Bild ist noch da; versuch es gleich noch einmal."
  }
 }

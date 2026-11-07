@@ -213,6 +213,8 @@ def test_a_new_copy_that_cannot_start_is_put_back(fault: str) -> None:
         launched = _wait_for(root / "launched", "1.0.0 ")
         # The old one, started again, told which version did not start.
         assert "1.0.0 -- --session=abcd --update-failed=2.0.0" in launched, launched
+        _wait_for(marker, "")  # its last write, before the folder goes
+        assert marker.exists(), "the old copy's window came up"
 
 
 @pytest.mark.skipif(os.name == "nt", reason="the POSIX helper")
@@ -261,6 +263,8 @@ def test_restart_starts_it_again_once_the_app_has_gone() -> None:
                        Path("-"), log, [str(program), "--", "--session=abcd"])
         assert code == 0
         assert "1.0.0 -- --session=abcd" in _wait_for(root / "launched", "--session=abcd")
+        _wait_for(root / "started-1.0.0", "")  # its last write, before the folder goes
+        assert (root / "started-1.0.0").exists(), "its window came up"
 
 
 def test_the_helpers_are_shipped_in_every_desktop_package() -> None:
