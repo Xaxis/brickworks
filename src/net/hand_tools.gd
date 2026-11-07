@@ -54,7 +54,8 @@ static func definitions() -> Array:
 			"name": "mirror_parts",
 			"description": ("Make parts their mirror image, as the window's Mirror "
 				+ "does: each put where its reflection is and turned, a part made in a left and "
-				+ "a right hand (a wing, a wedge plate, a door) swapped for its other hand. "
+				+ "a right hand (a wing, a wedge plate, a door) swapped for its other hand; a "
+				+ "part with no mirror image is turned as near it as it goes and named. "
 				+ "bricks= the parts; axis \"x\" mirrors left to right (the default), \"z\" "
 				+ "front to back. In place, across the plane through their middle; copy=true "
 				+ "leaves them and puts a mirrored copy beside them, across their far side "
@@ -206,6 +207,24 @@ func _mirror(input: Dictionary) -> String:
 		for key: String in swaps:
 			rows.append("%s%s" % [key, "" if int(swaps[key]) == 1 else " (x%d)" % swaps[key]])
 		said.append("Swapped for the other hand: %s." % "; ".join(rows))
+	if not builder.no_image.is_empty():
+		# Never said as done: a part made in one hand only, the same no way
+		# round, is not its reflection however it is turned.
+		var lone := PackedStringArray()
+		for brick_id: int in builder.no_image:
+			lone.append(_brick_words(brick_id))
+		var count: int = lone.size()
+		if count > 12:
+			lone = lone.slice(0, 12)
+			lone.append("and %d more" % (count - 12))
+		said.append(("%s no mirror image: %s. %s not the same any way round, and the library "
+			+ "has no part named as %s other hand, so %s turned as near the reflection as %s; "
+			+ "look at %s, and swap or rebuild %s if the reflection matters there.") % [
+			"1 part has" if count == 1 else "%d parts have" % count,
+			", ".join(lone), "It is" if count == 1 else "They are",
+			"its" if count == 1 else "their", "it is" if count == 1 else "they are",
+			"it goes" if count == 1 else "they go", "it" if count == 1 else "them",
+			"it" if count == 1 else "them"])
 	said.append("One undo step.")
 	return " ".join(said)
 
