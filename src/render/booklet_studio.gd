@@ -42,6 +42,9 @@ var supersample: int = 2
 ## Outline the parts a step adds in a band of their own colour (booklet_ink);
 ## see Booklet.
 var mark_new: bool = false
+## That band's colour, as its designer chose it (BookletSheet
+## outline_colour); null for the booklet's own orange, the ink's.
+var new_colour: Variant = null
 ## How strongly to draw the creases inside a part: see booklet_ink.
 var crease: float = 1.0
 
@@ -404,6 +407,9 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 	# A third of a millimetre of ink at the booklet's resolution.
 	ink.set_shader_parameter("ink", maxf(2.0, 1.5 * times))
 	ink.set_shader_parameter("mark_new", mark_new and new_from <= upto)
+	if new_colour != null:
+		var band: Color = new_colour
+		ink.set_shader_parameter("new_colour", Vector3(band.r, band.g, band.b))
 	# A band of about two thirds of a millimetre round the new parts.
 	ink.set_shader_parameter("halo", maxf(3.0, 3.0 * times))
 	ink.set_shader_parameter("fade", fade * times)

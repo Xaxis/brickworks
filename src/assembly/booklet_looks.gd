@@ -76,7 +76,8 @@
 ## [bx by ...]"; "... NOTE TURN 30 OPACITY 50" after the words or picture it
 ## turns and fades; "... TURN_SIGN OFF" on a step whose turn sign was taken
 ## off; "... GUIDE X 120" in the model, a guide each; "... PAGE_SETUP A4
-## PORTRAIT MARGIN 12 ..." in the model, its page (BookletSheet).
+## PORTRAIT MARGIN 12 ..." in the model, its page, and "... PAGE_TEXT TITLE
+## words" a line each of the designer's words on it (BookletSheet).
 ##
 ## A step's "section" is the booklet's chapter that starts on it: the name
 ## its banner prints ("island", "part 2"), in force on every step after it
@@ -98,7 +99,7 @@ const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
 	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE",
-	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP"]
+	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP", "PAGE_TEXT"]
 ## How far a step's parts are pulled out by default, in studs (Studio's
 ## buffer exchange), and the most.
 const PULL_STUDS := 2.0
@@ -1041,10 +1042,12 @@ static func booklet_wide(looks: Dictionary) -> Dictionary:
 	if not looks.has(BOOKLET):
 		return out
 	out[BOOKLET] = looks[BOOKLET]
-	var behind: String = str(((looks[BOOKLET] as Dictionary).get("sheet", {}) as Dictionary)
-		.get("picture", ""))
-	if (looks.get(DATA, {}) as Dictionary).has(behind):
-		out[DATA] = {behind: looks[DATA][behind]}
+	# Behind its pages, and on its cover (BookletSheet.pictures_named).
+	for behind: String in BookletSheet.pictures_named((looks[BOOKLET] as Dictionary).get("sheet")):
+		if (looks.get(DATA, {}) as Dictionary).has(behind):
+			if not out.has(DATA):
+				out[DATA] = {}
+			out[DATA][behind] = looks[DATA][behind]
 	return out
 
 
@@ -1055,9 +1058,8 @@ static func with_booklet_wide(looks: Dictionary, wide: Dictionary) -> Dictionary
 	var out: Dictionary = looks.duplicate()
 	out.erase(BOOKLET)
 	var pictures: Dictionary = (looks.get(DATA, {}) as Dictionary).duplicate()
-	var behind: String = str(((looks.get(BOOKLET, {}) as Dictionary).get("sheet", {}) as Dictionary)
-		.get("picture", ""))
-	pictures.erase(behind)
+	for behind: String in BookletSheet.pictures_named((looks.get(BOOKLET, {}) as Dictionary).get("sheet")):
+		pictures.erase(behind)
 	pictures.merge(booklet_wide(wide).get(DATA, {}), true)
 	out.erase(DATA)
 	if not pictures.is_empty():
@@ -1231,8 +1233,9 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 					(kept[value.to_lower()] as Array).append(snappedf(clampf(words[4].to_float(),
 						0.0, BookletSheet.LONGEST), 0.1))
 					_put_in(out, BOOKLET, "guides", kept)
-			"PAGE_SETUP":
-				var sheet: Dictionary = BookletSheet.read_words(words.slice(3))
+			"PAGE_SETUP", "PAGE_TEXT":
+				var sheet: Dictionary = BookletSheet.read_line(words[2], words.slice(3),
+					_rest_after(line, 4), (out.get(BOOKLET, {}) as Dictionary).get("sheet", {}))
 				if not sheet.is_empty():
 					_put_in(out, BOOKLET, "sheet", sheet)
 	if not data_name.is_empty():
@@ -1240,10 +1243,9 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 	pictures = kept_pictures(pictures)
 	# Only the pictures a page shows, and the one behind every page.
 	var shown: Dictionary = {}
-	var behind: String = str(((out.get(BOOKLET, {}) as Dictionary).get("sheet", {}) as Dictionary)
-		.get("picture", ""))
-	if pictures.has(behind):
-		shown[behind] = pictures[behind]
+	for behind: String in BookletSheet.pictures_named((out.get(BOOKLET, {}) as Dictionary).get("sheet")):
+		if pictures.has(behind):
+			shown[behind] = pictures[behind]
 	for name: String in out:
 		for note: Dictionary in (out[name] as Dictionary).get("notes", []):
 			if note.has("image") and pictures.has(str(note["image"])):
@@ -1400,7 +1402,8 @@ static func _typed_field(field: String, value: Variant) -> Variant:
 				return null
 			var fields: Dictionary = {}
 			for key: Variant in value:
-				if key is String and (key != "picture" or _typed_picture(value[key], null) != null):
+				if key is String and (not key in ["picture", "cover_picture"]
+						or _typed_picture(value[key], null) != null):
 					fields[key] = value[key]
 			return BookletSheet.from(fields).said()
 	return null
@@ -1585,9 +1588,10 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	var pictures: Dictionary = looks.get(DATA, {})
 	var shown: Dictionary = {}
 	var whole: Variant = looks.get(BOOKLET, {})
-	var sheet: Variant = (whole as Dictionary).get("sheet", {}) if whole is Dictionary else {}
-	if sheet is Dictionary and pictures.has(str((sheet as Dictionary).get("picture", ""))):
-		shown[str(sheet["picture"])] = true
+	for behind: String in BookletSheet.pictures_named((whole as Dictionary).get("sheet")
+			if whole is Dictionary else null):
+		if pictures.has(behind):
+			shown[behind] = true
 	for name: String in looks:
 		for note: Variant in (looks[name] as Dictionary).get("notes", []) \
 				if looks[name] is Dictionary else []:
@@ -1627,9 +1631,12 @@ static func _booklet_lines(out: PackedStringArray, whole: Dictionary, eol: Strin
 		for at: Variant in kept.get(axis, []):
 			out.append(META + "GUIDE %s %s" % [axis.to_upper(), _number(snappedf(float(at), 0.1))] + eol)
 	if whole.get("sheet") is Dictionary and not (whole["sheet"] as Dictionary).is_empty():
-		var said: String = BookletSheet.from(whole["sheet"]).line_words()
+		var sheet: BookletSheet = BookletSheet.from(whole["sheet"])
+		var said: String = sheet.line_words()
 		if not said.is_empty():
 			out.append(META + "PAGE_SETUP " + said + eol)
+		for words: String in sheet.text_lines():
+			out.append(META + "PAGE_TEXT " + words + eol)
 
 
 ## The end of a section: the looks of its last step, which has no line

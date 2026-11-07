@@ -197,6 +197,10 @@ arrow= and guide= lay a page out by hand; callout_step= poses a callout's step.
 page, number= the step numbers' height and parts= the parts boxes' scale, as \
 Build, Booklet page, Page setup… does; save_as= keeps it as a style by a \
 name, style= gives a kept one to this model, remove_style= takes one away.
+ - page_setup's title=, subtitle=, cover_line= and cover_picture_data= make \
+the cover the designer's own; header= and footer= go on every page; \
+box_frame=, box_fill=, box_corners=, number_colour= and outline_colour= are \
+the booklet's colours. A style keeps them all.
  - lay_flex: a hose, a pneumatic tube, a flexible axle, a string or a \
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.
@@ -498,7 +502,15 @@ func definitions() -> Array:
 				+ "page again. save_as= keeps the page as a style by that name, style= gives "
 				+ "this model a kept style whole, and remove_style= takes a kept style away. One "
 				+ "undo step, saved with the model. With nothing, says how the page is set up, "
-				+ "its picture's size in the file, and the styles kept."),
+				+ "its picture's size in the file, and the styles kept. "
+				# booklook: the booklet the designer's way.
+				+ "The cover: title= (the model's name when none), subtitle= under it, "
+				+ "cover_line= a line of their words on it, cover_picture_url= or "
+				+ "cover_picture_data= a picture of their own (cover_picture= \"model\" the "
+				+ "model drawn again). header= and footer= words on every page (\"\" none). "
+				+ "box_frame=, box_fill= and box_corners= (mm) the parts box, number_colour= "
+				+ "the step numbers, outline_colour= the band round the new parts; a colour "
+				+ "\"usual\" is the booklet's own. A style keeps all of these."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"size": {"type": "string", "enum": ["booklet", "A4", "letter", "A5"]},
 				"orientation": {"type": "string", "enum": ["portrait", "landscape"]},
@@ -513,6 +525,20 @@ func definitions() -> Array:
 				"style": {"type": "string", "description": "a style kept by save_as=, given whole"},
 				"save_as": {"type": "string", "description": "keep the page as a style by this name"},
 				"remove_style": {"type": "string", "description": "a style kept by save_as=, taken away"},
+				# booklook: the cover, the words on every page, the booklet's colours.
+				"title": {"type": "string", "description": "the cover's title, \"\" the model's name"},
+				"subtitle": {"type": "string", "description": "a line under the title"},
+				"cover_line": {"type": "string", "description": "a line of words on the cover"},
+				"cover_picture_url": {"type": "string", "description": "an http(s) link to a picture for the cover"},
+				"cover_picture_data": {"type": "string", "description": "the cover's picture's own bytes, base64"},
+				"cover_picture": {"type": "string", "enum": ["model"]},
+				"header": {"type": "string", "description": "words at the head of every page"},
+				"footer": {"type": "string", "description": "words at the foot of every page"},
+				"box_frame": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
+				"box_fill": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
+				"box_corners": {"type": "number", "description": "mm, 0 to 8 (2.2 usual)"},
+				"number_colour": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
+				"outline_colour": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
 			}},
 		},
 		{
@@ -1461,26 +1487,47 @@ func _page_setup(input: Dictionary) -> String:
 		if input.has(field):
 			fields[field] = input[field]
 	if input.has("picture_url") or input.has("picture_data"):
-		var image: Image = null
-		if input.has("picture_data"):
-			var read: Dictionary = PictureFile.from_data(str(input["picture_data"]))
-			if read.has("error"):
-				return _sentence(str(read["error"]))
-			image = read["image"]
-		else:
-			var fetched: Dictionary = await _fetch(str(input["picture_url"]).strip_edges(),
-				PictureFile.MOST_BYTES)
-			if fetched.has("error"):
-				return str(fetched["error"])
-			image = PictureFile.decode(fetched["bytes"])
-			if image == null:
-				return _sentence(PictureFile.not_read(fetched["bytes"], "That link"))
+		var image: Variant = await _page_picture(input, "picture")
+		if image is String:
+			return image
 		var kept: Array = BookletSheet.picture_of(image)
 		fields["picture"] = kept[0]
 		fields["picture_data"] = kept[1]
 	elif str(input.get("picture", "")).to_lower() in ["none", "off", "false"]:
 		fields["picture"] = ""
+	# booklook: the cover, the words on every page, the booklet's colours.
+	for field: String in BookletSheet.TEXTS + ["box_frame", "box_fill", "box_corners",
+			"number_colour", "outline_colour"]:
+		if input.has(field):
+			fields[field] = input[field]
+	if input.has("cover_picture_url") or input.has("cover_picture_data"):
+		var image: Variant = await _page_picture(input, "cover_picture")
+		if image is String:
+			return image
+		var cover: Array = BookletSheet.cover_of(image)
+		fields["cover_picture"] = cover[0]
+		fields["cover_picture_data"] = cover[1]
+	elif str(input.get("cover_picture", "")).to_lower() in ["model", "none", "off", "false"]:
+		fields["cover_picture"] = ""
 	return _sentence(shell.page_setup(fields))
+
+
+## The picture [param input]'s [param field]_data or [param field]_url
+## gives: an Image, or what was wrong as the answer's words.
+func _page_picture(input: Dictionary, field: String) -> Variant:
+	if input.has(field + "_data"):
+		var read: Dictionary = PictureFile.from_data(str(input[field + "_data"]))
+		if read.has("error"):
+			return _sentence(str(read["error"]))
+		return read["image"]
+	var fetched: Dictionary = await _fetch(str(input[field + "_url"]).strip_edges(),
+		PictureFile.MOST_BYTES)
+	if fetched.has("error"):
+		return str(fetched["error"])
+	var image: Image = PictureFile.decode(fetched["bytes"])
+	if image == null:
+		return _sentence(PictureFile.not_read(fetched["bytes"], "That link"))
+	return image
 
 
 ## How a step is printed, set (Shell.change_look): one undo.

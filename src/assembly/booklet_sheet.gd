@@ -12,10 +12,23 @@
 ## or sharing instructions in their own colours, sets it here; the booklet
 ## is laid out on that page, and its PDF's pages are that paper's size.
 ##
+## And the booklet the designer's way, as Studio's and LPub3D's are
+## (booklook): a cover of their own, its title, a line under it, a picture
+## of the model or of their own and a line of their words; words of theirs
+## at the head and the foot of every page; the parts box's frame, fill and
+## corners, the step number's colour, and the colour round the new parts.
+##
 ## In the file: "0 !BRICKWORKS PAGE_SETUP A4 PORTRAIT MARGIN 12 COLOUR
 ## #FFFFFF NUMBER 10 PARTS 1.25 PICTURE brickworks-page-behind.jpg", each
 ## part only when it is not the booklet's own, the picture as LDraw's
-## embedded file beside the pictures its pages show (BookletLooks "|data").
+## embedded file beside the pictures its pages show (BookletLooks "|data");
+## then "BOX_FRAME #C0392B BOX_FILL #FFF4D6 BOX_CORNERS 4 NUMBER_COLOUR
+## #1E7B34 OUTLINE_COLOUR #7B2CBF COVER_PICTURE brickworks-page-cover.jpg"
+## on it, and each of the person's words on a line of its own, as typed:
+## "0 !BRICKWORKS PAGE_TEXT TITLE The Gatehouse", SUBTITLE, COVER_LINE,
+## HEADER and FOOTER. A build before these reads none of them and is not
+## misled by any: its PAGE_SETUP's words are none of theirs, and PAGE_TEXT
+## is a line it passes over.
 class_name BookletSheet
 extends RefCounted
 
@@ -81,6 +94,29 @@ const PART := ".part"
 const ASIDE := ".aside"
 const LEFT_S := 3600
 
+## booklook: the cover's picture of the person's own, by its name among the
+## model's pictures (BookletLooks IMAGE_PREFIX, kept as the one behind the
+## pages is).
+const COVER_NAME := "brickworks-page-cover"
+## The booklet's own parts box (Booklet's stylesheet --box-line, --box and
+## the .box's corners, in mm), its step number's ink, and the band of
+## orange round the new parts (booklet_ink's new_colour, 1.0 0.52 0.06).
+const BOX_FRAME := Color8(61, 111, 151)
+const BOX_FILL := Color8(188, 218, 241)
+const BOX_CORNERS := 2.2
+const CORNERS_RANGE := Vector2(0.0, 8.0)
+const NUMBER_COLOUR := Color8(21, 25, 30)
+const OUTLINE_COLOUR := Color8(255, 133, 15)
+## The colours a person may give, each with the booklet's own.
+const COLOURS: Dictionary = {"box_frame": BOX_FRAME, "box_fill": BOX_FILL,
+	"number_colour": NUMBER_COLOUR, "outline_colour": OUTLINE_COLOUR}
+## The words a person may give: the cover's title (the model's name when
+## none), the line under it, the line of their words on the cover, and the
+## words at the head and the foot of every page. One line each, of at most
+## [constant TEXT_MOST] letters.
+const TEXTS: Array[String] = ["title", "subtitle", "cover_line", "header", "footer"]
+const TEXT_MOST := 120
+
 var paper: String = "booklet"
 var portrait: bool = false
 var margin: float = MARGIN
@@ -95,6 +131,24 @@ var missing: bool = false
 ## The step number's height in mm, and the parts boxes' pictures' scale.
 var number: float = NUMBER
 var parts: float = 1.0
+## booklook: the person's words ([constant TEXTS]), "" where they gave none.
+var title: String = ""
+var subtitle: String = ""
+var cover_line: String = ""
+var header: String = ""
+var footer: String = ""
+## The cover's picture of their own: its name among the model's pictures,
+## "" for the model drawn as the booklet draws it; its data URI; and its
+## file naming one it does not carry, as [member missing] says of the one
+## behind the pages.
+var cover_picture: String = ""
+var cover_uri: String = ""
+var cover_missing: bool = false
+var box_frame: Color = BOX_FRAME
+var box_fill: Color = BOX_FILL
+var box_corners: float = BOX_CORNERS
+var number_colour: Color = NUMBER_COLOUR
+var outline_colour: Color = OUTLINE_COLOUR
 
 
 ## The page, in mm, as it is printed.
@@ -136,6 +190,47 @@ func said() -> Dictionary:
 		out["number"] = number
 	if not is_equal_approx(parts, 1.0):
 		out["parts"] = parts
+	for field: String in TEXTS:
+		if not str(get(field)).is_empty():
+			out[field] = str(get(field))
+	if not cover_picture.is_empty():
+		out["cover_picture"] = cover_picture
+	for field: String in COLOURS:
+		if not same_colour(get(field), COLOURS[field]):
+			out[field] = "#" + (get(field) as Color).to_html(false)
+	if not is_equal_approx(box_corners, BOX_CORNERS):
+		out["box_corners"] = box_corners
+	return out
+
+
+## Whether the cover is the person's own: a title, a line or a picture of
+## theirs on it. The booklet's own cover has its BRICKWORKS badge, which
+## theirs does not (Booklet._cover).
+func own_cover() -> bool:
+	return not (title + subtitle + cover_line + cover_picture).is_empty()
+
+
+## Whether two colours are one, as a file's #RRGGBB says them.
+static func same_colour(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.5 / 255.0 and absf(a.g - b.g) < 0.5 / 255.0 \
+		and absf(a.b - b.b) < 0.5 / 255.0
+
+
+## The step number's colour as a page's style says it: "" for the booklet's
+## own ink.
+func number_style() -> String:
+	return "" if same_colour(number_colour, NUMBER_COLOUR) else "color:#" + number_colour.to_html(false)
+
+
+## The pictures a page set up as [param kept] ([method said]'s) shows, by
+## their names among the model's pictures: the one behind the pages and the
+## cover's.
+static func pictures_named(kept: Variant) -> Array[String]:
+	var out: Array[String] = []
+	if kept is Dictionary:
+		for field: String in ["picture", "cover_picture"]:
+			if not str((kept as Dictionary).get(field, "")).is_empty():
+				out.append(str(kept[field]))
 	return out
 
 
@@ -199,7 +294,41 @@ func change(fields: Dictionary) -> String:
 				else:
 					wrong.append("parts= is how big the parts boxes' pictures are, %s to %s"
 						% [PARTS_RANGE.x, PARTS_RANGE.y])
+			"title", "subtitle", "cover_line", "header", "footer":
+				set(field, one_line(value))
+			"cover_picture":
+				cover_picture = str(value).strip_edges().to_lower() if value != null else ""
+				if cover_picture.is_empty():
+					cover_uri = ""
+			"box_frame", "box_fill", "number_colour", "outline_colour", "number_color", \
+					"outline_color":
+				var key: String = field.replace("_color", "_colour")
+				var text: String = str(value).strip_edges() if value != null else ""
+				if text.is_empty() or text == "usual":
+					set(key, COLOURS[key])
+				elif Color.html_is_valid(text):
+					var given: Color = Color.html(text)
+					given.a = 1.0
+					set(key, given)
+				else:
+					wrong.append("%s= is a colour like \"#ffffff\", or \"usual\"" % key)
+			"box_corners":
+				if _number(value):
+					box_corners = snappedf(clampf(float(value), CORNERS_RANGE.x, CORNERS_RANGE.y), 0.1)
+				else:
+					wrong.append("box_corners= is how round the parts box's corners are, in mm, %d to %d"
+						% [CORNERS_RANGE.x, CORNERS_RANGE.y])
 	return "; ".join(wrong)
+
+
+## [param value] as a line of a person's words: one line, as typed but for
+## its breaks and tabs (each a space) and the spaces round it, and no longer
+## than [constant TEXT_MOST].
+static func one_line(value: Variant) -> String:
+	if value == null:
+		return ""
+	var text: String = RegEx.create_from_string("[\\x{00}-\\x{1f}\\x{7f}]").sub(str(value), " ", true)
+	return text.strip_edges().left(TEXT_MOST).strip_edges()
 
 
 static func _number(value: Variant) -> bool:
@@ -229,6 +358,10 @@ static func of(world: BrickWorld) -> BookletSheet:
 		var bytes: String = str(BookletLooks.images(world).get(out.picture, ""))
 		out.picture_uri = picture_uri_of(out.picture, bytes) if not bytes.is_empty() else ""
 		out.missing = out.picture_uri.is_empty()
+	if not out.cover_picture.is_empty():
+		var bytes: String = str(BookletLooks.images(world).get(out.cover_picture, ""))
+		out.cover_uri = picture_uri_of(out.cover_picture, bytes) if not bytes.is_empty() else ""
+		out.cover_missing = out.cover_uri.is_empty()
 	return out
 
 
@@ -259,8 +392,28 @@ static func picture_of(image: Image) -> Array:
 	if maxi(size.x, size.y) > ceili(widest * LONGEST * PX_PER_MM):
 		var shown := Vector2i(mini(size.x, ceili(size.y * widest)), mini(size.y, ceili(size.x * widest)))
 		image = image.get_region(Rect2i((size - shown) / 2, shown))
+	return _kept(image, PICTURE_NAME)
+
+
+## [param image] as the cover's picture of the person's own is kept: shown
+## whole on the cover, so its longest side no more than the longest page
+## shows at [constant PX_PER_MM], never made bigger; a JPEG, or a PNG where
+## it lets something show through, as [method picture_of] keeps one.
+## [name, base64].
+static func cover_of(image: Image) -> Array:
+	var k: float = minf(1.0, LONGEST * PX_PER_MM / maxf(image.get_width(), image.get_height()))
+	if k < 1.0:
+		image.resize(maxi(1, roundi(image.get_width() * k)), maxi(1, roundi(image.get_height() * k)),
+			Image.INTERPOLATE_LANCZOS)
+	return _kept(image, COVER_NAME)
+
+
+## [param image] under [param name]: a JPEG, or a PNG no more than
+## [constant SEE_THROUGH_BYTES] unless it is down to [constant
+## SEE_THROUGH_LEAST] px where it lets something show through.
+static func _kept(image: Image, name: String) -> Array:
 	if image.detect_alpha() == Image.ALPHA_NONE:
-		return ["%s.jpg" % PICTURE_NAME, Marshalls.raw_to_base64(image.save_jpg_to_buffer(0.86))]
+		return ["%s.jpg" % name, Marshalls.raw_to_base64(image.save_jpg_to_buffer(0.86))]
 	var bytes: PackedByteArray = image.save_png_to_buffer()
 	while bytes.size() > SEE_THROUGH_BYTES and maxi(image.get_width(), image.get_height()) > SEE_THROUGH_LEAST:
 		var longest: int = maxi(image.get_width(), image.get_height())
@@ -268,7 +421,7 @@ static func picture_of(image: Image) -> Array:
 		image.resize(maxi(1, roundi(image.get_width() * step)), maxi(1, roundi(image.get_height() * step)),
 			Image.INTERPOLATE_LANCZOS)
 		bytes = image.save_png_to_buffer()
-	return ["%s.png" % PICTURE_NAME, Marshalls.raw_to_base64(bytes)]
+	return ["%s.png" % name, Marshalls.raw_to_base64(bytes)]
 
 
 ## How a picture behind the pages, [param base64], is kept, in words: "a
@@ -300,26 +453,65 @@ func line_words() -> String:
 		words.append("PARTS %s" % BookletLooks._number(parts))
 	if not picture.is_empty():
 		words.append("PICTURE %s" % picture)
+	for field: String in COLOURS:
+		if not same_colour(get(field), COLOURS[field]):
+			words.append("%s #%s" % [field.to_upper(), (get(field) as Color).to_html(false).to_upper()])
+	if not is_equal_approx(box_corners, BOX_CORNERS):
+		words.append("BOX_CORNERS %s" % BookletLooks._number(box_corners))
+	if not cover_picture.is_empty():
+		words.append("COVER_PICTURE %s" % cover_picture)
 	return " ".join(words)
+
+
+## The person's words as their file's lines say them, each after "0
+## !BRICKWORKS PAGE_TEXT": ["TITLE The Gatehouse", "FOOTER © 2026 A.
+## Builder"], none for none.
+func text_lines() -> PackedStringArray:
+	var out := PackedStringArray()
+	for field: String in TEXTS:
+		if not str(get(field)).is_empty():
+			out.append("%s %s" % [field.to_upper(), str(get(field))])
+	return out
 
 
 ## The page its file's line says ([param words], after PAGE_SETUP), as
 ## [method said] keeps it.
 static func read_words(words: PackedStringArray) -> Dictionary:
 	var out := BookletSheet.new()
+	out._read_words(words)
+	return out.said()
+
+
+## The page [param kept] says ([method said]'s), with what a line of its
+## file says: [param kind] PAGE_SETUP, its [param words] after that; or
+## PAGE_TEXT, its first word which of the person's words it is and [param
+## rest] the words themselves, as written. Its lines may come in any order.
+static func read_line(kind: String, words: PackedStringArray, rest: String,
+		kept: Variant) -> Dictionary:
+	var out: BookletSheet = from(kept if kept is Dictionary else {})
+	if kind == "PAGE_TEXT":
+		if not words.is_empty() and words[0].to_lower() in TEXTS:
+			out.change({words[0].to_lower(): rest})
+	else:
+		out._read_words(words)
+	return out.said()
+
+
+func _read_words(words: PackedStringArray) -> void:
 	var at: int = 0
+	var named: Array = ["MARGIN", "COLOUR", "NUMBER", "PARTS", "PICTURE", "BOX_CORNERS",
+		"COVER_PICTURE"] + COLOURS.keys().map(func(field: String) -> String: return field.to_upper())
 	while at < words.size():
 		var word: String = words[at].to_upper()
 		var next: String = words[at + 1] if at + 1 < words.size() else ""
 		if not paper_of(word).is_empty():
-			out.paper = paper_of(word)
+			paper = paper_of(word)
 		elif word in ["PORTRAIT", "LANDSCAPE"]:
-			out.portrait = word == "PORTRAIT"
-		elif word in ["MARGIN", "COLOUR", "NUMBER", "PARTS", "PICTURE"] and not next.is_empty():
-			out.change({word.to_lower(): next})
+			portrait = word == "PORTRAIT"
+		elif word in named and not next.is_empty():
+			change({word.to_lower(): next})
 			at += 1
 		at += 1
-	return out.said()
 
 
 ## How it reads, for a person and a session: "A4 upright, margins 12 mm, a
@@ -343,6 +535,39 @@ func words() -> String:
 	out.append("step numbers %s mm" % BookletLooks._number(number))
 	if not is_equal_approx(parts, 1.0):
 		out.append("parts boxes' pictures at %sx" % BookletLooks._number(parts))
+	# booklook: what the designer made their own.
+	if own_cover():
+		var cover := PackedStringArray()
+		if not title.is_empty():
+			cover.append("titled “%s”" % title)
+		if not subtitle.is_empty():
+			cover.append("“%s” under it" % subtitle)
+		if cover_missing:
+			cover.append("its picture (%s) missing from the file" % cover_picture)
+		elif not cover_uri.is_empty():
+			cover.append("their own picture (%s)" % picture_words(cover_uri.substr(cover_uri.find(",") + 1)))
+		elif not cover_picture.is_empty():
+			cover.append("their own picture")
+		if not cover_line.is_empty():
+			cover.append("the line “%s”" % cover_line)
+		out.append("a cover of their own, %s" % ", ".join(cover))
+	if not header.is_empty():
+		out.append("“%s” at the head of every page" % header)
+	if not footer.is_empty():
+		out.append("“%s” at the foot of every page" % footer)
+	var box := PackedStringArray()
+	if not same_colour(box_frame, BOX_FRAME):
+		box.append("framed #%s" % box_frame.to_html(false))
+	if not same_colour(box_fill, BOX_FILL):
+		box.append("filled #%s" % box_fill.to_html(false))
+	if not is_equal_approx(box_corners, BOX_CORNERS):
+		box.append("corners %s mm" % BookletLooks._number(box_corners))
+	if not box.is_empty():
+		out.append("parts boxes %s" % " and ".join(box))
+	if not same_colour(number_colour, NUMBER_COLOUR):
+		out.append("step numbers in #%s" % number_colour.to_html(false))
+	if not same_colour(outline_colour, OUTLINE_COLOUR):
+		out.append("new parts outlined in #%s" % outline_colour.to_html(false))
 	return ", ".join(out)
 
 
@@ -366,7 +591,8 @@ static func styles() -> Dictionary:
 
 ## The style [param name] as it is given to a model: its said fields, and
 ## with a picture its bytes as "picture_data" (base64); "picture_lost" true
-## when its picture could not be read. {} when there is no such style.
+## when its picture could not be read; the cover's picture the same, as
+## "cover_picture_data" and "cover_lost". {} when there is no such style.
 ## Nothing is written.
 static func style(name: String) -> Dictionary:
 	var record: Variant = _read_style(_style_path(name))
@@ -380,13 +606,16 @@ static func style(name: String) -> Dictionary:
 			page["picture_data"] = kept[1]
 		return page
 	var out: Dictionary = (record["page"] as Dictionary).duplicate()
-	var picture_file: String = str(record.get("picture_file", ""))
-	if not picture_file.is_empty():
+	for kept: Array in [["picture_file", "picture_data", "picture_lost"],
+			["cover_file", "cover_picture_data", "cover_lost"]]:
+		var picture_file: String = str(record.get(kept[0], ""))
+		if picture_file.is_empty():
+			continue
 		var bytes: PackedByteArray = _picture_bytes(picture_file)
 		if bytes.is_empty():
-			out["picture_lost"] = true
+			out[kept[2]] = true
 		else:
-			out["picture_data"] = Marshalls.raw_to_base64(bytes)
+			out[kept[1]] = Marshalls.raw_to_base64(bytes)
 	return out
 
 
@@ -395,13 +624,16 @@ static func style(name: String) -> Dictionary:
 ## one small file for the style, the picture once beside the others by
 ## what it is, so styles sharing a picture keep it once. A style of that
 ## name already kept is replaced, and its picture taken away when no style
-## shows it now. Returns what went wrong, "" when kept.
-static func save_style(name: String, sheet: BookletSheet, picture_data: String) -> String:
+## shows it now. The cover's picture of the person's own, [param
+## cover_data], the same. Returns what went wrong, "" when kept.
+static func save_style(name: String, sheet: BookletSheet, picture_data: String,
+		cover_data: String = "") -> String:
 	name = name.strip_edges()
 	if name.is_empty():
 		return "a style needs a name"
 	_move_old_styles()
-	var failed: String = _write_style(name, sheet.said(), picture_data if not sheet.picture.is_empty() else "")
+	var failed: String = _write_style(name, sheet.said(), picture_data if not sheet.picture.is_empty() else "",
+		cover_data if not sheet.cover_picture.is_empty() else "")
 	_drop_unshown_pictures()
 	return failed
 
@@ -433,7 +665,8 @@ static func _read_style(path: String) -> Variant:
 	var record: Variant = JSON.parse_string(text.get_string_from_utf8())
 	if not record is Dictionary or not (record as Dictionary).get("name") is String \
 			or not (record as Dictionary).get("page") is Dictionary \
-			or not (record as Dictionary).get("picture_file", "") is String:
+			or not (record as Dictionary).get("picture_file", "") is String \
+			or not (record as Dictionary).get("cover_file", "") is String:
 		push_warning("a page style could not be read: %s" % path)
 		return null
 	return record
@@ -462,25 +695,32 @@ static func _style_records(unread: Array = []) -> Array[Dictionary]:
 ## stores what a tab changed). Then the picture written again if it has
 ## gone since: another window taking away the pictures no style shows may
 ## have read the styles before this one was there.
-static func _write_style(name: String, page: Dictionary, picture_data: String) -> String:
+static func _write_style(name: String, page: Dictionary, picture_data: String,
+		cover_data: String = "") -> String:
 	DirAccess.make_dir_recursive_absolute(STYLE_PICTURES)
 	var record: Dictionary = {"name": name, "page": page.duplicate()}
-	var picture: String = ""
-	var bytes := PackedByteArray()
-	if not picture_data.is_empty() and not BookletLooks.picture_kind(picture_data).is_empty():
-		var picture_file: String = "%s.%s" % [picture_data.sha256_text().left(32),
-			"png" if BookletLooks.picture_kind(picture_data) == "png" else "jpg"]
-		picture = STYLE_PICTURES.path_join(picture_file)
-		bytes = Marshalls.base64_to_raw(picture_data)
-		if not _write_whole(picture, bytes):
+	## [path, bytes] of each picture written.
+	var written: Array = []
+	# The one behind the pages, and the cover's (booklook).
+	for kept: Array in [["picture_file", "picture", picture_data],
+			["cover_file", "cover_picture", cover_data]]:
+		var data: String = kept[2]
+		if data.is_empty() or BookletLooks.picture_kind(data).is_empty():
+			(record["page"] as Dictionary).erase(kept[1])
+			continue
+		var picture_file: String = "%s.%s" % [data.sha256_text().left(32),
+			"png" if BookletLooks.picture_kind(data) == "png" else "jpg"]
+		var path: String = STYLE_PICTURES.path_join(picture_file)
+		var bytes: PackedByteArray = Marshalls.base64_to_raw(data)
+		if not _write_whole(path, bytes):
 			return "the style's picture could not be kept"
-		record["picture_file"] = picture_file
-	else:
-		(record["page"] as Dictionary).erase("picture")
+		record[kept[0]] = picture_file
+		written.append([path, bytes])
 	if not _write_whole(_style_path(name), (JSON.stringify(record, "\t") + "\n").to_utf8_buffer()):
 		return "the style could not be kept"
-	if not picture.is_empty() and not FileAccess.file_exists(picture) and not _write_whole(picture, bytes):
-		return "the style's picture could not be kept"
+	for picture: Array in written:
+		if not FileAccess.file_exists(str(picture[0])) and not _write_whole(str(picture[0]), picture[1]):
+			return "the style's picture could not be kept"
 	return ""
 
 
@@ -544,6 +784,7 @@ static func _shown_pictures() -> Variant:
 	var shown: Dictionary = {}
 	for record: Dictionary in _style_records(unread):
 		shown[str(record.get("picture_file", ""))] = true
+		shown[str(record.get("cover_file", ""))] = true
 	return shown if unread.is_empty() else null
 
 

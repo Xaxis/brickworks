@@ -3222,7 +3222,10 @@ func open_page_setup() -> void:
 ## its name, or "picture" "" to take it off; "save_as" a name to keep the
 ## page as a style for another model; "remove_style" a style's name, taken
 ## away (the models given it keep their page). One undo, saved with the
-## model. Returns what was done, or why nothing was.
+## model. Returns what was done, or why nothing was. (booklook) The cover's
+## picture of the person's own the same: "cover_picture_data", its name
+## "cover_picture", "" for the model drawn; and the words and colours
+## BookletSheet.change takes.
 func page_setup(fields: Dictionary) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
@@ -3257,13 +3260,15 @@ func page_setup(fields: Dictionary) -> String:
 			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles)]) \
 				if not styles.is_empty() else "no page style is kept yet: save_as= keeps this page as one"
 		sheet = BookletSheet.new()
-		style_lost = bool(style.get("picture_lost", false))
-		if style.has("picture_data") and style.has("picture"):
-			pictures[str(style["picture"])] = str(style["picture_data"])
-		else:
-			style.erase("picture")
-		style.erase("picture_data")
+		style_lost = bool(style.get("picture_lost", false)) or bool(style.get("cover_lost", false))
+		for kept: Array in [["picture", "picture_data"], ["cover_picture", "cover_picture_data"]]:
+			if style.has(kept[1]) and style.has(kept[0]):
+				pictures[str(style[kept[0]])] = str(style[kept[1]])
+			else:
+				style.erase(kept[0])
+			style.erase(kept[1])
 		style.erase("picture_lost")
+		style.erase("cover_lost")
 		sheet.change(style)
 		words = "the page style \"%s\"" % name
 	if given.has("picture_data"):
@@ -3272,7 +3277,14 @@ func page_setup(fields: Dictionary) -> String:
 			named = BookletSheet.PICTURE_NAME + "." + named.get_extension()
 		pictures[named] = str(given["picture_data"])
 		given["picture"] = named
-	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style"]:
+	# booklook: the cover's picture of the person's own, named as it is.
+	if given.has("cover_picture_data"):
+		var named: String = str(given.get("cover_picture", BookletSheet.COVER_NAME + ".jpg")).to_lower()
+		named = BookletSheet.COVER_NAME + "." + ("png" if named.get_extension() == "png" else "jpg")
+		pictures[named] = str(given["cover_picture_data"])
+		given["cover_picture"] = named
+	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style",
+			"cover_picture_data"]:
 		given.erase(field)
 	var wrong: String = sheet.change(given)
 	if not wrong.is_empty():
@@ -3286,11 +3298,23 @@ func page_setup(fields: Dictionary) -> String:
 	# Behind every page of the booklet's HTML as it is: a PNG or a JPEG in base64 only.
 	if pictures.has(sheet.picture) and BookletLooks.picture_kind(str(pictures[sheet.picture])).is_empty():
 		return "the picture behind the pages is a PNG or a JPEG, in base64"
-	# The picture that was behind the pages, gone with them.
+	# The cover's the same (booklook).
+	var cover_missing: bool = was.cover_missing and sheet.cover_picture == was.cover_picture \
+		and not pictures.has(sheet.cover_picture)
+	if not sheet.cover_picture.is_empty() and not pictures.has(sheet.cover_picture) \
+			and not cover_missing:
+		return "there is no picture called %s: cover_picture_data= gives one" % sheet.cover_picture
+	if pictures.has(sheet.cover_picture) \
+			and BookletLooks.picture_kind(str(pictures[sheet.cover_picture])).is_empty():
+		return "the cover's picture is a PNG or a JPEG, in base64"
+	# The picture that was behind the pages, gone with them; the cover's too.
 	if not was.picture.is_empty() and was.picture != sheet.picture:
 		pictures.erase(was.picture)
+	if not was.cover_picture.is_empty() and was.cover_picture != sheet.cover_picture:
+		pictures.erase(was.cover_picture)
 	for name: String in pictures.keys():
-		if name.begins_with(BookletSheet.PICTURE_NAME) and name != sheet.picture:
+		if name.begins_with(BookletSheet.PICTURE_NAME) and name != sheet.picture \
+				or name.begins_with(BookletSheet.COVER_NAME) and name != sheet.cover_picture:
 			pictures.erase(name)
 	var also := PackedStringArray()
 	if fields.has("remove_style"):
@@ -3306,7 +3330,8 @@ func page_setup(fields: Dictionary) -> String:
 	if fields.has("save_as"):
 		var keeping: String = str(fields["save_as"]).strip_edges()
 		var replaced: bool = BookletSheet.styles().has(keeping)
-		var failed: String = BookletSheet.save_style(keeping, sheet, str(pictures.get(sheet.picture, "")))
+		var failed: String = BookletSheet.save_style(keeping, sheet, str(pictures.get(sheet.picture, "")),
+			str(pictures.get(sheet.cover_picture, "")))
 		also.append(failed if not failed.is_empty() else "kept as the page style \"%s\"%s"
 			% [keeping, " in place of the one kept by that name" if replaced else ""])
 	var tail: String = ("; " + "; ".join(also)) if not also.is_empty() else ""

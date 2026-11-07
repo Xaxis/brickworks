@@ -109,8 +109,6 @@ var _behind: Texture2D = null
 var _behind_uri: String = ""
 
 const PAGE_COLOUR := Color8(220, 236, 248)
-const PARTS_COLOUR := Color8(188, 218, 241)
-const PARTS_LINE := Color8(61, 111, 151)
 const CALLOUT_COLOUR := Color8(255, 243, 200)
 const INK := Color8(21, 25, 30)
 const PICK := Color(0.16, 0.45, 0.95)
@@ -801,6 +799,16 @@ func _draw_page() -> void:
 		_canvas.draw_string(font, Vector2(_sheet.size().x - _sheet.margin - 8.0,
 			_sheet.size().y - _sheet.margin + 4.0) * k, str(page.number), HORIZONTAL_ALIGNMENT_LEFT, -1,
 			int(3.6 * k), INK)
+		# The designer's words at the head and foot of every page (booklook).
+		var words := Color8(59, 70, 82)
+		if not _sheet.header.is_empty():
+			_canvas.draw_string(font, Vector2(_sheet.margin, _sheet.margin * 0.5 + 1.2) * k,
+				_sheet.header, HORIZONTAL_ALIGNMENT_CENTER, (_sheet.size().x - _sheet.margin * 2.0) * k,
+				maxi(8, int(Booklet.HEADER_SIZE * k)), words)
+		if not _sheet.footer.is_empty():
+			var foot: Rect2 = Booklet.footer_rect(_sheet)
+			_canvas.draw_string(font, Vector2(foot.position.x, foot.end.y - 0.4) * k, _sheet.footer,
+				HORIZONTAL_ALIGNMENT_CENTER, foot.size.x * k, maxi(8, int(Booklet.FOOTER_SIZE * k)), words)
 	for at: int in _items.size():
 		_draw_item(_items[at], k, font)
 		if _overlapped.has(_item_name(at)) or at == _over and not _drag.is_empty():
@@ -879,8 +887,9 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 				"Step %d's picture (drawing…)" % entry.number, HORIZONTAL_ALIGNMENT_CENTER,
 				free.size.x, int(clampf(3.4 * k, 9, 18)), Color(0.15, 0.3, 0.45))
 		"parts":
-			_canvas.draw_rect(rect, PARTS_COLOUR)
-			_canvas.draw_rect(rect, PARTS_LINE, false, maxf(1.0, 0.35 * k))
+			# In the colours its page was set up with (BookletSheet, booklook).
+			_canvas.draw_rect(rect, _sheet.box_fill)
+			_canvas.draw_rect(rect, _sheet.box_frame, false, maxf(1.0, 0.35 * k))
 			# The parts in the rows the booklet puts them in (Booklet._entry).
 			var y: float = (item["rect"] as Rect2).position.y + Booklet.PAD
 			for row: Array in Booklet._rows(entry.lots, entry.parts_width):
@@ -915,7 +924,8 @@ func _draw_item(item: Dictionary, k: float, font: Font) -> void:
 				HORIZONTAL_ALIGNMENT_LEFT, rect.size.x - 8, 12, INK)
 		"number":
 			_canvas.draw_string(font, rect.position + Vector2(0, entry.number_size * k * 0.82),
-				str(entry.number), HORIZONTAL_ALIGNMENT_LEFT, -1, int(entry.number_size * k), INK)
+				str(entry.number), HORIZONTAL_ALIGNMENT_LEFT, -1, int(entry.number_size * k),
+				_sheet.number_colour)
 		"arrow":
 			var arrow: Dictionary = item["arrow"]
 			_draw_arrow(_shown_points(item), str(arrow.get("colour", "red")),

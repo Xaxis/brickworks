@@ -16,7 +16,9 @@
 ## browser draws them; a line of words is placed as the browser places it,
 ## with Helvetica's widths (the page's own font, or one the same width).
 ## The page's size, colour and the picture behind it are its stylesheet's
-## too (BookletSheet): a booklet that says none has the booklet's own.
+## too (BookletSheet): a booklet that says none has the booklet's own; and
+## so are its parts box's frame, fill and corners (booklook), and a line of
+## words set in the middle of its width.
 class_name BookletRead
 extends RefCounted
 
@@ -53,6 +55,11 @@ var parts: Dictionary = {}
 var size: Vector2 = Booklet.PAGE
 var colour: Color = Color8(220, 236, 248)
 var picture: String = ""
+## The parts box's fill and frame (--box, --box-line, which the white boxes'
+## frames are too) and its corners in mm, as the stylesheet says them.
+var box_fill: Color = (LOOKS["box"] as Array)[0]
+var box_frame: Color = (LOOKS["box"] as Array)[1]
+var box_corners: float = (LOOKS["box"] as Array)[3]
 var _section: String = ""
 var _inside: bool = false
 
@@ -82,6 +89,9 @@ static var _page_size := RegEx.create_from_string(
 	"\\.page \\{ position: relative; width: calc\\(([0-9.]+) \\* var\\(--mm\\)\\); height: calc\\(([0-9.]+) \\* var\\(--mm\\)\\)")
 static var _page_colour := RegEx.create_from_string("--page: (#[0-9a-fA-F]{6});")
 static var _page_picture := RegEx.create_from_string("section\\.page\\{background-image:url\\(([^)]*)\\)")
+static var _box_fill := RegEx.create_from_string("--box: (#[0-9a-fA-F]{6});")
+static var _box_frame := RegEx.create_from_string("--box-line: (#[0-9a-fA-F]{6});")
+static var _box_corners := RegEx.create_from_string("\\.box\\{border-radius:calc\\(([0-9.]+) \\* var\\(--mm\\)\\)\\}")
 
 
 ## Every page of the booklet [param from], the path of its file or the
@@ -175,6 +185,17 @@ func _head(text: String) -> void:
 		var found: RegExMatch = _page_colour.search(text)
 		if found != null:
 			colour = Color.html(found.get_string(1))
+	if text.contains("--box"):
+		for found: RegExMatch in [_box_fill.search(text), _box_frame.search(text)]:
+			if found != null:
+				if found.get_string().begins_with("--box:"):
+					box_fill = Color.html(found.get_string(1))
+				else:
+					box_frame = Color.html(found.get_string(1))
+	if text.contains(".box{"):
+		var found: RegExMatch = _box_corners.search(text)
+		if found != null:
+			box_corners = found.get_string(1).to_float()
 	if text.contains("background-image"):
 		if text.contains("section.page{"):
 			var found: RegExMatch = _page_picture.search(text)
@@ -353,6 +374,12 @@ func _box(page: Page, kind: PackedStringArray, style: Dictionary) -> void:
 			line = look[1]
 			width = look[2]
 			radius = look[3]
+			# As the booklet's stylesheet set them (--box, --box-line, .box).
+			if name == "box":
+				fill = box_fill
+				radius = box_corners
+			if name in ["box", "one"]:
+				line = box_frame
 	if style.has("background"):
 		fill = _colour(str(style["background"]))
 	if style.has("border-radius"):
@@ -399,6 +426,7 @@ func _words(page: Page, words: Dictionary) -> void:
 			lines.size() * size + pad.y * 2.0)), "fill": Color8(255, 241, 214),
 			"line": Color(0, 0, 0, 0), "width": 0.0, "radius": 1.4})
 	var right: bool = str(style.get("text-align", "")) == "right" and width > 0.0
+	var centred: bool = str(style.get("text-align", "")) == "center" and width > 0.0
 	var turned: Dictionary = _turned(style)
 	var down: float = (high - ASCENT_DESCENT) * 0.5 + (BASELINE - (1.0 - ASCENT_DESCENT) * 0.5)
 	for index: int in lines.size():
@@ -406,6 +434,8 @@ func _words(page: Page, words: Dictionary) -> void:
 		var x: float = origin.x + pad.x
 		if right:
 			x += width - _line_width(line, size, bold, spacing)
+		elif centred:
+			x += (width - _line_width(line, size, bold, spacing)) * 0.5
 		var baseline: float = origin.y + pad.y + (down + index * high) * size
 		for run: Variant in line:
 			if run is Dictionary:
