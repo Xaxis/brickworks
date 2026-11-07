@@ -43,10 +43,13 @@ const PARTS_RANGE := Vector2(0.5, 2.0)
 const PICTURE_NAME := "brickworks-page-behind"
 ## Pixels a millimetre of paper: the finest the booklet draws its steps'
 ## pictures (BookletMaker.px_per_mm, 127 dots an inch; fewer on the web and
-## in a long booklet). A picture behind the pages is kept at this over the
-## page it is chosen for, which it covers (Booklet: background-size cover):
-## as sharp as the steps on it and no bigger. Up to 2026-11-06 every one
-## was kept 1400 px long, more than a small page needs.
+## in a long booklet). A picture behind the pages covers the page
+## (Booklet: background-size cover, centred), and is kept at this over the
+## largest page either way up, whatever paper it is chosen on, since the
+## paper can be changed after and the picture it came from is gone: its
+## shorter side [constant LONGEST] mm at this. Up to 2026-11-06 every one
+## was kept 1400 px long, 3.5 px a mm on an upright A4 page; for a day it
+## was kept for the paper it was chosen on (ps2review).
 const PX_PER_MM := 5.0
 ## A picture that lets something show through is a PNG, which for a
 ## photograph is many times a JPEG's bytes, in every autosave of the model
@@ -63,9 +66,20 @@ const SEE_THROUGH_LEAST := 900
 ## not be read was written over, and every Page setup… read every picture.
 const STYLES_DIR := "user://page_styles"
 const STYLE_PICTURES := "user://page_styles/pictures"
-## That one file: read, its styles moved into [constant STYLES_DIR], then
-## taken away; never written, and left as it is when it cannot be read.
+## That one file: read where it is until a style is next kept or taken
+## away, which moves its styles into [constant STYLES_DIR] and takes it
+## away; never written, and left as it is when it cannot be read. Only
+## looking (Page setup…'s list, page_setup with nothing asked) changes
+## nothing: up to 2026-11-07 it moved them (ps2review).
 const STYLES_FILE := "user://page_styles.cfg"
+## A file on its way: written under its name and [constant PART] until it is
+## whole, so no window reads half of it; a picture no style seemed to show,
+## moved aside under its name and [constant ASIDE] while the styles are read
+## again ([method _drop_unshown_pictures]). Either left by a window that
+## stopped halfway is dealt with [constant LEFT_S] seconds on.
+const PART := ".part"
+const ASIDE := ".aside"
+const LEFT_S := 3600
 
 var paper: String = "booklet"
 var portrait: bool = false
@@ -222,16 +236,29 @@ static func picture_uri_of(name: String, base64: String) -> String:
 	return "data:%s;base64,%s" % ["image/png" if name.ends_with(".png") else "image/jpeg", base64]
 
 
-## [param image] as a picture behind the pages of [param page] (mm) is
-## kept: no bigger than it is drawn covering that page at [constant
-## PX_PER_MM], never made bigger; a JPEG, or a PNG where it lets something
-## show through, that one no more than [constant SEE_THROUGH_BYTES] unless
-## it is down to [constant SEE_THROUGH_LEAST] px. [name, base64].
-static func picture_of(image: Image, page: Vector2) -> Array:
-	var size := Vector2(image.get_width(), image.get_height())
-	var k: float = minf(1.0, maxf(page.x * PX_PER_MM / size.x, page.y * PX_PER_MM / size.y))
+## [param image] as a picture behind the pages is kept: as sharp as the
+## largest page draws it at [constant PX_PER_MM], never made bigger, and
+## its long side no more than the widest page shows of it; a JPEG, or a PNG
+## where it lets something show through, that one no more than [constant
+## SEE_THROUGH_BYTES] unless it is down to [constant SEE_THROUGH_LEAST] px.
+## [name, base64].
+static func picture_of(image: Image) -> Array:
+	var k: float = minf(1.0, LONGEST * PX_PER_MM / minf(image.get_width(), image.get_height()))
 	if k < 1.0:
-		image.resize(maxi(1, roundi(size.x * k)), maxi(1, roundi(size.y * k)), Image.INTERPOLATE_LANCZOS)
+		image.resize(maxi(1, roundi(image.get_width() * k)), maxi(1, roundi(image.get_height() * k)),
+			Image.INTERPOLATE_LANCZOS)
+	# Covering a page from its middle, a picture longer for its width than
+	# the widest page is for its own shows only that much of its middle on
+	# any page: past the most that can be, a panorama's far ends, which are
+	# in no booklet, are cut rather than the whole made smaller (up to
+	# 2026-11-07 a 16000 x 1000 one was 1888 KB in the file, ps2review).
+	var widest: float = 1.0
+	for kind: Array in PAPERS.values():
+		widest = maxf(widest, (kind[0] as Vector2).x / (kind[0] as Vector2).y)
+	var size := Vector2i(image.get_width(), image.get_height())
+	if maxi(size.x, size.y) > ceili(widest * LONGEST * PX_PER_MM):
+		var shown := Vector2i(mini(size.x, ceili(size.y * widest)), mini(size.y, ceili(size.x * widest)))
+		image = image.get_region(Rect2i((size - shown) / 2, shown))
 	if image.detect_alpha() == Image.ALPHA_NONE:
 		return ["%s.jpg" % PICTURE_NAME, Marshalls.raw_to_base64(image.save_jpg_to_buffer(0.86))]
 	var bytes: PackedByteArray = image.save_png_to_buffer()
@@ -323,11 +350,15 @@ func words() -> String:
 
 
 ## The styles kept, by name: {name: said fields, with "picture" its
-## picture's name when it has one}. Each read from its own small file;
-## the pictures stay where they are until one is given ([method style]).
+## picture's name when it has one}. Each read from its own small file, and
+## those the one file kept before read from it where it is; nothing is
+## written. The pictures stay where they are until one is given
+## ([method style]).
 static func styles() -> Dictionary:
-	_move_old_styles()
 	var out: Dictionary = {}
+	var old: Variant = _old_styles()
+	for name: String in (old as Dictionary if old is Dictionary else {}):
+		out[name] = (old[name][0] as Dictionary).duplicate()
 	for record: Dictionary in _style_records():
 		out[str(record["name"])] = (record["page"] as Dictionary).duplicate()
 	return out
@@ -336,15 +367,22 @@ static func styles() -> Dictionary:
 ## The style [param name] as it is given to a model: its said fields, and
 ## with a picture its bytes as "picture_data" (base64); "picture_lost" true
 ## when its picture could not be read. {} when there is no such style.
+## Nothing is written.
 static func style(name: String) -> Dictionary:
-	_move_old_styles()
 	var record: Variant = _read_style(_style_path(name))
 	if not record is Dictionary:
-		return {}
+		var old: Variant = _old_styles()
+		if not old is Dictionary or not (old as Dictionary).has(name.strip_edges()):
+			return {}
+		var kept: Array = old[name.strip_edges()]
+		var page: Dictionary = (kept[0] as Dictionary).duplicate()
+		if not str(kept[1]).is_empty():
+			page["picture_data"] = kept[1]
+		return page
 	var out: Dictionary = (record["page"] as Dictionary).duplicate()
 	var picture_file: String = str(record.get("picture_file", ""))
 	if not picture_file.is_empty():
-		var bytes: PackedByteArray = FileAccess.get_file_as_bytes(STYLE_PICTURES.path_join(picture_file))
+		var bytes: PackedByteArray = _picture_bytes(picture_file)
 		if bytes.is_empty():
 			out["picture_lost"] = true
 		else:
@@ -356,13 +394,16 @@ static func style(name: String) -> Dictionary:
 ## [param picture_data] with it (base64) so another model can have it too:
 ## one small file for the style, the picture once beside the others by
 ## what it is, so styles sharing a picture keep it once. A style of that
-## name already kept is replaced. Returns what went wrong, "" when kept.
+## name already kept is replaced, and its picture taken away when no style
+## shows it now. Returns what went wrong, "" when kept.
 static func save_style(name: String, sheet: BookletSheet, picture_data: String) -> String:
 	name = name.strip_edges()
 	if name.is_empty():
 		return "a style needs a name"
 	_move_old_styles()
-	return _write_style(name, sheet.said(), picture_data if not sheet.picture.is_empty() else "")
+	var failed: String = _write_style(name, sheet.said(), picture_data if not sheet.picture.is_empty() else "")
+	_drop_unshown_pictures()
+	return failed
 
 
 ## The style [param name] taken away, and any picture no other style shows.
@@ -385,11 +426,14 @@ static func _style_path(name: String) -> String:
 
 
 static func _read_style(path: String) -> Variant:
-	if not FileAccess.file_exists(path):
+	var text: PackedByteArray = _bytes_of(path)
+	if text.is_empty() and not FileAccess.file_exists(path):
+		# Never there, or taken away by another window as it was listed.
 		return null
-	var record: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var record: Variant = JSON.parse_string(text.get_string_from_utf8())
 	if not record is Dictionary or not (record as Dictionary).get("name") is String \
-			or not (record as Dictionary).get("page") is Dictionary:
+			or not (record as Dictionary).get("page") is Dictionary \
+			or not (record as Dictionary).get("picture_file", "") is String:
 		push_warning("a page style could not be read: %s" % path)
 		return null
 	return record
@@ -412,59 +456,151 @@ static func _style_records(unread: Array = []) -> Array[Dictionary]:
 	return out
 
 
+## The style written, its picture first and written whole every time it
+## is kept, so a style never names a picture that is not there and a
+## browser's other tab, taking it away, sees it is in use again (shell.html
+## stores what a tab changed). Then the picture written again if it has
+## gone since: another window taking away the pictures no style shows may
+## have read the styles before this one was there.
 static func _write_style(name: String, page: Dictionary, picture_data: String) -> String:
 	DirAccess.make_dir_recursive_absolute(STYLE_PICTURES)
 	var record: Dictionary = {"name": name, "page": page.duplicate()}
+	var picture: String = ""
+	var bytes := PackedByteArray()
 	if not picture_data.is_empty() and not BookletLooks.picture_kind(picture_data).is_empty():
 		var picture_file: String = "%s.%s" % [picture_data.sha256_text().left(32),
 			"png" if BookletLooks.picture_kind(picture_data) == "png" else "jpg"]
-		var picture_path: String = STYLE_PICTURES.path_join(picture_file)
-		if not FileAccess.file_exists(picture_path):
-			var file: FileAccess = FileAccess.open(picture_path, FileAccess.WRITE)
-			if file == null:
-				return "the style's picture could not be kept"
-			file.store_buffer(Marshalls.base64_to_raw(picture_data))
-			file.close()
-			TabSession.writing(picture_path)
+		picture = STYLE_PICTURES.path_join(picture_file)
+		bytes = Marshalls.base64_to_raw(picture_data)
+		if not _write_whole(picture, bytes):
+			return "the style's picture could not be kept"
 		record["picture_file"] = picture_file
 	else:
 		(record["page"] as Dictionary).erase("picture")
-	var path: String = _style_path(name)
-	var out: FileAccess = FileAccess.open(path, FileAccess.WRITE)
-	if out == null:
+	if not _write_whole(_style_path(name), (JSON.stringify(record, "\t") + "\n").to_utf8_buffer()):
 		return "the style could not be kept"
-	out.store_string(JSON.stringify(record, "\t") + "\n")
-	out.close()
-	TabSession.writing(path)
+	if not picture.is_empty() and not FileAccess.file_exists(picture) and not _write_whole(picture, bytes):
+		return "the style's picture could not be kept"
 	return ""
 
 
-## The pictures no style shows, taken away; none while any style cannot be
-## read, whose picture it may be.
-static func _drop_unshown_pictures() -> void:
+## [param bytes] at [param path], written under a name of their own until
+## they are all there.
+static func _write_whole(path: String, bytes: PackedByteArray) -> bool:
+	var part: String = _passing(path, PART)
+	var file: FileAccess = FileAccess.open(part, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_buffer(bytes)
+	file.close()
+	if DirAccess.rename_absolute(part, path) != OK:
+		DirAccess.remove_absolute(part)
+		return false
+	TabSession.writing(path)
+	return true
+
+
+## [param path] with [param ending], when and a number of its own between:
+## a name for it on its way ([constant PART], [constant ASIDE]).
+static func _passing(path: String, ending: String) -> String:
+	return "%s.%d-%d%s" % [path, int(Time.get_unix_time_from_system()), randi() % 1000000, ending]
+
+
+## How many seconds ago [param file_name], a name [method _passing] made,
+## was made.
+static func _passing_age(file_name: String) -> int:
+	return int(Time.get_unix_time_from_system()) \
+		- int(file_name.get_basename().get_extension().get_slice("-", 0))
+
+
+## A kept picture's bytes: from beside the styles, or, while a window
+## taking away the pictures no style shows has it moved aside, from there.
+## Empty when it is gone.
+static func _picture_bytes(picture_file: String) -> PackedByteArray:
+	# Twice: moved aside as it was opened, or put back as it was looked for.
+	for _look: int in 2:
+		var bytes: PackedByteArray = _bytes_of(STYLE_PICTURES.path_join(picture_file))
+		if not bytes.is_empty():
+			return bytes
+		for file_name: String in DirAccess.get_files_at(STYLE_PICTURES) \
+				if DirAccess.dir_exists_absolute(STYLE_PICTURES) else PackedStringArray():
+			if file_name.ends_with(ASIDE) and file_name.get_basename().get_basename() == picture_file:
+				bytes = _bytes_of(STYLE_PICTURES.path_join(file_name))
+				if not bytes.is_empty():
+					return bytes
+	return PackedByteArray()
+
+
+## A file's bytes, empty when it is not there (gone as it was looked for).
+static func _bytes_of(path: String) -> PackedByteArray:
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	return file.get_buffer(file.get_length()) if file != null else PackedByteArray()
+
+
+## The pictures the styles show, by file name; null while any style cannot
+## be read, whose picture it may be.
+static func _shown_pictures() -> Variant:
 	var unread: Array = []
 	var shown: Dictionary = {}
 	for record: Dictionary in _style_records(unread):
 		shown[str(record.get("picture_file", ""))] = true
-	if not unread.is_empty() or not DirAccess.dir_exists_absolute(STYLE_PICTURES):
+	return shown if unread.is_empty() else null
+
+
+## The pictures no style shows, taken away. Another window may be keeping
+## a style on one at that moment, its style not written yet; so each is
+## moved aside first, where that window's keep finds it gone and writes it
+## again ([method _write_style]) and [method style] still reads it, the
+## styles are read again, and each one shows now put back. Up to
+## 2026-11-07 a style kept in one window as another took a style away lost
+## its picture, 896 times in 3000 (ps2review).
+static func _drop_unshown_pictures() -> void:
+	var shown: Variant = _shown_pictures()
+	if shown == null or not DirAccess.dir_exists_absolute(STYLE_PICTURES):
 		return
+	var aside: Dictionary = {}
 	for file_name: String in DirAccess.get_files_at(STYLE_PICTURES):
-		if not shown.has(file_name):
-			DirAccess.remove_absolute(STYLE_PICTURES.path_join(file_name))
-
-
-## The styles kept in one file before (up to 2026-11-06), each moved into a
-## file of its own unless one of its name is kept there since, and the old
-## file taken away once all of them are. Left as it is when it cannot be
-## read: never written over.
-static func _move_old_styles() -> void:
-	if not FileAccess.file_exists(STYLES_FILE):
+		var path: String = STYLE_PICTURES.path_join(file_name)
+		if file_name.ends_with(PART) or file_name.ends_with(ASIDE):
+			# Left by a window that stopped halfway: never a whole picture,
+			# or one moved aside and not put back.
+			if _passing_age(file_name) > LEFT_S:
+				if file_name.ends_with(PART):
+					DirAccess.remove_absolute(path)
+				else:
+					aside[path] = file_name.get_basename().get_basename()
+		elif not (shown as Dictionary).has(file_name):
+			var moved: String = _passing(path, ASIDE)
+			if DirAccess.rename_absolute(path, moved) == OK:
+				aside[moved] = file_name
+	if aside.is_empty():
 		return
+	shown = _shown_pictures()
+	for moved: String in aside:
+		var path: String = STYLE_PICTURES.path_join(str(aside[moved]))
+		if shown != null and not (shown as Dictionary).has(str(aside[moved])):
+			DirAccess.remove_absolute(moved)
+		elif FileAccess.file_exists(path):
+			# Written again by the window keeping it: the same bytes.
+			DirAccess.remove_absolute(moved)
+		else:
+			DirAccess.rename_absolute(moved, path)
+
+
+## The styles the one file kept before, by name, that no file of their own
+## has replaced since: {name: [said fields, its picture's base64 or ""]}.
+## Read where it is, nothing written; {} when there is no such file, null
+## when it cannot be read.
+static func _old_styles() -> Variant:
+	if not FileAccess.file_exists(STYLES_FILE):
+		return {}
 	var file := ConfigFile.new()
 	if file.load(STYLES_FILE) != OK:
+		if not FileAccess.file_exists(STYLES_FILE):
+			return {}  # Moved by another window as it was read.
 		push_warning("the page styles kept in %s could not be read; it is left as it is" % STYLES_FILE)
-		return
-	var moved: bool = true
+		return null
+	var out: Dictionary = {}
 	for name: String in file.get_sections():
 		var kept: Variant = file.get_value(name, "style", {})
 		if not kept is Dictionary or FileAccess.file_exists(_style_path(name)):
@@ -472,7 +608,25 @@ static func _move_old_styles() -> void:
 		var page: Dictionary = (kept as Dictionary).duplicate()
 		var picture_data: String = str(page.get("picture_data", ""))
 		page.erase("picture_data")
-		if not _write_style(name, from(page).said(), picture_data).is_empty() \
+		page = from(page).said()
+		if BookletLooks.picture_kind(picture_data).is_empty():
+			picture_data = ""
+			page.erase("picture")
+		out[name] = [page, picture_data]
+	return out
+
+
+## The styles the one file kept before (up to 2026-11-06), each moved into
+## a file of its own, and the old file taken away once all of them are:
+## done as a style is next kept or taken away, never by looking. Left as it
+## is when it cannot be read: never written over.
+static func _move_old_styles() -> void:
+	var old: Variant = _old_styles()
+	if not old is Dictionary or not FileAccess.file_exists(STYLES_FILE):
+		return
+	var moved: bool = true
+	for name: String in old:
+		if not _write_style(name, old[name][0], old[name][1]).is_empty() \
 				or not _read_style(_style_path(name)) is Dictionary:
 			moved = false
 	if moved:

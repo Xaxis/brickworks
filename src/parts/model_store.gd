@@ -2133,7 +2133,8 @@ static func _without_app_lines(text: String) -> String:
 				or line.begins_with(MADE_META) or line.begins_with(SetBin.META) \
 				or line.begins_with(ReferenceImage.META) \
 				or line.begins_with(ReferenceImage.PICTURE_META) \
-				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE.strip_edges()):
+				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE) \
+				or line.begins_with(SharedPages.HEAD):
 			continue
 		kept.append(line)
 	return "\n".join(kept)
@@ -2551,11 +2552,24 @@ func _with_looks(text: String, whole: bool = false) -> String:
 ## are; [param looks] when not given.
 static func _looks_into(text: String, looks: Dictionary, authored: bool,
 		written: Callable = Callable()) -> String:
-	if looks.is_empty() and (not authored or not BookletLooks._written_in(text)):
+	if looks.is_empty() and not BookletLooks._written_in(text):
+		return text
+	# Steps not the author's: the app has only the whole booklet's looks
+	# (_read_text), and each step's own, its notes and their pictures, stay
+	# as the file has them; the file byte for byte when the whole booklet's
+	# are as it says. Up to 2026-11-07 someone else's file marked worked
+	# lost its step notes at the first save once its page setup was read
+	# (ps2review).
+	if not authored and BookletLooks.booklet_wide(BookletLooks.read(text, {}, "")) \
+			== BookletLooks.booklet_wide(looks):
 		return text
 	var parsed: LdrModel = LdrModel.parse(text, "model")
+	var names: Dictionary = parsed._assembly_names()
+	var main_key: String = LdrModel._key(parsed.main.name)
+	if not authored:
+		looks = BookletLooks.with_booklet_wide(BookletLooks.read(text, names, main_key), looks)
 	return BookletLooks.written_into(text, written.call() if written.is_valid() else looks,
-		parsed._assembly_names(), LdrModel._key(parsed.main.name))
+		names, main_key)
 
 
 ## [param text], written whole, under [param header] (SourceFile.header)

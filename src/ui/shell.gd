@@ -3219,17 +3219,19 @@ func open_page_setup() -> void:
 func page_setup(fields: Dictionary) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
-	var removed: String = ""
-	if fields.has("remove_style"):
-		var gone: String = str(fields["remove_style"]).strip_edges()
+	# The whole call is checked before anything is done: a style taken away
+	# by a call refused for another field stayed gone (ps2review).
+	var gone: String = str(fields.get("remove_style", "")).strip_edges()
+	if fields.has("remove_style") and not BookletSheet.styles().has(gone):
+		var left: Array = BookletSheet.styles().keys()
+		left.sort()
+		return "no page style is called \"%s\"" % gone \
+			+ ("; kept: %s" % ", ".join(left) if not left.is_empty() else "")
+	if fields.has("save_as") and str(fields["save_as"]).strip_edges().is_empty():
+		return "a style needs a name"
+	if fields.has("remove_style") and fields.size() == 1:
 		var failed: String = BookletSheet.remove_style(gone)
-		if not failed.is_empty():
-			var left: Array = BookletSheet.styles().keys()
-			left.sort()
-			return failed + ("; kept: %s" % ", ".join(left) if not left.is_empty() else "")
-		removed = "the page style \"%s\" removed" % gone
-		if fields.keys().all(func(field: String) -> bool: return field == "remove_style"):
-			return removed
+		return failed if not failed.is_empty() else "the page style \"%s\" removed" % gone
 	var was: BookletSheet = BookletSheet.of(world)
 	var sheet: BookletSheet = BookletSheet.of(world)
 	var pictures: Dictionary = BookletLooks.images(world).duplicate()
@@ -3283,12 +3285,15 @@ func page_setup(fields: Dictionary) -> String:
 	for name: String in pictures.keys():
 		if name.begins_with(BookletSheet.PICTURE_NAME) and name != sheet.picture:
 			pictures.erase(name)
+	var also := PackedStringArray()
+	if fields.has("remove_style"):
+		var failed: String = BookletSheet.remove_style(gone)
+		if not failed.is_empty():
+			return failed
+		also.append("the page style \"%s\" removed" % gone)
 	var undo: Array = BookletLooks.set_images(world, pictures)
 	undo.append_array(BookletLooks.change(world, BookletLooks.BOOKLET, {"sheet": sheet.said()}))
 	undo = AuthorSteps.squash(undo)
-	var also := PackedStringArray()
-	if not removed.is_empty():
-		also.append(removed)
 	if style_lost:
 		also.append("the style's picture could not be read, so the page has none")
 	if fields.has("save_as"):

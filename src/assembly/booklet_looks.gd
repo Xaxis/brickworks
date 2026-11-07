@@ -1048,6 +1048,25 @@ static func booklet_wide(looks: Dictionary) -> Dictionary:
 	return out
 
 
+## [param looks] ([method read]'s) with the whole booklet's of [param wide]
+## in place of its own: each step's, and the pictures they show, as they
+## were.
+static func with_booklet_wide(looks: Dictionary, wide: Dictionary) -> Dictionary:
+	var out: Dictionary = looks.duplicate()
+	out.erase(BOOKLET)
+	var pictures: Dictionary = (looks.get(DATA, {}) as Dictionary).duplicate()
+	var behind: String = str(((looks.get(BOOKLET, {}) as Dictionary).get("sheet", {}) as Dictionary)
+		.get("picture", ""))
+	pictures.erase(behind)
+	pictures.merge(booklet_wide(wide).get(DATA, {}), true)
+	out.erase(DATA)
+	if not pictures.is_empty():
+		out[DATA] = pictures
+	if wide.has(BOOKLET):
+		out[BOOKLET] = wide[BOOKLET]
+	return out
+
+
 ## The looks a model's file gives its steps, keyed as BrickWorld keeps them
 ## ([param names]: sub-model key -> the name its assembly goes by,
 ## LdrModel._assembly_names; the model's own section is "").

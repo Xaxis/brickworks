@@ -259,5 +259,5 @@ func _keep_style() -> void:
 func _picture_picked(image: Image) -> void:
 	if image == null or image.get_width() < 1:
 		return
-	var kept: Array = BookletSheet.picture_of(image, BookletSheet.of(shell.world).size())
+	var kept: Array = BookletSheet.picture_of(image)
 	_apply({"picture": kept[0], "picture_data": kept[1]})

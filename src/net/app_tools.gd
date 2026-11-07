@@ -1475,10 +1475,7 @@ func _page_setup(input: Dictionary) -> String:
 			image = PictureFile.decode(fetched["bytes"])
 			if image == null:
 				return _sentence(PictureFile.not_read(fetched["bytes"], "That link"))
-		# Kept at the size of the page it goes behind, as this call sets it.
-		var page: BookletSheet = BookletSheet.of(world)
-		page.change(fields)
-		var kept: Array = BookletSheet.picture_of(image, page.size())
+		var kept: Array = BookletSheet.picture_of(image)
 		fields["picture"] = kept[0]
 		fields["picture_data"] = kept[1]
 	elif str(input.get("picture", "")).to_lower() in ["none", "off", "false"]:

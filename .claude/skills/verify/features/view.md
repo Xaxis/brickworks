@@ -1975,9 +1975,13 @@ picture the assistant is shown.
   CSS gives the page's size, `@page` and the colour or picture;
   `BookletRead` reads the size and picture back for `BookletPdf` (MediaBox
   per page; step pictures drawn clear over a picture, with an SMask) and
-  `BookletPng`. A picture is kept no bigger than the page needs: cover-fitted
-  at the booklet's print resolution, `BookletSheet.PX_PER_MM` (5 px a mm,
-  `BookletMaker.px_per_mm` reads it), a JPEG when nothing shows through, a
+  `BookletPng`. A picture is kept for every paper it can be put on, since
+  the paper can change after (`BookletSheet.picture_of`): its shorter side
+  A4's 297 mm at the booklet's print resolution, `BookletSheet.PX_PER_MM`
+  (5 px a mm, `BookletMaker.px_per_mm` reads it), and a long side past
+  what the widest page (A5, 210 x 148) shows of it cut to that from its
+  middle (a panorama's far ends, on no page) rather than the whole made
+  smaller; a JPEG when nothing shows through, a
   see-through PNG kept to 1 MB or 900 px long; its kind and KB in the file
   are said (`picture_words`; the dialog's Picture behind line, page_setup).
   A file whose PAGE_SETUP names a picture it does not carry (an older build
@@ -1986,14 +1990,23 @@ picture the assistant is shown.
   the dialog's "Missing from the file", page_setup, booklet_layout, the
   booklet's written note), printed in its colour, the name kept until Take
   off. The app's own model with app-worked steps keeps its page and guides
-  over a reopen (`BookletLooks.booklet_wide`). Keep as a style writes one
+  over a reopen (`BookletLooks.booklet_wide`); someone else's file marked
+  worked keeps its step notes and their pictures byte for byte
+  (`ModelStore._looks_into`, `BookletLooks.with_booklet_wide`), and a
+  shared model says its page (`SharedPages.strip` takes only the carried
+  steps' `PAGES`/`PAGE` lines; `_without_app_lines` likewise). Keep as a style writes one
   small JSON file a style in `user://page_styles/` (by its name's sha256),
   its picture once in `user://page_styles/pictures/` by what it is, so
   styles sharing a picture keep it once; Remove… beside Style (asked first)
-  or page_setup `remove_style=` takes one away and any picture no style
-  shows; a failed read never overwrites; the old one-file
-  `user://page_styles.cfg` is moved into files once and left as it is when
-  it cannot be read. Style gives one to another model whole.
+  or page_setup `remove_style=` (the whole call checked first) takes one
+  away and any picture no style shows, as does replacing one; files are
+  written whole under a `.part` name, and a picture is written on every
+  keep and moved aside (`.aside`, still read) while the styles are read
+  again before it is taken, so two windows never lose one; a failed read
+  never overwrites; the old one-file `user://page_styles.cfg` is read where
+  it is until the next keep or remove moves it (looking writes nothing),
+  and left as it is when it cannot be read. Style gives one to another
+  model whole.
   `pagesetup_probe` (windowed, `gpu`): the
   booklet's own page first (with `--against=` a run on the commit before:
   its HTML the same but its pictures, every PNG page the same to the
@@ -2007,12 +2020,18 @@ picture the assistant is shown.
   the gatehouse in 2 actions; then (pagesetup2) the app's own model with
   app-worked steps saved and reopened with its page and picture, a file
   naming a picture it lacks said missing everywhere and printed in its
-  colour, a 4000 x 3000 photo kept as a 1345 x 1009 JPEG (A4 upright
-  1114 x 1485), a see-through one a PNG within 1 MB or 900 px, two styles of
-  one picture keeping it once, one removed in the dialog and one over MCP,
-  neither read by a new start (the probe run again headless with
-  `--list-styles`), and the old styles file moved, or left byte for byte
-  when unreadable. `--dialog-only` with `PROBE_SIZE=1400x900` checks the
+  colour, a 4000 x 3000 photo kept as a 1980 x 1485 JPEG (still 5 px a mm
+  when chosen on A5 and the paper made A4 upright; 3000 x 4000 kept
+  1485 x 1980), a 16000 x 1000 panorama kept to 1419 x 1000, a see-through
+  one a PNG within 1 MB or 900 px, someone else's worked file's step note
+  kept byte for byte, two styles of one picture keeping it once, a refused
+  `remove_style=` call taking nothing, a style replaced 5 times keeping one
+  picture, one removed in the dialog and one over MCP, neither read by a
+  new start (the probe run again headless with `--list-styles`), the old
+  styles file listed and given where it is with nothing written until the
+  next keep moves it, or left byte for byte when unreadable, and two
+  windows on one user folder (the probe again headless, `--race-remove`)
+  losing no style's picture. `--dialog-only` with `PROBE_SIZE=1400x900` checks the
   dialog alone at that size.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
@@ -2602,7 +2621,7 @@ godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the rend
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
 godot --path . --resolution 1280x800 --script src/dev/booklet_stream_probe.gd  # the castle's booklet read as it is drawn
 godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --into=DIR  # the castle's booklet saved as a PDF and as PNG pages from its own Save buttons; --model=res://models/orthanc.ldr for the tower
-tools/probe.sh pagesetup -- --into=DIR --against=BEFORE_DIR   # the booklet's page set up: A4 upright over MCP, US Letter by the dialog, a colour, a picture behind, a style to the gatehouse; a picture the file lacks said missing, a big picture kept to its page, styles removed and gone in a new start; BEFORE_DIR a run on the commit before; PROBE_SIZE=1400x900 tools/probe.sh pagesetup -- --dialog-only
+tools/probe.sh pagesetup -- --into=DIR --against=BEFORE_DIR   # the booklet's page set up: A4 upright over MCP, US Letter by the dialog, a colour, a picture behind, a style to the gatehouse; a picture the file lacks said missing, a big picture kept for every paper (a panorama to what a page shows), someone else's worked file's notes kept, styles removed (a refused call taking none, a replaced one's picture gone) and gone in a new start, the old styles file untouched by looking, two windows losing no picture; BEFORE_DIR a run on the commit before; PROBE_SIZE=1400x900 tools/probe.sh pagesetup -- --dialog-only
 #   every step pictured and framed on the model, new parts in frame, a parts box
 #   with a picture of every part, the shed's 2x callout with two arrows and its
 #   figure, the turn sign behind a wall (plates against its back), plates a hand's
