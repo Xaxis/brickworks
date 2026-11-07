@@ -19,7 +19,7 @@ case $name in
   connector|tabs|tabpair) args=("$port") ;;
   account|desktop_cloud|mybricks) env=("BRICKWORKS_API=$api") ;;
   # mysets: a set from a photo, a set's missing parts (its Brickognize is a
-  # stand-in of its own on 9962).
+  # stand-in of its own on the first free port of 9960-9969).
   mysets) env=("BRICKWORKS_API=$api") ;;
   together) hold=("--hold=together_sessions,together_ops,together_people,together_snapshot_parts"); args=("--api=$api") ;;
   *) echo "relay_probe: $name is not one of the relay's probes (account connector tabs tabpair together desktop_cloud mybricks mysets)" >&2; exit 2 ;;

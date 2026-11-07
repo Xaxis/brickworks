@@ -14,7 +14,8 @@
 ## On the real scene, signed in as a throwaway account at a Resend test
 ## address (made with a password, no code redeemed), through
 ## api/collection.js on the relay and the real database, deleted at the end.
-## Brickognize is a stand-in on a port of this probe's own (9962), answering
+## Brickognize is a stand-in on a port of this unit's own (the first free of
+## 9960-9969), answering
 ## /predict/sets/ and /predict/figs/ as the real one does. The real one was
 ## asked with ten box photos from Wikimedia Commons, nobody's own
 ## (bench/results/mysets-2026-11-07/live_photos.py: 7 of the 8 cropped to
@@ -54,8 +55,10 @@
 ## session go to the probe's own data folder (probe.sh's XDG_DATA_HOME).
 extends SceneTree
 
-## The stand-in Brickognize's port: one of the unit's own (9960-9969).
-const STUB := 9962
+## The stand-in Brickognize's ports: the unit's own, the first free one taken
+## (another session's server held 9962 once, 2026-11-07).
+const STUBS := [9960, 9969]
+var _stub: int = 0
 
 var _failures: int = 0
 var _main: Node
@@ -98,8 +101,12 @@ func _run() -> void:
 		print("mysets probe: FAIL  run it against a relay on this machine (BRICKWORKS_API), not %s" % api)
 		quit(1)
 		return
-	if _server.listen(STUB, "127.0.0.1") != OK:
-		print("mysets probe: FAIL  port %d is taken" % STUB)
+	for port: int in range(int(STUBS[0]), int(STUBS[1]) + 1):
+		if _server.listen(port, "127.0.0.1") == OK:
+			_stub = port
+			break
+	if _stub == 0:
+		print("mysets probe: FAIL  ports %d-%d are all taken" % [STUBS[0], STUBS[1]])
 		quit(1)
 		return
 	Account.where = "user://probe_session.json"
@@ -169,7 +176,7 @@ func _steps() -> void:
 		return
 	var eyes: Dictionary = _dialog.call("set_eyes")
 	for kind: String in eyes:
-		(eyes[kind] as Brickognize).url = "http://127.0.0.1:%d/predict/%s/" % [STUB, kind]
+		(eyes[kind] as Brickognize).url = "http://127.0.0.1:%d/predict/%s/" % [_stub, kind]
 	_answers = {"sets": [_item("set", "7140-1", "X-wing", 0.83), _item("set", "9493-1", "X-wing Starfighter", 0.52),
 		_item("set", "6823-1", "Surface Transport", 0.37)], "figs": [_item("fig", "cty0001", "Police officer", 0.31)]}
 	ShellPrefs.put("photo_told", false)
