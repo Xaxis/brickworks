@@ -416,9 +416,9 @@ async function houseLink(size, shape) {
 // The house's link that opens playing (APP_UX5 playlink): /m/<id>?motion=
 // open-the-gates, as the share panel's Opens writes it, goes on to the viewer
 // with it (web/share-page.js on a deployment, serve.py's redirect locally),
-// which plays the gates over and over within 2 s of the model shown, their
-// frame going there and back; pressed, they go back and stop. And a name the
-// house has no motion of opens it still, saying so.
+// which plays the gates over and over within 2 s of the model shown (3 s on
+// a phone), their frame going there and back; pressed, they go back and
+// stop. And a name the house has no motion of opens it still, saying so.
 async function housePlaying(size, shape) {
   const finger = Boolean(shape.hasTouch);
   console.log(`\nthe house's link that opens playing, ${size}`);
@@ -435,8 +435,14 @@ async function housePlaying(size, shape) {
   }, "the gates playing", 600).catch(() => null);
   const phases = playing ? playing.opened || {} : {};
   const after = Number(phases.moving) - Number(phases.parts);
-  check(`it opens playing "${playing ? playing.looping : ""}", ${after} ms after the model is shown (under 2000; phases ${JSON.stringify(phases)})`,
-    Boolean(playing) && playing.looping === "Open the gates" && after >= 0 && after <= 2000);
+  // A phone's bar is 3 s, a laptop's 2 (APP_UX5 #10): drawn in software at
+  // three times the pixels, each frame after the house opens again is 1.1 to
+  // 2.2 s, and two are the least it waits (the joints read, then the gates
+  // worked out, each on a worker taken in the frame after; playweb).
+  const bar = finger ? 3000 : 2000;
+  const steps = ["parts", "registered", "read", "pressed", "moving"].map((k) => `${k} ${phases[k]}`).join(", ");
+  check(`it opens playing "${playing ? playing.looping : ""}", ${after} ms after the model is shown (under ${bar}; ${steps}; shapes here ${JSON.stringify(phases.shapes_here)}; frames ${JSON.stringify(phases.frames)})`,
+    Boolean(playing) && playing.looping === "Open the gates" && after >= 0 && after <= bar);
   // Its frame, read twice a second for 6 s: it changes, and comes back.
   const seen = [];
   for (let n = 0; n < 12; n += 1) {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # relay_probe.sh NAME : one of the probes tools/suite/out.txt keeps out of
 # runs for want of the relay (account, connector, tabs, tabpair, together,
-# desktop_cloud, mybricks), run on a relay of its own: .env's keys, a free port, the
+# desktop_cloud, mybricks, mysets), run on a relay of its own: .env's keys, a free port, the
 # relay's address handed the way the probe's header takes it, the live
 # database's lock held (they make accounts in production Supabase), and the
 # relay stopped after. Exits as the probe does.
@@ -11,15 +11,18 @@
 # code's: rel-m252's, then connectany's (2026-11-03).
 set -u
 cd "$(dirname "$0")/.." || exit 2
-name=${1:?usage: relay_probe.sh NAME}; name=${name%.gd}; name=${name##*/}; name=${name%_probe}
+name=${1:?usage: relay_probe.sh NAME [-- PROBE ARGS]}; shift; name=${name%.gd}; name=${name##*/}; name=${name%_probe}
 port=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])') || exit 2
 api=http://127.0.0.1:$port
 hold=(); args=(); env=()
 case $name in
   connector|tabs|tabpair) args=("$port") ;;
   account|desktop_cloud|mybricks) env=("BRICKWORKS_API=$api") ;;
+  # mysets: a set from a photo, a set's missing parts (its Brickognize is a
+  # stand-in of its own on the first free port of 9960-9969).
+  mysets) env=("BRICKWORKS_API=$api") ;;
   together) hold=("--hold=together_sessions,together_ops,together_people,together_snapshot_parts"); args=("--api=$api") ;;
-  *) echo "relay_probe: $name is not one of the relay's probes (account connector tabs tabpair together desktop_cloud mybricks)" >&2; exit 2 ;;
+  *) echo "relay_probe: $name is not one of the relay's probes (account connector tabs tabpair together desktop_cloud mybricks mysets)" >&2; exit 2 ;;
 esac
 # The keys are the main checkout's: a worktree has no .env of its own.
 keys=.env
@@ -36,4 +39,7 @@ trap 'kill -TERM -- "-$relay" 2>/dev/null' EXIT
 for _ in $(seq 1 60); do curl -s -o /dev/null "$api/" && break; sleep 1; done
 curl -s -o /dev/null "$api/" || { echo "relay_probe: the relay never answered on $port; its log, $log:" >&2; tail -n 5 "$log" >&2; exit 1; }
 echo "relay_probe: $name on the relay at $api (its log $log)"
-tools/release/live_db.sh "relay_probe $name" env "${env[@]}" tools/probe.sh "${name}_probe" "${args[@]}"
+# What follows NAME goes to the probe (-- --shots=DIR): dropped before
+# mysets (2026-11-07), so the recipes' --shots never reached a probe.
+[ "${1:-}" != -- ] || shift
+tools/release/live_db.sh "relay_probe $name" env "${env[@]}" tools/probe.sh "${name}_probe" "${args[@]}" "$@"

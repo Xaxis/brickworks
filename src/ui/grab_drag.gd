@@ -172,8 +172,9 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 	# Not while a session's move is worked out on a worker (for_session):
 	# what the press takes hold of is about to move, and the worker reads it.
 	# Said, as a press before the joints are read is: unsaid, a press there
-	# did nothing at all (jobs70).
-	if _session_moving:
+	# did nothing at all (jobs70). Nor while a link's motion is worked out on
+	# one (hold_still).
+	if _session_moving or _held_still:
 		say.call(READING_WORDS)
 		last_words = "busy"
 		return true
@@ -969,6 +970,17 @@ func for_session(input: Dictionary) -> String:
 
 ## A session's move being worked out on a worker ([method for_session]).
 var _session_moving: bool = false
+## What a grab reads held still for a worker reading it meanwhile ([method
+## hold_still]).
+var _held_still: bool = false
+
+
+## Held still, [param on], for a worker that reads what a grab reads (a
+## link's motion worked out whole, MotionPlayer.pace_off_frame), as for a
+## session's move: a press waits for it, nothing settles or is read again
+## meanwhile, and a press on the motions' buttons waits too (is_settling).
+func hold_still(on: bool) -> void:
+	_held_still = on
 
 
 ## [param work] on a worker (WorkerTasks.awaited): what it returns. What it
@@ -1554,7 +1566,7 @@ func _process(_delta: float) -> void:
 ## Whether a grab let go is still being checked before it is kept.
 func is_settling() -> bool:
 	return _settling != null or _laying != null or not _falling.is_empty() or _swinging != null \
-		or _session_moving
+		or _session_moving or _held_still
 
 
 ## Whether a section let go is swinging.
@@ -1662,6 +1674,8 @@ var _reading_unread: Dictionary = {}
 var _unread_looked_at: int = 0
 ## How long the last reading took, ms, and whether it ran on a worker.
 var ready_ms: int = 0
+## When the last reading began, ms (Time.get_ticks_msec): a page's phases.
+var read_began: int = 0
 var ready_off_thread: bool = false
 ## Each step of it, ms: bodies, balance, gears.
 var ready_took: Dictionary = {}
@@ -1685,7 +1699,8 @@ func is_ready() -> bool:
 ## 1.2 s after every move and undo (jobs70, 2026-10-21), and a shared
 ## model's 93-part racer 147 ms of a frame in SwiftShader (play_flow).
 func _ready_ahead() -> void:
-	if world == null or builder == null:
+	# Nor a reading taken in while a worker reads what it replaces.
+	if world == null or builder == null or _held_still:
 		return
 	_shapes_read()
 	# The part in hand too: its first aim reads its shape for its hinges
@@ -1752,6 +1767,7 @@ func _reading_done(keep: bool, wait: bool = false) -> bool:
 ## lattice made here.
 func _read_off_thread() -> void:
 	var started: int = Time.get_ticks_msec()
+	read_began = started
 	_ready_for = world.revision
 	# The parts' exact shapes, read first: a worker takes a shape not read
 	# yet for one with joints (Bodies._unknown_shape), and Bodies takes a stud
@@ -1808,6 +1824,13 @@ func reads_ahead() -> bool:
 ## Whether the joints are being read on a worker now.
 func is_reading() -> bool:
 	return _readying >= 0
+
+
+## The reading on a worker taken in now if it is done, not at this node's
+## own turn in the frame: main's viewer, which asks first (_play_frame).
+func take_reading() -> void:
+	if _readying >= 0 and not _held_still:
+		_reading_done(grab == null)
 
 
 ## Read on a worker from the next frame, not once the model has stood still
