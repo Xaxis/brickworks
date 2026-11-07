@@ -749,10 +749,16 @@ plan with Claude as the client.
   removes every file an hour old or more that no published row owns, and
   every `build-photos` file (a photo or its card copy) whose id has no row
   or a removed one (`api/_builds.js` `sweepPhotos`, a failure logged,
-  `photos` in its answer). `?only=<id,...>&photos=<id,...>` scopes it to
-  those models' and photos' files alone (views, `act_log` and uploads left
-  for the cron): a hand-run check always scopes it, never the whole
-  sweep.
+  `photos` in its answer). Unasked, neither takes more than a quarter of
+  what it looked at (four files at least): rows read back empty would
+  otherwise delete every file, so such a run removes none, logs `sweep:
+  models' files held: ...` or `sweep: build photos held: ...`, and says
+  `held` in its answer (`api/_cron.js` `sweepHeld`;
+  `tests/test_gallery_builds.py`
+  `test_a_sweep_that_would_take_most_of_what_it_saw_takes_nothing`).
+  `?only=<id,...>&photos=<id,...>` scopes it to those models' and photos'
+  files alone, all of them (views, `act_log` and uploads left for the
+  cron): a hand-run check always scopes it, never the whole sweep.
   **The gallery** (2026-10-13, `supabase/gallery.sql`, applied to the live
   project that day with `tools/apply_sql.mjs`: columns `listed` boolean not
   null default false, `listed_at`, `remixed_from` → `shared_models(id)` on

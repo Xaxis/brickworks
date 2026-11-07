@@ -127,7 +127,9 @@
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns,
-//                            and photos' files whose photo is gone
+//                            and photos' files whose photo is gone; never
+//                            more than a quarter of either unasked (held,
+//                            and said: api/_cron.js sweepHeld)
 //   GET  ?op=feature         the daily choice of the gallery's front (Vercel's
 //                            cron, with CRON_SECRET): this week's pick,
 //                            today's featured model and today's set from the
@@ -223,7 +225,7 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
-import { isCron } from "./_cron.js";
+import { isCron, sweepHeld } from "./_cron.js";
 import { db, dbConfigured, orUnknown, reach } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
@@ -3174,6 +3176,9 @@ async function unpublish(request, response) {
 // owns, and every photo's file whose photo has no row or was taken out
 // (api/_builds.js sweepPhotos). A publish writes its files a moment before
 // its row, so a file younger than an hour is left for the next day's sweep.
+// Neither takes more than a quarter of what it looked at unasked
+// (api/_cron.js sweepHeld): rows read back empty would otherwise delete
+// every file.
 
 const SWEEP_AGE_MS = 60 * 60 * 1000;
 
@@ -3199,7 +3204,11 @@ async function sweep(request, response) {
     for (const row of rows) kept.add(row.id);
   }
   const gone = files.map((file) => file.name).filter((name) => !kept.has(name.split(".")[0]));
-  for (let at = 0; at < gone.length; at += 100) await deleteFiles(gone.slice(at, at + 100));
+  // Most of what it looked at, unasked: the rows' read is wrong, not the
+  // files (api/_cron.js sweepHeld). None of them, said.
+  const held = scoped ? "" : sweepHeld(files.length, gone.length);
+  if (held) console.error(`sweep: models' files ${held}`);
+  else for (let at = 0; at < gone.length; at += 100) await deleteFiles(gone.slice(at, at + 100));
   // Who looked at what, kept only as long as it takes to count a visitor
   // once a day: today's and yesterday's.
   const yesterday = new Date(now - 24 * 3600 * 1000).toISOString().slice(0, 10);
@@ -3228,8 +3237,8 @@ async function sweep(request, response) {
       photoFiles = { trouble: said };
     }
   }
-  return response.status(200).json({ looked_at: files.length, kept: files.length - gone.length, removed: gone,
-    originals, photos: photoFiles });
+  return response.status(200).json({ looked_at: files.length, kept: files.length - (held ? 0 : gone.length),
+    removed: held ? [] : gone, ...(held ? { held } : {}), originals, photos: photoFiles });
 }
 
 // The front's daily choice (api/_featured.js) and the weekly look at the OMR

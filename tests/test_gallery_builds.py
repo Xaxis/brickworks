@@ -426,6 +426,110 @@ console.log(JSON.stringify(out));
     assert any(line.startswith("sweep: build photos:") and "503" in line for line in got["logged"]), got["logged"]
 
 
+
+SWEEP_HARNESS = r"""
+process.env.SUPABASE_URL = "http://project.test";
+process.env.SUPABASE_SECRET_KEY = "k";
+process.env.SUPABASE_PUBLISHABLE_KEY = "p";
+process.env.CRON_SECRET = "cron";
+const old = new Date(Date.now() - 2 * 3600 * 1000).toISOString();
+const ids = (kind) => Array.from({ length: 12 }, (_, n) => `${kind}${String(n + 1).padStart(5, "0")}`);
+const models = ids("Model"), photos = ids("Photo");
+const listed = (name) => ({ name, id: name, updated_at: old });
+const modelFiles = models.flatMap((id) => [listed(`${id}.mpd`), listed(`${id}.png`)]);
+const photoFiles = photos.flatMap((id) => [listed(`${id}.jpg`), listed(`${id}.card.jpg`)]);
+// What the rows' reads answer: every row but these, or (null) nothing at all,
+// 200 and empty, as a wrong key under RLS answers.
+let missing = null;
+const deleted = { "shared-models": [], "build-photos": [] };
+const logged = [];
+console.error = (...words) => logged.push(words.join(" "));
+const asked = (where) => /^in\.\((.*)\)$/.exec(where.searchParams.get("id"))[1].split(",");
+const rowsOf = (where) => (missing === null ? [] : asked(where).filter((id) => !missing.includes(id)));
+globalThis.fetch = async (url, init = {}) => {
+  const where = new URL(url);
+  const method = init.method || "GET";
+  if (where.pathname === "/storage/v1/object/list/shared-models") return new Response(JSON.stringify(modelFiles), { status: 200 });
+  if (where.pathname === "/storage/v1/object/list/build-photos") return new Response(JSON.stringify(photoFiles), { status: 200 });
+  if (where.pathname.startsWith("/storage/v1/object/list/")) return new Response("[]", { status: 200 });
+  const bucket = where.pathname.replace("/storage/v1/object/", "");
+  if (method === "DELETE" && bucket in deleted) {
+    deleted[bucket].push(...JSON.parse(init.body).prefixes);
+    return new Response("[]", { status: 200 });
+  }
+  if (where.pathname === "/rest/v1/shared_models") return new Response(JSON.stringify(rowsOf(where).map((id) => ({ id }))), { status: 200 });
+  if (where.pathname === "/rest/v1/build_photos") {
+    return new Response(JSON.stringify(rowsOf(where).map((id) => ({ id, removed_at: null }))), { status: 200 });
+  }
+  if (method === "DELETE") return new Response(null, { status: 204 });
+  return new Response("[]", { status: 200 });
+};
+const share = (await import("./api/share.js")).default;
+const sweep = async (query) => {
+  const response = { statusCode: 200, body: "", setHeader() { return this; }, status(code) { this.statusCode = code; return this; },
+    json(value) { this.body = value; return this; }, end() { return this; } };
+  await share({ method: "GET", query: { op: "sweep", ...query }, headers: { authorization: "Bearer cron" } }, response);
+  const taken = { models: deleted["shared-models"].splice(0), photos: deleted["build-photos"].splice(0) };
+  return { status: response.statusCode, body: response.body, taken, logged: logged.splice(0) };
+};
+"""
+
+
+def test_a_sweep_that_would_take_most_of_what_it_saw_takes_nothing() -> None:
+    # A sweep deletes what no row owns. Rows read back empty and ok (a wrong
+    # key under RLS, a PostgREST quirk) said nobody owns anything, and the
+    # daily sweep deleted every model's files and every person's photos
+    # (lead, 2026-11-07). An unscoped run that would take more than a
+    # quarter of what it looked at now takes nothing, logs why and says it.
+    got = node(SWEEP_HARNESS + r"""
+const out = {};
+out.empty = await sweep({});
+// An ordinary day: one model and one photo with no row.
+missing = ["Model00007", "Photo00003"];
+out.ordinary = await sweep({});
+// Asked of named files, the asker's: all of them go, rows or none.
+missing = null;
+out.scoped = await sweep({ only: "Model00001,Model00002,Model00003,Model00004,Model00005",
+  photos: "Photo00001,Photo00002,Photo00003,Photo00004,Photo00005" });
+console.log(JSON.stringify(out));
+""")
+    empty = got["empty"]
+    assert empty["status"] == 200
+    assert empty["taken"] == {"models": [], "photos": []}, empty["taken"]
+    assert empty["body"]["looked_at"] == 24 and empty["body"]["removed"] == [] and empty["body"]["kept"] == 24
+    assert "would remove 24 of the 24" in empty["body"]["held"]
+    assert empty["body"]["photos"]["removed"] == [] and "would remove 24 of the 24" in empty["body"]["photos"]["held"]
+    assert any(line.startswith("sweep: models' files held:") for line in empty["logged"]), empty["logged"]
+    assert any(line.startswith("sweep: build photos held:") for line in empty["logged"]), empty["logged"]
+
+    ordinary = got["ordinary"]
+    assert sorted(ordinary["taken"]["models"]) == ["Model00007.mpd", "Model00007.png"]
+    assert sorted(ordinary["taken"]["photos"]) == ["Photo00003.card.jpg", "Photo00003.jpg"]
+    assert "held" not in ordinary["body"] and "held" not in ordinary["body"]["photos"]
+    assert not any("held" in line for line in ordinary["logged"])
+
+    scoped = got["scoped"]
+    assert len(scoped["taken"]["models"]) == 10 and len(scoped["taken"]["photos"]) == 10, scoped["taken"]
+    assert "held" not in scoped["body"] and "held" not in scoped["body"]["photos"]
+
+
+def test_how_much_a_sweep_may_take_unasked() -> None:
+    got = node(r"""
+import { SWEEP_FLOOR, SWEEP_SHARE, sweepHeld } from "./api/_cron.js";
+const at = (looked, gone) => Boolean(sweepHeld(looked, gone));
+console.log(JSON.stringify({ floor: SWEEP_FLOOR, share: SWEEP_SHARE,
+  held: [at(0, 0), at(6, 2), at(8, 4), at(8, 5), at(100, 25), at(100, 26), at(1000, 250), at(1000, 1000)] }));
+""")
+    # A quarter of what it looked at, and two orphans' files (four) whatever
+    # the bucket's size.
+    assert got["floor"] == 4 and got["share"] == 0.25
+    assert got["held"] == [False, False, False, True, False, True, False, True]
+    builds = (ROOT / "api/_builds.js").read_text()
+    share = (ROOT / "api/share.js").read_text()
+    # Both sweeps, unscoped only.
+    assert 'only.length ? "" : sweepHeld(files.length, gone.length)' in builds
+    assert 'scoped ? "" : sweepHeld(files.length, gone.length)' in share
+
 def test_the_copy_is_served_kept_and_deleted_with_its_photo() -> None:
     builds = (ROOT / "api/_builds.js").read_text()
     # Asked for with size=card; kept beside the photo when it is posted, made

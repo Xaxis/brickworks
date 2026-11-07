@@ -35,6 +35,7 @@
 // counted, no photo is shown, and asking to add one says so.
 
 import { createHmac, randomBytes } from "node:crypto";
+import { sweepHeld } from "./_cron.js";
 import { db, orUnknown, reach } from "./_db.js";
 import { cardSize, photoUrls } from "./_card.js";
 import { cardPhoto, cleanPhoto, jpegSize, MAX_PHOTO_BYTES, PhotoTrouble, TYPES } from "./_photo.js";
@@ -206,8 +207,10 @@ export function photosGone(files, rows, { now, age, only = [] }) {
   }).map((file) => file.name);
 }
 
-/// Delete the files photosGone names: {looked_at, removed}. Before
-/// builds.sql there are no rows to go by, and nothing is deleted.
+/// Delete the files photosGone names: {looked_at, removed}, and [held]
+/// (why) when an unscoped run would take more than api/_cron.js sweepHeld
+/// lets it, and took none. Before builds.sql there are no rows to go by,
+/// and nothing is deleted.
 export async function sweepPhotos({ now, age, only = [] }) {
   const files = (await photosLeft()).filter((file) => {
     const id = PHOTO_FILE.exec(file.name)?.[1];
@@ -224,6 +227,11 @@ export async function sweepPhotos({ now, age, only = [] }) {
     throw trouble;
   }
   const gone = photosGone(files, rows, { now, age, only });
+  const held = only.length ? "" : sweepHeld(files.length, gone.length);
+  if (held) {
+    console.error(`sweep: build photos ${held}`);
+    return { looked_at: files.length, removed: [], held };
+  }
   for (let at = 0; at < gone.length; at += 100) await deleteFiles(PHOTOS, gone.slice(at, at + 100));
   return { looked_at: files.length, removed: gone };
 }

@@ -127,6 +127,7 @@
       "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
@@ -233,6 +234,7 @@
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/test_release.py",
@@ -3391,6 +3393,7 @@
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
         "tests/test_release.py"
