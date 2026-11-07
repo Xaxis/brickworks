@@ -17,9 +17,16 @@
 ## 2. Every test model with booklet lines, opened, saved and opened, then
 ##    saved again: each booklet line (ROTSTEP, the app's own, a page's
 ##    picture) where it was in the file, byte for byte, and every part
-##    where it was: the 44 files whose authors turn the model (rotroll),
+##    where it was: every file of LDraw's model repository with one (the
+##    117 with a ROTSTEP, the 44 whose authors turn the model among them),
 ##    the two fixtures with booklet lines, and a model given every kind of
-##    booklet line over MCP.
+##    booklet line over MCP. A shared model's carried pages (SharedPages'
+##    PAGES and PAGE {...}) are not the booklet's: a save takes them off
+##    and the share works them out again for the text it sends.
+##
+## A session may not save over a file it did not write (save_model), so
+## each model opened over MCP is saved under a name of its own, then opened
+## and saved again under that.
 ## 3. The pods session replayed over MCP: the pull set on step 1, the
 ##    model saved (its named assemblies made sub-models then) and opened
 ##    again: step 1 pulls both. Step 1's parts made a sub-assembly by
@@ -33,7 +40,8 @@ const PODS := "res://tests/fixtures/steps/pods.ldr"
 const GATEHOUSE := "res://tests/fixtures/steps/gatehouse.mpd"
 const CREDIT := "res://tests/fixtures/omr_credit/346-2.published.ldr"
 const FILES := "res://vendor/omr/files/"
-## The 44 files whose authors turn the model over (buildturn_probe.TURNED).
+## The 44 files whose authors turn the model over (buildturn_probe.TURNED):
+## each must be among those read.
 const TURNED := ["1572-1.mpd", "20009-1.mpd", "20019-1.mpd", "20021-1.mpd", "30051-1.mpd",
 	"30052-1.mpd", "30055-1.mpd", "30542-1_Turkey.mpd", "30571-1.mpd", "358-1.mpd", "42084-1.mpd",
 	"4837-1_Locomotive.mpd", "4837-1_Steam-Train.mpd", "4837-1_Train.mpd", "5540-1_Plane.mpd",
@@ -42,6 +50,9 @@ const TURNED := ["1572-1.mpd", "20009-1.mpd", "20019-1.mpd", "20021-1.mpd", "300
 	"8028-1.mpd", "8029-1.mpd", "8031-1.mpd", "8033-1.mpd", "8154-1.mpd", "8258-1.mpd",
 	"8272-1.mpd", "8273-1.mpd", "8273-1_Utility-Cargo-Truck.mpd", "8274-1_Dragstar.mpd",
 	"8274-1.mpd", "8275-1.mpd", "891-1.mpd", "894-1.mpd", "918-1.mpd", "924-1.mpd", "928-1.mpd"]
+## Pods' pull as the walk's file has it, and where its first save puts it.
+const PODS_PULL := "model.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"
+const PODS_PULL_MOVED := "side_pod.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"
 const WINGS: Array = ["41769a", "41770a"]
 const MODELS := "user://models/"
 
@@ -124,20 +135,20 @@ func _pods() -> void:
 	await _settled()
 	print("    open_model: %s" % opened.left(200))
 	await _step_one_pulls("opened")
-	var saved: String = await _say("save_model", {"name": "Pods.ldr"})
+	var saved: String = await _say("save_model", {"name": "PodsSaved.ldr"})
 	print("    save_model: %s" % saved.left(120))
-	var first: String = FileAccess.get_file_as_string(MODELS + "Pods.ldr")
+	var first: String = FileAccess.get_file_as_string(MODELS + "PodsSaved.ldr")
 	_check("saved: the pull now on the side pod's first step, where its parts go in (%s)"
-		% _pull_lines(first), _pull_lines(first) == "side_pod.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a")
+		% _pull_lines(first), _pull_lines(first) == PODS_PULL_MOVED)
 	_main.call("clear_model")
 	await _frames(4)
-	opened = await _say("open_model", {"name": "Pods"})
+	opened = await _say("open_model", {"name": "PodsSaved"})
 	await _settled()
 	_check("opened again: nothing said to be left off (%s)" % opened.left(160),
 		not opened.contains("matches no step"))
 	await _step_one_pulls("opened again")
-	await _say("save_model", {"name": "Pods.ldr"})
-	var second: String = FileAccess.get_file_as_string(MODELS + "Pods.ldr")
+	await _say("save_model", {"name": "PodsSaved.ldr"})
+	var second: String = FileAccess.get_file_as_string(MODELS + "PodsSaved.ldr")
 	_check("saved again: the file byte for byte (%d bytes, %s)" % [second.length(),
 		"the same" if second == first else _first_difference(first, second)], second == first)
 
@@ -289,8 +300,8 @@ func _named_case(what: String, text: String, name: String, words: String, line: 
 	var bar_said: String = ModelBar.unshown_words(_store)
 	_check("...and the open's line in the window says it too (%s)" % bar_said.left(160),
 		bar_said.contains(words))
-	await _say("save_model", {"name": name + ".ldr"})
-	var saved: String = FileAccess.get_file_as_string(MODELS + name + ".ldr")
+	await _say("save_model", {"name": name + "Saved.ldr"})
+	var saved: String = FileAccess.get_file_as_string(MODELS + name + "Saved.ldr")
 	_check("...saved: \"%s\" kept in the file, where it was (%s)" % [line, _where(saved, line)],
 		_where(saved, line) == _where(text, line) and not _where(text, line).is_empty())
 
@@ -346,8 +357,8 @@ func _every_line() -> void:
 	print("    page_setup: %s" % (await _say("page_setup", {"size": "A4", "orientation": "portrait",
 		"picture_data": picture})).get_slice("\n", 0).left(90))
 	var looks: Dictionary = _world.step_looks.duplicate(true)
-	await _say("save_model", {"name": "Lined.ldr"})
-	var first: String = FileAccess.get_file_as_string(MODELS + "Lined.ldr")
+	await _say("save_model", {"name": "LinedSaved.ldr"})
+	var first: String = FileAccess.get_file_as_string(MODELS + "LinedSaved.ldr")
 	var kinds := PackedStringArray()
 	for word: String in BookletLooks.WORDS:
 		if first.contains(BookletLooks.META + word + " "):
@@ -361,13 +372,13 @@ func _every_line() -> void:
 	var parts: Array = _parts_of()
 	_main.call("clear_model")
 	await _frames(4)
-	await _say("open_model", {"name": "Lined"})
+	await _say("open_model", {"name": "LinedSaved"})
 	await _settled()
 	_check("opened: every step's look as it was set (%d)" % looks.size(),
 		JSON.stringify(_world.step_looks, "", true) == JSON.stringify(looks, "", true))
 	_check("...every part where it was (%d)" % parts.size(), _parts_of() == parts)
-	await _say("save_model", {"name": "Lined.ldr"})
-	var second: String = FileAccess.get_file_as_string(MODELS + "Lined.ldr")
+	await _say("save_model", {"name": "LinedSaved.ldr"})
+	var second: String = FileAccess.get_file_as_string(MODELS + "LinedSaved.ldr")
 	_check("saved again: every booklet line where it was, byte for byte (%d)"
 		% _booklet_lines(second).size(), _booklet_lines(second) == _booklet_lines(first))
 	_check("...and the file byte for byte (%s)" % ("the same" if second == first
@@ -384,8 +395,17 @@ func _files() -> void:
 	print("\n2. every test model with booklet lines, opened, saved, opened and saved again")
 	var named: Array = [["pods.ldr", PODS], ["gatehouse.mpd", GATEHOUSE],
 		["346-2.published.ldr", CREDIT]]
-	for name: String in TURNED:
-		named.append([name, FILES + name])
+	var listed: Dictionary = {}
+	var found: PackedStringArray = DirAccess.get_files_at(FILES)
+	found.sort()
+	for name: String in found:
+		if not _booklet_lines(FileAccess.get_file_as_string(FILES + name)).is_empty():
+			named.append([name, FILES + name])
+			listed[name] = true
+	var turned: Array = TURNED.filter(func(name: String) -> bool: return listed.has(name))
+	_check("LDraw's model repository: %d of %d files with booklet lines, the %d of %d whose authors turn the model among them"
+		% [listed.size(), found.size(), turned.size(), TURNED.size()],
+		turned.size() == TURNED.size() and listed.size() >= 100)
 	var files: int = 0
 	var lines: int = 0
 	var kept_lines: int = 0
@@ -420,9 +440,15 @@ func _files() -> void:
 		lines += was.size()
 		parts += opened.size()
 		# Pods' pull goes where its parts go in at its first save; from then
-		# on it stays.
-		var moved: bool = each[0] == "pods.ldr"
-		var same: bool = now == was or moved
+		# on it stays. The lines in file order, so compared as sets there.
+		var same: bool = now == was
+		if each[0] == "pods.ldr":
+			var expected: Array = was.map(func(line: String) -> String:
+				return PODS_PULL_MOVED if line == PODS_PULL else line)
+			var got: Array = now.duplicate()
+			expected.sort()
+			got.sort()
+			same = got == expected and was.has(PODS_PULL)
 		if same:
 			kept_lines += was.size()
 		var why := PackedStringArray()
@@ -473,7 +499,8 @@ static func _booklet_lines(text: String) -> Array:
 			continue
 		in_data = false
 		var booklet: bool = upper.begins_with("0 ROTSTEP")
-		if line.begins_with(BookletLooks.META):
+		# A shared model's carried pages (SharedPages) are the share's.
+		if line.begins_with(BookletLooks.META) and not line.begins_with(SharedPages.PAGE + "{"):
 			var word: String = line.substr(BookletLooks.META.length()).get_slice(" ", 0)
 			booklet = word in BookletLooks.WORDS
 		if booklet:

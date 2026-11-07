@@ -2106,9 +2106,14 @@ picture the assistant is shown.
   on open (MCP and `ModelBar.unshown_words`) and kept over a save; the
   gatehouse given every kind of booklet line over MCP and `page_setup`, its
   looks and parts the same after a save and an open, its lines byte for
-  byte on the second save; the 44 turned OMR files, the gatehouse, 346-2 and
+  byte on the second save; every file of LDraw's model repository with a
+  booklet line (117, the 44 turned among them), the gatehouse, 346-2 and
   Pods opened, saved, opened and saved: every booklet line in its file step
-  byte for byte and every part in its step.
+  byte for byte and every part in its step. A shared model's carried pages
+  (`SharedPages`' PAGES and PAGE {...}) are the share's, not the booklet's:
+  a save takes them off and a share works them out again. A session saves
+  only over files it wrote (`save_model`), so each model opened over MCP is
+  saved under a name of its own first.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
