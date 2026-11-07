@@ -103,7 +103,7 @@ func _run() -> void:
 	var filed: String = FileAccess.get_file_as_string(AMBULANCE)
 	var ambulance: Dictionary = await _test(filed)
 	print("  %s" % _said(ambulance))
-	_ok(_why(ambulance, "whole") == "1 pair of parts passes into each other: Plate 1 x 6 into Plate 1 x 2 by 4 LDU",
+	_ok(_why(ambulance, "whole") == "1 pair of parts passes into each other: Plate 1 x 6 into Plate 1 x 2 by 8 LDU",
 		"6680-1's figures and stretcher are builds of their own; its file puts a 1 x 2 plate inside a 1 x 6 one: %s"
 		% _why(ambulance, "whole"))
 	_ok(filed.contains(MISPLACED), "...the plate's line is in the file as filed")

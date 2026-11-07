@@ -93,6 +93,20 @@ desktop app. Started 2026-10-24 (unit together233).
   person's view, as the camera is, and an app-made model's file does not
   keep them. A floor's own plate made part of the model on one side is the
   same plate on the other, not a second one on it.
+- **The other side's words are data** (`src/net/together_words.gd`). The
+  hidden colours, the looks, the steps, the sections broken out and a made
+  part's files go as Godot writes a value, as every build has sent them, so
+  old and new copies read each other both ways. Godot's own reader of those
+  words makes objects and loads files by name, so none of them is read
+  with it: a reader of the plain values they are made of (dictionaries,
+  arrays, strings, numbers, vectors, transforms, colours, packed arrays)
+  refuses any other name, and each kind is then made precise, field by
+  field and in range, what is not of its kind left out with a word in the
+  log. A made part is built from its files in memory alone, only the part
+  its key names, from files named as a part's are (its id, `.dat`, no
+  path); a made part's file never names where anything is read or kept
+  (`CustomParts.own_name`). Each part's state, who is in the session and
+  where each is working are typed the same way.
 - **What slips is put back.** Every two seconds each side compares what it
   shows with what the numbered changes say (`Together._heal`) and puts back
   any part or state that no change of its own on the way explains: a part

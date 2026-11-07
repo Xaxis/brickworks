@@ -89,6 +89,8 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false,
 	if int(made["left_out"]) > 0:
 		line += " — %d of %s left off: %s" % [int(made["left_out"]), Counted.of(stock.lots.size(), "lot"),
 			ShopLists.why_left_off(made, shop)]
+	if not ShopLists.stand_in_words(made).is_empty():
+		line += " — " + ShopLists.stand_in_words(made)
 	say.call(line)
 	return line
 
@@ -145,6 +147,8 @@ func _pick_a_brick(stock: Inventory, asking: bool) -> String:
 			asked.append("%d more of %s" % [int(over[element]), element])
 		line += " — Pick a Brick takes %d of an element: add by hand %s" % [
 			ShopLists.PICK_A_BRICK_MOST, ", ".join(asked)]
+	if not ShopLists.stand_in_words(made).is_empty():
+		line += " — " + ShopLists.stand_in_words(made)
 	var missing: Array[Inventory.Lot] = made["missing"]
 	if not missing.is_empty():
 		var named: PackedStringArray = ShopLists.named_lots(missing)
@@ -202,7 +206,10 @@ static func studio_parts(model: BrickWorld, parts: PartLibrary) -> Dictionary:
 		var mesh: Lbm.PartMesh = parts.mesh_for(id)
 		if text.is_empty() or mesh == null or not PartPrints.has_pictures(text):
 			continue
-		out[id + ".dat"] = StudioDecor.studio_text(id, text, mesh.print_files)
+		# The part maker that writes it is compiled only for a model with a
+		# print: named here, it was 250 KB of Export's first use, 171-394 ms
+		# in a browser (leaves2, 2026-11-05).
+		out[id + ".dat"] = Later.script(&"StudioDecor").studio_text(id, text, mesh.print_files)
 	return out
 
 

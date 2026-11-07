@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, ui:a model into this one, cli:intomodel probe, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe -->
 
 ## Sub-features
 
@@ -50,8 +50,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `BrickWorld.Brick.origin`: the lines placing the copies round it, then its
   own), kept through undo, the autosave, the session's model, move, turn,
   recolour, swap, step edits, Ungroup, a sub-assembly made, rename and a copy
-  following another (`Assemblies.realize`); a copy, a paste, a part put down
-  and a model put in have none. Each copy of a sub-model knows the lines
+  following another (`Assemblies.realize`); a copy, a paste and a part put
+  down have none. Each copy of a sub-model knows the lines
   placing it (`BrickWorld.unit_chains`). A save (`SourceFile.write`) walks the
   file section by section, line by line: a part as it was, its line byte for
   byte; moved, turned or recoloured, only those fields written again, in its
@@ -61,9 +61,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   another part, of a kind the file puts right above its parts:
   `SourceFile._run_of`, `_family`); a copy moved whole, the line placing it
   written again; a part or copy with no line, a line at the end of its step,
-  with a section of its own for a sub-model it needs; a model put in
-  (`open_model` with `into`, `SourceFile.bring`), its own file's text placed
-  by one line; copies of one sub-model that no longer agree, the changed one
+  with a section of its own for a sub-model it needs; copies of one sub-model that no longer agree, the changed one
   a section of its own ("x 2.ldr"), its placing line pointed at it, as Studio
   and LDCad do; a step edit, the parts it moved at the end of the step they
   are in now (each step the block in its place where the steps and blocks
@@ -808,6 +806,29 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`PartLibrary.shop_part`, `Inventory.Lot.bricklink_id` / `rebrickable_id`:
   3069b is BrickLink's 3069, 3711 Rebrickable's 3711a), else LDraw's, less a
   formed shape's `-f1`.
+- `direct colours in every writer` (2026-11-07, directcolour): LDraw's direct
+  colour, `0x2RRGGBB` (`LdrModel.is_direct_colour`), is its own RGB everywhere
+  a colour code becomes a colour, through one helper, `LdrModel.direct_rgb`:
+  `PartLibrary.color` gives it as `PartLibrary.direct_color` (opaque plain
+  plastic named by its hex, "#FF0000", no shop or palette number), so the 3D view,
+  its pictures, the booklet, the parts list, the viewer's scene
+  (`ModelScene`) and Export's GLB, glTF and OBJ (MTL name `rgb_FF0000`: a "#"
+  may open a comment there) have it; `ModelThumbnail` takes `direct_rgb`
+  itself, as it names no `PartLibrary`; the site's `api/_parts.js` names and
+  colours it by `api/_colours.js` `directOf`. Only 0x2 is read: LDraw 0.27's
+  0x3 to 0x7 forms are refused as unreadable (`LdrModel._colour`), so no
+  direct colour is ever see-through. No shop sells one, so a shop list orders
+  the part in the nearest colour still made
+  (`PartLibrary.catalogue_nearest`: CIEDE2000 over `stand_in_codes`, LDConfig's
+  solid section, opaque, own plain colour, a BrickLink number, `current`;
+  `Inventory.Lot.stand_in*`) and says so: BrickLink's XML item carries a
+  `REMARKS`, every list's result a `stand_ins` the status line reads out
+  (`ShopLists.stand_in_words`), a Pick a Brick lot whose stand-in has no
+  element named as before. The site's lists choose by the same rule
+  (`api/_parts.js standIn`, the table's `stand_ins`). The lot's own element
+  and numbers stay empty. **Check:** `tools/probe.sh direct_colour_probe`
+  (headless, about a minute; red on pre261 at 57cdee7c, green after: see
+  `bench/results/directcolour-2026-11-07/`).
 - `save dialog on the desktop` (`src/ui/save_to.gd` `SaveTo.ask`; 2026-10-23,
   walk180 found .io and Instructions written straight into ~/Downloads with no
   dialog): on the desktop every File, Export (LDraw, Studio .io, 3D, picture,
@@ -1053,24 +1074,6 @@ Whether what you built is still there tomorrow, and still means the same thing.
   that fits (the first that fits called a rope read twice moved). The same
   day, after `someone else's file kept`: 54 of 54 exact (0 before), 0 parts
   lost on open (4,715 before, now kept), 42043-1 saved in 0.35 s (695 s).
-- `a model into this one` (`ModelBar.into_model`, `ModelBar.hold_text`,
-  `ModelStore.held_from`, `Builder._bring_steps`, `LibraryDialog.put_card`,
-  `AppTools._open_into`; APP_UX4 3, intomodel, 2026-11-05): File, Import, Into
-  this model… lists the saved models and the examples, with a file from this
-  computer (.ldr, .mpd, .io, .lxf) and the library. The one chosen comes in
-  hand whole, as a paste does: one sub-assembly named for it (`Gatehouse#1`,
-  its own sub-models inside it), each part where its file has it, the parts
-  only its file has (a Studio .io's) taken in as `CustomParts`. A click puts
-  it down as one undo step. Its author's steps are kept as the sub-assembly's
-  own (`Brick.step`, `world.unit_steps` for each copy inside it); the model it
-  goes into is given the steps it was shown (`AuthorSteps.adopt_plan`) and
-  the whole goes in after them, or in the step the steps bar shows. The
-  library's cards have Put in this model beside Open, greyed with why for a
-  gallery model whose maker kept every right; the status credits the set's
-  maker. Over MCP: `open_model into=true` with name=, library= or link=, at
-  x= z= or beside the model, in one call. `Carry.placements` passes each
-  part's `unit`, so a nested sub-assembly pasted or brought in keeps it.
-  `intomodel_probe` (windowed) drives all of it and pictures it.
 - `round trip probe` (`src/dev/roundtrip_probe.gd`): each path read by
   `ModelFilePicker.take`, opened by `open_text`, written by `to_text(title,
   true)` and by `StudioIo.pack` around it, and each written file opened again;
@@ -1109,7 +1112,6 @@ godot --headless --path . --script src/dev/moved_probe.gd    # the numbers still
 godot --headless --path . --script src/dev/import_probe.gd   # reads the format it writes
 godot --headless --path . --script src/dev/lxf_probe.gd      # opens LDD's .lxf where LDD put it
 godot --headless --path . --script src/dev/io_probe.gd       # Studio's .io: read, parts only the file has, write, round trip, refusals
-tools/probe.sh intomodel_probe   # File, Import, Into this model…: a saved model in 2 actions with its steps, one undo, over MCP in 1 call, an .io's own parts, the library's Put in this model (PROBE_SIZE=1400x900 too)
 godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   # someone else's file comes back as it went in, edits as such
 godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd vendor/omr/files/42058-1.mpd vendor/omr/files/42053-1.mpd   # LDCad's flexible parts drawn, one piece each, the file still itself
 # ...and in a browser, on a local export (tools/export.sh web), served with tools/web/serve.py

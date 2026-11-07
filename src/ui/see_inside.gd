@@ -68,6 +68,10 @@ var bar: PanelContainer
 ## which the strip sits above: the top of the model is the model tree's, the
 ## properties' and the view cube's.
 var below: Array[Control] = []
+## The model's room in the window (Main._model_rect): what the columns
+## beside the model leave it, a tablet's sheets too. The strip lies inside
+## it, as the render queue does. Its holder's rect where nothing says.
+var room_of_model: Callable = Callable()
 ## Where the plane is, or the shape's outline, so it can be found when it
 ## cuts nothing.
 var frame: MeshInstance3D
@@ -105,9 +109,24 @@ var _axis_buttons: Array[Button] = []
 var _grow: Button
 var _shrink: Button
 var _ghost_box: CheckBox
+var _flip: Button
+var _close: Button
 var _for_plane: Array[Control] = []
 var _for_shape: Array[Control] = []
 var _setting: bool = false
+## The strip's row: its groups wrap to a second line, and a third, where
+## the room is narrower than the strip on one line.
+var _row: HFlowContainer
+## Its groups: what the cut is by; where it is; Flip, Ghost and ×.
+var _what: HBoxContainer
+var _where: HBoxContainer
+var _ends: HBoxContainer
+## What the strip was last laid out by: the room, how high it stands off
+## the room's foot, its width on one line and its least size.
+var _placed_by: Array = []
+## Whether the strip has been sized for a finger (TouchSizing), in the
+## layout for one.
+var _fingered: bool = false
 ## The knobs, drawn over each view (ViewOverlays), and what they were last
 ## drawn for.
 var _knobs: ViewOverlays
@@ -632,17 +651,17 @@ func _draw_knobs(canvas: Control, view: int) -> void:
 		if eye.behind(points[face], view):
 			continue
 		var on: bool = face == lit or int(_drag.get("face", -1)) == face
-		var colour: Color = Handles.LIT if on else Handles.AXIS_COLOURS[face / 2]
+		var colour: Color = PivotMark.LIT if on else PivotMark.AXIS_COLOURS[face / 2]
 		var middle: Vector2 = eye.screen_of(points[face], view)
 		var out := Vector3.ZERO
 		out[face / 2] = BrickLattice.STUD if face % 2 == 1 else -BrickLattice.STUD
 		var way: Vector2 = eye.screen_of(points[face] + out, view) - middle
 		if way.length() > 1.0:
 			var tip: Vector2 = middle + way.normalized() * (KNOB + 9.0) * scale
-			canvas.draw_line(middle, tip, Handles.EDGE, 4.0 * scale, true)
+			canvas.draw_line(middle, tip, PivotMark.EDGE, 4.0 * scale, true)
 			canvas.draw_line(middle, tip, colour, 2.0 * scale, true)
 		var radius: float = (KNOB + (1.5 if on else 0.0)) * scale
-		canvas.draw_circle(middle, radius + 1.5 * scale, Handles.EDGE)
+		canvas.draw_circle(middle, radius + 1.5 * scale, PivotMark.EDGE)
 		canvas.draw_circle(middle, radius, colour)
 
 
@@ -865,20 +884,83 @@ func _check_model() -> void:
 # -- the strip ----------------------------------------------------------------
 
 
+## Room kept between the strip and the sides and foot of the model's room.
+const MARGIN := 12.0
+## Room kept between the strip and what lies along the room's foot.
+const CLEAR := 8.0
+
+
 func _process(_delta: float) -> void:
 	_follow_knobs()
 	if bar == null or not bar.visible:
 		return
+	if not _fingered:
+		_for_a_finger()
 	# Above the key strip and the timeline when they are up, however many
 	# rows they wrap to.
-	var lift: float = 12.0
-	var area: Rect2 = (bar.get_parent() as Control).get_global_rect()
+	var room: Rect2 = _room()
+	var lift: float = MARGIN
 	for under: Control in below:
 		if under != null and under.is_visible_in_tree():
-			lift = maxf(lift, area.end.y - under.get_global_rect().position.y + 8.0)
-	if not is_equal_approx(bar.offset_bottom, -lift):
-		bar.offset_bottom = -lift
-		bar.offset_top = -lift - bar.get_combined_minimum_size().y
+			lift = maxf(lift, room.end.y - under.get_global_rect().position.y + CLEAR)
+	# And as its words and buttons settle at a new width.
+	var by: Array = [room, lift, _one_line(), bar.get_combined_minimum_size()]
+	if by != _placed_by:
+		_place(room, lift)
+		_placed_by = by
+
+
+## The strip in the model's room, along its foot, in the middle: as wide as
+## it is on one line where the room has that, and as wide as the room where
+## it has not, its groups wrapping to a line or two more above the foot
+## (APP_UX5 striproom). Made one width for the window, it ran past the room
+## beside Stress's panel and under the columns on either side, its Ghost
+## and × out of reach.
+func _place(room: Rect2, lift: float) -> void:
+	var across: float = maxf(room.size.x - 2.0 * MARGIN, 0.0)
+	var wide: float = minf(_one_line(), across)
+	# Short of room, what it is by and its Flip, Ghost and × go first, on a
+	# line of their own where they fit, and the slider (or Shrink, Grow and
+	# the size) under them as wide as the strip: on one line it reads as it
+	# always did.
+	var short: bool = _one_line() > across
+	_row.move_child(_ends, 1 if short else 2)
+	bar.size = Vector2(wide, 0.0)
+	var at := Vector2(room.position.x + (room.size.x - bar.size.x) * 0.5,
+		room.end.y - lift - bar.size.y)
+	at.y = maxf(at.y, room.position.y + MARGIN)
+	bar.global_position = at.round()
+
+
+func _room() -> Rect2:
+	if room_of_model.is_valid():
+		return room_of_model.call()
+	var holder: Control = bar.get_parent() as Control
+	return holder.get_global_rect() if holder != null else Rect2()
+
+
+## How wide the strip is with all it shows on one line.
+func _one_line() -> float:
+	var across: float = 0.0
+	var shown: int = 0
+	for group: Node in _row.get_children():
+		var control := group as Control
+		if control != null and control.visible:
+			across += control.get_combined_minimum_size().x
+			shown += 1
+	across += maxf(shown - 1, 0) * _row.get_theme_constant("h_separation")
+	return ceilf(across + bar.get_theme_stylebox("panel").get_minimum_size().x)
+
+
+## In the layout for a finger (a phone's or a tablet's), the strip's
+## buttons a fingertip each way and its words in points, as the panels
+## beside the model are (TouchSizing). Laid out for a mouse, they were 26
+## units tall on a phone.
+func _for_a_finger() -> void:
+	_fingered = true
+	var touch: Node = bar.get_tree().get_first_node_in_group(TouchSizing.SELF)
+	if touch is TouchSizing:
+		(touch as TouchSizing).size_panel(bar)
 
 
 ## The plane's controls for the plane, the shape's for a shape.
@@ -906,14 +988,24 @@ func _build_bar() -> void:
 	backing.content_margin_top = 5
 	backing.content_margin_bottom = 5
 	bar.add_theme_stylebox_override("panel", backing)
-	bar.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	bar.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	bar.offset_bottom = -12.0
+	# Placed by _place, in the model's room.
+	bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	bar.add_child(row)
+	# Three groups, each kept whole on a line when the strip wraps: what
+	# the cut is by, where it is (the plane's slider and reading, a shape's
+	# Shrink, Grow and size), and Flip, Ghost and the strip's ×. On one
+	# line it reads as it always did.
+	_row = HFlowContainer.new()
+	_row.alignment = FlowContainer.ALIGNMENT_CENTER
+	_row.add_theme_constant_override("h_separation", 6)
+	_row.add_theme_constant_override("v_separation", 4)
+	bar.add_child(_row)
+	_what = _group()
+	_where = _group()
+	# Laid under the rest, as wide as the strip: the slider takes the room.
+	_where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_where.alignment = BoxContainer.ALIGNMENT_CENTER
+	_ends = _group()
 
 	# What the cut takes away, where the strip used to say "Cut along".
 	_shape_choice = OptionButton.new()
@@ -927,7 +1019,7 @@ func _build_bar() -> void:
 	_shape_choice.select(shape)
 	_shape_choice.tooltip_text = "What the cut takes away: what is past a plane, or what is inside a box, a sphere or a cylinder"
 	_shape_choice.item_selected.connect(func(index: int) -> void: cut_by(index))
-	row.add_child(_shape_choice)
+	_what.add_child(_shape_choice)
 
 	var group := ButtonGroup.new()
 	for n: int in 3:
@@ -938,7 +1030,7 @@ func _build_bar() -> void:
 			["X, left to right", "Y, bottom to top", "Z, front to back"][n])
 		var which: int = n
 		button.pressed.connect(func() -> void: cut_along(which))
-		row.add_child(button)
+		_what.add_child(button)
 		_axis_buttons.append(button)
 		_for_plane.append(button)
 
@@ -946,45 +1038,46 @@ func _build_bar() -> void:
 	_slider.accessibility_name = "Where the cut is"
 	_slider.custom_minimum_size = Vector2(240, 0)
 	_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_slider.focus_mode = Control.FOCUS_NONE
 	_slider.mouse_default_cursor_shape = Control.CURSOR_HSIZE
 	_slider.tooltip_text = "Drag to move the cut through the model (the wheel moves it too)"
 	_slider.value_changed.connect(func(value: float) -> void:
 		if not _setting:
 			move_to(value))
-	row.add_child(_slider)
+	_where.add_child(_slider)
 	_for_plane.append(_slider)
 
 	_reading = Label.new()
 	_reading.custom_minimum_size = Vector2(92, 0)
 	_reading.add_theme_font_size_override("font_size", 12)
 	_reading.add_theme_color_override("font_color", Color(0.78, 0.84, 0.95))
-	row.add_child(_reading)
+	_where.add_child(_reading)
 	_for_plane.append(_reading)
-
-	var other: Button = _button("Flip")
-	Keymap.tell(other, "Cut away the other side   {cut_flip}")
-	other.pressed.connect(flip)
-	row.add_child(other)
-	_for_plane.append(other)
 
 	_shrink = _button("Shrink")
 	_shrink.tooltip_text = "Bring every face of the shape in a plate"
 	_shrink.pressed.connect(func() -> void: grow(-1))
-	row.add_child(_shrink)
+	_where.add_child(_shrink)
 	_for_shape.append(_shrink)
 	_grow = _button("Grow")
 	_grow.tooltip_text = "Take every face of the shape out a plate (drag a knob to move one face)"
 	_grow.pressed.connect(func() -> void: grow(1))
-	row.add_child(_grow)
+	_where.add_child(_grow)
 	_for_shape.append(_grow)
 
 	_size = Label.new()
 	_size.custom_minimum_size = Vector2(150, 0)
 	_size.add_theme_font_size_override("font_size", 12)
 	_size.add_theme_color_override("font_color", Color(0.78, 0.84, 0.95))
-	row.add_child(_size)
+	_where.add_child(_size)
 	_for_shape.append(_size)
+
+	_flip = _button("Flip")
+	Keymap.tell(_flip, "Cut away the other side   {cut_flip}")
+	_flip.pressed.connect(flip)
+	_ends.add_child(_flip)
+	_for_plane.append(_flip)
 
 	_ghost_box = CheckBox.new()
 	_ghost_box.text = "Ghost"
@@ -992,13 +1085,21 @@ func _build_bar() -> void:
 	_ghost_box.add_theme_font_size_override("font_size", 12)
 	_ghost_box.tooltip_text = "Leave what is cut away as a faint ghost of itself"
 	_ghost_box.toggled.connect(set_ghosts)
-	row.add_child(_ghost_box)
+	_ends.add_child(_ghost_box)
 
-	var close: Button = _button("×")
-	Keymap.tell(close, "The whole model again   {cut}")
-	close.pressed.connect(func() -> void: set_cut(false))
-	row.add_child(close)
+	_close = _button("×")
+	Keymap.tell(_close, "The whole model again   {cut}")
+	_close.pressed.connect(func() -> void: set_cut(false))
+	_ends.add_child(_close)
 	_show_controls()
+
+
+## One of the strip's groups, kept whole on a line as the strip wraps.
+func _group() -> HBoxContainer:
+	var group := HBoxContainer.new()
+	group.add_theme_constant_override("separation", 6)
+	_row.add_child(group)
+	return group
 
 
 func _button(words: String) -> Button:
@@ -1029,7 +1130,8 @@ static func _dressed(button: Button) -> void:
 ## The strip's controls, for a probe or a browser test to press.
 func controls_by_name() -> Dictionary:
 	var out: Dictionary = {"cut_slider": _slider, "cut_ghosts": _ghost_box,
-		"cut_shape": _shape_choice, "cut_grow": _grow, "cut_shrink": _shrink}
+		"cut_shape": _shape_choice, "cut_grow": _grow, "cut_shrink": _shrink,
+		"cut_flip": _flip, "cut_close": _close}
 	for n: int in 3:
 		out["cut_" + AXES[n].to_lower()] = _axis_buttons[n]
 	return out

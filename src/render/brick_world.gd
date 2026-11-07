@@ -298,6 +298,11 @@ var motions: Motions = null
 ## (ModelStore); none for a model with none, and none again when the model
 ## is cleared.
 var cut_kept: Dictionary = {}
+## The views kept with the model (SavedViews), in the window's coordinates:
+## View › Viewpoint › Save this view… adds them and the model's file carries
+## them (ModelStore); none for a model with none, and none again when the
+## model is cleared.
+var saved_views: Array = []
 ## The sections broken out of the model to be worked on (Sections.break_out):
 ## a sub-assembly's path -> {"offset": Vector3, how far it was moved, LDU;
 ## "home": brick id -> the Transform3D it stood at}. Changed only by the
@@ -539,6 +544,7 @@ func clear() -> void:
 	_faded.clear()
 	_tinted.clear()
 	_stressed.clear()
+	_painted.clear()
 	_spans.clear()
 	_drawn.clear()
 	_next_id = 1
@@ -549,6 +555,7 @@ func clear() -> void:
 	step_looks.clear()
 	motions = null
 	cut_kept = {}
+	saved_views = []
 	broken_out.clear()
 	_note({"op": "clear"})
 	_generation += 1
@@ -577,6 +584,28 @@ func show_only(visible_ids: Dictionary) -> void:
 
 
 var NO_KEYS: PackedStringArray = PackedStringArray()
+
+
+## What draws [param ids] and nothing else: each batch every brick of which
+## is one of them. Build it hides a floor's plates by them while it shows
+## the model turned over (main._turn_with_view), which every brick asked
+## again, and the batches written whole, would cost a page turn.
+func batches_only_of(ids: Dictionary) -> Array[Node3D]:
+	var out: Array[Node3D] = []
+	if ids.is_empty():
+		return out
+	for key: String in _batches:
+		var batch: Batch = _batches[key]
+		if batch.brick_ids.is_empty() or batch.instance == null:
+			continue
+		var all_of: bool = true
+		for brick_id: int in batch.brick_ids:
+			if not ids.has(brick_id):
+				all_of = false
+				break
+		if all_of:
+			out.append(batch.instance)
+	return out
 
 
 ## Draw only the bricks numbered below [param upto], which, in a world
@@ -1198,6 +1227,8 @@ func _shown_colour(brick: Brick, color: PartLibrary.BrickColor) -> Color:
 		var tint: Variant = _stressed.get(brick.id)
 		return faded(color.shown) if tint == null \
 			else Color(color.shown.lerp(tint, STRESSING), color.shown.a)
+	if _painted.has(brick.id):
+		return _painted[brick.id]
 	var shown: Color = faded(color.shown) if _faded.has(brick.id) else color.shown
 	if _tinted.has(brick.id):
 		shown = Color(shown.lerp(_tinted[brick.id], TINTING), shown.a)
@@ -2163,6 +2194,38 @@ func tinted_ids() -> Dictionary:
 	return _tinted
 
 
+## View, Stud directions (StudMap, APP_UX5 seeing2): bricks drawn wholly in
+## a colour of their own, id -> Color, every surface of them, x-ray's ghosts
+## too, over faded and tinted; View, Stress draws over it. For the picture
+## only, as x-ray's ghosts are: a brick keeps its paint, the history no step
+## and [member revision] its count. An empty set is none.
+var _painted: Dictionary = {}
+
+
+func set_painted(ids: Dictionary) -> void:
+	var changed: Dictionary = {}
+	for brick_id: int in _painted:
+		if not ids.has(brick_id) or ids[brick_id] != _painted[brick_id]:
+			changed[brick_id] = true
+	for brick_id: int in ids:
+		if not _painted.has(brick_id):
+			changed[brick_id] = true
+	_painted = ids.duplicate()
+	var keys: Dictionary = {}
+	for brick_id: int in changed:
+		for key: String in _brick_batches.get(brick_id, PackedStringArray()):
+			keys[key] = true
+	for key: String in keys:
+		var batch: Batch = _batches.get(key)
+		if batch != null:
+			_touching(batch)
+			_mark_dirty(key)
+
+
+func painted_ids() -> Dictionary:
+	return _painted
+
+
 ## View, Stress (StressView): while it is on, every brick drawn in its own
 ## colour faded, but those it names (id -> Color), tinted towards that
 ## colour: red or amber, by how near its weakest joint is to letting go. For
@@ -2258,8 +2321,21 @@ func home_of(brick: Brick) -> Transform3D:
 		var home: Dictionary = record.get("home", {})
 		if not home.has(brick.id) and not Assemblies.within(path, section):
 			continue
-		return Sections.home_for(brick.transform, record, brick.id)
+		return home_for(brick.transform, record, brick.id)
 	return brick.transform
+
+
+## Where a part of a section broken out goes back to: where it stood, to
+## the bit, when it has not moved since; its offset back otherwise.
+static func home_for(now: Transform3D, record: Dictionary, brick_id: int) -> Transform3D:
+	var offset: Vector3 = record.get("offset", Vector3.ZERO)
+	var home: Dictionary = record.get("home", {})
+	if home.has(brick_id):
+		var was: Transform3D = home[brick_id]
+		if now.basis.is_equal_approx(was.basis) \
+				and now.origin.distance_to(was.origin + offset) < 0.01:
+			return was
+	return now.translated(-offset)
 
 
 ## A colour as a faded brick is drawn in. Its alpha is kept: faded
@@ -2298,7 +2374,7 @@ func _write_xray(batch: Batch, ghosts: Array, surface_color: int) -> void:
 		multimesh.set_instance_transform(slot, drawn_at(brick))
 		var code: int = brick.color_code if surface_color == Lbm.COLOR_INHERIT \
 			else surface_color
-		multimesh.set_instance_color(slot, library.color(code).shown)
+		multimesh.set_instance_color(slot, _painted.get(brick.id, library.color(code).shown))
 		var box: AABB = drawn_at(brick) * multimesh.mesh.get_aabb()
 		bounds = box if slot == 0 else bounds.merge(box)
 	batch.xray.custom_aabb = bounds

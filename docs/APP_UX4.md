@@ -481,6 +481,23 @@ commit. None of the ten needs the owner.
   - "curved" typed while in Like this: only curved parts like it, said;
   - Fits the same after a search;
   - `likethis`, `bin2` and `bin_fold` pass.
+- **Met** (likewords, `likewords` probe: 27 checks, none failed, at 1280 x
+  720 and 1400 x 900; pre261 failed 17 at 1280 x 720). After "1x4 brick" and
+  a wall of four 1 x 4 bricks put down by clicks, a 2 x 4 brick clicked and
+  Like this chosen starts from no words, the box saying "Narrow these
+  parts…": Plate 2 x 4 is 7th and the first 12 are the empty search's to the
+  tile, no two the same mould (pre261: eight 4744 prints each a tile of its
+  own, no plate). "curved" typed: 54 tiles, every one curved and like it, the
+  curved slopes 93606 and 61068 among them (pre261: 18, neither), said
+  "Parts like Brick 2×4, with “curved”". All puts "1x4 brick" and its first
+  8 back, and Like this chosen again starts empty. Fits after the search
+  lists its empty search's 12; "plate" narrows it to 88 plates, said. Over
+  MCP, `search_parts like=3001 query=curved` lists 50 curved parts with both
+  slopes (pre261: 18, neither). Like this ranks every alike part now
+  (`PartLike`): cut at 300, a printed torso's list was its own 299 prints.
+  `likethis` 25 checks, `bin2` 40, `bin_fold` 25, `fits` 18, `setbin` 26,
+  `likethis_phone` and `likethis_tablet` 5 each, `bin_keys` (longest frame
+  46.6 ms) and `bin_keys_phone` (40.9 ms) pass.
 
 **3. intomodel: a model into this one.**
 - **Change.**
@@ -498,30 +515,6 @@ commit. None of the ten needs the owner.
   - over MCP in 1 call;
   - an .io with Studio-only parts comes in with them;
   - `unit_steps`, `steps_kept`, `io` and `given_file` pass.
-- **Done** (unit intomodel, 2026-11-05; every line met: `intomodel_probe`
-  red on `pre261`, where it cannot load, the store having no way to open a
-  model into another; green at 1280 x 720 and 1400 x 900, 53 checks each,
-  none failed, the pictures in `bench/results/intomodel-2026-11-05/`):
-  - the gatehouse (14 parts, 5 steps, a base and a window put on twice)
-    into the car in **2 actions**, its row in File, Import, Into this
-    model… and a click: one sub-assembly, `Gatehouse#1`, its sub-models
-    inside it; every part **0.0000 LDU** and 0.00000 turned off its place
-    against the others; its 5 steps kept as its own, each copy's in it
-    too; the car given the 15 steps it was shown, the gatehouse in step 16;
-  - **one Ctrl+Z** takes all 14 out, the car's parts and steps as they were;
-  - `open_model {"into": true, "name": "Gatehouse"}` in **1 call**, beside
-    the car, the same checks;
-  - `whole_2025.io` comes in with all 6 parts, the **4 only Studio has**
-    among them, each drawn;
-  - `unit_steps` 231, `steps_kept` 119, `io` 74 and `given_file` 5 checks
-    pass.
-  - The library's sets and gallery models have Put in this model: 106-1
-    in hand in one click, credited to its maker; a gallery model whose
-    maker kept every right is greyed and says why. Saved and opened again,
-    it is as it was put in. Every new word in German, French and Spanish.
-  - Before, on pre261: no Into this model, no Put in this model, no
-    `into`; a person opened the gatehouse, selected all, copied, switched
-    back and pasted, about 5 actions, and the copy kept no steps.
 
 **4. picklist: buying from LEGO, and a fuller BrickLink list.**
 - **Change.**
@@ -578,6 +571,84 @@ commit. None of the ten needs the owner.
   - R on a curve in hand puts its other end to the joint;
   - an oval of 16 curves and 4 straights by a session in 3 calls or fewer;
   - `snap`, `connect` and `attach` pass.
+- **Done** (tracks, 2026-11-06; `tracks_probe` red on `pre261`, where a
+  track in hand has no end to go to (8 checks failed), green with 25
+  checks, none failed, at 1280 x 720 and at 1400 x 900):
+  1. A 9V curve dragged from the bin to a straight's free end joins it in
+     **1 drag**: the ends **0.000 LDU** apart, facing within **0.0000°**
+     (pre261: 139.0 LDU and 11.25° off);
+  2. **sixteen curves by sixteen clicks** close a circle: the last meets the
+     first **0.001 LDU** apart, no end left free (pre261: 9 curves down,
+     995 LDU apart, 18 free ends);
+  3. **R** on a curve in hand puts its other end to the joint (its end 0,
+     then its end 1, each 0.000 LDU), and a click puts it there. Two 12V
+     curves bring the sleeper (4166a) under their joint, and one undo takes
+     both off;
+  4. **the oval** of 16 curves and 4 straights by a session in **2 calls**:
+     `submit_design`, each track `attach`ed by `{"to": "t3.track[1]", "by":
+     "track[0]"}`, and the `job` it became. 20 tracks, every end on the
+     next's within 0.001 LDU, no end free (pre261: none down);
+  5. `snap` (18 checks), `attach` (10) and `connect` (37) pass, and so do
+     `placing` (49), `first_build` (51), `mcp_sync` (14),
+     `design_undo` (20) and `mcp` (75). `tested_models` fails one check, as
+     it does on `pre261` without this change: 6680-1's two plates overlap by
+     8 LDU where it expects 4.
+  - **The table** (`assets/ldraw/track_ends.json`, which
+    `tools/track_ends.py check` measures again) has 94 tracks, each end
+    measured from the part's own LDraw geometry: 9V 9, 12V 38, 4.5V 24,
+    6 studs wide 11 (the RC trains' plastic track and every city train's
+    since), 4 studs wide 3 and roller coaster 9. A 9V and a 6 wide track
+    join, as real ones do. The 9V switch's ends match LeoCAD's hand-made
+    table. 68 parts are left out, each with why: monorail 14, Duplo 13,
+    single rails 7, flexible 5, rack railway 2, 22 that are no length of
+    track (levers, sleepers, inserts), 4 whose files draw none of the
+    track, and the 6 wide ramp 53834, where only one end measures.
+  - A circle laid by hand on the 32 x 32 baseplate runs off it, and the
+    status bar says "1 weak joint (leaning)": the baseplate is what holds a
+    part, as for a brick laid on the ground beside it. Over MCP the
+    baseplate grows to the oval, which stands.
+
+**6. grid: a grid of copies in one dialog.** Its Change and Bar are its row
+above.
+- **Done** (grid, 2026-11-05; `grid_probe`, red on pre261, which has no In a
+  grid (only In a row, Round and Along a hose, so a 4 x 3 x 2 block was a
+  row, that row copied, then that layer copied up), green with 29 checks at
+  1280 x 720 and at 1400 x 900):
+  1. Pattern's **In a grid**: one 2 x 2 brick, a click, Ctrl+Shift+D, In a
+     grid, then 4 columns, 3 rows and 2 levels, every 3 studs, 3 studs and
+     9 plates, typed with Tab between them, and Enter: 15 actions in **one
+     dialog**, which says "23 copies · 4 columns 3 studs apart · 3 rows 3
+     studs apart · 2 levels 3 bricks apart · each has room" and draws the
+     copies before anything is put down;
+  2. **24 parts**, each within 0.01 LDU of its place (60 LDU a column and
+     a row, 72 a level), square to the grid, none in another's room;
+  3. **one undo**: one step; one Ctrl+Z takes the 23 copies back, and redo
+     puts each back at its place;
+  4. a 1 x 4 brick where column 3, row 2, level 1 would go is **refused with
+     where**: "the copy in column 3, row 2, level 1 has no room: Brick 1 x 4
+     is in the way", drawn red, Put them down greyed, and Enter puts nothing
+     down;
+  5. **`patterns` passes** (229 checks), and so does the dialog's own
+     `handbuild_probe -- only=patterns` (27: the fence, `/4`, the ring and
+     the hose). The dialog's words are in German, French and Spanish, and
+     it opens inside the window in each; `languages` (104), `tooltip_fit`
+     and `typed_moves` (75) pass.
+  6. **The same grid over MCP**, as the owner's Claude lays it: the new
+     `pattern_parts` tool (columns, rows and levels, `column_studs`,
+     `row_studs` and `level_plates`, each spacing the parts' own size when
+     not given) runs the same `Pattern.grid`, room check and undo step as the
+     dialog. In `grid_probe`, the same 4 x 3 x 2 is **1 call**: 24 bricks,
+     each within 0.01 LDU of its place, none in another's room. It is **one
+     undo**: the session's `undo`, called once, takes all 23 copies back.
+     With the 1 x 4 brick in the way it is **refused with where**: "the copy
+     in column 3, row 2, level 1 has no room: Brick 1 x 4 is in the way
+     (#26). Nothing changed", and no step is added. Left to their own size,
+     2 x 2 bricks lay touching (40 LDU, 24 LDU). The person's selection is
+     left as it was. 40 checks at 1280 x 720 and at 1400 x 900; `mcp_sync`,
+     `mcp` (75), `mcp_lean` (27) and `patterns` (229) pass. The window's
+     default level spacing now rounds a 2 x 2 brick's 28 LDU height down to
+     3 plates rather than up to 4, so a level, or a row going up, touches
+     the one below.
 
 **7. partbypart: Build it a part at a time.**
 - **Change.** Build it, a part at a time: the next part alone highlighted

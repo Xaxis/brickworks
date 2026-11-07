@@ -35,6 +35,11 @@ var fetch_near: bool = false
 ## The Claude chat whose call is running, as the relay names it, or "":
 ## set by CommandSocket around each call (undo keeps to its own changes).
 var chat: String = ""
+## The session a call came on when it names no chat (the desktop's MCP
+## port, by its session; the line protocol, by its connection), or "": set
+## by CommandSocket beside [member chat]. A collection's lots are marked by
+## it, so two such sessions' lots stay apart (mbreview finding 8).
+var connection: String = ""
 ## The gallery, read for a session (GalleryTool, 2026-10-13).
 var _gallery: GalleryTool
 ## The window's hand tools, for a session (HandTools, APP_UX3).
@@ -42,6 +47,8 @@ var _hands: HandTools
 ## What a session sees as a person does: boards of views, parts picked out,
 ## a booklet page (SeeTools, APP_UX4).
 var _see: SeeTools
+## Edit, Pattern…'s grid for a session (PatternTool, APP_UX4 grid).
+var _pattern: PatternTool
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -60,16 +67,19 @@ const COMMANDS: Dictionary = {
 	"undo": "undo", "redo": "undo",
 	"cut_parts": "edit_model", "copy": "edit_model", "paste": "edit_model",
 	"duplicate": "edit_model", "delete": "edit_model", "paint": "edit_model",
-	# A session repeats a named section stepped or round a centre
-	# (edit_model's repeat_section; submit_design's repeat pattern).
-	"pattern": "edit_model",
+	# Edit, Pattern…'s grid (and a row, a grid of one row) on parts by number
+	# (PatternTool); a named section repeats stepped or round a centre with
+	# edit_model's repeat_section, a design with submit_design's repeat.
+	"pattern": "pattern_parts",
 	"replace": "edit_model", "make_submodel": "edit_model",
 	"step_*": "edit_steps", "timeline": "edit_steps", "booklet_*": "edit_booklet",
 	"floor_*": "set_floor",
 	"flex": "lay_flex", "reshape_flex": "lay_flex",
 	"pose": "pose_model", "mode_hinge": "pose_model", "swing": "pose_model",
-	"parts_list": "parts_list", "collection": "parts_list", "collection_need": "parts_list",
+	"parts_list": "parts_list", "collection_need": "parts_list",
 	"collection_build": "parts_list",
+	# mybricks: My collection's What I own, loose lots added and read back.
+	"collection": "edit_collection",
 	"minifig": "add_minifig", "mosaic": "make_art", "part_maker": "make_part",
 	"stability": "review_model", "ask_claude": "selection", "brace": "selection",
 	"stress": "weakest_joints",
@@ -83,10 +93,15 @@ const COMMANDS: Dictionary = {
 	# The window's hand tools on the parts a session names (HandTools).
 	"mirror": "mirror_parts", "split_parts": "split_parts", "merge_parts": "merge_parts",
 	"measure": "measure",
-	# A model put into this one whole (open_model into=true, intomodel).
-	"import_into": "open_model",
 	# picklist: LEGO's Pick a Brick list (export_model format=pickabrick).
 	"export_pickabrick": "export_model",
+	# pagesetup: Build, Booklet page, Page setup… (BookletSheet).
+	"booklet_page_setup": "page_setup",
+	# seeing2: View, Stud directions is view_board's studs=true.
+	"stud_map": "view_board",
+	# savedviews: View › Viewpoint › Render each saved view is render_queue's
+	# add view=NAME, a view at a time.
+	"render_views": "render_queue",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -148,6 +163,9 @@ const WINDOW_ONLY: Dictionary = {
 	"reinstall": "puts a fresh copy of the app in place and restarts it, ending the session's connection",
 	"restart": "closes and reopens the app the session is driving, ending the session's connection",
 	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; in_view shows a session the one laid, and a session is given its own pictures in the conversation",
+	# savedviews: the views kept with the model (SavedViews).
+	"save_view": "keeps where the person's own camera looks from, by a name of theirs; a session looks from a saved view with view_model view= and renders one with render_model view=",
+	"saved_view_*": "the person's camera; view_model view= looks from a saved view by its name, and render_model view= renders it",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -174,6 +192,11 @@ changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
 booklet's per_page=, as the timeline's Booklet row does; place=, text=, \
 arrow= and guide= lay a page out by hand; callout_step= poses a callout's step.
+ - page_setup: the booklet's paper (size= "A4", "letter", "A5" or its own \
+269 x 199), orientation=, margin=, colour= or picture_data= behind every \
+page, number= the step numbers' height and parts= the parts boxes' scale, as \
+Build, Booklet page, Page setup… does; save_as= keeps it as a style by a \
+name, style= gives a kept one to this model, remove_style= takes one away.
  - lay_flex: a hose, a pneumatic tube, a flexible axle, a string or a \
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.
@@ -210,15 +233,20 @@ versions=true with version=N opens nothing and says what changed since that \
 save, part by part, as File, Compare with… draws it. \
 link= opens a copy of a gallery model, as Open in Brickworks does; \
 library= opens LDraw's model of a real set (gallery library=true finds them).
- - open_model into=true puts name= (or library=, link=) into the model open \
-now as one sub-assembly with its author's steps, beside the model or at x= \
-z=, in one call, as File, Import, Into this model… does; undo takes it out.
  - parts_list: the model's parts by part and colour with element ids; \
 which="need" what the person's collection is short of; "buildable" What \
 can I build?: saved models, examples and real sets' models by how much is owned.
+ - edit_collection: the person's own loose bricks, as My collection's What \
+I own keeps them. add= lots seen in a photo of their pile (part, colour, \
+count), all in one call, each marked as the session's for the person to \
+keep or take back; remove= takes the session's own lots off; with neither \
+it reads the collection back. Their sets and their own lots are never changed.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
-the model built up step by step as a video, saved where Render saves.
+the model built up step by step as a video, saved where Render saves; a \
+turntable or a build answers with six of its frames in one picture. view= \
+a view the person saved with the model, by its name, draws it from exactly \
+there (view_model view= looks from it first).
  - render_queue: pictures lined up with Render's settings and drawn one \
 after another while the person goes on working, as File, Render queue… \
 does; list says how far each has got and where it was saved.
@@ -261,14 +289,22 @@ measure, read-only: the distance and the angle between two connectors \
 joint with the turn between them as attach's yaw. in_view, read-only: what \
 the person sees and a session is not told — the step the timeline is at, \
 the part in their hand, and the reference picture they build over, with a \
-picture of it.
+picture of it; and the model's size in studs and centimetres and its weight \
+in grams, as the status bar says them.
  - view_board, read-only: up to six of view_model's views in one labelled \
 picture; highlight= parts edged in magenta with the rest see-through, xray= \
-parts see-through so what they hide shows, step=N the model as built to step \
-N with its new parts edged. booklet_page, read-only: a page of the booklet as \
+parts see-through so what they hide shows (each by number, part number \
+"3024", colour "red" or "step:3"), step=N the model as built to step N with \
+its new parts edged, studs=true each part coloured by where its studs point. booklet_page, read-only: a page of the booklet as \
 Instructions draws it and its PDF prints it, to see what edit_booklet did. \
 mirror_parts, split_parts and merge_parts answer with the change pictured, as \
 edit_model does (picture=true the whole model, false words alone).
+ - pattern_parts: Edit, Pattern…'s grid on parts by number, in one call: \
+columns along x, rows along z and levels up (a row is one row and one level), \
+column_studs= and row_studs= apart in studs, level_plates= in plates, each the \
+parts' own size when not given, so copies touch. Every copy checked for room, \
+all or nothing, one undo step; a copy with no room is said by its column, row \
+and level and the part in its way. Answered with the copies pictured.
  - weakest_joints: what gives first in the whole model as it stands, \
 read-only, as View, Stress weighs it: each joint that alone holds what is \
 past it, weakest first, with its margin against its studs' working load. \
@@ -371,7 +407,7 @@ func definitions() -> Array:
 				+ "callout that step puts on, from 1: turn= and tilt= pose it apart, from the "
 				+ "way the callout faces. The page by hand, one undo step each and "
 				+ "alone in a call: place= moves an item of the step's page to x, y (and w, h) "
-				+ "in mm on the 269 x 199 page, as dragging it on Lay out the page does "
+				+ "in mm on the page (269 x 199 unless page_setup set it up), as dragging it on Lay out the page does "
 				+ "(item picture, parts, callout or number; note with index= for words or a "
 				+ "picture added, turn= degrees clockwise and opacity= percent turning and fading it; "
 				+ "remove=true takes a note off, back=true puts an item back "
@@ -436,7 +472,7 @@ func definitions() -> Array:
 				"callout": {"type": "boolean"},
 				"per_page": {"type": "integer", "enum": [0, 1, 2, 4]},
 				"follow": {"type": "boolean", "description": "true: the later pages laid out as step's page is"},
-				"pull": {"description": "studs to pull the step's parts out (true: 2; 0 or false: put back), or {studs, parts: [part ids]}"},
+				"pull": {"description": "studs to pull the step's parts out (true: 2; 0 or false: put back), or {studs, parts: [the step's brick numbers or part ids]}"},
 				"colours": {"type": "boolean", "description": "true: the step's colours listed under its number"},
 				"colours_all": {"type": "boolean", "description": "true: every step's colours listed"},
 				"actual_size": {"description": "the step's 1:1 guides: false none, true every axle and beam, [part ids] those parts, \"auto\" as the booklet does it"},
@@ -447,6 +483,36 @@ func definitions() -> Array:
 						"at": {"type": "number"},
 						"was": {"type": "number", "description": "where the guide to move or take off is"},
 						"remove": {"type": "boolean"}}},
+			}},
+		},
+		# pagesetup: the booklet's page, the person's way (BookletSheet).
+		{
+			"name": "page_setup",
+			"description": ("The booklet's page, as Build, Booklet page, Page setup… sets it, "
+				+ "for the whole booklet and its PDF: size= \"booklet\" (its own 269 x 199 mm), "
+				+ "\"A4\", \"letter\" or \"A5\"; orientation= \"portrait\" or \"landscape\"; "
+				+ "margin= mm; colour= the page's colour (\"#ffffff\", \"usual\" its light blue); "
+				+ "picture_url= or picture_data= (base64) a picture behind every page, picture= "
+				+ "\"none\" takes it off; number= the step numbers' height in mm (8 usual); parts= "
+				+ "the parts boxes' pictures' size (1 usual, 0.5 to 2); usual=true the booklet's own "
+				+ "page again. save_as= keeps the page as a style by that name, style= gives "
+				+ "this model a kept style whole, and remove_style= takes a kept style away. One "
+				+ "undo step, saved with the model. With nothing, says how the page is set up, "
+				+ "its picture's size in the file, and the styles kept."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"size": {"type": "string", "enum": ["booklet", "A4", "letter", "A5"]},
+				"orientation": {"type": "string", "enum": ["portrait", "landscape"]},
+				"margin": {"type": "number", "description": "mm, 5 to 30 (9 usual)"},
+				"colour": {"type": "string", "description": "\"#rrggbb\", or \"usual\""},
+				"picture_url": {"type": "string", "description": "an http(s) link to a picture"},
+				"picture_data": {"type": "string", "description": "a picture's own bytes, base64"},
+				"picture": {"type": "string", "enum": ["none"]},
+				"number": {"type": "number", "description": "mm, 4 to 20"},
+				"parts": {"type": "number", "description": "0.5 to 2"},
+				"usual": {"type": "boolean"},
+				"style": {"type": "string", "description": "a style kept by save_as=, given whole"},
+				"save_as": {"type": "string", "description": "keep the page as a style by this name"},
+				"remove_style": {"type": "string", "description": "a style kept by save_as=, taken away"},
 			}},
 		},
 		{
@@ -628,7 +694,8 @@ func definitions() -> Array:
 				+ "changing the model. reverse= and sequence= as play_motion; fps= 12 or 24; size= "
 				+ "480x300 or 720p; view= where the camera stands, hero (three-quarter from the front "
 				+ "left, the default) or back for what moves at the back. Needs the app in a window, "
-				+ "and is a job (job gives the result, with a picture of its frames)."),
+				+ "and is a job (job gives the result, with six of its frames in one picture, the "
+				+ "first and the last among them)."),
 			"input_schema": {"type": "object", "additionalProperties": false, "required": ["name"],
 				"properties": {
 				"name": {"type": "string"},
@@ -697,10 +764,6 @@ func definitions() -> Array:
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
 				"version": {"type": "integer", "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it"},
 				"discard_changes": {"type": "boolean"},
-				"into": {"type": "boolean", "description": "put name= (or library=, link=) into the model open now as one sub-assembly with its own steps, as File, Import, Into this model… does, in place of opening it; nothing is replaced"},
-				"x": {"type": "number", "description": "with into: studs across to its low corner; beside the model when omitted"},
-				"z": {"type": "number", "description": "with into: studs deep to its low corner"},
-				"turn": {"type": "integer", "description": "with into: quarter turns about the vertical, 0 to 3"},
 			}},
 		},
 		{
@@ -716,6 +779,40 @@ func definitions() -> Array:
 				"limit": {"type": "integer", "description": "how many rows; 60 when omitted"},
 			}},
 		},
+		# mybricks (APP_UX5 #2): the person's loose bricks, from a photo of
+		# their pile, in one call.
+		{
+			"name": "edit_collection",
+			"description": ("The person's own bricks, as Build, My collection's What I own "
+				+ "keeps them with their account: sets, and loose parts by part, colour and "
+				+ "count. add=[{part, color, count}] adds loose lots, all in one call: given a "
+				+ "photo of their pile, look at it closely, name each part (its LDraw number, "
+				+ "as search_parts gives it; a BrickLink number is read too) and its LDraw "
+				+ "colour code, count each, and add them together. Every lot added is marked "
+				+ "as this chat's and listed for the person apart from their own, to keep or "
+				+ "take back with one button. remove=[{part, color, count}] takes pieces off "
+				+ "lots this chat added (count omitted: the whole lot). With neither, it reads "
+				+ "the collection back, this chat's lots apart. Their sets and their own lots "
+				+ "are theirs: this never changes them. parts_list which=\"need\" then measures "
+				+ "the model against it, and which=\"buildable\" ranks what they can build."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"add": {"type": "array", "description": "loose lots to add", "items": {
+					"type": "object", "additionalProperties": false, "required": ["part", "color", "count"],
+					"properties": {
+						"part": {"type": "string", "description": "the part's LDraw number, like 3001"},
+						"color": {"type": "integer", "description": "LDraw colour code, like 4 for Red"},
+						"count": {"type": "integer", "description": "how many, 1 or more"},
+					}}},
+				"remove": {"type": "array", "description": "pieces to take off lots this chat added", "items": {
+					"type": "object", "additionalProperties": false, "required": ["part", "color"],
+					"properties": {
+						"part": {"type": "string"},
+						"color": {"type": "integer"},
+						"count": {"type": "integer", "description": "how many to take off; the whole lot when omitted"},
+					}}},
+				"limit": {"type": "integer", "description": "how many lots the read back lists; 60 when omitted"},
+			}},
+		},
 		{
 			"name": "render_model",
 			"description": ("Render the model as File, Render does: a picture, a turntable "
@@ -726,20 +823,23 @@ func definitions() -> Array:
 				+ "shadows. quality quick, good or best (good for a picture, quick for a "
 				+ "turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for "
 				+ "a turntable or a build); view hero, "
-				+ "front, side, back, low or top. look product is a product shot's: glossy "
+				+ "front, side, back, low or top, or the name of a view the person saved with "
+				+ "the model (View › Viewpoint), drawn from exactly there; a name it does not "
+				+ "keep is answered with those it does. look product is a product shot's: glossy "
 				+ "plastic with rounded edges, clear parts that bend the light, a key, fill "
 				+ "and rim over a softbox studio (window, the default, is the window's own). "
 				+ "backdrop white, gradient, grey, dark or none (as Render last had it when "
 				+ "omitted). depth_of_field blurs what is nearer and farther than the "
 				+ "model's middle, as a lens at f/4 does, and is drawn at best. Saved where "
 				+ "Render saves. It is a job: the answer is a job number at once, and job "
-				+ "gives the result, a picture with it. Needs the app in a window."),
+				+ "gives the result: a picture with it, or a turntable's or a build's six frames "
+				+ "in one picture, the last its end. Needs the app in a window."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"kind": {"type": "string", "enum": ["picture", "turntable", "build"]},
 				"seconds": {"type": "integer", "description": "a build's length, 10 to 60; 20 when omitted"},
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
-				"view": {"type": "string", "enum": ["hero", "front", "side", "back", "low", "top"]},
+				"view": {"type": "string", "description": "hero, front, side, back, low or top, or a view saved with the model, by its name"},
 				"look": {"type": "string", "enum": ["window", "product"]},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
@@ -751,7 +851,8 @@ func definitions() -> Array:
 			"description": ("Pictures lined up and drawn one after another while the person "
 				+ "goes on working, as File, Render queue… does. action add queues the "
 				+ "model and the view as they are now (view current, the window's, unless "
-				+ "another is given), with Render's settings changed by quality, size, "
+				+ "another is given: view= may name a view saved with the model, drawn from "
+				+ "exactly there), with Render's settings changed by quality, size, "
 				+ "samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as "
 				+ "render_model takes them; drawing begins at once unless paused, and each is "
 				+ "saved where Render saves under a name of its own. list (the default) says "
@@ -769,8 +870,7 @@ func definitions() -> Array:
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"samples": {"type": "integer", "description": "Best's samples, 1 to 4096"},
-				"view": {"type": "string", "enum": ["current", "hero", "front", "side", "back",
-					"low", "top"]},
+				"view": {"type": "string", "description": "current, hero, front, side, back, low or top, or a view saved with the model, by its name"},
 				"look": {"type": "string", "enum": ["window", "product"]},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
@@ -998,6 +1098,7 @@ func definitions() -> Array:
 			}},
 		},
 		GalleryTool.definition(),
+		PatternTool.definition(),
 	] + HandTools.definitions() + SeeTools.definitions()
 
 
@@ -1019,11 +1120,14 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 		"set_floor":
 			return _set_floor(input)
 		"edit_steps":
-			return _edit_steps(input)
+			return await _edit_steps(input)
 		"booklet_layout":
 			return await _booklet_layout(input)
 		"edit_booklet":
 			return await _edit_booklet(input)
+		# pagesetup.
+		"page_setup":
+			return await _page_setup(input)
 		"lay_flex":
 			return await _lay_flex(input)
 		"pose_model":
@@ -1053,6 +1157,8 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _open(input)
 		"parts_list":
 			return await _parts_list(input)
+		"edit_collection":
+			return await _edit_collection(input)
 		"render_model":
 			return await _render(input, work)
 		"render_queue":
@@ -1096,6 +1202,16 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return handled
 		"view_board", "booklet_page":
 			return await _seeing().run(tool, input, work)
+		# Edit, Pattern…'s grid (PatternTool), answered with the copies
+		# pictured as the hand tools' changes are.
+		"pattern_parts":
+			if _pattern == null:
+				_pattern = PatternTool.new()
+				_pattern.app = app
+			var laid: String = _pattern.run(input)
+			if not _pattern.changed.is_empty():
+				return await _seeing().pictured(laid, _pattern.changed, input.get("picture"))
+			return laid
 	return "No tool called %s." % tool
 
 
@@ -1104,6 +1220,12 @@ func _seeing() -> SeeTools:
 		_see = SeeTools.new()
 		_see.app = app
 	return _see
+
+
+## check_design's answer from outside, the parts its findings name pictured
+## (SeeTools.findings_pictured, APP_UX5 seeing2).
+func findings_pictured(answer: Variant, input: Dictionary) -> Variant:
+	return await _seeing().findings_pictured(answer, input)
 
 
 ## Why [param tool] is not done now, before it begins, or "".
@@ -1139,7 +1261,11 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_
 	"define_motion", "play_motion",
 	"undo", "open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts",
 	"make_sections", "break_out_section",
-	"mirror_parts", "split_parts", "merge_parts"]
+	"mirror_parts", "split_parts", "merge_parts",
+	# Edit, Pattern…'s grid (PatternTool).
+	"pattern_parts",
+	# pagesetup: the booklet's page.
+	"page_setup"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the
@@ -1167,6 +1293,9 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 			return true
 		"view_board", "booklet_page":
 			return true
+		# pagesetup: how the page is set up, read.
+		"page_setup":
+			return input.is_empty()
 	return false
 
 
@@ -1237,14 +1366,27 @@ func _one_undo_since(depth: int) -> void:
 # -- the build steps ------------------------------------------------------------
 
 
+## Parts from which edit_steps works its steps out paced (plan_paced).
+const STEPS_PACED_FROM := 300
+
+
 func _edit_steps(input: Dictionary) -> String:
 	var world: BrickWorld = app.get("_world")
 	var library: PartLibrary = app.get("_library")
 	var store: ModelStore = app.get("_store")
 	var shell: Shell = app.get("_shell")
 	var op: String = str(input.get("op", "list"))
-	var steps: Array[Instructions.Step] = Instructions.plan(world, library, store.scenery, {},
-		true)
+	var steps: Array[Instructions.Step] = []
+	# Worked out a slice a frame on a big model: in one go, the Charger's
+	# 1,083 parts held the window a second on the desktop and several in a
+	# browser, whose page says nothing to the relay meanwhile (bigedit).
+	if world.brick_count() >= STEPS_PACED_FROM:
+		var job: Working.Job = Working.begin("Setting out the steps…")
+		await job.shown()
+		steps = await Instructions.plan_paced(world, library, store.scenery, {}, job, true)
+		job.end()
+	else:
+		steps = Instructions.plan(world, library, store.scenery, {}, true)
 	if steps.is_empty():
 		return "There is nothing built to have steps."
 	match op:
@@ -1299,6 +1441,46 @@ func _booklet_layout(input: Dictionary) -> String:
 	if pages.is_empty():
 		return "There is nothing built to make a booklet of."
 	return BookletLooks.layout_said(world, pages, int(input.get("from", 2)))
+
+
+## pagesetup: the booklet's page set up (Shell.page_setup, as Page setup…
+## sets it): one undo. With nothing asked, how it is set up and the styles
+## kept.
+func _page_setup(input: Dictionary) -> String:
+	var world: BrickWorld = app.get("_world")
+	var shell: Shell = app.get("_shell")
+	if input.is_empty():
+		var styles: Array = BookletSheet.styles().keys()
+		styles.sort()
+		return "The booklet's page: %s. %s" % [BookletSheet.of(world).words(),
+			("Styles kept: %s." % ", ".join(styles)) if not styles.is_empty()
+				else "No style is kept yet: save_as= keeps this page as one."]
+	var fields: Dictionary = {}
+	for field: String in ["size", "orientation", "margin", "colour", "number", "parts", "usual",
+			"style", "save_as", "remove_style"]:
+		if input.has(field):
+			fields[field] = input[field]
+	if input.has("picture_url") or input.has("picture_data"):
+		var image: Image = null
+		if input.has("picture_data"):
+			var read: Dictionary = PictureFile.from_data(str(input["picture_data"]))
+			if read.has("error"):
+				return _sentence(str(read["error"]))
+			image = read["image"]
+		else:
+			var fetched: Dictionary = await _fetch(str(input["picture_url"]).strip_edges(),
+				PictureFile.MOST_BYTES)
+			if fetched.has("error"):
+				return str(fetched["error"])
+			image = PictureFile.decode(fetched["bytes"])
+			if image == null:
+				return _sentence(PictureFile.not_read(fetched["bytes"], "That link"))
+		var kept: Array = BookletSheet.picture_of(image)
+		fields["picture"] = kept[0]
+		fields["picture_data"] = kept[1]
+	elif str(input.get("picture", "")).to_lower() in ["none", "off", "false"]:
+		fields["picture"] = ""
+	return _sentence(shell.page_setup(fields))
 
 
 ## How a step is printed, set (Shell.change_look): one undo.
@@ -1373,7 +1555,7 @@ func _edit_booklet(input: Dictionary) -> String:
 		if not int(input["per_page"]) in [0, 1, 2, 4]:
 			return "per_page= is 1, 2, 4, or 0 for as many as fit."
 		fields["per_page"] = int(input["per_page"])
-	var extras: Variant = _booklet_extras(input, world)
+	var extras: Variant = _booklet_extras(input, world, at)
 	if extras is String:
 		return extras
 	fields.merge(extras)
@@ -1392,28 +1574,36 @@ func _edit_booklet(input: Dictionary) -> String:
 				now = "seen as the callout faces"
 	var named: String = ("step %d's callout step %d" % [at.number, at.callout_step]) \
 		if at.in_callout() else "step %d" % at.number
-	return said + (("; %s is now: %s" % [named, now]) if not now.is_empty() else "")
+	return said + (("; %s is now: %s" % [named, now]) if not now.is_empty() else "") \
+		+ _extras_said
 
 
 ## edit_booklet's Studio extras (booklet3) as BookletLooks keeps them:
 ## pull=, colours=, colours_all=, actual_size= and preview=; or what is wrong
-## with one, said.
-func _booklet_extras(input: Dictionary, world: BrickWorld) -> Variant:
+## with one, said. What else to say of them goes in [member _extras_said].
+func _booklet_extras(input: Dictionary, world: BrickWorld, at: Instructions.Step) -> Variant:
 	var fields: Dictionary = {}
+	_extras_said = ""
 	if input.has("pull"):
 		var pull: Variant = input["pull"]
 		var studs: float = BookletLooks.PULL_STUDS
 		var parts: Array = []
 		if pull is Dictionary:
 			studs = float(pull.get("studs", BookletLooks.PULL_STUDS))
-			for part: Variant in pull.get("parts", []) if pull.get("parts") is Array else []:
-				parts.append(str(part).to_lower().trim_suffix(".dat"))
+			var asked: Variant = pull.get("parts", [])
+			if not (asked is Array):
+				asked = [asked]
+			var pulled: Variant = _pulled_parts(asked, at, world)
+			if pulled is String:
+				return pulled
+			parts = pulled
 		elif pull is bool:
 			studs = BookletLooks.PULL_STUDS if pull else 0.0
 		elif pull is float or pull is int:
 			studs = float(pull)
 		else:
-			return "pull= is studs (0 puts the parts back), true, or {studs, parts: [part ids]}."
+			return ("pull= is studs (0 puts the parts back), true, or {studs, parts: [the step's "
+				+ "brick numbers or part ids]}.")
 		if studs > BookletLooks.PULL_MOST:
 			return "pull= is at most %s studs." % BookletLooks._number(BookletLooks.PULL_MOST)
 		fields["pull"] = {"studs": maxf(0.5, studs), "parts": parts} if studs > 0.0 else null
@@ -1439,6 +1629,85 @@ func _booklet_extras(input: Dictionary, world: BrickWorld) -> Variant:
 	return fields
 
 
+## What _booklet_extras has to say beside the change: which parts a pull by
+## brick number pulls.
+var _extras_said: String = ""
+
+
+## The part ids a pull's [param asked] names in step [param at]: each the
+## step's brick number (look_at_model's, as view_board's highlight= takes)
+## or a part id; or why not, with the step's parts. A session pulled the
+## wing out by its brick number, parts: [3]: it became the part id "3.0",
+## matched nothing in the step, and was kept without a word, so the page drew
+## no pull (APP_UX5, MCP walk). The booklet keeps a pull by part id, so the
+## step's other parts of that id are pulled too, and said.
+func _pulled_parts(asked: Array, at: Instructions.Step, world: BrickWorld) -> Variant:
+	var library: PartLibrary = app.get("_library")
+	var of_brick: Dictionary = {}
+	var ids_of: Dictionary = {}
+	for brick_id: int in at.brick_ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var part: String = brick.part_id.to_lower().trim_suffix(".dat")
+		of_brick[brick_id] = part
+		if not ids_of.has(part):
+			ids_of[part] = []
+		(ids_of[part] as Array).append(brick_id)
+	var parts: Array = []
+	var by_number: Array = []
+	var unknown := PackedStringArray()
+	for raw: Variant in asked:
+		var part: String = ""
+		var number: int = 0
+		if raw is float or raw is int:
+			number = int(raw)
+		else:
+			var said: String = str(raw).strip_edges().to_lower().trim_prefix("#").trim_suffix(".dat")
+			if ids_of.has(said):
+				part = said
+			elif said.is_valid_int():
+				number = int(said)
+		if part.is_empty() and of_brick.has(number):
+			part = of_brick[number]
+			by_number.append(number)
+		elif part.is_empty() and ids_of.has(str(number)) and number != 0:
+			part = str(number)
+		if part.is_empty():
+			unknown.append(str(raw).trim_suffix(".0") if raw is float else str(raw))
+		elif not part in parts:
+			parts.append(part)
+	var named := PackedStringArray()
+	var listed: Array = of_brick.keys()
+	listed.sort()
+	for brick_id: int in listed.slice(0, 24):
+		named.append("#%d %s (%s)" % [brick_id, HandTools._part_name(library, of_brick[brick_id]),
+			of_brick[brick_id]])
+	if listed.size() > 24:
+		named.append("and %d more" % (listed.size() - 24))
+	var step: String = ("step %d's callout step %d" % [at.number, at.callout_step]) \
+		if at.in_callout() else "step %d" % at.number
+	if not unknown.is_empty():
+		return ("Nothing changed: %s %s not in %s. pull's parts= takes the step's brick numbers or "
+			% [", ".join(unknown), "is" if unknown.size() == 1 else "are", step]
+			+ "part ids; %s's parts are %s." % [step, ", ".join(named)])
+	var also := PackedStringArray()
+	for number: int in by_number:
+		for other: int in ids_of[of_brick[number]]:
+			if not other in by_number and not also.has("#%d" % other):
+				also.append("#%d" % other)
+	if not by_number.is_empty():
+		var which := PackedStringArray()
+		for number: int in by_number:
+			which.append("#%d is a %s (%s)" % [number, HandTools._part_name(library,
+				of_brick[number]), of_brick[number]])
+		_extras_said = "; pulled by part: %s" % ", ".join(which)
+		if not also.is_empty():
+			_extras_said += (", and the booklet keeps a pull by part, so %s, the same part in "
+				% ", ".join(also) + "this step, %s pulled too" % ("is" if also.size() == 1 else "are"))
+	return parts
+
+
 ## A guide on every page of the booklet (Shell.change_look "guide"), as
 ## dragging one out of the page editor's ruler lays it: one undo.
 func _lay_guide(given: Variant, at: Instructions.Step) -> String:
@@ -1446,7 +1715,8 @@ func _lay_guide(given: Variant, at: Instructions.Step) -> String:
 	var axis: String = str(guide.get("axis", ""))
 	if not axis in ["x", "y"]:
 		return "guide= {axis: \"x\" (upright, at= mm from the left) or \"y\" (across, from the top), at}."
-	var most: float = Booklet.PAGE.x if axis == "x" else Booklet.PAGE.y
+	var page: Vector2 = BookletSheet.of(app.get("_world")).size()
+	var most: float = page.x if axis == "x" else page.y
 	var fields: Dictionary = {"axis": axis, "at": null, "was": guide.get("was")}
 	if bool(guide.get("remove", false)):
 		fields["was"] = guide.get("was", guide.get("at"))
@@ -2570,9 +2840,7 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var settings: RenderSettings = panel.settings
 	var size_was: Vector2i = settings.size
 	settings.size = Vector2i(1280, 720) if str(input.get("size", "")) == "720p" else Vector2i(480, 300)
-	var sheet_at: Array = []
-	for k: int in PosePanel.SHEET_MOST:
-		sheet_at.append(roundi(float(k) * float(poses.size() - 1) / float(PosePanel.SHEET_MOST - 1)))
+	var sheet_at: Array = _six_of(poses.size())
 	var title: String = str(asked["title"]) + (" backwards" if reverse else "")
 	var view: String = str(input.get("view", "hero"))
 	if not view in MOTION_VIEWS:
@@ -2592,7 +2860,8 @@ func _render_motion(input: Dictionary, work: Working.Job = null) -> Variant:
 	var picture: Image = panel.sheet(times)
 	if picture == null:
 		return "\n".join(lines)
-	lines.append("The picture: its frames at %s, left to right and down." % _times_words(times))
+	lines.append("The picture: %d of its frames, at %s, left to right and down, the last its end."
+		% [times.size(), _times_words(times)])
 	return [{"type": "text", "text": "\n".join(lines)}, _picture_block(picture)]
 
 
@@ -2716,8 +2985,6 @@ func _undo(input: Dictionary) -> String:
 
 
 func _open(input: Dictionary) -> String:
-	if bool(input.get("into", false)):
-		return await _open_into(input)
 	var store: ModelStore = app.get("_store")
 	var bar: ModelBar = app.get("_bar")
 	var saved: Array[ModelStore.Entry] = store.list_saved()
@@ -2998,175 +3265,6 @@ func _open_library(id: String, discard: bool) -> String:
 		+ _replaced_words(store, unsaved, was) + _opened_motions()
 
 
-# -- a model into this one ----------------------------------------------------------
-
-
-## open_model into=true: a saved model, an example (name=), LDraw's model of
-## a real set (library=) or a gallery model (link=) put into the model open
-## now as one sub-assembly with its author's steps, as File, Import, Into this
-## model… and the library's Put in this model do, in one call: put down
-## beside the model, or with its low corner at x= and z= studs, turned turn=
-## quarter turns, on whatever is under it there. Nothing is replaced, so
-## nothing unsaved is asked after; one undo takes it all out. A set or a
-## gallery model goes in only where its licence lets it be built on
-## (LibraryDialog.may_build_on), credited.
-func _open_into(input: Dictionary) -> String:
-	var store: ModelStore = app.get("_store")
-	var builder: Builder = app.get("_builder")
-	var name: String = str(input.get("name", "")).strip_edges().trim_suffix(".ldr")
-	var text: String = ""
-	var called: String = ""
-	var credit: String = ""
-	var file: String = ""
-	if not str(input.get("library", "")).strip_edges().is_empty():
-		var books: ModelLibrary = app.get("_model_library")
-		if books == null:
-			return "This app has no library."
-		var id: String = str(input["library"]).strip_edges()
-		if not ModelLibrary.is_id(id):
-			id = await _library_id_of(books, id)
-			if id.is_empty():
-				return "LDraw's library has no 3D model of %s. gallery library=true q= finds a set." \
-					% str(input["library"])
-		var entry: Dictionary = await books.find(id)
-		if entry.is_empty():
-			return books.trouble + " gallery library=true q= finds a set."
-		if not LibraryDialog.may_build_on(str(entry["licence"])):
-			return "%s's licence (%s) does not let it be put in another model." % [
-				ModelLibrary.title_of(entry), entry["licence"]]
-		var got: Dictionary = await books.model_text(entry)
-		if not str(got["error"]).is_empty():
-			return "Could not fetch %s: %s" % [ModelLibrary.title_of(entry), got["error"]]
-		text = str(got["text"])
-		called = ModelLibrary.title_of(entry)
-		file = str(entry["file"]).get_file()
-		credit = ModelBar.credit_words(ModelLibrary.credit_of(entry)) + (" (%s)" % entry["page"]
-			if not str(entry["page"]).is_empty() else "")
-	elif not str(input.get("link", "")).strip_edges().is_empty():
-		var link: String = str(input["link"]).strip_edges()
-		var id: String = link.get_slice("/m/", 1).get_slice("/", 0).get_slice("?", 0).get_slice(".", 0) \
-			if link.contains("/m/") else link
-		var shared: SharedModels = app.get("_shared")
-		if not SharedModels.is_id(id) or shared == null:
-			return ("link is a gallery model's link id, ten letters and digits (gallery lists them), "
-				+ "or its address, https://brickworks.diy/m/<id>.")
-		var answer: Dictionary = await shared.fetch(id)
-		if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
-			return "Could not fetch %s: %s." % [id, SharedModels.trouble(answer, "the gallery did not answer")]
-		var body: Dictionary = answer["body"]
-		if GalleryTool.held(body):
-			return GalleryTool.held_words(body, id)
-		called = str(body.get("name", "Shared model"))
-		if not LibraryDialog.may_build_on(str(body.get("licence", ""))):
-			return ("%s's builder kept every right to it (%s): open_model link= opens a copy to "
-				+ "build; it cannot go into another model without their leave.") % [called,
-				GalleryTool._licence_name(body.get("licence"))]
-		text = str(body.get("model", ""))
-		file = id + ".ldr"
-		credit = ModelBar.credit_words(SharedModels.credit_of(body, id)) + " (%s)" % str(
-			body.get("url", SharedModels.link_for(id)))
-	else:
-		var chosen: ModelStore.Entry = null
-		for entry: ModelStore.Entry in store.list_saved() + store.list_examples():
-			if chosen == null and not name.is_empty() and (entry.name.to_lower() == name.to_lower()
-					or entry.example and entry.path.get_file().get_basename() == name.to_lower()):
-				chosen = entry
-		if chosen == null:
-			return ("%s open_model with no name lists the saved models and the examples; "
-				+ "into=true with name= puts one in this model, library= a real set's.") % (
-				"No model called %s." % name if not name.is_empty() else "Which model? name= one.")
-		text = store._file_text(chosen.path)
-		if text.is_empty():
-			return "Could not read %s: %s." % [chosen.name, store.not_opened]
-		called = chosen.name
-		file = chosen.path.get_file()
-	var held: Dictionary = await store.held_from(text, file, null, called)
-	if not str(held["error"]).is_empty():
-		return "Could not put %s in this model: %s. The model is as it was." % [called, held["error"]]
-	builder.cancel_carry()
-	builder.hold_copy(held["items"])
-	builder.carrying.brought = true
-	builder.carrying.brought_units = held["units"]
-	builder.carrying.turn(clampi(int(input.get("turn", 0)), 0, 3))
-	var spot: Variant = _into_spot(builder, input)
-	if spot == null:
-		builder.cancel_carry()
-		return ("There is no room for %s %s. x= and z= put its low corner somewhere clear; the "
-			+ "model is as it was.") % [held["name"], "there" if input.has("x") or input.has("z")
-				else "beside the model"]
-	var first: int = builder.place()
-	if first == 0:
-		builder.cancel_carry()
-		return "Could not put %s down. The model is as it was." % held["name"]
-	var world: BrickWorld = app.get("_world")
-	var path: String = Assemblies.path_of(world.get_brick(first))
-	var whole: String = Assemblies.segments(path)[0] if not path.is_empty() else ""
-	var box := AABB()
-	var count: int = 0
-	for brick_id: int in builder.selection:
-		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		var mesh: Lbm.PartMesh = (app.get("_library") as PartLibrary).mesh_for(brick.part_id)
-		if mesh == null:
-			continue
-		var here: AABB = (brick.transform * mesh.bounds).abs()
-		box = here if count == 0 else box.merge(here)
-		count += 1
-	var said: String = ("Put %s in the model as one sub-assembly, %s: %s, its low corner at x=%s "
-		+ "y=%s z=%s, %s x %s studs and %s plates tall%s. Its parts are selected; undo takes it "
-		+ "all out.") % [held["name"], whole, Builder._many(builder.selection.size()),
-		_num(box.position.x / 20.0), _num(box.position.y / 8.0),
-		_num(box.position.z / 20.0), _num(box.size.x / 20.0), _num(box.size.z / 20.0),
-		_num(box.size.y / 8.0), ModelBar._held_words(held).replace(" — ", "; ")]
-	if not credit.is_empty():
-		said += " Credit %s in anything made from it." % credit
-	return said + " look_at_model to see it."
-
-
-## Where a model brought in goes down for a session: its low corner at the
-## studs [param input] gives, else beside the model, 2 studs clear of it on
-## its right, stepped further out until it fits; the group aimed there from
-## above, standing on whatever is under it (Carry.aim). Null where it
-## cannot go.
-func _into_spot(builder: Builder, input: Dictionary) -> Variant:
-	var world: BrickWorld = app.get("_world")
-	var library: PartLibrary = app.get("_library")
-	var store: ModelStore = app.get("_store")
-	var held := AABB()
-	var first: bool = true
-	for item: Dictionary in builder.carrying.items:
-		var mesh: Lbm.PartMesh = library.mesh_for(str(item["part"]))
-		if mesh == null:
-			continue
-		var turned := Transform3D(Basis(Vector3.UP, builder.carrying.turns * PI * 0.5), Vector3.ZERO)
-		var here: AABB = ((turned * (item["at"] as Transform3D)) * mesh.bounds).abs()
-		held = here if first else held.merge(here)
-		first = false
-	var model := AABB()
-	var any: bool = false
-	for brick: BrickWorld.Brick in world.bricks():
-		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if store.scenery.has(brick.id) or mesh == null:
-			continue
-		var here: AABB = (brick.transform * mesh.bounds).abs()
-		model = here if not any else model.merge(here)
-		any = true
-	var given: bool = input.has("x") or input.has("z")
-	var corner := Vector3(float(input.get("x", 0.0)) * 20.0, 0.0, float(input.get("z", 0.0)) * 20.0)
-	if not given and any:
-		corner = Vector3(model.end.x + 40.0, 0.0, model.position.z)
-	var top: float = (model.end.y if any else 0.0) + 400.0
-	for tries: int in (1 if given else 24):
-		var at: Vector3 = corner + Vector3(40.0 * tries, 0.0, 0.0) - held.position
-		builder.carrying.aim(builder.lattice, builder, Vector3(at.x, top, at.z), Vector3.DOWN)
-		if builder.carrying.can_place():
-			return at
-	return null
-
-
-static func _num(value: float) -> String:
-	return str(snappedf(value, 0.1)).trim_suffix(".0")
-
-
 # -- the parts list and the collection ------------------------------------------------
 
 
@@ -3192,7 +3290,7 @@ func _parts_list(input: Dictionary) -> String:
 	if not which in ["need", "buildable"]:
 		return "which is model, need or buildable."
 	var shell: Shell = app.get("_shell")
-	var mine: CollectionStore = shell.collection.store if shell.collection != null else null
+	var mine: CollectionStore = shell.collection_store
 	if mine == null:
 		return "This app has no collection."
 	if mine.on_hand.is_empty() and not mine.collection.is_empty():
@@ -3261,6 +3359,234 @@ func _parts_list(input: Dictionary) -> String:
 	return "\n".join(said)
 
 
+# -- mybricks: the person's own loose bricks (APP_UX5 #2) ---------------------------
+
+## The most lots one call adds or takes off.
+const MOST_LOTS := 500
+
+
+## edit_collection: lots added, marked as this chat's, or taken off its own,
+## all or nothing, as one change at the account (CollectionStore
+## .change_lots, api/collection.js op "lots"), in turn with every other
+## write; with neither, the collection read back afresh. A lot taken off
+## carries the count this chat was last shown of it, and is refused when
+## that is no longer so (mb2review finding 7).
+func _edit_collection(input: Dictionary) -> String:
+	var shell: Shell = app.get("_shell")
+	var dialog: CollectionDialog = shell.collection if shell != null else null
+	if dialog == null:
+		return "This app has no collection."
+	var mine: CollectionStore = dialog.store
+	var library: PartLibrary = app.get("_library")
+	var account: Account = app.get("_account")
+	if account == null or not account.signed_in():
+		return ("The person is not signed in, and a collection is kept with their account: "
+			+ "they sign in (Account), then it can be read and added to.")
+	var adding: Variant = input.get("add", [])
+	var removing: Variant = input.get("remove", [])
+	if not adding is Array or not removing is Array:
+		return "add and remove are lists of {part, color, count}."
+	if (adding as Array).is_empty() and (removing as Array).is_empty():
+		var trouble_read: String = await mine.load_collection()
+		return _collection_said(mine, library, clampi(int(input.get("limit", 60)), 1, 2000)) \
+			+ ("" if trouble_read.is_empty() else "\n(" + trouble_read + ")")
+	if (adding as Array).size() + (removing as Array).size() > MOST_LOTS:
+		return "At most %d lots a call; send the rest in another." % MOST_LOTS
+	var who: String = _collection_who()
+	var mark: String = _collection_chat()
+	var refused := PackedStringArray()
+	var added: Dictionary = {}   ## part/colour -> lot, counts of one part and colour together
+	var order: Array = []
+	for n: int in (adding as Array).size():
+		var lot: Variant = _collection_lot(adding[n], library, true)
+		if lot is String:
+			refused.append("add %d: %s" % [n + 1, lot])
+			continue
+		var key: String = "%s/%d" % [lot["part"], int(lot["colour"])]
+		if added.has(key):
+			added[key]["qty"] = mini(100000, int(added[key]["qty"]) + int(lot["qty"]))
+		else:
+			added[key] = {"part": lot["part"], "colour": lot["colour"], "qty": lot["qty"], "by": who}
+			if not mark.is_empty():
+				added[key]["chat"] = mark
+			order.append(key)
+	# Taken down by what was asked, at the account: several of one lot add
+	# up, and a count of none takes all of it (mbreview finding 9).
+	var down: Dictionary = {}
+	var down_order: Array = []
+	for n: int in (removing as Array).size():
+		var lot: Variant = _collection_lot(removing[n], library, false)
+		if lot is String:
+			refused.append("remove %d: %s" % [n + 1, lot])
+			continue
+		var key: String = "%s/%d" % [lot["part"], int(lot["colour"])]
+		if not down.has(key):
+			down[key] = {"part": lot["part"], "colour": lot["colour"], "qty": 0, "by": who}
+			if not mark.is_empty():
+				down[key]["chat"] = mark
+			down_order.append(key)
+		if int(down[key]["qty"]) >= 0:
+			down[key]["qty"] = -1 if int(lot["qty"]) == 0 else int(down[key]["qty"]) + int(lot["qty"])
+	if not refused.is_empty():
+		return ("Nothing was changed: " + "; ".join(refused)
+			+ ". search_parts finds a part's LDraw number; colours are LDraw codes.")
+	var add_lots: Array = []
+	for key: String in order:
+		add_lots.append(added[key])
+	# Each at the count this chat was last shown: the copy here is what its
+	# last answer or read back said. One not there is read afresh once.
+	for key: String in down_order:
+		if mine.collection.lot_of(str(down[key]["part"]), int(down[key]["colour"]), who, mark).is_empty():
+			await mine.load_collection()
+			break
+	var down_lots: Array = []
+	var own := PackedStringArray()
+	for key: String in down_order:
+		var one: Dictionary = (down[key] as Dictionary).duplicate()
+		one["qty"] = maxi(0, int(one["qty"]))
+		var held: Dictionary = mine.collection.lot_of(str(one["part"]), int(one["colour"]), who, mark)
+		if held.is_empty():
+			own.append(("%s in colour %d is the person's own lot, which only they change (My collection)"
+				if not mine.collection.lot_of(str(one["part"]), int(one["colour"])).is_empty()
+				else "%s in colour %d is not a lot this chat added (the person may have kept it or taken it "
+				+ "back)") % [one["part"], int(one["colour"])])
+			continue
+		one["was"] = int(held["qty"])
+		down_lots.append(one)
+	if not own.is_empty():
+		return "Nothing was changed: %s. edit_collection with nothing reads back what is there." % "; ".join(own)
+	var done: Dictionary = await mine.change_lots(add_lots, down_lots)
+	if done["kind"] == CollectionStore.UNREACHED:
+		return ("No answer came, so it may have been made (%s). edit_collection with nothing reads back "
+			+ "what is there: read it before sending this again.") % done["said"]
+	if done["kind"] == CollectionStore.CONFLICT:
+		return ("Nothing was changed: %s. The collection changed since this chat was shown it; "
+			+ "edit_collection with nothing reads back what is there now.") \
+			% str((done["body"] as Dictionary).get("error", done["said"]))
+	if done["kind"] != CollectionStore.DONE:
+		return "Nothing was changed: %s." % done["said"]
+	var said := PackedStringArray()
+	if not add_lots.is_empty():
+		var pieces: int = 0
+		var lines := PackedStringArray()
+		for lot: Dictionary in add_lots:
+			pieces += int(lot["qty"])
+			lines.append("  %d x %s" % [int(lot["qty"]), _lot_words(lot, library)])
+		said.append("Added %s, %s, to the person's collection, each marked as this chat's:"
+			% [Counted.of(add_lots.size(), "lot"), Counted.of(pieces, "piece")])
+		said.append_array(lines)
+		var held_back: String = CollectionStore.clamped_words(done["body"])
+		if not held_back.is_empty():
+			said.append(held_back[0].to_upper() + held_back.substr(1) + ".")
+	if not down_lots.is_empty():
+		said.append("Took down %s of this chat's." % Counted.of(down_lots.size(), "lot"))
+	var theirs: Array = mine.collection.added_lots().filter(func(lot: Dictionary) -> bool:
+		return _chats(lot, who, mark))
+	said.append(("The person sees what this chat added under My collection, Added by %s (%s now), "
+		+ "and keeps it or takes it back with one button. parts_list which=\"need\" measures the "
+		+ "model against the collection now; edit_collection with nothing reads it back.")
+		% [who, Counted.of(theirs.size(), "lot")])
+	return "\n".join(said)
+
+
+## The name this session's lots are marked with, as the account keeps it.
+func _collection_who() -> String:
+	var named: String = Collection.who_name(str(assistant.who) if assistant != null else "")
+	return named if not named.is_empty() else CommandSocket.CLAUDE
+
+
+## Which chat this session's lots are marked as: the relay's, or the
+## session's own connection when it names none.
+func _collection_chat() -> String:
+	return chat if not chat.is_empty() else connection
+
+
+## Whether [param lot] is one [param who]'s chat [param chat] added.
+static func _chats(lot: Dictionary, who: String, chat: String) -> bool:
+	return str(lot.get("by", "")) == who and str(lot.get("chat", "")) == chat
+
+
+## One lot as a session gives it, checked: {"part", "colour", "qty"}, or why
+## not, in words. The part by its LDraw number, or BrickLink's
+## (PartLibrary.by_shop); the colour by its LDraw code, or its name.
+static func _collection_lot(given: Variant, library: PartLibrary, adding: bool) -> Variant:
+	if not given is Dictionary:
+		return "a lot is {part, color, count}"
+	var asked: String = str((given as Dictionary).get("part", "")).strip_edges().to_lower().trim_suffix(".dat")
+	if asked.is_empty():
+		return "no part"
+	var id: String = library.resolve(asked)
+	if not library.parts.has(id):
+		id = library.by_shop(asked)
+	if id.is_empty() or not library.parts.has(id):
+		return "no part numbered %s (search_parts finds it by its words)" % asked
+	if not Collection.ownable(id, library):
+		return "%s is not a part anyone owns on its own (a sticker, or a piece of a bigger part)" % id
+	var colour: Variant = (given as Dictionary).get("color", (given as Dictionary).get("colour"))
+	var code: int = -1
+	if colour is float or colour is int:
+		code = int(colour)
+	elif colour is String and (colour as String).is_valid_int():
+		code = int(colour)
+	elif colour is String:
+		var named: Array[PartLibrary.BrickColor] = PartsBin.colours_named(library, colour)
+		code = named[0].code if not named.is_empty() else -1
+	if code in PartsBin.NOT_A_COLOUR or not library.colors.has(code):
+		return "colour %s is not an LDraw colour code" % str(colour)
+	var count: Variant = (given as Dictionary).get("count", (given as Dictionary).get("qty", 0 if not adding else null))
+	if count == null or not (count is float or count is int) or float(count) != floorf(float(count)) \
+			or int(count) < (1 if adding else 0) or int(count) > 100000:
+		return "count is a whole number from 1 to 100,000"
+	return {"part": id, "colour": code, "qty": int(count)}
+
+
+static func _lot_words(lot: Dictionary, library: PartLibrary) -> String:
+	var info: PartLibrary.PartInfo = library.parts.get(str(lot["part"]))
+	var colour: PartLibrary.BrickColor = library.color(int(lot["colour"]))
+	return "%s %s, %s (%d)" % [lot["part"], Inventory._tidy(info.name) if info != null else "",
+		colour.name.replace("_", " ") if colour != null else "colour", int(lot["colour"])]
+
+
+## The collection read back: its sets, this chat's lots, the person's own.
+func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -> String:
+	var held: Collection = mine.collection
+	var who: String = _collection_who()
+	var mark: String = _collection_chat()
+	var ours: Array = held.added_lots().filter(func(lot: Dictionary) -> bool:
+		return _chats(lot, who, mark))
+	var others: Array = held.added_lots().filter(func(lot: Dictionary) -> bool:
+		return not _chats(lot, who, mark))
+	var own: Array = held.own_lots()
+	var said := PackedStringArray()
+	var sets := PackedStringArray()
+	for entry: Dictionary in held.sets:
+		var record: Dictionary = mine.records.get(str(entry["set"]), {})
+		sets.append("%s%s%s" % [entry["set"], " " + str(record["n"]) if record.has("n") else "",
+			" x%d" % int(entry["qty"]) if int(entry["qty"]) > 1 else ""])
+	said.append("The person's collection%s: %s%s, %s of their own, %s this chat added%s; %s on hand in all."
+		% [" (the copy on this device)" if mine.offline else "", Counted.of(held.sets.size(), "set"),
+			(" (" + ", ".join(sets.slice(0, 20)) + (", …" if sets.size() > 20 else "") + ")") if not sets.is_empty() else "",
+			Counted.of(own.size(), "loose lot"), Counted.of(ours.size(), "lot"),
+			", %s other chats added" % Counted.of(others.size(), "lot") if not others.is_empty() else "",
+			Counted.of(mine.pieces_on_hand(), "piece")])
+	var listed: int = 0
+	for group: Array in [[ours, "This chat added (remove= takes any of these off):"],
+			[others, "Other chats added (theirs to take off):"],
+			[own, "The person's own loose lots (only they change these):"]]:
+		if (group[0] as Array).is_empty():
+			continue
+		said.append(str(group[1]))
+		for lot: Dictionary in group[0]:
+			if listed >= limit:
+				break
+			listed += 1
+			said.append("  %d x %s" % [int(lot["qty"]), _lot_words(lot, library)])
+	var total: int = ours.size() + others.size() + own.size()
+	if total > listed:
+		said.append("  and %d more lots: limit= for more." % (total - listed))
+	return "\n".join(said)
+
+
 # -- rendering and exporting ---------------------------------------------------------
 
 
@@ -3289,7 +3615,18 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		"4k": Vector2i(3840, 2160), "square": Vector2i(1080, 1080)}
 	chosen.size = sizes.get(str(input.get("size", "720p" if turning else "1080p")),
 		Vector2i(1920, 1080))
-	chosen.view = str(input.get("view", "hero"))
+	# Render's own views, or one the person saved with the model, by its name
+	# (SavedViews): drawn from exactly there.
+	var view_asked: String = str(input.get("view", "hero"))
+	if view_asked in ["hero", "front", "side", "back", "low", "top"]:
+		chosen.view = view_asked
+		chosen.forget_eye()
+	else:
+		var at: int = SavedViews.index_of(world.saved_views, view_asked)
+		if at < 0:
+			return SavedViews.not_kept(world.saved_views, view_asked) \
+				+ " Or view is hero, front, side, back, low or top."
+		chosen.keep_view(world.saved_views[at], app.get("_camera") as Camera3D)
 	var look: String = str(input.get("look", "window"))
 	if not RenderSettings.LOOKS.has(look):
 		return "look is window or product."
@@ -3312,17 +3649,83 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 			return "seconds is %d to %d." % [BuildRender.SHORTEST, BuildRender.LONGEST]
 		chosen.frames = seconds * chosen.fps
 		kind = "building"
+	var was: Variant = dialog._last.get("output")
 	var said: String = await dialog.render_for(kind, chosen, work)
 	var how: String = _best_said(dialog, chosen)
 	if not how.is_empty():
 		said = "%s. %s" % [said.trim_suffix("."), how]
-	if kind != "picture" or dialog.last_picture() == null:
+	if kind != "picture":
+		return _with_frames(said, dialog, was, chosen.fps)
+	if dialog.last_picture() == null:
 		return said
 	var small: Image = dialog.last_picture().duplicate() as Image
 	small.resize(800, maxi(roundi(800.0 * small.get_height() / small.get_width()), 1),
 		Image.INTERPOLATE_BILINEAR)
 	return [{"type": "text", "text": said}, {"type": "image", "source": {"type": "base64",
 		"media_type": "image/png", "data": Marshalls.raw_to_base64(small.save_png_to_buffer())}}]
+
+
+# -- the render jobs' answers: six frames (APP_UX5 seeing2) ------------------------
+
+## How many frames a turntable's, a build's or a motion's answer shows.
+const FRAMES_SHOWN := 6
+
+
+## [param count] frames' numbers, [constant FRAMES_SHOWN] of them spread
+## evenly, the first and the last among them.
+static func _six_of(count: int) -> Array:
+	var out: Array = []
+	for k: int in FRAMES_SHOWN:
+		var n: int = roundi(float(k) * float(maxi(count - 1, 0)) / float(FRAMES_SHOWN - 1))
+		if not out.has(n):
+			out.append(n)
+	return out
+
+
+## A turntable's or a build's answer, [param said], with six of the frames
+## it made in one picture, the last its end: for a build, the whole model.
+## A session asked for the build video, had the files, and said "I haven't
+## watched it myself" (APP_UX5, MCP walk). The frames are the ones Render's
+## panel loops (RenderDialog), at most 48 of a long video, the last always
+## among them; [param was] is the render before this one's, so a render
+## cancelled part way shows nothing of the one before it. [param fps] is
+## the render's.
+func _with_frames(said: String, dialog: RenderDialog, was: Variant, fps: int) -> Variant:
+	var last: Dictionary = dialog._last
+	var loop: Array = dialog._loop
+	if loop.is_empty() or last.get("output") == was or not str(last.get("kind", "")) in [
+			"turntable", "building"]:
+		return said
+	var frames: int = int(last.get("frames", loop.size()))
+	var built: BuildRender = last.get("build") as BuildRender
+	fps = maxi(fps, 1)
+	# The loop keeps every frame of a turntable and every so many of a build,
+	# and its last: which frame each kept one is.
+	var every: int = 1 if loop.size() >= frames \
+		else ceili(float(frames) / float(RenderDialog.LOOP_MOST))
+	var images: Array = []
+	var times := PackedStringArray()
+	var shown := PackedStringArray()
+	for index: int in _six_of(loop.size()):
+		var texture: ImageTexture = loop[index]
+		var image: Image = texture.get_image() if texture != null else null
+		if image == null:
+			continue
+		images.append(image)
+		var n: int = frames - 1 if index == loop.size() - 1 else mini(index * every, frames - 1)
+		times.append(Motions.num(float(n) / float(fps), 1))
+		if built != null and n < built.shown.size():
+			shown.append(str(built.shown[n]))
+	var picture: Image = PosePanel.sheet_of(images)
+	if picture == null:
+		return said
+	var lines := PackedStringArray([said.strip_edges()])
+	lines.append("The picture: %d of its frames, at %s s, left to right and down, the last its end."
+		% [images.size(), ", ".join(times)])
+	if built != null and not shown.is_empty():
+		lines.append("Parts on show in each: %s of %d; the last is the whole model." % [
+			", ".join(shown), built.order.size()])
+	return [{"type": "text", "text": "\n".join(lines)}, _picture_block(picture)]
 
 
 ## How Best drew the render just made, in Render's words (RenderSettings
@@ -3361,10 +3764,16 @@ func _render_queue(input: Dictionary) -> Variant:
 			var options: Dictionary = input.duplicate()
 			options.erase("action")
 			options.erase("number")
+			# A view saved with the model, by its name (SavedViews).
+			var from_view: String = ""
+			if options.has("view") and not str(options["view"]) in ["current", "hero", "front",
+					"side", "back", "low", "top"]:
+				from_view = str(options["view"])
+				options.erase("view")
 			var wrong: String = chosen.take(options)
 			if not wrong.is_empty():
 				return wrong
-			var item: RenderQueue.Item = queue.add(chosen)
+			var item: RenderQueue.Item = queue.add(chosen, from_view)
 			if item == null:
 				return queue.last_refusal
 			return ("Queued %d: %s, %s. %s\n%s" % [item.number, item.what(),

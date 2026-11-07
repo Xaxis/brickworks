@@ -526,6 +526,11 @@ class Placement extends RefCounted:
 	var attached_by: String = ""
 	## Why an attach could not be done as asked, for the check to say.
 	var odd_attach: String = ""
+	## Laid by a mirror pattern as the mirror image of another part, {"of": that
+	## part as said, "planes": [[axis, plane LDU], ...]} (Patterns._mirror),
+	## until the app has made it that image ([method Assistant._mirror_images]);
+	## then empty, and part, x, y, z, face, rot, nudge and section say it.
+	var mirror: Dictionary = {}
 
 	## Where the exact check takes this to be: where it stands while it is
 	## standing and unmoved, else [param built] (where it will be built).
@@ -1223,6 +1228,7 @@ func _hold_sketch(args: Dictionary) -> Variant:
 	else:
 		_sketches_outside = false
 	await _ensure_parts(model)
+	await _mirrors_ready(model)
 	progress.emit("checking a sketch of %d parts" % parts)
 	var report: Dictionary = await _checked(model)
 	if running and not _busy:
@@ -3377,6 +3383,10 @@ func _tool_answer(block: Dictionary) -> Variant:
 			var colour: String = await _colours_looked(args)
 			return described if colour.is_empty() else "%s\n\n%s" % [described, colour]
 		"view_model":
+			# savedviews: a view the person saved with the model, by its name.
+			if args.has("view"):
+				progress.emit("looking from a saved view")
+				return await _from_saved_view(str(args["view"]))
 			var from: String = str(args.get("from", "corner"))
 			var close: AABB = _box_from(args.get("where"))
 			progress.emit("looking at the %s" % from
@@ -4645,6 +4655,27 @@ static func _studs(value: float) -> String:
 	return Placement._num(snappedf(value, 0.1))
 
 
+## view_model's view=: the model from the view the person saved with it as
+## [param name] (SavedViews), as their window draws it, drawn by Render's
+## own camera (RenderDialog.picture_of_view). Why not, in words.
+func _from_saved_view(name: String) -> Variant:
+	var app: Node = get_parent()
+	var render: Variant = app.get("_render") if app != null and "_render" in app else null
+	if render == null or not (render as Object).has_method("picture_of_view"):
+		return "Only the app's own window keeps saved views to look from."
+	var window: Vector2 = Vector2(app.get_viewport().get_visible_rect().size)
+	var tall: int = clampi(roundi(1024.0 * window.y / maxf(window.x, 1.0)), 256, 1024)
+	var drawn: Variant = await (render as Object).call("picture_of_view", name,
+		Vector2i(1024, tall))
+	if not drawn is Image:
+		return str(drawn)
+	var picture: Dictionary = await _ensure_shot().encode(drawn as Image)
+	if picture.is_empty():
+		return "The picture from “%s” did not come out; ask again." % name
+	return [{"type": "text", "text": "The model from “%s”, a view saved with it, as the window draws it:" % name},
+		picture]
+
+
 ## The thing that takes pictures, made on first use.
 func _ensure_shot() -> ModelShot:
 	if _shot == null:
@@ -5122,6 +5153,9 @@ func _connectors_said(part_id: String, at: Transform3D, prefix: String = "",
 	for point: Attach.Point in points:
 		var frame: Transform3D = at * point.frame
 		var way: Vector3 = (-frame.basis.y).normalized()
+		# A train track's end points out of the track, along its frame's x.
+		if point.kind == TrackSnap.KIND:
+			way = frame.basis.x.normalized()
 		var line: bool = point.kind == Exact.AXLE or point.kind == Exact.HINGE
 		var spot: Vector3 = frame.origin
 		rows.append([spot.distance_to(where) if where != null else 0.0, point.type,
@@ -5155,7 +5189,8 @@ func _connectors_said(part_id: String, at: Transform3D, prefix: String = "",
 			% [prefix if not prefix.is_empty() else "<its name>.", (points[0] as Attach.Point).address()]
 		+ "\"by\": \"<that part's own connector>\", \"yaw\": <degrees about the joint>}}. A stud "
 		+ "takes a hole, tube or open stud; a clip or a hollow stud a bar; a pin a socket; an "
-		+ "axle a cross hole; a hinge, a ball or a fixed joint its other half (same sub, in to on).")
+		+ "axle a cross hole; a hinge, a ball or a fixed joint its other half (same sub, in to on); "
+		+ "a train track's end another track's end of its kind.")
 
 
 ## How many connectors attachment_points lists of a type, and near a point.
@@ -7513,6 +7548,7 @@ func _read_model(args: Dictionary) -> Model:
 	# expanded after the bricks because mirror reflects what is there.
 	var patterns: Array = args.get("patterns", [])
 	_pattern_advice = []
+	_mirror_said = ""
 	_shaped_body = false
 	for raw: Variant in patterns:
 		_shaped_body = _shaped_body or (raw is Dictionary
@@ -7534,8 +7570,7 @@ func _read_model(args: Dictionary) -> Model:
 				prisms.append(raw)
 			else:
 				plain.append(raw)
-		for raw: Variant in Patterns.expand(plain, written, trouble,
-				library):
+		for raw: Variant in _expanded_patterns(plain, written, trouble):
 			var one: Dictionary = raw
 			if one.has("dress"):
 				# A fill's 1x1 with a side stud, marked with the way out:
@@ -7553,7 +7588,11 @@ func _read_model(args: Dictionary) -> Model:
 				one.erase("panel")
 				if not tile.is_empty():
 					model.placements.append(Placement.from_dict(tile))
-			model.placements.append(Placement.from_dict(one))
+			var placement := Placement.from_dict(one)
+			if one.get("_mirror") is Dictionary:
+				placement.mirror = one["_mirror"]
+			model.placements.append(placement)
+		_mirror_images(model, false)
 		for raw: Variant in sideways:
 			for brick: Dictionary in _studs_out(raw, trouble):
 				model.placements.append(Placement.from_dict(brick))
@@ -11953,6 +11992,10 @@ static func _queue_assemblies(named: Array[Dictionary]) -> Array[Dictionary]:
 ## What the last design or edit read was given in place of a colour its part
 ## was never made in ([method _made_colours]), or "".
 var _made_said: String = ""
+## What the last design read said of the parts its mirror patterns made with
+## no mirror image, or could not make ([method _mirror_images]), or "": in
+## every reply to it, a design's or a few parts' ([method _placed_said]).
+var _mirror_said: String = ""
 ## What was wrong with the last set of patterns, said by the check.
 var _pattern_trouble: Array = []
 ## And what the patterns did that was not asked, said as advice.
@@ -12394,15 +12437,135 @@ func _sculpt_ready(args: Dictionary) -> void:
 				# Its own copies: the worker reads them while this frame goes on.
 				var own: Dictionary = raw.duplicate(true)
 				var standing: Dictionary = feet.duplicate(true)
-				var laid: Variant = await WorkerTasks.awaited(func() -> Variant:
-					return _lay_sculpt(own, standing, checker), "lay a sculpt", library)
+				var laid: Variant = await _laid_whole(func() -> Variant:
+					return _lay_sculpt(own, standing, checker), "lay a sculpt")
 				# A worker that failed leaves nothing: laid in the read instead,
 				# slow, but an answer (as _checked does).
 				if laid is Dictionary and not (laid as Dictionary).is_empty():
 					_keep_sculpt(_sculpt_key(raw, feet), laid)
 			Brickify.end_laying(self)
 			job.end()
+	await _shapes_ready(args)
 	await Brickify.laid()
+
+
+## The shapes said, as the read will expand them (Patterns.expand), by what
+## they are expanded from ([method _patterns_key]): {"made", "trouble",
+## "said", "turned"}. Expanded in the read, on the main thread, the
+## Charger's body of 947 parts held the window 7.7 s on the desktop, every
+## check and submit of it, and a browser several times that: a page whose
+## thread is held that long says nothing to the relay, which then calls it
+## closed (bigedit, 2026-11-06).
+var _patterns_laid: Dictionary = {}
+
+
+## The patterns a read expands with Patterns.expand: all but a face of studs
+## turned out and a prism, which need the parts' own geometry (_read_model).
+static func _plain_patterns(patterns: Array) -> Array:
+	return patterns.filter(func(raw: Variant) -> bool:
+		var kind: String = str((raw as Dictionary).get("pattern", "")).to_lower() \
+			if raw is Dictionary else ""
+		return kind != "studs_out" and kind != "prism")
+
+
+static func _patterns_key(plain: Array, written: Array) -> String:
+	return JSON.stringify([plain, written]).sha256_text()
+
+
+## [param args]' shapes expanded on a worker, as the read will expand them,
+## so the read ([method _expanded_patterns]) finds them done: a coroutine,
+## called by [method _sculpt_ready] once its sculpts are laid. One laying at
+## a time with Brickify's, its tables filled first (Brickify.warm), and every
+## part a shape may lay here first, as a sculpt's are. A design with no
+## shape is read as it was: its patterns are quick.
+func _shapes_ready(args: Dictionary) -> void:
+	if library == null or OS.has_feature("nothreads"):
+		return
+	var read: Dictionary = _with_sculpts(_with_figures(_with_shells(args, [], []), [], []), [], [])
+	var patterns: Array = read.get("patterns", []) if read.get("patterns") is Array else []
+	var plain: Array = _plain_patterns(patterns)
+	if not plain.any(func(raw: Variant) -> bool:
+			return raw is Dictionary and str((raw as Dictionary).get("pattern", "")).to_lower() \
+				== "shape"):
+		return
+	var written: Array = read.get("bricks", []) if read.get("bricks") is Array else []
+	var key: String = _patterns_key(plain, written)
+	if _patterns_laid.has(key):
+		return
+	# Every part it is known to read loaded first: Brickify's, the
+	# windscreens a shape's glass reads (Shapes.SCREENS) and the design's own
+	# bricks, which its shapes are laid against.
+	var wanted := Model.new()
+	for id: String in Array(Brickify.parts_needed(library)) + Shapes.SCREENS:
+		wanted.placements.append(Placement.from_dict({"part": id}))
+	for raw: Variant in written:
+		if raw is Dictionary and not str((raw as Dictionary).get("part", "")).is_empty():
+			wanted.placements.append(Placement.from_dict({"part": str((raw as Dictionary)["part"])}))
+	await _ensure_parts(wanted)
+	progress.emit("laying its shapes")
+	var job: Working.Job = Working.begin("Laying its shapes…")
+	await Brickify.begin_laying(self)
+	await Brickify.warm(library, job)
+	# Its own copies: the worker reads them while this frame goes on.
+	var own_plain: Array = plain.duplicate(true)
+	var own_written: Array = written.duplicate(true)
+	var parts: PartLibrary = library
+	var laid: Variant = await _laid_whole(func() -> Variant:
+		var trouble: Array = []
+		var made: Array = Patterns.expand(own_plain, own_written, trouble, parts)
+		return {"made": made, "trouble": trouble, "said": Shapes.said.duplicate(true),
+			"turned": Shapes.turned}, "lay a design's shapes")
+	Brickify.end_laying(self)
+	job.end()
+	# A worker that failed leaves nothing: expanded in the read instead,
+	# slow, but an answer (as _checked does).
+	if laid is Dictionary and not (laid as Dictionary).is_empty():
+		if _patterns_laid.size() >= SCULPTS_KEPT:
+			_patterns_laid.erase(_patterns_laid.keys()[0])
+		_patterns_laid[key] = laid
+
+
+## [param work] run on a worker, reading the library, until it reads no part
+## whose geometry is not loaded: a reader on a worker finds such a part empty
+## (PartLibrary.mesh_for), and Shapes keeps what it read off a part, so a
+## shape laid with one read empty, and every shape after it, lays other parts
+## than the main thread lays, which loads it: the Charger's windscreens, read
+## empty, came to 1,124 parts for 1,127 (bigedit, 2026-11-06). The parts it
+## missed are loaded, what was read empty is read again (Brickify.warm) and
+## it runs again, three times at most: null if it still misses one that
+## could be loaded, or the worker failed, for the caller to lay it on the
+## main thread instead. Called between Brickify.begin_laying and end_laying.
+func _laid_whole(work: Callable, label: String) -> Variant:
+	for _round: int in 3:
+		library.unread_by_readers()
+		var laid: Variant = await WorkerTasks.awaited(work, label, library)
+		var missed: PackedStringArray = library.unread_by_readers()
+		if missed.is_empty():
+			return laid
+		var wanted := Model.new()
+		for id: String in missed:
+			wanted.placements.append(Placement.from_dict({"part": id}))
+		await _ensure_parts(wanted)
+		# None of them to be had: the main thread reads them empty too.
+		if not Array(missed).any(func(id: Variant) -> bool: return library.is_resident(str(id))):
+			return laid
+		await Brickify.warm(library)
+	return null
+
+
+## What Patterns.expand makes of [param plain] over [param written], with
+## its trouble in [param trouble] and what its shapes said in Shapes.said and
+## Shapes.turned: as [method _shapes_ready] laid it, or expanded here.
+func _expanded_patterns(plain: Array, written: Array, trouble: Array) -> Array:
+	var laid: Variant = _patterns_laid.get(_patterns_key(plain, written)) \
+		if not _patterns_laid.is_empty() else null
+	if not laid is Dictionary:
+		return Patterns.expand(plain, written, trouble, library)
+	trouble.append_array(laid["trouble"])
+	Shapes.said = (laid["said"] as Array).duplicate(true)
+	Shapes.turned = int(laid["turned"])
+	# A copy: the read marks and takes keys off what it is given.
+	return (laid["made"] as Array).duplicate(true)
 
 
 ## The joint a shell's panels hang on, as [Shells] wants it: a clip on a
@@ -12722,6 +12885,168 @@ func _attach_parts(model: Model) -> void:
 
 ## What [method _attach_one] says of a part whose geometry has not arrived.
 const ATTACH_WAITS := "waits"
+
+
+## Each part a mirror pattern laid (Patterns._mirror) made the mirror image of
+## the part it reflects, as the window's Mirror makes it (Mirror.image), part
+## for part what mirror_parts makes of the same parts: where the reflection
+## is, its other hand where it has one, turned by the shapes to lie on the
+## reflection, and a part with no mirror image turned as near it as it goes
+## and named, never said as done. Read off the shapes, so here and not where
+## the pattern is expanded: that is before the web build fetches a part, and
+## for a design with shapes on a worker, which reads a shape only as the main
+## thread has weighed it. A part whose shape, or its other hand's, has not
+## arrived waits for [method _mirrors_ready], as an attach does; with
+## [param final] it is made as near as what is here allows.
+func _mirror_images(model: Model, final: bool) -> void:
+	if library == null:
+		return
+	var lone: Dictionary = {}       ## a part's name -> how many have no mirror image
+	var lone_count: int = 0
+	var unmade := PackedStringArray()
+	for placement: Placement in model.placements:
+		if placement.mirror.is_empty():
+			continue
+		var said: String = _mirror_one(model, placement, final)
+		if said == ATTACH_WAITS:
+			continue
+		placement.mirror = {}
+		if said == MIRROR_LONE:
+			var name: String = _part_called(placement.part)
+			lone[name] = int(lone.get(name, 0)) + 1
+			lone_count += 1
+		elif not said.is_empty():
+			unmade.append("%s (%s): %s" % [placement.part, _part_called(placement.part), said])
+	if lone_count > 0:
+		var named := PackedStringArray()
+		for name: String in lone:
+			named.append(name if int(lone[name]) == 1 else "%d x %s" % [lone[name], name])
+		_mirror_note("Of the parts the mirror pattern made, "
+			+ Mirror.said_without_image(named, lone_count))
+	if not unmade.is_empty():
+		_mirror_note(("The mirror pattern could not make %d part%s the mirror image of "
+			% [unmade.size(), "" if unmade.size() == 1 else "s"]) + "what it reflects, so "
+			+ ("it is" if unmade.size() == 1 else "they are") + " laid where its footprint's "
+			+ "reflection is, turned as written: %s. Write %s out instead." % ["; ".join(
+				unmade.slice(0, 12)), "it" if unmade.size() == 1 else "them"])
+
+
+## A note on the mirror pattern's parts, as the check's advice and in
+## [member _mirror_said].
+func _mirror_note(note: String) -> void:
+	_pattern_advice.append(note)
+	_mirror_said = (_mirror_said + " " + note).strip_edges()
+
+
+## What [method _mirror_one] says of a part with no mirror image.
+const MIRROR_LONE := "lone"
+
+
+## One part a mirror pattern laid made the mirror image of what it reflects,
+## across each plane in turn: "" when it is that image, [constant MIRROR_LONE]
+## when it has none and is turned as near it as it goes, [constant
+## ATTACH_WAITS] to wait for its shapes, else why not. What it reflects is
+## placed as the read places it, in the frame it is written in (its own turn,
+## then its joint's line), and the image written in the frame of the section
+## it is in, with what lies past the lattice cell as a nudge.
+func _mirror_one(model: Model, placement: Placement, final: bool) -> String:
+	var of: Variant = placement.mirror.get("of")
+	var planes: Variant = placement.mirror.get("planes")
+	if not (of is Dictionary and planes is Array):
+		return ""
+	var source := Placement.from_dict(of)
+	# As the read places it (_current_parts): a number LDraw keeps for old files
+	# has its other hand only under the part made now (41770 is 41770a).
+	var colour: int = -1
+	var now: String = library.current(source.part)
+	if now != source.part:
+		colour = library.current_colour(source.part)
+		source.part = now
+	var mesh: Lbm.PartMesh = library.mesh_for(source.part)
+	if mesh == null:
+		return ATTACH_WAITS if not final else "the shape of %s is not to hand" % source.part
+	# Its own turn, a section of one about its corner (_turned_parts).
+	var frame := Transform3D.IDENTITY
+	if source.turn != Vector3.ZERO:
+		var turned := Section.new()
+		turned.x = source.x
+		turned.y = source.y
+		turned.z = source.z
+		turned.yaw = source.turn.x
+		turned.pitch = source.turn.y
+		turned.roll = source.turn.z
+		frame = turned.own()
+		source.x = 0.0
+		source.y = 0.0
+		source.z = 0.0
+	_on_its_line(source)
+	if not source.odd_axis.is_empty():
+		return "the part it reflects %s" % source.odd_axis
+	var at: Transform3D = frame * _square_transform(source, mesh)
+	var part: String = source.part
+	var exact: bool = true
+	for raw: Variant in planes:
+		var plane: Array = raw if raw is Array else []
+		if plane.size() != 2 or not int(plane[0]) in [0, 2]:
+			return ""
+		var other: String = Mirror.counterpart(library, part)
+		if not final and not other.is_empty() and library.parts.has(other) \
+				and library.mesh_for(other) == null:
+			return ATTACH_WAITS
+		var image: Dictionary = Mirror.image(library, part, at, int(plane[0]), float(plane[1]),
+			true)
+		part = image["part"]
+		at = image["at"]
+		exact = exact and bool(image["exact"])
+	var parent: Section = model.sections.get(placement.section)
+	var was: Array = [placement.part, placement.x, placement.y, placement.z, placement.face,
+		placement.rot, placement.section]
+	placement.part = part
+	placement.axis = ""
+	placement.joint = -1
+	placement.turn = Vector3.ZERO
+	placement.odd_axis = ""
+	if not _written_at(model, placement, library.mesh_for(part),
+			at if parent == null else parent.placed() * at, parent, "a mirror").is_empty():
+		placement.part = was[0]
+		placement.x = was[1]
+		placement.y = was[2]
+		placement.z = was[3]
+		placement.face = was[4]
+		placement.rot = was[5]
+		if placement.section != was[6]:
+			model.sections.erase(placement.section)
+		placement.section = was[6]
+		placement.nudge = Vector3.ZERO
+		return "its mirror image could not be written where the reflection puts it"
+	if colour >= 0:
+		placement.color = colour
+	return "" if exact else MIRROR_LONE
+
+
+## The shapes the mirror images still waiting need, theirs and their other
+## hands', to hand (the web build fetches them), and then the images made
+## ([method _mirror_images]). Awaited, as [method _ensure_parts] is.
+func _mirrors_ready(model: Model) -> void:
+	if library == null:
+		return
+	var wanted := Model.new()
+	for placement: Placement in model.placements:
+		var of: Variant = placement.mirror.get("of")
+		var planes: Variant = placement.mirror.get("planes")
+		if not (of is Dictionary and planes is Array):
+			continue
+		var part: String = library.current(str((of as Dictionary).get("part", "")))
+		wanted.placements.append(Placement.from_dict({"part": part}))
+		for _plane: Variant in planes:
+			var other: String = Mirror.counterpart(library, part)
+			if not other.is_empty() and library.parts.has(other):
+				part = other
+				wanted.placements.append(Placement.from_dict({"part": part}))
+	if wanted.placements.is_empty():
+		return
+	await _ensure_parts(wanted)
+	_mirror_images(model, true)
 
 
 ## One placement's attach worked out: "" when done, [constant ATTACH_WAITS]
@@ -13691,8 +14016,8 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 		if not lopsided.is_empty():
 			advice.append(lopsided)
 
-	var each_piece: Array = _pieces_of(model, cells_of, lattice, boxes_of, holds,
-		exact_joins, come_away)
+	var each_piece: Array = _pieces_of(cells_of, lattice, boxes_of, holds,
+		exact_joins, come_away, clutched_pairs)
 	var pieces: int = each_piece.size()
 	# What touches what, asked only of a model with a part of the design's
 	# in it: of one that is all the person's own nothing is asked, and for a
@@ -16105,11 +16430,12 @@ const NEAR: Array[int] = [5, 4, 5]
 
 
 ## The separate pieces the design is in, each the indices of its
-## placements, joined by the rules [method _check] says them by.
-func _pieces_of(model: Model, cells_of: Dictionary,
+## placements, joined by the rules [method _check] says them by. [param
+## studs] are the studs support read ([method _studs_reaching_in]).
+func _pieces_of(cells_of: Dictionary,
 		lattice: BrickLattice, boxes_of: Dictionary = {},
 		holds: Dictionary = {}, joins: Array = [],
-		come_away: Dictionary = {}) -> Array:
+		come_away: Dictionary = {}, studs: Array = []) -> Array:
 	if cells_of.size() <= 1:
 		return [cells_of.keys()] if cells_of.size() == 1 else []
 
@@ -16159,21 +16485,7 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 				joined[index].append(above - 1)
 				joined[above - 1].append(index)
 
-	for index: int in cells_of:
-		var placement: Placement = model.placements[index]
-		var part: Lbm.PartMesh = library.mesh_for(placement.part)
-		if part == null or come_away.has(index):
-			continue
-		var at: Transform3D = _joined_at(placement, part, model)
-		for connector: Lbm.Connector in part.connectors:
-			if connector.kind != "stud" or connector.gender != "male":
-				continue
-			var tip: Vector3 = at * (connector.position
-				+ connector.axis.normalized() * 5.0)
-			var reached: int = lattice.brick_but(BrickLattice.to_cell(tip), index + 1)
-			if reached != 0 and joined.has(reached - 1) and not come_away.has(reached - 1):
-				joined[index].append(reached - 1)
-				joined[reached - 1].append(index)
+	_join_studs(joined, studs, come_away)
 
 	var seen: Dictionary = {}
 	var pieces: Array = []
@@ -16192,6 +16504,24 @@ func _pieces_of(model: Model, cells_of: Dictionary,
 					piece.append(next)
 		pieces.append(piece)
 	return pieces
+
+
+## Joins in [param joined] each stud's part and the part it reaches into,
+## as [param studs] gives them: support's own reading ([method
+## _studs_reaching_in], which is Joints.studs_in), not a copy of it. The
+## count read the tips by a copy, which a stud up a hollow its cover leaves
+## open (Joints._hollow_round) passed by: 10179-1's loudhailer, its bell on a
+## 2 x 12's stud, and two cones on a corner plate's were held and yet each a
+## piece of its own, and three of its sections two pieces (checks267). Not
+## for a part that comes away in the hand, as for the joints.
+static func _join_studs(joined: Dictionary, studs: Array, come_away: Dictionary) -> void:
+	for pair: Array in studs:
+		var owner: int = pair[0]
+		var into: int = pair[1]
+		if joined.has(owner) and joined.has(into) \
+				and not come_away.has(owner) and not come_away.has(into):
+			joined[owner].append(into)
+			joined[into].append(owner)
 
 
 ## What fills a cell, for [method Joints.pushed_in]: the placements whose
@@ -17180,6 +17510,12 @@ func _joints_out(blockers: PackedInt64Array, index: int, model: Model,
 			if placed_at.has(other) and _seated(model.placements[index].part, at,
 					model.placements[other].part, placed_at[other]):
 				continue
+			# Two train tracks joined end to end: a tab in the other's slot
+			# (TrackSnap).
+			if placed_at.has(other) and TrackSnap.joined(
+					library.resolve(model.placements[index].part), at,
+					library.resolve(model.placements[other].part), placed_at[other]):
+				continue
 			if turning.has(other) and placed_at.has(other):
 				var slack: float = Joints.ROUND_SLACK
 				var own: Array = []
@@ -17816,6 +18152,7 @@ const TILE_PLATES: Dictionary = {
 ## here before it is checked, so what is checked is what is built.
 func _ready_to_check(model: Model) -> void:
 	await _ensure_parts(model)
+	await _mirrors_ready(model)
 	if _studs_where_stood_on(model) > 0:
 		await _ensure_parts(model)
 	await _ensure_exact(model)
@@ -21215,6 +21552,8 @@ func _placed_said(design: Model, report: Dictionary) -> String:
 		said.append(apart)
 	if not _made_said.is_empty():
 		said.append(_made_said.strip_edges())
+	if not _mirror_said.is_empty():
+		said.append(_mirror_said)
 	return "\n\n".join(said)
 
 
@@ -22970,8 +23309,9 @@ func _tools() -> Array:
 						+ "that part's connector: \"torso.hinge[0]\" (a part named so "
 						+ "before this one) or \"#41.stud[3]\" (a brick standing, by its "
 						+ "number). Types: stud, open, hole, tube, post, axle, cross, pin, "
-						+ "socket, bar, clip, hinge, ball, fixed; numbered from 0 in each "
-						+ "type, as attachment_points lists them"},
+						+ "socket, bar, clip, hinge, ball, fixed, track (a train track's "
+						+ "end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered "
+						+ "from 0 in each type, as attachment_points lists them"},
 					"by": {"type": "string", "description": "this part's own connector "
 						+ "that goes there, as \"hinge[0]\"; leave out when only one fits"},
 					"yaw": {"type": "number", "description": "degrees about the joint's "
@@ -24161,6 +24501,14 @@ func _tools() -> Array:
 							+ "corner is a three-quarter view and shows "
 							+ "the shape best",
 					},
+					"view": {
+						"type": "string",
+						"description": ("A view the person saved with the "
+							+ "model (View › Viewpoint), by its name, in "
+							+ "place of from: the picture from exactly "
+							+ "there, as their window draws it. A name it "
+							+ "does not keep is answered with those it does."),
+					},
 					"where": {
 						"type": "object",
 						"description": ("Look closely at one part of "
@@ -24183,7 +24531,6 @@ func _tools() -> Array:
 						"additionalProperties": false,
 					},
 				},
-				"required": ["from"],
 				"additionalProperties": false,
 			},
 		},

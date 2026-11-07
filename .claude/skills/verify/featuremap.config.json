@@ -862,7 +862,7 @@
       "kind": "ui",
       "label": "model tree",
       "entry": "src/ui/outliner.gd",
-      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Model tree)",
+      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Panels, Model tree)",
       "area": "building"
     },
     {
@@ -1135,7 +1135,7 @@
       "kind": "api",
       "label": "/api/collection",
       "entry": "api/collection.js",
-      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an import, PUT, DELETE with a session)",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an op or an import, DELETE with a session; PUT refused 409)",
       "area": "collection"
     },
     {
@@ -2290,7 +2290,7 @@
       "kind": "lib",
       "label": "quitting cleanly",
       "entry": "src/render/worker_tasks.gd",
-      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; by hand: open a big file, close the window at once)",
+      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)",
       "area": "view"
     },
     {
@@ -4229,7 +4229,7 @@
       "kind": "ui",
       "label": "patterns",
       "entry": "src/assembly/pattern.gd",
-      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
+      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, In a grid (columns, rows and levels, each so many studs or plates apart), Round or Along a hose, a count In all, the copies shown as they will go, a copy with no room red and named by its place; one Ctrl+Z takes them all back)  /  tools/probe.sh grid_probe",
       "area": "building"
     },
     {
@@ -4618,20 +4618,6 @@
       "area": "mcp"
     },
     {
-      "kind": "ui",
-      "label": "a model into this one",
-      "entry": "src/ui/model_bar.gd",
-      "reach": "godot --path .  (File, Import, Into this model…: a saved model, an example, a file or the library's; in hand as one sub-assembly with its steps, a click puts it down, one undo takes it out; the library's Put in this model; open_model into=true over MCP)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "intomodel probe",
-      "entry": "src/dev/intomodel_probe.gd",
-      "reach": "tools/probe.sh intomodel_probe   (a window, 1280 x 720 or PROBE_SIZE=1400x900; starts tools/web/serve.py --library tests/fixtures/library on 9801 and stops it)",
-      "area": "model-io"
-    },
-    {
       "kind": "lib",
       "label": "what a session sees over mcp",
       "entry": "src/net/see_tools.gd",
@@ -4651,6 +4637,188 @@
       "entry": "src/render/cut_shape.gd",
       "reach": "tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes && tools/probe.sh cutshapes_kept   (by hand: View, Cut away by, A box; drag a knob, or the wheel over it; Grow, Shrink; A sphere or A cylinder in the strip; save, open)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "stud directions",
+      "entry": "src/ui/stud_map.gd",
+      "reach": "tools/probe.sh seeing2   (by hand: View, Stud directions; a session: view_board studs=true)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "saved views",
+      "entry": "src/ui/saved_views.gd",
+      "reach": "tools/probe.sh savedviews && PROBE_SIZE=1400x900 tools/probe.sh savedviews   (by hand: View, Viewpoint, Save this view… or Alt-V, a name; Alt-Shift-1 to 9 look from each again; save and open the model; Render's Camera lists them, its Preset keeps its choices; View, Viewpoint, Render each saved view, or the queue's Add each saved view; view_model and render_model view= over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "savedviews probe",
+      "entry": "src/dev/savedviews_probe.gd",
+      "reach": "tools/probe.sh savedviews [-- --keep=DIR]   (windowed, on the GPU, 1280 x 720 and PROBE_SIZE=1400x900: three views of the car saved by Alt-V, the model saved, closed and opened, each back by its Alt-Shift key within 0.1° and 0.1 LDU; a key each under every preset, none another command's; the queue's Add each saved view the same picture as the window turned there; view_model and render_model view= in one call; a Render preset saved and chosen again in 2 actions; then --older=DIR on an older checkout opens the file whole)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "direct colour probe",
+      "entry": "src/dev/direct_colour_probe.gd",
+      "reach": "tools/probe.sh direct_colour_probe [-- --shots=DIR]   (headless; three bricks in 0x2FF0000, 0x200FF00, 0x20000FF through the 3D view, Export's GLB/glTF/OBJ, the site's GLB, the thumbnail, the shops' lists and the site's lists, tools/web/direct_colour_check.mjs)",
+      "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "pattern's grid over mcp",
+      "entry": "src/net/pattern_tool.gd",
+      "reach": "tools/probe.sh grid_probe   (pattern_parts: bricks= in columns, rows and levels, column_studs/row_studs/level_plates apart or touching; one call, one undo step, a copy with no room said by its column, row and level and the part in its way)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "check the track table",
+      "entry": "tools/track_ends.py",
+      "reach": "tools/track_ends.py check   (assets/ldraw/track_ends.json is what the parts measure; straights' ends 320 apart, sixteen curves close a circle; tools/track_ends.py show ID: one part's ends and how they were found)",
+      "area": "pipeline"
+    },
+    {
+      "kind": "ui",
+      "label": "train tracks end to end",
+      "entry": "src/assembly/track_snap.gd",
+      "reach": "tools/probe.sh tracks_probe   (a 9V curve dragged near a straight's free end joins it in one drag; R puts its other end to the joint; two 12V curves get their sleeper, one undo takes both; sixteen curves by sixteen clicks close a circle; a session's oval of 16 curves and 4 straights in two calls, attach track[0] to track[1]. Windowed, pictures in shots/tracks/. By hand: a track in hand near a free end of one down sits on it; the status line says so and what R does)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "buildturn probe",
+      "entry": "src/dev/buildturn_probe.gd",
+      "reach": "tools/probe.sh buildturn_probe; PROBE_SIZE=1024x768, 1280x720 or 1400x900 tools/probe.sh buildturn_probe   (windowed, 390x844 by its header; pictures in shots/buildturn/)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the booklet's page setup",
+      "entry": "src/ui/page_setup_dialog.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Paper (the booklet's own 269 x 199, A4, US Letter, A5), Orientation, Margins, Page colour, Picture behind (its kind and KB in the file, or Missing from the file), Step numbers, Parts pictures, Style with Remove… and Keep as a style; then Instructions, Save as PDF; page_setup over MCP, remove_style= too)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "pagesetup probe",
+      "entry": "src/dev/pagesetup_probe.gd",
+      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; the app's own model's page kept over a reopen, someone else's worked file's step notes kept byte for byte, a shared model saying its page, a picture the file lacks said missing, a big picture kept for every paper at 5 px a mm (a panorama to what a page shows), styles of one picture keeping it once, a replaced one's picture gone, a refused remove_style= call taking none, removed in the dialog and over MCP and gone in a new start, the old styles file untouched by looking, two windows on one user folder losing no picture; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "booklet safe probe",
+      "entry": "src/dev/booklet_safe_probe.gd",
+      "reach": "tools/probe.sh booklet_safe   (headless: a page's picture from a file kept only as a PNG or a JPEG in strict base64, the rest of the file read as before; strings made to break out of each place the booklet writes a file's or a person's text, escaped or left out; its Content-Security-Policy first, allowing its own script by hash and nothing else)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "a file's booklet runs nothing in a browser",
+      "entry": "tools/web/booklet_safe_flow.mjs",
+      "reach": "node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts: a model whose page picture breaks out of its attribute opened, Instructions pressed; no flag set, the good picture shown, the policy first with script-src 'none', script put into the tab refused, Print prints)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "loose parts in my collection",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection…, What I own: the Loose parts row, a part by its number or words, a photo, Like this or the bin, its colour, how many, Add; each lot's count and Remove; Added by Claude with Keep them and Take back)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "a session's loose parts over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "edit_collection over MCP: add= lots marked as the chat's (a desktop session naming none, its connection's), remove= its own, nothing to read back   (tools/relay_probe.sh mybricks)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mybricks probe",
+      "entry": "src/dev/mybricks_probe.gd",
+      "reach": "tools/relay_probe.sh mybricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: 12 lots by hand, What do I need? and What can I build?, the same 12 over MCP, a restart and another device, Take back, nothing lost in the window)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mybricks api test",
+      "entry": "tools/web/mybricks_api.mjs",
+      "reach": "node tools/web/mybricks_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview: every change an op, sources kept, stale counts and a PUT refused 409, a session's apart, taken back lot for lot)",
+      "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "model size and weight",
+      "entry": "src/assembly/model_size.gd",
+      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4½ × 10.8 studs, 15 plates high · 3.6 × 8.64 × 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "build party",
+      "entry": "src/net/build_party.gd",
+      "reach": "https://brickworks.diy/app?view=<id> on two to four phones, Build together beside Build it: Start a build on one, the code typed and Join on the others, then Start building  (no account; api/together.js ?op=party_*)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "build party browser flow",
+      "entry": "tools/web/buildparty_flow.mjs",
+      "reach": "node tools/web/buildparty_flow.mjs --build=build/web --port=9921 --out=shots/buildparty_flow   (with .env sourced; or --url=<deployment> with BW_BYPASS)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "a model file's picture",
+      "entry": "src/render/model_thumbnail.gd",
+      "reach": "godot --headless --path . --thumbnail MODEL PICTURE [SIZE]   (the .deb's brickworks-thumbnailer MODEL PICTURE SIZE, as a file manager runs it)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "check the .deb's thumbnails",
+      "entry": "tools/release/thumbnail_check.py",
+      "reach": "tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace   (smoke of the .deb runs it)",
+      "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "the model in your room",
+      "entry": "web/room.js",
+      "reach": "https://brickworks.diy/m/<id> (and /library/<id>, /library/set/<n> with an LDraw model) on a phone or tablet that can place a model in a room (AR Quick Look on an iPhone or iPad, WebXR immersive AR on Android): In your room on the picture's foot (web/model-page.js offerRoom) writes the model's GLB in the browser (web/glb.js, from /m/<id>/room.json, /m/<id>/v/<n>/room.json, /library/<id>/room.json: api/share.js ?op=room|set_room, api/_parts.js roomOf) and shows it in <model-viewer> (web/model-viewer-4.4.0, pinned, tools/web/vendor_model_viewer.sh) with Place it in your room; never offered on a computer",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "room GLB probe",
+      "entry": "src/dev/arview_probe.gd",
+      "reach": "tools/probe.sh arview_probe [-- FILE.mpd ...]   (headless; Export's GLB of the car, 6040-1, 10243-1, 42080-1 and 8880-1 against the page's, tools/web/arview_check.mjs, node by node)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "room browser flow",
+      "entry": "tools/web/arview_flow.mjs",
+      "reach": "node tools/web/arview_flow.mjs --out=DIR [--before=<checkout>]   (the stand-in's watchtower with the example car's file; with --url=<preview> and BW_BYPASS, preview_checks.sh arview: the deployment's first model)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a link that opens playing",
+      "entry": "src/main.gd",
+      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over within 2 s of the model shown; its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "playlink probe",
+      "entry": "src/dev/playlink_probe.gd",
+      "reach": "tools/probe.sh playlink_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/playlink_probe.gd; PROBE_SIZE=1400x900, 390x844, 1024x768)",
+      "area": "web"
     }
   ]
 }

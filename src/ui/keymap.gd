@@ -125,6 +125,35 @@ const PRESET_KEYS: Dictionary = {
 		"select_find": CTRL | KEY_F, "replace": ALT | KEY_R, "grid": ALT | KEY_G,
 		"stability": ALT | KEY_K, "simulate": ALT | KEY_U, "pose": ALT | KEY_O,
 		"reference": ALT | KEY_N, "instructions": ALT | KEY_B,
+		# keys2 (docs/app_ux3/keys.md, 2026-11-06): the rest a builder
+		# reaches for once a model or more. Render on F9, the render key of
+		# the wider 3D field (3ds Max, LightWave, Modo): no LEGO® CAD keys
+		# it, and Blender's F12 is a browser's own. Its queue beside it, on
+		# Shift-F9. The cut shapes Alt and a letter of their word, as above:
+		# Alt-X the boX, Alt-Y the cYlinder, and the sphere, whose letters
+		# all have keys, Alt-Z beside the box's. The booklet's Page setup
+		# Ctrl-Shift-B, beside Alt-B, the booklet itself: the Mac's own
+		# Page Setup key, Cmd-Shift-P, is a browser's, Firefox's private
+		# window. The Pick a Brick list Alt-L, LEGO®'s L. The
+		# Library Ctrl-Shift-O, beside Open's Ctrl-O, another way to open a
+		# model (as a browser's own Library is).
+		"render": KEY_F9, "render_queue": SHIFT | KEY_F9,
+		"cut_box": ALT | KEY_X, "cut_sphere": ALT | KEY_Z, "cut_cylinder": ALT | KEY_Y,
+		"booklet_page_setup": CTRL | SHIFT | KEY_B, "export_pickabrick": ALT | KEY_L,
+		"library": CTRL | SHIFT | KEY_O,
+		# savedviews (APP_UX5 #8): the views kept with the model (SavedViews),
+		# Alt-Shift and a digit for each of the first nine, beside the digits
+		# alone that are the views every model has, and Alt-V to keep the one
+		# looked from, a letter of its row (Save this View). No browser keeps
+		# Alt-Shift and a digit, as Firefox on Linux keeps Alt and a digit and
+		# every browser Ctrl and one; Shift and Ctrl-Shift with them are the
+		# colour keys (ColourKeys).
+		"save_view": ALT | KEY_V,
+		"saved_view_1": ALT | SHIFT | KEY_1, "saved_view_2": ALT | SHIFT | KEY_2,
+		"saved_view_3": ALT | SHIFT | KEY_3, "saved_view_4": ALT | SHIFT | KEY_4,
+		"saved_view_5": ALT | SHIFT | KEY_5, "saved_view_6": ALT | SHIFT | KEY_6,
+		"saved_view_7": ALT | SHIFT | KEY_7, "saved_view_8": ALT | SHIFT | KEY_8,
+		"saved_view_9": ALT | SHIFT | KEY_9,
 	},
 	"studio": {
 		"mode_select": KEY_V, "mode_hinge": KEY_H, "mode_clone": KEY_C, "mode_hide": KEY_L,
@@ -182,6 +211,8 @@ const BROWSER_KEEPS: Array[int] = [CTRL | KEY_N, CTRL | KEY_T, CTRL | KEY_W,
 ## The keys a timeline being played answers, whatever the keymap: its own.
 const TIMELINE_KEYS: Array[int] = [KEY_LEFT, KEY_RIGHT, KEY_HOME, KEY_END, KEY_SPACE]
 
+## Between a menu and its submenu, as the docs and Find a command write it.
+const INTO := " › "
 ## What Shift makes of a key, as a browser names it: back to the key.
 const UNSHIFTED: Dictionary = {KEY_BRACELEFT: KEY_BRACKETLEFT, KEY_BRACERIGHT: KEY_BRACKETRIGHT,
 	KEY_PLUS: KEY_EQUAL, KEY_UNDERSCORE: KEY_MINUS, KEY_ASCIITILDE: KEY_QUOTELEFT,
@@ -563,11 +594,11 @@ static func menu_row(action: String) -> String:
 static func _row_in(items: Array, path: String, action: String) -> String:
 	for item: String in items:
 		if item == action:
-			return path + CommandPalette.INTO + words(action)
+			return path + INTO + words(action)
 		var kind: String = item.substr(1)
 		if item.begins_with(">") and Shell.SUBMENUS.has(kind):
 			var row: String = _row_in(Shell.SUBMENUS[kind],
-				path + CommandPalette.INTO + str(Shell.SUBMENU_WORDS.get(kind, kind)), action)
+				path + INTO + str(Shell.SUBMENU_WORDS.get(kind, kind)), action)
 			if not row.is_empty():
 				return row
 	return ""

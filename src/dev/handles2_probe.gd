@@ -64,7 +64,11 @@ func _run() -> void:
 	_camera = _main.get("_camera")
 	_library = _main.get("_library")
 	_verbs = _main.get("_verbs")
+	# Made the first time the Move or Rotate tool is chosen (Later), as a
+	# person's are, the way handles_probe takes them.
+	_verbs.set_mode("move")
 	_handles = _verbs.handles
+	_verbs.set_mode("select")
 	print("  window %s" % DisplayServer.window_get_size())
 	var only: String = ""
 	for arg: String in OS.get_cmdline_user_args():
@@ -373,7 +377,6 @@ func _clear_inside(middle: Vector2, radius: float) -> Vector2:
 
 
 func _angle() -> void:
-	var measure: Measure = _main.get("_measure")
 	var one_at := Transform3D(Basis.IDENTITY, AIR)
 	var other_turn := Basis(Vector3.UP, deg_to_rad(23.0)) * Basis(Vector3.RIGHT, deg_to_rad(31.0))
 	var other_at := Transform3D(other_turn, AIR + Vector3(0, 10, 90))
@@ -381,7 +384,9 @@ func _angle() -> void:
 	var other: int = _put("3701", 1, other_at)
 	await _look_at(AIR + Vector3(0, 0, 45), Vector3(0.75, 0.45, 0.35))
 	await _key(KEY_U)
-	_check("U takes the ruler out", measure.active)
+	# Made as it is first taken out (Later).
+	var measure: Measure = _main.get("_measure")
+	_check("U takes the ruler out", measure != null and measure.active)
 	var holes: Array = JointSnap.ends_of(_library.mesh_for("3701")).filter(
 		func(end: JointSnap.End) -> bool: return end.kind == "pin_hole")
 	holes.sort_custom(func(a: JointSnap.End, b: JointSnap.End) -> bool: return a.at.x < b.at.x)

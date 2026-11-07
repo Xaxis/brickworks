@@ -2,7 +2,7 @@
 
 The Python side: LDraw in, mesh cache and catalogue out.
 
-<!-- covers: cli:build the meshes, cli:update the parts, cli:check the gear table, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:build the exact shapes, cli:export for linux, cli:export for windows, cli:export for macos -->
+<!-- covers: cli:build the meshes, cli:update the parts, cli:check the gear table, cli:check the track table, cli:refresh the catalogue, cli:pack the web parts, cli:upload parts to storage, cli:build the exact shapes, cli:export for linux, cli:export for windows, cli:export for macos -->
 
 ## Sub-features
 
@@ -28,7 +28,16 @@ The Python side: LDraw in, mesh cache and catalogue out.
   1771 models, every file unchanged. `tests/test_refresh_catalogue.py` holds
   the knowledge step over stand-in tools (each made from the catalogue it was
   given; one failing, or writing an empty list, raised by name with its old
-  file kept).
+  file kept). It writes the checkout it is run in (`tree_of`: the nearest
+  folder up from the working directory with `project.godot`), whichever copy
+  of the script runs, and says which on its first line. Its `assets/generated`
+  may be a link (a staging tree's private catalogue); a file in it that links
+  out of that folder is refused before anything is written (`checkout.Outside`,
+  exit 1, `refresh_catalogue FAILED, nothing written: ... not written through`), as is
+  `write_colors` or the elements index given one by `build_meshes.py` or
+  `update_parts.py`. A refresh in a staging tree once wrote the shared
+  catalogue's `elements.json` through such a link (animals, 2026-11-07);
+  `tests/test_refresh_catalogue.py` holds it.
 - `update the parts`: `tools/update_parts.py` brings the library and the
   catalogue up to a month of LDraw without the full build. It fetches the
   official updates newer than the library's release notes (`models/NoteYYRRCA.txt`)
@@ -63,6 +72,16 @@ The Python side: LDraw in, mesh cache and catalogue out.
   and `--out FILE` say which catalogue and where); `tools/export.sh` copies both beside the web
   build, which fetches them (`SetKnowledge.ensure`). Proves it when
   `part_choice_probe` reads them ("3938 parts", "1771").
+- `check the track table`: `assets/ldraw/track_ends.json`, each train track's
+  ends (place, direction, the joint's kind, a sleeper under a rails end) that
+  `src/assembly/track_snap.gd` joins tracks by, measured from the parts' own
+  geometry: a clip end (9V, 6 wide, 4 wide) by the face its tab reaches 6 to 12
+  LDU past, a rails end (12V, 4.5V) by two rails ending a gauge apart, a
+  roller coaster end by its flush face. `tools/track_ends.py check` measures
+  again and fails when the table differs, a straight's ends are not 320 apart,
+  or sixteen curves (four of the roller coaster's 90) do not close a circle;
+  `tools/track_ends.py show ID` says one part's ends and how each was found.
+  The parts no family takes are in its `left_out`, each with why.
 - `check the gear table`: `assets/ldraw/gears.json`, the tooth counts, kinds and
   holes `src/assembly/mechanism.gd` reads (the catalogue says how many teeth a
   gear has only in its name). `tools/gears.py check` proves four things: every
@@ -149,7 +168,15 @@ tools/export.sh linux                 # one of them
   interrupted run therefore costs the whole thing, but leaves the old catalogue
   consistent. `tools/merge_subbuild.py` exists for that: build the affected
   parts with `--only`, include a few hundred parts that did *not* change, and it
-  refuses to merge unless every one of those comes out identical.
+  refuses to merge unless every one of those comes out identical. It merges
+  into the checkout it is run in (`tools/checkout.py`'s `tree_of`, as the
+  refresh does) and says which; a catalogue file or folder it would write
+  that links out of the folder it is named in (the catalogue, `parts/`,
+  `exact/`, a mesh or an exact shape under a new mesh) refuses the whole
+  merge before anything is written (`merge_subbuild FAILED, nothing written:
+  ... not written through`, exit 1). It merged into its script's own
+  checkout before, a worktree's link to the shared catalogue (2026-11-07);
+  `tests/test_merge_subbuild.py` holds both, the link cases one each.
 
 - **An LDraw update is minutes, not the full build (2026-10-22).** On a copy
   of the library and catalogue, the unofficial zip of 2026-10-22 (169 new and
@@ -321,7 +348,13 @@ numbers it prints come from the files that were just written.
 - **There is no pip and no ensurepip either**, so `tools/check.sh` falls back to
   `tools/minitest.py` for the test file. It implements `approx`, `fixture`,
   `mark.parametrize` and `mark.skipif` and raises by name on anything else — add
-  to it rather than working around it.
+  to it rather than working around it. Given several files it runs them side by
+  side, a process each, as many at once as the heavy slot's cores
+  (`MINITEST_JOBS=1` for one process, one after another); each file's output is
+  printed whole under its name, in the order given, and the verdict for the lot is
+  last. The whole suite took 113.7 s that way, and 475.4 s one after another
+  beside it, both in a heavy slot at load 28-30 (2026-11-07). A test must stand alone in its file's process and keep
+  its files in its own temp folder: another file runs beside it.
 - **−Y is up in LDraw.** Every axis conversion is `(x, -y, -z)`, and a mesh and its
   connectors have to get the same treatment or the studs end up on the bottom.
 - **A box is six numbers.** `build_meshes.py` unpacks them explicitly so a box that

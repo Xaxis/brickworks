@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, lib:path tracer, ui:render queue, cli:pathtrace probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe -->
 
 ## Sub-features
 
@@ -303,6 +303,26 @@ picture the assistant is shown.
   goes with the node (planted, the check names the first and the run exits
   134; it passes the second). Results in
   `bench/results/renderquit-2026-10-17/`.
+  And with work of the app's own still going as it quits (2026-11-06,
+  `bench/results/quitabort-2026-11-06/`): `booklet-asking` (Build,
+  Instructions…, its Save dialog up 2 s, File, Quit), `save-asking` (Save as…,
+  the same), `booklet-drawing` (the window closed while the booklet is drawn),
+  `booklet` (windowed only: the booklet written whole, its job over, then the
+  window closed), `reading` (a 40,000-part model read on a worker) and
+  `updating` (the updater hashing a 16 GB sparse file on its thread). Each must
+  exit 0 with none of the C library's or the engine's abort lines in its
+  output. On pre261 the asking ways and `booklet-drawing` aborted every run,
+  headless and windowed ("corrupted size vs. prev_size in fastbins" or "double
+  free or corruption (!prev)", exit 134): `Shell.run` handed `Working.attend` a
+  lambda of its own script, and the coroutine a command runs in, waiting on
+  objects the scene tree does not free, kept it into GDScript's teardown. A
+  command is handed on as `Shell._run_now` bound to its name now. Quit within
+  a frame or two of the dialog showing and pre261 went cleanly (Working was
+  still waiting on a frame), hence the 2 s; `booklet`, its job over, was clean
+  on pre261 too. `reading` and `updating` dumped core, their task or thread
+  left to the engine: every task, group and thread the app sets going goes
+  through `WorkerTasks` (`add`, `add_group`, `start`) and is collected as the
+  tree goes.
 - `text fields give the keys back` (`src/ui/focus_guard.gd`): Enter, Tab,
   Escape or a press anywhere outside a text field ends the typing, in every
   field — the model's name, the part search, the brief, the properties'
@@ -492,7 +512,15 @@ picture the assistant is shown.
   the eye is on; a strip at the foot of the model (above the key strip and the
   timeline) has X, Y and Z, a slider that drags it
   through the model (the wheel moves it too), where it is in bricks up or studs
-  in, Flip (`Shift-K`), Ghost (what is cut away left faint) and ×. Each part
+  in, Flip (`Shift-K`), Ghost (what is cut away left faint) and ×. The strip
+  lies in the model's room (`SeeInside._place`, by `Main._model_rect`, as the
+  render queue does), in its middle: one line where the room has it, and
+  where it has not (Stress's panel, the bin and the assistant beside the
+  model) as wide as the room, its three groups (what it is by; the slider or
+  Shrink, Grow and the size; Flip, Ghost and ×) wrapping to a line or two
+  more. Laid out for a finger its buttons are a fingertip each way
+  (`TouchSizing.size_panel`). Made one width for the window it ran past the
+  room, its Ghost and × under the columns (APP_UX5 striproom). Each part
   is sorted by its box against the plane (`BrickWorld._write_cut`): wholly on
   the near side, drawn by its batch as ever, with the plain shader and its
   early depth test; wholly past the plane, not drawn; across it, by the
@@ -614,6 +642,21 @@ picture the assistant is shown.
   in shots/stress_list/; `-- time FILE RUNS` times Stress coming on, for a
   base checkout too); `src/dev/stress_sets.gd -- FILE.mpd ...` counts red and
   amber on any sets.
+- `stud directions` (`src/ui/stud_map.gd`, `StudMap`, `BrickWorld.set_painted`;
+  APP_UX5 seeing2): View → Stud directions (under Stress) draws every part in
+  the colour of where its studs point, from its male stud connectors turned
+  with it: green up, red down, blue to the front (+z, the side the front
+  view sees), yellow back, orange left, cyan right; up and one other way is
+  the other way's colour (a 4070's side stud reads "front"), two ways or more
+  besides up black, no studs grey. A legend over the model lists the
+  facings the model has, with counts, and its × turns it off. Drawn only:
+  no paint, no history step; a part put down while it is on is painted
+  too; Stress turns it off (and it turns Stress off). A session gets the
+  same with `view_board {"studs": true}`: six views and the legend under
+  them in one picture, and the parts whose studs are not up named in the
+  words. `tools/probe.sh seeing2` (the car's 61 parts worked out from their
+  connectors and read off the picture view by view; the window's colours
+  and legend; pictures in SEEING2_SHOTS or user://seeing2_probe).
 - `controls panel and hint`: the keys sheet, opened with `F1` or Help, Keys and
   controls, and every key on it actually doing that; Settings (`,`, Tools,
   Settings…) is the same panel's other face (`ControlsDialog.open()` and
@@ -706,12 +749,18 @@ picture the assistant is shown.
   (`set_disable_shortcuts`): its popup ran a greyed command silently. Menus
   split so each is at most 25 rows and 60% of a 1280 x 720 window: Make (the
   minifigure, mosaic, brickify, hoses, the part maker and prints), View ›
-  Viewpoint (the views and the model's turns), Comments in File. `keys3_probe`
+  Viewpoint (the views and the model's turns), Comments in File; Build ›
+  Booklet page, 27 rows once Page setup… joined it, folds the step's turns,
+  tilts, this view, usual view and zoom into Build › Booklet page › Step's view
+  (19 rows and 9), and View, 482 of 470 units with Stud map, its five panels
+  into View › Panels (menurows, 2026-11-07). `keys3_probe`
   (windowed, 1280 x 720; `PROBE_SIZE=1400x900`) measures every menu as the
   palette measures Edit, presses the colour keys as a desktop and a browser
   send them, the four selection keys against their menu rows, Studio's Shift-V,
   sets favourite 1 in the sheet and starts the app again on its data folder to
-  find it kept. On the web, `tools/web/colour_keys_flow.mjs` (local build:
+  find it kept; pictures of Build › Booklet page and its Step's view opened,
+  and View › Panels (shots/keys3/menu_build_booklet*_WxH.png,
+  menu_view_panels_WxH.png). On the web, `tools/web/colour_keys_flow.mjs` (local build:
   `--url=http://127.0.0.1:PORT/`) selects all, presses Shift-2 and Ctrl+Z.
   Not proven: Cmd-Shift-3, 4 and 5 on a Mac are the system's screenshot keys,
   so those three most-used keys need setting there.
@@ -731,6 +780,28 @@ picture the assistant is shown.
   sheet runs from Alt-W. `docs_menus.gd` now writes each row's key as the app's
   own keys have it, so the docs' menus and shortcuts pages list Alt-C and the
   rest.
+- `keys for render, the cut shapes and the lists` (`src/ui/keymap.gd`
+  `PRESET_KEYS`, its keys2 block, APP_UX5 9, 2026-11-06): eight more commands
+  got a key, the same under every preset: Render F9 (3ds Max's, LightWave's and
+  Modo's render key; Blender's F12 is a browser's), Render queue Shift-F9, Cut
+  away by a box Alt-X, a sphere Alt-Z, a cylinder Alt-Y, Build › Booklet page ›
+  Page setup Ctrl-Shift-B (beside Alt-B; the Mac's Cmd-Shift-P is Firefox's
+  private window), File › Export › LEGO® Pick a Brick list Alt-L, File ›
+  Library Ctrl-Shift-O (beside Open's Ctrl-O). `docs/app_ux3/keys.md`, "Given a
+  key in round five", is their table, and its counts' After column the keyless
+  now (104 of 210 under the app's keys). `keys2_probe` (windowed, 1280 x 720;
+  `PROBE_SIZE=1400x900`) reads that table: each has its key under each preset
+  and on the web, no layer of a preset's keys nor the app's own gives it to
+  another action; the walk's count of commands with a key (APP_UX5 `counts`,
+  98 before) is 106 or more; each key is on its row and does what the row does
+  under each preset (Render's panel, the queue, the three shapes cut away, Page
+  setup, the Pick a Brick Save dialog cancelled, the Library); Render in one
+  key press; none runs while the parts' search is typed in; the sheet lists
+  them, its rows keeping a name's capitals ("LEGO® Pick a Brick list",
+  "BrickLink wanted list", never "lEGO®"; `ControlsDialog.bindings`)
+  (pictures: File, File › Export, View › Cut away by, Build › Booklet page
+  opened, the sheet filtered "F9", "cut away", "list"). `keys4_probe` still
+  checks the counts and the keyless rows.
 - `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
   whatsthis unit, APP_UX4 10): the next click on any control says what it does
   in a bubble beside it, and does nothing else, as LeoCAD's, Qt's and Windows'
@@ -1615,7 +1686,8 @@ picture the assistant is shown.
   adds), Bigger / Smaller (0.6x to 2x on the page), New page, Alone, Parts
   list, Callout (the sub-assembly the step puts on, in a box or on pages of
   its own), Per page (as fit, 1, 2, 4); the row's line says how the step is
-  set ("turned 45°, zoom 1.25x, new page"). The same are Build, Booklet page.
+  set ("turned 45°, zoom 1.25x, new page"). The same are Build, Booklet page
+  (the turns, tilts, views and zoom in its Step's view).
   Each is one undo (`steplooks` in `Builder._apply`: the table as it was);
   the first on a model with no steps of its own gives it the worked-out
   ones in the same undo. Kept in `BrickWorld.step_looks` by sub-model and
@@ -1827,6 +1899,36 @@ picture the assistant is shown.
   first, the cap, nothing on anything or off the page, the callouts where
   the booklet lays them, Ctrl-Z byte for byte, `follow=true` the same file,
   and a reopen laid out the same.
+- `booklet safe probe` and `a file's booklet runs nothing in a browser`
+  (booksafe, 2026-11-06): a booklet is HTML, on the web written into a tab
+  of the site's own, and its words and pictures come from a model file that
+  anyone may have made. **The edge:** a page's picture is kept only when
+  `BookletLooks.picture_kind` finds a PNG or a JPEG in strict base64
+  (`BookletLooks.read` through `kept_pictures`, `Shell.change_look` "image",
+  `Shell.page_setup`'s picture behind the pages, Together's `~looks`);
+  anything else is left out with a warning and the rest of the file read as
+  before. **The sinks** (`Booklet`): words and
+  attributes through `_escape`, every picture's address through `_url`
+  (base64 image data or left out, `src=""` and the stylesheet's `url()`
+  alike, the parts' pictures and `BookletSheet.picture_uri` behind the
+  pages), colours through `_colour` (hex or grey). **The policy:**
+  `Booklet.policy()` is the first meta after the charset: no script but
+  `SAVE_JS` by its hash (Print's click, and Save on the desktop), images as
+  data, no base or form; `BookletOut.take` writes the web's tab with no
+  script and `script-src 'none'`. `tools/probe.sh booklet_safe` (headless)
+  sends strings made to break out of each place through the reader and the
+  HTML builder. In a browser, on a local export served with `--parts`:
+  ```sh
+  node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR
+  ```
+  writes a two-step model whose page carries a good PNG and a picture whose
+  data ends its attribute to set a flag, and a picture behind the pages
+  whose data ends its `url()` and the stylesheet, opens it, presses
+  Instructions and reads the tab: no flag, nothing behind the pages, the
+  good picture shown and every picture decoded,
+  the policy first, script put into the tab afterwards refused (the policy
+  honoured in a document.write tab), Print prints. Red on 04e44b6d (the flag
+  set, no policy), green on booksafe.
 - `the booklet's Studio extras` and `booklet3 probe` (APP_UX3 booklet3;
   `BookletMaker`, `Booklet`, `BookletLooks`): Studio's buffer exchange, 1:1
   guide, colour guide and sub-model preview. **Pulled out**
@@ -1863,6 +1965,80 @@ picture the assistant is shown.
   -r 300`, the colour guide's names in the HTML and `pdftotext`, the pod's
   preview with nothing on it, actual_size off/auto/[ids], and a save and
   reopen. Pages are kept in its `--into=` folder to look at.
+- `the booklet's page setup` and `pagesetup probe` (APP_UX5 #4 pagesetup;
+  `BookletSheet`, `PageSetupDialog`, `Shell.page_setup`, MCP `page_setup`):
+  Build, Booklet page, Page setup… sets the paper (`BookletSheet.PAPERS`:
+  the booklet's own 269 x 199, A4, US Letter, A5), which way up, margins
+  5-30 mm, a page colour or a picture behind every page (cover-fitted, kept
+  as `brickworks-page-behind.jpg|png` among the model's pictures), the step
+  numbers' height (`Entry.number_scale`) and the parts boxes' scale. Each
+  control applies as it is chosen, one undo each; the file says
+  `0 !BRICKWORKS PAGE_SETUP A4 PORTRAIT MARGIN 12 COLOUR #FFFFFF NUMBER 10
+  PICTURE ...`, nothing for the booklet's own page, whose HTML is byte for
+  byte what it was. `Booklet` lays every page out on `document.sheet`
+  (`content(sheet)`, `_best_page`, `_page`, `_cover`, `parts_pages`), its
+  CSS gives the page's size, `@page` and the colour or picture;
+  `BookletRead` reads the size and picture back for `BookletPdf` (MediaBox
+  per page; step pictures drawn clear over a picture, with an SMask) and
+  `BookletPng`. A picture is kept for every paper it can be put on, since
+  the paper can change after (`BookletSheet.picture_of`): its shorter side
+  A4's 297 mm at the booklet's print resolution, `BookletSheet.PX_PER_MM`
+  (5 px a mm, `BookletMaker.px_per_mm` reads it), and a long side past
+  what the widest page (A5, 210 x 148) shows of it cut to that from its
+  middle (a panorama's far ends, on no page) rather than the whole made
+  smaller; a JPEG when nothing shows through, a
+  see-through PNG kept to 1 MB or 900 px long; its kind and KB in the file
+  are said (`picture_words`; the dialog's Picture behind line, page_setup).
+  A file whose PAGE_SETUP names a picture it does not carry (an older build
+  saved it: rel-m267 and desktop 0.17.0/0.18.0 drop PAGE_SETUP and the
+  page picture's `!DATA` on a save) is said missing (`BookletSheet.missing`;
+  the dialog's "Missing from the file", page_setup, booklet_layout, the
+  booklet's written note), printed in its colour, the name kept until Take
+  off. The app's own model with app-worked steps keeps its page and guides
+  over a reopen (`BookletLooks.booklet_wide`); someone else's file marked
+  worked keeps its step notes and their pictures byte for byte
+  (`ModelStore._looks_into`, `BookletLooks.with_booklet_wide`), and a
+  shared model says its page (`SharedPages.strip` takes only the carried
+  steps' `PAGES`/`PAGE` lines; `_without_app_lines` likewise). Keep as a
+  style writes one small JSON file a style in `user://page_styles/` (by
+  its name's sha256),
+  its picture once in `user://page_styles/pictures/` by what it is, so
+  styles sharing a picture keep it once; Remove… beside Style (asked first)
+  or page_setup `remove_style=` (the whole call checked first) takes one
+  away and any picture no style shows, as does replacing one; files are
+  written whole under a `.part` name, and a picture is written on every
+  keep and moved aside (`.aside`, still read) while the styles are read
+  again before it is taken, so two windows never lose one; a failed read
+  never overwrites; the old one-file `user://page_styles.cfg` is read where
+  it is until the next keep or remove moves it (looking writes nothing),
+  and left as it is when it cannot be read. Style gives one to another
+  model whole.
+  `pagesetup_probe` (windowed, `gpu`): the
+  booklet's own page first (with `--against=` a run on the commit before:
+  its HTML the same but its pictures, every PNG page the same to the
+  pixel), then `page_setup size=A4 orientation=portrait` in one call (every
+  pdfinfo page 210 x 297 within 0.5, every plan step on a page, pictures and
+  parts boxes inside the margins, the axle's 1:1 guide 32.0 within 0.2 on
+  the PNG and the PDF, `tools/booklet_pdf_check.py` passing), US Letter on
+  its side and a colour in the dialog (279.4 x 215.9; the colour off both
+  page drawings), a picture behind (on every page, and through a step's
+  picture), a save and reopen and one undo, then a style kept and given to
+  the gatehouse in 2 actions; then (pagesetup2) the app's own model with
+  app-worked steps saved and reopened with its page and picture, a file
+  naming a picture it lacks said missing everywhere and printed in its
+  colour, a 4000 x 3000 photo kept as a 1980 x 1485 JPEG (still 5 px a mm
+  when chosen on A5 and the paper made A4 upright; 3000 x 4000 kept
+  1485 x 1980), a 16000 x 1000 panorama kept to 1419 x 1000, a see-through
+  one a PNG within 1 MB or 900 px, someone else's worked file's step note
+  kept byte for byte, a shared model saying its page, two styles of one picture keeping it once, a refused
+  `remove_style=` call taking nothing, a style replaced 5 times keeping one
+  picture, one removed in the dialog and one over MCP, neither read by a
+  new start (the probe run again headless with `--list-styles`), the old
+  styles file listed and given where it is with nothing written until the
+  next keep moves it, or left byte for byte when unreadable, and two
+  windows on one user folder (the probe again headless, `--race-remove`)
+  losing no style's picture. `--dialog-only` with `PROBE_SIZE=1400x900`
+  checks the dialog alone at that size.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
@@ -2219,6 +2395,43 @@ picture the assistant is shown.
   its buttons going two rows, so it never lies over a tool's panel beside
   the model; Escape puts it away as a rung of Main's ladder after the parts list, before the
   tool and the selection (`Main._render_queue_up`).
+- `saved views` (APP_UX5 #8; View › Viewpoint › Save this view… Alt-V, Saved
+  view 1 to 9 Alt-Shift-1 to 9, Render each saved view; `src/ui/saved_views.gd`,
+  `SavedViews`): where the window looks from, kept by a name with the model as
+  `0 !BRICKWORKS VIEW {json}` lines after the first line (yaw, pitch,
+  distance, focus in the file's coordinates, square on and its size, the
+  turn Build it gives a step as a quaternion), read back through
+  `ModelStore` (lifted as the parts are, `BrickWorld.saved_views`) and looked
+  from through the camera's own `aim_at`/`square_on`. Someone else's file
+  keeps every line of its own (`_source_written`); an older Brickworks and
+  other readers pass over the lines. A view saved or removed is
+  unsaved work. Each row of View › Viewpoint is its view's name. Render's
+  Camera lists them under "Saved with the model" (`RenderSettings.keep_view`,
+  the eye `SavedViews.eye_of` works out as `CadCamera._apply` does, so the
+  picture is the window's from there without the window turning); the
+  queue's Add each saved view and Render each saved view queue one of each.
+  Render's Preset row keeps its choices (quality, look, size, backdrop,
+  light, camera, lens, samples, frames) by a name in this computer's
+  `user://render_presets.cfg`, for any model: chosen again in two actions,
+  the list opened and the preset picked; a choice changed by hand chooses
+  none. Over MCP, `view_model {"view": NAME}` answers with the window's
+  picture from a saved view (`RenderDialog.picture_of_view`), and
+  `render_model`/`render_queue` take `view` as a saved view's name; a name the
+  model does not keep is answered with those it does.
+- `savedviews probe` (`src/dev/savedviews_probe.gd`, `tools/probe.sh
+  savedviews`, windowed on the GPU at 1280 x 720, `PROBE_SIZE=1400x900`):
+  the car looked at from three views (one square on, one with the model on
+  its side), each saved by Alt-V and a name; saved, closed and opened, each
+  back by its Alt-Shift key within 0.1° and 0.1 LDU of the camera's own
+  transform (and its square-on size); View › Viewpoint's rows name them; a
+  key each under every preset, none another command's; the queue's Add each
+  saved view then the window turned to each and added: each pair the same
+  picture (RMSE at most 0.005), the three apart; `view_model` and
+  `render_model` by a view's name in one call each, the same pictures as the
+  window's from there; a Render preset saved, changed and chosen again in 2
+  actions. `-- --keep=DIR` leaves the file; the probe copied into an older
+  checkout with `-- --older=DIR` opens it whole. Pictures in
+  `shots/savedviews/`: look at each view's window and the queue's pictures.
 - `quiet probe` (`src/dev/quiet_probe.gd`, `tools/probe.sh quiet_probe`,
   windowed at 1280 x 720, `PROBE_SIZE=1400x900`): APP_UX4 unit 9's bar.
   The first build's offer on a first visit, gone at the third part put down
@@ -2414,6 +2627,7 @@ godot --path . --resolution 1200x800 --script src/dev/shot_probe.gd   # the rend
 godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the booklet reads like one
 godot --path . --resolution 1280x800 --script src/dev/booklet_stream_probe.gd  # the castle's booklet read as it is drawn
 godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --into=DIR  # the castle's booklet saved as a PDF and as PNG pages from its own Save buttons; --model=res://models/orthanc.ldr for the tower
+tools/probe.sh pagesetup -- --into=DIR --against=BEFORE_DIR   # the booklet's page set up: A4 upright over MCP, US Letter by the dialog, a colour, a picture behind, a style to the gatehouse; a picture the file lacks said missing, a big picture kept for every paper (a panorama to what a page shows), someone else's worked file's notes kept, styles removed (a refused call taking none, a replaced one's picture gone) and gone in a new start, the old styles file untouched by looking, two windows losing no picture; BEFORE_DIR a run on the commit before; PROBE_SIZE=1400x900 tools/probe.sh pagesetup -- --dialog-only
 #   every step pictured and framed on the model, new parts in frame, a parts box
 #   with a picture of every part, the shed's 2x callout with two arrows and its
 #   figure, the turn sign behind a wall (plates against its back), plates a hand's
@@ -2504,7 +2718,25 @@ xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/see_inside_pro
 # file and someone else's step-free .mpd (headless), and --keep=DIR then
 # --older=DIR on an older checkout, which opens each whole.
 tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes
+# Cut away's strip in the model's room (APP_UX5 striproom): the car cut by a
+# plane, a box, a sphere and a cylinder with Stress, the assistant and the bin
+# opened as a person opens them (two orders), the bin and the assistant alone,
+# and nothing beside the model: every control the strip shows inside
+# Main._model_rect and the window, over no column or rail, clear of the key
+# strip; each clicked where it is drawn does its job (the list opens, X/Y/Z,
+# the slider, Flip, Shrink, Grow, Ghost on and off, × last); one line with
+# nothing beside the model. The phone's and the tablet's own: the model alone,
+# Stress, the parts beside it (tablet), by taps, every button a fingertip.
+# Pictures in shots/striproom/<size>[_phone|_tablet]/: look at the strip.
+tools/probe.sh striproom && PROBE_SIZE=1400x900 tools/probe.sh striproom
+tools/probe.sh striproom_phone && tools/probe.sh striproom_tablet
 tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied into an older checkout: tools/probe.sh cutshapes_kept -- --older=/tmp/cut_kept
+# Saved views and Render presets (APP_UX5 #8): three views saved by Alt-V,
+# the model saved, closed and opened, each back by its Alt-Shift key within
+# 0.1° and 0.1 LDU; a key each under every preset; the queue's pictures of
+# each the window's from there; view_model and render_model view= in one
+# call; a preset chosen again in 2 actions. Look at shots/savedviews/.
+tools/probe.sh savedviews -- --keep=/tmp/views_kept && PROBE_SIZE=1400x900 tools/probe.sh savedviews   # then, the probe copied into an older checkout: tools/probe.sh savedviews -- --older=/tmp/views_kept
 # View, Stress: a loaded 2x10 cantilever's root red on 1x1s, plain on 2x2s; a
 # bare one and a bonded wall not red; nothing painted; the shipped models none
 # red. Then in the window: the menu, the tint, what pointing says, Ask Claude

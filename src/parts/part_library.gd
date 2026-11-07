@@ -1089,6 +1089,8 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 		if not _on_main_thread():
 			_arrived_lock.lock()
 			var waiting: Lbm.PartMesh = _arrived.get(info.mesh_hash)
+			if waiting == null:
+				_unread[part_id] = true
 			_arrived_lock.unlock()
 			return waiting
 		if _arrived.has(info.mesh_hash):
@@ -1209,6 +1211,11 @@ var _readers: int = 0
 ## on a worker takes to read it.
 var _arrived: Dictionary = {}
 var _arrived_lock := Mutex.new()
+## Parts a reader on a worker asked for that were not loaded, which it read
+## as having no geometry: id -> true, under [member _arrived_lock]. A shape
+## laid on a worker with one of its parts read so lays other parts than the
+## same shape laid on the main thread, which loads it (bigedit, 2026-11-06).
+var _unread: Dictionary = {}
 ## The WorkerThreadPool tasks reading, for _wait_for_readers.
 var _reading_tasks: Array[int] = []
 ## task -> what ends it early, for the readers that can be.
@@ -1240,6 +1247,17 @@ func end_reading(task: int = -1) -> void:
 	_arrived_lock.lock()
 	_arrived.clear()
 	_arrived_lock.unlock()
+
+
+## The parts readers on workers asked for and found not loaded since this
+## was last called ([member _unread]), forgotten here: load them and read
+## again for the answer the main thread would give.
+func unread_by_readers() -> PackedStringArray:
+	_arrived_lock.lock()
+	var out := PackedStringArray(_unread.keys())
+	_unread.clear()
+	_arrived_lock.unlock()
+	return out
 
 
 ## Whether a worker is reading the library now: what changes it waits for
@@ -1905,6 +1923,9 @@ func color(code: int) -> BrickColor:
 	var found: BrickColor = colors.get(code)
 	if found != null:
 		return found
+	var direct: BrickColor = direct_color(code)
+	if direct != null:
+		return direct
 	# Unknown codes render magenta rather than silently picking grey, so a
 	# bad colour in a model is visible instead of plausible.
 	var fallback: BrickColor = BrickColor.new()
@@ -1915,6 +1936,69 @@ func color(code: int) -> BrickColor:
 	fallback.alpha = 255
 	fallback.finish = "solid"
 	return fallback
+
+
+## A direct colour (LdrModel.is_direct_colour) as the palette's colours are:
+## its own RGB (LdrModel.direct_rgb), opaque plain plastic, named by its hex
+## ("#FF0000", as the site's parts list and room name it), with no number in
+## any shop or palette, as no one ever made it. Null for a palette code.
+## Made afresh each time, as color's magenta is: nothing is written to a
+## table a worker may be reading.
+static func direct_color(code: int) -> BrickColor:
+	if not LdrModel.is_direct_colour(code):
+		return null
+	var made: BrickColor = BrickColor.new()
+	made.code = code
+	made.name = "#%06X" % (code & 0xFFFFFF)
+	made.rgb = LdrModel.direct_rgb(code)
+	made.shown = shown_for(made.rgb)
+	made.edge = Color(0.2, 0.2, 0.2)
+	made.alpha = 255
+	made.finish = "solid"
+	made.group = "direct"
+	made.plain_code = code
+	made.pack_finish()
+	return made
+
+
+## The catalogue colour a shop's list orders a part of direct colour [param
+## code] in (Inventory.Lot.stand_in), as no shop sells plastic in a colour
+## typed into a file: the nearest as an eye judges it (CIEDE2000,
+## HiddenColours.de2000) of the plain solid colours still made
+## (stand_in_codes), so BrickLink, Rebrickable and Pick a Brick all sell it;
+## the lowest code of two as near. The site's lists choose by the same rule
+## (api/_parts.js standIn). -1 for a palette code, which is ordered as
+## itself, or with no palette loaded.
+func catalogue_nearest(code: int) -> int:
+	if not LdrModel.is_direct_colour(code):
+		return -1
+	var here: Vector3 = HiddenColours.lab(LdrModel.direct_rgb(code))
+	var best: int = -1
+	var gap: float = INF
+	for choice: int in stand_in_codes():
+		var apart: float = HiddenColours.de2000(here, HiddenColours.lab(
+			(colors[choice] as BrickColor).rgb))
+		if apart < gap:
+			gap = apart
+			best = choice
+	return best
+
+
+## The colours a direct colour may stand in as on a shop's list: LDConfig's
+## solid section, opaque, each its own plain colour (not a rubber twin), with
+## a BrickLink number, in sets of the last couple of years. The current
+## colours rather than every one BrickLink files, as Pick a Brick sells only
+## those and a colour in one set in 1979 is no colour to order a part in.
+## In code order. api/_parts.js deriveTable keeps the same list.
+func stand_in_codes() -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for code: int in colors:
+		var colour: BrickColor = colors[code]
+		if colour.group == "solid" and colour.alpha == 255 and colour.plain_code == code \
+				and colour.bricklink >= 0 and colour.current:
+			out.append(code)
+	out.sort()
+	return out
 
 
 ## How many parts were made in a colour: x since recent_since, y ever.
@@ -2105,6 +2189,14 @@ func _index_prints() -> void:
 		if not _prints.has(plain.id):
 			_prints[plain.id] = []
 		(_prints[plain.id] as Array).append(id)
+
+
+## Whether a part holds by its glue: a film laid on a face, one of ours or
+## one LDraw files as a Sticker ([method decor_of]). What it is stuck to is
+## Stickers.lies_on's, which Later loads.
+func sticks(part_id: String) -> bool:
+	var info: PartInfo = parts.get(part_id)
+	return info != null and (info.decor() & PartInfo.STICKER) != 0
 
 
 ## The prints and stickered versions of a plain part: the prints first,

@@ -1,6 +1,6 @@
 ---
 panels: PatternDialog#patterns
-tools: edit_model, look_at_model, check_design, attachment_points, where_to_attach, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section, mirror_parts, split_parts, merge_parts, measure
+tools: edit_model, look_at_model, check_design, attachment_points, where_to_attach, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section, mirror_parts, split_parts, merge_parts, measure, pattern_parts
 ai: How parts go down, snap, turn and move once placed, and how a model is grouped into sub-assemblies and sections. An assistant does the same with edit_model and edit_selection, reads the model with look_at_model, and checks a change with check_design before making it.
 rules:
   - Positions are studs across (x), plates up (y) and studs deep (z); 3 plates make a brick.
@@ -70,6 +70,16 @@ lib:placing a part by its connectors
 lib:round joints
 -->
 
+## Train tracks {#tracks}
+
+A track in hand (9V, 12V, 4.5V, RC, 6-wide or roller coaster) snaps to the free end of a track already down when the pointer is near it, and a click lays it on, end to end. [[R]] puts its next end to the joint, so a curve turns the other way or a point goes on by another of its ends. The 4.5V and 12V rails are held by a sleeper under each joint, and that sleeper goes down with the track, in the same undo. Sixteen curves laid this way close a circle.
+
+An assistant lays tracks with `attach`, by `"to": "c1.track[1]", "by": "track[0]"`: each track's ends are numbered as `attachment_points` lists them.
+
+<!-- covers
+ui:train tracks end to end
+-->
+
 ## Connect by a point {#connect}
 
 A long Technic beam has many holes, and the one you want is rarely the one the pointer finds first. With the part in hand press [[N]], or choose **Connect** on the toolbar: its pins, holes, axles, bars and clips light up in blue where it stands. Click the one it goes on by, then the pin, hole or bar it goes on: only that point snaps, so a 1 x 16 goes on its pins by its end hole at once. A pin or an axle goes in from the side you point from, and a wheel goes on an axle where you point along it. [[T]] puts it on the other way, [[R]] turns it about the joint, [[N]] again picks another point, and [[Esc]] goes back to placing as usual.
@@ -93,12 +103,13 @@ ui:copy paste and duplicate
 A fence, a colonnade, a round tower or a wheel's spokes are copies laid out at once:
 
 - **Straight after a copy:** put a [[Ctrl+D]] copy down one step along, then type `11x` and [[Enter]] to make it one of 11 in the row, each the same step again. `/4` cuts the gap between the copy and where it came from in four, putting three between. One [[Ctrl+Z]] takes the copy and all the rest back.
-- **Edit › Pattern…** ([[Ctrl+Shift+D]]) copies the selection **In a row** along x, z or up, **Round** what it stands on, the joint it hangs on or the middle of the floor, or **Along a hose** laid in the model. **In all** counts the selection: 16 is a ring of sixteen.
+- **Edit › Pattern…** ([[Ctrl+Shift+D]]) copies the selection **In a row** along x, z or up, **In a grid** of columns along x, rows along z and levels up, each so many studs or plates apart, **Round** what it stands on, the joint it hangs on or the middle of the floor, or **Along a hose** laid in the model. **In all** counts the selection: 16 is a ring of sixteen. A grid counts it too: 4 columns, 3 rows and 2 levels is 24, the selection one of them, and a copy with no room is named by its column, row and level. An assistant lays the same grid on parts it names with `pattern_parts`, in one call: columns, rows and levels, each so many studs or plates apart (the parts' own size, touching, when it gives none), one undo step, a copy with no room named by its column, row and level and the part in its way, and the copies pictured.
 
 The copies are drawn where they will go as you type, each checked for room. One with no room is red, says what is in its way, and nothing goes down until they all fit.
 
 <!-- covers
 ui:patterns
+lib:pattern's grid over mcp
 -->
 
 ## Move and turn what is down {#move}

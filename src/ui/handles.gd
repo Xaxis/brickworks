@@ -56,10 +56,9 @@ const DRAG_SLOP := 4.0
 const AIMED_AGAIN := 6.0
 const SEGMENTS := 64
 ## X, Y and Z as the pivot mark draws them (PivotMark).
-const AXIS_COLOURS: Array[Color] = [Color(0.91, 0.30, 0.34), Color(0.42, 0.76, 0.32),
-	Color(0.33, 0.58, 0.93)]
-const LIT := Color(1.0, 0.85, 0.3)
-const EDGE := Color(0.05, 0.07, 0.12, 0.85)
+const AXIS_COLOURS: Array[Color] = PivotMark.AXIS_COLOURS
+const LIT := PivotMark.LIT
+const EDGE := PivotMark.EDGE
 const AXES: Array[String] = ["x", "y", "z"]
 const FRAMES: Array[String] = ["part", "model", "view"]
 const FRAME_WORDS: Dictionary = {"part": "Part axes", "model": "Model axes",

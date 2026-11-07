@@ -22,8 +22,7 @@
 ## - a copy moved whole: the line placing it written again, its sub-model's
 ##   lines as they were;
 ## - a part or copy with no line (put down, pasted): a line at the end of its
-##   step, and a section of its own for a sub-model it needs; a model put in
-##   ([method bring]): its own file's text, placed by one line;
+##   step, and a section of its own for a sub-model it needs;
 ## - copies of one sub-model that no longer agree: the changed one a section
 ##   of its own (its name and " 2"), its placing line pointed at it, as
 ##   Studio and LDCad do;
@@ -143,8 +142,6 @@ class Target extends RefCounted:
 	var placed: Item = null
 	## A new copy that is a copy of this one, placed by a line as it is.
 	var like: Target = null
-	## A model put in ([method SourceFile.bring]), placed by a line.
-	var brought: Dictionary = {}
 	## Inside a copy so placed: written by nothing.
 	var skip: bool = false
 	## Its section's lines as written: Strings, and Items for placing lines.
@@ -199,7 +196,6 @@ class Save extends RefCounted:
 	var by_section: Dictionary = {}
 	var news: Array[Group] = []
 	var names: Dictionary = {}
-	var brought_names: Dictionary = {}
 	var placing: Dictionary = {}
 	var reshaped: bool = false
 	## A STEP line goes in after the model's last part: it has steps, and
@@ -270,8 +266,6 @@ var app_lines: Dictionary = {}
 ## The kinds of line the file has right above a part ([method _family]).
 var families: Dictionary = {}
 var nofile: bool = false
-## The models put in ([method bring]).
-var brought: Array = []
 
 
 ## [param placements] are what the model opened as: every part put down or
@@ -605,37 +599,6 @@ static func header_of(text_lines: PackedStringArray) -> PackedStringArray:
 	return out
 
 
-## A model put into this one (ModelStore.held_from, File, Import, Into this
-## model…): its file's [param text], under [param whole] (its root's
-## definition here) with the definitions in it named here as
-## [param renamed] says, and [param placed], its parts as its file put them
-## ({part, color, at}). A save finds it on the baseplate by its parts, and
-## writes it as its file had it, placed by one line. Kept in a new list:
-## a save on a worker reads the old one.
-func bring(text: String, file_name: String, whole: String, renamed: Dictionary,
-		placed: Array) -> void:
-	var model: LdrModel = LdrModel.parse(text, file_name)
-	if model == null or model.main == null:
-		return
-	var main: String = file_name.to_lower()
-	for key: String in model.submodels:
-		if model.submodels[key] == model.main:
-			main = key
-	var named: Dictionary = {}
-	var by: Dictionary = model._assembly_names()
-	for key: String in by:
-		named[key] = whole if key == main else str(renamed.get(by[key], by[key]))
-	var parts: Array = []
-	for entry: Variant in placed:
-		var one: Dictionary = entry
-		parts.append([str(one["part"]), int(one["color"]), one["at"] as Transform3D,
-			str(one.get("unit", ""))])
-	var list: Array = brought.duplicate()
-	list.append({"root": whole + "#1", "lines": text.split("\n"), "file": file_name,
-		"main": main, "named": named, "placed": parts})
-	brought = list
-
-
 # -- a save ---------------------------------------------------------------------
 
 
@@ -668,7 +631,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	_fit_new(save)
 	_place_new(save)
 	for target: Target in save.order:
-		if not target.skip and target.like == null and target.brought.is_empty():
+		if not target.skip and target.like == null:
 			if target.copy != null:
 				_render(save, target)
 			else:
@@ -1055,33 +1018,23 @@ func _says_copy(n: int) -> bool:
 
 
 ## Each copy the file has not got whose parts are all new, placed as what it
-## is a copy of: a model put in, by its own file; a copy of another, by that
-## one's section.
+## is a copy of: a copy of another, by that one's section.
 func _fit_new(save: Save) -> void:
 	for target: Target in save.order:
 		if target.copy != null or target.skip or not _all_new(save, target):
 			continue
 		var mine: Array = _parts_under(save, target.path)
-		for record: Dictionary in brought:
-			if str(record["root"]) != target.path:
+		for other: Target in save.order:
+			if other == target or other.kind != target.kind or other.skip \
+					or (other.copy == null and other.like == null):
 				continue
-			var fit: Variant = _fit(mine, record["placed"])
+			var fit: Variant = _fit(mine, _parts_under(save, other.path))
 			if fit != null:
-				target.brought = record
-				target.frame = fit
+				target.like = other
+				target.frame = (fit as Transform3D) * other.frame
+				target.colour = other.colour
 				break
-		if target.brought.is_empty():
-			for other: Target in save.order:
-				if other == target or other.kind != target.kind or other.skip \
-						or (other.copy == null and other.like == null and other.brought.is_empty()):
-					continue
-				var fit: Variant = _fit(mine, _parts_under(save, other.path))
-				if fit != null:
-					target.like = other
-					target.frame = (fit as Transform3D) * other.frame
-					target.colour = other.colour
-					break
-		if target.like != null or not target.brought.is_empty():
+		if target.like != null:
 			for other: Target in save.order:
 				if other.path.begins_with(target.path + "/"):
 					other.skip = true
@@ -1626,11 +1579,10 @@ func _reproduces(save: Save, line: String, frame: Transform3D, inherit: int, ite
 		part = ModelStore.studio_part(part, library)
 	var at: Transform3D = frame * local
 	if frame.basis.determinant() < 0.0:
-		if library != null:
-			var other: String = Mirror.counterpart(library, part)
-			if not other.is_empty() and library.parts.has(other):
-				part = other
-		at = frame * LdrModel.REFLECT_X * Mirror.reflected(local, 0, 0.0)
+		var image: Dictionary = Mirror.image(library, part, local, 0, 0.0) if library != null \
+			else Mirror.reflected(null, null, local, 0, 0.0)
+		part = str(image.get("part", part))
+		at = frame * LdrModel.REFLECT_X * (image["at"] as Transform3D)
 		at = Builder._tidy(at, BrickLattice.is_square_to_grid(at.basis))
 	if library != null:
 		var real: String = library.resolve(part)
@@ -1654,9 +1606,14 @@ func _said(save: Save, original: String, item: Item, frame: Transform3D, inherit
 	var reflected: bool = frame.basis.determinant() < 0.0
 	var token: String = ""
 	var by := Transform3D.IDENTITY
+	# A mirrored copy's part is turned back by the two shapes the open
+	# turned it by (Assemblies.unmirror): the file's and the one put down.
+	var file_part: String = ""
+	var put_part: String = item.part_id
 	if words.size() >= 15 and words[0] == "1" and library != null:
 		var reference: String = " ".join(words.slice(14))
 		var part: String = ModelStore.studio_part(_part_of(reference), library)
+		var said_part: String = part
 		if reflected:
 			var other: String = Mirror.counterpart(library, part)
 			if not other.is_empty() and library.parts.has(other):
@@ -1668,6 +1625,8 @@ func _said(save: Save, original: String, item: Item, frame: Transform3D, inherit
 			now = library.current(real)
 		if now == item.part_id and (fixed < 0 or fixed == item.colour):
 			token = reference
+			file_part = said_part
+			put_part = part
 			if real != part:
 				by = library.moved_by(part)
 	if token.is_empty():
@@ -1677,10 +1636,15 @@ func _said(save: Save, original: String, item: Item, frame: Transform3D, inherit
 			if not other.is_empty() and library.parts.has(other):
 				id = other
 		token = id + ".dat"
+		file_part = id
 		save.new_ids[id] = true
 	var want: Transform3D = item.at * by.affine_inverse()
-	var local: Transform3D = Mirror.reflected((frame * LdrModel.REFLECT_X).affine_inverse() * want,
-		0, 0.0) if reflected else frame.affine_inverse() * want
+	var local: Transform3D = frame.affine_inverse() * want
+	if reflected:
+		var put: Lbm.PartMesh = library.mesh_for(put_part) if library != null else null
+		var file: Lbm.PartMesh = library.mesh_for(file_part) if library != null else null
+		local = Mirror.reflected(put, file, (frame * LdrModel.REFLECT_X).affine_inverse() * want,
+			0, 0.0)["at"]
 	var colour: String = _colour_token(item.colour)
 	if item.read != null and words.size() >= 15 and item.colour == item.read.colour \
 			and (words[1] != "16" or inherit == item.colour):
@@ -1715,8 +1679,6 @@ func _ref_body(item: Item, parent: Target) -> void:
 				return
 	var token: String = "16" if child.colour == parent.colour or child.colour == 16 \
 		else _colour_token(child.colour)
-	if not child.brought.is_empty():
-		token = "16" if parent.colour == 0 else "0"
 	item.body = "1 %s %s" % [token, LdrModel._line_numbers(parent.frame.affine_inverse() * child.frame)]
 
 
@@ -1766,8 +1728,6 @@ func _sig(target: Target) -> String:
 func _ref_key(child: Target) -> String:
 	while child.like != null:
 		child = child.like
-	if not child.brought.is_empty():
-		return "put in " + str(child.brought["root"])
 	if child.digest.is_empty():
 		child.digest = (child.kind + "\n" + _sig(child)).md5_text()
 	return child.digest
@@ -1778,7 +1738,7 @@ func _ref_key(child: Target) -> String:
 ## (" 2") for each other way it is written now.
 func _group(save: Save) -> void:
 	for target: Target in save.order:
-		if target.skip or target.like != null or not target.brought.is_empty():
+		if target.skip or target.like != null:
 			continue
 		var key: String = "%s\n%s\n%s" % [target.copy.section if target.copy != null else NONE,
 			target.kind, _ref_key(target) if target.copy != root else "model"]
@@ -1831,8 +1791,6 @@ func _group(save: Save) -> void:
 	for group: Group in save.news:
 		group.name = _free_name(save, prefix + group.kind + ".ldr", false)
 		group.title = group.kind
-	for record: Dictionary in brought:
-		_name_brought(save, record)
 	if main_key.is_empty():
 		save.main_name = _free_name(save, ((own_title if not own_title.is_empty()
 			else "model").to_snake_case()) + ".ldr", false)
@@ -2003,31 +1961,14 @@ func _prefix() -> String:
 	return first
 
 
-## A name for each section of a model put in that one here has already.
-func _name_brought(save: Save, record: Dictionary) -> void:
-	var names: Dictionary = {}
-	for raw: String in record["lines"]:
-		var words: PackedStringArray = _words(raw)
-		if words.size() >= 3 and words[0] == "0" and words[1].to_upper() == "FILE":
-			var name: String = " ".join(words.slice(2))
-			var key: String = LdrModel._key(name)
-			if names.has(key):
-				continue
-			names[key] = name if not save.names.has(key) else _free_name(save, name)
-			save.names[LdrModel._key(str(names[key]))] = true
-	if names.is_empty():
-		names[str(record["main"])] = _free_name(save, str(record["file"]).get_file(), false)
-	save.brought_names[record["root"]] = names
-
-
 ## The whole file: each section as its copies are written, a copy written
-## otherwise after it, new sections and models put in at the end.
+## otherwise after it, new sections at the end.
 func _assemble(save: Save) -> String:
 	var out := PackedStringArray()
 	save.placing = {}
 	var top: Target = save.target_of[""]
 	var made: PackedStringArray = _made_lines(save)
-	var extra: bool = not save.news.is_empty() or _any_brought(save) or not made.is_empty()
+	var extra: bool = not save.news.is_empty() or not made.is_empty()
 	for group: Variant in save.groups.values():
 		extra = extra or (group as Group).fork
 	if main_key.is_empty() and extra:
@@ -2068,12 +2009,6 @@ func _assemble(save: Save) -> String:
 		out.remove_at(out.size() - 1)
 	for group: Group in save.news:
 		_put_entries(save, out, group.members[0], group)
-	var done: Dictionary = {}
-	for target: Target in save.order:
-		if not target.brought.is_empty() and not target.skip \
-				and not done.has(target.brought["root"]):
-			done[target.brought["root"]] = true
-			out.append_array(_brought_lines(save, target.brought))
 	out.append_array(made)
 	if ended_line and extra:
 		out.append("")
@@ -2124,13 +2059,6 @@ func carries(part_id: String) -> bool:
 func drawn_at(origin: String) -> bool:
 	var read: Read = reads.get(origin)
 	return read != null and read.fixed
-
-
-func _any_brought(save: Save) -> bool:
-	for target: Target in save.order:
-		if not target.brought.is_empty() and not target.skip:
-			return true
-	return false
 
 
 ## [param target]'s lines into [param out], under [param group]'s name and
@@ -2204,10 +2132,7 @@ func _ref_text(save: Save, item: Item) -> String:
 	while child.like != null:
 		child = child.like
 	var name: String = ""
-	if not child.brought.is_empty():
-		var names: Dictionary = save.brought_names[child.brought["root"]]
-		name = str(names.get(child.brought["main"], names.values()[0]))
-	elif child.group != null:
+	if child.group != null:
 		name = child.group.name
 	if not item.text.is_empty():
 		var words: PackedStringArray = _words(item.text)
@@ -2215,76 +2140,6 @@ func _ref_text(save: Save, item: Item) -> String:
 			return item.text
 		return _with_reference(item.text, name)
 	return item.body + " " + name
-
-
-## A model put in, as its file has it: its sections under the names given
-## them here, each titled as its definition is named here, and the app's
-## own lines about the model it was left out.
-func _brought_lines(save: Save, record: Dictionary) -> PackedStringArray:
-	var names: Dictionary = save.brought_names[record["root"]]
-	var named: Dictionary = record["named"]
-	var text: PackedStringArray = record["lines"]
-	var out := PackedStringArray()
-	var plain: bool = true
-	for raw: String in text:
-		if _keyword(raw) == "FILE":
-			plain = false
-			break
-	var key: String = str(record["main"]) if plain else ""
-	var started: bool = not plain
-	if plain:
-		out.append("0 FILE " + str(names[key]))
-	var titled: bool = false
-	var author_seen: bool = true
-	var placed: bool = false
-	var head: int = out.size() - 1
-	for raw: String in text:
-		var words: PackedStringArray = _words(raw)
-		var keyword: String = words[1].to_upper() if words.size() >= 2 and words[0] == "0" else ""
-		if keyword == "FILE":
-			key = LdrModel._key(" ".join(words.slice(2)))
-			started = true
-			titled = false
-			placed = false
-			out.append("0 FILE " + str(names.get(key, " ".join(words.slice(2)))))
-			head = out.size() - 1
-			_title_brought(out, head, named, key, -1)
-			continue
-		if not started:
-			continue
-		if keyword == "!BRICKWORKS" and not _is_app_meta(raw):
-			continue
-		if keyword == "NAME:" and names.has(key):
-			out.append("0 Name: " + str(names[key]))
-			continue
-		if words.size() >= 15 and words[0] == "1":
-			placed = true
-			var ref: String = LdrModel._key(" ".join(words.slice(14)))
-			out.append(_with_reference(raw, str(names[ref])) if names.has(ref) else raw)
-			continue
-		if not titled and not placed and not keyword.is_empty() and not keyword.begins_with("!") \
-				and keyword != "BFC" and keyword != "NAME:" and keyword != "NOFILE" \
-				and keyword != "STEP" and keyword != "ROTSTEP" and not words[1].begins_with("//") \
-				and (keyword != "AUTHOR:" or author_seen):
-			titled = true
-			if keyword != "AUTHOR:":
-				var wanted: String = str(named.get(key, " ".join(words.slice(1))))
-				out.append(raw if " ".join(words.slice(1)) == wanted else "0 " + wanted)
-				_title_brought(out, head, named, key, out.size() - 1)
-				continue
-		out.append(raw)
-	while not out.is_empty() and out[out.size() - 1].strip_edges().is_empty():
-		out.remove_at(out.size() - 1)
-	return out
-
-
-## A section of a model put in, with a title line where it has none of its
-## own a reader takes for one: put right after its FILE line.
-static func _title_brought(out: PackedStringArray, head: int, named: Dictionary, key: String,
-		title_at: int) -> void:
-	if title_at >= 0 or not named.has(key):
-		return
-	out.insert(head + 1, "0 " + str(named[key]))
 
 
 ## [param text] read back as a reader reads it: where a copy comes back

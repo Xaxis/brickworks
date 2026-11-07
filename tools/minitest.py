@@ -19,6 +19,13 @@ raises on anything else by name, so it can never quietly skip a test it did
 not understand.
 
     tools/minitest.py tests/test_ldraw.py
+
+Given several files it runs them side by side, a process each, as many at
+once as the cores a heavy slot is given (MINITEST_JOBS=N to choose; 1 runs
+them one after another in this process). Each file's output is kept apart
+and printed whole, under its name, in the order the files were given, and
+the verdict for the lot is last, as before. One after another, the suite
+had grown to 815 s and held rel-m270 past its gate's budget (2026-11-07).
 """
 
 from __future__ import annotations
@@ -26,9 +33,13 @@ from __future__ import annotations
 import importlib.util
 import inspect
 import io
+import json
 import math
+import os
 import re
 import shutil
+import signal
+import subprocess
 import sys
 import tempfile
 import time
@@ -38,6 +49,9 @@ from collections import namedtuple
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+## How long each file took when the files last ran side by side, so the
+## longest begin first and the run is not left waiting on one begun last.
+TIMES = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "brickworks" / "minitest-times.json"
 
 
 class Skipped(Exception):
@@ -326,9 +340,12 @@ def run(path: Path) -> tuple[int, int, int]:
 
     shutil.rmtree(temp, ignore_errors=True)
     print("")
+    # Named with its file, as pytest names it: the gates print the FAIL
+    # blocks alone, without the files' output around them.
+    where = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
     for label, error in failures:
         print("")
-        print("FAIL  %s" % label)
+        print("FAIL  %s::%s" % (where, label))
         said = ("%s: %s" % (type(error).__name__, error) if str(error) else type(error).__name__).splitlines()
         # Every line of the message indented, so a failure is one block to
         # its last line, as tools/failures.awk reads it.
@@ -351,11 +368,119 @@ def run(path: Path) -> tuple[int, int, int]:
     return passed, len(skipped), len(failures)
 
 
+def jobs(files: int) -> int:
+    """How many files run at once: MINITEST_JOBS when set; in a heavy slot,
+    the cores it is given (heavy passes them on as LP_NUM_THREADS, the cores
+    over a project's share of slots: 3 of 24); elsewhere the same share,
+    worked out as heavy works it out."""
+    said = os.environ.get("MINITEST_JOBS", "")
+    if not said and os.environ.get("BOX_HEAVY_HELD"):
+        said = os.environ.get("LP_NUM_THREADS", "")
+    try:
+        wanted = int(said)
+    except ValueError:
+        cores = os.cpu_count() or 2
+        wanted = max(2, cores // max(2, cores // 3))
+    return max(1, min(wanted, files))
+
+
+def _known_times() -> dict[str, float]:
+    try:
+        said = json.loads(TIMES.read_text())
+        return {k: float(v) for k, v in said.items() if isinstance(v, (int, float))}
+    except (OSError, ValueError, AttributeError):
+        return {}
+
+
+def _keep_times(took: dict[str, float]) -> None:
+    """Merged into what was known, written whole: two suites may end at once."""
+    try:
+        TIMES.parent.mkdir(parents=True, exist_ok=True)
+        fresh = TIMES.with_name("%s.%d" % (TIMES.name, os.getpid()))
+        fresh.write_text(json.dumps({**_known_times(), **took}, indent=0, sort_keys=True) + "\n")
+        os.replace(fresh, TIMES)
+    except OSError:
+        pass
+
+
+def run_apart(files: list[Path], names: list[str], at_once: int) -> list[tuple[int, int, int]]:
+    """Each file in a process of its own, [param at_once] at a time, its
+    output (stdout and stderr, its subprocesses' too) kept in a file and
+    printed whole, in the order given, once the files before it are. The
+    files that took longest last time begin first, and one never timed
+    before them all."""
+    keys = [str(f.resolve().relative_to(ROOT)) if f.resolve().is_relative_to(ROOT) else str(f) for f in files]
+    known = _known_times()
+    order = sorted(range(len(files)), key=lambda i: -known.get(keys[i], math.inf))
+    counts: list[tuple[int, int, int] | None] = [None] * len(files)
+    running: dict[int, tuple[subprocess.Popen, int, float]] = {}
+    took: dict[str, float] = {}
+    begun = printed = 0
+    # Stopped (a gate's timeout), it stops the files it began: an exit, so
+    # the finally below runs, where the signal's default would leave them.
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(128 + signal.SIGTERM))
+    with tempfile.TemporaryDirectory(prefix="minitest-files-") as where:
+        out = [Path(where, "%d.out" % i) for i in range(len(files))]
+        said = [Path(where, "%d.counts" % i) for i in range(len(files))]
+        try:
+            while printed < len(files):
+                while begun < len(files) and len(running) < at_once:
+                    i = order[begun]
+                    with open(out[i], "wb") as sink:
+                        child = subprocess.Popen(
+                            [sys.executable, str(Path(__file__).resolve()), str(files[i])],
+                            stdin=subprocess.DEVNULL, stdout=sink, stderr=subprocess.STDOUT,
+                            env={**os.environ, "MINITEST_COUNTS": str(said[i])})
+                    running[child.pid] = (child, i, time.time())
+                    begun += 1
+                # The next file to end, waited for, never polled.
+                pid, status = os.wait()
+                if pid not in running:
+                    continue
+                child, done, since = running.pop(pid)
+                child.returncode = os.waitstatus_to_exitcode(status)
+                took[keys[done]] = round(time.time() - since, 1)
+                try:
+                    counts[done] = tuple(int(n) for n in said[done].read_text().split())  # type: ignore[assignment]
+                except (OSError, ValueError):
+                    # Ended before its verdict (a file that does not import,
+                    # a test that killed it): a failure, under its name.
+                    with open(out[done], "a") as sink:
+                        sink.write("\nFAIL  %s\n  ended (exit %s) before its verdict\n"
+                                   % (names[done], child.returncode))
+                    counts[done] = (0, 0, 1)
+                while printed < len(files) and counts[printed] is not None:
+                    sys.stdout.write("%s " % names[printed])
+                    sys.stdout.write(out[printed].read_bytes().decode("utf-8", "replace"))
+                    sys.stdout.flush()
+                    printed += 1
+        finally:
+            for child, _, _ in running.values():
+                child.kill()
+                child.wait()
+    _keep_times(took)
+    return counts  # type: ignore[return-value]
+
+
 def main(argv: list[str]) -> int:
     started = time.time()
-    files = [Path(a) for a in argv[1:]] or [ROOT / "tests" / "test_ldraw.py"]
-    counts = [run(f if f.is_absolute() else ROOT / f) for f in files]
+    # Read once and taken out, so no test's subprocess writes over it.
+    counts_to = os.environ.pop("MINITEST_COUNTS", "")
+    given = [Path(a) for a in argv[1:]] or [ROOT / "tests" / "test_ldraw.py"]
+    files = [f if f.is_absolute() else ROOT / f for f in given]
+    names = [str(f) for f in given]
+    at_once = jobs(len(files))
+    if at_once > 1:
+        counts = run_apart(files, names, at_once)
+    else:
+        counts = []
+        for name, path in zip(names, files):
+            if len(files) > 1:
+                sys.stdout.write("%s " % name)
+            counts.append(run(path))
     passed, skipped, failed = (sum(c[k] for c in counts) for k in range(3))
+    if counts_to:
+        Path(counts_to).write_text("%d %d %d\n" % (passed, skipped, failed))
     if len(files) > 1:
         # One verdict for the lot, last, because tools/check.sh reads the
         # last one: read alone, the last file's would hide the others'

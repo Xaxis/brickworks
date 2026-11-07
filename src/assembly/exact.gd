@@ -122,6 +122,11 @@ class Shape extends RefCounted:
 	var tree_right := PackedInt32Array()
 	var tree_first := PackedInt32Array()
 	var tree_pieces := PackedInt32Array()
+	## Its studs by where they stand in its own frame, in cubes of
+	## [constant Exact.STUD_CELL]: Vector3i -> their connectors. Kept the
+	## first time asked ([method Exact.studs_in]) and never changed after.
+	var studs_by_place: Dictionary = {}
+	var studs_placed: bool = false
 
 	func has_pieces() -> bool:
 		return not pieces.is_empty()
@@ -188,6 +193,16 @@ class Item extends RefCounted:
 				_world.append([k, frame.origin, axis, frame.basis])
 		return _world
 
+	## Its connector [param k] in the world, as [method world] gives it, worked
+	## out alone: a few connectors read without placing every one of a
+	## baseplate's.
+	func connector(k: int) -> Array:
+		var frame: Transform3D = at * shape.frames[k]
+		var axis: Vector3 = -frame.basis.y
+		if axis.length_squared() > 0.0:
+			axis = axis.normalized()
+		return [k, frame.origin, axis, frame.basis]
+
 
 static var _next_id: int = 1
 ## mesh hash -> Shape, or null where there is none. Filled and read on
@@ -211,6 +226,9 @@ static var read_here: int = 0
 static var _verdicts: Dictionary = {}
 static var _verdicts_lock := Mutex.new()
 const MOST_VERDICTS := 200000
+## Shapes' studs kept by place ([method studs_in]) are kept under this: any
+## thread may ask.
+static var _studs_lock := Mutex.new()
 
 
 ## A shape read from its file, or null.
@@ -1244,16 +1262,123 @@ static func sunk_pairs(items: Array, of: Dictionary = {}, beyond: float = SUNK_P
 	for pair: Vector2i in deepest:
 		var past: float = deepest[pair][0]
 		var way: Vector3 = deepest[pair][1]
-		var stud: Item = items[pair.x]
-		var hole: Item = items[pair.y]
-		# Into the stud's part by their shapes, deeper than at the stud's
-		# stop. A turntable's base (3680) has its holes 8 LDU under its top's
-		# (3679) studs, the two nested on their hinge, and in nothing.
-		if stud.shape.has_pieces() and hole.shape.has_pieces() \
-				and _deepest(stud, hole) - _deepest(stud, Item.new(hole.shape,
-					hole.at.translated(way * past))) <= SUNK_SHOWN:
+		if _shown_sunk(items[pair.x], items[pair.y], past, way):
+			out.append([pair.x, pair.y, past, way])
+	return out
+
+
+## Whether [param hole]'s part, [param past] LDU past the foot of a stud of
+## [param stud]'s pointing [param way], is into the stud's part by their
+## shapes, deeper than at the stud's stop. A turntable's base (3680) has its
+## holes 8 LDU under its top's (3679) studs, the two nested on their hinge,
+## and in nothing. Weighing two shapes is dear (a figure's parts against each
+## other, 100 to 300 ms), so it is asked only of a pair found down a stud.
+static func _shown_sunk(stud: Item, hole: Item, past: float, way: Vector3) -> bool:
+	return not (stud.shape.has_pieces() and hole.shape.has_pieces()
+		and _deepest(stud, hole) - _deepest(stud, Item.new(hole.shape,
+			hole.at.translated(way * past))) <= SUNK_SHOWN)
+
+
+## [param item]'s holes and tubes that take a stud at their mouth ([method
+## takes_on_top]) pointing straight up, in the world: [connector, position,
+## way, basis] each, as [method Item.world] gives them, its other connectors
+## never placed. What a part in hand goes down a stud by
+## (Builder.stud_feet_lift).
+static func up_holes(item: Item) -> Array:
+	var out: Array = []
+	for k: int in item.shape.kind.size():
+		if not takes_on_top(item.shape, k):
 			continue
-		out.append([pair.x, pair.y, past, way])
+		var one: Array = item.connector(k)
+		var key: Variant = _line_key(one[1], one[2])
+		if key != null and (key as Vector4i).x == 1 and (key as Vector4i).y == 1:
+			out.append(one)
+	return out
+
+
+## How far [param held] stands past the foot of an up stud of [param other]
+## by its [param holes] ([method up_holes]), as [method sunk_pairs] finds the
+## two with [param other] the stud's: the furthest, LDU, where their shapes
+## meet deeper there than at the stud's stop ([method _shown_sunk]); 0 for
+## none. Only [param other]'s studs that can stand over a hole are read
+## ([method studs_in]): a baseplate under a figure's feet costs the studs
+## there, not its 2,304. A part in hand is never asked against another in
+## hand: a figure's own parts, held on each other's studs, were weighed by
+## their shapes on every aim that found anything near, 200 ms a move
+## (figlift, 2026-11-06).
+static func sunk_under(other: Item, held: Item, holes: Array) -> float:
+	var reach := Vector3(SUNK_ACROSS + 1.0, 0.0, SUNK_ACROSS + 1.0)
+	var furthest: float = 0.0
+	var way := Vector3.ZERO
+	for hole: Array in holes:
+		var at: Vector3 = hole[1]
+		var key: Vector4i = _line_key(at, hole[2])
+		for k: int in studs_in(other, at - reach - Vector3(0.0, 1.0, 0.0),
+				at + reach + Vector3(0.0, SUNK_REACH + 1.0, 0.0)):
+			if not _mates(STUD_MATES, other.shape.sub[k], held.shape.sub[int(hole[0])]):
+				continue
+			var stud: Array = other.connector(k)
+			# On the hole's line or one an LDU either side, as sunk_pairs
+			# asks its lines.
+			var its: Variant = _line_key(stud[1], stud[2])
+			if its == null or (its as Vector4i).x != key.x or (its as Vector4i).y != key.y \
+					or absi((its as Vector4i).z - key.z) > 1 \
+					or absi((its as Vector4i).w - key.w) > 1:
+				continue
+			var past: float = past_foot(stud[1], stud[2], at, hole[2])
+			if past > furthest:
+				furthest = past
+				way = stud[2]
+	if furthest <= 0.0 or not _shown_sunk(other, held, furthest, way):
+		return 0.0
+	return furthest
+
+
+## How finely a shape's studs are kept by where they stand, LDU ([method
+## studs_in]): under the 20 between two studs.
+const STUD_CELL := 8.0
+
+
+## [param item]'s studs that may stand in the box [param lo] to [param hi]
+## in the world: read from its shape's studs kept by place, the box put in the
+## shape's own frame, so none of the rest is placed or asked.
+static func studs_in(item: Item, lo: Vector3, hi: Vector3) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	var cells: Dictionary = _studs_by_place(item.shape)
+	if cells.is_empty():
+		return out
+	var box: Array = box_in(lo, hi, item.at.affine_inverse())
+	var from := Vector3i(((box[0] as Vector3) / STUD_CELL).floor())
+	var to := Vector3i(((box[1] as Vector3) / STUD_CELL).floor())
+	for x: int in range(from.x, to.x + 1):
+		for y: int in range(from.y, to.y + 1):
+			for z: int in range(from.z, to.z + 1):
+				var here: Variant = cells.get(Vector3i(x, y, z))
+				if here != null:
+					out.append_array(here)
+	return out
+
+
+## [param shape]'s studs by where they stand in its own frame ([member
+## Shape.studs_by_place]): kept the first time asked, under a lock, as any
+## thread may ask, and never changed after.
+static func _studs_by_place(shape: Shape) -> Dictionary:
+	_studs_lock.lock()
+	if not shape.studs_placed:
+		var cells: Dictionary = {}
+		for k: int in shape.kind.size():
+			if shape.kind[k] != STUD:
+				continue
+			var cell := Vector3i((shape.frames[k].origin / STUD_CELL).floor())
+			if not cells.has(cell):
+				cells[cell] = []
+			(cells[cell] as Array).append(k)
+		for cell: Vector3i in cells:
+			cells[cell] = PackedInt32Array(cells[cell])
+		shape.studs_by_place = cells
+		shape.studs_placed = true
+	var out: Dictionary = shape.studs_by_place
+	_studs_lock.unlock()
 	return out
 
 
@@ -1461,11 +1586,28 @@ static func _find(root: PackedInt32Array, i: int) -> int:
 
 
 ## For item [param i]: how far its connectors are from meeting another part's
-## exactly, as the move that would seat the nearest one, {move, mine, other,
-## item, residual}; {} when one already meets exactly (within [param exact])
-## or none comes within [param reach]. Only connectors that would meet once
-## moved: a stud and a hole pointing the same way, a hinge and its other
-## half, a clip and a bar along one line (whose move is across the line).
+## exactly, as a move that would seat them, {move, mine, other, item,
+## residual}; {} when none comes within [param reach], or when no move seats
+## more of them than staying puts (within [param exact]). Only connectors
+## that would meet once moved: a stud and a hole pointing the same way, a
+## hinge and its other half, a clip and a bar along one line (whose move is
+## across the line).
+##
+## Of the moves, the one that seats the most of its connectors at once, the
+## shortest of those. The nearest alone let a bar decide where a part goes,
+## and a bar slides in its clip: a saddle written an LDU low and an LDU along
+## on its horse (a horse's back is an odd number of LDU up, which a placement
+## in whole cells cannot say) was moved the LDU along that put its clip on the
+## sword's bar, and left the LDU low that its holes were short of the horse's
+## studs. Its lattice cover then ran into the horse's, and 18 of the 27 saddles
+## and bardings on horses in the library's sets were refused (animals_probe).
+## Seating its holes on the studs moves it up as well, and the clip stays on
+## the bar it slides along. Only a bar or an axle that slides lets a part go:
+## held where it is by a stud, a hole or a hinge, it stays, and it never goes
+## onto a part it already slides in.
+##
+## [param exact] 0 asks for the nearest miss instead, and {} only where one
+## meets already: a fault's advice says how far to move a part to join it.
 static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 		among: PackedInt32Array = PackedInt32Array()) -> Dictionary:
 	var item: Item = items[i]
@@ -1484,6 +1626,9 @@ static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 		list.append(entry)
 		grid[cell] = list
 	var best: Dictionary = {}
+	## Each pairing: [move, the line it may still slide along or zero, mine,
+	## other, item].
+	var pairs: Array = []
 	for one: Array in mine:
 		var cell := Vector3i(((one[2] as Vector3) / reach).floor())
 		for dx: int in range(-1, 2):
@@ -1494,12 +1639,67 @@ static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 						if move == null:
 							continue
 						var residual: float = (move as Vector3).length()
+						if exact > 0.0:
+							var slides: bool = item.shape.kind[one[1]] == AXLE
+							pairs.append([move, (other[3] as Vector3) if slides else Vector3.ZERO,
+								int(one[1]), int(other[1]), int(other[0])])
+							continue
 						if residual <= exact:
 							return {}
 						if best.is_empty() or residual < float(best["residual"]):
 							best = {"move": move, "mine": int(one[1]), "other": int(other[1]),
 								"item": int(other[0]), "residual": residual}
+	return best if exact <= 0.0 else _seating_most(pairs, exact)
+
+
+## Of [param pairs] (as [method seat_move] gathers them), the move that seats
+## more of the part's connectors than staying does, the most and then the
+## shortest: {move, mine, other, item, residual}, or {}. None where a pairing
+## that does not slide is seated already, and none onto a part one that
+## slides is seated in: 10267-1's candle (37762) stands with its bar down a
+## flower plate's hollow stud, its hole 3 LDU off that stud, and seating the
+## hole lifted it 3 LDU into its flame.
+static func _seating_most(pairs: Array, exact: float) -> Dictionary:
+	var joined: Dictionary = {}
+	for pair: Array in pairs:
+		if _seated_by([pair], Vector3.ZERO, exact) == 1:
+			if pair[1] == Vector3.ZERO:
+				return {}
+			joined[pair[4]] = true
+	var most: int = _seated_by(pairs, Vector3.ZERO, exact)
+	var best: Dictionary = {}
+	var tried: Dictionary = {}
+	for pair: Array in pairs:
+		var move: Vector3 = pair[0]
+		var residual: float = move.length()
+		var key := Vector3i((move / exact).round())
+		if residual <= exact or tried.has(key) or joined.has(pair[4]):
+			continue
+		tried[key] = true
+		var seated: int = _seated_by(pairs, move, exact)
+		if seated > most or (seated == most and not best.is_empty()
+				and residual < float(best["residual"])):
+			most = seated
+			best = {"move": move, "mine": pair[2], "other": pair[3], "item": pair[4],
+				"residual": residual}
 	return best
+
+
+## How many of a part's connectors [param move] seats, of those [param
+## pairs] pair: a pairing is seated where what is left of its own move is
+## within [param exact], along the line it slides on not counted.
+static func _seated_by(pairs: Array, move: Vector3, exact: float) -> int:
+	var seated: Dictionary = {}
+	for pair: Array in pairs:
+		if seated.has(pair[2]):
+			continue
+		var left: Vector3 = (pair[0] as Vector3) - move
+		var line: Vector3 = pair[1]
+		if line != Vector3.ZERO:
+			left -= line * left.dot(line)
+		if left.length() <= exact:
+			seated[pair[2]] = true
+	return seated.size()
 
 
 ## The items of [param among] (every item when it is empty) whose boxes come

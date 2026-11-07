@@ -29,30 +29,104 @@ var inspector: Inspector
 var assemblies: Assemblies
 var outliner: Outliner
 var banner: AssemblyBanner
-## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd.
-var sections: SectionsUi
+## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd,
+## made the first time something asks (Later): null in [member _sections] until then.
+var sections: Node:
+	get:
+		if _sections == null and world != null:
+			_make_sections()
+		return _sections
+var _sections: Node = null
 var grid: StudGrid
 ## Build your first model, along the top of the model: src/ui/first_build.gd.
 var first_build: FirstBuild
-## My collection: src/ui/collection_dialog.gd.
-var collection: CollectionDialog
-## File, Library…: src/ui/library_dialog.gd.
-var library_dialog: LibraryDialog
+## What the person owns, made with the window and fetched as they sign in,
+## as it was when My collection's panel was made with the window: Bring in a
+## 3D model's box, parts_list and the assistant read what is on hand here,
+## and none of them makes the panel to. With the panel made on first use
+## and fetching then, the first of them read nothing (leaves3, 2026-11-06).
+var collection_store: CollectionStore
+## My collection: src/ui/collection_dialog.gd, made the first time it is asked
+## for (Later): null in [member _collection] until then.
+var collection: Control:
+	get:
+		if _collection == null and app != null:
+			_collection = Later.make(&"CollectionDialog")
+			_collection.store = collection_store
+			_collection.said.connect(func(text: String) -> void: bar.say(text))
+			_collection.attach(app)
+			place_dialogs()
+		return _collection
+var _collection: Control = null
+## File, Library…: src/ui/library_dialog.gd, made as [member collection] is.
+var library_dialog: Control:
+	get:
+		if _library_dialog == null and app != null:
+			_library_dialog = Later.make(&"LibraryDialog")
+			_library_dialog.said.connect(func(text: String) -> void: bar.say(text))
+			_library_dialog.attach(app)
+			place_dialogs()
+		return _library_dialog
+var _library_dialog: Control = null
 ## The cut-away and x-ray: src/ui/see_inside.gd.
 var see_inside: SeeInside
 ## View, Stress: src/ui/stress_view.gd.
 var stress: StressView
+## View, Stud directions: src/ui/stud_map.gd (APP_UX5 seeing2), made the
+## first time something asks (Later), as the dialogs below are: by the
+## command, or a session's view_board studs. Null in [member _stud_map]
+## until then, so the first screen never compiles it.
+var stud_map: Node:
+	get:
+		if _stud_map == null and model_area != null:
+			_make_stud_map()
+		return _stud_map
+var _stud_map: Node = null
+# The dialogs below are each made the first time something asks for it
+# (Later), and null in its _ field until then: their 0.1 MB of code was
+# compiled before a first visit's window was drawn (leaves2, 2026-11-05).
 ## File, Versions…: src/ui/versions_dialog.gd.
-var versions: VersionsDialog
+var versions: Window:
+	get:
+		if _versions == null and store != null:
+			_make_versions()
+		return _versions
+var _versions: Window = null
 ## Compare with a save, from Versions… or File, Compare with…:
 ## src/ui/compare_view.gd.
-var compare: CompareView
-## Edit, Pattern…: copies in a row, round, or along a hose (Pattern).
-var pattern_dialog: PatternDialog
+var compare: Control:
+	get:
+		if _compare == null and model_area != null:
+			_make_compare()
+		return _compare
+var _compare: Control = null
+## Edit, Pattern…: copies in a row, a grid, round, or along a hose (Pattern).
+var pattern_dialog: Window:
+	get:
+		if _pattern_dialog == null and builder != null:
+			_make_pattern_dialog()
+		return _pattern_dialog
+var _pattern_dialog: Window = null
 ## Help, Send feedback… (FeedbackDialog).
-var feedback: FeedbackDialog
+var feedback: Window:
+	get:
+		if _feedback == null and store != null:
+			_feedback = Later.make(&"FeedbackDialog")
+			_feedback.store = store
+			_feedback.world = world
+			_feedback.library = library
+			add_child(_feedback)
+		return _feedback
+var _feedback: Window = null
 ## Find a command (Ctrl+/): src/ui/command_palette.gd.
-var palette: CommandPalette
+var palette: Window:
+	get:
+		if _palette == null and model_area != null:
+			_palette = Later.make(&"CommandPalette")
+			_palette.shell = self
+			add_child(_palette)
+		return _palette
+var _palette: Window = null
 ## The model's part of the window, which the palette opens over.
 var model_area: Control
 
@@ -68,6 +142,8 @@ var _about: AcceptDialog
 var _about_text: Label
 ## Its trademark notice, under the credits.
 var _about_marks: Label
+## About's words, where its credits go as it first shows (_show_about).
+var _about_column: VBoxContainer
 ## Its words, credits and notice, scrolled where the window is short.
 var _about_scroll: ScrollContainer
 ## A licence in full, opened from About, and its words.
@@ -117,7 +193,10 @@ const ALT := KEY_MASK_ALT
 ## views and the model's turns to View's Viewpoint, the part in hand's turn
 ## and tip to Tools beside Place, Comments to File beside Share and Build
 ## together, My collection and What can I build? beside Library, and What
-## do I need? beside the parts list.
+## do I need? beside the parts list. Then Build › Booklet page reached 27
+## rows with Page setup…, and View 482 of 470 units with Stud map, so the
+## step's turns, tilts and zoom went into Booklet page's own Step's view,
+## and the five panels into View › Panels (menurows).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
 		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
@@ -127,9 +206,8 @@ const MENUS: Array = [
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-", "panel_parts",
-		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
-		"split_view", "full_screen"]],
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-",
+		">panels", "split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
 		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
 		"leave_assembly", "rename_assembly", "make_unique", "-", "suggest_sections",
@@ -178,7 +256,7 @@ const EARLY_COMMANDS: Dictionary = {"beta_hub": "beta_hub"}
 var early: Array[String] = []
 
 const SUBMENUS: Dictionary = {
-	"import": ["import_into", "-", "import_ldraw", "import_io", "import_lxf", "import_mesh"],
+	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
 		"export_rebrickable",
 		"export_pickabrick",
@@ -186,18 +264,33 @@ const SUBMENUS: Dictionary = {
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
-		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right"],
+		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right",
+		# savedviews: the views kept with the model (SavedViews), each row
+		# its view's name once there is one.
+		"-", "save_view", "saved_view_1", "saved_view_2", "saved_view_3", "saved_view_4",
+		"saved_view_5", "saved_view_6", "saved_view_7", "saved_view_8", "saved_view_9",
+		"-", "render_views"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_box", "cut_sphere", "cut_cylinder",
 		"cut_grow", "cut_shrink", "-", "cut_flip", "cut_ghosts"],
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_to", "step_new", "-", "step_earlier", "step_later",
 		"step_merge", "step_delete"],
-	"booklet": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
-		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
-		"booklet_zoom_out", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
+	# The step's picture first: its view, folded (menurows), and its size on
+	# the page.
+	"booklet": [">booklet_view", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
 		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page", "-",
 		"booklet_lay_out", "booklet_highlight",
-		"-", "booklet_pull", "booklet_colours", "booklet_actual_size", "booklet_preview"],
+		"-", "booklet_pull", "booklet_colours", "booklet_actual_size", "booklet_preview",
+		# pagesetup: the booklet's page, the person's way (BookletSheet).
+		"-", "booklet_page_setup"],
+	# The window's panels, each shown or put away: set once a session, so
+	# folded beside Split view and Full screen (menurows).
+	"panels": ["panel_parts", "panel_assistant", "panel_properties", "panel_outliner",
+		"panel_keys"],
+	# Where the step's picture is seen from: its turns, its tilts and its zoom.
+	"booklet_view": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
+		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
+		"booklet_zoom_out"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
@@ -209,9 +302,9 @@ const SUBMENUS: Dictionary = {
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
-	"viewpoint": "Viewpoint", "cut_away": "Cut away by",
-	"steps": "Build steps", "booklet": "Booklet page", "floor": "Floor",
-	"floor_colour": "Baseplate colour"}
+	"viewpoint": "Viewpoint", "cut_away": "Cut away by", "panels": "Panels",
+	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
+	"floor": "Floor", "floor_colour": "Baseplate colour"}
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,
@@ -237,8 +330,6 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	verbs.assemblies = assemblies
 	builder.unit_of = assemblies.unit_of
 	builder.copy_group = assemblies.group_for_copy
-	# A model put into this one comes in hand as a paste does (intomodel).
-	bar.hold_parts = verbs.hold
 	# Whatever replaces the model leaves no assembly being edited.
 	bar.started_new.connect(func() -> void: assemblies.enter(""))
 	bar.cleared.connect(func() -> void: assemblies.enter(""))
@@ -261,21 +352,14 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	stress.panel = StressPanel.new()
 	stress.panel.view = stress
 	add_child(stress)
-	# Sections: suggested, broken out, exploded, evaluated (src/assembly/sections.gd).
-	sections = SectionsUi.new()
-	sections.shell = self
-	sections.sections = Sections.new()
-	sections.sections.world = world
-	sections.sections.library = library
-	sections.sections.builder = builder
-	sections.sections.assemblies = assemblies
-	sections.sections.scenery = store.scenery
-	add_child(sections)
-	verbs.drawn_pick = sections.pick_drawn
-	# A suggestion is of the model it was made for.
+	# A suggestion of sections is of the model it was made for.
 	for replaced: Signal in [bar.started_new, bar.cleared]:
-		replaced.connect(func() -> void: sections.sections.dismiss())
-	bar.opened.connect(func(_n: int) -> void: sections.sections.dismiss())
+		replaced.connect(func() -> void:
+			if _sections != null:
+				_sections.sections.dismiss())
+	bar.opened.connect(func(_n: int) -> void:
+		if _sections != null:
+			_sections.sections.dismiss())
 	_define()
 
 	for menu: Array in MENUS:
@@ -309,7 +393,6 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	outliner = Outliner.new()
 	outliner.shell = self
 	outliner.assemblies = assemblies
-	outliner.sections = sections
 	stack.add_section(outliner, "tree_height")
 
 	inspector = Inspector.new()
@@ -324,6 +407,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	over_model.add_child(see_inside.bar)
 	see_inside.below.append(app.get("_hint"))
 	see_inside.below.append(app.get("_steps"))
+	# Inside the model's room, clear of the columns beside it.
+	if app.has_method("_model_rect"):
+		see_inside.room_of_model = func() -> Rect2: return app.call("_model_rect")
 	# View, Stress's legend, count and weakest joints: Main puts it in the
 	# column beside the model, with the tools' panels.
 
@@ -340,17 +426,23 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	first_build.shell = self
 	notices.add_child(first_build)
 
-	# What the person owns, what this model needs of it, what they could
-	# build: src/ui/collection_dialog.gd. The parts list leads there too.
-	collection = CollectionDialog.new()
-	collection.said.connect(func(text: String) -> void: bar.say(text))
-	collection.attach(app)
-
-	# Any of LDraw's models of real sets, or the community's, opened in a
-	# tab of its own: src/ui/library_dialog.gd. File, Open leads there too.
-	library_dialog = LibraryDialog.new()
-	library_dialog.said.connect(func(text: String) -> void: bar.say(text))
-	library_dialog.attach(app)
+	# What the person owns, fetched as they sign in ([member collection_store]).
+	collection_store = CollectionStore.new()
+	collection_store.account = app.get("_account")
+	collection_store.library = library
+	add_child(collection_store)
+	collection_store.follow_account()
+	collection_store.changed.connect(func() -> void:
+		# The assistant prefers what is owned, for a brief that asks it to:
+		# told here once it is made, and told as it is made
+		# (Main._make_assistant). Never made for it.
+		var assistant: Variant = app.get("_assistant_made")
+		if assistant != null:
+			assistant.set("owned", collection_store.on_hand))
+	# What this model needs of it, what they could build ([member
+	# collection]); the parts list leads there too. Any of LDraw's models of
+	# real sets, or the community's, opened in a tab of its own ([member
+	# library_dialog]); File, Open leads there too.
 	bar.library_wanted.connect(func() -> void: library_dialog.open())
 
 	# Every text field gives the keys back, and Tab goes into the frame
@@ -380,54 +472,17 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 		attend("save", _save_named.bind(_save_as_name.text)))
 	add_child(_save_as)
 
-	versions = VersionsDialog.new()
-	versions.store = store
-	versions.bar = bar
-	add_child(versions)
-	# Compare with a save: its panel where View, Stress's is, the two never
-	# open at once (_define's stress).
-	compare = CompareView.new()
-	compare.world = world
-	compare.library = library
-	compare.store = store
-	compare.camera = camera
-	compare.assemblies = assemblies
-	compare.stress = stress
-	compare.say = bar.say
-	compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	compare.offset_right = -14.0
-	compare.offset_left = -14.0 - CompareView.WIDE
-	compare.offset_top = ViewCube.size_for().y + 26.0
-	over_model.add_child(compare)
-	versions.compare = func(version: ModelVersions.Version) -> void: compare.open_with(version)
+	# Versions…, Compare with…, Pattern…, Send feedback… and Find a command
+	# are made as they are first asked for ([member versions] and the rest).
 	# A save is of the model it was made of.
 	for replaced: Signal in [bar.started_new, bar.cleared]:
-		replaced.connect(func() -> void: compare.close(false))
-	bar.opened.connect(func(_n: int) -> void: compare.close(false))
-
-	pattern_dialog = PatternDialog.new()
-	pattern_dialog.builder = builder
-	pattern_dialog.world = world
-	pattern_dialog.library = library
-	pattern_dialog.say = bar.say
-	pattern_dialog.edited = func() -> void: verbs.edited.call()
-	pattern_dialog.pattern.builder = builder
-	pattern_dialog.pattern.world = world
-	pattern_dialog.pattern.library = library
-	# Its copies are drawn in the model's world, not the dialog's window.
-	add_child(pattern_dialog.pattern)
-	add_child(pattern_dialog)
-
-	feedback = FeedbackDialog.new()
-	feedback.store = store
-	feedback.world = world
-	feedback.library = library
-	add_child(feedback)
+		replaced.connect(func() -> void:
+			if _compare != null:
+				_compare.close(false))
+	bar.opened.connect(func(_n: int) -> void:
+		if _compare != null:
+			_compare.close(false))
 	model_area = over_model
-	palette = CommandPalette.new()
-	palette.shell = self
-	add_child(palette)
 
 	_about = AcceptDialog.new()
 	_about.title = "About Brickworks"
@@ -460,7 +515,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	_about_text.custom_minimum_size = Vector2(380, 0)
 	_about_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	about_column.add_child(_about_text)
-	about_column.add_child(_credits())
+	# Whose work is in it (Credits), added as About first shows.
+	_about_column = about_column
 	_about_marks = Label.new()
 	_about_marks.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_about_marks.add_theme_font_size_override("font_size", 12)
@@ -524,15 +580,28 @@ func command(name: String) -> Command:
 
 ## Run a command by name, when it can be. True when it ran, or will in a
 ## frame: one known to be slow is said on the status bar first (Working).
+##
+## Handed on as this node's method and the command's name, never as a
+## lambda of this script or its Command (whose [member Command.can] is one).
+## Working.attend and the coroutine it runs the command in wait on objects of
+## their own, which the scene tree does not free: a command still going as
+## the app quits (Instructions or Save as… with its Save dialog up, a booklet
+## being drawn) keeps what it was handed until the engine tears GDScript down,
+## and a lambda of this node's script let go of then writes into memory
+## already freed: "corrupted size vs. prev_size in fastbins", exit 250, every
+## time (quitabort, 2026-11-06). A bound method holds nothing of GDScript.
 func run(name: String) -> bool:
 	var found: Command = _commands.get(name)
 	if found == null or not can(name):
 		return false
-	attend(name, func() -> void:
-		# Asked again: put off a frame, it may not be any more.
-		if can(name):
-			await found.run.call())
+	attend(name, _run_now.bind(name))
 	return true
+
+
+## Command [param name], asked again: put off a frame, it may not be any more.
+func _run_now(name: String) -> void:
+	if can(name):
+		await (_commands[name] as Command).run.call()
 
 
 ## What a key the keymap gives runs where no handler answers it
@@ -678,8 +747,7 @@ func doing(name: String) -> String:
 ## never put off a frame to say so first. (The clipboard is not among
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
-	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window",
-	"import_into"]
+	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window"]
 
 ## The commands that open a tab of their own in a browser (BookletMaker):
 ## run at once there, as those above are.
@@ -987,10 +1055,6 @@ func _define() -> void:
 	_add("import_mesh", "3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb)…", 0,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"A sculpt, a scan or any 3D model, laid in bricks")
-	# A model put into this one whole, as a sub-assembly with its own steps
-	# (ModelBar.into_model, APP_UX4 intomodel).
-	_add("import_into", "Into this model…", 0, bar.into_model, Callable(),
-		"A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes")
 	_add("save", "Save", CTRL | KEY_S, bar._on_save, something,
 		"Keep this model under its name")
 	_add("save_as", "Save as…", CTRL | SHIFT | KEY_S, _ask_save_as, something,
@@ -1005,26 +1069,26 @@ func _define() -> void:
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
-		func() -> void: await (app.get("_exports") as Exports).studio_io(true), something)
+		func() -> void: await app.get("_exports").studio_io(true), something)
 	# src/ui/exports.gd, src/parts/mesh_export.gd.
 	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
-		func() -> void: (app.get("_exports") as Exports).ask_model_3d(), something,
+		func() -> void: app.get("_exports").ask_model_3d(), something,
 		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
-		func() -> void: await (app.get("_exports") as Exports).take_picture(true), something)
+		func() -> void: await app.get("_exports").take_picture(true), something)
 	_add("export_bricklink", "BrickLink wanted list (.xml)", 0,
-		func() -> void: await (app.get("_exports") as Exports).shop_list("bricklink", {}, true),
+		func() -> void: await app.get("_exports").shop_list("bricklink", {}, true),
 		something)
 	_add("export_all", "All my models (.zip)", 0,
-		func() -> void: await (app.get("_exports") as Exports).all_models(true),
+		func() -> void: await app.get("_exports").all_models(true),
 		func() -> bool: return ModelStore.any_saved(),
 		"Every model saved here, as LDraw files in one .zip: a copy of your own")
 	_add("export_rebrickable", "Rebrickable parts list (.csv)", 0,
-		func() -> void: await (app.get("_exports") as Exports).shop_list("rebrickable", {}, true),
+		func() -> void: await app.get("_exports").shop_list("rebrickable", {}, true),
 		something)
 	# picklist: LEGO's own shop (src/ui/exports.gd, ShopLists.pick_a_brick).
 	_add("export_pickabrick", "LEGO® Pick a Brick list (.csv)", 0,
-		func() -> void: await (app.get("_exports") as Exports).shop_list("pickabrick", {}, true),
+		func() -> void: await app.get("_exports").shop_list("pickabrick", {}, true),
 		something, "LEGO® element numbers and how many of each, to upload at LEGO® Pick a "
 			+ "Brick, 400 to a file; the parts with no number known are named")
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
@@ -1077,7 +1141,7 @@ func _define() -> void:
 		if builder.is_carrying():
 			verbs.put_away()
 		pattern_dialog.open(builder.selection.keys()), selected,
-		"Copies of the selection in a row, round, or along a hose, put down at once")
+		"Copies of the selection in a row, a grid, round, or along a hose, put down at once")
 	_add("delete", "Delete", KEY_DELETE, func() -> void: await verbs.press("delete"),
 		selected, "Take the selection off the model")
 	_add("select_all", "Select all", CTRL | KEY_A, func() -> void: verbs.select_by("all"),
@@ -1120,7 +1184,7 @@ func _define() -> void:
 		selected, "Swap the selection for the part you hold, each in its own colour")
 	# src/prints/printed_versions.gd: the prints the LEGO Group made of it.
 	_add("printed_versions", "Printed versions…", 0, func() -> void:
-		var studio: Node = app.get("_studio")
+		var studio: Node = await app.call("_studio_ready")
 		if studio != null:
 			studio.open_versions(),
 		func() -> bool:
@@ -1130,10 +1194,10 @@ func _define() -> void:
 		"Make the selection its mirror image, left to right as you see it")
 	# src/assembly/split_merge.gd: Studio's Split and Merge, on its keys.
 	_add("split_parts", "Split into smaller parts", ALT | KEY_S,
-		func() -> void: SplitMerge.split(verbs), selected,
+		func() -> void: Later.script(&"SplitMerge").split(verbs), selected,
 		"Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs")
 	_add("merge_parts", "Merge into bigger parts", ALT | KEY_M,
-		func() -> void: SplitMerge.merge(verbs), selected,
+		func() -> void: Later.script(&"SplitMerge").merge(verbs), selected,
 		"The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick")
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
@@ -1219,6 +1283,10 @@ func _define() -> void:
 				builder.selection.keys().map(func(id: int) -> String:
 					return world.get_brick(id).part_id if world.get_brick(id) != null else "")))),
 			on_a_step, extra[2])
+	# pagesetup: the booklet's paper, margins, colour and sizes (BookletSheet,
+	# src/ui/page_setup_dialog.gd).
+	_add("booklet_page_setup", "Page setup…", 0, open_page_setup, Callable(),
+		"The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another")
 	# src/ui/flex_tool.gd.
 	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
 		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
@@ -1303,8 +1371,8 @@ func _define() -> void:
 	_add("stress", "Stress", 0, func() -> void:
 		# The two draw with one layer (BrickWorld.set_stress): Stress, asked
 		# for while comparing, takes over where the comparison is.
-		if compare.is_open():
-			compare.close(false)
+		if _compare != null and _compare.is_open():
+			_compare.close(false)
 			stress.set_on(true)
 			return
 		stress.set_on(not stress.on),
@@ -1312,11 +1380,34 @@ func _define() -> void:
 		"Every part tinted by how near its weakest joint is to letting go: red past its "
 		+ "studs' working load, amber within twice it")
 	_ticked("stress", func() -> bool: return stress.on)
+	# View, Stud directions (APP_UX5 seeing2). It and Stress draw with one
+	# layer, so turning it on turns Stress off, and Stress on turns it off.
+	_add("stud_map", "Stud directions", 0, func() -> void:
+		var map: Node = stud_map
+		if not map.on and stress.on:
+			stress.set_on(false)
+		map.set_on(not map.on),
+		func() -> bool: return _stud_map_on() or world.brick_count() > store.scenery.size(),
+		"Every part coloured by where its studs point: up, down, or to the front, back, left or right")
+	_ticked("stud_map", _stud_map_on)
 	# Shift: Q alone takes the last part back into hand (Tools, Place).
 	_add("turn_left", "Turn the model left", SHIFT | KEY_Q,
 		func() -> void: app.call("_turn_model", -1), something)
 	_add("turn_right", "Turn the model right", SHIFT | KEY_E,
 		func() -> void: app.call("_turn_model", 1), something)
+	# savedviews (APP_UX5 #8): views kept with the model (src/ui/saved_views.gd),
+	# their keys Keymap's.
+	_add("save_view", "Save this view…", 0, func() -> void: saved_views().ask(), something,
+		"Keep where you are looking from with the model, by a name, to look from again with a key and to render")
+	for place: int in SavedViews.KEYED:
+		var index: int = place
+		_add(SavedViews.COMMAND + str(place + 1), "Saved view %d" % (place + 1), 0,
+			func() -> void: saved_views().go(index),
+			func() -> bool: return index < world.saved_views.size(),
+			"Look from the model's saved view %d again, as it was saved" % (place + 1))
+	_add("render_views", "Render each saved view", 0, render_saved_views,
+		func() -> bool: return not world.saved_views.is_empty() and bool(something.call()),
+		"Queue a picture from each view saved with the model, with Render's settings")
 	_add("panel_parts", "Parts bin", 0, func() -> void:
 		(app.get("_bin_dock") as SideDock).toggle())
 	_ticked("panel_parts", func() -> bool: return (app.get("_bin_dock") as SideDock).is_open())
@@ -1391,13 +1482,14 @@ func _define() -> void:
 	_add("suggest_sections", "Suggest sections", 0, func() -> void: await sections.suggest(),
 		something, "How a builder would split this into sections, as a set into bags: "
 		+ "shown in the model tree to accept, rename, merge or split")
+	var targets: Callable = func() -> bool: return not section_target().is_empty()
 	_add("evaluate_section", "Evaluate the section…", 0,
-		func() -> void: await sections.show_evaluation(), sections.can_target,
+		func() -> void: await sections.show_evaluation(), targets,
 		"The selected section on its own: parts, weight, whether it holds together and "
 		+ "stands, what joins it to the rest, its own steps")
 	_add("break_out", "Break out the section", KEY_Y,
 		func() -> void: sections.break_out_or_back(),
-		func() -> bool: return sections.can_target() or not world.broken_out.is_empty(),
+		func() -> bool: return targets.call() or not world.broken_out.is_empty(),
 		"Pull the selected section away from the model to work on it, or put it back "
 		+ "exactly where it was ({break_out} again)")
 	_add("put_back", "Put every section back", 0, func() -> void: sections.put_back_all(),
@@ -1405,7 +1497,7 @@ func _define() -> void:
 		"Every section broken out back exactly where it was")
 	_add("explode", "Exploded view", SHIFT | KEY_Y, func() -> void: sections.toggle_explode(),
 		something, "Every section drawn apart, and back together ({explode} again)")
-	_ticked("explode", func() -> bool: return sections.is_exploded())
+	_ticked("explode", func() -> bool: return _sections != null and _sections.is_exploded())
 	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
 		Callable(), "The model's sub-assemblies by name, inside one another")
 	_ticked("panel_outliner", func() -> bool: return _section_shown(outliner))
@@ -1423,10 +1515,12 @@ func _define() -> void:
 	# The parts bin's Print… and its sticker sheet's Draw a sticker, in the
 	# menus too: every command a session can match is one the menus have.
 	_add("print_part", "Print on a part…", 0, func() -> void:
-		(app.get("_studio") as Node).print_part(builder.held_part), Callable(),
+		var studio: Node = await app.call("_studio_ready")
+		studio.print_part(builder.held_part), Callable(),
 		"Draw a print on the part selected, printed where it stands, or on the part in hand")
 	_add("sticker", "Put a sticker on…", 0, func() -> void:
-		(app.get("_studio") as Node).sticker(), Callable(),
+		var studio: Node = await app.call("_studio_ready")
+		studio.sticker(), Callable(),
 		"Click a face of the model, then draw the sticker that goes on it")
 	_add("rotate_held", "Turn the part in hand", KEY_R, func() -> void:
 		builder.rotate_held(1)
@@ -1785,6 +1879,8 @@ func _refresh(popup: PopupMenu) -> void:
 			continue
 		var name: String = _ids[id]
 		_show_key(popup, index, _commands[name])
+		if name.begins_with(SavedViews.COMMAND):
+			_name_saved_view(popup, index, name)
 		popup.set_item_disabled(index, not can(name))
 		var on: int = ticked(name)
 		if on >= 0:
@@ -1794,6 +1890,46 @@ func _refresh(popup: PopupMenu) -> void:
 func _on_id(id: int) -> void:
 	if id >= 0 and id < _ids.size():
 		run(_ids[id])
+
+
+# -- savedviews (APP_UX5 #8): the views kept with the model -----------------------
+
+## View › Viewpoint › Save this view…, and what looks from a saved view
+## (SavedViews), made the first time one is asked for.
+var _views: SavedViews = null
+
+
+func saved_views() -> SavedViews:
+	if _views == null:
+		_views = SavedViews.new()
+		_views.world = world
+		_views.camera = camera
+		_views.say = bar.say
+		_views.changed = func() -> void: store.touch()
+		add_child(_views)
+	return _views
+
+
+## A saved view's row: its view's name, drawn as the person wrote it, or
+## "Saved view 4" while the model keeps no view there.
+func _name_saved_view(popup: PopupMenu, index: int, name: String) -> void:
+	var place: int = int(name.trim_prefix(SavedViews.COMMAND)) - 1
+	var views: Array = world.saved_views if world != null else []
+	var named: bool = place >= 0 and place < views.size()
+	popup.set_item_text(index, str((views[place] as Dictionary)["name"]) if named
+		else (_commands[name] as Command).words)
+	popup.set_item_auto_translate_mode(index, Node.AUTO_TRANSLATE_MODE_DISABLED if named
+		else Node.AUTO_TRANSLATE_MODE_INHERIT)
+
+
+## View › Viewpoint › Render each saved view: a picture from each queued in
+## File › Render queue…, with Render's settings, and the queue opened.
+func render_saved_views() -> void:
+	var queue: Node = (load("res://src/ui/render_queue.gd") as GDScript).call("of", app)
+	var added: Array = queue.call("add_views")
+	queue.call("open")
+	bar.say(("queued a picture from each of the %d saved views" % added.size()) if not added.is_empty()
+		else str(queue.get("last_refusal")).to_lower().trim_suffix("."))
 
 
 var _recent: Array[ModelStore.Entry] = []
@@ -2091,6 +2227,9 @@ func _show_feedback() -> void:
 
 
 func _show_about() -> void:
+	if _about_column.find_child("credits", false, false) == null:
+		_about_column.add_child(_credits())
+		_about_column.move_child(_about_marks, -1)
 	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, built by hand"
 		+ (" or with the assistant" if assistant_shown else "")
 		+ ", on the web or on your own computer.\n\n%s") % [
@@ -2139,7 +2278,7 @@ func _credits() -> VBoxContainer:
 	head.add_theme_font_size_override("font_size", 12)
 	head.modulate = Color(1, 1, 1, 0.75)
 	list.add_child(head)
-	for one: Dictionary in Credits.LIST:
+	for one: Dictionary in Later.script(&"Credits").LIST:
 		var id: String = one["id"]
 		var entry := VBoxContainer.new()
 		entry.name = "credit_" + id
@@ -2190,10 +2329,11 @@ func _read_licence(id: String) -> void:
 		_licence.add_child(_licence_text)
 		# Over About, which holds the keys while it shows.
 		_about.add_child(_licence)
-	var one: Dictionary = Credits.find(id)
+	var credits: GDScript = Later.script(&"Credits")
+	var one: Dictionary = credits.find(id)
 	_licence.title = str(one["full"])
 	_licence_text.accessibility_name = str(one["full"])
-	_licence_text.text = Credits.full_text(id)
+	_licence_text.text = credits.full_text(id)
 	_licence_text.set_caret_line(0)
 	_licence_text.scroll_vertical = 0
 	_licence.popup_centered()
@@ -2865,7 +3005,8 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 						nearest = index
 				if nearest >= 0:
 					lines.remove_at(nearest)
-			var most: float = Booklet.PAGE.x if axis == "x" else Booklet.PAGE.y
+			var page: Vector2 = BookletSheet.of(world).size()
+			var most: float = page.x if axis == "x" else page.y
 			if fields.get("at") != null and float(fields["at"]) >= 0.0 and float(fields["at"]) <= most:
 				lines.append(snappedf(float(fields["at"]), 0.1))
 				words = "a guide %s at %s mm" % ["upright" if axis == "x" else "across",
@@ -2928,12 +3069,17 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 				if data.is_empty():
 					_take_back(undo)
 					return "a picture to put on the page"
+				# Into the booklet's HTML as it is: a PNG or a JPEG in base64 only.
+				var kind: String = BookletLooks.picture_kind(data)
+				if kind.is_empty():
+					_take_back(undo)
+					return "a page's picture is a PNG or a JPEG, in base64"
 				var pictures: Dictionary = BookletLooks.images(world).duplicate()
 				var made: int = pictures.size() + 1
 				var file: String = ""
 				while file.is_empty() or pictures.has(file):
 					file = "%s%d.%s" % [BookletLooks.IMAGE_PREFIX, made,
-						"png" if str(fields.get("kind", "png")) == "png" else "jpg"]
+						"png" if kind == "png" else "jpg"]
 					made += 1
 				pictures[file] = data
 				undo.append_array(BookletLooks.set_images(world, pictures))
@@ -3050,6 +3196,127 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 		camera.look_from(BookletLooks.direction(now) if not now.is_empty()
 			else BookletStudio.FRONT)
 	return words
+
+
+# -- pagesetup: the booklet's page set up ----------------------------------
+
+## Build, Booklet page, Page setup…: the dialog, made the first time.
+var _page_setup_dialog: Window = null
+
+
+func open_page_setup() -> void:
+	if read_only:
+		bar.say("this model is open to look at, not to change")
+		return
+	if _page_setup_dialog == null:
+		_page_setup_dialog = Later.make(&"PageSetupDialog")
+		_page_setup_dialog.set("shell", self)
+		add_child(_page_setup_dialog)
+	_page_setup_dialog.call("open")
+
+
+## The booklet's page set up (Page setup…, or page_setup over MCP):
+## [param fields] as BookletSheet.change takes them; "usual" true for the
+## booklet's own page; "style" a style kept by that name, its page given
+## whole; "picture_data" (base64) a picture behind every page, "picture"
+## its name, or "picture" "" to take it off; "save_as" a name to keep the
+## page as a style for another model; "remove_style" a style's name, taken
+## away (the models given it keep their page). One undo, saved with the
+## model. Returns what was done, or why nothing was.
+func page_setup(fields: Dictionary) -> String:
+	if read_only:
+		return "this model is open to look at, not to change"
+	# The whole call is checked before anything is done: a style taken away
+	# by a call refused for another field stayed gone (ps2review).
+	var gone: String = str(fields.get("remove_style", "")).strip_edges()
+	if fields.has("remove_style") and not BookletSheet.styles().has(gone):
+		var left: Array = BookletSheet.styles().keys()
+		left.sort()
+		return "no page style is called \"%s\"" % gone \
+			+ ("; kept: %s" % ", ".join(left) if not left.is_empty() else "")
+	if fields.has("save_as") and str(fields["save_as"]).strip_edges().is_empty():
+		return "a style needs a name"
+	if fields.has("remove_style") and fields.size() == 1:
+		var failed: String = BookletSheet.remove_style(gone)
+		return failed if not failed.is_empty() else "the page style \"%s\" removed" % gone
+	var was: BookletSheet = BookletSheet.of(world)
+	var sheet: BookletSheet = BookletSheet.of(world)
+	var pictures: Dictionary = BookletLooks.images(world).duplicate()
+	var given: Dictionary = fields.duplicate()
+	var words: String = ""
+	if bool(given.get("usual", false)):
+		sheet = BookletSheet.new()
+		words = "the booklet's own page"
+	var style_lost: bool = false
+	if given.has("style"):
+		var name: String = str(given["style"])
+		var style: Dictionary = BookletSheet.style(name)
+		if style.is_empty():
+			var styles: Array = BookletSheet.styles().keys()
+			styles.sort()
+			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles)]) \
+				if not styles.is_empty() else "no page style is kept yet: save_as= keeps this page as one"
+		sheet = BookletSheet.new()
+		style_lost = bool(style.get("picture_lost", false))
+		if style.has("picture_data") and style.has("picture"):
+			pictures[str(style["picture"])] = str(style["picture_data"])
+		else:
+			style.erase("picture")
+		style.erase("picture_data")
+		style.erase("picture_lost")
+		sheet.change(style)
+		words = "the page style \"%s\"" % name
+	if given.has("picture_data"):
+		var named: String = str(given.get("picture", BookletSheet.PICTURE_NAME + ".jpg")).to_lower()
+		if not named.begins_with(BookletLooks.IMAGE_PREFIX):
+			named = BookletSheet.PICTURE_NAME + "." + named.get_extension()
+		pictures[named] = str(given["picture_data"])
+		given["picture"] = named
+	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style"]:
+		given.erase(field)
+	var wrong: String = sheet.change(given)
+	if not wrong.is_empty():
+		return wrong
+	# The picture its file names and does not carry stays named, as the file
+	# had it, until another is chosen or it is taken off (BookletSheet.of).
+	var still_missing: bool = was.missing and sheet.picture == was.picture \
+		and not pictures.has(sheet.picture)
+	if not sheet.picture.is_empty() and not pictures.has(sheet.picture) and not still_missing:
+		return "there is no picture called %s: picture_data= gives one" % sheet.picture
+	# Behind every page of the booklet's HTML as it is: a PNG or a JPEG in base64 only.
+	if pictures.has(sheet.picture) and BookletLooks.picture_kind(str(pictures[sheet.picture])).is_empty():
+		return "the picture behind the pages is a PNG or a JPEG, in base64"
+	# The picture that was behind the pages, gone with them.
+	if not was.picture.is_empty() and was.picture != sheet.picture:
+		pictures.erase(was.picture)
+	for name: String in pictures.keys():
+		if name.begins_with(BookletSheet.PICTURE_NAME) and name != sheet.picture:
+			pictures.erase(name)
+	var also := PackedStringArray()
+	if fields.has("remove_style"):
+		var failed: String = BookletSheet.remove_style(gone)
+		if not failed.is_empty():
+			return failed
+		also.append("the page style \"%s\" removed" % gone)
+	var undo: Array = BookletLooks.set_images(world, pictures)
+	undo.append_array(BookletLooks.change(world, BookletLooks.BOOKLET, {"sheet": sheet.said()}))
+	undo = AuthorSteps.squash(undo)
+	if style_lost:
+		also.append("the style's picture could not be read, so the page has none")
+	if fields.has("save_as"):
+		var keeping: String = str(fields["save_as"]).strip_edges()
+		var replaced: bool = BookletSheet.styles().has(keeping)
+		var failed: String = BookletSheet.save_style(keeping, sheet, str(pictures.get(sheet.picture, "")))
+		also.append(failed if not failed.is_empty() else "kept as the page style \"%s\"%s"
+			% [keeping, " in place of the one kept by that name" if replaced else ""])
+	var tail: String = ("; " + "; ".join(also)) if not also.is_empty() else ""
+	if undo.is_empty():
+		return "the page is as it was: %s%s" % [BookletSheet.of(world).words(), tail]
+	var said: String = "page set up%s: %s" % [(" as " + words) if not words.is_empty() else "",
+		BookletSheet.of(world).words()]
+	builder.record(undo, said)
+	store.touch()
+	return said + tail
 
 
 ## Many steps' pages laid out at once, as one undo: the page editor's
@@ -3212,6 +3479,124 @@ func covers(point: Vector2) -> bool:
 	return false
 
 
+## View, Stud directions (StudMap), made the first time something asks for
+## it: the command, or a session's view_board studs. Its legend goes over
+## the model's top left corner ([member model_area]), shown while it is on.
+func _make_stud_map() -> void:
+	var map: Node = Later.make(&"StudMap")
+	map.world = world
+	map.library = library
+	map.scenery = store.scenery
+	map.say = bar.say
+	_stud_map = map
+	add_child(map)
+	model_area.add_child(map.legend)
+
+
+## Whether Stud directions is on, asked by the menu without making it.
+func _stud_map_on() -> bool:
+	return _stud_map != null and _stud_map.on
+
+
+## Sections (SectionsUi over Sections), made the first time something asks
+## for them: Suggest sections, Break out, Exploded view, the model tree's
+## buttons, a session's suggest_sections. Their 0.1 MB of code was compiled
+## before a first visit's window was drawn (leaves, 2026-11-05).
+func _make_sections() -> void:
+	var found: RefCounted = Later.make(&"Sections")
+	found.world = world
+	found.library = library
+	found.builder = builder
+	found.assemblies = assemblies
+	found.scenery = store.scenery
+	var ui: Node = Later.make(&"SectionsUi")
+	ui.shell = self
+	ui.sections = found
+	_sections = ui
+	add_child(ui)
+	verbs.drawn_pick = ui.pick_drawn
+	outliner.use_sections(ui)
+
+
+## The section a section's command works on: the sub-assembly chosen in the
+## model tree, or the one directly inside the assembly entered that all the
+## selected parts are in; "" for none. Asked by the menus and the model
+## tree's buttons without making [member sections].
+func section_target() -> String:
+	var chosen: String = assemblies.selected_assembly()
+	if not chosen.is_empty():
+		return chosen
+	var found: String = ""
+	for brick_id: int in builder.selection:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var child: String = Assemblies.child_of(assemblies.entered, Assemblies.path_of(brick))
+		if child.is_empty() or (not found.is_empty() and child != found):
+			return ""
+		found = child
+	return found
+
+
+## File, Versions…, made the first time it is asked for ([member versions]).
+func _make_versions() -> void:
+	_versions = Later.make(&"VersionsDialog")
+	_versions.store = store
+	_versions.bar = bar
+	_versions.compare = func(version: ModelVersions.Version) -> void: compare.open_with(version)
+	add_child(_versions)
+
+
+## Compare with a save: its panel where View, Stress's is, the two never open
+## at once (_define's stress). Made the first time it is asked for.
+func _make_compare() -> void:
+	var view: GDScript = Later.script(&"CompareView")
+	_compare = view.new()
+	_compare.world = world
+	_compare.library = library
+	_compare.store = store
+	_compare.camera = camera
+	_compare.assemblies = assemblies
+	_compare.stress = stress
+	_compare.say = bar.say
+	_compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_compare.offset_right = -14.0
+	_compare.offset_left = -14.0 - view.WIDE
+	_compare.offset_top = ViewCube.size_for().y + 26.0
+	model_area.add_child(_compare)
+
+
+## Edit, Pattern…, made the first time it is asked for, with the copies it
+## draws in the model's world rather than the dialog's window.
+func _make_pattern_dialog() -> void:
+	_pattern_dialog = Later.make(&"PatternDialog")
+	_pattern_dialog.builder = builder
+	_pattern_dialog.world = world
+	_pattern_dialog.library = library
+	_pattern_dialog.say = bar.say
+	_pattern_dialog.edited = func() -> void: verbs.edited.call()
+	_pattern_dialog.pattern.builder = builder
+	_pattern_dialog.pattern.world = world
+	_pattern_dialog.pattern.library = library
+	add_child(_pattern_dialog.pattern)
+	add_child(_pattern_dialog)
+
+
+## The library and My collection placed for a finger as Main's panels are,
+## once the app is dressed for one (Main._dress_for_phone) and as each is made.
+func place_dialogs() -> void:
+	var touch: Object = app.get("_touch") if app != null else null
+	if touch == null:
+		return
+	if _library_dialog != null:
+		var library: GDScript = Later.script(&"LibraryDialog")
+		touch.place_panel(_library_dialog, Vector2(library.WIDE, library.TALL))
+	if _collection != null:
+		var mine: GDScript = Later.script(&"CollectionDialog")
+		touch.place_panel(_collection, Vector2(mine.WIDE, mine.TALL))
+
+
 ## Where each control is, for a browser test to press it as a person does.
 func controls_by_name() -> Dictionary:
 	var out: Dictionary = {}
@@ -3225,10 +3610,10 @@ func controls_by_name() -> Dictionary:
 		out.merge(outliner.controls_by_name())
 	if banner != null:
 		out.merge(banner.controls_by_name())
-	if collection != null:
-		out.merge(collection.controls_by_name())
-	if library_dialog != null:
-		out.merge(library_dialog.controls_by_name())
+	if _collection != null:
+		out.merge(_collection.controls_by_name())
+	if _library_dialog != null:
+		out.merge(_library_dialog.controls_by_name())
 	var parts_list: Control = app.get("_inventory_made") if app != null else null
 	if parts_list != null:
 		out.merge(parts_list.controls_by_name())
@@ -3236,12 +3621,12 @@ func controls_by_name() -> Dictionary:
 		out.merge(see_inside.controls_by_name())
 	if stress != null and stress.panel != null:
 		out.merge(stress.panel.controls_by_name())
-	if versions != null:
-		out.merge(versions.controls_by_name())
-	if compare != null:
-		out.merge(compare.controls_by_name())
-	if palette != null:
-		out.merge(palette.controls_by_name())
+	if _versions != null:
+		out.merge(_versions.controls_by_name())
+	if _compare != null:
+		out.merge(_compare.controls_by_name())
+	if _palette != null:
+		out.merge(_palette.controls_by_name())
 	if first_build != null:
 		out.merge(first_build.controls_by_name())
 	# Save as's question, for tools/web/dialogs_flow.mjs.
@@ -3249,12 +3634,12 @@ func controls_by_name() -> Dictionary:
 		out["save_as_name"] = _save_as_name
 		out["save_as_ok"] = _save_as.get_ok_button()
 		out["save_as_cancel"] = _save_as.get_cancel_button()
-	if feedback != null:
-		out.merge(feedback.controls_by_name())
+	if _feedback != null:
+		out.merge(_feedback.controls_by_name())
 	# About's links to the licences in full, and the licence open.
 	if _about != null and _about.visible:
 		out["about_ok"] = _about.get_ok_button()
-		for one: Dictionary in Credits.LIST:
+		for one: Dictionary in Later.script(&"Credits").LIST:
 			var read: Node = _about.find_child("read_" + str(one["id"]), true, false)
 			if read != null:
 				out["about_" + read.name] = read

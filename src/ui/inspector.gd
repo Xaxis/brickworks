@@ -74,6 +74,8 @@ var _facts: Label
 var _actions: HBoxContainer
 ## What the model stands on, shown with nothing selected.
 var floor_picker: FloorPicker
+## And how big it is and what it weighs (ModelSize), under that.
+var _model_size: Label
 var _credit: VBoxContainer
 var _credit_words: Label
 var _credit_link: LinkButton
@@ -167,6 +169,15 @@ func _ready() -> void:
 		shell.app.call("floor_part_of_model", on))
 	if floor_layer != null and not compact:
 		floor_layer.changed.connect(_show_floor)
+	_model_size = Label.new()
+	_model_size.add_theme_font_size_override("font_size", 12)
+	_model_size.modulate = Color(1, 1, 1, 0.75)
+	_model_size.mouse_filter = Control.MOUSE_FILTER_PASS
+	_model_size.tooltip_text = ("How big the model is: studs across and deep, and plates high "
+		+ "without the studs on its top; in centimetres with them, as a shelf needs. Its weight "
+		+ "is worked out from each part's shape, within about 6% of the bricks weighed")
+	_model_size.visible = false
+	column.add_child(_model_size)
 	# And whose it is, when it is someone else's: who made it, its licence
 	# and its page (ModelStore.credit), as the library or the gallery said.
 	_credit = VBoxContainer.new()
@@ -442,6 +453,7 @@ func _refresh(_now: bool) -> void:
 			_show_floor()
 		idled.emit(_idle)
 	_show_credit()
+	_show_size()
 	if not _open:
 		return
 	var state: String = _state_of(bricks)
@@ -513,6 +525,25 @@ func _show_credit() -> void:
 		_credit_link.tooltip_text = _credit_page
 
 
+## Nothing selected: how big the model is, in studs and plates and in
+## centimetres, and what it weighs, worked out once a change (ModelSize).
+func _show_size() -> void:
+	var words: String = ""
+	if _open and _idle and not compact and shell.world != null:
+		var measured: ModelSize = ModelSize.of_model(shell.world, shell.library,
+			shell.store.scenery if shell.store != null else {})
+		if not measured.is_empty():
+			var lines := PackedStringArray([measured.studs_words(), measured.centimetre_words(),
+				measured.weight_words()])
+			if measured.left_out > 0:
+				lines.append(measured.left_out_words())
+			words = "\n".join(lines)
+	if _model_size.text != words:
+		_model_size.text = words
+	if _model_size.visible != not words.is_empty():
+		_model_size.visible = not words.is_empty()
+
+
 ## The model's floor, in the picker.
 func _show_floor() -> void:
 	var floor_layer: FloorLayer = shell.app.get("_floor")
@@ -552,7 +583,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 		_ids.text = "Flexible part from the file, as LDCad drew it · %s" % brick.part_id
 	var versions: int = library.prints_of(PartPrints.plain_of(library, brick.part_id)).size() \
 		if shell.app != null else 0
-	_versions_button.visible = versions > 0 and not Stickers.sticks(library, brick.part_id)
+	_versions_button.visible = versions > 0 and not library.sticks(brick.part_id)
 	_versions_button.text = "Printed versions… (%d)" % versions
 	_show_colours([brick.color_code])
 	_place.visible = true
@@ -568,7 +599,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	if compact:
 		return
 	# Counted up to a point: on a big model all of it is joined to all of it.
-	var joined: int = SelectBy.connected(shell.world, shell.builder.lattice,
+	var joined: int = Later.script(&"SelectBy").connected(shell.world, shell.builder.lattice,
 		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
 	var lines := PackedStringArray()
 	lines.append("Joined to %s" % ("nothing" if joined <= 0 else (
@@ -627,8 +658,11 @@ func _show_many(bricks: Array[BrickWorld.Brick]) -> void:
 	_show_meet(bricks.size() == 2)
 	_yaw.editable = true
 	var facts := PackedStringArray()
-	facts.append("%s × %s studs, %s tall" % [_studs(box.size.x), _studs(box.size.z),
-		_plates(box.size.y)])
+	# Measured as the status bar measures them (ModelSize), so the two say
+	# one height: a wheel on its side is its whole height, not studs.
+	var measured: ModelSize = ModelSize.of_bricks(bricks, library)
+	facts.append("%s × %s studs, %s tall" % [_studs(measured.box.size.x),
+		_studs(measured.box.size.z), _plates(measured.plates_high())])
 	# The sub-assembly they are all in, when they are; a sub-assembly
 	# selected whole says so itself (_show_assembly).
 	var shared: String = _shared_path(bricks)
@@ -900,11 +934,9 @@ static func _studs(ldu: float) -> String:
 	return str(roundi(studs)) if is_equal_approx(studs, roundf(studs)) else "%.1f" % studs
 
 
-static func _plates(ldu: float) -> String:
-	# A part's box takes in the studs on its top, four LDU proud of it, and
-	# nobody counts those in how tall a wall is.
-	var body: float = ldu - 4.0 if is_equal_approx(fposmod(ldu, 8.0), 4.0) else ldu
-	var plates: float = body / 8.0
+## [param plates] high, without the studs on the top (ModelSize.plates_high):
+## "1 brick", "2 plates", "4.5 plates".
+static func _plates(plates: float) -> String:
 	if is_equal_approx(fposmod(plates, 3.0), 0.0) and plates >= 3.0:
 		var bricks: int = roundi(plates / 3.0)
 		return "1 brick" if bricks == 1 else "%d bricks" % bricks

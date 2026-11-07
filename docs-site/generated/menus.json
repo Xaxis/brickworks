@@ -86,7 +86,7 @@
 				{
 					"name": "library",
 					"words": "Library…",
-					"key": "",
+					"key": "Ctrl+Shift+O",
 					"tip": "Any of LDraw's models of real sets, or a model the community shared, opened in a new window"
 				},
 				{
@@ -110,15 +110,6 @@
 					"submenu": "import",
 					"words": "Import",
 					"items": [
-						{
-							"name": "import_into",
-							"words": "Into this model…",
-							"key": "",
-							"tip": "A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes"
-						},
-						{
-							"line": true
-						},
 						{
 							"name": "import_ldraw",
 							"words": "LDraw model (.ldr, .mpd)…",
@@ -236,7 +227,7 @@
 						{
 							"name": "export_pickabrick",
 							"words": "LEGO® Pick a Brick list (.csv)",
-							"key": "",
+							"key": "Alt+L",
 							"tip": "LEGO® element numbers and how many of each, to upload at LEGO® Pick a Brick, 400 to a file; the parts with no number known are named"
 						},
 						{
@@ -253,13 +244,13 @@
 				{
 					"name": "render",
 					"words": "Render…",
-					"key": "",
+					"key": "F9",
 					"tip": "A photo-real picture or turntable of the model, on a backdrop, in studio light"
 				},
 				{
 					"name": "render_queue",
 					"words": "Render queue…",
-					"key": "",
+					"key": "Shift+F9",
 					"tip": "Pictures lined up with Render's settings and drawn one after another while you go on building"
 				},
 				{
@@ -330,7 +321,7 @@
 					"name": "pattern",
 					"words": "Pattern…",
 					"key": "Ctrl+Shift+D",
-					"tip": "Copies of the selection in a row, round, or along a hose, put down at once"
+					"tip": "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
 				},
 				{
 					"name": "delete",
@@ -526,6 +517,78 @@
 							"words": "Turn the model right",
 							"key": "Shift+E",
 							"tip": ""
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "save_view",
+							"words": "Save this view…",
+							"key": "Alt+V",
+							"tip": "Keep where you are looking from with the model, by a name, to look from again with a key and to render"
+						},
+						{
+							"name": "saved_view_1",
+							"words": "Saved view 1",
+							"key": "Alt+Shift+1",
+							"tip": "Look from the model's saved view 1 again, as it was saved"
+						},
+						{
+							"name": "saved_view_2",
+							"words": "Saved view 2",
+							"key": "Alt+Shift+2",
+							"tip": "Look from the model's saved view 2 again, as it was saved"
+						},
+						{
+							"name": "saved_view_3",
+							"words": "Saved view 3",
+							"key": "Alt+Shift+3",
+							"tip": "Look from the model's saved view 3 again, as it was saved"
+						},
+						{
+							"name": "saved_view_4",
+							"words": "Saved view 4",
+							"key": "Alt+Shift+4",
+							"tip": "Look from the model's saved view 4 again, as it was saved"
+						},
+						{
+							"name": "saved_view_5",
+							"words": "Saved view 5",
+							"key": "Alt+Shift+5",
+							"tip": "Look from the model's saved view 5 again, as it was saved"
+						},
+						{
+							"name": "saved_view_6",
+							"words": "Saved view 6",
+							"key": "Alt+Shift+6",
+							"tip": "Look from the model's saved view 6 again, as it was saved"
+						},
+						{
+							"name": "saved_view_7",
+							"words": "Saved view 7",
+							"key": "Alt+Shift+7",
+							"tip": "Look from the model's saved view 7 again, as it was saved"
+						},
+						{
+							"name": "saved_view_8",
+							"words": "Saved view 8",
+							"key": "Alt+Shift+8",
+							"tip": "Look from the model's saved view 8 again, as it was saved"
+						},
+						{
+							"name": "saved_view_9",
+							"words": "Saved view 9",
+							"key": "Alt+Shift+9",
+							"tip": "Look from the model's saved view 9 again, as it was saved"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "render_views",
+							"words": "Render each saved view",
+							"key": "",
+							"tip": "Queue a picture from each view saved with the model, with Render's settings"
 						}
 					]
 				},
@@ -752,19 +815,19 @@
 						{
 							"name": "cut_box",
 							"words": "A box",
-							"key": "",
+							"key": "Alt+X",
 							"tip": "Cut away what is inside a box round the selection; drag its knobs to push or pull a face a plate at a time"
 						},
 						{
 							"name": "cut_sphere",
 							"words": "A sphere",
-							"key": "",
+							"key": "Alt+Z",
 							"tip": "Cut away what is inside a sphere round the selection; drag its knobs to make it bigger or smaller a plate at a time"
 						},
 						{
 							"name": "cut_cylinder",
 							"words": "A cylinder",
-							"key": "",
+							"key": "Alt+Y",
 							"tip": "Cut away what is inside an upright cylinder round the selection; drag its knobs to push or pull a face a plate at a time"
 						},
 						{
@@ -809,40 +872,49 @@
 					"tip": "Every part tinted by how near its weakest joint is to letting go: red past its studs' working load, amber within twice it"
 				},
 				{
+					"name": "stud_map",
+					"words": "Stud directions",
+					"key": "",
+					"tip": "Every part coloured by where its studs point: up, down, or to the front, back, left or right"
+				},
+				{
 					"line": true
 				},
 				{
-					"name": "panel_parts",
-					"words": "Parts bin",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"name": "panel_assistant",
-					"words": "Assistant",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"name": "panel_properties",
-					"words": "Properties",
-					"key": "",
-					"tip": "What is selected: its part, colour, where it stands and what it is joined to"
-				},
-				{
-					"name": "panel_outliner",
-					"words": "Model tree",
-					"key": "",
-					"tip": "The model's sub-assemblies by name, inside one another"
-				},
-				{
-					"name": "panel_keys",
-					"words": "Key strip",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"line": true
+					"submenu": "panels",
+					"words": "Panels",
+					"items": [
+						{
+							"name": "panel_parts",
+							"words": "Parts bin",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "panel_assistant",
+							"words": "Assistant",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "panel_properties",
+							"words": "Properties",
+							"key": "",
+							"tip": "What is selected: its part, colour, where it stands and what it is joined to"
+						},
+						{
+							"name": "panel_outliner",
+							"words": "Model tree",
+							"key": "",
+							"tip": "The model's sub-assemblies by name, inside one another"
+						},
+						{
+							"name": "panel_keys",
+							"words": "Key strip",
+							"key": "",
+							"tip": ""
+						}
+					]
 				},
 				{
 					"name": "split_view",
@@ -947,55 +1019,61 @@
 					"words": "Booklet page",
 					"items": [
 						{
-							"name": "booklet_turn_left",
-							"words": "Turn the view left",
-							"key": "",
-							"tip": "The model turned 45 degrees for this step's picture, and the steps after it"
-						},
-						{
-							"name": "booklet_turn_right",
-							"words": "Turn the view right",
-							"key": "",
-							"tip": "The model turned 45 degrees the other way for this step's picture"
-						},
-						{
-							"name": "booklet_tilt_up",
-							"words": "Look from higher",
-							"key": "",
-							"tip": "This step's picture from 15 degrees higher"
-						},
-						{
-							"name": "booklet_tilt_down",
-							"words": "Look from lower",
-							"key": "",
-							"tip": "This step's picture from 15 degrees lower"
-						},
-						{
-							"name": "booklet_this_view",
-							"words": "Use this view for the step",
-							"key": "",
-							"tip": "This step's picture drawn from the angle the window looks from now"
-						},
-						{
-							"name": "booklet_usual_view",
-							"words": "Usual view",
-							"key": "",
-							"tip": "This step drawn from the booklet's usual angle again"
-						},
-						{
-							"line": true
-						},
-						{
-							"name": "booklet_zoom_in",
-							"words": "Zoom in",
-							"key": "",
-							"tip": "This step's picture closer in on what it adds"
-						},
-						{
-							"name": "booklet_zoom_out",
-							"words": "Zoom out",
-							"key": "",
-							"tip": "This step's picture further out"
+							"submenu": "booklet_view",
+							"words": "Step's view",
+							"items": [
+								{
+									"name": "booklet_turn_left",
+									"words": "Turn the view left",
+									"key": "",
+									"tip": "The model turned 45 degrees for this step's picture, and the steps after it"
+								},
+								{
+									"name": "booklet_turn_right",
+									"words": "Turn the view right",
+									"key": "",
+									"tip": "The model turned 45 degrees the other way for this step's picture"
+								},
+								{
+									"name": "booklet_tilt_up",
+									"words": "Look from higher",
+									"key": "",
+									"tip": "This step's picture from 15 degrees higher"
+								},
+								{
+									"name": "booklet_tilt_down",
+									"words": "Look from lower",
+									"key": "",
+									"tip": "This step's picture from 15 degrees lower"
+								},
+								{
+									"name": "booklet_this_view",
+									"words": "Use this view for the step",
+									"key": "",
+									"tip": "This step's picture drawn from the angle the window looks from now"
+								},
+								{
+									"name": "booklet_usual_view",
+									"words": "Usual view",
+									"key": "",
+									"tip": "This step drawn from the booklet's usual angle again"
+								},
+								{
+									"line": true
+								},
+								{
+									"name": "booklet_zoom_in",
+									"words": "Zoom in",
+									"key": "",
+									"tip": "This step's picture closer in on what it adds"
+								},
+								{
+									"name": "booklet_zoom_out",
+									"words": "Zoom out",
+									"key": "",
+									"tip": "This step's picture further out"
+								}
+							]
 						},
 						{
 							"name": "booklet_bigger",
@@ -1083,6 +1161,15 @@
 							"words": "Sub-model preview",
 							"key": "",
 							"tip": "The sub-assembly this step puts on shown finished on the first of its own pages, or not"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "booklet_page_setup",
+							"words": "Page setup…",
+							"key": "Ctrl+Shift+B",
+							"tip": "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another"
 						}
 					]
 				},
@@ -1625,12 +1712,11 @@
 		"new": "Ctrl-N",
 		"new_window": "Ctrl-shift-N",
 		"open": "Ctrl-O",
-		"library": "",
+		"library": "Ctrl-shift-O",
 		"import_ldraw": "",
 		"import_io": "",
 		"import_lxf": "",
 		"import_mesh": "",
-		"import_into": "",
 		"save": "Ctrl-S",
 		"save_as": "Ctrl-shift-S",
 		"versions": "",
@@ -1642,9 +1728,9 @@
 		"export_bricklink": "",
 		"export_all": "",
 		"export_rebrickable": "",
-		"export_pickabrick": "",
-		"render": "",
-		"render_queue": "",
+		"export_pickabrick": "alt-L",
+		"render": "F9",
+		"render_queue": "shift-F9",
 		"pose": "alt-O",
 		"instructions": "alt-B",
 		"share": "",
@@ -1715,6 +1801,7 @@
 		"booklet_colours": "",
 		"booklet_actual_size": "",
 		"booklet_preview": "",
+		"booklet_page_setup": "Ctrl-shift-B",
 		"flex": "",
 		"reshape_flex": "",
 		"view_default": "0",
@@ -1757,15 +1844,27 @@
 		"cut_z": "",
 		"cut_flip": "shift-K",
 		"cut_ghosts": "",
-		"cut_box": "",
-		"cut_sphere": "",
-		"cut_cylinder": "",
+		"cut_box": "alt-X",
+		"cut_sphere": "alt-Z",
+		"cut_cylinder": "alt-Y",
 		"cut_grow": "",
 		"cut_shrink": "",
 		"xray": "I",
 		"stress": "",
+		"stud_map": "",
 		"turn_left": "shift-Q",
 		"turn_right": "shift-E",
+		"save_view": "alt-V",
+		"saved_view_1": "alt-shift-1",
+		"saved_view_2": "alt-shift-2",
+		"saved_view_3": "alt-shift-3",
+		"saved_view_4": "alt-shift-4",
+		"saved_view_5": "alt-shift-5",
+		"saved_view_6": "alt-shift-6",
+		"saved_view_7": "alt-shift-7",
+		"saved_view_8": "alt-shift-8",
+		"saved_view_9": "alt-shift-9",
+		"render_views": "",
 		"panel_parts": "",
 		"panel_assistant": "",
 		"panel_properties": "",

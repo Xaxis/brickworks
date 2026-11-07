@@ -32,6 +32,8 @@ const META := "0 !BRICKWORKS MOTION"
 const HOWS: Array[String] = ["EASE", "LINEAR", "HOLD"]
 ## The longest a motion may run, seconds.
 const MOST_SECONDS := 120.0
+## The most of a link's ?motion= read, characters: a long name, and more.
+const MOST_LINK_WORDS := 120
 
 
 class Joint extends RefCounted:
@@ -185,6 +187,41 @@ func named(name: String) -> Motion:
 		if motion.name.to_lower() == name.strip_edges().to_lower():
 			return motion
 	return null
+
+
+## The motion a link asks for (?motion=): by its name in any case, by the
+## name as a link writes it ("open-the-gates", [method slug]), or by words
+## found in one motion's name alone ("boom" for "Lift the boom"); null for
+## none, or for words in more than one.
+func for_link(asked: String) -> Motion:
+	var exact: Motion = named(asked)
+	if exact != null:
+		return exact
+	var wanted: String = slug(asked)
+	if wanted.is_empty():
+		return null
+	for motion: Motion in list:
+		if slug(motion.name) == wanted:
+			return motion
+	var words: PackedStringArray = wanted.split("-")
+	var found: Array = list.filter(func(motion: Motion) -> bool:
+		var has: PackedStringArray = slug(motion.name).split("-")
+		return Array(words).all(func(word: String) -> bool: return has.has(word)))
+	return found[0] if found.size() == 1 else null
+
+
+## A motion's name as a link writes it: small letters and digits, in any
+## script, a hyphen between words ("Open the gates" is "open-the-gates").
+static func slug(name: String) -> String:
+	return RegEx.create_from_string("[^\\p{L}\\p{N}]+").sub(name.to_lower(), "-", true).strip_edges() \
+		.trim_prefix("-").trim_suffix("-")
+
+
+## What a link's ?motion= says, checked at the edge: words on one line, cut
+## short; "" for none or for anything else.
+static func link_words(text: String) -> String:
+	var words: String = text.strip_edges().left(MOST_LINK_WORDS)
+	return "" if RegEx.create_from_string("[\\x00-\\x1f\\x7f]").search(words) != null else words
 
 
 ## The joint already kept that is [param joint]'s, or [param joint] itself,

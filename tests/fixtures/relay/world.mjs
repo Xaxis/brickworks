@@ -67,11 +67,13 @@ export function world() {
       });
       return token;
     },
-    /// A tab's row: open and seen just now unless [row] says otherwise.
+    /// A tab's row: open and seen just now unless [row] says otherwise. The
+    /// row itself, for a test to change as the tab would.
     tab(row) {
       const now = new Date().toISOString();
       tables.relay_tabs.push({ channel: randomBytes(16).toString("hex"), seen_at: now, instance: "instance-1",
         visible: true, open: true, owner: null, tab: "abcd", model: "a model", used_at: now, hello: null, ...row });
+      return tables.relay_tabs.at(-1);
     },
     /// One MCP request through the handler, as Claude signed in sends it:
     /// the JSON-RPC answer.

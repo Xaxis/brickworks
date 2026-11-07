@@ -107,6 +107,18 @@ done
 # Nor the person's keyring: a key a probe keeps goes to its data folder's
 # file (KeyStore), unless the run names a keyring (keychain_probe, inside
 # tools/keyring_session.sh, which is a keyring of its own).
+# Nor the person's Documents or Pictures: Godot asks xdg-user-dir for them,
+# and a walk wrote car_instructions.html and .pdf into the owner's real
+# ~/Documents (appux5, 2026-11-06). Each run gets its own, in its data folder.
+if [ -z "${PROBE_DRY:-}" ]; then
+  # shellcheck disable=SC2016  # $1 and $d are the stub's own, expanded when it runs
+  printf '#!/bin/sh\nd="%s/home/${1:-HOME}"\nmkdir -p "$d" && echo "$d"\n' "$data" >"$stubs/xdg-user-dir"
+  chmod +x "$stubs/xdg-user-dir"
+fi
+# shots/ is written by most probes: without a .gdignore, Godot imports every
+# picture there before the next run starts (9 of 13 runs, 9-17 s each, appux5).
+mkdir -p shots
+[ -e shots/.gdignore ] || touch shots/.gdignore
 held=(env -u WAYLAND_DISPLAY PATH="$stubs:$PATH" BRICKWORKS_OPEN_NOTHING=1
   BRICKWORKS_KEYCHAIN="${BRICKWORKS_KEYCHAIN:-off}")
 

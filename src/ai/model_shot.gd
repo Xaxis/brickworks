@@ -56,6 +56,11 @@ var give_up_after: float = 20.0
 ## graphics card, and in a browser drawing in software, tens of seconds. A
 ## frame that waited on drawing has not been doing this app's work.
 static var gpu_wait_us: int = 0
+## Pictures being taken now, by any ModelShot: a call that became a job
+## while one is drawn says so (CommandSocket's doing words). The Charger's
+## edit waited two minutes on its picture, and its job said "Changed it:
+## 1118 bricks" every time it was asked (bigedit, 2026-11-06).
+static var drawing: int = 0
 
 ## Where each named view looks from, as a direction the camera sits
 ## along. The default is a three-quarter view, because an elevation
@@ -210,6 +215,11 @@ var see_through: Dictionary = {}
 ## new parts (SeeTools). Each part's own edge, found where the part each
 ## pixel shows changes (booklet_codes), as the booklet finds its ink.
 var edged: Dictionary = {}
+## Bricks drawn wholly in a colour, by number: id -> Color, as View, Stud
+## directions paints the window (StudMap, BrickWorld.set_painted): a
+## session's view_board {"studs": true}. The stage's copy is painted, never
+## the model.
+var painted: Dictionary = {}
 ## The edge's colour: [constant PICKED_OUT]'s magenta, at full strength.
 const EDGE := Color(1.0, 0.0, 1.0)
 ## Half the edge's width, px of a picture [constant SIZE] across.
@@ -300,8 +310,11 @@ func take(world: BrickWorld, from: String,
 		skip: Dictionary = {}, only: AABB = AABB()) -> Image:
 	if not possible() or world == null or world.brick_count() == 0:
 		return null
+	drawing += 1
 	if LeasedShots.in_use():
-		return await LeasedShots.shared().take(self, world, from, skip, only)
+		var leased: Image = await LeasedShots.shared().take(self, world, from, skip, only)
+		drawing -= 1
+		return leased
 	# A picture is a handful of frames of waiting, and how long a frame
 	# takes is not this program's business until it is. Measured on this
 	# machine: 989 ms a frame with vsync as shipped, 20 ms with it off.
@@ -318,6 +331,7 @@ func take(world: BrickWorld, from: String,
 	_quicken()
 	var image: Image = await _take(world, from, skip, only)
 	_settle()
+	drawing -= 1
 	return image
 
 
@@ -396,13 +410,7 @@ func _take(world: BrickWorld, from: String,
 	var bounds: AABB = await _restage(world, skip)
 	if bounds.size.length() <= 0.0:
 		return null
-	# Drawn see-through on the stage, by the stage's numbers; none is x-ray
-	# off. Written at this frame's end, before it is drawn.
-	var ghosts: Dictionary = {}
-	for brick_id: int in see_through:
-		if _on_stage.has(brick_id):
-			ghosts[_on_stage[brick_id]] = true
-	_stage.set_xray(ghosts)
+	_dress()
 	# Staged in full either way, so what is around the part being looked
 	# at is still in the picture — a close look at a nacelle that had
 	# cut the hull out of it would not show whether the two meet.
@@ -500,7 +508,10 @@ func _take(world: BrickWorld, from: String,
 		# Only if the model changed meanwhile: _restage keeps what it
 		# staged, and an unchanged model is already there.
 		if frames > 0:
+			var was: Array = _staged
 			await _restage(world, skip)
+			if _staged != was:
+				_dress()
 		_camera.current = true
 		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 		# On the web one frame, in which it is drawn, and then the fence
@@ -533,6 +544,23 @@ func _take(world: BrickWorld, from: String,
 	if taken != null and not edged.is_empty():
 		taken = await _edges_on(taken, world, skip)
 	return taken
+
+
+## What is drawn see-through and what painted ([member see_through],
+## [member painted]), on the stage by the stage's own numbers; none is x-ray
+## off. Written at this frame's end, before it is drawn, and again whenever
+## the model is staged again, which numbers it afresh.
+func _dress() -> void:
+	var ghosts: Dictionary = {}
+	for brick_id: int in see_through:
+		if _on_stage.has(brick_id):
+			ghosts[_on_stage[brick_id]] = true
+	_stage.set_xray(ghosts)
+	var paint: Dictionary = {}
+	for brick_id: int in painted:
+		if _on_stage.has(brick_id):
+			paint[_on_stage[brick_id]] = painted[brick_id]
+	_stage.set_painted(paint)
 
 
 # -- parts edged in magenta ---------------------------------------------------------

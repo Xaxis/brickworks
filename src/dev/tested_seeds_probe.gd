@@ -67,7 +67,7 @@ const MOST: Dictionary = {
 	6: [0, 0, 0, 8], 7: [0, 0, 0, 2], 8: [0, 0, 0, 7], 9: [0, 4, 1, 6], 10: [0, 1, 1, 9],
 	11: [0, 0, 1, 7], 12: [0, 0, 1, 29], 13: [0, 0, 0, 2], 14: [0, 2, 0, 16], 15: [0, 4, 0, 11],
 	16: [0, 0, 0, 7], 17: [0, 2, 0, 8], 18: [0, 0, 0, 2], 19: [0, 4, 0, 7], 20: [0, 0, 0, 18],
-	21: [0, 0, 0, 0], 22: [0, 0, 0, 5], 23: [0, 3, 0, 0], 24: [0, 0, 1, 2], 25: [0, 0, 0, 0],
+	21: [0, 0, 0, 0], 22: [0, 0, 0, 5], 23: [0, 1, 0, 0], 24: [0, 0, 1, 2], 25: [0, 0, 0, 0],
 	26: [0, 0, 0, 4], 27: [0, 2, 16, 16], 28: [0, 0, 1, 8], 29: [0, 0, 0, 11], 30: [0, 0, 0, 3],
 }
 ## Faults the files really have, each still to be found: [seed, test, what
@@ -87,8 +87,12 @@ const FAULTS: Array = [
 	# 21011-1's 2 x 12 plates half a stud off the plates over them: their
 	# studs stand between those plates' tubes, by the parts' real shapes too.
 	[6, "whole", "Plate 6 x 10 into Plate 2 x 12 by 2.8 LDU"],
-	# 851-1 draws a 1 x 2 plate and a bush twice, each in one place.
-	[19, "whole", "Plate 1 x 2 into Plate 1 x 2 by 4 LDU"],
+	# 851-1 draws a 1 x 2 plate and a bush twice, each in one place. The
+	# plates are main.ldr's lines 67 and 72, both 3023 at -30 -40 -90 turned
+	# alike: one wholly inside the other, its holes the plate's whole 8 LDU
+	# under the other's stud feet (Exact.sunk_pairs), as 6680-1's 1 x 2 in its
+	# 1 x 6. Until conestop the check said where their shapes first met, 4.
+	[19, "whole", "Plate 1 x 2 into Plate 1 x 2 by 8 LDU"],
 	[19, "whole", "Technic Bush with Two Flanges into Technic Bush with Two Flanges by 3.1 LDU"],
 	# 358-1 stands four 1 x 4 bricks 20 LDU over the bricks under them, not 24.
 	[20, "whole", "Brick 1 x 4 into Brick 1 x 4 by 4 LDU"],
@@ -105,8 +109,14 @@ const FAULTS: Array = [
 	[8, "whole", "Container Treasure Chest without Slots into Container Treasure Chest with Slots Lid by 2.1 LDU"],
 	# 7815-1 seats its two passengers after the carriage's roof is on. Each
 	# is a sub-model, built in the hand in the steps the model can keep and
-	# put on whole (stepsnum), named by its first part.
-	[23, "steps", "Step 36: Minifig Hair Male is hidden behind what is already built"],
+	# put on whole (stepsnum), named by its first part. Its four 3794a
+	# jumpers stand their studs in 4070 headlight bricks, in the hole BrickNet
+	# frames on the face opposite the lamp, which the cover leaves open. Read
+	# as joints since realjoints2 (Joints._hollow_round), the planner puts
+	# each jumper on with its brick, no longer one hidden at step 35, and the
+	# roof slope over the man (4509 at z 180) on after him, at step 38. The
+	# woman's slope (z -180) is on at step 34, before her.
+	[23, "steps", "Step 37: Minifig Hair Female with Pigtails is hidden behind what is already built"],
 ]
 
 var _failures: int = 0

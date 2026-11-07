@@ -57,7 +57,8 @@ Known, and not a regression:
   implements the pytest features the suite uses (approx, fixture,
   mark.parametrize, mark.skipif, the tmp_path and capsys fixtures) and raises by
   name on anything else. If you add a test that needs `pytest.raises`, add it
-  there too. Real pytest is in uv's cache: `uvx --offline --with numpy --with
+  there too. It runs the files side by side, a process each (`MINITEST_JOBS=1`
+  to run them one after another in one process). Real pytest is in uv's cache: `uvx --offline --with numpy --with
   scipy pytest tests/ -q` (916 passed, 1 skipped, 108 s on 2026-10-23); a test
   must pass under both.
 - **7 probes never run in the suite.** Four spend money (`bakeoff revise sideways

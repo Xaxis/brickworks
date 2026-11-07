@@ -1,4 +1,4 @@
-# Keys for the commands a builder uses often (2026-11-05)
+# Keys for the commands a builder uses often (2026-11-05, and keys2 2026-11-06)
 
 An expert CAD is driven from the keyboard. Before this, 114 of the menus' 201 commands had
 no key under the app's own keys, among them the reference picture, Simulate and Motions.
@@ -9,19 +9,26 @@ why each one left without a key is left so.
 Counted off the app itself (Shell's commands, Keymap's key for each, under each preset,
 nothing set by hand), on the desktop. The web has one more under every preset: New tab,
 whose Ctrl-Shift-N the browser keeps. `src/dev/keys4_probe.gd` counts them again and
-fails when a command has no key and no row below.
+fails when a command has no key and no row below; `src/dev/keys2_probe.gd` checks the
+eight keys2 gave.
 
-| Preset | Commands | Without a key before | After |
-|---|---|---|---|
-| Brickworks | 209 | 116 | 111 |
-| Studio | 209 | 119 | 114 |
-| Mecabricks | 209 | 117 | 112 |
-| LDCad | 209 | 119 | 115 |
+| Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
+|---|---|---|---|---|---|
+| Brickworks | 221 | 115 | 110 | 112 | 105 |
+| Studio | 221 | 118 | 113 | 115 | 108 |
+| Mecabricks | 221 | 116 | 111 | 113 | 106 |
+| LDCad | 221 | 118 | 114 | 116 | 109 |
 
-The menus had 201 commands when this was counted. Cut away by a box, a sphere or a cylinder
-(APP_UX4 8) added five, each with no key. Into this model and the Pick a Brick list added two
-more with none, and What's This? one with Shift-F1 under every preset: 209 now, seven more
-without a key after.
+The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
+(APP_UX4 8) added five, each with no key. The Pick a Brick list added one
+more with none, and What's This? one with Shift-F1 under every preset: 208 when keys was
+done, six more without a key after it. Page setup… (pagesetup) and Stud directions
+(seeing2) added one more each with none: 210, and 112 without a key under the app's keys,
+before keys2. keys2 gave eight a key under every preset, each one no command had: 104
+without a key then, so 106 of the 210 had one (the walk's `counts`, APP_UX5). Saved views
+(savedviews, APP_UX5 #8) added eleven: Save this view… and the nine saved views, each with
+a key under every preset, and Render each saved view with none. 221 now, 105 without a key
+under the app's keys, 116 with one.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -57,18 +64,65 @@ LDCad's G and A are the editing grid and animation mode, as Alt-G and Alt-O are 
 under LDCad's keys G stays the pick and A the move left: each is used every minute, and A
 is one of W, A, S and D. So the stud grid and Motions keep the app's own keys there.
 
+## Given a key in round five (keys2, 2026-11-06)
+
+The rest of what a builder reaches for once a model or more, which APP_UX5's walk found
+with no key (its 9). Each has the same key under all four presets: none of the presets
+gives these keys to anything, and none was a command's before. Into this model… was
+planned here too, but it is not in this release (intomodel was taken out); it gets its key
+when it returns. Its place went to Page setup…, new in the same round.
+
+The app's own rule, Alt and the first free letter of the menu row, is kept where a letter
+is free (Alt-X, Alt-Y, Alt-L); Render takes the wider 3D field's key, F9 (3ds Max's Render
+Last, LightWave's and Modo's Render), as no LEGO® CAD keys it and Blender's F12 opens a
+browser's developer tools. The sphere's own letters all have keys, so it sits beside the
+box. Page setup's key on a Mac, Cmd-Shift-P, is Firefox's private window, which a page
+never hears: it goes beside Alt-B, the booklet itself. The Library opens a model as Open
+does, and so sits beside Ctrl-O, as a browser's own Library is Ctrl-Shift-O.
+
+| Command | Menu | Studio | LeoCAD | LDCad | How often | Brickworks | Studio's keys | Mecabricks' | LDCad's | Why this key |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `render` | File › Render | — | — (its POV-Ray and Blender Render have none) | — | once a model, again for each picture | F9 | F9 | F9 | F9 | the render key of 3ds Max, LightWave and Modo; Blender's F12 is a browser's |
+| `render_queue` | File › Render queue | — | — | — | after Render, to see what waits | shift-F9 | shift-F9 | shift-F9 | shift-F9 | beside Render's F9 |
+| `cut_box` | View › Cut away by › A box | — | — | — | a few times a model | alt-X | alt-X | alt-X | alt-X | Alt and the first free letter, boX; K then cuts away by it again |
+| `cut_sphere` | View › Cut away by › A sphere | — | — | — | a few times a model | alt-Z | alt-Z | alt-Z | alt-Z | every letter of "sphere" has a key; Z beside the box's X |
+| `cut_cylinder` | View › Cut away by › A cylinder | — | — | — | a few times a model | alt-Y | alt-Y | alt-Y | alt-Y | Alt and the first free letter, cYlinder |
+| `booklet_page_setup` | Build › Booklet page › Page setup | — | — (Print and Print Preview have none) | — | once a booklet | Ctrl-shift-B | Ctrl-shift-B | Ctrl-shift-B | Ctrl-shift-B | beside Alt-B, Instructions, the booklet; the Mac's Cmd-Shift-P is Firefox's |
+| `export_pickabrick` | File › Export › LEGO® Pick a Brick list (.csv) | — | — | — | once a model, again as it changes | alt-L | alt-L | alt-L | alt-L | Alt and the first free letter, LEGO®'s L; BrickLink's and Rebrickable's lists are on the parts list (P) |
+| `library` | File › Library | — | — | — | once a session | Ctrl-shift-O | Ctrl-shift-O | Ctrl-shift-O | Ctrl-shift-O | beside Open's Ctrl-O, as a browser's Library is Ctrl-Shift-O |
+
+## Given a key with saved views (savedviews, 2026-11-06)
+
+The views a person keeps with the model (View › Viewpoint) are looked from again many
+times a session, as the views every model has are by the digits alone. Each of the
+nine is Alt-Shift and its digit, beside the digits: Shift and
+Ctrl-Shift with a digit are the colour keys, Ctrl and a digit is every browser's tab, and
+Firefox on Linux keeps Alt and a digit. No preset gives Alt-Shift and a digit, nor Alt-V,
+to anything. Save this view… is Alt and the first free letter of its row, V.
+
+| Command | Menu | Studio | LeoCAD | LDCad | How often | Brickworks | Studio's keys | Mecabricks' | LDCad's | Why this key |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `save_view` | View › Viewpoint › Save this view | — | — | — | a few times a model | alt-V | alt-V | alt-V | alt-V | Alt and the first free letter, View |
+| `saved_view_1` | View › Viewpoint › Saved view 1 | — | — | — | many times a session | alt-shift-1 | alt-shift-1 | alt-shift-1 | alt-shift-1 | beside the digit, the views every model has |
+| `saved_view_2` | View › Viewpoint › Saved view 2 | — | — | — | many times a session | alt-shift-2 | alt-shift-2 | alt-shift-2 | alt-shift-2 | as the first |
+| `saved_view_3` | View › Viewpoint › Saved view 3 | — | — | — | many times a session | alt-shift-3 | alt-shift-3 | alt-shift-3 | alt-shift-3 | as the first |
+| `saved_view_4` | View › Viewpoint › Saved view 4 | — | — | — | many times a session | alt-shift-4 | alt-shift-4 | alt-shift-4 | alt-shift-4 | as the first |
+| `saved_view_5` | View › Viewpoint › Saved view 5 | — | — | — | many times a session | alt-shift-5 | alt-shift-5 | alt-shift-5 | alt-shift-5 | as the first |
+| `saved_view_6` | View › Viewpoint › Saved view 6 | — | — | — | many times a session | alt-shift-6 | alt-shift-6 | alt-shift-6 | alt-shift-6 | as the first |
+| `saved_view_7` | View › Viewpoint › Saved view 7 | — | — | — | many times a session | alt-shift-7 | alt-shift-7 | alt-shift-7 | alt-shift-7 | as the first |
+| `saved_view_8` | View › Viewpoint › Saved view 8 | — | — | — | many times a session | alt-shift-8 | alt-shift-8 | alt-shift-8 | alt-shift-8 | as the first |
+| `saved_view_9` | View › Viewpoint › Saved view 9 | — | — | — | many times a session | alt-shift-9 | alt-shift-9 | alt-shift-9 | alt-shift-9 | as the first |
+
 ## Left without a key, on purpose
 
 "Keyless under" names the presets a command has no key in; "all" is all four.
 
 | Command | Menu | Studio | LeoCAD | LDCad | How often | Keyless under | Why |
 |---|---|---|---|---|---|---|---|
-| `library` | File › Library | — | — | — | once a session | all | Open (Ctrl-O) is the way in |
 | `import_ldraw` | File › Import › LDraw model (.ldr, .mpd) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_io` | File › Import › BrickLink Studio model (.io) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_lxf` | File › Import › LEGO® Digital Designer model (.lxf) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_mesh` | File › Import › 3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb) | — | — | — | once a model | all | a file chosen once, from File › Import |
-| `import_into` | File › Import › Into this model… | — | — | — | once a model | all | a model chosen once, then put where it goes |
 | `versions` | File › Versions | — | — | — | rarely | all | an older save, looked for now and then |
 | `compare` | File › Compare with | — | — | — | rarely | all | two versions side by side, now and then |
 | `export_ldraw` | File › Export › LDraw model (.ldr, or .mpd with its sub-models) | — | — | — | once a model | all | made once a model is done |
@@ -78,9 +132,6 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `export_bricklink` | File › Export › BrickLink wanted list (.xml) | — | — | — | once a model | all | made once a model is done |
 | `export_all` | File › Export › All my models (.zip) | — | — | — | once a model | all | made once a model is done |
 | `export_rebrickable` | File › Export › Rebrickable parts list (.csv) | — | — | — | once a model | all | made once a model is done |
-| `export_pickabrick` | File › Export › LEGO® Pick a Brick list (.csv) | — | — | — | once a model | all | made once a model is done |
-| `render` | File › Render | — | — (its POV-Ray and Blender Render have none) | — | once a model | all | a picture once a model is done; no field tool keys it |
-| `render_queue` | File › Render queue | — | — | — | rarely | all | pictures waiting, looked at after Render |
 | `share` | File › Share | — | — | — | once a model | all | a link once a model is done |
 | `together` | File › Build together | — | — | — | rarely | all | a session started once |
 | `comments` | File › Comments | — | — | — | rarely | all | read when someone comments |
@@ -92,14 +143,14 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `printed_versions` | Make › Printed versions | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
 | `brace` | (no menu row) | — | — | — | rarely | all | asks Claude to brace a weak part; on the part's own menu while Stress shows it weak |
 | `step_new` | Build › Build steps › New step from selection | Ctrl-T, Add a step | — | — (its Ctrl-Insert appends a step: Next step here) | every few minutes | LDCad | under LDCad's keys only: Shift-N leaves nesting, and Ctrl-Insert ends a step |
-| `booklet_turn_left` | Build › Booklet page › Turn the view left | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_turn_right` | Build › Booklet page › Turn the view right | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_tilt_up` | Build › Booklet page › Look from higher | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_tilt_down` | Build › Booklet page › Look from lower | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_this_view` | Build › Booklet page › Use this view for the step | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_usual_view` | Build › Booklet page › Usual view | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_zoom_in` | Build › Booklet page › Zoom in | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
-| `booklet_zoom_out` | Build › Booklet page › Zoom out | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_turn_left` | Build › Booklet page › Step's view › Turn the view left | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_turn_right` | Build › Booklet page › Step's view › Turn the view right | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_tilt_up` | Build › Booklet page › Step's view › Look from higher | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_tilt_down` | Build › Booklet page › Step's view › Look from lower | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_this_view` | Build › Booklet page › Step's view › Use this view for the step | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_usual_view` | Build › Booklet page › Step's view › Usual view | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_zoom_in` | Build › Booklet page › Step's view › Zoom in | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
+| `booklet_zoom_out` | Build › Booklet page › Step's view › Zoom out | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
 | `booklet_bigger` | Build › Booklet page › Bigger on the page | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
 | `booklet_smaller` | Build › Booklet page › Smaller on the page | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
 | `booklet_new_page` | Build › Booklet page › Start a new page | — (its Instruction Maker keys only A and D, a step's page) | — | — | while a booklet is laid out | all | a step's look in the booklet, set while one is laid out; most are buttons on the timeline's Booklet row too |
@@ -141,17 +192,15 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `cut_y` | View › Cut away by › A plane along Y | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
 | `cut_z` | View › Cut away by › A plane along Z | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
 | `cut_ghosts` | View › Cut away by › Leave a ghost of what is cut away | — | — | — | a few times a model | all | K cuts away and Shift-K flips it; the axis is picked once a cut |
-| `cut_box` | View › Cut away by › A box | — | — | — | a few times a model | all | K cuts away by the shape last chosen; the shape is picked once a cut, and its knobs and the strip do the rest |
-| `cut_sphere` | View › Cut away by › A sphere | — | — | — | a few times a model | all | K cuts away by the shape last chosen; the shape is picked once a cut, and its knobs and the strip do the rest |
-| `cut_cylinder` | View › Cut away by › A cylinder | — | — | — | a few times a model | all | K cuts away by the shape last chosen; the shape is picked once a cut, and its knobs and the strip do the rest |
 | `cut_grow` | View › Cut away by › Grow it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Grow is the strip's button |
 | `cut_shrink` | View › Cut away by › Shrink it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Shrink is the strip's button |
 | `stress` | View › Stress | — | — | — | a few times a model | all | Alt-K checks stability; Stress is the colour of it, looked at after |
-| `panel_parts` | View › Parts bin | — | — | — | once a session | all | a panel set once a session, and it stays |
-| `panel_assistant` | View › Assistant | — | — | — | once a session | all | a panel set once a session, and it stays |
-| `panel_properties` | View › Properties | — (Instruction Maker's inspector, Ctrl-Alt-2) | — | I, the information panel | once a session | all | a panel set once a session; I is X-ray here, used far more |
+| `stud_map` | View › Stud directions | — | — | — | once a design | all | a check of which way studs face, looked at once and put away; it shares Stress's layer, and Stress has none either |
+| `panel_parts` | View › Panels › Parts bin | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `panel_assistant` | View › Panels › Assistant | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `panel_properties` | View › Panels › Properties | — (Instruction Maker's inspector, Ctrl-Alt-2) | — | I, the information panel | once a session | all | a panel set once a session; I is X-ray here, used far more |
 | `show_properties` | (no menu row) | — | — | — | rarely | all | on a part's own menu, in no menu of the bar |
-| `panel_keys` | View › Key strip | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `panel_keys` | View › Panels › Key strip | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `collection` | File › My collection | — | — | — | rarely | all | the person's own bricks, looked at between builds |
 | `collection_need` | Build › What do I need? | — | — | — | rarely | all | the person's own bricks, looked at between builds |
 | `collection_build` | File › What can I build? | — | — | — | rarely | all | the person's own bricks, looked at between builds |
@@ -160,7 +209,7 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `suggest_sections` | Build › Suggest sections | — | — | — | rarely | all | a big model's sections, now and then; Y and Shift-Y are the ones used often |
 | `evaluate_section` | Build › Evaluate the section | — | — | — | rarely | all | a big model's sections, now and then; Y and Shift-Y are the ones used often |
 | `put_back` | Build › Put every section back | — | — | — | rarely | all | a big model's sections, now and then; Y and Shift-Y are the ones used often |
-| `panel_outliner` | View › Model tree | — | — | — | once a session | all | a panel set once a session, and it stays |
+| `panel_outliner` | View › Panels › Model tree | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `minifig` | Make › Minifigure builder | — | — | — | a few times a model | Mecabricks, LDCad | under Mecabricks' and LDCad's keys M is their Move |
 | `mosaic` | Make › Mosaic from a picture | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
 | `part_maker` | Make › Part maker | — | — | — | rarely | all | a maker of its own, opened once for what it makes |
@@ -169,6 +218,7 @@ is one of W, A, S and D. So the stud grid and Motions keep the app's own keys th
 | `mode_select` | Tools › Select tool | V, Default select mode | — | — | every few minutes | LDCad | under LDCad's keys only: V is LDCad's projection |
 | `mode_pan` | View › Pan tool | — | — | — | a few times a session | Studio, LDCad | under Studio's keys H is Hinge; under LDCad's H hides |
 | `mode_zoom` | View › Zoom tool | — | — | — | a few times a session | LDCad | under LDCad's keys only: Z fits, as LDCad's does |
+| `render_views` | View › Viewpoint › Render each saved view | — | — | — | once a model, again as it changes | all | a batch put in the render queue once a model; each saved view's picture is Render's Camera, under F9 |
 | `hidden_colours` | Tools › Colour the hidden parts | — | — | — | once a model | all | a big model's hidden parts, coloured once |
 | `reseat` | Tools › Seat parts on their studs | — | — | — | rarely | all | a repair after an import |
 | `connector` | Tools › Connect your AI | — | — | — | rarely | all | set up once |

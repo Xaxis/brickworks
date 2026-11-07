@@ -555,7 +555,7 @@ func populate() -> void:
 			offerable += 1
 	_offerable = offerable
 	library.prepare_search()
-	_search.placeholder_text = "Search %s parts…" % _comma(offerable)
+	_search.placeholder_text = _search_hint(_category)
 	_build_categories()
 	_build_swatches()
 	_run_search("")
@@ -1308,11 +1308,43 @@ func _on_category(name: String) -> void:
 	if name == LIKE:
 		_like_of = _like_subject()
 		_swapped_in = ""
+	_words_for(name)
 	_category = name
 	for child: Node in _category_row.get_children():
 		var button: Button = child
 		button.button_pressed = str(button.get_meta("category", "")) == name
 	_search_soon(_search.text)
+
+
+## Like this and Fits are about a part, not the last search: each, chosen,
+## starts from no words, and what was typed for the rest of the bin is kept
+## and put back when it is left. Words typed while in one narrow it. A 2 x 4
+## brick's Like this after "1x4 brick" listed only bricks and no plate in its
+## first twelve (APP_UX4 likewords). Before [param name] is the category.
+func _words_for(name: String) -> void:
+	var was: bool = _category in ABOUT_A_PART
+	if name in ABOUT_A_PART and name != _category:
+		if not was:
+			_typed_before = _search.text
+		_search.text = ""
+	elif was and not name in ABOUT_A_PART:
+		_search.text = _typed_before
+		_search.caret_column = _search.text.length()
+		_typed_before = ""
+	_search.placeholder_text = _search_hint(name)
+
+
+## What the search's empty box says typing in it does, in [param category].
+func _search_hint(category: String) -> String:
+	if category in ABOUT_A_PART:
+		return "Narrow these parts…"
+	return "Search %s parts…" % _comma(_offerable) if _offerable > 0 else "Search parts…"
+
+
+## The shelves about a part, which start from no words (_words_for), and what
+## was typed for the rest of the bin meanwhile.
+const ABOUT_A_PART: Array[String] = [FITS, LIKE]
+var _typed_before: String = ""
 
 
 func _on_search_typed(text: String) -> void:
@@ -3093,19 +3125,37 @@ func _update_status() -> void:
 		_status.text = "Reading the parts' sizes and kinds…"
 		_status.tooltip_text = ""
 		return
-	if _category == LIKE and total > 0:
+	# The words typed there narrow it, and are said with it.
+	var words: String = _search.text.strip_edges()
+	# None, with nothing else left out (Only parts made in it, Prints cleared).
+	var none: bool = total == 0 and not _only_made.button_pressed and _prints.button_pressed
+	if _category == LIKE and (total > 0 or none and not words.is_empty()):
 		var like: PartLibrary.PartInfo = library.parts.get(_like_of)
-		_status.text = ("Parts like %s: its size and kind first; a tap swaps the selection"
-			if by_finger else "Parts like %s: its size and kind first; a double-click swaps the selection") \
-			% (tile_name(like) if like != null else _like_of)
+		var named: String = tile_name(like) if like != null else _like_of
+		if total == 0:
+			_status.text = "No part like %s has “%s”" % [named, words]
+		elif words.is_empty():
+			_status.text = ("Parts like %s: its size and kind first; a tap swaps the selection"
+				if by_finger else "Parts like %s: its size and kind first; a double-click swaps the selection") \
+				% named
+		else:
+			_status.text = ("Parts like %s, with “%s”: its size and kind first; a tap swaps the selection"
+				if by_finger
+				else "Parts like %s, with “%s”: its size and kind first; a double-click swaps the selection") \
+				% [named, words]
 		_status.tooltip_text = ("Five of its size and kind, then the rest of its size by use, nearby kinds "
 			+ "among them, then its kind in other sizes; its prints folded under it")
 		return
-	if _category == FITS and total > 0:
+	if _category == FITS and (total > 0 or none and not words.is_empty()):
 		var about: PartLibrary.PartInfo = library.parts.get(_fits_of[0])
-		_status.text = "What fits %s, the best fits first" % (
-			tile_name(about) if _fits_of.size() == 1 and about != null
-			else "the %d parts selected" % _fits_of.size())
+		var what: String = tile_name(about) if _fits_of.size() == 1 and about != null \
+			else "the %d parts selected" % _fits_of.size()
+		if total == 0:
+			_status.text = "Nothing that fits %s has “%s”" % [what, words]
+		elif words.is_empty():
+			_status.text = "What fits %s, the best fits first" % what
+		else:
+			_status.text = "What fits %s, with “%s”, the best fits first" % [what, words]
 		_status.tooltip_text = ("A pin in its holes, a bar in its clip, the other half of a hinge, "
 			+ "then what sits on its studs, the most used first")
 		return
@@ -4334,8 +4384,10 @@ func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
 	_count_chips()
 	# The whole set in sight: what was typed or chosen is let go.
 	_search.text = ""
+	_typed_before = ""
 	_pending = false
 	_category = "All"
+	_search.placeholder_text = _search_hint(_category)
 	for child: Node in _category_row.get_children():
 		(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
 	_recount(false)
@@ -4365,11 +4417,11 @@ func _follow_booklet(number: String, file: String) -> void:
 	# Read off the frame, as a model opened is: a set's file is a few
 	# hundred parts, and the repository's largest tens of thousands.
 	var parsed: Array = []
-	var reading: int = WorkerThreadPool.add_task(func() -> void:
-		parsed.append(LdrModel.parse(text, str(chosen["file"]))))
+	var reading: int = WorkerTasks.add(func() -> void:
+		parsed.append(LdrModel.parse(text, str(chosen["file"]))), false, "read a set's model")
 	while not WorkerThreadPool.is_task_completed(reading):
 		await get_tree().process_frame
-	WorkerThreadPool.wait_for_task_completion(reading)
+	WorkerTasks.collect(reading)
 	_booklet = SetBooklet.make(parsed[0], model_name(chosen), str(chosen["file"]), _set_bin, library)
 	_step = 0
 	_step_by_hand = false

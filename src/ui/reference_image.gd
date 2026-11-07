@@ -94,7 +94,9 @@ var _mesh: MeshInstance3D
 var _quad: QuadMesh
 var _material: StandardMaterial3D
 var _overlays: ViewOverlays
-var _files: PictureFile
+## The picture chooser (PictureFile), made the first time a picture is asked
+## for (Later): null until then.
+var _files: Node = null
 ## A press on it that has not been let go: {at, view, corner (-1 for the
 ## picture itself), centre, width, grip, moved}.
 var _press: Dictionary = {}
@@ -137,11 +139,6 @@ func _ready() -> void:
 	_overlays.camera = camera
 	_overlays.draw_in = _draw_corners
 	add_child(_overlays)
-	_files = PictureFile.new()
-	_files.title = "Choose a picture to build over"
-	_files.picked.connect(take)
-	_files.failed.connect(func(why: String) -> void: say.call(why))
-	add_child(_files)
 	_make_dialog()
 	set_process(false)
 	if builder != null:
@@ -158,11 +155,22 @@ func has_picture() -> bool:
 	return not _data.is_empty()
 
 
+## A picture asked for: the chooser made the first time.
+func _choose() -> void:
+	if _files == null:
+		_files = Later.make(&"PictureFile")
+		_files.title = "Choose a picture to build over"
+		_files.picked.connect(take)
+		_files.failed.connect(func(why: String) -> void: say.call(why))
+		add_child(_files)
+	_files.ask()
+
+
 ## The command: a picture to choose when there is none, else its settings,
 ## the picture picked out.
 func open() -> void:
 	if not has_picture():
-		_files.ask()
+		_choose()
 		return
 	_fill()
 	_dialog.popup()
@@ -516,7 +524,7 @@ func _use(data: String) -> bool:
 	if data.is_empty() or data.length() > MOST_KEPT:
 		return false
 	var bytes: PackedByteArray = Marshalls.base64_to_raw(data)
-	var image: Image = PictureFile.decode(bytes, "webp") if not bytes.is_empty() else null
+	var image: Image = Later.script(&"PictureFile").decode(bytes, "webp") if not bytes.is_empty() else null
 	if image == null or image.is_empty():
 		return false
 	_aspect = float(image.get_height()) / maxf(1.0, image.get_width())
@@ -608,7 +616,7 @@ func _make_dialog() -> void:
 	chosen.add_child(_named)
 	var another := Button.new()
 	another.text = "Choose another…"
-	another.pressed.connect(func() -> void: _files.ask())
+	another.pressed.connect(_choose)
 	chosen.add_child(another)
 	column.add_child(chosen)
 

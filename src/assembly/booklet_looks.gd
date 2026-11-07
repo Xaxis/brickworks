@@ -18,11 +18,13 @@
 ## "end", "zoom": float, "size": float, "page": "new"|"alone", "parts":
 ## false, "place": {item: [x, y, w, h]}, "notes": [note]}. A sub-model's:
 ## {"callout": false}. The booklet's: {"per_page": 1, 2 or 4, "highlight":
-## false}. "|data": {name: base64} holds the pictures a page shows.
+## false, "sheet": its page set up (BookletSheet.said)}. "|data": {name:
+## base64} holds the pictures a page shows, and the one behind every page.
 ##
 ## The page laid out by hand: "place" puts the step's own items where its
 ## designer dragged them, in millimetres from the page's top left corner
-## (Booklet.PAGE, 269 x 199): "picture" [x, y, w, h], "parts" [x, y, w]
+## (269 x 199, or the page as it is set up, BookletSheet): "picture" [x, y,
+## w, h], "parts" [x, y, w]
 ## (as tall as its parts need), "callout" [x, y, w, h], "number" [x, y].
 ## An item not placed is laid out as the booklet lays it. "notes" are what
 ## a designer adds to the step's page: {"text": words, "at": [x, y, w, h],
@@ -73,7 +75,8 @@
 ## "0 !:" lines, at the end of the file, and "... ARROW RED 0.9 x1 y1 x2 y2
 ## [bx by ...]"; "... NOTE TURN 30 OPACITY 50" after the words or picture it
 ## turns and fades; "... TURN_SIGN OFF" on a step whose turn sign was taken
-## off; "... GUIDE X 120" in the model, a guide each.
+## off; "... GUIDE X 120" in the model, a guide each; "... PAGE_SETUP A4
+## PORTRAIT MARGIN 12 ..." in the model, its page (BookletSheet).
 ##
 ## A step's "section" is the booklet's chapter that starts on it: the name
 ## its banner prints ("island", "part 2"), in force on every step after it
@@ -95,7 +98,7 @@ const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
 	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE",
-	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION"]
+	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP"]
 ## How far a step's parts are pulled out by default, in studs (Studio's
 ## buffer exchange), and the most.
 const PULL_STUDS := 2.0
@@ -108,6 +111,10 @@ const DATA := "|data"
 const ITEMS: Dictionary = {"picture": 4, "parts": 3, "callout": 4, "number": 2}
 ## The names a page's picture is kept under in the file, as LDraw's !DATA.
 const IMAGE_PREFIX := "brickworks-page-"
+## Base64 as RFC 4648 writes it and LDraw's !DATA asks for: its alphabet,
+## padded to whole quads at the end alone.
+const BASE64 := "^[A-Za-z0-9+/]*={0,2}$"
+const PNG_HEAD: PackedByteArray = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
 ## The colours an arrow of the designer's comes in: a booklet's red, which
 ## points where a part goes in, and the black of its callout arrows.
 const ARROW_COLOURS: Dictionary = {"red": "#d01012", "black": "#15191e"}
@@ -156,6 +163,36 @@ static func highlight_on(world: BrickWorld) -> bool:
 ## The pictures a booklet's pages show, name -> base64.
 static func images(world: BrickWorld) -> Dictionary:
 	return world.step_looks.get(DATA, {})
+
+
+## What a page's picture is, from its base64 [param data]: "png" or "jpeg",
+## or "" when it is neither or is not strict base64. A model file, or the
+## person across a Together session, gives these, and the booklet writes
+## each into its HTML: anything but base64 there could break out of the
+## page and run in it.
+static func picture_kind(data: String) -> String:
+	if data.length() % 4 != 0 or RegEx.create_from_string(BASE64).search(data) == null:
+		return ""
+	var head: PackedByteArray = Marshalls.base64_to_raw(data.substr(0, 12))
+	if head.size() >= 8 and head.slice(0, 8) == PNG_HEAD:
+		return "png"
+	if head.size() >= 3 and head[0] == 0xFF and head[1] == 0xD8 and head[2] == 0xFF:
+		return "jpeg"
+	return ""
+
+
+## [param pictures] (name -> base64) less any that is not a PNG or a JPEG
+## in base64 ([method picture_kind]), each said in the log. The words that
+## show it stay, and show nothing.
+static func kept_pictures(pictures: Dictionary) -> Dictionary:
+	var kept: Dictionary = {}
+	for name: Variant in pictures:
+		if picture_kind(str(pictures[name])).is_empty():
+			push_warning("left out a page's picture, %s: it is not a PNG or a JPEG in base64"
+				% str(name).c_escape())
+			continue
+		kept[name] = pictures[name]
+	return kept
 
 
 ## The guides dragged onto the booklet's pages: {"x": [mm], "y": [mm]}.
@@ -478,6 +515,8 @@ static func _usual(field: String, value: Variant) -> bool:
 			return bool(value)
 		"place", "notes", "arrows", "panel":
 			return (value is Dictionary or value is Array) and value.is_empty()
+		"sheet":
+			return not (value is Dictionary) or (value as Dictionary).is_empty()
 		"guides":
 			return value is Dictionary and (value as Dictionary).values().all(
 				func(lines: Variant) -> bool: return not (lines is Array) or (lines as Array).is_empty())
@@ -994,6 +1033,40 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	return out
 
 
+## Of [param looks] ([method read]'s), the booklet's own (BOOKLET: its page
+## set up, guides, steps a page and the like) and the picture behind its
+## pages: what holds for the whole booklet whoever's its steps are.
+static func booklet_wide(looks: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if not looks.has(BOOKLET):
+		return out
+	out[BOOKLET] = looks[BOOKLET]
+	var behind: String = str(((looks[BOOKLET] as Dictionary).get("sheet", {}) as Dictionary)
+		.get("picture", ""))
+	if (looks.get(DATA, {}) as Dictionary).has(behind):
+		out[DATA] = {behind: looks[DATA][behind]}
+	return out
+
+
+## [param looks] ([method read]'s) with the whole booklet's of [param wide]
+## in place of its own: each step's, and the pictures they show, as they
+## were.
+static func with_booklet_wide(looks: Dictionary, wide: Dictionary) -> Dictionary:
+	var out: Dictionary = looks.duplicate()
+	out.erase(BOOKLET)
+	var pictures: Dictionary = (looks.get(DATA, {}) as Dictionary).duplicate()
+	var behind: String = str(((looks.get(BOOKLET, {}) as Dictionary).get("sheet", {}) as Dictionary)
+		.get("picture", ""))
+	pictures.erase(behind)
+	pictures.merge(booklet_wide(wide).get(DATA, {}), true)
+	out.erase(DATA)
+	if not pictures.is_empty():
+		out[DATA] = pictures
+	if wide.has(BOOKLET):
+		out[BOOKLET] = wide[BOOKLET]
+	return out
+
+
 ## The looks a model's file gives its steps, keyed as BrickWorld keeps them
 ## ([param names]: sub-model key -> the name its assembly goes by,
 ## LdrModel._assembly_names; the model's own section is "").
@@ -1156,12 +1229,21 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 					var kept: Dictionary = (out.get(BOOKLET, {}) as Dictionary).get("guides",
 						{"x": [], "y": []})
 					(kept[value.to_lower()] as Array).append(snappedf(clampf(words[4].to_float(),
-						0.0, Booklet.PAGE.x if value == "X" else Booklet.PAGE.y), 0.1))
+						0.0, BookletSheet.LONGEST), 0.1))
 					_put_in(out, BOOKLET, "guides", kept)
+			"PAGE_SETUP":
+				var sheet: Dictionary = BookletSheet.read_words(words.slice(3))
+				if not sheet.is_empty():
+					_put_in(out, BOOKLET, "sheet", sheet)
 	if not data_name.is_empty():
 		pictures[data_name] = "".join(data)
-	# Only the pictures a page shows.
+	pictures = kept_pictures(pictures)
+	# Only the pictures a page shows, and the one behind every page.
 	var shown: Dictionary = {}
+	var behind: String = str(((out.get(BOOKLET, {}) as Dictionary).get("sheet", {}) as Dictionary)
+		.get("picture", ""))
+	if pictures.has(behind):
+		shown[behind] = pictures[behind]
 	for name: String in out:
 		for note: Dictionary in (out[name] as Dictionary).get("notes", []):
 			if note.has("image") and pictures.has(str(note["image"])):
@@ -1180,7 +1262,7 @@ static func _numbers(words: PackedStringArray, from: int, count: int) -> Array:
 	for at: int in range(from, from + count):
 		if not words[at].is_valid_float():
 			return []
-		out.append(clampf(words[at].to_float(), -Booklet.PAGE.x, Booklet.PAGE.x * 2.0))
+		out.append(clampf(words[at].to_float(), -BookletSheet.LONGEST, BookletSheet.LONGEST * 2.0))
 	return out
 
 
@@ -1208,6 +1290,195 @@ static func _put_in(out: Dictionary, name: String, field: String, value: Variant
 	var look: Dictionary = out.get(name, {})
 	look[field] = value
 	out[name] = look
+
+
+# -- the looks another copy of the app sent -------------------------------------
+
+## [param raw], the looks the other side of Build together sent, made precise
+## as [method read] makes a file's: each key a step's, a sub-model's, the
+## booklet's or the pages' pictures, each field of its own kind and in the
+## range a file's line gives it. A field of another kind or name, or a picture
+## not in strict base64, is left out and named in [param dropped].
+static func typed(raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
+	var out: Dictionary = {}
+	for name: Variant in raw:
+		var given: Variant = raw[name]
+		if not name is String or not (name as String).contains("|") or (name as String).length() > 400 \
+				or not given is Dictionary or out.size() >= TogetherWords.ENTRIES_MOST:
+			dropped.append("look %s" % str(name).left(40))
+			continue
+		var look: Dictionary = {}
+		for field: Variant in given:
+			var value: Variant = _typed_picture(field, given[field]) if name == DATA \
+				else _typed_field(str(field), given[field]) if field is String else null
+			if value == null:
+				dropped.append("%s of look %s" % [str(field).left(40), str(name).left(40)])
+			else:
+				look[field] = value
+		if not look.is_empty():
+			out[name] = look
+	return out
+
+
+## A page's picture by its name, as a file's !DATA names one: its base64
+## when it is a PNG or a JPEG ([method picture_kind]), or null. With
+## [param data] null, whether the name is one.
+static func _typed_picture(name: Variant, data: Variant) -> Variant:
+	if not name is String or not (name as String).begins_with(IMAGE_PREFIX) \
+			or (name as String).contains("..") or (name as String).length() > 120 \
+			or RegEx.create_from_string("^[a-z0-9._-]+$").search(name) == null:
+		return null
+	if data == null:
+		return name
+	return data if data is String and not picture_kind(data).is_empty() else null
+
+
+static func _typed_field(field: String, value: Variant) -> Variant:
+	var page: float = BookletSheet.LONGEST
+	match field:
+		"turn":
+			if value is String:
+				return value if value == "end" else null
+			return _typed_numbers(value, [3], -3600.0, 3600.0)
+		"how":
+			return value if value is String and value in ["REL", "ABS", "ADD"] else null
+		"line", "section":
+			return (value as String).left(400) if value is String else null
+		"zoom":
+			return _typed_number(value, 0.25, 4.0)
+		"size":
+			return _typed_number(value, 0.4, 3.0)
+		"page":
+			return value if value is String and value in ["new", "alone"] else null
+		"parts", "sign", "colours", "preview", "callout", "highlight", "colours_all":
+			return value if value is bool else null
+		"per_page":
+			return value if (value is int or value is float) and float(value) in [1.0, 2.0, 4.0] \
+				else null
+		"panel":
+			return _typed_numbers(value, [4], -page, page * 2.0)
+		"place":
+			if not value is Dictionary:
+				return null
+			var place: Dictionary = {}
+			for item: Variant in value:
+				var at: Variant = _typed_numbers(value[item], [int(ITEMS.get(item, 0))], -page,
+					page * 2.0) if ITEMS.has(item) else null
+				if at != null:
+					place[item] = at
+			return place
+		"notes":
+			return _typed_list(value, func(note: Dictionary) -> Variant: return _typed_note(note))
+		"arrows":
+			return _typed_list(value, func(arrow: Dictionary) -> Variant:
+				var at: Variant = _typed_numbers(arrow.get("at"), range(4, (MOST_BENDS + 2) * 2 + 1, 2),
+					-page, page * 2.0)
+				if at == null or not str(arrow.get("colour", "")) in ARROW_COLOURS \
+						or not TogetherWords.number(arrow.get("width"), 10.0):
+					return null
+				return {"at": at, "colour": arrow["colour"], "width": arrow["width"]})
+		"pull":
+			if not value is Dictionary or _typed_number(value.get("studs"), 0.5, PULL_MOST) == null:
+				return null
+			var parts: Variant = _typed_words(value.get("parts", []))
+			return {"studs": _typed_number(value["studs"], 0.5, PULL_MOST), "parts": parts} \
+				if parts != null else null
+		"actual_size":
+			return value if value is bool else _typed_words(value)
+		"guides":
+			if not value is Dictionary:
+				return null
+			var guides: Dictionary = {}
+			for axis: Variant in value:
+				var lines: Variant = _typed_numbers(value[axis], range(0, 201), 0.0, page) \
+					if axis in ["x", "y"] else null
+				if lines != null:
+					guides[axis] = lines
+			return guides
+		"sheet":
+			if not value is Dictionary:
+				return null
+			var fields: Dictionary = {}
+			for key: Variant in value:
+				if key is String and (key != "picture" or _typed_picture(value[key], null) != null):
+					fields[key] = value[key]
+			return BookletSheet.from(fields).said()
+	return null
+
+
+## Words on the page, or a picture: {text, at, size} or {image, at}, each
+## turned and faded or not.
+static func _typed_note(note: Dictionary) -> Variant:
+	var page: float = BookletSheet.LONGEST
+	var at: Variant = _typed_numbers(note.get("at"), [4], -page, page * 2.0)
+	if at == null:
+		return null
+	var out: Dictionary = {"at": at}
+	if note.get("text") is String:
+		out["text"] = (note["text"] as String).left(4000)
+		if note.has("size"):
+			var size: Variant = _typed_number(note["size"], 1.5, 40.0)
+			if size == null:
+				return null
+			out["size"] = size
+	elif note.get("image") is String and _typed_picture(note["image"], null) != null:
+		out["image"] = note["image"]
+	else:
+		return null
+	for field: String in ["turn", "opacity"]:
+		if note.has(field):
+			var value: Variant = _typed_number(note[field], -360.0 if field == "turn" else FAINTEST,
+				360.0 if field == "turn" else 1.0)
+			if value == null:
+				return null
+			out[field] = value
+	return out
+
+
+## [param value] when it is an array of dictionaries, each as [param each]
+## makes it (null leaves it out); null when it is not an array.
+static func _typed_list(value: Variant, each: Callable) -> Variant:
+	if not value is Array:
+		return null
+	var out: Array = []
+	for item: Variant in value:
+		if item is Dictionary and out.size() < 500:
+			var made: Variant = each.call(item)
+			if made != null:
+				out.append(made)
+	return out
+
+
+## A number within [param lo] and [param hi], the kind it was kept as.
+static func _typed_number(value: Variant, lo: float, hi: float) -> Variant:
+	if not TogetherWords.number(value, INF):
+		return null
+	if float(value) >= lo and float(value) <= hi:
+		return value
+	return clampf(float(value), lo, hi)
+
+
+## An array of so many numbers as [param counts] allows, each within range.
+static func _typed_numbers(value: Variant, counts: Array, lo: float, hi: float) -> Variant:
+	if not value is Array or not (value as Array).size() in counts:
+		return null
+	var out: Array = []
+	for one: Variant in value:
+		var number: Variant = _typed_number(one, lo, hi)
+		if number == null:
+			return null
+		out.append(number)
+	return out
+
+
+## Part ids, lowercase, as a step's extras name them.
+static func _typed_words(value: Variant) -> Variant:
+	if not value is Array or (value as Array).size() > 500:
+		return null
+	for one: Variant in value:
+		if not one is String or (one as String).length() > 64:
+			return null
+	return value
 
 
 ## Whether [param text] has any of the lines these are written as.
@@ -1318,6 +1589,10 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	# The pictures the pages show, each as LDraw's embedded file, at the end.
 	var pictures: Dictionary = looks.get(DATA, {})
 	var shown: Dictionary = {}
+	var whole: Variant = looks.get(BOOKLET, {})
+	var sheet: Variant = (whole as Dictionary).get("sheet", {}) if whole is Dictionary else {}
+	if sheet is Dictionary and pictures.has(str((sheet as Dictionary).get("picture", ""))):
+		shown[str(sheet["picture"])] = true
 	for name: String in looks:
 		for note: Variant in (looks[name] as Dictionary).get("notes", []) \
 				if looks[name] is Dictionary else []:
@@ -1356,6 +1631,10 @@ static func _booklet_lines(out: PackedStringArray, whole: Dictionary, eol: Strin
 	for axis: String in ["x", "y"]:
 		for at: Variant in kept.get(axis, []):
 			out.append(META + "GUIDE %s %s" % [axis.to_upper(), _number(snappedf(float(at), 0.1))] + eol)
+	if whole.get("sheet") is Dictionary and not (whole["sheet"] as Dictionary).is_empty():
+		var said: String = BookletSheet.from(whole["sheet"]).line_words()
+		if not said.is_empty():
+			out.append(META + "PAGE_SETUP " + said + eol)
 
 
 ## The end of a section: the looks of its last step, which has no line
@@ -1690,10 +1969,14 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 		% [int(kinds.get("steps", 0)), int(kinds.get("callout", 0)), steps,
 			"as many as fit" if most == 0 else "at most %d" % most,
 			"the parts each step adds outlined" if highlight_on(world) else "new parts not outlined"]
-		+ "finished model and the parts list. Places are in mm on a 269 x 199 page, and "
+		+ "finished model and the parts list. Places are in mm on the %s x %s page, and " % [
+			_number(BookletSheet.of(world).size().x), _number(BookletSheet.of(world).size().y)]
 		+ "each step's new parts are where its picture shows them: point an arrow there. A step "
 		+ "left to the booklet is seen from the front here, and may be drawn turned round: "
 		+ "give it turn= to be sure.")
+	var sheet: BookletSheet = BookletSheet.of(world)
+	told.append("The page: %s%s." % [sheet.words(), "" if not sheet.usual()
+		else " (page_setup sets it up)"])
 	if bool(booklet(world).get("colours_all", false)):
 		told.append("Every step lists its colours under its number.")
 	var lines: Dictionary = guides(world)

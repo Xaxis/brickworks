@@ -577,7 +577,9 @@ for host in https://api.anthropic.com https://api.openai.com; do
 done
 reach="'self' https://overlook.technology https://commons.wikimedia.org https://upload.wikimedia.org https://rebrickable.com https://api.brickognize.com ${connect_extra}"
 closed="object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
-site_csp="default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src ${reach}; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
+# blob: in the site's connect-src: a model page's In your room writes its GLB
+# in the page and hands <model-viewer> its blob: address (web/room.js).
+site_csp="default-src 'self'; script-src 'self'; worker-src 'self' blob:; connect-src ${reach} blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
 csp="default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' ${inline_hashes}; worker-src 'self' blob:; connect-src ${reach} ${providers} http://127.0.0.1:* http://localhost:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; media-src 'self' blob:; ${closed}"
 # Where Claude sends someone to sign in (web/authorize.html). Stricter than
 # the app's: no eval, and it talks only to itself and the sign-in service.
@@ -654,6 +656,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]mpd", "dest": "/api/share?op=file&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&v=\$2&as=\$3" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/scene[.]json", "dest": "/api/share?op=scene&id=\$1&v=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/room[.]json", "dest": "/api/share?op=room&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]png", "dest": "/api/share?op=image&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/?", "dest": "/api/share?op=page&id=\$1" },
@@ -663,6 +666,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})[.]mpd", "dest": "/api/share?op=file&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/scene[.]json", "dest": "/api/share?op=scene&id=\$1" },
+    { "src": "/m/([A-Za-z0-9]{10})/room[.]json", "dest": "/api/share?op=room&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/oembed/?", "dest": "/api/share?op=oembed" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
@@ -689,8 +693,11 @@ $docs_moved
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]mpd", "dest": "/api/share?op=set_file&id=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/parts[.](json|xml|csv)", "dest": "/api/share?op=set_parts&id=\$1&as=\$2" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/scene[.]json", "dest": "/api/share?op=set_scene&id=\$1" },
+    { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/room[.]json", "dest": "/api/share?op=set_room&id=\$1" },
     { "src": "/parts/(.*[.](lbm|bwx))", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
+    { "src": "/model-viewer-[0-9.]+/(.*)", "headers": {
+        "Cache-Control": "public, max-age=31536000, immutable" }, "continue": true },
     { "src": "/(.*)",
       "headers": {
         "Cross-Origin-Opener-Policy": "same-origin-allow-popups",

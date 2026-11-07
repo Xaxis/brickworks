@@ -45,6 +45,9 @@ var _figure_ghosts: Array[MeshInstance3D] = []
 ## or a selection picked up to move it. See [Carry].
 var carrying: Carry
 
+## A train track in hand on a free end of a track down (TrackSnap).
+var tracks := TrackSnap.new()
+
 var _ghost: MeshInstance3D
 var _ghost_material: ShaderMaterial
 var _ghost_valid: bool = false
@@ -197,13 +200,36 @@ func place() -> int:
 	var packed: PackedInt32Array = boxes_for(part, _ghost_transform)
 	lattice.occupy_boxes(brick_id, packed)
 
-	_history.append({"undo": "remove", "brick": brick_id})
+	var step: Dictionary = {"undo": "remove", "brick": brick_id}
+	# The sleeper a train track's joint needs goes down with it, in the same
+	# undo (TrackSnap).
+	if tracks.on_end and not tracks.sleepers.is_empty():
+		step = {"undo": "group", "steps": [step] + _put_sleepers(tracks.sleepers)}
+	_history.append(step)
 	_redo.clear()
 	below = maxf(0.0, -part.lowest_at(_ghost_transform)) if part != null else 0.0
 	# A number typed is spent once it is put down: the next follows the pointer.
 	_typed_from = null
 	placed.emit(brick_id, held_part)
 	return brick_id
+
+
+## Sleepers put down under a train track's joint ([member tracks]), as
+## [method place] puts a part: [part, colour, where] each. Their undo steps.
+func _put_sleepers(list: Array) -> Array:
+	var steps: Array = []
+	for one: Array in list:
+		var where: Transform3D = one[2]
+		var sleeper: int = world.add_brick(str(one[0]), int(one[1]), where)
+		if sleeper == 0:
+			continue
+		set_path(world.get_brick(sleeper), place_group)
+		world.get_brick(sleeper).step = _new_step(world.get_brick(sleeper))
+		var mesh: Lbm.PartMesh = library.mesh_for(str(one[0]))
+		if mesh != null:
+			lattice.occupy_boxes(sleeper, boxes_for(mesh, where))
+		steps.append({"undo": "remove", "brick": sleeper})
+	return steps
 
 
 ## How far the part last put down reaches below the ground, in LDU, for the
@@ -1570,12 +1596,20 @@ func mirror_selection(axis: int) -> int:
 	return made.size()
 
 
+## The parts the last mirror made that are no mirror image of what they were
+## made from: a part made in one hand only and the same no way round, turned
+## as near its reflection as it goes (Mirror.image). The person is told
+## which; empty when every part is its reflection.
+var no_image := PackedInt64Array()
+
+
 ## [method mirror_selection] on the bricks [param alive], across the plane at
 ## [param across] LDU when it is given (on a half stud), and with [param copy]
 ## a mirrored copy put down and the bricks left where they are: a session's
 ## mirror_parts (HandTools). The new bricks, or none.
 func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 		copy: bool = false) -> PackedInt64Array:
+	no_image = PackedInt64Array()
 	if alive.is_empty():
 		return PackedInt64Array()
 	var bricks: Array = []
@@ -1592,16 +1626,10 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 			BrickLattice.STUD * 0.5)
 	var plan: Array = []
 	for brick: BrickWorld.Brick in bricks:
-		var part: String = brick.part_id
-		var other: String = Mirror.counterpart(library, part)
-		if not other.is_empty() and library.mesh_for(other) != null:
-			part = other
-		# A part not swapped for its other hand is turned to look reflected
-		# by its own shape.
-		var at: Transform3D = _tidy(Mirror.reflected(brick.transform, axis, across,
-			library.mesh_for(part) if part == brick.part_id else null),
-			BrickLattice.is_square_to_grid(brick.transform.basis))
-		plan.append({"brick": brick, "part": part, "at": at})
+		var image: Dictionary = Later.script(&"Mirror").image(library, brick.part_id,
+			brick.transform, axis, across, true)
+		plan.append({"brick": brick, "part": str(image["part"]), "exact": bool(image["exact"]),
+			"at": _tidy(image["at"], BrickLattice.is_square_to_grid(brick.transform.basis))})
 	var picked: Dictionary = {}
 	for brick_id: int in alive:
 		picked[brick_id] = true
@@ -1646,6 +1674,8 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 		lattice.occupy_boxes(new_id, item["boxes"])
 		steps.push_front({"undo": "remove", "brick": new_id})
 		made.append(new_id)
+		if not bool(item["exact"]):
+			no_image.append(new_id)
 	_history.append({"undo": "group", "steps": steps,
 		"words": ("mirrored a copy of %s" if copy else "mirrored %s") % _many(made.size())})
 	_redo.clear()
@@ -2236,18 +2266,16 @@ func _put_carried() -> int:
 		world.get_brick(brick_id).unit = unit
 		if not carrying.lifted and copy_group.is_valid():
 			set_path(world.get_brick(brick_id), path)
-		# Moved, a part keeps its build step, and so does a model brought
-		# in whole; a copy goes in the step a placed part would.
-		world.get_brick(brick_id).step = int(item.get("step", -1)) \
-			if carrying.lifted or carrying.brought else _new_step(world.get_brick(brick_id))
+		# Moved, a part keeps its build step; a copy goes in the step a
+		# placed part would.
+		world.get_brick(brick_id).step = int(item.get("step", -1)) if carrying.lifted \
+			else _new_step(world.get_brick(brick_id))
 		lattice.occupy_boxes(brick_id, item["boxes"])
 		steps.append({"undo": "remove", "brick": brick_id})
 		ids.append(brick_id)
 	if ids.is_empty():
 		return 0
 	var words: String = "pasted %s" % _many(ids.size())
-	if carrying.brought:
-		words = _bring_steps(steps, renamed, ids)
 	if carrying.lifted and _lift_on_top():
 		# One move: what picked it up and what put it down undo together.
 		steps.append_array(_history.pop_back()["steps"])
@@ -2271,55 +2299,6 @@ func _put_carried() -> int:
 	return ids[0]
 
 
-# -- a model brought into this one -------------------------------------------
-
-
-## The step a model brought into this one whole goes on in, within the
-## sub-assembly being edited ([member place_group]): the step showing, as a
-## part put down by hand goes in, else after that one's last step, built
-## last and put on last; -1, none, in a model nobody gave steps. Its own
-## parts, [param skip], are not counted.
-func _brought_step(skip: Dictionary) -> int:
-	var shown: int = int(place_step.call(place_group)) if place_step.is_valid() else -1
-	if shown >= 0:
-		return shown
-	var had: Array = AuthorSteps.steps_in(world, AuthorSteps.home(world, place_group), skip)
-	return int(had.max()) + 1 if not had.is_empty() else -1
-
-
-## A model brought in whole, its parts [param ids] down: each copy of a
-## sub-model in it (Carry.brought_units) put on in the step its author gave
-## it, under the path this put-down gave it ([param renamed]), and the whole
-## after the last step of the one it went into ([method _brought_step]).
-## Into a model nobody gave steps, one that has them makes the steps that
-## model was shown its own first (AuthorSteps.adopt_plan), as its first step
-## edit would: else its parts, numbered after the steps brought in, came
-## after them, every step one later than the person had read it. Each a
-## step of [param steps], so the one undo that takes its parts off takes
-## these too. What the history calls it.
-func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> String:
-	var skip: Dictionary = {}
-	for brick_id: int in ids:
-		skip[brick_id] = true
-	var stepped: bool = carrying.brought_units.values().any(
-		func(step: Variant) -> bool: return int(step) >= 0) or carrying.items.any(
-		func(item: Dictionary) -> bool: return int(item.get("step", -1)) >= 0)
-	if stepped:
-		steps.append_array(AuthorSteps.adopt_plan(world, library, skip))
-	var at: int = _brought_step(skip)
-	var whole: String = ""
-	for path: String in carrying.brought_units:
-		var now: String = str(renamed.get(path, path))
-		var step: int = int(carrying.brought_units[path])
-		if step == -1 and not path.contains("/"):
-			whole = now
-			step = at
-		if step != -1:
-			steps.append(_apply({"undo": "unitstep", "unit": now, "step": step}))
-	return "put in %s, %s" % [Assemblies.definition(Assemblies.leaf(whole)), _many(ids.size())] \
-		if not whole.is_empty() else "put in %s" % _many(ids.size())
-
-
 ## Work out where the held part would go, given a ray from the camera.
 func update_preview(origin: Vector3, direction: Vector3) -> void:
 	# Kept where it is while a number is typed (TypedEntry).
@@ -2327,6 +2306,7 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 		return
 	var was: Vector3 = carrying.pivot() if is_carrying() else _ghost_transform.origin
 	_joint_site = null
+	tracks.on_end = false
 	if is_carrying():
 		_ghost.visible = false
 		_ghost_valid = false
@@ -2349,12 +2329,21 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 		_ghost.visible = false
 		_ghost_valid = false
 		return
-	if Stickers.sticks(library, held_part):
+	if library.sticks(held_part):
 		_preview_sticker(part, origin, direction)
 		return
 
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
 	_hovered = hit.brick_id
+	# A train track in hand onto a free end of a track down, within 12
+	# pixels of the pointer: end to end, before any stud (TrackSnap).
+	if tracks.aim(self, held_part, origin, direction.normalized()):
+		_ghost_transform = tracks.at
+		_ghost_valid = room_for(held_part, tracks.at, false, true)
+		_hovered = tracks.target.brick
+		_seated_on = 0
+		_show_ghost(part)
+		return
 	if _onto_a_joint(part, origin, direction.normalized(), hit):
 		_show_ghost(part)
 		return
@@ -2413,57 +2402,58 @@ func _aim_single(origin: Vector3, direction: Vector3) -> void:
 ## them stands on. 0 for none, and where a shape is still on its way (the
 ## web fetches it; the aim after it arrives lifts it). [param skip]: bricks
 ## that move with them.
+##
+## Asked on every aim, so it costs what is at the holes, never the model:
+## what is near each hole where a stud could take it, never one box the
+## figure's height, and of those only the studs that could take it
+## (Exact.sunk_under). Asked of the parts in hand and every part near all
+## together (Exact.sunk_pairs), a figure's own parts, held on each other's
+## studs, were weighed against each other by their shapes whenever anything
+## was near, 200 ms, and aiming a figure took 80 ms a move over a big model
+## (figlift, 2026-11-06).
 func stud_feet_lift(parts: Array, skip: Dictionary = {}) -> float:
 	if world == null or lattice == null:
 		return 0.0
-	var items: Array = []
-	var of: Dictionary = {}
-	var lo := Vector3(INF, INF, INF)
-	var hi := -lo
+	var held: Array = []  ## [shape, where] each
 	for one: Array in parts:
 		var shape: Exact.Shape = Exact.shape_for(library, str(one[0]))
-		if shape == null:
-			continue
-		var item := Exact.Item.new(shape, one[1])
-		var takes: bool = false
-		for connector: Array in item.world():
-			if Exact.takes_on_top(shape, int(connector[0])) and (connector[2] as Vector3).y > 0.99:
-				takes = true
-				lo = lo.min(connector[1])
-				hi = hi.max(connector[1])
-		if takes:
-			of[items.size()] = true
-			items.append(item)
-	if of.is_empty():
-		return 0.0
-	var across: float = Exact.SUNK_ACROSS + 1.0
-	var reach := PackedInt32Array([floori((lo.x - across) / BrickLattice.CELL),
-		floori((lo.y - 1.0) / BrickLattice.CELL), floori((lo.z - across) / BrickLattice.CELL),
-		ceili((hi.x + across) / BrickLattice.CELL),
-		ceili((hi.y + Exact.SUNK_REACH + 1.0) / BrickLattice.CELL),
-		ceili((hi.z + across) / BrickLattice.CELL)])
-	for other: int in lattice.near_bounds(reach):
-		var brick: BrickWorld.Brick = world.get_brick(other) if not skip.has(other) else null
-		var shape: Exact.Shape = Exact.shape_for(library, brick.part_id) if brick != null else null
 		if shape != null:
-			items.append(Exact.Item.new(shape, brick.transform))
-	if items.size() == of.size():
-		return 0.0
+			held.append([shape, one[1]])
+	var near: Dictionary = {}  ## brick id -> its Item, null without a shape
+	var across: float = Exact.SUNK_ACROSS + 1.0
 	# Lifted off one stud, a part can be down another a little higher: asked
 	# again, a few times at most.
 	var lift: float = 0.0
 	for _round: int in 3:
 		var most: float = 0.0
-		for pair: Array in Exact.sunk_pairs(items, of, 0.0):
-			if of.has(int(pair[1])) and not of.has(int(pair[0])) \
-					and (pair[3] as Vector3).y > 0.99:
-				most = maxf(most, float(pair[2]))
+		for one: Array in held:
+			var item := Exact.Item.new(one[0], one[1])
+			var holes: Array = Exact.up_holes(item)
+			var others: Dictionary = {}
+			for hole: Array in holes:
+				var at: Vector3 = hole[1]
+				for other: int in lattice.near_bounds(PackedInt32Array([
+						floori((at.x - across) / BrickLattice.CELL),
+						floori((at.y - 1.0) / BrickLattice.CELL),
+						floori((at.z - across) / BrickLattice.CELL),
+						ceili((at.x + across) / BrickLattice.CELL),
+						ceili((at.y + Exact.SUNK_REACH + 1.0) / BrickLattice.CELL),
+						ceili((at.z + across) / BrickLattice.CELL)])):
+					if not skip.has(other):
+						others[other] = true
+			for other: int in others:
+				if not near.has(other):
+					var brick: BrickWorld.Brick = world.get_brick(other)
+					var shape: Exact.Shape = Exact.shape_for(library, brick.part_id) \
+						if brick != null else null
+					near[other] = Exact.Item.new(shape, brick.transform) if shape != null else null
+				if near[other] != null:
+					most = maxf(most, Exact.sunk_under(near[other], item, holes))
 		if most <= 0.0:
 			break
 		lift += most
-		for i: Variant in of:
-			var item: Exact.Item = items[int(i)]
-			items[int(i)] = Exact.Item.new(item.shape, item.at.translated(Vector3(0.0, most, 0.0)))
+		for one: Array in held:
+			one[1] = (one[1] as Transform3D).translated(Vector3(0.0, most, 0.0))
 	return lift
 
 
@@ -2502,14 +2492,15 @@ var view_up: Vector3 = Vector3.UP
 ## under it (Stickers.lies_on), and a sticker put down on the grid floated
 ## a plate over the brick it was for. R turns it about the face.
 func _preview_sticker(part: Lbm.PartMesh, origin: Vector3, direction: Vector3) -> void:
-	var face: Stickers.Face = Stickers.face_at(world, library, origin, direction, false, view_up)
+	var stickers: GDScript = Later.script(&"Stickers")
+	var face: RefCounted = stickers.face_at(world, library, origin, direction, false, view_up)
 	if face == null:
 		_ghost.visible = false
 		_ghost_valid = false
 		_hovered = 0
 		return
 	_hovered = face.bricks[0]
-	_ghost_transform = Stickers.laid_on(face, part.bounds, held_rotation)
+	_ghost_transform = stickers.laid_on(face, part.bounds, held_rotation)
 	_seated_on = 0
 	_ghost_valid = true
 	_show_ghost(part)
@@ -3164,6 +3155,9 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		if pinned.has(other) or in_mesh.has(other):
 			continue
 		var theirs: String = library.resolve(str(entries[n][3]))
+		# Two train tracks joined end to end: a tab in the other's slot.
+		if TrackSnap.joined(mine, at, theirs, there):
+			continue
 		if Nests._seated_in(mine, at, theirs, there) \
 				or Nests._seated_in(theirs, there, mine, at):
 			continue
@@ -4259,6 +4253,10 @@ static func _cover_boxes(part: Lbm.PartMesh) -> Array[AABB]:
 func rotate_held(quarter_turns: int) -> void:
 	if is_carrying():
 		carrying.turn(quarter_turns)
+		return
+	# On a train track's end: its next end to the joint (TrackSnap).
+	if tracks.on_end:
+		tracks.turn(quarter_turns)
 		return
 	if _joint_site != null:
 		for _n: int in absi(quarter_turns):

@@ -151,10 +151,11 @@ def write_bundle(path: str, files: list[tuple[str, bytes]]) -> None:
 
 
 # Tables read as their classes load, which is while the scripts are made,
-# before the data pack is mounted (Mechanism._table, KnownFits._table): in
-# the data pack they would read as nothing, for good. 15 KB over the wire,
-# so they stay with the code.
-AT_CLASS_LOAD = {"assets/ldraw/gears.json", "assets/ldraw/known_fits.json"}
+# before the data pack is mounted (Mechanism._table, KnownFits._table,
+# TrackSnap._table): in the data pack they would read as nothing, for good.
+# 18 KB over the wire, so they stay with the code.
+AT_CLASS_LOAD = {"assets/ldraw/gears.json", "assets/ldraw/known_fits.json",
+                 "assets/ldraw/track_ends.json"}
 
 
 def where(path: str, later: frozenset[str] = frozenset()) -> str:
@@ -191,7 +192,10 @@ def later_scripts() -> frozenset[str]:
     as the pack names them."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import start_closure
-    out = frozenset(path.removeprefix("res://") for path in start_closure.outside())
+    try:
+        out = frozenset(path.removeprefix("res://") for path in start_closure.outside())
+    except ValueError as error:
+        sys.exit(f"pck_split: could not tell which scripts the first screen compiles: {error}")
     if not out or "src/main.gd" in out:
         sys.exit("pck_split: could not tell which scripts the first screen compiles (start_closure.py)")
     return out

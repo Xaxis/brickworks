@@ -41,6 +41,9 @@ declare -A CMD=(
   # and /app still isolated; the server refusing nothing, junk and a GET.
   # A finished sign-in is tools/web/oc_live_flow.mjs, on brickworks.diy.
   [oc]="tools/web/oc_flow.mjs --url=$P --out=$S/${TAG}_oc"
+  # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
+  # which on a loaded box times the box, not the app; bin_keys_probe and
+  # bin_keys_phone_probe hold the bar in the suite (bintiles, 2026-11-06).
   # local only: oc_live_flow.mjs. It signs in with a new throwaway Bitcoin
   # key through orangecheck's real window, which makes a real orangecheck
   # account each run (the lead purges them), and orangecheck vouches for
@@ -93,6 +96,11 @@ declare -A CMD=(
   # out; 1280 px light signed in, 390 px dark signed out; the empty tab
   # says what a build is. Throwaway accounts, deleted after with their model.
   [gallery_builds]="tools/web/gallery_builds_flow.mjs --url=$P --out=$S/${TAG}_gallery_builds"
+  # local only: photo_sizes_flow.mjs. How large each photo of a real build
+  # is drawn against the pixels of the picture the browser took, at 390 3x
+  # and 1280 2x and 1x, every place a photo is drawn: the checkout's pages
+  # with the stand-in's photos, each the size its row says. [gallery_builds]
+  # holds the copy on a deployment.
   # More like a designer on a profile (docs/SOCIAL.md section 7, item 9):
   # hidden with nobody close; signed out the closest by shared tags (and
   # parts once supabase/designers_alike.sql is applied) with Follow beside
@@ -148,12 +156,17 @@ declare -A CMD=(
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
   # frames held to 36 ms on average on a CPU; and 1484-1 with motions of its
   # own, each played by its button and taken back, Reset, and its page
-  # saying what it does.
+  # saying what it does; its link with ?motion= opening playing over and
+  # over within 2 s, stopped by its button, and an unknown name opening still.
   # Published from a throwaway account, deleted after; API routes only,
   # with the bypass (supabase/play.sql's and motions.sql's card when they
   # are applied).
   [play]="tools/web/play_flow.mjs --url=$P --publish --out=$S/${TAG}_play"
   [booklet]="tools/web/booklet_flow.mjs --url=$P/app --out=$S/${TAG}_booklet_web"
+  # A model whose note and page pictures try to break out of the booklet
+  # HTML, opened and Instructions pressed: no script runs in the tab, the
+  # policy is first, the good picture still shows (booksafe).
+  [booklet_safe]="tools/web/booklet_safe_flow.mjs --url=$P/app $B --out=$S/${TAG}_booklet_safe_web"
   # The booklet edited by hand: a set's steps turned, zoomed, paged, merged
   # and undone by the timeline's buttons and keys, a page laid out by the
   # mouse (a picture dragged onto the margin, a parts list's corner, words
@@ -235,6 +248,13 @@ declare -A CMD=(
   # its own; on a phone the blog scrolls until the model is taken hold of,
   # and a model past the phone's budget asks first. Signed out, reads only.
   [embed]="tools/web/embed_flow.mjs --url=$P --out=$S/${TAG}_embed"
+  # In your room (APP_UX5 #13, arview), the deployment's first model: not
+  # offered on a computer; on an Android phone (a WebXR stub), an iPhone (a
+  # Quick Look stub) and an iPad offered, nothing of it asked before the
+  # tap, then the model shown, its GLB byte for byte web/glb.js's of the
+  # store's geometry, under 32 MB; the session asked for, the USDZ handed
+  # over; a plan over the size refused before a shape. Signed out, reads only.
+  [arview]="tools/web/arview_flow.mjs --url=$P --out=$S/${TAG}_arview"
   # The LDraw library on the site (library333): /library at 390 and 1400 px,
   # light and dark, the whole shelf with every card's cover, number and
   # modeller; found by a set's number, 10179, and by a theme's pill; the
@@ -327,6 +347,12 @@ declare -A CMD=(
   # said so: "the API's database needs supabase/together_big.sql").
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # A build party (APP_UX5 buildparty): two phones on one shared link and
+  # no account, joined by a code in 2 taps each, the car dealt in two (all
+  # 61 parts once), a part done on either on the other within 2 s, a phone
+  # leaving and joining again in its place, the joining step on both. Its
+  # tables are together.sql's.
+  [buildparty]="tools/web/buildparty_flow.mjs --url=$P --out=$S/${TAG}_buildparty"
   # local only: typed_flow.mjs. A number typed with a part in hand, in the
   # web build (hand371): it runs against tools/web/serve.py's local build,
   # as its header says, and has no way past a preview's protection yet.
@@ -662,8 +688,9 @@ run() {
 # orangecheck asked that popup checks not run side by side (2026-10-24).
 # together measures how fast a change crosses between two browsers: with
 # placing beside it its plain p95 read 1,123 ms against 516-864 alone
-# (2026-10-24).
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together load "
+# (2026-10-24). buildparty times a part crossing between two phones the
+# same way, on the same relay.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

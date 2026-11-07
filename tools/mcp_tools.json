@@ -79,7 +79,7 @@
                     "type": "number"
                   },
                   "to": {
-                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                     "type": "string"
                   },
                   "yaw": {
@@ -266,7 +266,7 @@
                           "type": "number"
                         },
                         "to": {
-                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                           "type": "string"
                         },
                         "yaw": {
@@ -1461,7 +1461,7 @@
                     "type": "number"
                   },
                   "to": {
-                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                     "type": "string"
                   },
                   "yaw": {
@@ -1921,6 +1921,10 @@
           ],
           "type": "string"
         },
+        "view": {
+          "description": "A view the person saved with the model (View › Viewpoint), by its name, in place of from: the picture from exactly there, as their window draws it. A name it does not keep is answered with those it does.",
+          "type": "string"
+        },
         "where": {
           "additionalProperties": false,
           "description": "Look closely at one part of the model rather than all of it, in studs and plates. The rest is still in the picture, just not filling it. On a big model a single assembly is a few dozen pixels across otherwise, which is not enough to judge its shape by.",
@@ -1955,9 +1959,6 @@
           "type": "object"
         }
       },
-      "required": [
-        "from"
-      ],
       "type": "object"
     },
     "name": "view_model"
@@ -2105,7 +2106,7 @@
                     "type": "number"
                   },
                   "to": {
-                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                     "type": "string"
                   },
                   "yaw": {
@@ -2354,7 +2355,7 @@
                           "type": "number"
                         },
                         "to": {
-                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                          "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                           "type": "string"
                         },
                         "yaw": {
@@ -3517,7 +3518,7 @@
                     "type": "number"
                   },
                   "to": {
-                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed; numbered from 0 in each type, as attachment_points lists them",
+                    "description": "the part it goes on and that part's connector: \"torso.hinge[0]\" (a part named so before this one) or \"#41.stud[3]\" (a brick standing, by its number). Types: stud, open, hole, tube, post, axle, cross, pin, socket, bar, clip, hinge, ball, fixed, track (a train track's end: \"c1.track[1]\" by \"track[0]\" lays a curve on); numbered from 0 in each type, as attachment_points lists them",
                     "type": "string"
                   },
                   "yaw": {
@@ -4224,7 +4225,7 @@
       "readOnlyHint": false,
       "title": "Set how a booklet step is printed"
     },
-    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. callout_step= with step= is a step inside the callout that step puts on, from 1: turn= and tilt= pose it apart, from the way the callout faces. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the 269 x 199 page, as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added, turn= degrees clockwise and opacity= percent turning and fading it; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bends= [[x, y], ...] if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes, bends or removes one; guide= {axis x (upright) or y (across), at mm} lays a guide on every page, which what is dragged snaps to, never printed (was= moves one, remove=true takes it off). What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. follow=true lays out every later page with as many steps as the page step= is on, as that page is laid out (Apply to later pages), one undo step. Studio's extras: pull= studs (2 when true, 0 or false to put back) draws the step's parts, or {studs, parts: [part ids]} those, pulled out along the way each goes in with a red arrow in; colours= true lists the step's colours under its number (colours_all= true every step's); actual_size= false leaves off the 1:1 guide the booklet gives the first Technic axle or straight beam of each length, true gives every axle and beam of the step one, [part ids] those parts, \"auto\" as the booklet does it; preview= false leaves the finished sub-assembly off the first of its own pages. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. callout_step= with step= is a step inside the callout that step puts on, from 1: turn= and tilt= pose it apart, from the way the callout faces. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the page (269 x 199 unless page_setup set it up), as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added, turn= degrees clockwise and opacity= percent turning and fading it; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bends= [[x, y], ...] if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes, bends or removes one; guide= {axis x (upright) or y (across), at mm} lays a guide on every page, which what is dragged snaps to, never printed (was= moves one, remove=true takes it off). What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. follow=true lays out every later page with as many steps as the page step= is on, as that page is laid out (Apply to later pages), one undo step. Studio's extras: pull= studs (2 when true, 0 or false to put back) draws the step's parts, or {studs, parts: [part ids]} those, pulled out along the way each goes in with a red arrow in; colours= true lists the step's colours under its number (colours_all= true every step's); actual_size= false leaves off the 1:1 guide the booklet gives the first Technic axle or straight beam of each length, true gives every axle and beam of the step one, [part ids] those parts, \"auto\" as the booklet does it; preview= false leaves the finished sub-assembly off the first of its own pages. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4398,7 +4399,7 @@
           "type": "boolean"
         },
         "pull": {
-          "description": "studs to pull the step's parts out (true: 2; 0 or false: put back), or {studs, parts: [part ids]}"
+          "description": "studs to pull the step's parts out (true: 2; 0 or false: put back), or {studs, parts: [the step's brick numbers or part ids]}"
         },
         "sign": {
           "description": "false: no turn sign on the step",
@@ -4451,6 +4452,84 @@
       "type": "object"
     },
     "name": "edit_booklet"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Set up the booklet's page"
+    },
+    "description": "The booklet's page, as Build, Booklet page, Page setup… sets it, for the whole booklet and its PDF: size= \"booklet\" (its own 269 x 199 mm), \"A4\", \"letter\" or \"A5\"; orientation= \"portrait\" or \"landscape\"; margin= mm; colour= the page's colour (\"#ffffff\", \"usual\" its light blue); picture_url= or picture_data= (base64) a picture behind every page, picture= \"none\" takes it off; number= the step numbers' height in mm (8 usual); parts= the parts boxes' pictures' size (1 usual, 0.5 to 2); usual=true the booklet's own page again. save_as= keeps the page as a style by that name, style= gives this model a kept style whole, and remove_style= takes a kept style away. One undo step, saved with the model. With nothing, says how the page is set up, its picture's size in the file, and the styles kept.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "colour": {
+          "description": "\"#rrggbb\", or \"usual\"",
+          "type": "string"
+        },
+        "margin": {
+          "description": "mm, 5 to 30 (9 usual)",
+          "type": "number"
+        },
+        "number": {
+          "description": "mm, 4 to 20",
+          "type": "number"
+        },
+        "orientation": {
+          "enum": [
+            "portrait",
+            "landscape"
+          ],
+          "type": "string"
+        },
+        "parts": {
+          "description": "0.5 to 2",
+          "type": "number"
+        },
+        "picture": {
+          "enum": [
+            "none"
+          ],
+          "type": "string"
+        },
+        "picture_data": {
+          "description": "a picture's own bytes, base64",
+          "type": "string"
+        },
+        "picture_url": {
+          "description": "an http(s) link to a picture",
+          "type": "string"
+        },
+        "remove_style": {
+          "description": "a style kept by save_as=, taken away",
+          "type": "string"
+        },
+        "save_as": {
+          "description": "keep the page as a style by this name",
+          "type": "string"
+        },
+        "size": {
+          "enum": [
+            "booklet",
+            "A4",
+            "letter",
+            "A5"
+          ],
+          "type": "string"
+        },
+        "style": {
+          "description": "a style kept by save_as=, given whole",
+          "type": "string"
+        },
+        "usual": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "page_setup"
   },
   {
     "annotations": {
@@ -4856,7 +4935,7 @@
       "readOnlyHint": false,
       "title": "Render a motion"
     },
-    "description": "Render one of the model's motions as an animation, a WebP and an MP4 (where ffmpeg is installed) where Render saves, framed on what it moves, without changing the model. reverse= and sequence= as play_motion; fps= 12 or 24; size= 480x300 or 720p; view= where the camera stands, hero (three-quarter from the front left, the default) or back for what moves at the back. Needs the app in a window, and is a job (job gives the result, with a picture of its frames).",
+    "description": "Render one of the model's motions as an animation, a WebP and an MP4 (where ffmpeg is installed) where Render saves, framed on what it moves, without changing the model. reverse= and sequence= as play_motion; fps= 12 or 24; size= 480x300 or 720p; view= where the camera stands, hero (three-quarter from the front left, the default) or back for what moves at the back. Needs the app in a window, and is a job (job gives the result, with six of its frames in one picture, the first and the last among them).",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4984,10 +5063,6 @@
         "discard_changes": {
           "type": "boolean"
         },
-        "into": {
-          "description": "put name= (or library=, link=) into the model open now as one sub-assembly with its own steps, as File, Import, Into this model… does, in place of opening it; nothing is replaced",
-          "type": "boolean"
-        },
         "library": {
           "description": "a library id from gallery library=true, like omr-10179-1, or a set's number or name",
           "type": "string"
@@ -5000,10 +5075,6 @@
           "description": "a model's name from the list",
           "type": "string"
         },
-        "turn": {
-          "description": "with into: quarter turns about the vertical, 0 to 3",
-          "type": "integer"
-        },
         "version": {
           "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it",
           "type": "integer"
@@ -5011,14 +5082,6 @@
         "versions": {
           "description": "list name='s saves kept as versions",
           "type": "boolean"
-        },
-        "x": {
-          "description": "with into: studs across to its low corner; beside the model when omitted",
-          "type": "number"
-        },
-        "z": {
-          "description": "with into: studs deep to its low corner",
-          "type": "number"
         }
       },
       "type": "object"
@@ -5058,9 +5121,81 @@
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false,
+      "title": "Add to the person's collection"
+    },
+    "description": "The person's own bricks, as Build, My collection's What I own keeps them with their account: sets, and loose parts by part, colour and count. add=[{part, color, count}] adds loose lots, all in one call: given a photo of their pile, look at it closely, name each part (its LDraw number, as search_parts gives it; a BrickLink number is read too) and its LDraw colour code, count each, and add them together. Every lot added is marked as this chat's and listed for the person apart from their own, to keep or take back with one button. remove=[{part, color, count}] takes pieces off lots this chat added (count omitted: the whole lot). With neither, it reads the collection back, this chat's lots apart. Their sets and their own lots are theirs: this never changes them. parts_list which=\"need\" then measures the model against it, and which=\"buildable\" ranks what they can build.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "add": {
+          "description": "loose lots to add",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "description": "LDraw colour code, like 4 for Red",
+                "type": "integer"
+              },
+              "count": {
+                "description": "how many, 1 or more",
+                "type": "integer"
+              },
+              "part": {
+                "description": "the part's LDraw number, like 3001",
+                "type": "string"
+              }
+            },
+            "required": [
+              "part",
+              "color",
+              "count"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "limit": {
+          "description": "how many lots the read back lists; 60 when omitted",
+          "type": "integer"
+        },
+        "remove": {
+          "description": "pieces to take off lots this chat added",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "type": "integer"
+              },
+              "count": {
+                "description": "how many to take off; the whole lot when omitted",
+                "type": "integer"
+              },
+              "part": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "part",
+              "color"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    },
+    "name": "edit_collection"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
       "title": "Render a picture"
     },
-    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result, a picture with it. Needs the app in a window.",
+    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5114,14 +5249,7 @@
           "type": "string"
         },
         "view": {
-          "enum": [
-            "hero",
-            "front",
-            "side",
-            "back",
-            "low",
-            "top"
-          ],
+          "description": "hero, front, side, back, low or top, or a view saved with the model, by its name",
           "type": "string"
         }
       },
@@ -5137,7 +5265,7 @@
       "readOnlyHint": false,
       "title": "Queue renders"
     },
-    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
+    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given: view= may name a view saved with the model, drawn from exactly there), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5199,15 +5327,7 @@
           "type": "string"
         },
         "view": {
-          "enum": [
-            "current",
-            "hero",
-            "front",
-            "side",
-            "back",
-            "low",
-            "top"
-          ],
+          "description": "current, hero, front, side, back, low or top, or a view saved with the model, by its name",
           "type": "string"
         }
       },
@@ -5716,13 +5836,68 @@
   },
   {
     "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Lay copies in a grid"
+    },
+    "description": "Lay copies of parts in a grid, as the window's Edit, Pattern…, In a grid does: columns along x, rows along z and levels up, each count with the parts given as the first (columns=4 rows=3 levels=2 is 24 in all, 23 copies). column_studs= and row_studs= how far apart, in studs (a whole or half number), and level_plates= in plates (9 is 3 bricks); each, when not given, the parts' own size that way, so copies touch (a 2 x 2 brick: 2, 2 and 3). Negative goes the other way. A row is one row and one level. Every copy is checked for room against the model and the copies before it; all or nothing, one undo step, and a copy with no room is said by its column, row and level and what is in its way. bricks= the parts, by their numbers in look_at_model.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "bricks": {
+          "description": "the parts, by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "column_studs": {
+          "description": "studs between columns",
+          "type": "number"
+        },
+        "columns": {
+          "description": "along x, counting the parts given; 1 when not given",
+          "type": "integer"
+        },
+        "level_plates": {
+          "description": "plates between levels",
+          "type": "integer"
+        },
+        "levels": {
+          "description": "up, counting the parts given; 1 when not given",
+          "type": "integer"
+        },
+        "picture": {
+          "description": "unset: a close look at the copies, edged in magenta; true: the whole model so; false: words alone",
+          "type": "boolean"
+        },
+        "row_studs": {
+          "description": "studs between rows",
+          "type": "number"
+        },
+        "rows": {
+          "description": "along z, counting the parts given; 1 when not given",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "bricks"
+      ],
+      "type": "object"
+    },
+    "name": "pattern_parts"
+  },
+  {
+    "annotations": {
       "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false,
       "title": "Mirror parts"
     },
-    "description": "Make parts their mirror image, as the window's Mirror does: each put where its reflection is and turned, a part made in a left and a right hand (a wing, a wedge plate, a door) swapped for its other hand. bricks= the parts; axis \"x\" mirrors left to right (the default), \"z\" front to back. In place, across the plane through their middle; copy=true leaves them and puts a mirrored copy beside them, across their far side (+x or +z). across= puts the plane where you say, in studs, a whole or half number: copy=true across=0 makes a model's left half its right half too. All or nothing, one undo step; refused where the mirror image runs into a part not named.",
+    "description": "Make parts their mirror image, as the window's Mirror does: each put where its reflection is and turned, a part made in a left and a right hand (a wing, a wedge plate, a door) swapped for its other hand; a part with no mirror image is turned as near it as it goes and named. bricks= the parts; axis \"x\" mirrors left to right (the default), \"z\" front to back. In place, across the plane through their middle; copy=true leaves them and puts a mirrored copy beside them, across their far side (+x or +z). across= puts the plane where you say, in studs, a whole or half number: copy=true across=0 makes a model's left half its right half too. All or nothing, one undo step; refused where the mirror image runs into a part not named.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5852,7 +6027,7 @@
       "readOnlyHint": true,
       "title": "What the person sees"
     },
-    "description": "What the person sees in the window that a session is not told: the step the timeline is at and its parts, the part in their hand (the Place tool's, its colour, which way it points as face and rot, and the span its ghost takes under the pointer; or the parts they are carrying), how many parts they have selected, and the reference picture they laid to build over: its file, size and place in studs, and with picture=true (the default) the picture itself, the model's parts drawn on it where they stand over it. Changes nothing.",
+    "description": "What the person sees in the window that a session is not told: the step the timeline is at and its parts, the part in their hand (the Place tool's, its colour, which way it points as face and rot, and the span its ghost takes under the pointer; or the parts they are carrying), how many parts they have selected and how big those are, the model's size (in studs and plates, and in centimetres: will it fit a shelf) and its weight in grams, as the status bar says them, and the reference picture they laid to build over: its file, size and place in studs, and with picture=true (the default) the picture itself, the model's parts drawn on it where they stand over it. Changes nothing.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5870,20 +6045,20 @@
       "readOnlyHint": true,
       "title": "Look from several sides"
     },
-    "description": "Look at the model from up to six sides in one picture: each view labelled, and each the picture view_model gives from that side (views= any of front, back, left, right, top, corner; all six when not given). Also takes, with one view or several: where= to look closely at one box, as view_model's; highlight= parts edged in magenta in their own colours with every other part drawn see-through, to find them in a big model or inside it; xray= parts drawn see-through, so what they hide shows (a roof, a shell, a hull); step=N the model as built to step N, that step's new parts edged in magenta (edit_steps lists the steps). Changes nothing.",
+    "description": "Look at the model from up to six sides in one picture: each view labelled, and each the picture view_model gives from that side (views= any of front, back, left, right, top, corner; all six when not given). Also takes, with one view or several: where= to look closely at one box, as view_model's; highlight= parts edged in magenta in their own colours with every other part drawn see-through, to find them in a big model or inside it; xray= parts drawn see-through, so what they hide shows (a roof, a shell, a hull); step=N the model as built to step N, that step's new parts edged in magenta (edit_steps lists the steps); studs=true every part coloured by where its studs point (up, down, front, back, left, right), a legend under the picture, to see which way a part offers studs before building on it. Changes nothing.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "highlight": {
-          "description": "parts by their numbers in look_at_model",
-          "items": {
-            "type": "integer"
-          },
-          "type": "array"
+          "description": "parts, one or a list of: their numbers in look_at_model (12), a part number as a string (\"3024\": every one of it), a colour (\"red\"), or a step (\"step:3\": that step's new parts)"
         },
         "step": {
           "description": "a step's number, from 1",
           "type": "integer"
+        },
+        "studs": {
+          "description": "each part coloured by where its studs point, as View, Stud directions draws it",
+          "type": "boolean"
         },
         "views": {
           "description": "the sides, in the board's order",
@@ -5934,11 +6109,7 @@
           "type": "object"
         },
         "xray": {
-          "description": "parts by their numbers in look_at_model",
-          "items": {
-            "type": "integer"
-          },
-          "type": "array"
+          "description": "parts, one or a list of: their numbers in look_at_model (12), a part number as a string (\"3024\": every one of it), a colour (\"red\"), or a step (\"step:3\": that step's new parts)"
         }
       },
       "type": "object"

@@ -20,22 +20,19 @@ extends RefCounted
 ## Columns sampled a stud: Shapes asks whether a wedge's cut side follows
 ## the surface at thirds of a stud.
 const FINE := 3
-const PLATES := 2.5
-const LEAST_STUDS := 6
-const MOST_STUDS := 64
+# The sizes, ways up and colours the panel offers are BrickifySize's, so
+# the panel opens without this class (src/assembly/brickify_size.gd).
+const PLATES := BrickifySize.PLATES
+const LEAST_STUDS := BrickifySize.LEAST_STUDS
+const MOST_STUDS := BrickifySize.MOST_STUDS
 ## Which way the file's up is, each turned to stand on the baseplate.
-const UPS: PackedStringArray = ["+Y", "+Z", "-Z", "+X", "-X", "-Y"]
+const UPS: PackedStringArray = BrickifySize.UPS
 ## What a hollowed model keeps: walls two studs thick, and three plates
 ## under and over its hollow, so its ceiling is plates bonded across.
 const WALL_STUDS := 2
 const WALL_PLATES := 3
-## The colours a model is laid in: solid colours LEGO makes now, in
-## hundreds of sets each, so the slopes and bricks it asks for exist in
-## them. Not the mosaic's palette, whose transparent and pearl colours are
-## for a picture of plates: a red cube came out in trans-red.
-const PALETTE: Array[int] = [15, 71, 72, 0, 4, 320, 5, 29, 353, 26, 25, 484, 191, 14, 226,
-	27, 326, 10, 2, 288, 330, 378, 3, 323, 322, 321, 212, 73, 1, 272, 379, 30, 31, 85,
-	19, 28, 84, 92, 78, 70, 308]
+## The colours a model is laid in (BrickifySize.PALETTE).
+const PALETTE: Array[int] = BrickifySize.PALETTE
 ## A colour sample every this many studs along a triangle's longest side.
 const SAMPLE_STUDS := 0.35
 ## A surface with more of the model than this in front of it, studs, is one
@@ -335,18 +332,7 @@ class Grid extends RefCounted:
 
 ## The turn that stands a model with [param up] on the baseplate.
 static func turn_for(up: String) -> Basis:
-	match up:
-		"+Z":
-			return Basis(Vector3.RIGHT, -PI / 2.0)
-		"-Z":
-			return Basis(Vector3.RIGHT, PI / 2.0)
-		"+X":
-			return Basis(Vector3.BACK, PI / 2.0)
-		"-X":
-			return Basis(Vector3.BACK, -PI / 2.0)
-		"-Y":
-			return Basis(Vector3.RIGHT, PI)
-	return Basis.IDENTITY
+	return BrickifySize.turn_for(up)
 
 
 ## How big it comes out: studs across, plates up, studs along.
@@ -356,22 +342,11 @@ static func size_of(mesh: MeshFile, up: String, studs: int) -> Vector3i:
 
 ## The same from its bounds, stood up already.
 static func size_in(box: AABB, studs: int) -> Vector3i:
-	var longest: float = maxf(box.size.x, maxf(box.size.y, box.size.z))
-	if longest <= 0.0:
-		return Vector3i.ZERO
-	var scale: float = float(studs) / longest
-	return Vector3i(maxi(1, ceili(box.size.x * scale - 0.001)),
-		maxi(1, ceili(box.size.y * scale * PLATES - 0.001)),
-		maxi(1, ceili(box.size.z * scale - 0.001)))
+	return BrickifySize.size_in(box, studs)
 
 
 static func _turned_bounds(mesh: MeshFile, turn: Basis) -> AABB:
-	if mesh.positions.is_empty():
-		return AABB()
-	var box := AABB(turn * mesh.positions[0], Vector3.ZERO)
-	for p: Vector3 in mesh.positions:
-		box = box.expand(turn * p)
-	return box
+	return BrickifySize.turned_bounds(mesh, turn)
 
 
 # -- measuring ----------------------------------------------------------------
@@ -1762,6 +1737,11 @@ static func warm(library: PartLibrary, job: Working.Job = null) -> void:
 	for key: Variant in Shapes._plans.keys():
 		if str(Shapes._plans[key]).is_empty():
 			Shapes._plans.erase(key)
+	# A windscreen read on a worker before its geometry was loaded was kept
+	# as none (bigedit, 2026-11-06): read again.
+	for key: Variant in Shapes._screens.keys():
+		if (Shapes._screens[key] as Dictionary).is_empty():
+			Shapes._screens.erase(key)
 	if Patterns._wedge_shapes.size() < 4 * Patterns.WEDGES.size():
 		Patterns._wedge_shapes.clear()
 		Patterns._wedge_prints.clear()

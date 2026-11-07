@@ -31,7 +31,7 @@ import { chromium } from "playwright";
 import { spawn, execFileSync } from "node:child_process";
 import { mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { SOFTWARE, START_MS } from "./browser.mjs";
+import { instantScroll, SOFTWARE, START_MS } from "./browser.mjs";
 import { canSignIn, signInContext } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -178,6 +178,7 @@ const context = await chromium.launchPersistentContext(profile, {
   // Not "controlled by automated test software" across the top.
   ignoreDefaultArgs: ["--enable-automation"],
 });
+await instantScroll(context);
 if (canSignIn()) await signInContext(context);
 else console.log("  (not signed in: run with node --env-file=.env; the app will show its sign-in screen)");
 
@@ -446,10 +447,15 @@ if (wanted("booklet") && kart) {
   const opened = context.waitForEvent("page", { timeout: 60000 }).catch(() => null);
   await press(kart, "instructions", 500);
   const booklet = await opened;
+  // Its pages counted once it is whole: the booklet is written into the tab
+  // as it is drawn (BookletOut, 2026-10-23) and closed at its end, so its
+  // first page alone, the cover, read as the booklet, and the scene took
+  // the cover and failed with "0 pages of steps" (flowscroll, 2026-11-07).
   let pages = 0;
   for (let n = 0; booklet && n < 300 && pages === 0; n++) {
     await kart.waitForTimeout(2000);
-    pages = await booklet.evaluate(() => document.querySelectorAll("section.page").length).catch(() => 0);
+    pages = await booklet.evaluate(() => (document.readyState === "complete"
+      ? document.querySelectorAll("section.page").length : 0)).catch(() => 0);
   }
   say(pages > 0, `Instructions opened the kart's booklet in a tab: ${pages} pages`);
   if (booklet && pages > 0) {

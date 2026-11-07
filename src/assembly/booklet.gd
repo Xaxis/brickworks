@@ -24,8 +24,11 @@
 ##
 ## Every measurement is in millimetres on a page 269 x 199, which fits a
 ## sheet of A4 and of US Letter turned on its side with a margin to
-## spare, so one file prints on both. On screen the same millimetre is
-## scaled to the window (--mm), so the page reads the same way.
+## spare, so one file prints on both, unless its designer set the page up
+## otherwise (BookletSheet): A4, US Letter or A5, either way up, its
+## margins, its colour or a picture behind it, and how big the numbers and
+## the parts are. On screen the same millimetre is scaled to the window
+## (--mm), so the page reads the same way.
 ##
 ## The new parts are outlined, as Studio's Instruction Maker and LEGO
 ## booklets of the app era outline them: a band of orange just outside
@@ -46,6 +49,7 @@
 class_name Booklet
 extends RefCounted
 
+## The booklet's own page and margin (BookletSheet: a page set up otherwise).
 const PAGE := Vector2(269.0, 199.0)
 const MARGIN := 9.0
 ## The band at the foot for the page number and the progress bar.
@@ -168,6 +172,9 @@ class Entry extends RefCounted:
 	var parts_width: float = 0.0
 	var number_at: Vector2 = Vector2()
 	var number_size: float = NUMBER
+	## How much bigger its number is drawn than the booklet's own
+	## (BookletSheet.number).
+	var number_scale: float = 1.0
 	## Where the parts it adds are drawn on the page, in mm, cut to its
 	## picture (BookletMaker._adds); empty when none shows.
 	var adds: Rect2 = Rect2()
@@ -281,6 +288,8 @@ class Page extends RefCounted:
 	var overlaps: Array = []
 	## A callout's first page: the callout whose preview it shows.
 	var preview: Callout = null
+	## The page it is laid out on (BookletSheet).
+	var sheet: BookletSheet = BookletSheet.new()
 
 
 ## Everything a booklet says, ready to write out.
@@ -296,15 +305,19 @@ class Document extends RefCounted:
 	var credits: String = ""
 	## The pictures a designer put on its pages: name -> data URI.
 	var images: Dictionary = {}
+	## Its page, as its designer set it up.
+	var sheet: BookletSheet = BookletSheet.new()
 
 
 # -- layout ----------------------------------------------------------------
 
 
-## The content area of a page, inside the margins and above the foot.
-static func content() -> Rect2:
-	return Rect2(Vector2(MARGIN, MARGIN),
-		PAGE - Vector2(MARGIN * 2.0, MARGIN * 2.0 + FOOT - 3.0))
+## The content area of a page, inside the margins and above the foot: of
+## [param sheet]'s page, or the booklet's own.
+static func content(sheet: BookletSheet = null) -> Rect2:
+	var margin: float = sheet.margin if sheet != null else MARGIN
+	return Rect2(Vector2(margin, margin), (sheet.size() if sheet != null else PAGE)
+		- Vector2(margin * 2.0, margin * 2.0 + FOOT - 3.0))
 
 
 ## Lay steps out on pages. [param entries] are the main steps in order,
@@ -314,8 +327,8 @@ static func content() -> Rect2:
 ## as fit), and a step's [member Entry.page_break] starts a page or has one
 ## alone.
 static func lay_out(entries: Array[Entry], first_page: int = 2,
-		per_page: int = 0) -> Array[Page]:
-	var layout := Layout.new(entries, first_page, per_page)
+		per_page: int = 0, sheet: BookletSheet = null) -> Array[Page]:
+	var layout := Layout.new(entries, first_page, per_page, sheet)
 	var pages: Array[Page] = []
 	while not layout.done():
 		pages.append_array(layout.next())
@@ -335,12 +348,16 @@ class Layout extends RefCounted:
 	var at: int = 0
 	## Pages laid out so far.
 	var made: int = 0
+	## The page they go on.
+	var sheet: BookletSheet
 	var _section: String = ""
 	var _total: int
 
-	func _init(steps: Array[Entry], first: int = 2, per_page: int = 0) -> void:
+	func _init(steps: Array[Entry], first: int = 2, per_page: int = 0,
+			on: BookletSheet = null) -> void:
 		entries = steps
 		first_page = first
+		sheet = on if on != null else BookletSheet.new()
 		most = per_page if per_page in [1, 2, 4] else 4
 		_total = maxi(1, entries.size())
 
@@ -360,12 +377,13 @@ class Layout extends RefCounted:
 			_section = entry.section
 			banner = _section
 		if entry.callout != null:
-			entry.callout.inline = Booklet._fits_inline(entry.callout) and not entry.callout.own_pages
+			entry.callout.inline = Booklet._fits_inline(entry.callout, sheet) \
+				and not entry.callout.own_pages
 			if not entry.callout.inline:
 				for page: Page in Booklet._callout_pages(entry.callout,
-						float(at) / float(_total)):
+						float(at) / float(_total), sheet):
 					pages.append(page)
-		var area: Rect2 = Booklet.content()
+		var area: Rect2 = Booklet.content(sheet)
 		if not banner.is_empty():
 			area = Rect2(area.position + Vector2(0.0, BANNER),
 				area.size - Vector2(0.0, BANNER))
@@ -376,7 +394,7 @@ class Layout extends RefCounted:
 					or not next_one.page_break.is_empty() or entries[index - 1].page_break == "alone"):
 				break
 			run.append(next_one)
-		var page := Booklet._best_page(run, area, false, most)
+		var page := Booklet._best_page(run, area, false, most, sheet)
 		page.banner = banner
 		Booklet._settle(page)
 		page.progress = float(at + page.entries.size()) / float(_total)
@@ -392,7 +410,8 @@ class Layout extends RefCounted:
 
 ## The fullest page the run can make that is still big enough to read.
 static func _best_page(run: Array[Entry], area: Rect2, framed: bool,
-		most: int = 4) -> Page:
+		most: int = 4, sheet: BookletSheet = null) -> Page:
+	var on: BookletSheet = sheet if sheet != null else BookletSheet.new()
 	for count: int in [4, 2, 1]:
 		if count > run.size() or count > most:
 			continue
@@ -411,14 +430,16 @@ static func _best_page(run: Array[Entry], area: Rect2, framed: bool,
 			continue
 		var page := Page.new()
 		page.kind = "callout" if framed else "steps"
+		page.sheet = on
 		for index: int in group.size():
-			_place(group[index], best[index], best_scale)
+			_place(group[index], best[index], best_scale, on.size())
 			page.entries.append(group[index])
 		return page
 	# Nothing fits even alone: one to a page, at whatever size it takes.
 	var single := Page.new()
 	single.kind = "callout" if framed else "steps"
-	_place(run[0], area, _page_scale([run[0]], [area]))
+	single.sheet = on
+	_place(run[0], area, _page_scale([run[0]], [area]), on.size())
 	single.entries.append(run[0])
 	return single
 
@@ -510,7 +531,7 @@ static func _fit(entry: Entry, panel: Rect2) -> Array:
 	return [minf(best_scale, _most(entry) * _grown(entry)), best]
 
 
-static func _place(entry: Entry, panel: Rect2, scale: float) -> void:
+static func _place(entry: Entry, panel: Rect2, scale: float, page: Vector2 = PAGE) -> void:
 	entry.panel = panel
 	entry.rect = panel
 	# Larger or smaller than the page's other steps where its designer said.
@@ -533,14 +554,15 @@ static func _place(entry: Entry, panel: Rect2, scale: float) -> void:
 	var free: Rect2 = entry.free
 	entry.free = Rect2(free.get_center() - need.min(free.size) * 0.5,
 		need.min(free.size))
-	_by_hand(entry)
+	_by_hand(entry, page)
 
 
 ## What its designer placed by hand, where they placed it (BookletLooks
 ## "place"), within the page: the picture filling the rect it was given,
 ## the parts box as wide as it was made, the number under it unless it was
-## placed itself, the callout box's pictures fitted to its new size.
-static func _by_hand(entry: Entry) -> void:
+## placed itself, the callout box's pictures fitted to its new size. On a
+## page [param page] mm.
+static func _by_hand(entry: Entry, page: Vector2 = PAGE) -> void:
 	# Placed in a room the step no longer has (a step edit or a page break
 	# moved it): what was placed goes with the step, into its room now.
 	if entry.room.size.x > 0.0 and not BookletLooks.same_room(entry.room, entry.panel):
@@ -553,7 +575,7 @@ static func _by_hand(entry: Entry) -> void:
 	if entry.place.is_empty():
 		return
 	if entry.place.has("picture"):
-		var at: Rect2 = _on_page(BookletLooks.rect_of(entry.place["picture"]), Vector2(8, 8))
+		var at: Rect2 = _on_page(BookletLooks.rect_of(entry.place["picture"]), Vector2(8, 8), page)
 		entry.rect = at
 		var size: Vector2 = entry.subject.size.max(Vector2(1.0, 1.0))
 		entry.scale = minf(at.size.x * 0.94 / size.x, at.size.y * 0.94 / size.y)
@@ -564,16 +586,16 @@ static func _by_hand(entry: Entry) -> void:
 		var parts: Vector2 = _parts_size(entry.lots, entry.parts_width)
 		# As wide as it was made, and wider where a part needs it.
 		parts.x = maxf(parts.x, entry.parts_width)
-		entry.parts_rect = _on_page(Rect2(at.position, parts), parts)
+		entry.parts_rect = _on_page(Rect2(at.position, parts), parts, page)
 		entry.number_at = entry.parts_rect.position + Vector2(0.4, parts.y + 1.6)
 	if entry.place.has("number"):
 		var at: Rect2 = BookletLooks.rect_of(entry.place["number"])
 		var size := Vector2(entry.number_size * 0.62 * str(entry.number).length() + 1.0,
 			entry.number_size)
-		entry.number_at = _on_page(Rect2(at.position, size), size).position
+		entry.number_at = _on_page(Rect2(at.position, size), size, page).position
 	if entry.callout != null and entry.place.has("callout"):
 		entry.callout.box = _on_page(BookletLooks.rect_of(entry.place["callout"]),
-			Vector2(12, 12))
+			Vector2(12, 12), page)
 		_cells(entry.callout)
 
 
@@ -628,7 +650,7 @@ static func _settle(page: Page) -> void:
 static func _room_of(page: Page) -> Rect2:
 	if page.kind == "callout":
 		return page.frame.grow(-2.0)
-	var area: Rect2 = content()
+	var area: Rect2 = content(page.sheet)
 	if not page.banner.is_empty():
 		area = Rect2(area.position + Vector2(0.0, BANNER), area.size - Vector2(0.0, BANNER))
 	return area
@@ -832,10 +854,11 @@ static func _move_thing(thing: Dictionary, to: Rect2, scale: float) -> void:
 ## first: its designer put it there to line things up on. {"rect": Rect2,
 ## "lines": [["x" or "y", mm]] for the guides it snapped to}.
 static func snapped_to(at: Rect2, others: Array, resize: bool = false,
-		guides: Dictionary = {}) -> Dictionary:
-	var area: Rect2 = content()
-	var xs: Array = [area.position.x, area.end.x, PAGE.x * 0.5]
-	var ys: Array = [area.position.y, area.end.y, PAGE.y * 0.5]
+		guides: Dictionary = {}, sheet: BookletSheet = null) -> Dictionary:
+	var area: Rect2 = content(sheet)
+	var middle: Vector2 = (sheet.size() if sheet != null else PAGE) * 0.5
+	var xs: Array = [area.position.x, area.end.x, middle.x]
+	var ys: Array = [area.position.y, area.end.y, middle.y]
 	for other: Variant in others:
 		var rect: Rect2 = other
 		xs.append_array([rect.position.x, rect.end.x, rect.get_center().x])
@@ -877,17 +900,19 @@ static func _nearest(edges: Array, targets: Array) -> Array:
 	return best
 
 
-## [param at] kept on the page, no smaller than [param least].
-static func _on_page(at: Rect2, least: Vector2) -> Rect2:
-	var size: Vector2 = at.size.max(least).min(PAGE)
-	var position: Vector2 = at.position.clamp(Vector2.ZERO, PAGE - size)
+## [param at] kept on the page, [param page] mm, no smaller than [param least].
+static func _on_page(at: Rect2, least: Vector2, page: Vector2 = PAGE) -> Rect2:
+	var size: Vector2 = at.size.max(least).min(page)
+	var position: Vector2 = at.position.clamp(Vector2.ZERO, page - size)
 	return Rect2(position, size)
 
 
+## Its number's height: smaller on a small panel and in a callout, and as
+## much bigger as its page was set up to have them (BookletSheet.number).
 static func _number_size(entry: Entry, panel: Rect2) -> float:
 	if entry.in_callout:
-		return NUMBER_SMALL
-	return NUMBER if panel.size.y > 120.0 else NUMBER_SMALL
+		return NUMBER_SMALL * entry.number_scale
+	return (NUMBER if panel.size.y > 120.0 else NUMBER_SMALL) * entry.number_scale
 
 
 ## The parts box and the number under it, as one block: [width, height].
@@ -1054,11 +1079,11 @@ static func _cell_size(callout: Callout, scale: float) -> Vector2:
 
 ## Whether the callout's steps fit in a box on a whole page's panel at a
 ## size that can be read; if not, they get pages of their own.
-static func _fits_inline(callout: Callout) -> bool:
+static func _fits_inline(callout: Callout, sheet: BookletSheet = null) -> bool:
 	if callout.steps.size() > 3:
 		return false
 	callout.inline = true
-	return _cell_scale(callout, content(), callout.steps.size()) >= 0.16
+	return _cell_scale(callout, content(sheet), callout.steps.size()) >= 0.16
 
 
 static func _cells(callout: Callout) -> void:
@@ -1077,9 +1102,10 @@ static func _cells(callout: Callout) -> void:
 
 ## A long sub-assembly's own pages, framed: its steps laid out as steps
 ## are, numbered from 1, the frame saying how many to build.
-static func _callout_pages(callout: Callout, progress: float) -> Array[Page]:
+static func _callout_pages(callout: Callout, progress: float,
+		sheet: BookletSheet = null) -> Array[Page]:
 	var pages: Array[Page] = []
-	var frame: Rect2 = content().grow(-1.0)
+	var frame: Rect2 = content(sheet).grow(-1.0)
 	var area := Rect2(frame.position + Vector2(5.0, 5.0),
 		frame.size - Vector2(10.0, 10.0 + (QUANTITY + 3.0 if callout.times > 1 else 0.0)))
 	var at: int = 0
@@ -1095,7 +1121,7 @@ static func _callout_pages(callout: Callout, progress: float) -> Array[Page]:
 			callout.preview_cell = Rect2(callout.preview_box.position + Vector2(PAD, PAD),
 				box - Vector2(PAD * 2.0, PAD * 2.0 + (QUANTITY + 1.0 if callout.times > 1 else 0.0)))
 			room = Rect2(area.position, Vector2(area.size.x - box.x - GUTTER, area.size.y))
-		var page := _best_page(run, room, true)
+		var page := _best_page(run, room, true, 4, sheet)
 		page.frame = frame
 		if at == 0 and callout.preview:
 			page.preview = callout
@@ -1121,10 +1147,14 @@ static func _preview_size(callout: Callout, area: Rect2) -> Vector2:
 
 
 ## The parts list at the end: every part, by colour, a column at a time.
-static func parts_pages(lots: Array[Lot], first_page: int) -> Array[Page]:
+static func parts_pages(lots: Array[Lot], first_page: int,
+		sheet: BookletSheet = null, credits: String = "") -> Array[Page]:
 	var pages: Array[Page] = []
-	var area: Rect2 = content()
-	area = Rect2(area.position + Vector2(0.0, 10.0), area.size - Vector2(0.0, 10.0))
+	var area: Rect2 = content(sheet)
+	# The credits' lines past the first, where they wrap on a narrow page.
+	var over: float = (credit_lines(credits, sheet) - 1) * CREDIT_SIZE * 1.2 \
+		if sheet != null and not credits.is_empty() else 0.0
+	area = Rect2(area.position + Vector2(0.0, 10.0), area.size - Vector2(0.0, 10.0 + over))
 	const COLUMN := 24.5
 	var columns: int = int((area.size.x + 2.0) / COLUMN)
 	var page := Page.new()
@@ -1156,6 +1186,8 @@ static func parts_pages(lots: Array[Lot], first_page: int) -> Array[Page]:
 	for index: int in pages.size():
 		pages[index].number = first_page + index
 		pages[index].progress = 1.0
+		if sheet != null:
+			pages[index].sheet = sheet
 	return pages
 
 
@@ -1164,14 +1196,15 @@ static func _fitted(size: Vector2, most: Vector2) -> Vector2:
 	return size * shrink
 
 
-## A part's size on paper from its size on the view plane, in LDU.
-static func part_size(extent: Vector2) -> Vector2:
-	var size: Vector2 = extent * PART_SCALE
+## A part's size on paper from its size on the view plane, in LDU, at
+## [param scale] times the booklet's own (BookletSheet.parts).
+static func part_size(extent: Vector2, scale: float = 1.0) -> Vector2:
+	var size: Vector2 = extent * PART_SCALE * scale
 	var longest: float = maxf(size.x, size.y)
-	if longest > PART_LARGEST:
-		size *= PART_LARGEST / longest
-	elif longest < PART_SMALLEST and longest > 0.0:
-		size *= PART_SMALLEST / longest
+	if longest > PART_LARGEST * scale:
+		size *= PART_LARGEST * scale / longest
+	elif longest < PART_SMALLEST * scale and longest > 0.0:
+		size *= PART_SMALLEST * scale / longest
 	return size
 
 
@@ -1212,26 +1245,38 @@ static func page_html(page: Page, document: Document) -> String:
 static func _part_rules(document: Document) -> PackedStringArray:
 	var parts := PackedStringArray()
 	for key: String in document.parts:
-		parts.append(".%s{background-image:url(%s)}" % [_class_of(key, document),
-			document.parts[key]])
+		var source: String = _url(str(document.parts[key]))
+		if not source.is_empty():
+			parts.append(".%s{background-image:url(%s)}" % [_class_of(key, document), source])
 	return parts
 
 
 static func _head(document: Document, with_parts: bool = true) -> String:
 	var parts: PackedStringArray = _part_rules(document) if with_parts else PackedStringArray()
+	# The page as its designer set it up (BookletSheet): its size, colour and
+	# picture, and printed on that paper, edge to edge. The booklet's own
+	# page is printed on A4 or Letter turned on its side, a margin round it.
+	var sheet: BookletSheet = document.sheet
+	var size: Vector2 = sheet.size()
+	var own: bool = sheet.paper == "booklet"
+	var behind: String = _url(sheet.picture_uri)
+	if not behind.is_empty():
+		parts.insert(0, "section.page{background-image:url(%s);background-size:cover;background-position:center}"
+			% behind)
 	return """<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="%s">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>%s — building instructions</title>
 <style>
 :root {
   --mm: 1mm;
-  --page: #dcecf8; --box: #bcdaf1; --box-line: #3d6f97;
+  --page: #%s; --box: #bcdaf1; --box-line: #3d6f97;
   --callout: #fff3c8; --callout-line: #34393f; --ink: #15191e;
 }
 @media screen {
-  :root { --mm: min(3.78px, calc((100vw - 24px) / 269)); }
+  :root { --mm: min(3.78px, calc((100vw - 24px) / %s)); }
   body { background: #5f6b78; }
   .page { margin: 12px auto; box-shadow: 0 2px 14px rgba(0,0,0,.35); }
   .bar { position: sticky; top: 0; z-index: 9; display: flex; gap: 12px;
@@ -1245,15 +1290,15 @@ static func _head(document: Document, with_parts: bool = true) -> String:
   .bar button { min-height: 44px; min-width: 44px; padding: 10px 16px; }
 }
 @media print {
-  @page { size: landscape; margin: 0; }
+  @page { size: %s; margin: 0; }
   body { background: #fff; }
-  .page { margin: 5mm auto 0; break-after: page; page-break-after: always; }
+  .page { margin: %s; break-after: page; page-break-after: always; }
   .bar { display: none; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; color: var(--ink);
   font-family: "Helvetica Neue", Arial, "Segoe UI", Roboto, sans-serif; }
-.page { position: relative; width: calc(269 * var(--mm)); height: calc(199 * var(--mm));
+.page { position: relative; width: calc(%s * var(--mm)); height: calc(%s * var(--mm));
   background: var(--page); overflow: hidden;
   print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 .a { position: absolute; left: calc(var(--x) * var(--mm)); top: calc(var(--y) * var(--mm));
@@ -1285,9 +1330,13 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
   margin-right: calc(1 * var(--mm)); box-shadow: inset 0 0 0 calc(.2 * var(--mm)) rgba(0,0,0,.3); }
 %s
 </style>
-<div class="bar"><span>%s</span><button onclick="print()">Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="saved" role="status" hidden></span></div>
+<div class="bar"><span>%s</span><button>Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="saved" role="status" hidden></span></div>
 %s
-<main>""" % [_escape(document.title), "\n".join(parts), _escape(document.title), SAVE_SCRIPT]
+<main>""" % [policy(), _escape(document.title), sheet.colour.to_html(false), _whole(size.x),
+		("portrait" if sheet.portrait else "landscape") if own
+			else "%smm %smm" % [_whole(size.x), _whole(size.y)],
+		"5mm auto 0" if own else "0 auto", _whole(size.x), _whole(size.y), "\n".join(parts),
+		_escape(document.title), SAVE_SCRIPT]
 
 
 ## Save as PDF and Save pages as PNG, shown where they work: on the
@@ -1296,7 +1345,11 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
 ## (BookletPdf, BookletPng); on the web the app shows and answers them in
 ## its tab itself (BookletOut.finish), where this does not run. A booklet
 ## opened from its file has no Brickworks to ask, and shows Print alone.
-const SAVE_SCRIPT := """<script>
+const SAVE_SCRIPT := "<script>" + SAVE_JS + "</script>"
+## Print, and the Save buttons on the desktop: the one script the
+## booklet may run (policy).
+const SAVE_JS := """
+document.querySelector(".bar button").addEventListener("click", () => print());
 if (location.protocol == "http:" && location.hostname == "127.0.0.1") addEventListener("DOMContentLoaded", () => {
   const said = document.getElementById("saved");
   for (const [id, kind] of [["save-pdf", "pdf"], ["save-png", "png"]]) {
@@ -1316,7 +1369,24 @@ if (location.protocol == "http:" && location.hostname == "127.0.0.1") addEventLi
     };
   }
 });
-</script>"""
+"""
+
+
+## The booklet's Content-Security-Policy, the first thing in it: no script
+## but its own Print and Save (SAVE_JS, by its hash), pictures only as
+## data, its own styles, nothing fetched but its Save from Brickworks. A
+## page's words and pictures come from a model file, which is anyone's;
+## were one ever to break out of the HTML, it still runs nothing. On the
+## web the tab gets no script at all (BookletOut.take: SCRIPT_ALLOWED to
+## 'none').
+static func policy() -> String:
+	return ("default-src 'none'; script-src %s; style-src 'unsafe-inline'; img-src data:; "
+		+ "connect-src 'self'; base-uri 'none'; form-action 'none'") % script_allowed()
+
+
+## The script the booklet's policy allows: its own, by its hash.
+static func script_allowed() -> String:
+	return "'sha256-%s'" % Marshalls.raw_to_base64(SAVE_JS.sha256_buffer())
 
 
 static func _class_of(key: String, document: Document) -> String:
@@ -1324,6 +1394,9 @@ static func _class_of(key: String, document: Document) -> String:
 
 
 static func _page(page: Page, document: Document) -> String:
+	var sheet: BookletSheet = document.sheet
+	var size: Vector2 = sheet.size()
+	var margin: float = sheet.margin
 	var out := PackedStringArray()
 	var numbers := PackedStringArray()
 	for entry: Entry in page.entries:
@@ -1341,7 +1414,7 @@ static func _page(page: Page, document: Document) -> String:
 					out.append(_div(picture[1], "", "background:#fff;border-radius:calc(2.5 * var(--mm));"
 						+ "box-shadow:0 0 0 calc(.35 * var(--mm)) #3d6f97"))
 				_image(out, picture[0], picture[1], "The finished model")
-			out.append(_text(Vector2(MARGIN, MARGIN), 8.0, "Finished", "n"))
+			out.append(_text(Vector2(margin, margin), 8.0, "Finished", "n"))
 		"parts":
 			_parts_page(page, document, out)
 		_:
@@ -1361,7 +1434,7 @@ static func _page(page: Page, document: Document) -> String:
 							PAD + QUANTITY + 0.6), QUANTITY * 1.15, "%dx" % callout.times, "n"))
 			var in_banner: Array = []
 			if not page.banner.is_empty():
-				var strip := Rect2(Vector2(MARGIN, MARGIN), Vector2(content().size.x, BANNER - 3.0))
+				var strip := Rect2(Vector2(margin, margin), Vector2(content(sheet).size.x, BANNER - 3.0))
 				out.append(_div(strip, "ban"))
 				var said: String = page.banner.capitalize() if page.banner.begins_with("part ") \
 					else page.banner
@@ -1385,21 +1458,23 @@ static func _page(page: Page, document: Document) -> String:
 				for arrow: Variant in entry.drawn_arrows:
 					if arrow is Dictionary:
 						svg.append(drawn_arrow(arrow))
-	# The foot: the page number at the outer corner, and how far through.
+	# The foot: the page number at the outer corner, and how far through, in
+	# the bottom margin.
 	if page.kind != "cover":
 		var left: bool = page.number % 2 == 0
-		var bar := Rect2(Vector2(MARGIN + 12.0, PAGE.y - 7.0), Vector2(PAGE.x - MARGIN * 2.0 - 24.0, 1.2))
+		var bar := Rect2(Vector2(margin + 12.0, size.y - margin + 2.0),
+			Vector2(size.x - margin * 2.0 - 24.0, 1.2))
 		svg.append("<rect x=\"%s\" y=\"%s\" width=\"%s\" height=\"%s\" rx=\".6\" fill=\"#a9c9e3\"/>"
 			% [_n(bar.position.x), _n(bar.position.y), _n(bar.size.x), _n(bar.size.y)])
 		svg.append("<rect x=\"%s\" y=\"%s\" width=\"%s\" height=\"%s\" rx=\".6\" fill=\"#2c6496\"/>"
 			% [_n(bar.position.x), _n(bar.position.y),
 				_n(bar.size.x * clampf(page.progress, 0.0, 1.0)), _n(bar.size.y)])
-		var x: float = MARGIN if left else PAGE.x - MARGIN - 8.0
-		out.append(_text(Vector2(x, PAGE.y - 8.6), 3.6, str(page.number), "q",
+		var x: float = margin if left else size.x - margin - 8.0
+		out.append(_text(Vector2(x, size.y - margin + 0.4), 3.6, str(page.number), "q",
 			"" if left else "text-align:right;width:calc(8 * var(--mm))"))
 	if not svg.is_empty():
 		out.append("<svg class=\"over\" viewBox=\"0 0 %s %s\" aria-hidden=\"true\">%s</svg>"
-			% [_n(PAGE.x), _n(PAGE.y), "".join(svg)])
+			% [_n(size.x), _n(size.y), "".join(svg)])
 	out.append("</section>")
 	return "\n".join(out)
 
@@ -1476,7 +1551,7 @@ static func _guides(entry: Entry, out: PackedStringArray, svg: PackedStringArray
 		for index: int in entry.colours.size():
 			var colour: Dictionary = entry.colours[index]
 			out.append(_text(colours.position + Vector2(GUIDE_PAD, GUIDE_PAD + MARK_LINE * index),
-				2.6, "<i class=\"chip\" style=\"background:%s\"></i>%s" % [str(colour["rgb"]),
+				2.6, "<i class=\"chip\" style=\"background:%s\"></i>%s" % [_colour(str(colour["rgb"])),
 					_escape(str(colour["name"]))], "q cg"))
 	var pictures: Array[Rect2] = actual_rects(entry)
 	for index: int in pictures.size():
@@ -1495,7 +1570,7 @@ static func _guides(entry: Entry, out: PackedStringArray, svg: PackedStringArray
 		var said: String = str(guide["studs"])
 		var size: float = 3.2 if said.length() < 2 else 2.8
 		var wide: float = Helvetica.text_width(said, size, true, -0.02 * size)
-		out.append(_text(ring.get_center() - Vector2(wide * 0.5, size * 0.488), size, said, "n"))
+		out.append(_text(ring.get_center() - Vector2(wide * 0.5, size * 0.488), size, _escape(said), "n"))
 
 
 ## The words and pictures a designer put on [param entry]'s page
@@ -1537,30 +1612,39 @@ static func note_style(note: Dictionary, at: Rect2) -> String:
 ## section's banner, "■ inside: Bright Green".
 static func _mark_words(mark: Dictionary, with_label: bool = true) -> String:
 	return "<i class=\"chip\" style=\"background:%s\"></i>%s: %s" % [
-		str(mark.get("rgb", "#888")),
+		_colour(str(mark.get("rgb", "#888"))),
 		_escape(str(mark.get("label", ""))) if with_label else "inside",
 		_escape(str(mark.get("name", "")))]
 
 
 static func _cover(page: Page, document: Document, out: PackedStringArray) -> void:
-	out.append(_div(Rect2(Vector2.ZERO, Vector2(PAGE.x, 30.0)), "", "background:#23527c"))
-	out.append(_div(Rect2(Vector2(MARGIN, 7.0), Vector2(44.0, 16.0)), "",
+	var page_size: Vector2 = document.sheet.size()
+	var margin: float = document.sheet.margin
+	out.append(_div(Rect2(Vector2.ZERO, Vector2(page_size.x, 30.0)), "", "background:#23527c"))
+	out.append(_div(Rect2(Vector2(margin, 7.0), Vector2(44.0, 16.0)), "",
 		"background:#d0312d;border-radius:calc(2 * var(--mm))"))
-	out.append(_text(Vector2(MARGIN + 3.6, 12.4), 5.0, "BRICKWORKS", "n", "color:#fff"))
+	out.append(_text(Vector2(margin + 3.6, 12.4), 5.0, "BRICKWORKS", "n", "color:#fff"))
 	# As big as fits on one line: the example car is "Example Car for
 	# Demonstration of LDRAW Library", which at 10 mm ran off the page.
-	var room: float = PAGE.x - MARGIN * 2.0 - 52.0
+	var room: float = page_size.x - margin * 2.0 - 52.0
 	var size: float = clampf(room / (0.58 * maxf(1.0, float(document.title.length()))), 4.0, 10.0)
-	out.append(_text(Vector2(MARGIN + 52.0, 15.0 - size * 0.5), size, _escape(document.title),
+	out.append(_text(Vector2(margin + 52.0, 15.0 - size * 0.5), size, _escape(document.title),
 		"n", "color:#fff"))
 	for picture: Array in page.pictures:
 		_image(out, picture[0], picture[1], "The finished model")
-	out.append(_text(Vector2(MARGIN, PAGE.y - 15.0), 4.0, "%d pieces · %d steps" % [document.pieces, document.steps], "q"))
-	out.append(_text(Vector2(MARGIN, PAGE.y - 9.0), 2.6, "Building instructions made with Brickworks — brickworks.diy", "e"))
+	out.append(_text(Vector2(margin, page_size.y - margin - 6.0), 4.0, "%d pieces · %d steps" % [document.pieces, document.steps], "q"))
+	out.append(_text(Vector2(margin, page_size.y - margin), 2.6, "Building instructions made with Brickworks — brickworks.diy", "e"))
+
+
+## Where the cover's picture of the finished model goes, under its band.
+static func cover_area(sheet: BookletSheet) -> Rect2:
+	return Rect2(Vector2(sheet.margin, 36.0), Vector2(sheet.size().x - sheet.margin * 2.0,
+		sheet.size().y - 54.0 - sheet.margin))
 
 
 static func _parts_page(page: Page, document: Document, out: PackedStringArray) -> void:
-	out.append(_text(Vector2(MARGIN, MARGIN), 6.0, "Parts", "n"))
+	var margin: float = document.sheet.margin
+	out.append(_text(Vector2(margin, margin), 6.0, "Parts", "n"))
 	for cell: Array in page.cells:
 		var lot: Lot = cell[0]
 		var at: Rect2 = cell[1]
@@ -1571,7 +1655,39 @@ static func _parts_page(page: Page, document: Document, out: PackedStringArray) 
 		out.append(_text(Vector2(at.position.x, at.end.y + 0.8), 3.0, "%dx" % lot.count, "q"))
 		var label: String = lot.element if not lot.element.is_empty() else lot.part_id
 		out.append(_text(Vector2(at.position.x, at.end.y + 4.4), 2.5, _escape(label), "e"))
-	out.append(_text(Vector2(MARGIN, PAGE.y - 13.0), 2.3, document.credits, "e"))
+	var foot: float = document.sheet.size().y - margin - 4.0
+	var lines: int = credit_lines(document.credits, document.sheet)
+	if lines <= 1:
+		out.append(_text(Vector2(margin, foot), CREDIT_SIZE, _escape(document.credits), "e"))
+	else:
+		# Too long for one line across a narrow page (A4 or A5 upright): it
+		# ran off the page's edge, the trademark notice with it. Wrapped to
+		# the page's width, its last line where the one line goes.
+		out.append(_text(Vector2(margin, foot - (lines - 1) * CREDIT_SIZE * 1.2), CREDIT_SIZE,
+			_escape(document.credits), "e tx", "width:calc(%s * var(--mm))"
+			% _n(document.sheet.size().x - margin * 2.0)))
+
+
+## The parts list's credits' size, in mm.
+const CREDIT_SIZE := 2.3
+
+
+## How many lines [param credits] take across [param sheet]'s page between
+## its margins, wrapped between words as the page sets them.
+static func credit_lines(credits: String, sheet: BookletSheet) -> int:
+	var room: float = sheet.size().x - sheet.margin * 2.0
+	if Helvetica.text_width(credits, CREDIT_SIZE, false) <= room:
+		return 1
+	var lines: int = 1
+	var line: String = ""
+	for word: String in credits.split(" ", false):
+		var longer: String = word if line.is_empty() else line + " " + word
+		if not line.is_empty() and Helvetica.text_width(longer, CREDIT_SIZE, false) > room:
+			lines += 1
+			line = word
+		else:
+			line = longer
+	return lines
 
 
 static func _part(at: Rect2, lot: Lot, document: Document) -> String:
@@ -1584,6 +1700,9 @@ static func _part(at: Rect2, lot: Lot, document: Document) -> String:
 
 static func _image(out: PackedStringArray, source: String, at: Rect2, alt: String,
 		how: String = "") -> void:
+	source = _url(source)
+	if source.is_empty():
+		return
 	out.append("<img class=\"a\" style=\"--x:%s;--y:%s;--w:%s;--h:%s%s\" src=\"%s\" alt=\"%s\">"
 		% [_n(at.position.x), _n(at.position.y), _n(at.size.x), _n(at.size.y), how, source,
 			_escape(alt)])
@@ -1762,9 +1881,35 @@ static func _n(value: float) -> String:
 	return String.num(value, 2)
 
 
-## Text going into HTML. The part library has ampersands and quotes in
-## its names — "Brick 1 x 4 with 4 Studs on Side & Groove" — and a name
-## written straight into markup is a name that breaks the page.
+## A page's side in mm as its styles say it: 269, not 269.0, as the booklet's
+## own page always said it; 279.4 as it is.
+static func _whole(value: float) -> String:
+	return str(roundi(value)) if is_equal_approx(value, roundf(value)) else _n(value)
+
+
+## Text going into HTML, between tags or in a double-quoted attribute,
+## which is every attribute the booklet writes. The part library has
+## ampersands and quotes in its names — "Brick 1 x 4 with 4 Studs on Side
+## & Groove" — and a name written straight into markup is a name that
+## breaks the page. A model file's words are anyone's.
 static func _escape(raw: String) -> String:
 	return (raw.replace("&", "&amp;").replace("<", "&lt;")
 		.replace(">", "&gt;").replace("\"", "&quot;"))
+
+
+## A picture's address going into HTML, in src="" or a stylesheet's url():
+## a PNG, JPEG or WebP as base64 data, which has nothing in it that ends
+## either; "" for anything else, which is left out. The pictures a model
+## file carries are checked as it is read (BookletLooks.picture_kind);
+## this holds every picture the booklet writes to the same.
+static func _url(source: String) -> String:
+	return source if RegEx.create_from_string(PICTURE_URL).search(source) != null else ""
+
+
+const PICTURE_URL := "^data:image/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]*={0,2}$"
+
+
+## A colour going into a style: # and hex digits; grey for anything else.
+static func _colour(raw: String) -> String:
+	return raw if RegEx.create_from_string("^#[0-9a-fA-F]{3,8}$").search(raw) != null \
+		else "#888888"

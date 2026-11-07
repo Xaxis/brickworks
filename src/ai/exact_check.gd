@@ -396,7 +396,8 @@ func pairs_near(of: Dictionary, by: float) -> Array:
 ## A part down another's stud past the stud's foot is one too, whatever
 ## their shapes meet by ([method sunk]): a cone 4 LDU down a cone's stud
 ## meets it by 2 LDU, a 2 x 2 cone down 4589's by 0.8, and it is in that
-## part all the same. Nothing forgives it (a found pair with "sunk").
+## part all the same. Nothing forgives it (a found pair with "sunk") but
+## the sets themselves, as [method sunk] reads them.
 func collisions(of: Dictionary) -> Array:
 	var began: int = Time.get_ticks_usec()
 	var out: Array = []
@@ -417,12 +418,15 @@ func collisions(of: Dictionary) -> Array:
 ## where one is down a stud of the other past the stud's foot, further than
 ## BrickNet joins the two (Exact.sunk_pairs): Vector2i(a, b), a < b ->
 ## the collision, as [method between] gives one, with "sunk": [the stud's
-## item, the one down it] and the stud's way as its axis.
+## item, the one down it] and the stud's way as its axis. Not a pair the
+## sets build so ([method _fit_sunk]).
 func sunk(of: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
 	for one: Array in Exact.sunk_pairs(items, of):
 		var a: int = mini(int(one[0]), int(one[1]))
 		var b: int = maxi(int(one[0]), int(one[1]))
+		if _fit_sunk(a, b, float(one[2])):
+			continue
 		out[Vector2i(a, b)] = {"a": a, "b": b, "depth": float(one[2]), "piece_a": -1,
 			"piece_b": -1, "axis": one[3], "sunk": [int(one[0]), int(one[1])]}
 	return out
@@ -431,13 +435,35 @@ func sunk(of: Dictionary = {}) -> Dictionary:
 ## Whether item [param i] is down a stud of one of [param others], or one of
 ## theirs down its, past the stud's foot further than BrickNet joins them: no
 ## seat moves it, as it is in that part (the check says so, [method
-## collisions]). Nearer, it is on the stud, low, and the seat puts it up.
+## collisions]). Nearer, it is on the stud, low, and the seat puts it up. A
+## pair the sets build so is not sunk ([method _fit_sunk]), here as there.
 func _sunk_near(i: int, others: PackedInt32Array) -> bool:
 	for j: int in others:
-		if items[j] != null and (Exact.sunk(items[j], items[i]) > Exact.SUNK_PAST
-				or Exact.sunk(items[i], items[j]) > Exact.SUNK_PAST):
+		if items[j] == null:
+			continue
+		var depth: float = maxf(Exact.sunk(items[j], items[i]), Exact.sunk(items[i], items[j]))
+		if depth > Exact.SUNK_PAST and not _fit_sunk(i, j, depth):
 			return true
 	return false
+
+
+## Whether items [param i] and [param j], one [param depth] LDU down a stud
+## of the other past its foot, stand as the LEGO Group's own sets build them
+## ([method known_fit]) no further down than a stud reaches
+## (Joints.STUD_REACH): a tube or a socket that takes a stud whole, which
+## LDraw draws and BrickNet frames at its mouth. Of the table's 318 poses,
+## the sunk rule reads 8 past 3 LDU. 4 are so, each 4 LDU, each built in
+## two or more models: a 6141 round plate in a 4740 dish's tube, a
+## headlight's lens in its reflector (31038-1, 41015-1, 42022-1), and in a
+## 43898 dish's (10256-1, 7657-1); a 3960 dish on a 3062b round brick
+## (6770-1, 894-1); a 3823 windscreen on a 3821 door's hinge (6679-2,
+## 6691-1). The other 4 are 8 LDU, a plate's depth through the other part,
+## and each one author's sub-model in two set numbers: 10002-1's 2 x 1
+## slopes flush with a 4 x 10 plate's top (4547-1 has the same sub-model),
+## and the boat 6388-1 and 1472-1 share, 8 LDU down its trailer's jumpers.
+## Those stay sunk (checks267).
+func _fit_sunk(i: int, j: int, depth: float) -> bool:
+	return depth <= Joints.STUD_REACH and known_fit(i, j)
 
 
 ## BrickNet's pieces over everything with a shape (only the items in [param
@@ -1726,15 +1752,43 @@ func _seat_pieces(wanted: Dictionary, near: Dictionary, moved: Dictionary) -> vo
 
 ## Whether a connector of item [param i] meets another part's exactly, by
 ## [param points] (the connectors of every item by their point to the LDU).
+## A bar in its clip, or an axle in its hole, says where a part is across its
+## line and not along it: met only so, the part is seated where none of its
+## studs or holes stops an LDU or two short of its mate, as a saddle written
+## an LDU low on its horse stopped with its clip on the sword's bar.
 func _meets_exactly(i: int, points: Dictionary) -> bool:
-	for one: Array in (items[i] as Exact.Item).world():
+	var item: Exact.Item = items[i]
+	var slid: bool = false
+	for one: Array in item.world():
 		var mine: Array = [i, one[0], one[1], one[2], one[3]]
 		for other: Variant in points.get(Vector3i((one[1] as Vector3).round()), []):
 			if int((other as Array)[0]) == i:
 				continue
 			var move: Variant = Exact._move_to_meet(items, mine, other, 1.0)
 			if move is Vector3 and (move as Vector3).length() <= 0.05:
-				return true
+				if item.shape.kind[one[0]] != Exact.AXLE:
+					return true
+				slid = true
+	return slid and not _short_of_its_stud(i, points)
+
+
+## Whether a stud or a hole of item [param i] stands an LDU or two short of a
+## mate along the way it points, by [param points]: not pressed home.
+func _short_of_its_stud(i: int, points: Dictionary) -> bool:
+	var item: Exact.Item = items[i]
+	for one: Array in item.world():
+		var kind: int = item.shape.kind[one[0]]
+		if kind != Exact.STUD and kind != Exact.HOLE:
+			continue
+		var mine: Array = [i, one[0], one[1], one[2], one[3]]
+		for along: float in [-2.0, -1.0, 1.0, 2.0]:
+			var key := Vector3i(((one[1] as Vector3) + (one[2] as Vector3) * along).round())
+			for other: Variant in points.get(key, []):
+				if int((other as Array)[0]) == i:
+					continue
+				var move: Variant = Exact._move_to_meet(items, mine, other, Exact.POS_THR)
+				if move is Vector3 and (move as Vector3).length() > 0.05:
+					return true
 	return false
 
 
@@ -1862,12 +1916,22 @@ func _seat(movable: Array) -> Dictionary:
 		var was: Exact.Item = items[i]
 		var move: Vector3 = found["move"]
 		var there := Exact.Item.new(was.shape, was.at.translated(move))
-		# Into nothing it was not in already, and joined once there.
+		# Into nothing it was not in already, no deeper than it was into
+		# something, and joined once there. A part written an LDU low on its
+		# studs is an LDU into what it stands on, and going home may take it as
+		# far into another: 6085-1's barding, its rider's leg 1 LDU into it
+		# where the set has it, was left low, and called into its horse.
+		var deepest: float = 0.0
+		for j: int in others:
+			if items[j] != null:
+				deepest = maxf(deepest, float(Exact.clash(was, items[j], true).get("depth", 0.0)))
 		var clear: bool = true
 		for j: int in others:
 			if items[j] == null:
 				continue
-			if not Exact.clash(there, items[j], true).is_empty() and Exact.clash(was, items[j], true).is_empty():
+			var into: Dictionary = Exact.clash(there, items[j], true)
+			if not into.is_empty() and Exact.clash(was, items[j], true).is_empty() \
+					and float(into["depth"]) > deepest + 0.01:
 				clear = false
 				break
 		items[i] = there

@@ -421,7 +421,7 @@ func shoot(made: Stage, upto: int, new_from: int, view: View, size: Vector2i,
 	lane.busy = false
 	if drawn == null:
 		return shot
-	shot.task = WorkerThreadPool.add_task(
+	shot.task = WorkerTasks.add(
 		_develop.bind(shot, drawn, codes, size, times, finish), false,
 		"booklet picture")
 	return shot
@@ -461,7 +461,7 @@ func finished(shot: Shot) -> void:
 	# A build without threads does the work when it is waited for.
 	while OS.has_feature("threads") and not WorkerThreadPool.is_task_completed(shot.task):
 		await get_tree().process_frame
-	WorkerThreadPool.wait_for_task_completion(shot.task)
+	WorkerTasks.collect(shot.task)
 	shot.task = -1
 
 

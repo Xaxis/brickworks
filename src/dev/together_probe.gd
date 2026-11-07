@@ -286,10 +286,14 @@ func _pair() -> void:
 	_check("a floor chosen on the other side is the owner's: %s" % sa.model_floor.whole_words(),
 		sa.model_floor.whole_words() == sb.model_floor.whole_words())
 	(b["world"] as BrickWorld).step_looks = {BookletLooks.key("", 2): {"zoom": 1.5}}
-	sa.hidden_scheme = {"mode": "stages", "stages": 2}
+	# A scheme as the panel makes one (HiddenColours.Plan.scheme): another
+	# side's is read only in that shape.
+	var scheme: Dictionary = {"mode": "stages", "groups": [{"label": "Stage 2", "colour": 14, "also": [71],
+		"sections": ["Stage 2"]}]}
+	sa.hidden_scheme = scheme.duplicate(true)
 	await _settle([a, b], 15000)
 	_check("the booklet's looks and the hidden colours, each from one side, are both sides'",
-		(a["world"] as BrickWorld).step_looks == {BookletLooks.key("", 2): {"zoom": 1.5}} and sb.hidden_scheme == {"mode": "stages", "stages": 2})
+		(a["world"] as BrickWorld).step_looks == {BookletLooks.key("", 2): {"zoom": 1.5}} and sb.hidden_scheme == scheme)
 	_check("the same file on both, byte for byte", ta.model_hash() == tb.model_hash())
 	var said: Dictionary = await ta.check_edit({"op": "chat", "text": "Roof next?"})
 	await _settle([a, b])
@@ -463,7 +467,7 @@ func _reload(a: Dictionary, b: Dictionary) -> Dictionary:
 	var back: Dictionary = await _side("", b["account"] as Account)
 	var tc: Together = back["together"]
 	tc.keeps_place = true
-	var trouble: String = await tc.join(Together.kept_secret(), true)
+	var trouble: String = await tc.join(TogetherLink.kept_secret(), true)
 	await _settle([a, back], 30000)
 	_check("the copy back in its place sends them again, and both have them: %s" % str(tc.timing.get("restored", 0)),
 		trouble.is_empty() and ta.brick_of(str(placed.get("uid", ""))) != 0
@@ -487,7 +491,7 @@ func _reload(a: Dictionary, b: Dictionary) -> Dictionary:
 	var again: Dictionary = await _side("", b["account"] as Account)
 	var td: Together = again["together"]
 	td.keeps_place = true
-	trouble = await td.join(Together.kept_secret(), true)
+	trouble = await td.join(TogetherLink.kept_secret(), true)
 	await _settle([a, again], 30000)
 	_check("...and the app opened again is back in, with nothing left to send again (%d restored)"
 		% int(td.timing.get("restored", 0)), trouble.is_empty() and ta.model_hash() == td.model_hash()

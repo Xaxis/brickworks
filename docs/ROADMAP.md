@@ -307,7 +307,8 @@ plainer — see the first lever below.
        not 15 (inside the spread), but 3 builders of 4 built it on the right
        wing's part, not 1: turned over, a left wing looks like a right one,
        and the builder cannot turn the model in its hands. The steps score
-       did not move. The step player still does not roll.
+       did not move. The step player did not roll then; since rel-m268 (buildturn)
+       Build it turns the model as its booklet does.
    - **The whole castle**, nine hours of builder, is a lead's run; the
      command is in the write-up.
 
@@ -667,6 +668,24 @@ turned with the crane's top across them). Lift the boom is offered, kept,
 played, saved and opened again (`motions_probe`); lowered into its rest or
 turned with the top, the boom stops at once where it meets a cone, and is
 lifted 30° over MCP and 20° by hand (`grab_probe`).
+
+A clip plate built on a stud is not a rest (telescope, 2026-11-06). The
+observatory of the third MCP walk hangs each quarter dome by its handle in
+two 1 x 1 clip plates, each on a 1 x 1 plate's stud. Read as rests, six
+came out of the joints: the dome panel that opens carried one off its stud
+on its handle, into the telescope's way, and Extend the telescope stopped
+at 176° of 675°. A rest now needs a part that lies on the stud with
+sockets to spare, as the boom's 2 x 8 lies on a cone (a part with one
+socket sits on its stud whole), on a hinge whose far side reaches the
+stud's part off the hinge's line (on its line only, the far side turns and
+the part on the stud stays: a panel in two clips on one line). Of 477 real
+sets (every third, up to 400 KB), 7 had rests and 12 rests in all; 2 stay
+(42068-1's 19 parts turning on an axle, laid on a cone; 7743-1's 25
+on a 1 x 8 brick, laid on a round plate); 10 were parts built on their studs: clip plates, minifigure legs,
+pin connectors on half pins, and 6534-1's car on its driver's left leg,
+the right leg held in the car: both hips are on one line, so the hips turn
+and the car is not lifted. Each set's motions in motions_probe move the
+same parts as rel-m266 and stop where they did there.
 
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety

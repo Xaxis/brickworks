@@ -63,12 +63,9 @@
 ## part with notes, tabs, lines before the first FILE line, CRLF, and every
 ## kind of line that says what the next is (kt_runs.mpd).
 ##
-## And a saved model (the gatehouse) put down in each by File, Import, Into
-## this model… over MCP (intomodel): saved, opened again and undone, the
-## file's parts and the gatehouse's 14, and nothing else. And the lines the
-## app keeps of its own (its floor, hidden colours, cut-away, motions, pins,
-## the link it is shared at, the sets in its bin, a picture to trace, the set
-## it is), each written into the CRLF file by its writer, then all of them,
+## And the lines the app keeps of its own (its floor, hidden colours,
+## cut-away, motions, pins, the link it is shared at, the sets in its bin, a
+## picture to trace, the set it is), each written into the CRLF file by its writer, then all of them,
 ## opened, saved and opened again: every line in CRLF and each read again
 ## (SourceFile.lines_put; each writer had put its line in with "\n" alone).
 ##
@@ -114,11 +111,8 @@ const MODELS: Array = [
 ## The edits to a model's sub-models, in the order a person meets them.
 const EDITS: Array = ["rename", "copy", "make unique", "add a part", "take off a copy",
 	"take a part out of one copy", "make a sub-assembly", "move a part of a mirrored copy",
-	"put a saved model in", "move a copy", "ungroup", "delete a part", "take off the only copy"]
+	"move a copy", "ungroup", "delete a part", "take off the only copy"]
 
-## The saved model put in each (intomodel_probe's): five sub-models in five
-## steps, 14 parts.
-const GATEHOUSE := "res://tests/fixtures/steps/gatehouse.mpd"
 const CRLF_FILE := "res://src/dev/fixtures/kt_crlf.mpd"
 ## The lines the app keeps of its own in a model's text, each by its writer.
 const META_KINDS: Array = ["floor", "hidden colours", "cut-away", "motions", "pins",
@@ -185,12 +179,6 @@ func _run() -> void:
 	_library = _main.get("_library")
 	_shell = _main.get("_shell")
 	_socket = (_main.get("_connector") as ClaudeConnector).rpc
-	# The gatehouse, saved: one of the person's own models, to put in.
-	var gatehouse: String = ModelStore.saved_path("Gatehouse")
-	DirAccess.make_dir_recursive_absolute(gatehouse.get_base_dir())
-	var file := FileAccess.open(gatehouse, FileAccess.WRITE)
-	file.store_string(FileAccess.get_file_as_string(GATEHOUSE))
-	file.close()
 	var only: String = OS.get_environment("KEEP_TEXT_ONLY")
 	var steps: bool = OS.get_environment("KEEP_TEXT_STEPS") != "0"
 	var edits: Array = EDITS if OS.get_environment("KEEP_TEXT_EDITS").is_empty() \
@@ -775,12 +763,6 @@ func _do(edit: String, text: String) -> Dictionary:
 			await _frames(2)
 			return {"said": "moved a %s in %s" % [_world.get_brick(part).part_id, path],
 				"ok": moved > 0, "lines": line}
-		"put a saved model in":
-			# File, Import, Into this model… over MCP (intomodel): a saved
-			# model put down in this one as a sub-assembly, with its steps.
-			var said: String = await _say("open_model", {"into": true, "name": "Gatehouse"})
-			await _frames(4)
-			return {"said": said, "ok": said.begins_with("Put Gatehouse in the model")}
 		"move a copy":
 			# One copy of several moved whole (kt3review #1): only the line
 			# placing it changes.

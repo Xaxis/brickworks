@@ -78,20 +78,7 @@ func accept(numbers: Array = []) -> String:
 ## The section the window's commands act on: the selected sub-assembly, or
 ## the one directly inside the level being edited that the selection is in.
 func target() -> String:
-	var assemblies: Assemblies = shell.assemblies
-	var chosen: String = assemblies.selected_assembly()
-	if not chosen.is_empty():
-		return chosen
-	var found: String = ""
-	for brick_id: int in shell.builder.selection:
-		var brick: BrickWorld.Brick = shell.world.get_brick(brick_id)
-		if brick == null:
-			continue
-		var child: String = Sections._child_of(assemblies.entered, Assemblies.path_of(brick))
-		if child.is_empty() or (not found.is_empty() and child != found):
-			return ""
-		found = child
-	return found
+	return shell.section_target()
 
 
 func can_target() -> bool:
@@ -475,7 +462,9 @@ func write_list(kind: String, asking: bool = false) -> String:
 	var stock: Inventory = Inventory.of(shell.world, shell.library, _rest())
 	if stock.lots.is_empty():
 		return "nothing to list"
-	var exports: Exports = shell.app.get("_exports")
+	# Export, made here if nothing has made it yet (Later): a section's list
+	# is not worth its compile in the first use of Suggest.
+	var exports: Node = shell.app.get("_exports")
 	var base: String = (shell.bar.model_name() + " " + _evaluated_name).to_snake_case()
 	var to: String = await exports._where(
 		base + ("_bricklink.xml" if kind == "bricklink" else "_parts.txt"), asking)
@@ -483,9 +472,13 @@ func write_list(kind: String, asking: bool = false) -> String:
 		return ""
 	if kind == "bricklink":
 		var made: Dictionary = ShopLists.bricklink_xml(stock, shell.library)
-		return Exports._give(str(made["text"]), to.get_file(), "application/xml",
+		var given: String = exports._give(str(made["text"]), to.get_file(), "application/xml",
 			to.get_base_dir())
-	return Exports._give(stock.to_text(_evaluated_name), to.get_file(), "text/plain",
+		if given.begins_with("wrote ") or given.begins_with("downloaded "):
+			if not ShopLists.stand_in_words(made).is_empty():
+				given += " — " + ShopLists.stand_in_words(made)
+		return given
+	return exports._give(stock.to_text(_evaluated_name), to.get_file(), "text/plain",
 		to.get_base_dir())
 
 

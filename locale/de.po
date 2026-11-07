@@ -480,6 +480,9 @@ msgstr "Bauanleitung…"
 msgid "Booklet page"
 msgstr "Seite der Anleitung"
 
+msgid "Step's view"
+msgstr "Ansicht des Schritts"
+
 msgid "Turn the view left"
 msgstr "Ansicht nach links drehen"
 
@@ -3002,6 +3005,12 @@ msgstr "1 Teil gespiegelt"
 
 msgid "mirrored %d parts"
 msgstr "%d Teile gespiegelt"
+
+msgid "1 has no mirror image, turned as near as it goes: %s"
+msgstr "1 hat kein Spiegelbild und ist so nah wie möglich gedreht: %s"
+
+msgid "%d have no mirror image, turned as near as they go: %s"
+msgstr "%d haben kein Spiegelbild und sind so nah wie möglich gedreht: %s"
 
 msgid "measuring"
 msgstr "Messen"
@@ -6607,11 +6616,11 @@ msgstr "Abrufen"
 msgid "Read your sets and parts lists from your Rebrickable account"
 msgstr "Deine Sets und Teilelisten aus deinem Rebrickable-Konto lesen"
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces the sets and loose parts in this collection."
-msgstr "Dein Rebrickable-Schlüssel geht von hier nur an rebrickable.com und wird nicht gespeichert; was zurückkommt, ersetzt die Sets und losen Teile in dieser Sammlung."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay."
+msgstr "Dein Rebrickable-Schlüssel geht von hier nur an rebrickable.com und wird nicht gespeichert. Was zurückkommt, ersetzt, was vorher aus Rebrickable kam, abgerufen oder exportiert, und die früher eingelesenen losen Teile. Was du hier zählst, eine BrickLink-XML und was ein Assistent hinzugefügt hat, bleiben."
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces the sets and loose parts in this collection. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
-msgstr "Dein Rebrickable-Schlüssel geht von hier nur an rebrickable.com und wird nicht gespeichert; was zurückkommt, ersetzt die Sets und losen Teile in dieser Sammlung. Bitte den Assistenten um „ein kleines Haus aus meiner Sammlung“, und er baut aus dem, was du hast."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
+msgstr "Dein Rebrickable-Schlüssel geht von hier nur an rebrickable.com und wird nicht gespeichert. Was zurückkommt, ersetzt, was vorher aus Rebrickable kam, abgerufen oder exportiert, und die früher eingelesenen losen Teile. Was du hier zählst, eine BrickLink-XML und was ein Assistent hinzugefügt hat, bleiben. Bitte den Assistenten um „ein kleines Haus aus meiner Sammlung“, und er baut aus dem, was du hast."
 
 msgid "BrickLink wanted list"
 msgstr "BrickLink-Wunschliste"
@@ -10911,6 +10920,76 @@ msgstr "Automatisch: der einfachere Modus, den diese Grafik braucht (%s). Kein P
 msgid "From the next start."
 msgstr "Ab dem nächsten Start."
 
+# Pattern's In a grid: columns, rows and levels in one dialog (APP_UX4 grid)
+msgid "In a grid"
+msgstr "Im Raster"
+
+msgid "Columns"
+msgstr "Spalten"
+
+msgid "Rows"
+msgstr "Reihen"
+
+msgid "Levels"
+msgstr "Ebenen"
+
+msgid "studs along x"
+msgstr "Noppen entlang x"
+
+msgid "studs along z"
+msgstr "Noppen entlang z"
+
+msgid "plates up"
+msgstr "Platten nach oben"
+
+msgid "1 copy"
+msgstr "1 Kopie"
+
+msgid "%d copies"
+msgstr "%d Kopien"
+
+msgid "1 column"
+msgstr "1 Spalte"
+
+msgid "%d columns %s apart"
+msgstr "%d Spalten, %s auseinander"
+
+msgid "1 row"
+msgstr "1 Reihe"
+
+msgid "%d rows %s apart"
+msgstr "%d Reihen, %s auseinander"
+
+msgid "1 level"
+msgstr "1 Ebene"
+
+msgid "%d levels %s apart"
+msgstr "%d Ebenen, %s auseinander"
+
+msgid "1 stud"
+msgstr "1 Noppe"
+
+msgid "each has room"
+msgstr "jede hat Platz"
+
+msgid "the copy in column %d, row %d, level %d has no room: %s is in the way"
+msgstr "die Kopie in Spalte %d, Reihe %d, Ebene %d hat keinen Platz: %s ist im Weg"
+
+msgid "%d copies have no room, the first in column %d, row %d, level %d: %s is in the way"
+msgstr "%d Kopien haben keinen Platz, die erste in Spalte %d, Reihe %d, Ebene %d: %s ist im Weg"
+
+msgid "%d copies have no room, the first copy %d: %s is in the way"
+msgstr "%d Kopien haben keinen Platz, die erste ist Kopie %d: %s ist im Weg"
+
+msgid "a grid of %d copies"
+msgstr "ein Raster aus %d Kopien"
+
+msgid "one %s takes them all back"
+msgstr "ein %s nimmt sie alle zurück"
+
+msgid "Copies of the selection in a row, a grid, round, or along a hose, put down at once"
+msgstr "Kopien der Auswahl in einer Reihe, im Raster, im Kreis oder entlang eines Schlauchs, auf einmal abgesetzt"
+
 # A model into this one (APP_UX4 intomodel): File, Import, Into this model…, the
 # library's Put in this model, and what the status bar says while it is in hand.
 
@@ -11138,3 +11217,667 @@ msgstr "Das nächste Teil (Pfeil nach rechts, Leertaste)"
 
 msgid "Take the last part off (left arrow)"
 msgstr "Das letzte Teil wieder abnehmen (Pfeil nach links)"
+
+msgid "Narrow these parts…"
+msgstr "Diese Teile eingrenzen…"
+
+msgid "Parts like %s, with “%s”: its size and kind first; a tap swaps the selection"
+msgstr "Teile wie %s, mit „%s“: zuerst seine Größe und Art; ein Tippen tauscht die Auswahl"
+
+msgid "Parts like %s, with “%s”: its size and kind first; a double-click swaps the selection"
+msgstr "Teile wie %s, mit „%s“: zuerst seine Größe und Art; ein Doppelklick tauscht die Auswahl"
+
+msgid "No part like %s has “%s”"
+msgstr "Kein Teil wie %s hat „%s“"
+
+msgid "What fits %s, with “%s”, the best fits first"
+msgstr "Was zu %s passt, mit „%s“, das Beste zuerst"
+
+msgid "Nothing that fits %s has “%s”"
+msgstr "Nichts, was zu %s passt, hat „%s“"
+
+# mybricks: loose parts on My collection's What I own, and what a session added
+
+msgid "A part: its number or words, like red 2x4 brick"
+msgstr "Ein Teil: seine Nummer oder Wörter, etwa roter Stein 2x4"
+
+msgid "Photo…"
+msgstr "Foto…"
+
+msgid "Find the part from a photo of it, as the parts bin's camera does"
+msgstr "Das Teil anhand eines Fotos finden, wie es die Kamera der Teilekiste tut"
+
+msgid "Parts like the one chosen: its other sizes and kinds"
+msgstr "Teile wie das gewählte: seine anderen Größen und Arten"
+
+msgid "Its colour: the colours the part was made in first"
+msgstr "Seine Farbe: zuerst die Farben, in denen das Teil hergestellt wurde"
+
+msgid "How many"
+msgstr "Wie viele"
+
+msgid "Add these to your loose parts, kept with your account"
+msgstr "Diese zu deinen losen Teilen hinzufügen, in deinem Konto gespeichert"
+
+msgid "Find a part above, by its number or words, from a photo, or by choosing it in the parts bin; then how many, and Add."
+msgstr "Such oben ein Teil, nach Nummer oder Wörtern, anhand eines Fotos oder durch Wählen in der Teilekiste; dann wie viele, und Hinzufügen."
+
+msgid "Added by %s — %s, %s: look them over"
+msgstr "Hinzugefügt von %s — %s, %s: sieh sie dir an"
+
+msgid "Keep them"
+msgstr "Behalten"
+
+msgid "Keep these as your own loose parts"
+msgstr "Diese als deine eigenen losen Teile behalten"
+
+msgid "Take back what %s added"
+msgstr "Zurücknehmen, was %s hinzugefügt hat"
+
+msgid "Take out exactly the lots listed here; nothing of yours"
+msgstr "Genau die hier gelisteten Posten herausnehmen; nichts von deinen"
+
+msgid "your assistants"
+msgstr "deinen Assistenten"
+
+msgid "Loose parts — %s"
+msgstr "Lose Teile — %s"
+
+msgid "How many you have; changed here, kept with your account"
+msgstr "Wie viele du hast; hier geändert, in deinem Konto gespeichert"
+
+msgid "Take this lot out of your collection"
+msgstr "Diesen Posten aus deiner Sammlung nehmen"
+
+msgid "no part answers “%s”"
+msgstr "kein Teil passt zu „%s“"
+
+msgid "choose a part first, then Like this lists parts like it"
+msgstr "wähle zuerst ein Teil, dann listet Ähnliche Teile wie dieses"
+
+msgid "parts like %s: choose one"
+msgstr "Teile wie %s: wähle eins"
+
+msgid "asking Brickognize what part this is…"
+msgstr "Brickognize wird gefragt, welches Teil das ist…"
+
+msgid "Brickognize saw no part it knows in that photo: try another, the part alone on a plain background"
+msgstr "Brickognize hat auf dem Foto kein bekanntes Teil erkannt: versuch ein anderes, das Teil allein vor einfachem Hintergrund"
+
+msgid "from your photo, most likely first, as Brickognize sees it"
+msgstr "aus deinem Foto, das Wahrscheinlichste zuerst, wie Brickognize es sieht"
+
+msgid "find the part first: its number or words, or a photo of it"
+msgstr "finde zuerst das Teil: seine Nummer oder Wörter, oder ein Foto davon"
+
+msgid "adding %d × %s…"
+msgstr "%d × %s wird hinzugefügt…"
+
+msgid "added %d × %s in %s"
+msgstr "%d × %s in %s hinzugefügt"
+
+msgid "kept: %s"
+msgstr "gespeichert: %s"
+
+msgid "took out %d × %s in %s"
+msgstr "%d × %s in %s herausgenommen"
+
+msgid "took back the %s added"
+msgstr "die hinzugefügten %s zurückgenommen"
+
+msgid "kept the %s as your own"
+msgstr "die %s als deine eigenen behalten"
+
+msgid "Find a part from a photo"
+msgstr "Ein Teil anhand eines Fotos finden"
+
+msgid "Choose a photo"
+msgstr "Foto wählen"
+
+msgid "Placing %s on the end of %s: click puts it there"
+msgstr "%s auf das Ende von %s absetzen: Ein Klick setzt es dort ab"
+
+msgid "%s puts its next end to the joint"
+msgstr "%s legt sein nächstes Ende an die Verbindungsstelle"
+
+msgid "a sleeper goes under the joint with it"
+msgstr "eine Schwelle kommt mit unter die Verbindungsstelle"
+
+# modelinfo: the model's size and weight, on the status bar and in Properties
+# with nothing selected (ModelSize)
+msgid "%s × %s studs, %s plates high"
+msgstr "%s × %s Noppen, %s Platten hoch"
+
+msgid "%s × %s studs, 1 plate high"
+msgstr "%s × %s Noppen, 1 Platte hoch"
+
+msgid "%s × %s × %s cm"
+msgstr "%s × %s × %s cm"
+
+msgid "About %d g"
+msgstr "Etwa %d g"
+
+msgid "1 part not in the library, not counted"
+msgstr "1 Teil nicht in der Bibliothek, nicht mitgezählt"
+
+msgid "%d parts not in the library, not counted"
+msgstr "%d Teile nicht in der Bibliothek, nicht mitgezählt"
+
+# Properties' selection, a height of half a plate: "4.5 plates" (a tyre on
+# its edge is 4½)
+msgid "%s plates"
+msgstr "%s Platten"
+
+msgid "How big the model is, or the parts selected: studs across and deep, plates high without the studs on top, and centimetres each way with them"
+msgstr "Wie groß das Modell ist, oder die ausgewählten Teile: Noppen breit und tief, Platten hoch ohne die Noppen obenauf, und Zentimeter in jede Richtung mit ihnen"
+
+msgid "How big the model is: studs across and deep, and plates high without the studs on its top; in centimetres with them, as a shelf needs. Its weight is worked out from each part's shape, within about 6% of the bricks weighed"
+msgstr "Wie groß das Modell ist: Noppen breit und tief, und Platten hoch ohne die Noppen obenauf; in Zentimetern mit ihnen, wie ein Regal es braucht. Sein Gewicht wird aus der Form jedes Teils berechnet, auf etwa 6 % genau bei den gewogenen Steinen"
+
+# My collection: lots under where they came from (mybricks2)
+msgid "From Rebrickable"
+msgstr "Aus Rebrickable"
+
+msgid "From a BrickLink XML"
+msgstr "Aus einer BrickLink-XML"
+
+msgid "Loose parts brought in before"
+msgstr "Früher eingelesene lose Teile"
+
+msgid "from Rebrickable"
+msgstr "aus Rebrickable"
+
+msgid "from a BrickLink XML"
+msgstr "aus einer BrickLink-XML"
+
+msgid "kept: %d × %s"
+msgstr "gespeichert: %d × %s"
+
+# The booklet's page set up (APP_UX5 #4, pagesetup): Build, Booklet page, Page setup…
+
+msgid "Page setup…"
+msgstr "Seite einrichten…"
+
+msgid "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another"
+msgstr "Das Papier der Anleitung (A4, US Letter, A5 oder ihr eigenes), hoch oder quer, die Ränder, eine Farbe oder ein Bild hinter jeder Seite, die Größe der Schrittnummern und Teile; mit dem Modell gespeichert und als Stil unter einem Namen für ein anderes"
+
+msgid "Page setup"
+msgstr "Seite einrichten"
+
+msgid "Booklet, 269 x 199 mm"
+msgstr "Anleitung, 269 x 199 mm"
+
+msgid "A4, 210 x 297 mm"
+msgstr "A4, 210 x 297 mm"
+
+msgid "US Letter, 8.5 x 11 in"
+msgstr "US Letter, 8,5 x 11 Zoll"
+
+msgid "A5, 148 x 210 mm"
+msgstr "A5, 148 x 210 mm"
+
+msgid "The paper the booklet is printed on, and its PDF's page"
+msgstr "Das Papier, auf das die Anleitung gedruckt wird, und die Seite ihres PDFs"
+
+msgid "Paper"
+msgstr "Papier"
+
+msgid "Landscape"
+msgstr "Querformat"
+
+msgid "Portrait"
+msgstr "Hochformat"
+
+msgid "On its side, or upright"
+msgstr "Quer oder hoch"
+
+msgid "Orientation"
+msgstr "Ausrichtung"
+
+msgid "How far from the paper's edge the steps keep"
+msgstr "Wie weit die Schritte vom Rand des Papiers bleiben"
+
+msgid "Margins"
+msgstr "Ränder"
+
+msgid "The colour of every page"
+msgstr "Die Farbe jeder Seite"
+
+msgid "Page colour"
+msgstr "Seitenfarbe"
+
+msgid "Choose…"
+msgstr "Auswählen…"
+
+msgid "A picture behind every page, covering it"
+msgstr "Ein Bild hinter jeder Seite, das sie ganz bedeckt"
+
+msgid "Take off"
+msgstr "Entfernen"
+
+msgid "The page's colour behind every page again"
+msgstr "Wieder die Seitenfarbe hinter jeder Seite"
+
+msgid "Picture behind"
+msgstr "Bild dahinter"
+
+msgid "How tall a step's number is printed"
+msgstr "Wie hoch die Nummer eines Schritts gedruckt wird"
+
+msgid "Step numbers"
+msgstr "Schrittnummern"
+
+msgid "How big the parts are drawn in each step's parts box and the parts list"
+msgstr "Wie groß die Teile im Teilekasten jedes Schritts und in der Teileliste gezeichnet werden"
+
+msgid "Parts pictures"
+msgstr "Teilebilder"
+
+msgid "A page set up and kept by a name, given to this model whole"
+msgstr "Eine eingerichtete und unter einem Namen gespeicherte Seite, ganz auf dieses Modell übertragen"
+
+msgid "Style"
+msgstr "Stil"
+
+msgid "Name this page"
+msgstr "Diese Seite benennen"
+
+msgid "Keep as a style"
+msgstr "Als Stil speichern"
+
+msgid "Keep this page by its name, to give another model in one choice"
+msgstr "Diese Seite unter ihrem Namen speichern, um sie mit einer Auswahl einem anderen Modell zu geben"
+
+msgid "A picture"
+msgstr "Ein Bild"
+
+msgid "Choose a style…"
+msgstr "Stil auswählen…"
+
+msgid "Name the page first"
+msgstr "Erst die Seite benennen"
+
+# Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks
+
+
+msgid "Remove…"
+msgstr "Entfernen…"
+
+msgid "Take a kept style away; the models given it keep their page"
+msgstr "Einen gespeicherten Stil löschen; die Modelle, die ihn haben, behalten ihre Seite"
+
+msgid "Remove a page style?"
+msgstr "Einen Seitenstil löschen?"
+
+msgid "Remove the page style “%s”? The models given it keep their page."
+msgstr "Den Seitenstil „%s“ löschen? Die Modelle, die ihn haben, behalten ihre Seite."
+
+msgid "Missing from the file"
+msgstr "Fehlt in der Datei"
+
+msgid "The file names %s but does not carry it: another program saved it without it, or it was not a PNG or a JPEG. Choose it again, or take it off."
+msgstr "Die Datei nennt %s, enthält das Bild aber nicht: Ein anderes Programm hat sie ohne das Bild gespeichert, oder es war kein PNG oder JPEG. Wähle es erneut aus oder entferne es."
+
+msgid "%s, %d KB in the file"
+msgstr "%s, %d KB in der Datei"
+
+msgid "A PNG"
+msgstr "Ein PNG"
+
+msgid "A JPEG"
+msgstr "Ein JPEG"
+
+# Build together, a build party (buildparty, APP_UX5 5): the share link's card and Build it's party row.
+
+msgid "Build it with others, each on their own phone: a code to join by, the model dealt out"
+msgstr "Mit anderen bauen, jeder am eigenen Handy: ein Code zum Beitreten, das Modell aufgeteilt"
+
+msgid "Put this away: the build goes on"
+msgstr "Ausblenden: der Bau geht weiter"
+
+msgid "Your name (you can leave it out)"
+msgstr "Dein Name (darf leer bleiben)"
+
+msgid "Start a build"
+msgstr "Bau starten"
+
+msgid "Start one and get a code for the others"
+msgstr "Einen starten und einen Code für die anderen bekommen"
+
+msgid "Code"
+msgstr "Code"
+
+msgid "Join the build with the code another phone shows"
+msgstr "Mit dem Code, den ein anderes Handy zeigt, dem Bau beitreten"
+
+msgid "Start building"
+msgstr "Losbauen"
+
+msgid "Deal the model out to everyone in it now"
+msgstr "Das Modell jetzt unter allen Beigetretenen aufteilen"
+
+msgid "Back to building"
+msgstr "Weiterbauen"
+
+msgid "Your share, where you were"
+msgstr "Dein Anteil, wo du warst"
+
+msgid "Leave the build"
+msgstr "Bau verlassen"
+
+msgid "The others are told; the code stays here to join again"
+msgstr "Die anderen erfahren es; der Code bleibt hier, um wieder beizutreten"
+
+msgid "Up to four phones build this model at once, each its own part, and put the parts together at the end. One phone starts; the others join with its code. No account needed."
+msgstr "Bis zu vier Handys bauen dieses Modell gleichzeitig, jedes seinen eigenen Teil, und am Ende werden die Teile zusammengesetzt. Ein Handy startet; die anderen treten mit seinem Code bei. Kein Konto nötig."
+
+msgid "Code: %s"
+msgstr "Code: %s"
+
+msgid "On each other phone, open this model, press Build together and type %s. Press Start building when everyone is in."
+msgstr "Öffne dieses Modell auf jedem anderen Handy, tippe auf Gemeinsam bauen und gib %s ein. Tippe auf Losbauen, wenn alle dabei sind."
+
+msgid "On each other phone, open this model, press Build together and type %s. The phone that started deals it out when everyone is in."
+msgstr "Öffne dieses Modell auf jedem anderen Handy, tippe auf Gemeinsam bauen und gib %s ein. Das Handy, das gestartet hat, teilt es auf, wenn alle dabei sind."
+
+msgid "Building together · %s"
+msgstr "Gemeinsam bauen · %s"
+
+msgid "Everyone is done: put the parts together."
+msgstr "Alle sind fertig: setzt die Teile zusammen."
+
+msgid "Each phone builds its own part."
+msgstr "Jedes Handy baut seinen eigenen Teil."
+
+msgid "Start building: %d phones"
+msgstr "Losbauen: %d Handys"
+
+msgid "Start building: 1 phone"
+msgstr "Losbauen: 1 Handy"
+
+msgid "%s has left"
+msgstr "%s ist gegangen"
+
+msgid "%s is done"
+msgstr "%s ist fertig"
+
+msgid "%s %d of %d"
+msgstr "%s %d von %d"
+
+msgid "Your part is built"
+msgstr "Dein Teil ist gebaut"
+
+msgid "Waiting for %s: %d of %d"
+msgstr "Warten auf %s: %d von %d"
+
+msgid "Waiting for %d others"
+msgstr "Warten auf %d andere"
+
+msgid "Waiting for the others"
+msgstr "Warten auf die anderen"
+
+msgid "Waiting"
+msgstr "Warten"
+
+msgid "The step that puts everyone's parts together comes when everyone is done"
+msgstr "Der Bauschritt, der alle Teile zusammensetzt, kommt, wenn alle fertig sind"
+
+msgid "Put it together"
+msgstr "Zusammensetzen"
+
+msgid "Everyone is done. The others' parts go on where they are outlined."
+msgstr "Alle sind fertig. Die Teile der anderen kommen dorthin, wo sie umrandet sind."
+
+msgid "Builder %d"
+msgstr "Baumeister %d"
+
+msgid "A code is four letters and numbers, as the other phone shows it."
+msgstr "Ein Code besteht aus vier Buchstaben und Ziffern, wie das andere Handy ihn zeigt."
+
+msgid "Only the phone that started the build deals it."
+msgstr "Nur das Handy, das den Bau gestartet hat, teilt ihn auf."
+
+msgid "%s: Brickworks could not be reached. Check the connection and try again."
+msgstr "%s: Brickworks war nicht erreichbar. Prüfe die Verbindung und versuche es erneut."
+
+msgid "%s: the server said %d."
+msgstr "%s: Der Server antwortete %d."
+
+msgid "Starting a build"
+msgstr "Bau starten"
+
+msgid "Joining the build"
+msgstr "Dem Bau beitreten"
+
+msgid "Dealing it out"
+msgstr "Aufteilen"
+
+msgid "Leaving"
+msgstr "Verlassen"
+
+msgid "The build"
+msgstr "Der Bau"
+
+msgid "There is no build with that code on this model."
+msgstr "Für dieses Modell gibt es keinen Bau mit diesem Code."
+
+msgid "That build is over. Start a new one."
+msgstr "Dieser Bau ist vorbei. Starte einen neuen."
+
+msgid "No such model."
+msgstr "Dieses Modell gibt es nicht."
+
+msgid "Too many builds on this model just now. Try again later."
+msgstr "Gerade laufen zu viele Bauten mit diesem Modell. Versuche es später erneut."
+
+msgid "No code was free. Try again."
+msgstr "Kein Code war frei. Versuche es erneut."
+
+msgid "That build has started. Ask for a new code, or build it on your own."
+msgstr "Dieser Bau hat schon begonnen. Frag nach einem neuen Code oder bau es allein."
+
+msgid "That build has 4 phones already."
+msgstr "Dieser Bau hat schon 4 Handys."
+
+msgid "Join the build by its code first."
+msgstr "Tritt dem Bau zuerst mit seinem Code bei."
+
+msgid "The phone that started the build deals it."
+msgstr "Das Handy, das den Bau gestartet hat, teilt ihn auf."
+
+msgid "That build is dealt already."
+msgstr "Dieser Bau ist schon aufgeteilt."
+
+msgid "Building together is not configured here."
+msgstr "Gemeinsames Bauen ist hier nicht eingerichtet."
+
+msgid "Your name has a word in it the gallery does not show: say it another way."
+msgstr "Dein Name enthält ein Wort, das die Galerie nicht zeigt: sag es anders."
+
+# View, Stud directions (APP_UX5 seeing2): each part coloured by where its studs point, its legend
+
+msgid "Stud directions"
+msgstr "Noppenrichtungen"
+
+msgid "Every part coloured by where its studs point: up, down, or to the front, back, left or right"
+msgstr "Jedes Teil danach eingefärbt, wohin seine Noppen zeigen: nach oben, nach unten oder nach vorn, hinten, links oder rechts"
+
+msgid "Turn Stud directions off"
+msgstr "Noppenrichtungen ausschalten"
+
+msgid "Studs up"
+msgstr "Noppen nach oben"
+
+msgid "Studs down"
+msgstr "Noppen nach unten"
+
+msgid "Studs to the front"
+msgstr "Noppen nach vorn"
+
+msgid "Studs to the back"
+msgstr "Noppen nach hinten"
+
+msgid "Studs to the left"
+msgstr "Noppen nach links"
+
+msgid "Studs to the right"
+msgstr "Noppen nach rechts"
+
+msgid "Studs on two sides or more"
+msgstr "Noppen an zwei Seiten oder mehr"
+
+msgid "No studs"
+msgstr "Keine Noppen"
+
+msgid "stud directions: each part coloured by where its studs point"
+msgstr "Noppenrichtungen: jedes Teil danach eingefärbt, wohin seine Noppen zeigen"
+
+msgid "stud directions off"
+msgstr "Noppenrichtungen aus"
+
+# Views and render presets kept with the model (APP_UX5 #8, savedviews): View ›
+# Viewpoint › Save this view…, the saved views' rows, Render's Preset and its Camera.
+
+msgid "Save this view…"
+msgstr "Diese Ansicht speichern…"
+
+msgid "Saved view %d"
+msgstr "Gespeicherte Ansicht %d"
+
+msgid "Render each saved view"
+msgstr "Jede gespeicherte Ansicht rendern"
+
+msgid "Keep where you are looking from with the model, by a name, to look from again with a key and to render"
+msgstr "Den Blickwinkel unter einem Namen mit dem Modell speichern, um ihn per Taste wieder einzunehmen und zu rendern"
+
+msgid "Look from the model's saved view %d again, as it was saved"
+msgstr "Wieder aus der gespeicherten Ansicht %d des Modells blicken, wie sie gespeichert wurde"
+
+msgid "Queue a picture from each view saved with the model, with Render's settings"
+msgstr "Ein Bild aus jeder mit dem Modell gespeicherten Ansicht in die Warteschlange stellen, mit den Einstellungen von Rendern"
+
+msgid "Save this view"
+msgstr "Diese Ansicht speichern"
+
+msgid "What should this view be called?"
+msgstr "Wie soll diese Ansicht heißen?"
+
+msgid "Name of the view"
+msgstr "Name der Ansicht"
+
+msgid "View %d"
+msgstr "Ansicht %d"
+
+msgid "A view of the same name is replaced. Each of the first nine has a key, and Render's Camera lists them all."
+msgstr "Eine Ansicht gleichen Namens wird ersetzt. Die ersten neun haben je eine Taste, und die Kamera von Rendern listet sie alle."
+
+msgid "Kept with the model, the first nine each with a key, and in Render's Camera."
+msgstr "Mit dem Modell gespeichert, die ersten neun je mit einer Taste, und in der Kamera von Rendern."
+
+msgid "Look from it"
+msgstr "Daraus blicken"
+
+msgid "Look from this view now"
+msgstr "Jetzt aus dieser Ansicht blicken"
+
+msgid "Take this view out of the model"
+msgstr "Diese Ansicht aus dem Modell entfernen"
+
+msgid "kept the view “%s” with the model"
+msgstr "Ansicht „%s“ mit dem Modell gespeichert"
+
+msgid "%s looks from it again"
+msgstr "%s blickt wieder daraus"
+
+msgid "the view “%s”"
+msgstr "die Ansicht „%s“"
+
+msgid "took the view “%s” out of the model"
+msgstr "Ansicht „%s“ aus dem Modell entfernt"
+
+msgid "those after it each have the key before"
+msgstr "die folgenden haben je die Taste davor"
+
+msgid "queued a picture from each of the %d saved views"
+msgstr "ein Bild aus jeder der %d gespeicherten Ansichten in die Warteschlange gestellt"
+
+msgid "Add each saved view"
+msgstr "Jede gespeicherte Ansicht hinzufügen"
+
+msgid "Preset"
+msgstr "Voreinstellung"
+
+msgid "Save…"
+msgstr "Speichern…"
+
+msgid "Your own choices"
+msgstr "Eigene Auswahl"
+
+msgid "Preset %d"
+msgstr "Voreinstellung %d"
+
+msgid "Save the preset"
+msgstr "Voreinstellung speichern"
+
+msgid "What should these choices be called?"
+msgstr "Wie soll diese Auswahl heißen?"
+
+msgid "Name of the preset"
+msgstr "Name der Voreinstellung"
+
+msgid "Saved with the model"
+msgstr "Mit dem Modell gespeichert"
+
+msgid "Choices kept by a name, for any model: choose one to use them all again"
+msgstr "Unter einem Namen gespeicherte Auswahl, für jedes Modell: eine wählen, um alles wieder zu verwenden"
+
+msgid "Keep these choices by a name, to choose again on any model"
+msgstr "Diese Auswahl unter einem Namen speichern, um sie bei jedem Modell wieder zu wählen"
+
+msgid "Forget the preset chosen"
+msgstr "Die gewählte Voreinstellung vergessen"
+
+msgid "Kept these choices as the preset “%s”, for any model."
+msgstr "Diese Auswahl als Voreinstellung „%s“ gespeichert, für jedes Modell."
+
+msgid "Forgot the preset “%s”."
+msgstr "Voreinstellung „%s“ vergessen."
+
+msgid "The preset “%s”."
+msgstr "Die Voreinstellung „%s“."
+
+msgid "This model keeps no view called “%s”, so the camera is Three-quarter, like the box."
+msgstr "Dieses Modell hat keine Ansicht namens „%s“, also ist die Kamera Dreiviertelansicht, wie auf der Verpackung."
+
+msgid "A preset needs a name."
+msgstr "Eine Voreinstellung braucht einen Namen."
+
+msgid "The preset could not be kept."
+msgstr "Die Voreinstellung konnte nicht gespeichert werden."
+
+# A link that opens playing one of the model's motions (playlink, APP_UX5 10): the
+# share panel's Opens, and the viewer's pill while it plays or when the link's motion is not there.
+
+msgid "Opens"
+msgstr "Beim Öffnen"
+
+msgid "Still"
+msgstr "Stillstehend"
+
+msgid "Playing “%s”"
+msgstr "Spielt „%s“"
+
+msgid "Open the link with one of the model's motions playing"
+msgstr "Den Link so öffnen, dass eine der Bewegungen des Modells abläuft"
+
+msgid "Playing “%s” over and over. Press it to stop."
+msgstr "„%s“ läuft immer wieder. Drücke darauf, um es anzuhalten."
+
+msgid "Playing “%s” over and over. Tap it to stop."
+msgstr "„%s“ läuft immer wieder. Tippe darauf, um es anzuhalten."
+
+msgid "There is no motion called “%s” in this model, so it opened still."
+msgstr "Dieses Modell hat keine Bewegung namens „%s“, darum wurde es stillstehend geöffnet."
+
+msgid "No such motion"
+msgstr "Keine solche Bewegung"
