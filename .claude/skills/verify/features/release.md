@@ -148,8 +148,9 @@ that offers each system its own build. The cycle and its cadence are
   file the sandbox has not got (ENOENT). `--trace` follows one run with
   strace and names what the thumbnailer found outside the sandbox anyway.
   `--installed` uses the system's bwrap on a package installed in /, for a
-  runner that can make the namespaces. The .deb's smoke runs it
-  (`thumbnails_linux`).
+  runner that can make the namespaces, and fails if GNOME's factory is
+  missing rather than check nothing; the release workflow's Ubuntu run does
+  that. The .deb's smoke runs it (`thumbnails_linux`).
 - `graphics mode` (`src/render/graphics_mode.gd`,
   `tools/release/package/launcher.c`): the desktop draws in its full mode
   (Forward+) or its simpler one (Compatibility, on OpenGL, as the web does).
@@ -209,9 +210,16 @@ that offers each system its own build. The cycle and its cadence are
   `hdiutil verify`, `codesign --verify --deep --strict` and `lipo -archs` on
   the mounted image's app and a screenshot of the image's window kept as a
   run artifact, and on Ubuntu `apt install` of the .deb (/ keeps its mode,
-  the four types default to the app, `brickworks --about`) and `apt remove`
-  leaving nothing. The Intel runner's only GPU is Apple's paravirtual one,
-  which MoltenVK aborts on, so the app's launcher starts it in the simpler
+  the four types default to the app, `brickworks --about`), GNOME's
+  thumbnail factory drawing each model through it in the real bwrap sandbox
+  (`sysctl kernel.apparmor_restrict_unprivileged_userns=0`, bubblewrap and
+  gir1.2-gnomedesktop-4.0, then `/usr/bin/python3
+  tools/release/thumbnail_check.py --installed`; a failed check fails the
+  run, and the pictures and `thumbnails.json` are kept as the
+  `thumbnails-ubuntu-24.04` artifact), and `apt remove` leaving nothing,
+  checked even when a picture failed. The Intel runner's only GPU is
+  Apple's paravirtual one, which MoltenVK aborts on, so the app's launcher
+  starts it in the simpler
   graphics mode; the Mac double-click checks each window's log says the
   mode `mac_mode` expects there (simpler on an Intel Mac whose GPUs are all
   paravirtual, full elsewhere) and that the simpler one was said once (see
@@ -533,9 +541,12 @@ library and the engine look up past the view (input devices under /sys), which
 refused too gives the same picture. On 2026-11-06 a .deb of 0435ace (0.18.0
 plus this, 454 MB): 426, 453, 431 and 431 ms. Look at `DIR/*.png`. Here
 bwrap is the stand-in (it says so): this box cannot make GNOME's sandbox.
-On a runner that can (`sudo sysctl -w
-kernel.apparmor_restrict_unprivileged_userns=0`), with the .deb installed by
-apt: `thumbnail_check.py --installed --out=DIR`, the real bwrap.
+The release workflow's Ubuntu run lifts that (`sudo sysctl -w
+kernel.apparmor_restrict_unprivileged_userns=0`) and, with the .deb installed
+by apt, runs `/usr/bin/python3 tools/release/thumbnail_check.py --installed
+--out=thumbnail-check`, the real bwrap; read its `thumbnails-ubuntu-24.04`
+artifact. setup-python's `python3` has no GObject bindings, and
+`--installed` fails without them.
 
 ```sh
 python3 tools/minitest.py tests/test_release.py
