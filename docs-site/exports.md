@@ -1,5 +1,5 @@
 ---
-tools: render_model, render_queue, animate_model, render_motion, export_model, parts_list
+tools: render_model, render_queue, light_model, animate_model, render_motion, export_model, parts_list
 panels: RenderDialog#render, RenderQueue#render-queue
 ai: Every file Brickworks writes: LDraw, Studio, 3D models, pictures, BrickLink, Rebrickable and LEGO® Pick a Brick parts lists, all models as a .zip, and photo-real renders, turntables, motion animations and building videos. An assistant renders with render_model or render_motion and exports with export_model; the long ones are jobs.
 rules:
@@ -68,7 +68,7 @@ The choices are a photographer's:
 | Look | **As in the window**, or **Product** (below) |
 | Size | 720p, 1080p, 4K, Square, or Custom |
 | Backdrop | White, Gradient, Grey, Dark, a Colour you pick, or None (a transparent picture), with a contact shadow under the model if you like |
-| Light | Three lights, as in the window; or photographed light: a softbox studio, window light, or daylight |
+| Light | Three lights, as in the window; or photographed light: a softbox studio, window light, or daylight; or **Dark**: only the [model's own lights](#lights) and the plastics that glow |
 | View | Three-quarter like the box, the view you are looking at, front, side, back three-quarter, low looking up, from above, or one of the [views saved with the model](/docs/the-view#saved-views) |
 | Lens | The focal length, and an aperture from Off to f/2 for depth of field (blur comes with Best) |
 
@@ -80,6 +80,16 @@ On the desktop app, on a graphics card with ray tracing (most from the last few 
 
 <!-- covers
 lib:path tracer
+-->
+
+### Lights in the model {#lights}
+
+A model can keep lights of its own, up to eight: a spot over a cockpit, a bulb in a lamp post, a low sun, a panel of light over a room. **Lights in the model**, in Render, adds one of each kind, **Spot**, **Bulb**, **Sun** or **Light panel**, hung over the selected parts (or the whole model) as a photographer first sets one; **From where I look** moves the chosen light to where the window's camera is, shining the way it looks, and **Over the selection** hangs it over other parts. Each has a colour, a strength (1 lights a face 100 LDU away as the window's key light does, and a lamp lights four times as brightly at half the distance), a spot's cone, a bulb's or a panel's size, and whether what it lights casts shadows. A spot lights only what is inside its cone: outside it the picture is the same pixel for pixel, in the draft and at Best.
+
+The lights are the model's, kept in its file and saved with it (other LDraw programs pass over their lines), shared with whoever builds it with you, and drawn in every render, over whichever Light you chose. With **Dark** they are all there is, with the plastics that glow: Trans Neon Green, Orange, Yellow and Red and Glow In Dark give off light, so a neon brick lights the parts round it. Changing a light is not an undo step. Claude places them over the connector with `light_model`.
+
+<!-- covers
+ui:lights in the model
 -->
 
 ### Render queue {#render-queue}
