@@ -104,6 +104,7 @@ func _ready() -> void:
 	_colour.edit_alpha = false
 	_colour.custom_minimum_size = Vector2(0, 28)
 	_colour.tooltip_text = "The colour of every page"
+	_framed(_colour)
 	# Set when the picker closes, not at every colour it passes through.
 	_colour.popup_closed.connect(func() -> void:
 		_apply({"colour": "#" + _colour.color.to_html(false)}))
@@ -293,7 +294,23 @@ func _colour_field(field: String, tip: String) -> ColorPickerButton:
 	button.popup_closed.connect(func() -> void:
 		_apply({field: "#" + button.color.to_html(false)}))
 	_colours[field] = button
+	_framed(button)
 	return button
+
+
+## A colour button with an edge round its colour: the theme's buttons have
+## none, and the booklet's own near-black step numbers drew a bar the colour
+## of the dialog, read as an empty row (booklook, 1400x900).
+static func _framed(button: ColorPickerButton) -> void:
+	for state: String in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var edge := StyleBoxFlat.new()
+		edge.draw_center = state != "focus"
+		edge.bg_color = Color(1, 1, 1, 0.06)
+		edge.border_color = Color(1, 1, 1, 0.55 if state in ["hover", "focus"] else 0.3)
+		edge.set_border_width_all(1)
+		edge.set_corner_radius_all(3)
+		edge.set_content_margin_all(3)
+		button.add_theme_stylebox_override(state, edge)
 
 
 func _row(grid: GridContainer, words: String, control: Control) -> void:
