@@ -1740,6 +1740,8 @@ func _ready() -> void:
 	IdleDraw.for_the_app()
 	Tooltips.let_clicks_through(get_window())
 	Tooltips.keep_inside(get_window())
+	# The window's close button closes it with a dialog up too.
+	ModalDialogs.for_the_app(get_window())
 	# Before anything draws: the controls strip reads these to say what
 	# the middle button does, and a strip built from the defaults and
 	# never rebuilt would be wrong for everyone who has changed them.
