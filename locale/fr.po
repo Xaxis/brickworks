@@ -12261,6 +12261,20 @@ msgstr "%s : complet, vos pièces en vrac remplaçant les %d pièces indiquées 
 msgid "no such choice"
 msgstr "ce choix n'existe pas"
 
+# pullkept: a pull no step shows now, said on open
+
+msgid "the pull on %s matches no step now, kept in the file"
+msgstr "l’extraction de %s ne correspond plus à aucune étape, conservée dans le fichier"
+
+msgid "step %d of the model"
+msgstr "l’étape %d du modèle"
+
+msgid "step %d of %s"
+msgstr "l’étape %d de %s"
+
+msgid "and %d more like it"
+msgstr "et %d autres de même"
+
 # Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
 # buttons, their ways, their rows and what the dialog says of each part.
 
@@ -12358,3 +12372,170 @@ msgstr "tenons sur trois côtés"
 
 msgid "studs on four sides"
 msgstr "tenons sur quatre côtés"
+# A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's
+# Palettes beside Favourites, an open palette's line, its menus and what they say.
+
+msgid "Palettes"
+msgstr "Palettes"
+
+msgid "Palette"
+msgstr "Palette"
+
+msgid "Sub-assembly"
+msgstr "Sous-ensemble"
+
+msgid "Your own palettes: parts in their colours and sub-assemblies, named and kept for every model"
+msgstr "Vos propres palettes : des pièces dans leurs couleurs et des sous-ensembles, nommées et gardées pour chaque modèle"
+
+msgid "Narrow your palettes…"
+msgstr "Affiner vos palettes…"
+
+msgid "Every palette"
+msgstr "Toutes les palettes"
+
+msgid "The palette's name"
+msgstr "Le nom de la palette"
+
+msgid "The palette's name: type over it to rename it"
+msgstr "Le nom de la palette : tapez par-dessus pour la renommer"
+
+msgid "New palette"
+msgstr "Nouvelle palette"
+
+msgid "A palette of your own, named: fill it with the part in hand or the parts selected in the model, each in its colour or as one sub-assembly"
+msgstr "Une palette à vous, nommée : remplissez-la avec la pièce en main ou les pièces sélectionnées dans le modèle, chacune dans sa couleur ou en un seul sous-ensemble"
+
+msgid "Keep the part in hand, or the parts selected in the model, in this palette"
+msgstr "Garder la pièce en main, ou les pièces sélectionnées dans le modèle, dans cette palette"
+
+msgid "The part in hand, in its colour"
+msgstr "La pièce en main, dans sa couleur"
+
+msgid "The selected parts, each in its colour"
+msgstr "Les pièces sélectionnées, chacune dans sa couleur"
+
+msgid "The selection, as one sub-assembly…"
+msgstr "La sélection, en un seul sous-ensemble…"
+
+msgid "Take the one chosen out, rename a sub-assembly, or delete the palette"
+msgstr "Retirer celle choisie, renommer un sous-ensemble ou supprimer la palette"
+
+msgid "Take the one chosen out"
+msgstr "Retirer celle choisie"
+
+msgid "Rename the sub-assembly chosen…"
+msgstr "Renommer le sous-ensemble choisi…"
+
+msgid "Delete this palette…"
+msgstr "Supprimer cette palette…"
+
+msgid "%d palette"
+msgstr "%d palette"
+
+msgid "%d palettes"
+msgstr "%d palettes"
+
+msgid "%d sub-assembly"
+msgstr "%d sous-ensemble"
+
+msgid "%d sub-assemblies"
+msgstr "%d sous-ensembles"
+
+msgid "“%s”: %s"
+msgstr "« %s » : %s"
+
+msgid "Choose it to open it"
+msgstr "Choisissez-la pour l'ouvrir"
+
+msgid "%s, a sub-assembly of %s"
+msgstr "%s, un sous-ensemble de %s"
+
+msgid "“%s”: a sub-assembly of %s"
+msgstr "« %s » : un sous-ensemble de %s"
+
+msgid "Choose it to hold it whole: a click puts it down"
+msgstr "Choisissez-le pour le tenir entier : un clic le pose"
+
+msgid "“%s” could not be had: its parts did not load"
+msgstr "« %s » n'a pas pu être pris : ses pièces ne se sont pas chargées"
+
+msgid "Choose a part in the bin first"
+msgstr "Choisissez d'abord une pièce dans le bac"
+
+msgid "Select parts in the model first"
+msgstr "Sélectionnez d'abord des pièces dans le modèle"
+
+msgid "choose a part in the bin first"
+msgstr "choisissez d'abord une pièce dans le bac"
+
+msgid "select parts in the model first"
+msgstr "sélectionnez d'abord des pièces dans le modèle"
+
+msgid "kept %s in “%s”"
+msgstr "%s gardée dans « %s »"
+
+msgid "%s is in “%s” already"
+msgstr "%s est déjà dans « %s »"
+
+msgid "kept %s in “%s”, each in its colour"
+msgstr "%s gardées dans « %s », chacune dans sa couleur"
+
+msgid "every part selected is in “%s” already"
+msgstr "chaque pièce sélectionnée est déjà dans « %s »"
+
+msgid "Keep as a sub-assembly"
+msgstr "Garder en sous-ensemble"
+
+msgid "kept the sub-assembly “%s”, %s, in “%s”"
+msgstr "sous-ensemble « %s », %s, gardé dans « %s »"
+
+msgid "Choose a part or a sub-assembly in the palette first"
+msgstr "Choisissez d'abord une pièce ou un sous-ensemble dans la palette"
+
+msgid "Choose a sub-assembly in the palette first"
+msgstr "Choisissez d'abord un sous-ensemble dans la palette"
+
+msgid "took it out of “%s”"
+msgstr "retirée de « %s »"
+
+msgid "Take the sub-assembly out?"
+msgstr "Retirer le sous-ensemble ?"
+
+msgid "“%s” goes from “%s”. Models built with it keep their parts."
+msgstr "« %s » quitte « %s ». Les modèles construits avec gardent leurs pièces."
+
+msgid "Rename the sub-assembly"
+msgstr "Renommer le sous-ensemble"
+
+msgid "Delete this palette?"
+msgstr "Supprimer cette palette ?"
+
+msgid "“%s” and the %s in it go. Models built with them keep their parts."
+msgstr "« %s » et les %s qu'elle contient partent. Les modèles construits avec gardent leurs pièces."
+
+msgid "deleted the palette “%s”"
+msgstr "palette « %s » supprimée"
+
+msgid "Its name in the palette"
+msgstr "Son nom dans la palette"
+
+msgid "The sub-assembly's name"
+msgstr "Le nom du sous-ensemble"
+
+msgid "palette renamed “%s”"
+msgstr "palette renommée « %s »"
+
+msgid "No palettes yet: New palette makes one, and Add fills it from the model"
+msgstr "Pas encore de palettes : Nouvelle palette en crée une, et Ajouter la remplit depuis le modèle"
+
+msgid "%s, for any model: choose one to open it"
+msgstr "%s, pour tout modèle : choisissez-en une pour l'ouvrir"
+
+msgid "Empty: select parts in the model, or choose a part in the bin, then Add"
+msgstr "Vide : sélectionnez des pièces dans le modèle, ou choisissez une pièce dans le bac, puis Ajouter"
+
+msgid "%s: a part is taken in hand in its colour, a sub-assembly held whole"
+msgstr "%s : une pièce se prend en main dans sa couleur, un sous-ensemble se tient entier"
+
+msgid "Right-click a part to keep it in Favourites too"
+msgstr "Un clic droit sur une pièce la garde aussi dans les Favorites"

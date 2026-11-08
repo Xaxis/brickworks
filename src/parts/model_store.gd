@@ -2500,9 +2500,18 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	for group: Variant in figures:
 		figures[group] = back * (figures[group] as Transform3D)
 	var known: Dictionary = library.parts if library != null else {}
+	# One list of each section's steps, from the parts as they are written,
+	# what has not arrived and what the catalogue has not got among them: the
+	# writer writes those, and the booklet's looks go on them
+	# (BookletLooks.as_written). A step the file had empty that the booklet
+	# is set up on is one of them (with_kept_steps).
+	var steps: Dictionary = {}
+	if authored and BookletLooks.any_step_look(world):
+		steps = BookletLooks.with_kept_steps(world.step_looks,
+			LdrModel.steps_written(placements, instances, unit_steps))
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known) if not instances.is_empty() \
-		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known)
+		unit_steps, known, steps) if not instances.is_empty() \
+		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps)
 	if authored:
 		text = with_authored_steps(text)
 	# Someone else's model written whole: still theirs, under their terms,
@@ -2530,7 +2539,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	text = SavedViews.written_into(text, SavedViews.in_file(world.saved_views, _lift_now()))
 	text = Motions.written_into(text, _motion_lines())
 	text = PinnedComments.written_into(text, pins.lines(world, _lift_now()))
-	text = _with_looks(text, true)
+	text = _with_looks(text, true, steps)
 	if model != world:
 		model.free()
 	made.append(with_set(text, from_set))
@@ -2539,10 +2548,11 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 ## [param text] with how the booklet shows each step written into it
 ## (BookletLooks): ROTSTEP for a turn, the app's own lines for the rest. A
 ## model with no steps of its own is left alone. [param whole]: the text was
-## written whole, its steps one after another with none empty
-## (BookletLooks.as_written), not written back over the file it came from.
-func _with_looks(text: String, whole: bool = false) -> String:
-	var written: Callable = func() -> Dictionary: return BookletLooks.as_written(world, scenery)
+## written whole, each section's steps [param steps] (LdrModel.steps_written)
+## one after another (BookletLooks.as_written), not written back over the
+## file it came from.
+func _with_looks(text: String, whole: bool = false, steps: Dictionary = {}) -> String:
+	var written: Callable = func() -> Dictionary: return BookletLooks.as_written(world, steps)
 	return _looks_into(text, world.step_looks, AuthorSteps.any(world, scenery),
 		written if whole else Callable())
 
@@ -2571,6 +2581,40 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 		looks = BookletLooks.with_booklet_wide(BookletLooks.read(text, names, main_key), looks)
 	return BookletLooks.written_into(text, written.call() if written.is_valid() else looks,
 		names, main_key)
+
+
+## After an edit kept in the history: a step it took the last part off goes
+## with its look, in the same undo (BookletLooks.emptied), so an undo brings
+## both back. Called once each step of the history is made: by hand
+## (Main._on_model_edited), by a session (CommandSocket), by the assistant's
+## change to a selection. Not for an undo or a redo, whose step has it in
+## already (Builder.settled), nor while parts lifted off are held: put down,
+## they go back in the steps they came from (Builder.lift_selection), and the
+## step that keeps both is asked then.
+func looks_follow_edit() -> void:
+	if builder == null or world == null:
+		return
+	var step: Dictionary = builder.last_step()
+	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed) \
+			or builder.is_carrying():
+		return
+	builder.extend_last(BookletLooks.emptied(world, step, scenery, _held_placements()))
+	_looks_followed = builder.last_step()
+
+
+## The history step [method looks_follow_edit] last asked about.
+var _looks_followed: Dictionary = {}
+
+
+## What the file has that is not on the baseplate and is written back in its
+## steps: parts on their way, and the app's own file's parts the catalogue
+## has not got. This model's only while it is the one opened.
+func _held_placements() -> Array:
+	var out: Array = []
+	if world.generation() == _awaited_in:
+		out.append_array(awaited)
+		out.append_array(_absent)
+	return out
 
 
 ## [param text], written whole, under [param header] (SourceFile.header)
