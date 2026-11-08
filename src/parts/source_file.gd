@@ -1513,25 +1513,33 @@ static func _add_to(table: Dictionary, key: Variant, value: Variant) -> void:
 ## that say what the next part is for another program ([method
 ## _binds_next]), never between them and that part, where it was said of
 ## nothing: put after an LDCad GROUP_NXT, the floor's line left the part in
-## no group (ktreview).
+## no group (ktreview). One that says what a line of the file says, its
+## fields in another order (a VIEW written by hand or another build), is
+## the file's line: kt4review's metas came back reordered with nothing
+## changed.
 func app_lines_placed(text: String) -> String:
 	if not text.contains("0 !BRICKWORKS"):
 		return text
 	_read_for_patch()
 	var had: Dictionary = {}        ## the file's own app lines, as it ended them
+	var meant: Dictionary = {}      ## the same, by what each says
 	for line: String in original:
 		if _is_app_line(line):
 			had[line.trim_suffix("\r")] = line
+			meant[_app_said(line.trim_suffix("\r"))] = line
 	var put: PackedStringArray = text.split("\n")
 	var out := PackedStringArray()
 	for n: int in put.size():
 		var line: String = put[n]
+		var bare: String = line.trim_suffix("\r")
 		if not _is_app_line(line):
 			out.append(line)
-		elif had.has(line.trim_suffix("\r")):
+		elif had.has(bare):
 			# One the file has (a save of it before): as it has it, so a
 			# save with nothing changed is the file byte for byte.
-			out.append(str(had[line.trim_suffix("\r")]))
+			out.append(str(had[bare]))
+		elif meant.has(_app_said(bare)):
+			out.append(str(meant[_app_said(bare)]))
 		else:
 			var said: String = line.trim_suffix("\r") + (_eol() if n < put.size() - 1 else "")
 			out.insert(before_run(out, out.size()), said)
@@ -1623,6 +1631,16 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 
 static func _is_app_line(line: String) -> bool:
 	return line.begins_with("0 !BRICKWORKS")
+
+
+## What an app line says: its words, and the JSON after them with its
+## fields in one order; the line itself when it has none.
+static func _app_said(line: String) -> String:
+	var at: int = line.find("{")
+	if at < 0:
+		return line
+	var value: Variant = JSON.parse_string(line.substr(at))
+	return line if value == null else line.substr(0, at) + JSON.stringify(value, "", true)
 
 
 ## [param plan] as [param final], a text written over it, has it: each of
