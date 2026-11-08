@@ -318,6 +318,7 @@ func _steps() -> void:
 	await _offer_up()
 	var offer: Window = _store.call("offer_window") if _store.has_method("offer_window") else null
 	var asked: String = str(offer.get("dialog_text")) if offer != null else ""
+	var asked_tall: int = offer.size.y if offer != null else 0
 	_check("asked at once, the two side by side: “%s”" % asked.get_slice("\n", 0),
 		offer != null and offer.visible and asked.contains("this device kept 2 sets and 12 lots of loose parts (%d pieces)"
 			% _pieces(device["parts"])) and asked.contains("Your account's collection has 2 sets and 3 lots"))
@@ -365,6 +366,9 @@ func _steps() -> void:
 	var pending: Array = _store.get("pending") if _store.get("pending") != null else []
 	_check("no answer: said, nothing lost: “%s”" % told.left(120),
 		told.begins_with("No answer came") and pending.size() == 1)
+	var told_tall: int = offer.size.y if offer != null else 0
+	_check("...the offer as tall as the answer, no empty space under it: %d high, %d asking" % [told_tall, asked_tall],
+		offer != null and told_tall < asked_tall)
 	_check("...kept on this device as sent, offered to nobody while it waits",
 		_same_kept(_offerable(), {"sets": [], "parts": []}) and _same_kept(_shown(_fold()), device))
 	if offer != null:
@@ -559,7 +563,7 @@ func _sign_in_elsewhere() -> String:
 	var named: Dictionary = {}
 	var first: Dictionary = (_kept()["parts"] as Array)[0] if not (_kept()["parts"] as Array).is_empty() else {}
 	for lot: Dictionary in [{"part": str(first.get("part", "3001")), "colour": int(first.get("colour", 4)), "qty": 3},
-			{"part": "3001", "colour": 4, "qty": 10}, {"part": "3023", "colour": 71, "qty": 4},
+			{"part": "3001", "colour": 4, "qty": 10}, {"part": "3069b", "colour": 71, "qty": 4},
 			{"part": "3004", "colour": 14, "qty": 6}]:
 		var key: String = "%s/%d" % [lot["part"], int(lot["colour"])]
 		if own.size() < 3 and not named.has(key):

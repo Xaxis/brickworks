@@ -119,6 +119,9 @@ var _count_wait: Timer
 ## A change at the account is being made: the next waits its turn, so each
 ## says what was shown after the one before it.
 var _writing: bool = false
+## Whose collection the panel last showed: the account's id, or empty for
+## this device's own.
+var _shown_for: String = ""
 ## A name -> LDraw code for every colour, as typed words say them
 ## (_colour_words): LDraw's, the LEGO Group's and the language's own.
 var _colour_names: Dictionary = {}
@@ -211,6 +214,13 @@ func _fit() -> void:
 
 func _on_store_changed() -> void:
 	_read.clear()
+	# What was said of one collection is not said of another: this device's
+	# own and an account's, or two accounts' (localbricks).
+	var whose: String = "" if store.here or store.account == null or not store.account.signed_in() \
+		else store.account.user_id
+	if whose != _shown_for:
+		_shown_for = whose
+		_status.text = ""
 	if visible:
 		_show(_page)
 	_tell_page()

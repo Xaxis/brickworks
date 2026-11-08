@@ -83,6 +83,7 @@ func _on_ok() -> void:
 	get_ok_button().disabled = true
 	get_cancel_button().visible = false
 	dialog_text = "Putting them together…"
+	_fit()
 	var done: Dictionary = await store.join()
 	var joined: Dictionary = (done.get("body", {}) as Dictionary).get("done", {}).get("joined", {}) \
 		if (done.get("body", {}) as Dictionary).get("done") is Dictionary else {}
@@ -97,6 +98,7 @@ func _on_ok() -> void:
 		ok_button_text = "Done"
 		get_ok_button().disabled = false
 		get_cancel_button().visible = false
+		_fit()
 		return
 	if done["kind"] == CollectionStore.UNREACHED:
 		told = ("No answer came, so they may be in your collection already. They stay on this device, and are "
@@ -110,11 +112,13 @@ func _on_ok() -> void:
 		cancel_button_text = "Not now"
 		get_ok_button().disabled = false
 		get_cancel_button().visible = true
+		_fit()
 		return
 	state = "told"
 	dialog_text = told
 	ok_button_text = "Done"
 	get_ok_button().disabled = false
+	_fit()
 
 
 func _on_not_now() -> void:
@@ -124,3 +128,10 @@ func _on_not_now() -> void:
 		store.decline()
 		told = "They stay on this device, apart from your account: My collection offers them again."
 	state = "asking"
+
+
+## As tall as what it says now, in the middle of the window again: an answer
+## shorter than the question leaves no empty space under it.
+func _fit() -> void:
+	reset_size()
+	move_to_center()
