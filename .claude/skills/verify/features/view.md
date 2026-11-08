@@ -207,9 +207,17 @@ picture the assistant is shown.
   dragged 150 within 1% of what pre261 did (`SAME` in the probe, from its
   `measure` lines there), a pinch and one turned 6° turning nothing; a
   quarter turn with a spread to twice as wide does both; the model as it was
-  after each. A `note` line tells what a twist with the first finger on a
-  part does, unjudged. Pictures in `shots/twist/`: the model before and after
-  the quarter turn, and from above after it.
+  after each. With the first finger on a part (touchfix): a twist turns the
+  view 90° ±5° and a pinch zooms, neither moving a part nor changing the
+  selection (compared by part and place, as a part put back comes back as
+  another id); the first finger 12 units on before the second comes down,
+  the part back and the selection as it was; a pinch whose first finger
+  stays still on the ground keeps the selection; one finger dragged on a part
+  still carries it. On a phone's and a tablet's layout, a dialog freed while
+  open, then a dialog with a field: laid out for a finger (`touch_placed`)
+  and `TouchSizing.typing` its field. Pictures in
+  `shots/twist/`: the model before and after the quarter turn, and from above
+  after it.
 - `centred on the model's column` (`CadCamera.seen`, `Main._model_rect`): the
   3D draws across the whole window, behind the columns, and the view is
   centred on the model's part of it (`model_cover`'s "view": between the

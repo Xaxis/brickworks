@@ -478,9 +478,10 @@ func _rect_of(node: Node) -> Rect2:
 ## still up hidden. The queue is opened again for the next.
 func _close(opened: Array[Node]) -> void:
 	await _key(KEY_ESCAPE)
-	for node: Node in opened:
-		if not is_instance_valid(node):
+	for item: Variant in opened:
+		if not is_instance_valid(item):
 			continue
+		var node: Node = item
 		if node is Window and (node as Window).visible:
 			(node as Window).hide()
 		elif node is CanvasItem and (node as CanvasItem).visible:

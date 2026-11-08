@@ -483,9 +483,10 @@ func _who_draws() -> void:
 	await _frames(20)
 	var without: int = Engine.get_frames_drawn() - drawn
 	var found: Array[String] = []
-	for node: Node in nodes:
-		if not is_instance_valid(node):
+	for item: Variant in nodes:
+		if not is_instance_valid(item):
 			continue
+		var node: Node = item
 		node.set_process(true)
 		await _frames(3)
 		drawn = Engine.get_frames_drawn()
@@ -494,9 +495,9 @@ func _who_draws() -> void:
 			found.append("%s (%s)" % [node.get_path(), node.get_script().resource_path.get_file()
 				if node.get_script() != null else node.get_class()])
 		node.set_process(false)
-	for node: Node in nodes:
-		if is_instance_valid(node):
-			node.set_process(true)
+	for item: Variant in nodes:
+		if is_instance_valid(item):
+			(item as Node).set_process(true)
 	if without > 2:
 		found.append("%d of 20 frames with every node's processing paused (a coroutine, a tween, a shader reading TIME)" % without)
 	print("    drawn by: %s" % (", ".join(found) if not found.is_empty() else "nothing found"))

@@ -21,7 +21,18 @@
 ##      and a pinch turns nothing, nor does one whose fingers turn 6° as they
 ##      spread (pre261 turned the view by the first finger's way: the pointer
 ##      the engine raises from it);
-##   4. a quarter turn and a spread at once, as a hand makes them: both.
+##   4. a quarter turn and a spread at once, as a hand makes them: both;
+##   5. two fingers with the first on a part (unit touchfix): a twist turns
+##      the view and a pinch zooms it, the part neither carried off nor
+##      selected; the first finger slipped past a carry's start before the
+##      second came down, the part back where it was and the selection as it
+##      was; a pinch whose first finger stays still on the ground lets go of
+##      nothing; and one finger dragged on a part still carries it (pre261
+##      carried the part off with the first finger and selected it);
+##   6. on a phone's and a tablet's layout (TouchSizing), a dialog freed
+##      while it was open leaves the next dialog laid out for a finger and its
+##      field the one typed in (pre261 raised a script error over the freed
+##      one and laid out nothing after it).
 ## Every gesture leaves the model as it was. Pictures before and after the
 ## turn in shots/twist/. Exits non-zero when a check fails.
 extends SceneTree
@@ -45,6 +56,10 @@ var _main: Node
 var _camera: CadCamera
 var _world: BrickWorld
 var _builder: Builder
+var _verbs: EditVerbs
+## Where the view was headed, as the camera aims (radians, not wrapped), as
+## the second finger came down (_two).
+var _yaw_at_second: float = 0.0
 var _layout: String = "phone"
 var _size: String = ""
 var _home: Dictionary = {}
@@ -97,22 +112,14 @@ func _run() -> void:
 	_camera = _main.get("_camera")
 	_world = _main.get("_world")
 	_builder = _main.get("_builder")
+	_verbs = _main.get("_verbs")
 	var room: Rect2 = _camera.seen_rect()
 	print("twist_probe: a %s window, laid out for a %s; the model seen in %d x %d units"
 		% [_size, _layout, roundi(room.size.x), roundi(room.size.y)])
 	_check("the camera takes fingers as %s" % ("a phone's" if _layout != "desktop"
 		else "the desktop's"), _camera.phone == (_layout != "desktop"))
 
-	# Two 2 x 4 bricks crossed, framed small in the middle, so the fingers come
-	# down round the model and the point between them is on it. The example
-	# car a first visit opens is taken off first.
-	_main.call("clear_model")
-	await _frames(4)
-	for brick: Array in [["3001", 4, Basis.IDENTITY, Vector3(0, 24, 0)],
-			["3001", 1, Basis(Vector3.UP, PI * 0.5), Vector3(0, 48, 0)]]:
-		var where := Transform3D(brick[2] as Basis, brick[3] as Vector3)
-		var id: int = _world.add_brick(brick[0], brick[1], where)
-		_builder.register(id, brick[0], where)
+	await _fresh_model()
 	_built = _parts()
 	_camera.set_view("default")
 	_camera.frame(AABB(Vector3(-160, 0, -160), Vector3(320, 72, 320)))
@@ -128,7 +135,10 @@ func _run() -> void:
 	await _as_before()
 	print("\n4. a quarter turn and a spread at once")
 	await _turn_and_spread()
-	await _on_the_model()
+	print("\n5. two fingers with the first on a part")
+	await _on_a_part()
+	print("\n6. a dialog freed while it was open, then the next")
+	await _after_a_freed_dialog()
 
 	print("\ntwist_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures else 0)
@@ -260,20 +270,157 @@ func _turn_and_spread() -> void:
 		and _parts() == _built)
 
 
-## Told, not judged, and last, since it may move a part: the fingers on the
-## model itself, the first on a part, as a twist on a small screen often is.
-func _on_the_model() -> void:
+## Two 2 x 4 bricks crossed, framed small in the middle, so the fingers come
+## down round the model and the point between them is on it, nothing
+## selected. The example car a first visit opens is taken off first.
+func _fresh_model() -> void:
+	_main.call("clear_model")
+	await _frames(4)
+	for brick: Array in [["3001", 4, Basis.IDENTITY, Vector3(0, 24, 0)],
+			["3001", 1, Basis(Vector3.UP, PI * 0.5), Vector3(0, 48, 0)]]:
+		var where := Transform3D(brick[2] as Basis, brick[3] as Vector3)
+		var id: int = _world.add_brick(brick[0], brick[1], where)
+		_builder.register(id, brick[0], where)
+	_builder.clear_selection()
+
+
+## The fingers on the model itself, the first on a part, as a twist or a pinch
+## on a small screen often is: the view's, and the model as it was. Each
+## gesture on the model made afresh, so one that moved a part (pre261) leaves
+## the next as it would find it.
+func _on_a_part() -> void:
 	await _go_home()
-	var heading: float = _heading()
 	var middle: Vector2 = _camera.seen_rect().get_center()
-	await _two(_turning(middle, _reach() * 0.15, 90.0))
-	var now: Array = _parts()
+	var near: float = _reach() * 0.15
+	var first: Vector2 = (_turning(middle, near, 90.0).call(0.0) as Array)[0]
+	var under: int = _verbs.brick_at(first)
+	_check("the first finger comes down on a part (%s)" % ("part %d" % under if under != 0
+		else "the ground"), under != 0)
+
+	# Each gesture judged against the model as it was just before it.
+	var before: Array = _parts()
+	var heading: float = _heading()
+	await _two(_turning(middle, near, 90.0))
+	var turned: float = _turned(heading, _heading())
+	print("  measure on_part_twist %.3f %s" % [turned, _moved(before)])
+	_check("a quarter twist begun on a part turns the view %.1f° (90 ±5), the model as it was (%s)"
+		% [turned, _moved(before)], absf(absf(turned) - 90.0) <= 5.0 and _parts() == before)
+
+	await _fresh_model()
+	await _go_home()
+	before = _parts()
+	var far: float = _camera.distance_now()
+	await _two(_turning(middle, near, 0.0, 3.0))
+	var left: float = _camera.distance_now() / far
+	print("  measure on_part_pinch %.6f %s" % [left, _moved(before)])
+	_check("a pinch begun on a part zooms (%.4f of the distance, 0.3333 ±1%%), the model as it was (%s)"
+		% [left, _moved(before)], _within(left, 1.0 / 3.0) and _parts() == before)
+
+	# The first finger on its way before the second comes down, past where a
+	# drag carries the part (Main.DRAG_SLOP, 5): a hand that lands unevenly.
+	await _fresh_model()
+	await _go_home()
+	before = _parts()
+	var slip := Vector2(-12.0, 0.0)
+	var path: Callable = _turning(middle, near, 90.0)
+	# The line between them turns less than 90° with the first finger 12
+	# units out: as far as that, the view.
+	var lines: Array = []
+	for t: float in [0.0, 1.0]:
+		var both: Array = path.call(t)
+		lines.append(((both[1] as Vector2) - ((both[0] as Vector2) + slip)).angle())
+	var wanted: float = absf(rad_to_deg(angle_difference(lines[0], lines[1])))
+	await _two(path, 24, slip)
+	# From the second finger on: the first finger alone turns the view on
+	# the desktop's layout, as one finger does there.
+	turned = absf(rad_to_deg(float(_camera.get("_target_yaw")) - _yaw_at_second))
+	print("  measure slipped_twist %.3f %.3f %s" % [turned, wanted, _moved(before)])
+	_check("...the first finger 12 units on before the second comes down: %.1f° from then (the fingers' %.1f ±5), the part back where it was and the selection as it was (%s)"
+		% [turned, wanted, _moved(before)], absf(turned - wanted) <= 5.0 and _parts() == before)
+
+	# A part selected, and a pinch whose first finger stays still on the
+	# ground while the second spreads from it: no click, nothing let go of.
+	await _fresh_model()
+	await _go_home()
+	var kept: int = int(_world._bricks.keys().min())
+	_builder.select_brick(kept, false)
+	var chosen: Array = _parts()
+	var ground: Vector2 = middle + Vector2(0.0, _reach())
+	_check("...the ground there has no part on it", _verbs.brick_at(ground) == 0)
+	var spread_from: Callable = func(t: float) -> Array:
+		return [ground, ground + Vector2(near * lerpf(1.0, 3.0, t), 0.0)]
+	await _two(spread_from)
+	print("  measure still_pinch %s" % [_builder.selection.keys()])
+	_check("a pinch whose first finger stays still on the ground keeps the selection (%s, was [%d]) and the model"
+		% [_builder.selection.keys(), kept], _parts() == chosen)
+	_builder.clear_selection()
+
+	# One finger: the part is carried, as before.
+	await _fresh_model()
+	await _go_home()
+	before = _parts()
+	await _one(first, first + Vector2(0.0, 60.0))
+	print("  measure one_finger %s" % _moved(before))
+	_check("one finger dragged 60 units on a part still carries it (%s)" % _moved(before),
+		_moved_count(before) > 0)
+
+
+## How many parts are not where [param before] had them, and how many are
+## selected, in words.
+func _moved(before: Array) -> String:
+	return "%d parts moved, %d selected" % [_moved_count(before), _builder.selection.size()]
+
+
+func _moved_count(before: Array) -> int:
+	var placed: Array = (_parts()[0] as Array).duplicate()
 	var moved: int = 0
-	for n: int in _built.size() - 1:
-		if n >= now.size() - 1 or now[n] != _built[n]:
+	for said: String in before[0]:
+		if said in placed:
+			placed.erase(said)
+		else:
 			moved += 1
-	print("  note  fingers on the model: the view turned %.1f°, %d parts moved, %s selected"
-		% [_turned(heading, _heading()), moved, now[now.size() - 1]])
+	return moved
+
+
+## A dialog freed while it is open, then another dialog with a field: laid
+## out for a finger and typed in. A window or a panel freed while it shows
+## never says it hid, so TouchSizing still lists it; Godot's Cancel hides its
+## dialog before SaveTo frees it, so a Save dialog cancelled is not one.
+func _after_a_freed_dialog() -> void:
+	var touch: TouchSizing = _main.get("_touch")
+	if touch == null:
+		print("  (the desktop's layout lays dialogs out as the desktop does: nothing to check)")
+		return
+	var gone := AcceptDialog.new()
+	gone.dialog_text = "Freed while it is open"
+	root.add_child(gone)
+	gone.popup_centered()
+	await _frames(10)
+	gone.queue_free()
+	await _frames(4)
+	var freed: int = 0
+	for item: Variant in touch.get("_open"):
+		if not is_instance_valid(item):
+			freed += 1
+	print("  measure freed_open %d" % freed)
+	_check("...a dialog freed while open is still listed (%d), as a person's would be" % freed, freed > 0)
+
+	var asked := AcceptDialog.new()
+	asked.title = "Name"
+	var field := LineEdit.new()
+	asked.add_child(field)
+	root.add_child(asked)
+	asked.popup_centered(Vector2i(300, 120))
+	await _frames(2)
+	field.grab_focus()
+	await _frames(10)
+	var placed: bool = asked.has_meta(&"touch_placed")
+	var typed: Control = touch.typing()
+	_check("the next dialog is laid out for a finger (%s) and its field is the one typed in (%s)"
+		% ["laid out" if placed else "not laid out", "it" if typed == field else str(typed)],
+		placed and typed == field)
+	asked.queue_free()
+	await _frames(4)
 
 
 # -- fingers ---------------------------------------------------------------------
@@ -301,11 +448,26 @@ func _slack() -> float:
 
 
 ## Two fingers down where [param path] starts, moved along it a frame at a
-## time, both each frame, and lifted.
-func _two(path: Callable, steps: int = 24) -> void:
+## time, both each frame, and lifted. With [param early], the first goes that
+## far on its own, a frame at a time, before the second comes down.
+func _two(path: Callable, steps: int = 24, early: Vector2 = Vector2.ZERO) -> void:
 	var at: Array = path.call(0.0)
-	for index: int in 2:
-		_touch(index, at[index], true)
+	_touch(0, at[0], true)
+	if early != Vector2.ZERO:
+		await process_frame
+		var from: Vector2 = at[0]
+		for n: int in 6:
+			var next: Vector2 = from + early * _eased(n + 1, 6)
+			_drag(0, next, next - (at[0] as Vector2))
+			at[0] = next
+			await process_frame
+		var slipped: Vector2 = at[0] - from
+		var moved_path: Callable = path
+		path = func(t: float) -> Array:
+			var both: Array = moved_path.call(t)
+			return [(both[0] as Vector2) + slipped, both[1]]
+	_yaw_at_second = float(_camera.get("_target_yaw"))
+	_touch(1, at[1], true)
 	await process_frame
 	for n: int in steps:
 		var to: Array = path.call(_eased(n + 1, steps))
@@ -385,14 +547,21 @@ static func _within(value: float, wanted: float) -> bool:
 	return absf(value - wanted) <= absf(wanted) * 0.01
 
 
-## Every part where it is, and what is selected.
+## Every part where it is, and the selected ones, each as its part and
+## where it is, in order: not by id, as a part carried and put back comes
+## back as another id (Builder._renumbered), where it was.
 func _parts() -> Array:
-	var out: Array = []
+	var placed: Array = []
+	var chosen: Array = []
 	for id: int in _world._bricks:
 		var brick: BrickWorld.Brick = _world.get_brick(id)
-		out.append([id, brick.part_id, brick.transform])
-	out.append(_builder.selection.keys())
-	return out
+		var said: String = "%s %s" % [brick.part_id, brick.transform]
+		placed.append(said)
+		if _builder.selection.has(id):
+			chosen.append(said)
+	placed.sort()
+	chosen.sort()
+	return [placed, chosen]
 
 
 ## The view the model was framed in, each gesture from there.
