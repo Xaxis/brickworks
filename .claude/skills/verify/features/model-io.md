@@ -91,6 +91,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`ModelStore.lines_left_out`, `left_out_words`: how many of which kind).
   In a patch the app's own lines end as the file's lines do and go above a
   line saying what the next part is (`SourceFile.app_lines_placed`).
+  A part of a mirrored copy agrees with its line only as it was opened (an
+  edit to one is (B)); a step edit numbers the steps again as live does, so
+  later parts' lines move with their steps, and a part the app cannot show
+  that would be left behind its step-mates makes the save (B); the
+  read-back knows a copy by the lines placing it, not by its number.
   keeptext4 wrote every edit into the file and refused what its gate did not
   pass, which trapped the work and lost it on the next open
   (bench/results/kt4review-2026-11-07). Probes: `paint_string` (a person
